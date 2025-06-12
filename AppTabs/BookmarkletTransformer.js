@@ -12,18 +12,18 @@
               <span>Name:</span>
               <input x-model="bookmarkletName" type="text" class="input input-bordered input-sm" />
             </label>
+            <a :href="bookmarkletOutput" class="link link-primary" draggable="true" x-text="bookmarkletName"></a>
             <div class="text-sm text-base-content/60 ml-auto" x-text="metrics"></div>
           </div>
 
           <div class="flex items-center gap-4 mb-2">
             <span class="font-bold">Output:</span>
-            <a :href="bookmarkletOutput" class="link link-primary" draggable="true" x-text="bookmarkletName"></a>
             <div class="flex items-center gap-1 ml-auto">
               <!-- Compressed Toggle -->
               <button @click="compressed = !compressed" 
                       class="btn btn-ghost btn-sm btn-circle"
                       :title="compressed ? 'Compressed (Click to disable)' : 'Not Compressed (Click to enable)'">
-                <i class="ph ph-archive text-lg" :class="compressed ? 'text-accent' : 'text-base-content/40'"></i>
+                <i class="ph ph-archive text-lg" :class="compressed ? 'text-primary' : 'text-base-content/40'"></i>
               </button>
 
               <!-- Packed Toggle -->
@@ -39,8 +39,8 @@
                 <option value="Popup">Popup</option>
                 <option value="New Tab">New Tab</option>
               </select>
-              <button @click="copyOutput()" class="btn btn-primary btn-sm btn-circle" :title="copyButtonText">
-                <i class="ph text-lg" :class="copyButtonText === 'Copied!' ? 'ph-check' : 'ph-copy'"></i>
+              <button @click="copyOutput()" class="btn btn-ghost btn-sm btn-circle" :title="copyButtonText">
+                <i class="ph text-lg" :class="copyButtonText === 'Copied!' ? 'ph-check text-success' : 'ph-copy text-base-content/60'"></i>
               </button>
             </div>
           </div>
@@ -71,7 +71,7 @@
                               @click.stop="toggleCompression(type)"
                               :title="compressedStates[type] ? 'Compressed (Click to disable)' : 'Not Compressed (Click to enable)'">
                         <i class="ph ph-archive text-sm" 
-                           :class="compressedStates[type] ? 'text-accent' : 'text-base-content/40'"></i>
+                           :class="compressedStates[type] ? 'text-primary' : 'text-base-content/40'"></i>
                       </button>
                     </div>
                   </li>
@@ -84,14 +84,14 @@
               <button @click="detectInput = !detectInput" 
                       class="btn btn-ghost btn-sm btn-circle"
                       :title="detectInput ? 'Auto-detect input type (Click to disable)' : 'Manual input type (Click to auto-detect)'">
-                <i class="ph ph-lightning-a text-lg" :class="detectInput ? 'text-secondary' : 'text-base-content/40'"></i>
+                <i class="ph ph-lightning-a text-lg" :class="detectInput ? 'text-primary' : 'text-base-content/40'"></i>
               </button>
 
               <!-- Wrap Toggle -->
               <button @click="toggleWrap()" 
                       class="btn btn-ghost btn-sm btn-circle"
                       :title="isWrapped ? 'Text wrapped (Click to disable)' : 'Text not wrapped (Click to enable)'">
-                <i class="ph ph-textbox text-lg" :class="isWrapped ? 'text-info' : 'text-base-content/40'"></i>
+                <i class="ph ph-arrow-u-down-left text-lg" :class="isWrapped ? 'text-primary' : 'text-base-content/40'"></i>
               </button>
             </div>
           </div>
