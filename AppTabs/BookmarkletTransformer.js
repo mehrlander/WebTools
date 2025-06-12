@@ -5,8 +5,6 @@
     return `
       <div class="h-full p-6 overflow-y-auto">
         <div class="max-w-4xl mx-auto">
-          <h1 class="text-2xl mb-4 font-mono">Bookmarklet Transformer</h1>
-
           <div class="flex items-center gap-4 mb-4">
             <label class="flex items-center gap-2 text-sm">
               <span>Name:</span>
