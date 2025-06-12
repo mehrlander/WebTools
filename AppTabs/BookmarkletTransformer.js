@@ -50,15 +50,15 @@
           <div class="flex items-center gap-4 mb-2">
             <span class="font-bold">Input:</span>
             <div class="dropdown dropdown-bottom">
-              <div tabindex="0" role="button" class="badge badge-lg gap-2 cursor-pointer p-3 hover:opacity-80"
+              <div tabindex="0" role="button" class="badge badge-sm gap-1 cursor-pointer p-2 hover:opacity-80 text-xs"
                    :class="{
                      'badge-primary': inputType === 'JavaScript',
                      'badge-neutral': inputType === 'Text/HTML',
                      'badge-error': validationError
                    }">
                 <span x-text="inputType"></span>
-                <i class="ph ph-archive text-lg" x-show="compressedStates[inputType]"></i>
-                <i class="ph ph-caret-down text-sm"></i>
+                <i class="ph ph-archive text-sm" x-show="compressedStates[inputType]"></i>
+                <i class="ph ph-caret-down text-xs"></i>
               </div>
               <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-48 mt-2">
                 <template x-for="type in contentTypes">
