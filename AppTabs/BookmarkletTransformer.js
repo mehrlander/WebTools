@@ -18,19 +18,19 @@
           <div class="flex items-center gap-4 mb-2">
             <span class="font-bold">Output:</span>
             <a :href="bookmarkletOutput" class="link link-primary" draggable="true" x-text="bookmarkletName"></a>
-            <div class="flex items-center gap-2 ml-auto">
+            <div class="flex items-center gap-1 ml-auto">
               <!-- Compressed Toggle -->
               <button @click="compressed = !compressed" 
-                      :class="compressed ? 'btn btn-accent btn-sm' : 'btn btn-ghost btn-sm'"
+                      class="btn btn-ghost btn-sm btn-circle"
                       :title="compressed ? 'Compressed (Click to disable)' : 'Not Compressed (Click to enable)'">
-                <i class="ph ph-archive text-lg"></i>
+                <i class="ph ph-archive text-lg" :class="compressed ? 'text-accent' : 'text-base-content/40'"></i>
               </button>
 
               <!-- Packed Toggle -->
               <button @click="packed = !packed" 
-                      :class="packed ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'"
+                      class="btn btn-ghost btn-sm btn-circle"
                       :title="packed ? 'Packed (Click to disable)' : 'Not Packed (Click to enable)'">
-                <i class="ph ph-package text-lg"></i>
+                <i class="ph ph-package text-lg" :class="packed ? 'text-primary' : 'text-base-content/40'"></i>
               </button>
 
               <select x-model="popupType" class="select select-sm select-bordered">
@@ -65,11 +65,11 @@
                       <span class="flex-1 text-sm select-none cursor-pointer whitespace-nowrap"
                             @click="setInputType(type); $el.closest('.dropdown').removeAttribute('open')"
                             x-text="type"></span>
-                      <button class="p-1 rounded hover:bg-base-300 flex items-center justify-center"
+                      <button class="btn btn-ghost btn-xs btn-circle"
                               @click.stop="toggleCompression(type)"
                               :title="compressedStates[type] ? 'Compressed (Click to disable)' : 'Not Compressed (Click to enable)'">
-                        <i class="ph ph-archive text-lg" 
-                           :class="compressedStates[type] ? 'text-accent' : 'opacity-30'"></i>
+                        <i class="ph ph-archive text-sm" 
+                           :class="compressedStates[type] ? 'text-accent' : 'text-base-content/40'"></i>
                       </button>
                     </div>
                   </li>
@@ -77,19 +77,19 @@
               </ul>
             </div>
             <div x-show="validationMessage" class="text-sm ml-2 flex-1" :class="validationError ? 'text-error' : 'text-success'" x-text="validationMessage"></div>
-            <div class="flex items-center gap-2 ml-auto">
+            <div class="flex items-center gap-1 ml-auto">
               <!-- Detect Input Toggle -->
               <button @click="detectInput = !detectInput" 
-                      :class="detectInput ? 'btn btn-secondary btn-sm' : 'btn btn-ghost btn-sm'"
+                      class="btn btn-ghost btn-sm btn-circle"
                       :title="detectInput ? 'Auto-detect input type (Click to disable)' : 'Manual input type (Click to auto-detect)'">
-                <i class="ph ph-scan text-lg"></i>
+                <i class="ph ph-scan text-lg" :class="detectInput ? 'text-secondary' : 'text-base-content/40'"></i>
               </button>
 
               <!-- Wrap Toggle -->
               <button @click="toggleWrap()" 
-                      :class="isWrapped ? 'btn btn-info btn-sm' : 'btn btn-ghost btn-sm'" 
+                      class="btn btn-ghost btn-sm btn-circle"
                       :title="isWrapped ? 'Text wrapped (Click to disable)' : 'Text not wrapped (Click to enable)'">
-                <i class="ph ph-textbox text-lg"></i>
+                <i class="ph ph-textbox text-lg" :class="isWrapped ? 'text-info' : 'text-base-content/40'"></i>
               </button>
             </div>
           </div>
