@@ -30,7 +30,7 @@
               <button @click="packed = !packed" 
                       class="btn btn-ghost btn-sm btn-circle"
                       :title="packed ? 'Packed (Click to disable)' : 'Not Packed (Click to enable)'">
-                <i class="ph ph-package text-lg" :class="packed ? 'text-primary' : 'text-base-content/40'"></i>
+                <i class="ph ph-browsers text-lg" :class="packed ? 'text-primary' : 'text-base-content/40'"></i>
               </button>
 
               <select x-model="popupType" class="select select-sm select-bordered">
@@ -39,7 +39,9 @@
                 <option value="Popup">Popup</option>
                 <option value="New Tab">New Tab</option>
               </select>
-              <button @click="copyOutput()" class="btn btn-primary btn-sm px-3 py-1 min-h-0 h-auto" x-text="copyButtonText"></button>
+              <button @click="copyOutput()" class="btn btn-primary btn-sm btn-circle" :title="copyButtonText">
+                <i class="ph text-lg" :class="copyButtonText === 'Copied!' ? 'ph-check' : 'ph-copy'"></i>
+              </button>
             </div>
           </div>
 
@@ -82,7 +84,7 @@
               <button @click="detectInput = !detectInput" 
                       class="btn btn-ghost btn-sm btn-circle"
                       :title="detectInput ? 'Auto-detect input type (Click to disable)' : 'Manual input type (Click to auto-detect)'">
-                <i class="ph ph-scan text-lg" :class="detectInput ? 'text-secondary' : 'text-base-content/40'"></i>
+                <i class="ph ph-lightning-a text-lg" :class="detectInput ? 'text-secondary' : 'text-base-content/40'"></i>
               </button>
 
               <!-- Wrap Toggle -->
