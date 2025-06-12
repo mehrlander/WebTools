@@ -3,7 +3,7 @@
   icon: 'ph ph-code-simple-bold',
   content: function() {
     return `
-      <div class="h-full p-6 overflow-y-auto">
+      <div class="h-full p-6 overflow-y-auto" x-data="bookmarkletTransformer">
         <div class="max-w-4xl mx-auto">
           <div class="flex items-center gap-4 mb-4">
             <label class="flex items-center gap-2 text-sm">
@@ -104,14 +104,205 @@
       </div>
     `;
   },
-  init: async function() {
-    // Initialize watchers for bookmarklet transformer
-    ['inputText', 'compressed', 'compressedStates', 'packed', 'detectInput', 'popupType', 'inputType'].forEach(prop => {
-      this.$watch(prop, () => this._updateBookmarklet(), { deep: prop === 'compressedStates' });
-    });
-    
-    // Initialize bookmarklet transformer
-    await this.loadLibs();
-    this._updateBookmarklet();
+  init: function() {
+    // Define the bookmarklet transformer Alpine component
+    Alpine.data('bookmarkletTransformer', () => ({
+      // State
+      popupType: 'Write',
+      bookmarkletName: 'Bookmarklet',
+      inputText: '',
+      bookmarkletOutput: '',
+      metrics: '',
+      contentTypes: ['Text/HTML', 'JavaScript'],
+      compressedStates: {'Text/HTML': false, 'JavaScript': false},
+      compressed: true,
+      packed: true,
+      detectInput: true,
+      inputType: 'Text/HTML',
+      validationMessage: '',
+      validationError: false,
+      copyButtonText: 'Copy',
+      isWrapped: true,
+      libs: {},
+      
+      // Initialize
+      async init() {
+        await this.loadLibs();
+        await this.updateBookmarklet();
+        
+        // Set up watchers
+        ['inputText', 'compressed', 'compressedStates', 'packed', 'detectInput', 'popupType', 'inputType'].forEach(prop => {
+          this.$watch(prop, () => this.updateBookmarklet(), { deep: prop === 'compressedStates' });
+        });
+      },
+      
+      // Load libraries
+      async loadLibs() {
+        if (!this.libs.brotli) {
+          this.libs.brotli = await import('https://unpkg.com/brotli-wasm@3.0.0/index.web.js?module').then(m => m.default);
+          this.libs.acorn = await import('https://unpkg.com/acorn@8.11.3/dist/acorn.mjs');
+        }
+        return this.libs;
+      },
+      
+      // Compression methods
+      async compress(text) {
+        const {brotli} = this.libs;
+        try {
+          return 'BR64:' + btoa(String.fromCharCode(...brotli.compress(new TextEncoder().encode(text))));
+        } catch { 
+          return text; 
+        }
+      },
+      
+      async decompress(text) {
+        const {brotli} = this.libs;
+        try {
+          return new TextDecoder().decode(
+            brotli.decompress(
+              Uint8Array.from(atob(text.slice(5)), c => c.charCodeAt(0))
+            )
+          );
+        } catch { 
+          return null; 
+        }
+      },
+      
+      // JavaScript validation
+      async validateJavaScript(text) {
+        const {acorn} = this.libs;
+        try { 
+          acorn.parse(text, {ecmaVersion: 2022}); 
+          return {isValid: true, error: null}; 
+        } catch (e) { 
+          return {isValid: false, error: e}; 
+        }
+      },
+      
+      // UI methods
+      toggleCompression(type) { 
+        this.compressedStates[type] = !this.compressedStates[type]; 
+      },
+      
+      setInputType(type) { 
+        this.inputType = type; 
+        this.detectInput = false; 
+      },
+      
+      toggleWrap() { 
+        this.isWrapped = !this.isWrapped; 
+      },
+      
+      copyOutput() {
+        const btn = document.createElement('button');
+        new ClipboardJS(btn, {text: () => this.bookmarkletOutput}).on('success', () => {
+          this.copyButtonText = 'Copied!';
+          setTimeout(() => this.copyButtonText = 'Copy', 2000);
+        });
+        btn.click();
+      },
+      
+      // Main processing logic
+      async processText(text, opts = {}) {
+        const isBR = text.startsWith('BR64:');
+        const raw = isBR ? await this.decompress(text) || text : text;
+        const comp = isBR ? text : await this.compress(text);
+        const work = opts.compressed ? comp : raw;
+        const jsChk = await this.validateJavaScript(raw);
+        const isJS = opts.forceType === 'JavaScript' || (opts.forceType !== 'Text/HTML' && jsChk.isValid);
+        
+        const data = {
+          rawText: raw, 
+          compressedText: comp, 
+          isJavaScript: isJS,
+          inputIsCompressed: isBR, 
+          decompressionError: isBR && !raw ? new Error('Invalid') : null,
+          jsParseError: isJS ? jsChk.error : null, 
+          rawSize: raw.length,
+          compressedSize: comp.length, 
+          outputSize: work.length
+        };
+        
+        if (!opts.packed) {
+          return { output: work, ...data };
+        }
+        
+        const actions = {
+          Apply: isJS ? 'eval(d)' : "document.write(d);document.close()",
+          Write: "document.write(d);document.close()",
+          Popup: "const w=window.open('','_blank','width=600,height=400');w.document.write(d);w.document.close()",
+          'New Tab': "const w=window.open('','_blank');w.document.write(d);w.document.close()"
+        };
+        
+        if (work.startsWith('BR64:')) {
+          const template = `javascript:(async function(){const s='${work}';try{const m=await(await import('https://unpkg.com/brotli-wasm@3.0.0/index.web.js?module')).default;const b=atob(s.slice(5));const a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);const d=new TextDecoder().decode(m.decompress(a));${actions[opts.mode]}}catch(e){console.error(e)}})();`;
+          return { output: template, ...data };
+        } else {
+          const escaped = JSON.stringify(work);
+          const templates = {
+            Apply: `javascript:(()=>{${work}})()`,
+            Write: `javascript:(()=>{document.write(${escaped});document.close()})()`,
+            Popup: `javascript:(()=>{let w=window.open('','_blank','width=600,height=400');w.document.write(${escaped});w.document.close()})()`,
+            'New Tab': `javascript:(()=>{let w=window.open('','_blank');w.document.write(${escaped});w.document.close()})()`
+          };
+          const output = isJS && opts.mode === 'Apply' ? templates.Apply : templates[opts.mode];
+          return { output, ...data };
+        }
+      },
+      
+      // Update bookmarklet
+      async updateBookmarklet() {
+        if (!this.inputText.trim()) {
+          Object.assign(this, {
+            bookmarkletOutput: '', 
+            metrics: '', 
+            validationMessage: '', 
+            validationError: false
+          });
+          return;
+        }
+        
+        try {
+          const result = await this.processText(this.inputText, {
+            compressed: this.compressed, 
+            packed: this.packed, 
+            mode: this.popupType,
+            forceType: this.detectInput ? null : this.inputType
+          });
+          
+          this.bookmarkletOutput = result.output;
+          
+          if (this.detectInput) {
+            this.inputType = result.isJavaScript ? 'JavaScript' : 'Text/HTML';
+            if (result.inputIsCompressed) {
+              this.compressedStates[this.inputType] = true;
+              this.compressedStates[this.inputType === 'JavaScript' ? 'Text/HTML' : 'JavaScript'] = false;
+            }
+          }
+          
+          // Calculate compression ratio
+          const ratio = result.compressedSize < result.rawSize ? 
+            ((result.rawSize - result.compressedSize) / result.rawSize * 100).toFixed(1) : 0;
+          
+          this.metrics = `In: ${this.inputText.length}b${result.inputIsCompressed ? ' (BR64)' : ''} | Out: ${result.outputSize}b${ratio > 0 ? ` (${ratio}% smaller)` : ''}`;
+          
+          // Update validation message
+          if (result.isJavaScript && result.jsParseError) {
+            this.validationMessage = `JS Error: ${result.jsParseError.message}`;
+            this.validationError = true;
+          } else if (result.inputIsCompressed && result.decompressionError) {
+            this.validationMessage = 'Invalid compressed data';
+            this.validationError = true;
+          } else {
+            this.validationMessage = '';
+            this.validationError = false;
+          }
+        } catch (e) {
+          this.bookmarkletOutput = 'Error: ' + e.message;
+          this.validationError = true;
+          this.validationMessage = e.message;
+        }
+      }
+    }));
   }
 }
