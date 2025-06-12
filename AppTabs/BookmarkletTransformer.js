@@ -91,15 +91,14 @@
       </div>
     `;
   },
-  init: function() {
+  init: async function() {
     // Initialize watchers for bookmarklet transformer
     ['inputText', 'compressed', 'compressedStates', 'packed', 'detectInput', 'popupType', 'inputType'].forEach(prop => {
-      this.$watch(prop, () => this.updateBookmarklet(), { deep: prop === 'compressedStates' });
+      this.$watch(prop, () => this._updateBookmarklet(), { deep: prop === 'compressedStates' });
     });
     
     // Initialize bookmarklet transformer
-    this.loadLibraries().then(() => {
-      this.updateBookmarklet();
-    });
+    await this.loadLibs();
+    this._updateBookmarklet();
   }
 }
