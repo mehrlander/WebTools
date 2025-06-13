@@ -97,7 +97,7 @@
           <div class="relative z-10">
             <textarea 
               x-model="inputText" 
-              @input="debouncedUpdate"
+              @input="handleInput"
               class="w-full h-48 p-3 font-mono text-sm border rounded bg-base-100 relative z-10" 
               :style="{ 'white-space': isWrapped ? 'pre-wrap' : 'pre' }" 
               placeholder="Enter your code or text here..."></textarea>
@@ -132,31 +132,39 @@
       isWrapped: true,
       libs: {},
       updateTimeout: null,
+      isInitialized: false,
+      lastProcessedText: '',
       
       // Initialize
       async init() {
         await this.loadLibs();
         
-        // Initial update without input
-        if (this.inputText) {
-          await this.updateBookmarklet();
-        }
+        // Mark as initialized to prevent initial updates
+        this.isInitialized = true;
         
-        // Set up watchers with proper debouncing
-        this.$watch('compressed', () => this.updateBookmarklet());
-        this.$watch('compressedStates', () => this.updateBookmarklet(), { deep: true });
-        this.$watch('packed', () => this.updateBookmarklet());
-        this.$watch('detectInput', () => this.updateBookmarklet());
-        this.$watch('popupType', () => this.updateBookmarklet());
-        this.$watch('inputType', () => this.updateBookmarklet());
+        // Set up watchers only for control changes, not input text
+        this.$watch('compressed', () => this.triggerUpdate());
+        this.$watch('compressedStates', () => this.triggerUpdate(), { deep: true });
+        this.$watch('packed', () => this.triggerUpdate());
+        this.$watch('detectInput', () => this.triggerUpdate());
+        this.$watch('popupType', () => this.triggerUpdate());
+        this.$watch('inputType', () => this.triggerUpdate());
       },
       
-      // Debounced update for input text
-      debouncedUpdate() {
+      // Handle input changes manually
+      handleInput() {
         clearTimeout(this.updateTimeout);
         this.updateTimeout = setTimeout(() => {
-          this.updateBookmarklet();
+          this.triggerUpdate();
         }, 300);
+      },
+      
+      // Trigger update only if there's actual content and it has changed
+      triggerUpdate() {
+        if (!this.isInitialized) return;
+        if (this.inputText.trim() !== this.lastProcessedText) {
+          this.updateBookmarklet();
+        }
       },
       
       // Load libraries
@@ -275,18 +283,20 @@
       
       // Update bookmarklet
       async updateBookmarklet() {
-        if (!this.inputText.trim()) {
-          Object.assign(this, {
-            bookmarkletOutput: '', 
-            metrics: '', 
-            validationMessage: '', 
-            validationError: false
-          });
+        const trimmedInput = this.inputText.trim();
+        this.lastProcessedText = trimmedInput;
+        
+        if (!trimmedInput) {
+          // Only clear outputs, don't update other properties
+          this.bookmarkletOutput = '';
+          this.metrics = '';
+          this.validationMessage = '';
+          this.validationError = false;
           return;
         }
         
         try {
-          const result = await this.processText(this.inputText, {
+          const result = await this.processText(trimmedInput, {
             compressed: this.compressed, 
             packed: this.packed, 
             mode: this.popupType,
@@ -296,6 +306,10 @@
           this.bookmarkletOutput = result.output;
           
           if (this.detectInput) {
+            // Store current values before updating
+            const prevInputType = this.inputType;
+            const prevCompressedStates = {...this.compressedStates};
+            
             this.inputType = result.isJavaScript ? 'JavaScript' : 'Text/HTML';
             if (result.inputIsCompressed) {
               this.compressedStates[this.inputType] = true;
@@ -307,7 +321,7 @@
           const ratio = result.compressedSize < result.rawSize ? 
             ((result.rawSize - result.compressedSize) / result.rawSize * 100).toFixed(1) : 0;
           
-          this.metrics = `In: ${this.inputText.length}b${result.inputIsCompressed ? ' (BR64)' : ''} | Out: ${result.outputSize}b${ratio > 0 ? ` (${ratio}% smaller)` : ''}`;
+          this.metrics = `In: ${trimmedInput.length}b${result.inputIsCompressed ? ' (BR64)' : ''} | Out: ${result.outputSize}b${ratio > 0 ? ` (${ratio}% smaller)` : ''}`;
           
           // Update validation message
           if (result.isJavaScript && result.jsParseError) {
