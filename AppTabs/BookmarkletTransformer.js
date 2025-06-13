@@ -6,7 +6,7 @@
       <div class="h-full p-6 overflow-y-auto" x-data="bookmarkletTransformer">
         <div class="max-w-4xl mx-auto">
           <div class="flex items-center gap-4 mb-4">
-            <label class="flex items-center gap-2 text-sm">
+            <label class="flex items-center gap-2 text-xs text-gray-500">
               <span>Name:</span>
               <input x-model="bookmarkletName" type="text" class="input input-bordered input-sm" />
             </label>
@@ -154,9 +154,8 @@
       // Handle input changes manually
       handleInput() {
         clearTimeout(this.updateTimeout);
-        console.log('this doing something?');
         this.updateTimeout = setTimeout(() => {
-          //this.triggerUpdate();
+          this.triggerUpdate();
         }, 300);
       },
       
