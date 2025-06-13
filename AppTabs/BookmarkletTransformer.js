@@ -155,7 +155,7 @@
       handleInput() {
         clearTimeout(this.updateTimeout);
         this.updateTimeout = setTimeout(() => {
-          this.triggerUpdate();
+          //this.triggerUpdate();
         }, 300);
       },
       
