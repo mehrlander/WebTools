@@ -8,7 +8,7 @@
         <div x-show="loading" class="flex items-center justify-center h-full">
           <div class="text-center">
             <span class="loading loading-spinner loading-lg text-primary"></span>
-            <p class="mt-4 text-base-content/60">Loading libraries...</p>
+            <p class="mt-4 text-base-content/60">Initializing transformer...</p>
           </div>
         </div>
 
@@ -113,9 +113,19 @@
       </div>
     `;
   },
-  init: function() {
-    // Register the Alpine component for the bookmarklet transformer
-    Alpine.data('bookmarkletTransformer', () => ({
+  init: async function() {
+    try {
+      // Log initialization start
+      console.log('Initializing Bookmarklet Transformer tab...');
+      
+      // Ensure Alpine is available
+      if (typeof Alpine === 'undefined') {
+        console.error('Alpine.js is not available');
+        return;
+      }
+      
+      // Register the Alpine component for the bookmarklet transformer
+      Alpine.data('bookmarkletTransformer', () => ({
       // Loading state
       loading: true,
       libs: {},
@@ -147,7 +157,11 @@
           });
           
           this.loading = false;
-          await this.updateBookmarklet();
+          
+          // Initial update after everything is ready
+          this.$nextTick(() => {
+            this.updateBookmarklet();
+          });
         } catch (error) {
           console.error('Failed to initialize bookmarklet transformer:', error);
           this.loading = false;
