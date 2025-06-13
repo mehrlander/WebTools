@@ -45,9 +45,9 @@
 
           <textarea x-model="bookmarkletOutput" class="w-full h-32 p-3 font-mono text-sm border rounded bg-base-100 mb-4" readonly></textarea>
 
-          <div class="flex items-center gap-4 mb-2">
+          <div class="flex items-center gap-4 mb-2 relative z-20">
             <span class="font-bold">Input:</span>
-            <div class="dropdown dropdown-bottom">
+            <div class="dropdown dropdown-bottom" @click.away="$el.removeAttribute('open')">
               <div tabindex="0" role="button" class="badge badge-sm gap-1 cursor-pointer p-2 hover:opacity-80 text-xs"
                    :class="{
                      'badge-primary': inputType === 'JavaScript',
@@ -58,7 +58,7 @@
                 <i class="ph ph-archive text-sm" x-show="compressedStates[inputType]"></i>
                 <i class="ph ph-caret-down text-xs"></i>
               </div>
-              <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-48 mt-2">
+              <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-48 mt-2 z-50">
                 <template x-for="type in contentTypes">
                   <li class="hover:bg-base-200 rounded">
                     <div class="flex items-center p-2 gap-2">
@@ -94,7 +94,14 @@
             </div>
           </div>
 
-          <textarea x-model="inputText" class="w-full h-48 p-3 font-mono text-sm border rounded bg-base-100" :style="{ 'white-space': isWrapped ? 'pre-wrap' : 'pre' }" placeholder="Enter your code or text here..."></textarea>
+          <div class="relative z-10">
+            <textarea 
+              x-model="inputText" 
+              @input="debouncedUpdate"
+              class="w-full h-48 p-3 font-mono text-sm border rounded bg-base-100 relative z-10" 
+              :style="{ 'white-space': isWrapped ? 'pre-wrap' : 'pre' }" 
+              placeholder="Enter your code or text here..."></textarea>
+          </div>
           
           <div class="text-xs text-base-content/50 mt-1 flex items-center gap-1">
             <i class="ph ph-info-circle"></i>
@@ -124,16 +131,32 @@
       copyButtonText: 'Copy',
       isWrapped: true,
       libs: {},
+      updateTimeout: null,
       
       // Initialize
       async init() {
         await this.loadLibs();
-        await this.updateBookmarklet();
         
-        // Set up watchers
-        ['inputText', 'compressed', 'compressedStates', 'packed', 'detectInput', 'popupType', 'inputType'].forEach(prop => {
-          this.$watch(prop, () => this.updateBookmarklet(), { deep: prop === 'compressedStates' });
-        });
+        // Initial update without input
+        if (this.inputText) {
+          await this.updateBookmarklet();
+        }
+        
+        // Set up watchers with proper debouncing
+        this.$watch('compressed', () => this.updateBookmarklet());
+        this.$watch('compressedStates', () => this.updateBookmarklet(), { deep: true });
+        this.$watch('packed', () => this.updateBookmarklet());
+        this.$watch('detectInput', () => this.updateBookmarklet());
+        this.$watch('popupType', () => this.updateBookmarklet());
+        this.$watch('inputType', () => this.updateBookmarklet());
+      },
+      
+      // Debounced update for input text
+      debouncedUpdate() {
+        clearTimeout(this.updateTimeout);
+        this.updateTimeout = setTimeout(() => {
+          this.updateBookmarklet();
+        }, 300);
       },
       
       // Load libraries
