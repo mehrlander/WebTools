@@ -4,7 +4,16 @@
   content: function() {
     return `
       <div class="h-full p-6 overflow-y-auto" x-data="bookmarkletTransformer">
-        <div class="max-w-4xl mx-auto">
+        <!-- Loading State -->
+        <div x-show="loading" class="flex items-center justify-center h-full">
+          <div class="text-center">
+            <span class="loading loading-spinner loading-lg text-primary"></span>
+            <p class="mt-4 text-base-content/60">Loading libraries...</p>
+          </div>
+        </div>
+
+        <!-- Main Content -->
+        <div x-show="!loading" x-transition class="max-w-4xl mx-auto">
           <div class="flex items-center gap-4 mb-4">
             <label class="flex items-center gap-2 text-sm">
               <span>Name:</span>
@@ -105,9 +114,13 @@
     `;
   },
   init: function() {
-    // Register the bookmarklet transformer Alpine component
+    // Register the Alpine component for the bookmarklet transformer
     Alpine.data('bookmarkletTransformer', () => ({
-      // State
+      // Loading state
+      loading: true,
+      libs: {},
+      
+      // Bookmarklet state
       popupType: 'Write',
       bookmarkletName: 'Bookmarklet',
       inputText: '',
@@ -123,88 +136,103 @@
       validationError: false,
       copyButtonText: 'Copy',
       isWrapped: true,
-      libs: {},
       
-      // Initialize
       async init() {
-        // Set up watchers
-        ['inputText', 'compressed', 'packed', 'detectInput', 'popupType', 'inputType'].forEach(prop => {
-          this.$watch(prop, () => this.updateBookmarklet());
-        });
-        this.$watch('compressedStates', () => this.updateBookmarklet(), { deep: true });
-        
-        // Load libraries and update
-        await this.loadLibs();
-        this.updateBookmarklet();
+        try {
+          await this.loadLibraries();
+          
+          // Set up watchers after libraries are loaded
+          ['inputText', 'compressed', 'compressedStates', 'packed', 'detectInput', 'popupType', 'inputType'].forEach(prop => {
+            this.$watch(prop, () => this.updateBookmarklet(), { deep: prop === 'compressedStates' });
+          });
+          
+          this.loading = false;
+          await this.updateBookmarklet();
+        } catch (error) {
+          console.error('Failed to initialize bookmarklet transformer:', error);
+          this.loading = false;
+        }
       },
       
-      // Library management
-      async loadLibs() {
+      async loadLibraries() {
+        // Load Brotli
         if (!this.libs.brotli) {
-          this.libs.brotli = await import('https://unpkg.com/brotli-wasm@3.0.0/index.web.js?module').then(m => m.default);
+          const brotliModule = await import('https://unpkg.com/brotli-wasm@3.0.0/index.web.js?module');
+          this.libs.brotli = await brotliModule.default;
+        }
+        
+        // Load Acorn
+        if (!this.libs.acorn) {
           this.libs.acorn = await import('https://unpkg.com/acorn@8.11.3/dist/acorn.mjs');
         }
-        return this.libs;
       },
       
-      // Compression utilities
       async compress(text) {
-        const {brotli} = await this.loadLibs();
         try {
-          return 'BR64:' + btoa(String.fromCharCode(...brotli.compress(new TextEncoder().encode(text))));
-        } catch { 
-          return text; 
+          const compressed = this.libs.brotli.compress(new TextEncoder().encode(text));
+          return 'BR64:' + btoa(String.fromCharCode(...compressed));
+        } catch (error) {
+          console.error('Compression error:', error);
+          return text;
         }
       },
       
       async decompress(text) {
-        const {brotli} = await this.loadLibs();
+        if (!text.startsWith('BR64:')) return null;
+        
         try {
-          return new TextDecoder().decode(
-            brotli.decompress(
-              Uint8Array.from(atob(text.slice(5)), c => c.charCodeAt(0))
-            )
-          );
-        } catch { 
-          return null; 
+          const binaryString = atob(text.slice(5));
+          const bytes = Uint8Array.from(binaryString, c => c.charCodeAt(0));
+          const decompressed = this.libs.brotli.decompress(bytes);
+          return new TextDecoder().decode(decompressed);
+        } catch (error) {
+          console.error('Decompression error:', error);
+          return null;
         }
       },
       
-      // Validation
       async validateJavaScript(text) {
-        const {acorn} = await this.loadLibs();
-        try { 
-          acorn.parse(text, {ecmaVersion: 2022}); 
-          return {isValid: true, error: null}; 
-        } catch (e) { 
-          return {isValid: false, error: e}; 
+        try {
+          this.libs.acorn.parse(text, { ecmaVersion: 2022 });
+          return { isValid: true, error: null };
+        } catch (error) {
+          return { isValid: false, error };
         }
       },
       
-      // UI methods
-      toggleCompression(type) { 
-        this.compressedStates[type] = !this.compressedStates[type]; 
+      toggleCompression(type) {
+        this.compressedStates[type] = !this.compressedStates[type];
       },
       
-      setInputType(type) { 
-        this.inputType = type; 
-        this.detectInput = false; 
+      setInputType(type) {
+        this.inputType = type;
+        this.detectInput = false;
       },
       
-      toggleWrap() { 
-        this.isWrapped = !this.isWrapped; 
+      toggleWrap() {
+        this.isWrapped = !this.isWrapped;
       },
       
-      copyOutput() {
-        const btn = document.createElement('button');
-        new ClipboardJS(btn, {text: () => this.bookmarkletOutput}).on('success', () => {
+      async copyOutput() {
+        try {
+          await navigator.clipboard.writeText(this.bookmarkletOutput);
           this.copyButtonText = 'Copied!';
-          setTimeout(() => this.copyButtonText = 'Copy', 2000);
-        });
-        btn.click();
+          setTimeout(() => {
+            this.copyButtonText = 'Copy';
+          }, 2000);
+        } catch (error) {
+          // Fallback for older browsers
+          const btn = document.createElement('button');
+          new ClipboardJS(btn, { text: () => this.bookmarkletOutput }).on('success', () => {
+            this.copyButtonText = 'Copied!';
+            setTimeout(() => {
+              this.copyButtonText = 'Copy';
+            }, 2000);
+          });
+          btn.click();
+        }
       },
       
-      // Core transformation logic
       async processText(text, opts = {}) {
         const isBR = text.startsWith('BR64:');
         const raw = isBR ? await this.decompress(text) || text : text;
@@ -214,14 +242,14 @@
         const isJS = opts.forceType === 'JavaScript' || (opts.forceType !== 'Text/HTML' && jsChk.isValid);
         
         const data = {
-          rawText: raw, 
-          compressedText: comp, 
+          rawText: raw,
+          compressedText: comp,
           isJavaScript: isJS,
-          inputIsCompressed: isBR, 
-          decompressionError: isBR && !raw ? new Error('Invalid') : null,
-          jsParseError: isJS ? jsChk.error : null, 
+          inputIsCompressed: isBR,
+          decompressionError: isBR && !raw ? new Error('Invalid BR64 data') : null,
+          jsParseError: isJS ? jsChk.error : null,
           rawSize: raw.length,
-          compressedSize: comp.length, 
+          compressedSize: comp.length,
           outputSize: work.length
         };
         
@@ -236,11 +264,9 @@
           'New Tab': "const w=window.open('','_blank');w.document.write(d);w.document.close()"
         };
         
+        let output;
         if (work.startsWith('BR64:')) {
-          return {
-            output: `javascript:(async function(){const s='${work}';try{const m=await(await import('https://unpkg.com/brotli-wasm@3.0.0/index.web.js?module')).default;const b=atob(s.slice(5));const a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);const d=new TextDecoder().decode(m.decompress(a));${actions[opts.mode]}}catch(e){console.error(e)}})();`,
-            ...data
-          };
+          output = `javascript:(async function(){const s='${work}';try{const m=await(await import('https://unpkg.com/brotli-wasm@3.0.0/index.web.js?module')).default;const b=atob(s.slice(5));const a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);const d=new TextDecoder().decode(m.decompress(a));${actions[opts.mode]}}catch(e){console.error(e)}})();`;
         } else {
           const escaped = JSON.stringify(work);
           const templates = {
@@ -249,14 +275,12 @@
             Popup: `javascript:(()=>{let w=window.open('','_blank','width=600,height=400');w.document.write(${escaped});w.document.close()})()`,
             'New Tab': `javascript:(()=>{let w=window.open('','_blank');w.document.write(${escaped});w.document.close()})()`
           };
-          return {
-            output: isJS && opts.mode === 'Apply' ? templates.Apply : templates[opts.mode],
-            ...data
-          };
+          output = isJS && opts.mode === 'Apply' ? templates.Apply : templates[opts.mode];
         }
+        
+        return { output, ...data };
       },
       
-      // Main update function
       async updateBookmarklet() {
         if (!this.inputText.trim()) {
           this.bookmarkletOutput = '';
@@ -268,8 +292,8 @@
         
         try {
           const result = await this.processText(this.inputText, {
-            compressed: this.compressed, 
-            packed: this.packed, 
+            compressed: this.compressed,
+            packed: this.packed,
             mode: this.popupType,
             forceType: this.detectInput ? null : this.inputType
           });
@@ -284,25 +308,27 @@
             }
           }
           
-          const ratio = result.compressedSize < result.rawSize ? 
-            ((result.rawSize - result.compressedSize) / result.rawSize * 100).toFixed(1) : 0;
-          this.metrics = `In: ${this.inputText.length}b${result.inputIsCompressed ? ' (BR64)' : ''} | Out: ${result.outputSize}b${ratio > 0 ? ` (${ratio}% smaller)` : ''}`;
-          
-          // Validation messages
+          // Update validation message
           if (result.isJavaScript && result.jsParseError) {
-            this.validationMessage = `JS Error: ${result.jsParseError.message}`;
+            this.validationMessage = `JavaScript Error: ${result.jsParseError.message}`;
             this.validationError = true;
-          } else if (result.isJavaScript) {
-            this.validationMessage = 'Valid JavaScript';
-            this.validationError = false;
+          } else if (result.decompressionError) {
+            this.validationMessage = 'Invalid compressed data';
+            this.validationError = true;
           } else {
             this.validationMessage = '';
             this.validationError = false;
           }
-        } catch (e) {
-          this.bookmarkletOutput = 'Error: ' + e.message;
+          
+          // Update metrics
+          const ratio = result.compressedSize < result.rawSize ? 
+            ((result.rawSize - result.compressedSize) / result.rawSize * 100).toFixed(1) : 0;
+          this.metrics = `In: ${this.inputText.length}b${result.inputIsCompressed ? ' (BR64)' : ''} | Out: ${result.outputSize}b${ratio > 0 ? ` (${ratio}% smaller)` : ''}`;
+          
+        } catch (error) {
+          this.bookmarkletOutput = 'Error: ' + error.message;
           this.validationError = true;
-          this.validationMessage = e.message;
+          this.validationMessage = error.message;
         }
       }
     }));
