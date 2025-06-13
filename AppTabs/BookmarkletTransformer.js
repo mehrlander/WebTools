@@ -154,6 +154,7 @@
       // Handle input changes manually
       handleInput() {
         clearTimeout(this.updateTimeout);
+        console.log('this doing something?');
         this.updateTimeout = setTimeout(() => {
           //this.triggerUpdate();
         }, 300);
