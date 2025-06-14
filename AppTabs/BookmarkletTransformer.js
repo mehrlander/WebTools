@@ -10,3 +10,4 @@ content: function() {
     </button>
   </div>`;
 }
+}
