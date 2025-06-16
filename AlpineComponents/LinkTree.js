@@ -8,15 +8,20 @@
  */
 class LinkTree {
   // Extract links from a page given a selector
-  static extractLinks(selector = 'a[href]', filterDomain = null) {
-    return Array.from(document.querySelectorAll(selector))
+  static extractLinks(selector = 'a[href]', filterDomain = null, doc = document) {
+    return Array.from(doc.querySelectorAll(selector))
       .map(link => {
         try {
-          const url = new URL(link.href, window.location.href);
-          if (!filterDomain || url.hostname === filterDomain) {
+          // For parsed documents, we need to resolve URLs properly
+          const baseURL = doc.baseURI || (doc.querySelector('base') && doc.querySelector('base').href) || window.location.href;
+          const url = new URL(link.href, baseURL);
+          
+          if (!filterDomain || url.hostname === filterDomain || 
+              (filterDomain === 'www.loc.gov' && url.hostname === 'loc.gov') ||
+              (filterDomain === 'loc.gov' && url.hostname === 'www.loc.gov')) {
             return {
               text: link.textContent.trim() || link.href,
-              href: link.href,
+              href: url.href,
               pathname: url.pathname,
               search: url.search,
               hash: url.hash,
@@ -45,6 +50,7 @@ class LinkTree {
       links: [],
       linkSelector: null,
       domain: null,
+      document: null,  // Optional document to extract from
       autoExpand: true,
       searchable: true,
       showCounts: true,
@@ -57,7 +63,8 @@ class LinkTree {
     
     // Extract links if needed
     if (this.options.linkSelector) {
-      const extracted = LinkTree.extractLinks(this.options.linkSelector, this.options.domain);
+      const doc = this.options.document || document;
+      const extracted = LinkTree.extractLinks(this.options.linkSelector, this.options.domain, doc);
       this.options.links = LinkTree.dedupeLinks(extracted);
     } else if (this.options.links.length > 0) {
       this.options.links = LinkTree.dedupeLinks(this.options.links);
@@ -325,7 +332,8 @@ class LinkTree {
     // Re-extract links if needed
     if (newOptions.linkSelector || newOptions.links) {
       if (newOptions.linkSelector) {
-        const extracted = LinkTree.extractLinks(newOptions.linkSelector, this.options.domain);
+        const doc = this.options.document || document;
+        const extracted = LinkTree.extractLinks(newOptions.linkSelector, this.options.domain, doc);
         this.options.links = LinkTree.dedupeLinks(extracted);
       } else {
         this.options.links = LinkTree.dedupeLinks(newOptions.links);
