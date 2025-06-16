@@ -125,18 +125,25 @@
       return null;
     }
 
-    // Generate unique data function name
-    const dataFnName = `themePickerData_${Date.now()}`;
+    // Generate a unique function name
+    const dataFnName = `themePickerData_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
-    // Set the HTML
+    // Set the HTML inside the target
     target.innerHTML = component.html;
 
-    // Set Alpine attributes
-    target.setAttribute('x-data', `${dataFnName}()`);
-    target.setAttribute('x-init', 'init().then(() => loadSavedTheme())');
+    // Reference the top-level element of the inserted component
+    const root = target.firstElementChild;
+    if (!root) {
+      console.error(`No root element found in "${selector}"`);
+      return null;
+    }
 
-    // Make the data function available globally for Alpine
-    window[dataFnName] = component.data;
+    // Attach Alpine.js attributes to that root element
+    root.setAttribute('x-data', `${dataFnName}()`);
+    root.setAttribute('x-init', 'init().then(() => loadSavedTheme())');
+
+    // Assign the data object globally
+    window[dataFnName] = () => component.data;
 
     return dataFnName;
   }
