@@ -1,29 +1,43 @@
-// ThemePicker.js - Alpine.js Theme Picker Component for DaisyUI
-// Place this file at: https://github.com/mehrlander/WebTools/blob/main/AlpineComponents/ThemePicker.js
-
-(function(window) {
-  'use strict';
-  
+/**
+ * ThemePicker - A self-mounting DaisyUI theme selector component
+ * Requires: Alpine.js, DaisyUI, Phosphor Icons
+ * 
+ * Usage:
+ *   new ThemePicker('#my-selector', { gridCols: 3, initialTheme: 'dark' });
+ */
+class ThemePicker {
   // Extract every DaisyUI theme into a JS object
-  const grabThemes = css =>
-    Object.fromEntries([...css.matchAll(/\[data-theme=([^\]]+)]\s*{([^}]+)}/g)]
+  static grabThemes(css) {
+    return Object.fromEntries([...css.matchAll(/\[data-theme=([^\]]+)]\s*{([^}]+)}/g)]
       .map(([,n,b])=>[n,Object.fromEntries(
         [...b.matchAll(/--([^:]+):\s*([^;]+);/g)]
           .map(([,k,v])=>[k.trim(),v.trim()]))]));
-
-  // Theme picker component factory
-  function themePicker(options = {}) {
-    const { 
-      gridCols = 2, 
-      initialTheme = 'emerald',
-      buttonClass = 'btn btn-sm gap-2 rounded-full px-4 bg-base-200 hover:bg-base-300 border-0',
-      showColorSwatches = true,
-      themesUrl = 'https://cdn.jsdelivr.net/npm/daisyui@5/themes.css'
-    } = options;
-
-    // Component HTML structure
-    const html = `
-      <div class="dropdown">
+  }
+  
+  constructor(selector, options = {}) {
+    // Convert selector to a safe ID by removing special chars
+    this.id = selector.replace(/[^a-zA-Z0-9]/g, '_');
+    this.selector = selector;
+    
+    // Merge default options
+    this.options = {
+      gridCols: 2,
+      initialTheme: 'emerald',
+      buttonClass: 'btn btn-sm gap-2 rounded-full px-4 bg-base-200 hover:bg-base-300 border-0',
+      dropdownClass: '',
+      themesUrl: 'https://cdn.jsdelivr.net/npm/daisyui@5/themes.css',
+      ...options
+    };
+    
+    // Auto-mount on creation
+    this.mount();
+  }
+  
+  get html() {
+    const { gridCols, buttonClass, dropdownClass } = this.options;
+    
+    return `
+      <div class="dropdown ${dropdownClass}" x-data="themePickerData_${this.id}">
         <button tabindex="0" class="${buttonClass}">
           <i class="ph ph-palette text-lg"></i>
           <span class="capitalize" x-text="currentTheme"></span>
@@ -39,14 +53,12 @@
               <a @click="setTheme(theme)"
                  class="block cursor-pointer bg-base-100 hover:bg-base-200 rounded-box px-3 py-2 border border-base-300/50 transition-colors">
                 <div class="flex items-center gap-2">
-                  ${showColorSwatches ? `
                   <!-- color swatches -->
                   <div class="flex gap-1 flex-shrink-0">
                     <span class="w-3 h-3 rounded-full bg-primary"></span>
                     <span class="w-3 h-3 rounded-full bg-secondary"></span>
                     <span class="w-3 h-3 rounded-full bg-accent"></span>
                   </div>
-                  ` : ''}
                   <!-- theme name -->
                   <span class="flex-1 text-sm capitalize truncate text-base-content" x-text="theme"></span>
                   <!-- active check -->
@@ -59,117 +71,86 @@
         </ul>
       </div>
     `;
-
-    // Component data and methods
-    const data = function() {
-      return {
-        themes: {},
-        currentTheme: initialTheme,
-        loading: true,
-        error: null,
+  }
+  
+  get data() {
+    const { initialTheme, themesUrl } = this.options;
+    const pickerId = this.id;
+    
+    return {
+      themes: {},
+      currentTheme: initialTheme,
+      pickerId,
+      
+      async init() {
+        // Fetch and parse themes
+        this.themes = ThemePicker.grabThemes(await (await fetch(themesUrl)).text());
         
-        async init() {
-          try {
-            // Fetch and parse themes
-            const response = await fetch(themesUrl);
-            if (!response.ok) throw new Error('Failed to load themes');
-            
-            const css = await response.text();
-            this.themes = grabThemes(css);
-            this.loading = false;
-            
-            // Set initial theme
-            this.setTheme(this.currentTheme);
-          } catch (err) {
-            console.error('Error loading themes:', err);
-            this.error = err.message;
-            this.loading = false;
-          }
-        },
+        // Set initial theme
+        this.setTheme(this.currentTheme);
         
-        setTheme(theme) {
-          this.currentTheme = theme;
-          document.documentElement.setAttribute('data-theme', theme);
-          
-          // Store preference
-          if (window.localStorage) {
-            localStorage.setItem('selected-theme', theme);
+        // Listen for theme changes from other pickers
+        window.addEventListener('theme-changed', (e) => {
+          if (e.detail.pickerId !== this.pickerId) {
+            // Update our state without triggering another event
+            this.currentTheme = e.detail.theme;
           }
-          
-          // Dispatch custom event
-          window.dispatchEvent(new CustomEvent('theme-changed', { 
-            detail: { theme, themes: this.themes } 
-          }));
-        },
+        });
+      },
+      
+      setTheme(theme) {
+        this.currentTheme = theme;
+        document.documentElement.setAttribute('data-theme', theme);
         
-        // Load saved theme preference
-        loadSavedTheme() {
-          if (window.localStorage) {
-            const saved = localStorage.getItem('selected-theme');
-            if (saved && this.themes[saved]) {
-              this.setTheme(saved);
-            }
-          }
-        }
-      };
+        // Dispatch custom event with picker ID
+        window.dispatchEvent(new CustomEvent('theme-changed', { 
+          detail: { 
+            theme, 
+            pickerId: this.pickerId 
+          } 
+        }));
+      }
     };
-
-    return { html, data };
   }
-
-  // Mount component function
-  function mountComponent(selector, component) {
-    const target = document.querySelector(selector);
+  
+  mount() {
+    const target = document.querySelector(this.selector);
     if (!target) {
-      console.error(`Target element "${selector}" not found`);
-      return null;
+      console.error(`ThemePicker: Target element "${this.selector}" not found`);
+      return false;
     }
-
-    // Generate unique data function name
-    const dataFnName = `themePickerData_${Date.now()}`;
-
+    
     // Set the HTML
-    target.innerHTML = component.html;
-
-    // Set Alpine attributes
-    target.setAttribute('x-data', `${dataFnName}()`);
-    target.setAttribute('x-init', 'init().then(() => loadSavedTheme())');
-
-    // Make the data function available globally for Alpine
-    window[dataFnName] = component.data;
-
-    return dataFnName;
+    target.innerHTML = this.html;
+    
+    // Make the data available globally for Alpine
+    window[`themePickerData_${this.id}`] = this.data;
+    
+    return true;
   }
-
-  // Export to window
-function mountComponent(selector, component) {
-  const target = document.querySelector(selector);
-  if (!target) {
-    console.error(`Target element "${selector}" not found`);
-    return null;
+  
+  // Destroy the component and clean up
+  destroy() {
+    const target = document.querySelector(this.selector);
+    if (target) {
+      target.innerHTML = '';
+    }
+    delete window[`themePickerData_${this.id}`];
   }
-
-  // Generate a unique function name
-  const dataFnName = `themePickerData_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-
-  // Set the HTML inside the target
-  target.innerHTML = component.html;
-
-  // Reference the top-level element of the inserted component
-  const root = target.firstElementChild;
-  if (!root) {
-    console.error(`No root element found in "${selector}"`);
-    return null;
+  
+  // Update component options
+  update(newOptions) {
+    this.options = { ...this.options, ...newOptions };
+    this.mount(); // Re-mount with new options
   }
-
-  // Attach Alpine.js attributes to that root element
-  root.setAttribute('x-data', `${dataFnName}()`);
-  root.setAttribute('x-init', 'init().then(() => loadSavedTheme())');
-
-  // Assign the data object globally
-  window[dataFnName] = () => component.data;
-
-  return dataFnName;
 }
 
-})(window);
+// Export for module systems
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = ThemePicker;
+}
+
+// Also make available globally
+if (typeof window !== 'undefined') {
+  window.ThemePicker = ThemePicker;
+}
