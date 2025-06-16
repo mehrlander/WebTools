@@ -16,9 +16,8 @@ class LinkTree {
           const baseURL = doc.baseURI || (doc.querySelector('base') && doc.querySelector('base').href) || window.location.href;
           const url = new URL(link.href, baseURL);
           
-          if (!filterDomain || url.hostname === filterDomain || 
-              (filterDomain === 'www.loc.gov' && url.hostname === 'loc.gov') ||
-              (filterDomain === 'loc.gov' && url.hostname === 'www.loc.gov')) {
+          const normalizeDomain = d => d.replace(/^www\./, '');
+          if (!filterDomain || normalizeDomain(url.hostname) === normalizeDomain(filterDomain)) {
             return {
               text: link.textContent.trim() || link.href,
               href: url.href,
