@@ -142,26 +142,34 @@
   }
 
   // Export to window
-  window.ThemePicker = {
-    create: themePicker,
-    mount: mountComponent,
-    // Convenience method to create and mount in one step
-    init(selector, options = {}) {
-      // Auto-detect if element is on the right side of viewport
-      const element = document.querySelector(selector);
-      if (element) {
-        const rect = element.getBoundingClientRect();
-        const isRightSide = rect.left > window.innerWidth / 2;
-        
-        // Set dropdownEnd automatically if not explicitly set
-        if (options.dropdownEnd === undefined && isRightSide) {
-          options.dropdownEnd = true;
-        }
-      }
-      
-      const component = themePicker(options);
-      return mountComponent(selector, component);
-    }
-  };
+function mountComponent(selector, component) {
+  const target = document.querySelector(selector);
+  if (!target) {
+    console.error(`Target element "${selector}" not found`);
+    return null;
+  }
+
+  // Generate a unique function name
+  const dataFnName = `themePickerData_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+  // Set the HTML inside the target
+  target.innerHTML = component.html;
+
+  // Reference the top-level element of the inserted component
+  const root = target.firstElementChild;
+  if (!root) {
+    console.error(`No root element found in "${selector}"`);
+    return null;
+  }
+
+  // Attach Alpine.js attributes to that root element
+  root.setAttribute('x-data', `${dataFnName}()`);
+  root.setAttribute('x-init', 'init().then(() => loadSavedTheme())');
+
+  // Assign the data object globally
+  window[dataFnName] = () => component.data;
+
+  return dataFnName;
+}
 
 })(window);
