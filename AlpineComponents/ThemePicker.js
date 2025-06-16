@@ -146,7 +146,19 @@
     create: themePicker,
     mount: mountComponent,
     // Convenience method to create and mount in one step
-    init(selector, options) {
+    init(selector, options = {}) {
+      // Auto-detect if element is on the right side of viewport
+      const element = document.querySelector(selector);
+      if (element) {
+        const rect = element.getBoundingClientRect();
+        const isRightSide = rect.left > window.innerWidth / 2;
+        
+        // Set dropdownEnd automatically if not explicitly set
+        if (options.dropdownEnd === undefined && isRightSide) {
+          options.dropdownEnd = true;
+        }
+      }
+      
       const component = themePicker(options);
       return mountComponent(selector, component);
     }
