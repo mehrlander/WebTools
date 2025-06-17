@@ -20,6 +20,9 @@ class DynamicFilter {
     this.id = selector.replace(/[^a-zA-Z0-9]/g, '_');
     this.selector = selector;
     
+    // Ensure unique IDs even if same selector is used
+    this.instanceId = `${this.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
     // Merge default options
     this.options = {
       data: null,                     // Array of objects to filter
@@ -57,6 +60,9 @@ class DynamicFilter {
       this.filteredData = this.originalData;
     }
     
+    // Store Alpine data instance
+    this._alpineData = null;
+    
     // Auto-mount on creation
     this.mount();
   }
@@ -69,7 +75,7 @@ class DynamicFilter {
     } = this.options;
     
     return `
-      <div class="${containerClass}" x-data="dynamicFilterData_${this.id}">
+      <div class="${containerClass}" x-data="window.dynamicFilterData_${this.instanceId}()">
         <div class="${bodyClass}">
           <div class="flex items-center justify-between mb-3">
             <h3 class="text-lg font-semibold">Active Filters</h3>
@@ -211,12 +217,12 @@ class DynamicFilter {
     `;
   }
   
-  get data() {
-    const filterId = this.id;
+  createAlpineData() {
+    const instanceId = this.instanceId;
     const options = this.options;
     const self = this;
     
-    return {
+    const data = {
       activeFilters: {},
       properties: options.properties,
       originalData: self.originalData,
@@ -228,6 +234,11 @@ class DynamicFilter {
       table: options.table,
       
       init() {
+        console.log(`DynamicFilter ${instanceId} initialized with ${this.properties.length} properties`);
+        
+        // Store reference to Alpine data instance
+        self._alpineData = this;
+        
         // If using Tabulator, set up listeners
         if (this.table) {
           this.table.on("dataFiltered", (filters, rows) => {
@@ -259,10 +270,17 @@ class DynamicFilter {
       },
       
       addFilter(key) {
-        if (this.activeFilters[key] && !this.allowMultiple) return;
+        console.log(`Adding filter for key: ${key}`);
+        if (this.activeFilters[key] && !this.allowMultiple) {
+          console.log(`Filter already exists for ${key} and multiple not allowed`);
+          return;
+        }
         
         const property = this.properties.find(p => p.key === key);
-        if (!property) return;
+        if (!property) {
+          console.error(`Property not found for key: ${key}`);
+          return;
+        }
         
         // Generate unique key if multiple filters allowed
         const filterKey = this.allowMultiple ? `${key}_${Date.now()}` : key;
@@ -273,6 +291,8 @@ class DynamicFilter {
           value: '',
           operator: '='
         };
+        
+        console.log('Filter added:', this.activeFilters[filterKey]);
         
         // Close dropdown
         document.activeElement.blur();
@@ -417,6 +437,8 @@ class DynamicFilter {
         }
       }
     };
+    
+    return data;
   }
   
   mount() {
@@ -426,11 +448,16 @@ class DynamicFilter {
       return false;
     }
     
+    // Create the Alpine data function
+    window[`dynamicFilterData_${this.instanceId}`] = () => this.createAlpineData();
+    
     // Set the HTML
     target.innerHTML = this.html;
     
-    // Make the data available globally for Alpine
-    window[`dynamicFilterData_${this.id}`] = this.data;
+    // If Alpine is already initialized, we need to manually initialize our component
+    if (window.Alpine && window.Alpine.version) {
+      window.Alpine.initTree(target);
+    }
     
     return true;
   }
@@ -439,8 +466,7 @@ class DynamicFilter {
   
   // Get current active filters
   getFilters() {
-    const data = window[`dynamicFilterData_${this.id}`];
-    return data ? data.activeFilters : {};
+    return this._alpineData ? this._alpineData.activeFilters : {};
   }
   
   // Get filtered data (when not using Tabulator)
@@ -453,29 +479,27 @@ class DynamicFilter {
     this.originalData = [...newData];
     this.filteredData = [...newData];
     
-    const data = window[`dynamicFilterData_${this.id}`];
-    if (data) {
-      data.originalData = this.originalData;
-      data.filteredData = this.filteredData;
-      data.totalCount = this.originalData.length;
-      data.filteredCount = this.filteredData.length;
+    if (this._alpineData) {
+      this._alpineData.originalData = this.originalData;
+      this._alpineData.filteredData = this.filteredData;
+      this._alpineData.totalCount = this.originalData.length;
+      this._alpineData.filteredCount = this.filteredData.length;
       
-      if (data.autoApply && Object.keys(data.activeFilters).length > 0) {
-        data.applyFilters();
+      if (this._alpineData.autoApply && Object.keys(this._alpineData.activeFilters).length > 0) {
+        this._alpineData.applyFilters();
       }
     }
   }
   
   // Set filters programmatically
   setFilters(filters) {
-    const data = window[`dynamicFilterData_${this.id}`];
-    if (!data) return;
+    if (!this._alpineData) return;
     
-    data.activeFilters = {};
+    this._alpineData.activeFilters = {};
     Object.entries(filters).forEach(([key, value]) => {
-      const property = data.properties.find(p => p.key === key);
+      const property = this._alpineData.properties.find(p => p.key === key);
       if (property) {
-        data.activeFilters[key] = {
+        this._alpineData.activeFilters[key] = {
           ...property,
           value: value.value !== undefined ? value.value : value,
           operator: value.operator || '='
@@ -483,66 +507,62 @@ class DynamicFilter {
       }
     });
     
-    if (data.autoApply) {
-      data.applyFilters();
+    if (this._alpineData.autoApply) {
+      this._alpineData.applyFilters();
     }
   }
   
   // Add a single filter
   addFilter(key, value = '', operator = '=') {
-    const data = window[`dynamicFilterData_${this.id}`];
-    if (!data) return;
+    if (!this._alpineData) return;
     
-    const property = data.properties.find(p => p.key === key);
+    const property = this._alpineData.properties.find(p => p.key === key);
     if (!property) return;
     
-    const filterKey = data.allowMultiple ? `${key}_${Date.now()}` : key;
-    data.activeFilters[filterKey] = {
+    const filterKey = this._alpineData.allowMultiple ? `${key}_${Date.now()}` : key;
+    this._alpineData.activeFilters[filterKey] = {
       ...property,
       originalKey: key,
       value,
       operator
     };
     
-    if (data.autoApply) {
-      data.applyFilters();
+    if (this._alpineData.autoApply) {
+      this._alpineData.applyFilters();
     }
   }
   
   // Clear all filters
   clearAll() {
-    const data = window[`dynamicFilterData_${this.id}`];
-    if (data) {
-      data.clearAllFilters();
+    if (this._alpineData) {
+      this._alpineData.clearAllFilters();
     }
   }
   
   // Apply filters manually (if autoApply is false)
   apply() {
-    const data = window[`dynamicFilterData_${this.id}`];
-    if (data) {
-      data.applyFilters();
+    if (this._alpineData) {
+      this._alpineData.applyFilters();
     }
   }
   
   // Update properties dynamically
   updateProperties(properties) {
-    const data = window[`dynamicFilterData_${this.id}`];
-    if (data) {
-      data.properties = properties;
+    if (this._alpineData) {
+      this._alpineData.properties = properties;
       this.options.properties = properties;
       
       // Clear filters for removed properties
-      Object.keys(data.activeFilters).forEach(key => {
-        const filter = data.activeFilters[key];
+      Object.keys(this._alpineData.activeFilters).forEach(key => {
+        const filter = this._alpineData.activeFilters[key];
         const originalKey = filter.originalKey || filter.key;
         if (!properties.find(p => p.key === originalKey)) {
-          delete data.activeFilters[key];
+          delete this._alpineData.activeFilters[key];
         }
       });
       
-      if (data.autoApply) {
-        data.applyFilters();
+      if (this._alpineData.autoApply) {
+        this._alpineData.applyFilters();
       }
     }
   }
@@ -553,7 +573,8 @@ class DynamicFilter {
     if (target) {
       target.innerHTML = '';
     }
-    delete window[`dynamicFilterData_${this.id}`];
+    delete window[`dynamicFilterData_${this.instanceId}`];
+    this._alpineData = null;
   }
   
   // Update component options
