@@ -232,8 +232,8 @@ class DynamicFilter {
       originalData: self.originalData,
       filteredData: self.filteredData,
       totalCount: self.originalData.length,
-      // For Tabulator, get the initial filtered count from the table
-      filteredCount: tableRef ? tableRef.getDataCount('active') : self.filteredData.length,
+      // For Tabulator, get the initial count - use getData().length as getDataCount might not be ready
+      filteredCount: tableRef ? (tableRef.getData().length || self.originalData.length) : self.filteredData.length,
       allowMultiple: options.allowMultiple,
       autoApply: options.autoApply,
       // Don't include table in reactive data - this prevents circular reference
@@ -246,6 +246,9 @@ class DynamicFilter {
         
         // If using Tabulator, set up listeners
         if (tableRef) {
+          // Set initial filtered count (when no filters applied, it equals total count)
+          this.filteredCount = tableRef.getData().length;
+          
           tableRef.on("dataFiltered", (filters, rows) => {
             this.filteredCount = rows.length;
           });
@@ -254,7 +257,7 @@ class DynamicFilter {
             self.originalData = tableRef.getData();
             this.originalData = self.originalData;
             this.totalCount = self.originalData.length;
-            this.filteredCount = tableRef.getDataCount('active');
+            this.filteredCount = tableRef.getDataCount('active') || this.totalCount;
           });
         }
       },
