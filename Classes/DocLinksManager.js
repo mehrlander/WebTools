@@ -4,7 +4,7 @@
  */
 class DocLinksManager {
   constructor(options = {}) {
-    this.options = { domain: null, includeExternal: false, ...options };
+    this.options = Object.assign({ domain: null, includeExternal: false }, options);
     this.urls = [];
     this.urlMap = new Map();
     this.processedPages = new Set();
@@ -20,9 +20,9 @@ class DocLinksManager {
     const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
     const base = doc.createElement('base');
     base.href = url;
-    doc.head?.appendChild(base);
+    if (doc.head) doc.head.appendChild(base);
     
-    this.options.domain ||= new URL(url).hostname;
+    this.options.domain = this.options.domain || new URL(url).hostname;
     return doc;
   }
   
@@ -58,11 +58,12 @@ class DocLinksManager {
   }
   
   finalizeUrls() {
-    this.urls = Array.from(this.urlMap.values()).map(urlData => ({
-      ...urlData,
-      caption: this.getMostCommonCaption(urlData.instances),
-      instanceCount: urlData.instances.length
-    }));
+    this.urls = Array.from(this.urlMap.values()).map(urlData => {
+      const result = Object.assign({}, urlData);
+      result.caption = this.getMostCommonCaption(urlData.instances);
+      result.instanceCount = urlData.instances.length;
+      return result;
+    });
   }
   
   getMostCommonCaption(instances) {
@@ -115,31 +116,34 @@ class DocLinksManager {
   }
   
   calculateStats() {
-    return this.stats = {
+    const depths = this.urls.map(u => u.depth);
+    
+    const stats = {
       pagesProcessed: this.processedPages.size,
       totalUrls: this.urls.length,
       totalInstances: this.urls.reduce((sum, url) => sum + url.instanceCount, 0),
       internalUrls: this.urls.filter(u => u.isInternal).length,
       externalUrls: this.urls.filter(u => !u.isInternal).length,
       uniquePaths: new Set(this.urls.map(u => u.pathname)).size,
-      maxDepth: Math.max(...this.urls.map(u => u.depth)),
+      maxDepth: depths.length > 0 ? Math.max.apply(null, depths) : 0,
       protocols: {},
       topLevelPaths: {},
-      fileTypes: {},
-      ...this.urls.reduce((acc, url) => {
-        acc.protocols[url.protocol] = (acc.protocols[url.protocol] || 0) + 1;
-        
-        const topPath = '/' + (url.pathname.split('/')[1] || '');
-        acc.topLevelPaths[topPath] = (acc.topLevelPaths[topPath] || 0) + 1;
-        
-        const ext = url.pathname.split('.').pop().toLowerCase();
-        if (ext && ext.length <= 4 && ext !== url.pathname) {
-          acc.fileTypes[ext] = (acc.fileTypes[ext] || 0) + 1;
-        }
-        
-        return acc;
-      }, { protocols: {}, topLevelPaths: {}, fileTypes: {} })
+      fileTypes: {}
     };
+    
+    this.urls.forEach(url => {
+      stats.protocols[url.protocol] = (stats.protocols[url.protocol] || 0) + 1;
+      
+      const topPath = '/' + (url.pathname.split('/')[1] || '');
+      stats.topLevelPaths[topPath] = (stats.topLevelPaths[topPath] || 0) + 1;
+      
+      const ext = url.pathname.split('.').pop().toLowerCase();
+      if (ext && ext.length <= 4 && ext !== url.pathname) {
+        stats.fileTypes[ext] = (stats.fileTypes[ext] || 0) + 1;
+      }
+    });
+    
+    return this.stats = stats;
   }
   
   getUrlsAtPath(path) {
@@ -217,9 +221,13 @@ class DocLinksManager {
   }
   
   getCaptions(urlOrPath) {
-    const href = typeof urlOrPath === 'string' && !urlOrPath.startsWith('/') 
-      ? urlOrPath
-      : this.urls.find(u => u.pathname === urlOrPath)?.href;
+    let href;
+    if (typeof urlOrPath === 'string' && !urlOrPath.startsWith('/')) {
+      href = urlOrPath;
+    } else {
+      const found = this.urls.find(u => u.pathname === urlOrPath);
+      href = found ? found.href : null;
+    }
     
     const url = this.urls.find(u => u.href === href);
     if (!url) return [];
@@ -245,6 +253,8 @@ class DocLinksManager {
   getProcessedPages() {
     return Array.from(this.processedPages);
   }
+  
+  getTreeSummary(node = this.tree['/'], indent = '') {
     if (!node) return 'No tree built yet';
     
     return Object.entries(node.children)
