@@ -57,7 +57,8 @@ class DynamicFilter {
       this.filteredData = [...this.options.data];
     } else if (this.options.table) {
       this.originalData = this.options.table.getData();
-      this.filteredData = this.originalData;
+      // For Tabulator, filtered data is managed by the table itself
+      this.filteredData = [];
     }
     
     // Store Alpine data instance
@@ -231,7 +232,8 @@ class DynamicFilter {
       originalData: self.originalData,
       filteredData: self.filteredData,
       totalCount: self.originalData.length,
-      filteredCount: self.filteredData.length,
+      // For Tabulator, get the initial filtered count from the table
+      filteredCount: tableRef ? tableRef.getDataCount('active') : self.filteredData.length,
       allowMultiple: options.allowMultiple,
       autoApply: options.autoApply,
       // Don't include table in reactive data - this prevents circular reference
