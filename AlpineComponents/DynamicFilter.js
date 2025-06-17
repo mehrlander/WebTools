@@ -4,7 +4,7 @@
  * Optional: Tabulator (for automatic table integration)
  * 
  * Usage:
- *   // With Tabulator
+ *   // With Tabulator (handles tables that aren't ready yet)
  *   new DynamicFilter('#filter', { table: tabulatorInstance, properties: [...] });
  *   
  *   // With custom data
@@ -13,6 +13,9 @@
  *     properties: [...],
  *     onFilter: (filteredData) => { updateMyUI(filteredData); }
  *   });
+ * 
+ * Note: When used with Tabulator, the component automatically waits for the table
+ * to be built if it's not ready yet, so you don't need to wait for tableBuilt.
  */
 class DynamicFilter {
   constructor(selector, options = {}) {
@@ -56,7 +59,8 @@ class DynamicFilter {
       this.originalData = [...this.options.data];
       this.filteredData = [...this.options.data];
     } else if (this.options.table) {
-      this.originalData = this.options.table.getData();
+      // Try to get data, but it might be empty if table isn't ready
+      this.originalData = this.options.table.getData() || [];
       // For Tabulator, filtered data is managed by the table itself
       this.filteredData = [];
     }
@@ -232,8 +236,8 @@ class DynamicFilter {
       originalData: self.originalData,
       filteredData: self.filteredData,
       totalCount: self.originalData.length,
-      // For Tabulator, get the initial count - use getData().length as getDataCount might not be ready
-      filteredCount: tableRef ? (tableRef.getData().length || self.originalData.length) : self.filteredData.length,
+      // For Tabulator, handle case where table might not be ready yet
+      filteredCount: tableRef ? (self.originalData.length || 0) : self.filteredData.length,
       allowMultiple: options.allowMultiple,
       autoApply: options.autoApply,
       // Don't include table in reactive data - this prevents circular reference
@@ -246,9 +250,34 @@ class DynamicFilter {
         
         // If using Tabulator, set up listeners
         if (tableRef) {
-          // Set initial filtered count (when no filters applied, it equals total count)
-          this.filteredCount = tableRef.getData().length;
+          // Check if table is ready (has data)
+          const currentData = tableRef.getData();
           
+          if (!currentData || currentData.length === 0) {
+            // Table not ready yet, wait for it
+            console.log('DynamicFilter: Waiting for Tabulator table to be built...');
+            
+            // Set initial counts to 0 while waiting
+            this.totalCount = 0;
+            this.filteredCount = 0;
+            
+            // Listen for table built event
+            tableRef.on("tableBuilt", () => {
+              console.log('DynamicFilter: Table built, updating data...');
+              self.originalData = tableRef.getData();
+              this.originalData = self.originalData;
+              this.totalCount = self.originalData.length;
+              this.filteredCount = self.originalData.length;
+            });
+          } else {
+            // Table is ready, set counts now
+            self.originalData = currentData;
+            this.originalData = self.originalData;
+            this.totalCount = self.originalData.length;
+            this.filteredCount = currentData.length;
+          }
+          
+          // Always set up ongoing event listeners
           tableRef.on("dataFiltered", (filters, rows) => {
             this.filteredCount = rows.length;
           });
