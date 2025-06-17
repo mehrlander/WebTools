@@ -1,7 +1,13 @@
+/**
+ * DocLinksManager - Extract and organize links from web pages
+ * Usage: const manager = new DocLinksManager(); await manager.process(url);
+ */
 class DocLinksManager {
   constructor(options = {}) {
     this.options = { domain: null, includeExternal: false, ...options };
     this.urls = [];
+    this.urlMap = new Map();
+    this.processedPages = new Set();
     this.tree = null;
     this.stats = {};
   }
@@ -21,8 +27,6 @@ class DocLinksManager {
   }
   
   extractLinks(doc, selector = 'a[href]') {
-    const urlMap = new Map();
-    
     Array.from(doc.querySelectorAll(selector)).forEach(link => {
       try {
         const url = new URL(link.href, doc.baseURI || window.location.href);
@@ -34,8 +38,8 @@ class DocLinksManager {
           url: url.href
         };
         
-        if (!urlMap.has(url.href)) {
-          urlMap.set(url.href, {
+        if (!this.urlMap.has(url.href)) {
+          this.urlMap.set(url.href, {
             href: url.href,
             pathname: url.pathname,
             search: url.search,
@@ -48,14 +52,14 @@ class DocLinksManager {
           });
         }
         
-        urlMap.get(url.href).instances.push(instance);
+        this.urlMap.get(url.href).instances.push(instance);
       } catch (e) {}
     });
-    
-    // Convert to array and add aggregate caption
-    return Array.from(urlMap.values()).map(urlData => ({
+  }
+  
+  finalizeUrls() {
+    this.urls = Array.from(this.urlMap.values()).map(urlData => ({
       ...urlData,
-      // Primary caption is most common, or first if all unique
       caption: this.getMostCommonCaption(urlData.instances),
       instanceCount: urlData.instances.length
     }));
@@ -100,7 +104,6 @@ class DocLinksManager {
       current.urls.push(url);
       current.stats.totalUrls++;
       
-      // Update ancestor stats
       let node = tree['/'];
       parts.forEach(part => {
         node.stats.totalUrls++;
@@ -113,6 +116,7 @@ class DocLinksManager {
   
   calculateStats() {
     return this.stats = {
+      pagesProcessed: this.processedPages.size,
       totalUrls: this.urls.length,
       totalInstances: this.urls.reduce((sum, url) => sum + url.instanceCount, 0),
       internalUrls: this.urls.filter(u => u.isInternal).length,
@@ -123,14 +127,11 @@ class DocLinksManager {
       topLevelPaths: {},
       fileTypes: {},
       ...this.urls.reduce((acc, url) => {
-        // Protocols
         acc.protocols[url.protocol] = (acc.protocols[url.protocol] || 0) + 1;
         
-        // Top paths
         const topPath = '/' + (url.pathname.split('/')[1] || '');
         acc.topLevelPaths[topPath] = (acc.topLevelPaths[topPath] || 0) + 1;
         
-        // File types
         const ext = url.pathname.split('.').pop().toLowerCase();
         if (ext && ext.length <= 4 && ext !== url.pathname) {
           acc.fileTypes[ext] = (acc.fileTypes[ext] || 0) + 1;
@@ -171,28 +172,23 @@ class DocLinksManager {
   getSiblings(urlOrPath) {
     if (!this.tree) return { urls: [], dirs: [] };
     
-    // Handle both url objects and path strings
     const path = typeof urlOrPath === 'string' ? urlOrPath : urlOrPath.pathname;
     const parts = path.split('/').filter(Boolean);
     
-    // Root level has no siblings
     if (parts.length === 0) return { urls: [], dirs: [] };
     
-    // Get parent path and current segment
     const currentSegment = parts.pop();
     const parentPath = '/' + parts.join('/');
     const parentNode = this.getNodeAtPath(parentPath);
     
     if (!parentNode) return { urls: [], dirs: [] };
     
-    // Get sibling URLs (excluding those with same final segment)
     const siblingUrls = parentNode.urls.filter(url => {
       const urlSegments = url.pathname.split('/').filter(Boolean);
       const urlFinal = urlSegments[urlSegments.length - 1] || '';
       return urlFinal !== currentSegment;
     });
     
-    // Get sibling directories (excluding current if it's a directory)
     const siblingDirs = Object.entries(parentNode.children)
       .filter(([name]) => name !== currentSegment)
       .map(([name, child]) => ({
@@ -214,25 +210,20 @@ class DocLinksManager {
   search(query) {
     const q = query.toLowerCase();
     return this.urls.filter(url => {
-      // Search in primary caption
       if (url.caption.toLowerCase().includes(q)) return true;
-      // Search in URL parts
       if (url.href.toLowerCase().includes(q) || url.pathname.toLowerCase().includes(q)) return true;
-      // Search in ALL instance captions
       return url.instances.some(inst => inst.caption.toLowerCase().includes(q));
     });
   }
   
-  // Get all unique captions for a given URL
   getCaptions(urlOrPath) {
     const href = typeof urlOrPath === 'string' && !urlOrPath.startsWith('/') 
-      ? urlOrPath  // It's a full URL
-      : this.urls.find(u => u.pathname === urlOrPath)?.href;  // It's a path
+      ? urlOrPath
+      : this.urls.find(u => u.pathname === urlOrPath)?.href;
     
     const url = this.urls.find(u => u.href === href);
     if (!url) return [];
     
-    // Return unique captions with their counts
     const captionCounts = url.instances.reduce((acc, inst) => {
       acc[inst.caption] = (acc[inst.caption] || 0) + 1;
       return acc;
@@ -243,7 +234,17 @@ class DocLinksManager {
       .sort((a, b) => b.count - a.count);
   }
   
-  getTreeSummary(node = this.tree?.['/'], indent = '') {
+  clear() {
+    this.urls = [];
+    this.urlMap.clear();
+    this.processedPages.clear();
+    this.tree = null;
+    this.stats = {};
+  }
+  
+  getProcessedPages() {
+    return Array.from(this.processedPages);
+  }
     if (!node) return 'No tree built yet';
     
     return Object.entries(node.children)
@@ -259,22 +260,62 @@ class DocLinksManager {
   }
   
   async process(url) {
-    const doc = await this.fetchPage(url);
-    this.urls = this.extractLinks(doc);
-    console.log(`Extracted ${this.urls.length} unique URLs (${this.urls.reduce((sum, u) => sum + u.instanceCount, 0)} total instances)`);
+    this.processedPages.clear();
+    this.urlMap.clear();
     
-    this.buildTree();
-    this.calculateStats();
-    
+    await this.addPage(url);
     return { urls: this.urls, tree: this.tree, stats: this.stats };
   }
   
+  async addPage(url) {
+    if (this.processedPages.has(url)) {
+      console.log(`Already processed: ${url}`);
+      return;
+    }
+    
+    const doc = await this.fetchPage(url);
+    this.extractLinks(doc);
+    this.processedPages.add(url);
+    
+    this.finalizeUrls();
+    this.buildTree();
+    this.calculateStats();
+    
+    console.log(`Added ${url} - Total: ${this.urls.length} unique URLs (${this.urls.reduce((sum, u) => sum + u.instanceCount, 0)} instances)`);
+  }
+  
+  async addPages(urls) {
+    for (const url of urls) {
+      await this.addPage(url);
+    }
+  }
+  
+  getUnprocessedInternalUrls() {
+    return this.urls
+      .filter(url => url.isInternal && !this.processedPages.has(url.href))
+      .map(url => url.href);
+  }
+  
+  async crawl(startUrl, maxPages = 10) {
+    await this.process(startUrl);
+    
+    while (this.processedPages.size < maxPages) {
+      const unprocessed = this.getUnprocessedInternalUrls();
+      if (unprocessed.length === 0) break;
+      
+      await this.addPage(unprocessed[0]);
+    }
+    
+    console.log(`Crawled ${this.processedPages.size} pages`);
+  }
+  
   printSummary() {
-    const { totalUrls, totalInstances, internalUrls, externalUrls, uniquePaths, maxDepth, topLevelPaths } = this.stats;
+    const { pagesProcessed, totalUrls, totalInstances, internalUrls, externalUrls, uniquePaths, maxDepth, topLevelPaths } = this.stats;
     
     console.log(`
-=== Document Link Manager Summary ===
+=== Document Links Manager Summary ===
 Domain: ${this.options.domain}
+Pages Processed: ${pagesProcessed}
 Unique URLs: ${totalUrls} (${totalInstances} total instances)
 Internal/External: ${internalUrls}/${externalUrls}
 Unique Paths: ${uniquePaths}, Max Depth: ${maxDepth}
@@ -290,12 +331,10 @@ Top Paths:`);
   }
 }
 
-// Usage
-const docManager = new DocLinksManager({ domain: 'www.loc.gov' });
-docManager.process('https://www.loc.gov').then(() => {
-  console.log('✅ Ready!');
-  docManager.printSummary();
-  console.log('\nCommands: search("term"), getChildPaths("/"), getUrlsAtPath("/path"), getSiblings("/path"), getCaptions(url)');
-}).catch(e => console.error('❌ Failed:', e));
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = DocLinksManager;
+}
 
-window.docManager = docManager;
+if (typeof window !== 'undefined') {
+  window.DocLinksManager = DocLinksManager;
+}
