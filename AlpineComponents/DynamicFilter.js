@@ -222,6 +222,9 @@ class DynamicFilter {
     const options = this.options;
     const self = this;
     
+    // Store table reference outside of reactive data
+    const tableRef = options.table;
+    
     const data = {
       activeFilters: {},
       properties: options.properties,
@@ -231,7 +234,7 @@ class DynamicFilter {
       filteredCount: self.filteredData.length,
       allowMultiple: options.allowMultiple,
       autoApply: options.autoApply,
-      table: options.table,
+      // Don't include table in reactive data - this prevents circular reference
       
       init() {
         console.log(`DynamicFilter ${instanceId} initialized with ${this.properties.length} properties`);
@@ -240,16 +243,16 @@ class DynamicFilter {
         self._alpineData = this;
         
         // If using Tabulator, set up listeners
-        if (this.table) {
-          this.table.on("dataFiltered", (filters, rows) => {
+        if (tableRef) {
+          tableRef.on("dataFiltered", (filters, rows) => {
             this.filteredCount = rows.length;
           });
           
-          this.table.on("dataLoaded", () => {
-            self.originalData = this.table.getData();
+          tableRef.on("dataLoaded", () => {
+            self.originalData = tableRef.getData();
             this.originalData = self.originalData;
             this.totalCount = self.originalData.length;
-            this.filteredCount = this.table.getDataCount('active');
+            this.filteredCount = tableRef.getDataCount('active');
           });
         }
       },
@@ -320,7 +323,7 @@ class DynamicFilter {
       
       applyFilters() {
         // If using Tabulator, use its filtering
-        if (this.table) {
+        if (tableRef) {
           this.applyTabulatorFilters();
         } else {
           // Otherwise, filter the data array
@@ -334,7 +337,7 @@ class DynamicFilter {
       },
       
       applyTabulatorFilters() {
-        this.table.clearFilter();
+        tableRef.clearFilter();
         
         // Group filters by key for multiple filters on same field
         const filterGroups = {};
@@ -352,25 +355,25 @@ class DynamicFilter {
             if (filter.value === '' && filter.type !== 'boolean') return;
             
             if (filter.type === 'text') {
-              this.table.addFilter(key, "like", filter.value);
+              tableRef.addFilter(key, "like", filter.value);
             } else if (filter.type === 'select') {
               if (filter.value) {
-                this.table.addFilter(key, "=", filter.value);
+                tableRef.addFilter(key, "=", filter.value);
               }
             } else if (filter.type === 'boolean') {
               if (filter.value === 'true') {
-                this.table.addFilter(key, "=", true);
+                tableRef.addFilter(key, "=", true);
               } else if (filter.value === 'false') {
-                this.table.addFilter(key, "=", false);
+                tableRef.addFilter(key, "=", false);
               }
             } else if (filter.type === 'number') {
               const numValue = parseFloat(filter.value);
               if (!isNaN(numValue)) {
-                this.table.addFilter(key, filter.operator, numValue);
+                tableRef.addFilter(key, filter.operator, numValue);
               }
             } else if (filter.type === 'date') {
               if (filter.value) {
-                this.table.addFilter(key, filter.operator, filter.value);
+                tableRef.addFilter(key, filter.operator, filter.value);
               }
             }
           });
