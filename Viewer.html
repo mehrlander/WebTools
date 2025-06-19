@@ -152,7 +152,7 @@
         </label>
         <div class="join w-full">
           <input x-model="urls.githubLatest" type="text" class="input input-bordered input-sm join-item flex-1 font-mono text-xs" readonly />
-          <button @click="copyToClipboard(urls.githubLatest)" class="btn btn-sm join-item">
+          <button :data-clipboard-text="urls.githubLatest" class="btn btn-sm join-item copy-btn">
             <i class="ph ph-copy"></i>
           </button>
         </div>
@@ -165,7 +165,7 @@
         </label>
         <div class="join w-full">
           <input x-model="urls.githubCommit" type="text" class="input input-bordered input-sm join-item flex-1 font-mono text-xs" readonly />
-          <button @click="copyToClipboard(urls.githubCommit)" class="btn btn-sm join-item">
+          <button :data-clipboard-text="urls.githubCommit" class="btn btn-sm join-item copy-btn">
             <i class="ph ph-copy"></i>
           </button>
         </div>
@@ -178,7 +178,7 @@
         </label>
         <div class="join w-full">
           <input x-model="urls.jsdelivrLatest" type="text" class="input input-bordered input-sm join-item flex-1 font-mono text-xs" readonly />
-          <button @click="copyToClipboard(urls.jsdelivrLatest)" class="btn btn-sm join-item">
+          <button :data-clipboard-text="urls.jsdelivrLatest" class="btn btn-sm join-item copy-btn">
             <i class="ph ph-copy"></i>
           </button>
         </div>
@@ -191,7 +191,7 @@
         </label>
         <div class="join w-full">
           <input x-model="urls.jsdelivrCommit" type="text" class="input input-bordered input-sm join-item flex-1 font-mono text-xs" readonly />
-          <button @click="copyToClipboard(urls.jsdelivrCommit)" class="btn btn-sm join-item">
+          <button :data-clipboard-text="urls.jsdelivrCommit" class="btn btn-sm join-item copy-btn">
             <i class="ph ph-copy"></i>
           </button>
         </div>
@@ -252,9 +252,11 @@ function repositoryViewer() {
       jsdelivrCommit: ''
     },
     copiedUrl: '',
+    clipboard: null,
     
     async init() {
       this.urlsModal = this.$refs.urlsModal
+      this.initClipboard()
       await this.loadRepo()
     },
     
@@ -617,15 +619,42 @@ function repositoryViewer() {
           jsdelivrCommit: ''
         }
       }
+      
+      // Reinitialize clipboard after URL updates
+      this.$nextTick(() => {
+        this.initClipboard()
+      })
     },
     
-    copyToClipboard(text) {
-      navigator.clipboard.writeText(text).then(() => {
-        this.copiedUrl = text
-      }).catch(() => {
-        console.error('Failed to copy to clipboard')
+    initClipboard() {
+      if (this.clipboard) {
+        this.clipboard.destroy()
+      }
+      
+      this.clipboard = new ClipboardJS('.copy-btn')
+      
+      this.clipboard.on('success', (e) => {
+        const btn = e.trigger
+        const originalHtml = btn.innerHTML
+        const copiedText = e.text
+        
+        // Show success feedback on button
+        btn.innerHTML = '<i class="ph ph-check text-success"></i>'
+        
+        // Show copied URL in display area
+        this.copiedUrl = copiedText
+        
+        setTimeout(() => {
+          btn.innerHTML = originalHtml
+        }, 1000)
+        
+        e.clearSelection()
       })
-    }
+      
+      this.clipboard.on('error', (e) => {
+        console.error('Copy failed:', e)
+      })
+    },
   }
 }
 </script>
