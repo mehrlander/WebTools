@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Repository Viewer</title>
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web,npm/clipboard"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+</head>
+
+<body class="min-h-screen bg-base-100" x-data="repositoryViewer()">
+<div class="max-w-7xl mx-auto px-2 py-3">
+  <div class="mb-3">
+    <h1 class="text-lg font-bold">WebTools Repository</h1>
+    <p class="text-sm text-base-content/70">Browsing: <span x-text="currentRepo">mehrlander/WebTools</span></p>
+  </div>
+  
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+    <div class="lg:col-span-1 space-y-3">
+      <div>
+        <button @click="toggleFiles()" class="flex items-center gap-1 font-semibold text-base py-0.5 hover:text-primary transition-colors">
+          <i :class="filesCollapsed ? 'ph ph-caret-right' : 'ph ph-caret-down'" class="transition-transform"></i>
+          <span>Files</span>
+        </button>
+        <div x-show="!filesCollapsed">
+          <div class="overflow-y-auto text-sm bg-base-100 rounded-lg p-1 min-h-[100px] max-h-80 border border-base-300">
+            <template x-if="fileTreeLoading">
+              <div class="text-base-content/60 text-center py-3 text-sm">Loading repository...</div>
+            </template>
+            <template x-if="fileTreeError">
+              <div class="text-error text-center py-3 text-sm" x-text="fileTreeError"></div>
+            </template>
+            <template x-if="!fileTreeLoading && !fileTreeError">
+              <div>
+                <template x-if="currentPath">
+                  <div @click="loadFileTree(getParentPath(currentPath))" class="file-item px-1 py-0.5 hover:bg-base-200 rounded cursor-pointer font-mono">
+                    <i class="ph ph-folder text-warning"></i> ..
+                  </div>
+                </template>
+                <template x-for="item in sortedFileTree" :key="item.path">
+                  <div @click="handleFileClick(item)" 
+                       :class="currentFile === item.path ? 'bg-primary/20' : ''"
+                       class="file-item p-1 hover:bg-base-200 rounded cursor-pointer">
+                    <i :class="item.type === 'dir' ? 'ph ph-folder text-warning' : 'ph ph-file text-info'"></i>
+                    <span x-text="item.name"></span>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <button @click="toggleCommits()" class="flex items-center gap-1 font-semibold text-base py-0.5 hover:text-primary transition-colors">
+          <i :class="commitsCollapsed ? 'ph ph-caret-right' : 'ph ph-caret-down'" class="transition-transform"></i>
+          <span x-text="`Commits (${commits.length})`">Commits</span>
+        </button>
+        <div x-show="!commitsCollapsed">
+          <div class="space-y-0 text-xs overflow-y-auto w-full min-h-[100px] max-h-60 p-1 bg-base-100 rounded-lg border border-base-300">
+            <template x-if="commitsLoading">
+              <div class="text-base-content/60 text-center py-3 text-sm">Loading commits...</div>
+            </template>
+            <template x-if="commitsError">
+              <div class="text-error text-center py-3 text-sm" x-text="commitsError"></div>
+            </template>
+            <template x-if="!commitsLoading && !commitsError && commits.length === 0">
+              <div class="text-base-content/60 text-center py-3 text-sm">No commits found</div>
+            </template>
+            <template x-if="!commitsLoading && !commitsError && commits.length > 0">
+              <div>
+                <template x-for="(commit, index) in commits" :key="commit.sha">
+                  <div :data-commit="commit.sha" 
+                       :class="getCommitClasses(commit.sha)"
+                       class="commit-item flex items-center gap-2 px-1 py-0.5 hover:bg-base-200 rounded transition-colors w-full">
+                    <div class="flex gap-1 items-center flex-shrink-0">
+                      <input type="radio" name="compareFrom" :value="commit.sha" 
+                             x-model="fromCommit" @change="handleCompareChange()"
+                             class="radio radio-warning radio-xs compareRadio fromRadio">
+                      <input type="radio" name="compareTo" :value="commit.sha" 
+                             x-model="toCommit" @change="handleCompareChange()"
+                             class="radio radio-error radio-xs compareRadio toRadio">
+                    </div>
+                    <div @click="selectCommit(commit.sha)" class="flex-1 min-w-0 cursor-pointer commit-content">
+                      <div class="flex items-start justify-between gap-2">
+                        <div class="flex-1 min-w-0">
+                          <div class="text-xs font-medium truncate" x-text="commit.commit.message.split('\n')[0]"></div>
+                          <div class="flex items-center gap-2 mt-0.5">
+                            <template x-if="index === 0">
+                              <span class="badge badge-primary badge-xs">Latest</span>
+                            </template>
+                            <span class="text-xs opacity-50" x-text="formatDate(commit.commit.author.date)"></span>
+                            <template x-if="currentFile">
+                              <span class="text-xs font-mono opacity-70" x-text="currentFile.split('/').pop()"></span>
+                            </template>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-2">
+      <button @click="toggleContent()" class="flex items-center gap-1 font-semibold text-base py-0.5 hover:text-primary transition-colors mb-1">
+        <i :class="contentCollapsed ? 'ph ph-caret-right' : 'ph ph-caret-down'" class="transition-transform"></i>
+        <span>Content</span>
+      </button>
+      
+      <div x-show="!contentCollapsed">
+        <div class="space-y-2">
+          <div class="flex items-start justify-between">
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium font-mono truncate" x-text="displayFileName">No file selected</div>
+              <div class="text-xs text-base-content/60" x-html="versionInfo"></div>
+            </div>
+            <button @click="urlsModal.showModal()" :disabled="!hasValidSelection" class="btn btn-sm btn-outline">
+              <i class="ph ph-link"></i>
+              URLs
+            </button>
+          </div>
+          <div class="flex w-full">
+            <textarea x-model="fileContent" rows="20" 
+                     class="textarea textarea-bordered font-mono text-sm resize-none flex-grow" 
+                     placeholder="Select a file to view its contents" readonly></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- URLs Modal -->
+<dialog x-ref="urlsModal" class="modal">
+  <div class="modal-box">
+    <form method="dialog">
+      <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+    </form>
+    <h3 class="font-bold text-lg mb-4">File URLs</h3>
+    
+    <div class="space-y-4">
+      <!-- GitHub Latest -->
+      <div>
+        <label class="label">
+          <span class="label-text font-semibold">GitHub (Latest)</span>
+        </label>
+        <div class="join w-full">
+          <input x-model="urls.githubLatest" type="text" class="input input-bordered input-sm join-item flex-1 font-mono text-xs" readonly />
+          <button @click="copyToClipboard(urls.githubLatest)" class="btn btn-sm join-item">
+            <i class="ph ph-copy"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- GitHub Selected Commit -->
+      <div>
+        <label class="label">
+          <span class="label-text font-semibold">GitHub (Selected Commit)</span>
+        </label>
+        <div class="join w-full">
+          <input x-model="urls.githubCommit" type="text" class="input input-bordered input-sm join-item flex-1 font-mono text-xs" readonly />
+          <button @click="copyToClipboard(urls.githubCommit)" class="btn btn-sm join-item">
+            <i class="ph ph-copy"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- JSDelivr Latest -->
+      <div>
+        <label class="label">
+          <span class="label-text font-semibold">JSDelivr CDN (Latest)</span>
+        </label>
+        <div class="join w-full">
+          <input x-model="urls.jsdelivrLatest" type="text" class="input input-bordered input-sm join-item flex-1 font-mono text-xs" readonly />
+          <button @click="copyToClipboard(urls.jsdelivrLatest)" class="btn btn-sm join-item">
+            <i class="ph ph-copy"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- JSDelivr Selected Commit -->
+      <div>
+        <label class="label">
+          <span class="label-text font-semibold">JSDelivr CDN (Selected Commit)</span>
+        </label>
+        <div class="join w-full">
+          <input x-model="urls.jsdelivrCommit" type="text" class="input input-bordered input-sm join-item flex-1 font-mono text-xs" readonly />
+          <button @click="copyToClipboard(urls.jsdelivrCommit)" class="btn btn-sm join-item">
+            <i class="ph ph-copy"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Copied URL Display -->
+      <div class="mt-6 pt-4 border-t border-base-300">
+        <label class="label">
+          <span class="label-text font-semibold text-success">Copied</span>
+        </label>
+        <div class="bg-base-200 rounded p-3 min-h-[3rem] flex items-center">
+          <div x-text="copiedUrl || 'No URL copied yet'" 
+               :class="copiedUrl ? '' : 'opacity-60'"
+               class="text-xs font-mono break-all"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<script>
+function repositoryViewer() {
+  return {
+    // State
+    currentRepo: 'mehrlander/WebTools',
+    currentFile: null,
+    currentPath: '',
+    selectedCommit: null,
+    fromCommit: null,
+    toCommit: null,
+    
+    // UI State
+    filesCollapsed: false,
+    commitsCollapsed: false,
+    contentCollapsed: false,
+    
+    // Data
+    fileTree: [],
+    commits: [],
+    commitCache: {},
+    
+    // Loading states
+    fileTreeLoading: true,
+    commitsLoading: true,
+    fileTreeError: null,
+    commitsError: null,
+    
+    // Content
+    fileContent: '',
+    displayFileName: 'No file selected',
+    versionInfo: '',
+    
+    // URLs
+    urls: {
+      githubLatest: '',
+      githubCommit: '',
+      jsdelivrLatest: '',
+      jsdelivrCommit: ''
+    },
+    copiedUrl: '',
+    
+    async init() {
+      this.urlsModal = this.$refs.urlsModal
+      await this.loadRepo()
+    },
+    
+    // Computed properties
+    get sortedFileTree() {
+      return [...this.fileTree].sort((a, b) => {
+        if (a.type !== b.type) return a.type === 'dir' ? -1 : 1
+        return a.name.localeCompare(b.name)
+      })
+    },
+    
+    get hasValidSelection() {
+      return this.selectedCommit && this.currentFile
+    },
+    
+    // Utility methods
+    formatDate(iso) {
+      const d = new Date(iso)
+      return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
+    },
+    
+    getParentPath(path) {
+      return path.split('/').slice(0, -1).join('/')
+    },
+    
+    getCommitClasses(sha) {
+      let classes = []
+      if (this.selectedCommit === sha) {
+        classes.push('bg-primary/20', 'border-l-2', 'border-primary')
+      }
+      if (this.fromCommit === sha) {
+        classes.push('bg-warning/20', 'border-l-2', 'border-warning')
+      }
+      if (this.toCommit === sha) {
+        classes.push('bg-error/20', 'border-l-2', 'border-error')
+      }
+      return classes.join(' ')
+    },
+    
+    // Toggle methods
+    toggleFiles() {
+      this.filesCollapsed = !this.filesCollapsed
+    },
+    
+    toggleCommits() {
+      this.commitsCollapsed = !this.commitsCollapsed
+    },
+    
+    toggleContent() {
+      this.contentCollapsed = !this.contentCollapsed
+    },
+    
+    // Main loading methods
+    async loadRepo() {
+      this.currentFile = null
+      this.selectedCommit = null
+      this.fromCommit = null
+      this.toCommit = null
+      this.commitCache = {}
+      
+      // Test if repo exists and is public
+      try {
+        const testUrl = `https://api.github.com/repos/${this.currentRepo}`
+        const response = await fetch(testUrl)
+        if (!response.ok) {
+          throw new Error(`Repository not found or not public (${response.status})`)
+        }
+      } catch(error) {
+        this.showError(`Could not access repository: ${error.message}`)
+        return
+      }
+      
+      // Clear content area until a commit is selected
+      this.fileContent = ''
+      this.displayFileName = 'Select a commit to view content'
+      this.versionInfo = ''
+      
+      await Promise.all([
+        this.loadFileTree(),
+        this.loadCommitHistory()
+      ])
+      this.updateUrls()
+    },
+    
+    showError(message) {
+      this.fileTreeError = message
+      this.commitsError = message
+    },
+    
+    async loadFileTree(path = '') {
+      this.fileTreeLoading = true
+      this.fileTreeError = null
+      this.currentPath = path
+      
+      if (!this.currentRepo) return
+      
+      try {
+        const url = `https://api.github.com/repos/${this.currentRepo}/contents/${path}`
+        const response = await fetch(url)
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        
+        const items = await response.json()
+        this.fileTree = items
+        
+      } catch(error) {
+        console.error('Error loading file tree:', error)
+        this.fileTreeError = 'Error loading files'
+      } finally {
+        this.fileTreeLoading = false
+      }
+    },
+    
+    async handleFileClick(item) {
+      if (item.type === 'dir') {
+        await this.loadFileTree(item.path)
+      } else {
+        await this.loadFile(item.path)
+      }
+    },
+    
+    async loadFile(path) {
+      if (!this.currentRepo || !path) return
+      
+      try {
+        this.currentFile = path
+        
+        // Load commit history for this file
+        await this.loadCommitHistory(path)
+        
+        // Auto-select the most recent commit and show the file content
+        if (this.commits.length > 0) {
+          const mostRecentSha = this.commits[0].sha
+          
+          // Clear any existing commit selections
+          this.fromCommit = null
+          this.toCommit = null
+          
+          // Select the most recent commit
+          this.selectedCommit = mostRecentSha
+          
+          // Show the file content from the most recent commit
+          await this.showFileAtCommit(path, mostRecentSha)
+        }
+        
+      } catch(error) {
+        console.error('Error loading file:', error)
+      }
+    },
+    
+    async loadCommitHistory(filePath = null) {
+      this.commitsLoading = true
+      this.commitsError = null
+      
+      if (!this.currentRepo) return
+      
+      try {
+        let url = `https://api.github.com/repos/${this.currentRepo}/commits?per_page=30`
+        if (filePath) {
+          url += `&path=${encodeURIComponent(filePath)}`
+        }
+        
+        const response = await fetch(url)
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        
+        const commits = await response.json()
+        this.commits = commits
+        this.commitCache = {}
+        
+        // Cache commits
+        commits.forEach(commit => {
+          this.commitCache[commit.sha] = commit
+        })
+        
+        // Auto-select the first commit if no file path (loading repo-wide commits)
+        if (!filePath && commits.length > 0 && !this.selectedCommit) {
+          const firstCommitSha = commits[0].sha
+          this.selectedCommit = firstCommitSha
+          
+          // Show content from the first commit
+          await this.displayAnyFileFromCommit(firstCommitSha)
+        }
+      } catch(error) {
+        console.error('Error loading commit history:', error)
+        this.commitsError = 'Error loading commits'
+      } finally {
+        this.commitsLoading = false
+      }
+    },
+    
+    async showFileAtCommit(filePath, sha) {
+      try {
+        const url = `https://api.github.com/repos/${this.currentRepo}/contents/${filePath}?ref=${sha}`
+        const response = await fetch(url)
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        
+        const file = await response.json()
+        const content = atob(file.content.replace(/\s/g, ''))
+        
+        this.fileContent = content
+        this.displayFileName = filePath
+        
+        const commitData = this.commitCache[sha]
+        if (commitData) {
+          const statsText = await this.getCommitStats(sha)
+          const lengthText = this.getFileLength()
+          this.versionInfo = `${this.formatDate(commitData.commit.author.date)}${statsText}${lengthText}`
+        }
+        
+        this.updateUrls()
+      } catch(error) {
+        console.error('Error loading file at commit:', error)
+        this.fileContent = '// File not found in this commit'
+        this.displayFileName = filePath
+        this.updateUrls()
+      }
+    },
+    
+    async displayAnyFileFromCommit(sha) {
+      try {
+        // Get the file tree at this commit
+        const url = `https://api.github.com/repos/${this.currentRepo}/git/trees/${sha}?recursive=1`
+        const response = await fetch(url)
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        
+        const tree = await response.json()
+        
+        // Find the first actual file (not a directory)
+        const firstFile = tree.tree.find(item => item.type === 'blob')
+        
+        if (firstFile) {
+          // Update currentFile to the found file so URLs work properly
+          this.currentFile = firstFile.path
+          
+          // Fetch and display this file
+          const fileUrl = `https://api.github.com/repos/${this.currentRepo}/contents/${firstFile.path}?ref=${sha}`
+          const fileResponse = await fetch(fileUrl)
+          if (!fileResponse.ok) throw new Error(`HTTP ${fileResponse.status}`)
+          
+          const file = await fileResponse.json()
+          
+          if (file.content) {
+            const content = atob(file.content.replace(/\s/g, ''))
+            this.fileContent = content
+            this.displayFileName = firstFile.path
+            
+            const commitData = this.commitCache[sha]
+            if (commitData) {
+              const statsText = await this.getCommitStats(sha)
+              const lengthText = this.getFileLength()
+              this.versionInfo = `${this.formatDate(commitData.commit.author.date)}${statsText}${lengthText}`
+            }
+            
+            this.updateUrls()
+            return
+          }
+        }
+        
+        // Fallback: show commit message if no files found
+        const commitData = this.commitCache[sha]
+        if (commitData) {
+          this.fileContent = commitData.commit.message
+          this.displayFileName = `Commit: ${commitData.commit.message.split('\n')[0]}`
+          const statsText = await this.getCommitStats(sha)
+          const lengthText = this.getFileLength()
+          this.versionInfo = `${this.formatDate(commitData.commit.author.date)}${statsText}${lengthText}`
+          this.currentFile = null // No file to show URLs for
+          this.updateUrls()
+        }
+        
+      } catch(error) {
+        console.error('Error loading file from commit:', error)
+        this.fileContent = '// Error loading content from commit'
+        this.updateUrls()
+      }
+    },
+    
+    async getCommitStats(sha) {
+      try {
+        const url = `https://api.github.com/repos/${this.currentRepo}/commits/${sha}`
+        const commit = await fetch(url).then(r=>r.json())
+        
+        if (commit.stats) {
+          const {additions = 0, deletions = 0, total = 0} = commit.stats
+          if (total === 0) return ''
+          
+          const parts = []
+          if (additions > 0) parts.push(`<span class="text-green-500">+${additions}</span>`)
+          if (deletions > 0) parts.push(`<span class="text-red-500">-${deletions}</span>`)
+          
+          return ` • ${parts.join(' ')}`
+        }
+        return ''
+      } catch(error) {
+        console.error('Error fetching commit stats:', error)
+        return ''
+      }
+    },
+    
+    getFileLength() {
+      if (!this.fileContent) return ''
+      
+      const lineCount = this.fileContent.split('\n').length
+      return ` • ${lineCount} lines`
+    },
+    
+    // Event handlers
+    async selectCommit(sha) {
+      // Clear radio selections
+      this.fromCommit = null
+      this.toCommit = null
+      
+      this.selectedCommit = sha
+
+      // ALWAYS show content from the selected commit
+      if (this.currentFile) {
+        // Show the currently selected file from this commit
+        await this.showFileAtCommit(this.currentFile, sha)
+      } else {
+        // Show any file from this commit
+        await this.displayAnyFileFromCommit(sha)
+      }
+    },
+    
+    async handleCompareChange() {
+      // Clear single commit selection when using radio buttons
+      this.selectedCommit = null
+      
+      // When two commits are selected, show the "to" commit version
+      if (this.fromCommit && this.toCommit) {
+        if (this.currentFile) {
+          await this.showFileAtCommit(this.currentFile, this.toCommit)
+        } else {
+          // Show any file when no file selected but comparing
+          await this.displayAnyFileFromCommit(this.toCommit)
+        }
+      }
+      
+      this.updateUrls()
+    },
+    
+    // URL management
+    updateUrls() {
+      if (this.hasValidSelection) {
+        const repoPath = this.currentRepo
+        const filePath = this.currentFile
+        const commitSha = this.selectedCommit
+        
+        // GitHub URLs
+        this.urls.githubLatest = `https://github.com/${repoPath}/blob/main/${filePath}`
+        this.urls.githubCommit = `https://github.com/${repoPath}/blob/${commitSha}/${filePath}`
+        
+        // JSDelivr URLs
+        this.urls.jsdelivrLatest = `https://cdn.jsdelivr.net/gh/${repoPath}/${filePath}`
+        this.urls.jsdelivrCommit = `https://cdn.jsdelivr.net/gh/${repoPath}@${commitSha}/${filePath}`
+      } else {
+        this.urls = {
+          githubLatest: '',
+          githubCommit: '',
+          jsdelivrLatest: '',
+          jsdelivrCommit: ''
+        }
+      }
+    },
+    
+    copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        this.copiedUrl = text
+      }).catch(() => {
+        console.error('Failed to copy to clipboard')
+      })
+    }
+  }
+}
+</script>
+</body>
+</html>
