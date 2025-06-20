@@ -21,7 +21,7 @@ class CommitDisplay {
       fromCommit: null,
       toCommit: null,
       currentFile: null,
-      loading: false,
+      loading: true,  // Default to loading state
       error: null,
       collapsible: true,
       collapsed: false,
@@ -51,6 +51,12 @@ class CommitDisplay {
         
         <div x-show="${collapsible ? '!collapsed' : 'true'}">
           <div class="${listClass}">
+            <!-- Debug message -->
+            <div class="text-xs text-warning p-2" x-show="true">
+              Debug: <span x-text="'Commits array length: ' + commits.length"></span> | 
+              Loading: <span x-text="loading"></span> | 
+              Error: <span x-text="error || 'none'"></span>
+            </div>
             <template x-if="loading">
               <div class="text-base-content/60 text-center py-3 text-sm">Loading commits...</div>
             </template>
@@ -100,7 +106,7 @@ class CommitDisplay {
     `;
   }
   
-  get data() {
+  createDataObject() {
     const { commits, selectedCommit, fromCommit, toCommit, currentFile, loading, error, collapsed, onCommitSelect, onCompareChange } = this.options;
     const componentId = this.id;
     const radioName = `compare-${this.id}`;
@@ -192,6 +198,10 @@ class CommitDisplay {
     };
   }
   
+  get data() {
+    return this.createDataObject();
+  }
+  
   mount() {
     const target = document.querySelector(this.selector);
     if (!target) {
@@ -199,41 +209,61 @@ class CommitDisplay {
       return false;
     }
     
-    // Make the data available globally for Alpine BEFORE setting HTML
-    window[`commitDisplayData_${this.id}`] = this.data;
+    // Make the data factory function available globally for Alpine
+    // This ensures Alpine always gets the latest data from options
+    window[`commitDisplayData_${this.id}`] = () => this.createDataObject();
+    console.log(`CommitDisplay: Set window.commitDisplayData_${this.id} as factory function`);
     
     // Set the HTML
     target.innerHTML = this.html;
     
+    // If Alpine is already initialized, we need to initialize the new component
+    if (window.Alpine) {
+      console.log('Alpine is available, checking for initTree');
+      if (window.Alpine.initTree) {
+        console.log('Calling Alpine.initTree on', target);
+        window.Alpine.initTree(target);
+      } else if (window.Alpine.discoverComponents) {
+        console.log('Calling Alpine.discoverComponents on', target);
+        window.Alpine.discoverComponents(target);
+      } else {
+        console.log('Alpine methods not available:', Object.keys(window.Alpine));
+      }
+    } else {
+      console.log('Alpine not yet available when mounting CommitDisplay');
+    }
+    
     return true;
+  }
+  
+  // Force update by remounting with current options
+  forceUpdate() {
+    console.log('CommitDisplay forceUpdate called');
+    this.mount();
   }
   
   // Update commits list
   setCommits(commits) {
-    const data = window[`commitDisplayData_${this.id}`];
-    console.log('CommitDisplay setCommits:', this.id, data, commits);
-    if (data) {
-      data.commits = commits;
-      console.log('Updated commits in data:', data.commits.length);
-    } else {
-      console.error('CommitDisplay data not found!');
-    }
+    console.log('CommitDisplay setCommits called with:', commits.length, 'commits');
+    
+    // Update the options
+    this.options.commits = commits;
+    this.options.loading = false;
+    
+    // Force a re-mount to update the display
+    this.forceUpdate();
   }
   
   // Set loading state
   setLoading(loading) {
-    const data = window[`commitDisplayData_${this.id}`];
-    if (data) {
-      data.loading = loading;
-    }
+    this.options.loading = loading;
+    this.forceUpdate();
   }
   
   // Set error state
   setError(error) {
-    const data = window[`commitDisplayData_${this.id}`];
-    if (data) {
-      data.error = error;
-    }
+    this.options.error = error;
+    this.forceUpdate();
   }
   
   // Set selected commit
