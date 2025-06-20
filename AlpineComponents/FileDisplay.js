@@ -1,193 +1,79 @@
-// FileDisplay component with improved Alpine.js integration
 class FileDisplay {
   constructor(selector, options = {}) {
-    this.el = document.querySelector(selector);
+    this.el = document.querySelector(selector)
     if (!this.el) {
-      console.warn(`FileDisplay: No element found for selector "${selector}"`);
-      return;
+      console.warn(`FileDisplay: No element found for selector "${selector}"`)
+      return
     }
     
-    // Store options for reference
-    this.options = {
-      fileName: 'No file selected',
-      content: '',
-      placeholder: 'Select a file to view',
-      rows: 15,
-      collapsed: false,
-      onUrlsClick: null,
-      ...options
-    };
-    
-    // Create unique component ID for Alpine registration
-    this.componentId = `fileDisplay_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Register Alpine component
-    this.registerAlpineComponent();
-    
-    // Render the component
-    this.render();
-    
-    // Bind events after render
-    this.bindEvents();
-    
-    // Log successful initialization
-    console.log(`FileDisplay: Initialized on ${selector}`, {
-      componentId: this.componentId,
-      options: this.options
-    });
-  }
-  
-  registerAlpineComponent() {
-    const options = this.options;
-    
-    Alpine.data(this.componentId, () => ({
-      // Reactive state
-      collapsed: options.collapsed,
-      content: options.content,
-      fileName: options.fileName,
-      placeholder: options.placeholder,
-      rows: options.rows,
-      
-      // Methods available in Alpine
-      toggle() {
-        this.collapsed = !this.collapsed;
-      },
-      
-      updateContent(newContent) {
-        this.content = newContent;
-      },
-      
-      updateFileName(newName) {
-        this.fileName = newName;
-      },
-      
-      handleUrlsClick() {
-        this.$dispatch('urls-click', {
-          fileName: this.fileName,
-          content: this.content
-        });
-      }
-    }));
+    this.options = options
+    this.render()
   }
   
   render() {
     this.el.innerHTML = `
-      <div x-data="${this.componentId}" class="space-y-2">
-        <div class="flex items-center justify-between">
-          <button @click="toggle()" 
-                  class="flex items-center gap-1 font-semibold hover:text-primary transition-colors">
-            <i :class="collapsed ? 'ph ph-caret-right' : 'ph ph-caret-down'" 
-               class="transition-transform duration-200"></i>
-            <span x-text="fileName"></span>
-          </button>
-          <button @click="handleUrlsClick()" 
-                  class="btn btn-sm btn-outline">
-            <i class="ph ph-link"></i>
-            <span>URLs</span>
-          </button>
-        </div>
-        <div x-show="!collapsed" 
-             x-collapse
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 transform scale-y-95"
-             x-transition:enter-end="opacity-100 transform scale-y-100">
-          <textarea x-model="content" 
-                    :rows="rows" 
-                    class="textarea textarea-bordered w-full font-mono text-sm" 
-                    :placeholder="placeholder" 
-                    readonly></textarea>
+      <div x-data="{
+        get sortedFileTree() {
+          return [...$store.data.fileTree].sort((a, b) => {
+            if (a.type !== b.type) return a.type === 'dir' ? -1 : 1
+            return a.name.localeCompare(b.name)
+          })
+        },
+        
+        getParentPath(path) {
+          return path.split('/').slice(0, -1).join('/')
+        },
+        
+        async handleFileClick(item) {
+          if (item.type === 'dir') {
+            await repositoryViewer().loadFileTree(item.path)
+          } else {
+            await repositoryViewer().loadFile(item.path)
+          }
+        }
+      }">
+        <button @click="$store.ui.filesCollapsed = !$store.ui.filesCollapsed" 
+                class="flex items-center gap-1 font-semibold text-base py-0.5 hover:text-primary transition-colors w-full text-left">
+          <i :class="$store.ui.filesCollapsed ? 'ph ph-caret-right' : 'ph ph-caret-down'"></i>
+          <span>Files</span>
+        </button>
+        
+        <div x-show="!$store.ui.filesCollapsed" x-collapse>
+          <div class="overflow-y-auto text-sm bg-base-100 rounded-lg p-1 min-h-[100px] max-h-80 border border-base-300 mt-1">
+            <template x-if="$store.ui.fileTreeLoading">
+              <div class="text-base-content/60 text-center py-3 text-sm">Loading repository...</div>
+            </template>
+            
+            <template x-if="$store.ui.fileTreeError">
+              <div class="text-error text-center py-3 text-sm" x-text="$store.ui.fileTreeError"></div>
+            </template>
+            
+            <template x-if="!$store.ui.fileTreeLoading && !$store.ui.fileTreeError">
+              <div>
+                <template x-if="$store.repo.currentPath">
+                  <div @click="repositoryViewer().loadFileTree(getParentPath($store.repo.currentPath))" 
+                       class="file-item px-1 py-0.5 hover:bg-base-200 rounded cursor-pointer font-mono">
+                    <i class="ph ph-folder text-warning"></i> ..
+                  </div>
+                </template>
+                
+                <template x-for="item in sortedFileTree" :key="item.path">
+                  <div @click="handleFileClick(item)" 
+                       :class="$store.repo.currentFile === item.path ? 'bg-primary/20' : ''"
+                       class="file-item p-1 hover:bg-base-200 rounded cursor-pointer">
+                    <i :class="item.type === 'dir' ? 'ph ph-folder text-warning' : 'ph ph-file text-info'"></i>
+                    <span x-text="item.name"></span>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
-    `;
+    `
   }
   
-  bindEvents() {
-    // Handle custom urls-click event if callback provided
-    if (this.options.onUrlsClick) {
-      this.el.addEventListener('urls-click', (event) => {
-        this.options.onUrlsClick(event.detail);
-      });
-    }
-  }
-  
-  // Public API methods
-  
-  // Update content reactively
-  update(content) {
-    const data = this.getData();
-    if (data) {
-      data.updateContent(content);
-    } else {
-      console.warn('FileDisplay: Alpine component not initialized');
-    }
-  }
-  
-  // Update filename reactively
-  setFileName(name) {
-    const data = this.getData();
-    if (data) {
-      data.updateFileName(name);
-    } else {
-      console.warn('FileDisplay: Alpine component not initialized');
-    }
-  }
-  
-  // Get current state (useful for debugging)
-  getData() {
-    const alpineEl = this.el.querySelector('[x-data]');
-    return alpineEl ? Alpine.$data(alpineEl) : null;
-  }
-  
-  // Get current state as plain object
-  getState() {
-    const data = this.getData();
-    if (!data) return null;
-    
-    return {
-      collapsed: data.collapsed,
-      content: data.content,
-      fileName: data.fileName,
-      placeholder: data.placeholder,
-      rows: data.rows
-    };
-  }
-  
-  // Toggle collapsed state
-  toggle() {
-    const data = this.getData();
-    if (data) {
-      data.toggle();
-    }
-  }
-  
-  // Cleanup
   destroy() {
-    // Remove event listeners
-    if (this.options.onUrlsClick) {
-      this.el.removeEventListener('urls-click', this.options.onUrlsClick);
-    }
-    
-    // Clear the element
-    this.el.innerHTML = '';
-    
-    // Note: Alpine.data registrations persist, but that's usually fine
-    // as they're lightweight and may be reused
-    
-    console.log(`FileDisplay: Destroyed component ${this.componentId}`);
+    this.el.innerHTML = ''
   }
-  
-  // Static method for WebTools compatibility
-  static onLoad() {
-    console.log('FileDisplay: Component loaded', {
-      version: '2.0.0',
-      type: 'Alpine-aware component',
-      requires: ['Alpine.js 3.x', 'Phosphor Icons'],
-      methods: ['update', 'setFileName', 'toggle', 'getData', 'getState', 'destroy']
-    });
-  }
-}
-
-// Call onLoad if component is loaded standalone
-if (typeof FileDisplay.onLoad === 'function') {
-  FileDisplay.onLoad();
 }
