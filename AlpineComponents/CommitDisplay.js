@@ -56,3 +56,6 @@ class CommitDisplay {
     this.el.innerHTML = ''
   }
 }
+
+// Export to global scope
+window.CommitDisplay = CommitDisplay
