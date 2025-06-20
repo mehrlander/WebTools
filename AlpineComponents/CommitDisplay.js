@@ -51,12 +51,6 @@ class CommitDisplay {
         
         <div x-show="${collapsible ? '!collapsed' : 'true'}">
           <div class="${listClass}">
-            <!-- Debug message -->
-            <div class="text-xs text-warning p-2" x-show="true">
-              Debug: <span x-text="'Commits array length: ' + commits.length"></span> | 
-              Loading: <span x-text="loading"></span> | 
-              Error: <span x-text="error || 'none'"></span>
-            </div>
             <template x-if="loading">
               <div class="text-base-content/60 text-center py-3 text-sm">Loading commits...</div>
             </template>
@@ -107,19 +101,20 @@ class CommitDisplay {
   }
   
   createDataObject() {
-    const { commits, selectedCommit, fromCommit, toCommit, currentFile, loading, error, collapsed, onCommitSelect, onCompareChange } = this.options;
+    // Always read from current options to get latest values
     const componentId = this.id;
     const radioName = `compare-${this.id}`;
+    const options = this.options;
     
     return {
-      commits,
-      selectedCommit,
-      fromCommit,
-      toCommit,
-      currentFile,
-      loading,
-      error,
-      collapsed,
+      commits: options.commits,
+      selectedCommit: options.selectedCommit,
+      fromCommit: options.fromCommit,
+      toCommit: options.toCommit,
+      currentFile: options.currentFile,
+      loading: options.loading,
+      error: options.error,
+      collapsed: options.collapsed,
       radioName,
       
       formatDate(iso) {
@@ -148,6 +143,9 @@ class CommitDisplay {
       toggleCollapsed() {
         this.collapsed = !this.collapsed;
         
+        // Update options to keep in sync
+        options.collapsed = this.collapsed;
+        
         // Dispatch custom event
         window.dispatchEvent(new CustomEvent('commits-display-toggled', { 
           detail: { 
@@ -163,9 +161,14 @@ class CommitDisplay {
         this.toCommit = null;
         this.selectedCommit = sha;
         
+        // Update options to keep in sync
+        options.fromCommit = null;
+        options.toCommit = null;
+        options.selectedCommit = sha;
+        
         // Call callback if provided
-        if (typeof onCommitSelect === 'function') {
-          onCommitSelect(sha);
+        if (typeof options.onCommitSelect === 'function') {
+          options.onCommitSelect(sha);
         }
         
         // Dispatch custom event
@@ -181,9 +184,14 @@ class CommitDisplay {
         // Clear single commit selection when using radio buttons
         this.selectedCommit = null;
         
+        // Update options to keep in sync
+        options.selectedCommit = null;
+        options.fromCommit = this.fromCommit;
+        options.toCommit = this.toCommit;
+        
         // Call callback if provided
-        if (typeof onCompareChange === 'function') {
-          onCompareChange(this.fromCommit, this.toCommit);
+        if (typeof options.onCompareChange === 'function') {
+          options.onCompareChange(this.fromCommit, this.toCommit);
         }
         
         // Dispatch custom event
@@ -209,28 +217,17 @@ class CommitDisplay {
       return false;
     }
     
-    // Make the data factory function available globally for Alpine
-    // This ensures Alpine always gets the latest data from options
-    window[`commitDisplayData_${this.id}`] = () => this.createDataObject();
-    console.log(`CommitDisplay: Set window.commitDisplayData_${this.id} as factory function`);
+    // Make the data available globally for Alpine
+    window[`commitDisplayData_${this.id}`] = this.createDataObject();
     
-    // Set the HTML
-    target.innerHTML = this.html;
-    
-    // If Alpine is already initialized, we need to initialize the new component
-    if (window.Alpine) {
-      console.log('Alpine is available, checking for initTree');
-      if (window.Alpine.initTree) {
-        console.log('Calling Alpine.initTree on', target);
-        window.Alpine.initTree(target);
-      } else if (window.Alpine.discoverComponents) {
-        console.log('Calling Alpine.discoverComponents on', target);
-        window.Alpine.discoverComponents(target);
-      } else {
-        console.log('Alpine methods not available:', Object.keys(window.Alpine));
-      }
+    // If Alpine is available, use mutateDom for proper reactivity
+    if (window.Alpine && window.Alpine.mutateDom) {
+      window.Alpine.mutateDom(() => {
+        target.innerHTML = this.html;
+      });
     } else {
-      console.log('Alpine not yet available when mounting CommitDisplay');
+      // Fallback if Alpine isn't ready
+      target.innerHTML = this.html;
     }
     
     return true;
@@ -238,14 +235,11 @@ class CommitDisplay {
   
   // Force update by remounting with current options
   forceUpdate() {
-    console.log('CommitDisplay forceUpdate called');
     this.mount();
   }
   
   // Update commits list
   setCommits(commits) {
-    console.log('CommitDisplay setCommits called with:', commits.length, 'commits');
-    
     // Update the options
     this.options.commits = commits;
     this.options.loading = false;
@@ -268,42 +262,34 @@ class CommitDisplay {
   
   // Set selected commit
   setSelectedCommit(sha) {
-    const data = window[`commitDisplayData_${this.id}`];
-    if (data) {
-      data.selectedCommit = sha;
-      // Clear compare selections when setting single selection
-      data.fromCommit = null;
-      data.toCommit = null;
-    }
+    this.options.selectedCommit = sha;
+    // Clear compare selections when setting single selection
+    this.options.fromCommit = null;
+    this.options.toCommit = null;
+    this.forceUpdate();
   }
   
   // Set compare commits
   setCompareCommits(fromSha, toSha) {
-    const data = window[`commitDisplayData_${this.id}`];
-    if (data) {
-      data.fromCommit = fromSha;
-      data.toCommit = toSha;
-      // Clear single selection when setting compare
-      data.selectedCommit = null;
-    }
+    this.options.fromCommit = fromSha;
+    this.options.toCommit = toSha;
+    // Clear single selection when setting compare
+    this.options.selectedCommit = null;
+    this.forceUpdate();
   }
   
   // Clear all selections
   clearSelections() {
-    const data = window[`commitDisplayData_${this.id}`];
-    if (data) {
-      data.selectedCommit = null;
-      data.fromCommit = null;
-      data.toCommit = null;
-    }
+    this.options.selectedCommit = null;
+    this.options.fromCommit = null;
+    this.options.toCommit = null;
+    this.forceUpdate();
   }
   
   // Set current file (for display purposes)
   setCurrentFile(filePath) {
-    const data = window[`commitDisplayData_${this.id}`];
-    if (data) {
-      data.currentFile = filePath;
-    }
+    this.options.currentFile = filePath;
+    this.forceUpdate();
   }
   
   // Toggle collapsed state
