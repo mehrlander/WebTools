@@ -74,19 +74,22 @@ class FileDisplay {
     `;
   }
   
-  get data() {
-    const { fileName, content, versionInfo, collapsed, onUrlsClick, hasValidSelection } = this.options;
+  createDataObject() {
     const componentId = this.id;
+    const options = this.options;
     
     return {
-      fileName,
-      content,
-      versionInfo,
-      collapsed,
-      hasValidSelection,
+      fileName: options.fileName,
+      content: options.content,
+      versionInfo: options.versionInfo,
+      collapsed: options.collapsed,
+      hasValidSelection: options.hasValidSelection,
       
       toggleCollapsed() {
         this.collapsed = !this.collapsed;
+        
+        // Update options to keep in sync
+        options.collapsed = this.collapsed;
         
         // Dispatch custom event
         window.dispatchEvent(new CustomEvent('file-display-toggled', { 
@@ -98,8 +101,8 @@ class FileDisplay {
       },
       
       handleUrlsClick() {
-        if (typeof onUrlsClick === 'function') {
-          onUrlsClick();
+        if (typeof options.onUrlsClick === 'function') {
+          options.onUrlsClick();
         }
         
         // Also dispatch event
@@ -110,6 +113,10 @@ class FileDisplay {
     };
   }
   
+  get data() {
+    return this.createDataObject();
+  }
+  
   mount() {
     const target = document.querySelector(this.selector);
     if (!target) {
@@ -117,55 +124,57 @@ class FileDisplay {
       return false;
     }
     
-    // Set the HTML
-    target.innerHTML = this.html;
-    
     // Make the data available globally for Alpine
-    window[`fileDisplayData_${this.id}`] = this.data;
+    window[`fileDisplayData_${this.id}`] = this.createDataObject();
+    
+    // If Alpine is available, use mutateDom for proper reactivity
+    if (window.Alpine && window.Alpine.mutateDom) {
+      window.Alpine.mutateDom(() => {
+        target.innerHTML = this.html;
+      });
+    } else {
+      // Fallback if Alpine isn't ready
+      target.innerHTML = this.html;
+    }
     
     return true;
   }
   
+  // Force update by remounting with current options
+  forceUpdate() {
+    this.mount();
+  }
+  
   // Update file content
   setContent(content) {
-    const data = window[`fileDisplayData_${this.id}`];
-    if (data) {
-      data.content = content;
-    }
+    this.options.content = content;
+    this.forceUpdate();
   }
   
   // Update file name
   setFileName(fileName) {
-    const data = window[`fileDisplayData_${this.id}`];
-    if (data) {
-      data.fileName = fileName;
-    }
+    this.options.fileName = fileName;
+    this.forceUpdate();
   }
   
   // Update version info
   setVersionInfo(versionInfo) {
-    const data = window[`fileDisplayData_${this.id}`];
-    if (data) {
-      data.versionInfo = versionInfo;
-    }
+    this.options.versionInfo = versionInfo;
+    this.forceUpdate();
   }
   
   // Update all file data at once
   updateFile(fileName, content, versionInfo) {
-    const data = window[`fileDisplayData_${this.id}`];
-    if (data) {
-      data.fileName = fileName;
-      data.content = content;
-      data.versionInfo = versionInfo || '';
-    }
+    this.options.fileName = fileName;
+    this.options.content = content;
+    this.options.versionInfo = versionInfo || '';
+    this.forceUpdate();
   }
   
   // Update URLs button state
   setUrlsEnabled(enabled) {
-    const data = window[`fileDisplayData_${this.id}`];
-    if (data) {
-      data.hasValidSelection = enabled;
-    }
+    this.options.hasValidSelection = enabled;
+    this.forceUpdate();
   }
   
   // Toggle collapsed state
