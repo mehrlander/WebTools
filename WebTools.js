@@ -1,57 +1,48 @@
 // WebTools - Component library manager for Alpine.js components
 class WebTools {
   constructor(options = {}) {
-    // Auto-detect commit hash from script src
     const scriptSrc = document.currentScript?.src || '';
-    const commitMatch = scriptSrc.match(/WebTools@([a-f0-9]+)\//);
-    const commit = commitMatch ? commitMatch[1] : 'main';
-    const repoMatch = scriptSrc.match(/github\.com\/([^\/]+\/[^\/]+)/);
-    const repo = repoMatch ? repoMatch[1] : 'mehrlander/WebTools';
+    const [, commit] = scriptSrc.match(/WebTools@([a-f0-9]+)\//) || [, 'main'];
+    const [, repo] = scriptSrc.match(/github\.com\/([^\/]+\/[^\/]+)/) || [, 'mehrlander/WebTools'];
     
-    this.options = {
-      baseUrl: `https://cdn.jsdelivr.net/gh/${repo}@${commit}/AlpineComponents`,
-      config: false,
-      cache: true,
-      ...options
-    };
-    
-    this.components = new Map();
-    this.loading = new Set();
-    this.instances = new Map();
+    Object.assign(this, {
+      options: {
+        baseUrl: `https://cdn.jsdelivr.net/gh/${repo}@${commit}/AlpineComponents`,
+        config: false,
+        cache: true,
+        ...options
+      },
+      components: new Map(),
+      loading: new Set(),
+      instances: new Map()
+    });
     
     if (this.options.config) this.initConfig();
-    
-    // Make available globally
-    window.WebTools = this;
-    window.WT = this; // Shorthand alias
+    window.WebTools = window.WT = this;
   }
   
-  // Load one or more components by name
+  // Load component(s)
   async loadComponent(...names) {
-    // Single component case - return the class directly
     if (names.length === 1) {
-      const name = names[0];
+      const [name] = names;
       
-      if (this.components.has(name) && this.options.cache) {
+      if (this.options.cache && this.components.has(name)) 
         return this.components.get(name);
-      }
       
       if (this.loading.has(name)) {
-        return await this.waitFor(name);
+        while (this.loading.has(name)) await this.wait(100);
+        if (!this.components.has(name)) throw new Error(`${name} failed to load`);
+        return this.components.get(name);
       }
       
       this.loading.add(name);
       
       try {
-        const url = `${this.options.baseUrl}/${name}.js`;
-        await this.loadScript(url);
-        const component = await this.getGlobal(name);
-        
+        await this.loadScript(`${this.options.baseUrl}/${name}.js`);
+        const component = await this.waitForGlobal(name);
         this.components.set(name, component);
         this.loading.delete(name);
-        
-        if (this.configPanel) this.updateConfig();
-        
+        this.updateConfig();
         return component;
       } catch (e) {
         this.loading.delete(name);
@@ -59,7 +50,6 @@ class WebTools {
       }
     }
     
-    // Multiple components case - return a map
     const results = {};
     for (const name of names) {
       try {
@@ -77,89 +67,64 @@ class WebTools {
     const Component = await this.loadComponent(name);
     const instance = new Component(selector, options);
     
-    // Track instance
-    if (!this.instances.has(name)) {
-      this.instances.set(name, []);
-    }
+    if (!this.instances.has(name)) this.instances.set(name, []);
     this.instances.get(name).push({ instance, selector });
-    
-    // Update config panel
-    if (this.configPanel) this.updateConfig();
+    this.updateConfig();
     
     return instance;
   }
   
-  // Check if component is loaded
-  has(name) {
-    return this.components.has(name);
-  }
+  // Utilities
+  has = (name) => this.components.has(name);
+  list = () => Array.from(this.components.keys());
+  wait = (ms) => new Promise(r => setTimeout(r, ms));
   
-  // Get all loaded component names
-  list() {
-    return Array.from(this.components.keys());
-  }
-  
-  // Helper: load script
   loadScript(url) {
     return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = url;
-      script.onload = resolve;
-      script.onerror = () => reject(new Error(`Failed to load ${url}`));
+      const script = Object.assign(document.createElement('script'), {
+        src: url,
+        onload: resolve,
+        onerror: () => reject(new Error(`Failed to load ${url}`))
+      });
       document.head.appendChild(script);
     });
   }
   
-  // Helper: wait for global
-  getGlobal(name, timeout = 5000) {
-    return new Promise((resolve, reject) => {
-      const start = Date.now();
-      const check = () => {
-        if (window[name]) {
-          resolve(window[name]);
-        } else if (Date.now() - start > timeout) {
-          reject(new Error(`Timeout waiting for ${name}`));
-        } else {
-          setTimeout(check, 50);
-        }
-      };
-      check();
-    });
-  }
-  
-  // Helper: wait for loading component
-  async waitFor(name) {
-    while (this.loading.has(name)) {
-      await new Promise(r => setTimeout(r, 100));
+  async waitForGlobal(name, timeout = 5000) {
+    const start = Date.now();
+    while (!window[name]) {
+      if (Date.now() - start > timeout) throw new Error(`Timeout waiting for ${name}`);
+      await this.wait(50);
     }
-    if (!this.components.has(name)) {
-      throw new Error(`${name} failed to load`);
-    }
-    return this.components.get(name);
+    return window[name];
   }
   
   // Config panel
   initConfig() {
-    const button = document.createElement('div');
-    button.innerHTML = `
-      <button class="btn btn-circle btn-sm btn-ghost border border-base-300 bg-base-100 shadow-sm hover:shadow-md transition-all" 
-              onclick="WT.toggleConfig()" title="WebTools Config">
-        <i class="ph ph-gear-six text-lg"></i>
-      </button>
-    `;
-    button.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9999';
+    const button = this.createElement('div', {
+      style: 'position:fixed;top:16px;right:16px;z-index:9999',
+      html: `<button class="btn btn-circle btn-sm btn-ghost border border-base-300 bg-base-100 shadow-sm hover:shadow-md transition-all" 
+                    onclick="WT.toggleConfig()" title="WebTools Config">
+              <i class="ph ph-gear-six text-lg"></i>
+            </button>`
+    });
     
-    const panel = document.createElement('div');
-    panel.id = 'wt-config';
-    panel.style.cssText = `
-      position:fixed;top:60px;right:16px;width:320px;max-height:80vh;
-      background:var(--fallback-b1,oklch(var(--b1)/1));
-      border:1px solid var(--fallback-bc,oklch(var(--bc)/0.2));
-      border-radius:0.75rem;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04);
-      z-index:9998;display:none;overflow:hidden;flex-direction:column;
-    `;
+    this.configPanel = this.createElement('div', {
+      id: 'wt-config',
+      style: `position:fixed;top:60px;right:16px;width:320px;max-height:80vh;
+              background:var(--fallback-b1,oklch(var(--b1)/1));
+              border:1px solid var(--fallback-bc,oklch(var(--bc)/0.2));
+              border-radius:0.75rem;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04);
+              z-index:9998;display:none;overflow:hidden;flex-direction:column;`,
+      html: this.configHTML()
+    });
     
-    panel.innerHTML = `
+    document.body.append(button, this.configPanel);
+    this.updateConfig();
+  }
+  
+  configHTML() {
+    return `
       <div class="bg-base-200 px-4 py-3 border-b border-base-300 flex justify-between items-center">
         <div class="flex items-center gap-2">
           <i class="ph ph-package text-lg"></i>
@@ -182,87 +147,69 @@ class WebTools {
           </button>
         </div>
         <div class="flex justify-between text-xs text-base-content/60">
-          <span>${this.list().length} components</span>
-          <span>${this.getInstanceCount()} instances</span>
+          <span>0 components</span>
+          <span>0 instances</span>
         </div>
-      </div>
-    `;
-    
-    document.body.appendChild(button);
-    document.body.appendChild(panel);
-    this.configPanel = panel;
-    this.updateConfig();
+      </div>`;
   }
   
   updateConfig() {
     if (!this.configPanel) return;
     
     const content = document.getElementById('wt-config-content');
-    const comps = Array.from(this.components.keys());
+    const comps = this.list();
+    const totalInstances = Array.from(this.instances.values()).reduce((sum, arr) => sum + arr.length, 0);
+    
+    // Update stats
     const stats = this.configPanel.querySelector('.flex.justify-between.text-xs');
-    if (stats) {
-      stats.innerHTML = `
-        <span>${comps.length} components</span>
-        <span>${this.getInstanceCount()} instances</span>
-      `;
-    }
+    if (stats) stats.innerHTML = `<span>${comps.length} components</span><span>${totalInstances} instances</span>`;
     
-    if (comps.length === 0) {
-      content.innerHTML = '<p class="text-sm text-base-content/60 text-center py-8">No components loaded yet</p>';
-      return;
-    }
-    
-    content.innerHTML = `
-      <div class="space-y-2">
-        ${comps.map(name => {
-          const count = this.instances.get(name)?.length || 0;
-          return `
-            <div class="card bg-base-200 card-compact hover:shadow-md transition-shadow">
-              <div class="card-body p-3">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <div class="font-medium">${name}</div>
-                    <div class="text-xs text-base-content/60">${count} instance${count !== 1 ? 's' : ''}</div>
-                  </div>
-                  <div class="flex gap-1">
-                    <button class="btn btn-xs btn-ghost" onclick="WT.copy('${name}')" title="Copy source">
-                      <i class="ph ph-clipboard-text"></i>
-                    </button>
-                    <button class="btn btn-xs btn-ghost" onclick="WT.view('${name}')" title="View on GitHub">
-                      <i class="ph ph-arrow-square-out"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
+    content.innerHTML = comps.length === 0 
+      ? '<p class="text-sm text-base-content/60 text-center py-8">No components loaded yet</p>'
+      : `<div class="space-y-2">${comps.map(name => this.componentCard(name)).join('')}</div>`;
+  }
+  
+  componentCard(name) {
+    const count = this.instances.get(name)?.length || 0;
+    return `
+      <div class="card bg-base-200 card-compact hover:shadow-md transition-shadow">
+        <div class="card-body p-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="font-medium">${name}</div>
+              <div class="text-xs text-base-content/60">${count} instance${count !== 1 ? 's' : ''}</div>
             </div>
-          `;
-        }).join('')}
-      </div>
-    `;
+            <div class="flex gap-1">
+              <button class="btn btn-xs btn-ghost" onclick="WT.copy('${name}')" title="Copy source">
+                <i class="ph ph-clipboard-text"></i>
+              </button>
+              <button class="btn btn-xs btn-ghost" onclick="WT.view('${name}')" title="View on GitHub">
+                <i class="ph ph-arrow-square-out"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>`;
   }
   
   toggleConfig() {
-    const panel = document.getElementById('wt-config');
-    if (panel) {
-      if (panel.style.display === 'none') {
-        panel.style.display = 'flex';
-        panel.style.opacity = '0';
-        panel.style.transform = 'scale(0.95) translateY(-10px)';
-        
-        requestAnimationFrame(() => {
-          panel.style.transition = 'opacity 0.2s ease-out, transform 0.2s ease-out';
-          panel.style.opacity = '1';
-          panel.style.transform = 'scale(1) translateY(0)';
-        });
-      } else {
-        panel.style.opacity = '0';
-        panel.style.transform = 'scale(0.95) translateY(-10px)';
-        
-        setTimeout(() => {
-          panel.style.display = 'none';
-          panel.style.transition = '';
-        }, 200);
-      }
+    const panel = this.configPanel;
+    if (!panel) return;
+    
+    const isHidden = panel.style.display === 'none';
+    const props = isHidden 
+      ? { display: 'flex', opacity: '1', transform: 'scale(1) translateY(0)' }
+      : { opacity: '0', transform: 'scale(0.95) translateY(-10px)' };
+    
+    if (isHidden) {
+      Object.assign(panel.style, { display: 'flex', opacity: '0', transform: 'scale(0.95) translateY(-10px)' });
+      requestAnimationFrame(() => {
+        panel.style.transition = 'opacity 0.2s ease-out, transform 0.2s ease-out';
+        Object.assign(panel.style, props);
+      });
+    } else {
+      Object.assign(panel.style, props);
+      setTimeout(() => Object.assign(panel.style, { display: 'none', transition: '' }), 200);
     }
   }
   
@@ -274,7 +221,6 @@ class WebTools {
     try {
       await this.loadComponent(name);
       input.value = '';
-      this.updateConfig();
     } catch (e) {
       alert(`Failed to load ${name}: ${e.message}`);
     }
@@ -282,74 +228,47 @@ class WebTools {
   
   async copy(name) {
     try {
-      const url = `${this.options.baseUrl}/${name}.js`;
-      const res = await fetch(url);
-      const code = await res.text();
-      await navigator.clipboard.writeText(code);
+      const res = await fetch(`${this.options.baseUrl}/${name}.js`);
+      await navigator.clipboard.writeText(await res.text());
       
-      // Show success in button
-      const btns = document.querySelectorAll(`[onclick="WT.copy('${name}')"]`);
-      btns.forEach(btn => {
-        const icon = btn.querySelector('i');
-        if (icon) {
-          icon.className = 'ph ph-check text-success';
-          setTimeout(() => {
-            icon.className = 'ph ph-clipboard-text';
-          }, 2000);
-        }
+      // Update icon
+      document.querySelectorAll(`[onclick="WT.copy('${name}')"] i`).forEach(icon => {
+        icon.className = 'ph ph-check text-success';
+        setTimeout(() => icon.className = 'ph ph-clipboard-text', 2000);
       });
     } catch (e) {
       console.error(`Failed to copy ${name}:`, e);
     }
   }
   
-  view(name) {
-    window.open(`${this.options.baseUrl}/${name}.js`, '_blank');
-  }
+  view = (name) => window.open(`${this.options.baseUrl}/${name}.js`, '_blank');
   
-  // Get all instances of a component
-  getInstances(name) {
-    return this.instances.get(name) || [];
-  }
+  getInstances = (name) => this.instances.get(name) || [];
   
-  // Get total instance count
-  getInstanceCount() {
-    let total = 0;
-    this.instances.forEach(instances => {
-      total += instances.length;
-    });
-    return total;
-  }
-  
-  // Destroy all instances of a component
   destroyAll(name) {
-    const instances = this.getInstances(name);
-    instances.forEach(({ instance }) => {
-      if (instance.destroy) instance.destroy();
-    });
+    this.getInstances(name).forEach(({ instance }) => instance.destroy?.());
     this.instances.delete(name);
-    
-    // Update config panel
-    if (this.configPanel) this.updateConfig();
+    this.updateConfig();
   }
   
-  // Export/import state
-  export() {
-    return {
-      components: this.list(),
-      baseUrl: this.options.baseUrl
-    };
+  // Helpers
+  createElement(tag, props) {
+    const el = document.createElement(tag);
+    if (props.style) el.style.cssText = props.style;
+    if (props.id) el.id = props.id;
+    if (props.html) el.innerHTML = props.html;
+    return el;
   }
   
+  // Export/import
+  export = () => ({ components: this.list(), baseUrl: this.options.baseUrl });
   async import(state) {
     if (state.baseUrl) this.options.baseUrl = state.baseUrl;
-    if (state.components) {
-      await this.loadComponent(...state.components);
-    }
+    if (state.components) await this.loadComponent(...state.components);
   }
 }
 
-// Auto-init if specified
+// Auto-init
 const script = document.currentScript;
 const autoInit = script?.getAttribute('data-init') !== 'false';
 const config = script?.getAttribute('data-config') === 'true';
@@ -359,7 +278,6 @@ if (autoInit) {
   window.addEventListener('DOMContentLoaded', async () => {
     const wt = new WebTools({ config });
     
-    // Auto-load components if specified
     if (autoLoad) {
       const components = autoLoad.split(',').map(s => s.trim()).filter(Boolean);
       if (components.length > 0) {
