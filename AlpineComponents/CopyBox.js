@@ -83,3 +83,6 @@ class CopyBox {
     this.el.innerHTML = ''
   }
 }
+
+// Export to global scope
+window.CopyBox = CopyBox
