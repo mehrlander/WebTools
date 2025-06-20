@@ -77,7 +77,7 @@ class CommitDisplay {
                     <div @click="selectCommit(commit.sha)" class="flex-1 min-w-0 cursor-pointer commit-content">
                       <div class="flex items-start justify-between gap-2">
                         <div class="flex-1 min-w-0">
-                          <div class="text-xs font-medium truncate" x-text="commit.commit.message.split('\\n')[0]"></div>
+                          <div class="text-xs font-medium truncate" x-text="commit.commit.message.split('\n')[0]"></div>
                           <div class="flex items-center gap-2 mt-0.5">
                             <template x-if="index === 0">
                               <span class="badge badge-primary badge-xs">Latest</span>
