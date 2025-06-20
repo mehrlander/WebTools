@@ -151,15 +151,17 @@ class WebTools {
   getGlobal(name, timeout = 5000) {
     return new Promise((resolve, reject) => {
       const start = Date.now()
+      let checkCount = 0
       const check = () => {
+        checkCount++
         if (window[name]) {
-          console.log(`[WebTools] Global ${name} found`)
+          console.log(`[WebTools] Global ${name} found after ${checkCount} checks`)
           resolve(window[name])
         } else if (Date.now() - start > timeout) {
-          console.error(`[WebTools] Timeout waiting for global ${name}`)
+          console.error(`[WebTools] Timeout waiting for global ${name} after ${checkCount} checks`)
           reject(new Error(`Timeout waiting for ${name}`))
         } else {
-          setTimeout(check, 50)
+          setTimeout(check, 100) // Check every 100ms instead of 50ms
         }
       }
       check()
