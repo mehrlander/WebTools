@@ -1,8 +1,11 @@
 class WebTools {
   constructor(options = {}) {
+    console.log('[WebTools] Initializing...', options)
+    
     this.options = {
       cache: true,
       showConfig: true,
+      debug: true,
       ...options
     }
     
@@ -10,26 +13,58 @@ class WebTools {
     this.loading = new Set()
     this.instances = new Map()
     
-    if (this.options.showConfig) this.initConfig()
+    // Default base URL - will be overridden by Alpine store if available
+    this._defaultBaseUrl = 'https://cdn.jsdelivr.net/gh/mehrlander/WebTools@main/AlpineComponents'
+    
+    if (this.options.showConfig) {
+      // Delay config init to ensure DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => this.initConfig())
+      } else {
+        this.initConfig()
+      }
+    }
     
     window.WebTools = this
     window.WT = this
+    
+    console.log('[WebTools] Initialized successfully')
   }
   
   get baseUrl() {
-    const config = Alpine.store('config')
-    const repo = config.webToolsRepo
-    const commit = config.webToolsCommit
-    const path = config.componentsPath
-    return `https://cdn.jsdelivr.net/gh/${repo}@${commit}/${path}`
+    // Try to get from Alpine store first
+    if (typeof Alpine !== 'undefined' && Alpine.store) {
+      try {
+        const config = Alpine.store('config')
+        if (config && config.webToolsRepo) {
+          const url = `https://cdn.jsdelivr.net/gh/${config.webToolsRepo}@${config.webToolsCommit}/${config.componentsPath}`
+          if (this.options.debug) {
+            console.log('[WebTools] Using Alpine store URL:', url)
+          }
+          return url
+        }
+      } catch (e) {
+        console.warn('[WebTools] Alpine store not ready, using default URL')
+      }
+    }
+    
+    // Fallback to default
+    if (this.options.debug) {
+      console.log('[WebTools] Using default URL:', this._defaultBaseUrl)
+    }
+    return this._defaultBaseUrl
   }
   
   async loadComponent(name) {
+    console.log(`[WebTools] Loading component: ${name}`)
+    
     if (this.components.has(name) && this.options.cache) {
+      console.log(`[WebTools] Component ${name} found in cache`)
       return this.components.get(name)
     }
     
     if (this.loading.has(name)) {
+      console.log(`[WebTools] Component ${name} already loading, waiting...`)
       return await this.waitFor(name)
     }
     
@@ -37,28 +72,34 @@ class WebTools {
     
     try {
       const url = `${this.baseUrl}/${name}.js`
+      console.log(`[WebTools] Fetching component from: ${url}`)
+      
       await this.loadScript(url)
       const component = await this.getGlobal(name)
       
       this.components.set(name, component)
       this.loading.delete(name)
       
+      console.log(`[WebTools] Component ${name} loaded successfully`)
+      
       if (this.configPanel) this.updateConfig()
       
       return component
     } catch (e) {
       this.loading.delete(name)
+      console.error(`[WebTools] Failed to load component ${name}:`, e)
       throw e
     }
   }
   
   async loadComponents(...names) {
+    console.log(`[WebTools] Loading multiple components:`, names)
     const results = {}
     for (const name of names) {
       try {
         results[name] = await this.loadComponent(name)
       } catch (e) {
-        console.error(`Failed to load ${name}:`, e)
+        console.error(`[WebTools] Failed to load ${name}:`, e)
         results[name] = null
       }
     }
@@ -66,6 +107,8 @@ class WebTools {
   }
   
   async create(name, selector, options = {}) {
+    console.log(`[WebTools] Creating instance of ${name} on ${selector}`)
+    
     const Component = await this.loadComponent(name)
     const instance = new Component(selector, options)
     
@@ -73,6 +116,8 @@ class WebTools {
       this.instances.set(name, [])
     }
     this.instances.get(name).push({ instance, selector })
+    
+    console.log(`[WebTools] Instance of ${name} created successfully`)
     
     if (this.configPanel) this.updateConfig()
     
@@ -91,8 +136,14 @@ class WebTools {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script')
       script.src = url
-      script.onload = resolve
-      script.onerror = () => reject(new Error(`Failed to load ${url}`))
+      script.onload = () => {
+        console.log(`[WebTools] Script loaded: ${url}`)
+        resolve()
+      }
+      script.onerror = (e) => {
+        console.error(`[WebTools] Script failed to load: ${url}`, e)
+        reject(new Error(`Failed to load ${url}`))
+      }
       document.head.appendChild(script)
     })
   }
@@ -102,8 +153,10 @@ class WebTools {
       const start = Date.now()
       const check = () => {
         if (window[name]) {
+          console.log(`[WebTools] Global ${name} found`)
           resolve(window[name])
         } else if (Date.now() - start > timeout) {
+          console.error(`[WebTools] Timeout waiting for global ${name}`)
           reject(new Error(`Timeout waiting for ${name}`))
         } else {
           setTimeout(check, 50)
@@ -260,6 +313,6 @@ class WebTools {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  window.WT = new WebTools({ showConfig: true })
-})
+// Initialize WebTools immediately
+console.log('[WebTools] Creating global instance...')
+window.WT = new WebTools({ showConfig: true })
