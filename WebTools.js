@@ -1,10 +1,16 @@
 // WebTools - Component library manager for Alpine.js components
 class WebTools {
   constructor(options = {}) {
+    // Auto-detect commit hash from script src
+    const scriptSrc = document.currentScript?.src || '';
+    const commitMatch = scriptSrc.match(/WebTools@([a-f0-9]+)\//);
+    const commit = commitMatch ? commitMatch[1] : 'main';
+    const repoMatch = scriptSrc.match(/github\.com\/([^\/]+\/[^\/]+)/);
+    const repo = repoMatch ? repoMatch[1] : 'mehrlander/WebTools';
+    
     this.options = {
-      baseUrl: 'https://cdn.jsdelivr.net/gh/mehrlander/WebTools@39c0ed983caacc9f688654eda38ee2ad26ccd3f0/AlpineComponents',
-      version: 'main',
-      debug: false,
+      baseUrl: `https://cdn.jsdelivr.net/gh/${repo}@${commit}/AlpineComponents`,
+      config: false,
       cache: true,
       ...options
     };
@@ -13,59 +19,62 @@ class WebTools {
     this.loading = new Set();
     this.instances = new Map();
     
-    if (this.options.debug) this.initDebug();
+    if (this.options.config) this.initConfig();
     
-    // Make available globally with shorthand
+    // Make available globally
     window.WebTools = this;
-    window.WT = this; // Even shorter alias
+    window.WT = this; // Shorthand alias
   }
   
-  // Load components by name
-  async load(...names) {
+  // Load one or more components by name
+  async loadComponent(...names) {
+    // Single component case - return the class directly
+    if (names.length === 1) {
+      const name = names[0];
+      
+      if (this.components.has(name) && this.options.cache) {
+        return this.components.get(name);
+      }
+      
+      if (this.loading.has(name)) {
+        return await this.waitFor(name);
+      }
+      
+      this.loading.add(name);
+      
+      try {
+        const url = `${this.options.baseUrl}/${name}.js`;
+        await this.loadScript(url);
+        const component = await this.getGlobal(name);
+        
+        this.components.set(name, component);
+        this.loading.delete(name);
+        
+        if (this.configPanel) this.updateConfig();
+        
+        return component;
+      } catch (e) {
+        this.loading.delete(name);
+        throw e;
+      }
+    }
+    
+    // Multiple components case - return a map
     const results = {};
     for (const name of names) {
       try {
-        results[name] = await this.loadOne(name);
+        results[name] = await this.loadComponent(name);
       } catch (e) {
         console.error(`Failed to load ${name}:`, e);
-        results[name] = { error: e.message };
+        results[name] = null;
       }
     }
     return results;
   }
   
-  // Load single component
-  async loadOne(name) {
-    if (this.components.has(name) && this.options.cache) {
-      return this.components.get(name);
-    }
-    
-    if (this.loading.has(name)) {
-      return this.waitFor(name);
-    }
-    
-    this.loading.add(name);
-    
-    try {
-      const url = `${this.options.baseUrl}/${name}.js`;
-      await this.loadScript(url);
-      const component = await this.getGlobal(name);
-      
-      this.components.set(name, component);
-      this.loading.delete(name);
-      
-      if (this.debugPanel) this.updateDebug();
-      
-      return component;
-    } catch (e) {
-      this.loading.delete(name);
-      throw e;
-    }
-  }
-  
-  // Create component instance - the main API
+  // Create component instance
   async create(name, selector, options = {}) {
-    const Component = await this.loadOne(name);
+    const Component = await this.loadComponent(name);
     const instance = new Component(selector, options);
     
     // Track instance
@@ -74,20 +83,10 @@ class WebTools {
     }
     this.instances.get(name).push({ instance, selector });
     
-    // Update debug panel
-    if (this.debugPanel) this.updateDebug();
+    // Update config panel
+    if (this.configPanel) this.updateConfig();
     
     return instance;
-  }
-  
-  // Shorthand for create
-  async use(name, selector, options) {
-    return this.create(name, selector, options);
-  }
-  
-  // Get component class without creating instance
-  async get(name) {
-    return this.loadOne(name);
   }
   
   // Check if component is loaded
@@ -139,19 +138,19 @@ class WebTools {
     return this.components.get(name);
   }
   
-  // Debug panel
-  initDebug() {
+  // Config panel
+  initConfig() {
     const button = document.createElement('div');
     button.innerHTML = `
       <button class="btn btn-circle btn-sm btn-ghost border border-base-300 bg-base-100 shadow-sm hover:shadow-md transition-all" 
-              onclick="WT.toggleDebug()" title="WebTools Debug">
+              onclick="WT.toggleConfig()" title="WebTools Config">
         <i class="ph ph-gear-six text-lg"></i>
       </button>
     `;
     button.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9999';
     
     const panel = document.createElement('div');
-    panel.id = 'wt-debug';
+    panel.id = 'wt-config';
     panel.style.cssText = `
       position:fixed;top:60px;right:16px;width:320px;max-height:80vh;
       background:var(--fallback-b1,oklch(var(--b1)/1));
@@ -166,19 +165,19 @@ class WebTools {
           <i class="ph ph-package text-lg"></i>
           <h3 class="font-semibold">WebTools</h3>
         </div>
-        <button class="btn btn-sm btn-ghost btn-circle" onclick="WT.toggleDebug()">
+        <button class="btn btn-sm btn-ghost btn-circle" onclick="WT.toggleConfig()">
           <i class="ph ph-x text-lg"></i>
         </button>
       </div>
       <div class="overflow-auto flex-1 p-3">
-        <div id="wt-debug-content"></div>
+        <div id="wt-config-content"></div>
       </div>
       <div class="bg-base-200 px-4 py-3 border-t border-base-300 space-y-2">
         <div class="flex gap-2">
           <input type="text" id="wt-load-input" placeholder="Component name..." 
                  class="input input-bordered input-sm flex-1"
-                 onkeypress="if(event.key==='Enter') WT.loadFromDebug()">
-          <button class="btn btn-sm btn-primary" onclick="WT.loadFromDebug()">
+                 onkeypress="if(event.key==='Enter') WT.loadFromConfig()">
+          <button class="btn btn-sm btn-primary" onclick="WT.loadFromConfig()">
             <i class="ph ph-download-simple"></i>
           </button>
         </div>
@@ -191,16 +190,16 @@ class WebTools {
     
     document.body.appendChild(button);
     document.body.appendChild(panel);
-    this.debugPanel = panel;
-    this.updateDebug();
+    this.configPanel = panel;
+    this.updateConfig();
   }
   
-  updateDebug() {
-    if (!this.debugPanel) return;
+  updateConfig() {
+    if (!this.configPanel) return;
     
-    const content = document.getElementById('wt-debug-content');
+    const content = document.getElementById('wt-config-content');
     const comps = Array.from(this.components.keys());
-    const stats = this.debugPanel.querySelector('.flex.justify-between.text-xs');
+    const stats = this.configPanel.querySelector('.flex.justify-between.text-xs');
     if (stats) {
       stats.innerHTML = `
         <span>${comps.length} components</span>
@@ -242,8 +241,8 @@ class WebTools {
     `;
   }
   
-  toggleDebug() {
-    const panel = document.getElementById('wt-debug');
+  toggleConfig() {
+    const panel = document.getElementById('wt-config');
     if (panel) {
       if (panel.style.display === 'none') {
         panel.style.display = 'flex';
@@ -267,15 +266,15 @@ class WebTools {
     }
   }
   
-  async loadFromDebug() {
+  async loadFromConfig() {
     const input = document.getElementById('wt-load-input');
     const name = input.value.trim();
     if (!name) return;
     
     try {
-      await this.loadOne(name);
+      await this.loadComponent(name);
       input.value = '';
-      this.updateDebug();
+      this.updateConfig();
     } catch (e) {
       alert(`Failed to load ${name}: ${e.message}`);
     }
@@ -308,26 +307,9 @@ class WebTools {
     window.open(`${this.options.baseUrl}/${name}.js`, '_blank');
   }
   
-  // Bulk operations
-  async preload(...names) {
-    return this.load(...names);
-  }
-  
   // Get all instances of a component
   getInstances(name) {
     return this.instances.get(name) || [];
-  }
-  
-  // Destroy all instances of a component
-  destroyAll(name) {
-    const instances = this.getInstances(name);
-    instances.forEach(({ instance }) => {
-      if (instance.destroy) instance.destroy();
-    });
-    this.instances.delete(name);
-    
-    // Update debug panel
-    if (this.debugPanel) this.updateDebug();
   }
   
   // Get total instance count
@@ -339,20 +321,30 @@ class WebTools {
     return total;
   }
   
+  // Destroy all instances of a component
+  destroyAll(name) {
+    const instances = this.getInstances(name);
+    instances.forEach(({ instance }) => {
+      if (instance.destroy) instance.destroy();
+    });
+    this.instances.delete(name);
+    
+    // Update config panel
+    if (this.configPanel) this.updateConfig();
+  }
+  
   // Export/import state
   export() {
     return {
       components: this.list(),
-      baseUrl: this.options.baseUrl,
-      version: this.options.version
+      baseUrl: this.options.baseUrl
     };
   }
   
   async import(state) {
     if (state.baseUrl) this.options.baseUrl = state.baseUrl;
-    if (state.version) this.options.version = state.version;
     if (state.components) {
-      await this.load(...state.components);
+      await this.loadComponent(...state.components);
     }
   }
 }
@@ -360,10 +352,24 @@ class WebTools {
 // Auto-init if specified
 const script = document.currentScript;
 const autoInit = script?.getAttribute('data-init') !== 'false';
-const debug = script?.getAttribute('data-debug') === 'true';
+const config = script?.getAttribute('data-config') === 'true';
+const autoLoad = script?.getAttribute('data-load');
 
 if (autoInit) {
-  window.addEventListener('DOMContentLoaded', () => {
-    new WebTools({ debug });
+  window.addEventListener('DOMContentLoaded', async () => {
+    const wt = new WebTools({ config });
+    
+    // Auto-load components if specified
+    if (autoLoad) {
+      const components = autoLoad.split(',').map(s => s.trim()).filter(Boolean);
+      if (components.length > 0) {
+        try {
+          await wt.loadComponent(...components);
+          console.log(`WebTools: Auto-loaded ${components.join(', ')}`);
+        } catch (e) {
+          console.error('WebTools: Failed to auto-load components', e);
+        }
+      }
+    }
   });
 }
