@@ -77,3 +77,6 @@ class FileDisplay {
     this.el.innerHTML = ''
   }
 }
+
+// Export to global scope
+window.FileDisplay = FileDisplay
