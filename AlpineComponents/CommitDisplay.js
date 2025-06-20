@@ -199,11 +199,11 @@ class CommitDisplay {
       return false;
     }
     
+    // Make the data available globally for Alpine BEFORE setting HTML
+    window[`commitDisplayData_${this.id}`] = this.data;
+    
     // Set the HTML
     target.innerHTML = this.html;
-    
-    // Make the data available globally for Alpine
-    window[`commitDisplayData_${this.id}`] = this.data;
     
     return true;
   }
@@ -211,8 +211,12 @@ class CommitDisplay {
   // Update commits list
   setCommits(commits) {
     const data = window[`commitDisplayData_${this.id}`];
+    console.log('CommitDisplay setCommits:', this.id, data, commits);
     if (data) {
       data.commits = commits;
+      console.log('Updated commits in data:', data.commits.length);
+    } else {
+      console.error('CommitDisplay data not found!');
     }
   }
   
