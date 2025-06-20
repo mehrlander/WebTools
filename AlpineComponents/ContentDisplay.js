@@ -70,3 +70,6 @@ class ContentDisplay {
     this.el.innerHTML = ''
   }
 }
+
+// Export to global scope
+window.ContentDisplay = ContentDisplay
