@@ -2,7 +2,7 @@
 class WebTools {
   constructor(options = {}) {
     this.options = {
-      baseUrl: 'https://cdn.jsdelivr.net/gh/mehrlander/WebTools@main/AlpineComponents',
+      baseUrl: 'https://cdn.jsdelivr.net/gh/mehrlander/WebTools@39c0ed983caacc9f688654eda38ee2ad26ccd3f0/AlpineComponents',
       version: 'main',
       debug: false,
       cache: true,
