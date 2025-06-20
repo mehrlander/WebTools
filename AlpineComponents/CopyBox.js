@@ -1,4 +1,3 @@
-
 // Even simpler component example
 class CopyBox {
   constructor(selector, options = {}) {
