@@ -5,7 +5,7 @@
  * Each instance has reactive state accessible via Alpine.store(storeId).
  * 
  * @usage
- * <script src="https://cdn.jsdelivr.net/gh/mehrlander/WebTools@main/SmartTextArea.js"></script>
+ * <script src="https://cdn.jsdelivr.net/gh/mehrlander/WebTools@e20607487b2f68e85b949981ee3b2c2881cf7642/AlpineComponents/SmartTextArea.js"></script>
  * <smart-textarea store-id="my-editor" placeholder="Enter text..." height="300"></smart-textarea>
  * 
  * @requires Alpine.js 3.x, Phosphor Icons, DaisyUI
