@@ -153,7 +153,17 @@ class SmartTextArea extends HTMLElement {
       await this.waitForAlpine();
       this.initializeStore();
       this.render();
+      
+      // Ensure the global reference is available after a microtask
+      await Promise.resolve();
+      
       this._initialized = true;
+      
+      // Dispatch a custom event when component is ready
+      this.dispatchEvent(new CustomEvent('smart-textarea-ready', {
+        detail: { storeId: this.storeId },
+        bubbles: true
+      }));
     } catch (error) {
       console.error(`Failed to initialize SmartTextArea ${this.storeId}:`, error);
     }
