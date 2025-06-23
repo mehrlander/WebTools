@@ -131,6 +131,7 @@ class SmartTextArea extends HTMLElement {
   }
   
   connectedCallback() {
+    console.log(`SmartTextArea: connectedCallback for store-id="${this.getAttribute('store-id')}"`);
     // Initialize only once
     if (!this._initialized) {
       this.initialize();
@@ -170,7 +171,9 @@ class SmartTextArea extends HTMLElement {
   }
   
   async waitForAlpine() {
-    // Wait for Alpine
+    console.log(`SmartTextArea ${this.storeId}: Waiting for Alpine...`);
+    
+    // Wait for Alpine to be available
     let attempts = 0;
     while (typeof Alpine === 'undefined' || !Alpine.store) {
       attempts++;
@@ -180,16 +183,19 @@ class SmartTextArea extends HTMLElement {
       await new Promise(resolve => setTimeout(resolve, 50));
     }
     
-    // Ensure Alpine is initialized
-    if (!Alpine.version) {
+    console.log(`SmartTextArea ${this.storeId}: Alpine is available`);
+    
+    // Wait for Alpine to be fully initialized
+    if (document.readyState === 'loading') {
       await new Promise(resolve => {
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', resolve);
-        } else {
-          resolve();
-        }
+        document.addEventListener('DOMContentLoaded', resolve);
       });
     }
+    
+    // Give Alpine a moment to fully initialize after DOM is ready
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    console.log(`SmartTextArea ${this.storeId}: Alpine should be fully ready`);
   }
   
   disconnectedCallback() {
