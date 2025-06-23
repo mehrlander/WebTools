@@ -1,14 +1,13 @@
 /**
  * SmartTextArea Web Component with Alpine.js Store Integration
- * 
- * A smart textarea component that creates its own Alpine store for state management.
- * Each instance has reactive state accessible via Alpine.store(storeId).
+ * Simplified version using ClipboardJS for clipboard operations
  * 
  * @usage
+ * <script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
  * <script src="https://cdn.jsdelivr.net/gh/mehrlander/WebTools@main/AlpineComponents/SmartTextArea.js"></script>
  * <smart-textarea store-id="my-editor" placeholder="Enter text..." height="300"></smart-textarea>
  * 
- * @requires Alpine.js 3.x, Phosphor Icons, DaisyUI
+ * @requires Alpine.js 3.x, Phosphor Icons, DaisyUI, ClipboardJS
  */
 
 // Alpine controller function - must be global for x-data to access it
@@ -39,10 +38,6 @@ window.textAreaController = function(storeId) {
       };
     },
     
-    handleInput() {
-      // No need to dispatch events - store updates automatically
-    },
-    
     handlePaste(event) {
       const pastedText = (event.clipboardData || window.clipboardData).getData('text');
       
@@ -61,53 +56,29 @@ window.textAreaController = function(storeId) {
       // Otherwise, let the paste happen normally
     },
     
+    // Simplified copy using ClipboardJS
+    copyContent(el) {
+      const success = ClipboardJS.copy(this.store.content);
+      if (success) {
+        const original = el.innerHTML;
+        el.innerHTML = '<i class="ph ph-check text-xs"></i>';
+        setTimeout(() => {
+          el.innerHTML = original;
+        }, 1500);
+      }
+    },
+    
+    // Simplified paste - just focus and let browser handle it
     async mobilePaste() {
-      // First ensure we're in edit mode
+      // Ensure we're in edit mode
       if (this.store.isViewMode) {
         this.store.setMode(false);
         await this.$nextTick();
       }
       
-      // Focus the textarea
+      // Focus the textarea and trigger paste
       this.$refs.textarea.focus();
-      
-      try {
-        const text = await navigator.clipboard.readText();
-        if (text) {
-          // Insert at cursor position
-          const start = this.$refs.textarea.selectionStart;
-          const end = this.$refs.textarea.selectionEnd;
-          this.store.content = this.store.content.substring(0, start) + text + this.store.content.substring(end);
-          
-          // Check if we should auto-switch to view mode
-          if (text.length > this.store.captureThreshold) {
-            setTimeout(() => {
-              this.store.isViewMode = true;
-            }, 50);
-          }
-        }
-      } catch (err) {
-        try {
-          document.execCommand('paste');
-        } catch (e) {
-          alert('Please tap and hold in the text area, then select "Paste" from the menu.');
-        }
-      }
-    },
-    
-    async copyContent() {
-      try {
-        await navigator.clipboard.writeText(this.store.content);
-        
-        const button = event.target.closest('button');
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="ph ph-check text-xs"></i> Copied';
-        setTimeout(() => {
-          button.innerHTML = originalHTML;
-        }, 2000);
-      } catch (err) {
-        console.error('Failed to copy:', err);
-      }
+      document.execCommand('paste');
     },
     
     clearSelection() {
@@ -146,7 +117,7 @@ class SmartTextArea extends HTMLElement {
         this.setAttribute('store-id', this.storeId);
       }
       
-      await this.waitForAlpine();
+      await this.waitForDependencies();
       this.initializeStore();
       this.render();
       this._initialized = true;
@@ -155,13 +126,13 @@ class SmartTextArea extends HTMLElement {
     }
   }
   
-  async waitForAlpine() {
-    // Wait for Alpine
+  async waitForDependencies() {
+    // Wait for Alpine and ClipboardJS
     let attempts = 0;
-    while (typeof Alpine === 'undefined' || !Alpine.store) {
+    while (typeof Alpine === 'undefined' || typeof ClipboardJS === 'undefined') {
       attempts++;
       if (attempts > 100) { // 5 second timeout
-        throw new Error('Alpine.js failed to load within 5 seconds');
+        throw new Error('Dependencies failed to load within 5 seconds');
       }
       await new Promise(resolve => setTimeout(resolve, 50));
     }
@@ -187,12 +158,12 @@ class SmartTextArea extends HTMLElement {
   }
   
   initializeStore() {
-    // Read initial values from attributes - these are only used once at init
+    // Read initial values from attributes
     const initialContent = this.getAttribute('value') || '';
     const captureThreshold = parseInt(this.getAttribute('capture-threshold')) || 5000;
     const defaultWrap = this.getAttribute('default-wrap') !== 'false';
     
-    // Create instance store - this is the single source of truth
+    // Create instance store
     Alpine.store(this.storeId, {
       // State
       content: initialContent,
@@ -272,14 +243,14 @@ class SmartTextArea extends HTMLElement {
             <button @click="store.toggleWrap()" 
                     class="btn btn-xs btn-ghost px-2 h-7 opacity-60 hover:opacity-100"
                     :class="{ 'opacity-100': store.wrapEnabled }"
-                    title="Toggle word wrap">
+                    title="Toggle word wrap (Ctrl+W)">
               <i class="ph ph-arrow-u-down-left text-xs"></i>
             </button>
           </div>
           
           <!-- Right side: actions -->
           <div class="flex gap-0.5">
-            <button @click="copyContent" 
+            <button @click="copyContent($el)" 
                     class="btn btn-xs btn-ghost px-2 h-7 opacity-60 hover:opacity-100"
                     title="Copy all text">
               <i class="ph ph-copy text-xs"></i>
@@ -297,7 +268,7 @@ class SmartTextArea extends HTMLElement {
             <button @click="$refs.infoModal.showModal()" 
                     class="btn btn-xs btn-ghost px-2 h-7 opacity-60 hover:opacity-100"
                     title="More info">
-              <i class="ph ph-caret-down text-xs"></i>
+              <i class="ph ph-info text-xs"></i>
             </button>
           </div>
         </div>
@@ -308,7 +279,6 @@ class SmartTextArea extends HTMLElement {
           <textarea 
             x-ref="textarea"
             x-model="store.content"
-            @input="handleInput"
             @paste="handlePaste"
             @dblclick="store.toggleWrap(); clearSelection()"
             placeholder="${placeholder}"
@@ -350,18 +320,18 @@ class SmartTextArea extends HTMLElement {
             <!-- Stats Section -->
             <div class="mb-4">
               <h4 class="text-sm font-semibold mb-2 text-base-content/70">Statistics</h4>
-              <div class="space-y-2">
-                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
-                  <span class="text-sm">Characters</span>
-                  <span class="font-mono" x-text="store.content.length"></span>
+              <div class="stats stats-vertical shadow w-full">
+                <div class="stat place-items-center py-2">
+                  <div class="stat-title text-xs">Characters</div>
+                  <div class="stat-value text-lg" x-text="store.content.length"></div>
                 </div>
-                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
-                  <span class="text-sm">Words</span>
-                  <span class="font-mono" x-text="store.wordCount"></span>
+                <div class="stat place-items-center py-2">
+                  <div class="stat-title text-xs">Words</div>
+                  <div class="stat-value text-lg" x-text="store.wordCount"></div>
                 </div>
-                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
-                  <span class="text-sm">Lines</span>
-                  <span class="font-mono" x-text="store.lineCount"></span>
+                <div class="stat place-items-center py-2">
+                  <div class="stat-title text-xs">Lines</div>
+                  <div class="stat-value text-lg" x-text="store.lineCount"></div>
                 </div>
               </div>
             </div>
@@ -369,26 +339,22 @@ class SmartTextArea extends HTMLElement {
             <!-- Config Section -->
             <div>
               <h4 class="text-sm font-semibold mb-2 text-base-content/70">Configuration</h4>
-              <div class="space-y-2">
-                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
-                  <span class="text-sm">Store ID</span>
-                  <span class="font-mono text-xs" x-text="storeId"></span>
+              <div class="text-xs space-y-1">
+                <div class="flex justify-between p-2 bg-base-200 rounded">
+                  <span>Store ID</span>
+                  <code x-text="storeId"></code>
                 </div>
-                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
-                  <span class="text-sm">Auto-view threshold</span>
-                  <span class="font-mono" x-text="store.captureThreshold + ' chars'"></span>
+                <div class="flex justify-between p-2 bg-base-200 rounded">
+                  <span>Auto-view threshold</span>
+                  <span x-text="store.captureThreshold + ' chars'"></span>
                 </div>
-                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
-                  <span class="text-sm">Current mode</span>
-                  <span class="font-mono" x-text="store.isViewMode ? 'View' : 'Edit'"></span>
+                <div class="flex justify-between p-2 bg-base-200 rounded">
+                  <span>Current mode</span>
+                  <span x-text="store.isViewMode ? 'View' : 'Edit'"></span>
                 </div>
-                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
-                  <span class="text-sm">Word wrap</span>
-                  <span class="font-mono" x-text="store.wrapEnabled ? 'On' : 'Off'"></span>
-                </div>
-                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
-                  <span class="text-sm">Height</span>
-                  <span class="font-mono" x-text="'${height}px'"></span>
+                <div class="flex justify-between p-2 bg-base-200 rounded">
+                  <span>Word wrap</span>
+                  <span x-text="store.wrapEnabled ? 'On' : 'Off'"></span>
                 </div>
               </div>
             </div>
@@ -403,7 +369,7 @@ class SmartTextArea extends HTMLElement {
     }
   }
   
-  // Public API methods (now just proxy to store)
+  // Public API methods (proxy to store)
   getValue() {
     return Alpine.store(this.storeId)?.content || '';
   }
@@ -440,9 +406,9 @@ class SmartTextArea extends HTMLElement {
   // Static method for WebTools compatibility
   static onLoad() {
     console.log('SmartTextArea: Component loaded', {
-      version: '1.1.0',
+      version: '1.2.0',
       type: 'Alpine Store-based Web Component',
-      requires: ['Alpine.js 3.x', 'Phosphor Icons', 'DaisyUI'],
+      requires: ['Alpine.js 3.x', 'Phosphor Icons', 'DaisyUI', 'ClipboardJS'],
       methods: ['getValue', 'setValue', 'setMode', 'clear', 'getStats', 'getStore']
     });
   }
