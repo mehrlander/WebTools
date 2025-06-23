@@ -1,87 +1,482 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="emerald">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SmartTextArea from GitHub CDN</title>
-  
-  <!-- Required dependencies -->
-  <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web"></script>
-  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  
-  <!-- Load SmartTextArea component from GitHub -->
-  <script src="https://cdn.jsdelivr.net/gh/mehrlander/WebTools@main/AlpineComponents/SmartTextArea.js" defer></script>
-</head>
-<body class="p-6 bg-base-100 text-base-content max-w-4xl mx-auto">
-  <h1 class="text-2xl font-bold mb-6">SmartTextArea loaded from GitHub</h1>
-  
-  <!-- Basic usage -->
-  <div class="mb-6">
-    <h2 class="text-lg font-semibold mb-2">Basic Usage</h2>
-    <smart-textarea 
-      store-id="editor1"
-      placeholder="Enter text here..."
-      height="300">
-    </smart-textarea>
-  </div>
+/**
+ * SmartTextArea Web Component with Alpine.js Store Integration
+ * 
+ * A smart textarea component that creates its own Alpine store for state management.
+ * Each instance has reactive state accessible via Alpine.store(storeId) or $storeId.
+ * 
+ * @usage
+ * <script src="https://cdn.jsdelivr.net/gh/mehrlander/WebTools@main/AlpineComponents/SmartTextArea.js"></script>
+ * <smart-textarea store-id="my-editor" placeholder="Enter text..." height="300"></smart-textarea>
+ * 
+ * // Access via:
+ * $my_editor.content = 'Hello';  // Using $ syntax (hyphens become underscores)
+ * Alpine.store('my-editor').content = 'Hello';  // Using Alpine.store
+ * 
+ * @requires Alpine.js 3.x, Phosphor Icons, DaisyUI
+ */
 
-  <!-- With initial value -->
-  <div class="mb-6">
-    <h2 class="text-lg font-semibold mb-2">With Initial Value</h2>
-    <smart-textarea 
-      store-id="code-editor"
-      placeholder="This has initial content..."
-      height="250"
-      value="// Note: store-id='code-editor' becomes $code_editor
-// You can edit this or switch to view mode.">
-    </smart-textarea>
-  </div>
-
-  <!-- External control buttons -->
-  <div class="mb-6">
-    <h2 class="text-lg font-semibold mb-2">External Control</h2>
-    <div class="flex gap-2 mb-2">
-      <button onclick="$editor1.content = 'Content set externally!'" 
-              class="btn btn-sm btn-primary">Set Content</button>
-      <button onclick="$editor1.toggleWrap()" 
-              class="btn btn-sm btn-secondary">Toggle Wrap</button>
-      <button onclick="console.log($editor1)" 
-              class="btn btn-sm btn-info">Log Store</button>
-    </div>
-    <p class="text-sm text-base-content/60">
-      Access any textarea via: <code>$store-id</code> (e.g., <code>$editor1</code>)<br>
-      <span class="text-xs">Note: Hyphens in store-id become underscores in $ reference (e.g., store-id="my-editor" → $my_editor)</span>
-    </p>
-  </div>
-
-  <div class="card bg-base-200 shadow-xl p-4 mb-6">
-    <h3 class="font-semibold mb-2">Try in Console:</h3>
-    <code class="text-sm">
-      $editor1.content = "Hello World"<br>
-      $editor1.setMode(true)  // Switch to view mode<br>
-      $editor1.stats  // Get character/word/line counts<br>
-      $code_editor.toggleWrap()  // Toggle word wrap (note: hyphen becomes underscore)
-    </code>
-  </div>
-
-  <script>
-    // Example of monitoring store changes
-    document.addEventListener('alpine:init', () => {
-      // Wait a bit for components to initialize
-      setTimeout(() => {
-        // Monitor editor1 for changes using the $ syntax
-        Alpine.effect(() => {
-          if (window.$editor1 && $editor1.content) {
-            console.log('Editor1 content changed:', {
-              length: $editor1.content.length,
-              mode: $editor1.isViewMode ? 'view' : 'edit'
-            });
+// Alpine controller function - must be global for x-data to access it
+window.textAreaController = function(storeId) {
+  return {
+    storeId,
+    
+    get store() {
+      return Alpine.store(storeId);
+    },
+    
+    init() {
+      // Add keyboard shortcuts
+      const keyHandler = (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
+          e.preventDefault();
+          this.store.toggleWrap();
+        }
+      };
+      
+      // Store handler reference for cleanup
+      this._keyHandler = keyHandler;
+      window.addEventListener('keydown', keyHandler);
+      
+      // Cleanup on destroy
+      this.$cleanup = () => {
+        window.removeEventListener('keydown', this._keyHandler);
+      };
+    },
+    
+    handleInput() {
+      // No need to dispatch events - store updates automatically
+    },
+    
+    handlePaste(event) {
+      const pastedText = (event.clipboardData || window.clipboardData).getData('text');
+      
+      // Check if we should auto-switch to view mode
+      if (pastedText.length > this.store.captureThreshold) {
+        event.preventDefault();
+        
+        // Set the content and switch mode
+        this.store.content = pastedText;
+        
+        // Delay mode switch slightly to prevent flash
+        setTimeout(() => {
+          this.store.isViewMode = true;
+        }, 50);
+      }
+      // Otherwise, let the paste happen normally
+    },
+    
+    async mobilePaste() {
+      // First ensure we're in edit mode
+      if (this.store.isViewMode) {
+        this.store.setMode(false);
+        await this.$nextTick();
+      }
+      
+      // Focus the textarea
+      this.$refs.textarea.focus();
+      
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          // Insert at cursor position
+          const start = this.$refs.textarea.selectionStart;
+          const end = this.$refs.textarea.selectionEnd;
+          this.store.content = this.store.content.substring(0, start) + text + this.store.content.substring(end);
+          
+          // Check if we should auto-switch to view mode
+          if (text.length > this.store.captureThreshold) {
+            setTimeout(() => {
+              this.store.isViewMode = true;
+            }, 50);
           }
-        });
-      }, 100);
+        }
+      } catch (err) {
+        try {
+          document.execCommand('paste');
+        } catch (e) {
+          alert('Please tap and hold in the text area, then select "Paste" from the menu.');
+        }
+      }
+    },
+    
+    async copyContent() {
+      try {
+        await navigator.clipboard.writeText(this.store.content);
+        
+        const button = event.target.closest('button');
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="ph ph-check text-xs"></i> Copied';
+        setTimeout(() => {
+          button.innerHTML = originalHTML;
+        }, 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    },
+    
+    clearSelection() {
+      // Prevent text selection on double-click
+      if (window.getSelection) {
+        window.getSelection().removeAllRanges();
+      }
+    }
+  };
+};
+
+// SmartTextArea Web Component Class
+class SmartTextArea extends HTMLElement {
+  constructor() {
+    super();
+    this._initialized = false;
+  }
+  
+  connectedCallback() {
+    // Initialize only once
+    if (!this._initialized) {
+      this.initialize();
+    }
+  }
+  
+  async initialize() {
+    if (this._initialized) return;
+    
+    try {
+      // Get store ID from attribute or auto-generate
+      this.storeId = this.getAttribute('store-id') || 
+                     `textarea_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Set store-id attribute if it was auto-generated
+      if (!this.getAttribute('store-id')) {
+        this.setAttribute('store-id', this.storeId);
+      }
+      
+      await this.waitForAlpine();
+      this.initializeStore();
+      this.render();
+      this._initialized = true;
+    } catch (error) {
+      console.error(`Failed to initialize SmartTextArea ${this.storeId}:`, error);
+    }
+  }
+  
+  async waitForAlpine() {
+    // Wait for Alpine
+    let attempts = 0;
+    while (typeof Alpine === 'undefined' || !Alpine.store) {
+      attempts++;
+      if (attempts > 100) { // 5 second timeout
+        throw new Error('Alpine.js failed to load within 5 seconds');
+      }
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    
+    // Ensure Alpine is initialized
+    if (!Alpine.version) {
+      await new Promise(resolve => {
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', resolve);
+        } else {
+          resolve();
+        }
+      });
+    }
+  }
+  
+  disconnectedCallback() {
+    // Clean up store if possible
+    if (typeof Alpine !== 'undefined' && Alpine._stores && this.storeId) {
+      delete Alpine._stores[this.storeId];
+    }
+    
+    // Clean up global $-prefixed reference
+    const globalName = `${this.storeId}`;
+    if (window[globalName] === Alpine.store(this.storeId)) {
+      delete window[globalName];
+    }
+    
+    this._initialized = false;
+  }
+  
+  initializeStore() {
+    // Read initial values from attributes - these are only used once at init
+    const initialContent = this.getAttribute('value') || '';
+    const captureThreshold = parseInt(this.getAttribute('capture-threshold')) || 5000;
+    const defaultWrap = this.getAttribute('default-wrap') !== 'false';
+    
+    // Create instance store - this is the single source of truth
+    Alpine.store(this.storeId, {
+      // State
+      content: initialContent,
+      isViewMode: false,
+      wrapEnabled: defaultWrap,
+      captureThreshold,
+      
+      // Computed properties
+      get lineCount() {
+        return this.content ? this.content.split('\n').length : 0;
+      },
+      
+      get wordCount() {
+        return this.content ? this.content.trim().split(/\s+/).filter(Boolean).length : 0;
+      },
+      
+      get stats() {
+        return {
+          chars: this.content.length,
+          lines: this.lineCount,
+          words: this.wordCount
+        };
+      },
+      
+      // Actions
+      toggleWrap() {
+        this.wrapEnabled = !this.wrapEnabled;
+      },
+      
+      setMode(viewMode) {
+        this.isViewMode = viewMode;
+      },
+      
+      clear() {
+        this.content = '';
+        this.isViewMode = false;
+      },
+      
+      setValue(newValue, autoViewMode = false) {
+        this.content = newValue;
+        if (autoViewMode && newValue.length > this.captureThreshold) {
+          this.isViewMode = true;
+        }
+      }
     });
-  </script>
-</body>
-</html>
+    
+    // Create global $-prefixed reference for easy access
+    const globalName = `${this.storeId}`;
+    if (window[globalName]) {
+      console.warn(`SmartTextArea: Global ${globalName} already exists, skipping global reference`);
+    } else {
+      window[globalName] = Alpine.store(this.storeId);
+    }
+  }
+  
+  render() {
+    // Get render-time configuration from attributes
+    const placeholder = this.getAttribute('placeholder') || 'Enter or paste text here...';
+    const height = this.getAttribute('height') || '350';
+    const containerClass = this.getAttribute('container-class') || 'w-full';
+    const textareaClass = this.getAttribute('textarea-class') || 'textarea textarea-bordered !w-full resize-none !text-base';
+    
+    this.innerHTML = `
+      <div class="${containerClass}" x-data="textAreaController('${this.storeId}')">
+        <!-- Persistent button bar -->
+        <div class="flex justify-between items-center mb-1">
+          <!-- Left side: mode toggles -->
+          <div class="flex gap-0.5">
+            <button @click="store.setMode(false)" 
+                    class="btn btn-xs btn-ghost px-2 h-7"
+                    :class="store.isViewMode ? 'opacity-50' : 'bg-base-200'"
+                    title="Edit mode">
+              <i class="ph ph-pencil-simple text-xs"></i>
+            </button>
+            <button @click="store.setMode(true)" 
+                    class="btn btn-xs btn-ghost px-2 h-7"
+                    :class="store.isViewMode ? 'bg-base-200' : 'opacity-50'"
+                    title="View mode">
+              <i class="ph ph-eye text-xs"></i>
+            </button>
+          </div>
+          
+          <!-- Center: wrap toggle -->
+          <div>
+            <button @click="store.toggleWrap()" 
+                    class="btn btn-xs btn-ghost px-2 h-7 opacity-60 hover:opacity-100"
+                    :class="{ 'opacity-100': store.wrapEnabled }"
+                    title="Toggle word wrap">
+              <i class="ph ph-arrow-u-down-left text-xs"></i>
+            </button>
+          </div>
+          
+          <!-- Right side: actions -->
+          <div class="flex gap-0.5">
+            <button @click="copyContent" 
+                    class="btn btn-xs btn-ghost px-2 h-7 opacity-60 hover:opacity-100"
+                    title="Copy all text">
+              <i class="ph ph-copy text-xs"></i>
+            </button>
+            <button @click="mobilePaste" 
+                    class="btn btn-xs btn-ghost px-2 h-7 opacity-60 hover:opacity-100"
+                    title="Paste from clipboard">
+              <i class="ph ph-clipboard-text text-xs"></i>
+            </button>
+            <button @click="store.clear()" 
+                    class="btn btn-xs btn-ghost px-2 h-7 opacity-60 hover:opacity-100 hover:text-error"
+                    title="Clear all text">
+              <i class="ph ph-trash text-xs"></i>
+            </button>
+            <button @click="$refs.infoModal.showModal()" 
+                    class="btn btn-xs btn-ghost px-2 h-7 opacity-60 hover:opacity-100"
+                    title="More info">
+              <i class="ph ph-caret-down text-xs"></i>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Content area container -->
+        <div class="relative" style="height: ${height}px">
+          <!-- Edit mode: Textarea -->
+          <textarea 
+            x-ref="textarea"
+            x-model="store.content"
+            @input="handleInput"
+            @paste="handlePaste"
+            @dblclick="store.toggleWrap(); clearSelection()"
+            placeholder="${placeholder}"
+            style="height: ${height}px; font-size: 16px !important; line-height: 1.5;"
+            :style="store.wrapEnabled ? 'word-break: break-all;' : ''"
+            :wrap="store.wrapEnabled ? 'soft' : 'off'"
+            class="${textareaClass} transition-opacity duration-150 absolute inset-0 !text-base"
+            :class="{ 
+              'opacity-0 pointer-events-none': store.isViewMode, 
+              'opacity-100': !store.isViewMode,
+              'whitespace-nowrap': !store.wrapEnabled
+            }"
+          ></textarea>
+          
+          <!-- View mode: Display div -->
+          <div style="height: ${height}px"
+               @dblclick="store.toggleWrap(); clearSelection()"
+               class="border border-base-300 rounded-lg bg-base-100/50 overflow-y-auto transition-opacity duration-150 absolute inset-0"
+               :class="{ 
+                 'opacity-0 pointer-events-none': !store.isViewMode, 
+                 'opacity-100': store.isViewMode,
+                 'overflow-x-auto': !store.wrapEnabled
+               }">
+            <pre class="font-mono leading-relaxed text-base-content/80 p-2 m-0 !text-base" 
+                 style="font-size: 16px !important; line-height: 1.5;"
+                 :class="store.wrapEnabled ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'"
+                 x-text="store.content || '[Empty]'"></pre>
+          </div>
+        </div>
+        
+        <!-- Info Modal -->
+        <dialog x-ref="infoModal" class="modal">
+          <div class="modal-box">
+            <form method="dialog">
+              <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+            </form>
+            <h3 class="font-bold text-lg mb-4">Component Info</h3>
+            
+            <!-- Stats Section -->
+            <div class="mb-4">
+              <h4 class="text-sm font-semibold mb-2 text-base-content/70">Statistics</h4>
+              <div class="space-y-2">
+                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
+                  <span class="text-sm">Characters</span>
+                  <span class="font-mono" x-text="store.content.length"></span>
+                </div>
+                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
+                  <span class="text-sm">Words</span>
+                  <span class="font-mono" x-text="store.wordCount"></span>
+                </div>
+                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
+                  <span class="text-sm">Lines</span>
+                  <span class="font-mono" x-text="store.lineCount"></span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Config Section -->
+            <div>
+              <h4 class="text-sm font-semibold mb-2 text-base-content/70">Configuration</h4>
+              <div class="space-y-2">
+                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
+                  <span class="text-sm">Store ID</span>
+                  <span class="font-mono text-xs" x-text="storeId"></span>
+                </div>
+                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
+                  <span class="text-sm">Auto-view threshold</span>
+                  <span class="font-mono" x-text="store.captureThreshold + ' chars'"></span>
+                </div>
+                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
+                  <span class="text-sm">Current mode</span>
+                  <span class="font-mono" x-text="store.isViewMode ? 'View' : 'Edit'"></span>
+                </div>
+                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
+                  <span class="text-sm">Word wrap</span>
+                  <span class="font-mono" x-text="store.wrapEnabled ? 'On' : 'Off'"></span>
+                </div>
+                <div class="flex justify-between items-center p-2 bg-base-200 rounded">
+                  <span class="text-sm">Height</span>
+                  <span class="font-mono" x-text="'${height}px'"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </dialog>
+      </div>
+    `;
+    
+    // Tell Alpine to initialize the new DOM elements
+    if (Alpine.initTree) {
+      Alpine.initTree(this);
+    }
+  }
+  
+  // Public API methods (now just proxy to store)
+  getValue() {
+    return Alpine.store(this.storeId)?.content || '';
+  }
+  
+  setValue(newValue, autoViewMode = false) {
+    const store = Alpine.store(this.storeId);
+    if (store) {
+      store.setValue(newValue, autoViewMode);
+    }
+  }
+  
+  setMode(viewMode) {
+    const store = Alpine.store(this.storeId);
+    if (store) {
+      store.setMode(viewMode);
+    }
+  }
+  
+  clear() {
+    const store = Alpine.store(this.storeId);
+    if (store) {
+      store.clear();
+    }
+  }
+  
+  getStats() {
+    return Alpine.store(this.storeId)?.stats || null;
+  }
+  
+  getStore() {
+    return Alpine.store(this.storeId);
+  }
+  
+  // Static method for WebTools compatibility
+  static onLoad() {
+    console.log('SmartTextArea: Component loaded', {
+      version: '2.0.0',
+      type: 'Alpine Store-based Web Component',
+      requires: ['Alpine.js 3.x', 'Phosphor Icons', 'DaisyUI'],
+      methods: ['getValue', 'setValue', 'setMode', 'clear', 'getStats', 'getStore'],
+      features: ['Global $-prefixed access (e.g., $editor1)', 'Hyphens in store-id become underscores in $ reference']
+    });
+  }
+}
+
+// Register the custom element
+if (!customElements.get('smart-textarea')) {
+  customElements.define('smart-textarea', SmartTextArea);
+}
+
+// Call onLoad
+if (typeof SmartTextArea.onLoad === 'function') {
+  SmartTextArea.onLoad();
+}
+
+// Expose to global scope for external access
+window.SmartTextArea = SmartTextArea;
