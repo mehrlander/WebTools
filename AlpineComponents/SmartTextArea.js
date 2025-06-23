@@ -1,7 +1,7 @@
 /**
  * SmartTextArea Web Component with Alpine.js Store Integration
  * 
- * A smart textarea component that creates its own Alpine store for state management.
+ * A self-contained smart textarea component that creates its own Alpine store for state management.
  * Each instance has reactive state accessible via Alpine.store(storeId) or $storeId.
  * 
  * @usage
@@ -554,11 +554,11 @@ class SmartTextArea extends HTMLElement {
   // Static method for WebTools compatibility
   static onLoad() {
     console.log('SmartTextArea: Component loaded', {
-      version: '2.0.0',
+      version: '2.1.0',
       type: 'Alpine Store-based Web Component',
       requires: ['Alpine.js 3.x', 'Phosphor Icons', 'DaisyUI'],
       methods: ['getValue', 'setValue', 'setMode', 'clear', 'getStats', 'getStore'],
-      features: ['Global $-prefixed access (e.g., $editor1)', 'Hyphens in store-id become underscores in $ reference']
+      features: ['Global $-prefixed access (e.g., $editor1)', 'Self-contained store creation']
     });
   }
 }
