@@ -5,6 +5,7 @@
  * Each instance has reactive state accessible via Alpine.store(storeId).
  * 
  * @usage
+ * <script src="https://cdn.jsdelivr.net/gh/mehrlander/WebTools@main/AlpineComponents/SmartTextArea.js"></script>
  * <smart-textarea store-id="my-editor" placeholder="Enter text..." height="300"></smart-textarea>
  * 
  * @requires Alpine.js 3.x, Phosphor Icons, DaisyUI
@@ -120,22 +121,15 @@ window.textAreaController = function(storeId) {
 
 // SmartTextArea Web Component Class
 class SmartTextArea extends HTMLElement {
-  static get observedAttributes() {
-    return ['store-id', 'value', 'placeholder', 'height', 'capture-threshold', 'default-wrap'];
-  }
-  
   constructor() {
     super();
     this._initialized = false;
   }
   
   connectedCallback() {
-    // Defer initialization to ensure all attributes are set
+    // Initialize only once
     if (!this._initialized) {
-      // Use microtask to ensure attributes are processed
-      Promise.resolve().then(() => {
-        this.initialize();
-      });
+      this.initialize();
     }
   }
   
@@ -152,7 +146,7 @@ class SmartTextArea extends HTMLElement {
         this.setAttribute('store-id', this.storeId);
       }
       
-      await this.waitForDependencies();
+      await this.waitForAlpine();
       this.initializeStore();
       this.render();
       this._initialized = true;
@@ -161,7 +155,7 @@ class SmartTextArea extends HTMLElement {
     }
   }
   
-  async waitForDependencies() {
+  async waitForAlpine() {
     // Wait for Alpine
     let attempts = 0;
     while (typeof Alpine === 'undefined' || !Alpine.store) {
@@ -192,35 +186,13 @@ class SmartTextArea extends HTMLElement {
     this._initialized = false;
   }
   
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (!this._initialized) return;
-    
-    const store = Alpine.store(this.storeId);
-    if (!store) return;
-    
-    switch (name) {
-      case 'value':
-        store.content = newValue || '';
-        break;
-      case 'placeholder':
-        // Re-render might be needed
-        break;
-      case 'capture-threshold':
-        store.captureThreshold = parseInt(newValue) || 5000;
-        break;
-      case 'default-wrap':
-        store.wrapEnabled = newValue !== 'false';
-        break;
-    }
-  }
-  
   initializeStore() {
-    // Read initial values from attributes
+    // Read initial values from attributes - these are only used once at init
     const initialContent = this.getAttribute('value') || '';
     const captureThreshold = parseInt(this.getAttribute('capture-threshold')) || 5000;
     const defaultWrap = this.getAttribute('default-wrap') !== 'false';
     
-    // Create instance store
+    // Create instance store - this is the single source of truth
     Alpine.store(this.storeId, {
       // State
       content: initialContent,
@@ -269,6 +241,7 @@ class SmartTextArea extends HTMLElement {
   }
   
   render() {
+    // Get render-time configuration from attributes
     const placeholder = this.getAttribute('placeholder') || 'Enter or paste text here...';
     const height = this.getAttribute('height') || '350';
     const containerClass = this.getAttribute('container-class') || 'w-full';
@@ -467,7 +440,7 @@ class SmartTextArea extends HTMLElement {
   // Static method for WebTools compatibility
   static onLoad() {
     console.log('SmartTextArea: Component loaded', {
-      version: '1.0.1',
+      version: '1.1.0',
       type: 'Alpine Store-based Web Component',
       requires: ['Alpine.js 3.x', 'Phosphor Icons', 'DaisyUI'],
       methods: ['getValue', 'setValue', 'setMode', 'clear', 'getStats', 'getStore']
@@ -475,18 +448,9 @@ class SmartTextArea extends HTMLElement {
   }
 }
 
-// Wait for the right time to register
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    if (!customElements.get('smart-textarea')) {
-      customElements.define('smart-textarea', SmartTextArea);
-    }
-  });
-} else {
-  // DOM already loaded
-  if (!customElements.get('smart-textarea')) {
-    customElements.define('smart-textarea', SmartTextArea);
-  }
+// Register the custom element
+if (!customElements.get('smart-textarea')) {
+  customElements.define('smart-textarea', SmartTextArea);
 }
 
 // Call onLoad
