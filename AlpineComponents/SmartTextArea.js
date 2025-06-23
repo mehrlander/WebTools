@@ -1,15 +1,12 @@
 /**
  * SmartTextArea Web Component with Alpine.js Store Integration
  * 
- * A self-contained smart textarea component that creates its own Alpine store for state management.
+ * A smart textarea component that creates its own Alpine store for state management.
  * Each instance has reactive state accessible via Alpine.store(storeId).
  * 
  * @usage
  * <script src="https://cdn.jsdelivr.net/gh/mehrlander/WebTools@main/AlpineComponents/SmartTextArea.js"></script>
  * <smart-textarea store-id="my-editor" placeholder="Enter text..." height="300"></smart-textarea>
- * 
- * // Access via:
- * Alpine.store('my-editor').content = 'Hello';
  * 
  * @requires Alpine.js 3.x, Phosphor Icons, DaisyUI
  */
@@ -24,11 +21,6 @@ window.textAreaController = function(storeId) {
     },
     
     init() {
-      // The store should already exist, created by the web component
-      if (!this.store) {
-        console.error(`textAreaController: Store '${storeId}' not found!`);
-      }
-      
       // Add keyboard shortcuts
       const keyHandler = (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
@@ -135,6 +127,7 @@ class SmartTextArea extends HTMLElement {
   }
   
   connectedCallback() {
+    // Initialize only once
     if (!this._initialized) {
       this.initialize();
     }
@@ -157,19 +150,13 @@ class SmartTextArea extends HTMLElement {
       this.initializeStore();
       this.render();
       this._initialized = true;
-      
-      // Dispatch ready event
-      this.dispatchEvent(new CustomEvent('smart-textarea-ready', {
-        detail: { storeId: this.storeId },
-        bubbles: true
-      }));
     } catch (error) {
       console.error(`Failed to initialize SmartTextArea ${this.storeId}:`, error);
     }
   }
   
   async waitForAlpine() {
-    // Wait for Alpine to be available
+    // Wait for Alpine
     let attempts = 0;
     while (typeof Alpine === 'undefined' || !Alpine.store) {
       attempts++;
@@ -178,21 +165,42 @@ class SmartTextArea extends HTMLElement {
       }
       await new Promise(resolve => setTimeout(resolve, 50));
     }
+    
+    // Ensure Alpine is initialized
+    if (!Alpine.version) {
+      await new Promise(resolve => {
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', resolve);
+        } else {
+          resolve();
+        }
+      });
+    }
+  }
+  
+  disconnectedCallback() {
+    // Clean up store if possible
+    if (typeof Alpine !== 'undefined' && Alpine._stores && this.storeId) {
+      delete Alpine._stores[this.storeId];
+    }
+    this._initialized = false;
   }
   
   initializeStore() {
-    // Read initial values from attributes
+    // Read initial values from attributes - these are only used once at init
     const initialContent = this.getAttribute('value') || '';
     const captureThreshold = parseInt(this.getAttribute('capture-threshold')) || 5000;
     const defaultWrap = this.getAttribute('default-wrap') !== 'false';
     
-    // Create the store
+    // Create instance store - this is the single source of truth
     Alpine.store(this.storeId, {
+      // State
       content: initialContent,
       isViewMode: false,
       wrapEnabled: defaultWrap,
       captureThreshold,
       
+      // Computed properties
       get lineCount() {
         return this.content ? this.content.split('\n').length : 0;
       },
@@ -209,6 +217,7 @@ class SmartTextArea extends HTMLElement {
         };
       },
       
+      // Actions
       toggleWrap() {
         this.wrapEnabled = !this.wrapEnabled;
       },
@@ -394,15 +403,6 @@ class SmartTextArea extends HTMLElement {
     }
   }
   
-  disconnectedCallback() {
-    // Clean up store if possible
-    if (typeof Alpine !== 'undefined' && Alpine._stores && this.storeId) {
-      delete Alpine._stores[this.storeId];
-    }
-    
-    this._initialized = false;
-  }
-  
   // Public API methods (now just proxy to store)
   getValue() {
     return Alpine.store(this.storeId)?.content || '';
@@ -440,11 +440,10 @@ class SmartTextArea extends HTMLElement {
   // Static method for WebTools compatibility
   static onLoad() {
     console.log('SmartTextArea: Component loaded', {
-      version: '3.0.0',
+      version: '1.1.0',
       type: 'Alpine Store-based Web Component',
       requires: ['Alpine.js 3.x', 'Phosphor Icons', 'DaisyUI'],
-      methods: ['getValue', 'setValue', 'setMode', 'clear', 'getStats', 'getStore'],
-      features: ['Self-contained store creation', 'Reactive state management']
+      methods: ['getValue', 'setValue', 'setMode', 'clear', 'getStats', 'getStore']
     });
   }
 }
