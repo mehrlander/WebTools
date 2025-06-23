@@ -17,6 +17,66 @@
 
 // Alpine controller function - must be global for x-data to access it
 window.textAreaController = function(storeId) {
+  // Ensure store exists
+  if (!Alpine.store(storeId)) {
+    // Read initial values from the element
+    const el = document.querySelector(`[store-id="${storeId}"]`);
+    const initialContent = el?.getAttribute('value') || '';
+    const captureThreshold = parseInt(el?.getAttribute('capture-threshold') || '5000');
+    const defaultWrap = el?.getAttribute('default-wrap') !== 'false';
+    
+    // Create the store
+    Alpine.store(storeId, {
+      content: initialContent,
+      isViewMode: false,
+      wrapEnabled: defaultWrap,
+      captureThreshold,
+      
+      get lineCount() {
+        return this.content ? this.content.split('\n').length : 0;
+      },
+      
+      get wordCount() {
+        return this.content ? this.content.trim().split(/\s+/).filter(Boolean).length : 0;
+      },
+      
+      get stats() {
+        return {
+          chars: this.content.length,
+          lines: this.lineCount,
+          words: this.wordCount
+        };
+      },
+      
+      toggleWrap() {
+        this.wrapEnabled = !this.wrapEnabled;
+      },
+      
+      setMode(viewMode) {
+        this.isViewMode = viewMode;
+      },
+      
+      clear() {
+        this.content = '';
+        this.isViewMode = false;
+      },
+      
+      setValue(newValue, autoViewMode = false) {
+        this.content = newValue;
+        if (autoViewMode && newValue.length > this.captureThreshold) {
+          this.isViewMode = true;
+        }
+      }
+    });
+    
+    // Create global reference
+    const globalName = `${storeId.replace(/-/g, '_')}`;
+    if (!window[globalName]) {
+      window[globalName] = Alpine.store(storeId);
+      console.log(`textAreaController: Created store and global ${globalName}`);
+    }
+  }
+  
   return {
     storeId,
     
@@ -25,6 +85,13 @@ window.textAreaController = function(storeId) {
     },
     
     init() {
+      // Ensure global reference exists
+      const globalName = `${storeId.replace(/-/g, '_')}`;
+      if (!window[globalName]) {
+        window[globalName] = Alpine.store(storeId);
+        console.log(`textAreaController init: Created global ${globalName}`);
+      }
+      
       // Add keyboard shortcuts
       const keyHandler = (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
@@ -134,7 +201,10 @@ class SmartTextArea extends HTMLElement {
     console.log(`SmartTextArea: connectedCallback for store-id="${this.getAttribute('store-id')}"`);
     // Initialize only once
     if (!this._initialized) {
-      this.initialize();
+      // Use setTimeout to ensure we run after the current execution context
+      setTimeout(() => {
+        this.initialize();
+      }, 0);
     }
   }
   
@@ -436,6 +506,15 @@ class SmartTextArea extends HTMLElement {
     if (Alpine.initTree) {
       Alpine.initTree(this);
     }
+    
+    // Ensure global reference exists after Alpine processes the component
+    setTimeout(() => {
+      const globalName = `${this.storeId.replace(/-/g, '_')}`;
+      if (Alpine.store(this.storeId) && !window[globalName]) {
+        window[globalName] = Alpine.store(this.storeId);
+        console.log(`SmartTextArea: Created global reference ${globalName} (post-render)`);
+      }
+    }, 100);
   }
   
   // Public API methods (now just proxy to store)
