@@ -163,7 +163,7 @@ class SmartTextArea extends HTMLElement {
           }
         },
         
-        async copyContent() {
+        async copyContent(event) {
           try {
             await navigator.clipboard.writeText(this.store.content);
             
@@ -260,7 +260,7 @@ class SmartTextArea extends HTMLElement {
           
           <!-- Right side: actions -->
           <div class="flex gap-0.5">
-            <button @click="copyContent" 
+            <button @click="copyContent($event)" 
                     class="btn btn-xs btn-ghost px-2 h-7 opacity-60 hover:opacity-100"
                     title="Copy all text">
               <i class="ph ph-copy text-xs"></i>
@@ -401,7 +401,7 @@ class SmartTextArea extends HTMLElement {
   // Static method for WebTools compatibility
   static onLoad() {
     console.log('SmartTextArea: Component loaded', {
-      version: '5.0.0',
+      version: '5.0.1',
       type: 'Alpine Store-based Web Component', 
       requires: ['Alpine.js 3.x', 'Phosphor Icons', 'DaisyUI'],
       api: 'Access via Alpine.store(storeId) - stores contain: content, isViewMode, wrapEnabled, captureThreshold, stats'
