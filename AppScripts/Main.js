@@ -5,6 +5,11 @@
   async init() {
     console.log('Initializing Main module...');
     
+    // Check for required dependencies
+    if (typeof Dexie === 'undefined') {
+      throw new Error('Dexie is not available. Make sure it is loaded from CDN.');
+    }
+    
     // Add full application methods to the Alpine instance
     Object.assign(this, {
       db: null,
@@ -12,30 +17,41 @@
       
       // Database initialization
       async initDB() {
-        this.db = new Dexie('DataJarDB');
-        
-        this.db.version(1).stores({
-          items: '++id, name, type, code, autorun, *tags, notes'
-        });
-        
-        this.db.version(2).stores({
-          items: '++id, name, type, code, autorun, *tags, notes',
-          config: 'key'
-        });
-        
-        // Add hooks for timestamps
-        this.db.items.hook('creating', (primKey, obj) => {
-          obj.createdAt = new Date();
-          obj.tags = obj.tags || [];
-          obj.type = obj.type || 'js';
-        });
-        
-        this.db.items.hook('updating', (modifications) => {
-          modifications.updatedAt = new Date();
-        });
-        
-        await this.db.open();
-        console.log('✓ Database initialized');
+        try {
+          console.log('Creating Dexie database instance...');
+          this.db = new Dexie('DataJarDB');
+          
+          this.db.version(1).stores({
+            items: '++id, name, type, code, autorun, *tags, notes'
+          });
+          
+          this.db.version(2).stores({
+            items: '++id, name, type, code, autorun, *tags, notes',
+            config: 'key'
+          });
+          
+          // Add hooks for timestamps
+          this.db.items.hook('creating', (primKey, obj) => {
+            obj.createdAt = new Date();
+            obj.tags = obj.tags || [];
+            obj.type = obj.type || 'js';
+          });
+          
+          this.db.items.hook('updating', (modifications) => {
+            modifications.updatedAt = new Date();
+          });
+          
+          console.log('Opening database...');
+          await this.db.open();
+          console.log('✓ Database initialized');
+        } catch (error) {
+          console.error('Database initialization failed:', {
+            error: error.message,
+            name: error.name,
+            stack: error.stack
+          });
+          throw error;
+        }
       },
       
       // Load configuration
@@ -300,21 +316,41 @@
     
     // Now initialize the database and load data
     try {
+      console.log('Starting Main module initialization sequence...');
+      
+      console.log('Step 1: Initializing database...');
       await this.initDB();
+      
+      console.log('Step 2: Loading configuration...');
       await this.loadConfig();
+      
+      console.log('Step 3: Loading items from database...');
       await this.loadItems();
       
       this.mainReady = true;
-      console.log('✓ Main module ready');
+      console.log('✓ Main module ready - all core functionality loaded');
       
       // Load extensions now that main is ready
+      console.log('Step 4: Loading extensions...');
       await Promise.all([
         this.loadExtensions('AppButtons', 'buttons'),
         this.loadExtensions('AppTabs', 'tabs')
       ]);
       
+      console.log('✓ All extensions loaded - app fully initialized');
+      
     } catch (error) {
-      console.error('Main module initialization failed:', error);
+      console.error('Main module initialization failed:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        phase: 'initialization'
+      });
+      
+      // Set a flag so the app knows Main failed
+      this.mainFailed = true;
+      this.mainError = error;
+      
       throw error;
     }
   }
