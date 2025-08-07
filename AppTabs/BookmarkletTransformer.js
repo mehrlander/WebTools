@@ -1,5 +1,5 @@
 {
-  name: 'Bookmarklet Transformer',
+  name: 'Transformer',
   icon: 'ph ph-link',
   requires: ['Brotli', 'Acorn'],
   content() {
