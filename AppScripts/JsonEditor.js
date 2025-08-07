@@ -9,9 +9,9 @@
         // Dynamically import the JSON editor
         const module = await import('https://unpkg.com/vanilla-jsoneditor@latest/standalone.js');
         
-        // Make createJSONEditor available globally through libs
-        if (!this.libs) this.libs = {};
-        this.libs.createJSONEditor = module.createJSONEditor;
+        // Make createJSONEditor available globally through a shared space
+        if (!window.DataJarLibs) window.DataJarLibs = {};
+        window.DataJarLibs.createJSONEditor = module.createJSONEditor;
         
         console.log('JSON Editor library loaded successfully');
         resolve(module.createJSONEditor);
