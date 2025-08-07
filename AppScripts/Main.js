@@ -10,17 +10,23 @@
       throw new Error('Dexie is not available. Make sure it is loaded from CDN.');
     }
     
+    // Check that db instance was created in HTML context
+    if (!this.db) {
+      throw new Error('Database instance not found. Make sure HTML creates this.db = new Dexie() before loading Main.js');
+    }
+    
+    console.log('Using existing Dexie instance from HTML context');
+    
     // Add full application methods to the Alpine instance
     Object.assign(this, {
-      db: null,
       mainReady: false,
       
-      // Database initialization
+      // Database initialization - uses existing this.db instance
       async initDB() {
         try {
-          console.log('Creating Dexie database instance...');
-          this.db = new Dexie('DataJarDB');
+          console.log('Configuring database schema...');
           
+          // Configure the existing database instance
           this.db.version(1).stores({
             items: '++id, name, type, code, autorun, *tags, notes'
           });
