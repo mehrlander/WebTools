@@ -14,7 +14,6 @@
             </button>
           </div>
           <div class="flex gap-2">
-            <button class="btn" @click="cancelEdit()">Cancel</button>
             <button class="btn btn-primary" @click="saveItem()">Save</button>
             <template x-if="editingItem?.id">
               <button class="btn btn-error" @click="deleteItem()">
