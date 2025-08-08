@@ -6,13 +6,30 @@
   async init() {
     console.log('Initializing Main module...');
     
+    // Explicitly check for Dexie and get it from window if needed
+    let DexieLib = typeof Dexie !== 'undefined' ? Dexie : window.Dexie;
+    
+    if (!DexieLib) {
+      console.error('Dexie is not available in any context!');
+      console.log('Checking window object:', {
+        windowDexie: typeof window.Dexie,
+        globalDexie: typeof Dexie,
+        windowKeys: Object.keys(window).filter(k => k.toLowerCase().includes('dexie'))
+      });
+      throw new Error('Dexie library not loaded - cannot initialize database');
+    }
+    
+    console.log('✓ Dexie found:', typeof DexieLib, 'from', typeof Dexie !== 'undefined' ? 'global' : 'window');
+    
     // Enhance the Alpine instance with full functionality
     Object.assign(this, {
       db: null,
+      DexieLib: DexieLib, // Store Dexie reference
       
       // Database initialization
       async initDB() {
-        this.db = new Dexie('DataJarDB');
+        console.log('Initializing database with Dexie...');
+        this.db = new this.DexieLib('DataJarDB');
         
         // Version 1: Basic items table
         this.db.version(1).stores({
@@ -374,6 +391,11 @@
       
     } catch (error) {
       console.error('Main module initialization failed:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       throw error;
     }
   }
