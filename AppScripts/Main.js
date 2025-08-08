@@ -1,302 +1,279 @@
-// AppScripts/Main.js
-// Core functionality for Data Jar application
 ({
-  name: 'Main',
+  name: 'GitHub',
   version: '1.0.0',
   
-  async init() {
-    console.log('Initializing Main module...');
+  init() {
+    console.log('Initializing GitHub module...');
     
-    // Store reference to Alpine instance
-    const app = this;
-    
-    // Initialize database
-    app.db = null;
-    
-    // Define type configuration
-    app.cfg.types = {
-      js: { label: 'JavaScript', badge: 'badge-primary', exec: true },
-      html: { label: 'HTML', badge: 'badge-secondary', exec: true },
-      json: { label: 'JSON', badge: 'badge-accent', exec: true },
-      text: { label: 'Text', badge: 'badge-neutral', exec: false }
-    };
-    
-    // Initialize database
-    app.initDB = async function() {
-      try {
-        app.db = new Dexie('DataJarDB');
-        
-        // Define schema
-        app.db.version(1).stores({
-          items: '++id, name, type, code, autorun, *tags, notes'
-        });
-        
-        // Add hooks
-        app.db.items.hook('creating', (primKey, obj) => {
-          obj.createdAt = new Date();
-          obj.tags = obj.tags || [];
-          obj.type = obj.type || 'js';
-        });
-        
-        app.db.items.hook('updating', (modifications) => {
-          modifications.updatedAt = new Date();
-        });
-        
-        await app.db.open();
-        console.log('Database initialized');
-      } catch (error) {
-        console.error('Database initialization failed:', error);
-        throw error;
-      }
-    };
-    
-    // Load items from database
-    app.loadItems = async function() {
-      try {
-        app.items = await app.db.items.orderBy('name').toArray();
-        console.log(`Loaded ${app.items.length} items`);
-        
-        // Execute autorun items
-        app.executeAutorunItems();
-      } catch (error) {
-        console.error('Failed to load items:', error);
-        app.items = [];
-      }
-    };
-    
-    // Execute autorun items
-    app.executeAutorunItems = function() {
-      const autorunItems = app.items.filter(item => 
-        item.autorun && app.cfg.types[item.type]?.exec
-      );
+    // Create a GitHub API interface
+    this.github = {
+      // Configuration
+      config: {
+        apiKey: this.cfg?.github?.apiKey || '',
+        repo: 'mehrlander/WebTools',
+        commitHash: this.cfg?.github?.repoVersion || '',
+        useCache: true,
+        cache: new Map(),
+        cacheTTL: 5 * 60 * 1000 // 5 minutes
+      },
       
-      autorunItems.forEach(item => {
-        try {
-          app.executeItem(item);
-        } catch (error) {
-          console.error(`Autorun failed for ${item.name}:`, error);
+      // Set API key after initialization
+      setApiKey(key) {
+        this.config.apiKey = key;
+        console.log('GitHub API key updated');
+      },
+      
+      // Set commit hash
+      setCommitHash(hash) {
+        this.config.commitHash = hash;
+        this.config.cache.clear(); // Clear cache when commit changes
+        console.log(`GitHub commit set to: ${hash ? hash.substring(0, 8) : 'latest'}...`);
+      },
+      
+      // Get headers for API requests
+      getHeaders() {
+        const headers = {
+          'Accept': 'application/vnd.github.v3+json'
+        };
+        if (this.config.apiKey) {
+          headers['Authorization'] = `token ${this.config.apiKey}`;
         }
-      });
+        return headers;
+      },
       
-      if (autorunItems.length > 0) {
-        console.log(`Executed ${autorunItems.length} autorun items`);
-      }
-    };
-    
-    // Execute an item based on its type
-    app.executeItem = function(item) {
-      if (!item || !item.type) {
-        console.error('Invalid item', item);
-        return;
-      }
+      // Build API URL with optional ref
+      buildUrl(path, includeRef = true) {
+        const baseUrl = `https://api.github.com/repos/${this.config.repo}`;
+        let url = `${baseUrl}/${path}`;
+        
+        if (includeRef && this.config.commitHash && this.config.commitHash !== 'main') {
+          const separator = path.includes('?') ? '&' : '?';
+          url += `${separator}ref=${this.config.commitHash}`;
+        }
+        
+        return url;
+      },
       
-      const handlers = {
-        js: () => {
-          Function(item.code)();
-        },
-        html: () => {
-          const w = window.open('', '_blank', 'width=600,height=400');
-          w.document.write(item.code);
-          w.document.close();
-        },
-        json: () => {
-          try {
-            const data = JSON.parse(item.code);
-            window[item.name] = data;
-            console.log(`JSON data stored in window.${item.name}`);
-          } catch (e) {
-            throw new Error(`Invalid JSON: ${e.message}`);
+      // Generic API fetch with caching
+      async fetch(path, options = {}) {
+        const url = this.buildUrl(path, options.includeRef !== false);
+        
+        // Check cache
+        if (this.config.useCache && options.cache !== false) {
+          const cached = this.config.cache.get(url);
+          if (cached && (Date.now() - cached.timestamp < this.config.cacheTTL)) {
+            console.log(`Using cached data for: ${path}`);
+            return cached.data;
           }
-        },
-        text: () => {
-          console.log(`Text content for ${item.name}:\n${item.code}`);
-        }
-      };
-      
-      try {
-        const handler = handlers[item.type];
-        if (handler) {
-          handler();
-          console.log(`Executed: ${item.name} (${item.type})`);
-        } else {
-          console.warn(`No handler for type: ${item.type}`);
-        }
-      } catch (error) {
-        console.error(`Error executing ${item.name}:`, error.message);
-        throw error;
-      }
-    };
-    
-    // Edit an item (prepare for editor)
-    app.editItem = function(item = null) {
-      if (item) {
-        // Editing existing item
-        app.editingItem = {
-          ...item,
-          tags: Array.isArray(item.tags) ? item.tags.join(', ') : (item.tags || '')
-        };
-      } else {
-        // Creating new item
-        app.editingItem = {
-          name: '',
-          type: 'js',
-          autorun: false,
-          tags: '',
-          notes: '',
-          code: ''
-        };
-      }
-      
-      // Switch to editor tab if available
-      if (app.ext.editor) {
-        app.activeTab = 0;
-      }
-    };
-    
-    // Save item to database
-    app.saveItem = async function() {
-      if (!app.editingItem || !app.editingItem.name) {
-        console.error('Cannot save: item name is required');
-        return;
-      }
-      
-      try {
-        const data = {
-          ...app.editingItem,
-          tags: app.editingItem.tags
-            ? app.editingItem.tags.split(',').map(t => t.trim()).filter(Boolean)
-            : []
-        };
-        
-        if (data.id) {
-          // Update existing item
-          await app.db.items.update(data.id, data);
-          console.log(`Updated item: ${data.name}`);
-        } else {
-          // Add new item
-          delete data.id; // Remove undefined id
-          const id = await app.db.items.add(data);
-          console.log(`Added new item: ${data.name} (id: ${id})`);
         }
         
-        // Reload items and clear editor
-        await app.loadItems();
-        app.editingItem = null;
+        try {
+          const response = await fetch(url, {
+            ...options,
+            headers: { ...this.getHeaders(), ...options.headers }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+          }
+          
+          const data = await response.json();
+          
+          // Cache the result
+          if (this.config.useCache && options.cache !== false) {
+            this.config.cache.set(url, {
+              data,
+              timestamp: Date.now()
+            });
+          }
+          
+          return data;
+        } catch (error) {
+          console.error(`GitHub API request failed for ${path}:`, error);
+          throw error;
+        }
+      },
+      
+      // Get latest commit
+      async getLatestCommit(branch = 'main') {
+        try {
+          const commit = await this.fetch(`commits/${branch}`, { 
+            includeRef: false,
+            cache: false  // Don't cache commit info
+          });
+          return {
+            sha: commit.sha,
+            message: commit.commit.message,
+            author: commit.commit.author.name,
+            date: commit.commit.author.date
+          };
+        } catch (error) {
+          console.error('Failed to fetch latest commit:', error);
+          return null;
+        }
+      },
+      
+      // List files in a directory
+      async listFiles(path, filter = null) {
+        try {
+          const files = await this.fetch(`contents/${path}`);
+          
+          if (filter) {
+            return files.filter(filter);
+          }
+          
+          return files;
+        } catch (error) {
+          console.error(`Failed to list files in ${path}:`, error);
+          return [];
+        }
+      },
+      
+      // Get file content
+      async getFileContent(path) {
+        try {
+          const file = await this.fetch(`contents/${path}`);
+          
+          if (file.content) {
+            // Base64 decode
+            return atob(file.content);
+          } else if (file.download_url) {
+            // Fetch from download URL
+            const response = await fetch(file.download_url);
+            return await response.text();
+          }
+          
+          throw new Error('No content available');
+        } catch (error) {
+          console.error(`Failed to get content for ${path}:`, error);
+          return null;
+        }
+      },
+      
+      // Load and evaluate JavaScript files
+      async loadScript(folder, filename) {
+        try {
+          const content = await this.getFileContent(`${folder}/${filename}`);
+          if (!content) return null;
+          
+          const config = eval(`(${content})`);
+          console.log(`Loaded ${folder}/${filename}`);
+          return config;
+        } catch (error) {
+          console.error(`Failed to load script ${folder}/${filename}:`, error);
+          return null;
+        }
+      },
+      
+      // Load multiple scripts from a folder
+      async loadScriptsFromFolder(folder, options = {}) {
+        const {
+          filter = (f) => f.name.endsWith('.js'),
+          exclude = [],
+          processor = null,
+          parallel = true
+        } = options;
         
-        // Return to main view
-        app.activeTab = 0;
-      } catch (error) {
-        console.error('Failed to save item:', error);
-        alert(`Failed to save: ${error.message}`);
+        try {
+          const files = await this.listFiles(folder, f => {
+            return filter(f) && !exclude.includes(f.name);
+          });
+          
+          console.log(`Found ${files.length} scripts in ${folder}`);
+          
+          const loadFn = async (file) => {
+            const script = await this.loadScript(folder, file.name);
+            if (script && processor) {
+              return processor(script, file.name);
+            }
+            return script;
+          };
+          
+          if (parallel) {
+            return await Promise.all(files.map(loadFn));
+          } else {
+            // Sequential loading
+            const results = [];
+            for (const file of files) {
+              results.push(await loadFn(file));
+            }
+            return results;
+          }
+        } catch (error) {
+          console.error(`Failed to load scripts from ${folder}:`, error);
+          return [];
+        }
+      },
+      
+      // Load a single script by name
+      async loadNamedScript(scriptName, folder = 'AppScripts') {
+        try {
+          const script = await this.loadScript(folder, `${scriptName}.js`);
+          return script;
+        } catch (error) {
+          console.error(`Failed to load script ${scriptName}:`, error);
+          return null;
+        }
+      },
+      
+      // Get repository info
+      async getRepoInfo() {
+        try {
+          return await this.fetch('', { includeRef: false });
+        } catch (error) {
+          console.error('Failed to get repository info:', error);
+          return null;
+        }
+      },
+      
+      // Get rate limit status
+      async getRateLimit() {
+        try {
+          const response = await fetch('https://api.github.com/rate_limit', {
+            headers: this.getHeaders()
+          });
+          return await response.json();
+        } catch (error) {
+          console.error('Failed to get rate limit:', error);
+          return null;
+        }
+      },
+      
+      // Clear cache
+      clearCache() {
+        this.config.cache.clear();
+        console.log('GitHub cache cleared');
+      },
+      
+      // Utility: Check if using latest commit
+      async isUsingLatest() {
+        const latest = await this.getLatestCommit();
+        if (!latest) return false;
+        return this.config.commitHash === latest.sha;
+      },
+      
+      // Utility: Get human-readable commit info
+      getCommitInfo() {
+        if (!this.config.commitHash) return 'Using main branch';
+        if (this.config.commitHash === 'main') return 'Using main branch';
+        return `Using commit: ${this.config.commitHash.substring(0, 8)}...`;
       }
     };
     
-    // Delete item from database
-    app.deleteItem = async function() {
-      if (!app.editingItem || !app.editingItem.id) {
-        console.error('Cannot delete: no item selected');
-        return;
-      }
-      
-      if (!confirm(`Delete "${app.editingItem.name}"?`)) {
-        return;
-      }
-      
-      try {
-        await app.db.items.delete(app.editingItem.id);
-        console.log(`Deleted item: ${app.editingItem.name}`);
-        
-        // Reload items and clear editor
-        await app.loadItems();
-        app.editingItem = null;
-        
-        // Return to main view
-        app.activeTab = 0;
-      } catch (error) {
-        console.error('Failed to delete item:', error);
-        alert(`Failed to delete: ${error.message}`);
-      }
-    };
+    // Make GitHub available globally on the Alpine instance
+    this.GitHub = this.github;
     
-    // Cancel editing
-    app.cancelEdit = function() {
-      app.editingItem = null;
-      app.activeTab = 0;
-    };
-    
-    // Run current code in editor
-    app.runCurrentCode = function() {
-      if (!app.editingItem) {
-        console.warn('No code to run');
-        return;
-      }
-      
-      try {
-        app.executeItem({
-          ...app.editingItem,
-          name: app.editingItem.name || 'Untitled'
-        });
-      } catch (error) {
-        console.error('Error running code:', error);
-      }
-    };
-    
-    // Get placeholder text for editor
-    app.getPlaceholderText = function(type) {
-      const placeholders = {
-        js: 'Enter your JavaScript code here...',
-        html: 'Enter your HTML content here...',
-        json: 'Enter valid JSON data here...',
-        text: 'Enter your text content here...'
-      };
-      return placeholders[type] || placeholders.js;
-    };
-    
-    // Copy item code to clipboard
-    app.copyItemCode = function(item) {
-      if (!item || !item.code) {
-        console.warn('No code to copy');
-        return;
-      }
-      
-      // Create temporary button for clipboard.js
-      const btn = document.createElement('button');
-      const clipboard = new ClipboardJS(btn, {
-        text: () => item.code
-      });
-      
-      clipboard.on('success', () => {
-        app.copiedId = item.id;
-        setTimeout(() => {
-          app.copiedId = null;
-        }, 1000);
-        console.log(`Copied code for: ${item.name}`);
-      });
-      
-      clipboard.on('error', (e) => {
-        console.error('Failed to copy:', e);
-      });
-      
-      btn.click();
-      clipboard.destroy();
-    };
-    
-    // Helper to get type configuration
-    app.getTypeConfig = function(type) {
-      return app.cfg.types[type] || {
-        badge: 'badge-neutral',
-        exec: false
-      };
-    };
-    
-    // Now initialize everything
-    try {
-      await app.initDB();
-      await app.loadItems();
-      console.log('Main module ready');
-    } catch (error) {
-      console.error('Main module initialization failed:', error);
-      throw error;
+    // Auto-set commit hash if available
+    if (this.cfg?.github?.repoVersion) {
+      this.github.setCommitHash(this.cfg.github.repoVersion);
     }
+    
+    // Auto-set API key if available
+    if (this.cfg?.github?.apiKey) {
+      this.github.setApiKey(this.cfg.github.apiKey);
+    }
+    
+    console.log('GitHub module ready');
+    return Promise.resolve();
   }
 })
