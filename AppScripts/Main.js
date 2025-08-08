@@ -1,92 +1,91 @@
 ({
   name: 'Main',
   version: '1.0.0',
+  description: 'Core Data Jar functionality - database, item management, and execution',
   
   async init() {
     console.log('Initializing Main module...');
     
-    // Check for required dependencies
-    if (typeof Dexie === 'undefined') {
-      throw new Error('Dexie is not available. Make sure it is loaded from CDN.');
-    }
-    
-    // Check that db instance was created in HTML context
-    if (!this.db) {
-      throw new Error('Database instance not found. Make sure HTML creates this.db = new Dexie() before loading Main.js');
-    }
-    
-    console.log('Using existing Dexie instance from HTML context');
-    
-    // Add full application methods to the Alpine instance
+    // Enhance the Alpine instance with full functionality
     Object.assign(this, {
-      mainReady: false,
+      db: null,
       
-      // Database initialization - uses existing this.db instance
+      // Database initialization
       async initDB() {
-        try {
-          console.log('Configuring database schema...');
-          
-          // Configure the existing database instance
-          this.db.version(1).stores({
-            items: '++id, name, type, code, autorun, *tags, notes'
-          });
-          
-          this.db.version(2).stores({
-            items: '++id, name, type, code, autorun, *tags, notes',
-            config: 'key'
-          });
-          
-          // Add hooks for timestamps
-          this.db.items.hook('creating', (primKey, obj) => {
-            obj.createdAt = new Date();
-            obj.tags = obj.tags || [];
-            obj.type = obj.type || 'js';
-          });
-          
-          this.db.items.hook('updating', (modifications) => {
-            modifications.updatedAt = new Date();
-          });
-          
-          console.log('Opening database...');
-          await this.db.open();
-          console.log('✓ Database initialized');
-        } catch (error) {
-          console.error('Database initialization failed:', {
-            error: error.message,
-            name: error.name,
-            stack: error.stack
-          });
-          throw error;
-        }
+        this.db = new Dexie('DataJarDB');
+        
+        // Version 1: Basic items table
+        this.db.version(1).stores({
+          items: '++id, name, type, code, autorun, *tags, notes'
+        });
+        
+        // Version 2: Add config store
+        this.db.version(2).stores({
+          items: '++id, name, type, code, autorun, *tags, notes',
+          config: 'key'
+        });
+        
+        // Hooks for timestamps
+        this.db.items.hook('creating', (primKey, obj) => {
+          obj.createdAt = new Date();
+          obj.tags = obj.tags || [];
+          obj.type = obj.type || 'js';
+        });
+        
+        this.db.items.hook('updating', (modifications) => {
+          modifications.updatedAt = new Date();
+        });
+        
+        await this.db.open();
+        console.log('✓ Database initialized');
       },
       
-      // Load configuration
+      // Load configuration from database
       async loadConfig() {
         try {
-          const savedConfig = await this.db.config.get('github');
-          if (savedConfig && savedConfig.value) {
-            // Merge saved config with current (preserving API key from HTML)
-            this.cfg.github = { ...this.cfg.github, ...savedConfig.value };
-            console.log('✓ Configuration loaded');
+          const savedTypes = await this.db.config.get('types');
+          if (savedTypes) {
+            this.cfg.types = savedTypes.value;
+            console.log('✓ Loaded saved type configuration');
+          } else {
+            // Initialize with defaults
+            this.cfg.types = {
+              js: { label: 'JavaScript', badge: 'badge-primary', exec: true },
+              html: { label: 'HTML', badge: 'badge-secondary', exec: true },
+              json: { label: 'JSON', badge: 'badge-accent', exec: true },
+              text: { label: 'Text', badge: 'badge-neutral', exec: false }
+            };
+          }
+          
+          // Load GitHub config
+          const savedGithub = await this.db.config.get('github');
+          if (savedGithub && savedGithub.value.repoVersion) {
+            this.cfg.github.repoVersion = savedGithub.value.repoVersion;
+            console.log(`✓ Loaded saved commit: ${this.cfg.github.repoVersion.substring(0, 8)}...`);
           }
         } catch (error) {
-          console.warn('Could not load saved config:', error);
+          console.error('Error loading config:', error);
         }
       },
       
-      // Save configuration
+      // Save configuration to database
       async saveConfig() {
         try {
+          await this.db.config.put({ 
+            key: 'types', 
+            value: this.cfg.types 
+          });
+          
           await this.db.config.put({
             key: 'github',
             value: {
               repoVersion: this.cfg.github.repoVersion
-              // Don't save API key to database
             }
           });
+          
           console.log('✓ Configuration saved');
         } catch (error) {
-          console.error('Failed to save config:', error);
+          console.error('Error saving config:', error);
         }
       },
       
@@ -99,48 +98,98 @@
           // Execute autorun items
           this.executeAutorunItems();
         } catch (error) {
-          console.error('Failed to load items:', error);
+          console.error('Error loading items:', error);
           this.items = [];
         }
       },
       
       // Execute autorun items
       executeAutorunItems() {
-        const autorunItems = this.items.filter(item => item.autorun);
+        const autorunItems = this.items.filter(i => i.autorun && this.cfg.types[i.type]?.exec);
         autorunItems.forEach(item => {
           console.log(`Autorun: ${item.name}`);
           this.executeItem(item);
         });
       },
       
-      // Enhanced execute item
+      // Enhanced item execution
       executeItem(item) {
         try {
           const handlers = {
-            js: () => Function(item.code)(),
+            js: () => {
+              const result = Function(item.code)();
+              console.log(`✓ Executed JS: ${item.name}`);
+              return result;
+            },
+            
             html: () => {
               const w = window.open('', '_blank', 'width=600,height=400');
               w.document.write(item.code);
               w.document.close();
+              console.log(`✓ Opened HTML: ${item.name}`);
             },
+            
             json: () => {
-              window[item.name] = JSON.parse(item.code);
-              console.log(`JSON loaded to window.${item.name}`);
+              const data = JSON.parse(item.code);
+              window[item.name] = data;
+              console.log(`✓ Loaded JSON into window.${item.name}`);
+              
+              // Show JSON in modal
+              const modal = document.createElement('div');
+              modal.className = 'modal modal-open';
+              modal.innerHTML = `
+                <div class="modal-box max-w-4xl">
+                  <h3 class="font-bold text-lg mb-4">${this.escapeHtml(item.name)} - JSON Viewer</h3>
+                  <pre class="bg-base-200 p-4 rounded-lg overflow-auto max-h-96">${this.escapeHtml(JSON.stringify(data, null, 2))}</pre>
+                  <div class="modal-action">
+                    <button class="btn" onclick="this.closest('.modal').remove()">Close</button>
+                  </div>
+                </div>
+                <form method="dialog" class="modal-backdrop">
+                  <button type="button" onclick="this.closest('.modal').remove()">close</button>
+                </form>
+              `;
+              document.body.appendChild(modal);
             },
+            
             text: () => {
-              console.log(`Text content: ${item.name}\n${item.code}`);
+              // Show text in modal
+              const modal = document.createElement('div');
+              modal.className = 'modal modal-open';
+              modal.innerHTML = `
+                <div class="modal-box max-w-4xl">
+                  <h3 class="font-bold text-lg mb-4">${this.escapeHtml(item.name)} - Text Viewer</h3>
+                  <div class="bg-base-200 p-4 rounded-lg overflow-auto max-h-96 whitespace-pre-wrap">${this.escapeHtml(item.code)}</div>
+                  <div class="modal-action">
+                    <button class="btn" onclick="this.closest('.modal').remove()">Close</button>
+                  </div>
+                </div>
+                <form method="dialog" class="modal-backdrop">
+                  <button type="button" onclick="this.closest('.modal').remove()">close</button>
+                </form>
+              `;
+              document.body.appendChild(modal);
             }
           };
           
-          const handler = handlers[item.type];
-          if (handler) {
-            handler();
-            console.log(`✓ Executed: ${item.name}`);
+          if (handlers[item.type]) {
+            return handlers[item.type]();
           } else {
             console.warn(`Unknown item type: ${item.type}`);
           }
         } catch (error) {
-          console.error(`Error executing ${item.name}:`, error);
+          console.error(`Error executing ${item.name}:`, error.message);
+          
+          // Show error notification
+          const notification = document.createElement('div');
+          notification.className = 'toast toast-top toast-end';
+          notification.innerHTML = `
+            <div class="alert alert-error">
+              <span>Error in ${item.name}: ${error.message}</span>
+            </div>
+          `;
+          document.body.appendChild(notification);
+          setTimeout(() => notification.remove(), 5000);
         }
       },
       
@@ -159,44 +208,42 @@
         };
         
         // Switch to editor tab if available
-        this.activeTab = 0;
-        
-        // Load editor if not already loaded
-        if (!this.ext.editor) {
-          this.loadEditor();
+        if (this.ext.editor) {
+          this.activeTab = 0; // Editor will be first after console
         }
       },
       
       // Save item to database
       async saveItem() {
         if (!this.editingItem?.name) {
-          console.warn('Cannot save: item name is required');
+          alert('Item name is required');
           return;
         }
         
-        const data = {
-          ...this.editingItem,
-          tags: this.editingItem.tags
-            .split(',')
-            .map(t => t.trim())
-            .filter(Boolean)
-        };
-        
         try {
+          const data = {
+            ...this.editingItem,
+            tags: this.editingItem.tags
+              .split(',')
+              .map(t => t.trim())
+              .filter(Boolean)
+          };
+          
           if (data.id) {
             await this.db.items.update(data.id, data);
-            console.log(`✓ Updated: ${data.name}`);
+            console.log(`✓ Updated item: ${data.name}`);
           } else {
-            delete data.id;
             const id = await this.db.items.add(data);
-            console.log(`✓ Created: ${data.name} (ID: ${id})`);
+            console.log(`✓ Created item: ${data.name} (ID: ${id})`);
           }
           
           await this.loadItems();
           this.editingItem = null;
+          this.activeTab = 0; // Back to console
+          
         } catch (error) {
-          console.error('Failed to save item:', error);
-          alert('Failed to save item: ' + error.message);
+          console.error('Error saving item:', error);
+          alert(`Failed to save item: ${error.message}`);
         }
       },
       
@@ -204,159 +251,129 @@
       async deleteItem() {
         if (!this.editingItem?.id) return;
         
-        if (confirm(`Delete "${this.editingItem.name}"?`)) {
-          try {
-            await this.db.items.delete(this.editingItem.id);
-            console.log(`✓ Deleted: ${this.editingItem.name}`);
-            await this.loadItems();
-            this.editingItem = null;
-          } catch (error) {
-            console.error('Failed to delete item:', error);
-          }
+        if (!confirm(`Delete "${this.editingItem.name}"?`)) return;
+        
+        try {
+          await this.db.items.delete(this.editingItem.id);
+          console.log(`✓ Deleted item: ${this.editingItem.name}`);
+          
+          await this.loadItems();
+          this.editingItem = null;
+          this.activeTab = 0; // Back to console
+          
+        } catch (error) {
+          console.error('Error deleting item:', error);
+          alert(`Failed to delete item: ${error.message}`);
         }
       },
       
       // Cancel editing
       cancelEdit() {
         this.editingItem = null;
-        this.activeTab = 0;
+        this.activeTab = 0; // Back to console
       },
       
       // Run current code being edited
       runCurrentCode() {
-        if (this.editingItem) {
-          this.executeItem({ ...this.editingItem });
-        }
+        if (!this.editingItem) return;
+        
+        const tempItem = {
+          ...this.editingItem,
+          name: this.editingItem.name || 'Untitled'
+        };
+        
+        console.log(`Running: ${tempItem.name}`);
+        this.executeItem(tempItem);
       },
       
       // Get placeholder text for editor
       getPlaceholderText(type) {
         const placeholders = {
-          js: 'Enter your JavaScript code here...',
-          html: 'Enter your HTML content here...',
-          json: 'Enter valid JSON data here...',
+          js: 'Enter your JavaScript code here...\n\n// Example:\nconsole.log("Hello, World!");',
+          html: 'Enter your HTML content here...\n\n<!-- Example -->\n<h1>Hello, World!</h1>',
+          json: 'Enter valid JSON data here...\n\n{\n  "example": "data"\n}',
           text: 'Enter your text content here...'
         };
-        return placeholders[type] || 'Enter your code here...';
+        return placeholders[type] || placeholders.js;
       },
       
-      // Load the editor module
-      async loadEditor() {
+      // Helper: Escape HTML for safe display
+      escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      },
+      
+      // Export/Import functionality
+      async exportData() {
         try {
-          const editorCode = await this.loadGitHubFile('AppModals/ItemEditor.js');
-          if (editorCode) {
-            this.ext.editor = eval(`(${editorCode})`);
-            if (this.ext.editor.init) {
-              await this.ext.editor.init.call(this);
-            }
-            console.log('✓ Editor loaded');
-          }
-        } catch (error) {
-          console.error('Failed to load editor:', error);
-          
-          // Fallback editor
-          this.ext.editor = {
-            name: 'Editor',
-            icon: 'ph ph-pencil',
-            content() {
-              return `
-                <div class="h-full p-6 flex flex-col">
-                  <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-2xl font-bold">
-                      ${this.editingItem?.id ? 'Edit Item' : 'Add New Item'}
-                    </h1>
-                    <div class="flex gap-2">
-                      <button class="btn" @click="cancelEdit()">Cancel</button>
-                      <button class="btn btn-primary" @click="saveItem()">Save</button>
-                      <template x-if="editingItem?.id">
-                        <button class="btn btn-error" @click="deleteItem()">Delete</button>
-                      </template>
-                    </div>
-                  </div>
-                  
-                  <template x-if="editingItem">
-                    <div class="flex-1 flex flex-col gap-4">
-                      <input type="text" x-model="editingItem.name" 
-                             class="input input-bordered w-full" 
-                             placeholder="Item name" required>
-                      
-                      <div class="flex gap-4 items-center">
-                        <select x-model="editingItem.type" class="select select-bordered">
-                          <option value="js">JavaScript</option>
-                          <option value="html">HTML</option>
-                          <option value="json">JSON</option>
-                          <option value="text">Text</option>
-                        </select>
-                        
-                        <label class="label cursor-pointer">
-                          <input type="checkbox" x-model="editingItem.autorun" 
-                                 class="checkbox checkbox-primary mr-2">
-                          <span>Autorun on load</span>
-                        </label>
-                        
-                        <button class="btn btn-ghost ml-auto" @click="runCurrentCode()">
-                          <i class="ph ph-play-circle text-xl"></i> Run
-                        </button>
-                      </div>
-                      
-                      <input type="text" x-model="editingItem.tags" 
-                             class="input input-bordered w-full" 
-                             placeholder="Tags (comma-separated)">
-                      
-                      <textarea x-model="editingItem.notes" 
-                                class="textarea textarea-bordered w-full h-24" 
-                                placeholder="Notes (optional)"></textarea>
-                      
-                      <textarea x-model="editingItem.code" 
-                                class="flex-1 p-3 font-mono text-sm border rounded bg-base-100 resize-none" 
-                                :placeholder="getPlaceholderText(editingItem.type)"></textarea>
-                    </div>
-                  </template>
-                </div>
-              `;
+          const data = {
+            version: '1.0',
+            exported: new Date().toISOString(),
+            items: await this.db.items.toArray(),
+            config: {
+              types: this.cfg.types
             }
           };
+          
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `data-jar-export-${Date.now()}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+          
+          console.log('✓ Data exported successfully');
+        } catch (error) {
+          console.error('Export failed:', error);
+        }
+      },
+      
+      async importData(jsonData) {
+        try {
+          const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+          
+          if (!data.items || !Array.isArray(data.items)) {
+            throw new Error('Invalid import data structure');
+          }
+          
+          // Clear existing data
+          await this.db.items.clear();
+          
+          // Import items
+          for (const item of data.items) {
+            delete item.id; // Remove IDs to let database generate new ones
+            await this.db.items.add(item);
+          }
+          
+          // Import config if present
+          if (data.config?.types) {
+            this.cfg.types = data.config.types;
+            await this.saveConfig();
+          }
+          
+          await this.loadItems();
+          console.log(`✓ Imported ${data.items.length} items`);
+          
+        } catch (error) {
+          console.error('Import failed:', error);
+          alert(`Import failed: ${error.message}`);
         }
       }
     });
     
-    // Now initialize the database and load data
+    // Initialize the database and load data
     try {
-      console.log('Starting Main module initialization sequence...');
-      
-      console.log('Step 1: Initializing database...');
       await this.initDB();
-      
-      console.log('Step 2: Loading configuration...');
       await this.loadConfig();
-      
-      console.log('Step 3: Loading items from database...');
       await this.loadItems();
       
-      this.mainReady = true;
-      console.log('✓ Main module ready - all core functionality loaded');
-      
-      // Load extensions now that main is ready
-      console.log('Step 4: Loading extensions...');
-      await Promise.all([
-        this.loadExtensions('AppButtons', 'buttons'),
-        this.loadExtensions('AppTabs', 'tabs')
-      ]);
-      
-      console.log('✓ All extensions loaded - app fully initialized');
+      console.log('✓ Main module fully initialized');
+      return true;
       
     } catch (error) {
-      console.error('Main module initialization failed:', {
-        message: error.message,
-        name: error.name,
-        stack: error.stack,
-        phase: 'initialization'
-      });
-      
-      // Set a flag so the app knows Main failed
-      this.mainFailed = true;
-      this.mainError = error;
-      
+      console.error('Main module initialization failed:', error);
       throw error;
     }
   }
