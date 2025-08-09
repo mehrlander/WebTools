@@ -107,7 +107,7 @@
                   <span class="label-text-alt">Optional description or documentation</span>
                 </label>
                 <textarea x-model="editingItem.notes" 
-                          class="textarea textarea-bordered w-full h-24 resize-none" 
+                          class="textarea textarea-bordered !w-full h-24 resize-none" 
                           placeholder="Add any notes, documentation, or comments about this item"></textarea>
               </div>
 
@@ -118,7 +118,7 @@
                   <span class="label-text-alt">Press F5 to test run • Use Ctrl+A to select all</span>
                 </label>
                 <textarea x-model="editingItem.code" 
-                          class="textarea textarea-bordered w-full h-80 font-mono text-sm resize-none" 
+                          class="textarea textarea-bordered !w-full h-80 font-mono text-sm resize-none" 
                           :class="editorErrors.some(e => e.includes('code')) && 'textarea-error'"
                           :placeholder="getPlaceholderText(editingItem.type)" 
                           @keydown.f5.prevent="editorRunCode()"></textarea>
