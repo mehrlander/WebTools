@@ -4,7 +4,6 @@
   async init() {
     console.log('Initializing GitHub module...');
     
-    // Move all GitHub-related methods from main HTML to here
     this.autoFetchLatestCommit = autoFetchLatestCommit;
     this.loadExtensions = loadExtensions;
     this.loadSpecificScripts = loadSpecificScripts;
@@ -16,12 +15,10 @@
     this.checkIfUsingLatest = checkIfUsingLatest;
     this.updateCommitAndRefresh = updateCommitAndRefresh;
     
-    // Initialize GitHub-related state if needed
     if (!this.latestCommitHash) this.latestCommitHash = '';
     
     console.log('GitHub module initialized');
     
-    // Implementation functions (all moved from main HTML)
     async function autoFetchLatestCommit() {
       if (this.cfg.github.repoVersion) {
         console.log(`Using saved commit: ${this.cfg.github.repoVersion.substring(0, 8)}...`);
@@ -76,18 +73,24 @@
         }
         
         const files = await res.json();
+        console.log(`Processing ${files.length} files from ${folder} for target: ${target}`);
+        
         await Promise.all(
           files
-            .filter(f => f.name.endsWith('.js') && f.name !== 'ItemEditor.js')
+            .filter(f => f.name.endsWith('.js'))
             .map(async f => {
               try {
+                console.log(`Loading ${f.name} for ${target}...`);
                 const code = await (await fetch(f.download_url)).text();
                 const config = eval(`(${code})`);
                 
-                if (!this.validateExtension(config, target, f.name)) return;
+                if (!this.validateExtension(config, target, f.name)) {
+                  console.warn(`Validation failed for ${f.name}`);
+                  return;
+                }
                 
                 this.ext[target].push(config);
-                console.log(`Loaded ${target}: ${f.name}`);
+                console.log(`Successfully loaded ${target}: ${f.name}`);
                 await config.init?.call(this);
                 
               } catch (e) {
