@@ -5,116 +5,139 @@
   
   content: function() {
     return `
-      <div class="h-full p-6 flex flex-col">
-        <div class="flex justify-between items-center mb-6">
+      <div class="h-full flex flex-col">
+        <!-- Header -->
+        <div class="flex justify-between items-center p-6 border-b border-base-300">
           <div class="flex items-center gap-4">
             <h1 class="text-2xl font-bold" x-text="editingItem?.id ? 'Edit Item' : 'Add New Item'"></h1>
-            <button class="btn btn-ghost" @click="editorRunCode()" title="Run code" x-show="editingItem && canExecute(editingItem.type)">
-              <i class="ph ph-play-circle text-xl"></i>
-              Run
+            <button class="btn btn-ghost btn-sm gap-2" @click="editorRunCode()" title="Test run this code" x-show="editingItem && canExecute(editingItem.type)">
+              <i class="ph ph-play-circle text-lg"></i>
+              Test Run
             </button>
           </div>
-          <div class="flex gap-2">
-            <button class="btn" @click="editorCancel()">Cancel</button>
-            <button class="btn btn-primary" @click="editorSave()" :disabled="!editingItem?.name?.trim()">Save</button>
+          <div class="flex gap-3">
+            <button class="btn btn-ghost" @click="editorCancel()">Cancel</button>
+            <button class="btn btn-primary" @click="editorSave()" :disabled="!editingItem?.name?.trim()">
+              <i class="ph ph-floppy-disk"></i>
+              Save
+            </button>
             <template x-if="editingItem?.id">
               <button class="btn btn-error" @click="editorDelete()">
-                <i class="ph ph-trash text-lg"></i>
+                <i class="ph ph-trash"></i>
                 Delete
               </button>
             </template>
           </div>
         </div>
 
-        <!-- Validation Errors -->
-        <div x-show="editorErrors.length > 0" class="alert alert-error mb-4">
-          <i class="ph ph-warning-circle"></i>
-          <div>
-            <h3 class="font-bold">Please fix the following errors:</h3>
-            <ul class="list-disc list-inside text-sm mt-1">
-              <template x-for="error in editorErrors" :key="error">
-                <li x-text="error"></li>
-              </template>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Success Message -->
-        <div x-show="editorSuccess" class="alert alert-success mb-4" x-transition>
-          <i class="ph ph-check-circle"></i>
-          <span x-text="editorSuccess"></span>
-        </div>
-
-        <template x-if="editingItem">
-          <div class="flex-1 flex flex-col gap-4">
-            <div class="form-control">
-              <label class="label">
-                <span class="label-text">Item Name <span class="text-error">*</span></span>
-              </label>
-              <input type="text" 
-                     x-model="editingItem.name" 
-                     class="input input-bordered w-full" 
-                     :class="editorErrors.some(e => e.includes('name')) && 'input-error'"
-                     placeholder="Enter a descriptive name for this item" 
-                     required>
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-6">
+          <!-- Validation Errors -->
+          <div x-show="editorErrors.length > 0" class="alert alert-error mb-6">
+            <i class="ph ph-warning-circle text-xl"></i>
+            <div>
+              <h3 class="font-bold">Please fix the following errors:</h3>
+              <ul class="list-disc list-inside text-sm mt-2">
+                <template x-for="error in editorErrors" :key="error">
+                  <li x-text="error"></li>
+                </template>
+              </ul>
             </div>
+          </div>
 
-            <div class="flex gap-4 items-end">
+          <!-- Success Message -->
+          <div x-show="editorSuccess" class="alert alert-success mb-6" x-transition>
+            <i class="ph ph-check-circle text-xl"></i>
+            <span x-text="editorSuccess"></span>
+          </div>
+
+          <template x-if="editingItem">
+            <div class="space-y-6">
+              <!-- Name -->
               <div class="form-control">
                 <label class="label">
-                  <span class="label-text">Type</span>
+                  <span class="label-text font-medium">Item Name <span class="text-error">*</span></span>
                 </label>
-                <div class="dropdown">
-                  <div tabindex="0" role="button" class="btn btn-sm" :class="badgeClass(editingItem.type) + ' btn-outline'" x-text="typeLabels[editingItem.type] || editingItem.type"></div>
-                  <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-48 p-2 shadow">
-                    <template x-for="[key, label] in Object.entries(typeLabels)" :key="key">
-                      <li><a @click="editingItem.type = key" x-text="label"></a></li>
-                    </template>
-                  </ul>
+                <input type="text" 
+                       x-model="editingItem.name" 
+                       class="input input-bordered input-lg w-full" 
+                       :class="editorErrors.some(e => e.includes('name')) && 'input-error'"
+                       placeholder="Enter a descriptive name for this item" 
+                       required>
+              </div>
+
+              <!-- Type and Autorun -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-medium">Type</span>
+                  </label>
+                  <div class="dropdown dropdown-bottom">
+                    <div tabindex="0" role="button" class="btn btn-outline w-full justify-start" :class="badgeClass(editingItem.type).replace('badge-', 'btn-')">
+                      <span x-text="typeLabels[editingItem.type] || editingItem.type"></span>
+                      <i class="ph ph-caret-down ml-auto"></i>
+                    </div>
+                    <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-full p-2 shadow-lg border border-base-300">
+                      <template x-for="[key, label] in Object.entries(typeLabels)" :key="key">
+                        <li><a @click="editingItem.type = key" x-text="label"></a></li>
+                      </template>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="form-control" x-show="canExecute(editingItem.type)">
+                  <label class="label">
+                    <span class="label-text font-medium">Execution</span>
+                  </label>
+                  <label class="label cursor-pointer justify-start gap-3 p-4 border border-base-300 rounded-lg hover:bg-base-50">
+                    <input type="checkbox" x-model="editingItem.autorun" class="checkbox checkbox-primary">
+                    <div class="flex items-center gap-2">
+                      <span class="text-primary font-bold text-lg">»</span>
+                      <span class="label-text">Autorun on load</span>
+                    </div>
+                  </label>
                 </div>
               </div>
 
-              <label class="label cursor-pointer inline-flex items-center space-x-2 w-auto max-w-max" x-show="canExecute(editingItem.type)">
-                <input type="checkbox" x-model="editingItem.autorun" class="checkbox checkbox-primary">
-                <span class="text-primary font-bold">»</span>
-                <span class="label-text">Autorun on load</span>
-              </label>
-            </div>
+              <!-- Tags and Notes -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-medium">Tags</span>
+                    <span class="label-text-alt">Comma-separated</span>
+                  </label>
+                  <input type="text" 
+                         x-model="editingItem.tags" 
+                         class="input input-bordered w-full" 
+                         placeholder="tag1, tag2, category">
+                </div>
 
-            <div class="form-control">
-              <label class="label">
-                <span class="label-text">Tags</span>
-                <span class="label-text-alt">Comma-separated</span>
-              </label>
-              <input type="text" 
-                     x-model="editingItem.tags" 
-                     class="input input-bordered w-full" 
-                     placeholder="tag1, tag2, category">
-            </div>
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-medium">Notes</span>
+                    <span class="label-text-alt">Optional</span>
+                  </label>
+                  <textarea x-model="editingItem.notes" 
+                            class="textarea textarea-bordered resize-none h-24" 
+                            placeholder="Add any notes or documentation"></textarea>
+                </div>
+              </div>
 
-            <div class="form-control">
-              <label class="label">
-                <span class="label-text">Notes</span>
-                <span class="label-text-alt">Optional description</span>
-              </label>
-              <textarea x-model="editingItem.notes" 
-                        class="textarea textarea-bordered w-full h-20" 
-                        placeholder="Add any notes or documentation about this item"></textarea>
+              <!-- Code -->
+              <div class="form-control">
+                <label class="label">
+                  <span class="label-text font-medium">Code <span class="text-error">*</span></span>
+                  <span class="label-text-alt">Press F5 to test run</span>
+                </label>
+                <textarea x-model="editingItem.code" 
+                          class="textarea textarea-bordered font-mono text-sm resize-none h-80" 
+                          :class="editorErrors.some(e => e.includes('code')) && 'textarea-error'"
+                          :placeholder="getPlaceholderText(editingItem.type)" 
+                          @keydown.f5.prevent="editorRunCode()"></textarea>
+              </div>
             </div>
-
-            <div class="form-control flex-1">
-              <label class="label">
-                <span class="label-text">Code <span class="text-error">*</span></span>
-                <span class="label-text-alt">F5 to test run</span>
-              </label>
-              <textarea x-model="editingItem.code" 
-                        class="flex-1 p-3 font-mono text-sm border rounded bg-base-100 resize-none min-h-0" 
-                        :class="editorErrors.some(e => e.includes('code')) && 'textarea-error'"
-                        :placeholder="getPlaceholderText(editingItem.type)" 
-                        @keydown.f5.prevent="editorRunCode()"></textarea>
-            </div>
-          </div>
-        </template>
+          </template>
+        </div>
       </div>
     `;
   },
