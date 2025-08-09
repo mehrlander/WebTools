@@ -65,13 +65,10 @@
                        placeholder="Enter a descriptive name for this item">
               </div>
 
-              <!-- Type -->
-              <div class="form-control mb-6">
-                <label class="label">
-                  <span class="label-text text-base font-semibold">Type</span>
-                </label>
-                <div class="dropdown dropdown-bottom w-full">
-                  <div tabindex="0" role="button" class="btn btn-outline w-full justify-between">
+              <!-- Type and Autorun (same line, no labels) -->
+              <div class="flex items-center gap-4 mb-6">
+                <div class="dropdown dropdown-bottom">
+                  <div tabindex="0" role="button" class="btn btn-outline justify-between min-w-40">
                     <span x-text="typeLabels[editingItem.type] || editingItem.type"></span>
                     <i class="ph ph-caret-down"></i>
                   </div>
@@ -81,14 +78,8 @@
                     </template>
                   </ul>
                 </div>
-              </div>
 
-              <!-- Autorun -->
-              <div class="form-control mb-6" x-show="canExecute(editingItem.type)">
-                <label class="label">
-                  <span class="label-text text-base font-semibold">Execution Options</span>
-                </label>
-                <label class="label cursor-pointer justify-start gap-3 p-4 border border-base-300 rounded-lg bg-base-50 hover:bg-base-100">
+                <label class="label cursor-pointer gap-3" x-show="canExecute(editingItem.type)">
                   <input type="checkbox" x-model="editingItem.autorun" class="checkbox checkbox-primary">
                   <div class="flex items-center gap-2">
                     <span class="text-primary font-bold text-lg">»</span>
