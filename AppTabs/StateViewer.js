@@ -1,7 +1,7 @@
 {
   name: 'State Viewer',
   icon: 'ph ph-code',
-  requires: ['JsonEditor'],
+  // Removed: requires: ['JsonEditor'],
   
   init() {
     // Initialize state viewer properties
@@ -12,7 +12,19 @@
     
     // Add methods to the Alpine component
     this.initStateViewer = async () => {
-      await this.jsonEditorLoaded; // Wait for JsonEditor script to load
+      // Load the JSON editor library if not already loaded
+      if (!window.DataJarLibs?.createJSONEditor) {
+        console.log('Loading JSON Editor library...');
+        try {
+          const module = await import('https://unpkg.com/vanilla-jsoneditor@latest/standalone.js');
+          if (!window.DataJarLibs) window.DataJarLibs = {};
+          window.DataJarLibs.createJSONEditor = module.createJSONEditor;
+          console.log('JSON Editor library loaded successfully');
+        } catch (error) {
+          console.error('Failed to load JSON Editor:', error);
+          return;
+        }
+      }
       
       const container = document.getElementById('json-editor');
       if (container && !this.jsonEditor && window.DataJarLibs?.createJSONEditor) {
