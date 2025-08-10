@@ -1,0 +1,306 @@
+{
+  name: 'Resources',
+  icon: 'ph ph-package',
+  
+  async init() {
+    console.log('Initializing Resources tab...');
+    
+    // Helper to format commit hash for display
+    this.formatCommitHash = (hash) => {
+      if (!hash || hash === 'main') return 'main';
+      return hash.substring(0, 8) + '...';
+    };
+    
+    // Helper to get resource status
+    this.getResourceStatus = () => {
+      const totalResources = this.ext.scripts.length + this.ext.tabs.length + 
+                           this.ext.modals.length + this.ext.buttons.length;
+      return {
+        total: totalResources,
+        scripts: this.ext.scripts.length,
+        tabs: this.ext.tabs.length,
+        modals: this.ext.modals.length,
+        buttons: this.ext.buttons.length,
+        loadedScripts: this.ext.loadedScripts.size
+      };
+    };
+    
+    // Helper to refresh resources
+    this.refreshResources = async () => {
+      try {
+        // Clear existing extensions (except core ones)
+        this.ext.tabs = this.ext.tabs.filter(tab => tab.name === 'Resources');
+        this.ext.modals = [];
+        this.ext.buttons = [{
+          className: 'btn btn-primary w-full gap-2 normal-case',
+          innerHTML: '<i class="ph ph-plus text-lg"></i> Add Item',
+          action() { this.editItem(); }
+        }];
+        
+        // Reload extensions
+        if (this.loadExtensions) {
+          await this.loadExtensions('AppButtons', 'buttons');
+          await this.loadExtensions('AppTabs', 'tabs');
+          await this.loadExtensions('AppModals', 'modals');
+        }
+        
+        console.log('Resources refreshed successfully');
+      } catch (error) {
+        console.error('Error refreshing resources:', error);
+      }
+    };
+  },
+  
+  content() {
+    const status = this.getResourceStatus();
+    const commit = this.cfg.github?.repoVersion || 'main';
+    const isLatest = this.isUsingLatest;
+    
+    return `
+      <div class="p-6 h-full overflow-y-auto">
+        <!-- Header with status -->
+        <div class="mb-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-2xl font-bold text-primary">Loaded Resources</h2>
+            <div class="flex gap-2">
+              <button onclick="this.refreshResources()" class="btn btn-sm btn-outline">
+                <i class="ph ph-arrow-clockwise"></i>
+                Refresh
+              </button>
+              ${!isLatest ? `
+                <button onclick="this.useLatestCommit()" class="btn btn-sm btn-warning">
+                  <i class="ph ph-download"></i>
+                  Use Latest
+                </button>
+              ` : ''}
+            </div>
+          </div>
+          
+          <!-- Status cards -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="stat bg-base-200 rounded-lg p-4">
+              <div class="stat-title text-xs">Total Resources</div>
+              <div class="stat-value text-2xl text-primary">${status.total}</div>
+            </div>
+            <div class="stat bg-base-200 rounded-lg p-4">
+              <div class="stat-title text-xs">Scripts</div>
+              <div class="stat-value text-2xl text-secondary">${status.scripts}</div>
+            </div>
+            <div class="stat bg-base-200 rounded-lg p-4">
+              <div class="stat-title text-xs">Tabs</div>
+              <div class="stat-value text-2xl text-accent">${status.tabs}</div>
+            </div>
+            <div class="stat bg-base-200 rounded-lg p-4">
+              <div class="stat-title text-xs">Modals</div>
+              <div class="stat-value text-2xl text-warning">${status.modals}</div>
+            </div>
+          </div>
+          
+          <!-- Commit info -->
+          <div class="alert ${isLatest ? 'alert-success' : 'alert-warning'} mb-6">
+            <i class="ph ${isLatest ? 'ph-check-circle' : 'ph-warning-circle'}"></i>
+            <div>
+              <div class="font-semibold">Repository: mehrlander/WebTools</div>
+              <div class="text-sm">
+                Commit: <code class="bg-base-200 px-2 py-1 rounded">${this.formatCommitHash(commit)}</code>
+                ${isLatest ? '(Latest)' : '(Custom)'}
+              </div>
+              <div class="text-sm mt-1">Status: ${this.commitStatus || 'Unknown'}</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Resource sections -->
+        <div class="space-y-6">
+          <!-- Scripts Section -->
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-header p-4 border-b border-base-300">
+              <h3 class="card-title text-lg">
+                <i class="ph ph-code text-secondary"></i>
+                Scripts (${status.scripts})
+              </h3>
+            </div>
+            <div class="card-body p-0">
+              ${this.ext.scripts.length ? this.ext.scripts.map(script => `
+                <div class="flex items-center justify-between p-4 border-b border-base-200 last:border-0">
+                  <div class="flex items-center gap-3">
+                    <div class="badge badge-secondary badge-sm">JS</div>
+                    <div>
+                      <div class="font-medium">${script.name || 'Unnamed Script'}</div>
+                      ${script.isCore ? '<div class="text-xs text-warning">Core Script</div>' : ''}
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    ${this.ext.loadedScripts.has(script.name) ? 
+                      '<div class="badge badge-success badge-sm">Loaded</div>' : 
+                      '<div class="badge badge-ghost badge-sm">Not Loaded</div>'
+                    }
+                    <button onclick="console.log('Script info:', ${JSON.stringify(script.name)})" 
+                            class="btn btn-ghost btn-xs">
+                      <i class="ph ph-info"></i>
+                    </button>
+                  </div>
+                </div>
+              `).join('') : `
+                <div class="p-8 text-center text-base-content/60">
+                  <i class="ph ph-file-code text-4xl mb-2 block"></i>
+                  <p>No scripts loaded</p>
+                </div>
+              `}
+            </div>
+          </div>
+          
+          <!-- Tabs Section -->
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-header p-4 border-b border-base-300">
+              <h3 class="card-title text-lg">
+                <i class="ph ph-tabs text-accent"></i>
+                Tabs (${status.tabs})
+              </h3>
+            </div>
+            <div class="card-body p-0">
+              ${this.ext.tabs.length ? this.ext.tabs.map((tab, index) => `
+                <div class="flex items-center justify-between p-4 border-b border-base-200 last:border-0">
+                  <div class="flex items-center gap-3">
+                    <div class="badge badge-accent badge-sm">TAB</div>
+                    <div>
+                      <div class="font-medium">${tab.name || 'Unnamed Tab'}</div>
+                      ${tab.requires ? `<div class="text-xs text-base-content/60">Requires: ${tab.requires.join(', ')}</div>` : ''}
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    ${this.activeTab === index ? 
+                      '<div class="badge badge-primary badge-sm">Active</div>' : 
+                      '<div class="badge badge-ghost badge-sm">Inactive</div>'
+                    }
+                    <button onclick="this.activateTab(${index})" class="btn btn-ghost btn-xs">
+                      <i class="ph ph-arrow-right"></i>
+                    </button>
+                  </div>
+                </div>
+              `).join('') : `
+                <div class="p-8 text-center text-base-content/60">
+                  <i class="ph ph-tabs text-4xl mb-2 block"></i>
+                  <p>No tabs loaded</p>
+                </div>
+              `}
+            </div>
+          </div>
+          
+          <!-- Modals Section -->
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-header p-4 border-b border-base-300">
+              <h3 class="card-title text-lg">
+                <i class="ph ph-window text-warning"></i>
+                Modals (${status.modals})
+              </h3>
+            </div>
+            <div class="card-body p-0">
+              ${this.ext.modals.length ? this.ext.modals.map(modal => `
+                <div class="flex items-center justify-between p-4 border-b border-base-200 last:border-0">
+                  <div class="flex items-center gap-3">
+                    <div class="badge badge-warning badge-sm">MOD</div>
+                    <div>
+                      <div class="font-medium">${modal.name || 'Unnamed Modal'}</div>
+                      <div class="text-xs text-base-content/60">ID: ${modal.id}</div>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    ${this.activeModal === modal.id ? 
+                      '<div class="badge badge-primary badge-sm">Open</div>' : 
+                      '<div class="badge badge-ghost badge-sm">Closed</div>'
+                    }
+                    <button onclick="this.activeModal = '${modal.id}'" class="btn btn-ghost btn-xs">
+                      <i class="ph ph-eye"></i>
+                    </button>
+                  </div>
+                </div>
+              `).join('') : `
+                <div class="p-8 text-center text-base-content/60">
+                  <i class="ph ph-window text-4xl mb-2 block"></i>
+                  <p>No modals loaded</p>
+                </div>
+              `}
+            </div>
+          </div>
+          
+          <!-- Buttons Section -->
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-header p-4 border-b border-base-300">
+              <h3 class="card-title text-lg">
+                <i class="ph ph-cursor-click text-info"></i>
+                Buttons (${status.buttons})
+              </h3>
+            </div>
+            <div class="card-body p-0">
+              ${this.ext.buttons.length ? this.ext.buttons.map((button, index) => `
+                <div class="flex items-center justify-between p-4 border-b border-base-200 last:border-0">
+                  <div class="flex items-center gap-3">
+                    <div class="badge badge-info badge-sm">BTN</div>
+                    <div>
+                      <div class="font-medium">Button ${index + 1}</div>
+                      <div class="text-xs text-base-content/60">${button.className}</div>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <div class="badge badge-ghost badge-sm">Available</div>
+                    <button onclick="console.log('Button:', ${index})" class="btn btn-ghost btn-xs">
+                      <i class="ph ph-info"></i>
+                    </button>
+                  </div>
+                </div>
+              `).join('') : `
+                <div class="p-8 text-center text-base-content/60">
+                  <i class="ph ph-cursor-click text-4xl mb-2 block"></i>
+                  <p>No buttons loaded</p>
+                </div>
+              `}
+            </div>
+          </div>
+          
+          <!-- GitHub Configuration -->
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-header p-4 border-b border-base-300">
+              <h3 class="card-title text-lg">
+                <i class="ph ph-gear text-neutral"></i>
+                GitHub Configuration
+              </h3>
+            </div>
+            <div class="card-body p-4">
+              <div class="space-y-3">
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">Repository Version</span>
+                  </label>
+                  <input type="text" 
+                         value="${commit}" 
+                         onchange="this.cfg.github.repoVersion = this.value" 
+                         class="input input-bordered input-sm" 
+                         placeholder="main or commit hash">
+                </div>
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">API Key Status</span>
+                  </label>
+                  <div class="badge ${this.cfg.github?.apiKey ? 'badge-success' : 'badge-warning'}">
+                    ${this.cfg.github?.apiKey ? 'Configured' : 'Not Set'}
+                  </div>
+                </div>
+                <div class="flex gap-2 mt-4">
+                  <button onclick="this.getLatestCommit()" class="btn btn-sm btn-outline">
+                    <i class="ph ph-download"></i>
+                    Fetch Latest
+                  </button>
+                  <button onclick="this.updateCommitAndRefresh()" class="btn btn-sm btn-primary">
+                    <i class="ph ph-arrow-clockwise"></i>
+                    Apply & Reload
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+}
