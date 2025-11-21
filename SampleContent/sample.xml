@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<catalog>
+    <metadata>
+        <title>Sample Product Catalog</title>
+        <version>1.0</version>
+        <lastUpdated>2024-11-21</lastUpdated>
+        <author>WebTools Team</author>
+    </metadata>
+
+    <products>
+        <product id="P001" category="electronics">
+            <name>Wireless Headphones</name>
+            <description>High-quality wireless headphones with noise cancellation</description>
+            <price currency="USD">149.99</price>
+            <inventory>
+                <quantity>250</quantity>
+                <warehouse>WH-001</warehouse>
+            </inventory>
+            <specifications>
+                <spec name="battery">40 hours</spec>
+                <spec name="connectivity">Bluetooth 5.2</spec>
+                <spec name="weight">250g</spec>
+            </specifications>
+        </product>
+
+        <product id="P002" category="electronics">
+            <name>Smart Watch</name>
+            <description>Fitness tracking smartwatch with heart rate monitor</description>
+            <price currency="USD">299.99</price>
+            <inventory>
+                <quantity>120</quantity>
+                <warehouse>WH-002</warehouse>
+            </inventory>
+            <specifications>
+                <spec name="display">1.4" AMOLED</spec>
+                <spec name="waterproof">5ATM</spec>
+                <spec name="battery">7 days</spec>
+            </specifications>
+        </product>
+
+        <product id="P003" category="accessories">
+            <name>Laptop Stand</name>
+            <description>Ergonomic aluminum laptop stand with adjustable height</description>
+            <price currency="USD">79.99</price>
+            <inventory>
+                <quantity>500</quantity>
+                <warehouse>WH-001</warehouse>
+            </inventory>
+            <specifications>
+                <spec name="material">Aluminum</spec>
+                <spec name="maxWeight">15kg</spec>
+                <spec name="compatibility">10-17 inch laptops</spec>
+            </specifications>
+        </product>
+    </products>
+
+    <categories>
+        <category id="electronics">
+            <name>Electronics</name>
+            <description>Electronic devices and gadgets</description>
+        </category>
+        <category id="accessories">
+            <name>Accessories</name>
+            <description>Computer and phone accessories</description>
+        </category>
+    </categories>
+</catalog>
