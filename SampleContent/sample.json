@@ -1,0 +1,108 @@
+{
+  "company": {
+    "name": "TechCorp Solutions",
+    "founded": 2015,
+    "website": "https://example.com",
+    "headquarters": {
+      "city": "San Francisco",
+      "state": "California",
+      "country": "USA"
+    }
+  },
+  "employees": [
+    {
+      "id": "EMP001",
+      "name": "Alice Johnson",
+      "role": "Software Engineer",
+      "department": "Engineering",
+      "skills": ["JavaScript", "Python", "React", "Node.js"],
+      "contact": {
+        "email": "alice.johnson@example.com",
+        "phone": "+1-555-0101"
+      },
+      "projects": [
+        {
+          "name": "Web Dashboard",
+          "status": "active",
+          "startDate": "2024-01-15"
+        },
+        {
+          "name": "API Gateway",
+          "status": "completed",
+          "startDate": "2023-06-01"
+        }
+      ]
+    },
+    {
+      "id": "EMP002",
+      "name": "Bob Smith",
+      "role": "Product Manager",
+      "department": "Product",
+      "skills": ["Agile", "Scrum", "Analytics", "UX Research"],
+      "contact": {
+        "email": "bob.smith@example.com",
+        "phone": "+1-555-0102"
+      },
+      "projects": [
+        {
+          "name": "Mobile App Redesign",
+          "status": "active",
+          "startDate": "2024-03-01"
+        }
+      ]
+    },
+    {
+      "id": "EMP003",
+      "name": "Carol Davis",
+      "role": "Data Scientist",
+      "department": "Analytics",
+      "skills": ["Python", "Machine Learning", "SQL", "TensorFlow"],
+      "contact": {
+        "email": "carol.davis@example.com",
+        "phone": "+1-555-0103"
+      },
+      "projects": [
+        {
+          "name": "Recommendation Engine",
+          "status": "active",
+          "startDate": "2024-02-10"
+        },
+        {
+          "name": "Customer Segmentation",
+          "status": "completed",
+          "startDate": "2023-09-15"
+        }
+      ]
+    }
+  ],
+  "products": [
+    {
+      "id": "PROD001",
+      "name": "CloudSync Pro",
+      "category": "SaaS",
+      "pricing": {
+        "basic": 9.99,
+        "professional": 29.99,
+        "enterprise": 99.99
+      },
+      "features": ["Real-time sync", "256-bit encryption", "Unlimited storage"]
+    },
+    {
+      "id": "PROD002",
+      "name": "DataFlow Analytics",
+      "category": "Analytics",
+      "pricing": {
+        "starter": 49.99,
+        "business": 149.99,
+        "enterprise": 499.99
+      },
+      "features": ["Custom dashboards", "AI insights", "API access", "White-label options"]
+    }
+  ],
+  "statistics": {
+    "totalEmployees": 150,
+    "activeProjects": 23,
+    "revenue2024": 5200000,
+    "customerCount": 12500
+  }
+}
