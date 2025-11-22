@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Repository Viewer</title>
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web,npm/lodash,npm/clipboard"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+
+<!-- Load components from GitHub main branch (always latest) -->
+<script src="https://cdn.jsdelivr.net/gh/mehrlander/WebTools@main/AlpineComponents/CopyBox.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/mehrlander/WebTools@main/AlpineComponents/RepositoryViewer.js"></script>
+</head>
+
+<body class="min-h-screen bg-base-100" x-data="repositoryViewer()">
+<div class="max-w-7xl mx-auto px-2 py-3 relative">
+  <div class="mb-3">
+    <h1 class="text-lg font-bold">WebTools Repository</h1>
+    <p class="text-sm text-base-content/70">Browsing: <span x-text="currentRepo">mehrlander/WebTools</span></p>
+  </div>
+
+  <!-- Floating dropdown button -->
+  <div class="dropdown dropdown-end fixed top-3 right-3 z-50">
+    <div tabindex="0" role="button" class="btn btn-circle btn-ghost">
+      <i class="ph ph-plus text-lg"></i>
+    </div>
+    <ul tabindex="0" class="dropdown-content menu menu-sm bg-base-100 rounded shadow w-40">
+      <li><a @click="emitEvent('file:add')">Add File</a></li>
+      <li><a @click="emitEvent('manifest:add')">Provide Manifest</a></li>
+    </ul>
+  </div>
+
+  <!-- Repository Viewer Container -->
+  <div id="repository-viewer"></div>
+</div>
+
+<script>
+function repositoryViewer() {
+  return {
+    token: '📲INPUT',
+    currentRepo: 'mehrlander/WebTools',
+    viewer: null,
+    async init() {
+      this.viewer = new RepositoryViewer('#repository-viewer', {
+        repository: this.currentRepo,
+        token: this.token,
+        autoLoad: true,
+        maxCommits: 30,
+        showFiles: true,
+        showCommits: true,
+        showContent: true,
+        defaultBranch: 'main',
+        containerClass: '',
+        gridClass: 'grid grid-cols-1 lg:grid-cols-3 gap-3'
+      });
+    },
+    emitEvent(type) {
+      window.dispatchEvent(new CustomEvent(type, {
+        detail: { source: "repo-viewer", ts: Date.now() }
+      }));
+      console.log(`${type} event dispatched`);
+    }
+  }
+}
+</script>
+</body>
+</html>
