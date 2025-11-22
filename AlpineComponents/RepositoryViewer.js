@@ -390,19 +390,38 @@ class RepositoryViewer {
         this.fileTreeLoading = true;
         this.fileTreeError = null;
         this.currentPath = path;
-        
+
         if (!this.currentRepo) return;
-        
+
         try {
           const url = `https://api.github.com/repos/${this.currentRepo}/contents/${path}`;
           const items = await this.apiRequest(url);
           this.fileTree = items;
-          
+
+          // Auto-select the first file in the directory
+          await this.autoSelectFirstFile();
+
         } catch(error) {
           console.error('Error loading file tree:', error);
           this.fileTreeError = 'Error loading files';
         } finally {
           this.fileTreeLoading = false;
+        }
+      },
+
+      async autoSelectFirstFile() {
+        // Sort the file tree: directories first, then files, alphabetically
+        const sorted = [...this.fileTree].sort((a, b) => {
+          if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+          return a.name.localeCompare(b.name);
+        });
+
+        // Find the first file (not directory)
+        const firstFile = sorted.find(item => item.type === 'file');
+
+        if (firstFile) {
+          // Load the file (this will also load its commits and display content)
+          await this.loadFile(firstFile.path);
         }
       },
       
