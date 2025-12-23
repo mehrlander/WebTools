@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTML Previewer</title>
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/jquery,npm/@phosphor-icons/web"></script>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+</head>
+<body class="min-h-screen bg-base-200">
+<div class="flex h-screen">
+  
+  <div class="w-64 bg-base-100 border-r border-base-300 flex flex-col">
+    <div class="p-3 border-b border-base-300">
+      <div class="flex items-center justify-between">
+        <div class="font-mono text-sm font-bold">mehrlander/WebTools</div>
+        <div class="flex items-center gap-1">
+          <button id="refreshBtn" class="hover:text-primary transition-colors" title="Refresh">
+            <i class="ph ph-arrow-clockwise text-lg text-base-content/50 hover:text-primary"></i>
+          </button>
+          <div id="authStatus" class="tooltip tooltip-left" data-tip="Checking...">
+            <i class="ph ph-circle-notch animate-spin text-lg"></i>
+          </div>
+        </div>
+      </div>
+      <div class="text-xs text-base-content/60 mt-1">HTML Files</div>
+    </div>
+    <ul id="fileList" class="menu menu-sm flex-1 overflow-y-auto p-2">
+      <li><span class="loading loading-spinner loading-sm"></span></li>
+    </ul>
+  </div>
+
+  <div class="flex-1 flex flex-col">
+    <div class="p-2 bg-base-100 border-b border-base-300 flex items-center gap-2">
+      <i class="ph ph-file-html text-lg text-info"></i>
+      <span id="currentFile" class="font-mono text-sm truncate flex-1">Select a file</span>
+      <button id="viewToggle" class="btn btn-ghost btn-xs hidden" title="Toggle View">
+        <i class="ph ph-code text-lg"></i>
+      </button>
+      <a id="openLink" href="#" target="_blank" class="btn btn-ghost btn-xs hidden" title="Open in New Tab">
+        <i class="ph ph-arrow-square-out text-lg"></i>
+      </a>
+    </div>
+    <iframe id="preview" class="flex-1 bg-white" sandbox="allow-scripts allow-modals"></iframe>
+    <pre id="rawView" class="flex-1 bg-base-100 p-4 overflow-auto text-xs font-mono hidden"></pre>
+  </div>
+
+</div>
+<script>
+const REPO = 'mehrlander/WebTools'
+let ghToken = '', isAuth = false
+const getHeaders = () => isAuth ? { 'Authorization': `Bearer ${ghToken}` } : {}
+
+window.auth = (token) => {
+  ghToken = token.trim()
+  isAuth = true
+  $('#authStatus').attr('data-tip', 'Authenticated').html('<i class="ph ph-shield-check text-success text-lg"></i>')
+  loadFiles()
+}
+
+let currentRaw = '', isRawView = false
+
+async function loadFiles() {
+  const res = await fetch(`https://api.github.com/repos/${REPO}/git/trees/main?recursive=1`, { headers: getHeaders() })
+  const { tree } = await res.json()
+  const htmlFiles = tree.filter(f => f.type === 'blob' && f.path.endsWith('.html')).map(f => f.path)
+  
+  $('#fileList').html(htmlFiles.map(p => `
+    <li><a class="file-link font-mono text-xs" data-path="${p}">
+      <i class="ph ph-file-html text-info"></i>${p.split('/').pop()}
+    </a></li>
+  `).join(''))
+  
+  // Auth status
+  const tip = isAuth ? `Authenticated` : 'Public Only'
+  const icon = isAuth ? 'ph-shield-check text-success' : 'ph-globe text-base-content/50'
+  $('#authStatus').attr('data-tip', tip).html(`<i class="ph ${icon} text-lg"></i>`)
+}
+
+function updateView() {
+  $('#preview').toggleClass('hidden', isRawView)
+  $('#rawView').toggleClass('hidden', !isRawView)
+  $('#viewToggle i').toggleClass('ph-code', !isRawView).toggleClass('ph-eye', isRawView)
+  $('#viewToggle').attr('title', isRawView ? 'Show Preview' : 'Show Code')
+  if (isRawView) $('#rawView').text(currentRaw)
+}
+
+$('#fileList').on('click', '.file-link', async function() {
+  const path = $(this).data('path')
+  $('.file-link').removeClass('active')
+  $(this).addClass('active')
+  $('#currentFile').text(path)
+  isRawView = false
+  
+  const rawUrl = `https://cdn.jsdelivr.net/gh/${REPO}@main/${path}`
+  currentRaw = await (await fetch(rawUrl)).text()
+  
+  // Blob URL so iframe renders as HTML
+  const blob = new Blob([currentRaw], { type: 'text/html' })
+  $('#preview').attr('src', URL.createObjectURL(blob))
+  $('#openLink').attr('href', rawUrl).removeClass('hidden')
+  $('#viewToggle').removeClass('hidden')
+  updateView()
+})
+
+$('#viewToggle').on('click', () => { isRawView = !isRawView; updateView() })
+$('#refreshBtn').on('click', loadFiles)
+
+loadFiles()
+</script>
+</body>
+</html>
