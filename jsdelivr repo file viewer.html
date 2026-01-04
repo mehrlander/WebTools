@@ -1,0 +1,72 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>jsDelivr tree + raw (fixed + succinct)</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+
+<body class="p-3 bg-slate-50">
+  <div class="max-w-5xl mx-auto space-y-3">
+    <div class="flex gap-2">
+      <input id="repo" class="border rounded px-2 py-1 font-mono text-sm flex-1" value="mehrlander/WebTools">
+      <input id="ref"  class="border rounded px-2 py-1 font-mono text-sm w-24" value="main">
+      <button id="go" class="bg-slate-900 text-white rounded px-3 py-1 text-sm">Tree</button>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <a id="turl" class="text-xs font-mono text-blue-700 underline break-all" target="_blank">—</a>
+      <button class="c border rounded px-2 py-1 text-xs" data-clipboard-target="#traw">Copy JSON</button>
+    </div>
+
+    <div class="grid gap-3 md:grid-cols-2">
+      <pre id="traw" class="bg-white border rounded p-2 text-[11px] font-mono whitespace-pre-wrap break-words max-h-[35vh] overflow-auto"></pre>
+      <div class="bg-white border rounded p-2">
+        <div class="text-xs text-slate-600 mb-2">HTML files</div>
+        <div id="list" class="font-mono text-xs space-y-1"></div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <a id="furl" class="text-xs font-mono text-blue-700 underline break-all flex-1" target="_blank">—</a>
+      <button id="copyUrl" class="c border rounded px-2 py-1 text-xs" data-clipboard-text="">Copy URL</button>
+      <button class="c border rounded px-2 py-1 text-xs" data-clipboard-target="#fraw">Copy body</button>
+    </div>
+
+    <div class="grid gap-3 md:grid-cols-2">
+      <pre id="fraw" class="bg-white border rounded p-2 text-[11px] font-mono whitespace-pre-wrap break-words max-h-[45vh] overflow-auto"></pre>
+      <iframe id="frame" class="bg-white border rounded w-full h-[45vh]" sandbox="allow-scripts allow-modals"></iframe>
+    </div>
+  </div>
+
+<script>
+const $=s=>document.querySelector(s),
+  enc=s=>encodeURIComponent(s.trim()),
+  encp=p=>p.split('/').map(encodeURIComponent).join('/'),
+  T=(r,ref)=>`https://data.jsdelivr.com/v1/packages/gh/${r}@${enc(ref)}?structure=flat`,
+  R=(r,ref,p)=>`https://cdn.jsdelivr.net/gh/${r}@${enc(ref)}/${encp(p)}`,
+  isHtml=p=>/\.(html?|xhtml)$/i.test(p)
+
+$('#go').onclick=async()=>{
+  const r=$('#repo').value.trim(), ref=$('#ref').value.trim(), u=T(r,ref)
+  $('#turl').textContent=u; $('#turl').href=u; $('#traw').textContent='fetching…'; $('#list').textContent=''
+  const t=await (await fetch(u)).text(); $('#traw').textContent=t
+  const j=(()=>{try{return JSON.parse(t)}catch{return {}}})()
+  const html=(j.files||[]).map(x=>String(x.name||'').replace(/^\//,'')).filter(isHtml)
+  $('#list').innerHTML=html.length?html.map(p=>`<a href="#" data-p="${p}" class="block hover:underline">${p}</a>`).join(''):'(none)'
+}
+
+$('#list').onclick=async(e)=>{
+  const a=e.target.closest('a[data-p]'); if(!a) return; e.preventDefault()
+  const r=$('#repo').value.trim(), ref=$('#ref').value.trim(), p=a.dataset.p, u=R(r,ref,p)
+  $('#furl').textContent=u; $('#furl').href=u; $('#copyUrl').setAttribute('data-clipboard-text',u)
+  $('#fraw').textContent='fetching…'
+  const t=await (await fetch(u)).text(); $('#fraw').textContent=t
+  $('#frame').src=isHtml(p)?URL.createObjectURL(new Blob([t],{type:'text/html'})):'about:blank'
+}
+
+new ClipboardJS('.c').on('success', e=>{
+  const b=e.trigger, old=b.textContent; b.textContent='Copied'; setTimeout(()=>b.textContent=old,800); e.clearSelection()
+})
+
+$('#go').click()
+</script>
+</body>
