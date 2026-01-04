@@ -8,30 +8,15 @@
 <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
 </head>
 <body class="min-h-screen bg-base-200">
-<div class="flex h-screen">
-  
-  <div class="w-64 bg-base-100 border-r border-base-300 flex flex-col">
-    <div class="p-3 border-b border-base-300">
-      <div class="flex items-center justify-between">
-        <div class="font-mono text-sm font-bold">mehrlander/WebTools</div>
-        <div class="flex items-center gap-1">
-          <button id="refreshBtn" class="hover:text-primary transition-colors" title="Refresh">
-            <i class="ph ph-arrow-clockwise text-lg text-base-content/50 hover:text-primary"></i>
-          </button>
-          <div id="authStatus" class="tooltip tooltip-left" data-tip="Checking...">
-            <i class="ph ph-circle-notch animate-spin text-lg"></i>
-          </div>
-        </div>
-      </div>
-      <div class="text-xs text-base-content/60 mt-1">HTML Files</div>
-    </div>
-    <ul id="fileList" class="menu menu-sm flex-1 overflow-y-auto p-2">
-      <li><span class="loading loading-spinner loading-sm"></span></li>
-    </ul>
-  </div>
 
-  <div class="flex-1 flex flex-col">
+<div class="drawer lg:drawer-open">
+  <input id="drawer" type="checkbox" class="drawer-toggle" />
+  
+  <div class="drawer-content flex flex-col h-screen">
     <div class="p-2 bg-base-100 border-b border-base-300 flex items-center gap-2">
+      <label for="drawer" class="btn btn-square btn-ghost btn-sm lg:hidden">
+        <i class="ph ph-list text-xl"></i>
+      </label>
       <i class="ph ph-file-html text-lg text-info"></i>
       <span id="currentFile" class="font-mono text-sm truncate flex-1">Select a file</span>
       <button id="viewToggle" class="btn btn-ghost btn-xs hidden" title="Toggle View">
@@ -45,15 +30,39 @@
     <pre id="rawView" class="flex-1 bg-base-100 p-4 overflow-auto text-xs font-mono hidden"></pre>
   </div>
 
+  <div class="drawer-side">
+    <label for="drawer" class="drawer-overlay"></label>
+    <aside class="w-72 min-h-full bg-base-100 flex flex-col">
+      <div class="p-3 border-b border-base-300">
+        <div class="flex items-center justify-between">
+          <div class="font-mono text-sm font-bold">mehrlander/WebTools</div>
+          <div class="flex items-center gap-1">
+            <button id="refreshBtn" class="hover:text-primary transition-colors" title="Refresh">
+              <i class="ph ph-arrow-clockwise text-lg text-base-content/50 hover:text-primary"></i>
+            </button>
+            <div id="authStatus" class="tooltip tooltip-left" data-tip="Checking...">
+              <i class="ph ph-circle-notch animate-spin text-lg"></i>
+            </div>
+          </div>
+        </div>
+        <div class="text-xs text-base-content/60 mt-1">HTML Files</div>
+      </div>
+      <ul id="fileList" class="menu menu-sm flex-1 overflow-y-auto p-2">
+        <li><span class="loading loading-spinner loading-sm"></span></li>
+      </ul>
+    </aside>
+  </div>
 </div>
+
 <script>
 const REPO = 'mehrlander/WebTools'
-let ghToken = '', isAuth = false
-const getHeaders = () => isAuth ? { 'Authorization': `Bearer ${ghToken}` } : {}
+const GH_TOKEN = '🎟️GitHubToken'
+let ghToken = GH_TOKEN.includes('🎟️') ? '' : GH_TOKEN.trim()
+
+const getHeaders = () => ghToken ? { 'Authorization': `Bearer ${ghToken}` } : {}
 
 window.auth = (token) => {
   ghToken = token.trim()
-  isAuth = true
   $('#authStatus').attr('data-tip', 'Authenticated').html('<i class="ph ph-shield-check text-success text-lg"></i>')
   loadFiles()
 }
@@ -71,9 +80,8 @@ async function loadFiles() {
     </a></li>
   `).join(''))
   
-  // Auth status
-  const tip = isAuth ? `Authenticated` : 'Public Only'
-  const icon = isAuth ? 'ph-shield-check text-success' : 'ph-globe text-base-content/50'
+  const tip = ghToken ? 'Authenticated' : 'Public Only'
+  const icon = ghToken ? 'ph-shield-check text-success' : 'ph-globe text-base-content/50'
   $('#authStatus').attr('data-tip', tip).html(`<i class="ph ${icon} text-lg"></i>`)
 }
 
@@ -92,11 +100,15 @@ $('#fileList').on('click', '.file-link', async function() {
   $('#currentFile').text(path)
   isRawView = false
   
+  // Close drawer on mobile after selection
+  $('#drawer').prop('checked', false)
+  
   const rawUrl = `https://cdn.jsdelivr.net/gh/${REPO}@main/${path}`
   currentRaw = await (await fetch(rawUrl)).text()
   
-  // Blob URL so iframe renders as HTML
-  const blob = new Blob([currentRaw], { type: 'text/html' })
+  const sentinel = '🎟️' + 'GitHubToken'
+  const injected = ghToken ? currentRaw.replace(new RegExp(sentinel, 'g'), ghToken) : currentRaw
+  const blob = new Blob([injected], { type: 'text/html' })
   $('#preview').attr('src', URL.createObjectURL(blob))
   $('#openLink').attr('href', rawUrl).removeClass('hidden')
   $('#viewToggle').removeClass('hidden')
