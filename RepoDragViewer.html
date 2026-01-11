@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+  <script defer src="https://cdn.jsdelivr.net/combine/npm/alpinejs@3/dist/cdn.min.js,npm/@alpinejs/sort@3/dist/cdn.min.js"></script>
+</head>
+
+<body class="bg-slate-100 antialiased text-slate-900 select-none overflow-hidden h-screen flex flex-col" data-theme="emerald" x-data="explorer()">
+
+  <header class="bg-white border-b border-slate-200 px-2 flex items-center justify-between z-30 shrink-0 h-12">
+    <nav class="flex items-center text-[13px] font-mono overflow-x-auto gap-0.5 py-3 h-full [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+      
+      <ul 
+        id="bc-root"
+        data-target="bc-root"
+        data-type="breadcrumb"
+        data-path=""
+        x-sort="[]" 
+        x-sort:group="files"
+        x-sort:config="{ ghostClass: 'w-0', dragClass: 'opacity-0', onStart: e => handleStart(e), onMove: e => handleMove(e), onEnd: e => handleEnd(e) }"
+        @click="cd('')"
+        class="group relative inline-flex items-center rounded px-2 mr-1 h-full cursor-pointer hover:bg-slate-50 transition-all duration-200"
+        :class="hot === 'bc-root' ? 'bg-indigo-50 scale-105' : ''"
+      >
+        <span class="text-slate-900 font-bold shrink-0" :class="hot === 'bc-root' ? 'text-indigo-600' : ''">wa-bills</span>
+        
+        <template x-if="counts['bc-root'] > 0">
+          <button 
+            @click.stop="clearSegment('bc-root')"
+            class="absolute -top-1 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white text-slate-400 hover:bg-rose-500 hover:text-white transition-colors border border-slate-200 shadow-sm z-10"
+            title="Clear staged">
+            <i class="ph ph-x text-[8px] font-bold"></i>
+          </button>
+        </template>
+
+        <template x-if="counts['bc-root'] > 0">
+          <span 
+            class="absolute -bottom-0.5 -right-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full px-1 text-[8px] font-bold text-white shadow-sm ring-1 ring-white transition-all duration-300"
+            :class="hot === 'bc-root' ? 'bg-rose-500 scale-125' : 'bg-indigo-500'"
+            x-text="counts['bc-root']">
+          </span>
+        </template>
+      </ul>
+
+      <template x-for="(part, index) in pathParts" :key="'bc-'+index">
+        <div class="flex items-center shrink-0 h-full">
+          <span class="opacity-20 px-0.5">/</span>
+          <ul 
+            :id="'bc-'+index"
+            :data-target="'bc-'+index"
+            data-type="breadcrumb"
+            :data-path="pathParts.slice(0,index+1).join('/')"
+            x-sort="[]" 
+            x-sort:group="files"
+            x-sort:config="{ ghostClass: 'w-0', dragClass: 'opacity-0', onStart: e => handleStart(e), onMove: e => handleMove(e), onEnd: e => handleEnd(e) }"
+            @click="cd(pathParts.slice(0,index+1).join('/'))"
+            class="group relative inline-flex items-center rounded px-2 mr-1 h-full cursor-pointer hover:bg-slate-50 transition-all duration-200"
+            :class="hot === 'bc-'+index ? 'bg-indigo-50 scale-105' : ''"
+          >
+            <span class="text-blue-600 font-bold truncate max-w-[110px]" :class="hot === 'bc-'+index ? 'text-indigo-600' : ''" x-text="part"></span>
+            
+            <template x-if="counts['bc-'+index] > 0">
+              <button 
+                @click.stop="clearSegment('bc-'+index)"
+                class="absolute -top-1 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white text-slate-400 hover:bg-rose-500 hover:text-white transition-colors border border-slate-200 shadow-sm z-10"
+                title="Clear staged">
+                <i class="ph ph-x text-[8px] font-bold"></i>
+              </button>
+            </template>
+
+            <template x-if="counts['bc-'+index] > 0">
+              <span 
+                class="absolute -bottom-0.5 -right-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full px-1 text-[8px] font-bold text-white shadow-sm ring-1 ring-white transition-all duration-300"
+                :class="hot === 'bc-'+index ? 'bg-rose-500 scale-125' : 'bg-indigo-500'"
+                x-text="counts['bc-'+index]">
+              </span>
+            </template>
+          </ul>
+        </div>
+      </template>
+      <div class="w-6 shrink-0 h-full"></div>
+    </nav>
+  </header>
+
+  <main class="flex-1 overflow-y-auto bg-white border-b border-slate-300">
+    <div class="bg-slate-50 border-b border-slate-200 divide-y divide-slate-100">
+      <template x-for="dir in directories" :key="dir.id">
+        <div 
+          class="flex items-center gap-2 px-4 py-2 min-h-[48px] transition-colors"
+          :class="hot === dir.id ? 'bg-amber-50' : 'hover:bg-white'"
+        >
+          <div 
+            @click="cd(dir.path)" 
+            class="flex items-center gap-2 shrink-0 cursor-pointer group relative"
+          >
+            <i class="ph-fill ph-folder text-amber-400 text-lg"></i>
+            <span class="font-mono text-[12px] font-bold text-slate-700 group-hover:text-amber-600 transition-colors" x-text="dir.name"></span>
+            
+            <template x-if="counts[dir.id] > 0">
+              <button 
+                @click.stop="clearSegment(dir.id)"
+                class="absolute -top-1 -right-3 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white text-slate-400 hover:bg-rose-500 hover:text-white transition-colors border border-slate-200 shadow-sm z-10"
+                title="Clear staged">
+                <i class="ph ph-x text-[8px] font-bold"></i>
+              </button>
+            </template>
+
+            <template x-if="counts[dir.id] > 0">
+              <span 
+                class="absolute -bottom-1 -right-2 flex h-3.5 min-w-[14px] items-center justify-center rounded-full px-1 text-[8px] font-bold text-white shadow-sm ring-1 ring-white transition-all duration-300"
+                :class="hot === dir.id ? 'bg-rose-500 scale-125' : 'bg-amber-500'"
+                x-text="counts[dir.id]">
+              </span>
+            </template>
+          </div>
+          
+          <ul 
+            :id="dir.id"
+            :data-target="dir.id"
+            data-type="folder"
+            :data-path="dir.path"
+            x-sort="[]" 
+            x-sort:group="files"
+            x-sort:config="{ onStart: e => handleStart(e), onMove: e => handleMove(e), onEnd: e => handleEnd(e), emptyInsertThreshold: 20 }"
+            class="flex-1 flex flex-wrap gap-1 min-h-[32px] items-center"
+          ></ul>
+        </div>
+      </template>
+    </div>
+
+    <ul 
+      id="file-list"
+      data-target="file-list"
+      data-type="root"
+      x-sort="items" 
+      x-sort:group="files"
+      x-sort:config="{ onStart: e => handleStart(e), onMove: e => handleMove(e), onEnd: e => handleEnd(e) }"
+      class="divide-y divide-slate-100 min-h-[100px] bg-white"
+    >
+      <template x-for="id in items" :key="id">
+        <li 
+          x-sort:item="id"
+          :data-id="id"
+          :data-name="byId[id]?.name"
+          :data-path="byId[id]?.path"
+          class="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 cursor-grab active:cursor-grabbing group bg-white"
+        >
+          <i class="ph ph-file-text text-slate-300 text-lg"></i>
+          <span class="flex-1 font-mono text-[13px] text-slate-600 truncate" x-text="byId[id]?.name"></span>
+        </li>
+      </template>
+    </ul>
+  </main>
+
+  <section class="h-48 flex flex-col bg-slate-900 text-emerald-400 font-mono text-[10px] z-40 shrink-0">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-slate-800 shrink-0">
+      <span class="opacity-50 uppercase tracking-widest">Staged Moves</span>
+      <span class="text-[9px] text-slate-500" x-show="Object.keys(staged).length > 0" x-text="Object.keys(staged).length + ' pending'"></span>
+    </div>
+    <div class="flex-1 overflow-y-auto p-3">
+      <pre class="whitespace-pre-wrap" x-text="JSON.stringify(staged, null, 2)"></pre>
+    </div>
+  </section>
+
+  <script>
+    const GH_TOKEN = '🎟️GitHubToken';
+    const REPO = 'mehrlander/wa-bills';
+
+    function explorer() {
+      return {
+        byId: {},
+        items: [],
+        directories: [],
+        currentPath: '',
+        loading: false,
+        hot: null,
+        counts: {},
+        staged: {},
+
+        get isAuth() { return !GH_TOKEN.includes('🎟️'); },
+        get pathParts() { return this.currentPath ? this.currentPath.split('/') : []; },
+        getHeaders() { return this.isAuth ? { 'Authorization': `Bearer ${GH_TOKEN.trim()}`, 'Accept': 'application/vnd.github.v3+json' } : {}; },
+
+        async init() { await this.cd(''); },
+
+        async cd(path) {
+          // Clear all staged on nav
+          this.staged = {};
+          this.counts = {};
+          document.querySelectorAll('[data-type="breadcrumb"] li').forEach(el => el.remove());
+
+          this.currentPath = path;
+          this.loading = true;
+          this.items = [];
+          this.directories = [];
+          this.byId = {};
+
+          try {
+            const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`, { headers: this.getHeaders() });
+            const data = await res.json();
+            if (!Array.isArray(data)) return;
+            data.forEach(item => {
+              const id = `${item.type}:${item.path}`;
+              this.byId[id] = { id, name: item.name, type: item.type, path: item.path };
+              if (item.type === 'dir') { this.directories.push(this.byId[id]); }
+              else { this.items.push(id); }
+            });
+          } catch (e) { console.error(e); }
+          this.loading = false;
+        },
+
+        clearSegment(segmentId) {
+          const segmentEl = document.getElementById(segmentId);
+          const rootEl = document.getElementById('file-list');
+          if (!segmentEl || !rootEl) return;
+
+          Array.from(segmentEl.querySelectorAll('li')).forEach(li => {
+            li.className = 'flex items-center gap-3 px-5 py-3 hover:bg-slate-50 cursor-grab active:cursor-grabbing group bg-white';
+            rootEl.appendChild(li);
+          });
+
+          this.updateStaged();
+        },
+
+        handleStart(e) {
+          e.item.classList.remove('hidden', 'opacity-0', 'w-0', 'h-0', 'p-0', 'm-0', 'overflow-hidden');
+        },
+
+        handleMove(e) {
+          const targetType = e.to.dataset.type;
+          const targetId = e.to.dataset.target;
+          this.hot = targetId;
+
+          if (targetType === 'breadcrumb') {
+            e.dragged.className = 'w-0 h-0 overflow-hidden opacity-0 pointer-events-none';
+          } else if (targetType === 'folder') {
+            e.dragged.className = 'px-1.5 py-px rounded-full text-[9px] font-semibold cursor-grab active:cursor-grabbing leading-tight flex items-center bg-amber-100 text-amber-700';
+          } else {
+            e.dragged.className = 'flex items-center gap-3 px-5 py-3 hover:bg-slate-50 cursor-grab active:cursor-grabbing group bg-white';
+          }
+        },
+
+        handleEnd(e) {
+          this.hot = null;
+
+          if (e?.to.dataset.type === 'breadcrumb') {
+            e.item.className = 'hidden';
+          }
+
+          this.updateStaged();
+        },
+
+        updateStaged() {
+          this.staged = {};
+          this.counts = {};
+
+          // Check root breadcrumb
+          const rootItems = Array.from(document.querySelectorAll('#bc-root li'));
+          if (rootItems.length) {
+            this.staged[''] = rootItems.map(el => el.dataset.path);
+            this.counts['bc-root'] = rootItems.length;
+          }
+
+          // Check path breadcrumbs
+          this.pathParts.forEach((_, index) => {
+            const bcId = 'bc-' + index;
+            const bcEl = document.getElementById(bcId);
+            if (!bcEl) return;
+            const items = Array.from(bcEl.querySelectorAll('li'));
+            if (items.length) {
+              const targetPath = bcEl.dataset.path;
+              this.staged[targetPath] = items.map(el => el.dataset.path);
+              this.counts[bcId] = items.length;
+            }
+          });
+
+          // Check folders
+          this.directories.forEach(dir => {
+            const folderEl = document.getElementById(dir.id);
+            if (!folderEl) return;
+            const items = Array.from(folderEl.querySelectorAll('li'));
+            if (items.length) {
+              this.staged[dir.path] = items.map(el => el.dataset.path);
+              this.counts[dir.id] = items.length;
+            }
+          });
+        }
+      };
+    }
+  </script>
+</body>
+</html>
