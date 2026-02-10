@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Repository Viewer</title>
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web,npm/marked,npm/prismjs/prism.min.js,npm/prismjs/plugins/autoloader/prism-autoloader.min.js"></script>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5,npm/@tailwindcss/typography/dist/typography.min.css,npm/prismjs/themes/prism.min.css" rel="stylesheet" />
+</head>
+<body class="min-h-screen bg-base-100" x-data="app()" x-init="init()">
+<div class="max-w-7xl mx-auto px-2 py-3">
+  
+  <div class="mb-4 flex items-center justify-between border-b border-base-200 pb-3">
+    <div class="flex items-baseline gap-2 text-xl font-bold font-mono">
+      <span class="text-base-content/70" x-text="owner||'Select'"></span>
+      <span class="text-base-content/30">/</span>
+      <details class="dropdown dropdown-bottom" x-ref="repoDropdown">
+        <summary class="hover:text-primary hover:underline decoration-2 underline-offset-4 cursor-pointer flex items-center gap-1">
+          <span x-text="name||'Repository...'"></span>
+          <i class="ph ph-caret-down text-xs opacity-50"></i>
+        </summary>
+        <ul class="dropdown-content z-10 menu p-2 shadow-lg bg-base-200 rounded-box w-64 max-h-96 overflow-y-auto mt-1 text-sm border border-base-300">
+          <template x-for="r in repos"><li><a @click="pick(r)" class="font-mono text-xs" x-text="(r.private?'🔒 ':'')+r.name"></a></li></template>
+        </ul>
+      </details>
+    </div>
+    <div class="flex items-center gap-2">
+      <i class="ph text-xl" :class="auth?'ph-shield-check text-success':'ph-globe text-base-content/50'"></i>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-3">
+    <div class="lg:col-span-1 flex flex-col gap-4">
+      <div class="flex flex-col">
+        <button @click="ui.files=!ui.files" class="flex items-center gap-1 font-semibold text-base py-0.5 hover:text-primary mb-1 cursor-pointer">
+          <i class="ph" :class="ui.files?'ph-caret-down':'ph-caret-right'"></i><span>Files</span>
+        </button>
+        <div x-show="ui.files" x-collapse>
+          <div class="text-xs font-mono text-base-content/50 px-1 pb-1 truncate flex items-center gap-1">
+            <i class="ph ph-folder-open"></i><span x-text="'/'+path"></span>
+          </div>
+          <div class="overflow-y-auto text-sm bg-base-100 rounded-lg p-1 h-[70vh] border border-base-300" x-html="treeHtml"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-3">
+      <button @click="ui.content=!ui.content" class="flex items-center gap-1 font-semibold text-base py-0.5 hover:text-primary mb-1 cursor-pointer">
+        <i class="ph" :class="ui.content?'ph-caret-down':'ph-caret-right'"></i><span>Content</span>
+      </button>
+      <div x-show="ui.content" x-collapse x-html="viewHtml"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOKEN = '🎟️GitHubToken' 
+const auth = !TOKEN.includes('🎟️')
+const DEFAULT = 'anthropics'
+
+Prism.plugins.autoloader.languages_path = 'https://cdnjs.cloudflare.com/ajax/libs/prism/components/';
+
+const hdr = () => auth ? {Authorization:`Bearer ${TOKEN.trim()}`} : {}
+const stat = t => `${t.split('\n').length} lines • ${(new Blob([t]).size/1024).toFixed(1)} KB`
+const fmt = t => t.replace(/ {4}/g,'  ')
+const esc = s => new Option(String(s??'')).innerHTML
+const ext = p => p?.split('.').pop().toLowerCase()||''
+
+async function ghGet(repo,path) {
+  const r = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`,{headers:hdr()})
+  if (!r.ok) throw new Error(`HTTP ${r.status}`)
+  const data = await r.json()
+  const b = atob(data.content.replace(/\s/g,''))
+  return new TextDecoder().decode(new Uint8Array([...b].map(c=>c.charCodeAt(0))))
+}
+
+function app() {
+  return {
+    auth, repos:[], owner:'', name:'', repo:'',
+    path:'', tree:[], loading:true, err:'',
+    file:'', content:'', mode:'raw',
+    ui:{files:true,content:true},
+
+    get treeHtml() {
+      if (this.loading) return `<div class="text-base-content/60 text-center py-3 text-sm">Loading...</div>`
+      if (this.err) return `<div class="p-4 text-error text-center text-xs"><i class="ph ph-warning"></i> ${this.err}</div>`
+      const back = this.path ? `<div onclick="$a.load('${this.path.split('/').slice(0,-1).join('/')}')" class="px-1 py-0.5 hover:bg-base-200 rounded cursor-pointer font-mono"><i class="ph ph-folder text-warning"></i> ..</div>` : ''
+      return back + this.tree.map(f => `
+        <div onclick="$a.${f.type==='dir'?`load('${f.path}')`:`sel('${f.path}')`}" class="group flex items-center justify-between p-1 hover:bg-base-200 rounded cursor-pointer ${this.file===f.path?'bg-primary/10 text-primary font-bold':''}">
+          <div class="flex items-center gap-1 min-w-0 overflow-hidden">
+            <i class="ph ${f.type==='dir'?'ph-folder text-warning':'ph-file text-info'} flex-shrink-0"></i>
+            <span class="truncate">${f.name}</span>
+          </div>
+        </div>`).join('')
+    },
+
+    get viewHtml() {
+      if (!this.file && !this.loading) return `<div class="h-[calc(100vh-190px)] border border-dashed border-base-300 rounded-lg flex items-center justify-center opacity-30 text-sm">Select a file to view</div>`
+      
+      const e = ext(this.file)
+      const canP = ['md','html'].includes(e)
+      const modeIcons = { raw: 'ph-text-t', code: 'ph-code', preview: 'ph-eye' }
+      const modeIcon = modeIcons[this.mode] || 'ph-text-t'
+
+      const toolbar = `
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex-1 min-w-0 pr-2">
+            <div class="text-sm font-medium font-mono truncate">${this.file||'No file selected'}</div>
+            <div class="text-xs text-base-content/60">${this.content?stat(this.content):''}</div>
+          </div>
+          <div class="flex items-center gap-1">
+            <details class="dropdown dropdown-end">
+              <summary class="btn btn-sm btn-square btn-ghost hover:bg-base-200"><i class="ph ${modeIcon} text-lg"></i></summary>
+              <ul class="dropdown-content z-[1] menu p-2 shadow-lg bg-base-200 rounded-box w-32 mt-1 border border-base-300">
+                <li><a @click="$a.switchMode('raw')" class="${this.mode==='raw'?'active':''}"><i class="ph ph-text-t"></i> Raw</a></li>
+                <li><a @click="$a.switchMode('code')" class="${this.mode==='code'?'active':''}"><i class="ph ph-code"></i> Code</a></li>
+                ${canP ? `<li><a @click="$a.switchMode('preview')" class="${this.mode==='preview'?'active':''}"><i class="ph ph-eye"></i> Preview</a></li>` : ''}
+              </ul>
+            </details>
+          </div>
+        </div>`
+      
+      let box = ''
+      const langMap = { js:'javascript', ts:'typescript', py:'python', sh:'bash', html:'markup', md:'markdown', json:'json', yml:'yaml' }
+      const langClass = langMap[e] || e || 'none'
+
+      if (this.mode==='preview' && e==='html') {
+        box = `<iframe src="${URL.createObjectURL(new Blob([this.content],{type:'text/html'}))}" class="h-[calc(100vh-190px)] w-full border border-base-300 rounded-lg bg-white" sandbox="allow-scripts allow-modals"></iframe>`
+      } else if (this.mode==='preview' && e==='md') {
+        box = `<div class="tab-[2] overflow-auto prose prose-sm max-w-none px-6 py-4 border border-base-300 rounded-lg bg-base-100 h-[calc(100vh-190px)] w-full">${marked.parse(this.content)}</div>`
+      } else if (this.mode==='code') {
+        box = `<div class="border border-base-300 rounded-lg bg-[#f5f2f0] h-[calc(100vh-190px)] w-full overflow-hidden">
+                   <pre class="!m-0 !p-4 !bg-transparent h-full overflow-auto !text-xs leading-5"><code class="language-${langClass}">${esc(this.content)}</code></pre>
+                 </div>`
+      } else {
+        box = `<div class="border border-base-300 rounded-lg bg-base-100 h-[calc(100vh-190px)] w-full overflow-hidden">
+                   <pre class="m-0 p-4 h-full overflow-auto text-xs leading-5 font-mono whitespace-pre-wrap bg-base-100 text-base-content">${esc(this.content)}</pre>
+                 </div>`
+      }
+      return `<div class="space-y-2">${toolbar}<div class="flex w-full">${box}</div></div>`
+    },
+
+    async init() {
+      window.$a = this
+      const url = auth ? 'https://api.github.com/user/repos' : `https://api.github.com/users/${DEFAULT}/repos`
+      try {
+        const r = await fetch(`${url}?sort=updated&per_page=100`,{headers:hdr()})
+        this.repos = await r.json()
+        if (this.repos.length) this.pick(this.repos[0])
+      } catch(e) { this.err = "Auth or Network Error" }
+    },
+
+    pick(r) { 
+      if (!r) return;
+      Object.assign(this,{repo:r.full_name,owner:r.owner.login,name:r.name,file:'',content:'',mode:'raw'}); 
+      if (this.$refs.repoDropdown) this.$refs.repoDropdown.removeAttribute('open');
+      this.load('');
+    },
+    
+    async load(p) {
+      this.path=p; this.loading=true; this.err=''
+      try { 
+        const r=await fetch(`https://api.github.com/repos/${this.repo}/contents/${p}`,{headers:hdr()}); 
+        if(!r.ok)throw new Error(`HTTP ${r.status}`); 
+        this.tree=(await r.json()).sort((a,b)=>a.type===b.type?a.name.localeCompare(b.name):a.type==='dir'?-1:1) 
+      } catch(e){this.err=e.message}
+      this.loading=false
+    },
+    
+    async sel(p) { 
+      this.file=p; this.mode='raw'; this.content='Loading...';
+      try {
+        this.content=fmt(await ghGet(this.repo,p))
+      } catch(e){this.content=`Error: ${e.message}`} 
+    },
+
+    switchMode(m) {
+      this.mode = m;
+      if(m === 'code') setTimeout(() => Prism.highlightAll(), 0);
+    }
+  }
+}
+</script>
+<script defer src="https://unpkg.com/@alpinejs/collapse"></script>
+<script defer src="https://unpkg.com/alpinejs"></script>
+</body>
+</html>
