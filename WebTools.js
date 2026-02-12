@@ -14,7 +14,7 @@ class WebTools {
     this.instances = new Map()
     
     // Default base URL - will be overridden by Alpine store if available
-    this._defaultBaseUrl = 'https://cdn.jsdelivr.net/gh/mehrlander/WebTools@main/AlpineComponents'
+    this._defaultBaseUrl = 'https://cdn.jsdelivr.net/gh/mehrlander/WebTools@test-branch/AlpineComponents'
     
     if (this.options.showConfig) {
       // Delay config init to ensure DOM is ready
