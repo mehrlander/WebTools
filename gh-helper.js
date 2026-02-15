@@ -1,8 +1,32 @@
-class GH {
+export default class GH {
   constructor(conf = {}) {
     this.token = conf.token || '';
-    this.repo = conf.repo || ''; 
-    this.ref = conf.ref || 'main'; 
+    this.repo = conf.repo || '';
+    this.ref = conf.ref || 'main';
+  }
+
+  async load(path) {
+    let text;
+    if (path.startsWith('http')) {
+      const url = path.includes('raw.github') && !path.includes('?') 
+        ? `${path}?t=${Date.now()}` 
+        : path;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Failed to load script: ${res.status}`);
+      text = await res.text();
+    } else {
+      const file = await this.get(path);
+      text = file.text;
+    }
+
+    const clean = text
+      .replace(/export\s+default\s+/g, '')
+      .replace(/export\s+/g, '');
+
+    const match = clean.match(/(?:class|function)\s+(\w+)/);
+    const name = match ? match[1] : null;
+    const body = name ? `${clean}; return ${name};` : clean;
+    return new Function(body)();
   }
 
   get headers() {
