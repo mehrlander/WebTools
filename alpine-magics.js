@@ -1,35 +1,43 @@
-function registerMagics(Alpine) {
-    console.log('INSIDE: registerMagics started');
-    const target = Alpine || window.Alpine;
+(function() {
+    const registerMagics = () => {
+        Alpine.magic('clip', (el) => (text) => {
+            text = typeof text === 'object' ? JSON.stringify(text) : String(text);
+            let ta = el.querySelector('textarea.clip-trap');
+            if (!ta) {
+                ta = Object.assign(document.createElement('textarea'), { readOnly: true });
+                ta.className = 'clip-trap absolute w-0 h-0 opacity-0 pointer-events-none';
+                el.classList.add('relative');
+                el.appendChild(ta);
+            }
+            ta.value = text;
+            ta.select();
+            document.execCommand('copy');
+            if (Alpine.store('toast')) {
+                Alpine.store('toast').show(`Copied ${text.split('\n').length} lines`);
+            }
+        });
 
-    target.addMagic('clip', (el) => (text) => {
-        text = typeof text === 'object' ? JSON.stringify(text) : String(text);
-        let ta = el.querySelector('textarea.clip-trap');
-        if (!ta) {
-            ta = Object.assign(document.createElement('textarea'), { readOnly: true });
-            ta.className = 'clip-trap absolute w-0 h-0 opacity-0 pointer-events-none';
-            el.appendChild(ta);
-        }
-        ta.value = text;
-        ta.select();
-        document.execCommand('copy');
-        if (target.store('toast')) target.store('toast').show(`Copied ${text.split('\n').length} lines`);
-    });
+        Alpine.magic('paste', (el) => (cb) => {
+            let ta = el.querySelector('textarea.paste-trap');
+            if (!ta) {
+                ta = Object.assign(document.createElement('textarea'), { 
+                    className: 'paste-trap absolute w-0 h-0 opacity-0 pointer-events-none' 
+                });
+                el.classList.add('relative');
+                el.appendChild(ta);
+                ta.addEventListener('paste', () => setTimeout(() => {
+                    cb(ta.value);
+                    ta.value = '';
+                }, 0));
+            }
+            ta.focus();
+            document.execCommand('paste');
+        });
+    };
 
-    target.addMagic('paste', (el) => (cb) => {
-        let ta = el.querySelector('textarea.paste-trap');
-        if (!ta) {
-            ta = Object.assign(document.createElement('textarea'), { 
-                className: 'paste-trap absolute w-0 h-0 opacity-0 pointer-events-none fixed top-0 left-0' 
-            });
-            el.appendChild(ta);
-            ta.addEventListener('paste', (e) => {
-                const val = e.clipboardData.getData('text') || ta.value;
-                cb(val);
-            });
-        }
-        ta.focus();
-        document.execCommand('paste');
-    });
-    console.log('INSIDE: registerMagics finished');
-}
+    if (window.Alpine) {
+        registerMagics();
+    } else {
+        document.addEventListener('alpine:init', registerMagics);
+    }
+})();
