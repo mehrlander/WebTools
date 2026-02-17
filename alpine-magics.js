@@ -1,5 +1,8 @@
 function registerMagics(Alpine) {
-    Alpine.magic('clip', (el) => (text) => {
+    console.log('INSIDE: registerMagics started');
+    const target = Alpine || window.Alpine;
+
+    target.addMagic('clip', (el) => (text) => {
         text = typeof text === 'object' ? JSON.stringify(text) : String(text);
         let ta = el.querySelector('textarea.clip-trap');
         if (!ta) {
@@ -10,12 +13,10 @@ function registerMagics(Alpine) {
         ta.value = text;
         ta.select();
         document.execCommand('copy');
-        if (Alpine.store('toast')) {
-            Alpine.store('toast').show(`Copied ${text.split('\n').length} lines`);
-        }
+        if (target.store('toast')) target.store('toast').show(`Copied ${text.split('\n').length} lines`);
     });
 
-    Alpine.magic('paste', (el) => (cb) => {
+    target.addMagic('paste', (el) => (cb) => {
         let ta = el.querySelector('textarea.paste-trap');
         if (!ta) {
             ta = Object.assign(document.createElement('textarea'), { 
@@ -30,4 +31,5 @@ function registerMagics(Alpine) {
         ta.focus();
         document.execCommand('paste');
     });
+    console.log('INSIDE: registerMagics finished');
 }
