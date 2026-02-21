@@ -1,38 +1,26 @@
 const ViewRegistry = {
   _loadedAssets: new Set(),
-  
-  // Internal helper to load CSS or JS on demand
   loadAsset(url) {
     if (this._loadedAssets.has(url)) return Promise.resolve();
     return new Promise((resolve, reject) => {
       const isCSS = url.includes('.css');
       const el = document.createElement(isCSS ? 'link' : 'script');
-      if (isCSS) {
-        Object.assign(el, { rel: 'stylesheet', href: url });
-      } else {
-        Object.assign(el, { src: url, async: true });
-      }
+      if (isCSS) Object.assign(el, { rel: 'stylesheet', href: url });
+      else Object.assign(el, { src: url, async: true });
       el.onload = () => { this._loadedAssets.add(url); resolve(); };
       el.onerror = () => reject(new Error(`Load failed: ${url}`));
       document.head.appendChild(el);
     });
   },
-
-  // Helper to escape HTML to prevent breakage within <pre> tags
   esc: (s) => new Option(String(s ?? '')).innerHTML,
-
   modules: [
     {
-      id: 'raw',
-      label: 'Raw',
-      icon: 'ph-text-t',
-      test: () => true, // Fallback for all files
+      id: 'raw', label: 'Raw', icon: 'ph-text-t',
+      test: () => true,
       render: (f) => `<pre class="m-0 p-4 h-full overflow-auto text-xs leading-5 font-mono whitespace-pre-wrap text-base-content">${ViewRegistry.esc(f.content)}</pre>`
     },
     {
-      id: 'code',
-      label: 'Code',
-      icon: 'ph-code',
+      id: 'code', label: 'Code', icon: 'ph-code',
       assets: [
         'https://cdn.jsdelivr.net/combine/npm/prismjs/themes/prism.min.css',
         'https://cdn.jsdelivr.net/combine/npm/prismjs/prism.min.js,npm/prismjs/plugins/autoloader/prism-autoloader.min.js'
@@ -47,9 +35,7 @@ const ViewRegistry = {
       }
     },
     {
-      id: 'preview',
-      label: 'Preview',
-      icon: 'ph-eye',
+      id: 'preview', label: 'Preview', icon: 'ph-eye',
       test: (f) => ['md', 'html'].includes(f.ext),
       assets: ['https://cdn.jsdelivr.net/npm/marked/marked.min.js'],
       render: (f) => {
@@ -61,9 +47,7 @@ const ViewRegistry = {
       }
     },
     {
-      id: 'table',
-      label: 'Table',
-      icon: 'ph-table',
+      id: 'table', label: 'Table', icon: 'ph-table',
       assets: [
         'https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator_simple.min.css',
         'https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js'
@@ -71,35 +55,18 @@ const ViewRegistry = {
       test: (f) => f.ext === 'json' && f.content.trim().startsWith('['),
       render: () => `<div id="tab-target" class="h-full w-full"></div>`,
       after: (f) => {
-        try {
-          new Tabulator("#tab-target", {
-            data: JSON.parse(f.content),
-            autoColumns: true,
-            layout: "fitColumns",
-            pagination: "local",
-            paginationSize: 20
-          });
-        } catch (e) {
-          document.getElementById('tab-target').innerHTML = `<div class="p-4 text-error font-mono text-xs">Invalid JSON Array for Table View</div>`;
-        }
+        try { new Tabulator("#tab-target", { data: JSON.parse(f.content), autoColumns: true, layout: "fitColumns", pagination: "local", paginationSize: 20 }); }
+        catch (e) { document.getElementById('tab-target').innerHTML = `<div class="p-4 text-error font-mono text-xs">Invalid JSON Array for Table View</div>`; }
       }
     },
     {
-      id: 'codepen',
-      label: 'CodePen',
-      icon: 'ph-codepen-logo',
+      id: 'codepen', label: 'CodePen', icon: 'ph-codepen-logo',
       test: (f) => ['html', 'js', 'css'].includes(f.ext),
       assets: ['https://public.codepenassets.com/embed/index.js'],
       render: (f) => {
         const lang = ['html','css','js'].includes(f.ext) ? f.ext : 'html';
         return `<div id="cpBox" class="h-full w-full bg-base-100">
-          <div class="codepen" 
-               data-version="2" 
-               data-prefill 
-               data-height="100%" 
-               data-theme-id="light" 
-               data-default-tab="${lang},result" 
-               style="height:100%; display:flex; align-items:center; justify-content:center;">
+          <div class="codepen" data-version="2" data-prefill data-height="100%" data-theme-id="light" data-default-tab="${lang},result" style="height:100%; display:flex; align-items:center; justify-content:center;">
             <pre data-lang="${lang}">${ViewRegistry.esc(f.content)}</pre>
           </div>
         </div>`;
@@ -108,7 +75,6 @@ const ViewRegistry = {
         if (window.__CPEmbed) {
           const box = document.getElementById('cpBox');
           if (box) {
-            // Recalculate pixel height based on the actual container to prevent "short iframe" bug
             const h = box.offsetHeight || box.parentElement.offsetHeight;
             const embed = box.querySelector('.codepen');
             if (h > 0) embed.setAttribute('data-height', h);
@@ -118,18 +84,13 @@ const ViewRegistry = {
       }
     }
   ],
-
-  // Utility to find valid modes for a specific file
-  getModes(file) {
-    return this.modules.filter(m => m.test(file));
-  },
-
-  // Handles asset loading before a module is activated
+  getModes(file) { return this.modules.filter(m => m.test(file)); },
   async prepare(moduleId) {
     const mod = this.modules.find(m => m.id === moduleId);
-    if (mod?.assets) {
-      await Promise.all(mod.assets.map(asset => this.loadAsset(asset)));
-    }
+    if (mod?.assets) await Promise.all(mod.assets.map(asset => this.loadAsset(asset)));
     return mod;
   }
 };
+
+// CRITICAL: This return uis required for gh.load() to work!
+return ViewRegistry;
