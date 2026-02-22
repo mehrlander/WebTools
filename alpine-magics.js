@@ -9,36 +9,25 @@
         Alpine.store('toast', toast)
         Alpine.magic('toast', () => toast)
 
+        const ta = (el, fn) => {
+            const t = Object.assign(document.createElement('textarea'), { readOnly: true })
+            t.className = 'absolute w-0 h-0 opacity-0'
+            el.appendChild(t)
+            fn(t)
+        }
+
         Alpine.magic('clip', (el) => (text) => {
             text = typeof text === 'object' ? JSON.stringify(text) : String(text)
-            let ta = el.querySelector('textarea.clip-trap')
-            if (!ta) {
-                ta = Object.assign(document.createElement('textarea'), { readOnly: true })
-                ta.className = 'clip-trap absolute w-0 h-0 opacity-0 pointer-events-none'
-                el.classList.add('relative')
-                el.appendChild(ta)
-            }
-            ta.value = text
-            ta.select()
-            document.execCommand('copy')
+            ta(el, t => { t.value = text; t.select(); document.execCommand('copy'); t.remove() })
             toast('clipboard', `Copied ${text.split('\n').length} lines`, 'alert-success')
         })
 
         Alpine.magic('paste', (el) => (cb) => {
-            let ta = el.querySelector('textarea.paste-trap')
-            if (!ta) {
-                ta = Object.assign(document.createElement('textarea'), {
-                    className: 'paste-trap absolute w-0 h-0 opacity-0 pointer-events-none'
-                })
-                el.classList.add('relative')
-                el.appendChild(ta)
-                ta.addEventListener('paste', () => setTimeout(() => {
-                    cb(ta.value)
-                    ta.value = ''
-                }, 0))
-            }
-            ta.focus()
-            document.execCommand('paste')
+            ta(el, t => {
+                t.addEventListener('paste', () => setTimeout(() => cb(t.value), 0))
+                t.addEventListener('focusout', () => t.remove(), { once: true })
+                t.focus()
+            })
         })
     }
     if (window.Alpine) registerMagics()
