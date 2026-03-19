@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GH-Fetch + ViewRegistry Demo</title>
+  <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+
+<body class="bg-base-200 min-h-screen" data-theme="emerald" x-data="app()" x-init="init()">
+  <div class="max-w-6xl mx-auto p-4 space-y-4">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3 flex-wrap">
+      <h1 class="text-xl font-bold font-mono flex items-center gap-2">
+        <i class="ph ph-github-logo text-2xl"></i> GH-Fetch + ViewRegistry
+      </h1>
+      <div class="badge badge-ghost text-xs" x-text="gh.repo"></div>
+    </div>
+
+    <!-- Repo / Branch controls -->
+    <div class="flex gap-2 flex-wrap">
+      <input x-model="repoInput" @keydown.enter="changeRepo()"
+             class="input input-bordered input-sm font-mono flex-1 min-w-[200px]"
+             placeholder="owner/repo">
+      <input x-model="refInput" @keydown.enter="changeRepo()"
+             class="input input-bordered input-sm font-mono w-28"
+             placeholder="branch">
+      <button @click="changeRepo()" class="btn btn-sm btn-primary">
+        <i class="ph ph-arrow-right"></i> Go
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+      <!-- File tree panel -->
+      <div class="lg:col-span-1 card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body p-0">
+          <div class="flex items-center gap-2 px-3 py-2 border-b border-base-300 bg-base-200/50">
+            <i class="ph ph-folder-open text-warning"></i>
+            <span class="font-mono text-xs text-base-content/60 truncate" x-text="'/' + currentPath"></span>
+          </div>
+
+          <div class="overflow-y-auto h-[70vh] divide-y divide-base-200">
+            <!-- Loading -->
+            <div x-show="loading" class="flex items-center justify-center py-12 text-base-content/40">
+              <span class="loading loading-spinner loading-sm mr-2"></span> Loading...
+            </div>
+
+            <!-- Error -->
+            <div x-show="error && !loading" class="p-4 text-error text-sm text-center">
+              <i class="ph ph-warning-circle"></i> <span x-text="error"></span>
+            </div>
+
+            <!-- Back button -->
+            <template x-if="currentPath && !loading && !error">
+              <div @click="navigate(parentPath())" class="flex items-center gap-2 px-3 py-2 hover:bg-base-200 cursor-pointer text-sm font-mono">
+                <i class="ph ph-folder text-warning"></i> ..
+              </div>
+            </template>
+
+            <!-- Entries -->
+            <template x-for="entry in entries" :key="entry.path">
+              <div @click="entry.type === 'dir' ? navigate(entry.path) : selectFile(entry)"
+                   class="flex items-center gap-2 px-3 py-2 hover:bg-base-200 cursor-pointer text-sm font-mono transition-colors"
+                   :class="selectedFile?.path === entry.path ? 'bg-primary/10 text-primary font-bold' : ''">
+                <i class="ph" :class="entry.type === 'dir' ? 'ph-folder text-warning' : 'ph-file text-info'"></i>
+                <span class="truncate" x-text="entry.name"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content viewer panel -->
+      <div class="lg:col-span-2 card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body p-0 flex flex-col">
+
+          <!-- No file selected -->
+          <template x-if="!selectedFile && !fileLoading">
+            <div class="flex-1 flex items-center justify-center text-base-content/30 text-sm min-h-[70vh]">
+              <div class="text-center space-y-2">
+                <i class="ph ph-file-magnifying-glass text-4xl"></i>
+                <p>Select a file to view</p>
+              </div>
+            </div>
+          </template>
+
+          <!-- File loading -->
+          <template x-if="fileLoading">
+            <div class="flex-1 flex items-center justify-center min-h-[70vh]">
+              <span class="loading loading-spinner loading-md text-primary"></span>
+            </div>
+          </template>
+
+          <!-- File loaded -->
+          <template x-if="selectedFile && !fileLoading">
+            <div class="flex flex-col h-[70vh]">
+              <!-- Toolbar -->
+              <div class="flex items-center justify-between px-3 py-2 border-b border-base-300 bg-base-200/50 shrink-0">
+                <div class="min-w-0 flex-1">
+                  <div class="font-mono text-sm font-medium truncate" x-text="selectedFile.path"></div>
+                  <div class="text-xs text-base-content/50" x-text="fileStat"></div>
+                </div>
+                <div class="flex items-center gap-1 ml-2">
+                  <!-- View mode buttons from ViewRegistry -->
+                  <template x-for="m in modes" :key="m.id">
+                    <button @click="switchMode(m.id)"
+                            class="btn btn-xs gap-1"
+                            :class="activeMode === m.id ? 'btn-primary' : 'btn-ghost'">
+                      <i class="ph" :class="m.icon"></i>
+                      <span class="hidden sm:inline" x-text="m.label"></span>
+                    </button>
+                  </template>
+                </div>
+              </div>
+
+              <!-- History -->
+              <template x-if="fileHistory.length">
+                <div class="border-b border-base-300 bg-base-200/30 shrink-0">
+                  <details class="group">
+                    <summary class="px-3 py-1.5 text-xs font-medium cursor-pointer flex items-center gap-1 hover:text-primary">
+                      <i class="ph ph-clock-counter-clockwise"></i>
+                      <span x-text="fileHistory.length + ' commits'"></span>
+                      <i class="ph ph-caret-down text-[10px] ml-auto group-open:rotate-180 transition-transform"></i>
+                    </summary>
+                    <div class="max-h-32 overflow-y-auto divide-y divide-base-200 text-xs font-mono">
+                      <template x-for="h in fileHistory" :key="h.sha">
+                        <div class="flex items-center gap-2 px-3 py-1 hover:bg-base-200">
+                          <span class="text-primary font-bold" x-text="h.sha.slice(0, 7)"></span>
+                          <span class="flex-1 truncate text-base-content/70" x-text="h.msg"></span>
+                          <span class="text-base-content/40 shrink-0" x-text="h.ago"></span>
+                        </div>
+                      </template>
+                    </div>
+                  </details>
+                </div>
+              </template>
+
+              <!-- Rendered content -->
+              <div id="view-container" class="flex-1 overflow-hidden"></div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center text-xs text-base-content/30 py-2">
+      Powered by <span class="font-mono font-bold">gh-fetch.js</span> + <span class="font-mono font-bold">view-registry.js</span>
+    </div>
+  </div>
+
+<script>
+  // ── Inline GH class (from gh-fetch.js) ──
+  class GH {
+    constructor(conf = {}) {
+      this.token = conf.token || '';
+      this.repo = conf.repo || '';
+      this.ref = conf.ref || 'main';
+    }
+
+    async load(path) {
+      let text;
+      if (path.startsWith('http')) {
+        const url = path.includes('raw.github') && !path.includes('?')
+          ? `${path}?t=${Date.now()}` : path;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to load script: ${res.status}`);
+        text = await res.text();
+      } else {
+        const file = await this.get(path);
+        text = file.text;
+      }
+      const clean = text.replace(/export\s+default\s+/g, '').replace(/export\s+/g, '');
+      const match = clean.match(/(?:class|function)\s+(\w+)/);
+      const name = match ? match[1] : null;
+      const body = name ? `${clean}; return ${name};` : clean;
+      return new Function(body)();
+    }
+
+    get headers() {
+      const h = { 'Accept': 'application/vnd.github.v3+json' };
+      if (this.token && !this.token.includes('\u{1F39F}')) {
+        h.Authorization = `Bearer ${this.token.trim()}`;
+      }
+      return h;
+    }
+
+    async req(path, opts = {}) {
+      const base = path.startsWith('/')
+        ? 'https://api.github.com'
+        : `https://api.github.com/repos/${this.repo}`;
+      const url = path.startsWith('http')
+        ? path
+        : `${base}/${path.replace(/^\//, '')}`;
+      const res = await fetch(url, { headers: this.headers, ...opts });
+      if (!res.ok) {
+        const limit = res.headers.get('x-ratelimit-remaining');
+        throw new Error(`GitHub ${res.status} (Rate remaining: ${limit})`);
+      }
+      return res.json();
+    }
+
+    async ls(path = '') {
+      const data = await this.req(`contents/${path}?ref=${this.ref}`);
+      if (!Array.isArray(data)) throw new Error('Path is not a directory');
+      return data.sort((a, b) => {
+        if (a.type === b.type) return a.name.localeCompare(b.name);
+        return a.type === 'dir' ? -1 : 1;
+      });
+    }
+
+    async get(path) {
+      const data = await this.req(`contents/${path}?ref=${this.ref}`);
+      if (Array.isArray(data)) throw new Error('Path is a directory');
+      return {
+        text: this.decode(data.content),
+        sha: data.sha, size: data.size, url: data.html_url
+      };
+    }
+
+    async history(path, limit = 10) {
+      const data = await this.req(`commits?path=${encodeURIComponent(path)}&sha=${this.ref}&per_page=${limit}`);
+      return data.map(c => ({
+        sha: c.sha,
+        msg: c.commit.message.split('\n')[0].slice(0, 80),
+        date: c.commit.committer.date,
+        ago: this.ago(c.commit.committer.date),
+        author: c.commit.author.name
+      }));
+    }
+
+    decode(str) {
+      const bin = atob(str.replace(/\s/g, ''));
+      return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+    }
+
+    ago(dateStr) {
+      const s = (Date.now() - new Date(dateStr)) / 1000;
+      const intervals = { y: 31536000, mo: 2592000, d: 86400, h: 3600, m: 60 };
+      for (const [unit, v] of Object.entries(intervals)) {
+        if (s >= v) return `${Math.floor(s / v)}${unit} ago`;
+      }
+      return 'just now';
+    }
+  }
+
+  // ── Inline ViewRegistry (from view-registry.js) ──
+  const ViewRegistry = {
+    _loadedAssets: new Set(),
+    loadAsset(url) {
+      if (this._loadedAssets.has(url)) return Promise.resolve();
+      return new Promise((resolve, reject) => {
+        const isCSS = url.includes('.css');
+        const el = document.createElement(isCSS ? 'link' : 'script');
+        if (isCSS) Object.assign(el, { rel: 'stylesheet', href: url });
+        else Object.assign(el, { src: url, async: true });
+        el.onload = () => { this._loadedAssets.add(url); resolve(); };
+        el.onerror = () => reject(new Error(`Load failed: ${url}`));
+        document.head.appendChild(el);
+      });
+    },
+    esc: (s) => new Option(String(s ?? '')).innerHTML,
+    modules: [
+      {
+        id: 'raw', label: 'Raw', icon: 'ph-text-t',
+        test: () => true,
+        render: (f) => `<pre class="m-0 p-4 h-full overflow-auto text-xs leading-5 font-mono whitespace-pre-wrap text-base-content">${ViewRegistry.esc(f.content)}</pre>`
+      },
+      {
+        id: 'code', label: 'Code', icon: 'ph-code',
+        assets: [
+          'https://cdn.jsdelivr.net/combine/npm/prismjs/themes/prism.min.css',
+          'https://cdn.jsdelivr.net/combine/npm/prismjs/prism.min.js,npm/prismjs/plugins/autoloader/prism-autoloader.min.js'
+        ],
+        test: (f) => ['js','ts','py','sh','html','md','json','yml','css','rb','rs','go','java','cpp','c','sql','xml'].includes(f.ext),
+        render: (f) => `<div class="bg-[#f5f2f0] h-full overflow-hidden"><pre class="!m-0 !p-4 !bg-transparent h-full overflow-auto !text-xs leading-5"><code class="language-${f.ext}">${ViewRegistry.esc(f.content)}</code></pre></div>`,
+        after: () => {
+          if (window.Prism) {
+            Prism.plugins.autoloader.languages_path = 'https://cdnjs.cloudflare.com/ajax/libs/prism/components/';
+            Prism.highlightAll();
+          }
+        }
+      },
+      {
+        id: 'preview', label: 'Preview', icon: 'ph-eye',
+        test: (f) => ['md', 'html'].includes(f.ext),
+        assets: ['https://cdn.jsdelivr.net/npm/marked/marked.min.js'],
+        render: (f) => {
+          if (f.ext === 'html') {
+            const blob = new Blob([f.content], { type: 'text/html' });
+            return `<iframe src="${URL.createObjectURL(blob)}" class="w-full h-full bg-white" sandbox="allow-scripts allow-modals"></iframe>`;
+          }
+          return `<div class="overflow-auto prose prose-sm max-w-none px-6 py-4 bg-base-100 h-full w-full">${marked.parse(f.content)}</div>`;
+        }
+      },
+      {
+        id: 'table', label: 'Table', icon: 'ph-table',
+        assets: [
+          'https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator_simple.min.css',
+          'https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js'
+        ],
+        test: (f) => f.ext === 'json' && f.content.trim().startsWith('['),
+        render: () => `<div id="tab-target" class="h-full w-full"></div>`,
+        after: (f) => {
+          try { new Tabulator("#tab-target", { data: JSON.parse(f.content), autoColumns: true, layout: "fitColumns", pagination: "local", paginationSize: 20 }); }
+          catch (e) { document.getElementById('tab-target').innerHTML = `<div class="p-4 text-error font-mono text-xs">Invalid JSON Array</div>`; }
+        }
+      }
+    ],
+    getModes(file) { return this.modules.filter(m => m.test(file)); },
+    async prepare(moduleId) {
+      const mod = this.modules.find(m => m.id === moduleId);
+      if (mod?.assets) await Promise.all(mod.assets.map(asset => this.loadAsset(asset)));
+      return mod;
+    }
+  };
+
+  // ── Alpine app ──
+  function app() {
+    return {
+      gh: new GH({ repo: 'mehrlander/WebTools', ref: 'main' }),
+      repoInput: 'mehrlander/WebTools',
+      refInput: 'main',
+      currentPath: '',
+      entries: [],
+      loading: false,
+      error: '',
+
+      selectedFile: null,
+      fileContent: '',
+      fileLoading: false,
+      fileHistory: [],
+
+      modes: [],
+      activeMode: 'raw',
+
+      get fileStat() {
+        if (!this.fileContent) return '';
+        const lines = this.fileContent.split('\n').length;
+        const kb = (new Blob([this.fileContent]).size / 1024).toFixed(1);
+        return `${lines} lines \u00b7 ${kb} KB`;
+      },
+
+      async init() {
+        await this.navigate('');
+      },
+
+      changeRepo() {
+        const repo = this.repoInput.trim();
+        const ref = this.refInput.trim() || 'main';
+        if (!repo) return;
+        this.gh = new GH({ repo, ref });
+        this.selectedFile = null;
+        this.fileContent = '';
+        this.fileHistory = [];
+        this.modes = [];
+        this.navigate('');
+      },
+
+      parentPath() {
+        return this.currentPath.split('/').slice(0, -1).join('/');
+      },
+
+      async navigate(path) {
+        this.currentPath = path;
+        this.loading = true;
+        this.error = '';
+        this.entries = [];
+        try {
+          this.entries = await this.gh.ls(path);
+        } catch (e) {
+          this.error = e.message;
+        }
+        this.loading = false;
+      },
+
+      async selectFile(entry) {
+        this.fileLoading = true;
+        this.selectedFile = entry;
+        this.fileContent = '';
+        this.fileHistory = [];
+        this.modes = [];
+        this.activeMode = 'raw';
+
+        try {
+          const file = await this.gh.get(entry.path);
+          this.fileContent = file.text;
+
+          const ext = entry.name.split('.').pop().toLowerCase() || '';
+          const fileObj = { content: file.text, ext };
+
+          // Get available view modes from ViewRegistry
+          this.modes = ViewRegistry.getModes(fileObj);
+          // Default to code view if available
+          const hasCode = this.modes.find(m => m.id === 'code');
+          this.activeMode = hasCode ? 'code' : 'raw';
+
+          await this.renderView(fileObj);
+
+          // Fetch history in background
+          this.gh.history(entry.path, 8).then(h => this.fileHistory = h).catch(() => {});
+        } catch (e) {
+          this.fileContent = `Error: ${e.message}`;
+          const container = document.getElementById('view-container');
+          if (container) container.innerHTML = `<div class="p-4 text-error">${e.message}</div>`;
+        }
+        this.fileLoading = false;
+      },
+
+      async switchMode(modeId) {
+        this.activeMode = modeId;
+        const ext = this.selectedFile.name.split('.').pop().toLowerCase() || '';
+        await this.renderView({ content: this.fileContent, ext });
+      },
+
+      async renderView(fileObj) {
+        const mod = await ViewRegistry.prepare(this.activeMode);
+        if (!mod) return;
+
+        // Short delay to let Alpine render the container
+        await this.$nextTick();
+        const container = document.getElementById('view-container');
+        if (!container) return;
+
+        container.innerHTML = mod.render(fileObj);
+        if (mod.after) setTimeout(() => mod.after(fileObj), 50);
+      }
+    };
+  }
+</script>
+</body>
+</html>
