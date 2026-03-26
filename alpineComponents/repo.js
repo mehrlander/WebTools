@@ -44,7 +44,9 @@ document.addEventListener('alpine:init', function() {
                 Alpine.store('browser').repo = r.full_name;
                 Alpine.store('browser').repoObj = r;
                 Alpine.store('browser').activeFile = null;
-                document.getElementById('navigator').__navigator.reset();
+                const navEl = document.getElementById('navigator');
+                while(!navEl.__navigator) await new Promise(r => setTimeout(r, 50));
+                navEl.__navigator.reset();
             }
         }
     })
