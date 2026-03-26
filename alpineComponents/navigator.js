@@ -30,12 +30,16 @@ document.addEventListener('alpine:init', function() {
                 return this.pullText ? stat(this.pullText).split('·')[1] : '';
             },
 
-            async load(p) {
+            async load(p, silent) {
                 this.path = p;
                 Alpine.store('browser').path = p;
                 this.loading = true;
                 try { this.tree = await this.gh.ls(p); } catch {}
                 this.loading = false;
+                if (!silent) {
+                    const label = p ? p.split('/').pop() + '/' : '/';
+                    this.persist('folder-open', label);
+                }
             },
 
             async reset() {
@@ -43,16 +47,33 @@ document.addEventListener('alpine:init', function() {
                 this.tree = [];
                 this.pulled = [];
                 this.pullText = '';
-                await this.load('');
+                await this.load('', true);
+                const repo = Alpine.store('browser').repo;
+                const label = repo.split('/').pop();
+                this.persist('database', label);
             },
 
-            async sel(p) {
+            async sel(p, silent) {
                 try {
                     const res = await this.gh.get(p);
                     Alpine.store('browser').activeFile = { path: p, content: fmt(res.text) };
                 } catch(e) {
                     Alpine.store('browser').activeFile = { path: p, content: '// Error: ' + e.message };
                 }
+                if (!silent) {
+                    this.persist('file', p.split('/').pop());
+                }
+            },
+
+            persist(icon, label) {
+                const store = Alpine.store('browser');
+                const state = {
+                    repo: store.repo,
+                    path: this.path,
+                    file: store.activeFile?.path || ''
+                };
+                if (store.save) store.save(state);
+                Alpine.store('toast')(icon, label, 'alert-info', 2000);
             },
 
             async fetchFlatTree() {

@@ -221,8 +221,6 @@ const STATE_FILE = 'gh-browse-state.json';
 function app(){ return {
   ui: { content: true },
   stateSha: null,
-  saveTimer: null,
-  restoring: false,
 
   async init(){
     while(!window.GH || !window.ViewRegistry) await new Promise(r => setTimeout(r, 50));
@@ -232,9 +230,8 @@ function app(){ return {
       const repoEl = document.getElementById('repo');
       while(!repoEl.__repo) await new Promise(r => setTimeout(r, 50));
 
-      const saved = await this.loadState(gh);
+      const saved = await this.loadState();
 
-      this.restoring = true;
       await repoEl.__repo.setup(gh);
 
       if (saved && saved.repo) {
@@ -245,21 +242,18 @@ function app(){ return {
           while(!navEl.__navigator) await new Promise(r => setTimeout(r, 50));
           if (saved.file) {
             const folder = saved.file.split('/').slice(0, -1).join('/');
-            if (folder) await navEl.__navigator.load(folder);
-            await navEl.__navigator.sel(saved.file);
+            if (folder) await navEl.__navigator.load(folder, true);
+            await navEl.__navigator.sel(saved.file, true);
           }
         }
       }
-      this.restoring = false;
 
-      this.$watch(() => Alpine.store('browser').repo, () => this.scheduleSave(gh));
-      this.$watch(() => Alpine.store('browser').activeFile?.path, () => this.scheduleSave(gh));
-      this.$watch(() => Alpine.store('browser').path, () => this.scheduleSave(gh));
+      Alpine.store('browser').save = (state) => this.saveState(state);
 
     } catch(e) { console.error(e); }
   },
 
-  async loadState(gh) {
+  async loadState() {
     try {
       const homeGh = new window.GH({ token: TOKEN, repo: HOME_REPO });
       const res = await homeGh.get(STATE_FILE);
@@ -268,20 +262,8 @@ function app(){ return {
     } catch { return null; }
   },
 
-  scheduleSave(gh) {
-    if (this.restoring) return;
-    clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(() => this.saveState(gh), 2500);
-  },
-
-  async saveState(gh) {
+  async saveState(state) {
     try {
-      const nav = document.getElementById('navigator')?.__navigator;
-      const state = {
-        repo: Alpine.store('browser').repo,
-        path: nav ? nav.path : '',
-        file: Alpine.store('browser').activeFile?.path || ''
-      };
       const homeGh = new window.GH({ token: TOKEN, repo: HOME_REPO });
       const content = btoa(JSON.stringify(state, null, 2));
       const body = { message: 'update gh-browse state', content };
