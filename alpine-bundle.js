@@ -1,13 +1,22 @@
 (function() {
+    const conf = window.AlpineBundle || {};
+    const components = conf.components || [];
+    const repo = conf.repo || 'mehrlander/web-tools';
+
+    const loadComponents = components.map(function(name) {
+        var url = 'https://cdn.jsdelivr.net/gh/' + repo + '/alpineComponents/' + name + '.js';
+        return fetch(url).then(function(r) { return r.text(); }).then(function(text) {
+            new Function(text)();
+        });
+    });
+
     const registerMagics = () => {
         const toasts = Alpine.reactive([])
         Alpine.store('toasts', toasts)
-        
         const toast = (icon, msg, cls = 'alert-info', ms = 3000) => {
             toasts.push({ icon, msg, cls, id: Date.now() })
             setTimeout(() => toasts.splice(0, 1), ms)
         }
-        
         Alpine.store('toast', toast)
         Alpine.magic('toast', () => toast)
 
@@ -20,12 +29,7 @@
 
         Alpine.magic('clip', (el) => (text) => {
             text = typeof text === 'object' ? JSON.stringify(text) : String(text)
-            ta(el, t => {
-                t.value = text
-                t.select()
-                document.execCommand('copy')
-                t.remove()
-            })
+            ta(el, t => { t.value = text; t.select(); document.execCommand('copy'); t.remove() })
             toast('clipboard', 'Copied ' + text.split('\n').length + ' lines', 'alert-success')
         })
 
@@ -40,14 +44,14 @@
 
     document.addEventListener('alpine:init', registerMagics)
 
-    const load = (src, cb) => {
-        const s = document.createElement('script')
-        s.src = src
-        if (cb) s.onload = cb
-        document.head.appendChild(s)
-    }
-
-    load('https://unpkg.com/@alpinejs/collapse', () => {
-        load('https://unpkg.com/alpinejs')
-    })
+    Promise.all(loadComponents).then(function() {
+        var collapse = document.createElement('script');
+        collapse.src = 'https://unpkg.com/@alpinejs/collapse';
+        collapse.onload = function() {
+            var alpine = document.createElement('script');
+            alpine.src = 'https://unpkg.com/alpinejs';
+            document.head.appendChild(alpine);
+        };
+        document.head.appendChild(collapse);
+    });
 })()
