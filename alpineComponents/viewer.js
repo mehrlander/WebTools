@@ -1,21 +1,24 @@
 document.addEventListener('alpine:init', function() {
-    Alpine.data('viewer', function(opts) {
-        opts = opts || {};
-        const repo = opts.repo || '';
-
+    Alpine.data('viewer', function() {
         return {
             file: '',
             content: '',
             mode: '',
-            repo: opts.repo || '',
             viewLoading: false,
             commits: [],
             commitsFor: '',
 
             init() {
                 this.$root.__viewer = this;
+                this.$watch(
+                    () => Alpine.store('browser').activeFile,
+                    (f) => { if (f) this.show(f.path, f.content); }
+                );
             },
 
+            get repo() {
+                return Alpine.store('browser').repo;
+            },
             get ext() {
                 return this.file ? this.file.split('.').pop().toLowerCase() : '';
             },
@@ -27,7 +30,7 @@ document.addEventListener('alpine:init', function() {
             },
             get modeIcon() {
                 if (!window.ViewRegistry) return 'ph-text-t';
-                const mod = window.ViewRegistry.modules.find(function(m) { return m.id === this.mode; }.bind(this));
+                const mod = window.ViewRegistry.modules.find(m => m.id === this.mode);
                 return mod ? mod.icon : 'ph-text-t';
             },
             get stats() {
@@ -36,15 +39,16 @@ document.addEventListener('alpine:init', function() {
             },
             get viewHtml() {
                 if (!this.file || !this.content || !window.ViewRegistry) return '';
-                const mod = window.ViewRegistry.modules.find(function(m) { return m.id === this.mode; }.bind(this)) || window.ViewRegistry.modules[0];
+                const mod = window.ViewRegistry.modules.find(m => m.id === this.mode) || window.ViewRegistry.modules[0];
                 return mod.render(this.fileContext);
             },
             get fileUrls() {
-                if (!this.repo || !this.file) return [];
+                const r = this.repo;
+                if (!r || !this.file) return [];
                 return [
-                    { l: 'GitHub', i: 'ph-github-logo', u: 'https://github.com/' + this.repo + '/blob/main/' + this.file },
-                    { l: 'Raw', i: 'ph-file-text', u: 'https://raw.githubusercontent.com/' + this.repo + '/main/' + this.file },
-                    { l: 'CDN', i: 'ph-cloud-arrow-down', u: 'https://cdn.jsdelivr.net/gh/' + this.repo + '/' + this.file }
+                    { l: 'GitHub', i: 'ph-github-logo', u: 'https://github.com/' + r + '/blob/main/' + this.file },
+                    { l: 'Raw', i: 'ph-file-text', u: 'https://raw.githubusercontent.com/' + r + '/main/' + this.file },
+                    { l: 'CDN', i: 'ph-cloud-arrow-down', u: 'https://cdn.jsdelivr.net/gh/' + r + '/' + this.file }
                 ];
             },
 
@@ -55,7 +59,7 @@ document.addEventListener('alpine:init', function() {
                 this.commitsFor = '';
                 this.viewLoading = true;
                 const modes = this.availableModes;
-                const preferred = modes.find(function(m) { return m.id === 'raw'; });
+                const preferred = modes.find(m => m.id === 'raw');
                 await this.switchMode(preferred ? preferred.id : modes[0].id);
             },
 
@@ -63,10 +67,10 @@ document.addEventListener('alpine:init', function() {
                 this.viewLoading = true;
                 const mod = await window.ViewRegistry.prepare(id);
                 this.mode = id;
-                this.$nextTick(function() {
+                this.$nextTick(() => {
                     if (mod.after) mod.after(this.fileContext);
                     this.viewLoading = false;
-                }.bind(this));
+                });
             },
 
             openUrls() {
