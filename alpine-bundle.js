@@ -1,22 +1,4 @@
 (function() {
-    const conf = window.AlpineBundle || {};
-    const components = conf.components || [];
-    const repo = conf.repo || 'mehrlander/web-tools';
-
-    const loadComponents = components.map(function(name) {
-        var url = 'https://cdn.jsdelivr.net/gh/' + repo + '/alpineComponents/' + name + '.js';
-        return fetch(url).then(function(r) {
-            if (!r.ok) throw new Error('Component ' + name + ' fetch failed: ' + r.status);
-            return r.text();
-        }).then(function(text) {
-            new Function(text)();
-            if (window.log) window.log('component loaded: ' + name);
-        }).catch(function(e) {
-            if (window.log) window.log('component ERROR: ' + e.message);
-            console.error(e);
-        });
-    });
-
     const registerMagics = () => {
         const toasts = Alpine.reactive([])
         Alpine.store('toasts', toasts)
@@ -51,14 +33,14 @@
 
     document.addEventListener('alpine:init', registerMagics)
 
-    Promise.all(loadComponents).then(function() {
-        var collapse = document.createElement('script');
-        collapse.src = 'https://unpkg.com/@alpinejs/collapse';
-        collapse.onload = function() {
-            var alpine = document.createElement('script');
-            alpine.src = 'https://unpkg.com/alpinejs';
-            document.head.appendChild(alpine);
-        };
-        document.head.appendChild(collapse);
-    });
+    const load = (src, cb) => {
+        const s = document.createElement('script')
+        s.src = src
+        if (cb) s.onload = cb
+        document.head.appendChild(s)
+    }
+
+    load('https://unpkg.com/@alpinejs/collapse', () => {
+        load('https://unpkg.com/alpinejs')
+    })
 })()
