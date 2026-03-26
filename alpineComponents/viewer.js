@@ -7,6 +7,7 @@ document.addEventListener('alpine:init', function() {
             file: '',
             content: '',
             mode: '',
+            repo: opts.repo || '',
             viewLoading: false,
             commits: [],
             commitsFor: '',
@@ -39,11 +40,11 @@ document.addEventListener('alpine:init', function() {
                 return mod.render(this.fileContext);
             },
             get fileUrls() {
-                if (!repo || !this.file) return [];
+                if (!this.repo || !this.file) return [];
                 return [
-                    { l: 'GitHub', i: 'ph-github-logo', u: 'https://github.com/' + repo + '/blob/main/' + this.file },
-                    { l: 'Raw', i: 'ph-file-text', u: 'https://raw.githubusercontent.com/' + repo + '/main/' + this.file },
-                    { l: 'CDN', i: 'ph-cloud-arrow-down', u: 'https://cdn.jsdelivr.net/gh/' + repo + '/' + this.file }
+                    { l: 'GitHub', i: 'ph-github-logo', u: 'https://github.com/' + this.repo + '/blob/main/' + this.file },
+                    { l: 'Raw', i: 'ph-file-text', u: 'https://raw.githubusercontent.com/' + this.repo + '/main/' + this.file },
+                    { l: 'CDN', i: 'ph-cloud-arrow-down', u: 'https://cdn.jsdelivr.net/gh/' + this.repo + '/' + this.file }
                 ];
             },
 
