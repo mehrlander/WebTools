@@ -1,7 +1,7 @@
 document.addEventListener('alpine:init', function() {
     Alpine.data('viewer', function(opts) {
         opts = opts || {};
-        var repo = opts.repo || '';
+        const repo = opts.repo || '';
 
         return {
             file: '',
@@ -26,7 +26,7 @@ document.addEventListener('alpine:init', function() {
             },
             get modeIcon() {
                 if (!window.ViewRegistry) return 'ph-text-t';
-                var mod = window.ViewRegistry.modules.find(function(m) { return m.id === this.mode; }.bind(this));
+                const mod = window.ViewRegistry.modules.find(function(m) { return m.id === this.mode; }.bind(this));
                 return mod ? mod.icon : 'ph-text-t';
             },
             get stats() {
@@ -35,7 +35,7 @@ document.addEventListener('alpine:init', function() {
             },
             get viewHtml() {
                 if (!this.file || !this.content || !window.ViewRegistry) return '';
-                var mod = window.ViewRegistry.modules.find(function(m) { return m.id === this.mode; }.bind(this)) || window.ViewRegistry.modules[0];
+                const mod = window.ViewRegistry.modules.find(function(m) { return m.id === this.mode; }.bind(this)) || window.ViewRegistry.modules[0];
                 return mod.render(this.fileContext);
             },
             get fileUrls() {
@@ -53,14 +53,14 @@ document.addEventListener('alpine:init', function() {
                 this.commits = [];
                 this.commitsFor = '';
                 this.viewLoading = true;
-                var modes = this.availableModes;
-                var preferred = modes.find(function(m) { return m.id === 'code'; });
+                const modes = this.availableModes;
+                const preferred = modes.find(function(m) { return m.id === 'raw'; });
                 await this.switchMode(preferred ? preferred.id : modes[0].id);
             },
 
             async switchMode(id) {
                 this.viewLoading = true;
-                var mod = await window.ViewRegistry.prepare(id);
+                const mod = await window.ViewRegistry.prepare(id);
                 this.mode = id;
                 this.$nextTick(function() {
                     if (mod.after) mod.after(this.fileContext);
@@ -69,7 +69,7 @@ document.addEventListener('alpine:init', function() {
             },
 
             openUrls() {
-                var el = this.$root.querySelector('dialog.viewer-urls');
+                const el = this.$root.querySelector('dialog.viewer-urls');
                 if (el) el.showModal();
             }
         }
