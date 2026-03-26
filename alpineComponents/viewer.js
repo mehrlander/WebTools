@@ -11,6 +11,10 @@ document.addEventListener('alpine:init', function() {
             commits: [],
             commitsFor: '',
 
+            init() {
+                this.$root.__viewer = this;
+            },
+
             get ext() {
                 return this.file ? this.file.split('.').pop().toLowerCase() : '';
             },
