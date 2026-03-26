@@ -1,6 +1,6 @@
 (function() {
     const registerMagics = () => {
-        Alpine.store('browser', { activeFile: null, repo: '' })
+        Alpine.store('browser', { activeFile: null, repo: '', repoObj: null, gh: null, path: '' })
         const toasts = Alpine.reactive([])
         Alpine.store('toasts', toasts)
         const toast = (icon, msg, cls = 'alert-info', ms = 3000) => {
