@@ -10,7 +10,6 @@ document.addEventListener('alpine:init', function() {
             loading: false,
             pulled: [],
             pullText: '',
-            flatFiles: [],
             open: true,
 
             init() {
@@ -42,9 +41,7 @@ document.addEventListener('alpine:init', function() {
                 this.tree = [];
                 this.pulled = [];
                 this.pullText = '';
-                this.flatFiles = [];
                 await this.load('');
-                this.fetchFlatTree();
             },
 
             async sel(p) {
@@ -54,14 +51,6 @@ document.addEventListener('alpine:init', function() {
                 } catch(e) {
                     Alpine.store('browser').activeFile = { path: p, content: '// Error: ' + e.message };
                 }
-            },
-
-            async fetchFlatTree() {
-                try {
-                    const repo = Alpine.store('browser').repo;
-                    const j = await fetch('https://data.jsdelivr.com/v1/packages/gh/' + repo + '@main?structure=flat').then(r => r.json());
-                    this.flatFiles = (j.files || []).map(f => f.name.replace(/^\//, ''));
-                } catch {}
             },
 
             async pullAdd(p) {
