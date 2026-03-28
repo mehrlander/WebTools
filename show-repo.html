@@ -7,10 +7,10 @@
 <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
 <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5,npm/@tailwindcss/typography/dist/typography.min.css" rel="stylesheet" />
 <script type="module">
-  const TOKEN = '🎟️GitHubToken';
+  window.TOKEN = '🎟️GitHubToken';
   const mod = await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools/gh-fetch.js');
   window.GH = mod.default;
-  const gh = new window.GH({ token: TOKEN, repo: 'mehrlander/web-tools' });
+  const gh = new window.GH({ token: window.TOKEN, repo: 'mehrlander/web-tools' });
   await gh.load('alpineComponents/repo.js');
   await gh.load('alpineComponents/navigator.js');
   await gh.load('alpineComponents/viewer.js');
@@ -214,7 +214,7 @@
 </div>
 
 <script>
-const TOKEN = '🎟️GitHubToken';
+const TOKEN = window.TOKEN;
 const HOME_REPO = 'mehrlander/home';
 const STATE_FILE = 'gh-browse-state.json';
 
@@ -235,7 +235,13 @@ function app(){ return {
       await repoEl.__repo.setup(gh);
 
       if (saved && saved.repo) {
-        const target = repoEl.__repo.repos.find(r => r.full_name === saved.repo);
+        let target = repoEl.__repo.repos.find(r => r.full_name === saved.repo);
+        if (!target) {
+          try {
+            target = await gh.req(`/repos/${saved.repo}`);
+            repoEl.__repo.repos.unshift(target);
+          } catch { target = null; }
+        }
         if (target) {
           await repoEl.__repo.pick(target);
           const navEl = document.getElementById('navigator');
