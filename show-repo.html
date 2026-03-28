@@ -235,13 +235,7 @@ function app(){ return {
       await repoEl.__repo.setup(gh);
 
       if (saved && saved.repo) {
-        let target = repoEl.__repo.repos.find(r => r.full_name === saved.repo);
-        if (!target) {
-          try {
-            target = await gh.req(`/repos/${saved.repo}`);
-            repoEl.__repo.repos.unshift(target);
-          } catch { target = null; }
-        }
+        const target = repoEl.__repo.repos.find(r => r.full_name === saved.repo);
         if (target) {
           await repoEl.__repo.pick(target);
           const navEl = document.getElementById('navigator');
