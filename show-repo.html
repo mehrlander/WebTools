@@ -14,6 +14,7 @@
   await gh.load('alpineComponents/repo.js');
   await gh.load('alpineComponents/navigator.js');
   await gh.load('alpineComponents/viewer.js');
+  await gh.load('alpineComponents/finder.js');
   await gh.load('alpine-bundle.js');
   window.ViewRegistry = await gh.load('view-registry.js');
 </script>
@@ -28,6 +29,31 @@
     </div>
   </template>
 </div>
+
+  <div x-data="finder()">
+    <div x-show="open" x-transition.opacity class="fixed inset-0 z-50 bg-black/40 flex items-start justify-center pt-[15vh]" @click.self="close()">
+      <div class="bg-base-100 border border-base-300 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden" @keydown="onKey($event)">
+        <div class="flex items-center gap-2 px-4 py-3 border-b border-base-300">
+          <i class="ph ph-magnifying-glass text-base-content/40"></i>
+          <input type="search" x-model="query" @input="search()" placeholder="Search files..." class="flex-1 bg-transparent outline-none text-sm font-mono placeholder:text-base-content/30" />
+          <kbd class="kbd kbd-xs opacity-40">esc</kbd>
+        </div>
+        <div x-show="loading" class="flex justify-center py-8"><span class="loading loading-dots loading-sm opacity-30"></span></div>
+        <div x-show="!loading" class="overflow-y-auto max-h-80">
+          <template x-for="(f, i) in results" :key="f">
+            <div @click="pick(f)" @mouseenter="selected = i"
+              class="px-4 py-2 text-xs font-mono cursor-pointer flex items-center gap-2 truncate"
+              :class="i === selected ? 'bg-primary/10 text-primary' : 'hover:bg-base-200'"
+              :data-selected="i === selected">
+              <i class="ph ph-file text-info shrink-0"></i>
+              <span class="truncate" x-html="highlight(f)"></span>
+            </div>
+          </template>
+          <div x-show="!results.length && query && !loading" class="px-4 py-6 text-center text-sm text-base-content/40">No files found</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
 <div class="max-w-7xl mx-auto px-2 py-3">
 
@@ -46,6 +72,11 @@
             <template x-for="r in repos"><li><a @click="pick(r)" class="font-mono text-xs" x-text="(r.private?'🔒 ':'')+r.name"></a></li></template>
           </ul>
         </details>
+      </div>
+      <div class="flex items-center gap-1">
+        <button @click="document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true}))" class="btn btn-ghost btn-sm gap-1 font-mono text-xs text-base-content/40 hover:text-base-content/70">
+          <i class="ph ph-magnifying-glass"></i><kbd class="kbd kbd-xs">Ctrl K</kbd>
+        </button>
       </div>
       <button @click="repoModal.showModal()" class="tooltip tooltip-left flex items-center gap-1 btn btn-ghost btn-sm" :data-tip="auth?'Authenticated: '+user:'Public only'">
         <i class="ph text-xl" :class="auth?'ph-shield-check text-success':'ph-globe text-base-content/50'"></i>
@@ -222,6 +253,21 @@ function app(){ return {
   ui: { content: true },
   stateSha: null,
 
+  parseHash() {
+    const h = location.hash.replace(/^#/, '');
+    if (!h) return null;
+    const parts = h.split('/');
+    if (parts.length < 2) return null;
+    const repo = parts[0] + '/' + parts[1];
+    const file = parts.slice(2).join('/') || '';
+    return { repo, file };
+  },
+
+  updateHash(repo, file) {
+    const h = file ? repo + '/' + file : repo;
+    history.replaceState(null, '', '#' + h);
+  },
+
   async init(){
     while(!window.GH || !window.ViewRegistry) await new Promise(r => setTimeout(r, 50));
     try {
@@ -230,7 +276,9 @@ function app(){ return {
       const repoEl = document.getElementById('repo');
       while(!repoEl.__repo) await new Promise(r => setTimeout(r, 50));
 
-      const saved = await this.loadState();
+      // URL hash takes priority, then saved state
+      const fromHash = this.parseHash();
+      const saved = fromHash || await this.loadState();
 
       await repoEl.__repo.setup(gh);
 
@@ -248,7 +296,11 @@ function app(){ return {
         }
       }
 
-      Alpine.store('browser').save = (state) => this.saveState(state);
+      // Sync hash on navigation
+      Alpine.store('browser').save = (state) => {
+        this.updateHash(state.repo, state.file);
+        this.saveState(state);
+      };
 
     } catch(e) { console.error(e); }
   },

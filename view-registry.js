@@ -60,6 +60,23 @@ const ViewRegistry = {
       }
     },
     {
+      id: 'image', label: 'Image', icon: 'ph-image',
+      test: (f) => ['png','jpg','jpeg','gif','svg','ico','webp','bmp','avif'].includes(f.ext),
+      render: (f) => {
+        const repo = Alpine.store('browser').repo;
+        const ref = Alpine.store('browser').gh?.ref || 'main';
+        if (f.ext === 'svg') {
+          return `<div class="h-full w-full overflow-auto flex items-center justify-center bg-[url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22><rect width=%2210%22 height=%2210%22 fill=%22%23f0f0f0%22/><rect x=%2210%22 y=%2210%22 width=%2210%22 height=%2210%22 fill=%22%23f0f0f0%22/></svg>')] p-8">
+            <div class="max-w-full max-h-full">${f.content}</div>
+          </div>`;
+        }
+        const src = 'https://raw.githubusercontent.com/' + repo + '/' + ref + '/' + f.name;
+        return `<div class="h-full w-full overflow-auto flex items-center justify-center bg-[url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22><rect width=%2210%22 height=%2210%22 fill=%22%23f0f0f0%22/><rect x=%2210%22 y=%2210%22 width=%2210%22 height=%2210%22 fill=%22%23f0f0f0%22/></svg>')] p-8">
+          <img src="${src}" class="max-w-full max-h-full object-contain rounded shadow-lg" alt="${ViewRegistry.esc(f.name)}" />
+        </div>`;
+      }
+    },
+    {
       id: 'codepen', label: 'CodePen', icon: 'ph-codepen-logo',
       test: (f) => ['html', 'js', 'css'].includes(f.ext),
       assets: ['https://public.codepenassets.com/embed/index.js'],

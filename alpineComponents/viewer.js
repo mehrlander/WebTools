@@ -59,7 +59,7 @@ document.addEventListener('alpine:init', function() {
                 this.commitsFor = '';
                 this.viewLoading = true;
                 const modes = this.availableModes;
-                const preferred = modes.find(m => m.id === 'raw');
+                const preferred = modes.find(m => m.id === 'image') || modes.find(m => m.id === 'raw');
                 await this.switchMode(preferred ? preferred.id : modes[0].id);
             },
 
