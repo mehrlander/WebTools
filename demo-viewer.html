@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assembled Viewer Demo</title>
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script type="module">
+  const mod = await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools/gh-fetch.js');
+  window.GH = mod.default;
+  const gh = new window.GH({ repo: 'mehrlander/web-tools' });
+
+  window.ViewRegistry = await gh.load('view-registry.js');
+  await gh.load('alpineComponents/viewer-assembled.js');
+  await gh.load('alpine-bundle.js');
+</script>
+</head>
+<body class="min-h-screen bg-base-100">
+
+<div class="toast toast-top toast-end z-40" x-data x-show="$store.toasts && $store.toasts.length">
+  <template x-for="t in ($store.toasts || [])" :key="t.id">
+    <div class="alert text-sm gap-2" :class="t.cls">
+      <i class="ph" :class="'ph-'+t.icon"></i>
+      <span x-text="t.msg"></span>
+    </div>
+  </template>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 py-6" x-data="picker">
+
+  <div class="flex items-center gap-3 mb-4">
+    <i class="ph ph-eye text-3xl text-primary"></i>
+    <div>
+      <h1 class="text-xl font-bold font-mono">Assembled Viewer Demo</h1>
+      <p class="text-xs text-base-content/50">Self-rendering component · picks files from <span x-text="repo" class="font-mono"></span></p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+
+    <div class="lg:col-span-1">
+      <div class="text-xs font-bold uppercase text-base-content/40 mb-2 px-1">Files</div>
+      <div class="border border-base-300 rounded-lg bg-base-100 overflow-y-auto h-[calc(100vh-180px)] p-1">
+        <div x-show="loading" class="flex justify-center py-12">
+          <span class="loading loading-spinner loading-md text-primary"></span>
+        </div>
+        <template x-for="f in files" :key="f.path">
+          <button
+            @click="pick(f)"
+            class="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm font-mono hover:bg-base-200 text-left"
+            :class="active === f.path ? 'bg-primary/10 text-primary font-bold' : ''">
+            <i class="ph ph-file text-info shrink-0"></i>
+            <span class="truncate" x-text="f.name"></span>
+          </button>
+        </template>
+      </div>
+    </div>
+
+    <div class="lg:col-span-3" x-data="viewer">
+    </div>
+
+  </div>
+</div>
+
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('picker', () => ({
+    repo: 'mehrlander/web-tools',
+    files: [],
+    active: '',
+    loading: true,
+    gh: null,
+
+    async init() {
+      this.gh = new window.GH({ repo: this.repo });
+      Alpine.store('browser').repo = this.repo;
+      try {
+        const tree = await this.gh.ls('');
+        this.files = tree.filter(f => f.type === 'file');
+      } catch (e) {
+        console.error(e);
+      }
+      this.loading = false;
+    },
+
+    async pick(f) {
+      this.active = f.path;
+      try {
+        const res = await this.gh.get(f.path);
+        Alpine.store('browser').activeFile = { path: f.path, content: res.text };
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }));
+});
+</script>
+</body>
+</html>
