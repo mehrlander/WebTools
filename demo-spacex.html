@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpaceX Launches – Viewer Demo</title>
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script type="module">
+  const mod = await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools/gh-fetch.js');
+  window.GH = mod.default;
+  const gh = new window.GH({ repo: 'mehrlander/web-tools' });
+  window.ViewRegistry = await gh.load('view-registry.js');
+
+  customElements.define('view-viewer', class extends HTMLElement {
+    connectedCallback() {
+      this.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-3">
+            <i class="ph ph-rocket-launch text-3xl text-primary"></i>
+            <div>
+              <h1 class="text-xl font-bold font-mono">SpaceX Launches</h1>
+              <p class="text-xs text-base-content/50" x-text="launches.length + ' launches loaded'"></p>
+            </div>
+          </div>
+          <div class="flex items-center gap-0.5" x-show="launches.length">
+            <details class="dropdown dropdown-end">
+              <summary class="btn btn-sm btn-square btn-ghost hover:text-primary">
+                <i class="ph text-lg" :class="vr.getModes(fileContext).find(m => m.id === mode)?.icon ?? 'ph-layout'"></i>
+              </summary>
+              <ul class="dropdown-content z-[1] menu p-2 shadow-lg bg-base-200 rounded-box w-32 mt-1 border border-base-300">
+                <template x-for="m in vr.getModes(fileContext)">
+                  <li><a @click="switchMode(m.id)" :class="mode === m.id ? 'active' : ''">
+                    <i class="ph" :class="m.icon"></i>
+                    <span x-text="m.label"></span>
+                  </a></li>
+                </template>
+              </ul>
+            </details>
+            <button @click="$clip(fileContext.content)" class="btn btn-sm btn-square btn-ghost hover:text-primary">
+              <i class="ph ph-copy text-lg"></i>
+            </button>
+          </div>
+        </div>
+
+        <div x-show="loading" class="flex justify-center py-20">
+          <span class="loading loading-spinner loading-lg text-primary"></span>
+        </div>
+
+        <div x-show="error" class="alert alert-error text-sm" x-text="error"></div>
+
+        <div x-show="!loading && !error"
+          class="h-[calc(100vh-140px)] border border-base-300 rounded-lg bg-base-100 overflow-hidden">
+          <div class="h-full" x-html="vr.modules.find(m => m.id === mode)?.render(fileContext) ?? ''"></div>
+        </div>`;
+    }
+  });
+
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('spacex', () => ({
+      vr: window.ViewRegistry,
+      launches: [],
+      loading: true,
+      mode: 'table',
+      error: null,
+
+      get fileContext() {
+        return {
+          name: 'launches.json',
+          ext: 'json',
+          content: JSON.stringify(this.launches, null, 2)
+        };
+      },
+
+      async init() {
+        try {
+          const res = await fetch('https://api.spacexdata.com/v4/launches');
+          const raw = await res.json();
+          this.launches = raw.map(l => ({
+            name: l.name,
+            date: l.date_utc?.slice(0, 10),
+            success: l.success,
+            flight_number: l.flight_number,
+            details: l.details?.slice(0, 120) || ''
+          }));
+        } catch (e) {
+          this.error = e.message;
+        } finally {
+          this.loading = false;
+        }
+        this.$nextTick(async () => {
+          const mod = await this.vr.prepare(this.mode);
+          if (mod?.after) mod.after(this.fileContext);
+        });
+      },
+
+      async switchMode(id) {
+        this.mode = id;
+        const mod = await this.vr.prepare(id);
+        this.$nextTick(() => { if (mod?.after) mod.after(this.fileContext); });
+      }
+    }));
+  });
+
+  await gh.load('alpine-bundle.js');
+</script>
+</head>
+<body class="min-h-screen bg-base-100">
+
+<div class="toast toast-top toast-end z-40" x-data x-show="$store.toasts && $store.toasts.length">
+  <template x-for="t in ($store.toasts || [])" :key="t.id">
+    <div class="alert text-sm gap-2" :class="t.cls">
+      <i class="ph" :class="'ph-'+t.icon"></i>
+      <span x-text="t.msg"></span>
+    </div>
+  </template>
+</div>
+
+<div class="max-w-6xl mx-auto px-4 py-6" x-data="spacex">
+  <view-viewer></view-viewer>
+</div>
+
+</body>
+</html>
