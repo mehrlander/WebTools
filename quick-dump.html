@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Quick Dump</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+  <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+<body class="min-h-screen bg-base-100" x-data="dump()" x-init="init()">
+
+  <!-- toast -->
+  <div class="toast toast-top toast-center z-50" x-show="toast" x-transition>
+    <div class="alert text-sm gap-2" :class="toastCls">
+      <i class="ph" :class="'ph-'+toastIcon"></i>
+      <span x-text="toast"></span>
+    </div>
+  </div>
+
+  <div class="max-w-lg mx-auto px-4 py-6 flex flex-col gap-4">
+
+    <!-- header -->
+    <div class="flex items-center gap-3">
+      <i class="ph ph-tray-arrow-down text-3xl text-primary"></i>
+      <div>
+        <h1 class="text-xl font-bold font-mono">Quick Dump</h1>
+        <p class="text-xs text-base-content/50">Drop something into chron/dump</p>
+      </div>
+    </div>
+
+    <!-- token setup (collapsed after first save) -->
+    <details x-ref="tokenDetails" class="collapse collapse-arrow bg-base-200 rounded-lg" :open="!token">
+      <summary class="collapse-title text-sm font-medium py-2 min-h-0">
+        <span class="flex items-center gap-2">
+          <i class="ph" :class="token ? 'ph-shield-check text-success' : 'ph-shield-warning text-warning'"></i>
+          <span x-text="token ? 'Token saved' : 'GitHub token required'"></span>
+        </span>
+      </summary>
+      <div class="collapse-content px-4 pb-3">
+        <input type="password" x-model="tokenInput" placeholder="ghp_..."
+          class="input input-bordered input-sm w-full font-mono text-xs mb-2" />
+        <button @click="saveToken()" class="btn btn-sm btn-primary w-full">
+          <i class="ph ph-floppy-disk"></i> Save token
+        </button>
+        <p class="text-[10px] text-base-content/40 mt-1">Stored in localStorage. Needs repo scope.</p>
+      </div>
+    </details>
+
+    <!-- topic -->
+    <input type="text" x-model="topic" placeholder="Topic (becomes the filename)"
+      class="input input-bordered w-full font-mono" maxlength="200"
+      @keydown.enter="$refs.body.focus()" />
+
+    <!-- body -->
+    <textarea x-ref="body" x-model="body" placeholder="Content (optional, can be empty)"
+      class="textarea textarea-bordered w-full font-mono text-sm min-h-[40vh] leading-relaxed"
+      @keydown.meta.enter="save()" @keydown.ctrl.enter="save()"></textarea>
+
+    <!-- char count -->
+    <div class="text-xs text-base-content/40 text-right -mt-2" x-text="body.length ? body.length + ' chars' : ''"></div>
+
+    <!-- save -->
+    <button @click="save()" :disabled="!topic.trim() || !token || saving"
+      class="btn btn-primary w-full text-lg gap-2">
+      <span class="loading loading-spinner loading-sm" x-show="saving"></span>
+      <i class="ph ph-paper-plane-tilt" x-show="!saving"></i>
+      <span x-text="saving ? 'Saving...' : 'Dump it'"></span>
+    </button>
+
+    <!-- recent dumps -->
+    <div x-show="history.length" class="mt-2">
+      <div class="text-xs font-bold text-base-content/50 mb-1">Recent dumps</div>
+      <template x-for="h in history" :key="h.time">
+        <div class="flex items-center gap-2 py-1 border-b border-base-200 last:border-0">
+          <i class="ph ph-check-circle text-success"></i>
+          <span class="text-sm font-mono truncate flex-1" x-text="h.topic"></span>
+          <span class="text-xs text-base-content/40" x-text="h.ago"></span>
+        </div>
+      </template>
+    </div>
+
+  </div>
+
+  <script>
+    const REPO = 'mehrlander/home';
+    const DUMP_PATH = 'chron/dump';
+
+    function dump() {
+      return {
+        token: '',
+        tokenInput: '',
+        topic: '',
+        body: '',
+        saving: false,
+        toast: '',
+        toastCls: '',
+        toastIcon: '',
+        history: [],
+
+        init() {
+          this.token = localStorage.getItem('qd-token') || '';
+          this.tokenInput = this.token;
+          this.history = JSON.parse(localStorage.getItem('qd-history') || '[]');
+          this.refreshAgos();
+        },
+
+        saveToken() {
+          const t = this.tokenInput.trim();
+          if (!t) return;
+          this.token = t;
+          localStorage.setItem('qd-token', t);
+          this.flash('Token saved', 'alert-success', 'check-circle');
+        },
+
+        async save() {
+          const name = this.topic.trim();
+          if (!name || !this.token) return;
+          this.saving = true;
+
+          try {
+            const path = DUMP_PATH + '/' + name;
+            const content = btoa(unescape(encodeURIComponent(this.body || '')));
+            const res = await fetch(
+              'https://api.github.com/repos/' + REPO + '/contents/' + encodeURIComponent(path),
+              {
+                method: 'PUT',
+                headers: {
+                  'Authorization': 'Bearer ' + this.token,
+                  'Accept': 'application/vnd.github.v3+json',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  message: 'Add dump: ' + name,
+                  content: content
+                })
+              }
+            );
+
+            if (!res.ok) {
+              const err = await res.json();
+              throw new Error(err.message || 'HTTP ' + res.status);
+            }
+
+            this.history.unshift({ topic: name, time: Date.now(), ago: 'just now' });
+            if (this.history.length > 10) this.history.pop();
+            localStorage.setItem('qd-history', JSON.stringify(this.history));
+
+            this.flash('Dumped: ' + name, 'alert-success', 'check-circle');
+            this.topic = '';
+            this.body = '';
+          } catch (e) {
+            this.flash(e.message, 'alert-error', 'warning-circle');
+          } finally {
+            this.saving = false;
+          }
+        },
+
+        flash(msg, cls, icon) {
+          this.toast = msg;
+          this.toastCls = cls;
+          this.toastIcon = icon;
+          setTimeout(() => { this.toast = ''; }, 3000);
+        },
+
+        refreshAgos() {
+          const now = Date.now();
+          for (const h of this.history) {
+            const s = (now - h.time) / 1000;
+            if (s < 60) h.ago = 'just now';
+            else if (s < 3600) h.ago = Math.floor(s / 60) + 'm ago';
+            else if (s < 86400) h.ago = Math.floor(s / 3600) + 'h ago';
+            else h.ago = Math.floor(s / 86400) + 'd ago';
+          }
+        }
+      };
+    }
+  </script>
+</body>
+</html>
