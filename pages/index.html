@@ -1,33 +1,78 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="night">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>web-tools</title>
-<style>
-  :root { color-scheme: light dark; }
-  body { font-family: system-ui, -apple-system, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
-  h1 { margin-bottom: 0.25rem; }
-  .sub { color: #888; margin-top: 0; }
-  ul { list-style: none; padding: 0; }
-  li { padding: 0.75rem 0; border-top: 1px solid #8883; }
-  a { font-weight: 600; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .desc { display: block; color: #888; font-weight: 400; font-size: 0.9em; margin-top: 0.15rem; }
-  footer { margin-top: 2rem; font-size: 0.85em; color: #888; }
-</style>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script defer src="https://unpkg.com/alpinejs/dist/cdn.min.js"></script>
 </head>
-<body>
-  <h1>web-tools</h1>
-  <p class="sub">A small collection of browser-based tools and demos.</p>
-  <ul>
-    <li><a href="show-repo.html">show-repo</a><span class="desc">Browse a GitHub repo's files in an Alpine-powered viewer.</span></li>
-    <li><a href="RepoDragViewer.html">RepoDragViewer</a><span class="desc">Drag-and-drop repo file viewer.</span></li>
-    <li><a href="quick-dump.html">quick-dump</a><span class="desc">Quick mobile dump intake.</span></li>
-    <li><a href="demo.html">demo</a><span class="desc">General demo page.</span></li>
-    <li><a href="demo-viewer.html">demo-viewer</a><span class="desc">Demo of the assembled viewer component.</span></li>
-    <li><a href="demo-spacex.html">demo-spacex</a><span class="desc">SpaceX sample content demo.</span></li>
+<body class="bg-base-100 text-base-content min-h-screen">
+
+<div class="max-w-2xl mx-auto px-4 py-10"
+  x-data="{
+    files: [],
+    loading: true,
+    error: null,
+    notes: {
+      'show-repo.html':    'Browse a GitHub repo\'s files in an Alpine-powered viewer.',
+      'RepoDragViewer.html': 'Drag-and-drop repo file viewer.',
+      'quick-dump.html':   'Quick mobile dump intake.',
+      'demo.html':         'General demo page.',
+      'demo-viewer.html':  'Demo of the assembled viewer component.',
+      'demo-spacex.html':  'SpaceX sample content demo.'
+    },
+    async init() {
+      const res = await fetch('https://api.github.com/repos/mehrlander/web-tools/contents/pages')
+      if (!res.ok) { this.error = `GitHub API ${res.status}`; this.loading = false; return }
+      const data = await res.json()
+      this.files = data
+        .filter(f => f.name.endsWith('.html') && f.name !== 'index.html')
+        .sort((a, b) => a.name.localeCompare(b.name))
+      this.loading = false
+    }
+  }"
+>
+
+  <div class="flex items-baseline justify-between mb-1">
+    <h1 class="text-2xl font-bold tracking-tight">web-tools</h1>
+    <a href="https://github.com/mehrlander/web-tools"
+       class="text-xs text-base-content/40 hover:text-base-content/70 flex items-center gap-1 transition-colors">
+      <i class="ph ph-github-logo"></i> mehrlander/web-tools
+    </a>
+  </div>
+  <p class="text-base-content/50 text-sm mb-8">Browser-based tools and demos. Fetched live from the repo.</p>
+
+  <!-- Loading -->
+  <div x-show="loading" class="flex items-center gap-2 text-base-content/40 text-sm py-4">
+    <span class="loading loading-spinner loading-xs"></span> Loading files...
+  </div>
+
+  <!-- Error -->
+  <div x-show="error" class="alert alert-error text-sm" x-text="error"></div>
+
+  <!-- File list -->
+  <ul x-show="!loading && !error" class="divide-y divide-base-200">
+    <template x-for="f in files" :key="f.name">
+      <li class="py-3 flex items-start gap-3 group">
+        <i class="ph ph-file-html text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+        <div class="min-w-0">
+          <a :href="f.name"
+             class="font-semibold text-base-content hover:text-primary transition-colors text-sm"
+             x-text="f.name.replace('.html','')"></a>
+          <span class="block text-xs text-base-content/40 mt-0.5"
+                x-text="notes[f.name] ?? ''"></span>
+        </div>
+        <a :href="`https://github.com/mehrlander/web-tools/blob/main/pages/${f.name}`"
+           class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+           title="View on GitHub" target="_blank">
+          <i class="ph ph-code text-sm"></i>
+        </a>
+      </li>
+    </template>
   </ul>
-  <footer><a href="https://github.com/mehrlander/web-tools">github.com/mehrlander/web-tools</a></footer>
+
+</div>
 </body>
 </html>
