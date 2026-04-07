@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en" data-theme="emerald">
+<head> 
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Compression Helper</title>
+</head>
+<body class="h-dvh font-mono text-sm">
+
+  <div class="h-full flex flex-col p-4" x-data="{ outHeight: 150, resizing: false, startY: 0, startH: 0 }"
+       :class="resizing && 'select-none cursor-ns-resize'"
+       @mouseup.window="resizing = false"
+       @mousemove.window="if (resizing) { outHeight = Math.max(80, Math.min(startH + ($event.clientY - startY), $el.getBoundingClientRect().height - 200)) }"
+       x-effect="$refs.output.style.height = outHeight + 'px'">
+
+    <div class="flex items-center gap-2 mb-4">
+      <h1 class="text-xl">Compression Helper</h1>
+    </div>
+
+    <alp-compress-output x-ref="output" path="alp.compress" class="relative overflow-hidden flex-none mb-1"></alp-compress-output>
+
+    <div class="h-2 bg-base-300 hover:bg-primary cursor-ns-resize rounded transition-colors flex-none"
+         @mousedown.prevent="resizing = true; startY = $event.clientY; startH = outHeight"></div>
+
+    <alp-compress-input path="alp.compress" class="relative overflow-hidden flex-1 min-h-0 mt-1"></alp-compress-input>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/gh/mehrlander/Alp@f93d156ef88d/alp.js"></script>
+  <script>
+    const { text, acorn } = alp.kit;
+    const { tip, pathInput, lines } = alp.fills;
+    const tog = (m, lbl, hdr, lns) => tip(
+      ['bottom', 'xs'],
+      `<label class="flex items-center gap-1"><input type="checkbox" x-model="${m}" class="checkbox checkbox-xs">${lbl}</label>`,
+      `<strong>${hdr}</strong>${lines(['xs'], lns)}`
+    );
+
+    alp.define('compress-output', _ => `
+      <div class="absolute inset-0 flex flex-col">
+        <div class="flex flex-wrap items-center gap-3 mb-2 flex-none">
+          <b>Output</b>
+          <a :href="output" class="link link-primary" draggable="true" x-text="name"></a>
+          <input x-model="name" @change="saveOpts()" class="input input-xs w-24" placeholder="Name">
+          <div class="ml-auto flex flex-wrap items-center gap-3">
+            <span>${tog('compressed','Compressed','Toggle Brotli (BR64:) or Gzip (GZ64:) → Base64 → prefix',['• Has prefix: Uncheck to decompress','• No prefix: Check to compress','Applied before packing'])}</span>
+            <select x-model="alg" :disabled="inComp" class="select select-xs w-auto" :class="inComp && 'opacity-50'">
+              <option value="brotli">Brotli</option>
+              <option value="gzip">Gzip</option>
+            </select>
+            <input x-model="label" :disabled="!compressed||inComp" @change="saveOpts()" class="input input-xs w-24" :class="(!compressed||inComp) && 'opacity-50'" placeholder="Label">
+            <span>${tog('packed','Packed','Wraps in javascript:() IIFE',['• JavaScript: Executes directly with eval()','• HTML/Text: Opens content in new window','Adds decompression if compressed'])}</span>
+            <select x-model="format" :disabled="!packed" class="select select-xs w-auto" :class="!packed && 'opacity-50'">
+              <option value="popup">Popup</option>
+              <option value="tab">New Tab</option>
+            </select>
+            <button @click="copyOutput" class="btn btn-xs btn-primary" x-text="copyText"></button>
+            ${pathInput()}
+          </div>
+        </div>
+        <div class="flex gap-4 text-xs mb-2 flex-none">
+          <span class="text-info">■ packing</span>
+          <span class="bg-warning/20 text-warning-content px-1">■ payload</span>
+          <span class="opacity-60 ml-auto" x-text="metrics"></span>
+        </div>
+        <pre tabindex="0" @click="$el.focus()"
+          @keydown.ctrl.a.prevent="selectAllPre($el)"
+          @keydown.meta.a.prevent="selectAllPre($el)"
+          class="flex-1 min-h-0 p-3 text-xs rounded-box bg-base-200 overflow-auto whitespace-pre-wrap break-all focus:outline-none focus:ring focus:ring-primary/30"
+          ><template x-for="s in packingSegments"><span :class="cls[s.t]" x-text="s.v"></span></template></pre>
+      </div>
+    `, {
+      name: 'Test', compressed: true, packed: true, alg: 'gzip', format: 'popup', label: '',
+      input: '', sel: null,
+      output: '', packingSegments: [], metrics: '', inComp: false, copyText: 'Copy',
+      cls: { packing: 'text-info', payload: 'bg-warning/20', error: 'text-error bg-error/10' },
+
+      async nav() {
+        const v = await this.load();
+        if (v) ['name','compressed','packed','alg','format','label','input'].forEach(k => { if (k in v) this[k] = v[k]; });
+        await this.process();
+      },
+
+      async saveOpts() {
+        const v = await this.load() || {};
+        await this.save({ ...v, name: this.name, compressed: this.compressed, packed: this.packed, alg: this.alg, format: this.format, label: this.label });
+      },
+
+      savedCallback(v) {
+        if (!v) return;
+        if ('input' in v && v.input !== this.input) { this.input = v.input; this.process(); }
+      },
+
+      onPing(occasion, sender) {
+        if (occasion === 'sel') { this.sel = sender.sel; this.process(); }
+      },
+
+      deletedCallback() { this.input = ''; this.sel = null; this.output = ''; this.packingSegments = []; },
+
+      selectAllPre(el) {
+        const r = document.createRange(); r.selectNodeContents(el);
+        const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      },
+
+      async process() {
+        if (!this.input.trim()) { this.output=''; this.packingSegments=[]; this.metrics=''; this.inComp=false; return; }
+        const effective = this.sel?.text || this.input;
+        try {
+          const r = await text.process(effective, { compressed: this.compressed, packed: this.packed, alg: this.alg, popup: this.format === 'popup', label: this.label });
+          this.inComp = r.isCompressed;
+          this.output = r.output;
+          this.packingSegments = r.packingSegments;
+          this.metrics = `Raw:${r.sizes.raw} Br:${r.sizes.brotli} Gz:${r.sizes.gzip} Out:${r.outSize}`;
+        } catch (e) { console.error(e); this.output = 'Error: ' + e.message; this.packingSegments = [{ t: 'error', v: 'Error: ' + e.message }]; }
+      },
+
+      async copyOutput() {
+        try { await navigator.clipboard.writeText(this.output); this.copyText = 'Copied!'; setTimeout(() => this.copyText = 'Copy', 2000); } catch (e) { console.error(e); }
+      },
+
+      init() {
+        ['compressed','packed','alg','format','label'].forEach(p => this.$watch(p, () => { this.process(); this.saveOpts(); }));
+      }
+    });
+
+    alp.define('compress-input', _ => `
+      <div class="absolute inset-0 flex flex-col">
+        <div class="flex flex-wrap items-center gap-2 mb-2 flex-none">
+          <b>Input</b>
+          <span class="badge badge-sm badge-neutral" x-text="inputType"></span>
+          <div class="flex-1"></div>
+          <button class="btn btn-xs" :class="sel ? 'btn-primary' : 'btn-ghost opacity-50'"
+            x-text="sel ? 'Selection ('+sel.start+'-'+sel.end+')' : 'Selection'"></button>
+          <template x-for="c in chunks">
+            <button @click="selectChunk(c)" class="btn btn-xs"
+              :class="sel && sel.start===c.start && sel.end===c.end ? 'btn-primary' : 'btn-ghost'"
+              x-text="c.label ? (c.alg==='brotli'?'BR64':'GZ64')+'(\\''+c.label+'\\')' : (c.alg==='brotli'?'BR64':'GZ64')+'('+c.start+'-'+c.end+')'"></button>
+          </template>
+          <button @click="clearSelection" class="btn btn-xs btn-ghost" :class="!sel && 'opacity-50'">Clear</button>
+          <button @click="isWrapped=!isWrapped" class="btn btn-xs btn-ghost" title="Toggle wrap">
+            <i :class="isWrapped ? 'ph ph-text-aa' : 'ph ph-text-t'"></i>
+          </button>
+        </div>
+        <textarea x-ref="input" x-model="input" @select="onSelect" @click="onSelect" @keyup="onSelect"
+          :style="isWrapped ? '' : 'white-space:pre'" 
+          class="textarea flex-1 min-h-0 font-mono text-xs w-full resize-none"></textarea>
+      </div>
+    `, {
+      input: '', sel: null, chunks: [], isWrapped: true, inputType: 'Text',
+
+      async nav() {
+        const v = await this.load();
+        if (v) {
+          if ('input' in v) this.input = v.input;
+          if ('isWrapped' in v) this.isWrapped = v.isWrapped;
+        }
+        this.chunks = text.findCompressedChunks(this.input); 
+        await this.detectType();
+      },
+
+      async saveInput() {
+        const v = await this.load() || {};
+        await this.save({ ...v, input: this.input, isWrapped: this.isWrapped });
+      },
+
+      deletedCallback() { this.input = ''; this.sel = null; this.chunks = []; },
+
+      async detectType() {
+        const effective = this.sel?.text || this.input;
+        const det = text.detectCompressionType(effective.trim());
+        if (det) this.inputType = `Compressed (${det.alg === 'brotli' ? 'Brotli' : 'Gzip'})`;
+        else if (await acorn.isJS(effective)) this.inputType = 'JavaScript';
+        else this.inputType = 'Text/HTML';
+      },
+
+      onSelect() {
+        requestAnimationFrame(() => {
+          const el = this.$refs.input;
+          if (el.selectionStart !== el.selectionEnd) {
+            this.sel = { start: el.selectionStart, end: el.selectionEnd, text: this.input.slice(el.selectionStart, el.selectionEnd) };
+          } else {
+            this.sel = null;
+          }
+          this.detectType();
+          this.ping('sel');
+        });
+      },
+
+      selectChunk(c) {
+        const el = this.$refs.input;
+        el.focus();
+        el.setSelectionRange(c.start, c.end);
+        this.sel = { start: c.start, end: c.end, text: this.input.slice(c.start, c.end) };
+        this.detectType();
+        this.ping('sel');
+      },
+
+      clearSelection() {
+        this.$refs.input.setSelectionRange(0, 0);
+        this.sel = null;
+        this.detectType();
+        this.ping('sel');
+      },
+
+      init() {
+        this.$watch('input', () => {
+          this.chunks = text.findCompressedChunks(this.input);
+          this.detectType();
+          this.saveInput();
+        });
+        this.$watch('isWrapped', () => this.saveInput());
+      }
+    });
+  </script>
+</body>
+</html>
