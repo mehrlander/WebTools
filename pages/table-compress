@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="nord">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transform</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5,npm/tabulator-tables@6/dist/css/tabulator_simple.min.css" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web,npm/tabulator-tables@6,npm/papaparse"></script>
+<script defer src="https://unpkg.com/alpinejs/dist/cdn.min.js"></script>
+</head>
+<body class="bg-base-200 min-h-screen p-6" x-data="app()" x-init="init()">
+
+<div class="max-w-5xl mx-auto space-y-4">
+
+  <!-- Header -->
+  <div class="flex items-baseline justify-between">
+    <h1 class="text-xl font-bold tracking-tight">Transform</h1>
+    <span class="text-base-content/40 text-xs">paste → transform → export</span>
+  </div>
+
+  <!-- Paste zone -->
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body p-4">
+      <div
+        class="border-2 border-dashed border-base-300 rounded-lg p-8 text-center text-base-content/40 text-sm cursor-pointer transition-colors"
+        :class="rawRows.length ? 'border-success/40 bg-success/5' : 'hover:border-base-content/20'"
+        @paste.prevent="onPaste($event)"
+        tabindex="0"
+      >
+        <template x-if="!rawRows.length">
+          <div class="flex flex-col items-center gap-2">
+            <i class="ph-bold ph-clipboard-text text-3xl"></i>
+            <span>Click here and paste tab-separated data</span>
+          </div>
+        </template>
+        <template x-if="rawRows.length">
+          <div class="flex items-center justify-center gap-2 text-success">
+            <i class="ph-bold ph-check-circle text-xl"></i>
+            <span x-text="`${rawRows.length} rows × ${columns.length} columns loaded`"></span>
+            <button class="btn btn-xs btn-ghost text-base-content/40 ml-2" @click.stop="reset()">
+              <i class="ph-bold ph-x"></i>
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transformations -->
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body p-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="font-semibold text-sm">Transformations</span>
+        <div class="flex items-center gap-4">
+          <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" class="checkbox checkbox-sm" x-model="trimAll">
+            <span>Trim values</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" class="checkbox checkbox-sm" x-model="rollup">
+            <span>Roll up Amount</span>
+          </label>
+          <button class="btn btn-xs btn-ghost" @click="addRow()">
+            <i class="ph-bold ph-plus"></i> Add row
+          </button>
+        </div>
+      </div>
+
+      <div id="xform-table"></div>
+
+      <div class="flex items-center justify-between pt-1">
+        <div x-show="result.ran" class="text-xs text-base-content/40 flex items-center gap-3">
+          <span x-show="result.beforeCount !== result.afterCount">
+            <span x-text="result.beforeCount"></span> → <span x-text="result.afterCount"></span> rows (rolled up)
+          </span>
+          <span x-show="result.beforeCount === result.afterCount" x-text="`${result.afterCount} rows`"></span>
+        </div>
+        <button
+          class="btn btn-sm btn-primary ml-auto"
+          :disabled="!rawRows.length"
+          @click="runTransformations()"
+        >
+          <i class="ph-bold ph-play"></i> Run
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Output -->
+  <div x-show="result.ran" class="card bg-base-100 shadow-sm">
+    <div class="card-body p-4 space-y-3">
+
+      <!-- View toggles -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="join">
+          <template x-for="v in views" :key="v.key">
+            <button
+              class="join-item btn btn-sm"
+              :class="activeView === v.key ? 'btn-neutral' : 'btn-ghost'"
+              @click="activeView = v.key"
+            >
+              <span x-text="v.label"></span>
+              <span class="badge badge-xs ml-1 opacity-60" x-text="result.sizes[v.key] ?? '…'"></span>
+            </button>
+          </template>
+        </div>
+        <div class="ml-auto flex gap-2">
+          <button
+            class="btn btn-sm btn-ghost"
+            x-show="!activeViewIsBinary"
+            @click="copyOutput()"
+            :class="copied ? 'text-success' : ''"
+          >
+            <i class="ph-bold" :class="copied ? 'ph-check' : 'ph-copy'"></i>
+            <span x-text="copied ? 'Copied' : 'Copy'"></span>
+          </button>
+          <button class="btn btn-sm btn-ghost" @click="download()">
+            <i class="ph-bold ph-download"></i> Download
+          </button>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div class="relative">
+        <template x-if="activeViewIsBinary">
+          <div class="bg-base-200 rounded-lg p-6 text-center text-base-content/40 text-sm flex items-center justify-center gap-2">
+            <i class="ph-bold ph-file-zip text-xl"></i>
+            <span>Binary gzip — use Download</span>
+          </div>
+        </template>
+        <template x-if="!activeViewIsBinary">
+          <pre class="bg-base-200 rounded-lg p-4 text-xs overflow-auto max-h-80 leading-relaxed" x-text="previewText"></pre>
+        </template>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+function app() {
+  return {
+    rawRows: [],
+    columns: [],
+    trimAll: false,
+    rollup: false,
+    table: null,
+    result: { ran: false, json: '', csv: '', jsonGz: null, csvGz: null, sizes: {}, beforeCount: 0, afterCount: 0 },
+    activeView: 'json',
+    copied: false,
+    views: [
+      { key: 'json',   label: 'JSON',    binary: false, ext: 'json',   mime: 'application/json' },
+      { key: 'jsonGz', label: 'JSON.gz', binary: true,  ext: 'json.gz',mime: 'application/gzip' },
+      { key: 'csv',    label: 'CSV',     binary: false, ext: 'csv',    mime: 'text/csv' },
+      { key: 'csvGz',  label: 'CSV.gz',  binary: true,  ext: 'csv.gz', mime: 'application/gzip' },
+    ],
+
+    get activeViewIsBinary() {
+      return this.views.find(v => v.key === this.activeView)?.binary ?? false
+    },
+
+    get previewText() {
+      return this.result[this.activeView] ?? ''
+    },
+
+    init() {
+      this.table = new Tabulator('#xform-table', {
+        layout: 'fitColumns',
+        height: 'auto',
+        placeholder: 'No transformations — add a row to get started',
+        columns: [
+          {
+            title: 'Column', field: 'column', editor: 'list', width: 180,
+            editorParams: { values: [], autocomplete: true, listOnEmpty: true }
+          },
+          {
+            title: 'Transformation  (arrow fn: r => ...)', field: 'transformation',
+            editor: 'input', headerTooltip: "e.g. r => r.Amount * 1000"
+          },
+          {
+            title: '', field: '_del', width: 40, hozAlign: 'center', headerSort: false,
+            formatter: () => '<i class="ph-bold ph-x text-base-content/30 hover:text-error cursor-pointer"></i>',
+            cellClick: (e, cell) => cell.getRow().delete()
+          }
+        ],
+        data: []
+      })
+    },
+
+    onPaste(event) {
+      const text = event.clipboardData.getData('text')
+      if (!text) return
+      const parsed = Papa.parse(text, { delimiter: '\t', header: true })
+      const rows = parsed.data.filter(r => Object.values(r).some(v => v !== ''))
+      if (!rows.length) return
+      this.rawRows = rows
+      this.columns = Object.keys(rows[0])
+      this.table.getColumn('column').updateDefinition({
+        editorParams: { values: this.columns, autocomplete: true, listOnEmpty: true }
+      })
+      this.result.ran = false
+    },
+
+    addRow() {
+      this.table.addRow({ column: '', transformation: '' })
+    },
+
+    reset() {
+      this.rawRows = []
+      this.columns = []
+      this.result = { ran: false, json: '', csv: '', jsonGz: null, csvGz: null, sizes: {}, beforeCount: 0, afterCount: 0 }
+    },
+
+    async runTransformations() {
+      let rows = this.rawRows.map(r => ({ ...r }))
+      const beforeCount = rows.length
+
+      if (this.trimAll) {
+        rows = rows.map(r => Object.fromEntries(
+          Object.entries(r).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v])
+        ))
+      }
+
+      for (const t of this.table.getData()) {
+        if (!t.column || !t.transformation) continue
+        let fn
+        try { fn = eval('(' + t.transformation + ')') } catch(e) { console.error(e); continue }
+        rows.forEach(r => { try { r[t.column] = fn(r) } catch(e) { console.error(e) } })
+      }
+
+      if (this.rollup && rows.length && 'Amount' in rows[0]) {
+        const groups = {}
+        rows.forEach(r => {
+          const key = JSON.stringify(
+            Object.keys(r).filter(k => k !== 'Amount').sort()
+              .reduce((acc, k) => { acc[k] = r[k]; return acc }, {})
+          )
+          if (!groups[key]) { groups[key] = { ...r, Amount: parseFloat(r.Amount) || 0 }
+          } else { groups[key].Amount += parseFloat(r.Amount) || 0 }
+        })
+        rows = Object.values(groups)
+      }
+
+      const afterCount = rows.length
+
+      // Build columnar JSON
+      const columnar = {}
+      this.columns.forEach(col => { columnar[col] = rows.map(r => r[col]) })
+      const jsonStr = JSON.stringify(columnar, null, 2)
+      const csvStr = Papa.unparse(rows)
+
+      // Compress both
+      const compress = async str => {
+        const cs = new CompressionStream('gzip')
+        const w = cs.writable.getWriter()
+        w.write(new TextEncoder().encode(str))
+        w.close()
+        return new Response(cs.readable).blob()
+      }
+      const [jsonGzBlob, csvGzBlob] = await Promise.all([compress(jsonStr), compress(csvStr)])
+
+      const fmt = n => n < 1024 ? `${n}B` : n < 1048576 ? `${(n/1024).toFixed(1)}K` : `${(n/1048576).toFixed(1)}M`
+
+      this.result = {
+        ran: true,
+        json: jsonStr,
+        csv: csvStr,
+        jsonGz: jsonGzBlob,
+        csvGz: csvGzBlob,
+        sizes: {
+          json:   fmt(new Blob([jsonStr]).size),
+          jsonGz: fmt(jsonGzBlob.size),
+          csv:    fmt(new Blob([csvStr]).size),
+          csvGz:  fmt(csvGzBlob.size),
+        },
+        beforeCount,
+        afterCount,
+      }
+      this.activeView = 'json'
+    },
+
+    async copyOutput() {
+      const text = this.result[this.activeView]
+      if (!text) return
+      await navigator.clipboard.writeText(text)
+      this.copied = true
+      setTimeout(() => this.copied = false, 1500)
+    },
+
+    download() {
+      const v = this.views.find(v => v.key === this.activeView)
+      const content = this.result[this.activeView]
+      if (!content) return
+      const blob = content instanceof Blob ? content : new Blob([content], { type: v.mime })
+      const url = URL.createObjectURL(blob)
+      Object.assign(document.createElement('a'), { href: url, download: `output.${v.ext}` }).click()
+      URL.revokeObjectURL(url)
+    }
+  }
+}
+</script>
+</body>
+</html>
