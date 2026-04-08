@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html data-theme="night" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Field Notes: Bookmarklets</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+  <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet"/>
+  <script defer src="https://unpkg.com/alpinejs/dist/cdn.min.js"></script>
+</head>
+<body class="bg-base-100 text-base-content min-h-screen">
+
+  <header class="border-b border-base-300 px-8 py-5 flex justify-between items-baseline">
+    <span style="font-family:'Playfair Display',serif" class="text-xl font-black tracking-tight">Field Notes</span>
+    <span style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/35 uppercase tracking-widest">Bookmarklets · 2026</span>
+  </header>
+
+  <section class="px-8 pt-12 pb-8 max-w-2xl">
+    <h1 style="font-family:'Playfair Display',serif" class="text-5xl font-black leading-tight mb-5">
+      You write a bookmarklet.<br>
+      <em class="text-primary">GitHub says no.</em>
+    </h1>
+    <p class="text-base-content/55 text-lg leading-relaxed">
+      The CSP wall. The pipeline that almost exists. Three tools you can drag to your bookmarks bar right now. A frank ranking of which AI actually helped.
+    </p>
+  </section>
+
+  <main class="px-8 max-w-2xl space-y-16 pb-24">
+
+    <!-- 01 The Wall -->
+    <section>
+      <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-primary uppercase tracking-widest mb-2">01 / The Wall</div>
+      <h2 style="font-family:'Playfair Display',serif" class="text-3xl font-bold mb-4">CSP, or: why your clever idea fails on the one site you actually need</h2>
+      <p class="text-base-content/75 leading-relaxed mb-6">
+        A bookmarklet injecting <code style="font-family:'JetBrains Mono',monospace" class="text-sm bg-base-200 px-1.5 py-0.5 rounded">&lt;script src="cdn..."&gt;</code> works beautifully on permissive pages and fails silently on GitHub, Notion, and most enterprise tools. The CSP header is doing exactly its job. The practical rule has two parts: bundle everything inline, and if you need a remote script, open a temporary window that operates outside the parent page's CSP entirely. That's the Lambdalet approach. It's the most underrated trick in this space.
+      </p>
+
+      <div x-data="{mode:'external'}" class="border border-base-300 rounded-xl p-5 bg-base-200">
+        <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/35 uppercase tracking-widest mb-4">Live · CSP Simulator</div>
+        <div class="tabs tabs-box mb-5">
+          <button class="tab" :class="mode==='external' && 'tab-active'" @click="mode='external'">External script</button>
+          <button class="tab" :class="mode==='inline' && 'tab-active'" @click="mode='inline'">Inline bundle</button>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap mb-4">
+          <span style="font-family:'JetBrains Mono',monospace" class="badge badge-neutral text-xs px-3 py-3">
+            <i class="ph-bold ph-bookmark-simple mr-1"></i>bookmarklet
+          </span>
+          <i class="ph-bold ph-arrow-right text-base-content/30"></i>
+          <template x-if="mode==='external'">
+            <span class="flex items-center gap-2">
+              <span style="font-family:'JetBrains Mono',monospace" class="badge badge-outline text-xs">cdn.jsdelivr.net</span>
+              <i class="ph-bold ph-arrow-right text-base-content/30"></i>
+            </span>
+          </template>
+          <template x-if="mode==='inline'">
+            <span class="flex items-center gap-2">
+              <span style="font-family:'JetBrains Mono',monospace" class="badge badge-neutral text-xs">⟨ bundled ⟩</span>
+              <i class="ph-bold ph-arrow-right text-base-content/30"></i>
+            </span>
+          </template>
+          <span class="badge text-xs px-3 py-3" :class="mode==='external' ? 'badge-error' : 'badge-success'">
+            <i class="ph-bold mr-1" :class="mode==='external' ? 'ph-x-circle' : 'ph-check-circle'"></i>
+            <span x-text="mode==='external' ? 'BLOCKED' : 'PASSES'"></span>
+          </span>
+        </div>
+        <div x-show="mode==='external'" style="font-family:'JetBrains Mono',monospace" class="text-xs text-error/70 bg-base-300 rounded-lg px-3 py-2 leading-relaxed">
+          Refused to load 'https://cdn.jsdelivr.net/…' — violates Content-Security-Policy: script-src 'self'
+        </div>
+        <div x-show="mode==='inline'" style="font-family:'JetBrains Mono',monospace" class="text-xs text-success/70 bg-base-300 rounded-lg px-3 py-2">
+          ✓ No external fetch. Everything runs from the javascript: URI. Ship it.
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 The Tools -->
+    <section>
+      <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-primary uppercase tracking-widest mb-2">02 / The Tools</div>
+      <h2 style="font-family:'Playfair Display',serif" class="text-3xl font-bold mb-4">Drag these to your bookmarks bar</h2>
+      <p class="text-base-content/75 leading-relaxed mb-6">
+        Three bookmarklets that follow the rules: all inline, no external fetch, CSP-resilient on permissive pages. The first two are immediately useful anywhere. The third is diagnostic — run it first when something fails mysteriously.
+      </p>
+
+      <div class="space-y-3">
+
+        <div class="border border-base-300 rounded-xl p-4 flex items-start gap-4 hover:border-primary/40 transition-colors duration-200">
+          <a title="Drag to bookmarks bar"
+             href="javascript:(function(){var u=location.href.replace('github.com','gitingest.com');u!==location.href?location.href=u:alert('Not a GitHub page')})()"
+             class="btn btn-primary btn-sm shrink-0 cursor-grab active:cursor-grabbing">
+            <i class="ph-bold ph-git-branch"></i> Gitingest
+          </a>
+          <div>
+            <div class="font-semibold text-sm mb-0.5">GitHub → prompt-ready digest</div>
+            <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/40">
+              github.com → gitingest.com · one URL swap · MCP server included
+            </div>
+          </div>
+        </div>
+
+        <div class="border border-base-300 rounded-xl p-4 flex items-start gap-4 hover:border-primary/40 transition-colors duration-200">
+          <a title="Drag to bookmarks bar"
+             href="javascript:navigator.clipboard.writeText('['+document.title+']('+location.href+')').then(function(){var b=document.body,o=b.style.outline;b.style.outline='3px solid #818cf8';setTimeout(function(){b.style.outline=o},500)},function(){prompt('Copy:','['+document.title+']('+location.href+')')})"
+             class="btn btn-primary btn-sm shrink-0 cursor-grab active:cursor-grabbing">
+            <i class="ph-bold ph-link-simple"></i> MD Link
+          </a>
+          <div>
+            <div class="font-semibold text-sm mb-0.5">Copy <code style="font-family:'JetBrains Mono',monospace" class="text-xs">[title](url)</code> to clipboard</div>
+            <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/40">
+              flashes page outline on success · falls back to prompt on clipboard denial
+            </div>
+          </div>
+        </div>
+
+        <div class="border border-base-300 rounded-xl p-4 flex items-start gap-4 hover:border-primary/40 transition-colors duration-200">
+          <a title="Drag to bookmarks bar"
+             href="javascript:(function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/lodash@4/lodash.min.js';s.onload=function(){alert('✓ External scripts allowed — CDN bookmarklets will work here')};s.onerror=function(){alert('✗ CSP blocks external scripts — bundle inline or use a temp window')};document.head.appendChild(s)})()"
+             class="btn btn-primary btn-sm shrink-0 cursor-grab active:cursor-grabbing">
+            <i class="ph-bold ph-shield-check"></i> CSP Check
+          </a>
+          <div>
+            <div class="font-semibold text-sm mb-0.5">External script diagnostic</div>
+            <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/40">
+              tries to load lodash from CDN · run this first when debugging a broken bookmarklet
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <p style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/30 mt-3">
+        ↑ Drag the buttons, don't click them. They run on external pages, not here.
+      </p>
+    </section>
+
+    <!-- 03 The Stack -->
+    <section>
+      <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-primary uppercase tracking-widest mb-2">03 / The Stack</div>
+      <h2 style="font-family:'Playfair Display',serif" class="text-3xl font-bold mb-4">The pipeline that almost exists</h2>
+      <p class="text-base-content/75 leading-relaxed mb-6">
+        Gitingest and Repomix flatten repos into LLM-ready artifacts — both have MCP servers, meaning Claude can trigger repo packing as a tool call. give-me/bookmarklets exports conversations across all major platforms. The GitHub API commit pattern — stored PAT, extract title and URL, POST a named markdown file — is proven, just never bundled cleanly. What doesn't exist: a unified "capture with provenance" tool that shows what it's extracting and why. And the bookmarklet-to-MCP bridge — completely unexplored — which would invert the model from "human captures, Claude reads later" to "Claude decides when to capture."
+      </p>
+
+      <div class="border border-base-300 rounded-xl p-5 bg-base-200 space-y-3">
+        <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/35 uppercase tracking-widest mb-1">Capture Pipeline</div>
+
+        <div class="flex items-center gap-3">
+          <div class="w-28 text-right shrink-0"><span style="font-family:'JetBrains Mono',monospace" class="badge badge-neutral text-xs">bookmarklet</span></div>
+          <i class="ph-bold ph-arrow-right text-base-content/25 text-sm"></i>
+          <span class="text-sm text-base-content/60">Turndown / dom-to-semantic-markdown · laptop</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="w-28 text-right shrink-0"><span style="font-family:'JetBrains Mono',monospace" class="badge badge-neutral text-xs">📲 Fetch</span></div>
+          <i class="ph-bold ph-arrow-right text-base-content/25 text-sm"></i>
+          <span class="text-sm text-base-content/60">Apple Shortcut · token stored securely · mobile</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="w-28 text-right shrink-0"><span style="font-family:'JetBrains Mono',monospace" class="badge badge-neutral text-xs">GitHub API</span></div>
+          <i class="ph-bold ph-arrow-right text-base-content/25 text-sm"></i>
+          <span class="text-sm text-base-content/60">timestamp+slug filenames · fine-grained PAT · single-repo scope</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="w-28 text-right shrink-0"><span style="font-family:'JetBrains Mono',monospace" class="badge badge-neutral text-xs">dump repo</span></div>
+          <i class="ph-bold ph-arrow-right text-base-content/25 text-sm"></i>
+          <span class="text-sm text-base-content/60">Claude drains · or expose as MCP tools <span class="text-warning font-semibold">(unbuilt)</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 The Sources -->
+    <section>
+      <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-primary uppercase tracking-widest mb-2">04 / The Sources</div>
+      <h2 style="font-family:'Playfair Display',serif" class="text-3xl font-bold mb-4">Five AIs walked into a research prompt</h2>
+      <p class="text-base-content/75 leading-relaxed mb-6">
+        The measure that actually matters is net-new signal, not word count. ChatGPT found Gitingest and the best CSP analysis. Grok found the GitHub API commit pattern and the MCP-exposure idea. DeepSeek named the launcher pattern cleanly. Gemini buried its real findings in academic filler — then invented Paul Ford's opinions on AI agents in 2026 and presented them as sourced quotes. That's not extrapolation. That's confabulation dressed as research. The lesson: deep research tools do wide well. Depth requires judgment — knowing what matters, what's uncertain, and when to stop.
+      </p>
+
+      <div class="space-y-2">
+        <div x-data class="flex items-center gap-3 px-4 py-3 rounded-lg bg-base-200">
+          <span style="font-family:'JetBrains Mono',monospace" class="text-success font-bold text-sm w-5 shrink-0">1</span>
+          <span class="font-semibold text-sm flex-1">ChatGPT</span>
+          <span style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/40 text-right">Gitingest · Repomix · CSP analysis · token security</span>
+        </div>
+        <div class="flex items-center gap-3 px-4 py-3 rounded-lg bg-base-200">
+          <span style="font-family:'JetBrains Mono',monospace" class="text-success/60 font-bold text-sm w-5 shrink-0">2</span>
+          <span class="font-semibold text-sm flex-1">Grok</span>
+          <span style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/40 text-right">give-me/bookmarklets · GitHub API pattern · MCP inversion</span>
+        </div>
+        <div class="flex items-center gap-3 px-4 py-3 rounded-lg bg-base-200">
+          <span style="font-family:'JetBrains Mono',monospace" class="text-base-content/40 font-bold text-sm w-5 shrink-0">3</span>
+          <span class="font-semibold text-sm flex-1">DeepSeek</span>
+          <span style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/40 text-right">fathom · launcher pattern · otherwise thin</span>
+        </div>
+        <div class="flex items-center gap-3 px-4 py-3 rounded-lg bg-base-200">
+          <span style="font-family:'JetBrains Mono',monospace" class="text-error/60 font-bold text-sm w-5 shrink-0">4</span>
+          <span class="font-semibold text-sm flex-1">Gemini</span>
+          <span style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/40 text-right">vite-plugin-bookmarklet · Stagehand · then confabulation</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 The Gap -->
+    <section class="border-t border-base-300 pt-12">
+      <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-primary uppercase tracking-widest mb-2">05 / The Gap</div>
+      <h2 style="font-family:'Playfair Display',serif" class="text-3xl font-bold mb-4">The thing nobody has built</h2>
+      <p class="text-base-content/75 leading-relaxed">
+        A single CSP-resilient bookmarklet that extracts semantic content, shows you what it captured and why, commits it to GitHub with a timestamped filename, and registers itself as an MCP tool surface for the duration of the session. Every primitive exists separately. Nobody has bolted them together. Power Query is untouched across five rounds of research. Your niche remains open.
+      </p>
+    </section>
+
+  </main>
+
+  <footer class="border-t border-base-300 px-8 py-5">
+    <span style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/25 uppercase tracking-widest">
+      Field Notes · assembled from five rounds of AI research · the gap remains open
+    </span>
+  </footer>
+
+</body>
+</html>
