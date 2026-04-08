@@ -29,7 +29,7 @@
         <template x-if="!rawRows.length">
           <div class="flex flex-col items-center gap-2">
             <i class="ph-bold ph-clipboard-text text-3xl"></i>
-            <span>Click here and paste TSV or gz base64</span>
+            <span>Click here and paste TSV, gz base64, or bundle JSON</span>
           </div>
         </template>
         <template x-if="rawRows.length">
@@ -58,6 +58,10 @@
           <label class="flex items-center gap-2 text-sm cursor-pointer">
             <input type="checkbox" class="checkbox checkbox-sm" x-model="rollup">
             <span>Roll up Amount</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" class="checkbox checkbox-sm" x-model="includeFn">
+            <span>Include function</span>
           </label>
         </div>
       </div>
@@ -138,10 +142,11 @@ function app() {
     columns: [],
     trimAll: false,
     rollup: false,
+    includeFn: true,
     fnSrc: 'rows => rows',
     fnError: null,
     result: {
-      ran: false, json: '', csv: '', jsonB64: '', csvB64: '',
+      ran: false, json: '', csv: '', jsonB64: '', csvB64: '', bundle: '',
       jsonGzBlob: null, csvGzBlob: null, sizes: {}, beforeCount: 0, afterCount: 0
     },
     activeView: 'json',
@@ -151,6 +156,7 @@ function app() {
       { key: 'jsonB64', label: 'JSON.gz b64', ext: 'gz',   mime: 'application/gzip' },
       { key: 'csv',     label: 'CSV',         ext: 'csv',  mime: 'text/csv' },
       { key: 'csvB64',  label: 'CSV.gz b64',  ext: 'gz',   mime: 'application/gzip' },
+      { key: 'bundle',  label: 'Bundle',      ext: 'json', mime: 'application/json' },
     ],
 
     init() {},
@@ -161,7 +167,18 @@ function app() {
       const text = event.clipboardData.getData('text')
       if (!text) return
 
-      // Try gz base64 first: strip whitespace, check it's base64, decode, verify gzip magic bytes, decompress
+      // Try bundle JSON first: {fn?, data}
+      const trimmed = text.trim()
+      if (trimmed.startsWith('{') && trimmed.includes('"data"')) {
+        try {
+          const obj = JSON.parse(trimmed)
+          if (obj && typeof obj === 'object' && typeof obj.data === 'string') {
+            if (await this.loadBundle(obj)) return
+          }
+        } catch(e) { /* fall through */ }
+      }
+
+      // Try gz base64: strip whitespace, check it's base64, decode, verify gzip magic bytes, decompress
       const clean = text.replace(/\s/g, '')
       if (clean && /^[A-Za-z0-9+/]+={0,2}$/.test(clean)) {
         try {
@@ -232,10 +249,53 @@ function app() {
       this.rawRows = []
       this.columns = []
       this.result = {
-        ran: false, json: '', csv: '', jsonB64: '', csvB64: '',
+        ran: false, json: '', csv: '', jsonB64: '', csvB64: '', bundle: '',
         jsonGzBlob: null, csvGzBlob: null, sizes: {}, beforeCount: 0, afterCount: 0
       }
       this.fnError = null
+    },
+
+    async buildResult(rows, beforeCount, afterCount) {
+      const cols = Object.keys(rows[0] ?? {})
+      const columnar = Object.fromEntries(cols.map(c => [c, rows.map(r => r[c])]))
+
+      const jsonStr = JSON.stringify(columnar, null, 2)
+      const csvStr  = Papa.unparse(rows)
+
+      const compress = async str => {
+        const cs = new CompressionStream('gzip')
+        const w = cs.writable.getWriter()
+        w.write(new TextEncoder().encode(str))
+        w.close()
+        return new Response(cs.readable).blob()
+      }
+
+      const blobToB64 = blob => new Promise(res => {
+        const fr = new FileReader()
+        fr.onload = () => res(fr.result.split(',')[1])
+        fr.readAsDataURL(blob)
+      })
+
+      const [jsonGzBlob, csvGzBlob] = await Promise.all([compress(jsonStr), compress(csvStr)])
+      const [jsonB64, csvB64] = await Promise.all([blobToB64(jsonGzBlob), blobToB64(csvGzBlob)])
+
+      const fnB64 = this.includeFn ? await blobToB64(await compress(this.fnSrc)) : ''
+      const bundle = JSON.stringify(this.includeFn ? { fn: fnB64, data: jsonB64 } : { data: jsonB64 })
+
+      const fmt = n => n < 1024 ? `${n}B` : n < 1048576 ? `${(n/1024).toFixed(1)}K` : `${(n/1048576).toFixed(1)}M`
+
+      this.result = {
+        ran: true, json: jsonStr, csv: csvStr, jsonB64, csvB64, bundle,
+        jsonGzBlob, csvGzBlob,
+        sizes: {
+          json:    fmt(new Blob([jsonStr]).size),
+          jsonB64: fmt(new Blob([jsonB64]).size),
+          csv:     fmt(new Blob([csvStr]).size),
+          csvB64:  fmt(new Blob([csvB64]).size),
+          bundle:  fmt(new Blob([bundle]).size),
+        },
+        beforeCount, afterCount,
+      }
     },
 
     async run() {
@@ -269,44 +329,50 @@ function app() {
         rows = Object.values(groups)
       }
 
-      const afterCount = rows.length
-      const cols = Object.keys(rows[0] ?? {})
-      const columnar = Object.fromEntries(cols.map(c => [c, rows.map(r => r[c])]))
-
-      const jsonStr = JSON.stringify(columnar, null, 2)
-      const csvStr  = Papa.unparse(rows)
-
-      const compress = async str => {
-        const cs = new CompressionStream('gzip')
-        const w = cs.writable.getWriter()
-        w.write(new TextEncoder().encode(str))
-        w.close()
-        return new Response(cs.readable).blob()
-      }
-
-      const blobToB64 = blob => new Promise(res => {
-        const fr = new FileReader()
-        fr.onload = () => res(fr.result.split(',')[1])
-        fr.readAsDataURL(blob)
-      })
-
-      const [jsonGzBlob, csvGzBlob] = await Promise.all([compress(jsonStr), compress(csvStr)])
-      const [jsonB64, csvB64] = await Promise.all([blobToB64(jsonGzBlob), blobToB64(csvGzBlob)])
-
-      const fmt = n => n < 1024 ? `${n}B` : n < 1048576 ? `${(n/1024).toFixed(1)}K` : `${(n/1048576).toFixed(1)}M`
-
-      this.result = {
-        ran: true, json: jsonStr, csv: csvStr, jsonB64, csvB64,
-        jsonGzBlob, csvGzBlob,
-        sizes: {
-          json:    fmt(new Blob([jsonStr]).size),
-          jsonB64: fmt(new Blob([jsonB64]).size),
-          csv:     fmt(new Blob([csvStr]).size),
-          csvB64:  fmt(new Blob([csvB64]).size),
-        },
-        beforeCount, afterCount,
-      }
+      await this.buildResult(rows, beforeCount, rows.length)
       this.activeView = 'json'
+    },
+
+    async loadBundle(obj) {
+      const decompressB64 = async b64 => {
+        const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+        const ds = new DecompressionStream('gzip')
+        const w = ds.writable.getWriter()
+        w.write(bytes)
+        w.close()
+        return new Response(ds.readable).text()
+      }
+
+      try {
+        const dataText = await decompressB64(obj.data)
+        const parsed = JSON.parse(dataText)
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false
+
+        const cols = Object.keys(parsed)
+        if (!cols.length || !cols.every(c => Array.isArray(parsed[c]))) return false
+        const n = parsed[cols[0]].length
+        const rows = []
+        for (let i = 0; i < n; i++) {
+          const row = {}
+          cols.forEach(c => row[c] = parsed[c][i])
+          rows.push(row)
+        }
+
+        this.rawRows = rows
+        this.columns = cols
+        this.fnError = null
+
+        if (typeof obj.fn === 'string' && obj.fn) {
+          try { this.fnSrc = await decompressB64(obj.fn) } catch(e) {}
+        }
+
+        // Populate output directly — no Run click needed
+        await this.buildResult(rows, rows.length, rows.length)
+        this.activeView = 'bundle'
+        return true
+      } catch(e) {
+        return false
+      }
     },
 
     async copy() {
