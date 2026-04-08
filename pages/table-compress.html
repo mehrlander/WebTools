@@ -29,7 +29,7 @@
         <template x-if="!rawRows.length">
           <div class="flex flex-col items-center gap-2">
             <i class="ph-bold ph-clipboard-text text-3xl"></i>
-            <span>Click here and paste tab-separated data</span>
+            <span>Click here and paste TSV or gz base64</span>
           </div>
         </template>
         <template x-if="rawRows.length">
@@ -157,9 +157,26 @@ function app() {
 
     get previewText() { return this.result[this.activeView] ?? '' },
 
-    onPaste(event) {
+    async onPaste(event) {
       const text = event.clipboardData.getData('text')
       if (!text) return
+
+      // Try gz base64 first: strip whitespace, check it's base64, decode, verify gzip magic bytes, decompress
+      const clean = text.replace(/\s/g, '')
+      if (clean && /^[A-Za-z0-9+/]+={0,2}$/.test(clean)) {
+        try {
+          const bytes = Uint8Array.from(atob(clean), c => c.charCodeAt(0))
+          if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+            const ds = new DecompressionStream('gzip')
+            const w = ds.writable.getWriter()
+            w.write(bytes)
+            w.close()
+            const decoded = await new Response(ds.readable).text()
+            if (this.loadDecoded(decoded)) return
+          }
+        } catch(e) { /* fall through to TSV */ }
+      }
+
       const parsed = Papa.parse(text, { delimiter: '\t', header: true })
       const rows = parsed.data.filter(r => Object.values(r).some(v => v !== ''))
       if (!rows.length) return
@@ -167,6 +184,48 @@ function app() {
       this.columns = Object.keys(rows[0])
       this.result.ran = false
       this.fnError = null
+    },
+
+    loadDecoded(text) {
+      // Try JSON (columnar: { col: [...] } — matches the output format)
+      try {
+        const obj = JSON.parse(text)
+        if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+          const cols = Object.keys(obj)
+          if (cols.length && cols.every(c => Array.isArray(obj[c]))) {
+            const n = obj[cols[0]].length
+            const rows = []
+            for (let i = 0; i < n; i++) {
+              const row = {}
+              cols.forEach(c => row[c] = obj[c][i])
+              rows.push(row)
+            }
+            this.rawRows = rows
+            this.columns = cols
+            this.result.ran = false
+            this.fnError = null
+            return true
+          }
+        } else if (Array.isArray(obj) && obj.length) {
+          this.rawRows = obj
+          this.columns = Object.keys(obj[0] ?? {})
+          this.result.ran = false
+          this.fnError = null
+          return true
+        }
+      } catch(e) { /* not JSON, try CSV */ }
+
+      // Try CSV
+      const parsed = Papa.parse(text, { header: true, skipEmptyLines: true })
+      const rows = parsed.data.filter(r => Object.values(r).some(v => v !== ''))
+      if (rows.length) {
+        this.rawRows = rows
+        this.columns = Object.keys(rows[0])
+        this.result.ran = false
+        this.fnError = null
+        return true
+      }
+      return false
     },
 
     reset() {
