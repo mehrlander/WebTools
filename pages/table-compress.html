@@ -262,6 +262,11 @@ function app() {
       const jsonStr = JSON.stringify(columnar, null, 2)
       const csvStr  = Papa.unparse(rows)
 
+      // Bundle encodes the RAW rawRows + fn, so unpacking can cleanly re-run.
+      const rawCols = Object.keys(this.rawRows[0] ?? {})
+      const rawColumnar = Object.fromEntries(rawCols.map(c => [c, this.rawRows.map(r => r[c])]))
+      const rawJsonStr = JSON.stringify(rawColumnar)
+
       const compress = async str => {
         const cs = new CompressionStream('gzip')
         const w = cs.writable.getWriter()
@@ -276,11 +281,15 @@ function app() {
         fr.readAsDataURL(blob)
       })
 
-      const [jsonGzBlob, csvGzBlob] = await Promise.all([compress(jsonStr), compress(csvStr)])
-      const [jsonB64, csvB64] = await Promise.all([blobToB64(jsonGzBlob), blobToB64(csvGzBlob)])
+      const [jsonGzBlob, csvGzBlob, rawJsonGzBlob] = await Promise.all([
+        compress(jsonStr), compress(csvStr), compress(rawJsonStr)
+      ])
+      const [jsonB64, csvB64, rawJsonB64] = await Promise.all([
+        blobToB64(jsonGzBlob), blobToB64(csvGzBlob), blobToB64(rawJsonGzBlob)
+      ])
 
       const fnB64 = this.includeFn ? await blobToB64(await compress(this.fnSrc)) : ''
-      const bundle = JSON.stringify(this.includeFn ? { fn: fnB64, data: jsonB64 } : { data: jsonB64 })
+      const bundle = JSON.stringify(this.includeFn ? { fn: fnB64, data: rawJsonB64 } : { data: rawJsonB64 })
 
       const fmt = n => n < 1024 ? `${n}B` : n < 1048576 ? `${(n/1024).toFixed(1)}K` : `${(n/1048576).toFixed(1)}M`
 
@@ -343,36 +352,41 @@ function app() {
         return new Response(ds.readable).text()
       }
 
+      // Parse everything up-front; only mutate state after all decoding succeeds.
+      let rows, cols, loadedFn = null
       try {
         const dataText = await decompressB64(obj.data)
         const parsed = JSON.parse(dataText)
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false
 
-        const cols = Object.keys(parsed)
+        cols = Object.keys(parsed)
         if (!cols.length || !cols.every(c => Array.isArray(parsed[c]))) return false
         const n = parsed[cols[0]].length
-        const rows = []
+        rows = []
         for (let i = 0; i < n; i++) {
           const row = {}
           cols.forEach(c => row[c] = parsed[c][i])
           rows.push(row)
         }
 
-        this.rawRows = rows
-        this.columns = cols
-        this.fnError = null
-
         if (typeof obj.fn === 'string' && obj.fn) {
-          try { this.fnSrc = await decompressB64(obj.fn) } catch(e) {}
+          try { loadedFn = await decompressB64(obj.fn) } catch(e) { /* keep existing fnSrc */ }
         }
-
-        // Populate output directly — no Run click needed
-        await this.buildResult(rows, rows.length, rows.length)
-        this.activeView = 'bundle'
-        return true
       } catch(e) {
         return false
       }
+
+      // Commit state
+      this.rawRows = rows
+      this.columns = cols
+      this.fnError = null
+      if (loadedFn !== null) this.fnSrc = loadedFn
+
+      // Auto-run: apply fn to raw data so user sees result without clicking Run.
+      // run() sets activeView = 'json' on success; override to 'bundle' only if it succeeded.
+      await this.run()
+      if (this.result.ran) this.activeView = 'bundle'
+      return true
     },
 
     async copy() {
