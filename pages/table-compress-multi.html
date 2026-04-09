@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="nord">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transform Multi</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web,npm/papaparse"></script>
+<script defer src="https://unpkg.com/alpinejs/dist/cdn.min.js"></script>
+</head>
+<body class="bg-base-200 min-h-screen p-6" x-data="app()" x-init="init()">
+
+<div class="w-full space-y-4">
+
+  <div class="flex items-baseline justify-between">
+    <h1 class="text-xl font-bold tracking-tight">Transform Multi</h1>
+    <span class="text-base-content/40 text-xs">paste → transform → export</span>
+  </div>
+
+  <!-- Paste zone -->
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body p-4">
+      <div
+        class="border-2 border-dashed border-base-300 rounded-lg p-8 text-center text-sm cursor-pointer transition-colors"
+        :class="rawRows.length ? 'border-success/40 bg-success/5 text-success' : 'text-base-content/40 hover:border-base-content/20'"
+        @paste.prevent="onPaste($event)"
+        tabindex="0"
+      >
+        <template x-if="!rawRows.length">
+          <div class="flex flex-col items-center gap-2">
+            <i class="ph-bold ph-clipboard-text text-3xl"></i>
+            <span>Click here and paste TSV, gz base64, or bundle JSON</span>
+          </div>
+        </template>
+        <template x-if="rawRows.length">
+          <div class="flex items-center justify-center gap-2">
+            <i class="ph-bold ph-check-circle text-xl"></i>
+            <span x-text="`${rawRows.length} rows × ${columns.length} columns`"></span>
+            <button class="btn btn-xs btn-ghost text-base-content/40 ml-2" @click.stop="reset()">
+              <i class="ph-bold ph-x"></i>
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transform functions -->
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body p-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="font-semibold text-sm">Transform functions</span>
+        <button class="btn btn-sm btn-ghost" @click="addFunction()">
+          <i class="ph-bold ph-plus"></i> Add function
+        </button>
+      </div>
+
+      <template x-for="(fn, idx) in functions" :key="idx">
+        <div class="border border-base-300 rounded-lg p-3 space-y-2">
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              class="input input-sm input-bordered flex-1 font-mono"
+              placeholder="function name (required)"
+              x-model="fn.name"
+            >
+            <button
+              class="btn btn-sm btn-ghost text-error"
+              @click="removeFunction(idx)"
+              :disabled="functions.length <= 1"
+            >
+              <i class="ph-bold ph-trash"></i>
+            </button>
+          </div>
+
+          <div class="text-xs text-base-content/40 font-mono">
+            rows =&gt; &nbsp;<span class="text-base-content/50">array of row objects in, transformed array out</span>
+          </div>
+
+          <textarea
+            class="textarea textarea-bordered font-mono text-xs w-full leading-relaxed resize-y"
+            rows="10"
+            x-model="fn.src"
+            spellcheck="false"
+          ></textarea>
+
+          <template x-if="fn.error">
+            <div class="text-error text-xs flex items-center gap-1">
+              <i class="ph-bold ph-warning-circle"></i>
+              <span x-text="fn.error"></span>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <template x-if="globalError">
+        <div class="text-error text-xs flex items-center gap-1">
+          <i class="ph-bold ph-warning-circle"></i>
+          <span x-text="globalError"></span>
+        </div>
+      </template>
+
+      <div class="flex items-center justify-end pt-1">
+        <button class="btn btn-sm btn-primary" :disabled="!rawRows.length" @click="run()">
+          <i class="ph-bold ph-play"></i> Run
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Output -->
+  <div x-show="result.ran" class="card bg-base-100 shadow-sm">
+    <div class="card-body p-4 space-y-3">
+
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="join">
+          <template x-for="v in views" :key="v.key">
+            <button
+              class="join-item btn btn-sm"
+              :class="activeView === v.key ? 'btn-neutral' : 'btn-ghost'"
+              @click="activeView = v.key"
+            >
+              <span x-text="v.label"></span>
+              <span class="badge badge-xs ml-1 opacity-60" x-text="currentSize(v.key)"></span>
+            </button>
+          </template>
+        </div>
+        <div class="ml-auto flex gap-2">
+          <button class="btn btn-sm btn-ghost" @click="copy()" :class="copied ? 'text-success' : ''">
+            <i class="ph-bold" :class="copied ? 'ph-check' : 'ph-copy'"></i>
+            <span x-text="copied ? 'Copied' : 'Copy'"></span>
+          </button>
+          <button class="btn btn-sm btn-ghost" @click="download()">
+            <i class="ph-bold ph-download"></i> Download
+          </button>
+        </div>
+      </div>
+
+      <!-- Function selector (per-function views only) -->
+      <div x-show="activeView !== 'bundle'" class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs text-base-content/60">Function:</span>
+        <div class="join">
+          <template x-for="(fn, idx) in functions" :key="idx">
+            <button
+              class="join-item btn btn-xs"
+              :class="activeFnIdx === idx ? 'btn-neutral' : 'btn-ghost'"
+              @click="activeFnIdx = idx"
+            >
+              <span x-text="fn.name || `(unnamed ${idx + 1})`"></span>
+            </button>
+          </template>
+        </div>
+      </div>
+
+      <pre class="bg-base-200 rounded-lg p-4 text-xs overflow-auto max-h-96 leading-relaxed whitespace-pre-wrap break-all" x-text="previewText"></pre>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+function app() {
+  return {
+    rawRows: [],
+    columns: [],
+    functions: [{ name: '', src: 'rows => rows', error: null, result: null }],
+    activeFnIdx: 0,
+    globalError: null,
+    result: { ran: false, bundle: '', bundleSize: '' },
+    activeView: 'json',
+    copied: false,
+    views: [
+      { key: 'json',    label: 'JSON',        ext: 'json', mime: 'application/json' },
+      { key: 'jsonB64', label: 'JSON.gz b64', ext: 'gz',   mime: 'application/gzip' },
+      { key: 'csv',     label: 'CSV',         ext: 'csv',  mime: 'text/csv' },
+      { key: 'csvB64',  label: 'CSV.gz b64',  ext: 'gz',   mime: 'application/gzip' },
+      { key: 'bundle',  label: 'Bundle',      ext: 'json', mime: 'application/json' },
+    ],
+
+    init() {},
+
+    addFunction() {
+      this.functions.push({ name: '', src: 'rows => rows', error: null, result: null })
+      // Force re-run; old result no longer reflects the function list.
+      this.result.ran = false
+    },
+
+    removeFunction(idx) {
+      if (this.functions.length <= 1) return
+      this.functions.splice(idx, 1)
+      if (this.activeFnIdx >= this.functions.length) this.activeFnIdx = this.functions.length - 1
+      this.result.ran = false
+    },
+
+    get previewText() {
+      if (!this.result.ran) return ''
+      if (this.activeView === 'bundle') return this.result.bundle
+      const fn = this.functions[this.activeFnIdx]
+      if (!fn || !fn.result) return ''
+      return fn.result[this.activeView] ?? ''
+    },
+
+    currentSize(viewKey) {
+      if (!this.result.ran) return '…'
+      if (viewKey === 'bundle') return this.result.bundleSize ?? '…'
+      const fn = this.functions[this.activeFnIdx]
+      if (!fn || !fn.result) return '…'
+      return fn.result.sizes?.[viewKey] ?? '…'
+    },
+
+    async onPaste(event) {
+      const text = event.clipboardData.getData('text')
+      if (!text) return
+
+      // Try bundle JSON first: look for {name}_fn / {name}_data pairs
+      const trimmed = text.trim()
+      if (trimmed.startsWith('{')) {
+        try {
+          const obj = JSON.parse(trimmed)
+          if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+            if (await this.loadBundle(obj)) return
+          }
+        } catch(e) { /* fall through */ }
+      }
+
+      // Try gz base64: strip whitespace, check it's base64, decode, verify gzip magic bytes, decompress
+      const clean = text.replace(/\s/g, '')
+      if (clean && /^[A-Za-z0-9+/]+={0,2}$/.test(clean)) {
+        try {
+          const bytes = Uint8Array.from(atob(clean), c => c.charCodeAt(0))
+          if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+            const ds = new DecompressionStream('gzip')
+            const w = ds.writable.getWriter()
+            w.write(bytes)
+            w.close()
+            const decoded = await new Response(ds.readable).text()
+            if (this.loadDecoded(decoded)) return
+          }
+        } catch(e) { /* fall through to TSV */ }
+      }
+
+      const parsed = Papa.parse(text, { delimiter: '\t', header: true })
+      const rows = parsed.data.filter(r => Object.values(r).some(v => v !== ''))
+      if (!rows.length) return
+      this.rawRows = rows
+      this.columns = Object.keys(rows[0])
+      this.clearResults()
+    },
+
+    loadDecoded(text) {
+      // Try JSON (columnar: { col: [...] })
+      try {
+        const obj = JSON.parse(text)
+        if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+          const cols = Object.keys(obj)
+          if (cols.length && cols.every(c => Array.isArray(obj[c]))) {
+            const n = obj[cols[0]].length
+            const rows = []
+            for (let i = 0; i < n; i++) {
+              const row = {}
+              cols.forEach(c => row[c] = obj[c][i])
+              rows.push(row)
+            }
+            this.rawRows = rows
+            this.columns = cols
+            this.clearResults()
+            return true
+          }
+        } else if (Array.isArray(obj) && obj.length) {
+          this.rawRows = obj
+          this.columns = Object.keys(obj[0] ?? {})
+          this.clearResults()
+          return true
+        }
+      } catch(e) { /* not JSON, try CSV */ }
+
+      const parsed = Papa.parse(text, { header: true, skipEmptyLines: true })
+      const rows = parsed.data.filter(r => Object.values(r).some(v => v !== ''))
+      if (rows.length) {
+        this.rawRows = rows
+        this.columns = Object.keys(rows[0])
+        this.clearResults()
+        return true
+      }
+      return false
+    },
+
+    clearResults() {
+      this.functions.forEach(f => { f.result = null; f.error = null })
+      this.result = { ran: false, bundle: '', bundleSize: '' }
+      this.globalError = null
+    },
+
+    reset() {
+      this.rawRows = []
+      this.columns = []
+      this.functions = [{ name: '', src: 'rows => rows', error: null, result: null }]
+      this.activeFnIdx = 0
+      this.clearResults()
+    },
+
+    async compressStr(str) {
+      const cs = new CompressionStream('gzip')
+      const w = cs.writable.getWriter()
+      w.write(new TextEncoder().encode(str))
+      w.close()
+      return new Response(cs.readable).blob()
+    },
+
+    blobToB64(blob) {
+      return new Promise(res => {
+        const fr = new FileReader()
+        fr.onload = () => res(fr.result.split(',')[1])
+        fr.readAsDataURL(blob)
+      })
+    },
+
+    async buildFnResult(rows) {
+      const cols = Object.keys(rows[0] ?? {})
+      const columnar = Object.fromEntries(cols.map(c => [c, rows.map(r => r[c])]))
+
+      const jsonStr = JSON.stringify(columnar, null, 2)
+      const csvStr = Papa.unparse(rows)
+
+      const [jsonGzBlob, csvGzBlob] = await Promise.all([
+        this.compressStr(jsonStr), this.compressStr(csvStr)
+      ])
+      const [jsonB64, csvB64] = await Promise.all([
+        this.blobToB64(jsonGzBlob), this.blobToB64(csvGzBlob)
+      ])
+
+      const fmt = n => n < 1024 ? `${n}B` : n < 1048576 ? `${(n/1024).toFixed(1)}K` : `${(n/1048576).toFixed(1)}M`
+
+      return {
+        json: jsonStr, csv: csvStr, jsonB64, csvB64,
+        jsonGzBlob, csvGzBlob,
+        sizes: {
+          json:    fmt(new Blob([jsonStr]).size),
+          jsonB64: fmt(new Blob([jsonB64]).size),
+          csv:     fmt(new Blob([csvStr]).size),
+          csvB64:  fmt(new Blob([csvB64]).size),
+        }
+      }
+    },
+
+    async run() {
+      this.globalError = null
+      this.functions.forEach(f => { f.error = null; f.result = null })
+      this.result = { ran: false, bundle: '', bundleSize: '' }
+
+      // Validate names
+      const names = this.functions.map(f => f.name.trim())
+      if (names.some(n => !n)) {
+        this.globalError = 'All functions must have a name.'
+        return
+      }
+      if (names.some(n => !/^[A-Za-z_][A-Za-z0-9_]*$/.test(n))) {
+        this.globalError = 'Names must start with a letter or underscore and contain only letters, digits, and underscores.'
+        return
+      }
+      const dupes = names.filter((n, i) => names.indexOf(n) !== i)
+      if (dupes.length) {
+        this.globalError = `Duplicate function names: ${[...new Set(dupes)].join(', ')}`
+        return
+      }
+
+      // Compile everything up front — one syntax error aborts the whole run.
+      const compiled = []
+      for (let i = 0; i < this.functions.length; i++) {
+        const f = this.functions[i]
+        try {
+          compiled.push(eval('(' + f.src + ')'))
+        } catch(e) {
+          f.error = `Syntax: ${e.message}`
+          return
+        }
+      }
+
+      // Execute each and build its result
+      const bundleObj = {}
+      for (let i = 0; i < this.functions.length; i++) {
+        const f = this.functions[i]
+        let rows
+        try {
+          rows = compiled[i](this.rawRows.map(r => ({ ...r })))
+        } catch(e) {
+          f.error = `Runtime: ${e.message}`
+          return
+        }
+        if (!Array.isArray(rows)) {
+          f.error = 'Function must return an array of row objects.'
+          return
+        }
+        f.result = await this.buildFnResult(rows)
+
+        const fnGzBlob = await this.compressStr(f.src)
+        const fnB64 = await this.blobToB64(fnGzBlob)
+        bundleObj[`${f.name.trim()}_fn`] = fnB64
+        bundleObj[`${f.name.trim()}_data`] = f.result.jsonB64
+      }
+
+      const bundleStr = JSON.stringify(bundleObj)
+      const fmt = n => n < 1024 ? `${n}B` : n < 1048576 ? `${(n/1024).toFixed(1)}K` : `${(n/1048576).toFixed(1)}M`
+
+      this.result = {
+        ran: true,
+        bundle: bundleStr,
+        bundleSize: fmt(new Blob([bundleStr]).size)
+      }
+      this.activeView = 'json'
+      this.activeFnIdx = 0
+    },
+
+    async loadBundle(obj) {
+      // Identify {name}_fn / {name}_data pairs
+      const keys = Object.keys(obj)
+      const pairs = []
+      for (const k of keys) {
+        if (!k.endsWith('_fn') || typeof obj[k] !== 'string') continue
+        const name = k.slice(0, -3)
+        if (!name) continue
+        const dataKey = `${name}_data`
+        if (typeof obj[dataKey] === 'string') {
+          pairs.push({ name, fnKey: k, dataKey })
+        }
+      }
+      if (!pairs.length) return false
+
+      const decompressB64 = async b64 => {
+        const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+        const ds = new DecompressionStream('gzip')
+        const w = ds.writable.getWriter()
+        w.write(bytes)
+        w.close()
+        return new Response(ds.readable).text()
+      }
+
+      // Parse everything up-front; only mutate state after all decoding succeeds.
+      const loaded = []
+      try {
+        for (const p of pairs) {
+          const fnSrc = await decompressB64(obj[p.fnKey])
+          const dataText = await decompressB64(obj[p.dataKey])
+          const parsed = JSON.parse(dataText)
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false
+
+          const cols = Object.keys(parsed)
+          if (!cols.length || !cols.every(c => Array.isArray(parsed[c]))) return false
+          const n = parsed[cols[0]].length
+          const rows = []
+          for (let i = 0; i < n; i++) {
+            const row = {}
+            cols.forEach(c => row[c] = parsed[c][i])
+            rows.push(row)
+          }
+          loaded.push({ name: p.name, src: fnSrc, rows, cols })
+        }
+      } catch(e) {
+        return false
+      }
+
+      // Commit state. Bundle data is already transformed output — show it directly,
+      // do not re-apply fn. rawRows is set to the first function's data as an
+      // approximation of what's loaded (bundles don't preserve the original input).
+      this.functions = loaded.map(l => ({ name: l.name, src: l.src, error: null, result: null }))
+      this.rawRows = loaded[0].rows
+      this.columns = loaded[0].cols
+      this.globalError = null
+      this.activeFnIdx = 0
+
+      const bundleObj = {}
+      for (let i = 0; i < this.functions.length; i++) {
+        const f = this.functions[i]
+        f.result = await this.buildFnResult(loaded[i].rows)
+        const fnGzBlob = await this.compressStr(f.src)
+        const fnB64 = await this.blobToB64(fnGzBlob)
+        bundleObj[`${f.name}_fn`] = fnB64
+        bundleObj[`${f.name}_data`] = f.result.jsonB64
+      }
+
+      const bundleStr = JSON.stringify(bundleObj)
+      const fmt = n => n < 1024 ? `${n}B` : n < 1048576 ? `${(n/1024).toFixed(1)}K` : `${(n/1048576).toFixed(1)}M`
+
+      this.result = {
+        ran: true,
+        bundle: bundleStr,
+        bundleSize: fmt(new Blob([bundleStr]).size)
+      }
+      this.activeView = 'bundle'
+      return true
+    },
+
+    async copy() {
+      await navigator.clipboard.writeText(this.previewText)
+      this.copied = true
+      setTimeout(() => this.copied = false, 1500)
+    },
+
+    download() {
+      const v = this.views.find(v => v.key === this.activeView)
+      if (this.activeView === 'bundle') {
+        const blob = new Blob([this.result.bundle], { type: v.mime })
+        const url = URL.createObjectURL(blob)
+        Object.assign(document.createElement('a'), { href: url, download: `bundle.${v.ext}` }).click()
+        URL.revokeObjectURL(url)
+        return
+      }
+      const fn = this.functions[this.activeFnIdx]
+      if (!fn || !fn.result) return
+      const isB64 = this.activeView.includes('B64')
+      const blob = isB64
+        ? (this.activeView === 'jsonB64' ? fn.result.jsonGzBlob : fn.result.csvGzBlob)
+        : new Blob([fn.result[this.activeView]], { type: v.mime })
+      const url = URL.createObjectURL(blob)
+      Object.assign(document.createElement('a'), { href: url, download: `${fn.name}.${v.ext}` }).click()
+      URL.revokeObjectURL(url)
+    }
+  }
+}
+</script>
+</body>
+</html>
