@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
 <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5,npm/@tailwindcss/typography/dist/typography.min.css" rel="stylesheet" />
 <script type="module">
-  const TOKEN = '🎟️GitHubToken';
+  const TOKEN = localStorage.getItem('ghToken') || '🎟️GitHubToken';
   const mod = await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools/gh-fetch.js');
   window.GH = mod.default;
   const gh = new window.GH({ token: TOKEN, repo: 'mehrlander/web-tools' });
@@ -47,8 +47,8 @@
           </ul>
         </details>
       </div>
-      <button @click="repoModal.showModal()" class="tooltip tooltip-left flex items-center gap-1 btn btn-ghost btn-sm" :data-tip="auth?'Authenticated: '+user:'Public only'">
-        <i class="ph text-xl" :class="auth?'ph-shield-check text-success':'ph-globe text-base-content/50'"></i>
+      <button @click="repoModal.showModal()" class="tooltip tooltip-left flex items-center gap-1 btn btn-ghost btn-sm" :data-tip="auth?'Authenticated: '+user:(tokenExpired?'Token expired':'Public only')">
+        <i class="ph text-xl" :class="auth?'ph-shield-check text-success':(tokenExpired?'ph-warning text-warning':'ph-globe text-base-content/50')"></i>
         <span x-show="auth" class="text-xs text-base-content/50 hidden sm:inline" x-text="user"></span>
       </button>
     </div>
@@ -64,9 +64,24 @@
           <span class="badge badge-sm badge-ghost font-mono" x-text="repoObj && repoObj.default_branch"></span>
           <span class="badge badge-sm badge-ghost font-mono" x-text="repoObj ? 'pushed ' + gh.ago(repoObj.pushed_at) : ''"></span>
         </div>
-        <div class="flex items-center gap-2 mb-3 px-1 text-xs">
-          <i class="ph" :class="auth ? 'ph-shield-check text-success' : 'ph-globe text-base-content/40'"></i>
-          <span x-text="auth ? 'Authenticated as ' + user : 'Public access only'"></span>
+        <div class="mb-3 px-1">
+          <div x-show="auth" class="flex items-center justify-between gap-2 text-xs">
+            <div class="flex items-center gap-2">
+              <i class="ph ph-shield-check text-success"></i>
+              <span>Authenticated as <span class="font-mono" x-text="user"></span></span>
+            </div>
+            <button @click="clearToken()" class="text-[10px] text-base-content/40 hover:text-error underline">clear</button>
+          </div>
+          <div x-show="!auth" class="flex flex-col gap-1.5">
+            <div class="flex items-center gap-2 text-xs">
+              <i class="ph" :class="tokenExpired ? 'ph-warning text-warning' : 'ph-globe text-base-content/40'"></i>
+              <span x-text="tokenExpired ? 'Token expired — enter a new one' : 'Public access only — paste a token for auth'"></span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <input type="password" x-model="tokenInput" placeholder="ghp_..." class="input input-xs input-bordered flex-1 font-mono text-xs" @keyup.enter="saveToken()">
+              <button @click="saveToken()" :disabled="!tokenInput" class="btn btn-xs btn-primary">Save</button>
+            </div>
+          </div>
         </div>
         <div class="flex flex-col gap-1.5">
           <template x-for="url in repoUrls">
@@ -214,7 +229,7 @@
 </div>
 
 <script>
-const TOKEN = '🎟️GitHubToken';
+const TOKEN = localStorage.getItem('ghToken') || '🎟️GitHubToken';
 const HOME_REPO = 'mehrlander/home';
 const STATE_FILE = 'gh-browse-state.json';
 
