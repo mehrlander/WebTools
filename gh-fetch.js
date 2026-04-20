@@ -50,7 +50,9 @@ export default class GH {
     
     if (!res.ok) {
       const limit = res.headers.get('x-ratelimit-remaining');
-      throw new Error(`GitHub Error ${res.status} (Rate Rem: ${limit})`);
+      const err = new Error(`GitHub Error ${res.status} (Rate Rem: ${limit})`);
+      err.status = res.status;
+      throw err;
     }
     return res.json();
   }
