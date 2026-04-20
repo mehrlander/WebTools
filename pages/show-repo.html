@@ -270,7 +270,7 @@ function app(){ return {
 
   async loadState() {
     try {
-      const homeGh = new window.GH({ token: TOKEN, repo: HOME_REPO });
+      const homeGh = new window.GH({ token: Alpine.store('browser').gh.token, repo: HOME_REPO });
       const res = await homeGh.get(STATE_FILE);
       this.stateSha = res.sha;
       return JSON.parse(res.text);
@@ -279,7 +279,7 @@ function app(){ return {
 
   async saveState(state) {
     try {
-      const homeGh = new window.GH({ token: TOKEN, repo: HOME_REPO });
+      const homeGh = new window.GH({ token: Alpine.store('browser').gh.token, repo: HOME_REPO });
       const content = btoa(JSON.stringify(state, null, 2));
       const body = { message: 'update gh-browse state', content };
       if (this.stateSha) body.sha = this.stateSha;
