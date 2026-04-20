@@ -281,12 +281,23 @@ function app(){ return {
     try {
       const homeGh = new window.GH({ token: Alpine.store('browser').gh.token, repo: HOME_REPO });
       const content = btoa(JSON.stringify(state, null, 2));
-      const body = { message: 'update gh-browse state', content };
-      if (this.stateSha) body.sha = this.stateSha;
-      const res = await homeGh.req('contents/' + STATE_FILE, {
-        method: 'PUT',
-        body: JSON.stringify(body)
-      });
+      const put = () => {
+        const body = { message: 'update gh-browse state', content };
+        if (this.stateSha) body.sha = this.stateSha;
+        return homeGh.req('contents/' + STATE_FILE, {
+          method: 'PUT',
+          body: JSON.stringify(body)
+        });
+      };
+      let res;
+      try {
+        res = await put();
+      } catch(e) {
+        if (e.status !== 409) throw e;
+        const cur = await homeGh.get(STATE_FILE);
+        this.stateSha = cur.sha;
+        res = await put();
+      }
       this.stateSha = res.content.sha;
     } catch(e) { console.error('saveState:', e); }
   }
