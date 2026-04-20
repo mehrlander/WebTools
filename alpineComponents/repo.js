@@ -8,6 +8,8 @@ document.addEventListener('alpine:init', function() {
             repoObj: null,
             auth: false,
             user: '',
+            tokenInput: '',
+            tokenExpired: false,
 
             init() {
                 this.$root.__repo = this;
@@ -26,12 +28,39 @@ document.addEventListener('alpine:init', function() {
             },
 
             async setup(gh) {
-                this.auth = !!gh.headers.Authorization;
-                if (this.auth) {
-                    try { this.user = (await gh.req('/user')).login; } catch { this.user = 'Me'; }
+                const hasToken = !!gh.headers.Authorization;
+                if (hasToken) {
+                    try {
+                        this.user = (await gh.req('/user')).login;
+                        this.auth = true;
+                        this.tokenExpired = false;
+                    } catch(e) {
+                        this.auth = false;
+                        this.tokenExpired = String(e).includes('401');
+                        this.user = '';
+                    }
+                } else {
+                    this.auth = false;
+                    this.tokenExpired = false;
+                    this.user = '';
                 }
                 this.repos = await gh.repos();
                 if (this.repos[0]) this.pick(this.repos[0]);
+            },
+
+            async saveToken() {
+                const t = this.tokenInput.trim();
+                if (!t) return;
+                localStorage.setItem('ghToken', t);
+                this.gh.token = t;
+                this.tokenInput = '';
+                await this.setup(this.gh);
+            },
+
+            async clearToken() {
+                localStorage.removeItem('ghToken');
+                this.gh.token = '';
+                await this.setup(this.gh);
             },
 
             async pick(r) {
