@@ -51,14 +51,14 @@ document.addEventListener('alpine:init', function() {
             async saveToken() {
                 const t = this.tokenInput.trim();
                 if (!t) return;
-                localStorage.setItem('ghToken', t);
+                try { localStorage.setItem('ghToken', t); } catch {}
                 this.gh.token = t;
                 this.tokenInput = '';
                 await this.setup(this.gh);
             },
 
             async clearToken() {
-                localStorage.removeItem('ghToken');
+                try { localStorage.removeItem('ghToken'); } catch {}
                 this.gh.token = '';
                 await this.setup(this.gh);
             },
