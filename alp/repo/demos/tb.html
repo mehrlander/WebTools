@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TB Demo</title>
+  <script src="https://cdn.jsdelivr.net/gh/mehrlander/Alp@main/alp.js"></script>
+</head>
+<body class="bg-base-300 p-4">
+  <h1 class="text-xl font-bold mb-4">TB (Tabulator) Component Demo</h1>
+  <p class="text-sm mb-4">A generic table component with search, JSON export, and optional zip download.</p>
+  <alp-tb path="demo.tb"
+          columns='["name", "age", "city"]'
+          data='[{"name": "Alice", "age": 30, "city": "Seattle"}, {"name": "Bob", "age": 25, "city": "Portland"}, {"name": "Carol", "age": 35, "city": "Vancouver"}]'
+          ></alp-tb>
+</body>
+</html>

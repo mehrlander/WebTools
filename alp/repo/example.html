@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alp - Hello World</title>
+</head>
+<body class="p-8">
+  <!--
+    Minimal Alp example - open this file in a browser to verify it works.
+    For more examples and tutorials, see FirstSamples.md
+  -->
+
+  <h1 class="text-3xl font-bold mb-4">Alp Counter</h1>
+  <alp-counter></alp-counter>
+
+  <script src="https://cdn.jsdelivr.net/gh/mehrlander/Alp@main/alp.js?token=🎟️GitHubToken"></script>
+  <script>
+    alp.define('counter', () => `
+      <div class="card bg-base-200 p-6 max-w-xs">
+        <div class="flex items-center gap-4">
+          <button @click="count--" class="btn btn-circle">-</button>
+          <span class="text-3xl font-bold" x-text="count"></span>
+          <button @click="count++" class="btn btn-circle">+</button>
+        </div>
+      </div>
+    `, { count: 0 });
+  </script>
+</body>
+</html>

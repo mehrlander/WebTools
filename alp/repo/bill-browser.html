@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WA Legislature Bill Browser</title>
+  <script src="https://cdn.jsdelivr.net/gh/mehrlander/Alp@main/alp.js"></script>
+</head>
+<body class="bg-base-200 p-4 h-full flex flex-col overflow-hidden">
+  <div x-data="billBrowser()" class="flex-1 flex flex-col min-h-0" x-init="init()">
+    <!-- Header with Biennium Buttons --> 
+    <div class="mb-4">
+      <h1 class="text-xl font-bold mb-2">WA Legislature Bill Browser</h1>
+      <p class="text-xs text-base-content/70 mb-3">Click a biennium to load bills from the WA Legislature website</p>
+      <div class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
+        <template x-for="bi in bienniums" :key="bi">
+          <button
+            @click="loadBiennium(bi)"
+            class="btn btn-xs biennium-btn"
+            :class="loaded.has(bi) ? 'btn-primary' : 'btn-outline'"
+            x-text="bi"
+            :disabled="loading === bi">
+          </button>
+        </template>
+      </div>
+    </div>
+
+    <!-- Bill Table Component -->
+    <div class="flex-1 min-h-0 border rounded-lg overflow-hidden bg-base-100">
+      <alp-bill-table path="bills.browser"></alp-bill-table>
+    </div>
+
+    <!-- Viewer Panels (optional - for displaying selected bill content) -->
+    <div class="mt-4 flex gap-2 h-64" x-show="showViewers">
+      <div class="flex-1 flex flex-col">
+        <div class="text-xs font-semibold mb-1">XML View</div>
+        <iframe name="xml-viewer" class="flex-1 border rounded bg-white"></iframe>
+      </div>
+      <div class="flex-1 flex flex-col">
+        <div class="text-xs font-semibold mb-1">HTML View</div>
+        <iframe name="htm-viewer" class="flex-1 border rounded bg-white"></iframe>
+      </div>
+    </div>
+
+    <!-- Footer Controls -->
+    <div class="mt-2 flex justify-between items-center text-xs">
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" class="checkbox checkbox-xs" x-model="showViewers">
+        <span>Show Document Viewers</span>
+      </label>
+      <span class="text-base-content/50" x-text="loading ? 'Loading ' + loading + '...' : ''"></span>
+    </div>
+  </div>
+
+  <script>
+    function billBrowser() {
+      return {
+        bienniums: ['2025-26', '2023-24', '2021-22', '2019-20', '2017-18', '2015-16', '2013-14', '2011-12', '2009-10', '2007-08', '2005-06', '2003-04'],
+        loaded: new Set(),
+        loading: null,
+        showViewers: false,
+        billTable: null,
+
+        init() {
+          // Wait for component to be ready
+          this.$nextTick(() => {
+            const el = this.$el.querySelector('alp-bill-table');
+            // Poll until component data is available
+            const check = setInterval(() => {
+              if (el.data) {
+                this.billTable = el.data;
+                this.loaded = this.billTable.loaded;
+
+                // Add row click handler to show in viewers
+                if (this.billTable.table) {
+                  this.billTable.table.on('rowClick', (e, row) => {
+                    const d = row.getData();
+                    if (this.showViewers) {
+                      this.$el.querySelector('[name="xml-viewer"]').src = d.urlXml;
+                      this.$el.querySelector('[name="htm-viewer"]').src = d.urlHtm;
+                    }
+                  });
+                }
+                clearInterval(check);
+              }
+            }, 100);
+          });
+        },
+
+        async loadBiennium(bi) {
+          if (!this.billTable || this.loaded.has(bi)) return;
+
+          this.loading = bi;
+          try {
+            await this.billTable.fetchBiennium(bi);
+            this.loaded = new Set(this.billTable.loaded);
+          } catch (e) {
+            console.error('Failed to load biennium:', bi, e);
+            alert('Failed to load ' + bi + ': ' + e.message);
+          } finally {
+            this.loading = null;
+          }
+        }
+      };
+    }
+  </script>
+</body>
+</html>

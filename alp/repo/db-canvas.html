@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DB Canvas - Notes & Form</title>
+  <script src="alp.js"></script>
+</head>
+<body class="bg-base-200 min-h-dvh p-4">
+
+  <div class="max-w-4xl mx-auto space-y-4">
+    <alp-notes></alp-notes>
+    <alp-form></alp-form>
+  </div>
+
+  <script>
+    const { pathInput, btn, toolbar } = alp.fills;
+
+    alp.define('notes', _ => `
+      <div class="bg-base-100 p-4 rounded-lg shadow">
+        ${toolbar([],
+          '<div class="text-sm font-semibold">Notes</div>',
+          pathInput()
+        )}
+        <textarea
+          x-model="text"
+          @blur="save({ text })"
+          class="textarea textarea-bordered w-full h-24"
+          placeholder="Notes..."></textarea>
+      </div>
+    `, {
+      text: '',
+      async onPing(occasion, data) {
+        if (occasion === 'mount' || occasion === 'path' || occasion === 'save-record') {
+          const record = data ?? await this.load();
+          this.text = record?.text || '';
+        }
+      }
+    });
+
+    alp.define('form', _ => `
+      <div class="bg-base-100 p-4 rounded-lg shadow space-y-3">
+        ${toolbar([],
+          `<div class="flex items-center gap-2">
+            ${btn(['sm', 'primary'], 'Add Row', 'addRow()', 'ph-plus')}
+            ${btn(['sm', 'outline'], 'Log Data', 'logData()', 'ph-terminal')}
+          </div>`,
+          pathInput()
+        )}
+        <div name="form-table"></div>
+      </div>
+    `, {
+      table: null,
+      async onPing(occasion) {
+        switch (occasion) {
+          case 'mount':
+          case 'path':
+          case 'save-record':
+          case 'delete-record':
+            await this.loadTable();
+            break;
+        }
+      },
+      async loadTable() {
+        const loaded = await this.load();
+        const data = loaded?.rows || [];
+
+        const fields = [...new Set(data.flatMap(Object.keys))];
+        const columns = (fields.length ? fields : ['key', 'value'])
+          .map(k => ({ title: k, field: k, editor: 'input' }));
+
+        if (this.table) {
+          this.table.setColumns(columns);
+          this.table.setData(data);
+        } else {
+          this.table = await alp.kit.tb({
+            target: this.find('[name="form-table"]'),
+            data,
+            layout: 'fitColumns',
+            addRowPos: 'bottom',
+            columns
+          });
+          ['cellEdited', 'rowAdded', 'rowDeleted'].forEach(e =>
+            this.table.on(e, () => this.save({ rows: this.table.getData() }))
+          );
+        }
+      },
+      addRow() {
+        this.table?.addRow({});
+      },
+      logData() {
+        console.table(this.table.getColumnDefinitions());
+        console.table(this.table.getData());
+      }
+    });
+  </script>
+
+</body>
+</html>

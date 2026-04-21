@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>JSON Viewer</title>
+  <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/lodash,npm/@phosphor-icons/web,npm/clipboard,npm/jquery"></script>
+</head>
+<body class="bg-gray-100 h-dvh flex flex-col">
+<main class="flex-1 min-h-0 overflow-hidden">
+    <div id="wrap" class="relative h-full min-h-0 overflow-hidden bg-gray-50">
+      <section id="jsoneditor1" tabindex="0" class="block w-full h-full origin-top-left bg-white"></section>
+
+      <!-- Cross control pad -->
+      <div id="pad" class="absolute right-3 bottom-1.5 z-10 pointer-events-none transition-opacity duration-300">
+        <div class="flex gap-1 pointer-events-auto" id="padGrid"></div>
+      </div>
+
+      <!-- Zoom slider -->
+      <div id="zoom" class="pointer-events-none absolute left-1/3 -translate-x-1/2 bottom-1.5 z-10 transition-opacity duration-300">
+        <input id="scale" type="range" min="50" max="100" value="100" step="5" class="w-48 accent-gray-600 pointer-events-auto">
+      </div>
+    </div>
+  </main>
+
+<footer id="footer" class="relative bg-white border-t border-gray-200 h-[40vh] flex flex-col overflow-hidden transition-all duration-[350ms]">
+
+<div id="statusRow" class="bg-gray-800 px-3 py-1 flex items-center justify-between cursor-pointer">
+  <div class="flex items-center">
+    <span class="text-xs text-gray-400">Selection:</span>
+    <span id="pathDisplay" class="text-xs font-mono text-gray-200 ml-2"></span>
+  </div>
+  <div class="flex items-center">
+    <span id="typeDisplay" class="text-xs font-mono text-gray-300"></span>
+  </div>
+</div>
+
+  <div class="flex-1 overflow-hidden relative">
+    <div id="textEditor" class="h-full origin-top-left"></div>
+
+    <div id="actions" class="absolute bottom-10 right-3 z-30 flex flex-col gap-2 transition-opacity">
+      <button id="btnExtract"
+        class="w-10 h-10 grid place-items-center rounded border transition-colors bg-white/90 border-gray-300 text-gray-500 hover:bg-gray-50">
+        <i class="ph ph-scissors text-xl"></i>
+      </button>
+      <button id="btnCopy"
+        class="w-10 h-10 grid place-items-center rounded border transition-colors bg-white/90 border-gray-300 text-gray-500 hover:bg-gray-50">
+        <i class="ph ph-copy text-xl"></i>
+      </button>
+    </div>
+  </div>
+</footer>
+<script>
+window.data = 📲Input;
+</script>
+<!-- ui-core.js (helpers + shared state wiring) -->
+<script>
+(() => {
+  const ui = window.ui = window.ui || {};
+
+  ui.clamp = (n,a,b) => Math.max(a, Math.min(b, n));
+  ui.getTarget = sel => $(sel).find('[contenteditable],textarea,input').get(0) || $(sel).get(0);
+  ui.focusEditor = () => ui.getTarget('#jsoneditor1')?.focus?.();
+
+  ui.pathToStr = p =>
+    !p || !p.length ? 'root'
+    : p.map(k => typeof k === 'number' ? `[${k}]` : String(k)).join('.').replace(/\.\[/g,'[');
+
+  const $path = $('#pathDisplay'), $type = $('#typeDisplay');
+  addEventListener('ui:state', e => {
+    const d = e.detail || {};
+    $path.text(ui.pathToStr(d.path));
+    $type.text(d.kind || '');
+  });
+})();
+</script>
+
+<!-- ui-pad.js -->
+<script>
+(() => {
+  const ui = window.ui = window.ui || {};
+
+  const btnBase = "w-10 h-10 grid place-items-center rounded border transition-colors bg-white/90 border-gray-300 text-gray-500 hover:bg-gray-50";
+  const iconCls = "text-xl";
+  const btn = (id, k, icon) =>
+    `<button id="${id}" data-k="${k}" class="${btnBase}">
+      <i class="ph ph-caret-${icon} ${iconCls}"></i>
+     </button>`;
+
+  $('#padGrid').html(
+    `<div class="flex items-center">${btn('btnLeft','ArrowLeft','left')}</div>
+     <div class="flex flex-col">
+       ${btn('btnUp','ArrowUp','up')}
+       <button id="btnShift" class="w-10 grid place-items-center rounded text-gray-500 hover:bg-gray-50 transition-colors pt-0.5">
+         <i class="ph ph-arrow-fat-up ph-fill ${iconCls}"></i>
+       </button>
+       ${btn('btnDown','ArrowDown','down')}
+     </div>
+     <div class="flex items-center">${btn('btnRight','ArrowRight','right')}</div>`
+  );
+
+  let shiftOn = false;
+
+  const sendKey = k => {
+    ui.focusEditor();
+    ui.getTarget('#jsoneditor1')?.dispatchEvent?.(new KeyboardEvent('keydown', {
+      key: k, code: k, bubbles: true, shiftKey: shiftOn
+    }));
+  };
+
+  $('#padGrid [data-k]').on('click', function(){ sendKey($(this).data('k')); });
+
+  const shiftBtnState = on => $('#btnShift').toggleClass('text-blue-500', on).toggleClass('text-gray-500', !on);
+  $('#btnShift').on('click', () => (shiftOn = !shiftOn, shiftBtnState(shiftOn)));
+  shiftBtnState(shiftOn);
+
+  ui.sendKey = sendKey;
+})();
+</script>
+
+<!-- ui-scale.js -->
+<script>
+(() => {
+  const ui = window.ui = window.ui || {};
+
+  const applyScale = pct => {
+    const s = ui.clamp(+pct || 100, 50, 100) / 100;
+    const css = {
+      transform: `scale(${s})`,
+      transformOrigin: 'top left',
+      width: `${100 / s}%`,
+      height: `${100 / s}%`
+    };
+    ['#jsoneditor1', '#textEditor'].forEach(sel => $(sel).css(css));
+  };
+
+  $('#scale').on('input', e => applyScale(e.target.value));
+  ui.applyScale = applyScale;
+})();
+</script>
+
+<!-- ui-buttons.js -->
+<script>
+(() => {
+  let controlsVisible = true;
+  $('#statusRow').on('click', () => {
+    controlsVisible = !controlsVisible;
+    $('#pad, #zoom, #actions').toggleClass('opacity-0 pointer-events-none', !controlsVisible);
+  });
+
+  const $copy = $('#btnCopy'), $ex = $('#btnExtract');
+
+  addEventListener('ui:state', e => {
+    const d = e.detail || {};
+    $copy.toggleClass('opacity-50 pointer-events-none', d.canCopy === false);
+    $ex.toggleClass('opacity-50 pointer-events-none', d.canExtract === false);
+  });
+
+  $copy.on('click', () => dispatchEvent(new CustomEvent('ui:copy')));
+  $ex.on('click', () => dispatchEvent(new CustomEvent('ui:extract')));
+})();
+</script>
+<script type="module">
+  import {
+    createJSONEditor,
+    createValueSelection,
+    getSelectionPaths
+  } from 'https://cdn.jsdelivr.net/npm/vanilla-jsoneditor/standalone.js'
+
+  let editor, textEditor
+  let currentBasePath = []
+  let currentSelection = null
+
+  const at = (root, path) => path.reduce((a, k) => a?.[String(k)], root)
+  const basePathOf = sel => sel?.path || sel?.focusPath || sel?.anchorPath || []
+
+  const kindOf = v => Array.isArray(v) ? 'Array' : (v && typeof v === 'object') ? 'Object' : 'Value'
+
+  const uiState = v => dispatchEvent(new CustomEvent('ui:state', {
+    detail: { path: currentBasePath, kind: kindOf(v), canCopy: true, canExtract: currentSelection !== null }
+  }))
+
+  const renderSelection = subtree => (textEditor?.set?.({ json: subtree }), uiState(subtree))
+
+  const initTextEditor = () => {
+    textEditor = createJSONEditor({
+      target: document.getElementById('textEditor'),
+      props: { mode: 'text', readOnly: true, mainMenuBar: false, content: { json: {} } }
+    })
+  }
+
+  const handleSelect = sel => {
+    currentBasePath = basePathOf(sel) || []
+    currentSelection = sel
+    renderSelection(at(editor.get().json, currentBasePath))
+  }
+
+  addEventListener('ui:extract', () => {
+    if (currentSelection === null) return
+    const json = editor.get().json
+    const paths = getSelectionPaths(json, currentSelection) || []
+    if (!paths.length) return
+    editor.update({ json: paths.length === 1 ? at(json, paths[0]) : paths.map(p => at(json, p)) })
+    uiState(at(editor.get().json, currentBasePath))
+  })
+
+  addEventListener('ui:copy', () => {
+    const value = at(editor.get().json, currentBasePath)
+    navigator.clipboard?.writeText?.(JSON.stringify(value, null, 2))
+  })
+
+  initTextEditor()
+
+  let initialContent = { json: {} }
+  try {
+    const data = window.data?.json
+    if (data !== undefined) initialContent = { json: data }
+  } catch (e) {
+    initialContent = { json: { error: String(e?.message || e) } }
+  }
+
+  editor = createJSONEditor({
+    target: document.querySelector('#jsoneditor1'),
+    props: { mode: 'tree', content: initialContent, onSelect: handleSelect }
+  })
+
+  const pickSeedPath = root => {
+    if (Array.isArray(root) && root.length) return [0]
+    if (root && typeof root === 'object') {
+      const keys = Object.keys(root)
+      if (keys.length) return [keys[0]]
+    }
+    return []
+  }
+
+  const seedPath = pickSeedPath(initialContent.json)
+  const seedSel = seedPath.length ? createValueSelection(seedPath) : undefined
+  const raf2 = f => requestAnimationFrame(() => requestAnimationFrame(f))
+
+  $('#jsoneditor1').attr('tabindex', '0')
+  raf2(() => {
+    if (seedSel) {
+      editor.scrollTo(seedPath)
+      editor.select(seedSel)
+      handleSelect(seedSel)
+    } else handleSelect({ path: [] })
+    window.ui?.applyScale?.($('#scale').val())
+  })
+</script>
+</body>
+</html>
