@@ -1,16 +1,16 @@
 # Alp Assessment Notes
 
-A reading of the Alp repo snapshot at `alp/git-ingest.md`, unpacked into
-`alp/repo/`. The goal here is to inventory what Alp contains, compare it to
-what web-tools already does, and flag what's worth porting.
+A reading of the Alp repo snapshot at `archive/alp/git-ingest.md`, unpacked
+into `archive/alp/repo/`. The goal here is to inventory what Alp contains,
+compare it to what web-tools already does, and flag what's worth porting.
 
 ## How this directory is organized
 
 | Path | What it is |
 | --- | --- |
-| `alp/git-ingest.md` | Original gitingest dump of the Alp repo. Source of truth. |
-| `alp/repo/` | Unpacked files from the dump. Recreated by `/tmp/unpack_alp.py`. Don't hand-edit; regenerate. |
-| `alp/NOTES.md` | This file — assessment and porting plan. |
+| `archive/alp/git-ingest.md` | Original gitingest dump of the Alp repo. Source of truth. |
+| `archive/alp/repo/` | Unpacked files from the dump. Recreated by `archive/alp/unpack.py`. Don't hand-edit; regenerate. |
+| `archive/alp/NOTES.md` | This file — assessment and porting plan. |
 
 If you re-import a newer Alp dump: replace `git-ingest.md`, rerun the unpack,
 and diff `alp/repo/` against the previous snapshot.
