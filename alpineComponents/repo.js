@@ -44,7 +44,19 @@ document.addEventListener('alpine:init', function() {
                     this.tokenExpired = false;
                     this.user = '';
                 }
-                this.repos = await gh.repos();
+                try {
+                    this.repos = await gh.repos();
+                } catch(e) {
+                    this.repos = [];
+                    const toast = Alpine.store('toast');
+                    if (toast) {
+                        if (e.status === 401) toast('warning', 'Token rejected — paste a new one', 'alert-error', 6000);
+                        else if (e.status === 403) toast('warning', 'GitHub rate-limited this IP — add a token', 'alert-error', 6000);
+                        else toast('warning', 'Could not load repos: ' + (e.message || e), 'alert-error', 6000);
+                    }
+                    try { document.getElementById('repoModal').showModal(); } catch {}
+                    return;
+                }
                 if (this.repos[0]) this.pick(this.repos[0]);
             },
 
