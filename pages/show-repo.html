@@ -7,18 +7,48 @@
 <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
 <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5,npm/@tailwindcss/typography/dist/typography.min.css" rel="stylesheet" />
 <script type="module">
-  let TOKEN = '🎟️GitHubToken';
-  if (TOKEN === '🎟️GitHubToken') {
-    try { TOKEN = localStorage.getItem('ghToken') || TOKEN; } catch {}
+  window.__showBootError = (msg) => {
+    document.body.innerHTML = `
+      <div style="max-width:32rem;margin:2.5rem auto;padding:1rem;font-family:system-ui,-apple-system,sans-serif;color:#1f2937">
+        <h2 style="font-weight:600;margin:0 0 .5rem;font-size:1.1rem">Couldn't load GH Browse</h2>
+        <p style="opacity:.75;font-size:.9rem;margin:0 0 1rem;word-break:break-word">${String(msg).replace(/[<&]/g, c => c === '<' ? '&lt;' : '&amp;')}</p>
+        <div style="display:flex;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap">
+          <input type="password" id="bootToken" placeholder="GitHub token (optional)" style="flex:1 1 14rem;padding:.4rem .55rem;border:1px solid #cbd5e1;border-radius:.3rem;font-family:ui-monospace,monospace;font-size:.85rem">
+          <button id="bootSave" style="padding:.4rem .85rem;border:1px solid #64748b;border-radius:.3rem;background:#f1f5f9;cursor:pointer;font-size:.85rem">Save &amp; retry</button>
+        </div>
+        <button id="bootRetry" style="background:none;border:none;font-size:.8rem;opacity:.65;text-decoration:underline;cursor:pointer;padding:0">Retry without token</button>
+      </div>
+    `;
+    const save = () => {
+      const t = document.getElementById('bootToken').value.trim();
+      try { t ? localStorage.setItem('ghToken', t) : localStorage.removeItem('ghToken'); } catch {}
+      location.reload();
+    };
+    document.getElementById('bootSave').onclick = save;
+    document.getElementById('bootToken').addEventListener('keyup', e => { if (e.key === 'Enter') save(); });
+    document.getElementById('bootRetry').onclick = () => {
+      try { localStorage.removeItem('ghToken'); } catch {}
+      location.reload();
+    };
+  };
+
+  try {
+    let TOKEN = '🎟️GitHubToken';
+    if (TOKEN === '🎟️GitHubToken') {
+      try { TOKEN = localStorage.getItem('ghToken') || TOKEN; } catch {}
+    }
+    const mod = await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools/gh-fetch.js');
+    window.GH = mod.default;
+    const gh = new window.GH({ token: TOKEN, repo: 'mehrlander/web-tools' });
+    await gh.load('alpineComponents/repo.js');
+    await gh.load('alpineComponents/navigator.js');
+    await gh.load('alpineComponents/viewer.js');
+    await gh.load('alpine-bundle.js');
+    window.ViewRegistry = await gh.load('view-registry.js');
+  } catch (e) {
+    console.error('boot:', e);
+    window.__showBootError(e && e.message ? e.message : String(e));
   }
-  const mod = await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools/gh-fetch.js');
-  window.GH = mod.default;
-  const gh = new window.GH({ token: TOKEN, repo: 'mehrlander/web-tools' });
-  await gh.load('alpineComponents/repo.js');
-  await gh.load('alpineComponents/navigator.js');
-  await gh.load('alpineComponents/viewer.js');
-  await gh.load('alpine-bundle.js');
-  window.ViewRegistry = await gh.load('view-registry.js');
 </script>
 </head>
 <body class="min-h-screen bg-base-100" x-data="app()" x-init="init()">
@@ -239,29 +269,66 @@ if (TOKEN === '🎟️GitHubToken') {
 const HOME_REPO = 'mehrlander/home';
 const STATE_FILE = 'gh-browse-state.json';
 
+const waitFor = async (pred, timeoutMs = 8000, stepMs = 50) => {
+  const start = Date.now();
+  while (!pred()) {
+    if (Date.now() - start > timeoutMs) return false;
+    await new Promise(r => setTimeout(r, stepMs));
+  }
+  return true;
+};
+
+const notify = (msg, cls = 'alert-error', icon = 'warning') => {
+  try {
+    const t = Alpine.store('toast');
+    if (t) { t(icon, msg, cls, 6000); return; }
+  } catch {}
+  console.error(msg);
+};
+
 function app(){ return {
   ui: { content: true },
   stateSha: null,
 
   async init(){
-    while(!window.GH || !window.ViewRegistry) await new Promise(r => setTimeout(r, 50));
+    const ready = await waitFor(() => window.GH && window.ViewRegistry);
+    if (!ready) {
+      notify('Boot timed out waiting for modules. Reload to retry.');
+      return;
+    }
     try {
       const gh = new window.GH({ token: TOKEN });
       Alpine.store('browser').gh = gh;
       const repoEl = document.getElementById('repo');
-      while(!repoEl.__repo) await new Promise(r => setTimeout(r, 50));
+      const repoReady = await waitFor(() => repoEl.__repo);
+      if (!repoReady) { notify('Repo component never mounted.'); return; }
 
       const saved = await this.loadState();
 
-      await repoEl.__repo.setup(gh);
+      try {
+        await repoEl.__repo.setup(gh);
+      } catch (e) {
+        console.error('setup:', e);
+        const status = e && e.status;
+        if (status === 401) {
+          notify('GitHub rejected the token (401). Paste a new one.');
+          try { repoEl.__repo.tokenExpired = true; } catch {}
+        } else if (status === 403) {
+          notify('GitHub rate-limited this IP (403). A token raises the limit.');
+        } else {
+          notify('Could not load repos: ' + (e && e.message ? e.message : e));
+        }
+        try { document.getElementById('repoModal').showModal(); } catch {}
+        return;
+      }
 
       if (saved && saved.repo) {
         const target = repoEl.__repo.repos.find(r => r.full_name === saved.repo);
         if (target) {
           await repoEl.__repo.pick(target);
           const navEl = document.getElementById('navigator');
-          while(!navEl.__navigator) await new Promise(r => setTimeout(r, 50));
-          if (saved.file) {
+          const navReady = await waitFor(() => navEl.__navigator);
+          if (navReady && saved.file) {
             const folder = saved.file.split('/').slice(0, -1).join('/');
             if (folder) await navEl.__navigator.load(folder, true);
             await navEl.__navigator.sel(saved.file, true);
@@ -271,7 +338,10 @@ function app(){ return {
 
       Alpine.store('browser').save = (state) => this.saveState(state);
 
-    } catch(e) { console.error(e); }
+    } catch(e) {
+      console.error('init:', e);
+      notify('Startup failed: ' + (e && e.message ? e.message : e));
+    }
   },
 
   async loadState() {
