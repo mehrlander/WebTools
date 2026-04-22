@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alp Dev - Fail-Fast Testing</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      padding: 1.5rem;
+      margin: 1rem 0;
+      border-radius: 8px;
+      border-left: 4px solid #0066cc;
+    }
+    .test-section.error {
+      border-left-color: #cc0000;
+    }
+    .test-section.success {
+      border-left-color: #00cc00;
+    }
+    h1 { color: #333; }
+    h2 { color: #666; font-size: 1.2rem; margin-top: 0; }
+    pre {
+      background: #f9f9f9;
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    .status {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-left: 0.5rem;
+    }
+    .status.pending { background: #ffeaa7; color: #d63031; }
+    .status.pass { background: #55efc4; color: #00b894; }
+    .status.fail { background: #ff7675; color: #d63031; }
+  </style>
+</head>
+<body>
+  <h1>🏔️ Alp Dev - Fail-Fast Proxy Testing</h1>
+
+  <div class="test-section">
+    <h2>About This Test</h2>
+    <p>This page tests the new <strong>alp-dev.js</strong> with fail-fast error reporting.</p>
+    <ul>
+      <li><strong>Test 1:</strong> Calls alp methods <em>before ready</em> - should show big red error modal</li>
+      <li><strong>Test 2:</strong> Uses <code>defer</code> attribute - should work correctly</li>
+      <li><strong>Test 3:</strong> Listens for <code>alp:ready</code> event - should work correctly</li>
+      <li><strong>Test 4:</strong> Tests nested properties like <code>alp.kit</code> and <code>alp.fills</code></li>
+    </ul>
+  </div>
+
+  <div class="test-section error">
+    <h2>Test 1: Call Before Ready <span class="status pending">SHOULD ERROR</span></h2>
+    <p>This test intentionally calls <code>alp.saveRecord()</code> before Alp is ready.</p>
+    <p><strong>Expected:</strong> Big red error modal with instructions</p>
+    <div id="test1-result"></div>
+  </div>
+
+  <div class="test-section success">
+    <h2>Test 2: Using defer <span class="status pending" id="test2-status">PENDING</span></h2>
+    <p>This test uses the <code>defer</code> attribute to wait for Alp to load.</p>
+    <p><strong>Expected:</strong> Successful save to database</p>
+    <div id="test2-result"></div>
+  </div>
+
+  <div class="test-section success">
+    <h2>Test 3: Using alp:ready Event <span class="status pending" id="test3-status">PENDING</span></h2>
+    <p>This test listens for the <code>alp:ready</code> event before calling methods.</p>
+    <p><strong>Expected:</strong> Successful save to database</p>
+    <div id="test3-result"></div>
+  </div>
+
+  <div class="test-section success">
+    <h2>Test 4: Nested Properties <span class="status pending" id="test4-status">PENDING</span></h2>
+    <p>This test accesses nested properties like <code>alp.fills.btn()</code>.</p>
+    <p><strong>Expected:</strong> Successful creation of UI elements</p>
+    <div id="test4-result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Database Records</h2>
+    <p>After tests complete, check the inspector to see saved records.</p>
+    <div id="records-result"></div>
+  </div>
+
+  <!-- Load alp-dev.js -->
+  <script type="module" src="alp-dev.js"></script>
+
+  <!-- TEST 1: This should ERROR (called too early) -->
+  <script type="module">
+    console.log('🧪 TEST 1: Calling before ready (should show error modal)');
+    try {
+      alp.saveRecord('test-items.test1', { test: 1, timestamp: new Date().toISOString() });
+      document.getElementById('test1-result').innerHTML = '<pre style="color: red;">❌ FAIL: Should have thrown an error!</pre>';
+    } catch (error) {
+      document.getElementById('test1-result').innerHTML = `<pre style="color: green;">✅ PASS: Error thrown as expected\n\nError: ${error.message}</pre>`;
+    }
+  </script>
+
+  <!-- TEST 2: This should WORK (deferred) -->
+  <script type="module" defer>
+    console.log('🧪 TEST 2: Calling with defer (should work)');
+    try {
+      await alp.saveRecord('test-items.test2', {
+        test: 2,
+        timestamp: new Date().toISOString(),
+        method: 'defer attribute'
+      });
+      document.getElementById('test2-status').textContent = 'PASS';
+      document.getElementById('test2-status').className = 'status pass';
+      document.getElementById('test2-result').innerHTML = '<pre style="color: green;">✅ PASS: Record saved successfully with defer</pre>';
+    } catch (error) {
+      document.getElementById('test2-status').textContent = 'FAIL';
+      document.getElementById('test2-status').className = 'status fail';
+      document.getElementById('test2-result').innerHTML = `<pre style="color: red;">❌ FAIL: ${error.message}</pre>`;
+    }
+  </script>
+
+  <!-- TEST 3: This should WORK (event listener) -->
+  <script type="module">
+    console.log('🧪 TEST 3: Setting up alp:ready listener');
+    window.addEventListener('alp:ready', async () => {
+      console.log('🧪 TEST 3: alp:ready event fired, running test');
+      try {
+        await alp.saveRecord('test-items.test3', {
+          test: 3,
+          timestamp: new Date().toISOString(),
+          method: 'alp:ready event'
+        });
+        document.getElementById('test3-status').textContent = 'PASS';
+        document.getElementById('test3-status').className = 'status pass';
+        document.getElementById('test3-result').innerHTML = '<pre style="color: green;">✅ PASS: Record saved successfully with event listener</pre>';
+      } catch (error) {
+        document.getElementById('test3-status').textContent = 'FAIL';
+        document.getElementById('test3-status').className = 'status fail';
+        document.getElementById('test3-result').innerHTML = `<pre style="color: red;">❌ FAIL: ${error.message}</pre>`;
+      }
+    });
+  </script>
+
+  <!-- TEST 4: Nested properties (deferred) -->
+  <script type="module" defer>
+    console.log('🧪 TEST 4: Testing nested properties (fills, kit)');
+    try {
+      // Test alp.fills
+      const button = alp.fills.btn('primary', 'Test Button', 'alert("clicked")');
+
+      // Test alp.kit (just check it exists and is accessible)
+      const hasKit = alp.kit !== undefined;
+
+      if (button && hasKit) {
+        document.getElementById('test4-status').textContent = 'PASS';
+        document.getElementById('test4-status').className = 'status pass';
+        document.getElementById('test4-result').innerHTML = `
+          <pre style="color: green;">✅ PASS: Nested properties work correctly
+
+Created button:
+${button}
+
+alp.kit available: ${hasKit}
+          </pre>`;
+      } else {
+        throw new Error('Nested properties not accessible');
+      }
+    } catch (error) {
+      document.getElementById('test4-status').textContent = 'FAIL';
+      document.getElementById('test4-status').className = 'status fail';
+      document.getElementById('test4-result').innerHTML = `<pre style="color: red;">❌ FAIL: ${error.message}\n${error.stack}</pre>`;
+    }
+  </script>
+
+  <!-- Show saved records after everything loads -->
+  <script type="module" defer>
+    window.addEventListener('alp:ready', async () => {
+      // Wait a bit for all tests to save their records
+      setTimeout(async () => {
+        try {
+          const data = await alp.load();
+          const recordsDiv = document.getElementById('records-result');
+
+          let html = '<pre style="background: #f0f0f0; padding: 1rem; border-radius: 4px;">';
+          html += 'Saved Records:\n\n';
+
+          for (const [storePath, records] of Object.entries(data)) {
+            html += `\n📁 ${storePath}\n`;
+            for (const record of records) {
+              if (record.key.startsWith('test-items.')) {
+                html += `  ├─ ${record.key}\n`;
+                html += `  │  ${JSON.stringify(record.data, null, 2).split('\n').join('\n  │  ')}\n`;
+              }
+            }
+          }
+
+          html += '</pre>';
+          recordsDiv.innerHTML = html;
+        } catch (error) {
+          document.getElementById('records-result').innerHTML =
+            `<pre style="color: red;">Error loading records: ${error.message}</pre>`;
+        }
+      }, 1000);
+    });
+  </script>
+</body>
+</html>
