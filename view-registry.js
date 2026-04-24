@@ -67,28 +67,31 @@ const ViewRegistry = {
         <div id="tab-target" class="flex-1 min-h-0"></div>
       </div>`,
       after: (f) => {
-        const target = document.getElementById('tab-target');
-        try {
-          const h = target.clientHeight || 500;
-          const table = new Tabulator(target, {
-            data: JSON.parse(f.content),
-            autoColumns: true,
-            layout: "fitColumns",
-            height: h + "px"
-          });
-          const fitData = document.getElementById('tab-fit-data');
-          const showHeaders = document.getElementById('tab-show-headers');
-          fitData.addEventListener('change', () => {
-            table.setLayout(fitData.checked ? 'fitData' : 'fitColumns');
-          });
-          showHeaders.addEventListener('change', () => {
-            const el = target.querySelector('.tabulator-header');
-            if (el) el.style.display = showHeaders.checked ? '' : 'none';
-            table.redraw(true);
-          });
-        } catch (e) {
-          target.innerHTML = `<div class="p-4 text-error font-mono text-xs">Invalid JSON Array for Table View</div>`;
-        }
+        requestAnimationFrame(() => {
+          const target = document.getElementById('tab-target');
+          if (!target) return;
+          try {
+            const h = target.clientHeight || 500;
+            const table = new Tabulator(target, {
+              data: JSON.parse(f.content),
+              autoColumns: true,
+              layout: "fitColumns",
+              height: h + "px"
+            });
+            const fitData = document.getElementById('tab-fit-data');
+            const showHeaders = document.getElementById('tab-show-headers');
+            fitData.addEventListener('change', () => {
+              table.setLayout(fitData.checked ? 'fitData' : 'fitColumns');
+            });
+            showHeaders.addEventListener('change', () => {
+              const el = target.querySelector('.tabulator-header');
+              if (el) el.style.display = showHeaders.checked ? '' : 'none';
+              table.redraw(true);
+            });
+          } catch (e) {
+            target.innerHTML = `<div class="p-4 text-error font-mono text-xs">Invalid JSON Array for Table View</div>`;
+          }
+        });
       }
     },
     {

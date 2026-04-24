@@ -11,12 +11,6 @@
   window.GH = mod.default;
   const gh = new window.GH({ repo: 'mehrlander/web-tools' });
   window.ViewRegistry = await gh.load('view-registry.js');
-
-  // Patch: defer Tabulator init until container is visible
-  const tbl = window.ViewRegistry.modules.find(m => m.id === 'table');
-  const origAfter = tbl.after;
-  tbl.after = (f) => requestAnimationFrame(() => origAfter(f));
-
   await gh.load('alpineComponents/viewer-assembled.js');
   await gh.load('alpine-bundle.js');
 </script>
