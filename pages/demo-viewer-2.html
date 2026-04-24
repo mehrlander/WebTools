@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpaceX Viewer Demo</title>
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script type="module">
+  const mod = await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools/gh-fetch.js');
+  window.GH = mod.default;
+  const gh = new window.GH({ repo: 'mehrlander/web-tools' });
+  window.ViewRegistry = await gh.load('view-registry.js');
+
+  // Patch: defer Tabulator init until container is visible
+  const tbl = window.ViewRegistry.modules.find(m => m.id === 'table');
+  const origAfter = tbl.after;
+  tbl.after = (f) => requestAnimationFrame(() => origAfter(f));
+
+  await gh.load('alpineComponents/viewer-assembled.js');
+  await gh.load('alpine-bundle.js');
+</script>
+</head>
+<body class="min-h-screen bg-base-100">
+<div class="max-w-7xl mx-auto px-4 py-6" x-data="picker">
+  <div class="flex items-center gap-3 mb-4">
+    <i class="ph ph-rocket-launch text-3xl text-primary"></i>
+    <div>
+      <h1 class="text-xl font-bold font-mono">SpaceX Viewer Demo</h1>
+      <p class="text-xs text-base-content/50">Feeding api.spacexdata.com/v4 into the assembled viewer</p>
+    </div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+    <div class="lg:col-span-1">
+      <div class="text-xs font-bold uppercase text-base-content/40 mb-2 px-1">Endpoints</div>
+      <div class="border border-base-300 rounded-lg bg-base-100 h-[calc(100vh-180px)] p-1 overflow-y-auto">
+        <template x-for="e in endpoints" :key="e.path">
+          <button
+            @click="pick(e)"
+            class="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm font-mono hover:bg-base-200 text-left"
+            :class="active === e.path ? 'bg-primary/10 text-primary font-bold' : ''">
+            <i class="ph shrink-0" :class="e.kind === 'array' ? 'ph-table text-info' : 'ph-brackets-curly text-warning'"></i>
+            <span class="truncate" x-text="e.label"></span>
+          </button>
+        </template>
+        <div x-show="loading" class="flex justify-center py-6">
+          <span class="loading loading-spinner loading-sm text-primary"></span>
+        </div>
+      </div>
+    </div>
+    <div class="lg:col-span-3" x-data="viewer"></div>
+  </div>
+</div>
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('picker', () => ({
+    active: '',
+    loading: false,
+    endpoints: [
+      { label: 'launches',    path: 'launches.json',    url: 'https://api.spacexdata.com/v4/launches',        kind: 'array' },
+      { label: 'rockets',     path: 'rockets.json',     url: 'https://api.spacexdata.com/v4/rockets',         kind: 'array' },
+      { label: 'launchpads',  path: 'launchpads.json',  url: 'https://api.spacexdata.com/v4/launchpads',      kind: 'array' },
+      { label: 'landpads',    path: 'landpads.json',    url: 'https://api.spacexdata.com/v4/landpads',        kind: 'array' },
+      { label: 'crew',        path: 'crew.json',        url: 'https://api.spacexdata.com/v4/crew',            kind: 'array' },
+      { label: 'capsules',    path: 'capsules.json',    url: 'https://api.spacexdata.com/v4/capsules',        kind: 'array' },
+      { label: 'cores',       path: 'cores.json',       url: 'https://api.spacexdata.com/v4/cores',           kind: 'array' },
+      { label: 'payloads',    path: 'payloads.json',    url: 'https://api.spacexdata.com/v4/payloads',        kind: 'array' },
+      { label: 'latest',      path: 'latest.json',      url: 'https://api.spacexdata.com/v4/launches/latest', kind: 'object' },
+      { label: 'next',        path: 'next.json',        url: 'https://api.spacexdata.com/v4/launches/next',   kind: 'object' },
+      { label: 'company',     path: 'company.json',     url: 'https://api.spacexdata.com/v4/company',         kind: 'object' },
+      { label: 'roadster',    path: 'roadster.json',    url: 'https://api.spacexdata.com/v4/roadster',        kind: 'object' }
+    ],
+    async pick(e) {
+      this.active = e.path;
+      this.loading = true;
+      const data = await fetch(e.url).then(r => r.json());
+      Alpine.store('browser').activeFile = {
+        path: e.path,
+        content: JSON.stringify(data, null, 2)
+      };
+      this.loading = false;
+    }
+  }));
+});
+</script>
+</body>
+</html>
