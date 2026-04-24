@@ -53,10 +53,42 @@ const ViewRegistry = {
         'https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js'
       ],
       test: (f) => f.ext === 'json' && f.content.trim().startsWith('['),
-      render: () => `<div id="tab-target" class="h-full w-full"></div>`,
+      render: () => `<div class="flex flex-col h-full w-full">
+        <div class="flex items-center gap-4 px-3 py-1.5 border-b border-base-300 bg-base-200/50 text-xs shrink-0">
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="tab-fit-data" class="checkbox checkbox-xs">
+            <span>Fit data</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="tab-show-headers" class="checkbox checkbox-xs" checked>
+            <span>Column headers</span>
+          </label>
+        </div>
+        <div id="tab-target" class="flex-1 min-h-0"></div>
+      </div>`,
       after: (f) => {
-        try { new Tabulator("#tab-target", { data: JSON.parse(f.content), autoColumns: true, layout: "fitColumns", pagination: "local", paginationSize: 20 }); }
-        catch (e) { document.getElementById('tab-target').innerHTML = `<div class="p-4 text-error font-mono text-xs">Invalid JSON Array for Table View</div>`; }
+        const target = document.getElementById('tab-target');
+        try {
+          const h = target.clientHeight || 500;
+          const table = new Tabulator(target, {
+            data: JSON.parse(f.content),
+            autoColumns: true,
+            layout: "fitColumns",
+            height: h + "px"
+          });
+          const fitData = document.getElementById('tab-fit-data');
+          const showHeaders = document.getElementById('tab-show-headers');
+          fitData.addEventListener('change', () => {
+            table.setLayout(fitData.checked ? 'fitData' : 'fitColumns');
+          });
+          showHeaders.addEventListener('change', () => {
+            const el = target.querySelector('.tabulator-header');
+            if (el) el.style.display = showHeaders.checked ? '' : 'none';
+            table.redraw(true);
+          });
+        } catch (e) {
+          target.innerHTML = `<div class="p-4 text-error font-mono text-xs">Invalid JSON Array for Table View</div>`;
+        }
       }
     },
     {
