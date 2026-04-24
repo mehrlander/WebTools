@@ -60,8 +60,8 @@ const ViewRegistry = {
             <span>Fit data</span>
           </label>
           <label class="flex items-center gap-1.5 cursor-pointer">
-            <input type="checkbox" id="tab-show-headers" class="checkbox checkbox-xs" checked>
-            <span>Column headers</span>
+            <input type="checkbox" id="tab-header-filters" class="checkbox checkbox-xs" checked>
+            <span>Header filters</span>
           </label>
         </div>
         <div id="tab-target" class="flex-1 min-h-0"></div>
@@ -75,17 +75,20 @@ const ViewRegistry = {
             const table = new Tabulator(target, {
               data: JSON.parse(f.content),
               autoColumns: true,
+              autoColumnsDefinitions: (defs) => defs.map(d => ({ ...d, headerFilter: 'input' })),
               layout: "fitColumns",
               height: h + "px"
             });
             const fitData = document.getElementById('tab-fit-data');
-            const showHeaders = document.getElementById('tab-show-headers');
+            const headerFilters = document.getElementById('tab-header-filters');
             fitData.addEventListener('change', () => {
               table.setLayout(fitData.checked ? 'fitData' : 'fitColumns');
+              table.redraw(true);
             });
-            showHeaders.addEventListener('change', () => {
-              const el = target.querySelector('.tabulator-header');
-              if (el) el.style.display = showHeaders.checked ? '' : 'none';
+            headerFilters.addEventListener('change', () => {
+              target.querySelectorAll('.tabulator-header-filter').forEach(el => {
+                el.style.display = headerFilters.checked ? '' : 'none';
+              });
               table.redraw(true);
             });
           } catch (e) {
