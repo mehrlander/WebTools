@@ -2,34 +2,61 @@ document.addEventListener('alpine:init', function() {
   Alpine.data('viewer', function() {
     return {
       template: `
-        <div class="flex items-center justify-between mb-2" x-show="file">
-          <span class="text-xs text-base-content/50 font-mono" x-text="stats"></span>
-          <div class="flex items-center gap-0.5">
-            <template x-for="u in fileUrls">
-              <a :href="u.u" target="_blank" class="btn btn-sm btn-square btn-ghost hover:text-primary">
-                <i class="ph text-lg" :class="u.i"></i>
-              </a>
-            </template>
-            <details class="dropdown dropdown-end">
-              <summary class="btn btn-sm btn-square btn-ghost hover:text-primary">
-                <i class="ph text-lg" :class="modeIcon"></i>
-              </summary>
-              <ul class="dropdown-content z-[1] menu p-2 shadow-lg bg-base-200 rounded-box w-32 mt-1 border border-base-300">
-                <template x-for="m in availableModes">
-                  <li><a @click="switchMode(m.id)" :class="mode === m.id ? 'active' : ''">
-                    <i class="ph" :class="m.icon"></i>
-                    <span x-text="m.label"></span>
-                  </a></li>
-                </template>
-              </ul>
-            </details>
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <div class="flex-1 min-w-0 pr-2">
+              <div class="text-sm font-medium font-mono truncate" x-show="file" x-text="file"></div>
+              <div x-show="!file" class="h-[calc(100vh-190px)] border border-dashed border-base-300 rounded-lg flex items-center justify-center text-base-content/15">
+                <i class="ph ph-code text-6xl"></i>
+              </div>
+              <div class="text-xs text-base-content/50" x-text="stats"></div>
+            </div>
+            <div class="flex items-center gap-0.5" x-show="file">
+              <details class="dropdown dropdown-end">
+                <summary class="btn btn-sm btn-square btn-ghost hover:text-primary">
+                  <i class="ph text-lg" :class="modeIcon"></i>
+                </summary>
+                <ul class="dropdown-content z-[1] menu p-2 shadow-lg bg-base-200 rounded-box w-32 mt-1 border border-base-300">
+                  <template x-for="m in availableModes">
+                    <li><a @click="switchMode(m.id)" :class="mode === m.id ? 'active' : ''">
+                      <i class="ph" :class="m.icon"></i>
+                      <span x-text="m.label"></span>
+                    </a></li>
+                  </template>
+                </ul>
+              </details>
+              <button @click="$clip(content)" class="btn btn-sm btn-square btn-ghost hover:text-primary"><i class="ph ph-copy text-lg"></i></button>
+              <button @click="openUrls()" class="btn btn-sm btn-square btn-ghost hover:text-primary"><i class="ph ph-link text-lg"></i></button>
+            </div>
           </div>
-        </div>
-        <div x-show="viewLoading" class="flex justify-center py-20">
-          <span class="loading loading-spinner loading-lg text-primary"></span>
-        </div>
-        <div x-show="!viewLoading" class="h-[calc(100vh-180px)] border border-base-300 rounded-lg bg-base-100 overflow-hidden">
-          <div class="h-full" x-html="viewHtml"></div>
+          <div x-show="file" class="h-[calc(100vh-230px)] border border-base-300 rounded-lg bg-base-100 overflow-hidden relative">
+            <div class="h-full" x-html="viewHtml"></div>
+            <div x-show="viewLoading" class="absolute inset-0 bg-base-100/30 flex items-center justify-center z-10">
+              <span class="loading loading-spinner loading-md"></span>
+            </div>
+          </div>
+          <dialog class="modal viewer-urls" onclick="if(event.target===this)this.close()">
+            <div class="modal-box shadow-none border border-base-300 bg-base-100 p-4 max-w-lg">
+              <div class="mb-3 px-1 font-mono text-sm font-bold truncate" x-text="file.split('/').pop()"></div>
+              <div class="flex flex-col gap-1.5">
+                <template x-for="url in fileUrls">
+                  <div class="flex items-center bg-base-200 rounded-lg overflow-hidden">
+                    <a :href="url.u" target="_blank" class="flex-1 flex items-center gap-2.5 px-3 py-2 min-w-0 hover:bg-base-300">
+                      <i class="ph shrink-0 text-sm" :class="url.i"></i>
+                      <div class="flex flex-col min-w-0">
+                        <span class="text-xs font-semibold leading-tight" x-text="url.l"></span>
+                        <span class="text-[10px] font-mono opacity-50 truncate leading-tight mt-0.5" x-text="url.u.replace('https://','')"></span>
+                      </div>
+                    </a>
+                    <button class="px-3 py-2 border-l border-base-300 hover:bg-base-300" @click="$clip(url.u)">
+                      <i class="ph ph-copy text-sm opacity-40"></i>
+                    </button>
+                  </div>
+                </template>
+              </div>
+              <div class="modal-action mt-3"><button class="btn btn-ghost btn-sm text-xs" onclick="this.closest('dialog').close()">Done</button></div>
+            </div>
+          </dialog>
         </div>`,
 
       file: '',
