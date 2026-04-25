@@ -56,10 +56,6 @@ const ViewRegistry = {
       render: () => `<div class="flex flex-col h-full w-full">
         <div class="flex items-center gap-4 px-3 py-1.5 border-b border-base-300 bg-base-200/50 text-xs shrink-0">
           <label class="flex items-center gap-1.5 cursor-pointer">
-            <input type="checkbox" id="tab-fit-data" class="checkbox checkbox-xs">
-            <span>Fit data</span>
-          </label>
-          <label class="flex items-center gap-1.5 cursor-pointer">
             <input type="checkbox" id="tab-header-filters" class="checkbox checkbox-xs" checked>
             <span>Header filters</span>
           </label>
@@ -76,15 +72,10 @@ const ViewRegistry = {
               data: JSON.parse(f.content),
               autoColumns: true,
               autoColumnsDefinitions: (defs) => defs.map(d => ({ ...d, headerFilter: 'input' })),
-              layout: "fitColumns",
+              layout: "fitData",
               height: h + "px"
             });
-            const fitData = document.getElementById('tab-fit-data');
             const headerFilters = document.getElementById('tab-header-filters');
-            fitData.addEventListener('change', () => {
-              table.setLayout(fitData.checked ? 'fitData' : 'fitColumns');
-              table.redraw(true);
-            });
             headerFilters.addEventListener('change', () => {
               target.querySelectorAll('.tabulator-header-filter').forEach(el => {
                 el.style.display = headerFilters.checked ? '' : 'none';
