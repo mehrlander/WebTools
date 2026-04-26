@@ -59,71 +59,114 @@ brotli or gzip, and optionally packs the result as a self-decompressing
 embedded in arbitrary text. Detection regexes accept an optional label:
 `BR64("mylabel"):...`.
 
-## Pending: decouple `pages/compression-helper.html` from Alp
+### fills.js
 
-The page currently loads Alp directly:
+daisyUI/Tailwind template-string helpers salvaged from
+`archive/alp/repo/utils/fills.js`. Pure functions returning HTML
+strings; zero runtime deps. Designed to be composed inside Alpine
+`x-data` templates or anywhere HTML is built by string concatenation.
 
-```html
-<script src="https://cdn.jsdelivr.net/gh/mehrlander/Alp@f93d156ef88d/alp.js"></script>
+```js
+window.fills.tip(mods, trigger, content)
+window.fills.lines(mods, arr)
+window.fills.btn(mods, label, click, iconClasses?, extraClasses?)
+window.fills.toolbar(mods, ...items)
+window.fills.modal(inner)
+window.fills.saveIndicator()  // assumes `saving` in surrounding x-data
+window.fills.pathInput()      // assumes `_path`/`path` in surrounding x-data
 ```
 
-and uses Alp custom elements (`<alp-compress-output>`,
-`<alp-compress-input>`) and Alp's `alp.kit.text` / `alp.kit.acorn` /
-`alp.fills.tip|pathInput|lines`.
+`mods` is an array of short tokens (e.g. `['xs','bottom']`). Recognized
+tokens map to daisyUI/Tailwind classes; unrecognized tokens are ignored.
+See `pages/demos/fills.html` for live examples.
 
-The decoupling work, ready for a fresh thread:
+### persistence.js
 
-1. **Switch the page to the scaffolded loading pattern** (mirroring
-   `pages/show-repo.html`). Replace the Alp `<script>` tag with:
+String-path key/value over
+[`idb-keyval`](https://github.com/jakearchibald/idb-keyval). All values
+go through IndexedDB's structured clone, so `Uint8Array`, `Date`,
+`Map`, `Blob`, etc. round-trip with their types intact.
 
-   ```html
-   <script type="module">
-     let TOKEN = '🎟️GitHubToken';
-     if (TOKEN === '🎟️GitHubToken') {
-       try { TOKEN = localStorage.getItem('ghToken') || TOKEN; } catch {}
-     }
-     const mod = await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools/gh-fetch.js');
-     window.GH = mod.default;
-     const gh = new window.GH({ token: TOKEN, repo: 'mehrlander/web-tools' });
-     await gh.load('kits/compression.js');
-     await gh.load('alpine-bundle.js');
-   </script>
-   ```
+```js
+await window.persistence.save('myPage.foo', { a: 1, when: new Date() });
+await window.persistence.load('myPage.foo');
+await window.persistence.remove('myPage.foo');
+await window.persistence.list('myPage.x');         // keys in myPage/default
+await window.persistence.entries('myPage.x');      // [key, value][]
+await window.persistence.clearStore('myPage.x');   // wipe one store
+window.persistence.parsePath('a.b.c');             // { db, store, key }
+```
 
-   Plus the standard CDN links for Tailwind / DaisyUI / Phosphor in `<head>`.
+Path syntax: `"<db>.<key>"` defaults `store="default"`; `"<db>.<store>.<key>"`
+is explicit. Single-segment paths throw — every caller picks its own
+namespace so devtools shows separate IndexedDB databases and data from
+different pages can't collide. `createStore` handles are cached per
+`db|store`. See `pages/demos/persistence.html` for live examples.
 
-2. **Replace `<alp-compress-output>` and `<alp-compress-input>` with
-   inline Alpine `x-data` blocks.** They currently share path-bound state
-   via Alp's `ping` system at path `alp.compress`. Without that
-   infrastructure, the simplest replacement is one parent `x-data` that
-   owns the shared state (input, sel) and passes it down — the two child
-   blocks become plain templates inside the parent. Or, if it's cleaner,
-   put both pieces in a single `x-data` with all the state.
+### messaging.js
 
-3. **Replace `alp.kit.text` / `alp.kit.acorn` calls with
-   `window.compression.text` / `window.compression.acorn`.** API shape is
-   identical — `text.process`, `text.findCompressedChunks`,
-   `text.detectCompressionType`, `acorn.isJS`. No call-site changes
-   beyond the namespace.
+In-memory pub/sub keyed on opaque path strings. No parent/child path
+propagation — exact-match only. Subscribers receive
+`(occasion, data, path)`.
 
-4. **Replace `alp.fills.tip / pathInput / lines` with inline DaisyUI
-   markup.** Each is just a few spans and inputs; not worth porting as a
-   helper.
+```js
+const off = window.messaging.subscribe('compress.sel', (occ, data) => { ... });
+window.messaging.publish('compress.sel', 'change', { start: 0, end: 4 });
+window.messaging.subscriberCount('compress.sel');
+window.messaging.activePaths();
+off();
+```
 
-5. **Drop the path-binding (`path="alp.compress"`) and persistence
-   (`save()`, `load()`, `del()`) entirely** unless we want this page to
-   persist across reloads. If we do, `localStorage` is the simplest path
-   given we now have no IndexedDB framework. (Alp's `dexie.js` could be
-   salvaged into a `kits/storage.js` later if persistence becomes a
-   recurring need across pages.)
+Path strings are conventionally the same shape as `persistence.js`
+(`"<db>.<store>.<key>"`) but this kit doesn't parse them — keys are
+matched verbatim. See `pages/demos/messaging.html` for live examples.
 
-6. **Remove the cross-component `ping('sel')` mechanism.** Replace with
-   direct method calls or shared parent state, depending on the layout
-   chosen in step 2.
+### component.js
 
-7. **Verify in a browser.** Open the page, paste raw text, toggle
-   compressed/packed, switch alg between brotli/gzip, copy output, paste
-   compressed input, check that decompression detection lights up.
+Thin wrapper for registering an Alpine-backed custom element.
 
-After this, the Alp CDN reference is gone from this page and we have a
-template for any future page that wants compression utilities.
+```js
+window.component.defineComponent('my-counter',
+  attrs => `<button @click="inc()" x-text="count"></button>`,
+  attrs => ({ count: Number(attrs.start ?? 0), inc() { this.count++ } })
+);
+<my-counter start="5"></my-counter>
+window.component.find('my-counter').inc();   // reach in from outside
+```
+
+Tag names must contain a hyphen (custom-element rule). After Alpine
+binds, the data object is stashed on the host as `host.__data`. If the
+data factory's object has an `onMount(host)` method it's called once
+after binding — that's where you'd subscribe to `messaging` or load
+`persistence`.
+
+No path registry, no implicit message bus, no schema. Consumers wire
+persistence/messaging in by hand. See `pages/demos/component.html` for
+live examples; see `pages/compression-helper-v2.html` for the
+integration test wiring all kits together.
+
+## Salvage status
+
+The original `pages/compression-helper.html` still loads Alp directly
+(`<script src=".../mehrlander/Alp@.../alp.js">`) and continues to work.
+`pages/compression-helper-v2.html` is the in-repo reimplementation
+that replaces every Alp dependency with `kits/` modules:
+
+- `alp.kit.text` / `alp.kit.acorn` → `compression.text` / `compression.acorn`
+- `alp.fills.tip|lines` → `fills.tip|lines`
+- `alp.define` → `component.defineComponent`
+- IndexedDB-backed `save()`/`load()` → `persistence.save/load` (idb-keyval)
+- `ping('sel')` / `onPing('sel', sender)` → `messaging.publish/subscribe`
+
+The original page is the safety net; v2 lives next to it until verified
+end-to-end in a browser. After that, the original can be retired and
+the external Alp CDN reference goes away.
+
+| Kit | Demo | Status |
+|---|---|---|
+| `compression.js` | (used in `compression-helper-v2.html`) | done |
+| `fills.js` | `pages/demos/fills.html` | done |
+| `persistence.js` | `pages/demos/persistence.html` | done |
+| `messaging.js` | `pages/demos/messaging.html` | done |
+| `component.js` | `pages/demos/component.html` | done |
+| (integration) | `pages/compression-helper-v2.html` | done — needs browser verification |
