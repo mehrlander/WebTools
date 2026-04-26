@@ -22,7 +22,7 @@
       'demo.html':         'General demo page.',
       'demo-viewer.html':  'Demo of the assembled viewer component.',
       'demo-spacex.html':  'SpaceX sample content demo.',
-      'demos.html':        'Hub for kits/ demo pages.',
+      'demos/':            'Hub for kits/ demo pages.',
       'compression-helper.html':    'Original (Alp-backed) compression bookmarklet packer.',
       'compression-helper-v2.html': 'Same UI, rebuilt on the in-repo kits/ — no external Alp dep.'
     },
@@ -31,8 +31,13 @@
       if (!res.ok) { this.error = `GitHub API ${res.status}`; this.loading = false; return }
       const data = await res.json()
       this.files = data
-        .filter(f => f.name.endsWith('.html') && f.name !== 'index.html')
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .filter(f => f.type === 'dir' || (f.name.endsWith('.html') && f.name !== 'index.html'))
+        .map(f => ({
+          ...f,
+          href:  f.type === 'dir' ? f.name + '/' : f.name,
+          label: f.type === 'dir' ? f.name + '/' : f.name.replace('.html', '')
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label))
       this.loading = false
     }
   }"
@@ -59,15 +64,16 @@
   <ul x-show="!loading && !error" class="divide-y divide-base-200">
     <template x-for="f in files" :key="f.name">
       <li class="py-3 flex items-start gap-3 group">
-        <i class="ph ph-file-html text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+        <i :class="f.type === 'dir' ? 'ph ph-folder' : 'ph ph-file-html'"
+           class="text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
         <div class="min-w-0">
-          <a :href="f.name"
+          <a :href="f.href"
              class="font-semibold text-base-content hover:text-primary transition-colors text-sm"
-             x-text="f.name.replace('.html','')"></a>
+             x-text="f.label"></a>
           <span class="block text-xs text-base-content/40 mt-0.5"
-                x-text="notes[f.name] ?? ''"></span>
+                x-text="notes[f.href] ?? ''"></span>
         </div>
-        <a :href="`https://github.com/mehrlander/web-tools/blob/main/pages/${f.name}`"
+        <a :href="`https://github.com/mehrlander/web-tools/${f.type === 'dir' ? 'tree' : 'blob'}/main/pages/${f.name}`"
            class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
            title="View on GitHub" target="_blank">
           <i class="ph ph-code text-sm"></i>
