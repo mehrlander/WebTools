@@ -80,42 +80,93 @@ window.fills.pathInput()      // assumes `_path`/`path` in surrounding x-data
 tokens map to daisyUI/Tailwind classes; unrecognized tokens are ignored.
 See `pages/demos/fills.html` for live examples.
 
-## Salvage roadmap
+### persistence.js
 
-`pages/compression-helper.html` still loads Alp directly:
+String-path key/value over
+[`idb-keyval`](https://github.com/jakearchibald/idb-keyval). All values
+go through IndexedDB's structured clone, so `Uint8Array`, `Date`,
+`Map`, `Blob`, etc. round-trip with their types intact.
 
-```html
-<script src="https://cdn.jsdelivr.net/gh/mehrlander/Alp@f93d156ef88d/alp.js"></script>
+```js
+await window.persistence.save('myPage.foo', { a: 1, when: new Date() });
+await window.persistence.load('myPage.foo');
+await window.persistence.remove('myPage.foo');
+await window.persistence.list('myPage.x');         // keys in myPage/default
+await window.persistence.entries('myPage.x');      // [key, value][]
+await window.persistence.clearStore('myPage.x');   // wipe one store
+window.persistence.parsePath('a.b.c');             // { db, store, key }
 ```
 
-and uses Alp custom elements (`<alp-compress-output>`,
-`<alp-compress-input>`), Alp's `alp.kit.text` / `alp.kit.acorn`, and
-`alp.fills.tip|pathInput|lines`.
+Path syntax: `"<db>.<key>"` defaults `store="default"`; `"<db>.<store>.<key>"`
+is explicit. Single-segment paths throw — every caller picks its own
+namespace so devtools shows separate IndexedDB databases and data from
+different pages can't collide. `createStore` handles are cached per
+`db|store`. See `pages/demos/persistence.html` for live examples.
 
-The plan is **side-by-side**: leave that page working, salvage Alp's
-remaining infrastructure into `kits/`, then build a fresh
-`pages/compression-helper-v2.html` (or similar) that consumes the kits
-with no external Alp dependency. Each kit ships with a small demo page
-under `pages/demos/`.
+### messaging.js
 
-Roadmap:
+In-memory pub/sub keyed on opaque path strings. No parent/child path
+propagation — exact-match only. Subscribers receive
+`(occasion, data, path)`.
 
-1. ✅ `kits/compression.js` — text/brotli/gzip/acorn primitives.
-2. ✅ `kits/fills.js` + `pages/demos/fills.html` — template helpers.
-3. ⏳ `kits/persistence.js` + `pages/demos/persistence.html` —
-   `save(path, data)` / `load(path)` / `remove(path)` / `list(path)`
-   over [`idb-keyval`](https://github.com/jakearchibald/idb-keyval).
-   Path syntax `"db.store.record"` (or `"page.key"` defaulting both
-   halves to the leading segment); per-`db.store` `createStore` cache.
-4. ⏳ `kits/messaging.js` + `pages/demos/messaging.html` — `ping(path,
-   occasion, data)` / `subscribe(path, fn)` pub-sub keyed on the same
-   parsed path.
-5. ⏳ `kits/component.js` + `pages/demos/component.html` — thin
-   `defineComponent(name, tpl, data)` over Alpine + custom elements.
-   No path registry, no Dexie, no implicit ping bus; consumers wire
-   persistence/messaging in if they want them.
-6. ⏳ `pages/compression-helper-v2.html` — the integration test that
-   uses every kit together to replace the existing page's behavior.
+```js
+const off = window.messaging.subscribe('compress.sel', (occ, data) => { ... });
+window.messaging.publish('compress.sel', 'change', { start: 0, end: 4 });
+window.messaging.subscriberCount('compress.sel');
+window.messaging.activePaths();
+off();
+```
 
-The original page keeps working throughout. Once the v2 is verified
-in a browser we can decide whether to retire the original.
+Path strings are conventionally the same shape as `persistence.js`
+(`"<db>.<store>.<key>"`) but this kit doesn't parse them — keys are
+matched verbatim. See `pages/demos/messaging.html` for live examples.
+
+### component.js
+
+Thin wrapper for registering an Alpine-backed custom element.
+
+```js
+window.component.defineComponent('my-counter',
+  attrs => `<button @click="inc()" x-text="count"></button>`,
+  attrs => ({ count: Number(attrs.start ?? 0), inc() { this.count++ } })
+);
+<my-counter start="5"></my-counter>
+window.component.find('my-counter').inc();   // reach in from outside
+```
+
+Tag names must contain a hyphen (custom-element rule). After Alpine
+binds, the data object is stashed on the host as `host.__data`. If the
+data factory's object has an `onMount(host)` method it's called once
+after binding — that's where you'd subscribe to `messaging` or load
+`persistence`.
+
+No path registry, no implicit message bus, no schema. Consumers wire
+persistence/messaging in by hand. See `pages/demos/component.html` for
+live examples; see `pages/compression-helper-v2.html` for the
+integration test wiring all kits together.
+
+## Salvage status
+
+The original `pages/compression-helper.html` still loads Alp directly
+(`<script src=".../mehrlander/Alp@.../alp.js">`) and continues to work.
+`pages/compression-helper-v2.html` is the in-repo reimplementation
+that replaces every Alp dependency with `kits/` modules:
+
+- `alp.kit.text` / `alp.kit.acorn` → `compression.text` / `compression.acorn`
+- `alp.fills.tip|lines` → `fills.tip|lines`
+- `alp.define` → `component.defineComponent`
+- IndexedDB-backed `save()`/`load()` → `persistence.save/load` (idb-keyval)
+- `ping('sel')` / `onPing('sel', sender)` → `messaging.publish/subscribe`
+
+The original page is the safety net; v2 lives next to it until verified
+end-to-end in a browser. After that, the original can be retired and
+the external Alp CDN reference goes away.
+
+| Kit | Demo | Status |
+|---|---|---|
+| `compression.js` | (used in `compression-helper-v2.html`) | done |
+| `fills.js` | `pages/demos/fills.html` | done |
+| `persistence.js` | `pages/demos/persistence.html` | done |
+| `messaging.js` | `pages/demos/messaging.html` | done |
+| `component.js` | `pages/demos/component.html` | done |
+| (integration) | `pages/compression-helper-v2.html` | done — needs browser verification |

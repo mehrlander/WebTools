@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="emerald">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>component demo</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script src="https://cdn.jsdelivr.net/gh/mehrlander/web-tools/kits/component.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/mehrlander/web-tools/kits/messaging.js"></script>
+<script defer src="https://unpkg.com/alpinejs/dist/cdn.min.js"></script>
+</head>
+<body class="bg-base-100 text-base-content min-h-screen font-mono text-sm">
+
+<div class="max-w-3xl mx-auto px-4 py-8">
+
+  <div class="flex items-baseline justify-between mb-1">
+    <h1 class="text-2xl font-bold tracking-tight">component</h1>
+    <a href="../demos.html" class="text-xs opacity-50 hover:opacity-100 flex items-center gap-1">
+      <i class="ph ph-arrow-left"></i> demos
+    </a>
+  </div>
+  <p class="opacity-60 text-xs mb-6">
+    <code class="text-xs">window.component.defineComponent(name, tpl, data)</code>
+    registers a custom element backed by an Alpine <code>x-data</code> factory.
+    Three demos below: a self-contained counter, attribute passing, and two
+    components coordinating via <code>kits/messaging.js</code> instead of
+    knowing about each other directly.
+    (<a href="https://github.com/mehrlander/web-tools/blob/main/kits/component.js" class="link link-hover">kit source</a>)
+  </p>
+
+  <section class="mb-8">
+    <h2 class="font-bold mb-2">1. Self-contained counter</h2>
+    <pre class="bg-base-200 rounded p-2 text-xs whitespace-pre-wrap mb-2">defineComponent('demo-counter',
+  () => `&lt;button class="btn btn-sm" @click="inc()" x-text="`Count: ${count}`"&gt;&lt;/button&gt;`,
+  () => ({ count: 0, inc() { this.count++ } })
+);
+&lt;demo-counter&gt;&lt;/demo-counter&gt;</pre>
+    <div class="bg-base-200/40 rounded p-4">
+      <demo-counter></demo-counter>
+    </div>
+  </section>
+
+  <section class="mb-8">
+    <h2 class="font-bold mb-2">2. Reading attributes</h2>
+    <pre class="bg-base-200 rounded p-2 text-xs whitespace-pre-wrap mb-2">defineComponent('demo-greeting',
+  attrs =&gt; `&lt;div&gt;Hello, &lt;b x-text="name"&gt;&lt;/b&gt;! (passed start=${attrs.start ?? 0})&lt;/div&gt;`,
+  attrs =&gt; ({ name: attrs.name ?? 'world', start: Number(attrs.start ?? 0) })
+);
+&lt;demo-greeting name="Ada" start="42"&gt;&lt;/demo-greeting&gt;</pre>
+    <div class="bg-base-200/40 rounded p-4 space-y-1">
+      <demo-greeting name="Ada" start="42"></demo-greeting>
+      <demo-greeting name="Grace" start="7"></demo-greeting>
+    </div>
+  </section>
+
+  <section class="mb-8">
+    <h2 class="font-bold mb-2">3. Cross-component coordination via messaging</h2>
+    <p class="opacity-60 text-xs mb-2">
+      The slider publishes on <code>demo.knob</code>; the gauge subscribes.
+      Neither holds a reference to the other.
+    </p>
+    <pre class="bg-base-200 rounded p-2 text-xs whitespace-pre-wrap mb-2">defineComponent('demo-knob',
+  () =&gt; `&lt;input type="range" min="0" max="100" x-model.number="v"&gt;`,
+  () =&gt; ({ v: 50, onMount() { this.$watch('v', n =&gt; messaging.publish('demo.knob', 'change', n)); } })
+);
+defineComponent('demo-gauge',
+  () =&gt; `&lt;div class="text-3xl font-bold" x-text="n"&gt;&lt;/div&gt;`,
+  () =&gt; ({ n: 0, off: null, onMount() { this.off = messaging.subscribe('demo.knob', (_, n) =&gt; this.n = n); } })
+);</pre>
+    <div class="bg-base-200/40 rounded p-4 grid grid-cols-2 gap-4 items-center">
+      <demo-knob></demo-knob>
+      <div class="text-center">
+        <demo-gauge></demo-gauge>
+        <div class="opacity-60 text-xs mt-1">(updates as you drag)</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-8">
+    <h2 class="font-bold mb-2">4. Reaching into a component from outside</h2>
+    <p class="opacity-60 text-xs mb-2">
+      <code>window.component.find('demo-counter')</code> returns the bound data.
+      Buttons below call its <code>inc()</code> directly.
+    </p>
+    <div class="bg-base-200/40 rounded p-4 flex items-center gap-3 flex-wrap">
+      <demo-counter id="external-target"></demo-counter>
+      <button class="btn btn-xs btn-primary" onclick="window.component.find('#external-target').inc()">+1 from outside</button>
+      <button class="btn btn-xs" onclick="alert(JSON.stringify({ count: window.component.find('#external-target').count }))">peek state</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const { defineComponent } = window.component;
+
+defineComponent('demo-counter',
+  () => `<button class="btn btn-sm" @click="inc()" x-text="\`Count: \${count}\`"></button>`,
+  () => ({ count: 0, inc() { this.count++; } })
+);
+
+defineComponent('demo-greeting',
+  attrs => `<div>Hello, <b x-text="name"></b>! (passed start=${attrs.start ?? 0})</div>`,
+  attrs => ({ name: attrs.name ?? 'world', start: Number(attrs.start ?? 0) })
+);
+
+defineComponent('demo-knob',
+  () => `<input type="range" min="0" max="100" x-model.number="v" class="range range-sm range-primary">`,
+  () => ({
+    v: 50,
+    onMount() { this.$watch('v', n => window.messaging.publish('demo.knob', 'change', n)); }
+  })
+);
+
+defineComponent('demo-gauge',
+  () => `<div class="text-3xl font-bold" x-text="n"></div>`,
+  () => ({
+    n: 50,
+    off: null,
+    onMount() { this.off = window.messaging.subscribe('demo.knob', (_, n) => this.n = n); }
+  })
+);
+</script>
+</body>
+</html>

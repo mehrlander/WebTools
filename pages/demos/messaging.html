@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="emerald">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>messaging demo</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script src="https://cdn.jsdelivr.net/gh/mehrlander/web-tools/kits/messaging.js"></script>
+<script defer src="https://unpkg.com/alpinejs/dist/cdn.min.js"></script>
+</head>
+<body class="bg-base-100 text-base-content min-h-screen font-mono text-sm">
+
+<div class="max-w-3xl mx-auto px-4 py-8">
+
+  <div class="flex items-baseline justify-between mb-1">
+    <h1 class="text-2xl font-bold tracking-tight">messaging</h1>
+    <a href="../demos.html" class="text-xs opacity-50 hover:opacity-100 flex items-center gap-1">
+      <i class="ph ph-arrow-left"></i> demos
+    </a>
+  </div>
+  <p class="opacity-60 text-xs mb-6">
+    <code class="text-xs">window.messaging</code> is an in-memory pub/sub. Two
+    detached <code>x-data</code> blocks below talk over the bus — neither
+    knows about the other directly, only the path string.
+    (<a href="https://github.com/mehrlander/web-tools/blob/main/kits/messaging.js" class="link link-hover">kit source</a>)
+  </p>
+
+  <!-- Two independent components on path "demo.bus" -->
+  <div class="grid md:grid-cols-2 gap-4 mb-6">
+
+    <div x-data="publisher()" x-init="init()" class="bg-base-200/40 rounded p-4 space-y-3">
+      <h3 class="font-bold text-xs uppercase opacity-60">Publisher</h3>
+      <div class="flex items-center gap-2">
+        <span class="opacity-60 text-xs">path:</span>
+        <input x-model="path" class="input input-xs input-bordered flex-1">
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="opacity-60 text-xs">occ:</span>
+        <input x-model="occasion" class="input input-xs input-bordered flex-1">
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="opacity-60 text-xs">data:</span>
+        <input x-model="payload" class="input input-xs input-bordered flex-1">
+      </div>
+      <div class="flex items-center justify-between gap-2">
+        <button class="btn btn-sm btn-primary" @click="send()">publish</button>
+        <span class="opacity-60 text-xs" x-text="`${subs} subscriber(s)`"></span>
+      </div>
+    </div>
+
+    <div x-data="subscriber('A')" x-init="init()" class="bg-base-200/40 rounded p-4 space-y-2">
+      <h3 class="font-bold text-xs uppercase opacity-60">Subscriber A</h3>
+      <div class="flex items-center gap-2">
+        <span class="opacity-60 text-xs">listening on:</span>
+        <code class="text-xs bg-base-300/50 px-2 py-0.5 rounded" x-text="path"></code>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-xs" @click="toggle()" x-text="active ? 'unsubscribe' : 'subscribe'"></button>
+        <button class="btn btn-xs btn-ghost" @click="log = []">clear</button>
+      </div>
+      <div class="bg-base-300/50 rounded p-2 text-xs h-32 overflow-auto">
+        <template x-for="(m, i) in log" :key="i">
+          <div><span class="opacity-50" x-text="m.t"></span> <b x-text="m.occ"></b> <span x-text="JSON.stringify(m.data)"></span></div>
+        </template>
+        <div x-show="!log.length" class="opacity-50">(no messages)</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bus inspector -->
+  <div x-data="inspector()" x-init="init()" class="bg-base-200/40 rounded p-4">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-bold text-xs uppercase opacity-60">Bus inspector</h3>
+      <button class="btn btn-xs" @click="refresh()">refresh</button>
+    </div>
+    <pre class="bg-base-300/50 rounded p-2 text-xs whitespace-pre-wrap min-h-[3rem]" x-text="dump"></pre>
+  </div>
+
+  <p class="opacity-50 text-xs mt-6">
+    Try changing the publisher's path while subscriber A still listens on
+    <code>demo.bus</code> — messages stop being delivered. Each path is a
+    distinct channel; subscribers on parent prefixes don't catch child
+    publications.
+  </p>
+
+</div>
+
+<script>
+function publisher() { return {
+  path: 'demo.bus',
+  occasion: 'change',
+  payload: 'hello',
+  subs: 0,
+  refreshInterval: null,
+  init() {
+    this.refreshInterval = setInterval(() => {
+      this.subs = window.messaging.subscriberCount(this.path);
+    }, 250);
+  },
+  send() {
+    window.messaging.publish(this.path, this.occasion, this.payload);
+  }
+}}
+
+function subscriber(name) { return {
+  name,
+  path: 'demo.bus',
+  active: false,
+  log: [],
+  off: null,
+  init() { this.toggle(); },
+  toggle() {
+    if (this.active) { this.off?.(); this.off = null; this.active = false; return; }
+    this.off = window.messaging.subscribe(this.path, (occ, data) => {
+      this.log.unshift({ t: new Date().toLocaleTimeString(), occ, data });
+      if (this.log.length > 20) this.log.pop();
+    });
+    this.active = true;
+  }
+}}
+
+function inspector() { return {
+  dump: '(refresh)',
+  init() { this.refresh(); setInterval(() => this.refresh(), 500); },
+  refresh() {
+    const paths = window.messaging.activePaths();
+    if (!paths.length) { this.dump = '(no active paths)'; return; }
+    this.dump = paths.map(p => `${p}  →  ${window.messaging.subscriberCount(p)} sub(s)`).join('\n');
+  }
+}}
+</script>
+</body>
+</html>

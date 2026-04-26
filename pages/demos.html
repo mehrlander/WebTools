@@ -20,11 +20,14 @@
   </div>
   <p class="text-base-content/50 text-sm mb-8">
     Small pages that exercise one <code class="text-xs">kits/</code> module each.
-    Built so the new salvaged Alp pieces can be tried out without touching
+    The integration test that uses every kit together is
+    <a href="compression-helper-v2.html" class="link link-hover">compression-helper-v2.html</a>,
+    sitting next to the still-working
     <a href="compression-helper.html" class="link link-hover">compression-helper.html</a>.
   </p>
 
   <ul class="divide-y divide-base-200">
+
     <li class="py-3 flex items-start gap-3 group">
       <i class="ph ph-paint-brush-broad text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
       <div class="min-w-0">
@@ -37,12 +40,60 @@
         <i class="ph ph-code text-sm"></i>
       </a>
     </li>
-  </ul>
 
-  <p class="text-base-content/30 text-xs mt-8">
-    Coming next: <code>persistence</code> (idb-keyval), <code>messaging</code> (path pub/sub),
-    <code>component</code> (thin Alpine + custom-element wrapper).
-  </p>
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-database text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="demos/persistence.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">persistence</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">String-path key/value over <code>idb-keyval</code> with structured-clone payloads.</span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/kits/persistence.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-broadcast text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="demos/messaging.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">messaging</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">In-memory pub/sub keyed on opaque path strings; lets detached components coordinate.</span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/kits/messaging.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-cube text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="demos/component.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">component</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">Thin <code>defineComponent(name, tpl, data)</code> over Alpine + custom elements.</span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/kits/component.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-file-archive text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="../kits/compression.js" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">compression</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">Brotli/Gzip + acorn + bookmarklet packer. Live integration: <a href="compression-helper-v2.html" class="link link-hover">compression-helper-v2.html</a>.</span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/kits/compression.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+
+  </ul>
 
 </div>
 </body>

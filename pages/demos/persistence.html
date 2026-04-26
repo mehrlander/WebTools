@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="emerald">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>persistence demo</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script src="https://cdn.jsdelivr.net/gh/mehrlander/web-tools/kits/persistence.js"></script>
+<script defer src="https://unpkg.com/alpinejs/dist/cdn.min.js"></script>
+</head>
+<body class="bg-base-100 text-base-content min-h-screen font-mono text-sm">
+
+<div class="max-w-3xl mx-auto px-4 py-8">
+
+  <div class="flex items-baseline justify-between mb-1">
+    <h1 class="text-2xl font-bold tracking-tight">persistence</h1>
+    <a href="../demos.html" class="text-xs opacity-50 hover:opacity-100 flex items-center gap-1">
+      <i class="ph ph-arrow-left"></i> demos
+    </a>
+  </div>
+  <p class="opacity-60 text-xs mb-6">
+    <code class="text-xs">window.persistence</code> wraps
+    <a href="https://github.com/jakearchibald/idb-keyval" class="link link-hover" target="_blank">idb-keyval</a>
+    with a string-path API. Values are structured-cloned, so
+    <code>Uint8Array</code>, <code>Date</code>, <code>Map</code>, <code>Blob</code>
+    all round-trip with their types intact. Open devtools → Application →
+    IndexedDB to see the <code>demo-persistence</code> database appear.
+    (<a href="https://github.com/mehrlander/web-tools/blob/main/kits/persistence.js" class="link link-hover">kit source</a>)
+  </p>
+
+  <div x-data="demo()" x-init="init()" class="space-y-8">
+
+    <!-- path parsing -->
+    <section>
+      <h2 class="font-bold mb-1">parsePath(path)</h2>
+      <p class="opacity-60 text-xs mb-2">
+        Two segments → <code>store="default"</code>. Three+ → middle is the store, rest is the key.
+      </p>
+      <div class="bg-base-200/40 rounded p-4 space-y-2">
+        <div class="flex items-center gap-2">
+          <input x-model="parseInput" class="input input-sm flex-1" placeholder="db.store.key">
+          <button class="btn btn-sm btn-primary" @click="doParse()">Parse</button>
+        </div>
+        <pre class="bg-base-300/50 rounded p-2 text-xs whitespace-pre-wrap" x-text="parseOut"></pre>
+      </div>
+    </section>
+
+    <!-- save / load round-trip -->
+    <section>
+      <h2 class="font-bold mb-1">save(path, data) / load(path)</h2>
+      <p class="opacity-60 text-xs mb-2">
+        Round-trip mixed-type data through IndexedDB. Notice the bytes and date come back as their
+        original types, not strings.
+      </p>
+      <div class="bg-base-200/40 rounded p-4 space-y-3">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="opacity-60 text-xs">path:</span>
+          <code class="text-xs bg-base-300/50 px-2 py-1 rounded">demo-persistence.scratch.payload</code>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <button class="btn btn-sm btn-primary" @click="saveSample()">save sample object</button>
+          <button class="btn btn-sm" @click="loadSample()">load it back</button>
+          <button class="btn btn-sm btn-ghost" @click="removeSample()">remove</button>
+        </div>
+        <pre class="bg-base-300/50 rounded p-2 text-xs whitespace-pre-wrap min-h-[5rem]" x-text="rtOut"></pre>
+      </div>
+    </section>
+
+    <!-- list / entries -->
+    <section>
+      <h2 class="font-bold mb-1">list(path) / entries(path) / clearStore(path)</h2>
+      <p class="opacity-60 text-xs mb-2">
+        Stash a few keys, then list them. The key segment of the path is ignored for store-level operations.
+      </p>
+      <div class="bg-base-200/40 rounded p-4 space-y-3">
+        <div class="flex gap-2 flex-wrap">
+          <button class="btn btn-sm btn-primary" @click="seed()">seed 5 keys</button>
+          <button class="btn btn-sm" @click="refreshList()">list keys</button>
+          <button class="btn btn-sm" @click="dumpEntries()">dump entries</button>
+          <button class="btn btn-sm btn-ghost text-error" @click="wipe()">clearStore</button>
+        </div>
+        <pre class="bg-base-300/50 rounded p-2 text-xs whitespace-pre-wrap min-h-[5rem]" x-text="listOut"></pre>
+      </div>
+    </section>
+
+    <!-- error handling -->
+    <section>
+      <h2 class="font-bold mb-1">Error: single-segment paths are rejected</h2>
+      <p class="opacity-60 text-xs mb-2">
+        Each page gets its own database via the namespace prefix. A bare key throws so nothing
+        accidentally lands in a shared store.
+      </p>
+      <div class="bg-base-200/40 rounded p-4 space-y-2">
+        <button class="btn btn-sm" @click="badPath()">save('oops', 1)</button>
+        <pre class="bg-base-300/50 rounded p-2 text-xs whitespace-pre-wrap" x-text="errOut"></pre>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+function demo() { return {
+  parseInput: 'demo-persistence.scratch.payload',
+  parseOut: '(click Parse)',
+  rtOut: '(no value yet)',
+  listOut: '(seed first)',
+  errOut: '(click the button)',
+
+  init() {
+    this.doParse();
+  },
+
+  doParse() {
+    try {
+      this.parseOut = JSON.stringify(window.persistence.parsePath(this.parseInput), null, 2);
+    } catch (e) {
+      this.parseOut = 'Error: ' + e.message;
+    }
+  },
+
+  async saveSample() {
+    const sample = {
+      label:     'mixed-type sample',
+      savedAt:   new Date(),
+      bytes:     new Uint8Array([1, 2, 3, 4, 5]),
+      tags:      new Map([['a', 1], ['b', 2]]),
+      nested:    { deep: { value: 42 } }
+    };
+    await window.persistence.save('demo-persistence.scratch.payload', sample);
+    this.rtOut = 'saved:\n' + this.peek(sample);
+  },
+
+  async loadSample() {
+    const v = await window.persistence.load('demo-persistence.scratch.payload');
+    if (v === undefined) { this.rtOut = '(empty — save first)'; return; }
+    this.rtOut = 'loaded:\n' + this.peek(v);
+  },
+
+  async removeSample() {
+    await window.persistence.remove('demo-persistence.scratch.payload');
+    this.rtOut = '(removed)';
+  },
+
+  async seed() {
+    const seeds = ['alpha', 'beta', 'gamma', 'delta', 'epsilon'];
+    for (const k of seeds) {
+      await window.persistence.save(`demo-persistence.bag.${k}`, { name: k, ts: Date.now() });
+    }
+    this.listOut = `seeded ${seeds.length} keys`;
+  },
+
+  async refreshList() {
+    const keys = await window.persistence.list('demo-persistence.bag.x');
+    this.listOut = keys.length ? keys.join('\n') : '(empty)';
+  },
+
+  async dumpEntries() {
+    const es = await window.persistence.entries('demo-persistence.bag.x');
+    this.listOut = es.map(([k, v]) => `${k}  →  ${JSON.stringify(v)}`).join('\n') || '(empty)';
+  },
+
+  async wipe() {
+    await window.persistence.clearStore('demo-persistence.bag.x');
+    this.listOut = '(cleared)';
+  },
+
+  async badPath() {
+    try {
+      await window.persistence.save('oops', 1);
+      this.errOut = '(no error — bug?)';
+    } catch (e) {
+      this.errOut = 'Caught: ' + e.message;
+    }
+  },
+
+  peek(v) {
+    return Object.entries(v).map(([k, val]) => {
+      const t = val?.constructor?.name || typeof val;
+      let display;
+      if (val instanceof Uint8Array) display = `[${Array.from(val).join(', ')}]`;
+      else if (val instanceof Date)  display = val.toISOString();
+      else if (val instanceof Map)   display = `Map(${[...val.entries()].map(([a,b])=>`${a}→${b}`).join(', ')})`;
+      else                           display = JSON.stringify(val);
+      return `  ${k}: <${t}> ${display}`;
+    }).join('\n');
+  }
+}}
+</script>
+</body>
+</html>
