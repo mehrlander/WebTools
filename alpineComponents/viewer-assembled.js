@@ -26,7 +26,7 @@ document.addEventListener('alpine:init', function() {
                 </ul>
               </details>
               <button @click="$clip(content)" class="btn btn-sm btn-square btn-ghost hover:text-primary"><i class="ph ph-copy text-lg"></i></button>
-              <button @click="openUrls()" class="btn btn-sm btn-square btn-ghost hover:text-primary"><i class="ph ph-link text-lg"></i></button>
+              <!--slot-->
             </div>
           </div>
           <div x-show="file" class="h-[calc(100vh-230px)] border border-base-300 rounded-lg bg-base-100 overflow-hidden relative">
@@ -35,28 +35,6 @@ document.addEventListener('alpine:init', function() {
               <span class="loading loading-spinner loading-md"></span>
             </div>
           </div>
-          <dialog class="modal viewer-urls" onclick="if(event.target===this)this.close()">
-            <div class="modal-box shadow-none border border-base-300 bg-base-100 p-4 max-w-lg">
-              <div class="mb-3 px-1 font-mono text-sm font-bold truncate" x-text="file.split('/').pop()"></div>
-              <div class="flex flex-col gap-1.5">
-                <template x-for="url in fileUrls">
-                  <div class="flex items-center bg-base-200 rounded-lg overflow-hidden">
-                    <a :href="url.u" target="_blank" class="flex-1 flex items-center gap-2.5 px-3 py-2 min-w-0 hover:bg-base-300">
-                      <i class="ph shrink-0 text-sm" :class="url.i"></i>
-                      <div class="flex flex-col min-w-0">
-                        <span class="text-xs font-semibold leading-tight" x-text="url.l"></span>
-                        <span class="text-[10px] font-mono opacity-50 truncate leading-tight mt-0.5" x-text="url.u.replace('https://','')"></span>
-                      </div>
-                    </a>
-                    <button class="px-3 py-2 border-l border-base-300 hover:bg-base-300" @click="$clip(url.u)">
-                      <i class="ph ph-copy text-sm opacity-40"></i>
-                    </button>
-                  </div>
-                </template>
-              </div>
-              <div class="modal-action mt-3"><button class="btn btn-ghost btn-sm text-xs" onclick="this.closest('dialog').close()">Done</button></div>
-            </div>
-          </dialog>
         </div>`,
 
       file: '',
@@ -68,7 +46,8 @@ document.addEventListener('alpine:init', function() {
 
       init() {
         this.$root.__viewer = this;
-        this.$el.innerHTML = this.template;
+        const slot = this.$el.innerHTML;
+        this.$el.innerHTML = this.template.replace('<!--slot-->', slot);
         this.$nextTick(() => Alpine.initTree(this.$el));
         this.$watch(
           () => Alpine.store('browser').activeFile,
@@ -94,15 +73,6 @@ document.addEventListener('alpine:init', function() {
         const mod = window.ViewRegistry.modules.find(m => m.id === this.mode) || window.ViewRegistry.modules[0];
         return mod.render(this.fileContext);
       },
-      get fileUrls() {
-        const r = this.repo;
-        if (!r || !this.file) return [];
-        return [
-          { l: 'GitHub', i: 'ph-github-logo', u: 'https://github.com/' + r + '/blob/main/' + this.file },
-          { l: 'Raw',    i: 'ph-file-text',   u: 'https://raw.githubusercontent.com/' + r + '/main/' + this.file },
-          { l: 'CDN',    i: 'ph-cloud-arrow-down', u: 'https://cdn.jsdelivr.net/gh/' + r + '/' + this.file }
-        ];
-      },
 
       async show(file, content) {
         this.file = file;
@@ -123,11 +93,6 @@ document.addEventListener('alpine:init', function() {
           if (mod.after) mod.after(this.fileContext);
           this.viewLoading = false;
         });
-      },
-
-      openUrls() {
-        const el = this.$root.querySelector('dialog.viewer-urls');
-        if (el) el.showModal();
       }
     };
   });
