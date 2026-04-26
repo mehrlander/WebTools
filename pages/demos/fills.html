@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="emerald">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>fills demo</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script src="https://cdn.jsdelivr.net/gh/mehrlander/web-tools/kits/fills.js"></script>
+<script defer src="https://unpkg.com/alpinejs/dist/cdn.min.js"></script>
+</head>
+<body class="bg-base-100 text-base-content min-h-screen font-mono text-sm">
+
+<div class="max-w-3xl mx-auto px-4 py-8">
+
+  <div class="flex items-baseline justify-between mb-1">
+    <h1 class="text-2xl font-bold tracking-tight">fills</h1>
+    <a href="../demos.html" class="text-xs opacity-50 hover:opacity-100 flex items-center gap-1">
+      <i class="ph ph-arrow-left"></i> demos
+    </a>
+  </div>
+  <p class="opacity-60 text-xs mb-6">
+    Pure HTML template helpers. Each block below shows one helper, its source
+    expression, and the rendered result. From <code class="text-xs">window.fills</code>
+    (<a href="https://github.com/mehrlander/web-tools/blob/main/kits/fills.js" class="link link-hover">source</a>).
+  </p>
+
+  <div x-data="demo()" x-init="render()" class="space-y-8">
+
+    <!-- tip -->
+    <section>
+      <h2 class="font-bold mb-1">tip(mods, trigger, content)</h2>
+      <p class="opacity-60 text-xs mb-2">daisyUI tooltip with rich HTML body. <code>mods</code> takes a position
+      (<code>top|bottom|left|right</code>) and any text mods (<code>xs|sm|bold|...</code>).</p>
+      <pre class="bg-base-200 rounded p-2 text-xs whitespace-pre-wrap mb-2"><code x-text="snippets.tip"></code></pre>
+      <div class="bg-base-200/40 rounded p-4 flex justify-center" x-html="rendered.tip"></div>
+    </section>
+
+    <!-- lines -->
+    <section>
+      <h2 class="font-bold mb-1">lines(mods, arr)</h2>
+      <p class="opacity-60 text-xs mb-2">Stacked column. <code>mods</code> takes a gap (<code>gap-0..4</code>) and text mods.</p>
+      <pre class="bg-base-200 rounded p-2 text-xs whitespace-pre-wrap mb-2"><code x-text="snippets.lines"></code></pre>
+      <div class="bg-base-200/40 rounded p-4" x-html="rendered.lines"></div>
+    </section>
+
+    <!-- btn -->
+    <section>
+      <h2 class="font-bold mb-1">btn(mods, label, click, iconClasses?, extraClasses?)</h2>
+      <p class="opacity-60 text-xs mb-2">daisyUI button. <code>mods</code> carries size + variant
+      (<code>xs|sm</code>, <code>primary|ghost|...</code>). <code>iconClasses</code> is a phosphor class.</p>
+      <pre class="bg-base-200 rounded p-2 text-xs whitespace-pre-wrap mb-2"><code x-text="snippets.btn"></code></pre>
+      <div class="bg-base-200/40 rounded p-4 flex gap-2 flex-wrap" x-html="rendered.btn"></div>
+      <p class="opacity-60 text-xs mt-1">Click count: <span x-text="clicks" class="font-bold"></span></p>
+    </section>
+
+    <!-- toolbar -->
+    <section>
+      <h2 class="font-bold mb-1">toolbar(mods, ...items)</h2>
+      <p class="opacity-60 text-xs mb-2">Horizontal flex wrapper. Items are HTML strings; usually nested fills.</p>
+      <pre class="bg-base-200 rounded p-2 text-xs whitespace-pre-wrap mb-2"><code x-text="snippets.toolbar"></code></pre>
+      <div class="bg-base-200/40 rounded p-4" x-html="rendered.toolbar"></div>
+    </section>
+
+    <!-- modal -->
+    <section>
+      <h2 class="font-bold mb-1">modal(inner)</h2>
+      <p class="opacity-60 text-xs mb-2">Full-screen daisyUI dialog. Open via the dialog's <code>showModal()</code>.</p>
+      <pre class="bg-base-200 rounded p-2 text-xs whitespace-pre-wrap mb-2"><code x-text="snippets.modal"></code></pre>
+      <div class="bg-base-200/40 rounded p-4">
+        <button class="btn btn-sm btn-primary" @click="$refs.modalSlot.querySelector('dialog').showModal()">
+          Open modal
+        </button>
+        <div x-ref="modalSlot" x-html="rendered.modal"></div>
+      </div>
+    </section>
+
+    <!-- saveIndicator -->
+    <section>
+      <h2 class="font-bold mb-1">saveIndicator()</h2>
+      <p class="opacity-60 text-xs mb-2">Spinner shown while <code>saving</code> is truthy in the surrounding x-data.
+      Toggle below to fake a save.</p>
+      <pre class="bg-base-200 rounded p-2 text-xs whitespace-pre-wrap mb-2"><code x-text="snippets.saveIndicator"></code></pre>
+      <div class="bg-base-200/40 rounded p-4 flex items-center gap-3">
+        <button class="btn btn-xs" @click="fakeSave()">Fake save (1s)</button>
+        <span x-html="rendered.saveIndicator"></span>
+        <span class="opacity-60 text-xs" x-text="saving ? 'saving…' : 'idle'"></span>
+      </div>
+    </section>
+
+    <!-- pathInput -->
+    <section>
+      <h2 class="font-bold mb-1">pathInput()</h2>
+      <p class="opacity-60 text-xs mb-2">Edits a <code>_path</code> field; commits to <code>path</code> on blur/Enter.
+      Designed to pair with <code>kits/persistence.js</code> (next demo). Here it just round-trips strings.</p>
+      <pre class="bg-base-200 rounded p-2 text-xs whitespace-pre-wrap mb-2"><code x-text="snippets.pathInput"></code></pre>
+      <div class="bg-base-200/40 rounded p-4 flex items-center gap-3 justify-end" x-html="rendered.pathInput"></div>
+      <p class="opacity-60 text-xs mt-1">Committed path: <code class="font-bold" x-text="path"></code></p>
+    </section>
+
+  </div>
+</div>
+
+<script>
+function demo() { return {
+  clicks: 0,
+  saving: false,
+  _path: 'demo.fills.example',
+  path:  'demo.fills.example',
+  snippets: {},
+  rendered: {},
+
+  render() {
+    const f = window.fills;
+
+    this.snippets.tip = `tip(['top','xs'],
+  '<button class="btn btn-xs">Hover me</button>',
+  '<strong>Hover content</strong><div>Plain HTML body</div>')`;
+    this.rendered.tip = f.tip(['top','xs'],
+      '<button class="btn btn-xs">Hover me</button>',
+      '<strong>Hover content</strong><div class="opacity-60">Plain HTML body</div>');
+
+    this.snippets.lines = `lines(['gap-1','xs','muted'],
+  ['First line', 'Second line', 'Third line'])`;
+    this.rendered.lines = f.lines(['gap-1','xs','muted'],
+      ['First line', 'Second line', 'Third line']);
+
+    this.snippets.btn = `btn(['xs','primary'],   'Save',  'clicks++', 'ph-floppy-disk')
+btn(['sm','ghost'],     'Discard', 'clicks++', 'ph-trash')
+btn(['xs'],             '',        'clicks++', 'ph-copy')`;
+    this.rendered.btn =
+      f.btn(['xs','primary'], 'Save',    'clicks++', 'ph-floppy-disk') +
+      f.btn(['sm','ghost'],   'Discard', 'clicks++', 'ph-trash') +
+      f.btn(['xs'],           '',        'clicks++', 'ph-copy');
+
+    this.snippets.toolbar = `toolbar([],
+  '<b>Title</b>',
+  btn(['xs','primary'], 'Action', 'clicks++'))`;
+    this.rendered.toolbar = f.toolbar([],
+      '<b>Title</b>',
+      f.btn(['xs','primary'], 'Action', 'clicks++'));
+
+    this.snippets.modal = `modal(\`
+  <div class="p-6">
+    <h3 class="font-bold text-lg">Modal contents</h3>
+    <p class="py-4">Anything you want.</p>
+  </div>\`)`;
+    this.rendered.modal = f.modal(`
+      <div class="p-6">
+        <h3 class="font-bold text-lg">Modal contents</h3>
+        <p class="py-4 opacity-70">Click outside or hit Esc to close.</p>
+      </div>`);
+
+    this.snippets.saveIndicator = `saveIndicator()
+// renders <span x-show="saving" class="loading loading-spinner loading-xs"></span>`;
+    this.rendered.saveIndicator = f.saveIndicator();
+
+    this.snippets.pathInput = `pathInput()
+// x-models against _path; commits to path on blur/Enter`;
+    this.rendered.pathInput = f.pathInput();
+  },
+
+  fakeSave() {
+    this.saving = true;
+    setTimeout(() => { this.saving = false; }, 1000);
+  }
+}}
+</script>
+</body>
+</html>

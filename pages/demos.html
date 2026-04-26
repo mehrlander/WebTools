@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="night">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>kits demos</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script defer src="https://unpkg.com/alpinejs/dist/cdn.min.js"></script>
+</head>
+<body class="bg-base-100 text-base-content min-h-screen">
+
+<div class="max-w-2xl mx-auto px-4 py-10">
+
+  <div class="flex items-baseline justify-between mb-1">
+    <h1 class="text-2xl font-bold tracking-tight">kits / demos</h1>
+    <a href="index.html" class="text-xs text-base-content/40 hover:text-base-content/70 flex items-center gap-1 transition-colors">
+      <i class="ph ph-arrow-left"></i> web-tools
+    </a>
+  </div>
+  <p class="text-base-content/50 text-sm mb-8">
+    Small pages that exercise one <code class="text-xs">kits/</code> module each.
+    Built so the new salvaged Alp pieces can be tried out without touching
+    <a href="compression-helper.html" class="link link-hover">compression-helper.html</a>.
+  </p>
+
+  <ul class="divide-y divide-base-200">
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-paint-brush-broad text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="demos/fills.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">fills</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">daisyUI/Tailwind template-string helpers (tip, lines, btn, toolbar, modal).</span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/kits/fills.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+  </ul>
+
+  <p class="text-base-content/30 text-xs mt-8">
+    Coming next: <code>persistence</code> (idb-keyval), <code>messaging</code> (path pub/sub),
+    <code>component</code> (thin Alpine + custom-element wrapper).
+  </p>
+
+</div>
+</body>
+</html>
