@@ -137,11 +137,47 @@
     </div>
 
     <div class="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-3">
-      <!-- Estate-context sidebar: only the REPO-SOURCED app views (appView:true,
-           e.g. News) live here now. The app's own views (Repos / Open /
-           Surfaces / Stage / Public) moved to the header nav, since that set is
-           fixed and app-owned; these are the ones repos opt into, so they stay
-           in the sidebar. Token-gated, so the list is empty when unauthed. -->
+      <!-- Estate-context sidebar. Two repo-sourced sections, both token-gated
+           (empty and hidden when unauthed): the Repos index on top, then the
+           app views. The app's own views (Open / Repos / Surfaces / Stage /
+           Tools / Map) live in the header nav, a fixed set the app owns. These
+           two are what repos opt into, so they sit here. -->
+
+      <!-- Repos: a compact index of the estate members (repos declaring
+           estate:true in their OWN config), grouped and ordered like the Repos
+           grid. The header nav's Repos opens the full grid; this is the one-tap
+           jump list beside it, so the sidebar carries the repos even when no app
+           view does. The icon on the right opens that grid. -->
+      <div class="flex flex-col gap-0.5" x-show="estateCtx && sidebarRepos.length">
+        <div class="flex items-center gap-1.5 px-2 pb-0.5">
+          <span class="text-base font-mono uppercase tracking-widest text-base-content/40">Repos</span>
+          <div class="grow"></div>
+          <button @click="goEstate()" title="Open the Repos dashboard"
+                  class="text-base-content/30 hover:text-primary transition-colors">
+            <i class="ph ph-squares-four text-base leading-none"></i></button>
+        </div>
+        <template x-for="grp in sidebarRepoGroups" :key="grp.group">
+          <div class="flex flex-col gap-0.5">
+            <div x-show="grp.group"
+                 class="flex items-center gap-1.5 px-2 pt-1 text-sm font-mono uppercase tracking-wider text-base-content/30">
+              <i class="ph ph-folder text-sm"></i><span x-text="grp.group"></span>
+            </div>
+            <template x-for="r in grp.repos" :key="r.repo">
+              <button @click="openPinned(r.repo)" :title="r.repo"
+                      class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-base hover:bg-base-200 transition-colors"
+                      :class="$store.browser.repo===r.repo ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
+                <i class="ph text-base shrink-0" :class="r.icon"></i><span class="truncate" x-text="r.short"></span>
+              </button>
+            </template>
+          </div>
+        </template>
+      </div>
+
+      <div class="border-t border-base-200"
+           x-show="estateCtx && sidebarRepos.length && sidebarAppViews.length"></div>
+
+      <!-- App views: pages a repo promotes to an estate-level entry (appView:true,
+           e.g. News), rendered live in the main area through toss-render. -->
       <div class="flex flex-col gap-0.5" x-show="estateCtx && sidebarAppViews.length">
         <div class="text-base font-mono uppercase tracking-widest text-base-content/40 px-2 pb-0.5">App views</div>
         <template x-for="v in sidebarAppViews" :key="v.key">
@@ -622,6 +658,11 @@ function app(){ return {
   // rendered live through toss-render #gh=.
   appViews: [],     // resolved [{repo, path, label, icon, order, key}]
   appView: null,    // the selected app view when view==='app'
+  // Estate members for the sidebar Repos index: every repo declaring
+  // estate:true in its own config, grouped/ordered like the Repos grid. Read
+  // from the same config cache as appViews (loadEstateSidebar), so it is
+  // token-gated and empty without a token.
+  sidebarRepos: [], // resolved [{repo, short, icon, group, order}]
   configRefreshing: false,  // the estate refresh button is mid-crawl
   activityRefreshing: false, // the activity crawl (heavier: per-repo survey) is running
   // Recently-committed files for the current repo@ref, shown in the sidebar.
@@ -667,7 +708,7 @@ function app(){ return {
     // quickLink flag, so rebuild the cache and reload the row.
     this.quickLinks = [...this.PUBLIC_QUICK_LINKS];
     this.$watch(() => this._authState, (s) => {
-      if (s === 'auth') { this.loadQuickLinks().then(() => this.refreshConfigCache()).then(() => this.refreshActivityCache()); this.loadAppViews(); this.processMailbox(); }
+      if (s === 'auth') { this.loadQuickLinks().then(() => this.refreshConfigCache()).then(() => this.refreshActivityCache()); this.loadEstateSidebar(); this.processMailbox(); }
     });
     document.addEventListener('web-tools:config-saved', async () => {
       // Rebuild the cache, THEN fan out the reload. refreshConfigs awaits the
@@ -679,7 +720,7 @@ function app(){ return {
       await this.refreshConfigs();
     });
     this.loadQuickLinks().then(() => this.refreshConfigCache());
-    this.loadAppViews();
+    this.loadEstateSidebar();
     this.processMailbox();
 
     // Folder navigation in the explorer keeps the ?path deep link honest.
@@ -828,28 +869,43 @@ function app(){ return {
   // sidebar shield dialog (repoModal, lib/alpineComponents/repo.js).
   pinnedIcon(p){ return p.icon; },
 
-  // Collect estate-level app views across every repo's config, the same read
-  // path the quick-link row and the estate use: the config cache in the registry
-  // repo (state/configs.json). A `pages` entry flagged appView:true, in any
-  // repo, is promoted; viewLabel/icon come from the flag, order from it too.
-  // Token-gated: without a token there is no cache read, so the list is empty and
-  // no private page is named, matching Surfaces and the private estate.
-  async loadAppViews(){
-    if (!this.hasToken()) { this.appViews = []; return; }
+  // Build the estate-context sidebar from one read of the registry's config
+  // cache (state/configs.json), the same source the quick-link row and the
+  // estate grid use. Two lists come out of the one cache pass:
+  //   sidebarRepos — every repo opting into the estate (estate:true), a compact
+  //                  index beside the header nav's Repos grid, carrying each
+  //                  repo's own icon/group/order so it groups like that grid.
+  //   appViews     — a `pages` entry flagged appView:true in any repo, promoted
+  //                  to an estate-level view (viewLabel/icon/order from the flag).
+  // Token-gated: without a token there is no cache read, so both stay empty and
+  // no private repo or page is named, matching Surfaces and the private estate.
+  async loadEstateSidebar(){
+    if (!this.hasToken()) { this.appViews = []; this.sidebarRepos = []; return; }
     try {
       const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
-      const out = [];
+      const views = [], repos = [];
       try {
         const cache = JSON.parse((await reg.get('state/configs.json')).text);
         for (const [repo, e] of Object.entries(cache.repos || {})) {
-          const pages = e?.config?.pages;
+          const cfg = e?.config;
+          if (!cfg) continue;
+          if (cfg.estate === true) {
+            repos.push({
+              repo,
+              short: repo.split('/')[1] || repo,
+              icon: cfg.icon || 'ph-bookmark-simple',
+              group: cfg.group || '',
+              order: Number.isFinite(cfg.order) ? cfg.order : 0,
+            });
+          }
+          const pages = cfg.pages;
           if (!Array.isArray(pages)) continue;
           for (const pg of pages) {
             if (pg && pg.appView === true && pg.path) {
               // The render target may be a cross-repo page (owner/repo[@ref]:path):
               // home promotes the news view whose renderer lives in web-tools.
               const t = resolveCatalogPath(pg.path, repo, '');
-              out.push({
+              views.push({
                 repo: t.repo, ref: t.ref, path: t.path,
                 label: pg.viewLabel || pg.title || t.path.split('/').pop(),
                 icon: pg.icon || 'ph-app-window',
@@ -860,9 +916,11 @@ function app(){ return {
           }
         }
       } catch {}
-      out.sort((a, b) => (a.order - b.order) || a.label.localeCompare(b.label));
-      this.appViews = out;
-    } catch { this.appViews = []; }
+      views.sort((a, b) => (a.order - b.order) || a.label.localeCompare(b.label));
+      repos.sort((a, b) => a.group.localeCompare(b.group) || (a.order - b.order) || a.repo.localeCompare(b.repo));
+      this.appViews = views;
+      this.sidebarRepos = repos;
+    } catch { this.appViews = []; this.sidebarRepos = []; }
   },
 
   // Manual config-cache rebuild for the estate refresh button. The app views,
@@ -878,7 +936,7 @@ function app(){ return {
     this.configRefreshing = true;
     try {
       await this.refreshConfigCache(true);
-      await Promise.all([this.loadQuickLinks(), this.loadAppViews()]);
+      await Promise.all([this.loadQuickLinks(), this.loadEstateSidebar()]);
       document.dispatchEvent(new CustomEvent('web-tools:configs-refreshed'));
     } finally { this.configRefreshing = false; }
   },
@@ -1334,11 +1392,23 @@ function app(){ return {
   // header reads "Repositories".
   get estateCtx(){ return this.isEstate || this.view === 'stage' || this.view === 'map' || this.view === 'tools' || this.view === 'app' || this.view === 'public'; },
   // Whether the pinned desktop sidebar has anything to show: always in a repo
-  // (its views / pins / recents), but in the estate only when repo-sourced app
-  // views (News) exist, since the app's own views now live in the header nav.
-  // When false, the dashboard takes the full width (the mobile drawer still
-  // opens via the hamburger regardless).
-  get showSidebar(){ return !this.estateCtx || (this.sidebarAppViews && this.sidebarAppViews.length > 0); },
+  // (its views / pins / recents), and in the estate whenever it has repo-sourced
+  // content — the Repos index or the app views (News). Both are token-gated, so
+  // a signed-out estate has neither and the dashboard takes the full width (the
+  // mobile drawer still opens via the hamburger regardless).
+  get showSidebar(){ return !this.estateCtx || this.sidebarRepos.length > 0 || this.sidebarAppViews.length > 0; },
+  // The sidebar Repos index, folded into its groups (core / data / tools …) in
+  // the sorted order sidebarRepos already carries, so each group's rows stay
+  // contiguous under one label, matching the Repos grid. Ungrouped repos ride an
+  // empty-string group that renders without a label.
+  get sidebarRepoGroups(){
+    const order = [], byGroup = new Map();
+    for (const r of this.sidebarRepos){
+      if (!byGroup.has(r.group)){ byGroup.set(r.group, []); order.push(r.group); }
+      byGroup.get(r.group).push(r);
+    }
+    return order.map(g => ({ group: g, repos: byGroup.get(g) }));
+  },
   goHome(){ this.goDashboard(); },
   // The dashboard front door: Open for a signed-in viewer (the richer
   // all-repo read), Repos for a signed-out one (Open is token-gated, so it
@@ -1831,11 +1901,14 @@ function overview(){ return {
   icon returns to the DASHBOARD (goDashboard: Open if signed in, else Repos)
   and doubles as nothing else; the mobile drawer toggle is its own hamburger.
   There is no repo-list dropdown and no quick-links row: REPO SELECTION HAPPENS
-  ON THE REPOS DASHBOARD (tap a card), which keeps the header a fixed set rather
-  than one repos opt into. The SIDEBAR holds only what is contextual: in a repo
-  its views + pins + recents; in the estate only the repo-sourced app views
-  (appView:true, e.g. News). It hides on desktop when the estate has no app views
-  (showSidebar), so the dashboard runs full-width, and is a drawer on mobile.
+  ON THE REPOS DASHBOARD (tap a card) or from the sidebar Repos index, which
+  keeps the header a fixed set rather than one repos opt into. The SIDEBAR holds
+  only what is contextual: in a repo its views + pins + recents; in the estate a
+  compact Repos index (the estate members, grouped like the grid; its header icon
+  opens the full grid) and any repo-sourced app views (appView:true, e.g. News),
+  both token-gated. It hides on desktop only when the estate has neither
+  (showSidebar), so a signed-out dashboard runs full-width, and is a drawer on
+  mobile.
   app.landingKind(repo) is the one landing decision point within a repo.
 
   THE ESTATE: the all-repo context (lib/alpineComponents/estate.js), and the
@@ -1920,12 +1993,18 @@ function overview(){ return {
       "The estate" and web-tools-private/DESIGN.md.
     App views (?view=app&appRepo&appPath): pages any repo promotes to their own
       estate-level entry with appView:true on a `pages` catalog entry, collected
-      across every repo's config through the config cache (loadAppViews, the
-      quickLink pattern one level up). Each is a sidebar peer of Repos/Surfaces/
-      Stage rather than the estate grid, rendered live in the main area via
-      toss-render #gh=. The link stands alone (like Surfaces), stamping the
-      promoted page's repo and path independent of the open repo.
-  No token: the public default card only, and no surfaces, activity, or app views.
+      across every repo's config through the config cache (loadEstateSidebar,
+      which the sidebar Repos index shares, the quickLink pattern one level up).
+      Each is a sidebar peer of Repos/Surfaces/Stage rather than the estate grid,
+      rendered live in the main area via toss-render #gh=. The link stands alone
+      (like Surfaces), stamping the promoted page's repo and path independent of
+      the open repo.
+  The estate SIDEBAR also carries a Repos index: the estate members (estate:true),
+    grouped/ordered like the grid, each row opening that repo's landing
+    (openPinned); the section's header icon opens the full Repos grid. Same cache
+    read as the app views (loadEstateSidebar), so it is token-gated too.
+  No token: the public default card only, and no surfaces, activity, app views, or
+    sidebar Repos index.
 
   GITHUB JUMP-OVERS: show-repo is a wrapper over GitHub, not a wall — every
   view keeps a one-tap route to the GitHub presentation of what it is showing.
