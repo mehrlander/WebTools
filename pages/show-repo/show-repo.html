@@ -187,11 +187,28 @@
               <i class="ph ph-folder text-sm"></i><span x-text="grp.group"></span>
             </div>
             <template x-for="r in grp.repos" :key="r.repo">
-              <button @click="openPinned(r.repo)" :title="r.repo"
-                      class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-base hover:bg-base-200 transition-colors"
-                      :class="$store.browser.repo===r.repo ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
-                <i class="ph text-base shrink-0" :class="r.icon"></i><span class="truncate" x-text="r.short"></span>
-              </button>
+              <!-- The name opens the repo; the icons on the right act on it in
+                   place (a visibility marker, its config dialog, GitHub), none
+                   navigating. Same cluster the estate card carries. -->
+              <div class="flex items-center gap-1 pl-2 pr-1.5 py-1.5 rounded-lg hover:bg-base-200 transition-colors"
+                   :class="$store.browser.repo===r.repo && 'bg-primary/10'">
+                <button @click="openPinned(r.repo)" :title="r.repo"
+                        class="flex items-center gap-2 min-w-0 flex-1 text-left transition-colors"
+                        :class="$store.browser.repo===r.repo ? 'text-primary font-semibold' : 'text-base-content/80'">
+                  <i class="ph text-base shrink-0" :class="r.icon"></i><span class="truncate" x-text="r.short"></span>
+                </button>
+                <span class="flex items-center gap-0.5 shrink-0">
+                  <span x-show="r.priv !== null" class="text-base-content/30"
+                        :title="r.priv ? 'private' : 'public'">
+                    <i class="ph text-base leading-none" :class="r.priv ? 'ph-lock' : 'ph-globe'"></i></span>
+                  <button @click.stop="openRepoDialog(r.repo)" title="Config"
+                          class="text-base-content/30 hover:text-primary transition-colors">
+                    <i class="ph ph-gear-six text-base leading-none"></i></button>
+                  <a :href="'https://github.com/' + r.repo" target="_blank" @click.stop :title="r.repo"
+                     class="text-base-content/30 hover:text-base-content/70 transition-colors">
+                    <i class="ph ph-github-logo text-base leading-none"></i></a>
+                </span>
+              </div>
             </template>
           </div>
         </template>
@@ -944,6 +961,9 @@ function app(){ return {
               icon: cfg.icon || 'ph-bookmark-simple',
               group: cfg.group || '',
               order: Number.isFinite(cfg.order) ? cfg.order : 0,
+              // Filled by enrichSidebarPrivacy (the cache has no privacy); the
+              // key is present so the later set is reactive. null === unknown.
+              priv: null,
             });
           }
           const pages = cfg.pages;
@@ -968,7 +988,21 @@ function app(){ return {
       repos.sort((a, b) => a.group.localeCompare(b.group) || (a.order - b.order) || a.repo.localeCompare(b.repo));
       this.appViews = views;
       this.sidebarRepos = repos;
+      this.enrichSidebarPrivacy();   // independent; the list renders without it
     } catch { this.appViews = []; this.sidebarRepos = []; }
+  },
+
+  // The config cache carries no visibility, so the sidebar Repos rows get their
+  // public/private marker from the account repos list, one call matched by name.
+  // Mutates priv on the existing objects (the key is present, so it is reactive);
+  // an entry the list does not cover stays null (unknown) and shows no marker.
+  async enrichSidebarPrivacy(){
+    if (!this.hasToken() || !this.sidebarRepos.length) return;
+    try {
+      const acct = await new window.GH({ token: window.TOKEN }).repos();
+      const byName = new Map(acct.map(r => [r.full_name, !!r.private]));
+      for (const r of this.sidebarRepos){ const p = byName.get(r.repo); if (p !== undefined) r.priv = p; }
+    } catch {}
   },
 
   // Manual config-cache rebuild for the estate refresh button. The app views,
@@ -1552,6 +1586,11 @@ function app(){ return {
   // reached from the sidebar Config entry, the top-bar and Pinned gears. The
   // header shield's dialog stays for auth and for configuring another repo.
   goConfig(){ this.configSeen = true; this.view = 'config'; this.drawer = false; this.syncUrl(); },
+  // Open the config dialog for ANY repo without navigating to it, the way the
+  // estate card's gear does. Used by the sidebar Repos index rows, whose config
+  // icon edits that repo in place rather than switching the open repo (the
+  // Config view is for the open repo).
+  openRepoDialog(repo){ document.getElementById('repo')?.__repo?.openDialog(repo, { tab: 'settings' }); },
   // Select an estate-level app view; the main area renders it live via
   // toss-render #gh= (appViewUrl).
   goAppView(v){ this.appView = v; this.view = 'app'; this.drawer = false; this.syncUrl(); },
@@ -2076,9 +2115,12 @@ function overview(){ return {
       (like Surfaces), stamping the promoted page's repo and path independent of
       the open repo.
   The estate SIDEBAR also carries a Repos index: the estate members (estate:true),
-    grouped/ordered like the grid, each row opening that repo's landing
-    (openPinned); the section's header icon opens the full Repos grid. Same cache
-    read as the app views (loadEstateSidebar), so it is token-gated too.
+    grouped/ordered like the grid. The row name opens that repo's landing
+    (openPinned); on the right each row carries the estate card's cluster acting
+    in place (a public/private marker, the config dialog via openRepoDialog, and
+    the GitHub jump), none navigating. The section's header icon opens the full
+    Repos grid. Same cache read as the app views (loadEstateSidebar), token-gated;
+    privacy for the marker is filled by enrichSidebarPrivacy (the cache has none).
   No token: the public default card only, and no surfaces, activity, app views, or
     sidebar Repos index.
 
