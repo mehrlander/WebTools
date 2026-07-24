@@ -120,16 +120,38 @@
 
   <aside class="fixed inset-y-0 left-0 w-72 max-w-[85vw] z-50 bg-base-100 border-r border-base-300 shadow-xl flex flex-col transition-transform duration-200 ease-out lg:static lg:z-auto lg:shadow-none lg:translate-x-0 lg:w-80 xl:w-[22rem] lg:shrink-0"
          :class="[drawer ? 'translate-x-0' : '-translate-x-full lg:translate-x-0', !showSidebar && 'lg:hidden']">
-    <!-- Sidebar top bar: the context label + GitHub jump, plus the mobile-only
-         drawer close button. The auth shield moved to the header (always
-         visible); repo selection moved to the Repos dashboard. -->
+    <!-- Sidebar top bar: the context label, then in a repo the repo action
+         cluster (the set the estate card carries): a public/private indicator
+         that toggles to the -private/public companion when one is on the estate,
+         the config/placement dialog, and the GitHub jump. Plus the mobile-only
+         drawer close button. The auth shield lives in the header. -->
     <div class="h-14 flex items-center gap-2 px-4 border-b border-base-300 shrink-0">
       <div class="flex items-center gap-1.5 min-w-0 flex-1">
         <span class="font-mono text-base truncate text-base-content/70"
               x-text="estateCtx ? 'Views' : ($store.browser.repo || 'Browse')"></span>
-        <a x-show="!estateCtx && $store.browser.repo" :href="repoGithubUrl" target="_blank"
-           class="shrink-0 text-base-content/40 hover:text-base-content/80 transition-colors"
-           title="Open on GitHub"><i class="ph ph-github-logo text-base leading-none"></i></a>
+        <template x-if="!estateCtx && $store.browser.repo">
+          <span class="flex items-center gap-1 shrink-0">
+            <!-- Visibility: a lock/globe marker. When the repo has a companion on
+                 the estate (foo ⇄ foo-private), it is a toggle that loads the
+                 companion; otherwise a static public/private indicator. -->
+            <button x-show="repoSibling" @click="openPinned(repoSibling)"
+                    class="text-base-content/40 hover:text-primary transition-colors"
+                    :title="'Switch to ' + repoSibling.split('/')[1] + ($store.browser.repoObj?.private ? ' (public companion)' : ' (private companion)')">
+              <i class="ph text-base leading-none" :class="$store.browser.repoObj?.private ? 'ph-lock' : 'ph-globe'"></i></button>
+            <span x-show="!repoSibling && $store.browser.repoObj"
+                  class="text-base-content/40"
+                  :title="$store.browser.repoObj?.private ? 'private' : 'public'">
+              <i class="ph text-base leading-none" :class="$store.browser.repoObj?.private ? 'ph-lock' : 'ph-globe'"></i></span>
+            <!-- Config: settings + raw .web-tools.json for this repo. -->
+            <button @click="openRepoConfig()" title="Repo settings and config"
+                    class="text-base-content/40 hover:text-primary transition-colors">
+              <i class="ph ph-gear-six text-base leading-none"></i></button>
+            <!-- GitHub jump; the tooltip names what it opens. -->
+            <a :href="repoGithubUrl" target="_blank" :title="repoGithubTip"
+               class="text-base-content/40 hover:text-base-content/80 transition-colors">
+              <i class="ph ph-github-logo text-base leading-none"></i></a>
+          </span>
+        </template>
       </div>
       <button @click="drawer=false" class="btn btn-square btn-ghost lg:hidden"><i class="ph ph-x text-lg"></i></button>
     </div>
@@ -1238,6 +1260,31 @@ function app(){ return {
     const ref = s.ref && s.ref !== s.defaultRef ? '/tree/' + s.ref : '';
     return 'https://github.com/' + s.repo + ref;
   },
+  // GitHub-jump tooltip that names its target rather than the obvious "on
+  // GitHub" (the icon already says that): the repo, plus the ref when off the
+  // default branch, since that is what the link actually opens.
+  get repoGithubTip(){
+    const s = Alpine.store('browser');
+    if (!s.repo) return '';
+    return s.repo + (s.ref && s.ref !== s.defaultRef ? ' @ ' + s.ref : '');
+  },
+  // The open repo's estate companion by the -private naming convention (foo ⇄
+  // foo-private), but only when that companion is itself on the estate, so the
+  // sidebar's visibility marker offers the same toggle the estate card does.
+  // Empty when there is no such pair (or no token, so sidebarRepos is empty).
+  get repoSibling(){
+    const repo = Alpine.store('browser').repo;
+    if (!repo) return '';
+    const m = repo.match(/^(.*)-private$/);
+    const sib = m ? m[1] : repo + '-private';
+    return this.sidebarRepos.some(r => r.repo === sib) ? sib : '';
+  },
+  // The sidebar config gear: the repo component's Settings/Config dialog for the
+  // open repo (placement fields plus the raw .web-tools.json), the same dialog
+  // the estate card's gear opens.
+  openRepoConfig(){
+    document.getElementById('repo')?.__repo?.openDialog(Alpine.store('browser').repo, { tab: 'settings' });
+  },
 
   // Pinned to the default branch, like the custom landing: the Files-view ref
   // picker does not re-point rendered surfaces.
@@ -2006,10 +2053,14 @@ function overview(){ return {
 
   GITHUB JUMP-OVERS: show-repo is a wrapper over GitHub, not a wall — every
   view keeps a one-tap route to the GitHub presentation of what it is showing.
-  The sidebar top bar links the open repo@ref (repoGithubUrl), the explorer's
-  breadcrumb links the current folder (ghFolderUrl), the viewer's actions link
-  the open file's blob, and every estate card and surface item carries its
-  github-logo link. When adding a view, add its jump-over.
+  The sidebar top bar carries the open repo's action cluster, the same set the
+  estate card shows: a visibility marker (a toggle to the -private/public
+  companion when repoSibling finds one on the estate, else a static lock/globe),
+  the config/placement dialog (openRepoConfig), and the GitHub jump for the open
+  repo@ref (repoGithubUrl, tooltip repoGithubTip). The explorer's breadcrumb
+  links the current folder (ghFolderUrl), the viewer's actions link the open
+  file's blob, and every estate card and surface item carries its github-logo
+  link. When adding a view, add its jump-over.
 
   Today: web-tools -> 'gallery' (its pages index); any repo declaring a `pages`
   catalog -> 'gallery' too (fed from that catalog, tiles live via toss-render);
