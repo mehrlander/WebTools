@@ -91,12 +91,10 @@
                   x-text="v.label"></button>
         </template>
       </nav>
-      <!-- In-repo context: owner/name + GitHub jump. The ref switcher left the
-           header (it fit poorly on mobile and blurred two different refs):
-           branch selection for file viewing lives in the Files view (explorer),
-           and rendering the app at a ref is the FAB's Render tab / a toss.
-           Renders only inside a repo; the estate context shows nothing here. -->
-      <div class="w-px h-6 bg-base-300 mx-0.5 hidden sm:block" x-show="$store.browser.repo && !estateCtx" x-cloak></div>
+      <!-- The repo component runs headless here: the repo/auth controller plus
+           the token dialog it hosts, no visible readout. The open repo is shown
+           at the top of the sidebar instead, so a header copy was redundant. The
+           auth shield (right) opens the dialog via __repo.openDialog(). -->
       <div id="repo" x-data="repo({ inline: true })" class="min-w-0"></div>
       <div class="grow"></div>
       <!-- Auth shield (token / config dialog): an app-level control, so it lives
