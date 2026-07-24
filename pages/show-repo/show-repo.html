@@ -127,10 +127,13 @@
          drawer close button. The auth shield lives in the header. -->
     <div class="h-14 flex items-center gap-2 px-4 border-b border-base-300 shrink-0">
       <div class="flex items-center gap-1.5 min-w-0 flex-1">
-        <span class="font-mono text-base truncate text-base-content/70"
+        <span class="font-mono text-base truncate text-base-content/70 min-w-0"
               x-text="estateCtx ? 'Views' : ($store.browser.repo || 'Browse')"></span>
+        <!-- The action cluster sits at the right edge of the bar, not up against
+             the name: a spacer pushes it over. -->
+        <div class="grow"></div>
         <template x-if="!estateCtx && $store.browser.repo">
-          <span class="flex items-center gap-1 shrink-0">
+          <span class="flex items-center gap-1.5 shrink-0">
             <!-- Visibility: a lock/globe marker. When the repo has a companion on
                  the estate (foo ⇄ foo-private), it is a toggle that loads the
                  companion; otherwise a static public/private indicator. -->
@@ -142,9 +145,10 @@
                   class="text-base-content/40"
                   :title="$store.browser.repoObj?.private ? 'private' : 'public'">
               <i class="ph text-base leading-none" :class="$store.browser.repoObj?.private ? 'ph-lock' : 'ph-globe'"></i></span>
-            <!-- Config: settings + raw .web-tools.json for this repo. -->
-            <button @click="openRepoConfig()" title="Repo settings and config"
-                    class="text-base-content/40 hover:text-primary transition-colors">
+            <!-- Config: opens the repo's Config view (the roomy editor). -->
+            <button @click="goConfig()" title="Repo config"
+                    class="text-base-content/40 hover:text-primary transition-colors"
+                    :class="view==='config' && 'text-primary'">
               <i class="ph ph-gear-six text-base leading-none"></i></button>
             <!-- GitHub jump; the tooltip names what it opens. -->
             <a :href="repoGithubUrl" target="_blank" :title="repoGithubTip"
@@ -244,14 +248,24 @@
                 :class="view==='branches' ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
           <i class="ph ph-git-branch text-base"></i><span>Branches</span>
         </button>
+        <button @click="goConfig()"
+                class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-base hover:bg-base-200 transition-colors"
+                :class="view==='config' ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
+          <i class="ph ph-gear-six text-base"></i><span>Config</span>
+        </button>
       </div>
 
       <div class="border-t border-base-200" x-show="!estateCtx"></div>
 
-      <!-- Pinned: folders and files the repo designates in .web-tools.json. -->
+      <!-- Pinned: folders and files the repo designates in .web-tools.json. The
+           header carries a config gear, since the pins are a config field. -->
       <div x-show="pins.length && !estateCtx" class="flex flex-col gap-0.5">
         <div class="text-base font-semibold text-base-content/50 px-2 pb-1 flex items-center gap-1.5">
-          <i class="ph ph-push-pin"></i>Pinned
+          <i class="ph ph-push-pin"></i><span>Pinned</span>
+          <div class="grow"></div>
+          <button @click="goConfig()" title="Edit pins in the repo config"
+                  class="text-base-content/30 hover:text-primary transition-colors">
+            <i class="ph ph-gear-six text-base leading-none"></i></button>
         </div>
         <template x-for="p in pins" :key="p">
           <button @click="openPin(p)"
@@ -536,6 +550,18 @@
       </div>
     </div>
 
+    <!-- Config: the open repo's .web-tools.json as a full view (a Settings form
+         and a raw JSON tab), the roomy counterpart to the header shield's config
+         dialog. Per-repo, so it sits with the repo views (after Branches).
+         Mounted lazily on first visit. -->
+    <div x-show="view==='config'" class="h-full overflow-y-auto">
+      <div class="mx-auto px-6 py-8 max-w-3xl">
+        <template x-if="configSeen">
+          <div x-data="config()"></div>
+        </template>
+      </div>
+    </div>
+
     <!-- Stage: the shared cross-repo fileset, grouped by source repo@ref, with
          send/save/mint actions and the concatenated bundle. Opening a staged
          file lands in the Files view's shared viewer. Compare lives here too:
@@ -629,7 +655,7 @@ function loadMarked(){
 // repo's views (landing, atlas) and its files. Which
 // landing a repo gets is one decision — landingKind(). ────────────────────────
 function app(){ return {
-  description: 'show-repo shell: per-repo views (landing, files, atlas, branches, stage) over the estate dashboard',
+  description: 'show-repo shell: per-repo views (landing, files, atlas, branches, config) over the estate dashboard',
   // FAB opt-in contract (the `actions` the FAB surfaces as page buttons).
   // When the main area is an iframe embed — a custom landing, an app view, or
   // the atlas — the one action is the way out of the embed: open the framed
@@ -649,11 +675,12 @@ function app(){ return {
     const href = new URL(src, location.href).href;
     return [{ label, icon: 'ph-arrow-square-out', run: () => { location.href = href; } }];
   },
-  view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'map' | 'tools' | 'landing' | 'pages' | 'atlas' | 'files' | 'stage' | 'branches' | 'app' | 'public'
+  view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'map' | 'tools' | 'landing' | 'pages' | 'atlas' | 'files' | 'stage' | 'branches' | 'config' | 'app' | 'public'
   drawer: false,          // mobile sidebar (pinned on desktop, ignores this)
   atlasSeen: false,       // mount the atlas iframe lazily, on first visit
   estateSeen: false,      // mount the estate component lazily, on first visit
   branchesSeen: false,    // mount the branches component lazily, on first visit
+  configSeen: false,      // mount the config-view component lazily, on first visit
   mapSeen: false,         // mount the map component lazily, on first visit
   toolsSeen: false,       // mount the tools component lazily, on first visit
   publicSeen: false,      // mount the public-browse component lazily, on first visit
@@ -773,6 +800,7 @@ function app(){ return {
     else if (url && url.view === 'stage') this.goStage();
     else if (url && url.view === 'public') this.goPublicBrowse();
     else if (url && url.view === 'branches') this.goBranches();
+    else if (url && url.view === 'config') this.goConfig();
     else if (url && url.view === 'files') { this.goFiles(); if (url.path) await this.openFolder(url.path); }
     const staged = window.StageLink ? window.StageLink.read(location).items : [];
     if (staged.length) {
@@ -1279,12 +1307,6 @@ function app(){ return {
     const sib = m ? m[1] : repo + '-private';
     return this.sidebarRepos.some(r => r.repo === sib) ? sib : '';
   },
-  // The sidebar config gear: the repo component's Settings/Config dialog for the
-  // open repo (placement fields plus the raw .web-tools.json), the same dialog
-  // the estate card's gear opens.
-  openRepoConfig(){
-    document.getElementById('repo')?.__repo?.openDialog(Alpine.store('browser').repo, { tab: 'settings' });
-  },
 
   // Pinned to the default branch, like the custom landing: the Files-view ref
   // picker does not re-point rendered surfaces.
@@ -1327,6 +1349,7 @@ function app(){ return {
     else if (this.view === 'stage') p.set('view', 'stage');
     else if (this.view === 'public') p.set('view', 'public');
     else if (this.view === 'branches') p.set('view', 'branches');
+    else if (this.view === 'config') p.set('view', 'config');
     else if (this.view === 'surfaces') p.set('view', 'surfaces');
     else if (this.view === 'todo') p.set('view', 'todo');
     else if (this.view === 'jots') p.set('view', 'jots');
@@ -1380,6 +1403,7 @@ function app(){ return {
       else if (url && url.view === 'stage') this.goStage();
       else if (url && url.view === 'public') this.goPublicBrowse();
       else if (url && url.view === 'branches') this.goBranches();
+      else if (url && url.view === 'config') this.goConfig();
       else if (url && url.view === 'files') { this.goFiles(); if (url.path) await this.openFolder(url.path); }
       else if (!url) this.goDashboard();
       else this.goLanding();
@@ -1524,6 +1548,10 @@ function app(){ return {
     return 'Could not open ' + repo + ': ' + (e?.message || e);
   },
   goBranches(){ this.branchesSeen = true; this.view = 'branches'; this.drawer = false; this.syncUrl(); },
+  // The per-repo Config view: the open repo's .web-tools.json as a roomy editor,
+  // reached from the sidebar Config entry, the top-bar and Pinned gears. The
+  // header shield's dialog stays for auth and for configuring another repo.
+  goConfig(){ this.configSeen = true; this.view = 'config'; this.drawer = false; this.syncUrl(); },
   // Select an estate-level app view; the main area renders it live via
   // toss-render #gh= (appViewUrl).
   goAppView(v){ this.appView = v; this.view = 'app'; this.drawer = false; this.syncUrl(); },
@@ -1927,7 +1955,10 @@ function overview(){ return {
 <!-- ── Design notes: the estate, the landing mechanism, the views, the stage ───
   The page has TWO CONTEXT LEVELS. The ESTATE is the global, all-repo context;
   a REPO is a per-repo context, with its own VIEWS (landing, atlas, files,
-  stage, branches) plus pinned/recent shortcuts.
+  branches, config) plus pinned/recent shortcuts. Config is the open repo's
+  .web-tools.json as a roomy view (a Settings form + a raw JSON tab, saving
+  through the config-saved event), the counterpart to the header shield's config
+  dialog, which stays for auth and for configuring another repo.
 
   The HEADER carries the app-level nav (estateNav): a fixed, app-owned set of the
   estate's own views — Activity (Open / To-do / Jots by pill), Repos, Surfaces,
@@ -2053,11 +2084,11 @@ function overview(){ return {
 
   GITHUB JUMP-OVERS: show-repo is a wrapper over GitHub, not a wall — every
   view keeps a one-tap route to the GitHub presentation of what it is showing.
-  The sidebar top bar carries the open repo's action cluster, the same set the
-  estate card shows: a visibility marker (a toggle to the -private/public
-  companion when repoSibling finds one on the estate, else a static lock/globe),
-  the config/placement dialog (openRepoConfig), and the GitHub jump for the open
-  repo@ref (repoGithubUrl, tooltip repoGithubTip). The explorer's breadcrumb
+  The sidebar top bar carries the open repo's action cluster, pushed to the bar's
+  right edge: a visibility marker (a toggle to the -private/public companion when
+  repoSibling finds one on the estate, else a static lock/globe), the config gear
+  (goConfig, the Config view), and the GitHub jump for the open repo@ref
+  (repoGithubUrl, tooltip repoGithubTip). The explorer's breadcrumb
   links the current folder (ghFolderUrl), the viewer's actions link the open
   file's blob, and every estate card and surface item carries its github-logo
   link. When adding a view, add its jump-over.
