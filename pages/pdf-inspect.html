@@ -35,6 +35,29 @@
 <style>
   .layer { position: absolute; inset: 0; pointer-events: none; }
   .lbl { font: 9px/1 ui-monospace, monospace; }
+
+  /* A sheet of paper, not a div. The page was reading as unfinished because a
+     white rectangle on a near-white background with a hairline ring has no
+     edge to speak of: the eye needs a shadow that falls somewhere. */
+  .paper {
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.14);
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.06),
+      0 8px 18px -6px rgba(15, 23, 42, 0.18),
+      0 24px 48px -24px rgba(15, 23, 42, 0.22);
+  }
+
+  /* The orientation readout, over the stack. Present while the view is being
+     changed and for a moment after, then gone: the answer to "what am I looking
+     at" belongs where you are looking, not in a panel you have to open. */
+  .hud {
+    position: absolute; top: .5rem; left: 50%; transform: translateX(-50%);
+    pointer-events: none; transition: opacity .45s ease;
+    font: 12px/1 ui-monospace, monospace; letter-spacing: .02em;
+    padding: .4rem .7rem; border-radius: 999px;
+    background: rgba(15, 23, 42, .82); color: #fff; white-space: nowrap;
+  }
 </style>
 </head>
 <body class="bg-base-200 text-base-content overscroll-none">
@@ -43,7 +66,7 @@
 
   <!-- toolbar: one row at every width. Anything that cannot fit on a phone
        moves into the panel rather than wrapping into the layer list. -->
-  <div class="flex items-center gap-1.5 px-2 py-1.5 bg-base-100 border-b border-base-300 shrink-0 overflow-x-auto">
+  <div class="flex items-center gap-1.5 px-2 py-1.5 bg-base-100 border-b border-base-300 shrink-0">
     <span class="font-semibold text-sm pr-1 hidden sm:inline whitespace-nowrap">PDF Inspect</span>
     <button class="btn btn-sm lg:btn-xs btn-primary shrink-0" @click="loadSample()">Sample</button>
     <label class="btn btn-sm lg:btn-xs btn-ghost shrink-0">Open
@@ -55,33 +78,39 @@
             x-text="`${pageNum}/${numPages||'-'}`"></span>
       <button class="btn btn-sm lg:btn-xs join-item" @click="go(1)" :disabled="pageNum>=numPages">&rsaquo;</button>
     </div>
-    <div class="join shrink-0">
-      <button class="btn btn-sm lg:btn-xs join-item" :class="mode==='page' && 'btn-active'"
+    <div class="join shrink-0 hidden lg:flex">
+      <button class="btn btn-xs join-item" :class="mode==='page' && 'btn-active'"
               @click="mode='page'; redraw()">Page</button>
-      <button class="btn btn-sm lg:btn-xs join-item" :class="mode==='stack' && 'btn-active'"
+      <button class="btn btn-xs join-item" :class="mode==='stack' && 'btn-active'"
               @click="mode='stack'; redraw()">Stack</button>
     </div>
-    <select class="select select-sm lg:select-xs w-[5.5rem] lg:w-[4.5rem] shrink-0" x-show="mode==='page'" x-model="scaleMode" @change="redraw()">
+    <button class="btn btn-sm join-item lg:hidden shrink-0 gap-1"
+            @click="mode = mode === 'page' ? 'stack' : 'page'; redraw()">
+      <span x-text="mode === 'page' ? 'Stack' : 'Page'"></span>
+    </button>
+    <select class="select select-xs w-[4.5rem] shrink-0 hidden lg:block" x-show="mode==='page'" x-model="scaleMode" @change="redraw()">
       <option value="fit">fit</option>
       <option value="1">1x</option><option value="1.5">1.5x</option>
       <option value="2">2x</option><option value="3">3x</option>
     </select>
     <span class="text-xs opacity-60 font-mono truncate hidden lg:inline" x-text="status"></span>
-    <button class="btn btn-sm btn-ghost ml-auto lg:hidden gap-1 shrink-0 sticky right-0 bg-base-100" @click="panel = !panel">
+    <button class="btn btn-sm btn-ghost ml-auto lg:hidden gap-1 shrink-0" @click="panel = !panel">
       <span x-text="panel ? 'Close' : 'Layers'"></span>
     </button>
   </div>
 
   <div class="flex-1 flex min-h-0 relative overflow-hidden">
     <!-- page -->
-    <main class="flex-1 overflow-auto p-3 sm:p-6 bg-base-200 min-w-0" id="scroll">
-      <div x-show="mode==='stack'" class="w-full h-full flex items-center justify-center">
+    <main class="flex-1 overflow-auto p-3 sm:p-6 bg-base-200 min-w-0 flex flex-col items-center" id="scroll">
+      <div x-show="mode==='stack'" class="w-full h-full flex items-center justify-center relative">
         <canvas id="stack" class="max-w-full touch-none cursor-grab"
                 @pointerdown="orbitStart($event)" @pointermove="orbitMove($event)"
                 @pointerup="orbitEnd()" @pointercancel="orbitEnd()"></canvas>
+        <div class="hud" :style="`opacity:${hud ? 1 : 0}`"
+             x-text="`yaw ${Math.round(yaw)}°  ·  pitch ${Math.round(pitch)}°  ·  spread ${spread}`"></div>
       </div>
       <div x-show="mode==='page'"
-           class="relative inline-block shadow-lg ring-1 ring-base-300 select-none touch-none" id="stage"
+           class="paper relative inline-block select-none touch-none shrink-0" id="stage"
            @pointerdown="dragStart($event)" @pointermove="dragMove($event)"
            @pointerup="dragEnd($event)" @pointercancel="dragEnd($event)">
         <canvas id="page" class="block"></canvas>
@@ -102,6 +131,14 @@
            :class="panel && '!translate-x-0 shadow-2xl'">
     <div class="p-3 space-y-1" x-show="mode==='page'">
       <div class="text-sm font-mono opacity-60 mb-2 lg:hidden" x-text="status"></div>
+      <label class="flex items-center gap-3 text-sm py-1 lg:hidden">
+        <span class="w-16 opacity-70 shrink-0">zoom</span>
+        <select class="select select-sm flex-1" x-model="scaleMode" @change="redraw()">
+          <option value="fit">fit to width</option>
+          <option value="1">1x</option><option value="1.5">1.5x</option>
+          <option value="2">2x</option><option value="3">3x</option>
+        </select>
+      </label>
       <div class="text-sm lg:text-xs uppercase tracking-wider opacity-50 mb-2">Layers</div>
       <template x-for="l in layerList" :key="l.key">
         <label class="flex items-center gap-3 lg:gap-2 cursor-pointer py-1.5 lg:py-0.5">
@@ -129,13 +166,13 @@
           <label class="flex items-center gap-3 lg:gap-2 text-sm lg:text-xs py-1 lg:py-0">
             <span class="w-16 lg:w-14 opacity-70 shrink-0">yaw</span>
             <input type="range" class="range range-sm lg:range-xs flex-1" min="-180" max="180" step="1"
-                   x-model.number="yaw" @input="drawStack()">
+                   x-model.number="yaw" @input="flashHud(); drawStack()">
             <span class="w-12 lg:w-10 text-right font-mono shrink-0" x-text="Math.round(yaw)"></span>
           </label>
           <label class="flex items-center gap-3 lg:gap-2 text-sm lg:text-xs py-1 lg:py-0">
             <span class="w-16 lg:w-14 opacity-70 shrink-0">pitch</span>
             <input type="range" class="range range-sm lg:range-xs flex-1" min="-85" max="85" step="1"
-                   x-model.number="pitch" @input="drawStack()">
+                   x-model.number="pitch" @input="flashHud(); drawStack()">
             <span class="w-12 lg:w-10 text-right font-mono shrink-0" x-text="Math.round(pitch)"></span>
           </label>
           <p class="text-sm lg:text-xs opacity-60 leading-snug">
@@ -161,7 +198,7 @@
       <label class="flex items-center gap-3 lg:gap-2 text-sm lg:text-xs py-1 lg:py-0">
         <span class="w-16 lg:w-14 opacity-70 shrink-0">spread</span>
         <input type="range" class="range range-sm lg:range-xs flex-1" min="4" max="70" step="1"
-               x-model.number="spread" @input="drawStack()">
+               x-model.number="spread" @input="flashHud(); drawStack()">
         <span class="w-12 lg:w-10 text-right font-mono shrink-0" x-text="spread"></span>
       </label>
       <label class="flex items-center gap-3 lg:gap-2 text-sm lg:text-xs cursor-pointer py-1 lg:py-0">
@@ -246,11 +283,11 @@ const S = { doc: null, v: null, items: [], projected: [] };
 document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => ({
   pageNum: 1, numPages: 0, scaleMode: 'fit', scale: 1.5, panel: false,
   mode: 'page', yaw: -32, pitch: 26, spread: 26, trimMode: 'keep', onlyFixed: false,
-  viewOpen: false,
+  viewOpen: true, hud: false, _hudTimer: null,
   trim: { x1: 0, x2: 612, y1: 0, y2: 792, pageFrom: 1, pageTo: 1 },
   trimFields: [], trimInfo: '', furniture: [],
   W: 0, H: 0, status: 'no document', layerList: LAYERS,
-  layers: { items: true, glyphs: false, rules: true, columns: true, gutters: true, cells: true },
+  layers: { items: true, glyphs: false, rules: true, columns: false, gutters: false, cells: true },
   counts: {}, sel: [], selMode: 'contain', selInfo: '', drag: null, dragStyle: '',
   matrix: [], tableInfo: '',
 
@@ -609,11 +646,20 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     this.status = `${N} pages · ${S.doc.items.length} items`;
   },
 
+  // Any change to the view raises the readout and schedules its retirement.
+  // Called from the orbit, the sliders, and the presets alike, so the feedback
+  // does not depend on which control you reached for.
+  flashHud() {
+    this.hud = true;
+    clearTimeout(this._hudTimer);
+    this._hudTimer = setTimeout(() => { this.hud = false; }, 1400);
+  },
+
   // Named orientations, because a slider is precise and a preset is fast, and
   // wanting "straight on" should not mean dragging back to zero.
   viewPreset(name) {
     const p = { front: [0, 0], iso: [-32, 26], side: [-78, 8], top: [-14, 72] }[name];
-    if (p) { this.yaw = p[0]; this.pitch = p[1]; this.drawStack(); }
+    if (p) { this.yaw = p[0]; this.pitch = p[1]; this.flashHud(); this.drawStack(); }
   },
 
   // Turn the detector's output into a proposed cut, which is the point of
@@ -642,18 +688,23 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     // dismiss and take the pointer away mid-orbit. Capture plus preventDefault
     // keeps it here; the View sliders exist for where that is not enough.
     e.preventDefault();
+    this.flashHud();
     this._orbit = { x: e.clientX, y: e.clientY, yaw: this.yaw, pitch: this.pitch };
     e.currentTarget.setPointerCapture?.(e.pointerId);
   },
   orbitMove(e) {
     if (!this._orbit) return;
-    // Normalize by canvas width so a drag across the view turns the same amount
-    // on a phone as on a desktop, instead of being twice as twitchy on the
-    // smaller one.
+    // Normalized per axis, so a drag across the canvas turns the same amount on
+    // a phone as on a desktop. The rates are deliberately unequal: a full-width
+    // horizontal drag is 120 degrees of yaw, a full-height vertical one is 90 of
+    // pitch, and a shared rate made the vertical axis feel twice as fast because
+    // the canvas is taller than it is wide on a phone.
     const rect = e.currentTarget.getBoundingClientRect();
-    const k = 180 / Math.max(240, rect.width);
-    this.yaw = this._orbit.yaw + (e.clientX - this._orbit.x) * k;
-    this.pitch = Math.max(-85, Math.min(85, this._orbit.pitch - (e.clientY - this._orbit.y) * k));
+    const kx = 120 / Math.max(240, rect.width);
+    const ky = 90 / Math.max(240, rect.height);
+    this.yaw = this._orbit.yaw + (e.clientX - this._orbit.x) * kx;
+    this.pitch = Math.max(-85, Math.min(85, this._orbit.pitch - (e.clientY - this._orbit.y) * ky));
+    this.flashHud();
     this.drawStack();
   },
   orbitEnd() { this._orbit = null; },
