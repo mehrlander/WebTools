@@ -1,12 +1,13 @@
 ---
 id: toss-fragment-passthrough-558xcw
 title: Pass a trailing fragment through toss-render to the rendered page
-status: in-progress
+status: done
 project: show-repo
 track: independent
 opened: 2026-07-25
+closed: 2026-07-25
 session: claude/toss-render-data-formats-4t55x7
-next: implement the blob-URL switch in showTrusted/showHtml, then re-run the render scenarios
+next: done on claude/toss-render-data-formats-4t55x7; lands via PR #288. Follow-on: have data-view consume the fragment for item selection
 ---
 # Pass a trailing fragment through toss-render to the rendered page
 
@@ -39,7 +40,7 @@ Probed in headless Chromium rather than reasoned from spec:
 | `location.hash` | `""` | `"#viewkey"` |
 | shim `location.hash` | **TypeError**, non-configurable | not needed |
 | redefine `window.location` | **TypeError** | not needed |
-| `history.replaceState` | **DOMException** | works |
+| `history.replaceState` (relative) | **DOMException** | **DOMException** (see correction) |
 | same-origin access | yes | yes, origin preserved |
 | `hashchange` on later change | n/a | fires |
 
@@ -48,11 +49,14 @@ prototype. `location.hash` has no such escape hatch: it is a non-configurable
 own property, so no prelude trick can fake it. That rules out the shim approach.
 
 Switching the iframe from `srcdoc=` to a `blob:` URL with the fragment appended
-delivers a real hash, and the payoff exceeds the feature: the history-safe shim
-(`history-safe-toss-render-shim-hkih5m`) exists **only** because srcdoc breaks
-`replaceState`. On a blob URL that call works, so this **retires a workaround**
-rather than adding one, and a hash-routing page tossed this way updates its own
-URL as you navigate it instead of silently no-opping.
+delivers a real hash. **Correction, measured after the table above:** the first
+probe omitted the stamped `<base>` and so read as retiring the history-safe
+shim (`history-safe-toss-render-shim-hkih5m`). With `<base href=github.io>`
+present, which is the real configuration, a relative `replaceState('#x')`
+resolves to a URL matching neither `about:srcdoc` nor the blob URL, and throws
+in both. The shim stays. The blob switch buys the **initial** hash and nothing
+else; an absolute-URL `replaceState` and a plain `location.hash =` assignment
+already worked under srcdoc.
 
 Both trust postures hold. A blob URL sandboxed **without** `allow-same-origin`
 still loads and the page still reads its own `location.hash`, while the parent is
@@ -80,3 +84,18 @@ URL scheme, so `#gz=` keeps its opaque origin and `#gh=` keeps same-origin.
   two tables above are probe output from this session, not estimates. Note the
   session carries a fixed-branch instruction, so this lands on the same branch
   and PR as step 1 rather than the separate PR originally planned.
+- 2026-07-25: done on `claude/toss-render-data-formats-4t55x7`, lands via PR #288.
+  Implemented as a shared `mountFrame(html, sandbox, frag)` used by both
+  `showTrusted` and `showHtml`, with the fragment split off in `showAddress`
+  (before the `?query` split, since it is last in the string), in the payload
+  branches, and in the route branch, where it belongs to the renderer rather
+  than the `?src=` value. Verified headless with a new `toss-fragment` scenario:
+  address mode, payload mode, and a srcdoc control that proves the old path
+  could not deliver a hash; plus a real `#gz=` toss of a hash-routing page and a
+  `#data=` route form, both landing on the addressed view with zero page errors.
+  The `fab-toss` scenario was baselined against pre-change `toss-render.html`:
+  identical output, so its two sandbox errors are pre-existing (the harness does
+  not impersonate the commits endpoint). Also added `--hash` to
+  `tools/render/screenshot.mjs`, which previously could not set a fragment.
+  Not done, deliberately: `data-view.html` does not yet read the fragment, so
+  nothing claims item addressing works; that is the follow-on.

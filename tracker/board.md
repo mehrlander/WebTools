@@ -27,7 +27,6 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Estate activity signals from a registry activity cache (`claude/branches-view-api-caching-ef4l5d`) next: review the branch build; the cross-repo file-listing and the GraphQL-batched crawl (fewer calls) remain as follow-ons
 - 🎫 Singleton fab with toss-render integration (`claude/fab-render-toss-render-ua6p3p`) next: live-confirm branchesForPath (GraphQL Commit.file) with a token, then wrap up PR #241
 - 🎫 Propagate the stage link's new grammar to the portable docs (`claude/stage-link-grammar-docs-jukn37`)
-- 🎫 Pass a trailing fragment through toss-render to the rendered page (`claude/toss-render-data-formats-4t55x7`) next: implement the blob-URL switch in showTrusted/showHtml, then re-run the render scenarios
 
 ## Blocked
 - (none)
@@ -48,5 +47,6 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Stage links and the main-area explorer in show-repo (`claude/task-tracker-discussion-wg27xv`)
 - 🎫 Stand up the project tracker (`claude/tracker-concept-assessment-yto1m1`)
 - 🎫 Carry commentary on a stage (prompts= link field, seed of a surface schema) (`claude/web-tools-diff-review-s0nrq7`)
+- 🎫 Pass a trailing fragment through toss-render to the rendered page (`claude/toss-render-data-formats-4t55x7`) next: done on claude/toss-render-data-formats-4t55x7; lands via PR #288. Follow-on: have data-view consume the fragment for item selection
 - 🎫 Structural response decode + differentiated errors in toss-render next: done; renders survive every media-type labeling and the error panel names the failing stage
 - 🎫 Load the ?use= bundle by fetch + blob-import instead of jsDelivr (`claude/loading-behavior-tracker-aqbf4f`)
