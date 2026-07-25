@@ -40,7 +40,10 @@ worse, and character confidence cannot see it at all.
 ./docstruct/bootstrap.sh --check      # report what is present, install nothing
 python3 docstruct/test_docstruct.py   # 24 tests, ~1s
 
-python3 docstruct/run.py <source> -o out/
+python3 docstruct/run.py <source> -o out/       # a pass
+python3 docstruct/survey.py out/ --by-doc      # what it found
+python3 docstruct/survey.py out/ --attention   # which pages need a look
+python3 docstruct/survey.py out/ --sample 40   # a stratified page list
 ```
 
 The sandbox container does not persist, so `bootstrap.sh` is the first step of
@@ -76,6 +79,7 @@ source directory holding two kinds of document.
 | [`recognize.py`](recognize.py) | text recognition as a swappable method, plus the `line_axis` geometry test |
 | [`record.py`](record.py) | the per-page record holding several extractions, and right-angle box rotation |
 | [`run.py`](run.py) | the pass runner: parallel, resumable, one JSON per page |
+| [`survey.py`](survey.py) | read a pass back: what it saw, which pages need a look, and a stratified sample |
 | [`test_docstruct.py`](test_docstruct.py) | tests for the silent-failure parts, mainly the coordinate transforms |
 
 ## Four things measured the hard way
@@ -147,10 +151,24 @@ comparable.
 ## Not built yet
 
 Region segmentation, table structure recognition, and reading order. The next
-step is region segmentation, which a spike showed is the real first problem:
-clustering numeric tokens across a whole page fails because prose below a table
-contributes numbers and because bill numbers inside row labels (`5653)`,
-`(ESSB 5025)`) are shaped exactly like money.
+step is region segmentation, and a first pass over 3,984 real pages says it is
+the binding problem in three separate ways:
+
+- **Numeric tokens cannot be clustered page-wide.** Prose below a table
+  contributes numbers, and bill numbers inside row labels (`5653)`,
+  `(ESSB 5025)`) are shaped exactly like money. On one page that turned 3 real
+  money columns into 8 candidates.
+- **Page furniture is read as text.** Dot leaders and rule banners are not
+  skipped, they are recognized: a run of leader dots comes back as
+  `....scccvcescsuctsevencescecsae`, and a `****` banner as `KIKI KKK REE`.
+  On an index page this produced roughly 300 junk tokens out of 583 and pulled
+  mean confidence to 26.6, while every agency name on it was read correctly.
+  A page-level confidence figure is not trustworthy until furniture is
+  segmented out, and the junk is not filterable as punctuation because the
+  recognizer supplies letters.
+- **Column geometry is clean once the region is right.** On a corrected page the
+  three money columns right-aligned within 20 px across 11 rows, and row
+  arithmetic then reconciled 11 times out of 11.
 
 A second recognizer is deliberately not wired up. On a clean corpus the marginal
 gain over a tesseract that already reads the digits looks small against the cost
