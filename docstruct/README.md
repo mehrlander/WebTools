@@ -57,8 +57,8 @@ very different amounts, which is why they are reported apart:
 
 | control | rows tested | hold | read it as |
 |---|---|---|---|
-| row relation (`c_a op c_b = c_c`, discovered) | 13,468 | **96.8%** | a finding worth acting on |
-| column total (a total row against the block above) | 4,988 | 39.3% | advisory triage only |
+| row relation (`c_a op c_b = c_c`, discovered) | 17,158 | **96.8%** | a finding worth acting on |
+| column total (a total row against the block above) | 5,753 | 41.8% | advisory triage only |
 
 `Table.reconciled` speaks only for the first. The column-total check fails far
 more often than the data is wrong, mostly because a column dropped below the
