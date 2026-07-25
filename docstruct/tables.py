@@ -27,12 +27,16 @@ repairs anything. A table that does not reconcile is a finding to surface.
 (`5653)`, `(ESSB 5025)`) match any reasonable currency pattern, and prose below
 a table contributes years and counts. Clustering numeric tokens page-wide turned
 3 real money columns into 8 candidates. The fix is not a better token pattern,
-it is geometry: keep only column positions that recur down many rows.
+it is geometry, and specifically *tightness* rather than frequency: a real money
+column aligns within a few pixels down the whole page, while a bill number in a
+label sits wherever the label put it. Requiring frequency instead was the first
+attempt and it failed the other way, dropping genuine sparse columns; see
+`recover_grid_columns`.
 
 **Page furniture is recognized, not skipped.** Leader dots come back as
 `....scccvcescsuctsevencescecsae` and rule banners as `KIKI KKK REE`. These
-rarely align into a money column, so column-frequency anchoring already rejects
-them, but `is_furniture` drops them earlier so row grouping is not misled.
+rarely align into a money column, so column clustering already rejects them,
+but `is_furniture` drops them earlier so row grouping is not misled.
 """
 from __future__ import annotations
 
@@ -158,18 +162,60 @@ class Relation:
         return {"relation": str(self), "holds": self.holds, "failed": self.failed}
 
 
+def digit_distance(read: int, expected: int) -> int | None:
+    """Characters differing between two numbers written out, or None if unlike.
+
+    The triage signal for a failed check. A relation can break for three quite
+    different reasons, and they need different work: a misread digit, a cell put
+    in the wrong column, or a relation that does not apply to that row. The
+    shape of the discrepancy separates them cheaply.
+
+    `564` read as `504` differs in one character of three, which is what a
+    misread digit looks like. `163,300` read as `14,300` does not, and points at
+    the geometry instead. Returns None when the two do not even have the same
+    length, since character positions are then not comparable.
+    """
+    a, b = f"{read:,}", f"{expected:,}"
+    if len(a) != len(b):
+        return None
+    return sum(1 for x, y in zip(a, b) if x != y)
+
+
 @dataclass
 class Check:
     """One arithmetic relation the table asserts about itself."""
 
-    kind: str          # row_sum | column_total
+    kind: str          # row_relation | column_total
     where: str         # which row, or which column
     holds: bool
     detail: str = ""
+    read: int | None = None       # the value in the cell
+    expected: int | None = None   # what the relation requires
+
+    @property
+    def triage(self) -> str:
+        """How a failed check most likely arose. Advisory, never a verdict.
+
+        - `misread`: one or two characters differ at equal length. The
+          discrepancy looks like recognition, and the cell is worth re-reading.
+        - `magnitude`: the values differ in length or in most characters. More
+          likely a cell in the wrong column, or a relation that does not hold
+          for this row.
+        - `holds`: nothing to triage.
+        """
+        if self.holds:
+            return "holds"
+        if self.read is None or self.expected is None:
+            return "magnitude"
+        distance = digit_distance(self.read, self.expected)
+        return "misread" if distance is not None and distance <= 2 else "magnitude"
 
     def as_dict(self) -> dict:
-        return {"kind": self.kind, "where": self.where, "holds": self.holds,
-                "detail": self.detail}
+        d = {"kind": self.kind, "where": self.where, "holds": self.holds,
+             "detail": self.detail}
+        if not self.holds:
+            d["triage"] = self.triage
+        return d
 
 
 @dataclass
@@ -435,6 +481,8 @@ def check_table(table: Table) -> list[Check]:
                 expected == vc,
                 f"{va:,} {rel.op} {vb:,} = {vc:,}"
                 + ("" if expected == vc else f" (expected {expected:,})"),
+                read=vc,
+                expected=expected,
             ))
 
     total_rows = [i for i, r in enumerate(table.rows) if TOTAL_LABEL.search(r.label)]
@@ -464,5 +512,7 @@ def check_table(table: Table) -> list[Check]:
                 f"{table.rows[index].label[:30]} col {col}",
                 sum(parts) == stated,
                 f"sum of {len(parts)} rows = {sum(parts):,}, stated {stated:,}",
+                read=stated,
+                expected=sum(parts),
             ))
     return checks

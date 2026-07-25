@@ -413,6 +413,33 @@ class WithTesseract(unittest.TestCase):
         _, decision = prep.deskew_rotate(self.path.read_bytes())
         self.assertEqual(decision.applied, 0)
 
+    def test_psm_actually_reaches_tesseract(self):
+        """Regression: naming the `tsv` config file makes --psm a silent no-op.
+
+        The harness ran a 3,984-page pass nominally at psm 6 while psm was being
+        ignored entirely, and nothing in the output said so. This pins that the
+        setting has an effect, using sparse-text mode (11) against the default
+        block mode (6) on a page with two well-separated text blocks.
+        """
+        import recognize
+
+        block = recognize.tesseract(self.path, psm=6)
+        sparse = recognize.tesseract(self.path, psm=11)
+        self.assertTrue(block.words and sparse.words)
+        # Different segmentation must change something observable: the word
+        # sequence, the count, or the line grouping.
+        self.assertNotEqual(
+            ([w.text for w in block.words], [w.line_id for w in block.words]),
+            ([w.text for w in sparse.words], [w.line_id for w in sparse.words]),
+            "psm appears to have no effect; check the tesseract invocation",
+        )
+
+    def test_settings_record_the_psm_used(self):
+        import recognize
+
+        ext = recognize.tesseract(self.path, psm=4)
+        self.assertEqual(dict(ext.method.settings)["psm"], "4")
+
     def test_rotate_bytes_turns_the_image(self):
         import io
 

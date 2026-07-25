@@ -118,8 +118,22 @@ def tesseract(
         (("psm", str(psm)), ("lang", lang)),
     )
     with _as_file(image) as path:
+        # `-c tessedit_create_tsv=1`, never the `tsv` config-file name. Naming
+        # the config file has two effects that are easy to miss and expensive to
+        # keep: it makes `--psm` a silent no-op, and it degrades recognition on
+        # dense pages. Measured on one line-printer row against the page image:
+        #
+        #   truth        745  87,083  86,712  -371
+        #   `tsv` config  74  87,08   85,71   -37     (0 of 4 correct)
+        #   `-c` form    745  87,083  85,712  -371    (3 of 4 correct)
+        #
+        # The config-file form drops the last character of a token, silently and
+        # only sometimes: 14.5% of shared tokens on a dense 1979 page, 0% on
+        # clean typeset pages from the 1990s. It is exactly the failure this
+        # harness is built to catch, and it was in the harness itself.
         proc = subprocess.run(
-            ["tesseract", str(path), "stdout", "tsv", "--psm", str(psm), "-l", lang],
+            ["tesseract", str(path), "stdout",
+             "-c", "tessedit_create_tsv=1", "--psm", str(psm), "-l", lang],
             capture_output=True,
             env=_env(),
         )
