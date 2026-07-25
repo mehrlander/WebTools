@@ -146,6 +146,39 @@ test('mode getters: a toss reads as off-canonical, marks the subject ref', async
   assert.equal(d.previewRef, null);
 });
 
+test('a toss at the default branch is not a preview', async () => {
+  // The ref is the question, not the mechanism: a toss rendering main shows
+  // main's code, so the launcher stays neutral and the "return to main" escape
+  // banner stays hidden. viewingRef still names main, so the branch list can
+  // mark that row "current".
+  window.__tossSubject = { repo: 'mehrlander/other', ref: 'main', path: 'pages/thing.html' };
+  const { el } = await mountFab();
+  const d = Alpine.$data(el);
+  assert.equal(d.previewRef, null, 'main is not a preview ref');
+  assert.equal(d.offRef, false, 'a toss at main reads as canonical');
+  assert.equal(d.viewingRef, 'main', 'the branch list still marks main current');
+
+  // A repo whose default branch is not main: that branch is the canonical one,
+  // and main (if it exists at all) is the off-canonical ref.
+  d.defaultBranch = 'master';
+  assert.equal(d.offRef, true, 'main is off-canonical where master is the default');
+  assert.equal(d.previewRef, 'main');
+
+  window.__tossSubject = { repo: 'mehrlander/other', ref: 'master', path: 'pages/thing.html' };
+  window.dispatchEvent(new window.CustomEvent('toss-subject'));
+  await tick();
+  // Adoption resets defaultBranch to the 'main' guess (the previous repo's
+  // 'master' must not carry over), so an unsurveyed master reads as a preview
+  // until loadPageBranches corrects it.
+  assert.equal(d.defaultBranch, 'main', 'adoption drops the previous repo default');
+  d.defaultBranch = 'master';
+  assert.equal(d.offRef, false, 'once surveyed, the real default reads as canonical');
+
+  window.__tossSubject = null;
+  window.dispatchEvent(new window.CustomEvent('toss-subject'));
+  await tick();
+});
+
 test('no startup warnings or errors', () => {
   assert.deepEqual(problems, []);
 });
