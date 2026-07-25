@@ -67,7 +67,7 @@ Normally none. In local `CLAUDE.md`, name only a slow or non-deterministic gener
 
   Saying **"caption"** requests one of three sizes: **full** (everything since main; `/caption` default and guide-PR sync source), **turn** (this turn's files; default file-modifying closer), or **bare** (only the 🧭 guide link when nothing changed).
 
-  Because the full caption is what syncs the guide body, **the reply and the body carry the same links**: a preview link worth a place in one is worth a place in the other. The common failure is a generous body and a bare reply, which reads as though nothing is viewable yet. When a change genuinely has no render link, say why in the reply rather than leaving the line out.
+  Keep the reply and the guide body in sync. A bare reply implies nothing is viewable yet. If there is no render link, say why (the renderer itself is what changed, the page's data is an untracked build artifact).
 * **Session diff:** summarize substantial work with `Session diff: [main...branch](url)`.
 * **External proxies:** prohibited. Third-party GitHub renderers such as `htmlpreview.github.io`, `raw.githack.com`, and `gitcdn.link` fetch server-side, fail on private repos, and route content through another host. Use `[new]` for canonical source and 🥏 for a private or un-deployed render.
 * **Skip the watch offer:** never offer to watch CI or monitor a PR.
