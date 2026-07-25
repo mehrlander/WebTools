@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -37,46 +37,59 @@
   .lbl { font: 9px/1 ui-monospace, monospace; }
 </style>
 </head>
-<body class="bg-base-300 text-base-content">
+<body class="bg-base-200 text-base-content overscroll-none">
 
-<div x-data="pdfInspect()" class="flex h-screen overflow-hidden">
+<div x-data="pdfInspect()" class="flex flex-col h-[100dvh] overflow-hidden">
 
-  <!-- page -->
-  <main class="flex-1 flex flex-col min-w-0">
-    <div class="flex items-center gap-2 p-2 bg-base-200 border-b border-base-100 shrink-0">
-      <span class="font-semibold text-sm pr-2">PDF Inspect</span>
-      <button class="btn btn-xs btn-primary" @click="loadSample()">Sample</button>
-      <label class="btn btn-xs btn-ghost">Open
-        <input type="file" accept=".pdf" class="hidden" @change="loadFile($event.target.files[0])">
-      </label>
-      <div class="join">
-        <button class="btn btn-xs join-item" @click="go(-1)" :disabled="pageNum<=1">&lsaquo;</button>
-        <span class="btn btn-xs join-item no-animation pointer-events-none font-mono"
-              x-text="`${pageNum} / ${numPages||'-'}`"></span>
-        <button class="btn btn-xs join-item" @click="go(1)" :disabled="pageNum>=numPages">&rsaquo;</button>
-      </div>
-      <select class="select select-xs w-20" x-model.number="scale" @change="redraw()">
-        <option value="1">1x</option><option value="1.5">1.5x</option>
-        <option value="2">2x</option><option value="3">3x</option>
-      </select>
-      <span class="text-xs opacity-60 font-mono" x-text="status"></span>
+  <!-- toolbar: one row at every width. Anything that cannot fit on a phone
+       moves into the panel rather than wrapping into the layer list. -->
+  <div class="flex items-center gap-1.5 px-2 py-1.5 bg-base-100 border-b border-base-300 shrink-0">
+    <span class="font-semibold text-sm pr-1 hidden sm:inline whitespace-nowrap">PDF Inspect</span>
+    <button class="btn btn-xs btn-primary" @click="loadSample()">Sample</button>
+    <label class="btn btn-xs btn-ghost">Open
+      <input type="file" accept=".pdf" class="hidden" @change="loadFile($event.target.files[0])">
+    </label>
+    <div class="join">
+      <button class="btn btn-xs join-item" @click="go(-1)" :disabled="pageNum<=1">&lsaquo;</button>
+      <span class="btn btn-xs join-item no-animation pointer-events-none font-mono whitespace-nowrap"
+            x-text="`${pageNum}/${numPages||'-'}`"></span>
+      <button class="btn btn-xs join-item" @click="go(1)" :disabled="pageNum>=numPages">&rsaquo;</button>
     </div>
+    <select class="select select-xs w-[4.5rem] shrink-0" x-model="scaleMode" @change="redraw()">
+      <option value="fit">fit</option>
+      <option value="1">1x</option><option value="1.5">1.5x</option>
+      <option value="2">2x</option><option value="3">3x</option>
+    </select>
+    <span class="text-xs opacity-60 font-mono truncate hidden lg:inline" x-text="status"></span>
+    <button class="btn btn-xs btn-ghost ml-auto lg:hidden gap-1" @click="panel = !panel">
+      <span x-text="panel ? 'Close' : 'Layers'"></span>
+    </button>
+  </div>
 
-    <div class="flex-1 overflow-auto p-6 bg-base-100" id="scroll">
-      <div class="relative inline-block shadow-2xl select-none" id="stage"
+  <div class="flex-1 flex min-h-0 relative">
+    <!-- page -->
+    <main class="flex-1 overflow-auto p-3 sm:p-6 bg-base-200 min-w-0" id="scroll">
+      <div class="relative inline-block shadow-lg ring-1 ring-base-300 select-none touch-none" id="stage"
            @pointerdown="dragStart($event)" @pointermove="dragMove($event)"
-           @pointerup="dragEnd($event)" @pointerleave="dragEnd($event)">
+           @pointerup="dragEnd($event)" @pointercancel="dragEnd($event)">
         <canvas id="page" class="block"></canvas>
         <svg class="layer" id="ov" :width="W" :height="H"></svg>
-        <div x-show="drag" class="absolute border-2 border-warning bg-warning/10 pointer-events-none"
+        <div x-show="drag" class="absolute border-2 border-warning bg-warning/20 pointer-events-none"
              :style="dragStyle"></div>
       </div>
-    </div>
-  </main>
+    </main>
 
-  <!-- controls -->
-  <aside class="w-80 shrink-0 flex flex-col bg-base-200 border-l border-base-100 overflow-y-auto">
+    <!-- backdrop, phone only -->
+    <div x-show="panel" x-transition.opacity class="absolute inset-0 bg-black/30 z-30 lg:hidden"
+         @click="panel = false"></div>
+
+    <!-- controls: a static column from lg up, an off-canvas drawer below it -->
+    <aside class="absolute inset-y-0 right-0 z-40 w-[85vw] max-w-xs translate-x-full transition-transform duration-200
+                  lg:static lg:translate-x-0 lg:w-80 lg:max-w-none
+                  shrink-0 flex flex-col bg-base-100 border-l border-base-300 overflow-y-auto"
+           :class="panel && '!translate-x-0 shadow-2xl'">
     <div class="p-3 space-y-1">
+      <div class="text-xs font-mono opacity-60 mb-2 lg:hidden" x-text="status"></div>
       <div class="text-xs uppercase tracking-wider opacity-50 mb-2">Layers</div>
       <template x-for="l in layerList" :key="l.key">
         <label class="flex items-center gap-2 cursor-pointer py-0.5">
@@ -151,13 +164,20 @@ const LAYERS = [
 const S = { doc: null, v: null, items: [], projected: [] };
 
 document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => ({
-  pageNum: 1, numPages: 0, scale: 1.5,
+  pageNum: 1, numPages: 0, scaleMode: 'fit', scale: 1.5, panel: false,
   W: 0, H: 0, status: 'no document', layerList: LAYERS,
   layers: { items: true, glyphs: false, rules: true, columns: true, gutters: true, cells: true },
   counts: {}, sel: [], selMode: 'contain', selInfo: '', drag: null, dragStyle: '',
   matrix: [], tableInfo: '',
 
-  async init() { await this.loadSample(); },
+  async init() {
+    let t;
+    addEventListener('resize', () => {
+      if (this.scaleMode !== 'fit') return;
+      clearTimeout(t); t = setTimeout(() => this.redraw(), 150);
+    });
+    await this.loadSample();
+  },
 
   // Built here rather than committed, so the fixture is readable as code and
   // the page has something to show on first load with no file and no network.
@@ -233,6 +253,15 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
   async render() {
     const n = this.pageNum;
     const page = S.doc.pages[n - 1];
+    // 'fit' is the default because the first thing a phone showed was a page
+    // squeezed into a sliver beside a panel that could not be closed.
+    if (this.scaleMode === 'fit') {
+      const host = document.getElementById('scroll');
+      const avail = Math.max(240, host.clientWidth - 32);
+      this.scale = Math.min(3, Math.max(0.4, avail / page.getViewport({ scale: 1 }).width));
+    } else {
+      this.scale = Number(this.scaleMode);
+    }
     const vp = page.getViewport({ scale: this.scale });
     this.W = Math.ceil(vp.width); this.H = Math.ceil(vp.height);
 
@@ -368,6 +397,7 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
   // Drag selection. Screen coordinates go straight to the kit; the only thing
   // this page computes is the rectangle the pointer described.
   dragStart(e) {
+    e.preventDefault();
     const r = e.currentTarget.getBoundingClientRect();
     this.drag = { x0: e.clientX - r.left, y0: e.clientY - r.top, x1: e.clientX - r.left, y1: e.clientY - r.top };
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -394,6 +424,7 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     const subCols = sub.length ? window.pdf.stream.columns(sub).length : 0;
     this.selInfo = `${picked.length} items · region ` +
       `${region.x1},${region.y1} → ${region.x2},${region.y2} · ${subCols} columns`;
+    if (picked.length && matchMedia('(max-width: 1023px)').matches) this.panel = true;
   },
   clearSel() { this.sel = []; this.selInfo = ''; },
 })));
