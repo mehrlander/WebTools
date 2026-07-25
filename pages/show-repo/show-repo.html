@@ -637,7 +637,7 @@
      this and taken back out: nothing about a menu of five short actions
      justifies throwing it to the far edge of the screen. ────────────────── -->
 <div x-show="repoMenuAt" x-cloak @click.outside="repoMenuAt = null"
-     class="fixed z-[55] w-60 max-h-[60vh] overflow-y-auto rounded-box border border-base-300 bg-base-100 shadow-xl"
+     class="fixed z-[55] w-50 max-h-[60vh] overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg"
      :style="repoMenuStyle">
   <div x-data="repoMenu()" @repo-menu-done="repoMenuAt = null"></div>
 </div>
@@ -774,7 +774,7 @@ function app(){ return {
     // Selecting a file (explorer row, landing card, staged item) flips to the
     // Files view, where the shared viewer shows it beneath the listing.
     this.$watch(() => Alpine.store('browser').activeFile, (f) => {
-      if (f) { this.view = 'files'; this.drawer = false; this.syncUrl(); }
+      if (f) { this.view = 'files'; this.syncUrl(); }
     });
 
     // Changing the repo takes you to its landing (default or specified).
@@ -1330,10 +1330,9 @@ function app(){ return {
   _authUser: '',
 
   // ── The sidebar crumb trail (rendered by crumbBar) ──────────────────────
-  // Home, then the repo, then the ref only when it is off the default. The
-  // owner prefix is dropped from the label and kept in the tooltip: it is the
-  // same account on every repo, so it costs width and says nothing, and that
-  // width is what buys the house crumb a full-size target.
+  // The product mark, the repo, then the ref only when it is off the default.
+  // The owner prefix is dropped from the label and kept in the tooltip: it is
+  // the same account on every repo, so it costs width and says nothing.
   get sidebarCrumbs(){
     const s = Alpine.store('browser');
     if (this.estateCtx || !s.repo) return [];
@@ -1355,10 +1354,8 @@ function app(){ return {
   // way; this one swaps what the drawer itself lists, from a repo's views to
   // the estate's, so closing it would hide the thing that just changed.
   crumbHome(){
-    const open = this.drawer;
     this.closeCrumbMenu();
     this.goDashboard();
-    this.drawer = open;
   },
 
   // The crumb's dropdown, anchored under the sidebar top bar. Separate state
@@ -1408,10 +1405,10 @@ function app(){ return {
   // Nothing expands now, so nothing carries a chevron; `external` marks the
   // one row that leaves the app.
   get repoMenuItems(){
-    const open = this.menuRepo && this.menuRepo === Alpine.store('browser').repo;
     const sib = this.menuRepoSibling;
     return [
-      !open && { key: 'open', label: 'Open', icon: 'ph-arrow-right' },
+      // No "Open" row: tapping the row itself opens the repo, so offering it
+      // here is offering the thing you just chose not to tap.
       { key: 'config', label: 'Config', icon: 'ph-gear-six' },
       { key: 'github', label: 'Open on GitHub', icon: 'ph-github-logo', external: true },
       sib && { key: 'sibling', label: 'Switch to ' + (sib.split('/')[1] || sib),
@@ -1424,18 +1421,20 @@ function app(){ return {
   // right edge, and the panel flips above the trigger when it would otherwise
   // run off the bottom.
   repoMenuAt: null,          // { x, y } viewport coords, or null when closed
-  MENU_W: 240,
+  MENU_W: 200,
+  MENU_ROW: 36,
   openRepoMenu(repo, ev){
     this.crumbMenu = false;
     this.menuRepo = repo;
     const b = ev?.currentTarget?.getBoundingClientRect?.();
     if (!b){ this.repoMenuAt = null; return; }
-    const rows = this.repoMenuItems.length;
-    const h = Math.min(rows * 44 + 16, Math.round(innerHeight * 0.6));
-    const below = innerHeight - b.bottom > h + 12;
+    const h = Math.min(this.repoMenuItems.length * this.MENU_ROW + 8, Math.round(innerHeight * 0.6));
+    const below = innerHeight - b.bottom > h + 8;
+    // Tight to the trigger (2 px) and right-aligned with it, so the panel
+    // reads as belonging to that button rather than floating near the row.
     this.repoMenuAt = {
       x: Math.max(8, Math.min(b.right - this.MENU_W, innerWidth - this.MENU_W - 8)),
-      y: below ? b.bottom + 4 : Math.max(8, b.top - h - 4),
+      y: below ? b.bottom + 2 : Math.max(8, b.top - h - 2),
     };
   },
   get repoMenuStyle(){
@@ -1683,31 +1682,38 @@ function app(){ return {
     ];
   },
   navActive(v){ return (v.views || [v.view]).includes(this.view); },
-  goEstate(){ this.estateSeen = true; this.view = 'estate'; this.drawer = false; this.syncUrl(); },
-  goSurfaces(){ this.estateSeen = true; this.view = 'surfaces'; this.drawer = false; this.syncUrl(); },
-  goTodo(){ this.estateSeen = true; this.view = 'todo'; this.drawer = false; this.syncUrl(); },
-  goJots(){ this.estateSeen = true; this.view = 'jots'; this.drawer = false; this.syncUrl(); },
+  // NO go* METHOD CLOSES THE DRAWER. Navigating used to dismiss it, on the
+  // reasoning that the drawer covers the main area on mobile. But the sidebar
+  // is also the thing you navigate WITH: closing it after every tap means
+  // reopening it for the next one, and it hides the fact that the list itself
+  // just changed (a repo's views for the estate's, say). It now closes only
+  // when you say so, by the scrim or the X. The pinned desktop sidebar never
+  // closed, so the two behave alike now.
+  goEstate(){ this.estateSeen = true; this.view = 'estate'; this.syncUrl(); },
+  goSurfaces(){ this.estateSeen = true; this.view = 'surfaces'; this.syncUrl(); },
+  goTodo(){ this.estateSeen = true; this.view = 'todo'; this.syncUrl(); },
+  goJots(){ this.estateSeen = true; this.view = 'jots'; this.syncUrl(); },
   // The Map view: the coordination layer made inspectable (the portable set +
   // per-repo scope + adoption). Renamed from "Portable"; goPortable stays as a
   // thin alias so any caller or old ?view=portable link still resolves.
-  goMap(){ this.mapSeen = true; this.view = 'map'; this.drawer = false; this.syncUrl(); },
+  goMap(){ this.mapSeen = true; this.view = 'map'; this.syncUrl(); },
   goPortable(){ this.goMap(); },
   // The Tools view: the curated utility-page gallery (docs/tools.json), public.
-  goTools(){ this.toolsSeen = true; this.view = 'tools'; this.drawer = false; this.syncUrl(); },
+  goTools(){ this.toolsSeen = true; this.view = 'tools'; this.syncUrl(); },
   // Open is the estate's cross-repo live-branch view; the one estate component
   // renders it by reading the shell view (internal key 'activity'). A visit
   // kicks the throttled activity crawl (like Repos kicks the config crawl) so
   // the cache is warm and self-healing.
-  goActivity(){ this.estateSeen = true; this.view = 'activity'; this.drawer = false; this.refreshActivityCache?.(); this.syncUrl(); },
-  goLanding(){ this.view = 'landing'; this.drawer = false; this.syncUrl(); },
-  goPages(){ this.view = 'pages'; this.drawer = false; this.syncUrl(); },
-  goAtlas(){ this.atlasSeen = true; this.view = 'atlas'; this.drawer = false; this.syncUrl(); },
-  goFiles(){ this.view = 'files'; this.drawer = false; this.syncUrl(); },
-  goStage(){ this.view = 'stage'; this.drawer = false; this.syncUrl(); },
+  goActivity(){ this.estateSeen = true; this.view = 'activity'; this.refreshActivityCache?.(); this.syncUrl(); },
+  goLanding(){ this.view = 'landing'; this.syncUrl(); },
+  goPages(){ this.view = 'pages'; this.syncUrl(); },
+  goAtlas(){ this.atlasSeen = true; this.view = 'atlas'; this.syncUrl(); },
+  goFiles(){ this.view = 'files'; this.syncUrl(); },
+  goStage(){ this.view = 'stage'; this.syncUrl(); },
   // Public browse: the estate-level no-token file browser (lazy mount). An
   // optional repo (from an estate card) seeds it via the reactive publicSeed the
   // component watches; the bare sidebar entry passes none and keeps the default.
-  goPublicBrowse(repo){ if (repo) this.publicSeed = repo; this.publicSeen = true; this.view = 'public'; this.drawer = false; this.syncUrl(); },
+  goPublicBrowse(repo){ if (repo) this.publicSeed = repo; this.publicSeen = true; this.view = 'public'; this.syncUrl(); },
   // A specific, actionable open-repo failure instead of a bare "GitHub Error
   // 404". The two failures a signed-out visitor hits map to the two fixes:
   // sign in (private/404), or use the rate-safe public browser (403). Anything
@@ -1726,11 +1732,11 @@ function app(){ return {
     }
     return 'Could not open ' + repo + ': ' + (e?.message || e);
   },
-  goBranches(){ this.branchesSeen = true; this.view = 'branches'; this.drawer = false; this.syncUrl(); },
+  goBranches(){ this.branchesSeen = true; this.view = 'branches'; this.syncUrl(); },
   // The per-repo Config view: the open repo's .web-tools.json as a roomy editor,
   // reached from the sidebar Config entry and the Pinned gear. The shared repo
   // dialog stays for the token and for configuring a repo you are not in.
-  goConfig(){ this.configSeen = true; this.view = 'config'; this.drawer = false; this.syncUrl(); },
+  goConfig(){ this.configSeen = true; this.view = 'config'; this.syncUrl(); },
   // Open the config dialog for ANY repo without navigating to it, the way the
   // estate card's gear does. Used by the sidebar Repos index rows, whose config
   // icon edits that repo in place rather than switching the open repo (the
@@ -1738,7 +1744,7 @@ function app(){ return {
   openRepoDialog(repo){ document.getElementById('repo')?.__repo?.openDialog(repo, { tab: 'settings' }); },
   // Select an estate-level app view; the main area renders it live via
   // toss-render #gh= (appViewUrl).
-  goAppView(v){ this.appView = v; this.view = 'app'; this.drawer = false; this.syncUrl(); },
+  goAppView(v){ this.appView = v; this.view = 'app'; this.syncUrl(); },
   // Reconstruct an app view from a deep link (?view=app&appRepo&appPath). Prefer
   // the loaded entry (its viewLabel/icon), since the collection may not have
   // resolved yet on a cold open; fall back to a minimal object that still
@@ -2279,8 +2285,10 @@ function overview(){ return {
   from that button's rect (openRepoMenu/repoMenuStyle) because the rows sit in
   an overflow-y-auto column that would clip a nested panel; it flips above the
   trigger near the bottom of the list.
-    Its rows: Open / Config / Open on GitHub / the -private companion / Copy
-    browse link. FLAT, and deliberately so. Files and Branches were here and
+    Its rows: Config / Open on GitHub / the -private companion / Copy browse
+    link. FLAT and COMPACT (36 px rows, not the 44 px floor, which is for a cold
+    target in chrome rather than a panel already aimed at and opened). An Open
+    row went too: tapping the row itself opens the repo. Files and Branches were here and
     expanded into the repo's folders and branch list; both are gone, because
     "what is inside" is a browsing question the sidebar and the Files view
     already answer once you are in the repo. Nothing expands, so nothing carries
@@ -2305,7 +2313,8 @@ function overview(){ return {
   stays in the tooltip. crumbHome is the one navigation here that LEAVES THE
   DRAWER OPEN: the others swap the main area, where the drawer is in the way,
   but this one swaps what the drawer itself lists, so closing it would hide the
-  change.
+  change. THE DRAWER NO LONGER CLOSES ON NAVIGATION AT ALL (see navActive); the
+  scrim and the X are the only dismissals, so crumbHome needs no special case.
     The repo crumb's menu is a REPO SWITCHER (pickRepo) and nothing else: which
     repository is showing, with the current one checked. A trail names where you
     are, so the only menu it earns is the set of other places that slot could

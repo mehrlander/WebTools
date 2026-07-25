@@ -62,9 +62,13 @@ so it reads as a control rather than as branding. Tapping the repo crumb opens a
 **repo switcher**: which repository is showing, current one checked, and nothing
 else. A trail names where you are, so the only menu it earns is the set of other
 places that slot could hold; acting on a repo lives in the row menu below.
-Going home from the crumb is the one navigation here that **leaves the drawer
-open**: the others swap the main area, where the drawer is in the way, but this
-one swaps what the drawer itself lists, so closing it would hide the change.
+**The drawer no longer closes when you navigate.** It used to dismiss itself on
+every tap, on the reasoning that it covers the main area on mobile. But the
+sidebar is also the thing you navigate *with*: closing it after each tap means
+reopening it for the next, and it hides the fact that the list itself just
+changed (a repo's views for the estate's, say). It now closes only when you say
+so, by the scrim or the X, which makes the mobile drawer behave like the pinned
+desktop sidebar that never closed.
 
 The **sidebar** holds what is contextual: in a repo, its views (landing, atlas,
 files, branches) plus pins and recents; in the estate, only the repo-sourced
@@ -680,12 +684,17 @@ hangs off a Repos row's trailing button as a dropdown anchored to that button,
 positioned from its rect (the rows sit in a scrolling column that would clip a
 nested panel) and flipped above the trigger near the bottom of the list.
 
-Its rows: **Open**, **Config**, **Open on GitHub**, the `-private` companion
-switch, and **Copy browse link**. It is flat. Files and Branches were here and
+Its rows: **Config**, **Open on GitHub**, the `-private` companion switch, and
+**Copy browse link**. It is flat, short, and compact: 36 px rows rather than the
+44 px floor, which is for a cold target in chrome, not for a panel the pointer
+has already aimed at and opened. Files and Branches were here and
 expanded into the repo's folders and branch list; both are gone, because "what
 is inside" is a browsing question the sidebar and the Files view already answer
 once you are in the repo. Nothing expands, so nothing carries a chevron, and the
 single row that leaves the app carries an out-arrow.
+
+An **Open** row went too: tapping the row itself is what opens the repo, so the
+menu was offering the one thing you had just declined to do.
 
 This replaced a three-icon cluster (visibility marker, config gear, GitHub logo)
 on every row. Those icons measured about 16 px against a 44 px tap-target floor,
