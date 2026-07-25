@@ -24,6 +24,7 @@ from pages import Word, _SUSPECT_RE  # noqa: E402
 from record import rotate_words  # noqa: E402
 from recognize import line_axis  # noqa: E402
 from run import read_sample  # noqa: E402
+import tables  # noqa: E402
 
 HAS_TESSERACT = shutil.which("tesseract") is not None
 
@@ -150,6 +151,152 @@ class ReadSample(unittest.TestCase):
 
     def test_empty_file_selects_nothing(self):
         self.assertEqual(self._read(""), (set(), set()))
+
+
+class Money(unittest.TestCase):
+    def test_plain_and_grouped(self):
+        self.assertEqual(tables.parse_money("1,411,000"), 1411000)
+        self.assertEqual(tables.parse_money("0"), 0)
+
+    def test_parentheses_are_negative(self):
+        self.assertEqual(tables.parse_money("(630)"), -630)
+
+    def test_currency_and_sign(self):
+        self.assertEqual(tables.parse_money("$1,350"), 1350)
+        self.assertEqual(tables.parse_money("-5"), -5)
+
+    def test_rejects_non_money(self):
+        for text in ["TOTAL", "1993-95", "12.5", "", "abc"]:
+            self.assertIsNone(tables.parse_money(text), text)
+
+    def test_bill_numbers_still_parse_which_is_why_geometry_decides(self):
+        # `5653)` is money-shaped. Rejecting it is the column layer's job, not
+        # the pattern's, and this test pins that expectation.
+        self.assertEqual(tables.parse_money("5653)"), 5653)
+
+
+class Furniture(unittest.TestCase):
+    def test_leader_dots(self):
+        self.assertTrue(tables.is_furniture(Word("..........", 0, 0, 90, 4)))
+
+    def test_rule_banner(self):
+        self.assertTrue(tables.is_furniture(Word("*********", 0, 0, 90, 4)))
+
+    def test_long_low_confidence_smear(self):
+        self.assertTrue(tables.is_furniture(
+            Word("scccvcescsuctsevencescecsae", 0, 0, 300, 10, conf=12.0)))
+
+    def test_keeps_real_words(self):
+        for text in ["Corrections,", "University", "1,411,000", "GF-S"]:
+            self.assertFalse(tables.is_furniture(Word(text, 0, 0, 50, 12, conf=95.0)), text)
+
+    def test_keeps_short_repeats(self):
+        # "33" and "000" are repetitive but real; the rule only fires at length 3+
+        # and "000" is a genuine risk, so pin the current behaviour explicitly.
+        self.assertFalse(tables.is_furniture(Word("33", 0, 0, 20, 12, conf=96.0)))
+
+
+class TableStructure(unittest.TestCase):
+    """A synthetic fund table: labels left, three right-aligned money columns."""
+
+    @staticmethod
+    def build(rows):
+        words = []
+        for r, (label, a, b, c) in enumerate(rows):
+            y = 100 + r * 40
+            words.append(Word(label, 100, y, 300, 20, conf=95.0))
+            for text, right in ((a, 1000), (b, 1400), (c, 1800)):
+                words.append(Word(text, right - 20 * len(text), y, 20 * len(text), 20, conf=95.0))
+        return words
+
+    ROWS = [
+        ("ALPHA", "1,350", "0", "1,350"),
+        ("BRAVO", "1,500", "200", "1,700"),
+        ("CHARLIE", "500", "0", "500"),
+        ("DELTA", "0", "450", "450"),
+    ]
+
+    def test_finds_columns_and_rows(self):
+        t = tables.find_table(self.build(self.ROWS))
+        self.assertIsNotNone(t)
+        self.assertEqual(len(t.columns), 3)
+        self.assertEqual(len(t.rows), 4)
+        self.assertEqual(t.rows[0].label, "ALPHA")
+
+    def test_discovers_the_sum_relation(self):
+        t = tables.find_table(self.build(self.ROWS))
+        rels = tables.discover_relations(t)
+        self.assertTrue(rels)
+        self.assertEqual((rels[0].a, rels[0].b, rels[0].target, rels[0].op), (0, 1, 2, "+"))
+        self.assertEqual(t.reconciled, 1.0)
+
+    def test_discovers_a_difference_relation(self):
+        # HOUSE / SENATE / DIFF, where the third column is a difference. A
+        # hard-coded "last column is the total" rule reports this as broken.
+        rows = [("A", "536", "531", "-5"), ("B", "495", "495", "0"),
+                ("C", "434", "436", "2"), ("D", "1,013", "1,218", "205")]
+        t = tables.find_table(self.build(rows))
+        rels = tables.discover_relations(t)
+        self.assertTrue(rels)
+        self.assertEqual(rels[0].failed, 0)
+        self.assertEqual(t.reconciled, 1.0)
+
+    # Eight rows, because support is a share: one bad row in four is 75%, under
+    # the 0.8 default, so the relation is not established at all. That is the
+    # method's real limit on short tables, pinned by the next test.
+    EIGHT = [("ALPHA", "1,350", "0", "1,350"), ("BRAVO", "1,500", "200", "1,700"),
+             ("CHARLIE", "500", "0", "500"), ("DELTA", "0", "450", "450"),
+             ("ECHO", "1,150", "50", "1,200"), ("FOXTROT", "300", "700", "1,000"),
+             ("GOLF", "25", "75", "100"), ("HOTEL", "8", "2", "10")]
+
+    def test_one_bad_cell_is_reported_not_repaired(self):
+        rows = list(self.EIGHT)
+        rows[1] = ("BRAVO", "1,500", "200", "1,200")   # should be 1,700
+        t = tables.find_table(self.build(rows))
+        self.assertLess(t.reconciled, 1.0)
+        failed = [c for c in t.checks if not c.holds]
+        self.assertEqual(len(failed), 1)
+        self.assertIn("BRAVO", failed[0].where)
+        # the wrong value is still reported as read, never corrected
+        self.assertEqual(t.rows[1].cells[2].text, "1,200")
+
+    def test_a_short_table_cannot_establish_a_relation_it_breaks(self):
+        rows = list(self.ROWS)
+        rows[1] = ("BRAVO", "1,500", "200", "1,200")
+        t = tables.find_table(self.build(rows))
+        # 3 of 4 rows is 75%, under the default support, so nothing is asserted.
+        # Silence here means "not established", never "checked and fine".
+        self.assertIsNone(t.reconciled)
+
+    def test_collapses_restatements_of_one_identity(self):
+        t = tables.find_table(self.build(self.ROWS))
+        self.assertEqual(len(tables.discover_relations(t)), 1)
+
+    def test_no_table_in_prose(self):
+        words = [Word(w, 100 + 60 * i, 100, 55, 18, conf=95.0)
+                 for i, w in enumerate("the legislature provides funding for programs".split())]
+        self.assertIsNone(tables.find_table(words))
+
+    def test_column_total_row_is_checked(self):
+        rows = list(self.ROWS) + [("TOTAL BIENNIUM", "3,350", "650", "4,000")]
+        t = tables.find_table(self.build(rows))
+        totals = [c for c in t.checks if c.kind == "column_total"]
+        self.assertTrue(totals)
+        self.assertTrue(all(c.holds for c in totals))
+
+
+class GroupLines(unittest.TestCase):
+    def test_splits_on_vertical_gaps(self):
+        words = [Word("a", 0, 0, 10, 20), Word("b", 30, 2, 10, 20),
+                 Word("c", 0, 200, 10, 20)]
+        self.assertEqual([len(g) for g in tables.group_lines(words)], [2, 1])
+
+    def test_orders_within_a_line_by_x(self):
+        words = [Word("b", 50, 0, 10, 20), Word("a", 0, 0, 10, 20)]
+        self.assertEqual([w.text for w in tables.group_lines(words)[0]], ["a", "b"])
+
+    def test_empty_input(self):
+        self.assertEqual(tables.group_lines([]), [])
 
 
 @unittest.skipUnless(HAS_TESSERACT, "tesseract not installed")

@@ -33,6 +33,25 @@ For numeric tables this is the whole game. A misread digit placed confidently in
 the right cell is bad; a correctly read digit placed in the wrong column is
 worse, and character confidence cannot see it at all.
 
+### The control that beats both: ask the table to check itself
+
+Budget tables carry totals, along rows and down columns. `tables.py` discovers
+those relations from the numbers rather than assuming them, then reports which
+rows break them. This is stronger than cross-method agreement, because agreement
+between recognizers is evidence about *characters* (and engines trained on
+similar data share failure modes), while arithmetic also tests *cell
+assignment*.
+
+It is not theoretical. On page 61 of the 1979 edition, tesseract read `564` as
+`504` **at 91.2% confidence**. Nothing in the recognizer's own output flags it.
+The relation the rest of the table obeys does:
+
+```
+ST HIST SOCIETY   569 + -5 = 504   (expected 564)
+```
+
+Verified against the page image: it reads 564.
+
 ## Getting started
 
 ```bash
@@ -79,6 +98,7 @@ source directory holding two kinds of document.
 | [`recognize.py`](recognize.py) | text recognition as a swappable method, plus the `line_axis` geometry test |
 | [`record.py`](record.py) | the per-page record holding several extractions, and right-angle box rotation |
 | [`run.py`](run.py) | the pass runner: parallel, resumable, one JSON per page |
+| [`tables.py`](tables.py) | rows, columns and cells from word boxes, then the arithmetic the table asserts about itself |
 | [`survey.py`](survey.py) | read a pass back: what it saw, which pages need a look, and a stratified sample |
 | [`test_docstruct.py`](test_docstruct.py) | tests for the silent-failure parts, mainly the coordinate transforms |
 
@@ -148,27 +168,34 @@ to be able to say which. When a rotation is applied, every extraction taken
 before it (the inherited layer) is rotated into the new frame so all boxes stay
 comparable.
 
+## Known limits of the table layer
+
+Stated because a quiet limit is worse than a loud one.
+
+- **Sparse columns get dropped.** A candidate column is kept only when it is hit
+  on half the money-bearing lines, which is what rejects bill numbers and stray
+  years. On a line-printer report with four fund groups, where many rows leave
+  a group blank, this found 8 of about 12 numeric columns. Values in the dropped
+  columns are simply absent from the table.
+- **A short table cannot establish a relation it breaks.** Support is a share,
+  so one bad row in four is 75% and falls under the default. No relation found
+  means "not established," never "checked and fine," which is why
+  `Table.reconciled` is None rather than 1.0 in that case.
+- **Only relations among the discovered columns are checked.** On the page
+  above, the same table also misread `6,323` as `65323` (a comma read as a
+  digit), and no discovered relation touched that column, so nothing caught it.
+  Reconciliation is a floor on quality, not a certificate.
+- **Single-column figure lists are not tables.** A page of `General Fund-State
+  ....... $ 326,000` has one money column, so `find_table` returns nothing. The
+  cell-assignment risk does not exist there, but neither does the extraction.
+
 ## Not built yet
 
-Region segmentation, table structure recognition, and reading order. The next
-step is region segmentation, and a first pass over 3,984 real pages says it is
-the binding problem in three separate ways:
-
-- **Numeric tokens cannot be clustered page-wide.** Prose below a table
-  contributes numbers, and bill numbers inside row labels (`5653)`,
-  `(ESSB 5025)`) are shaped exactly like money. On one page that turned 3 real
-  money columns into 8 candidates.
-- **Page furniture is read as text.** Dot leaders and rule banners are not
-  skipped, they are recognized: a run of leader dots comes back as
-  `....scccvcescsuctsevencescecsae`, and a `****` banner as `KIKI KKK REE`.
-  On an index page this produced roughly 300 junk tokens out of 583 and pulled
-  mean confidence to 26.6, while every agency name on it was read correctly.
-  A page-level confidence figure is not trustworthy until furniture is
-  segmented out, and the junk is not filterable as punctuation because the
-  recognizer supplies letters.
-- **Column geometry is clean once the region is right.** On a corrected page the
-  three money columns right-aligned within 20 px across 11 rows, and row
-  arithmetic then reconciled 11 times out of 11.
+Full region segmentation and reading order. `tables.py` finds the dominant table
+on a page; it does not yet separate several regions, order them, or attach a
+table to the heading above it. Page furniture is handled defensively at token
+level rather than segmented out, which is enough for column geometry but leaves
+page-level confidence figures untrustworthy on furniture-heavy pages.
 
 A second recognizer is deliberately not wired up. On a clean corpus the marginal
 gain over a tesseract that already reads the digits looks small against the cost
