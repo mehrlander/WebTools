@@ -1,5 +1,5 @@
 // alpineComponents/estate.js — logic tests for the Surfaces `kind: embed`
-// item: the toss-render page-sugar URL it builds (#<page>=<addr>), the title's
+// item: the toss-render route URL it builds (#<route>=<addr>), the title's
 // full-screen link (itemExt), the envelope pill and github link, the kind icon,
 // and the per-item expand toggle kept off the item objects. Driven over a fake
 // GH and a stubbed shell; no network, no pixels. (Row visibility is a render
@@ -78,7 +78,7 @@ test('an embed item loads from the surface and reports kind:embed', async () => 
   assert.equal(data.kindIcon(it), 'ph-app-window');
 });
 
-test('embedUrl builds the toss-render page-sugar address', () => {
+test('embedUrl builds the toss-render route address', () => {
   const it = { kind: 'embed', page: 'chat-results', repo: 'mehrlander/chat-histories', path: 'results/webi-drs-data.json' };
   assert.equal(
     data.embedUrl(it),
@@ -90,7 +90,7 @@ test('embedUrl builds the toss-render page-sugar address', () => {
     data.embedUrl({ kind: 'embed', repo: 'o/r', ref: 'br', path: 'x.json' }),
     '../toss-render.html#chat-results=o/r@br:x.json',
   );
-  // an alternate PAGE_SUGAR key rides through, no code change: schema-blind.
+  // an alternate TOSS_ROUTES key rides through, no code change: schema-blind.
   assert.equal(
     data.embedUrl({ kind: 'embed', page: 'other-view', repo: 'o/r', path: 'x.json' }),
     '../toss-render.html#other-view=o/r:x.json',

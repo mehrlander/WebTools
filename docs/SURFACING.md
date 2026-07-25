@@ -27,6 +27,8 @@ Normally none. In local `CLAUDE.md`, name only a slow or non-deterministic gener
   | **`#gz=` portable snapshot** | Gzip the page into `https://mehrlander.github.io/web-tools/pages/toss-render.html#gz=<base64url>`. The fragment never reaches the server; the page runs in a sandbox. Absolute-URL CDN dependencies work, same-repo relative dependencies do not. | Portable to any reader. |
   | **`#gh=owner/repo[@ref]:path` owner-only address mode** | Fetches a branch or private-repo page live, with same-ref relative dependencies, through the viewer's stored token. | Token- and allowlist-gated. The token is browser-local, so a fresh or in-app browser may 404. Use `#gz=` or an artifact as fallback. |
 
+  Either form takes an optional trailing `#frag`, handed to the rendered page as its own `location.hash`, so a page that routes on its hash opens where the link says: `#gh=owner/repo@ref:pages/app.html#view=spend`, `#gz=<payload>#view=spend`. An address may carry `?query` and `#frag` together.
+
   Encode `#gz=` with:
 
   ```bash
@@ -39,7 +41,8 @@ Normally none. In local `CLAUDE.md`, name only a slow or non-deterministic gener
   `…/show-repo/show-repo.html#stage=owner/repo[@ref]:path1,path2;owner2/repo2:path3`
 
   Groups are `;`-separated, paths `,`-separated, and `@ref` is optional. Add `&prompts=<base64url>` for `{label, ask}` review prompts or `&mode=diff` to open and run the Diff tab. `StageLink.read` also accepts these keys in the query when a context strips fragments. Stage links are token-gated with the same in-app-browser caveat as `#gh=`; for a tokenless reader, download the bundle and **Hand over the artifact**. A stage is an inline handoff, not a surfacing-caption row. See `docs/show-repo.md` and `.web-tools.json`.
-* **Carry content in an envelope:** use a **content envelope** when a curated, annotated set of files, chats, diffs, or search hits should travel and render together. The carriers are **stage**, **surface** (the cross-repo shelf rendered by show-repo's estate view and the Surfacer app), and **chat-results envelope** (`pages/chat-results.html`). They share the `owner/repo[@ref]:path` item grammar, the `#gz=`/`?src=` delivery split, and live-code rendering. Prefer an envelope to an ad-hoc format. Contracts and schemas: [`docs/envelopes/`](envelopes/).
+* **Carry content in an envelope:** use a **content envelope** when a curated, annotated set of files, chats, diffs, or search hits should travel and render together. The carriers are **stage**, **surface** (the cross-repo shelf rendered by show-repo's estate view and the Surfacer app), **chat-results envelope** (`pages/chat-results.html`), and **data view** (`pages/data-view.html`). They share the `owner/repo[@ref]:path` item grammar, the `#gz=`/`?src=` delivery split, and live-code rendering. Prefer an envelope to an ad-hoc format. Contracts and schemas: [`docs/envelopes/`](envelopes/).
+* **Toss data, not just a page 📊:** to hand over a CSV, a JSON array, or a log as something readable rather than a raw blob, address it through the data route: `…/toss-render.html#data=owner/repo[@ref]:path`. It opens in the shared multi-mode viewer (table, tree, preview, code, raw), picking by content and leaving every other mode one tap away. Bare bytes need no wrapper; an `items` envelope adds several files, a default view each, and notes. Same token gate as `#gh=`; use `#gz=` on the page itself for a token-less reader. Contract: [`docs/envelopes/data-view.md`](envelopes/data-view.md).
 * **Branch anchor:** the first file-modifying reply leads with `Working branch: [branch-name](url)`.
 * **Guide pointer 🧭:** mark the branch's guide PR, or a legacy branch-guide file, with 🧭. A reply may close with `🧭 [PR #N](…)`.
 * **Task marker 🎫:** where the repo uses [TRACKER.md](TRACKER.md), surface a task as `🎫 [title](<task blob url>)`. Do not show the filename id; 🎫 plus title is the reader's handle.
@@ -63,6 +66,8 @@ Normally none. In local `CLAUDE.md`, name only a slow or non-deterministic gener
   ```
 
   Saying **"caption"** requests one of three sizes: **full** (everything since main; `/caption` default and guide-PR sync source), **turn** (this turn's files; default file-modifying closer), or **bare** (only the 🧭 guide link when nothing changed).
+
+  Keep the reply and the guide body in sync. A bare reply implies nothing is viewable yet. If there is no render link, say why (the renderer itself is what changed, the page's data is an untracked build artifact).
 * **Session diff:** summarize substantial work with `Session diff: [main...branch](url)`.
 * **External proxies:** prohibited. Third-party GitHub renderers such as `htmlpreview.github.io`, `raw.githack.com`, and `gitcdn.link` fetch server-side, fail on private repos, and route content through another host. Use `[new]` for canonical source and 🥏 for a private or un-deployed render.
 * **Skip the watch offer:** never offer to watch CI or monitor a PR.

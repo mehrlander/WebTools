@@ -163,7 +163,7 @@ A repo that declares a surface also gets a **surface chip** on its Repos-grid
 card, deep-linking straight to its section. Rendered item kinds (both sources):
 `github_blob` / `github_dir` (open-in-shell + GitHub link; target as `{repo, ref,
 path}` or a github.com URL), `url` (external link), `note` / `story` (inline
-body), `embed` (a renderer page in an iframe via toss-render page-sugar).
+body), `embed` (a renderer page in an iframe via a toss-render route).
 
 **Activity** gathers the estate's live layer under one header-nav stop: Open,
 To-do, and Jots, a trio that reads as a gradient of commitment (a jot is

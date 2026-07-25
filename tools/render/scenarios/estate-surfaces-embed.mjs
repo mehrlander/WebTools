@@ -11,7 +11,7 @@
 // row in the Surfaces list — icon, title (opens the full render), envelope
 // pill, github link, snippet, commentary, and the "Expand embed" control. The
 // iframe itself is left collapsed: its live render needs the deployed
-// #chat-results= sugar (web-tools PR #264) and a token for the private
+// #chat-results= route (web-tools PR #264) and a token for the private
 // envelope, neither of which exists headlessly.
 export default async function (page) {
   const ok = await page.evaluate(() => {
@@ -27,7 +27,7 @@ export default async function (page) {
     const TRAWLS = {
       manifest: {
         name: 'Trawls',
-        description: 'Live chat and trawl result sets, embedded from the chat-histories archive. Each item renders its results envelope through chat-results.html (toss-render page-sugar), the same viewer a #chat-results= link opens.',
+        description: 'Live chat and trawl result sets, embedded from the chat-histories archive. Each item renders its results envelope through chat-results.html (a toss-render route), the same viewer a #chat-results= link opens.',
         category: 'showcase',
       },
       items: [
@@ -35,7 +35,7 @@ export default async function (page) {
           id: 'webi-drs', title: 'WEBI DRS trawl', kind: 'embed', page: 'chat-results',
           repo: 'mehrlander/chat-histories', path: 'results/webi-drs-data.json',
           snippet: 'A trawl of the chat archive for the WEBI/DRS budget-synthesis thread, emitted as a chat-results envelope.',
-          commentary: 'Pilot for the Surfaces live-embed kind (kind: embed). Renders results/webi-drs-data.json through chat-results.html via toss-render’s #chat-results= page-sugar. Expand to embed in place, or open the title for the full-screen render.',
+          commentary: 'Pilot for the Surfaces live-embed kind (kind: embed). Renders results/webi-drs-data.json through chat-results.html via toss-render’s #chat-results= route. Expand to embed in place, or open the title for the full-screen render.',
           added_at: '2026-07-21T00:00:00Z',
         },
       ],

@@ -121,6 +121,26 @@ function readSpec(spec, repoRoot) {
     const plain = fp.replace(/\.min\.(js|css)$/, '.$1');
     if (existsSync(plain)) fp = plain;
   }
+  // A URL naming the package's own bundle (npm/marked/marked.min.js) is served
+  // by jsDelivr from whatever the published tarball happens to lay out, which
+  // moves between majors: marked@18 ships lib/marked.umd.js and nothing at the
+  // root. When the explicit sub-path misses and its basename is the package's
+  // own name, fall back to the package's declared browser entry, which is the
+  // file the URL was after. Scripted as a rule rather than a per-package alias
+  // so the next relocation resolves itself.
+  if (!existsSync(fp) && sub && path.basename(sub).replace(/\.min\.(js|css)$/, '.$1').split('.')[0] === pkg.split('/').pop()) {
+    const manifest = path.join(repoRoot, 'node_modules', pkg, 'package.json');
+    if (existsSync(manifest)) {
+      try {
+        const m = JSON.parse(readFileSync(manifest, 'utf8'));
+        const entry = typeof m.browser === 'string' ? m.browser : m.main;
+        if (entry) {
+          const cand = path.join(repoRoot, 'node_modules', pkg, entry);
+          if (existsSync(cand)) fp = cand;
+        }
+      } catch (e) { /* unreadable manifest: fall through to the miss */ }
+    }
+  }
   if (existsSync(fp)) return { body: readFileSync(fp), contentType: typeFor(fp) };
   return null;
 }

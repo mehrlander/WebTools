@@ -3,7 +3,8 @@
 // pre-installed Chromium, headlessly, in this network-restricted sandbox.
 //
 //   node tools/render/screenshot.mjs <page-path> [--build] [--ref <ref>]
-//       [--query <k=v&...>] [--out <png>] [--width N] [--height N] [--wait MS] [--full]
+//       [--query <k=v&...>] [--hash <fragment>] [--out <png>] [--width N]
+//       [--height N] [--wait MS] [--full]
 //
 // The page is served from the on-disk working tree over loopback; every external
 // request is intercepted and resolved by tools/render/cdn.mjs — own code (gh-api.js
@@ -29,7 +30,7 @@ import { resolveCdn, typeFor } from './cdn.mjs';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 function parseArgs(argv) {
-  const o = { full: false, build: false, width: 1280, height: 800, wait: 2500, ref: null, query: null, out: null, script: null };
+  const o = { full: false, build: false, width: 1280, height: 800, wait: 2500, ref: null, query: null, hash: null, out: null, script: null };
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -37,6 +38,7 @@ function parseArgs(argv) {
     else if (a === '--build') o.build = true;
     else if (a === '--ref') o.ref = argv[++i];
     else if (a === '--query') o.query = argv[++i];
+    else if (a === '--hash') o.hash = argv[++i];
     else if (a === '--out') o.out = argv[++i];
     else if (a === '--width') o.width = +argv[++i];
     else if (a === '--height') o.height = +argv[++i];
@@ -131,9 +133,12 @@ page.on('requestfailed', r => {
 });
 
 // --query appends page-level params (e.g. repo=/file= for identity-free boots).
+// --hash appends a fragment, for pages that route on it (toss-render's own
+// #gh=/#gz=/#data= modes, and any page reached through them).
 const qs = [opts.ref ? `use=${encodeURIComponent(opts.ref)}` : '', opts.query || '']
   .filter(Boolean).join('&');
-const target = `http://127.0.0.1:${port}${pageUrlPath}${qs ? '?' + qs : ''}`;
+const frag = opts.hash ? '#' + opts.hash.replace(/^#/, '') : '';
+const target = `http://127.0.0.1:${port}${pageUrlPath}${qs ? '?' + qs : ''}${frag}`;
 let loadedScripts = [];
 try {
   await page.goto(target, { waitUntil: 'load', timeout: 30000 });

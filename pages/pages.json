@@ -28,6 +28,14 @@
         "code": "https://github.com/mehrlander/web-tools/blob/main/pages/console-playground.html"
       },
       {
+        "href": "data-view.html",
+        "label": "data-view",
+        "title": "Data View",
+        "note": "",
+        "thumb": "thumbs/data-view.png",
+        "code": "https://github.com/mehrlander/web-tools/blob/main/pages/data-view.html"
+      },
+      {
         "href": "diff-tool.html",
         "label": "diff-tool",
         "title": "Diff",
