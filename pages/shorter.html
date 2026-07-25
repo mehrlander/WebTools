@@ -311,7 +311,8 @@ function shorter() {
         if (gz) {
           payload = ShorterPayload.read(await this.gunzipB64url(gz));
         } else {
-          payload = ShorterPayload.read(await this.fetchSpec(src), { name: this.specPath(src) });
+          const spec = ShorterPayload.parseSpec(src);
+          payload = ShorterPayload.read(await this.fetchSpec(spec, src), { name: spec ? spec.path : src });
         }
         this.original = payload.original;
         this.proposal = payload.proposal;
@@ -322,18 +323,14 @@ function shorter() {
       }
     },
 
-    // owner/repo[@ref]:path, or a plain path in this repo. The same grammar
-    // every other addressed thing here speaks.
-    specPath(spec) {
-      const m = String(spec || '').match(/^([\w.-]+\/[\w.-]+)(?:@([^:]+))?:(.+)$/);
-      return m ? m[3] : String(spec || '');
-    },
-    async fetchSpec(spec) {
-      const m = String(spec || '').match(/^([\w.-]+\/[\w.-]+)(?:@([^:]+))?:(.+)$/);
-      const g = m
-        ? new window.GH({ token: window.TOKEN, repo: m[1], ref: m[2] || 'main' })
+    // An addressed payload, or a plain path in the hub repo. The parse is
+    // ShorterPayload's, so the '' ref (meaning the repo's default branch)
+    // stays in one place rather than being restated here.
+    async fetchSpec(spec, raw) {
+      const g = spec
+        ? new window.GH({ token: window.TOKEN, repo: spec.repo, ref: spec.ref })
         : new window.GH({ token: window.TOKEN, repo: 'mehrlander/web-tools', ref: 'main' });
-      return (await g.get(m ? m[3] : String(spec || ''))).text;
+      return (await g.get(spec ? spec.path : String(raw || ''))).text;
     },
     async gunzipB64url(s) {
       const b64 = s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (s.length % 4)) % 4);

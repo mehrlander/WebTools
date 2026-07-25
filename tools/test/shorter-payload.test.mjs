@@ -10,7 +10,7 @@ import { repoRoot } from './bootstrap.mjs';
 
 const win = {};
 new Function('window', readFileSync(path.join(repoRoot, 'lib/shorter-payload.js'), 'utf8')).call(win, win);
-const { read, isEnvelope, isReviewable, KIND } = win.ShorterPayload;
+const { read, isEnvelope, isReviewable, parseSpec, KIND } = win.ShorterPayload;
 
 test('plain prose is bare, verbatim, with the right column left empty', () => {
   const p = read('The quick brown fox jumped over the lazy dog.');
@@ -85,6 +85,20 @@ test('isEnvelope is exported for callers that only want the question answered', 
   assert.equal(isEnvelope({ items: [] }), false);
   assert.equal(isEnvelope('a string'), false);
   assert.equal(isEnvelope(null), false);
+});
+
+test('parseSpec reads the shared address grammar', () => {
+  assert.deepEqual(parseSpec('owner/repo@feat/x:deep/file.md'),
+    { repo: 'owner/repo', ref: 'feat/x', path: 'deep/file.md' });
+  assert.equal(parseSpec('a/b/c:p.md'), null, 'a three-segment repo is not an address');
+  assert.equal(parseSpec('plain/path.md'), null, 'no colon means a plain path');
+});
+
+test('a missing ref is empty, not "main", so the default branch is honored', () => {
+  // The contents API falls through to the repo's default branch on ''. Pinning
+  // 'main' would break a repo whose default is named otherwise.
+  // StageLink.parseItem agrees; DataPayload.parseSpec still says 'main'.
+  assert.equal(parseSpec('owner/repo:path.md').ref, '');
 });
 
 test('the page reads its inputs through the shared helpers and registers the route', () => {
