@@ -46,6 +46,7 @@
   Toss routes (typed content tosses, built on address mode):
     #<route>=<owner>/<repo>[@<ref>]:<path>
     e.g. #chat-results=mehrlander/chat-histories:results/webi-drs-data.json
+         #data=mehrlander/home@main:projects/budget-drs/data/rows.csv
     The key names a registered renderer page (the TOSS_ROUTES map in the router
     below); the value is a content envelope's address. toss-render renders that
     page and hands it the envelope via ?src=, so a caller addresses the CONTENT,
@@ -642,6 +643,7 @@ window.fetch=function(input,init){try{
   // repo/ref (default web-tools@main). See docs/envelopes/chat-results.md.
   const TOSS_ROUTES = {
     'chat-results': { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/chat-results.html' },
+    'data':         { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/data-view.html' },
   };
   const routeKey = Object.keys(TOSS_ROUTES).find(k => param(k));
 

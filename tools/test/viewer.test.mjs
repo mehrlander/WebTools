@@ -80,6 +80,66 @@ test('no opt: defaultMode defaults to the raw string', async () => {
   assert.equal(Alpine.$data(el).defaultMode, 'raw');
 });
 
+// ── the table mode's readers (delimited files, added for the #data= route) ──
+
+const VR = window.ViewRegistry;
+// These helpers build arrays/objects inside the jsdom realm, whose prototypes
+// aren't reference-equal to this realm's, so strict deepEqual rejects a
+// structurally identical result. Round-trip the value into this realm first.
+const plain = (v) => JSON.parse(JSON.stringify(v));
+
+test('a CSV offers the table mode; raw stays available', () => {
+  data.file = 'rows.csv';
+  data.content = 'a,b\n1,2';
+  const ids = data.availableModes.map(m => m.id);
+  assert.ok(ids.includes('table'), 'csv should reach the table mode');
+  assert.ok(ids.includes('raw'));
+});
+
+test('a JSON object (not an array) still does not offer table', () => {
+  data.file = 'a.json';
+  data.content = '{"a":1}';
+  assert.ok(!data.availableModes.map(m => m.id).includes('table'));
+});
+
+test('parseDelimited handles quotes, escaped quotes, and CRLF', () => {
+  const rows = plain(VR.parseDelimited('a,b\r\n"x,1","he said ""hi"""\r\nplain,2\r\n', ','));
+  assert.deepEqual(rows, [['a', 'b'], ['x,1', 'he said "hi"'], ['plain', '2']]);
+});
+
+test('tableRows maps a CSV onto header-keyed records', () => {
+  assert.deepEqual(
+    plain(VR.tableRows({ ext: 'csv', content: 'plan,members\nPERS 2,158204\nTRS 3,79330\n' })),
+    [{ plan: 'PERS 2', members: '158204' }, { plan: 'TRS 3', members: '79330' }],
+  );
+});
+
+test('tableRows splits a TSV on tabs', () => {
+  assert.deepEqual(
+    plain(VR.tableRows({ ext: 'tsv', content: 'a\tb\n1\t2' })),
+    [{ a: '1', b: '2' }],
+  );
+});
+
+test('blank and duplicate headers get positional names, so no column is lost', () => {
+  assert.deepEqual(
+    plain(VR.tableRows({ ext: 'csv', content: 'a,,a\n1,2,3' })),
+    [{ a: '1', col2: '2', col3: '3' }],
+  );
+});
+
+test('a short row pads rather than dropping the record', () => {
+  assert.deepEqual(
+    plain(VR.tableRows({ ext: 'csv', content: 'a,b,c\n1,2' })),
+    [{ a: '1', b: '2', c: '' }],
+  );
+});
+
+test('tableRows passes a JSON array through, and names the shape it wanted', () => {
+  assert.deepEqual(plain(VR.tableRows({ ext: 'json', content: '[{"a":1}]' })), [{ a: 1 }]);
+  assert.throws(() => VR.tableRows({ ext: 'json', content: '{"a":1}' }), /array of records/);
+});
+
 test('no stray warnings or errors after the resolves', async () => {
   await tick();
   assert.deepEqual(problems, []);
