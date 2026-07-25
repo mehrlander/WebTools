@@ -71,7 +71,7 @@ control, because it teaches you to ignore it.
 ```bash
 ./docstruct/bootstrap.sh              # ~18s: tesseract, poppler, PyMuPDF, Pillow
 ./docstruct/bootstrap.sh --check      # report what is present, install nothing
-python3 docstruct/test_docstruct.py   # 24 tests, ~1s
+python3 docstruct/test_docstruct.py   # 56 tests, ~2s
 
 python3 docstruct/run.py <source> -o out/       # a pass
 python3 docstruct/survey.py out/ --by-doc      # what it found
@@ -116,7 +116,26 @@ source directory holding two kinds of document.
 | [`survey.py`](survey.py) | read a pass back: what it saw, which pages need a look, and a stratified sample |
 | [`test_docstruct.py`](test_docstruct.py) | tests for the silent-failure parts, mainly the coordinate transforms |
 
-## Four things measured the hard way
+## Five things measured the hard way
+
+**Invoke tesseract with `-c tessedit_create_tsv=1`, never the `tsv` config-file
+name.** Naming the config file makes `--psm` a silent no-op *and* drops the last
+character of a token, sometimes. Measured on one line-printer row against the
+page image:
+
+```
+truth          745  87,083  86,712  -371
+`tsv` config    74  87,08   85,71   -37     (0 of 4 correct)
+`-c` form      745  87,083  85,712  -371    (3 of 4 correct)
+```
+
+The loss ran at 14.5% of shared tokens on a dense 1979 page and 0% on clean
+1990s pages, so it concentrated exactly where the hard pages were and read as
+OCR difficulty rather than as a caller bug. A full 3,984-page pass completed
+with psm ignored and tokens quietly truncated before this surfaced. Fixing it
+took checked row relations from 13,468 to 17,158 at an unchanged hold rate.
+A regression test pins that `--psm` has an observable effect, because the
+failure was silent by construction.
 
 **`OMP_THREAD_LIMIT=1` is mandatory when parallelizing.** Tesseract links OpenMP
 and takes one thread per core, so four worker processes on four cores means
@@ -132,13 +151,15 @@ slower and lossy. `Page.image_bytes()` takes the lossless path when it exists
 and says so via `Page.lossless()`.
 
 **Orientation is a silent corruption source, and the detector cannot be
-trusted to fix it.** About 7% of a 45-page sample arrived misoriented. Tesseract's
+trusted to fix it.** 34 of 3,984 real pages arrived misoriented, 0.9%. Tesseract's
 OSD finds them, but its self-reported confidence does not separate true from
 false: it called 180 degrees at confidence 0.88 on an upright page (applying it
 cut mean word confidence from 81.7 to 25.8) and at 4.66 on a genuinely upside
 down one (where the correction raised 34.9 to 94.1). A threshold would have to
 sit between those two numbers, which is fitting noise. `prep.deskew_rotate`
-recognizes the page both ways and keeps the better reading.
+recognizes the page both ways and keeps the better reading. Over the corpus it
+accepted 34 rotations and rejected 79, so the check does more work than the
+detector it second-guesses.
 
 **Which "better" means depends on the rotation.** A half turn garbles the text,
 so mean word confidence separates it cleanly. A quarter turn does not: tesseract
