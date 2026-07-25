@@ -81,11 +81,14 @@ export function loadKit(name, { window: w = {}, imports = KIT_IMPORTS, console: 
 //   problems — [level, message] pairs captured from window+global console
 //              warn/error and window 'error' events; assert it stays empty to
 //              catch eager-binding startup throws (see testing.md)
-export function makeWindow({ html = '<!doctype html><html><body></body></html>' } = {}) {
+// `url` sets the document's location, which matters for any component that
+// reads its own query string (?use= being the one that pins a preview ref).
+export function makeWindow({ html = '<!doctype html><html><body></body></html>',
+                             url = 'https://localhost/test/' } = {}) {
   const dom = new JSDOM(html, {
     runScripts: 'dangerously',
     pretendToBeVisual: true, // provides requestAnimationFrame + performance
-    url: 'https://localhost/test/',
+    url,
   });
   const { window } = dom;
 

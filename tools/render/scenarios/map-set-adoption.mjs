@@ -1,9 +1,12 @@
-// screenshot.mjs interaction scenario: the estate's Portable view, both
-// halves populated.
+// screenshot.mjs interaction scenario: the Map view's first two tabs, both
+// halves populated. (Formerly portable-view.mjs, for the view's old name; the
+// component became map() in the rename, which left this scenario waiting on an
+// x-data that no longer existed.) The third tab has its own scenario,
+// map-transport.mjs, since it loads a different manifest.
 //
 //   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
-//     --script tools/render/scenarios/portable-view.mjs \
-//     --out tools/.preview/portable-view.png
+//     --script tools/render/scenarios/map-set-adoption.mjs \
+//     --out tools/.preview/map-set-adoption.png
 //
 // The sandbox blocks api.github.com, so the scenario serves the REAL committed
 // docs/portable.json (fetched relative, same origin) and fakes a small
@@ -52,14 +55,14 @@ export default async function (page) {
       return origGet.call(this, name);
     };
 
-    window.__shell.goPortable();
+    window.__shell.goMap();
     return true;
   }, manifest);
-  if (ok !== true) throw new Error('portable scenario: ' + ok);
+  if (ok !== true) throw new Error('map scenario: ' + ok);
 
   await page.waitForFunction(() => {
     const host = [...document.querySelectorAll('[x-data]')]
-      .find(el => (el.getAttribute('x-data') || '').includes('portable('));
+      .find(el => (el.getAttribute('x-data') || '').includes('map('));
     if (!host) return false;
     const d = window.Alpine.$data(host);
     return d.manifest && !d.adoptLoading && d.rows.length === 5 && d.rows.every(r => !r.loading);

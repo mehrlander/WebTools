@@ -694,9 +694,17 @@ window.fetch=function(input,init){try{
   // router: it never parses the envelope, it forwards the address to the page
   // named by the key. The map is the opt-in boundary and names each renderer's
   // repo/ref (default web-tools@main). See docs/envelopes/chat-results.md.
+  //
+  // docs/routes.json is this table's OWNER; the literal below is its inlined
+  // copy, kept inline so the critical render path stays vanilla and takes no
+  // fetch. Edit the manifest, then mirror it here (three fields per key);
+  // tools/test/routes-manifest.test.mjs fails if the two drift. The manifest
+  // also carries the address grammar and the delivery modes, which is what
+  // show-repo's Map view renders in its Transport tab.
   const TOSS_ROUTES = {
     'chat-results': { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/chat-results.html' },
     'data':         { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/data-view.html' },
+    'shorter':      { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/shorter.html' },
   };
   const routeKey = Object.keys(TOSS_ROUTES).find(k => param(k));
 
