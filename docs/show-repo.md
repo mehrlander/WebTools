@@ -265,7 +265,9 @@ browse.
 the coordination layer itself into a first-class object, and is the operational
 face of the constellation doctrine ([`docs/CONSTELLATION.md`](CONSTELLATION.md)
 is the portable kernel, opened from the set header; the full worked instance is
-in the private `home` repo). Three parts, `lib/alpineComponents/map.js`.
+in the private `home` repo). Three tabs, `lib/alpineComponents/map.js`, each
+answering one question about the layer: what travels, who carries it, and how it
+moves.
 
 *The set* renders the to-go bag from the hub's committed manifest,
 [`docs/portable.json`](portable.json), whose prose parent is
@@ -303,6 +305,22 @@ repos' settings);
 probes are live per view open with a Refresh, and persisting them as a registry
 crawl cache (`state/alignment.json` beside the config and activity caches) is the
 named follow-up.
+
+*Transport* answers how content moves and renders, from the hub's committed
+[`docs/routes.json`](routes.json). Three sections: the **address grammar**
+(`owner/repo[@ref]:path`, with a chip per place it is spoken, each opening that
+file in the shell viewer), the **delivery modes** `toss-render.html` accepts
+(each row carrying whether it ships the bytes inline or fetches a reference, and
+the trust posture that buys: a payload renders under an opaque origin that
+cannot reach this origin's token, an address-mode fetch is same-origin and can,
+which is why only the second is allowlisted), and the **toss routes** resolving
+a content type to its renderer page. Those facts previously existed only as
+source comments in three files, so a reader had to reconstruct them; the
+manifest owns them instead. The `routes` block is the owner of `toss-render`'s
+`TOSS_ROUTES` literal, which stays inlined so the critical render path takes no
+fetch, with `tools/test/routes-manifest.test.mjs` failing if the two drift: the
+same builder-plus-drift-check shape as the set's manifest test. Public, like the
+set, and loaded on first open of the tab rather than at mount.
 
 **Tools** (`?view=tools`) is a curated gallery of the utility pages the owner
 reaches for (the text-diff tool, the transform/compress round-trip, and so on),

@@ -1,0 +1,53 @@
+// screenshot.mjs interaction scenario: the Map view's Transport tab, the third
+// facet of the coordination layer (how content moves and renders).
+//
+//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//     --script tools/render/scenarios/map-transport.mjs \
+//     --out tools/.preview/map-transport.png --full
+//
+// The sandbox blocks api.github.com, so the scenario serves the REAL committed
+// docs/routes.json (fetched relative, same origin) through a stubbed GH.get.
+// No token is set: Transport is public, like the set half, so this also proves
+// the tab renders for a tokenless reader while Scope & adoption stays gated.
+// What the pixels prove: the three-tab strip, the address grammar with its
+// used-by chips, the delivery modes with a trust icon per row, and the toss
+// routes resolving each key to its renderer page.
+export default async function (page) {
+  const routes = await page.evaluate(() => fetch('../../docs/routes.json').then(r => r.text()));
+  const ok = await page.evaluate((routesText) => {
+    if (!window.Alpine || !window.__shell || !window.GH) return 'no shell';
+
+    const origGet = window.GH.prototype.get;
+    window.GH.prototype.get = async function (name) {
+      if (name === 'docs/routes.json') return { text: routesText };
+      if (name === '.claude/settings.json' || name === 'CLAUDE.md' || name === '.web-tools.json'
+          || name === 'docs/portable.json' || name === 'state/configs.json' || name === 'state/activity.json'
+          || name === 'lists/todo.json' || name === 'lists/jots.json')
+        throw Object.assign(new Error('404'), { status: 404 });
+      return origGet.call(this, name);
+    };
+
+    window.__shell.goMap();
+    return true;
+  }, routes);
+  if (ok !== true) throw new Error('map-transport scenario: ' + ok);
+
+  const host = () => [...document.querySelectorAll('[x-data]')]
+    .find(el => (el.getAttribute('x-data') || '').includes('map('));
+
+  await page.waitForFunction(host, { timeout: 20000 });
+  await page.evaluate(() => {
+    const el = [...document.querySelectorAll('[x-data]')]
+      .find(e => (e.getAttribute('x-data') || '').includes('map('));
+    const d = window.Alpine.$data(el);
+    d.mapTab = 'transport';
+    d.loadRoutes();
+  });
+  await page.waitForFunction(() => {
+    const el = [...document.querySelectorAll('[x-data]')]
+      .find(e => (e.getAttribute('x-data') || '').includes('map('));
+    const d = el && window.Alpine.$data(el);
+    return d && d.routes && !d.routesLoading;
+  }, { timeout: 20000 });
+  await page.waitForTimeout(500);
+}

@@ -1,0 +1,92 @@
+{
+  "note": "How content moves and renders: the address grammar a reference shares across the repo, the delivery modes pages/toss-render.html accepts, and the toss routes that map a content type to the page that renders it. Read by show-repo's Map view (Transport tab). The `routes` block is the owner of toss-render.html's TOSS_ROUTES literal, which stays inlined so the critical render path takes no fetch; tools/test/routes-manifest.test.mjs holds the two in step.",
+  "hub": "mehrlander/web-tools",
+  "renderer": "pages/toss-render.html",
+  "grammar": {
+    "form": "owner/repo[@ref]:path",
+    "role": "One way to name a file in any repo, at any ref. The ':' before the path is unambiguous because git forbids ':' in ref names; no @ref means the repo's default branch.",
+    "usedBy": [
+      { "where": "#gh= address mode", "path": "pages/toss-render.html" },
+      { "where": "toss routes (the envelope address after #<route>=)", "path": "pages/toss-render.html" },
+      { "where": "stage links (#stage=), groups ';'-separated and paths ','-separated", "path": "docs/show-repo.md" },
+      { "where": "the curated Tools gallery", "path": "docs/tools.json" },
+      { "where": "a repo's pages catalog and stage.files", "path": "docs/show-repo.md" }
+    ]
+  },
+  "modes": [
+    {
+      "param": "gz",
+      "form": "#gz=<base64url of gzipped HTML>",
+      "carries": "inline",
+      "trust": "untrusted",
+      "sandbox": "opaque origin (no allow-same-origin)",
+      "reach": "any reader",
+      "note": "The page rides in the fragment, so nothing is hosted and nothing reaches a server. Absolute-URL CDN dependencies work; same-repo relative ones do not."
+    },
+    {
+      "param": "html",
+      "form": "#html=<base64 of HTML>",
+      "carries": "inline",
+      "trust": "untrusted",
+      "sandbox": "opaque origin (no allow-same-origin)",
+      "reach": "any reader",
+      "note": "The uncompressed sibling of #gz=. Same sandbox, longer URL."
+    },
+    {
+      "param": "url",
+      "form": "#url=<base64 of an absolute URL>",
+      "carries": "inline",
+      "trust": "untrusted",
+      "sandbox": "opaque origin (no allow-same-origin)",
+      "reach": "any reader",
+      "note": "Points the frame at a URL rather than carrying the bytes. A site sending X-Frame-Options or CSP frame-ancestors will refuse to load."
+    },
+    {
+      "param": "gh",
+      "form": "#gh=owner/repo[@ref]:path[?query][#frag]",
+      "carries": "reference",
+      "trust": "trusted",
+      "sandbox": "same-origin, owner allowlist (mehrlander)",
+      "reach": "viewer holding the token",
+      "note": "Fetched live through the contents API, so private repos and un-deployed branches render. Same-origin means the frame could read this origin's stored token, which is why the allowlist refuses any other owner outright. The browser-local token means a fresh or in-app browser may 404; fall back to #gz= or a published artifact."
+    },
+    {
+      "param": "<route>",
+      "form": "#<route>=owner/repo[@ref]:path",
+      "carries": "reference",
+      "trust": "trusted",
+      "sandbox": "same-origin, owner allowlist (mehrlander)",
+      "reach": "viewer holding the token",
+      "note": "A typed toss: the key names a renderer from the routes below, the value addresses the content. Resolves onto address mode, so the caller addresses the CONTENT and toss-render stays a schema-blind router that never parses the envelope."
+    },
+    {
+      "param": "src",
+      "form": "?src=owner/repo[@ref]:path",
+      "carries": "reference",
+      "trust": "n/a",
+      "sandbox": "the renderer page's own fetch",
+      "reach": "viewer holding the token",
+      "note": "The renderer side of the split, not a toss-render param. A routed toss resolves into this: toss-render renders the renderer page and the params shim delivers ?src= to the page's own location.search read. Reaching a renderer directly with ?src= works the same; the route is shorthand, not a gate."
+    }
+  ],
+  "routes": [
+    {
+      "key": "chat-results",
+      "repo": "mehrlander/web-tools",
+      "ref": "main",
+      "path": "pages/chat-results.html",
+      "renders": "A chat or trawl results envelope: search hits across conversations, annotated and rendered together.",
+      "doc": "docs/envelopes/chat-results.md",
+      "example": "#chat-results=mehrlander/chat-histories:results/webi-drs-data.json"
+    },
+    {
+      "key": "data",
+      "repo": "mehrlander/web-tools",
+      "ref": "main",
+      "path": "pages/data-view.html",
+      "renders": "Data as something readable rather than a raw blob: a CSV, a JSON array, a log, in a multi-mode viewer (table, tree, preview, code, raw). Bare bytes need no wrapper; an items envelope adds several files with a default view each.",
+      "doc": "docs/envelopes/data-view.md",
+      "example": "#data=mehrlander/home@main:projects/budget-drs/data/rows.csv"
+    }
+  ]
+}
