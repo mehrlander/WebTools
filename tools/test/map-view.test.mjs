@@ -31,10 +31,14 @@ const manifest = {
 // path: the set gets the fixture above, Transport gets the committed manifest
 // (routes-manifest.test.mjs is what holds that file to its own shape).
 const routesJson = readFileSync(path.join(repoRoot, 'docs', 'routes.json'), 'utf8');
+const asked = [];
 window.TOKEN = 'ignored-in-test';
 window.GH = class {
   constructor(opts) { this.opts = opts; }
-  async get(p) { return { text: p === 'docs/routes.json' ? routesJson : JSON.stringify(manifest) }; }
+  async get(p) {
+    asked.push({ ref: this.opts.ref, path: p });
+    return { text: p === 'docs/routes.json' ? routesJson : JSON.stringify(manifest) };
+  }
 };
 // No window.__shell in the test, so hasToken() is falsy and the token-gated
 // adoption probe never runs; only the public set half loads.
@@ -86,6 +90,13 @@ test('Transport loads on demand, not at mount', async () => {
   const before = data.routes;
   await data.loadRoutes();
   assert.equal(data.routes, before, 'a second open reuses the loaded manifest');
+});
+
+test('with no ?use=, both manifests are read at main', () => {
+  // The deployed case. The branch-preview case is map-view-use-ref.test.mjs,
+  // which needs its own window because the ref comes from location.search.
+  assert.ok(asked.length >= 2);
+  for (const a of asked) assert.equal(a.ref, 'main', a.path);
 });
 
 test('Transport rows resolve their icons and GitHub links', () => {
