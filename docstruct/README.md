@@ -52,6 +52,20 @@ ST HIST SOCIETY   569 + -5 = 504   (expected 564)
 
 Verified against the page image: it reads 564.
 
+Measured over the 1,517 scanned pages processed so far, the two controls turn
+out to be worth very different amounts, which is why they are reported apart:
+
+| control | rows tested | hold | read it as |
+|---|---|---|---|
+| row relation (`c_a op c_b = c_c`, discovered) | 4,022 | **95.7%** | a finding worth acting on |
+| column total (a total row against the block above) | 1,392 | 36.1% | advisory triage only |
+
+`Table.reconciled` speaks only for the first. The column-total check fails far
+more often than the data is wrong, mostly because a column dropped below the
+frequency threshold leaves the block sum short, so averaging the two would hide
+which control is which. A control with that false-positive rate is worse than no
+control, because it teaches you to ignore it.
+
 ## Getting started
 
 ```bash

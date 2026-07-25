@@ -284,6 +284,25 @@ class TableStructure(unittest.TestCase):
         self.assertTrue(totals)
         self.assertTrue(all(c.holds for c in totals))
 
+    def test_column_totals_are_advisory_not_part_of_reconciled(self):
+        # The two controls have very different precision on real pages, so
+        # `reconciled` must speak only for the trustworthy one.
+        rows = list(self.ROWS) + [("TOTAL BIENNIUM", "3,350", "650", "4,000")]
+        t = tables.find_table(self.build(rows))
+        self.assertTrue(t.advisory)
+        self.assertTrue(all(c.kind == "column_total" for c in t.advisory))
+        self.assertEqual(t.reconciled, 1.0)
+
+    def test_a_total_sums_only_the_block_above_it(self):
+        # Two sections, each closed by its own total. Summing every non-total
+        # row above the second total would fail by construction.
+        rows = [("A", "10", "5", "15"), ("B", "20", "5", "25"),
+                ("TOTAL ONE", "30", "10", "40"),
+                ("C", "100", "50", "150"), ("D", "200", "50", "250"),
+                ("TOTAL TWO", "300", "100", "400")]
+        t = tables.find_table(self.build(rows))
+        self.assertTrue(all(c.holds for c in t.advisory), [c.detail for c in t.advisory])
+
 
 class GroupLines(unittest.TestCase):
     def test_splits_on_vertical_gaps(self):
