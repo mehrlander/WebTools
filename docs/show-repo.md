@@ -43,10 +43,10 @@ all-repo context) or in a **repo** (a per-repo context with its own views).
 The **header carries the app-level nav**: a fixed, app-owned set of the estate's
 own views, **Activity** (Open / To-do / Jots by pill), **Repos**, **Surfaces**,
 **Stage**, **Tools**, and **Map**, as icon buttons (icon + label on desktop,
-icon-only on mobile), lit on the active view and present on every viewport. Beside them, in a
-repo, sits a compact `owner/name @ref` readout (the ref switcher is kept; the
-GitHub jump too), and on the right the auth shield (token / config dialog). The
-brand icon returns to the **dashboard**: Open for a signed-in viewer, Repos
+icon-only on mobile), lit on the active view and present on every viewport. That is the whole
+header: the `#repo` component sits beside the nav but renders nothing (it is the
+repo/auth controller and hosts the shared dialog), and there is no auth shield.
+The brand icon returns to the **dashboard**: Open for a signed-in viewer, Repos
 for a signed-out one. There is no repo-list dropdown and no quick-links row:
 **repo selection happens on the Repos dashboard** (a card opens the repo), which
 reads better than a dropdown and keeps the header a fixed set rather than one
@@ -251,15 +251,18 @@ aside. Deep links: `?view=estate` (the bare URL is the Repos estate already; the
 param is stamped only when a `repo`/`ref` param is also present), `?view=surfaces`
 and `?view=activity` (always stamped, so each is shareable on its own).
 
-**The shield dialog is scoped by context.** Opened from the sidebar shield at the
-estate level it is an **account panel**: the token control plus the estate
-actions (**Refresh views**, which forces a config-cache rebuild), with no repo
-tabs. Opened from a card gear or the repo-level shield it is the **repo dialog**:
-the **Info** tab (repo facts, the token control, a Public-browse shortcut, and
-the repo name as the one-tap GitHub link), plus the **Settings** and **Config**
-tabs. The dialog's former GitHub / jsDelivr-CDN / flat-tree link list was retired
-(2026-07-19): GitHub is the header link, and a file listing lives in Public
-browse.
+**The shared dialog is scoped by how it is opened.** With no repo, from the
+**account row** at the top right of the Repos view, it is an **account panel**:
+the token control alone, no repo tabs (**Refresh views** left with the header
+shield, being the same `refreshConfigs` the Repos view's own **Refresh** button
+already ran; the account row is where the token lives now).
+With a repo, from a card gear, a sidebar Repos row, or the Map, it is the **repo
+dialog**: the **Info** tab (repo facts, the token control, a Public-browse
+shortcut, and the repo name as the one-tap GitHub link), plus the **Settings**
+and **Config** tabs. It is the path for a repo you are *not* in; the open repo's
+manifest is edited in the roomier Config view. The dialog's former GitHub /
+jsDelivr-CDN / flat-tree link list was retired (2026-07-19): GitHub is the header
+link, and a file listing lives in Public browse.
 
 **Map** (`?view=map`, always stamped; `?view=portable` still resolves here) turns
 the coordination layer itself into a first-class object, and is the operational
@@ -658,20 +661,25 @@ schema: `web-tools-private/mailbox/README.md`.
 
 ### Editing the manifest from the shell
 
-The sidebar **shield** dialog (the repo dialog, `repoModal` in
-`lib/alpineComponents/repo.js`) has two tabs, switched top-right: a **link** tab
-(repo info, stats, auth, and URLs) and a **gear** tab, the config editor for the
-**currently-open repo**. The editor is a JSON editor over the repo's manifest:
-it loads the current `.web-tools.json` (or an all-empty template when the repo
-has none, so the shape is there to fill in), validates on every keystroke, links
-to this doc for the field format, and on Save commits the file through the
-viewer's token (`gh-store.js`'s `save`, a Contents API PUT to the repo's default
-branch). Editing needs auth, so Save is disabled until the link tab's token is
-set.
+Two surfaces edit the same file. The **Config view** (`lib/alpineComponents/config.js`,
+the sidebar's Config row) is the roomy one and covers the **currently-open
+repo**: a Settings form and a raw JSON pane side by side on desktop, tabbed on
+mobile, kept in sync both ways. The **repo dialog** (`repoModal` in
+`lib/alpineComponents/repo.js`) is the compact one and covers **any** repo
+without navigating to it, reached from an estate card's gear, a sidebar Repos
+row, or the Map; its **Settings** and **Config** tabs are the same two panes.
 
-- **Where it lives**: a tab in the shield dialog rather than a standalone
-  control, so the repo's stats, links, auth, and config sit in one place.
-  Switching to the gear tab seeds the editor.
+Either way the JSON editor loads the current `.web-tools.json` (or an all-empty
+template when the repo has none, so the shape is there to fill in), validates on
+every keystroke, links to this doc for the field format, and on Save commits the
+file through the viewer's token (`gh-store.js`'s `save`, a Contents API PUT to
+the repo's default branch). Editing needs auth, so Save is disabled without a
+token.
+
+- **Where it lives**: the open repo's config is a sidebar row like any other
+  repo view, so it sits with the views rather than behind an icon; the sidebar's
+  top-bar gear was retired as a duplicate of that row. Another repo's config
+  stays a dialog, so opening it does not move you off the repo you are in.
 - **Auto-migration**: a save always writes `.web-tools.json`. A repo still on the
   legacy `.show-repo.json` is edited the same way; the save lands the new name,
   which readers already prefer, so the legacy file goes inert. No delete step

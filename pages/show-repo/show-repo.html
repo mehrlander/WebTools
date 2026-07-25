@@ -66,11 +66,13 @@
   </template>
 </div>
 
-<!-- ── Header: brand, the app-level view nav (a closed set the app owns), then
-     the in-repo context readout and the auth shield. The old repo-list dropdown
-     and the desktop quick-links row are gone: repo selection now happens on the
-     Repos dashboard, which is nicer than a dropdown, and keeps the header a
-     fixed set rather than one repos opt into. ─────────────────────────────── -->
+<!-- ── Header: brand and the app-level view nav (a closed set the app owns).
+     That is all it carries. The old repo-list dropdown and the desktop
+     quick-links row went first (repo selection happens on the Repos dashboard,
+     which is nicer than a dropdown); the auth shield followed, since everything
+     it reached already had an on-page home: the token control is the Repos
+     dashboard's account row, a repo's config is the sidebar's Config view, and
+     "Refresh views" is that same view's Refresh button. ─────────────────── -->
 <header class="shrink-0 z-30 bg-base-100 border-b border-base-300">
   <div class="max-w-full px-4">
     <div class="h-14 flex items-center gap-0.5">
@@ -92,17 +94,13 @@
         </template>
       </nav>
       <!-- The repo component runs headless here: the repo/auth controller plus
-           the token dialog it hosts, no visible readout. The open repo is shown
-           at the top of the sidebar instead, so a header copy was redundant. The
-           auth shield (right) opens the dialog via __repo.openDialog(). -->
+           the token dialog it hosts, no visible readout of its own. The open
+           repo is shown at the top of the sidebar instead, so a header copy was
+           redundant, and the dialog is now opened from the page (the Repos
+           dashboard's account control, an estate card, the Map) rather than
+           from a header shield. -->
       <div id="repo" x-data="repo({ inline: true })" class="min-w-0"></div>
       <div class="grow"></div>
-      <!-- Auth shield (token / config dialog): an app-level control, so it lives
-           in the always-visible header rather than the sidebar drawer. -->
-      <button @click="document.getElementById('repo')?.__repo?.openDialog()"
-              class="tooltip tooltip-left shrink-0 p-1 rounded-lg hover:bg-base-200 transition-colors" :data-tip="authTip">
-        <i class="ph text-lg leading-none" :class="authIcon"></i>
-      </button>
       <!-- Drawer toggle, where the sidebar is a drawer (below lg). -->
       <button @click="openSidebar()" class="shrink-0 p-1 rounded-lg hover:bg-base-200 transition-colors lg:hidden" title="Menu">
         <i class="ph ph-list text-lg leading-none"></i>
@@ -120,17 +118,26 @@
 
   <aside class="fixed inset-y-0 left-0 w-72 max-w-[85vw] z-50 bg-base-100 border-r border-base-300 shadow-xl flex flex-col transition-transform duration-200 ease-out lg:static lg:z-auto lg:shadow-none lg:translate-x-0 lg:w-80 xl:w-[22rem] lg:shrink-0"
          :class="[drawer ? 'translate-x-0' : '-translate-x-full lg:translate-x-0', !showSidebar && 'lg:hidden']">
-    <!-- Sidebar top bar: the context label, then in a repo the repo action
-         cluster (the set the estate card carries): a public/private indicator
-         that toggles to the -private/public companion when one is on the estate,
-         the config/placement dialog, and the GitHub jump. Plus the mobile-only
-         drawer close button. The auth shield lives in the header. -->
+    <!-- Sidebar top bar: the context label, then in a repo the one marker the
+         name cannot carry itself, a public/private indicator that toggles to the
+         -private/public companion when one is on the estate. Plus the mobile-only
+         drawer close button. The name IS the GitHub jump, so no separate icon,
+         and the config gear left with it: Config is a row in the view list
+         directly below, which is where a repo-level setting belongs. -->
     <div class="h-14 flex items-center gap-2 px-4 border-b border-base-300 shrink-0">
       <div class="flex items-center gap-1.5 min-w-0 flex-1">
-        <span class="font-mono text-base truncate text-base-content/70 min-w-0"
-              x-text="estateCtx ? 'Views' : ($store.browser.repo || 'Browse')"></span>
-        <!-- The action cluster sits at the right edge of the bar, not up against
-             the name: a spacer pushes it over. -->
+        <span x-show="estateCtx || !$store.browser.repo"
+              class="font-mono text-base truncate text-base-content/70 min-w-0"
+              x-text="estateCtx ? 'Views' : 'Browse'"></span>
+        <!-- The open repo@ref on GitHub: the name itself, since a name that
+             names a place should open it. Tooltip names the target (repo, plus
+             the ref when off the default branch). -->
+        <a x-show="!estateCtx && $store.browser.repo" :href="repoGithubUrl"
+           target="_blank" rel="noopener" :title="repoGithubTip"
+           class="font-mono text-base truncate min-w-0 text-base-content/70 hover:text-primary transition-colors"
+           x-text="$store.browser.repo"></a>
+        <!-- The marker sits at the right edge of the bar, not up against the
+             name: a spacer pushes it over. -->
         <div class="grow"></div>
         <template x-if="!estateCtx && $store.browser.repo">
           <span class="flex items-center gap-1.5 shrink-0">
@@ -145,15 +152,6 @@
                   class="text-base-content/40"
                   :title="$store.browser.repoObj?.private ? 'private' : 'public'">
               <i class="ph text-base leading-none" :class="$store.browser.repoObj?.private ? 'ph-lock' : 'ph-globe'"></i></span>
-            <!-- Config: opens the repo's Config view (the roomy editor). -->
-            <button @click="goConfig()" title="Repo config"
-                    class="text-base-content/40 hover:text-primary transition-colors"
-                    :class="view==='config' && 'text-primary'">
-              <i class="ph ph-gear-six text-base leading-none"></i></button>
-            <!-- GitHub jump; the tooltip names what it opens. -->
-            <a :href="repoGithubUrl" target="_blank" :title="repoGithubTip"
-               class="text-base-content/40 hover:text-base-content/80 transition-colors">
-              <i class="ph ph-github-logo text-base leading-none"></i></a>
           </span>
         </template>
       </div>
@@ -568,8 +566,10 @@
     </div>
 
     <!-- Config: the open repo's .web-tools.json as a full view (a Settings form
-         and a raw JSON tab), the roomy counterpart to the header shield's config
-         dialog. Per-repo, so it sits with the repo views (after Branches).
+         and a raw JSON tab), the roomy counterpart to the shared repo dialog's
+         config tabs. Per-repo, so it sits with the repo views (after Branches).
+         It is the only config surface for the OPEN repo now: the sidebar top
+         bar's gear was retired as a duplicate of this row.
          Mounted lazily on first visit. -->
     <div x-show="view==='config'" class="h-full overflow-y-auto">
       <div class="mx-auto px-6 py-8 max-w-3xl">
@@ -1297,20 +1297,11 @@ function app(){ return {
     await this.openFolder(p.replace(/\/+$/, ''));
   },
 
-  // Auth state drives which pinned private repos are dimmed, and the sidebar
-  // shield's icon/tooltip.
+  // Auth state drives which pinned private repos are dimmed, the token-gated
+  // sidebar sections, and the Repos dashboard's account control (which reads
+  // both of these through window.__shell, the header shield having gone).
   _authState: 'public',
   _authUser: '',
-  get authIcon(){
-    if (this._authState === 'auth') return 'ph-shield-check text-success';
-    if (this._authState === 'expired') return 'ph-warning text-warning';
-    return 'ph-globe text-base-content/50';
-  },
-  get authTip(){
-    if (this._authState === 'auth') return 'Authenticated: ' + this._authUser;
-    if (this._authState === 'expired') return 'Token expired';
-    return 'Public only';
-  },
 
   // The open repo@ref on GitHub — the sidebar's standing jump-over. Every view
   // keeps a one-tap route to the GitHub presentation of what it is showing
@@ -1571,20 +1562,20 @@ function app(){ return {
     const noTok = !this.hasToken();
     if (e?.status === 404) {
       return noTok
-        ? repo + ' is private or does not exist. You are browsing without a token, so private repos are invisible. Add one with the shield icon to see them.'
+        ? repo + ' is private or does not exist. You are browsing without a token, so private repos are invisible. Add one on the Repos dashboard to see them.'
         : repo + ' was not found (404). Check the name, or your token may lack access to it.';
     }
     if (e?.status === 403) {
       return noTok
-        ? 'GitHub rate-limited this browser (no token, 60 requests/hour). Add a token with the shield icon, or open Public browse, which reads public repos through jsDelivr and does not count against the limit.'
+        ? 'GitHub rate-limited this browser (no token, 60 requests/hour). Add a token on the Repos dashboard, or open Public browse, which reads public repos through jsDelivr and does not count against the limit.'
         : 'GitHub returned 403 for ' + repo + '. The token may lack access, or the rate limit is exhausted.';
     }
     return 'Could not open ' + repo + ': ' + (e?.message || e);
   },
   goBranches(){ this.branchesSeen = true; this.view = 'branches'; this.drawer = false; this.syncUrl(); },
   // The per-repo Config view: the open repo's .web-tools.json as a roomy editor,
-  // reached from the sidebar Config entry, the top-bar and Pinned gears. The
-  // header shield's dialog stays for auth and for configuring another repo.
+  // reached from the sidebar Config entry and the Pinned gear. The shared repo
+  // dialog stays for the token and for configuring a repo you are not in.
   goConfig(){ this.configSeen = true; this.view = 'config'; this.drawer = false; this.syncUrl(); },
   // Open the config dialog for ANY repo without navigating to it, the way the
   // estate card's gear does. Used by the sidebar Repos index rows, whose config
@@ -1996,8 +1987,8 @@ function overview(){ return {
   a REPO is a per-repo context, with its own VIEWS (landing, atlas, files,
   branches, config) plus pinned/recent shortcuts. Config is the open repo's
   .web-tools.json as a roomy view (a Settings form + a raw JSON tab, saving
-  through the config-saved event), the counterpart to the header shield's config
-  dialog, which stays for auth and for configuring another repo.
+  through the config-saved event), the counterpart to the shared repo dialog,
+  which stays for the token and for configuring a repo you are not in.
 
   The HEADER carries the app-level nav (estateNav): a fixed, app-owned set of the
   estate's own views — Activity (Open / To-do / Jots by pill), Repos, Surfaces,
@@ -2010,11 +2001,16 @@ function overview(){ return {
   share one component, so the incoming content slides in on commit rather than
   previewing live mid-drag; it rubber-bands at the ends, no-ops inside a repo, and
   yields to any horizontally-scrollable region the gesture starts in.
-  Beside them, in a repo, a compact owner/name @ref readout
-  (the #repo inline component, now just a label + ref switcher + GitHub jump; the
-  old repo-list dropdown is gone), and on the right the auth shield. The brand
-  icon returns to the DASHBOARD (goDashboard: Open if signed in, else Repos)
-  and doubles as nothing else; the mobile drawer toggle is its own hamburger.
+  Beside them the #repo component runs HEADLESS: it is the repo/auth controller
+  and hosts the shared dialog, but renders nothing (the old repo-list dropdown and
+  the auth shield are both gone). The brand icon returns to the DASHBOARD
+  (goDashboard: Open if signed in, else Repos) and doubles as nothing else; the
+  mobile drawer toggle is its own hamburger. AUTH left the chrome entirely: the
+  token control is the account row on the Repos dashboard (estate.js
+  accountPanel → the dialog's estate scope), which is where an account-level
+  setting belongs, and every token-gated empty state points there. The shield's
+  other job, REFRESH VIEWS, was already the Repos view's own Refresh button
+  (both call refreshConfigs), so it needed no new home.
   There is no repo-list dropdown and no quick-links row: REPO SELECTION HAPPENS
   ON THE REPOS DASHBOARD (tap a card) or from the sidebar Repos index, which
   keeps the header a fixed set rather than one repos opt into. The SIDEBAR holds
@@ -2126,11 +2122,13 @@ function overview(){ return {
 
   GITHUB JUMP-OVERS: show-repo is a wrapper over GitHub, not a wall — every
   view keeps a one-tap route to the GitHub presentation of what it is showing.
-  The sidebar top bar carries the open repo's action cluster, pushed to the bar's
-  right edge: a visibility marker (a toggle to the -private/public companion when
-  repoSibling finds one on the estate, else a static lock/globe), the config gear
-  (goConfig, the Config view), and the GitHub jump for the open repo@ref
-  (repoGithubUrl, tooltip repoGithubTip). The explorer's breadcrumb
+  In the sidebar top bar the repo NAME is that route (repoGithubUrl, tooltip
+  repoGithubTip): a name that names a place should open it, which retired the
+  separate github-logo icon. The config gear went with it, being a duplicate of
+  the Config row in the view list right below. What is left beside the name is
+  the one marker the name cannot carry, a visibility indicator (a toggle to the
+  -private/public companion when repoSibling finds one on the estate, else a
+  static lock/globe). The explorer's breadcrumb
   links the current folder (ghFolderUrl), the viewer's actions link the open
   file's blob, and every estate card and surface item carries its github-logo
   link. When adding a view, add its jump-over.
@@ -2145,10 +2143,10 @@ function overview(){ return {
   THE MANIFEST: .web-tools.json at the repo root is the repo's web-tools config,
   and how a repo designates what this shell should consider. Probed once per
   repo@ref (404 = no config), parsed as data, never executed. Reads
-  .web-tools.json, falling back to the legacy .show-repo.json name. The sidebar
-  shield dialog (repoModal, lib/alpineComponents/repo.js) has a Config tab (the
-  gear, beside the info/links tab): a JSON editor that writes the manifest via
-  the viewer's token. It always saves the new name, so editing a repo still on
+  .web-tools.json, falling back to the legacy .show-repo.json name. The open
+  repo's Config view edits it; for any other repo the shared dialog (repoModal,
+  lib/alpineComponents/repo.js) has a Config tab beside Info/Settings: a JSON
+  editor that writes the manifest via the viewer's token. It always saves the new name, so editing a repo still on
   .show-repo.json migrates it in place (no delete; the stale legacy file is
   inert since readers prefer the new name). Current fields:
 
