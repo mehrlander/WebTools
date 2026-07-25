@@ -282,6 +282,16 @@ parameterized by argv so one fetched copy serves many callers.
 | [`scripts/build-tree.py`](../scripts/build-tree.py) | render a repo tree as a linked markdown table for chat (code-span box art, braille indent, or plain ascii); tracked-only by default, gloss column left to fill by hand | `python3 build-tree.py <root> [--repo o/r] [--ref R] [--depth N] [--mode M] [--gloss]` |
 | [`scripts/ocr-pdf.py`](../scripts/ocr-pdf.py) | OCR a scanned PDF and report how far to trust it: per-page word confidence from tesseract's TSV, and pages that already carry a text layer passed through untouched unless `--force`. Needs the system binaries `tesseract-ocr` and `poppler-utils`, absent from a fresh sandbox | `python3 ocr-pdf.py <pdf> [-o out.txt] [--report r.json] [--dpi N] [--lang L] [--force]` |
 
+### Toolkits
+
+A toolkit is larger than a script and carries dependencies, so it does not fit
+the stdlib-only, one-file rule above. Clone or copy the directory rather than
+fetching one raw URL, and run its bootstrap first.
+
+| Toolkit | What it does | Interface |
+|---|---|---|
+| [`docstruct/`](../docstruct/) | extract structure from scanned documents by running several methods over each page and keeping all their answers, rather than picking one engine. Lossless page-image extraction, orientation correction decided by measurement instead of by the detector's own confidence, tesseract recognition, and a per-page record that holds competing extractions side by side. Needs `tesseract-ocr`, `poppler-utils`, PyMuPDF and Pillow, none present in a fresh sandbox | `./docstruct/bootstrap.sh` then `python3 docstruct/run.py <source> -o out/ [--sample f] [--workers N] [--psm N]` |
+
 Fetching and running a script is executing hub code, a step beyond fetching and
 reading a doc. That is why the hub must stay owned and trusted and the fetch stays
 fail-soft: a consumer can audit the script at its raw URL, but there is no

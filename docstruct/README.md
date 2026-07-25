@@ -1,0 +1,162 @@
+# docstruct
+
+Turning scanned documents into structured data, by running several methods over
+the same page and keeping all of their answers.
+
+This is the general half of the problem. Image prep, layout analysis, table
+detection, table structure recognition, text recognition and reading order all
+travel between corpora; only semantic labeling (this cell is an agency, this one
+is dollars) is specific to a document family. Everything here stops short of
+meaning.
+
+Its first consumer is `mehrlander/spend-wa`, which holds 3,984 scanned pages of
+Washington State budget documents from 1979 to 1995. Nothing here knows that.
+
+## Why several methods rather than the best one
+
+The output format is the design decision, and it is built to hold **several
+extractions of the same page at once**, each tagged with the method, its
+settings, and its confidence. Two properties follow:
+
+**Agreement between independent methods is stronger evidence than any single
+engine's self-reported confidence.** Two unrelated recognizers reading the same
+figure is a real control. One engine's 95% is an opinion, and a badly calibrated
+one: measured on this corpus, tesseract's orientation detector reported a
+rotation at confidence 0.88 that was flatly wrong, and would have corrupted the
+page had anything believed it.
+
+**Disagreement is a finding, not noise to average away.** A cell three methods
+read three ways is exactly where attention belongs, and a schema that stores one
+answer per cell cannot express it.
+
+For numeric tables this is the whole game. A misread digit placed confidently in
+the right cell is bad; a correctly read digit placed in the wrong column is
+worse, and character confidence cannot see it at all.
+
+## Getting started
+
+```bash
+./docstruct/bootstrap.sh              # ~18s: tesseract, poppler, PyMuPDF, Pillow
+./docstruct/bootstrap.sh --check      # report what is present, install nothing
+python3 docstruct/test_docstruct.py   # 24 tests, ~1s
+
+python3 docstruct/run.py <source> -o out/
+```
+
+The sandbox container does not persist, so `bootstrap.sh` is the first step of
+every session, not a one-time setup.
+
+`<source>` is a directory of per-page PDFs (one subdirectory per document), a
+single PDF, or a directory of images. Output is one JSON record per page at
+`out/<doc_id>/<page_id>.json`.
+
+Useful flags: `--sample <file>` to restrict the pass (see below), `--workers N`,
+`--psm N` for tesseract's page-segmentation mode, `--limit N` for a quick probe,
+`--force` to redo pages already recorded.
+
+### Selecting pages
+
+A selection file takes one entry per line, `#` comments allowed. A line with a
+slash picks one page; a line without one picks every page of that document:
+
+```
+lbn_1991/p-122     # one page
+lbn_1979           # the whole edition
+```
+
+That covers both jobs: a fixed iteration sample, and a filter that splits a
+source directory holding two kinds of document.
+
+## The pieces
+
+| Module | What it does |
+|---|---|
+| [`pages.py`](pages.py) | input: enumerate pages, extract pixels losslessly, read the inherited text layer |
+| [`prep.py`](prep.py) | page preparation: orientation, decided by measurement rather than by the detector's claim |
+| [`recognize.py`](recognize.py) | text recognition as a swappable method, plus the `line_axis` geometry test |
+| [`record.py`](record.py) | the per-page record holding several extractions, and right-angle box rotation |
+| [`run.py`](run.py) | the pass runner: parallel, resumable, one JSON per page |
+| [`test_docstruct.py`](test_docstruct.py) | tests for the silent-failure parts, mainly the coordinate transforms |
+
+## Four things measured the hard way
+
+**`OMP_THREAD_LIMIT=1` is mandatory when parallelizing.** Tesseract links OpenMP
+and takes one thread per core, so four worker processes on four cores means
+sixteen threads contending for four cores. A 45-page sample took over 600
+seconds that way against 18 seconds with the limit set, on identical inputs.
+`recognize` sets it on every subprocess call, so parallelize with processes and
+this stays handled.
+
+**Extract embedded images, do not rasterize.** A scanned PDF page is usually a
+thin wrapper around one JPEG, and `extract_image()` returns that stream byte for
+byte. Rasterizing instead decodes, composites at some DPI, and re-encodes: both
+slower and lossy. `Page.image_bytes()` takes the lossless path when it exists
+and says so via `Page.lossless()`.
+
+**Orientation is a silent corruption source, and the detector cannot be
+trusted to fix it.** About 7% of a 45-page sample arrived misoriented. Tesseract's
+OSD finds them, but its self-reported confidence does not separate true from
+false: it called 180 degrees at confidence 0.88 on an upright page (applying it
+cut mean word confidence from 81.7 to 25.8) and at 4.66 on a genuinely upside
+down one (where the correction raised 34.9 to 94.1). A threshold would have to
+sit between those two numbers, which is fitting noise. `prep.deskew_rotate`
+recognizes the page both ways and keeps the better reading.
+
+**Which "better" means depends on the rotation.** A half turn garbles the text,
+so mean word confidence separates it cleanly. A quarter turn does not: tesseract
+orients each text line for itself and reads a sideways page about as well
+(measured 91.3 against 93.0 on the same page), while still reporting word boxes
+in the sideways frame. Judging that page by confidence keeps correct words and
+transposed geometry, losing every column. So quarter turns are judged by
+`recognize.line_axis`, which asks whether the recognizer's own text lines run
+along x or along y, and separates the same page 0.04 against 1.0.
+
+## The record
+
+```json
+{
+  "schema": "docstruct/page-record@1",
+  "doc_id": "lbn_1991", "page_id": "p-122",
+  "source": {"lossless": true, "format": "jpeg", "width": 3332, "height": 2466},
+  "prep": {"orientation": {"applied": 180, "proposed": 180, "osd_confidence": 4.66,
+                           "verdict": "corrected", "measure": "mean_conf",
+                           "before": 34.9, "after": 94.1}},
+  "extractions": [
+    {"method": {"name": "tesseract", "version": "5.3.4", "settings": {"psm": "6"}},
+     "words": [{"text": "457,833", "box": [2958, 1150, 152, 43], "conf": 96.1}],
+     "word_count": 451, "mean_conf": 94.1},
+    {"method": {"name": "inherited", "settings": {"origin": "embedded-text-layer"}},
+     "words": [{"text": "EE8'LSV", "box": [2515, 1357, 109, 75], "flags": ["suspect"]}],
+     "word_count": 129, "notes": {"suspect": 124}}
+  ]
+}
+```
+
+`extractions` is a list even when it holds one entry. The document's own
+inherited text layer is stored as just another extraction, because that is what
+it is: an independent reading by an unknown engine, useful as a second opinion
+and not privileged. Words carry no confidence when the producing method reports
+none, rather than defaulting to full marks.
+
+`prep` is recorded because a figure read from a page that was rotated first is a
+different claim from one read off a page that arrived upright, and the record has
+to be able to say which. When a rotation is applied, every extraction taken
+before it (the inherited layer) is rotated into the new frame so all boxes stay
+comparable.
+
+## Not built yet
+
+Region segmentation, table structure recognition, and reading order. The next
+step is region segmentation, which a spike showed is the real first problem:
+clustering numeric tokens across a whole page fails because prose below a table
+contributes numbers and because bill numbers inside row labels (`5653)`,
+`(ESSB 5025)`) are shaped exactly like money.
+
+A second recognizer is deliberately not wired up. On a clean corpus the marginal
+gain over a tesseract that already reads the digits looks small against the cost
+of CPU-only neural inference, so the case for one should come from pages where a
+control actually fails. Adding one means writing a function that returns
+`(Method, list[Word])`; nothing else changes.
+
+Tracked as `document-structure-harness-4mz7wk` in [`tracker/`](../tracker/), with
+the consumer side as `text-provenance-vocabulary-p8n4qc` in `mehrlander/spend-wa`.

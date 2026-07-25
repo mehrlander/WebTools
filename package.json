@@ -2,7 +2,8 @@
   "name": "web-tools",
   "private": true,
   "scripts": {
-    "test": "node --test 'tools/test/**/*.test.mjs'",
+    "test": "node --test 'tools/test/**/*.test.mjs' && npm run test:docstruct",
+    "test:docstruct": "python3 docstruct/test_docstruct.py",
     "preview": "node tools/render/preview.mjs",
     "shot": "node tools/render/screenshot.mjs",
     "build": "node tools/build/build.mjs",
