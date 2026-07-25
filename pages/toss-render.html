@@ -25,11 +25,15 @@
   and pasted URLs are treated as payloads too: same untrusted sandbox.
 
   Address mode (fetched by reference, TRUSTED via allowlist):
-    #gh=<owner>/<repo>[@<ref>]:<path>[?<query>]
+    #gh=<owner>/<repo>[@<ref>]:<path>[?<query>][#<frag>]
     e.g. #gh=mehrlander/web-tools@some-branch:pages/index.html
-    An optional ?query after the path is handed to the PAGE (via the params
-    shim, since a srcdoc iframe has no location.search), so a page's own
-    deep links work tossed: ...:pages/show-repo/show-repo.html?view=stage.
+    Neither suffix reaches the API; both are handed to the PAGE. An optional
+    ?query arrives via the params shim (the frame has no location.search of
+    its own), so a page's own deep links work tossed:
+    ...:pages/show-repo/show-repo.html?view=stage. An optional #frag rides on
+    the frame's blob: URL as a real location.hash, so a page that routes on
+    its own hash opens where the link says: ...:pages/data-view.html#item=2.
+    A payload toss takes the same suffix: #gz=<base64>#frag.
   Fetches the file via the GitHub API (using the stored token, so private
   repos and un-deployed branches work) and renders it same-origin, with a
   <base> stamped in so relative URLs resolve and a shim so the page's own
@@ -81,6 +85,14 @@
   its header, version readout, and render tab describe the tossed page, not
   this shell, and "Re-toss at ref" re-addresses in place via __tossNavigate.
 
+  How the frame is mounted: a blob: URL, not srcdoc. A srcdoc document's
+  location.hash is permanently "" and the property is non-configurable, so no
+  prelude can shim it the way the params shim covers ?query; a blob: URL
+  carries a fragment for real. Sandbox flags, not the URL scheme, still decide
+  the origin, so both trust levels are exactly as described above. Note this
+  changes document.URL inside the frame from about:srcdoc to blob:<origin>/…,
+  which is the one observable difference for a rendered page.
+
   Params are read from the fragment (#) first, then the query string (?).
   Payloads must use the fragment (a query string travels in the HTTP request
   and GitHub Pages' edge rejects URLs past ~8KB with a 414); addresses are
@@ -98,10 +110,12 @@
   <link rel=stylesheet href> ahead of render, and a fetch shim (addressHtml)
   reroutes the page's relative runtime GET fetch()es (e.g. './data.json',
   './rows.csv') on demand. A third shim makes history.replaceState/pushState
-  safe: in a srcdoc iframe they throw a SecurityError (URL resolved against
-  <base>, document at about:srcdoc), which would break hash-routing pages on
-  every view switch. Still unhandled: static <img src> and other
-  relative-tag assets, CSS url()/@import, XHR, and dynamic import().
+  safe: a RELATIVE replaceState('#x') resolves against the stamped <base>
+  (github.io), which matches neither about:srcdoc nor the blob: URL the frame
+  now uses, so it throws a SecurityError and would break hash-routing pages on
+  every view switch. The blob: switch did not retire this (measured both ways);
+  it only made the INITIAL hash deliverable. Still unhandled: static <img src>
+  and other relative-tag assets, CSS url()/@import, XHR, and dynamic import().
 
   The 🥏 bookmarklet feeding the gz mode lives at bookmarklets/toss-render.js
   (canonical copy; re-copy from there after edits). Current text:
@@ -193,6 +207,35 @@
     frame.classList.remove('hidden');
   }
 
+  // Mount HTML in the frame at a real URL, so a trailing #frag reaches the
+  // page as its own location.hash.
+  //
+  // Why not srcdoc: an about:srcdoc document's location.hash is always "" and
+  // the property is non-configurable ([LegacyUnforgeable] on Location), so no
+  // prelude can shim it the way the params shim covers ?query by patching
+  // URLSearchParams.prototype. A blob: URL carries a fragment for real, and
+  // sandbox flags (not the URL scheme) still decide the origin, so the two
+  // trust levels are unchanged: address mode keeps allow-same-origin, payload
+  // mode stays opaque and unable to read this origin's localStorage.
+  //
+  // What the switch does NOT buy: the history shim in addressHtml still earns
+  // its place. A relative history.replaceState('#x') resolves against the
+  // stamped <base> (github.io), which never matches the blob: document URL, so
+  // it throws exactly as it did under srcdoc. Measured both ways rather than
+  // assumed. The shim stays; only the initial hash is new.
+  let frameBlobUrl = null;
+  function mountFrame(html, sandbox, frag) {
+    frame.setAttribute('sandbox', sandbox);
+    frame.removeAttribute('srcdoc');
+    const next = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    // Revoke the previous render's URL only after the new one is committed, so
+    // a rapid re-toss can't pull the document out from under a pending load.
+    const prev = frameBlobUrl;
+    frameBlobUrl = next;
+    if (prev) frame.addEventListener('load', () => URL.revokeObjectURL(prev), { once: true });
+    frame.src = next + (frag ? '#' + frag : '');
+  }
+
   // --- base64 helpers (standard or URL-safe, padded or not) ---
   function b64Bytes(s) {
     let b = s.replace(/\s/g, '').replace(/-/g, '+').replace(/_/g, '/');
@@ -240,25 +283,23 @@
     window.dispatchEvent(new CustomEvent('toss-subject'));
   }
 
-  function showHtml(html) {
+  function showHtml(html, frag) {
     const t = html.match(/<title[^>]*>([^<]*)<\/title>/i);
     document.title = 'Toss · ' + (t ? t[1].trim() : 'inline');
     setSubject(null);
     // Sandbox without allow-same-origin: the inline HTML arrives via the URL
     // or a paste, so it must not run as this page's origin (which can hold a
     // gh token in localStorage). Scripts still run, but under an opaque origin.
-    frame.setAttribute('sandbox', 'allow-scripts allow-popups allow-forms allow-modals allow-downloads');
-    frame.srcdoc = guardHtml(html);
-    tossLinkFn = async () => absUrl('#gz=' + await gzipB64(html));
+    mountFrame(guardHtml(html), 'allow-scripts allow-popups allow-forms allow-modals allow-downloads', frag);
+    tossLinkFn = async () => absUrl('#gz=' + await gzipB64(html) + (frag ? '#' + frag : ''));
     reveal();
   }
 
   // Same-origin render for allowlisted address mode only: the page keeps its
   // identity, so its own gh.load chain and stored token work.
-  function showTrusted(html, title, addr) {
+  function showTrusted(html, title, addr, frag) {
     document.title = title;
-    frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms allow-modals');
-    frame.srcdoc = html;
+    mountFrame(html, 'allow-scripts allow-same-origin allow-popups allow-forms allow-modals', frag);
     tossLinkFn = async () => absUrl('#gh=' + addr);
     reveal();
   }
@@ -512,15 +553,19 @@ window.fetch=function(input,init){try{
   }
 
   async function showAddress(addr) {
-    // <owner>/<repo>[@<ref>]:<path>[?<query>] — ':' can't appear in a git ref
-    // name. The optional ?query is handed to the PAGE, not the API: the
-    // srcdoc iframe has no location.search, so the params shim below answers
-    // for these keys and the page's own deep links (?view=stage) work tossed.
+    // <owner>/<repo>[@<ref>]:<path>[?<query>][#<frag>] — ':' can't appear in a
+    // git ref name. Neither suffix reaches the API: both are handed to the
+    // PAGE. The ?query goes through the params shim (the frame has no
+    // location.search of its own), and the #frag rides on the frame's blob:
+    // URL, so a page that routes on its own hash opens where the link says.
+    // Split the fragment first, since it is last in the string.
     const m = addr.match(/^([^/@:]+)\/([^/@:]+)(?:@([^:]+))?:(.+)$/);
-    if (!m) return showEmpty('Could not parse the gh address. Expected owner/repo[@ref]:path[?query], e.g. ' +
+    if (!m) return showEmpty('Could not parse the gh address. Expected owner/repo[@ref]:path[?query][#frag], e.g. ' +
       'gh=mehrlander/web-tools@main:pages/index.html');
     let [, owner, name, ref, path] = m;
-    let pageQuery = '';
+    let pageQuery = '', pageFrag = '';
+    const hi = path.indexOf('#');
+    if (hi !== -1) { pageFrag = path.slice(hi + 1); path = path.slice(0, hi); }
     const qi = path.indexOf('?');
     if (qi !== -1) { pageQuery = path.slice(qi + 1); path = path.slice(0, qi); }
     if (!OWNERS.includes(owner)) {
@@ -560,7 +605,7 @@ window.fetch=function(input,init){try{
     // private/un-deployed page that uses ordinary references renders whole.
     const baked = await inlineRelativeDeps(text, { owner, name, ref, path });
     showTrusted(addressHtml(baked, { owner, name, ref, path, pageQuery }),
-      'Toss · ' + name + (ref ? '@' + ref : '') + '/' + path, addr);
+      'Toss · ' + name + (ref ? '@' + ref : '') + '/' + path, addr, pageFrag);
     setSubject({ repo: owner + '/' + name, ref: ref || 'main', path });
   }
 
@@ -635,6 +680,14 @@ window.fetch=function(input,init){try{
   });
 
   // --- route the initial URL ---
+  // A payload param may carry a trailing #frag for the rendered page, the same
+  // suffix address mode accepts. Base64 (standard or URL-safe) never contains
+  // '#', so the first one is unambiguously the separator.
+  const splitFrag = (v) => {
+    const i = v.indexOf('#');
+    return i === -1 ? [v, ''] : [v.slice(0, i), v.slice(i + 1)];
+  };
+
   // Routed tosses: #<route>=<envelope-address> routes to a known renderer
   // page, fed the envelope through its own ?src=. The caller addresses the
   // CONTENT ("this chat envelope"), and toss-render stays a schema-blind
@@ -653,25 +706,33 @@ window.fetch=function(input,init){try{
   const url  = param('url') || param('u');
 
   if (routeKey) {
-    const r = TOSS_ROUTES[routeKey], env = param(routeKey).trim();
+    const r = TOSS_ROUTES[routeKey], raw = param(routeKey).trim();
+    // A trailing #frag belongs to the RENDERER, not the envelope address:
+    // #data=owner/repo:rows.csv#item=2 addresses rows.csv and opens the page
+    // at item=2. Split it off before encoding, or it would be percent-escaped
+    // into the ?src= value and the renderer would try to fetch it as part of
+    // the path.
+    const [env, frag] = splitFrag(raw);
     // Resolve onto address mode: render the renderer page and hand it the
     // envelope via ?src=, which the params shim delivers to the page's own
     // location.search read. The renderer ref is the map's (the app itself);
     // any @ref inside <env> is the ENVELOPE's ref, untouched here.
-    await showAddress(`${r.repo}@${r.ref}:${r.path}?src=${encodeURIComponent(env)}`);
+    await showAddress(`${r.repo}@${r.ref}:${r.path}?src=${encodeURIComponent(env)}` + (frag ? '#' + frag : ''));
     // Re-emit the pretty route form for "Copy toss link", not the resolved #gh=.
-    tossLinkFn = async () => absUrl(`#${routeKey}=${env}`);
+    tossLinkFn = async () => absUrl(`#${routeKey}=${raw}`);
   } else if (gh) {
     await showAddress(gh.trim());
   } else if (gz) {
     try {
-      showHtml(await gunzip(b64Bytes(gz)));
+      const [payload, frag] = splitFrag(gz);
+      showHtml(await gunzip(b64Bytes(payload)), frag);
     } catch (e) {
       showEmpty('Could not decode the gz parameter as base64-encoded gzip.');
     }
   } else if (html) {
     try {
-      showHtml(decodeB64(html));
+      const [payload, frag] = splitFrag(html);
+      showHtml(decodeB64(payload), frag);
     } catch (e) {
       showEmpty('Could not decode the html parameter as base64.');
     }

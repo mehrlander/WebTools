@@ -27,6 +27,8 @@ Normally none. In local `CLAUDE.md`, name only a slow or non-deterministic gener
   | **`#gz=` portable snapshot** | Gzip the page into `https://mehrlander.github.io/web-tools/pages/toss-render.html#gz=<base64url>`. The fragment never reaches the server; the page runs in a sandbox. Absolute-URL CDN dependencies work, same-repo relative dependencies do not. | Portable to any reader. |
   | **`#gh=owner/repo[@ref]:path` owner-only address mode** | Fetches a branch or private-repo page live, with same-ref relative dependencies, through the viewer's stored token. | Token- and allowlist-gated. The token is browser-local, so a fresh or in-app browser may 404. Use `#gz=` or an artifact as fallback. |
 
+  Either form takes an optional trailing `#frag`, handed to the rendered page as its own `location.hash`, so a page that routes on its hash opens where the link says: `#gh=owner/repo@ref:pages/app.html#view=spend`, `#gz=<payload>#view=spend`. An address may carry `?query` and `#frag` together.
+
   Encode `#gz=` with:
 
   ```bash
