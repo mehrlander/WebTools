@@ -52,6 +52,13 @@ for a signed-out one. There is no repo-list dropdown and no quick-links row:
 reads better than a dropdown and keeps the header a fixed set rather than one
 repos opt into.
 
+The sidebar's **top bar is a crumb trail** (`crumbBar`, the shell's
+`sidebarCrumbs`): a house, the repo, and the ref only when it is off the
+default. The house is the route to the dashboard, which matters on mobile
+because an open drawer hides the header brand entirely; dropping the owner
+prefix, always this account, is what pays for it, and the full `owner/name`
+stays in the tooltip. Tapping the repo crumb opens the **repo menu** below.
+
 The **sidebar** holds what is contextual: in a repo, its views (landing, atlas,
 files, branches) plus pins and recents; in the estate, only the repo-sourced
 **app views** (promoted with `appView:true`, e.g. News), since those are the
@@ -658,6 +665,32 @@ repos and only write results into the mailbox, so auto-fulfilling on load never
 spends write access on agent-authored instructions. It is manual-triggered, not
 live: show-repo is the worker and only runs when the user opens it. Protocol and
 schema: `web-tools-private/mailbox/README.md`.
+
+### The repo menu
+
+One sheet (`sheetModal`, `#repoMenuSheet`) is the sidebar's whole answer to
+acting on a repo rather than navigating to it. **Three triggers, one menu:** a
+Repos row's trailing button, a **press and hold** anywhere on that row, and the
+crumb trail's caret. Right-click is a fourth on desktop. It carries **Open**,
+**Files**, **Branches**, **Config**, **Open on GitHub**, the `-private`
+companion switch, and **Copy browse link**, and it acts on `menuRepo`, which may
+be a repo you are *not* in. That is the point: Files and Branches for another
+repo are exactly what a row cannot offer, which is what makes the menu worth a
+gesture instead of a duplicate of two icons.
+
+The hold is 450 ms with a 10 px movement budget, so a scroll flick always wins,
+and the row paints a width wipe as its visible clock; without one a hold reads
+as a dead press. A hold that fires swallows the click that follows it, so the
+gesture never also navigates.
+
+This replaced a three-icon cluster (visibility marker, config gear, GitHub logo)
+on every row. Those icons measured about 16 px against a 44 px tap-target floor,
+and each bought exactly one tap, since opening the repo puts Config in the
+sidebar and GitHub in this menu. The marker survives as the trailing button
+itself, promoted from an inert `<span>` to a real 44 px control: the row keeps
+its public/private state and the hold gains a visible partner, which is what
+keeps the gesture discoverable. Estate **cards** still carry the old cluster,
+where there is room for it.
 
 ### Editing the manifest from the shell
 

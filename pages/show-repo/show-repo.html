@@ -47,7 +47,11 @@
 </script>
 <style>[x-cloak]{display:none!important}
 .no-scrollbar::-webkit-scrollbar{display:none}
-.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}</style>
+.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+/* Press-and-hold rows: iOS would otherwise answer a long press with its own
+   callout and a text selection, both of which eat the gesture. pan-y keeps the
+   list scrollable while the hold timer runs. */
+.hold-row{touch-action:pan-y;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}</style>
 </head>
 <!-- A repo browser fronted by a per-repo landing page. The repo picker is up
      front (header). The sidebar lists the repo's views — landing, atlas,
@@ -118,47 +122,28 @@
 
   <aside class="fixed inset-y-0 left-0 w-72 max-w-[85vw] z-50 bg-base-100 border-r border-base-300 shadow-xl flex flex-col transition-transform duration-200 ease-out lg:static lg:z-auto lg:shadow-none lg:translate-x-0 lg:w-80 xl:w-[22rem] lg:shrink-0"
          :class="[drawer ? 'translate-x-0' : '-translate-x-full lg:translate-x-0', !showSidebar && 'lg:hidden']">
-    <!-- Sidebar top bar: the context label, then in a repo the one marker the
-         name cannot carry itself, a public/private indicator that toggles to the
-         -private/public companion when one is on the estate. Plus the mobile-only
-         drawer close button. The name IS the GitHub jump, so no separate icon,
-         and the config gear left with it: Config is a row in the view list
-         directly below, which is where a repo-level setting belongs. -->
-    <div class="h-14 flex items-center gap-2 px-4 border-b border-base-300 shrink-0">
-      <div class="flex items-center gap-1.5 min-w-0 flex-1">
-        <span x-show="estateCtx || !$store.browser.repo"
-              class="font-mono text-base truncate text-base-content/70 min-w-0"
-              x-text="estateCtx ? 'Views' : 'Browse'"></span>
-        <!-- The open repo@ref on GitHub: the name itself, since a name that
-             names a place should open it. Tooltip names the target (repo, plus
-             the ref when off the default branch). -->
-        <a x-show="!estateCtx && $store.browser.repo" :href="repoGithubUrl"
-           target="_blank" rel="noopener" :title="repoGithubTip"
-           class="font-mono text-base truncate min-w-0 text-base-content/70 hover:text-primary transition-colors"
-           x-text="$store.browser.repo"></a>
-        <!-- The marker sits at the right edge of the bar, not up against the
-             name: a spacer pushes it over. -->
-        <div class="grow"></div>
-        <template x-if="!estateCtx && $store.browser.repo">
-          <span class="flex items-center gap-1.5 shrink-0">
-            <!-- Visibility: a lock/globe marker. When the repo has a companion on
-                 the estate (foo ⇄ foo-private), it is a toggle that loads the
-                 companion; otherwise a static public/private indicator. -->
-            <button x-show="repoSibling" @click="openPinned(repoSibling)"
-                    class="text-base-content/40 hover:text-primary transition-colors"
-                    :title="'Switch to ' + repoSibling.split('/')[1] + ($store.browser.repoObj?.private ? ' (public companion)' : ' (private companion)')">
-              <i class="ph text-base leading-none" :class="$store.browser.repoObj?.private ? 'ph-lock' : 'ph-globe'"></i></button>
-            <span x-show="!repoSibling && $store.browser.repoObj"
-                  class="text-base-content/40"
-                  :title="$store.browser.repoObj?.private ? 'private' : 'public'">
-              <i class="ph text-base leading-none" :class="$store.browser.repoObj?.private ? 'ph-lock' : 'ph-globe'"></i></span>
-          </span>
-        </template>
-      </div>
-      <button @click="drawer=false" class="btn btn-square btn-ghost lg:hidden"><i class="ph ph-x text-lg"></i></button>
+    <!-- Sidebar top bar: in a repo, a CRUMB TRAIL (crumbBar, sidebarCrumbs).
+         Two crumbs earn the bar back. The house is the route to the dashboard,
+         which on mobile the open drawer otherwise hides completely, since the
+         header brand sits behind it. The repo crumb drops the owner prefix
+         (always the same account), and that saved width is what pays for the
+         house; the full owner/name stays in its tooltip. Tapping the repo crumb
+         opens the repo menu, the same sheet a Repos row opens, so the trailing
+         icon cluster that used to live here has nothing left to carry. A third
+         crumb appears only when the ref is off the default, since browsing a
+         branch is state worth keeping in front of you. -->
+    <div class="h-14 flex items-center gap-1 px-3 border-b border-base-300 shrink-0">
+      <span x-show="estateCtx || !$store.browser.repo"
+            class="font-mono text-base truncate text-base-content/70 min-w-0 flex-1 px-1"
+            x-text="estateCtx ? 'Views' : 'Browse'"></span>
+      <nav x-show="!estateCtx && $store.browser.repo" class="min-w-0 flex-1"
+           x-data="crumbBar({ items: () => window.__shell.sidebarCrumbs })"></nav>
+      <button @click="drawer=false" class="btn btn-square btn-ghost lg:hidden shrink-0"><i class="ph ph-x text-lg"></i></button>
     </div>
 
-    <div class="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-3">
+    <!-- @scroll cancels a pending hold: a finger that started on a row and then
+         dragged the list is scrolling, not summoning a menu. -->
+    <div class="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-3" @scroll="holdEnd()">
       <!-- Estate-context sidebar. Two repo-sourced sections, both token-gated
            (empty and hidden when unauthed): the Repos index on top, then the
            app views. The app's own views (Open / Repos / Surfaces / Stage /
@@ -185,27 +170,45 @@
               <i class="ph ph-folder text-sm"></i><span x-text="grp.group"></span>
             </div>
             <template x-for="r in grp.repos" :key="r.repo">
-              <!-- The name opens the repo; the icons on the right act on it in
-                   place (a visibility marker, its config dialog, GitHub), none
-                   navigating. Same cluster the estate card carries. -->
-              <div class="flex items-center gap-1 pl-2 pr-1.5 py-1.5 rounded-lg hover:bg-base-200 transition-colors"
-                   :class="$store.browser.repo===r.repo && 'bg-primary/10'">
-                <button @click="openPinned(r.repo)" :title="r.repo"
-                        class="flex items-center gap-2 min-w-0 flex-1 text-left transition-colors"
+              <!-- One row, two gestures. A tap on the name opens the repo. Every
+                   secondary action (config, GitHub, jumping into its Files or
+                   Branches, its companion) moved into the REPO MENU, reached
+                   three ways: the trailing button, a press-and-hold anywhere on
+                   the row, or right-click.
+
+                   That trailing button is the old visibility marker promoted
+                   from an inert <span> to a real 44 px control. It still says
+                   public/private with its glyph, so the row loses no state, and
+                   it gives the hold gesture a visible partner rather than
+                   leaving the menu undiscoverable. The gear and github-logo it
+                   used to sit beside are gone: they were ~16 px, a third of the
+                   tap-target floor, and each bought exactly one tap (open the
+                   repo and its Config is a sidebar row, its GitHub link is the
+                   crumb menu). -->
+              <div class="hold-row relative flex items-center rounded-lg select-none origin-left transition-[background-color,transform] hover:bg-base-200"
+                   :class="[$store.browser.repo===r.repo && 'bg-primary/10', holdRepo === r.repo && 'scale-[0.98]']"
+                   @pointerdown="holdStart($event, r.repo)" @pointermove="holdMove($event)"
+                   @pointerup="holdEnd()" @pointercancel="holdEnd()" @pointerleave="holdEnd()"
+                   @contextmenu.prevent="openRepoMenu(r.repo)">
+                <button @click="rowTap(r.repo)" :title="r.repo"
+                        class="flex items-center gap-2 min-w-0 flex-1 min-h-11 pl-2 text-left transition-colors"
                         :class="$store.browser.repo===r.repo ? 'text-primary font-semibold' : 'text-base-content/80'">
                   <i class="ph text-base shrink-0" :class="r.icon"></i><span class="truncate" x-text="r.short"></span>
                 </button>
-                <span class="flex items-center gap-0.5 shrink-0">
-                  <span x-show="r.priv !== null" class="text-base-content/30"
-                        :title="r.priv ? 'private' : 'public'">
-                    <i class="ph text-base leading-none" :class="r.priv ? 'ph-lock' : 'ph-globe'"></i></span>
-                  <button @click.stop="openRepoDialog(r.repo)" title="Config"
-                          class="text-base-content/30 hover:text-primary transition-colors">
-                    <i class="ph ph-gear-six text-base leading-none"></i></button>
-                  <a :href="'https://github.com/' + r.repo" target="_blank" @click.stop :title="r.repo"
-                     class="text-base-content/30 hover:text-base-content/70 transition-colors">
-                    <i class="ph ph-github-logo text-base leading-none"></i></a>
-                </span>
+                <button @click.stop="openRepoMenu(r.repo)" @pointerdown.stop
+                        :title="(r.priv === null ? '' : (r.priv ? 'Private. ' : 'Public. ')) + 'Actions for ' + r.short"
+                        class="shrink-0 h-11 w-11 flex items-center justify-center rounded-lg text-base-content/30 hover:text-primary hover:bg-base-300/60 transition-colors">
+                  <i class="ph text-base leading-none"
+                     :class="r.priv === null ? 'ph-dots-three-vertical' : (r.priv ? 'ph-lock' : 'ph-globe')"></i></button>
+                <!-- The hold needs a visible clock or it reads as a dead press:
+                     a tint wipes across the row over HOLD_MS. Width alone
+                     carries both "which row" and "how far", in ONE binding: an
+                     x-show beside a :style is two effects over the same state,
+                     and the pair went stale under a 60 fps rAF, leaving a tint
+                     on a row that was not being held. Zero width paints
+                     nothing, so no second directive is needed. -->
+                <div class="pointer-events-none absolute inset-y-0 left-0 rounded-lg bg-primary/25"
+                     :style="'width:' + (holdRepo === r.repo ? holdPct * 100 : 0) + '%'"></div>
               </div>
             </template>
           </div>
@@ -614,6 +617,40 @@
     </div>
 
   </main>
+</div>
+
+<!-- ── The repo menu: one sheet, three triggers (a sidebar Repos row's trailing
+     button, a press-and-hold on that row, the sidebar crumb's caret). It is
+     sheetModal's first real consumer outside its demo: a bottom sheet under
+     640px where a thumb reaches it, a centered modal above.
+
+     It carries what the row cannot, which is what makes it worth a gesture
+     rather than a duplicate of two icons: jumping straight into another repo's
+     Files or Branches without first opening it, and the public/private
+     companion switch. Mounted here, outside <aside>, so the sheet is not
+     clipped by the drawer that summoned it. ─────────────────────────────── -->
+<!-- z-[55] puts the sheet above the drawer (z-50) that usually summons it, so the
+     scrim dims the sidebar too, and below the toast row (z-[60]) so a copy
+     confirmation still lands on top. `relative` is what makes the z-index bite:
+     it gives this host a stacking context for its fixed children. -->
+<div id="repoMenuSheet" class="relative z-[55]"
+     x-data="sheetModal({ title: 'Repository', snaps: [0.55, 0.92] })">
+  <div class="px-2 pb-6">
+    <div class="flex items-center gap-2 px-4 py-3 border-b border-base-200 mb-1">
+      <i class="ph ph-git-repository text-lg text-primary shrink-0"></i>
+      <span class="font-mono text-base font-semibold truncate" x-text="window.__shell.menuRepoShort"></span>
+      <span x-show="window.__shell.menuRepoPrivate" class="badge badge-ghost badge-sm shrink-0">private</span>
+    </div>
+    <template x-for="item in window.__shell.repoMenuItems" :key="item.key">
+      <button @click="window.__shell.runRepoMenu(item.key); close()"
+              class="w-full min-h-12 flex items-center gap-3 px-4 rounded-lg text-left text-base hover:bg-base-200 active:bg-base-300 transition-colors">
+        <i class="ph text-xl text-base-content/50 shrink-0" :class="item.icon"></i>
+        <span class="min-w-0 truncate" x-text="item.label"></span>
+        <div class="grow"></div>
+        <i x-show="item.nav" class="ph ph-caret-right text-base text-base-content/25 shrink-0"></i>
+      </button>
+    </template>
+  </div>
 </div>
 
 <!-- Toolbox: page actions, zip/offline export, component/script/console tabs.
@@ -1303,27 +1340,155 @@ function app(){ return {
   _authState: 'public',
   _authUser: '',
 
-  // The open repo@ref on GitHub — the sidebar's standing jump-over. Every view
-  // keeps a one-tap route to the GitHub presentation of what it is showing
-  // (this link, the viewer's per-file GitHub action, the explorer's folder
-  // link, the estate cards): show-repo is a wrapper over GitHub, not a wall.
-  get repoGithubUrl(){
+  // ── The sidebar crumb trail (rendered by crumbBar) ──────────────────────
+  // Home, then the repo, then the ref only when it is off the default. The
+  // owner prefix is dropped from the label and kept in the tooltip: it is the
+  // same account on every repo, so it costs width and says nothing, and that
+  // width is what buys the house crumb a full-size target.
+  get sidebarCrumbs(){
     const s = Alpine.store('browser');
-    if (!s.repo) return '';
-    const ref = s.ref && s.ref !== s.defaultRef ? '/tree/' + s.ref : '';
-    return 'https://github.com/' + s.repo + ref;
+    if (this.estateCtx || !s.repo) return [];
+    const out = [
+      { key: 'home', icon: 'ph-house', title: 'Dashboard', action: () => this.goDashboard() },
+      { key: 'repo', label: s.repo.split('/')[1] || s.repo, title: s.repo, mono: true,
+        menu: true, action: () => this.openRepoMenu(s.repo) },
+    ];
+    if (s.ref && s.defaultRef && s.ref !== s.defaultRef)
+      out.push({ key: 'ref', icon: 'ph-git-branch', label: s.ref, mono: true,
+                 title: 'Browsing ' + s.ref + ', not ' + s.defaultRef, action: () => this.goFiles() });
+    return out;
   },
-  // GitHub-jump tooltip that names its target rather than the obvious "on
-  // GitHub" (the icon already says that): the repo, plus the ref when off the
-  // default branch, since that is what the link actually opens.
-  get repoGithubTip(){
+
+  // ── Press and hold: the second way into the repo menu ───────────────────
+  // 450 ms is long enough that a deliberate tap or a scroll flick never trips
+  // it, short enough not to feel stuck. The 10 px budget lets a scroll win
+  // outright, and the row paints a progress wipe so the wait is legible.
+  HOLD_MS: 450,
+  HOLD_SLOP: 10,
+  holdRepo: '',
+  holdPct: 0,
+  _holdFired: false,
+  _holdRaf: 0, _holdX: 0, _holdY: 0, _holdT0: 0,
+  holdStart(e, repo){
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    this.holdEnd();
+    this._holdFired = false;
+    this._holdX = e.clientX; this._holdY = e.clientY;
+    this._holdT0 = performance.now();
+    this.holdRepo = repo;
+    this.holdPct = 0;
+    const tick = () => {
+      if (this.holdRepo !== repo) return;
+      const p = Math.min(1, (performance.now() - this._holdT0) / this.HOLD_MS);
+      this.holdPct = p;
+      if (p >= 1){
+        this._holdFired = true;
+        this.holdEnd();
+        if (navigator.vibrate) navigator.vibrate(12);
+        this.openRepoMenu(repo);
+        return;
+      }
+      this._holdRaf = requestAnimationFrame(tick);
+    };
+    this._holdRaf = requestAnimationFrame(tick);
+  },
+  holdMove(e){
+    if (!this.holdRepo) return;
+    if (Math.hypot(e.clientX - this._holdX, e.clientY - this._holdY) > this.HOLD_SLOP) this.holdEnd();
+  },
+  holdEnd(){
+    if (this._holdRaf) cancelAnimationFrame(this._holdRaf);
+    this._holdRaf = 0; this.holdRepo = ''; this.holdPct = 0;
+  },
+  // A hold that fired must not also navigate on the click that follows it.
+  rowTap(repo){
+    if (this._holdFired){ this._holdFired = false; return; }
+    this.openPinned(repo);
+  },
+
+  // ── The repo menu ───────────────────────────────────────────────────────
+  // One sheet for any repo, open or not, so every entry acts on menuRepo
+  // rather than on the browser store. Open is offered only for a repo you are
+  // not already in; Files and Branches are the entries the row itself cannot
+  // give, since reaching them otherwise means opening the repo first.
+  menuRepo: '',
+  get menuRepoShort(){ return (this.menuRepo || '').split('/')[1] || this.menuRepo; },
+  get menuRepoPrivate(){
+    const r = this.sidebarRepos.find(x => x.repo === this.menuRepo);
+    if (r && r.priv !== null && r.priv !== undefined) return r.priv;
+    return this.menuRepo === Alpine.store('browser').repo
+      ? !!Alpine.store('browser').repoObj?.private : false;
+  },
+  // The companion by the -private naming convention, for whichever repo the
+  // menu is about (repoSibling answers only for the open one).
+  get menuRepoSibling(){
+    const repo = this.menuRepo;
+    if (!repo) return '';
+    const m = repo.match(/^(.*)-private$/);
+    const sib = m ? m[1] : repo + '-private';
+    return this.sidebarRepos.some(r => r.repo === sib) ? sib : '';
+  },
+  get repoMenuItems(){
+    const open = this.menuRepo && this.menuRepo === Alpine.store('browser').repo;
+    const sib = this.menuRepoSibling;
+    return [
+      !open && { key: 'open', label: 'Open', icon: 'ph-arrow-right', nav: true },
+      { key: 'files', label: 'Files', icon: 'ph-folders', nav: true },
+      { key: 'branches', label: 'Branches', icon: 'ph-git-branch', nav: true },
+      { key: 'config', label: 'Config', icon: 'ph-gear-six' },
+      { key: 'github', label: 'Open on GitHub', icon: 'ph-github-logo' },
+      sib && { key: 'sibling', label: 'Switch to ' + (sib.split('/')[1] || sib),
+               icon: this.menuRepoPrivate ? 'ph-globe' : 'ph-lock', nav: true },
+      { key: 'copy', label: 'Copy browse link', icon: 'ph-link' },
+    ].filter(Boolean);
+  },
+  openRepoMenu(repo){
+    this.holdEnd();
+    this.menuRepo = repo;
+    const el = document.getElementById('repoMenuSheet');
+    if (!el) return;
+    // sheetModal keeps its own reactive data; reach it the documented way
+    // rather than through a ref, since it is a sibling mount, not a child.
+    const sheet = Alpine.$data(el);
+    sheet.title = 'Repository';
+    sheet.open();
+  },
+  async runRepoMenu(key){
+    const repo = this.menuRepo;
+    if (!repo) return;
+    if (key === 'github'){ window.open(this.githubUrlFor(repo), '_blank', 'noopener'); return; }
+    if (key === 'config' && repo !== Alpine.store('browser').repo) return this.openRepoDialog(repo);
+    if (key === 'copy'){
+      const url = location.origin + location.pathname + '?repo=' + encodeURIComponent(repo);
+      try { await navigator.clipboard.writeText(url); notify('Browse link copied', 'alert-success', 'check'); }
+      catch { notify('Could not copy the link'); }
+      return;
+    }
+    // Everything below acts inside a repo, so make it the open one first.
+    const target = key === 'sibling' ? this.menuRepoSibling : repo;
+    if (!target) return;
+    await this.ensureBrowser(target);
+    if (Alpine.store('browser').repo !== target) return;
+    if (key === 'files') this.goFiles();
+    else if (key === 'branches') this.goBranches();
+    else if (key === 'config') this.goConfig();
+    else this.goLanding();
+  },
+
+  // Any repo@ref on GitHub. show-repo is a wrapper over GitHub, not a wall, so
+  // every view keeps a one-tap route to the GitHub presentation of what it is
+  // showing; the sidebar's is the repo menu's "Open on GitHub", which is why
+  // this takes a repo rather than reading the open one: the menu speaks for
+  // whichever repo it was summoned on. The ref rides along only for the OPEN
+  // repo, since a ref is meaningless for a repo you are not browsing.
+  githubUrlFor(repo){
+    if (!repo) return '';
     const s = Alpine.store('browser');
-    if (!s.repo) return '';
-    return s.repo + (s.ref && s.ref !== s.defaultRef ? ' @ ' + s.ref : '');
+    const ref = repo === s.repo && s.ref && s.ref !== s.defaultRef ? '/tree/' + s.ref : '';
+    return 'https://github.com/' + repo + ref;
   },
   // The open repo's estate companion by the -private naming convention (foo ⇄
-  // foo-private), but only when that companion is itself on the estate, so the
-  // sidebar's visibility marker offers the same toggle the estate card does.
+  // foo-private), but only when that companion is itself on the estate.
   // Empty when there is no such pair (or no token, so sidebarRepos is empty).
   get repoSibling(){
     const repo = Alpine.store('browser').repo;
@@ -2112,26 +2277,44 @@ function overview(){ return {
       the open repo.
   The estate SIDEBAR also carries a Repos index: the estate members (estate:true),
     grouped/ordered like the grid. The row name opens that repo's landing
-    (openPinned); on the right each row carries the estate card's cluster acting
-    in place (a public/private marker, the config dialog via openRepoDialog, and
-    the GitHub jump), none navigating. The section's header icon opens the full
-    Repos grid. Same cache read as the app views (loadEstateSidebar), token-gated;
-    privacy for the marker is filled by enrichSidebarPrivacy (the cache has none).
+    (openPinned); everything else about that repo is in the REPO MENU (below).
+    The section's header icon opens the full Repos grid. Same cache read as the
+    app views (loadEstateSidebar), token-gated; privacy for the row's marker is
+    filled by enrichSidebarPrivacy (the cache has none).
   No token: the public default card only, and no surfaces, activity, app views, or
     sidebar Repos index.
 
+  THE REPO MENU (sheetModal #repoMenuSheet, repoMenuItems / runRepoMenu) is the
+  sidebar's one place for acting on a repo rather than navigating to it. THREE
+  TRIGGERS, one sheet: a Repos row's trailing button, a PRESS AND HOLD anywhere
+  on that row (holdStart/holdMove/holdEnd; 450 ms, a 10 px move budget so a
+  scroll wins, a width wipe as its visible clock, and rowTap swallowing the
+  click that follows a fired hold), and the sidebar crumb's caret. Right-click
+  is a fourth on desktop. It carries Open / Files / Branches / Config / Open on
+  GitHub / the -private companion / Copy browse link, and it speaks for
+  menuRepo, which may be a repo you are NOT in: that is the point, since Files
+  and Branches for another repo are the entries a row cannot give.
+    This replaced a three-icon cluster on every row (marker + gear + github
+    logo). Those icons were ~16 px against a 44 px floor, and each bought one
+    tap: open the repo and Config is a sidebar row, GitHub is this menu. The
+    marker survives as the trailing button itself, promoted from an inert span
+    to a real 44 px control, so the row keeps its public/private state AND the
+    hold gets a visible partner. The estate CARDS still carry the old cluster,
+    where there is room for it.
+
+  THE SIDEBAR CRUMB TRAIL (crumbBar, sidebarCrumbs) replaced the top bar's dead
+  label: house, repo, and the ref only when off-default. The house is the route
+  to the dashboard, which an open drawer hides on mobile since the brand is
+  behind it; dropping the owner prefix (always this account) is what pays for
+  it, and the full owner/name stays in the tooltip.
+
   GITHUB JUMP-OVERS: show-repo is a wrapper over GitHub, not a wall — every
   view keeps a one-tap route to the GitHub presentation of what it is showing.
-  In the sidebar top bar the repo NAME is that route (repoGithubUrl, tooltip
-  repoGithubTip): a name that names a place should open it, which retired the
-  separate github-logo icon. The config gear went with it, being a duplicate of
-  the Config row in the view list right below. What is left beside the name is
-  the one marker the name cannot carry, a visibility indicator (a toggle to the
-  -private/public companion when repoSibling finds one on the estate, else a
-  static lock/globe). The explorer's breadcrumb
-  links the current folder (ghFolderUrl), the viewer's actions link the open
-  file's blob, and every estate card and surface item carries its github-logo
-  link. When adding a view, add its jump-over.
+  The sidebar's is the repo menu's "Open on GitHub" (githubUrlFor, which takes a
+  repo, since the menu speaks for whichever one summoned it). The explorer's
+  breadcrumb links the current folder (ghFolderUrl), the viewer's actions link
+  the open file's blob, and every estate card and surface item carries its
+  github-logo link. When adding a view, add its jump-over.
 
   Today: web-tools -> 'gallery' (its pages index); any repo declaring a `pages`
   catalog -> 'gallery' too (fed from that catalog, tiles live via toss-render);
