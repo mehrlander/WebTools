@@ -309,6 +309,91 @@ This kit is the born-digital front end of the same question: it handles the case
 where a text layer exists and the difficulty is geometry. The two want the same
 output vocabulary, and settling that vocabulary is open work on both sides.
 
+## Library versions
+
+Pinned: **pdf.js 3.4.120** and **pdf-lib 1.17.1**. pdf-lib is current (upstream
+has not released since); pdf.js is three majors behind, and whether to move is a
+question that recurs and usually gets answered from a changelog. It is answered
+here by running: `node tools/test/pdf-version-probe.mjs` puts the same fixture
+and the same analysis through each version with only the library swapped.
+
+Measured 2026-07-25 on Chromium 141:
+
+| version | module | opens | paths | white rule | grid |
+| --- | --- | --- | --- | --- | --- |
+| 3.4.120 | classic | yes | 4h/5v | seen | exact |
+| 4.10.38 | ESM | yes | 4h/5v | seen | exact |
+| 5.4.149 | ESM | no | | | `pathOps is not iterable` |
+| 6.1.200 | ESM | no | | | `Map.prototype.getOrInsertComputed` missing |
+
+Three things follow, and the first contradicts what was expected.
+
+**v4 does not break this kit's code at all.** The 2026-03 research concluded that
+streaming `getOperatorList` was the highest-impact break at v4 and that
+`await page.getOperatorList()` would stop returning `fnArray`/`argsArray`. It
+still does. Every stage produces byte-identical output on 4.10.38. The only real
+v4 change is packaging: 4.x onward ships **ESM only**, so `pdf.min.js` no longer
+exists and a classic `<script src>` cannot load it. That is a loader question,
+not an extraction question.
+
+**v5 is where the API actually breaks**, in the one place this kit reaches
+deepest: `constructPath`'s operand shape changed, so the path walk throws
+`pathOps is not iterable`. Vector rules are exactly what the lattice runs on, so
+this is not a shim, it is a rewrite of `extractPaths`.
+
+**v6 needs a newer browser than this sandbox has.** It calls
+`Map.prototype.getOrInsertComputed`, a proposal Chromium 141 does not implement.
+Pinning to it would exclude anyone a browser generation behind.
+
+**The decision: stay on 3.4.120.** It is what every session from 2026-02 to
+2026-05 used, so the whole corpus of prior work is calibrated against it, and
+moving to v4 buys nothing measurable while costing the classic-script load path.
+
+**The escape hatch works, and is supported.** If a page already has pdf.js on
+`window.pdfjsLib`, the kit uses it and does not load its own. So a page wanting
+v4 imports it, sets `GlobalWorkerOptions.workerSrc`, and loads the kit after.
+The probe drives exactly that path. One bug had to be fixed for it: the kit was
+overwriting `workerSrc` with its own pinned URL even when pdf.js was already
+present, which mixes two builds and surfaces as "Setting up fake worker failed",
+a message that names neither cause.
+
+## The page axis
+
+A document is not a stack of independent pages. What repeats across them is
+structure: running heads, folios, rules, the standing furniture that is not
+content and usually has to come off before anything downstream is right.
+
+`stream.recurring(items)` counts it. Group items by snapped position across
+pages; anything appearing at the same place on enough of them is a candidate.
+Each result carries `ratio`, the pages it appears on, and `varies`.
+
+`varies` is the part that matters, and it took looking at a real multi-page
+document to see why. **In a tabular document, body rows recur positionally too.**
+Eighteen data rows at fixed heights on twelve pages produce fifty-five recurring
+positions, none of which are furniture. Position alone is not a footer detector.
+What separates them is whether the *text* repeats: a running head says the same
+thing on every page (`varies: false`), while a folio and a data row do not.
+Neither flag is sufficient alone, which is why both are reported.
+
+`stream.trim(items, region)` then cuts. A region is a box plus a page range, six
+numbers, with `mode: 'keep' | 'drop'`, and it returns **both halves**. What a
+trim removes is as worth seeing as what it keeps, because the mistake to catch is
+taking a row of data off with the footer.
+
+### Why sliders and not a gesture
+
+Trimming in three dimensions sounds like it wants a three-dimensional gesture,
+and it does not. A drag on a projected scene is two numbers; the third has to
+come from somewhere, and every scheme for supplying it (a modifier key, a
+snapped plane, a second drag) is a guess the interface presents as a
+measurement. An axis-aligned trim needs six numbers, and six numbers set
+explicitly are honest about what moved.
+
+So the split is: the **planes are dragged nowhere and drawn everywhere**. Set
+them numerically, see them cut through the stack, and watch what falls outside
+turn red before committing. The gesture that is worth having in the stack is
+orbit, which changes nothing about the document.
+
 ## Looking at it
 
 [`pages/pdf-inspect.html`](../pages/pdf-inspect.html) draws every layer the kit
@@ -317,6 +402,16 @@ boxes, the vector rules split into the ones the lattice will walk and the ones
 it discards, both column detectors, and the lattice grid with its cell indices.
 Drag on the page to select, and the panel reports the region back in PDF
 coordinates with `columns` re-run over just that selection.
+
+**Stack** mode is the page axis, drawn: every page as a translucent sheet on a
+third axis, orbitable, with the trim planes cutting through the whole stack and
+anything outside them shown in red before it is cut. The projection is
+deliberately parallel rather than perspective, because the question the view
+answers is whether an element recurs at the same position, and perspective
+would put two such elements at different screen points. Foreshortening would
+look better and read worse. The first attempt filled each sheet at 0.72 alpha
+and twelve of them stacked into an opaque slab, which showed one page and hid
+the other eleven.
 
 Every coordinate on that page goes through `pdf.view`, and nothing on it
 converts by hand. That is the point: if the overlay lines up, the projection is

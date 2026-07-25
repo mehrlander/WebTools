@@ -497,6 +497,8 @@ v.at(px, py, projected)                // point hit test
 v.select(dragRect, projected, {mode: 'contain'})   // drag selection
 v.unbox(dragRect)                      // screen rectangle back to PDF space
 
+pdf.stream.recurring(d.items)                // what repeats across pages
+pdf.stream.trim(d.items, {y1: 60, y2: 735})  // cut by a box + page range
 pdf.stream.split(items, [60, 220, 380])      // assign by where a chunk starts
 pdf.lattice.grids({h, v}, items, {snap: 3})  // the pipeline, own tolerances
 await pdf.doc.slice(d.bytes, 3, 7)           // pdf-lib page range → bytes
@@ -517,9 +519,12 @@ pointer-event shell over `v.select`, the same way `cm-editor.js` is a shell over
 `cm6.js`.
 
 [`pages/pdf-inspect.html`](../../pages/pdf-inspect.html) draws every layer on
-top of the rendered page, with drag-selection wired to `view.select`. It is the
-visual check the numeric suites cannot be, and it has already found two real
-defects. Tolerances, failure modes, the measured font-alignment numbers, the
+top of the rendered page, with drag-selection wired to `view.select`, and a
+Stack mode that lays the pages on a third axis so what recurs reads as a band
+through the document and a trim can be seen cutting before it commits. It is
+the visual check the numeric suites cannot be, and it has already found three
+real defects. Version pinning is settled by running rather than by changelog:
+`npm run test:pdf-versions`. Tolerances, failure modes, the measured font-alignment numbers, the
 government-PDF pathologies, and the honest limits are in
 [`docs/pdf-structure.md`](../../docs/pdf-structure.md).
 

@@ -393,6 +393,85 @@ test('grids returns an empty list for a page with no rules', () => {
   assert.deepEqual(plain(pdf.lattice.grids({ h: [], v: [] }, TABLE_ITEMS)), []);
 });
 
+// ---- recurring and trim: the page axis --------------------------------------
+
+// Four pages with a running head, a folio whose text changes, and one body
+// line per page at a genuinely different height.
+//
+// The body lines step by 20pt rather than by 1, and that is not incidental.
+// snapRound clusters by single link, so a body line drifting one point per page
+// chains into one group and reads as furniture. The detector inherits that
+// property from its tolerance, which is worth knowing before trusting it on a
+// document whose body text happens to sit at nearly the same height throughout.
+const BOOK = [1, 2, 3, 4].flatMap(p => [
+  item('BUDGET REPORT', 72, 740, 90, { page: p }),
+  item(`Page ${p}`, 500, 40, 30, { page: p }),
+  item(`body line ${p}`, 72, 400 - p * 20, 120, { page: p }),
+]);
+
+test('recurring finds the running head and the folio, not the body', () => {
+  const r = pdf.stream.recurring(BOOK);
+  assert.equal(r.length, 2);
+  assert.ok(r.every(x => x.ratio === 1));
+});
+
+test('recurring separates fixed text from text that changes each page', () => {
+  const r = pdf.stream.recurring(BOOK);
+  const head = r.find(x => x.samples.includes('BUDGET REPORT'));
+  const folio = r.find(x => x.base === 40);
+  assert.equal(head.varies, false);
+  assert.equal(folio.varies, true);
+  assert.equal(folio.samples.length, 3); // capped, and they differ
+});
+
+test('recurring respects minRatio', () => {
+  // A rule drawn on only two of four pages: furniture at 0.5, noise above it.
+  const partial = [...BOOK, item('DRAFT', 250, 600, 40, { page: 1 }), item('DRAFT', 250, 600, 40, { page: 2 })];
+  assert.equal(pdf.stream.recurring(partial, { minRatio: 0.5 }).length, 3);
+  assert.equal(pdf.stream.recurring(partial, { minRatio: 0.75 }).length, 2);
+});
+
+test('recurring tolerates small position drift between pages', () => {
+  const drifting = [1, 2, 3].map(p => item('HEADER', 72 + p * 0.4, 740 - p * 0.3, 50, { page: p }));
+  assert.equal(pdf.stream.recurring(drifting, { tol: 3 }).length, 1);
+  assert.equal(pdf.stream.recurring(drifting, { tol: 0.1 }).length, 0);
+});
+
+test('trim keeps a region and reports what it removed', () => {
+  // Cut the folio band off every page: everything below y 100 goes.
+  const { kept, removed } = pdf.stream.trim(BOOK, { y1: 100, mode: 'keep' });
+  assert.equal(removed.length, 4);
+  assert.ok(removed.every(i => i.str.startsWith('Page ')));
+  assert.equal(kept.length, 8);
+});
+
+test('trim can drop a region instead of keeping it', () => {
+  const { kept, removed } = pdf.stream.trim(BOOK, { y1: 700, mode: 'drop' });
+  assert.equal(removed.length, 4);
+  assert.ok(removed.every(i => i.str === 'BUDGET REPORT'));
+});
+
+test('trim has a page axis, which is what makes it three-dimensional', () => {
+  const { kept } = pdf.stream.trim(BOOK, { pageFrom: 2, pageTo: 3 });
+  assert.equal(kept.length, 6);
+  assert.deepEqual(plain([...new Set(kept.map(i => i.page))]), [2, 3]);
+});
+
+test('an unspecified bound does not constrain', () => {
+  assert.equal(pdf.stream.trim(BOOK, {}).kept.length, BOOK.length);
+  assert.equal(pdf.stream.trim(BOOK, {}).removed.length, 0);
+});
+
+test('recurring feeds trim: detect the furniture, then cut it', () => {
+  // The loop the stack view exists to make visible. Nothing here inspects a
+  // picture; the picture shows what these two functions already decided.
+  const furniture = pdf.stream.recurring(BOOK, { minRatio: 1 });
+  const lowest = Math.max(...furniture.filter(f => f.base < 400).map(f => f.y2));
+  const { kept, removed } = pdf.stream.trim(BOOK, { y1: lowest + 1 });
+  assert.equal(removed.length, 4);
+  assert.ok(kept.every(i => !i.str.startsWith('Page ')));
+});
+
 // ---- view: PDF space to screen space and back ----------------------------
 
 // What pdf.js hands back from page.getViewport({scale: 2}) on a 612x792 page:
