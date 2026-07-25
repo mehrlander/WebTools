@@ -304,6 +304,57 @@ class TableStructure(unittest.TestCase):
         self.assertTrue(all(c.holds for c in t.advisory), [c.detail for c in t.advisory])
 
 
+class GridRecovery(unittest.TestCase):
+    """Recovering real columns too sparse for a frequency threshold to keep."""
+
+    @staticmethod
+    def toks(positions):
+        return [Word("1", x - 40, 0, 40, 20) for x in positions]
+
+    def test_fills_a_single_missing_column_backed_by_tokens(self):
+        found = [100, 300, 500, 900, 1100]        # 700 is missing
+        tokens = self.toks([100, 300, 500, 700, 700, 900, 1100])
+        out = tables.recover_grid_columns(found, tokens, tolerance=20)
+        self.assertIn(700, out)
+
+    def test_will_not_invent_a_column_with_no_tokens(self):
+        found = [100, 300, 500, 900, 1100]
+        tokens = self.toks([100, 300, 500, 900, 1100])
+        self.assertEqual(tables.recover_grid_columns(found, tokens, tolerance=20), found)
+
+    def test_one_stray_token_is_not_enough(self):
+        found = [100, 300, 500, 900, 1100]
+        tokens = self.toks([100, 300, 500, 700, 900, 1100])
+        self.assertNotIn(700, tables.recover_grid_columns(found, tokens, tolerance=20))
+
+    def test_fills_two_missing_columns_in_one_gap(self):
+        found = [100, 300, 900, 1100]
+        tokens = self.toks([100, 300, 500, 500, 700, 700, 900, 1100])
+        out = tables.recover_grid_columns(found, tokens, tolerance=20)
+        self.assertIn(500, out)
+        self.assertIn(700, out)
+
+    def test_ignores_an_irregular_gap(self):
+        # 100 -> 640 is not a clean multiple of the 200 step, so the space
+        # between is layout, not missing columns.
+        found = [100, 300, 500, 640, 840]
+        tokens = self.toks([100, 300, 500, 570, 570, 640, 840])
+        self.assertNotIn(570, tables.recover_grid_columns(found, tokens, tolerance=20))
+
+    def test_too_few_anchors_to_establish_a_grid(self):
+        found = [100, 500]
+        tokens = self.toks([100, 300, 300, 500])
+        self.assertEqual(tables.recover_grid_columns(found, tokens, tolerance=20), found)
+
+    def test_divides_the_gap_rather_than_stepping_across_the_page(self):
+        # Stepping accumulates error. With a slightly irregular but clean grid,
+        # the recovered position must sit at the true midpoint of its own gap.
+        found = [0, 190, 380, 760, 950]
+        tokens = self.toks([0, 190, 380, 570, 570, 760, 950])
+        out = tables.recover_grid_columns(found, tokens, tolerance=25)
+        self.assertIn(570, out)
+
+
 class GroupLines(unittest.TestCase):
     def test_splits_on_vertical_gaps(self):
         words = [Word("a", 0, 0, 10, 20), Word("b", 30, 2, 10, 20),

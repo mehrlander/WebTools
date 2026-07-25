@@ -219,6 +219,58 @@ class Table:
         }
 
 
+def recover_grid_columns(
+    columns: list[int],
+    tokens: list[Word],
+    tolerance: float,
+    min_hits: int = 2,
+) -> list[int]:
+    """Recover columns that are real but too sparse to have been detected.
+
+    A frequency threshold is the wrong instrument for a wide report. On a
+    line-printer page with four fund groups, most rows leave a group blank, so a
+    genuine column can carry only two or three values and fall below any
+    threshold that also rejects bill numbers. Those columns were then silently
+    absent from the table, which is the failure mode this harness exists to
+    prevent.
+
+    Numeric columns in such a report sit on a near-uniform grid. This measures
+    the spacing of the columns already found, looks only at gaps that are a
+    clean multiple of it, and proposes the positions in between. **A proposal
+    becomes a column only when real tokens right-align there**, so nothing is
+    invented: the evidence is a token that was already recognized and was going
+    unassigned.
+
+    Interpolation is by division within a gap rather than by stepping across the
+    page, because a fixed step accumulates error and drifts off the later
+    columns (measured drift of 34 px by the fourth column, enough to miss it).
+    """
+    if len(columns) < 4:
+        return columns
+    diffs = [b - a for a, b in zip(columns, columns[1:])]
+    inner = [d for d in diffs if d < min(diffs) * 3]
+    if not inner:
+        return columns
+    step = statistics.median(inner)
+    if step <= 0:
+        return columns
+
+    recovered = list(columns)
+    for a, b in zip(columns, columns[1:]):
+        span = b - a
+        k = round(span / step)
+        # Only a gap that is a clean multiple of the step is evidence of
+        # missing columns; an irregular gap is just the layout.
+        if k < 2 or abs(span / k - step) > step * 0.2:
+            continue
+        for i in range(1, k):
+            x = a + span * i / k
+            hits = sum(1 for w in tokens if abs(w.right - x) <= tolerance)
+            if hits >= min_hits:
+                recovered.append(int(x))
+    return sorted(recovered)
+
+
 def find_table(
     words: list[Word],
     min_rows: int = 3,
@@ -227,9 +279,16 @@ def find_table(
     """Find the dominant numeric table among a page's words.
 
     Columns are anchored by right edge, because money is right-aligned and its
-    left edge moves with the magnitude of the number. A candidate column is kept
-    only when it is hit on a decent share of the lines that carry any money,
-    which is what rejects bill numbers and stray years.
+    left edge moves with the magnitude of the number.
+
+    A column is admitted on **alignment tightness plus a small count**, not on
+    appearing in a large share of rows. Real money columns align within a few
+    pixels across a page (measured spread of 4 to 9 px on a 13-row report),
+    while the tokens that must be rejected, bill numbers and years inside row
+    labels, sit at varying positions and do not cluster tightly. Tight
+    clustering is therefore what does the rejecting, which frees the count
+    threshold to be low enough for sparse columns to survive. Sparser ones still
+    are picked up by `recover_grid_columns`.
     """
     content = [w for w in words if not is_furniture(w)]
     lines = group_lines(content)
@@ -237,15 +296,18 @@ def find_table(
     if len(money_lines) < min_rows:
         return None
 
-    widths = [w.width for ln in money_lines for w in ln if MONEY.match(w.text)]
-    gap = statistics.median(widths) * 0.8 if widths else 40
+    tokens = [w for ln in money_lines for w in ln if MONEY.match(w.text)]
+    widths = [w.width for w in tokens]
+    median_width = statistics.median(widths) if widths else 50
+    cluster_gap = median_width * 0.35   # tight: real columns align within a few px
+    gap = median_width * 0.6            # assignment tolerance, deliberately looser
 
-    edges = [w.right for ln in money_lines for w in ln if MONEY.match(w.text)]
-    clusters = _cluster(edges, gap)
-    threshold = max(2, len(money_lines) * 0.5)
+    clusters = _cluster([w.right for w in tokens], cluster_gap)
+    threshold = max(2, min(3, len(money_lines)))
     columns = sorted(
         int(statistics.median(c)) for c in clusters if len(c) >= threshold
     )
+    columns = recover_grid_columns(columns, tokens, cluster_gap)
     if len(columns) < min_columns:
         return None
 

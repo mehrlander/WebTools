@@ -52,13 +52,13 @@ ST HIST SOCIETY   569 + -5 = 504   (expected 564)
 
 Verified against the page image: it reads 564.
 
-Measured over the 1,517 scanned pages processed so far, the two controls turn
-out to be worth very different amounts, which is why they are reported apart:
+Measured over all 3,984 scanned pages, the two controls turn out to be worth
+very different amounts, which is why they are reported apart:
 
 | control | rows tested | hold | read it as |
 |---|---|---|---|
-| row relation (`c_a op c_b = c_c`, discovered) | 4,022 | **95.7%** | a finding worth acting on |
-| column total (a total row against the block above) | 1,392 | 36.1% | advisory triage only |
+| row relation (`c_a op c_b = c_c`, discovered) | 13,468 | **96.8%** | a finding worth acting on |
+| column total (a total row against the block above) | 4,988 | 39.3% | advisory triage only |
 
 `Table.reconciled` speaks only for the first. The column-total check fails far
 more often than the data is wrong, mostly because a column dropped below the
@@ -186,11 +186,10 @@ comparable.
 
 Stated because a quiet limit is worse than a loud one.
 
-- **Sparse columns get dropped.** A candidate column is kept only when it is hit
-  on half the money-bearing lines, which is what rejects bill numbers and stray
-  years. On a line-printer report with four fund groups, where many rows leave
-  a group blank, this found 8 of about 12 numeric columns. Values in the dropped
-  columns are simply absent from the table.
+- **A consistent misread survives arithmetic.** On the page above, `6,323` and
+  `6,343` were both read with the comma as a `5`, giving `65323` and `65343`.
+  Their difference is still 20, so the relation holds and nothing is flagged.
+  Arithmetic catches errors that break a relation, not errors that preserve it.
 - **A short table cannot establish a relation it breaks.** Support is a share,
   so one bad row in four is 75% and falls under the default. No relation found
   means "not established," never "checked and fine," which is why
