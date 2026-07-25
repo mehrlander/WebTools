@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="winter">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -43,36 +43,36 @@
 
   <!-- toolbar: one row at every width. Anything that cannot fit on a phone
        moves into the panel rather than wrapping into the layer list. -->
-  <div class="flex items-center gap-1.5 px-2 py-1.5 bg-base-100 border-b border-base-300 shrink-0">
+  <div class="flex items-center gap-1.5 px-2 py-1.5 bg-base-100 border-b border-base-300 shrink-0 overflow-x-auto">
     <span class="font-semibold text-sm pr-1 hidden sm:inline whitespace-nowrap">PDF Inspect</span>
-    <button class="btn btn-xs btn-primary" @click="loadSample()">Sample</button>
-    <label class="btn btn-xs btn-ghost">Open
+    <button class="btn btn-sm lg:btn-xs btn-primary shrink-0" @click="loadSample()">Sample</button>
+    <label class="btn btn-sm lg:btn-xs btn-ghost shrink-0">Open
       <input type="file" accept=".pdf" class="hidden" @change="loadFile($event.target.files[0])">
     </label>
-    <div class="join">
-      <button class="btn btn-xs join-item" @click="go(-1)" :disabled="pageNum<=1">&lsaquo;</button>
-      <span class="btn btn-xs join-item no-animation pointer-events-none font-mono whitespace-nowrap"
+    <div class="join shrink-0" x-show="mode==='page'">
+      <button class="btn btn-sm lg:btn-xs join-item" @click="go(-1)" :disabled="pageNum<=1">&lsaquo;</button>
+      <span class="btn btn-sm lg:btn-xs join-item no-animation pointer-events-none font-mono whitespace-nowrap"
             x-text="`${pageNum}/${numPages||'-'}`"></span>
-      <button class="btn btn-xs join-item" @click="go(1)" :disabled="pageNum>=numPages">&rsaquo;</button>
+      <button class="btn btn-sm lg:btn-xs join-item" @click="go(1)" :disabled="pageNum>=numPages">&rsaquo;</button>
     </div>
     <div class="join shrink-0">
-      <button class="btn btn-xs join-item" :class="mode==='page' && 'btn-active'"
+      <button class="btn btn-sm lg:btn-xs join-item" :class="mode==='page' && 'btn-active'"
               @click="mode='page'; redraw()">Page</button>
-      <button class="btn btn-xs join-item" :class="mode==='stack' && 'btn-active'"
+      <button class="btn btn-sm lg:btn-xs join-item" :class="mode==='stack' && 'btn-active'"
               @click="mode='stack'; redraw()">Stack</button>
     </div>
-    <select class="select select-xs w-[4.5rem] shrink-0" x-show="mode==='page'" x-model="scaleMode" @change="redraw()">
+    <select class="select select-sm lg:select-xs w-[5.5rem] lg:w-[4.5rem] shrink-0" x-show="mode==='page'" x-model="scaleMode" @change="redraw()">
       <option value="fit">fit</option>
       <option value="1">1x</option><option value="1.5">1.5x</option>
       <option value="2">2x</option><option value="3">3x</option>
     </select>
     <span class="text-xs opacity-60 font-mono truncate hidden lg:inline" x-text="status"></span>
-    <button class="btn btn-xs btn-ghost ml-auto lg:hidden gap-1" @click="panel = !panel">
+    <button class="btn btn-sm btn-ghost ml-auto lg:hidden gap-1 shrink-0 sticky right-0 bg-base-100" @click="panel = !panel">
       <span x-text="panel ? 'Close' : 'Layers'"></span>
     </button>
   </div>
 
-  <div class="flex-1 flex min-h-0 relative">
+  <div class="flex-1 flex min-h-0 relative overflow-hidden">
     <!-- page -->
     <main class="flex-1 overflow-auto p-3 sm:p-6 bg-base-200 min-w-0" id="scroll">
       <div x-show="mode==='stack'" class="w-full h-full flex items-center justify-center">
@@ -96,54 +96,85 @@
          @click="panel = false"></div>
 
     <!-- controls: a static column from lg up, an off-canvas drawer below it -->
-    <aside class="absolute inset-y-0 right-0 z-40 w-[85vw] max-w-xs translate-x-full transition-transform duration-200
+    <aside class="absolute inset-y-0 right-0 z-40 w-[92vw] max-w-sm translate-x-full transition-transform duration-200
                   lg:static lg:translate-x-0 lg:w-80 lg:max-w-none
                   shrink-0 flex flex-col bg-base-100 border-l border-base-300 overflow-y-auto"
            :class="panel && '!translate-x-0 shadow-2xl'">
     <div class="p-3 space-y-1" x-show="mode==='page'">
-      <div class="text-xs font-mono opacity-60 mb-2 lg:hidden" x-text="status"></div>
-      <div class="text-xs uppercase tracking-wider opacity-50 mb-2">Layers</div>
+      <div class="text-sm font-mono opacity-60 mb-2 lg:hidden" x-text="status"></div>
+      <div class="text-sm lg:text-xs uppercase tracking-wider opacity-50 mb-2">Layers</div>
       <template x-for="l in layerList" :key="l.key">
-        <label class="flex items-center gap-2 cursor-pointer py-0.5">
-          <input type="checkbox" class="checkbox checkbox-xs" x-model="layers[l.key]" @change="redraw()">
+        <label class="flex items-center gap-3 lg:gap-2 cursor-pointer py-1.5 lg:py-0.5">
+          <input type="checkbox" class="checkbox checkbox-sm lg:checkbox-xs" x-model="layers[l.key]" @change="redraw()">
           <span class="w-3 h-3 rounded-sm border" :style="`background:${l.color}55;border-color:${l.color}`"></span>
-          <span class="text-sm" x-text="l.label"></span>
-          <span class="ml-auto text-xs opacity-50 font-mono" x-text="counts[l.key] ?? ''"></span>
+          <span class="text-base lg:text-sm" x-text="l.label"></span>
+          <span class="ml-auto text-sm lg:text-xs opacity-50 font-mono" x-text="counts[l.key] ?? ''"></span>
         </label>
       </template>
     </div>
 
     <div class="p-3 border-t border-base-300 space-y-2" x-show="mode==='stack'">
-      <div class="text-xs uppercase tracking-wider opacity-50">Trim</div>
-      <p class="text-xs opacity-60 leading-snug">
+      <details class="mb-1" x-bind:open="viewOpen">
+        <summary class="text-sm lg:text-xs uppercase tracking-wider opacity-50 cursor-pointer select-none py-1">
+          View
+          <span class="font-mono normal-case tracking-normal opacity-70"
+                x-text="`yaw ${Math.round(yaw)}° · pitch ${Math.round(pitch)}°`"></span>
+        </summary>
+        <div class="space-y-1 pt-1">
+          <div class="flex gap-1 flex-wrap">
+            <template x-for="v in ['front','iso','side','top']" :key="v">
+              <button class="btn btn-sm lg:btn-xs" @click="viewPreset(v)" x-text="v"></button>
+            </template>
+          </div>
+          <label class="flex items-center gap-3 lg:gap-2 text-sm lg:text-xs py-1 lg:py-0">
+            <span class="w-16 lg:w-14 opacity-70 shrink-0">yaw</span>
+            <input type="range" class="range range-sm lg:range-xs flex-1" min="-180" max="180" step="1"
+                   x-model.number="yaw" @input="drawStack()">
+            <span class="w-12 lg:w-10 text-right font-mono shrink-0" x-text="Math.round(yaw)"></span>
+          </label>
+          <label class="flex items-center gap-3 lg:gap-2 text-sm lg:text-xs py-1 lg:py-0">
+            <span class="w-16 lg:w-14 opacity-70 shrink-0">pitch</span>
+            <input type="range" class="range range-sm lg:range-xs flex-1" min="-85" max="85" step="1"
+                   x-model.number="pitch" @input="drawStack()">
+            <span class="w-12 lg:w-10 text-right font-mono shrink-0" x-text="Math.round(pitch)"></span>
+          </label>
+          <p class="text-sm lg:text-xs opacity-60 leading-snug">
+            Dragging the stack orbits it. In a sheet or an in-app browser that
+            gesture can be taken as a swipe to dismiss, so these are the
+            reliable path.
+          </p>
+        </div>
+      </details>
+      <div class="text-sm lg:text-xs uppercase tracking-wider opacity-50">Trim</div>
+      <p class="text-sm lg:text-xs opacity-60 leading-snug">
         Six numbers, not a gesture. A depth cannot be dragged honestly in a
         projection, so the cut planes are set here and drawn there.
       </p>
       <template x-for="f in trimFields" :key="f.key">
-        <label class="flex items-center gap-2 text-xs">
-          <span class="w-14 opacity-70" x-text="f.label"></span>
-          <input type="range" class="range range-xs flex-1" :min="f.min" :max="f.max" :step="f.step"
+        <label class="flex items-center gap-3 lg:gap-2 text-sm lg:text-xs py-1 lg:py-0">
+          <span class="w-16 lg:w-14 opacity-70 shrink-0" x-text="f.label"></span>
+          <input type="range" class="range range-sm lg:range-xs flex-1" :min="f.min" :max="f.max" :step="f.step"
                  x-model.number="trim[f.key]" @input="drawStack()">
-          <span class="w-10 text-right font-mono" x-text="Math.round(trim[f.key])"></span>
+          <span class="w-12 lg:w-10 text-right font-mono shrink-0" x-text="Math.round(trim[f.key])"></span>
         </label>
       </template>
-      <label class="flex items-center gap-2 text-xs">
-        <span class="w-14 opacity-70">spread</span>
-        <input type="range" class="range range-xs flex-1" min="4" max="70" step="1"
+      <label class="flex items-center gap-3 lg:gap-2 text-sm lg:text-xs py-1 lg:py-0">
+        <span class="w-16 lg:w-14 opacity-70 shrink-0">spread</span>
+        <input type="range" class="range range-sm lg:range-xs flex-1" min="4" max="70" step="1"
                x-model.number="spread" @input="drawStack()">
-        <span class="w-10 text-right font-mono" x-text="spread"></span>
+        <span class="w-12 lg:w-10 text-right font-mono shrink-0" x-text="spread"></span>
       </label>
-      <label class="flex items-center gap-2 text-xs cursor-pointer">
-        <input type="checkbox" class="checkbox checkbox-xs" x-model="onlyFixed" @change="drawStack()">
+      <label class="flex items-center gap-3 lg:gap-2 text-sm lg:text-xs cursor-pointer py-1 lg:py-0">
+        <input type="checkbox" class="checkbox checkbox-sm lg:checkbox-xs" x-model="onlyFixed" @change="drawStack()">
         <span>show only fixed-text furniture</span>
       </label>
       <div class="flex items-center gap-2 pt-1">
-        <button class="btn btn-xs" :class="trimMode==='keep' && 'btn-active'" @click="trimMode='keep'; drawStack()">keep</button>
-        <button class="btn btn-xs" :class="trimMode==='drop' && 'btn-active'" @click="trimMode='drop'; drawStack()">drop</button>
-        <button class="btn btn-xs btn-ghost ml-auto" @click="proposeTrim()">from furniture</button>
+        <button class="btn btn-sm lg:btn-xs" :class="trimMode==='keep' && 'btn-active'" @click="trimMode='keep'; drawStack()">keep</button>
+        <button class="btn btn-sm lg:btn-xs" :class="trimMode==='drop' && 'btn-active'" @click="trimMode='drop'; drawStack()">drop</button>
+        <button class="btn btn-sm lg:btn-xs btn-ghost ml-auto" @click="proposeTrim()">from furniture</button>
       </div>
-      <div class="text-xs font-mono opacity-70" x-text="trimInfo"></div>
-      <div class="max-h-32 overflow-auto text-xs font-mono bg-base-200 rounded p-2" x-show="furniture.length">
+      <div class="text-sm lg:text-xs font-mono opacity-70" x-text="trimInfo"></div>
+      <div class="max-h-40 overflow-auto text-sm lg:text-xs font-mono bg-base-200 rounded p-2" x-show="furniture.length">
         <template x-for="(f,i) in furniture" :key="i">
           <div class="truncate" x-text="`${Math.round(f.ratio*100)}% y${Math.round(f.base)} ${f.varies?'~':'='} ${f.samples[0]}`"></div>
         </template>
@@ -151,16 +182,16 @@
     </div>
 
     <div class="p-3 border-t border-base-300 space-y-2" x-show="mode==='page'">
-      <div class="text-xs uppercase tracking-wider opacity-50">Selection</div>
+      <div class="text-sm lg:text-xs uppercase tracking-wider opacity-50">Selection</div>
       <div class="flex gap-1">
-        <button class="btn btn-xs" :class="selMode==='intersect' && 'btn-active'"
+        <button class="btn btn-sm lg:btn-xs" :class="selMode==='intersect' && 'btn-active'"
                 @click="selMode='intersect'">touch</button>
-        <button class="btn btn-xs" :class="selMode==='contain' && 'btn-active'"
+        <button class="btn btn-sm lg:btn-xs" :class="selMode==='contain' && 'btn-active'"
                 @click="selMode='contain'">enclose</button>
-        <button class="btn btn-xs btn-ghost ml-auto" @click="clearSel()">clear</button>
+        <button class="btn btn-sm lg:btn-xs btn-ghost ml-auto" @click="clearSel()">clear</button>
       </div>
-      <div class="text-xs font-mono opacity-70" x-text="selInfo"></div>
-      <div class="max-h-40 overflow-auto text-xs font-mono bg-base-100 rounded p-2" x-show="sel.length">
+      <div class="text-sm lg:text-xs font-mono opacity-70" x-text="selInfo"></div>
+      <div class="max-h-44 overflow-auto text-sm lg:text-xs font-mono bg-base-200 rounded p-2" x-show="sel.length">
         <template x-for="(s,i) in sel.slice(0,40)" :key="i">
           <div class="truncate" x-text="s"></div>
         </template>
@@ -168,7 +199,7 @@
     </div>
 
     <div class="p-3 border-t border-base-300 flex-1" x-show="mode==='page'">
-      <div class="text-xs uppercase tracking-wider opacity-50 mb-2">Table read two ways</div>
+      <div class="text-sm lg:text-xs uppercase tracking-wider opacity-50 mb-2">Table read two ways</div>
       <div class="text-xs mb-1 opacity-70" x-text="tableInfo"></div>
       <div class="overflow-auto max-h-72 text-xs">
         <table class="table table-xs">
@@ -215,6 +246,7 @@ const S = { doc: null, v: null, items: [], projected: [] };
 document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => ({
   pageNum: 1, numPages: 0, scaleMode: 'fit', scale: 1.5, panel: false,
   mode: 'page', yaw: -32, pitch: 26, spread: 26, trimMode: 'keep', onlyFixed: false,
+  viewOpen: false,
   trim: { x1: 0, x2: 612, y1: 0, y2: 792, pageFrom: 1, pageTo: 1 },
   trimFields: [], trimInfo: '', furniture: [],
   W: 0, H: 0, status: 'no document', layerList: LAYERS,
@@ -467,36 +499,55 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
   // Drawn to one canvas rather than as DOM planes: a hundred pages of item
   // boxes is tens of thousands of elements, and the browser has no reason to
   // lay any of them out.
-  project(x, y, p, geom) {
-    const { cx, cy, s, sinY, cosY, sinP, cosP, depth } = geom;
-    const dx = (x - geom.midX) * s;
-    const dy = (geom.midY - y) * s;
-    const dz = (p - 1) * depth;
-    return [cx + dx * cosY + dz * sinY, cy + dy * cosP + (dx * -sinY + dz * cosY) * sinP];
+  // Model space to a flat plane, with no scale and no offset applied. Keeping
+  // those out means the caller can project the volume's corners first, measure
+  // the result, and derive a scale that fits: the view then never clips, at any
+  // orientation, which the first version did the moment it was rotated.
+  //
+  // Depth is centred on the middle page, not on page one. Rotating about the
+  // front sheet swings the whole stack sideways out of frame, which reads as
+  // the wrong pivot because it is.
+  proj(x, y, p, g) {
+    const dx = x - g.midX;
+    const dy = g.midY - y;
+    const dz = (p - g.midP) * this.spread;
+    return [dx * g.cosY + dz * g.sinY,
+            dy * g.cosP + (-dx * g.sinY + dz * g.cosY) * g.sinP];
   },
 
   drawStack() {
     if (!S.doc) return;
     const cv = document.getElementById('stack');
     const host = document.getElementById('scroll');
-    const W = Math.max(320, host.clientWidth - 24), H = Math.max(320, host.clientHeight - 24);
+    const W = Math.max(280, host.clientWidth - 24), H = Math.max(280, host.clientHeight - 24);
     const dpr = Math.min(2, devicePixelRatio || 1);
     cv.width = W * dpr; cv.height = H * dpr;
     cv.style.width = W + 'px'; cv.style.height = H + 'px';
-    const g = cv.getContext('2d');
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.clearRect(0, 0, W, H);
+    const g2 = cv.getContext('2d');
+    g2.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g2.clearRect(0, 0, W, H);
 
     const vp = S.doc.pages[0].getViewport({ scale: 1 });
+    const N = S.doc.numPages;
     const yaw = this.yaw * Math.PI / 180, pitch = this.pitch * Math.PI / 180;
-    const geom = {
-      cx: W / 2, cy: H / 2, midX: vp.width / 2, midY: vp.height / 2,
+    const g = {
+      midX: vp.width / 2, midY: vp.height / 2, midP: (1 + N) / 2,
       sinY: Math.sin(yaw), cosY: Math.cos(yaw),
       sinP: Math.sin(pitch), cosP: Math.cos(pitch),
-      depth: this.spread,
-      s: Math.min(W / (vp.width * 1.9), H / (vp.height * 1.35)),
     };
-    const P = (x, y, p) => this.project(x, y, p, geom);
+
+    // Fit the volume, whatever the orientation. Project the eight corners,
+    // measure the extent, and pick the scale and offset from that.
+    const corners = [];
+    for (const p of [1, N]) for (const x of [0, vp.width]) for (const y of [0, vp.height])
+      corners.push(this.proj(x, y, p, g));
+    const xs = corners.map(c => c[0]), ys = corners.map(c => c[1]);
+    const spanX = Math.max(1, Math.max(...xs) - Math.min(...xs));
+    const spanY = Math.max(1, Math.max(...ys) - Math.min(...ys));
+    const s = Math.min(W * 0.88 / spanX, H * 0.88 / spanY);
+    const cx = W / 2 - ((Math.min(...xs) + Math.max(...xs)) / 2) * s;
+    const cy = H / 2 - ((Math.min(...ys) + Math.max(...ys)) / 2) * s;
+    const P = (x, y, p) => { const [a, b] = this.proj(x, y, p, g); return [cx + a * s, cy + b * s]; };
 
     const region = { ...this.trim, mode: this.trimMode };
     const { kept, removed } = window.pdf.stream.trim(S.doc.items, region);
@@ -510,33 +561,31 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     const movingItems = new Set(this.furniture.filter(f => f.varies).flatMap(f => f.items));
 
     // Back to front, so nearer pages occlude further ones.
-    const order = Array.from({ length: S.doc.numPages }, (_, i) => i + 1).reverse();
+    const order = Array.from({ length: N }, (_, i) => i + 1).reverse();
     for (const p of order) {
       const c = [[0, 0], [vp.width, 0], [vp.width, vp.height], [0, vp.height]].map(([x, y]) => P(x, y, p));
-      g.beginPath(); g.moveTo(...c[0]); for (const pt of c.slice(1)) g.lineTo(...pt); g.closePath();
-      // Barely-there sheets. The first attempt filled each page at 0.72 alpha
-      // and twelve of those stacked into an opaque slab: the near page was
-      // legible and the eleven behind it were gone, which is the one thing this
-      // view exists to show. A stack has to be seen through.
-      g.fillStyle = 'rgba(255,255,255,0.05)'; g.fill();
-      g.strokeStyle = 'rgba(0,0,0,0.10)'; g.lineWidth = 1; g.stroke();
+      g2.beginPath(); g2.moveTo(...c[0]); for (const pt of c.slice(1)) g2.lineTo(...pt); g2.closePath();
+      // Barely-there sheets. The first attempt filled each at 0.72 alpha and
+      // twelve stacked into an opaque slab: the near page was legible and the
+      // eleven behind it were gone, which is the one thing this view exists to
+      // show. A stack has to be seen through.
+      g2.fillStyle = 'rgba(255,255,255,0.05)'; g2.fill();
+      g2.strokeStyle = 'rgba(0,0,0,0.10)'; g2.lineWidth = 1; g2.stroke();
 
       // Depth cue by opacity rather than by size, since the projection is
       // deliberately parallel: far pages fade, near pages read.
-      const near = 1 - (p - 1) / Math.max(1, S.doc.numPages - 1);
+      const near = 1 - (p - 1) / Math.max(1, N - 1);
       const fade = 0.28 + near * 0.5;
       for (const it of S.doc.page(p)) {
         if (!it.str.trim()) continue;
         if (this.onlyFixed && !fixedItems.has(it) && !cut.has(it)) continue;
         const a = P(it.x1, it.y1, p), b = P(it.x2, it.y2, p);
-        // Four states: cut by the trim, furniture that repeats its text,
-        // furniture that repeats only its position, ordinary content.
-        g.fillStyle = cut.has(it) ? `rgba(239,68,68,${fade})`
-                    : fixedItems.has(it) ? `rgba(22,163,74,${fade + 0.15})`
-                    : movingItems.has(it) ? `rgba(234,88,12,${fade})`
-                    : `rgba(56,189,248,${fade * 0.75})`;
-        g.fillRect(Math.min(a[0], b[0]), Math.min(a[1], b[1]),
-                   Math.max(1.2, Math.abs(b[0] - a[0])), Math.max(1.2, Math.abs(b[1] - a[1])));
+        g2.fillStyle = cut.has(it) ? `rgba(220,38,38,${fade})`
+                     : fixedItems.has(it) ? `rgba(21,128,61,${fade + 0.15})`
+                     : movingItems.has(it) ? `rgba(202,138,4,${fade})`
+                     : `rgba(37,99,235,${fade * 0.7})`;
+        g2.fillRect(Math.min(a[0], b[0]), Math.min(a[1], b[1]),
+                    Math.max(1.2, Math.abs(b[0] - a[0])), Math.max(1.2, Math.abs(b[1] - a[1])));
       }
     }
 
@@ -544,9 +593,9 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     // surface rather than as a number that changed somewhere.
     const p0 = Number(this.trim.pageFrom), p1 = Number(this.trim.pageTo);
     const plane = (pts) => {
-      g.beginPath(); g.moveTo(...pts[0]); for (const q of pts.slice(1)) g.lineTo(...q); g.closePath();
-      g.fillStyle = 'rgba(234,179,8,0.07)'; g.fill();
-      g.strokeStyle = 'rgba(202,138,4,0.75)'; g.lineWidth = 1; g.stroke();
+      g2.beginPath(); g2.moveTo(...pts[0]); for (const q of pts.slice(1)) g2.lineTo(...q); g2.closePath();
+      g2.fillStyle = 'rgba(13,148,136,0.07)'; g2.fill();
+      g2.strokeStyle = 'rgba(13,148,136,0.8)'; g2.lineWidth = 1; g2.stroke();
     };
     for (const y of [Number(this.trim.y1), Number(this.trim.y2)])
       plane([P(0, y, p0), P(vp.width, y, p0), P(vp.width, y, p1), P(0, y, p1)]);
@@ -556,8 +605,15 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     const fixedCount = this.furniture.filter(f => !f.varies).length;
     this.trimInfo = `${kept.length} kept · ${removed.length} cut · ` +
       `${fixedCount} fixed + ${this.furniture.length - fixedCount} moving, ` +
-      `recurring over ${S.doc.numPages} pages`;
-    this.status = `${S.doc.numPages} pages · ${S.doc.items.length} items`;
+      `recurring over ${N} pages`;
+    this.status = `${N} pages · ${S.doc.items.length} items`;
+  },
+
+  // Named orientations, because a slider is precise and a preset is fast, and
+  // wanting "straight on" should not mean dragging back to zero.
+  viewPreset(name) {
+    const p = { front: [0, 0], iso: [-32, 26], side: [-78, 8], top: [-14, 72] }[name];
+    if (p) { this.yaw = p[0]; this.pitch = p[1]; this.drawStack(); }
   },
 
   // Turn the detector's output into a proposed cut, which is the point of
@@ -581,13 +637,23 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
   // Orbit. The pointer handlers on the stack canvas are separate from the
   // page-mode drag, because one selects and the other rotates.
   orbitStart(e) {
+    // Claim the gesture. Without this an enclosing sheet (the Claude app's
+    // in-app browser, a mobile drawer) can read a horizontal drag as a swipe to
+    // dismiss and take the pointer away mid-orbit. Capture plus preventDefault
+    // keeps it here; the View sliders exist for where that is not enough.
+    e.preventDefault();
     this._orbit = { x: e.clientX, y: e.clientY, yaw: this.yaw, pitch: this.pitch };
     e.currentTarget.setPointerCapture?.(e.pointerId);
   },
   orbitMove(e) {
     if (!this._orbit) return;
-    this.yaw = this._orbit.yaw + (e.clientX - this._orbit.x) * 0.4;
-    this.pitch = Math.max(-80, Math.min(80, this._orbit.pitch - (e.clientY - this._orbit.y) * 0.4));
+    // Normalize by canvas width so a drag across the view turns the same amount
+    // on a phone as on a desktop, instead of being twice as twitchy on the
+    // smaller one.
+    const rect = e.currentTarget.getBoundingClientRect();
+    const k = 180 / Math.max(240, rect.width);
+    this.yaw = this._orbit.yaw + (e.clientX - this._orbit.x) * k;
+    this.pitch = Math.max(-85, Math.min(85, this._orbit.pitch - (e.clientY - this._orbit.y) * k));
     this.drawStack();
   },
   orbitEnd() { this._orbit = null; },
