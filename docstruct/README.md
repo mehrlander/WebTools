@@ -113,6 +113,7 @@ source directory holding two kinds of document.
 | [`record.py`](record.py) | the per-page record holding several extractions, and right-angle box rotation |
 | [`run.py`](run.py) | the pass runner: parallel, resumable, one JSON per page |
 | [`tables.py`](tables.py) | rows, columns and cells from word boxes, then the arithmetic the table asserts about itself |
+| [`compose.py`](compose.py) | adjudicate between several readings of a page, using the table's arithmetic rather than a vote |
 | [`survey.py`](survey.py) | read a pass back: what it saw, which pages need a look, and a stratified sample |
 | [`test_docstruct.py`](test_docstruct.py) | tests for the silent-failure parts, mainly the coordinate transforms |
 
@@ -202,6 +203,35 @@ different claim from one read off a page that arrived upright, and the record ha
 to be able to say which. When a rotation is applied, every extraction taken
 before it (the inherited layer) is rotated into the new frame so all boxes stay
 comparable.
+
+## Composing a result from several readings
+
+`compose.py` is where holding competing extractions pays. Where methods disagree
+on a cell, it prefers the reading that makes the row reconcile, and where none
+does it reports the disagreement and changes nothing.
+
+**The rule is deliberately not a vote.** Methods sharing a lineage share failure
+modes, so two tesseract passes at different segmentation modes are often wrong
+the same way on the same glyph, and a vote counts that as confirmation. The
+table's arithmetic is independent of every method, so it is what decides.
+
+A worked case, verified against the page image (`lbn_1993/p-240`):
+
+| method | read | outcome |
+|---|---|---|
+| tesseract psm 6 | `684` | baseline, breaks the relation |
+| tesseract psm 4 | `98,684` | **closes it**: 867,311 + 98,684 = 965,995 |
+| inherited layer | `94684` | rejected, does not close it |
+
+The page reads 98,684. Note that a majority vote could not have chosen here:
+two methods disagreed with the baseline and with each other. Note also that the
+column above independently sums to 98,684, which is the sort of corroboration
+that only exists once geometry is right.
+
+It can only ever promote a reading some method actually produced. If no method
+read the right digits, it finds nothing, which is the honest outcome. Solving
+for one unknown in a relation is the whole move: two bad cells in the same
+relation are not recoverable and are not guessed at.
 
 ## Known limits of the table layer
 

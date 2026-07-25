@@ -25,6 +25,7 @@ from record import rotate_words  # noqa: E402
 from recognize import line_axis  # noqa: E402
 from run import read_sample  # noqa: E402
 import tables  # noqa: E402
+import compose  # noqa: E402
 
 HAS_TESSERACT = shutil.which("tesseract") is not None
 
@@ -353,6 +354,83 @@ class GridRecovery(unittest.TestCase):
         tokens = self.toks([0, 190, 380, 570, 570, 760, 950])
         out = tables.recover_grid_columns(found, tokens, tolerance=25)
         self.assertIn(570, out)
+
+
+class Adjudication(unittest.TestCase):
+    """Composing a result from several readings, decided by arithmetic."""
+
+    @staticmethod
+    def record(primary_rows, second_rows):
+        """Build a two-method page record from (label, a, b, total) rows."""
+        def words(rows):
+            out = []
+            for r, (label, a, b, c) in enumerate(rows):
+                y = 100 + r * 40
+                out.append({"text": label, "box": [100, y, 300, 20], "conf": 95.0})
+                for text, right in ((a, 1000), (b, 1400), (c, 1800)):
+                    w = 20 * len(text)
+                    out.append({"text": text, "box": [right - w, y, w, 20], "conf": 90.0})
+            return out
+        return {
+            "doc_id": "d", "page_id": "p",
+            "extractions": [
+                {"method": {"name": "tesseract", "settings": {"psm": "6"}},
+                 "words": words(primary_rows)},
+                {"method": {"name": "tesseract", "settings": {"psm": "4"}},
+                 "words": words(second_rows)},
+            ],
+        }
+
+    # Eight rows: support is a share, so a four-row table with one bad row sits
+    # at 75% and never establishes the relation there is to adjudicate against.
+    GOOD = [("A", "100", "50", "150"), ("B", "200", "50", "250"),
+            ("C", "300", "50", "350"), ("D", "400", "50", "450"),
+            ("E", "500", "50", "550"), ("F", "600", "50", "650"),
+            ("G", "700", "50", "750"), ("H", "800", "50", "850")]
+
+    def test_resolves_a_cell_the_second_method_read_correctly(self):
+        broken = list(self.GOOD)
+        broken[1] = ("B", "200", "50", "2501")      # primary misreads the total
+        rec = self.record(broken, self.GOOD)
+        resolved = [a for a in compose.adjudicate(rec) if a.resolved]
+        self.assertTrue(resolved)
+        self.assertEqual(resolved[0].chosen.text, "250")
+        self.assertEqual(resolved[0].baseline, "2501")
+
+    def test_reports_but_does_not_resolve_when_nothing_reconciles(self):
+        broken = list(self.GOOD)
+        broken[1] = ("B", "200", "50", "2501")
+        other = list(self.GOOD)
+        other[1] = ("B", "200", "50", "2502")       # also wrong, differently
+        rec = self.record(broken, other)
+        results = compose.adjudicate(rec)
+        self.assertTrue(results)
+        self.assertFalse(any(a.resolved for a in results))
+
+    def test_a_single_method_yields_nothing(self):
+        rec = self.record(self.GOOD, self.GOOD)
+        rec["extractions"] = rec["extractions"][:1]
+        self.assertEqual(compose.adjudicate(rec), [])
+
+    def test_agreement_is_not_evidence_on_its_own(self):
+        # Both methods read the same wrong value. A vote would confirm it; the
+        # arithmetic must refuse to resolve, since nothing independent supports it.
+        broken = list(self.GOOD)
+        broken[1] = ("B", "200", "50", "2501")
+        rec = self.record(broken, broken)
+        self.assertFalse(any(a.resolved for a in compose.adjudicate(rec)))
+
+    def test_method_keys_distinguish_runs_of_the_same_engine(self):
+        rec = self.record(self.GOOD, self.GOOD)
+        self.assertEqual(compose.method_keys(rec),
+                         ["tesseract:psm6", "tesseract:psm4"])
+
+    def test_overlap_matches_by_geometry_not_index(self):
+        target = Word("x", 100, 100, 100, 20)
+        near = Word("y", 105, 101, 95, 20)
+        far = Word("z", 900, 100, 100, 20)
+        hits = compose.overlapping(target, [far, near])
+        self.assertEqual([w.text for w in hits], ["y"])
 
 
 class GroupLines(unittest.TestCase):

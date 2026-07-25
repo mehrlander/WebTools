@@ -53,7 +53,7 @@ def read_sample(path: Path) -> tuple[set[str], set[str]]:
     return pages, docs
 
 
-def process(page: pages_mod.Page, out_dir: Path, psm: int, no_prep: bool) -> dict:
+def process(page: pages_mod.Page, out_dir: Path, psm: list[int], no_prep: bool) -> dict:
     """Extract one page and write its record. Returns a small status dict."""
     started = time.time()
     try:
@@ -64,7 +64,7 @@ def process(page: pages_mod.Page, out_dir: Path, psm: int, no_prep: bool) -> dic
         if no_prep:
             orientation = prep_mod.Orientation(0, 0, 0.0, verdict="skipped")
         else:
-            image, orientation = prep_mod.deskew_rotate(image, psm=psm)
+            image, orientation = prep_mod.deskew_rotate(image, psm=psm[0])
 
         applied = orientation.applied
         if applied:
@@ -73,7 +73,13 @@ def process(page: pages_mod.Page, out_dir: Path, psm: int, no_prep: bool) -> dic
             inherited = rotate_words(inherited, applied, size)
             size = (size[1], size[0]) if applied in (90, 270) else size
 
-        extractions = [recognize.tesseract(image, psm=psm)]
+        # One extraction per segmentation mode. These are independent methods in
+        # the sense that matters: they disagree, and they disagree differently
+        # on different rows. Measured on one line-printer row, psm 4 read
+        # `-1,116` correctly where psm 6 gave `-1,1146`, while psm 6 read
+        # `745 87,083` where psm 4 truncated both. Neither dominates, which is
+        # exactly the condition under which a second opinion is worth having.
+        extractions = [recognize.tesseract(image, psm=mode) for mode in psm]
         if inherited:
             extractions.append(
                 recognize.Extraction(
@@ -105,6 +111,7 @@ def process(page: pages_mod.Page, out_dir: Path, psm: int, no_prep: bool) -> dic
             "verdict": orientation.verdict,
             "words": len(extractions[0].words),
             "mean_conf": extractions[0].mean_conf,
+            "methods": len(extractions),
         }
     except Exception as exc:  # a bad page must not take down a 4,000-page pass
         return {"key": page.key, "ok": False, "error": f"{type(exc).__name__}: {exc}"}
@@ -118,11 +125,21 @@ def main(argv=None) -> int:
     ap.add_argument("-o", "--out", required=True, help="output directory for page records")
     ap.add_argument("--sample", help="file listing doc_id/page_id to restrict the pass to")
     ap.add_argument("--workers", type=int, default=4)
-    ap.add_argument("--psm", type=int, default=6, help="tesseract page segmentation mode")
+    ap.add_argument("--psm", default="6",
+                    help="tesseract page segmentation mode(s), comma-separated. "
+                         "Several modes record several extractions of each page, "
+                         "which is what compose.py adjudicates between.")
     ap.add_argument("--no-prep", action="store_true", help="skip orientation correction")
     ap.add_argument("--force", action="store_true", help="re-extract pages already recorded")
     ap.add_argument("--limit", type=int, help="stop after N pages (for a quick probe)")
     args = ap.parse_args(argv)
+
+    try:
+        psm_modes = [int(x) for x in str(args.psm).split(",") if x.strip()]
+    except ValueError:
+        ap.error(f"--psm expects integers, got {args.psm!r}")
+    if not psm_modes:
+        ap.error("--psm needs at least one mode")
 
     out_dir = Path(args.out)
     all_pages = pages_mod.load_pages(args.source)
@@ -149,12 +166,13 @@ def main(argv=None) -> int:
         print("nothing to do (all pages already recorded; --force to redo)")
         return 0
 
-    print(f"{len(all_pages)} pages, {args.workers} workers, psm {args.psm}")
+    print(f"{len(all_pages)} pages, {args.workers} workers, "
+          f"psm {','.join(str(m) for m in psm_modes)}")
     started = time.time()
     done = failed = rotated = 0
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.workers) as pool:
         futures = {
-            pool.submit(process, p, out_dir, args.psm, args.no_prep): p for p in all_pages
+            pool.submit(process, p, out_dir, psm_modes, args.no_prep): p for p in all_pages
         }
         for future in concurrent.futures.as_completed(futures):
             status = future.result()
