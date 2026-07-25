@@ -15,6 +15,7 @@ const KITS = {
   'export.js': 'exporter',
   'io.js': 'io',
   'messaging.js': 'messaging',
+  'pdf.js': 'pdf',
   'persistence.js': 'persistence',
   'wring.js': 'wring',
   'wsl-core.js': 'wslCore',

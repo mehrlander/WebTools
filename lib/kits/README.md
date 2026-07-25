@@ -455,6 +455,45 @@ wsl.linkifyList(chapters, fullRcws)  // + linkifyTitles, chapterTooltip,
                                      //   buildChapterPopup, buildTitlePopup
 ```
 
+### pdf.js
+
+Browser PDF extraction: text with resolved fonts and per-character geometry,
+the vector rules a page draws, and table structure recovered two independent
+ways. Consolidates a strand of console and bookmarklet work that ran from
+2025-04 to 2026-05 and never landed in a repo, so this is its first tested
+form.
+
+The split is the point. `geom`, `stream`, and `lattice` are **pure**: plain
+arrays in, plain arrays out, no pdf.js and no DOM. Every structural decision
+the kit makes lives there, which is why the whole table-detection surface is
+testable under node against synthetic geometry. Only `open()` needs pdf.js,
+and only `doc` needs pdf-lib (both load lazily from jsDelivr).
+
+```js
+const d = await pdf.open('/report.pdf');   // url, File/Blob, or bytes
+const d = await pdf.pick();                // file picker, for console use
+
+d.items      // text: {x1,y1,x2,y2,base,str,fontSize,bold,italic,glyphs,…}
+d.paths      // rules: {h: [{y,x1,x2,color,width}], v: [{x,y1,y2,…}]}
+
+d.rows(1)     // items grouped by baseline, top to bottom
+d.chunks(1)   // adjacent items merged into runs, split on gaps and style
+d.columns(1)  // column edges by alignment frequency (both edges histogrammed)
+d.gutters(1)  // column edges by whitespace — the complementary read
+d.grids(1)    // ruled tables: cells with spans, plus a dense .matrix
+
+pdf.stream.split(items, [60, 220, 380])      // assign by where a chunk starts
+pdf.lattice.grids({h, v}, items, {snap: 3})  // the pipeline, own tolerances
+await pdf.doc.slice(d.bytes, 3, 7)           // pdf-lib page range → bytes
+```
+
+`stream` and `lattice` read the same page from unrelated evidence (where the
+text sits, versus the rules drawn on it), so running both and comparing is a
+control that one method run twice cannot give you. Agreement is evidence;
+disagreement is a finding. Tolerances, failure modes, the government-PDF
+pathologies, and the honest limits are in
+[`docs/pdf-structure.md`](../../docs/pdf-structure.md).
+
 ### xlsx.js
 
 OOXML (`.xlsx`) structural inspector: unzip, walk every XML/rels part, and
@@ -527,3 +566,4 @@ examples.
 | `wsl-core.js` | `pages/wsl-sync/` + Node fetch | dependency-free; libs injected |
 | `wsl.js` | `pages/wsl-sync/` | browser wrapper; lazy XML libs |
 | `xlsx.js` | `kits/demos/xlsx.html` | OOXML structural walk; pure/testable, lazy JSZip |
+| `pdf.js` | `npm run test:pdf` (generated fixture) | pure geometry/stream/lattice; lazy pdf.js + pdf-lib |
