@@ -17,6 +17,10 @@
     ?src=<path>       envelope JSON fetched via the GitHub contents API;
                       plain path = this repo, or owner/repo@ref:path
     (neither)         a small built-in demo envelope
+  Each key is read fragment first, query as fallback (lib/url-params.js), so
+  ?gz= and #src= work too. Prefer the forms above: the payload wants '#'
+  because a query string is capped at roughly 8KB by the Pages edge, and the
+  address arrives as ?src= from a routed toss's params shim.
 -->
 <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5,npm/@tailwindcss/typography/dist/typography.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
@@ -35,6 +39,7 @@
   } else {
     await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
   }
+  await gh.load('url-params.js');
   await gh.load('kits/proof.js');
   await gh.load('chat-render.js');
 
@@ -69,8 +74,11 @@
       while (!window.chatRender) await new Promise(r => setTimeout(r, 50));
       await chatRender.ready();
       try {
-        const gz = new URLSearchParams(location.hash.slice(1)).get('gz');
-        const src = new URLSearchParams(location.search).get('src');
+        // Fragment first, query as fallback, per key (lib/url-params.js): the
+        // payload wants '#' for size and privacy, while ?src= is how a routed
+        // toss delivers an address through toss-render's params shim.
+        const gz = UrlParams.get('gz');
+        const src = UrlParams.get('src');
         if (gz) this.env = JSON.parse(await gunzipB64url(gz));
         else if (src) this.env = JSON.parse(await fetchText(src));
         else this.env = window.DEMO_ENVELOPE;

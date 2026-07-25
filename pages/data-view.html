@@ -19,6 +19,10 @@
     ?src=<spec>       payload fetched via the contents API; a plain path is
                       this repo, or owner/repo[@ref]:path
     (neither)         a built-in demo envelope
+  Each key is read fragment first, query as fallback (lib/url-params.js), so
+  ?gz= and #src= work too. Prefer the forms above: the payload wants '#'
+  because a query string is capped at roughly 8KB by the Pages edge, and the
+  address arrives as ?src= from a routed toss's params shim.
 
   Two payload shapes, told apart by lib/data-payload.js and handled the same
   way from here on:
@@ -55,6 +59,7 @@
   } else {
     await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
   }
+  await gh.load('url-params.js');
   await gh.load('data-payload.js');
   await gh.load('alpineComponents/viewer.js');
 
@@ -97,8 +102,11 @@
 
     async init() {
       try {
-        const gz = new URLSearchParams(location.hash.slice(1)).get('gz');
-        const src = new URLSearchParams(location.search).get('src');
+        // Fragment first, query as fallback, per key (lib/url-params.js): the
+        // payload wants '#' for size and privacy, while ?src= is how a routed
+        // toss delivers an address through toss-render's params shim.
+        const gz = UrlParams.get('gz');
+        const src = UrlParams.get('src');
         if (gz) {
           this.payload = DataPayload.read(await gunzipB64url(gz));
         } else if (src) {

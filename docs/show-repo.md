@@ -314,7 +314,13 @@ file in the shell viewer), the **delivery modes** `toss-render.html` accepts
 the trust posture that buys: a payload renders under an opaque origin that
 cannot reach this origin's token, an address-mode fetch is same-origin and can,
 which is why only the second is allowlisted), and the **toss routes** resolving
-a content type to its renderer page. Those facts previously existed only as
+a content type to its renderer page. The modes section leads with the read
+order, since it is one rule everywhere: fragment first, query as fallback, in
+`toss-render` for its own params and in the renderer pages through
+[`lib/url-params.js`](../lib/url-params.js). A payload belongs in the fragment,
+which never reaches a server and so escapes the roughly 8KB cap the Pages edge
+enforces with a 414; an address is short, and a routed toss hands `?src=` to
+the page through the params shim rather than over the wire. Those facts previously existed only as
 source comments in three files, so a reader had to reconstruct them; the
 manifest owns them instead. The `routes` block is the owner of `toss-render`'s
 `TOSS_ROUTES` literal, which stays inlined so the critical render path takes no

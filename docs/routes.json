@@ -2,6 +2,7 @@
   "note": "How content moves and renders: the address grammar a reference shares across the repo, the delivery modes pages/toss-render.html accepts, and the toss routes that map a content type to the page that renders it. Read by show-repo's Map view (Transport tab). The `routes` block is the owner of toss-render.html's TOSS_ROUTES literal, which stays inlined so the critical render path takes no fetch; tools/test/routes-manifest.test.mjs holds the two in step.",
   "hub": "mehrlander/web-tools",
   "renderer": "pages/toss-render.html",
+  "precedence": "Every parameter below is read fragment first, query as fallback: toss-render for its own params, and the renderer pages through lib/url-params.js. Put a payload in the fragment, which never reaches a server and so escapes the roughly 8KB cap the Pages edge enforces with a 414 (PR #165). An address is short, so either form works, and a routed toss delivers ?src= through toss-render's params shim rather than over the wire.",
   "grammar": {
     "form": "owner/repo[@ref]:path",
     "role": "One way to name a file in any repo, at any ref. The ':' before the path is unambiguous because git forbids ':' in ref names; no @ref means the repo's default branch.",
@@ -66,7 +67,7 @@
       "trust": "n/a",
       "sandbox": "the renderer page's own fetch",
       "reach": "viewer holding the token",
-      "note": "The renderer side of the split, not a toss-render param. A routed toss resolves into this: toss-render renders the renderer page and the params shim delivers ?src= to the page's own location.search read. Reaching a renderer directly with ?src= works the same; the route is shorthand, not a gate."
+      "note": "The renderer side of the split, not a toss-render param. A routed toss resolves into this: toss-render renders the renderer page and the params shim delivers ?src= to the page's own read. Reaching a renderer directly with ?src= works the same; the route is shorthand, not a gate. Renderer pages read it fragment first like everything else, so #src= is accepted too."
     }
   ],
   "routes": [

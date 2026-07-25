@@ -38,6 +38,7 @@ test('manifest shape: renderer, grammar, modes, and typed routes', () => {
   assert.ok(existsSync(path.join(repoRoot, manifest.renderer)), 'renderer missing: ' + manifest.renderer);
   assert.match(manifest.grammar.form, /owner\/repo\[@ref\]:path/);
   assert.ok(manifest.grammar.usedBy.length > 1, 'the grammar is shared, so name where');
+  assert.match(manifest.precedence, /fragment first/, 'the read order is the contract; state it');
   assert.ok(manifest.modes.length > 1);
   assert.ok(manifest.routes.length > 0);
   for (const m of manifest.modes) {
