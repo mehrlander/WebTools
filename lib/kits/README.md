@@ -516,7 +516,10 @@ translation and drifts. An Alpine component that wants drag-selection is then a
 pointer-event shell over `v.select`, the same way `cm-editor.js` is a shell over
 `cm6.js`.
 
-Tolerances, failure modes, the measured font-alignment numbers, the
+[`pages/pdf-inspect.html`](../../pages/pdf-inspect.html) draws every layer on
+top of the rendered page, with drag-selection wired to `view.select`. It is the
+visual check the numeric suites cannot be, and it has already found two real
+defects. Tolerances, failure modes, the measured font-alignment numbers, the
 government-PDF pathologies, and the honest limits are in
 [`docs/pdf-structure.md`](../../docs/pdf-structure.md).
 
@@ -592,4 +595,4 @@ examples.
 | `wsl-core.js` | `pages/wsl-sync/` + Node fetch | dependency-free; libs injected |
 | `wsl.js` | `pages/wsl-sync/` | browser wrapper; lazy XML libs |
 | `xlsx.js` | `kits/demos/xlsx.html` | OOXML structural walk; pure/testable, lazy JSZip |
-| `pdf.js` | `npm run test:pdf` (generated fixture) | pure geometry/stream/lattice; lazy pdf.js + pdf-lib |
+| `pdf.js` | `pages/pdf-inspect.html` + `npm run test:pdf` | pure geom/stream/lattice/view; lazy pdf.js + pdf-lib |

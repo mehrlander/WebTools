@@ -309,6 +309,27 @@ This kit is the born-digital front end of the same question: it handles the case
 where a text layer exists and the difficulty is geometry. The two want the same
 output vocabulary, and settling that vocabulary is open work on both sides.
 
+## Looking at it
+
+[`pages/pdf-inspect.html`](../pages/pdf-inspect.html) draws every layer the kit
+produces on top of the page it was read from: text containers, per-character
+boxes, the vector rules split into the ones the lattice will walk and the ones
+it discards, both column detectors, and the lattice grid with its cell indices.
+Drag on the page to select, and the panel reports the region back in PDF
+coordinates with `columns` re-run over just that selection.
+
+Every coordinate on that page goes through `pdf.view`, and nothing on it
+converts by hand. That is the point: if the overlay lines up, the projection is
+right. The page is an assertion that a number cannot make.
+
+It has already earned its place twice. Drawing the rules revealed that
+"extracted" and "walked" are different sets and the overlay was showing only
+one, which is the entire white-rule story rendered invisible. And putting the
+two table readings side by side over the *same region* showed `stream` finding
+five columns where `lattice` found three, which turned out to be the blank items
+above voting on alignment. Both were live in a kit whose numeric tests were all
+green.
+
 ## Testing
 
 - `node --test tools/test/pdf-kit.test.mjs` covers `geom`, `stream`, and

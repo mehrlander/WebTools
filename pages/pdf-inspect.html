@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Inspect</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🔍</text></svg>">
+<meta property="og:title" content="PDF Inspect" />
+<meta property="og:description" content="See what kits/pdf.js extracts, drawn on the page it came from" />
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+<!--
+  pdf-inspect.html — the visual half of kits/pdf.js.
+
+  The kit's numbers are checked by three headless suites, but a table extractor
+  is a geometry tool and geometry is judged by looking. This page draws every
+  layer the kit produces on top of the page it was read from: text containers,
+  per-character boxes, the vector rules with their detected roles, both column
+  detectors, and the lattice grid with its cell indices.
+
+  Everything visual here goes through pdf.view(), the kit's projection, and
+  nothing on this page converts a coordinate by hand. That is deliberate: if the
+  overlay lines up, the projection is right, and if it drifts, the projection is
+  wrong. The page is the assertion.
+
+  The sample PDF is built in the browser with pdf-lib (already loaded by the
+  kit), so no binary is committed and the fixture is visible as code. It is the
+  same geometry as tools/test/pdf-kit-browser.mjs, including the white rule that
+  a naive extractor turns into a phantom column.
+
+  Headless: tools/test/pdf-inspect-shot.mjs drives it for screenshots.
+-->
+
+<style>
+  .layer { position: absolute; inset: 0; pointer-events: none; }
+  .lbl { font: 9px/1 ui-monospace, monospace; }
+</style>
+</head>
+<body class="bg-base-300 text-base-content">
+
+<div x-data="pdfInspect()" class="flex h-screen overflow-hidden">
+
+  <!-- page -->
+  <main class="flex-1 flex flex-col min-w-0">
+    <div class="flex items-center gap-2 p-2 bg-base-200 border-b border-base-100 shrink-0">
+      <span class="font-semibold text-sm pr-2">PDF Inspect</span>
+      <button class="btn btn-xs btn-primary" @click="loadSample()">Sample</button>
+      <label class="btn btn-xs btn-ghost">Open
+        <input type="file" accept=".pdf" class="hidden" @change="loadFile($event.target.files[0])">
+      </label>
+      <div class="join">
+        <button class="btn btn-xs join-item" @click="go(-1)" :disabled="pageNum<=1">&lsaquo;</button>
+        <span class="btn btn-xs join-item no-animation pointer-events-none font-mono"
+              x-text="`${pageNum} / ${numPages||'-'}`"></span>
+        <button class="btn btn-xs join-item" @click="go(1)" :disabled="pageNum>=numPages">&rsaquo;</button>
+      </div>
+      <select class="select select-xs w-20" x-model.number="scale" @change="redraw()">
+        <option value="1">1x</option><option value="1.5">1.5x</option>
+        <option value="2">2x</option><option value="3">3x</option>
+      </select>
+      <span class="text-xs opacity-60 font-mono" x-text="status"></span>
+    </div>
+
+    <div class="flex-1 overflow-auto p-6 bg-base-100" id="scroll">
+      <div class="relative inline-block shadow-2xl select-none" id="stage"
+           @pointerdown="dragStart($event)" @pointermove="dragMove($event)"
+           @pointerup="dragEnd($event)" @pointerleave="dragEnd($event)">
+        <canvas id="page" class="block"></canvas>
+        <svg class="layer" id="ov" :width="W" :height="H"></svg>
+        <div x-show="drag" class="absolute border-2 border-warning bg-warning/10 pointer-events-none"
+             :style="dragStyle"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- controls -->
+  <aside class="w-80 shrink-0 flex flex-col bg-base-200 border-l border-base-100 overflow-y-auto">
+    <div class="p-3 space-y-1">
+      <div class="text-xs uppercase tracking-wider opacity-50 mb-2">Layers</div>
+      <template x-for="l in layerList" :key="l.key">
+        <label class="flex items-center gap-2 cursor-pointer py-0.5">
+          <input type="checkbox" class="checkbox checkbox-xs" x-model="layers[l.key]" @change="redraw()">
+          <span class="w-3 h-3 rounded-sm border" :style="`background:${l.color}55;border-color:${l.color}`"></span>
+          <span class="text-sm" x-text="l.label"></span>
+          <span class="ml-auto text-xs opacity-50 font-mono" x-text="counts[l.key] ?? ''"></span>
+        </label>
+      </template>
+    </div>
+
+    <div class="p-3 border-t border-base-100 space-y-2">
+      <div class="text-xs uppercase tracking-wider opacity-50">Selection</div>
+      <div class="flex gap-1">
+        <button class="btn btn-xs" :class="selMode==='intersect' && 'btn-active'"
+                @click="selMode='intersect'">touch</button>
+        <button class="btn btn-xs" :class="selMode==='contain' && 'btn-active'"
+                @click="selMode='contain'">enclose</button>
+        <button class="btn btn-xs btn-ghost ml-auto" @click="clearSel()">clear</button>
+      </div>
+      <div class="text-xs font-mono opacity-70" x-text="selInfo"></div>
+      <div class="max-h-40 overflow-auto text-xs font-mono bg-base-100 rounded p-2" x-show="sel.length">
+        <template x-for="(s,i) in sel.slice(0,40)" :key="i">
+          <div class="truncate" x-text="s"></div>
+        </template>
+      </div>
+    </div>
+
+    <div class="p-3 border-t border-base-100 flex-1">
+      <div class="text-xs uppercase tracking-wider opacity-50 mb-2">Table read two ways</div>
+      <div class="text-xs mb-1 opacity-70" x-text="tableInfo"></div>
+      <div class="overflow-auto max-h-72 text-xs">
+        <table class="table table-xs">
+          <tbody>
+            <template x-for="(row,r) in matrix" :key="r">
+              <tr><template x-for="(c,i) in row" :key="i"><td class="font-mono" x-text="c"></td></template></tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script type="module">
+  const REPO   = 'mehrlander/web-tools';
+  const BRANCH = new URLSearchParams(location.search).get('use') || 'main';
+  const mod = await import(`https://cdn.jsdelivr.net/gh/${REPO}@main/lib/gh-api.js`);
+  window.GH = mod.default;
+  const gh = new window.GH({ repo: REPO, ref: BRANCH, loadBase: 'lib/' });
+  await gh.load('kits/pdf.js');
+  await gh.load('alpine-bundle.js');
+</script>
+
+<script>
+// The colours are the page's only opinion about the kit's output. One hue per
+// layer, and the same hue in the legend, so a stray box is traceable to the
+// function that produced it without reading any code.
+const LAYERS = [
+  { key: 'items',   label: 'Text containers', color: '#38bdf8' },
+  { key: 'glyphs',  label: 'Characters',      color: '#a78bfa' },
+  { key: 'rules',   label: 'Vector rules',    color: '#f97316' },
+  { key: 'columns', label: 'Columns (align)', color: '#22c55e' },
+  { key: 'gutters', label: 'Gutters (space)', color: '#eab308' },
+  { key: 'cells',   label: 'Lattice cells',   color: '#ef4444' },
+];
+
+// pdf.js objects use private class fields, and Alpine deep-proxies every
+// property of a component's state, which detaches them from their own class.
+// So the live objects live here, outside reactivity, and only plain data
+// (counts, strings, the matrix) crosses into the component.
+const S = { doc: null, v: null, items: [], projected: [] };
+
+document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => ({
+  pageNum: 1, numPages: 0, scale: 1.5,
+  W: 0, H: 0, status: 'no document', layerList: LAYERS,
+  layers: { items: true, glyphs: false, rules: true, columns: true, gutters: true, cells: true },
+  counts: {}, sel: [], selMode: 'contain', selInfo: '', drag: null, dragStyle: '',
+  matrix: [], tableInfo: '',
+
+  async init() { await this.loadSample(); },
+
+  // Built here rather than committed, so the fixture is readable as code and
+  // the page has something to show on first load with no file and no network.
+  async sampleBytes() {
+    await window.pdf.loadLibs();
+    const { PDFDocument, StandardFonts, rgb } = window.PDFLib;
+    const doc = await PDFDocument.create();
+    const page = doc.addPage([612, 792]);
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+    const black = rgb(0, 0, 0), white = rgb(1, 1, 1);
+
+    const COLS = [60, 220, 380, 540], ROWS = [700, 676, 652, 628];
+    const CELLS = [['AGENCY', 'CODE', 'AMOUNT'],
+                   ['Retirement Systems', '1240', '457,833'],
+                   ['Health Care Authority', '1070', '1,204,556']];
+    page.drawText('Summary of appropriations', { x: 60, y: 730, size: 13, font: bold, color: black });
+    for (const y of ROWS) page.drawLine({ start: { x: COLS[0], y }, end: { x: COLS.at(-1), y }, thickness: 1, color: black });
+    for (const x of COLS) page.drawLine({ start: { x, y: ROWS.at(-1) }, end: { x, y: ROWS[0] }, thickness: 1, color: black });
+    // The white rule: a reader never sees it, a naive extractor rules the
+    // header into two columns because of it.
+    page.drawLine({ start: { x: 140, y: ROWS[1] }, end: { x: 140, y: ROWS[0] }, thickness: 1, color: white });
+    CELLS.forEach((row, r) => row.forEach((t, c) =>
+      page.drawText(t, { x: COLS[c] + 6, y: ROWS[r] - 16, size: 9, font: r ? font : bold, color: black })));
+
+    // A dotted leader, drawn the way a budget report draws one.
+    for (let i = 0; i < 120; i++) {
+      const x = 200 + i * 2;
+      page.drawLine({ start: { x, y: 600 }, end: { x: x + 1, y: 600 }, thickness: 0.5, color: black });
+    }
+    page.drawText('Total appropriated', { x: 60, y: 596, size: 9, font, color: black });
+    page.drawText('1,662,389', { x: 480, y: 596, size: 9, font, color: black });
+
+    page.drawText('STRICKEN', { x: 60, y: 560, size: 9, font, color: black });
+    page.drawLine({ start: { x: 60, y: 563 }, end: { x: 106, y: 563 }, thickness: 0.6, color: black });
+    page.drawText('APPROVED', { x: 200, y: 560, size: 9, font, color: black });
+    page.drawLine({ start: { x: 200, y: 558 }, end: { x: 250, y: 558 }, thickness: 0.6, color: black });
+
+    // An unruled block below, so the stream detectors have something the
+    // lattice cannot see.
+    const un = [['Fund 600', 'Operating', '312,004'], ['Fund 722', 'Expense', '88,112'],
+                ['Fund 874', 'Trust', '1,262,273']];
+    un.forEach((row, r) => row.forEach((t, c) =>
+      page.drawText(t, { x: [60, 220, 470][c], y: 500 - r * 18, size: 9, font, color: black })));
+    return doc.save();
+  },
+
+  async loadSample() { this.status = 'building sample…'; await this.open(await this.sampleBytes()); },
+  async loadFile(f) { if (f) { this.status = 'reading…'; await this.open(await f.arrayBuffer()); } },
+
+  async open(bytes) {
+    this.status = 'parsing…';
+    S.doc = await window.pdf.open(bytes);
+    this.numPages = S.doc.numPages;
+    this.pageNum = 1;
+    await this.redraw();
+  },
+
+  go(d) { this.pageNum = Math.min(this.numPages, Math.max(1, this.pageNum + d)); this.clearSel(); this.redraw(); },
+
+  async redraw() {
+    if (!S.doc) return;
+    // pdf.js refuses a second render() on a canvas whose first is still in
+    // flight, and a fast toggle or page step gets there easily.
+    if (this._rendering) { this._queued = true; return; }
+    this._rendering = true;
+    try { await this.render(); } finally {
+      this._rendering = false;
+      if (this._queued) { this._queued = false; this.redraw(); }
+    }
+  },
+
+  async render() {
+    const n = this.pageNum;
+    const page = S.doc.pages[n - 1];
+    const vp = page.getViewport({ scale: this.scale });
+    this.W = Math.ceil(vp.width); this.H = Math.ceil(vp.height);
+
+    const canvas = document.getElementById('page');
+    canvas.width = this.W; canvas.height = this.H;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, this.W, this.H);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+
+    // Every coordinate below comes from the kit's projection. Nothing here
+    // multiplies by scale or subtracts from height.
+    S.v = S.doc.viewOf(n, { scale: this.scale });
+    S.items = S.doc.page(n);
+    S.projected = S.v.items(S.items);
+    this.drawOverlay(n);
+    this.readTable(n);
+    this.status = `${S.items.length} items · ${S.doc.paths.h.filter(l => l.page === n).length}h ${S.doc.paths.v.filter(l => l.page === n).length}v rules`;
+  },
+
+  drawOverlay(n) {
+    const svg = document.getElementById('ov');
+    const NS = 'http://www.w3.org/2000/svg';
+    svg.setAttribute('viewBox', `0 0 ${this.W} ${this.H}`);
+    svg.innerHTML = '';
+    const c = Object.fromEntries(LAYERS.map(l => [l.key, l.color]));
+    const counts = {};
+    const add = (tag, attrs) => {
+      const el = document.createElementNS(NS, tag);
+      for (const [k, val] of Object.entries(attrs)) el.setAttribute(k, val);
+      svg.appendChild(el); return el;
+    };
+    const rect = (b, stroke, fill = 'none', w = 1) =>
+      add('rect', { x: b.left, y: b.top, width: Math.max(b.w, 0.5), height: Math.max(b.h, 0.5),
+                    fill, stroke, 'stroke-width': w });
+
+    const lines = S.v.lines({
+      h: S.doc.paths.h.filter(l => l.page === n),
+      v: S.doc.paths.v.filter(l => l.page === n),
+    });
+    const grids = S.doc.grids(n);
+    const cols = window.pdf.stream.columns(S.items);
+    const guts = window.pdf.stream.gutters(S.items);
+
+    counts.items = S.projected.length;
+    counts.glyphs = S.projected.reduce((a, p) => a + p.glyphs.length, 0);
+    counts.rules = lines.h.length + lines.v.length;
+    counts.columns = cols.length;
+    counts.gutters = guts.length;
+    counts.cells = grids.reduce((s, g) => s + g.cells.length, 0);
+
+    // Painted back to front, so the fine detail is never buried.
+    if (this.layers.gutters) for (const g of guts) {
+      const b = S.v.box({ x1: g.x1, y1: 0, x2: g.x2, y2: 792 });
+      rect(b, 'none', c.gutters + '22');
+    }
+    let colLabel = 0;
+    if (this.layers.columns) for (const col of cols) {
+      const b = S.v.box({ x1: col.at, y1: 0, x2: col.at, y2: 792 });
+      add('line', { x1: b.left, y1: 0, x2: b.left, y2: this.H,
+                    stroke: c.columns, 'stroke-width': 1.5, 'stroke-dasharray': '6 4' });
+      // Stagger the labels down a short ladder: adjacent columns are routinely
+      // a few points apart (a 60pt body margin beside a 66pt cell inset), and
+      // at that spacing the captions overprint into an unreadable smear.
+      add('text', { x: b.left + 3, y: 12 + (colLabel++ % 4) * 11, fill: c.columns, class: 'lbl' })
+        .textContent = `${Math.round(col.at)} ${col.edge} ×${col.count}`;
+    }
+    if (this.layers.cells) for (const g of grids) for (const cell of g.cells) {
+      const b = S.v.box(cell);
+      rect(b, c.cells, c.cells + '18', 1);
+      add('text', { x: b.left + 2, y: b.top + 9, fill: c.cells, class: 'lbl' })
+        .textContent = `${cell.row},${cell.col}` + (cell.colspan > 1 || cell.rowspan > 1 ? `+${cell.colspan}x${cell.rowspan}` : '');
+    }
+    if (this.layers.rules) {
+      // Three states, three treatments, because "what was extracted" and "what
+      // the lattice walks" are different sets and the gap between them is the
+      // whole white-rule story. Solid: a rule that survives geom.usable and
+      // will be walked. Dashed and faint: extracted but discarded, because it
+      // is the page colour or too short. Rose: a rule the kit resolved as
+      // decoration, which is how underline detection becomes visible instead of
+      // staying a boolean in a console dump.
+      const rawH = S.doc.paths.h.filter(l => l.page === n);
+      const rawV = S.doc.paths.v.filter(l => l.page === n);
+      const keptH = new Set(window.pdf.geom.usable(rawH, 'h').map(l => l.id));
+      const keptV = new Set(window.pdf.geom.usable(rawV, 'v').map(l => l.id));
+      counts.rules = `${keptH.size + keptV.size}/${rawH.length + rawV.length}`;
+      const draw = (l, kept) => {
+        const role = l.source.role;
+        add('line', { x1: l.left, y1: l.top, x2: l.right, y2: l.bottom,
+                      stroke: role ? '#f43f5e' : c.rules,
+                      'stroke-width': role ? 2.5 : 1.5,
+                      'stroke-dasharray': kept ? 'none' : '3 3',
+                      'stroke-opacity': kept ? 0.85 : 0.35 });
+      };
+      for (const l of lines.h) draw(l, keptH.has(l.source.id));
+      for (const l of lines.v) draw(l, keptV.has(l.source.id));
+    }
+    if (this.layers.items) for (const p of S.projected) {
+      if (!p.str.trim()) continue;
+      rect(p, c.items, 'none', 0.75);
+    }
+    if (this.layers.glyphs) for (const p of S.projected) for (const g of p.glyphs) {
+      if (!g.char.trim()) continue;
+      rect(g, g.underline || g.strikethrough ? '#f43f5e' : c.glyphs, 'none', 0.5);
+    }
+    this.counts = counts;
+  },
+
+  // The comparison the kit exists to make. It is only meaningful over the same
+  // region: run stream across a whole page and it reads the title, the leader
+  // row, and the unruled block too, so it "differs" from any lattice table by
+  // construction and the comparison says nothing. Scope it to the ruled area
+  // and the two readings are actually answerable against each other.
+  readTable(n) {
+    const grids = S.doc.grids(n);
+    const items = S.doc.page(n);
+    if (!grids.length) {
+      const cols = window.pdf.stream.columns(items).map(c => c.x1);
+      this.matrix = window.pdf.stream.split(items, cols).map(r => r.cells);
+      this.tableInfo = `no ruled table · stream only, ${this.matrix.length} rows`;
+      return;
+    }
+    const g = grids[0];
+    const inside = items.filter(i =>
+      i.x1 >= g.x1 - 1 && i.x2 <= g.x2 + 1 && i.base >= g.y1 - 1 && i.base <= g.y2 + 1);
+    const cols = window.pdf.stream.columns(inside).map(c => c.x1);
+    const streamRows = window.pdf.stream.split(inside, cols).map(r => r.cells);
+    this.matrix = g.matrix;
+    const same = JSON.stringify(g.matrix) === JSON.stringify(streamRows);
+    this.tableInfo = `lattice ${g.rows}x${g.cols} · stream ${streamRows.length}x${cols.length} ` +
+      `over the same region · ${same ? 'agree' : 'DIFFER'}`;
+  },
+
+  // Drag selection. Screen coordinates go straight to the kit; the only thing
+  // this page computes is the rectangle the pointer described.
+  dragStart(e) {
+    const r = e.currentTarget.getBoundingClientRect();
+    this.drag = { x0: e.clientX - r.left, y0: e.clientY - r.top, x1: e.clientX - r.left, y1: e.clientY - r.top };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  },
+  dragMove(e) {
+    if (!this.drag) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    this.drag.x1 = e.clientX - r.left; this.drag.y1 = e.clientY - r.top;
+    const { x0, y0, x1, y1 } = this.drag;
+    this.dragStyle = `left:${Math.min(x0, x1)}px;top:${Math.min(y0, y1)}px;` +
+                     `width:${Math.abs(x1 - x0)}px;height:${Math.abs(y1 - y0)}px`;
+  },
+  dragEnd() {
+    if (!this.drag) return;
+    const { x0, y0, x1, y1 } = this.drag;
+    this.drag = null;
+    if (Math.abs(x1 - x0) < 4 || Math.abs(y1 - y0) < 4) return;
+    const rect = { left: x0, top: y0, right: x1, bottom: y1 };
+    const picked = S.v.select(rect, S.projected, { mode: this.selMode })
+      .filter(p => p.str.trim());
+    this.sel = picked.map(p => p.str);
+    const region = S.v.unbox(rect);
+    const sub = picked.map(p => p.source);
+    const subCols = sub.length ? window.pdf.stream.columns(sub).length : 0;
+    this.selInfo = `${picked.length} items · region ` +
+      `${region.x1},${region.y1} → ${region.x2},${region.y2} · ${subCols} columns`;
+  },
+  clearSel() { this.sel = []; this.selInfo = ''; },
+})));
+</script>
+</body>
+</html>
