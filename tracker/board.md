@@ -15,6 +15,8 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Integrate the stage with the surfacer's .surface format next: run in a session with both web-tools and the home repo, to read the surfacer's .surface files directly
 - 🎫 One parser for the owner/repo[@ref]:path address next: decide what an unspecified ref means at the link-building boundary; that is the whole question, and the parser follows from it
 - 🎫 Build our own JSON tree for display, keep vanilla-jsoneditor for editing next: user was leaning toward replacing it outright; the recommendation is the split below, so confirm the split before building
+- 🎫 Close open table perimeters in the pdf kit's lattice
+- 🎫 A column-splitter page for the pdf kit
 - 🎫 Private-repo landing federation via the home registry next: superseded by tasks generalize-gallery-pages-catalog-m3b8pa (gallery generalization) and app-views-estate-level-btp6m4 (app views); reassess whether any federation-specific work remains
 - 🎫 Repo-designated inbox and outbox in .web-tools.json (`claude/pr-219-review-22csrh`)
 - 🎫 Repo-level GitHub links in show-repo's shield dialog
