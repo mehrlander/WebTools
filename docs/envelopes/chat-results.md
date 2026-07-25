@@ -16,14 +16,14 @@ The `#gz=` form is produced the same way as a toss link (see `docs/SURFACING.md`
 
 ### The `#chat-results=` toss (address the content, not the page)
 
-For a committed envelope, the shortest link routes through toss-render's page-sugar instead of naming the page and its `?src=` by hand:
+For a committed envelope, the shortest link goes through a toss-render **route** instead of naming the page and its `?src=` by hand:
 
 ```
 https://mehrlander.github.io/web-tools/pages/toss-render.html#chat-results=<owner>/<repo>[@<ref>]:<path>
 e.g. …/toss-render.html#chat-results=mehrlander/chat-histories:results/webi-drs-data.json
 ```
 
-`#chat-results=<envelope-address>` desugars to rendering this page with `?src=<envelope-address>`: the caller addresses the envelope, and toss-render (a schema-blind router) hands it to the renderer. `chat-results` is the page basename; it is one entry in toss-render's `PAGE_SUGAR` map, so a second envelope renderer is a second entry, not new routing. The renderer is always web-tools' `main` copy; the `@ref` inside the address is the envelope's ref. Same token gate as `#gh=` (a private envelope needs the viewer's token); for a token-less reader, deliver the envelope inline via `#gz=` on this page instead. Mechanism: the head comment in [`pages/toss-render.html`](../pages/toss-render.html).
+`#chat-results=<envelope-address>` resolves to rendering this page with `?src=<envelope-address>`: the caller addresses the envelope, and toss-render (a schema-blind router) hands it to the renderer. `chat-results` is the page basename; it is one entry in toss-render's `TOSS_ROUTES` map, so a second envelope renderer is a second entry, not new routing. The renderer is always web-tools' `main` copy; the `@ref` inside the address is the envelope's ref. Same token gate as `#gh=` (a private envelope needs the viewer's token); for a token-less reader, deliver the envelope inline via `#gz=` on this page instead. Mechanism: the head comment in [`pages/toss-render.html`](../pages/toss-render.html).
 
 ## Schema
 

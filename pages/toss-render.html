@@ -43,16 +43,17 @@
   github.com/.../blob/<ref>/<path> URL both route here, so a private file is
   one paste away.
 
-  Page-sugar (typed content tosses, built on address mode):
-    #<page>=<owner>/<repo>[@<ref>]:<path>
+  Toss routes (typed content tosses, built on address mode):
+    #<route>=<owner>/<repo>[@<ref>]:<path>
     e.g. #chat-results=mehrlander/chat-histories:results/webi-drs-data.json
-    The key names a registered renderer page (the PAGE_SUGAR map in the router
+    The key names a registered renderer page (the TOSS_ROUTES map in the router
     below); the value is a content envelope's address. toss-render renders that
     page and hands it the envelope via ?src=, so a caller addresses the CONTENT,
     not the renderer, and this stays a schema-blind router: it never parses the
-    envelope. Desugars onto address mode above (the params shim delivers ?src=
-    to the page), so a reference-form sugar toss needs no per-page code. Add a
-    renderer by adding one PAGE_SUGAR entry. Per-type schema doc: docs/CHAT-RESULTS.md.
+    envelope. Resolves onto address mode above (the params shim delivers ?src=
+    to the page), so a reference-form routed toss needs no per-page code. Add a
+    renderer by adding one TOSS_ROUTES entry. Per-type schema doc:
+    docs/envelopes/chat-results.md.
 
   Empty state: with no input, the page shows a panel — a "Paste & render"
   button (Clipboard API, so it works from one tap on iOS without revealing
@@ -633,31 +634,31 @@ window.fetch=function(input,init){try{
   });
 
   // --- route the initial URL ---
-  // Page-sugar tosses: #<page>=<envelope-address> routes to a known renderer
+  // Routed tosses: #<route>=<envelope-address> routes to a known renderer
   // page, fed the envelope through its own ?src=. The caller addresses the
   // CONTENT ("this chat envelope"), and toss-render stays a schema-blind
   // router: it never parses the envelope, it forwards the address to the page
   // named by the key. The map is the opt-in boundary and names each renderer's
-  // repo/ref (default web-tools@main). See docs/CHAT-RESULTS.md.
-  const PAGE_SUGAR = {
+  // repo/ref (default web-tools@main). See docs/envelopes/chat-results.md.
+  const TOSS_ROUTES = {
     'chat-results': { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/chat-results.html' },
   };
-  const sugarKey = Object.keys(PAGE_SUGAR).find(k => param(k));
+  const routeKey = Object.keys(TOSS_ROUTES).find(k => param(k));
 
   const gh   = param('gh');
   const gz   = param('gz');
   const html = param('html');
   const url  = param('url') || param('u');
 
-  if (sugarKey) {
-    const s = PAGE_SUGAR[sugarKey], env = param(sugarKey).trim();
-    // Desugar onto address mode: render the renderer page and hand it the
+  if (routeKey) {
+    const r = TOSS_ROUTES[routeKey], env = param(routeKey).trim();
+    // Resolve onto address mode: render the renderer page and hand it the
     // envelope via ?src=, which the params shim delivers to the page's own
     // location.search read. The renderer ref is the map's (the app itself);
     // any @ref inside <env> is the ENVELOPE's ref, untouched here.
-    await showAddress(`${s.repo}@${s.ref}:${s.path}?src=${encodeURIComponent(env)}`);
-    // Re-emit the pretty sugar form for "Copy toss link", not the desugared #gh=.
-    tossLinkFn = async () => absUrl(`#${sugarKey}=${env}`);
+    await showAddress(`${r.repo}@${r.ref}:${r.path}?src=${encodeURIComponent(env)}`);
+    // Re-emit the pretty route form for "Copy toss link", not the resolved #gh=.
+    tossLinkFn = async () => absUrl(`#${routeKey}=${env}`);
   } else if (gh) {
     await showAddress(gh.trim());
   } else if (gz) {
