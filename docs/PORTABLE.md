@@ -280,6 +280,7 @@ parameterized by argv so one fetched copy serves many callers.
 | [`scripts/build-merge-guide.py`](../scripts/build-merge-guide.py) | generate `docs/MERGE-GUIDE.md` from merged PR bodies (the guide region); non-destructive, `--refresh` to regenerate covered PRs | `python3 build-merge-guide.py [owner/repo] --out <file>` |
 | [`scripts/sunset-scan.py`](../scripts/sunset-scan.py) | report `SUNSET(YYYY-MM-DD)` markers now due for removal (see Sunset markers below); quiet unless something is due, `--all` lists upcoming, `--strict` exits non-zero when due | `python3 sunset-scan.py [--all] [--strict] [root]` |
 | [`scripts/build-tree.py`](../scripts/build-tree.py) | render a repo tree as a linked markdown table for chat (code-span box art, braille indent, or plain ascii); tracked-only by default, gloss column left to fill by hand | `python3 build-tree.py <root> [--repo o/r] [--ref R] [--depth N] [--mode M] [--gloss]` |
+| [`scripts/ocr-pdf.py`](../scripts/ocr-pdf.py) | OCR a scanned PDF and report how far to trust it: per-page word confidence from tesseract's TSV, and pages that already carry a text layer passed through untouched unless `--force`. Needs the system binaries `tesseract-ocr` and `poppler-utils`, absent from a fresh sandbox | `python3 ocr-pdf.py <pdf> [-o out.txt] [--report r.json] [--dpi N] [--lang L] [--force]` |
 
 Fetching and running a script is executing hub code, a step beyond fetching and
 reading a doc. That is why the hub must stay owned and trusted and the fetch stays
