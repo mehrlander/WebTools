@@ -212,3 +212,32 @@ just as page content.
 | **happy-dom** | Node | Sometimes (construction-dependent) | lighter DOM, partial JS |
 | **jsdom** | Node | Yes (`runScripts: 'dangerously'`) | inline scripts must execute |
 | **BeautifulSoup / lxml / selectolax / parsel** | Python | No | Python-side traversal |
+
+## Tailwind's browser build never generates a toggle-only utility (2026-07-25)
+
+A utility class that only ever reaches the DOM by being toggled onto an existing
+element is **never generated** by `@tailwindcss/browser@4`. The class lands in
+`className` and computes to nothing, because the browser build emits rules for
+classes it finds present in the document, and flipping an attribute on a node
+that is already there does not put a new class in front of it.
+
+Confirmed on `show-repo`: `.rotate-180` and `.animate-spin` have no rule in any
+stylesheet, while `.truncate` (present in the initial markup) does. This is
+silent. Nothing errors, and the element simply does not turn or spin.
+
+Two consequences worth knowing:
+
+- **A caret that rotates is a trap.** Ship two static glyphs
+  (`ph-caret-down` / `ph-caret-up`) swapped with `x-show`, so both classes exist
+  from the start. `crumb-bar.js`, `repo-menu.js`, and `path-picker.js` all do
+  this now; `path-picker`'s caret had silently never turned.
+- **A spinner toggled with `animate-spin` does not spin.** Still true in
+  `estate.js` and `repo.js` at the time of writing; the fix is either the same
+  always-present-element trick or a plain rule in the page's own `<style>`.
+
+**Testing note:** assert on *computed* effect, not on the class attribute or on
+Playwright's `isVisible`. `getComputedStyle(el).transform` catches this; a
+`className.includes('rotate-180')` check passes while the element sits still.
+`isVisible` is separately misleading for a bottom sheet, which parks itself
+off-screen with a transform rather than hiding, so it reads as visible when
+closed; compare `getBoundingClientRect()` against the viewport instead.

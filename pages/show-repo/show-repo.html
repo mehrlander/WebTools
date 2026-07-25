@@ -47,11 +47,7 @@
 </script>
 <style>[x-cloak]{display:none!important}
 .no-scrollbar::-webkit-scrollbar{display:none}
-.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
-/* Press-and-hold rows: iOS would otherwise answer a long press with its own
-   callout and a text selection, both of which eat the gesture. pan-y keeps the
-   list scrollable while the hold timer runs. */
-.hold-row{touch-action:pan-y;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}</style>
+.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}</style>
 </head>
 <!-- A repo browser fronted by a per-repo landing page. The repo picker is up
      front (header). The sidebar lists the repo's views — landing, atlas,
@@ -132,18 +128,29 @@
          icon cluster that used to live here has nothing left to carry. A third
          crumb appears only when the ref is off the default, since browsing a
          branch is state worth keeping in front of you. -->
-    <div class="h-14 flex items-center gap-1 px-3 border-b border-base-300 shrink-0">
+    <div class="relative h-14 flex items-center gap-1 px-3 border-b border-base-300 shrink-0"
+         @click.outside="closeCrumbMenu()">
       <span x-show="estateCtx || !$store.browser.repo"
             class="font-mono text-base truncate text-base-content/70 min-w-0 flex-1 px-1"
             x-text="estateCtx ? 'Views' : 'Browse'"></span>
-      <nav x-show="!estateCtx && $store.browser.repo" class="min-w-0 flex-1"
+      <nav id="sidebarCrumbs" x-show="!estateCtx && $store.browser.repo" class="min-w-0 flex-1"
            x-data="crumbBar({ items: () => window.__shell.sidebarCrumbs })"></nav>
       <button @click="drawer=false" class="btn btn-square btn-ghost lg:hidden shrink-0"><i class="ph ph-x text-lg"></i></button>
+
+      <!-- The crumb's menu is a DROPDOWN, anchored under the bar that opened it
+           (path-picker's panel idiom: inset-x-0, top-full, rounded-box, shadow).
+           A bottom sheet was tried and is wrong here: the trigger sits at the
+           top of a full-height column with the whole sidebar beneath it, so
+           there is nothing to justify throwing the menu to the far edge of the
+           screen. A Repos row keeps the sheet, where the trigger is buried in a
+           list and the thumb is not. -->
+      <div x-show="crumbMenu" x-cloak x-transition.opacity.duration.120ms
+           class="absolute inset-x-2 top-full z-40 mt-1 overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-xl">
+        <div x-data="repoMenu({ size: 'menu' })" @repo-menu-done="closeCrumbMenu()"></div>
+      </div>
     </div>
 
-    <!-- @scroll cancels a pending hold: a finger that started on a row and then
-         dragged the list is scrolling, not summoning a menu. -->
-    <div class="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-3" @scroll="holdEnd()">
+    <div class="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-3">
       <!-- Estate-context sidebar. Two repo-sourced sections, both token-gated
            (empty and hidden when unauthed): the Repos index on top, then the
            app views. The app's own views (Open / Repos / Surfaces / Stage /
@@ -170,45 +177,32 @@
               <i class="ph ph-folder text-sm"></i><span x-text="grp.group"></span>
             </div>
             <template x-for="r in grp.repos" :key="r.repo">
-              <!-- One row, two gestures. A tap on the name opens the repo. Every
-                   secondary action (config, GitHub, jumping into its Files or
-                   Branches, its companion) moved into the REPO MENU, reached
-                   three ways: the trailing button, a press-and-hold anywhere on
-                   the row, or right-click.
+              <!-- Two targets, both single-tap. The name opens the repo. The
+                   trailing button opens the REPO MENU, which holds every
+                   secondary action (config, GitHub, its Files or Branches, its
+                   companion). No gesture: a press-and-hold was tried here and
+                   dropped, because a visible control that answers a plain tap
+                   does the same job without having to be discovered.
 
-                   That trailing button is the old visibility marker promoted
-                   from an inert <span> to a real 44 px control. It still says
-                   public/private with its glyph, so the row loses no state, and
-                   it gives the hold gesture a visible partner rather than
-                   leaving the menu undiscoverable. The gear and github-logo it
-                   used to sit beside are gone: they were ~16 px, a third of the
-                   tap-target floor, and each bought exactly one tap (open the
-                   repo and its Config is a sidebar row, its GitHub link is the
-                   crumb menu). -->
-              <div class="hold-row relative flex items-center rounded-lg select-none origin-left transition-[background-color,transform] hover:bg-base-200"
-                   :class="[$store.browser.repo===r.repo && 'bg-primary/10', holdRepo === r.repo && 'scale-[0.98]']"
-                   @pointerdown="holdStart($event, r.repo)" @pointermove="holdMove($event)"
-                   @pointerup="holdEnd()" @pointercancel="holdEnd()" @pointerleave="holdEnd()"
-                   @contextmenu.prevent="openRepoMenu(r.repo)">
-                <button @click="rowTap(r.repo)" :title="r.repo"
+                   That button is the old visibility marker promoted from an
+                   inert <span> to a real 44 px control, so the row still says
+                   public/private with its glyph while carrying the menu. The
+                   gear and github-logo it used to sit beside are gone: they
+                   were ~16 px, a third of the tap-target floor, and each bought
+                   exactly one tap (open the repo and its Config is a sidebar
+                   row, its GitHub link is this menu). -->
+              <div class="flex items-center rounded-lg transition-colors hover:bg-base-200"
+                   :class="$store.browser.repo===r.repo && 'bg-primary/10'">
+                <button @click="openPinned(r.repo)" :title="r.repo"
                         class="flex items-center gap-2 min-w-0 flex-1 min-h-11 pl-2 text-left transition-colors"
                         :class="$store.browser.repo===r.repo ? 'text-primary font-semibold' : 'text-base-content/80'">
                   <i class="ph text-base shrink-0" :class="r.icon"></i><span class="truncate" x-text="r.short"></span>
                 </button>
-                <button @click.stop="openRepoMenu(r.repo)" @pointerdown.stop
+                <button @click.stop="openRepoMenu(r.repo)"
                         :title="(r.priv === null ? '' : (r.priv ? 'Private. ' : 'Public. ')) + 'Actions for ' + r.short"
                         class="shrink-0 h-11 w-11 flex items-center justify-center rounded-lg text-base-content/30 hover:text-primary hover:bg-base-300/60 transition-colors">
                   <i class="ph text-base leading-none"
                      :class="r.priv === null ? 'ph-dots-three-vertical' : (r.priv ? 'ph-lock' : 'ph-globe')"></i></button>
-                <!-- The hold needs a visible clock or it reads as a dead press:
-                     a tint wipes across the row over HOLD_MS. Width alone
-                     carries both "which row" and "how far", in ONE binding: an
-                     x-show beside a :style is two effects over the same state,
-                     and the pair went stale under a 60 fps rAF, leaving a tint
-                     on a row that was not being held. Zero width paints
-                     nothing, so no second directive is needed. -->
-                <div class="pointer-events-none absolute inset-y-0 left-0 rounded-lg bg-primary/25"
-                     :style="'width:' + (holdRepo === r.repo ? holdPct * 100 : 0) + '%'"></div>
               </div>
             </template>
           </div>
@@ -633,24 +627,9 @@
      scrim dims the sidebar too, and below the toast row (z-[60]) so a copy
      confirmation still lands on top. `relative` is what makes the z-index bite:
      it gives this host a stacking context for its fixed children. -->
-<div id="repoMenuSheet" class="relative z-[55]"
-     x-data="sheetModal({ title: 'Repository', snaps: [0.55, 0.92] })">
-  <div class="px-2 pb-6">
-    <div class="flex items-center gap-2 px-4 py-3 border-b border-base-200 mb-1">
-      <i class="ph ph-git-repository text-lg text-primary shrink-0"></i>
-      <span class="font-mono text-base font-semibold truncate" x-text="window.__shell.menuRepoShort"></span>
-      <span x-show="window.__shell.menuRepoPrivate" class="badge badge-ghost badge-sm shrink-0">private</span>
-    </div>
-    <template x-for="item in window.__shell.repoMenuItems" :key="item.key">
-      <button @click="window.__shell.runRepoMenu(item.key); close()"
-              class="w-full min-h-12 flex items-center gap-3 px-4 rounded-lg text-left text-base hover:bg-base-200 active:bg-base-300 transition-colors">
-        <i class="ph text-xl text-base-content/50 shrink-0" :class="item.icon"></i>
-        <span class="min-w-0 truncate" x-text="item.label"></span>
-        <div class="grow"></div>
-        <i x-show="item.nav" class="ph ph-caret-right text-base text-base-content/25 shrink-0"></i>
-      </button>
-    </template>
-  </div>
+<div id="repoMenuSheet" class="relative z-[55]" @repo-menu-done="close()"
+     x-data="sheetModal({ snaps: [0.55, 0.92] })">
+  <div class="px-2 pb-6" x-data="repoMenu({ size: 'sheet' })"></div>
 </div>
 
 <!-- Toolbox: page actions, zip/offline export, component/script/console tabs.
@@ -1349,61 +1328,41 @@ function app(){ return {
     const s = Alpine.store('browser');
     if (this.estateCtx || !s.repo) return [];
     const out = [
-      { key: 'home', icon: 'ph-house', title: 'Dashboard', action: () => this.goDashboard() },
+      { key: 'home', icon: 'ph-house', title: 'Dashboard', action: () => this.crumbHome() },
       { key: 'repo', label: s.repo.split('/')[1] || s.repo, title: s.repo, mono: true,
-        menu: true, action: () => this.openRepoMenu(s.repo) },
+        menu: true, action: (open) => this.toggleCrumbMenu(s.repo, open) },
     ];
     if (s.ref && s.defaultRef && s.ref !== s.defaultRef)
       out.push({ key: 'ref', icon: 'ph-git-branch', label: s.ref, mono: true,
                  title: 'Browsing ' + s.ref + ', not ' + s.defaultRef, action: () => this.goFiles() });
     return out;
   },
+  // Going home from the crumb leaves the drawer OPEN, unlike every other
+  // navigation here. The others swap the main area and the drawer is in the
+  // way; this one swaps what the drawer itself lists, from a repo's views to
+  // the estate's, so closing it would hide the thing that just changed.
+  crumbHome(){
+    const open = this.drawer;
+    this.closeCrumbMenu();
+    this.goDashboard();
+    this.drawer = open;
+  },
 
-  // ── Press and hold: the second way into the repo menu ───────────────────
-  // 450 ms is long enough that a deliberate tap or a scroll flick never trips
-  // it, short enough not to feel stuck. The 10 px budget lets a scroll win
-  // outright, and the row paints a progress wipe so the wait is legible.
-  HOLD_MS: 450,
-  HOLD_SLOP: 10,
-  holdRepo: '',
-  holdPct: 0,
-  _holdFired: false,
-  _holdRaf: 0, _holdX: 0, _holdY: 0, _holdT0: 0,
-  holdStart(e, repo){
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    this.holdEnd();
-    this._holdFired = false;
-    this._holdX = e.clientX; this._holdY = e.clientY;
-    this._holdT0 = performance.now();
-    this.holdRepo = repo;
-    this.holdPct = 0;
-    const tick = () => {
-      if (this.holdRepo !== repo) return;
-      const p = Math.min(1, (performance.now() - this._holdT0) / this.HOLD_MS);
-      this.holdPct = p;
-      if (p >= 1){
-        this._holdFired = true;
-        this.holdEnd();
-        if (navigator.vibrate) navigator.vibrate(12);
-        this.openRepoMenu(repo);
-        return;
-      }
-      this._holdRaf = requestAnimationFrame(tick);
-    };
-    this._holdRaf = requestAnimationFrame(tick);
+  // The crumb's dropdown, anchored under the sidebar top bar. Separate state
+  // from the sheet, since they are two presentations that can never be up at
+  // once (one lives in a repo, the other in the estate list).
+  crumbMenu: false,
+  // crumbBar owns the caret and reports the new state here, so this only has to
+  // mirror it for the panel's x-show and name the repo the menu is about.
+  toggleCrumbMenu(repo, open){
+    this.menuRepo = repo;
+    this.crumbMenu = open;
   },
-  holdMove(e){
-    if (!this.holdRepo) return;
-    if (Math.hypot(e.clientX - this._holdX, e.clientY - this._holdY) > this.HOLD_SLOP) this.holdEnd();
-  },
-  holdEnd(){
-    if (this._holdRaf) cancelAnimationFrame(this._holdRaf);
-    this._holdRaf = 0; this.holdRepo = ''; this.holdPct = 0;
-  },
-  // A hold that fired must not also navigate on the click that follows it.
-  rowTap(repo){
-    if (this._holdFired){ this._holdFired = false; return; }
-    this.openPinned(repo);
+  // Closing from outside the trail (a tap elsewhere, or an action taken) has to
+  // put the caret back down too, which the component alone cannot know about.
+  closeCrumbMenu(){
+    this.crumbMenu = false;
+    document.getElementById('sidebarCrumbs')?.__crumbBar?.setOpen(false);
   },
 
   // ── The repo menu ───────────────────────────────────────────────────────
@@ -1428,30 +1387,45 @@ function app(){ return {
     const sib = m ? m[1] : repo + '-private';
     return this.sidebarRepos.some(r => r.repo === sib) ? sib : '';
   },
+  // `expand` means the row unfolds a submenu in place; `external` means it
+  // leaves the app. Anything else acts and closes. Nothing else carries a
+  // chevron, because a chevron that navigates is a broken promise: it was on
+  // Open / Files / Branches before, and all three jumped instead of opening.
   get repoMenuItems(){
     const open = this.menuRepo && this.menuRepo === Alpine.store('browser').repo;
     const sib = this.menuRepoSibling;
     return [
-      !open && { key: 'open', label: 'Open', icon: 'ph-arrow-right', nav: true },
-      { key: 'files', label: 'Files', icon: 'ph-folders', nav: true },
-      { key: 'branches', label: 'Branches', icon: 'ph-git-branch', nav: true },
+      !open && { key: 'open', label: 'Open', icon: 'ph-arrow-right' },
+      { key: 'files', label: 'Files', icon: 'ph-folders', expand: true },
+      { key: 'branches', label: 'Branches', icon: 'ph-git-branch', expand: true },
       { key: 'config', label: 'Config', icon: 'ph-gear-six' },
-      { key: 'github', label: 'Open on GitHub', icon: 'ph-github-logo' },
+      { key: 'github', label: 'Open on GitHub', icon: 'ph-github-logo', external: true },
       sib && { key: 'sibling', label: 'Switch to ' + (sib.split('/')[1] || sib),
-               icon: this.menuRepoPrivate ? 'ph-globe' : 'ph-lock', nav: true },
+               icon: this.menuRepoPrivate ? 'ph-globe' : 'ph-lock' },
       { key: 'copy', label: 'Copy browse link', icon: 'ph-link' },
     ].filter(Boolean);
   },
+  // The sheet presentation, used from a Repos row. The crumb uses the dropdown
+  // above instead; both render the same repoMenu over the same menuRepo.
   openRepoMenu(repo){
-    this.holdEnd();
+    this.crumbMenu = false;
     this.menuRepo = repo;
     const el = document.getElementById('repoMenuSheet');
     if (!el) return;
     // sheetModal keeps its own reactive data; reach it the documented way
-    // rather than through a ref, since it is a sibling mount, not a child.
+    // rather than through a ref, since it is a sibling mount, not a child. Its
+    // title is the repo, so the sheet needs no header row of its own.
     const sheet = Alpine.$data(el);
-    sheet.title = 'Repository';
+    sheet.title = this.menuRepoShort;
     sheet.open();
+  },
+  // Open a repo straight at a folder or a ref, which is what the menu's Files
+  // and Branches submenus commit to.
+  async openRepoAt(repo, { path, ref } = {}){
+    await this.ensureBrowser(repo, ref);
+    if (Alpine.store('browser').repo !== repo) return;
+    this.goFiles();
+    if (path) await this.openFolder(path);
   },
   async runRepoMenu(key){
     const repo = this.menuRepo;
@@ -2284,29 +2258,37 @@ function overview(){ return {
   No token: the public default card only, and no surfaces, activity, app views, or
     sidebar Repos index.
 
-  THE REPO MENU (sheetModal #repoMenuSheet, repoMenuItems / runRepoMenu) is the
-  sidebar's one place for acting on a repo rather than navigating to it. THREE
-  TRIGGERS, one sheet: a Repos row's trailing button, a PRESS AND HOLD anywhere
-  on that row (holdStart/holdMove/holdEnd; 450 ms, a 10 px move budget so a
-  scroll wins, a width wipe as its visible clock, and rowTap swallowing the
-  click that follows a fired hold), and the sidebar crumb's caret. Right-click
-  is a fourth on desktop. It carries Open / Files / Branches / Config / Open on
-  GitHub / the -private companion / Copy browse link, and it speaks for
-  menuRepo, which may be a repo you are NOT in: that is the point, since Files
-  and Branches for another repo are the entries a row cannot give.
+  THE REPO MENU (repo-menu.js, over the shell's menuRepo / repoMenuItems /
+  runRepoMenu / openRepoAt) is the sidebar's one place for acting on a repo
+  rather than navigating to it. ONE menu, TWO presentations, chosen by where it
+  was summoned: a DROPDOWN anchored under the sidebar top bar for the crumb,
+  and a SHEET (sheetModal #repoMenuSheet) for a Repos row, whose trigger is
+  buried in a list where the thumb is not. Both mount repoMenu and read the same
+  menuRepo, so there is one menu to keep correct, not two.
+    Its rows: Open / Files / Branches / Config / Open on GitHub / the -private
+    companion / Copy browse link. A CHEVRON MEANS EXPAND and nothing else, which
+    is why Files and Branches load: they unfold the repo's top-level folders and
+    its branch list in place, and both answer "what is inside" for a repo you
+    are NOT in, which is the part a row could never offer. An out-arrow marks
+    the one row that leaves the app.
     This replaced a three-icon cluster on every row (marker + gear + github
     logo). Those icons were ~16 px against a 44 px floor, and each bought one
     tap: open the repo and Config is a sidebar row, GitHub is this menu. The
     marker survives as the trailing button itself, promoted from an inert span
-    to a real 44 px control, so the row keeps its public/private state AND the
-    hold gets a visible partner. The estate CARDS still carry the old cluster,
-    where there is room for it.
+    to a real 44 px control, so the row keeps its public/private state while
+    carrying the menu on a plain tap. A press-and-hold was built here and taken
+    back out: a visible control that answers a single tap does the same work
+    without having to be discovered. The estate CARDS still carry the old
+    cluster, where there is room for it.
 
   THE SIDEBAR CRUMB TRAIL (crumbBar, sidebarCrumbs) replaced the top bar's dead
   label: house, repo, and the ref only when off-default. The house is the route
   to the dashboard, which an open drawer hides on mobile since the brand is
   behind it; dropping the owner prefix (always this account) is what pays for
-  it, and the full owner/name stays in the tooltip.
+  it, and the full owner/name stays in the tooltip. crumbHome is the one
+  navigation here that LEAVES THE DRAWER OPEN: the others swap the main area,
+  where the drawer is in the way, but this one swaps what the drawer itself
+  lists, so closing it would hide the change.
 
   GITHUB JUMP-OVERS: show-repo is a wrapper over GitHub, not a wall — every
   view keeps a one-tap route to the GitHub presentation of what it is showing.
