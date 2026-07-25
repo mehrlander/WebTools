@@ -29,6 +29,7 @@
     { "kind": "script", "path": ".claude/skills/tasks/build-board.py", "title": "build-board.py", "role": "regenerate a tracker's board.md from task frontmatter; ships inside the plugin", "use": "plugin" },
     { "kind": "script", "path": "scripts/build-merge-guide.py", "title": "build-merge-guide.py", "role": "generate docs/MERGE-GUIDE.md from merged PR bodies, non-destructively", "use": "on-demand" },
     { "kind": "script", "path": "scripts/sunset-scan.py", "title": "sunset-scan.py", "role": "report SUNSET(date) markers now due for removal", "use": "on-demand" },
-    { "kind": "script", "path": "scripts/build-tree.py", "title": "build-tree.py", "role": "render a repo tree as a linked markdown table for chat", "use": "on-demand" }
+    { "kind": "script", "path": "scripts/build-tree.py", "title": "build-tree.py", "role": "render a repo tree as a linked markdown table for chat", "use": "on-demand" },
+    { "kind": "script", "path": "scripts/ocr-pdf.py", "title": "ocr-pdf.py", "role": "OCR a scanned PDF and report per-page confidence; needs tesseract + poppler", "use": "on-demand" }
   ]
 }

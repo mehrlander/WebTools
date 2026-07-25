@@ -384,8 +384,8 @@ default manifest, so a page declares its data simply by reading it. With
 `{ offline: true }` the page's code is baked in too (via `kits/build.js`)
 and unzip-and-open needs no network for own code; third-party CDN
 libraries still load from the CDN. This is the "export" leg of the
-vocabulary: load → build → bake → export. The FAB's export control
-drives it.
+vocabulary: load → build → bake → export → brief. The FAB's take-away
+menu drives it, alongside `brief.js`, its reader-facing sibling below.
 
 ```js
 await window.exporter.page({ offline?, path?, reads?, filename? })
@@ -401,6 +401,46 @@ The page path comes from `opts.path` or the FAB's `[data-path]` stamp;
 the page source is fetched pristine from the repo at the booted ref, not
 scraped from the post-Alpine DOM. `kits/io.js` and `kits/build.js` load
 on demand if absent.
+
+### brief.js
+
+Assemble the current page into a **review brief**: one markdown document
+carrying the page source plus the source of the modules the page itself
+loaded, sized for pasting into a chat model. The fifth leg of the
+vocabulary, and the one aimed at a reader rather than a runtime: `export.js`
+answers "unzip and it runs", so it must carry the whole boot chain, while a
+brief answers "read this and tell me what you think", so carrying the boot
+chain is pure cost. Both read the same `__loadedScripts` closure and
+diverge only on what they keep.
+
+The split needs no heuristic, because gh-boot already stamps `auto: true`
+on everything it pulled in itself. Four rings: the **page** (full source),
+its **own** modules (full source, and what a review is actually about), the
+**floor** (the boot chain plus the FAB, listed by name and one-line role,
+never by source), and **vendor** (third-party CDN packages, named and
+versioned from their URLs). Measured across four pages, dropping the floor
+takes a whole-page brief from 25-50K tokens to 10-15K.
+
+```js
+window.brief.plan({ path? })       // classify without fetching: { path, repo,
+                                   //   ref, own, floor, reads, vendor, wholeLib }
+await window.brief.assemble(opts)  // the markdown: { text, bytes, tokens,
+                                   //   path, modules, plan }; opts.ask
+                                   //   prepends the question being asked
+await window.brief.copy(opts)      // assemble + io.copy (iOS-safe)
+window.brief.stageUrl({ path?, prompts? })  // the same closure as a #stage= link
+```
+
+`pages/show-repo/show-repo.html` is the one page this cannot serve whole: it
+imports the 918K pre-build, so its closure is the entire library (~262K
+tokens). `assemble` refuses it unless `opts.force`, and points at
+per-component scope instead.
+
+`stageUrl` is the seam with the stage: the FAB is the only thing that can
+know *which* files a running page pulled in, and the stage is the tool that
+specializes in choosing among them. It mints the single-group case of
+`StageLink`'s grammar directly, since `stage.js` is a full Alpine component
+and is not loaded on an ordinary page.
 
 ### wsl-core.js
 
@@ -520,6 +560,7 @@ examples.
 | `cm6.js` | `vanilla-demo.js` / `pages/drop/cm6-editor.html` | lazy CodeMirror 6 editor factory |
 | `cm6-merge.js` | `pages/review.html` | read-only CM6 split/unified diff views; display sibling of `cm6.js` |
 | `review-target.js` | `pages/review.html` | parse/mint the review address grammar (`gh=owner/repo[@ref][:path][&base=]`) |
+| `brief.js` | the FAB's "Take this page" menu | page + its own modules as one pasteable markdown brief |
 | `wring.js` | `pages/demos/wring-text.html` / `pages/demos/wring-dom.html` | template induction; generated from `archive/wring/` |
 | `treemap.js` | `pages/repo-atlas.html` | squarified treemap kernels + file taxonomy |
 | `build.js` | `tools/build/` + the FAB export | one emitter, two consumers |
