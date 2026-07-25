@@ -53,11 +53,15 @@ reads better than a dropdown and keeps the header a fixed set rather than one
 repos opt into.
 
 The sidebar's **top bar is a crumb trail** (`crumbBar`, the shell's
-`sidebarCrumbs`): a house, the repo, and the ref only when it is off the
-default. The house is the route to the dashboard, which matters on mobile
+`sidebarCrumbs`): the product mark, the repo, and the ref only when it is off
+the default. The house is the route to the dashboard, which matters on mobile
 because an open drawer hides the header brand entirely; dropping the owner
 prefix, always this account, is what pays for it, and the full `owner/name`
-stays in the tooltip. Tapping the repo crumb opens the **repo menu** below.
+stays in the tooltip. The mark renders grayscale at rest and in colour on hover,
+so it reads as a control rather than as branding. Tapping the repo crumb opens a
+**repo switcher**: which repository is showing, current one checked, and nothing
+else. A trail names where you are, so the only menu it earns is the set of other
+places that slot could hold; acting on a repo lives in the row menu below.
 Going home from the crumb is the one navigation here that **leaves the drawer
 open**: the others swap the main area, where the drawer is in the way, but this
 one swaps what the drawer itself lists, so closing it would hide the change.
@@ -671,38 +675,28 @@ schema: `web-tools-private/mailbox/README.md`.
 
 ### The repo menu
 
-`repo-menu.js` is the sidebar's whole answer to acting on a repo rather than
-navigating to it. **One menu, two presentations**, chosen by where it was
-summoned:
+`repo-menu.js` is where you act **on** a repo rather than navigate to it. It
+hangs off a Repos row's trailing button as a dropdown anchored to that button,
+positioned from its rect (the rows sit in a scrolling column that would clip a
+nested panel) and flipped above the trigger near the bottom of the list.
 
-- **A dropdown** anchored under the sidebar top bar, for the crumb trail. The
-  trigger sits at the top of a full-height column with the whole sidebar beneath
-  it, so a menu belongs right there.
-- **A sheet** (`sheetModal`, `#repoMenuSheet`) for a Repos row, whose trigger is
-  buried in a list where the thumb is not.
-
-Both mount the same component over the same `menuRepo`, so there is one menu to
-keep correct rather than two. Its rows: **Open**, **Files**, **Branches**,
-**Config**, **Open on GitHub**, the `-private` companion switch, and **Copy
-browse link**.
-
-**A chevron means expand, and nothing else.** Files and Branches unfold the
-repo's top-level folders and its branch list in place; picking one opens the
-repo there. An out-arrow marks the single row that leaves the app, and every
-other row simply acts. This is not decoration: those two submenus answer "what
-is inside" for a repo you are *not* in, which is the one thing a list row could
-never offer, and an earlier version put chevrons on rows that navigated instead,
-which is a broken promise.
+Its rows: **Open**, **Config**, **Open on GitHub**, the `-private` companion
+switch, and **Copy browse link**. It is flat. Files and Branches were here and
+expanded into the repo's folders and branch list; both are gone, because "what
+is inside" is a browsing question the sidebar and the Files view already answer
+once you are in the repo. Nothing expands, so nothing carries a chevron, and the
+single row that leaves the app carries an out-arrow.
 
 This replaced a three-icon cluster (visibility marker, config gear, GitHub logo)
 on every row. Those icons measured about 16 px against a 44 px tap-target floor,
 and each bought exactly one tap, since opening the repo puts Config in the
 sidebar and GitHub in this menu. The marker survives as the trailing button
 itself, promoted from an inert `<span>` to a real 44 px control, so the row
-keeps its public/private state while carrying the menu on a plain tap. A
-press-and-hold was built here and taken back out: a visible control answering a
-single tap does the same work without having to be discovered. Estate **cards**
-still carry the old cluster, where there is room for it.
+keeps its public/private state while carrying the menu on a plain tap. Two other
+presentations were built here and taken back out: a press-and-hold, since a
+visible control answering a single tap does the same work without a gesture to
+discover, and a bottom sheet, since nothing about five short actions justifies
+throwing the menu to the far edge of the screen.
 
 ### Editing the manifest from the shell
 
