@@ -88,6 +88,15 @@
       "renders": "Data as something readable rather than a raw blob: a CSV, a JSON array, a log, in a multi-mode viewer (table, tree, preview, code, raw). Bare bytes need no wrapper; an items envelope adds several files with a default view each.",
       "doc": "docs/envelopes/data-view.md",
       "example": "#data=mehrlander/home@main:projects/budget-drs/data/rows.csv"
+    },
+    {
+      "key": "shorter",
+      "repo": "mehrlander/web-tools",
+      "ref": "main",
+      "path": "pages/shorter.html",
+      "renders": "A document to adjudicate a shortening against, word-diffed into accept-by-default edits. Bare text fills the left column and leaves the shorter version to you or the in-browser model; an envelope carrying both sides opens straight into review.",
+      "doc": "docs/envelopes/shorter.md",
+      "example": "#shorter=mehrlander/home@main:created/2026-07-03-favoring-the-mechanical.md"
     }
   ]
 }

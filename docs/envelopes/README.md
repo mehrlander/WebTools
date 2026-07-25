@@ -6,7 +6,7 @@ The `schemas/` here are the validation source of truth; the `.md` files carry co
 
 ## The members
 
-Four carriers exist today, from the most general to the most specific.
+Five carriers exist today, from the most general to the most specific.
 
 | Member | Contract | Renders through | Carries |
 | --- | --- | --- | --- |
@@ -14,6 +14,7 @@ Four carriers exist today, from the most general to the most specific.
 | **Chat-results** | [`chat-results.md`](chat-results.md) | [`pages/chat-results.html`](../../pages/chat-results.html) | what a search over the chat archives found |
 | **Stage** | [`docs/show-repo.md`](../show-repo.md), `StageLink` | show-repo | a fileset in transit, plus authored review prompts and a mode |
 | **Data view** | [`data-view.md`](data-view.md) | [`pages/data-view.html`](../../pages/data-view.html) | data itself: a CSV, a JSON array, a log, or several of them with a view each |
+| **Shorter** | [`shorter.md`](shorter.md) | [`pages/shorter.html`](../../pages/shorter.html) | a document and, optionally, a shortening of it to adjudicate against it |
 
 **Surface** is the general substrate: the schema is deliberately light at the core (`role`, `view`, `context` optional and open) and tightens through named, versioned **profiles**, of which `branch-review/1` is the first (its schema is under [`schemas/profiles/`](schemas/profiles/)).
 
@@ -22,6 +23,8 @@ Four carriers exist today, from the most general to the most specific.
 **Stage** is the transport carrier behind the 🗂️ `#stage=` link. It is no longer a schema of its own: a stage item is a surface item's `target.source` triple (`{repository, ref, path}`) with the annotations empty, so the stage and the surface share one item grammar.
 
 **Data view** is the plain case, and the only member a caller can skip entirely: a `#data=` toss accepts bare bytes (a CSV, a JSON array, a log) as readily as an `items` envelope, and [`lib/data-payload.js`](../../lib/data-payload.js) tells them apart rather than asking. Its envelope carries no roles, context, or profile, only what bare bytes cannot express: several files at once, and a default view and note per item.
+
+**Shorter** is the newest and the narrowest: two strings rather than a set of items, so it is the one member that is not a collection. It earns its place by following the same rules, which is the point of listing it here: the `owner/repo[@ref]:path` address, the `#gz=`/`?src=` split, and a narrow bare-or-envelope discriminator in [`lib/shorter-payload.js`](../../lib/shorter-payload.js) modeled directly on data-view's. Bare text is the common case and needs no wrapper; the envelope exists only to carry a shortening someone already produced, so a link can open straight into the adjudication view.
 
 ## The open question
 
