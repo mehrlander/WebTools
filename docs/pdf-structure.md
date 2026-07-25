@@ -189,6 +189,97 @@ than most inputs in every way except three.
   of the text overlapping the discovered interior rules, and it is the main
   known gap.
 
+## The visual layer, measured
+
+The reason to care about any of this is usually an overlay: boxes drawn on a
+rendered page, a splitter dragged across a column, text highlighted under the
+pointer. Two questions decide whether that lines up, and they have different
+answers.
+
+### Does the reported box sit where the ink is?
+
+No, and the gap is systematic. `getTextContent` reports a **typographical
+container**, which includes side bearings, not an ink extent.
+
+Measured by `npm run test:pdf`, which renders a page at 3x and scans for real
+ink, at 12pt across five standard fonts:
+
+| | leading gap | trailing gap |
+| --- | --- | --- |
+| Helvetica | 0.67 to 1.0 pt | 0.4 to 0.65 pt |
+| Helvetica-Bold | 0.67 pt | 0.4 to 0.68 pt |
+| Times-Roman | 0.33 pt | 0.01 to 0.34 pt |
+| Times-Italic | 0 to 0.67 pt | **-1.01 pt** |
+| Courier | 0.67 to 1.0 pt | 0 to 0.87 pt |
+
+Two things to take from it. The container starts **before** the ink, always, by
+up to a point at 12pt, which is why a shrink-wrapped box looks loose on the left
+and why a naive left-edge column rule fires slightly early. And the trailing side
+is **not symmetric**: an italic W leans past its own advance width, so ink exits
+the box on the right. Any overlay that clips to the reported box will cut it off.
+
+The invariant worth relying on is only the first one: ink never starts before the
+box. Build containment rules on the leading edge and treat the trailing edge as
+approximate. Both are pinned as assertions, including a check that the fixture
+still exercises the overhang, so the asymmetry cannot quietly stop being tested.
+
+### Do the per-character positions land on the characters?
+
+Only if you measure them. The boundary after `iiiii` in `iiiiiWWWWW` at 12pt,
+against the font's own metrics:
+
+| font | true | measured | evenly divided | measured error | even error |
+| --- | --- | --- | --- | --- | --- |
+| Helvetica | 13.32 | 13.33 | 34.98 | **0.01** | 21.66 |
+| Helvetica-Bold | 16.68 | 13.97 | 36.66 | **-2.71** | 19.98 |
+| Times-Roman | 16.68 | 16.67 | 36.66 | **-0.01** | 19.98 |
+| Times-Italic | 16.68 | 15.16 | 33.33 | **-1.52** | 16.65 |
+| Courier | 36.00 | 36.00 | 36.00 | **0** | 0 |
+
+Even division is not approximately right, it is wrong by more than half the run:
+about 20pt out on a 36pt string. Canvas measurement is essentially exact when the
+browser's substitute font is metrically close (Helvetica, Times-Roman), and off
+by 1.5 to 2.7pt when it is not (bold, italic). Courier is the control: a
+monospaced font has genuinely uniform advances, both strategies agree, and the
+measured path must not make it worse.
+
+So per-character geometry is good enough for decoration matching and column
+assignment, and not good enough for exact character-level hit testing in an
+unusual font. That is the same conclusion the March 2026 research reached from
+the other direction, now with numbers.
+
+### Projecting to the screen
+
+`pdf.view(viewport)` converts between PDF space and screen pixels, in both
+directions, through the viewport's real transform and its true inverse. Give it
+a pdf.js viewport or any `{width, height, transform}`; the latter is why it
+tests without pdf.js in the room, and `npm run test:pdf` separately confirms it
+agrees with pdf.js's own `convertToViewportPoint` to 0.02pt on a real viewport.
+
+```js
+const v = d.viewOf(1, { scale: 1.5 });      // same scale you pass to page.render()
+const boxes = v.items(d.page(1));           // {left, top, right, bottom, w, h, glyphs}
+v.at(px, py, boxes);                        // point hit test
+v.select(dragRect, boxes, { mode: 'contain' });
+v.unbox(dragRect);                          // back to PDF space, for the pure layers
+```
+
+This exists in the kit because every previous overlay rewrote it inline, and the
+2026-05 splitter did it by dividing mouse pixels by the scale. That ignores the
+transform's translation, so the splitters drifted away from the text they were
+supposed to divide, in a way that looked like a rendering problem. Going through
+the actual inverse is exact, and `unbox` closes the loop: a rectangle the user
+dragged comes back as a PDF-space region the `stream` and `lattice` functions
+accept unchanged.
+
+### One thing extraction keeps that looks like noise
+
+pdf.js emits blank items: empty strings and lone spaces, each with a real
+position. The kit keeps them. A zero-width item between two runs is often the
+only mark a column break leaves behind, and an earlier generation of this code
+used exactly that to insert separators. Filter them at the consumer
+(`items.filter(i => i.str.trim())`) rather than at the source.
+
 ## What the kit does not do
 
 Stated plainly, because the honest limit is more useful than the feature list.
@@ -199,13 +290,11 @@ Stated plainly, because the honest limit is more useful than the feature list.
 - **Glyph advances are measured, not authoritative.** Per-character positions
   come from measuring the item's text with the browser's own engine using the
   resolved `fontFamily`, then scaling the run so the advances sum to the width
-  pdf.js reported. Font substitution shifts the proportions slightly; it cannot
-  shift the total. The authoritative source is the font's own widths via
-  `charsToGlyphs`, which lives on the worker side and is not reachable from the
-  main thread. For decoration matching and column assignment the measured
-  version is sufficient. For character-level hit testing it is not.
-  (The previous generation of this code divided the width evenly across
-  characters, which gives an `i` the same advance as a `W`.)
+  pdf.js reported. Font substitution shifts the proportions; it cannot shift the
+  total. The authoritative source is the font's own widths via `charsToGlyphs`,
+  which lives on the worker side and is not reachable from the main thread.
+  Measured error is under 0.02pt where the substitute is metrically close and up
+  to 2.7pt where it is not, which is the table above.
 - **No reading order for multi-column prose.** `rows` groups by baseline, which
   merges two side-by-side columns of body text into one line.
 - **No semantic labelling.** Nothing here decides that a cell is an agency name
@@ -226,8 +315,12 @@ output vocabulary, and settling that vocabulary is open work on both sides.
   `lattice` under jsdom with hand-built fixtures. Hand-built on purpose: with a
   real PDF, a failure is ambiguous between the extractor and the analysis, and
   the analysis is what those tests are about.
-- `npm run test:pdf` builds a PDF with pdf-lib at coordinates it chooses, opens
-  it through the kit in real Chromium, and checks that what comes back is what
-  went in. This is the only way to have an answer key, and it is where the
-  typed-array colour bug surfaced. Needs a browser, so it is not part of
-  `npm test`.
+- `npm run test:pdf` runs two browser passes, both against PDFs built with
+  pdf-lib at coordinates the test chooses. This is the only way to have an answer
+  key, and it is where the typed-array colour bug surfaced. Needs a browser, so
+  neither is part of `npm test`.
+  - `tools/test/pdf-kit-browser.mjs` opens a ruled table with a white rule and a
+    dotted leader in it, and checks the kit returns what went in.
+  - `tools/test/pdf-ink-alignment.mjs` renders the page and scans the pixels, so
+    the box-versus-ink and glyph-boundary numbers above are measurements rather
+    than claims. Run it with `--keep` to retain the fixture PDF.

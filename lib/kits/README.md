@@ -17,10 +17,19 @@ A **kit** is the third category of file in this repo, alongside:
 - **`lib/alpineComponents/*.js`** — UI components that register with
   `Alpine.data(name, fn)` inside `alpine:init`.
 - **`kits/*.js`** — logic libraries that register a namespace on
-  `window`. No Alpine coupling, no DOM rendering — pure functions or
-  stateful service objects. (The daisyUI/Tailwind string helpers that
+  `window`. No Alpine coupling. (The daisyUI/Tailwind string helpers that
   used to live here as `fills.js` now hang off `window.html` in
   `vanilla-bundle.js`.)
+
+  The line is **no Alpine and no DOM opinions of its own**, not "no DOM."
+  This entry used to say "no DOM rendering," and the shelf has outgrown
+  it: `cm6.js` mounts a live editor into a host element you hand it,
+  `io.js` drives file inputs and the clipboard, `pdf.js` renders pages and
+  projects geometry into screen space. What a kit must not do is decide
+  where it lives, own reactive state, or assume a framework. It takes the
+  host it is given and returns a handle. A kit that wants Alpine
+  reactivity gets a component wrapper: `cm-editor.js` over `cm6.js` is the
+  reference pair.
 
 The shape rules (so the file works through `gh.load`):
 
@@ -482,6 +491,12 @@ d.columns(1)  // column edges by alignment frequency (both edges histogrammed)
 d.gutters(1)  // column edges by whitespace — the complementary read
 d.grids(1)    // ruled tables: cells with spans, plus a dense .matrix
 
+const v = d.viewOf(1, {scale: 1.5});   // projection bound to that page's viewport
+v.items(d.page(1))                     // items as {left,top,right,bottom,w,h,glyphs}
+v.at(px, py, projected)                // point hit test
+v.select(dragRect, projected, {mode: 'contain'})   // drag selection
+v.unbox(dragRect)                      // screen rectangle back to PDF space
+
 pdf.stream.split(items, [60, 220, 380])      // assign by where a chunk starts
 pdf.lattice.grids({h, v}, items, {snap: 3})  // the pipeline, own tolerances
 await pdf.doc.slice(d.bytes, 3, 7)           // pdf-lib page range → bytes
@@ -490,8 +505,19 @@ await pdf.doc.slice(d.bytes, 3, 7)           // pdf-lib page range → bytes
 `stream` and `lattice` read the same page from unrelated evidence (where the
 text sits, versus the rules drawn on it), so running both and comparing is a
 control that one method run twice cannot give you. Agreement is evidence;
-disagreement is a finding. Tolerances, failure modes, the government-PDF
-pathologies, and the honest limits are in
+disagreement is a finding.
+
+`view` is the bridge to anything visual, and it is pure: hand it a viewport (or
+any `{width, height, transform}`) and it projects geometry into screen space and
+back through the real inverse matrix. That belongs in the kit and not in each
+overlay, because every previous attempt rewrote it inline and the 2026-05 one
+converted mouse pixels back by dividing by the scale, which drops the
+translation and drifts. An Alpine component that wants drag-selection is then a
+pointer-event shell over `v.select`, the same way `cm-editor.js` is a shell over
+`cm6.js`.
+
+Tolerances, failure modes, the measured font-alignment numbers, the
+government-PDF pathologies, and the honest limits are in
 [`docs/pdf-structure.md`](../../docs/pdf-structure.md).
 
 ### xlsx.js

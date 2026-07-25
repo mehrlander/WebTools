@@ -393,6 +393,117 @@ test('grids returns an empty list for a page with no rules', () => {
   assert.deepEqual(plain(pdf.lattice.grids({ h: [], v: [] }, TABLE_ITEMS)), []);
 });
 
+// ---- view: PDF space to screen space and back ----------------------------
+
+// What pdf.js hands back from page.getViewport({scale: 2}) on a 612x792 page:
+// scale 2 on x, scale -2 on y with the page height as the flip offset.
+const VP = { width: 1224, height: 1584, scale: 2, transform: [2, 0, 0, -2, 0, 1584] };
+
+test('view projects a box and flips y', () => {
+  const v = pdf.view(VP);
+  const b = v.box({ x1: 72, y1: 700, x2: 172, y2: 712 });
+  assert.equal(b.left, 144);
+  assert.equal(b.right, 344);
+  // y 712 is higher up the page, so it becomes the SMALLER screen y.
+  assert.equal(b.top, 1584 - 712 * 2);
+  assert.equal(b.bottom, 1584 - 700 * 2);
+  assert.equal(b.h, 24);
+});
+
+test('view round-trips a point through the inverse transform', () => {
+  const v = pdf.view(VP);
+  const p = v.point(123.5, 456.25);
+  const back = v.unpoint(p.x, p.y);
+  assert.equal(back.x, 123.5);
+  assert.equal(back.y, 456.25);
+});
+
+test('unbox recovers PDF coordinates from a dragged screen rectangle', () => {
+  // The 2026-05 splitter converted mouse pixels back to PDF units by dividing
+  // by the scale, which drops the translation and drifts. Going through the
+  // real inverse is exact, and this is the test that says so.
+  const v = pdf.view(VP);
+  const original = { x1: 100, y1: 640, x2: 300, y2: 700 };
+  const screen = v.box(original);
+  const back = v.unbox(screen);
+  assert.deepEqual(plain(back), plain(pdf.geom.box(100, 640, 300, 700)));
+});
+
+test('unbox is exact under a translated viewport, where naive scaling is not', () => {
+  const shifted = { width: 1224, height: 1584, transform: [2, 0, 0, -2, 40, 1584] };
+  const v = pdf.view(shifted);
+  const p = v.point(100, 700);
+  assert.equal(p.x, 240);                 // 100*2 + 40
+  assert.equal(v.unpoint(p.x, p.y).x, 100);
+  assert.notEqual(p.x / 2, 100);          // the shortcut that used to be taken
+});
+
+test('view rejects a degenerate transform instead of returning nonsense', () => {
+  assert.throws(() => pdf.view({ transform: [0, 0, 0, 0, 0, 0] }), /degenerate/);
+});
+
+test('view projects items and their glyphs together', () => {
+  const it = { ...item('AB', 100, 700, 20), glyphs: [
+    { char: 'A', x1: 100, x2: 110 }, { char: 'B', x1: 110, x2: 120 },
+  ] };
+  const [p] = pdf.view(VP).items([it]);
+  assert.equal(p.str, 'AB');
+  assert.equal(p.left, 200);
+  assert.equal(p.glyphs.length, 2);
+  assert.equal(p.glyphs[1].left, 220);
+  assert.equal(p.glyphs[0].top, p.top); // glyphs inherit the item's vertical band
+});
+
+test('view projects rules on both axes', () => {
+  const v = pdf.view(VP);
+  const { h, v: vert } = v.lines({ h: [hline(700, 100, 300)], v: [vline(100, 660, 700)] });
+  assert.equal(h[0].h, 0);        // a horizontal rule has no height on screen
+  assert.equal(h[0].w, 400);
+  assert.equal(vert[0].w, 0);
+  assert.equal(vert[0].h, 80);
+});
+
+test('at() finds the item under a screen point', () => {
+  const v = pdf.view(VP);
+  const projected = v.items([item('AGENCY', 100, 700, 45), item('AMOUNT', 300, 700, 40)]);
+  assert.equal(v.at(210, 1584 - 704 * 2, projected)?.str, 'AGENCY');
+  assert.equal(v.at(610, 1584 - 704 * 2, projected)?.str, 'AMOUNT');
+  assert.equal(v.at(500, 1584 - 704 * 2, projected), null);
+});
+
+test('select intersect keeps what a drag touches; contain keeps only what it encloses', () => {
+  const v = pdf.view(VP);
+  const projected = v.items([
+    item('Retirement Systems', 100, 680, 90),
+    item('457,833', 460, 680, 40),
+  ]);
+  // A drag from x 90 to x 150 in PDF terms: clips the first label, misses the
+  // amount entirely.
+  const rect = { left: 180, top: 1584 - 690 * 2, right: 300, bottom: 1584 - 675 * 2 };
+  assert.equal(v.select(rect, projected).length, 1);
+  assert.equal(v.select(rect, projected, { mode: 'contain' }).length, 0);
+});
+
+test('select normalizes a rectangle dragged right-to-left and upward', () => {
+  const v = pdf.view(VP);
+  const projected = v.items([item('Retirement Systems', 100, 680, 90)]);
+  const backwards = { left: 400, top: 1584 - 675 * 2, right: 180, bottom: 1584 - 690 * 2 };
+  assert.equal(v.select(backwards, projected).length, 1);
+});
+
+test('a selection round-trips back into a PDF-space region the pure layers accept', () => {
+  // The whole reason `view` lives in the kit: a drag on screen becomes a region
+  // the analysis layer can be run against, with no second conversion by hand.
+  const v = pdf.view(VP);
+  const items = TABLE_ITEMS;
+  const rect = v.box({ x1: 95, y1: 655, x2: 350, y2: 705 });
+  const region = v.unbox(rect);
+  const inRegion = items.filter(i =>
+    i.x1 >= region.x1 && i.x2 <= region.x2 && i.base >= region.y1 && i.base <= region.y2);
+  assert.equal(inRegion.length, 6);                       // two columns, three rows
+  assert.equal(pdf.stream.columns(inRegion).length, 2);
+});
+
 // ---- the two methods against each other ----------------------------------
 
 test('stream and lattice agree on a fully ruled table', () => {

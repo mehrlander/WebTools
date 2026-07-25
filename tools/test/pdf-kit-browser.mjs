@@ -150,6 +150,26 @@ const out = await page.evaluate(async () => {
   const sliced = await window.pdf.doc.slice(d.bytes, 1, 1);
   const reopened = await window.pdf.open(sliced);
 
+  // The projection, against pdf.js's own converter. `view` reimplements the
+  // transform so it can run without pdf.js; this is the check that says the
+  // reimplementation agrees with the library on a real viewport.
+  const vp = d.pages[0].getViewport({ scale: 1.5 });
+  const v = d.viewOf(1, { scale: 1.5 });
+  const probe = d.items[0];
+  const [refX, refY] = vp.convertToViewportPoint(probe.x1, probe.y2);
+  const mine = v.box(probe);
+  const projection = {
+    refX, refY, mineLeft: mine.left, mineTop: mine.top,
+    roundTrip: v.unpoint(mine.left, mine.top),
+    src: { x1: probe.x1, y2: probe.y2 },
+  };
+
+  // A drag over the whole table region, in screen pixels, resolved back to
+  // items. This is the selection path a component would use.
+  const projectedItems = v.items(d.page(1));
+  const tableRect = v.box({ x1: 55, y1: 620, x2: 545, y2: 705 });
+  const selected = v.select(tableRect, projectedItems, { mode: 'contain' }).map(p => p.str);
+
   return {
     numPages: d.numPages,
     itemCount: d.items.length,
@@ -170,6 +190,7 @@ const out = await page.evaluate(async () => {
     glyphSpan: approved ? { first: approved.glyphs[0], last: approved.glyphs.at(-1), x1: approved.x1, x2: approved.x2 } : null,
     slicedPages: reopened.numPages,
     slicedItems: reopened.items.length,
+    projection, selected,
   };
 });
 
@@ -224,6 +245,33 @@ const g = out.glyphSpan;
 check('glyph advances span exactly the item width',
   g && near(g.first.x1, g.x1, 0.6) && near(g.last.x2, g.x2, 0.6),
   g ? `item ${g.x1}..${g.x2}, glyphs ${g.first.x1}..${g.last.x2}` : 'no item');
+
+// Projection. If `view` and pdf.js disagree here, every overlay built on the
+// kit is off by a constant nobody would find by reading the code.
+const p = out.projection;
+check('view.box agrees with pdf.js convertToViewportPoint',
+  near(p.mineLeft, p.refX, 0.02) && near(p.mineTop, p.refY, 0.02),
+  `pdf.js ${p.refX},${p.refY} vs view ${p.mineLeft},${p.mineTop}`);
+check('unpoint returns the original PDF coordinates',
+  near(p.roundTrip.x, p.src.x1, 0.02) && near(p.roundTrip.y, p.src.y2, 0.02),
+  `${JSON.stringify(p.roundTrip)} vs ${JSON.stringify(p.src)}`);
+
+// Selection, end to end: a screen rectangle resolving to the table's text.
+// pdf.js emits whitespace-only items between drawn strings, so the selection is
+// the nine cells plus separators. Those are real positional data, not noise (a
+// zero-width item between two runs is often the only mark of a column break),
+// so the kit keeps them and consumers filter. Assert both halves.
+const meaningful = out.selected.filter(s => s.trim());
+check('a screen-space drag selects every table cell and nothing else',
+  meaningful.length === 9 && CELLS.flat().every(t => meaningful.includes(t)),
+  `got ${meaningful.length} non-blank of ${out.selected.length}: ${meaningful.join(' | ')}`);
+// The extras are blank: empty strings and single spaces. pdf.js emits both,
+// and an empty-string item still carries a position, which is why they survive
+// extraction rather than being dropped at the source.
+const blanks = out.selected.filter(s => !s.trim());
+check('every extra selected item is blank, not stray text',
+  blanks.length === out.selected.length - 9,
+  `${out.selected.length - 9} extras, ${blanks.length} of them blank`);
 
 // pdf-lib.
 check('slice round-trips through pdf-lib', out.slicedPages === 1, `got ${out.slicedPages}`);
