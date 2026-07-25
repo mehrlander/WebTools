@@ -7,6 +7,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Fold chat-results into the surface schema, or keep it a sibling
 - 🎫 Collapse quickLinks into a projection of the repos manifest next: decide the projection rule (a flag on repos entries, or first-N) and migrate loadQuickLinks
 - 🎫 Confirm-gated cross-repo edit proposals via a web-tools-private channel next: Design the proposal record + the show-repo pending panel; reuse gh-transfer's confirm gate
+- 🎫 Have data-view open at an addressed item via the fragment next: decide the fragment vocabulary (item index, item name, or both) before building; the delivery half already works
 - 🎫 Reclaim the phone viewport in data-view next: user is reviewing the five options; start with demoting the notes (option 3) and the full-bleed toggle (option 5), which need no cross-frame work
 - 🎫 Generalize FAB embed handling to declared embeds next: Build only when a real composite page (multiple interactive embeds) exists; nothing schedules this.
 - 🎫 Finish GitHub jump-over coverage across show-repo views next: sweep the remaining views (stage rows, atlas, recent panel, compare) for missing one-tap GitHub links
