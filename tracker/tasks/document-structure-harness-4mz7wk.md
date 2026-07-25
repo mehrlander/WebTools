@@ -102,6 +102,11 @@ way (4 pages finished in ten minutes) against 18 s with the variable set, on
 identical inputs: better than a 33x difference. That moves a full 3,984-page
 pass from the ~2.8 h estimated above to about 27 minutes.
 
+> **Stale 2026-07-25:** 27 minutes is recognition alone. A real pass also runs
+> orientation detection, reads the inherited layer, and writes a record per
+> page. Measured end to end: 3,984 pages in 2,945 s on 4 cores, 1.4 pages/s,
+> about 50 minutes. The conclusion below is unchanged.
+
 The design consequence is the opposite of the one recorded below. A full pass is
 cheap enough to run on a whim, so the fixed sample earns its place by keeping a
 cycle in seconds rather than by rationing an expensive run.
@@ -110,6 +115,9 @@ cycle in seconds rather than by rationing an expensive run.
 misoriented (two 180, one 270), about 7%. On one of them mean word confidence
 was 34.9 with the page upside down and 94.1 after rotation, with every figure in
 its table correct afterward, including parenthesized negatives.
+
+> **Stale 2026-07-25:** the 7% is a small-sample artifact. The full 3,984-page
+> pass corrected 38 pages, 1.0%. The finding holds and the rate does not.
 
 **But OSD's own confidence does not settle it.** `--psm 0` reported 180 on a
 fourth page at orientation confidence 0.88; rotating it dropped mean word
@@ -183,3 +191,14 @@ nothing yet about how competing extractions compose.
   that validates cell assignment, not just characters. Net effect is to move
   the harness's center of gravity from recognizer comparison toward page prep,
   region segmentation, and geometry.
+- 2026-07-25: `docstruct/` built and a full pass run over all 3,984 scanned
+  pages (2,945 s on 4 cores, 0 failures). Two figures above are marked stale by
+  it: rotation is 1.0% not 7%, and an end-to-end pass is ~50 min not 27. The
+  arithmetic control is validated at corpus scale, and the two checks turn out
+  to be worth very different amounts: row relations hold on 96.8% of 12,635
+  tested rows, column totals on only 39.0% of 4,965, so the latter is advisory
+  and excluded from the headline figure. It caught a real misread that
+  character confidence did not: `564` read as `504` at 91.2% confidence on
+  `lbn_1979/p-061`, confirmed against the page image. 399 candidate findings
+  landed in spend-wa `lbn/extract/relation-findings.tsv`, with the derived
+  40-page fixed sample beside them.
