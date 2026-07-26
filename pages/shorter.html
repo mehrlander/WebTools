@@ -421,9 +421,15 @@ function shorter() {
     // wants '#' because a query string is capped at roughly 8KB by the Pages
     // edge, while ?src= is how a routed toss delivers an address through
     // toss-render's params shim.
+    // window.__shorterLoc is the BAKED channel: a self-contained copy of this
+    // page (published as an artifact, or opened from file://) has no address
+    // bar to read, so it sets {hash} here and the page reads its payload from
+    // that instead. UrlParams.get already takes the location to read, so this
+    // costs one argument rather than a second input path.
     async ingestLink() {
-      const gz = UrlParams.get('gz');
-      const src = UrlParams.get('src');
+      const loc = window.__shorterLoc || undefined;
+      const gz = UrlParams.get('gz', loc);
+      const src = UrlParams.get('src', loc);
       if (!gz && !src) return;
       try {
         let payload;

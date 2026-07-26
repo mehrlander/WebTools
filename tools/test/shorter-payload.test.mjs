@@ -180,8 +180,11 @@ test('the page reads its inputs through the shared helpers and registers the rou
   assert.match(page, /gh\.load\('url-params\.js'\)/);
   assert.match(page, /gh\.load\('shorter-payload\.js'\)/);
   assert.match(page, /gh\.load\('shorter-merge\.js'\)/);
-  assert.match(page, /UrlParams\.get\('gz'\)/);
-  assert.match(page, /UrlParams\.get\('src'\)/);
+  assert.match(page, /UrlParams\.get\('gz',\s*loc\)/);
+  assert.match(page, /UrlParams\.get\('src',\s*loc\)/);
+  // The baked channel: a self-contained copy has no address bar, so it sets
+  // the location the page reads instead.
+  assert.match(page, /window\.__shorterLoc/);
   const toss = readFileSync(path.join(repoRoot, 'pages/toss-render.html'), 'utf8');
   assert.match(toss, /'shorter':\s*\{[^}]*pages\/shorter\.html/, 'the route is registered');
 });

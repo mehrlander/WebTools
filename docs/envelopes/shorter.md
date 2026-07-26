@@ -13,9 +13,10 @@ First match wins:
 | `#shorter=<spec>` | the toss route: `…/toss-render.html#shorter=<owner>/<repo>[@<ref>]:<path>` | the shortest link to a committed document or bundle; resolves into this page's `?src=` |
 | `?src=<spec>` | fetched via the contents API; a plain path is this repo, or `owner/repo[@ref]:path` | reaching the page directly |
 | `#gz=<base64url>` | gzipped text or envelope in the fragment | a draft with no committed home; private-safe, since the fragment never reaches a server |
+| `window.__shorterLoc` | `{ hash: "#gz=…" }` set by a script in the page | a **baked** copy with no address bar: an artifact, or a file opened from `file://` |
 | (none) | the empty form | pasting the sides by hand, which is what the page has always done |
 
-Each key is read fragment first, query as fallback ([`lib/url-params.js`](../../lib/url-params.js)), so `?gz=` and `#src=` are accepted too. Prose is unbounded and belongs in the fragment, since the Pages edge caps a query string at roughly 8KB with a 414, while `?src=` is how a routed toss hands an address to the page through toss-render's params shim.
+Each key is read fragment first, query as fallback ([`lib/url-params.js`](../../lib/url-params.js)), so `?gz=` and `#src=` are accepted too. `UrlParams.get` already takes the location to read, which is all `window.__shorterLoc` sets: a baked page costs one argument, not a second input path. Prose is unbounded and belongs in the fragment, since the Pages edge caps a query string at roughly 8KB with a 414, while `?src=` is how a routed toss hands an address to the page through toss-render's params shim.
 
 ## Two shapes, no declaration
 
