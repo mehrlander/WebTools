@@ -130,10 +130,11 @@
          branch is state worth keeping in front of you. -->
     <div class="relative h-14 flex items-center gap-1 px-3 border-b border-base-300 shrink-0"
          @click.outside="closeCrumbMenu()">
-      <span x-show="estateCtx || !$store.browser.repo"
-            class="font-mono text-base truncate text-base-content/70 min-w-0 flex-1 px-1"
-            x-text="estateCtx ? 'Views' : 'Browse'"></span>
-      <nav id="sidebarCrumbs" x-show="!estateCtx && $store.browser.repo" class="min-w-0 flex-1"
+      <!-- One trail in both contexts. At the app level it is the mark alone,
+           which says the same thing the word "Views" did and says it in the
+           vocabulary the repo trail already established: the mark is where the
+           dashboard lives. In a repo the same mark leads the path. -->
+      <nav id="sidebarCrumbs" class="min-w-0 flex-1"
            x-data="crumbBar({ items: () => window.__shell.sidebarCrumbs })"></nav>
       <button @click="drawer=false" class="btn btn-square btn-ghost lg:hidden shrink-0"><i class="ph ph-x text-lg"></i></button>
 
@@ -1335,9 +1336,13 @@ function app(){ return {
   // the same account on every repo, so it costs width and says nothing.
   get sidebarCrumbs(){
     const s = Alpine.store('browser');
-    if (this.estateCtx || !s.repo) return [];
+    const mark = { key: 'home', img: '../../lib/favicon.svg', title: 'Dashboard',
+                   action: () => this.crumbHome() };
+    // At the app level the trail is just the mark: there is no repo to name,
+    // and a lone mark reads as "the app" without spending a word on it.
+    if (this.estateCtx || !s.repo) return [mark];
     const out = [
-      { key: 'home', img: '../../lib/favicon.svg', title: 'Dashboard', action: () => this.crumbHome() },
+      mark,
       { key: 'repo', label: s.repo.split('/')[1] || s.repo, title: s.repo, mono: true,
         // No caret when the switcher would have nothing to offer (no token, so
         // no estate list). The crumb is then just a label.
@@ -2305,7 +2310,10 @@ function overview(){ return {
     estate CARDS still carry the old cluster, where there is room for it.
 
   THE SIDEBAR CRUMB TRAIL (crumbBar, sidebarCrumbs) replaced the top bar's dead
-  label: the product mark, the repo, and the ref only when off-default. The mark
+  label in BOTH contexts. At the app level it is the MARK ALONE, which says what
+  the word "Views" said and says it in the vocabulary the repo trail already
+  teaches; in a repo it is the mark, the repo, and the ref only when
+  off-default. The mark
   is the route to the dashboard, which an open drawer hides on mobile since the
   header brand is behind it; it renders grayscale at rest and in colour on
   hover, so it reads as a control rather than as branding. Dropping the owner

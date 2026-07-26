@@ -53,8 +53,10 @@ reads better than a dropdown and keeps the header a fixed set rather than one
 repos opt into.
 
 The sidebar's **top bar is a crumb trail** (`crumbBar`, the shell's
-`sidebarCrumbs`): the product mark, the repo, and the ref only when it is off
-the default. The house is the route to the dashboard, which matters on mobile
+`sidebarCrumbs`) in both contexts. At the app level it is the **product mark
+alone**, which says what a "Views" label used to say and says it in the
+vocabulary the repo trail already teaches. In a repo it is the mark, the repo,
+and the ref only when it is off the default. The house is the route to the dashboard, which matters on mobile
 because an open drawer hides the header brand entirely; dropping the owner
 prefix, always this account, is what pays for it, and the full `owner/name`
 stays in the tooltip. The mark renders grayscale at rest and in colour on hover,
