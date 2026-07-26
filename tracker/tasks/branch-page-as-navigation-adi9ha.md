@@ -23,12 +23,23 @@ Settle that before building. The two answers differ in where the sequence lives:
 - **show-repo view**: the shell already holds the activity cache, so the sequence is free and swipe is cheap. The cost is that a link into it carries more shell.
 - **standalone page**: the address must carry the sequence, or the page must re-fetch a list to know its neighbours.
 
+There is a further fork inside the first answer, and the user leans toward the second half of it: whether the standalone page survives as the shareable single-branch form, or whether show-repo simply absorbs it and the standalone page goes away. Absorption is the cleaner end state and should be the default unless a reason to keep both turns up.
+
+## What this does to the surfacing convention
+
+Worth stating because it is most of the appeal. Today 🌿 has to be a 🥏 toss, because `pages/branch.html` is a page with no deployed URL until PR #297 merges, and even after it merges the address is a bare `#gh=` with nothing around it. A reader has to be told what they are looking at.
+
+Once the branch view lives in show-repo it is a deployed page with a real URL, so the 🌿 link becomes an ⭐-class canonical reference: no toss, no token-gated fetch of the page shell, no fragment to explain. The shell also supplies the framing that makes it self-explanatory, which the standalone page cannot do on its own.
+
+So the surfacing payoff is not cosmetic. It moves the branch link from the private-safe fallback channel into the ordinary one, and at that point the tossed form documented in `docs/SURFACING.md` under 🌿 can be dropped rather than carried as a caveat.
+
 ## Definition of done
 
 - Every Open-view row opens the branch page rather than exiting to GitHub, keeping the GitHub menu as a secondary.
 - From an opened branch, left/right moves through the list that opened it.
 - The same for a list of open PRs.
 - The host question above is decided and written down, since it determines the address form.
+- The 🌿 entry in `docs/SURFACING.md` is updated to the resulting address, and its tossed fallback removed if the view is deployed.
 
 ## Notes
 
@@ -36,3 +47,4 @@ Not urgent. The page is useful today by URL, and this is what makes it feel like
 
 ## Progress log
 - 2026-07-26 filed from the session that built the page (PR #297); the swipe framing and the toss-versus-navigation question are the user's
+- 2026-07-26 added the surfacing consequence (🥏 becomes ⭐, the caveat can be dropped) and the absorb-versus-keep-both fork, after the standalone 🌿 link 404ed on an un-deployed page and made the cost of the current form concrete
