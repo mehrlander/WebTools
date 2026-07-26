@@ -112,13 +112,23 @@
 
       // The address, from wherever this page is being run.
       //
-      // Normally that is location.hash. Inside a toss the frame has no address
-      // bar of its own: toss-render's params shim hands the address suffix over
-      // as location.search instead, and the blob URL's hash carries only an
-      // optional #frag. So both are tried, and the first that yields a usable
-      // ref wins rather than the first that parses at all.
+      // Normally that is location.hash. Inside a toss it is neither location
+      // property: toss-render's params shim patches URLSearchParams.get/.has
+      // and leaves location.search an empty string, so the query has to be
+      // READ THROUGH URLSearchParams or it is invisible. Reading the raw
+      // location.search string is the mistake that made a tossed link come up
+      // on the empty form with nothing in the console: there was genuinely
+      // nothing there to see.
+      //
+      // Each candidate is tried in turn, and the first that yields a usable ref
+      // wins rather than the first that merely parses.
       resolve() {
-        const sources = [location.hash, location.search];
+        const q = new URLSearchParams(location.search);   // shim-aware
+        const gh = q.get('gh');
+        const base = q.get('base');
+        const sources = [];
+        if (gh) sources.push('gh=' + gh + (base ? '&base=' + base : ''));
+        sources.push(location.hash, location.search);
         for (const s of sources) {
           const t = window.reviewTarget.parse(s);
           if (t && t.kind === 'ref' && t.repo && t.ref) return t;
