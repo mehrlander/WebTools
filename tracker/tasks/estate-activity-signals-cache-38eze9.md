@@ -1,11 +1,11 @@
 ---
 id: estate-activity-signals-cache-38eze9
 title: Estate activity signals from a registry activity cache
-status: in-progress
+status: done
 project: show-repo
 opened: 2026-07-17
 session: claude/branches-view-api-caching-ef4l5d
-next: review the branch build; the cross-repo file-listing and the GraphQL-batched crawl (fewer calls) remain as follow-ons
+closed: 2026-07-26
 ---
 # Estate activity signals from a registry activity cache
 
@@ -41,3 +41,4 @@ it, and a cold public load is unaffected.
   fixed the stale branches-view.test.mjs (drifted at the #246 tabs redesign) and
   added repo-activity-cache tests. Flips to done on merge; the cross-repo file
   listing and a GraphQL-batched crawl remain as follow-ons.
+- 2026-07-26 closed: Delivered in PR #248 (branch fully merged to main). The two follow-ons the `next` tag named, cross-repo file listing and a GraphQL-batched crawl, were not part of it; refile them if they are still wanted. Found by `/in-flight`, which reconciles every in-progress claim against the branch it names.
