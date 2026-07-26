@@ -10,7 +10,7 @@ import { repoRoot } from './bootstrap.mjs';
 
 const win = {};
 new Function('window', readFileSync(path.join(repoRoot, 'lib/shorter-payload.js'), 'utf8')).call(win, win);
-const { read, isEnvelope, isReviewable, parseSpec, KIND } = win.ShorterPayload;
+const { read, isEnvelope, isReviewable, parseSpec, splitBlocks, materialize, KIND } = win.ShorterPayload;
 
 test('plain prose is bare, verbatim, with the right column left empty', () => {
   const p = read('The quick brown fox jumped over the lazy dog.');
@@ -42,7 +42,78 @@ test('an envelope may omit the proposal, which is the draft-one-for-me path', ()
   const p = read(JSON.stringify({ kind: KIND, original: 'long text' }));
   assert.equal(p.kind, 'envelope');
   assert.equal(p.proposal, '', 'absent reads as empty, not undefined');
+  assert.deepEqual(p.proposals, []);
   assert.equal(isReviewable(p), false);
+});
+
+test('shorter/1\'s single proposal reads as a one-entry proposals list', () => {
+  // The pasted-from-a-chat shape has to keep working unchanged; it is the
+  // common case, and shorter/2 exists only for what it cannot express.
+  const p = read(JSON.stringify({ kind: 'shorter/1', original: 'long text', proposal: 'short' }));
+  assert.equal(p.proposals.length, 1);
+  assert.equal(p.proposals[0].text, 'short');
+  assert.equal(p.proposals[0].label, 'Shorter');
+  assert.equal(p.proposal, 'short', 'the legacy field still answers');
+});
+
+test('shorter/2 carries several versions, each with a label and a note', () => {
+  const p = read(JSON.stringify({
+    kind: KIND, original: 'a b c',
+    proposals: [
+      { label: 'Tight', note: 'trims wording', text: 'a c' },
+      { label: 'Skeleton', text: 'a' },
+    ],
+  }));
+  assert.equal(p.proposals.length, 2);
+  assert.equal(p.proposals[0].note, 'trims wording');
+  assert.equal(p.proposals[1].label, 'Skeleton');
+  assert.equal(p.proposal, 'a c', 'the legacy field points at the first version');
+  assert.equal(isReviewable(p), true);
+});
+
+test('an unlabelled version still gets a name to choose by', () => {
+  const p = read(JSON.stringify({ kind: KIND, original: 'x y', proposals: [{ text: 'x' }] }));
+  assert.equal(p.proposals[0].label, 'Version 1');
+});
+
+test('an empty version is dropped rather than offered as a blank choice', () => {
+  const p = read(JSON.stringify({
+    kind: KIND, original: 'x y', proposals: [{ text: '   ' }, { text: 'x' }, 'not an object'],
+  }));
+  assert.equal(p.proposals.length, 1);
+  assert.equal(p.proposals[0].text, 'x');
+});
+
+test('splitBlocks is lossless: text plus separators rebuilds the document', () => {
+  const doc = '# Title\n\nFirst para.\nSecond line.\n\n\n  Third block.\n\nlast';
+  const parts = splitBlocks(doc);
+  assert.equal(parts.length, 4);
+  assert.equal(parts.map(b => b.text + b.sep).join(''), doc, 'byte for byte');
+  assert.equal(parts[0].text, '# Title');
+  assert.equal(parts[1].text, 'First para.\nSecond line.', 'a single newline does not split');
+});
+
+test('materialize substitutes only the blocks a version names', () => {
+  const doc = 'one\n\ntwo\n\nthree';
+  assert.equal(materialize(doc, {}), doc, 'an empty map is the identity');
+  assert.equal(materialize(doc, { '1': 'TWO' }), 'one\n\nTWO\n\nthree');
+  assert.equal(materialize(doc, { '0': 'ONE', '2': 'THREE' }), 'ONE\n\ntwo\n\nTHREE');
+});
+
+test('materialize takes the separator with a deleted block', () => {
+  // Otherwise every deletion widens the run of blank lines left behind.
+  const doc = 'one\n\ntwo\n\nthree';
+  assert.equal(materialize(doc, { '1': '' }), 'one\n\nthree');
+  assert.equal(materialize(doc, { '0': '', '1': '' }), 'three');
+});
+
+test('a block-keyed version is materialized on the way through read()', () => {
+  const doc = 'alpha\n\nbeta\n\ngamma';
+  const p = read(JSON.stringify({
+    kind: KIND, original: doc,
+    proposals: [{ label: 'Cut beta', blocks: { '1': '' } }],
+  }));
+  assert.equal(p.proposals[0].text, 'alpha\n\ngamma', 'downstream never sees the block form');
 });
 
 test('a JSON document being shortened is bare, not an envelope', () => {
@@ -72,11 +143,14 @@ test('an addressed payload takes its title from the path when it carries none', 
     'Real', 'a declared title wins over the filename');
 });
 
-test('isReviewable requires both sides to hold something', () => {
-  assert.equal(isReviewable({ original: 'a', proposal: 'b' }), true);
-  assert.equal(isReviewable({ original: 'a', proposal: '   ' }), false);
-  assert.equal(isReviewable({ original: '', proposal: 'b' }), false);
+test('isReviewable requires an original and at least one version', () => {
+  const v = [{ label: 'A', note: '', text: 'b' }];
+  assert.equal(isReviewable({ original: 'a', proposals: v }), true);
+  assert.equal(isReviewable({ original: 'a', proposals: [] }), false);
+  assert.equal(isReviewable({ original: '', proposals: v }), false);
   assert.equal(isReviewable(null), false);
+  // and it agrees with what read() produces for a whitespace-only proposal
+  assert.equal(isReviewable(read(JSON.stringify({ original: 'a', proposal: '   ' }))), false);
 });
 
 test('isEnvelope is exported for callers that only want the question answered', () => {
@@ -105,6 +179,7 @@ test('the page reads its inputs through the shared helpers and registers the rou
   const page = readFileSync(path.join(repoRoot, 'pages/shorter.html'), 'utf8');
   assert.match(page, /gh\.load\('url-params\.js'\)/);
   assert.match(page, /gh\.load\('shorter-payload\.js'\)/);
+  assert.match(page, /gh\.load\('shorter-merge\.js'\)/);
   assert.match(page, /UrlParams\.get\('gz'\)/);
   assert.match(page, /UrlParams\.get\('src'\)/);
   const toss = readFileSync(path.join(repoRoot, 'pages/toss-render.html'), 'utf8');
