@@ -320,37 +320,59 @@
 
     <div class="sec" x-show="mode==='stack'">
       <div class="sec-h"><i class="ph ph-cube"></i>View
-        <span class="tail" x-text="`${Math.round(yaw)}° / ${Math.round(pitch)}°`"></span>
+        <span class="tail" x-text="`${Math.round(yaw)}° / ${Math.round(pitch)}° / ${spread}`"></span>
       </div>
-      <div class="flex gap-1 flex-wrap mb-1">
-        <template x-for="v in ['front','iso','side','top']" :key="v">
-          <button class="btn btn-sm lg:btn-xs" :class="preset===v && 'btn-active'"
-                  @click="viewPreset(v)" x-text="v"></button>
+
+      <!-- One axis at a time, one big slider, and a nudge at each end. Three
+           thin sliders stacked was a desktop answer: on a phone the target is a
+           few millimetres tall and the value you want is usually one of them. -->
+      <div class="join w-full mb-2">
+        <template x-for="a in ['yaw','pitch','spread']" :key="a">
+          <button class="btn btn-sm lg:btn-xs join-item flex-1" :class="axis===a && 'btn-active'"
+                  @click="axis=a" x-text="a"></button>
         </template>
-        <button class="btn btn-sm lg:btn-xs btn-ghost gap-1 ml-auto" @click="viewPreset('iso')"
-                title="Reset orientation"><i class="ph ph-arrow-counter-clockwise"></i></button>
       </div>
-      <label class="row text-sm lg:text-xs">
-        <span class="k">yaw</span>
-        <input type="range" class="range range-sm lg:range-xs flex-1" min="-180" max="180" step="1"
-               x-model.number="yaw" @input="preset=''; flashHud(); drawStack()">
-        <span class="v" x-text="Math.round(yaw) + '°'"></span>
-      </label>
-      <label class="row text-sm lg:text-xs">
-        <span class="k">pitch</span>
-        <input type="range" class="range range-sm lg:range-xs flex-1" min="-85" max="85" step="1"
-               x-model.number="pitch" @input="preset=''; flashHud(); drawStack()">
-        <span class="v" x-text="Math.round(pitch) + '°'"></span>
-      </label>
-      <label class="row text-sm lg:text-xs">
-        <span class="k">spread</span>
-        <input type="range" class="range range-sm lg:range-xs flex-1" min="4" max="70" step="1"
-               x-model.number="spread" @input="flashHud(); drawStack()">
-        <span class="v" x-text="spread"></span>
-      </label>
-      <p class="text-xs opacity-50 leading-snug mt-1">
-        Dragging the stack orbits it. In a sheet or an in-app browser that gesture
-        can be taken as a swipe to dismiss, so these are the reliable path.
+      <div class="flex items-center gap-2">
+        <button class="btn btn-sm lg:btn-xs btn-ghost px-2" @click="nudge(-1)"
+                :title="`decrease ${axis}`"><i class="ph ph-minus"></i></button>
+        <input type="range" class="range range-sm lg:range-xs flex-1"
+               :min="axisMeta[axis].min" :max="axisMeta[axis].max" :step="axisMeta[axis].step"
+               :value="axisValue" @input="setAxis(+$event.target.value)">
+        <button class="btn btn-sm lg:btn-xs btn-ghost px-2" @click="nudge(1)"
+                :title="`increase ${axis}`"><i class="ph ph-plus"></i></button>
+        <span class="w-14 lg:w-12 text-right font-mono tabular-nums text-sm"
+              x-text="Math.round(axisValue) + axisMeta[axis].unit"></span>
+      </div>
+
+      <!-- Saved views. The presets are the four that ship; anything beyond them
+           is a place you found by hand, and losing it on the next drag is the
+           whole reason this exists. -->
+      <div class="sec-h mt-3 mb-1.5">Views
+        <span class="tail">
+          <button class="link link-hover" @click="saveView()">＋ keep this one</button>
+        </span>
+      </div>
+      <div class="flex flex-wrap gap-1">
+        <template x-for="v in presets" :key="v.name">
+          <button class="btn btn-sm lg:btn-xs" :class="isCurrent(v) && 'btn-active'"
+                  @click="applyView(v)" x-text="v.name"></button>
+        </template>
+        <template x-for="(v,i) in views" :key="v.name + i">
+          <span class="join">
+            <button class="btn btn-sm lg:btn-xs join-item gap-1" :class="isCurrent(v) && 'btn-active'"
+                    @click="applyView(v)">
+              <i class="ph ph-bookmark-simple"></i><span x-text="v.name"></span>
+            </button>
+            <button class="btn btn-sm lg:btn-xs join-item px-1.5 btn-ghost" @click="removeView(i)"
+                    :title="`forget ${v.name}`"><i class="ph ph-x"></i></button>
+          </span>
+        </template>
+      </div>
+
+      <p class="text-xs opacity-50 leading-snug mt-2">
+        Dragging the stack orbits it. In a sheet or an in-app browser that
+        gesture can be taken as a swipe to dismiss, so the control above is the
+        one that always works.
       </p>
     </div>
 
@@ -423,6 +445,7 @@
   window.GH = mod.default;
   const gh = new window.GH({ repo: REPO, ref: BRANCH, loadBase: 'lib/' });
   await gh.load('kits/pdf.js');
+  await gh.load('kits/persistence.js');
   await gh.load('alpine-bundle.js');
 </script>
 
@@ -447,6 +470,16 @@ const S = { doc: null, v: null, items: [], projected: [] };
 
 // What each hue means in the stack. The canvas cannot label itself without
 // becoming unreadable, so the key lives in the panel beside it.
+// The four that ship. A preset is a whole view, not just an orientation, so
+// recalling one restores the spread too; a stack read at 8pt spacing and one
+// read at 60 are different pictures and the name should mean both.
+const PRESETS = [
+  { name: 'front', yaw: 0,   pitch: 0,  spread: 26 },
+  { name: 'iso',   yaw: -32, pitch: 26, spread: 26 },
+  { name: 'side',  yaw: -78, pitch: 8,  spread: 26 },
+  { name: 'top',   yaw: -14, pitch: 72, spread: 26 },
+];
+
 const STACK_LEGEND = [
   { color: 'rgba(37,99,235,.65)',  label: 'Content',        note: 'unique to its page' },
   { color: 'rgba(21,128,61,.85)',  label: 'Fixed furniture', note: 'same text, same place, most pages' },
@@ -464,7 +497,13 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
   layers: { items: true, glyphs: false, rules: true, columns: false, gutters: false, cells: true },
   counts: {}, sel: [], selMode: 'contain', selInfo: '', drag: null, dragStyle: '',
   matrix: [], tableInfo: '', agree: false,
-  stackLegend: STACK_LEGEND, preset: 'iso',
+  stackLegend: STACK_LEGEND, presets: PRESETS,
+  axis: 'yaw', views: [],
+  axisMeta: {
+    yaw:    { min: -180, max: 180, step: 1, nudge: 15, unit: '°' },
+    pitch:  { min: -85,  max: 85,  step: 1, nudge: 15, unit: '°' },
+    spread: { min: 4,    max: 70,  step: 1, nudge: 4,  unit: '' },
+  },
   busy: false, error: '', dropping: false, probe: null, toast: '',
 
   async init() {
@@ -485,7 +524,7 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
       else if (k === 'c') { this.panel = !this.panel; }
       else if (k === '+' || k === '=') { this.zoom(1); }
       else if (k === '-') { this.zoom(-1); }
-      else if (k === '0') { this.mode === 'stack' ? this.viewPreset('iso') : (this.scaleMode = 'fit', this.redraw()); }
+      else if (k === '0') { this.mode === 'stack' ? this.applyView(PRESETS[1]) : (this.scaleMode = 'fit', this.redraw()); }
       else if (k >= '1' && k <= '6') {
         const key = LAYERS[+k - 1]?.key;
         if (key) { this.layers[key] = !this.layers[key]; this.redraw(); }
@@ -493,6 +532,80 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
       e.preventDefault();
     });
     await this.loadSample();
+    await this.loadViews();
+  },
+
+  // --- orientation ---------------------------------------------------------
+
+  // The value of whichever axis the picker has selected. A getter rather than a
+  // template expression: `this` inside an Alpine expression is not the
+  // component, so `this[axis]` there is undefined and the readout reads NaN.
+  get axisValue() { return this[this.axis]; },
+
+  setAxis(v) {
+    const m = this.axisMeta[this.axis];
+    this[this.axis] = Math.min(m.max, Math.max(m.min, v));
+    this.flashHud();
+    this.drawStack();
+  },
+
+  nudge(dir) { this.setAxis(this[this.axis] + dir * this.axisMeta[this.axis].nudge); },
+
+  applyView(v) {
+    this.yaw = v.yaw; this.pitch = v.pitch;
+    if (v.spread != null) this.spread = v.spread;
+    this.flashHud();
+    this.drawStack();
+  },
+
+  // Whether the current orientation IS this view, within a degree. Cheaper and
+  // more honest than tracking a selected name: a slider nudge silently leaves
+  // the preset, and a flag would keep claiming otherwise.
+  isCurrent(v) {
+    return Math.abs(this.yaw - v.yaw) < 1 && Math.abs(this.pitch - v.pitch) < 1 &&
+           (v.spread == null || Math.abs(this.spread - v.spread) < 1);
+  },
+
+  // --- saved views ---------------------------------------------------------
+  //
+  // Through the persistence kit rather than localStorage, because that is the
+  // repo's answer for this and its store is already namespaced per page.
+  // Failures here are never fatal: the page works without saved views, so a
+  // blocked IndexedDB degrades to an in-memory list for the session.
+
+  async loadViews() {
+    try { this.views = (await window.persistence.load('pdfInspect.views')) ?? []; }
+    catch { this.views = []; }
+  },
+
+  async persistViews() {
+    try { await window.persistence.save('pdfInspect.views', JSON.parse(JSON.stringify(this.views))); }
+    catch { this.flash('saved for this session only'); }
+  },
+
+  saveView() {
+    const name = (prompt('Name this view', this.suggestViewName()) || '').trim();
+    if (!name) return;
+    const v = { name, yaw: Math.round(this.yaw), pitch: Math.round(this.pitch), spread: this.spread };
+    const at = this.views.findIndex(x => x.name === name);
+    if (at >= 0) this.views.splice(at, 1, v); else this.views.push(v);
+    this.persistViews();
+    this.flash(`kept "${name}"`);
+  },
+
+  // A name that says where you are, so an unnamed save is still findable.
+  suggestViewName() {
+    const p = Math.round(this.pitch), y = Math.round(this.yaw);
+    const face = Math.abs(p) > 55 ? (p > 0 ? 'from above' : 'from below')
+               : Math.abs(y) > 60 ? 'edge on'
+               : Math.abs(y) < 10 && Math.abs(p) < 10 ? 'straight on' : 'angled';
+    return `${face} ${y}/${p}`;
+  },
+
+  removeView(i) {
+    const [gone] = this.views.splice(i, 1);
+    this.persistViews();
+    this.flash(`forgot "${gone.name}"`);
   },
 
   setMode(m) { if (this.mode !== m) { this.mode = m; this.clearProbe(); this.redraw(); } },
@@ -902,13 +1015,6 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     this.hud = true;
     clearTimeout(this._hudTimer);
     this._hudTimer = setTimeout(() => { this.hud = false; }, 1400);
-  },
-
-  // Named orientations, because a slider is precise and a preset is fast, and
-  // wanting "straight on" should not mean dragging back to zero.
-  viewPreset(name) {
-    const p = { front: [0, 0], iso: [-32, 26], side: [-78, 8], top: [-14, 72] }[name];
-    if (p) { this.yaw = p[0]; this.pitch = p[1]; this.preset = name; this.flashHud(); this.drawStack(); }
   },
 
   // Turn the detector's output into a proposed cut, which is the point of
