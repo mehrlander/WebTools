@@ -213,31 +213,53 @@ just as page content.
 | **jsdom** | Node | Yes (`runScripts: 'dangerously'`) | inline scripts must execute |
 | **BeautifulSoup / lxml / selectolax / parsel** | Python | No | Python-side traversal |
 
-## Tailwind's browser build never generates a toggle-only utility (2026-07-26)
+## Tailwind generates a toggled utility lazily, not never (2026-07-26)
 
-A utility class that only ever reaches the DOM by being toggled onto an existing
-element is **never generated** by `@tailwindcss/browser@4`. The class lands in
-`className` and computes to nothing, because the browser build emits rules for
-classes it finds present in the document, and flipping an attribute on a node
-that is already there does not put a new class in front of it.
+`@tailwindcss/browser@4` emits a utility's rule **the moment the class appears in
+the DOM**, including when Alpine toggles it onto an element that was already
+there. It watches the document and regenerates. A toggle-only utility therefore
+works, and needs no workaround.
 
-Confirmed on `show-repo`: `.rotate-180` and `.animate-spin` have no rule in any
-stylesheet, while `.truncate` (present in the initial markup) does. This is
-silent. Nothing errors, and the element simply does not turn or spin.
+This corrects an earlier entry here that said the opposite. The observation
+behind it was real and is easy to repeat: open a page, inspect the stylesheets,
+and `.animate-spin` and `.rotate-180` genuinely have no rule while `.truncate`
+does. The wrong part was the inference. Nothing has toggled yet, so the rule has
+not been generated yet; it appears when the class does. Measured on
+`show-repo`, before and after toggling `animate-spin rotate-180` onto a live
+element:
 
-Two consequences worth knowing:
+| | `.truncate` | `.animate-spin` | `@keyframes spin` | `.rotate-180` |
+|---|---|---|---|---|
+| before the toggle | present | absent | absent | absent |
+| after the toggle | present | present | present | present |
 
-- **A caret that rotates is a trap.** Ship two static glyphs
-  (`ph-caret-down` / `ph-caret-up`) swapped with `x-show`, so both classes exist
-  from the start. `crumb-bar.js`, `repo-menu.js`, and `path-picker.js` all do
-  this now; `path-picker`'s caret had silently never turned.
-- **A spinner toggled with `animate-spin` does not spin.** Still true in
-  `estate.js` and `repo.js` at the time of writing; the fix is either the same
-  always-present-element trick or a plain rule in the page's own `<style>`.
+with `getComputedStyle(el).animationName === 'spin'` and `rotate === '180deg'`
+after. Driving the real Repos-view Refresh button (`estate.js`, flipping
+`configRefreshing`) spins it. Verified against both the vendored
+`@tailwindcss/browser@4.3.3` and the bytes jsDelivr serves the deployed page.
 
-**Testing note:** assert on *computed* effect, not on the class attribute or on
-Playwright's `isVisible`. `getComputedStyle(el).transform` catches this; a
-`className.includes('rotate-180')` check passes while the element sits still.
+**The baked path does not change this.** A page built by the `bake-page` skill
+has its CSS compiled ahead of time with no runtime observer, but that compiler
+scans **source as text**, so a literal in `:class="open && 'rotate-180'"` is
+found and kept. What breaks under baking is a class *assembled* from fragments
+(`'ph-' + name`), which no text scan can see. That, not toggling, is the hazard
+worth designing around, and it is the same hazard in both builds.
+
+Two carried-over notes that remain correct on their own terms:
+
+- **Two static glyphs swapped with `x-show`** (`ph-caret-down` / `ph-caret-up`,
+  as `crumb-bar.js`, `repo-menu.js`, and `path-picker.js` do) is a fine way to
+  build a caret, and is what a Phosphor icon swap needs anyway, since the glyph
+  itself is a class. Read it as a style choice, not as a workaround for a
+  Tailwind limitation that does not exist.
+- **Assert on computed effect, not on the class attribute**, and not on
+  stylesheet text. `getComputedStyle(el).animationName` is the honest check;
+  `className.includes('animate-spin')` passes either way. Stylesheet text is
+  worse than it looks: cross-origin sheets (daisyUI, Phosphor) throw on
+  `cssRules` and silently contribute nothing, and Tailwind nests its output in
+  `@layer`, so a naive `startsWith('.truncate')` scan reports absent for rules
+  that are plainly there. That combination is how the original entry got written.
+
 `isVisible` is separately misleading for a bottom sheet, which parks itself
 off-screen with a transform rather than hiding, so it reads as visible when
 closed; compare `getBoundingClientRect()` against the viewport instead.
