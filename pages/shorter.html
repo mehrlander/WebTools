@@ -313,7 +313,7 @@
              incidental whitespace; the only whitespace in the flow is the
              segment text itself. -->
         <article class="review rounded-box border border-base-300 bg-base-100 p-4 sm:p-6"
-          ><template x-for="seg in segments" :key="seg.id"><span :id="'seg'+seg.id" class="seg" :class="segClass(seg)" @click="seg.kind==='choice' && openPop(seg,$event)"><template x-if="seg.kind==='equal'"><span x-text="seg.text"></span></template><template x-if="seg.kind==='choice' && !isEmpty(seg)"><span x-text="sel(seg).text"></span></template><template x-if="seg.kind==='choice' && isEmpty(seg)"><span class="seg-empty"><i class="ph ph-dots-three"></i></span></template><template x-if="seg.busy"><span class="loading loading-dots loading-xs align-middle text-primary"></span></template></span></template></article>
+          ><template x-for="seg in segments" :key="seg.id"><span :id="'seg'+seg.id" class="seg" :class="segClass(seg)" @click="seg.kind==='choice' && !seg.trivial && openPop(seg,$event)"><template x-if="seg.kind==='equal'"><span x-text="seg.text"></span></template><template x-if="seg.kind==='choice' && !isEmpty(seg)"><span x-text="sel(seg).text"></span></template><template x-if="seg.kind==='choice' && isEmpty(seg) && !seg.trivial"><span class="seg-empty"><i class="ph ph-dots-three"></i></span></template><template x-if="seg.busy"><span class="loading loading-dots loading-xs align-middle text-primary"></span></template></span></template></article>
       </div>
     </div>
   </template>
@@ -464,21 +464,29 @@ function shorter() {
     },
     get readyCount() { return this.versions.filter(v => v.text.trim()).length; },
     get canReview() { return !!this.original.trim() && this.readyCount > 0; },
-    get decisions() { return this.segments.filter(s => s.kind === 'choice'); },
+    // Every choice segment, including the whitespace-only ones a reflow
+    // produced. applyAll walks THESE, so a version still reassembles byte for
+    // byte; only `decisions` is the reader-facing list.
+    get choices() { return this.segments.filter(s => s.kind === 'choice'); },
+    get decisions() { return this.choices.filter(s => !s.trivial); },
     get visibleDecisions() { return this.onlyTouched ? this.decisions.filter(s => this.touched(s)) : this.decisions; },
     sel(seg) { return seg.options.find(o => o.id === seg.selected) || seg.options[0]; },
     isEmpty(seg) { return this.sel(seg).text === ''; },
     touched(seg) { return this.touchedIds.includes(seg.id); },
     vClass(opt) { return opt.isOriginal ? 'vo' : 'v' + (opt.vi % 6); },
     segClass(seg) {
-      if (seg.kind === 'equal') return 'seg-equal';
+      // A trivial region is a line wrap, not a question: render it as prose.
+      if (seg.kind === 'equal' || seg.trivial) return 'seg-equal';
       const o = this.sel(seg);
       const base = 'seg-choice ' + this.vClass(o) + ' ' + (o.isOriginal ? 'seg-orig' : 'seg-v');
       return base + (this.activeId === seg.id ? ' seg-active' : '');
     },
     preview(seg) {
       const t = (seg.options[0].text || '').trim().replace(/\s+/g, ' ');
-      return t.length > 90 ? t.slice(0, 90) + '…' : (t || '(a deletion)');
+      // An empty ORIGINAL means every version added something here, which is
+      // the opposite of a deletion and used to be labelled as one.
+      if (!t) return '(an insertion)';
+      return t.length > 90 ? t.slice(0, 90) + '…' : t;
     },
     delta(seg) {
       const d = this.w(this.sel(seg).text) - this.w(seg.options[0].text);
@@ -546,7 +554,7 @@ function shorter() {
     // at a given decision has no option of its own there, so it falls through
     // to the original, which is exactly what that version says.
     applyAll(which) {
-      for (const seg of this.decisions) {
+      for (const seg of this.choices) {
         const hit = which === 'original' ? null : seg.options.find(o => o.agreed.includes(which));
         seg.selected = hit ? hit.id : seg.options[0].id;
       }

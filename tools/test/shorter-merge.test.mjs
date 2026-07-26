@@ -176,6 +176,36 @@ test('selecting one version everywhere reproduces that version exactly', () => {
   assert.equal(assembled(segs), vA);
 });
 
+test('a whitespace-only difference is marked trivial, not offered as a decision', () => {
+  // A version that reflowed a paragraph turns every line wrap into a change.
+  // On the real four-version essay this was 15 of 88 regions, all of them a
+  // newline against a space, none of them a question.
+  const a = 'one two three\nfour five six';
+  const segs = build(a, [P('Reflowed', 'one two three four five six')], D);
+  const ch = segs.filter(s => s.kind === 'choice');
+  assert.ok(ch.length >= 1);
+  assert.ok(ch.every(s => s.trivial), 'nothing here is worth asking about');
+});
+
+test('a trivial region is kept, so a version still reassembles byte for byte', () => {
+  // Flattening the whitespace regions away would be tidier and would silently
+  // substitute the original's wrapping into every version.
+  const a = 'alpha beta\ngamma delta';
+  const v = 'alpha beta gamma';
+  const segs = build(a, [P('V', v)], D);
+  for (const seg of segs) {
+    if (seg.kind !== 'choice') continue;
+    const hit = seg.options.find(o => o.agreed.includes('V'));
+    seg.selected = hit ? hit.id : seg.options[0].id;
+  }
+  assert.equal(assembled(segs), v, 'including the newline the version turned into a space');
+});
+
+test('a real difference next to whitespace is not marked trivial', () => {
+  const segs = build('one two three', [P('V', 'one four three')], D);
+  assert.ok(segs.filter(s => s.kind === 'choice').every(s => !s.trivial));
+});
+
 test('a deleted passage renders as an empty option, not a dropped region', () => {
   const a = 'keep this. cut this entirely. keep this too.';
   const segs = build(a, [P('Cut', 'keep this. keep this too.')], D);
