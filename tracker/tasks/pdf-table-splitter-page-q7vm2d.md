@@ -78,9 +78,24 @@ to 1.01pt. So a "shrink wrapped" border will look loose on the left and can
 clip an italic on the right, and that is the document, not a bug in the
 drawing. Say so in the UI rather than trying to tighten it.
 
+## What pdf-inspect already covers
+
+PR #294 shipped `pages/pdf-inspect.html`, which overlaps this task more than it
+looked like it would. It already renders the page with the item boxes drawn,
+resolves what is under the pointer, selects by drag, and reads the table two
+ways side by side.
+
+What is left that is genuinely this task: **draggable column boundaries with
+live reassignment**. That is the one thing the 2026-05 session had that the
+inspector does not, and it is the interaction the header-lumping defect was
+found in. Re-scope accordingly rather than rebuilding the surrounding page.
+
 ## Progress log
 - 2026-07-25: Filed alongside the kit (PR #294). The kit carries the logic;
   this is the surface.
 - 2026-07-25: Unblocked. `pdf.view` landed on the same PR, which removes the
   coordinate work and the unit-mismatch defect from this task's scope. What
   remains is genuinely a component.
+- 2026-07-26: Narrowed by PR #294. `pdf-inspect` covers the rendering, the
+  overlay, hit testing, and selection, so this task is now only the draggable
+  splitters and the live column reassignment they drive.
