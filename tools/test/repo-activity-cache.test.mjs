@@ -82,3 +82,20 @@ test('recentStream merges and caps across repos, newest-first, repo-tagged', () 
   const stream = A.recentStream(cache, 2);
   assert.deepEqual(stream.map(c => [c.repo, c.sha]), [['o/a', 'a'], ['o/c', 'c']]);
 });
+
+// The gate that nearly swallowed firstDate: the material hash decides whether a
+// crawl commits at all, so a CONTENT timestamp the crawl newly learns has to be
+// in the projection. Were it not, the first crawl to read a branch's start
+// would hash identically to the one before it, skip the commit, and the field
+// would never reach the cache.
+test('a newly-learned firstDate is material, on both survey rows and PRs', () => {
+  const base = { pushedAt: 'p', defaultBranch: 'main', counts: {},
+                 recentCommits: [], openPRs: [{ number: 1, updatedAt: 'u' }],
+                 survey: { branches: [{ name: 'x', sha: 'S', group: 'stranded' }] } };
+  const surveyed = { ...base, survey: { branches: [{ ...base.survey.branches[0], firstDate: '2026-07-02T00:00:00Z' }] } };
+  assert.notEqual(A.hashEntry(base), A.hashEntry(surveyed));
+  const pr = { ...base, openPRs: [{ ...base.openPRs[0], firstDate: '2026-07-02T00:00:00Z' }] };
+  assert.notEqual(A.hashEntry(base), A.hashEntry(pr));
+  // Still stable once learned: a re-crawl reading the same start is a no-op.
+  assert.equal(A.hashEntry(surveyed), A.hashEntry({ ...surveyed, generatedAt: 'LATER' }));
+});

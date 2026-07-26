@@ -236,10 +236,45 @@ changed** against its default (one `compare` call, removed paths skipped) and
 jumps to the Stage: navigating a whole branch tree is rarely the point, its diff
 is. The staged set is appended and deduped onto any working stage, at `ref=branch`
 so an item reads the branch's version and the Stage's Diff tab compares it back.
-The rest of the cluster is Tree and Compare (on GitHub), the guide **PR**, and the
+The rest of the cluster is a **GitHub menu** (below), the guide **PR**, and the
 **Session** that authored it (the `claude.ai/code/session_…` link lifted from the
 PR body's footer, shown only when present); a per-repo **Branches** drill-down
-sits at the row's right (whole-tree browse lives there). It reads the registry's **activity cache**
+sits at the row's right (whole-tree browse lives there).
+
+Each row's right edge states the branch's **lifespan**, first commit then latest,
+as `15 days → 2 hours`, which answers "how long has this been open" beside "when
+was it last touched". Neither costs a call: the crawl's compare already lists a
+branch's unique commits oldest-first, so its start is `commits[0]`
+(`BranchSurvey.firstCommitDate`) off a response the survey holds anyway. The
+start is dropped when it rounds to the same label as the tip (a same-day branch,
+where `2h → 2h` is noise) and when it cannot be known honestly: a branch with no
+merge base has no unique-commit list, and a compare past GitHub's 250-commit cap
+reports a total larger than the list it returns, so the oldest entry present is
+not the first. Those rows show the tip age alone.
+
+**Repo chips** above the list narrow it to one repo, `All` first and a count on
+each. Only repos that have open rows get a chip, since the estate is larger than
+the set with work in flight and a row of zeroes says nothing, and the row hides
+below two of them. It scrolls sideways rather than wrapping, which is what keeps
+a second row of controls from pushing the first branch off a phone screen. The
+filter narrows what renders, not what is counted: the tab badge and the `All`
+chip keep the cross-repo total. A filter naming a repo that goes quiet on a
+refresh lapses back to `All` on its own, rather than leaving an empty list with
+no lit chip to explain it.
+
+The row's **GitHub menu** replaced a Tree and a Compare link. Those were one tap
+each and a menu is two, which pays only because the menu carries destinations
+that had no route at all: the PR's **Files changed** and **Checks** tabs, the
+branch's **Commits**, and **New pull request** for a row with no PR, plus copy
+actions for the branch name and the compare link. It also gives the row's action
+line back the width the pair was spending. It is the same anchored panel as the
+sidebar's repo menu and shares its geometry (`shell.anchorMenu` / `menuStyle`:
+fixed, right-aligned to the trigger, flipped above near the viewport bottom),
+with that menu's row spec (36 px, flat, an out-arrow on anything leaving the
+app). The `#`-number and the session mark stay outside it: neither is GitHub
+navigation, and the session mark has no other route.
+
+It reads the registry's **activity cache**
 (`state/activity.json`, below) in one GET, so the whole estate renders without a
 per-repo API fanout: the branch join to its open PR is `pr.head === branch`, and
 the session link rides the cached PR, so nothing is fetched per visit. Landed and

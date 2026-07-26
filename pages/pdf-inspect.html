@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Inspect</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🔍</text></svg>">
+<meta property="og:title" content="PDF Inspect" />
+<meta property="og:description" content="See what kits/pdf.js extracts, drawn on the page it came from" />
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2/src/regular/style.css" rel="stylesheet"/>
+
+<!--
+  pdf-inspect.html — the visual half of kits/pdf.js.
+
+  The kit's numbers are checked by three headless suites, but a table extractor
+  is a geometry tool and geometry is judged by looking. This page draws every
+  layer the kit produces on top of the page it was read from: text containers,
+  per-character boxes, the vector rules with their detected roles, both column
+  detectors, and the lattice grid with its cell indices.
+
+  Everything visual here goes through pdf.view(), the kit's projection, and
+  nothing on this page converts a coordinate by hand. That is deliberate: if the
+  overlay lines up, the projection is right, and if it drifts, the projection is
+  wrong. The page is the assertion.
+
+  The sample PDF is built in the browser with pdf-lib (already loaded by the
+  kit), so no binary is committed and the fixture is visible as code. It is the
+  same geometry as tools/test/pdf-kit-browser.mjs, including the white rule that
+  a naive extractor turns into a phantom column.
+
+  Affordances worth knowing, since none of them announce themselves:
+    - drop a PDF anywhere on the stage
+    - hover or tap a text box to read its own numbers, font, and cell
+    - drag a rectangle to select, which re-runs the column detector on it
+    - keys: arrows page, p/s mode, c controls, +/- zoom, 0 reset, 1-6 layers
+
+  Headless: npm run shot -- pages/pdf-inspect.html [--width 390] [--script ...]
+-->
+
+<style>
+  .layer { position: absolute; inset: 0; pointer-events: none; }
+  .lbl { font: 9px/1 ui-monospace, monospace; }
+
+  /* One rhythm for the whole panel. Sections declare themselves by a rule and a
+     small caps heading rather than by boxes, so eight of them stack without the
+     page turning into a stack of cards. */
+  .sec { padding: .75rem .875rem; border-top: 1px solid var(--fallback-b3, oklch(var(--b3))); }
+  .sec:first-child { border-top: 0; }
+  .sec-h {
+    display: flex; align-items: center; gap: .4rem;
+    font-size: .6875rem; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; opacity: .55; margin-bottom: .5rem;
+  }
+  .sec-h .ph { font-size: .95rem; opacity: .8; }
+  .sec-h .tail { margin-left: auto; font-weight: 400; letter-spacing: normal;
+                 text-transform: none; font-family: ui-monospace, monospace; opacity: .8; }
+
+  /* A control row: fixed label gutter, elastic control, fixed numeric readout.
+     Three columns everywhere means the numbers line up down the panel instead
+     of stepping in and out with the label lengths. */
+  .row { display: flex; align-items: center; gap: .625rem; padding: .1875rem 0; }
+  .row > .k { width: 4.5rem; flex: none; opacity: .7; }
+  .row > .v { width: 3.25rem; flex: none; text-align: right;
+              font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  @media (min-width: 1024px) { .row > .k { width: 3.75rem } .row > .v { width: 2.75rem } }
+
+  /* A sheet of paper, not a div. The page was reading as unfinished because a
+     white rectangle on a near-white background with a hairline ring has no
+     edge to speak of: the eye needs a shadow that falls somewhere. */
+  .paper {
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.14);
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.06),
+      0 8px 18px -6px rgba(15, 23, 42, 0.18),
+      0 24px 48px -24px rgba(15, 23, 42, 0.22);
+  }
+
+  /* The orientation readout, over the stack. Present while the view is being
+     changed and for a moment after, then gone: the answer to "what am I looking
+     at" belongs where you are looking, not in a panel you have to open. */
+  .hud {
+    position: absolute; top: .5rem; left: 50%; transform: translateX(-50%);
+    pointer-events: none; transition: opacity .45s ease;
+    font: 12px/1 ui-monospace, monospace; letter-spacing: .02em;
+    padding: .4rem .7rem; border-radius: 999px;
+    background: rgba(15, 23, 42, .82); color: #fff; white-space: nowrap;
+  }
+</style>
+</head>
+<body class="bg-base-200 text-base-content overscroll-none">
+
+<div x-data="pdfInspect()" class="flex flex-col h-[100dvh] overflow-hidden">
+
+  <!-- Toolbar: one row at every width, and it never scrolls. What cannot fit on
+       a phone moves into the panel rather than wrapping into the layer list. -->
+  <header class="flex items-center gap-1.5 px-2.5 py-2 bg-base-100 border-b border-base-300 shrink-0">
+    <span class="hidden sm:flex items-center gap-1.5 font-semibold text-sm pr-1 whitespace-nowrap">
+      <i class="ph ph-magnifying-glass text-primary"></i>PDF Inspect
+    </span>
+
+    <button class="btn btn-sm lg:btn-xs btn-primary shrink-0 gap-1" @click="loadSample()"
+            title="Load the built-in 12-page sample">
+      <i class="ph ph-file-dashed"></i><span>Sample</span>
+    </button>
+    <label class="btn btn-sm lg:btn-xs btn-ghost shrink-0 gap-1" title="Open a PDF">
+      <i class="ph ph-folder-open"></i><span class="hidden sm:inline">Open</span>
+      <input type="file" accept="application/pdf,.pdf" class="hidden"
+             @change="loadFile($event.target.files[0])">
+    </label>
+
+    <div class="join shrink-0" x-show="mode==='page'">
+      <button class="btn btn-sm lg:btn-xs join-item px-2" @click="go(-1)" :disabled="pageNum<=1"
+              title="Previous page"><i class="ph ph-caret-left"></i></button>
+      <span class="btn btn-sm lg:btn-xs join-item no-animation pointer-events-none font-mono whitespace-nowrap px-2"
+            x-text="`${pageNum}/${numPages||'-'}`"></span>
+      <button class="btn btn-sm lg:btn-xs join-item px-2" @click="go(1)" :disabled="pageNum>=numPages"
+              title="Next page"><i class="ph ph-caret-right"></i></button>
+    </div>
+
+    <div class="join shrink-0 hidden lg:flex">
+      <button class="btn btn-xs join-item gap-1" :class="mode==='page' && 'btn-active'"
+              @click="setMode('page')"><i class="ph ph-file"></i>Page</button>
+      <button class="btn btn-xs join-item gap-1" :class="mode==='stack' && 'btn-active'"
+              @click="setMode('stack')"><i class="ph ph-stack"></i>Stack</button>
+    </div>
+    <button class="btn btn-sm lg:hidden shrink-0 gap-1"
+            @click="setMode(mode === 'page' ? 'stack' : 'page')">
+      <i class="ph" :class="mode === 'page' ? 'ph-stack' : 'ph-file'"></i>
+      <span x-text="mode === 'page' ? 'Stack' : 'Page'"></span>
+    </button>
+
+    <div class="join shrink-0 hidden lg:flex" x-show="mode==='page'">
+      <button class="btn btn-xs join-item px-2" @click="zoom(-1)" title="Zoom out"><i class="ph ph-minus"></i></button>
+      <button class="btn btn-xs join-item px-2 font-mono" @click="scaleMode='fit'; redraw()"
+              x-text="scaleMode === 'fit' ? 'fit' : scale.toFixed(1) + 'x'" title="Fit to width"></button>
+      <button class="btn btn-xs join-item px-2" @click="zoom(1)" title="Zoom in"><i class="ph ph-plus"></i></button>
+    </div>
+
+    <span class="text-xs opacity-55 font-mono truncate hidden xl:inline" x-text="status"></span>
+
+    <button class="btn btn-sm btn-ghost ml-auto lg:hidden gap-1 shrink-0" @click="panel = !panel">
+      <i class="ph" :class="panel ? 'ph-x' : 'ph-sliders-horizontal'"></i>
+      <span class="hidden sm:inline" x-text="panel ? 'Close' : 'Controls'"></span>
+    </button>
+  </header>
+
+  <div class="flex-1 flex min-h-0 relative overflow-hidden">
+    <!-- page -->
+    <main class="flex-1 overflow-auto p-3 sm:p-6 bg-base-200 min-w-0 relative grid place-items-center" id="scroll"
+          @dragover.prevent="dropping = true" @dragleave="dropping = false"
+          @drop.prevent="dropping = false; loadFile($event.dataTransfer.files[0])">
+      <div x-show="mode==='stack'" class="w-full h-full flex items-center justify-center relative">
+        <canvas id="stack" class="max-w-full touch-none cursor-grab"
+                @pointerdown="orbitStart($event)" @pointermove="orbitMove($event)"
+                @pointerup="orbitEnd()" @pointercancel="orbitEnd()"></canvas>
+        <div class="hud" :style="`opacity:${hud ? 1 : 0}`"
+             x-text="`yaw ${Math.round(yaw)}°  ·  pitch ${Math.round(pitch)}°  ·  spread ${spread}`"></div>
+      </div>
+      <div x-show="mode==='page'"
+           class="paper relative inline-block select-none touch-none shrink-0" id="stage"
+           @pointerdown="dragStart($event)" @pointermove="dragMove($event)"
+           @pointerup="dragEnd($event)" @pointercancel="dragEnd($event)"
+           @pointerleave="clearProbe()">
+        <canvas id="page" class="block"></canvas>
+        <svg class="layer" id="ov" :width="W" :height="H"></svg>
+        <div class="layer" id="probeMark"></div>
+        <div x-show="drag" class="absolute border-2 border-warning bg-warning/20 pointer-events-none"
+             :style="dragStyle"></div>
+      </div>
+      <!-- Drop anywhere on the stage. The file input stays for the phone, where
+           there is nothing to drop from. -->
+      <div x-show="dropping" x-transition.opacity
+           class="absolute inset-3 z-20 rounded-lg border-2 border-dashed border-primary
+                  bg-primary/5 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
+        <div class="flex flex-col items-center gap-2 text-primary">
+          <i class="ph ph-file-arrow-down text-4xl"></i>
+          <span class="font-medium">Drop a PDF</span>
+        </div>
+      </div>
+
+      <div x-show="busy" x-transition.opacity
+           class="absolute inset-0 z-20 bg-base-200/70 flex items-center justify-center pointer-events-none">
+        <div class="flex items-center gap-2 text-sm opacity-70">
+          <i class="ph ph-circle-notch animate-spin text-lg"></i><span x-text="status"></span>
+        </div>
+      </div>
+
+      <div x-show="error" class="absolute inset-x-3 top-3 z-30 alert alert-error text-sm">
+        <i class="ph ph-warning-circle text-lg"></i>
+        <span x-text="error"></span>
+        <button class="btn btn-xs btn-ghost" @click="error = ''"><i class="ph ph-x"></i></button>
+      </div>
+    </main>
+
+    <!-- backdrop, phone only -->
+    <div x-show="panel" x-transition.opacity class="absolute inset-0 bg-black/30 z-30 lg:hidden"
+         @click="panel = false"></div>
+
+    <!-- controls: a static column from lg up, an off-canvas drawer below it -->
+    <aside class="absolute inset-y-0 right-0 z-40 w-[92vw] max-w-sm translate-x-full transition-transform duration-200
+                  lg:static lg:translate-x-0 lg:w-80 lg:max-w-none
+                  shrink-0 flex flex-col bg-base-100 border-l border-base-300 overflow-y-auto"
+           :class="panel && '!translate-x-0 shadow-2xl'">
+    <!-- PAGE MODE ------------------------------------------------------- -->
+
+    <div class="sec" x-show="mode==='page'">
+      <div class="sec-h"><i class="ph ph-squares-four"></i>Layers
+        <span class="tail">
+          <button class="link link-hover" @click="setAllLayers(true)">all</button>
+          <span class="opacity-40">/</span>
+          <button class="link link-hover" @click="setAllLayers(false)">none</button>
+        </span>
+      </div>
+      <div class="text-sm font-mono opacity-55 mb-2 lg:hidden" x-text="status"></div>
+      <template x-for="l in layerList" :key="l.key">
+        <label class="flex items-center gap-3 lg:gap-2 cursor-pointer py-1.5 lg:py-1 rounded hover:bg-base-200 px-1 -mx-1">
+          <input type="checkbox" class="checkbox checkbox-sm lg:checkbox-xs" x-model="layers[l.key]" @change="redraw()">
+          <span class="w-3 h-3 rounded-[3px] border shrink-0"
+                :style="`background:${l.color}44;border-color:${l.color}`"></span>
+          <span class="text-sm leading-tight" x-text="l.label"></span>
+          <span class="ml-auto text-xs opacity-45 font-mono tabular-nums" x-text="counts[l.key] ?? ''"></span>
+        </label>
+      </template>
+      <div class="lg:hidden pt-2">
+      <label class="row text-sm">
+        <span class="k">zoom</span>
+        <select class="select select-sm flex-1" x-model="scaleMode" @change="redraw()">
+          <option value="fit">fit to width</option>
+          <option value="1">1x</option><option value="1.5">1.5x</option>
+          <option value="2">2x</option><option value="3">3x</option>
+        </select>
+      </label>
+      </div>
+    </div>
+
+    <!-- What the pointer is over. An inspector should answer "what is this box"
+         without a console, and this is the only place the item's own numbers,
+         font, and decoration are visible at all. -->
+    <div class="sec" x-show="mode==='page'">
+      <div class="sec-h"><i class="ph ph-crosshair-simple"></i>Under the pointer</div>
+      <template x-if="!probe">
+        <p class="text-sm opacity-50 leading-snug">Hover or tap a text box on the page.</p>
+      </template>
+      <template x-if="probe">
+        <div class="space-y-1.5">
+          <div class="text-sm font-medium break-words leading-snug" x-text="probe.str"></div>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs font-mono opacity-70 tabular-nums">
+            <span x-text="`x ${probe.x1} → ${probe.x2}`"></span>
+            <span x-text="`w ${probe.w}`"></span>
+            <span x-text="`base ${probe.base}`"></span>
+            <span x-text="`h ${probe.h}`"></span>
+          </div>
+          <div class="flex flex-wrap gap-1">
+            <span class="badge badge-sm badge-ghost font-mono" x-text="probe.font"></span>
+            <span class="badge badge-sm badge-ghost font-mono" x-text="probe.fontSize + 'pt'"></span>
+            <template x-if="probe.bold"><span class="badge badge-sm">bold</span></template>
+            <template x-if="probe.italic"><span class="badge badge-sm">italic</span></template>
+            <template x-if="probe.underline"><span class="badge badge-sm badge-error">underline</span></template>
+            <template x-if="probe.strikethrough"><span class="badge badge-sm badge-error">strike</span></template>
+            <template x-if="probe.cell"><span class="badge badge-sm badge-primary" x-text="probe.cell"></span></template>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <div class="sec" x-show="mode==='page'">
+      <div class="sec-h"><i class="ph ph-selection"></i>Selection
+        <span class="tail" x-text="sel.length ? sel.length + ' items' : ''"></span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <div class="join">
+          <button class="btn btn-sm lg:btn-xs join-item" :class="selMode==='intersect' && 'btn-active'"
+                  @click="selMode='intersect'">touch</button>
+          <button class="btn btn-sm lg:btn-xs join-item" :class="selMode==='contain' && 'btn-active'"
+                  @click="selMode='contain'">enclose</button>
+        </div>
+        <button class="btn btn-sm lg:btn-xs btn-ghost gap-1 ml-auto" x-show="sel.length"
+                @click="copy(sel.join('\n'), 'selection')"><i class="ph ph-copy"></i></button>
+        <button class="btn btn-sm lg:btn-xs btn-ghost" x-show="sel.length" @click="clearSel()">clear</button>
+      </div>
+      <p class="text-sm opacity-50 leading-snug mt-2" x-show="!sel.length">
+        Drag a rectangle on the page. The region comes back in PDF coordinates
+        with the column detector re-run over just that selection.
+      </p>
+      <div class="text-xs font-mono opacity-65 mt-2" x-text="selInfo"></div>
+      <div class="max-h-40 overflow-auto text-sm lg:text-xs font-mono bg-base-200 rounded p-2 mt-1.5" x-show="sel.length">
+        <template x-for="(t,i) in sel.slice(0,60)" :key="i"><div class="truncate" x-text="t"></div></template>
+      </div>
+    </div>
+
+    <div class="sec flex-1" x-show="mode==='page'">
+      <div class="sec-h"><i class="ph ph-table"></i>Table, read two ways
+        <span class="tail">
+          <button class="link link-hover" x-show="matrix.length"
+                  @click="copy(matrix.map(r => r.join('\t')).join('\n'), 'table')">copy TSV</button>
+        </span>
+      </div>
+      <div class="text-xs mb-1.5 opacity-65 flex items-center gap-1">
+        <i class="ph text-sm" :class="agree ? 'ph-check-circle text-success' : 'ph-warning-circle text-warning'"
+           x-show="matrix.length"></i>
+        <span x-text="tableInfo"></span>
+      </div>
+      <div class="overflow-auto max-h-72 rounded border border-base-300" x-show="matrix.length">
+        <table class="table table-xs">
+          <tbody>
+            <template x-for="(row,r) in matrix" :key="r">
+              <tr :class="r === 0 && 'bg-base-200 font-medium'">
+                <template x-for="(c,i) in row" :key="i"><td class="font-mono" x-text="c"></td></template>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- STACK MODE ------------------------------------------------------ -->
+
+    <div class="sec" x-show="mode==='stack'">
+      <div class="sec-h"><i class="ph ph-cube"></i>View
+        <span class="tail" x-text="`${Math.round(yaw)}° / ${Math.round(pitch)}° / ${spread}`"></span>
+      </div>
+
+      <!-- One axis at a time, one big slider, and a nudge at each end. Three
+           thin sliders stacked was a desktop answer: on a phone the target is a
+           few millimetres tall and the value you want is usually one of them. -->
+      <div class="join w-full mb-2">
+        <template x-for="a in ['yaw','pitch','spread']" :key="a">
+          <button class="btn btn-sm lg:btn-xs join-item flex-1" :class="axis===a && 'btn-active'"
+                  @click="axis=a" x-text="a"></button>
+        </template>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="btn btn-sm lg:btn-xs btn-ghost px-2" @click="nudge(-1)"
+                :title="`decrease ${axis}`"><i class="ph ph-minus"></i></button>
+        <input type="range" class="range range-sm lg:range-xs flex-1"
+               :min="axisMeta[axis].min" :max="axisMeta[axis].max" :step="axisMeta[axis].step"
+               :value="axisValue" @input="setAxis(+$event.target.value)">
+        <button class="btn btn-sm lg:btn-xs btn-ghost px-2" @click="nudge(1)"
+                :title="`increase ${axis}`"><i class="ph ph-plus"></i></button>
+        <span class="w-14 lg:w-12 text-right font-mono tabular-nums text-sm"
+              x-text="Math.round(axisValue) + axisMeta[axis].unit"></span>
+      </div>
+
+      <!-- Saved views. The presets are the four that ship; anything beyond them
+           is a place you found by hand, and losing it on the next drag is the
+           whole reason this exists. -->
+      <div class="sec-h mt-3 mb-1.5">Views
+        <span class="tail">
+          <button class="link link-hover" @click="saveView()">＋ keep this one</button>
+        </span>
+      </div>
+      <div class="flex flex-wrap gap-1">
+        <template x-for="v in presets" :key="v.name">
+          <button class="btn btn-sm lg:btn-xs" :class="isCurrent(v) && 'btn-active'"
+                  @click="applyView(v)" x-text="v.name"></button>
+        </template>
+        <template x-for="(v,i) in views" :key="v.name + i">
+          <span class="join">
+            <button class="btn btn-sm lg:btn-xs join-item gap-1" :class="isCurrent(v) && 'btn-active'"
+                    @click="applyView(v)">
+              <i class="ph ph-bookmark-simple"></i><span x-text="v.name"></span>
+            </button>
+            <button class="btn btn-sm lg:btn-xs join-item px-1.5 btn-ghost" @click="removeView(i)"
+                    :title="`forget ${v.name}`"><i class="ph ph-x"></i></button>
+          </span>
+        </template>
+      </div>
+
+      <p class="text-xs opacity-50 leading-snug mt-2">
+        Dragging the stack orbits it. In a sheet or an in-app browser that
+        gesture can be taken as a swipe to dismiss, so the control above is the
+        one that always works.
+      </p>
+    </div>
+
+    <!-- The four hues carry meaning and nothing on the canvas says so. -->
+    <div class="sec" x-show="mode==='stack'">
+      <div class="sec-h"><i class="ph ph-palette"></i>Legend</div>
+      <div class="space-y-1">
+        <template x-for="l in stackLegend" :key="l.label">
+          <div class="flex items-start gap-2.5 text-sm">
+            <span class="w-3 h-3 rounded-[3px] mt-0.5 shrink-0" :style="`background:${l.color}`"></span>
+            <div class="leading-tight">
+              <span x-text="l.label"></span>
+              <span class="opacity-50 block text-xs" x-text="l.note"></span>
+            </div>
+          </div>
+        </template>
+      </div>
+      <label class="flex items-center gap-3 lg:gap-2 text-sm cursor-pointer mt-2 py-1">
+        <input type="checkbox" class="checkbox checkbox-sm lg:checkbox-xs" x-model="onlyFixed" @change="drawStack()">
+        <span class="leading-tight">Hide everything but fixed-text furniture</span>
+      </label>
+    </div>
+
+    <div class="sec flex-1" x-show="mode==='stack'">
+      <div class="sec-h"><i class="ph ph-scissors"></i>Trim
+        <span class="tail" x-text="trimMode"></span>
+      </div>
+      <p class="text-xs opacity-55 leading-snug mb-2">
+        Six numbers, not a gesture: a depth cannot be dragged honestly in a
+        projection, so the cut planes are set here and drawn there.
+      </p>
+      <template x-for="f in trimFields" :key="f.key">
+        <label class="row text-sm lg:text-xs">
+          <span class="k" x-text="f.label"></span>
+          <input type="range" class="range range-sm lg:range-xs flex-1" :min="f.min" :max="f.max" :step="f.step"
+                 x-model.number="trim[f.key]" @input="drawStack()">
+          <span class="v" x-text="Math.round(trim[f.key])"></span>
+        </label>
+      </template>
+      <div class="flex items-center gap-1.5 pt-2">
+        <div class="join">
+          <button class="btn btn-sm lg:btn-xs join-item" :class="trimMode==='keep' && 'btn-active'"
+                  @click="trimMode='keep'; drawStack()">keep</button>
+          <button class="btn btn-sm lg:btn-xs join-item" :class="trimMode==='drop' && 'btn-active'"
+                  @click="trimMode='drop'; drawStack()">drop</button>
+        </div>
+        <button class="btn btn-sm lg:btn-xs btn-ghost ml-auto gap-1" @click="proposeTrim()"
+                title="Set the bounds from what recurs across pages">
+          <i class="ph ph-magic-wand"></i>propose
+        </button>
+        <button class="btn btn-sm lg:btn-xs btn-ghost gap-1" @click="copyKept()"
+                title="Copy the text the trim keeps"><i class="ph ph-copy"></i></button>
+      </div>
+      <div class="text-xs font-mono opacity-65 mt-2" x-text="trimInfo"></div>
+      <div class="max-h-40 overflow-auto text-xs font-mono bg-base-200 rounded p-2 mt-1.5" x-show="furniture.length">
+        <template x-for="(f,i) in furniture.slice(0,40)" :key="i">
+          <div class="truncate" :class="!f.varies && 'text-success'"
+               x-text="`${String(Math.round(f.ratio*100)).padStart(3)}%  y${Math.round(f.base)}  ${f.varies?'~':'='}  ${f.samples[0]}`"></div>
+        </template>
+      </div>
+    </div>
+
+  </aside>
+</div>
+
+<script type="module">
+  // The canonical boot block (README.md). gh-api.js's auto-bootstrap
+  // instantiates window.gh and chains gh-boot.js, which auto-loads gh-auth.js,
+  // gh-fetch.js, kits/console.js, and vanilla-bundle.js, and mounts the FAB.
+  //   - No ?use: import from jsDelivr @main, the repo's one CDN entry point.
+  //   - ?use=<ref>: fetch gh-api.js from raw.githubusercontent (no branch-tip
+  //     lag) and blob-import it, handing repo/ref via window.__ghBlobBoot,
+  //     since a blob: import URL has no ref to parse.
+  const ref = new URLSearchParams(location.search).get('use');
+  if (ref) {
+    window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
+    const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`);
+    if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
+    const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+    try { await import(u); } finally { URL.revokeObjectURL(u); }
+  } else {
+    await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
+  }
+
+  await gh.load('kits/pdf.js');
+  await gh.load('kits/persistence.js');
+  await gh.load('alpine-bundle.js');
+</script>
+
+<script>
+// The colours are the page's only opinion about the kit's output. One hue per
+// layer, and the same hue in the legend, so a stray box is traceable to the
+// function that produced it without reading any code.
+const LAYERS = [
+  { key: 'items',   label: 'Text containers', color: '#38bdf8' },
+  { key: 'glyphs',  label: 'Characters',      color: '#a78bfa' },
+  { key: 'rules',   label: 'Vector rules',    color: '#f97316' },
+  { key: 'columns', label: 'Columns (align)', color: '#22c55e' },
+  { key: 'gutters', label: 'Gutters (space)', color: '#eab308' },
+  { key: 'cells',   label: 'Lattice cells',   color: '#ef4444' },
+];
+
+// pdf.js objects use private class fields, and Alpine deep-proxies every
+// property of a component's state, which detaches them from their own class.
+// So the live objects live here, outside reactivity, and only plain data
+// (counts, strings, the matrix) crosses into the component.
+const S = { doc: null, v: null, items: [], projected: [] };
+
+// What each hue means in the stack. The canvas cannot label itself without
+// becoming unreadable, so the key lives in the panel beside it.
+// The four that ship. A preset is a whole view, not just an orientation, so
+// recalling one restores the spread too; a stack read at 8pt spacing and one
+// read at 60 are different pictures and the name should mean both.
+const PRESETS = [
+  { name: 'front', yaw: 0,   pitch: 0,  spread: 26 },
+  { name: 'iso',   yaw: -32, pitch: 26, spread: 26 },
+  { name: 'side',  yaw: -78, pitch: 8,  spread: 26 },
+  { name: 'top',   yaw: -14, pitch: 72, spread: 26 },
+];
+
+const STACK_LEGEND = [
+  { color: 'rgba(37,99,235,.65)',  label: 'Content',        note: 'unique to its page' },
+  { color: 'rgba(21,128,61,.85)',  label: 'Fixed furniture', note: 'same text, same place, most pages' },
+  { color: 'rgba(202,138,4,.75)',  label: 'Moving furniture', note: 'same place, text changes: folios, data rows' },
+  { color: 'rgba(220,38,38,.7)',   label: 'Cut',            note: 'falls outside the trim' },
+];
+
+document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => ({
+  pageNum: 1, numPages: 0, scaleMode: 'fit', scale: 1.5, panel: false,
+  mode: 'page', yaw: -32, pitch: 26, spread: 26, trimMode: 'keep', onlyFixed: false,
+  viewOpen: true, hud: false, _hudTimer: null,
+  trim: { x1: 0, x2: 612, y1: 0, y2: 792, pageFrom: 1, pageTo: 1 },
+  trimFields: [], trimInfo: '', furniture: [],
+  W: 0, H: 0, status: 'no document', layerList: LAYERS,
+  layers: { items: true, glyphs: false, rules: true, columns: false, gutters: false, cells: true },
+  counts: {}, sel: [], selMode: 'contain', selInfo: '', drag: null, dragStyle: '',
+  matrix: [], tableInfo: '', agree: false,
+  stackLegend: STACK_LEGEND, presets: PRESETS,
+  axis: 'yaw', views: [],
+  axisMeta: {
+    yaw:    { min: -180, max: 180, step: 1, nudge: 15, unit: '°' },
+    pitch:  { min: -85,  max: 85,  step: 1, nudge: 15, unit: '°' },
+    spread: { min: 4,    max: 70,  step: 1, nudge: 4,  unit: '' },
+  },
+  busy: false, error: '', dropping: false, probe: null, toast: '',
+
+  async init() {
+    let t;
+    addEventListener('resize', () => {
+      clearTimeout(t);
+      t = setTimeout(() => this.redraw(), 150);
+    });
+    // Keyboard, for the desktop half of the audience. Nothing here is the only
+    // way to reach a function; every one of these has a control too.
+    addEventListener('keydown', e => {
+      if (e.target.matches('input, select, textarea')) return;
+      const k = e.key;
+      if (k === 'ArrowLeft') { this.go(-1); }
+      else if (k === 'ArrowRight') { this.go(1); }
+      else if (k === 'p') { this.setMode('page'); }
+      else if (k === 's') { this.setMode('stack'); }
+      else if (k === 'c') { this.panel = !this.panel; }
+      else if (k === '+' || k === '=') { this.zoom(1); }
+      else if (k === '-') { this.zoom(-1); }
+      else if (k === '0') { this.mode === 'stack' ? this.applyView(PRESETS[1]) : (this.scaleMode = 'fit', this.redraw()); }
+      else if (k >= '1' && k <= '6') {
+        const key = LAYERS[+k - 1]?.key;
+        if (key) { this.layers[key] = !this.layers[key]; this.redraw(); }
+      } else return;
+      e.preventDefault();
+    });
+    await this.loadSample();
+    await this.loadViews();
+  },
+
+  // --- orientation ---------------------------------------------------------
+
+  // The value of whichever axis the picker has selected. A getter rather than a
+  // template expression: `this` inside an Alpine expression is not the
+  // component, so `this[axis]` there is undefined and the readout reads NaN.
+  get axisValue() { return this[this.axis]; },
+
+  setAxis(v) {
+    const m = this.axisMeta[this.axis];
+    this[this.axis] = Math.min(m.max, Math.max(m.min, v));
+    this.flashHud();
+    this.drawStack();
+  },
+
+  nudge(dir) { this.setAxis(this[this.axis] + dir * this.axisMeta[this.axis].nudge); },
+
+  applyView(v) {
+    this.yaw = v.yaw; this.pitch = v.pitch;
+    if (v.spread != null) this.spread = v.spread;
+    this.flashHud();
+    this.drawStack();
+  },
+
+  // Whether the current orientation IS this view, within a degree. Cheaper and
+  // more honest than tracking a selected name: a slider nudge silently leaves
+  // the preset, and a flag would keep claiming otherwise.
+  isCurrent(v) {
+    return Math.abs(this.yaw - v.yaw) < 1 && Math.abs(this.pitch - v.pitch) < 1 &&
+           (v.spread == null || Math.abs(this.spread - v.spread) < 1);
+  },
+
+  // --- saved views ---------------------------------------------------------
+  //
+  // Through the persistence kit rather than localStorage, because that is the
+  // repo's answer for this and its store is already namespaced per page.
+  // Failures here are never fatal: the page works without saved views, so a
+  // blocked IndexedDB degrades to an in-memory list for the session.
+
+  async loadViews() {
+    try { this.views = (await window.persistence.load('pdfInspect.views')) ?? []; }
+    catch { this.views = []; }
+  },
+
+  async persistViews() {
+    try { await window.persistence.save('pdfInspect.views', JSON.parse(JSON.stringify(this.views))); }
+    catch { this.flash('saved for this session only'); }
+  },
+
+  saveView() {
+    const name = (prompt('Name this view', this.suggestViewName()) || '').trim();
+    if (!name) return;
+    const v = { name, yaw: Math.round(this.yaw), pitch: Math.round(this.pitch), spread: this.spread };
+    const at = this.views.findIndex(x => x.name === name);
+    if (at >= 0) this.views.splice(at, 1, v); else this.views.push(v);
+    this.persistViews();
+    this.flash(`kept "${name}"`);
+  },
+
+  // A name that says where you are, so an unnamed save is still findable.
+  suggestViewName() {
+    const p = Math.round(this.pitch), y = Math.round(this.yaw);
+    const face = Math.abs(p) > 55 ? (p > 0 ? 'from above' : 'from below')
+               : Math.abs(y) > 60 ? 'edge on'
+               : Math.abs(y) < 10 && Math.abs(p) < 10 ? 'straight on' : 'angled';
+    return `${face} ${y}/${p}`;
+  },
+
+  removeView(i) {
+    const [gone] = this.views.splice(i, 1);
+    this.persistViews();
+    this.flash(`forgot "${gone.name}"`);
+  },
+
+  setMode(m) { if (this.mode !== m) { this.mode = m; this.clearProbe(); this.redraw(); } },
+
+  setAllLayers(on) {
+    for (const l of LAYERS) this.layers[l.key] = on;
+    this.redraw();
+  },
+
+  // Steps through the same ladder the select offers, from wherever `fit` landed.
+  zoom(dir) {
+    const steps = [0.5, 0.75, 1, 1.5, 2, 3];
+    const near = steps.reduce((a, b) => Math.abs(b - this.scale) < Math.abs(a - this.scale) ? b : a);
+    const i = Math.min(steps.length - 1, Math.max(0, steps.indexOf(near) + dir));
+    this.scaleMode = String(steps[i]);
+    this.redraw();
+  },
+
+  async copy(text, what) {
+    try { await navigator.clipboard.writeText(text); this.flash(`copied ${what}`); }
+    catch { this.error = 'clipboard blocked in this context'; }
+  },
+
+  copyKept() {
+    const { kept } = window.pdf.stream.trim(S.doc.items, { ...this.trim, mode: this.trimMode });
+    this.copy(window.pdf.stream.rows(kept).map(r => r.str).join('\n'), `${kept.length} items`);
+  },
+
+  flash(msg) {
+    this.toast = msg;
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => { this.toast = ''; }, 1600);
+  },
+
+  // Built here rather than committed, so the fixture is readable as code and
+  // the page has something to show on first load with no file and no network.
+  async sampleBytes() {
+    await window.pdf.loadLibs();
+    const { PDFDocument, StandardFonts, rgb } = window.PDFLib;
+    const doc = await PDFDocument.create();
+    const page = doc.addPage([612, 792]);
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+    const black = rgb(0, 0, 0), white = rgb(1, 1, 1);
+
+    const COLS = [60, 220, 380, 540], ROWS = [700, 676, 652, 628];
+    const CELLS = [['AGENCY', 'CODE', 'AMOUNT'],
+                   ['Retirement Systems', '1240', '457,833'],
+                   ['Health Care Authority', '1070', '1,204,556']];
+    page.drawText('Summary of appropriations', { x: 60, y: 730, size: 13, font: bold, color: black });
+    for (const y of ROWS) page.drawLine({ start: { x: COLS[0], y }, end: { x: COLS.at(-1), y }, thickness: 1, color: black });
+    for (const x of COLS) page.drawLine({ start: { x, y: ROWS.at(-1) }, end: { x, y: ROWS[0] }, thickness: 1, color: black });
+    // The white rule: a reader never sees it, a naive extractor rules the
+    // header into two columns because of it.
+    page.drawLine({ start: { x: 140, y: ROWS[1] }, end: { x: 140, y: ROWS[0] }, thickness: 1, color: white });
+    CELLS.forEach((row, r) => row.forEach((t, c) =>
+      page.drawText(t, { x: COLS[c] + 6, y: ROWS[r] - 16, size: 9, font: r ? font : bold, color: black })));
+
+    // A dotted leader, drawn the way a budget report draws one.
+    for (let i = 0; i < 120; i++) {
+      const x = 200 + i * 2;
+      page.drawLine({ start: { x, y: 600 }, end: { x: x + 1, y: 600 }, thickness: 0.5, color: black });
+    }
+    page.drawText('Total appropriated', { x: 60, y: 596, size: 9, font, color: black });
+    page.drawText('1,662,389', { x: 480, y: 596, size: 9, font, color: black });
+
+    page.drawText('STRICKEN', { x: 60, y: 560, size: 9, font, color: black });
+    page.drawLine({ start: { x: 60, y: 563 }, end: { x: 106, y: 563 }, thickness: 0.6, color: black });
+    page.drawText('APPROVED', { x: 200, y: 560, size: 9, font, color: black });
+    page.drawLine({ start: { x: 200, y: 558 }, end: { x: 250, y: 558 }, thickness: 0.6, color: black });
+
+    // An unruled block below, so the stream detectors have something the
+    // lattice cannot see.
+    const un = [['Fund 600', 'Operating', '312,004'], ['Fund 722', 'Expense', '88,112'],
+                ['Fund 874', 'Trust', '1,262,273']];
+    un.forEach((row, r) => row.forEach((t, c) =>
+      page.drawText(t, { x: [60, 220, 470][c], y: 500 - r * 18, size: 9, font, color: black })));
+    // Eleven more pages, so the stack has something to be about: the same
+    // running head and a changing folio on every one (the furniture the
+    // detector should find), over body text that moves.
+    for (let n = 2; n <= 12; n++) {
+      const pg = doc.addPage([612, 792]);
+      pg.drawText('SUMMARY OF APPROPRIATIONS', { x: 60, y: 748, size: 8, font: bold, color: black });
+      pg.drawLine({ start: { x: 60, y: 742 }, end: { x: 552, y: 742 }, thickness: 0.75, color: black });
+      pg.drawText(`${n}`, { x: 300, y: 40, size: 8, font, color: black });
+      pg.drawText('Office of Financial Management', { x: 60, y: 40, size: 7, font, color: black });
+      for (let r = 0; r < 18; r++) {
+        const y = 700 - r * 34;
+        pg.drawText(`Account ${1000 + n * 20 + r}`, { x: 60, y, size: 9, font, color: black });
+        pg.drawText(`${(n * 37 + r * 11) % 90 + 10} FTE`, { x: 300, y, size: 9, font, color: black });
+        pg.drawText(`${((n * 811 + r * 97) % 900 + 100).toLocaleString()},000`, { x: 470, y, size: 9, font, color: black });
+      }
+    }
+    return doc.save();
+  },
+
+  async loadSample() { await this.open(() => this.sampleBytes(), 'building sample'); },
+
+  async loadFile(f) {
+    if (!f) return;
+    if (!/pdf$/i.test(f.type) && !/\.pdf$/i.test(f.name)) {
+      this.error = `${f.name} is not a PDF`;
+      return;
+    }
+    await this.open(() => f.arrayBuffer(), `reading ${f.name}`);
+  },
+
+  // One entry point for every source, so the busy state, the error surface, and
+  // the reset of per-document state cannot drift apart between them.
+  async open(source, what) {
+    this.busy = true; this.error = ''; this.status = what + '…'; this.clearProbe(); this.clearSel();
+    try {
+      const bytes = await source();
+      this.status = 'parsing…';
+      await this.parse(bytes);
+    } catch (e) {
+      this.error = `could not open: ${e.message}`;
+      this.status = 'no document';
+    } finally {
+      this.busy = false;
+    }
+  },
+
+  async parse(bytes) {
+    S.doc = await window.pdf.open(bytes);
+    this.numPages = S.doc.numPages;
+    this.pageNum = 1;
+    const box = S.doc.pages[0].getViewport({ scale: 1 });
+    this.trim = { x1: 0, x2: Math.round(box.width), y1: 0, y2: Math.round(box.height),
+                  pageFrom: 1, pageTo: this.numPages };
+    this.trimFields = [
+      { key: 'x1', label: 'left',  min: 0, max: Math.round(box.width),  step: 1 },
+      { key: 'x2', label: 'right', min: 0, max: Math.round(box.width),  step: 1 },
+      { key: 'y1', label: 'bottom', min: 0, max: Math.round(box.height), step: 1 },
+      { key: 'y2', label: 'top',   min: 0, max: Math.round(box.height), step: 1 },
+      { key: 'pageFrom', label: 'from p', min: 1, max: this.numPages, step: 1 },
+      { key: 'pageTo',   label: 'to p',   min: 1, max: this.numPages, step: 1 },
+    ];
+    this.furniture = window.pdf.stream.recurring(S.doc.items, { pages: this.numPages });
+    await this.redraw();
+  },
+
+  go(d) {
+    const n = Math.min(this.numPages, Math.max(1, this.pageNum + d));
+    if (n === this.pageNum) return;
+    this.pageNum = n; this.clearSel(); this.clearProbe(); this.redraw();
+  },
+
+  async redraw() {
+    if (!S.doc) return;
+    // pdf.js refuses a second render() on a canvas whose first is still in
+    // flight, and a fast toggle or page step gets there easily.
+    if (this._rendering) { this._queued = true; return; }
+    this._rendering = true;
+    try { if (this.mode === 'stack') { this.drawStack(); } else { await this.render(); } } finally {
+      this._rendering = false;
+      if (this._queued) { this._queued = false; this.redraw(); }
+    }
+  },
+
+  async render() {
+    const n = this.pageNum;
+    const page = S.doc.pages[n - 1];
+    // 'fit' is the default because the first thing a phone showed was a page
+    // squeezed into a sliver beside a panel that could not be closed.
+    if (this.scaleMode === 'fit') {
+      const host = document.getElementById('scroll');
+      const avail = Math.max(240, host.clientWidth - 32);
+      this.scale = Math.min(3, Math.max(0.4, avail / page.getViewport({ scale: 1 }).width));
+    } else {
+      this.scale = Number(this.scaleMode);
+    }
+    const vp = page.getViewport({ scale: this.scale });
+    this.W = Math.ceil(vp.width); this.H = Math.ceil(vp.height);
+
+    const canvas = document.getElementById('page');
+    canvas.width = this.W; canvas.height = this.H;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, this.W, this.H);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+
+    // Every coordinate below comes from the kit's projection. Nothing here
+    // multiplies by scale or subtracts from height.
+    S.v = S.doc.viewOf(n, { scale: this.scale });
+    S.items = S.doc.page(n);
+    S.projected = S.v.items(S.items);
+    this.drawOverlay(n);
+    this.readTable(n);
+    this.status = `${S.items.length} items · ${S.doc.paths.h.filter(l => l.page === n).length}h ${S.doc.paths.v.filter(l => l.page === n).length}v rules`;
+  },
+
+  drawOverlay(n) {
+    const svg = document.getElementById('ov');
+    const NS = 'http://www.w3.org/2000/svg';
+    svg.setAttribute('viewBox', `0 0 ${this.W} ${this.H}`);
+    svg.innerHTML = '';
+    const c = Object.fromEntries(LAYERS.map(l => [l.key, l.color]));
+    const counts = {};
+    const add = (tag, attrs) => {
+      const el = document.createElementNS(NS, tag);
+      for (const [k, val] of Object.entries(attrs)) el.setAttribute(k, val);
+      svg.appendChild(el); return el;
+    };
+    const rect = (b, stroke, fill = 'none', w = 1) =>
+      add('rect', { x: b.left, y: b.top, width: Math.max(b.w, 0.5), height: Math.max(b.h, 0.5),
+                    fill, stroke, 'stroke-width': w });
+
+    const lines = S.v.lines({
+      h: S.doc.paths.h.filter(l => l.page === n),
+      v: S.doc.paths.v.filter(l => l.page === n),
+    });
+    const grids = S.doc.grids(n);
+    const cols = window.pdf.stream.columns(S.items);
+    const guts = window.pdf.stream.gutters(S.items);
+
+    counts.items = S.projected.length;
+    counts.glyphs = S.projected.reduce((a, p) => a + p.glyphs.length, 0);
+    counts.rules = lines.h.length + lines.v.length;
+    counts.columns = cols.length;
+    counts.gutters = guts.length;
+    counts.cells = grids.reduce((s, g) => s + g.cells.length, 0);
+
+    // Painted back to front, so the fine detail is never buried.
+    if (this.layers.gutters) for (const g of guts) {
+      const b = S.v.box({ x1: g.x1, y1: 0, x2: g.x2, y2: 792 });
+      rect(b, 'none', c.gutters + '22');
+    }
+    let colLabel = 0;
+    if (this.layers.columns) for (const col of cols) {
+      const b = S.v.box({ x1: col.at, y1: 0, x2: col.at, y2: 792 });
+      add('line', { x1: b.left, y1: 0, x2: b.left, y2: this.H,
+                    stroke: c.columns, 'stroke-width': 1.5, 'stroke-dasharray': '6 4' });
+      // Stagger the labels down a short ladder: adjacent columns are routinely
+      // a few points apart (a 60pt body margin beside a 66pt cell inset), and
+      // at that spacing the captions overprint into an unreadable smear.
+      add('text', { x: b.left + 3, y: 12 + (colLabel++ % 4) * 11, fill: c.columns, class: 'lbl' })
+        .textContent = `${Math.round(col.at)} ${col.edge} ×${col.count}`;
+    }
+    if (this.layers.cells) for (const g of grids) for (const cell of g.cells) {
+      const b = S.v.box(cell);
+      rect(b, c.cells, c.cells + '18', 1);
+      add('text', { x: b.left + 2, y: b.top + 9, fill: c.cells, class: 'lbl' })
+        .textContent = `${cell.row},${cell.col}` + (cell.colspan > 1 || cell.rowspan > 1 ? `+${cell.colspan}x${cell.rowspan}` : '');
+    }
+    if (this.layers.rules) {
+      // Three states, three treatments, because "what was extracted" and "what
+      // the lattice walks" are different sets and the gap between them is the
+      // whole white-rule story. Solid: a rule that survives geom.usable and
+      // will be walked. Dashed and faint: extracted but discarded, because it
+      // is the page colour or too short. Rose: a rule the kit resolved as
+      // decoration, which is how underline detection becomes visible instead of
+      // staying a boolean in a console dump.
+      const rawH = S.doc.paths.h.filter(l => l.page === n);
+      const rawV = S.doc.paths.v.filter(l => l.page === n);
+      const keptH = new Set(window.pdf.geom.usable(rawH, 'h').map(l => l.id));
+      const keptV = new Set(window.pdf.geom.usable(rawV, 'v').map(l => l.id));
+      counts.rules = `${keptH.size + keptV.size}/${rawH.length + rawV.length}`;
+      const draw = (l, kept) => {
+        const role = l.source.role;
+        add('line', { x1: l.left, y1: l.top, x2: l.right, y2: l.bottom,
+                      stroke: role ? '#f43f5e' : c.rules,
+                      'stroke-width': role ? 2.5 : 1.5,
+                      'stroke-dasharray': kept ? 'none' : '3 3',
+                      'stroke-opacity': kept ? 0.85 : 0.35 });
+      };
+      for (const l of lines.h) draw(l, keptH.has(l.source.id));
+      for (const l of lines.v) draw(l, keptV.has(l.source.id));
+    }
+    if (this.layers.items) for (const p of S.projected) {
+      if (!p.str.trim()) continue;
+      rect(p, c.items, 'none', 0.75);
+    }
+    if (this.layers.glyphs) for (const p of S.projected) for (const g of p.glyphs) {
+      if (!g.char.trim()) continue;
+      rect(g, g.underline || g.strikethrough ? '#f43f5e' : c.glyphs, 'none', 0.5);
+    }
+    this.counts = counts;
+  },
+
+  // --- the stack -----------------------------------------------------------
+  //
+  // Pages laid out along a third axis, so what repeats becomes a column through
+  // the stack and what is unique to one page stands alone. The projection is a
+  // plain axonometric: two rotations, no perspective and no camera, because the
+  // question this view answers is "does this element recur at this position",
+  // and perspective would make two elements at the same (x, y) on different
+  // pages land at different screen points, which is precisely the comparison
+  // being made. Foreshortening would look better and read worse.
+  //
+  // Drawn to one canvas rather than as DOM planes: a hundred pages of item
+  // boxes is tens of thousands of elements, and the browser has no reason to
+  // lay any of them out.
+  // Model space to a flat plane, with no scale and no offset applied. Keeping
+  // those out means the caller can project the volume's corners first, measure
+  // the result, and derive a scale that fits: the view then never clips, at any
+  // orientation, which the first version did the moment it was rotated.
+  //
+  // Depth is centred on the middle page, not on page one. Rotating about the
+  // front sheet swings the whole stack sideways out of frame, which reads as
+  // the wrong pivot because it is.
+  proj(x, y, p, g) {
+    const dx = x - g.midX;
+    const dy = g.midY - y;
+    const dz = (p - g.midP) * this.spread;
+    return [dx * g.cosY + dz * g.sinY,
+            dy * g.cosP + (-dx * g.sinY + dz * g.cosY) * g.sinP];
+  },
+
+  drawStack() {
+    if (!S.doc) return;
+    const cv = document.getElementById('stack');
+    const host = document.getElementById('scroll');
+    const W = Math.max(280, host.clientWidth - 24), H = Math.max(280, host.clientHeight - 24);
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    cv.width = W * dpr; cv.height = H * dpr;
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    const g2 = cv.getContext('2d');
+    g2.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g2.clearRect(0, 0, W, H);
+
+    const vp = S.doc.pages[0].getViewport({ scale: 1 });
+    const N = S.doc.numPages;
+    const yaw = this.yaw * Math.PI / 180, pitch = this.pitch * Math.PI / 180;
+    const g = {
+      midX: vp.width / 2, midY: vp.height / 2, midP: (1 + N) / 2,
+      sinY: Math.sin(yaw), cosY: Math.cos(yaw),
+      sinP: Math.sin(pitch), cosP: Math.cos(pitch),
+    };
+
+    // Fit the volume, whatever the orientation. Project the eight corners,
+    // measure the extent, and pick the scale and offset from that.
+    const corners = [];
+    for (const p of [1, N]) for (const x of [0, vp.width]) for (const y of [0, vp.height])
+      corners.push(this.proj(x, y, p, g));
+    const xs = corners.map(c => c[0]), ys = corners.map(c => c[1]);
+    const spanX = Math.max(1, Math.max(...xs) - Math.min(...xs));
+    const spanY = Math.max(1, Math.max(...ys) - Math.min(...ys));
+    const s = Math.min(W * 0.88 / spanX, H * 0.88 / spanY);
+    const cx = W / 2 - ((Math.min(...xs) + Math.max(...xs)) / 2) * s;
+    const cy = H / 2 - ((Math.min(...ys) + Math.max(...ys)) / 2) * s;
+    const P = (x, y, p) => { const [a, b] = this.proj(x, y, p, g); return [cx + a * s, cy + b * s]; };
+
+    const region = { ...this.trim, mode: this.trimMode };
+    const { kept, removed } = window.pdf.stream.trim(S.doc.items, region);
+    const cut = new Set(removed);
+    // Two kinds of recurrence, and the distinction is the finding. In a tabular
+    // document the body rows recur positionally too, so "appears at the same
+    // place on most pages" is not by itself a footer detector. What separates
+    // them is whether the text repeats: a running head says the same thing every
+    // page, a folio and a data row do not.
+    const fixedItems = new Set(this.furniture.filter(f => !f.varies).flatMap(f => f.items));
+    const movingItems = new Set(this.furniture.filter(f => f.varies).flatMap(f => f.items));
+
+    // Back to front, so nearer pages occlude further ones.
+    const order = Array.from({ length: N }, (_, i) => i + 1).reverse();
+    for (const p of order) {
+      const c = [[0, 0], [vp.width, 0], [vp.width, vp.height], [0, vp.height]].map(([x, y]) => P(x, y, p));
+      g2.beginPath(); g2.moveTo(...c[0]); for (const pt of c.slice(1)) g2.lineTo(...pt); g2.closePath();
+      // Barely-there sheets. The first attempt filled each at 0.72 alpha and
+      // twelve stacked into an opaque slab: the near page was legible and the
+      // eleven behind it were gone, which is the one thing this view exists to
+      // show. A stack has to be seen through.
+      g2.fillStyle = 'rgba(255,255,255,0.05)'; g2.fill();
+      g2.strokeStyle = 'rgba(0,0,0,0.10)'; g2.lineWidth = 1; g2.stroke();
+
+      // Depth cue by opacity rather than by size, since the projection is
+      // deliberately parallel: far pages fade, near pages read.
+      const near = 1 - (p - 1) / Math.max(1, N - 1);
+      const fade = 0.28 + near * 0.5;
+      for (const it of S.doc.page(p)) {
+        if (!it.str.trim()) continue;
+        if (this.onlyFixed && !fixedItems.has(it) && !cut.has(it)) continue;
+        const a = P(it.x1, it.y1, p), b = P(it.x2, it.y2, p);
+        g2.fillStyle = cut.has(it) ? `rgba(220,38,38,${fade})`
+                     : fixedItems.has(it) ? `rgba(21,128,61,${fade + 0.15})`
+                     : movingItems.has(it) ? `rgba(202,138,4,${fade})`
+                     : `rgba(37,99,235,${fade * 0.7})`;
+        g2.fillRect(Math.min(a[0], b[0]), Math.min(a[1], b[1]),
+                    Math.max(1.2, Math.abs(b[0] - a[0])), Math.max(1.2, Math.abs(b[1] - a[1])));
+      }
+    }
+
+    // The cut planes, drawn through the whole stack so a bound is visible as a
+    // surface rather than as a number that changed somewhere.
+    const p0 = Number(this.trim.pageFrom), p1 = Number(this.trim.pageTo);
+    const plane = (pts) => {
+      g2.beginPath(); g2.moveTo(...pts[0]); for (const q of pts.slice(1)) g2.lineTo(...q); g2.closePath();
+      g2.fillStyle = 'rgba(13,148,136,0.07)'; g2.fill();
+      g2.strokeStyle = 'rgba(13,148,136,0.8)'; g2.lineWidth = 1; g2.stroke();
+    };
+    for (const y of [Number(this.trim.y1), Number(this.trim.y2)])
+      plane([P(0, y, p0), P(vp.width, y, p0), P(vp.width, y, p1), P(0, y, p1)]);
+    for (const x of [Number(this.trim.x1), Number(this.trim.x2)])
+      plane([P(x, 0, p0), P(x, vp.height, p0), P(x, vp.height, p1), P(x, 0, p1)]);
+
+    const fixedCount = this.furniture.filter(f => !f.varies).length;
+    this.trimInfo = `${kept.length} kept · ${removed.length} cut · ` +
+      `${fixedCount} fixed + ${this.furniture.length - fixedCount} moving, ` +
+      `recurring over ${N} pages`;
+    this.status = `${N} pages · ${S.doc.items.length} items`;
+  },
+
+  // Any change to the view raises the readout and schedules its retirement.
+  // Called from the orbit, the sliders, and the presets alike, so the feedback
+  // does not depend on which control you reached for.
+  flashHud() {
+    this.hud = true;
+    clearTimeout(this._hudTimer);
+    this._hudTimer = setTimeout(() => { this.hud = false; }, 1400);
+  },
+
+  // Turn the detector's output into a proposed cut, which is the point of
+  // having a detector: the sliders start somewhere defensible rather than at
+  // the page edges.
+  proposeTrim() {
+    if (!this.furniture.length) { this.trimInfo = 'nothing recurs on enough pages'; return; }
+    const vp = S.doc.pages[0].getViewport({ scale: 1 });
+    const mid = vp.height / 2;
+    const bottomFurniture = this.furniture.filter(f => f.base < mid * 0.5);
+    const topFurniture = this.furniture.filter(f => f.base > mid * 1.5);
+    this.trim = {
+      ...this.trim,
+      y1: bottomFurniture.length ? Math.ceil(Math.max(...bottomFurniture.map(f => f.y2)) + 2) : 0,
+      y2: topFurniture.length ? Math.floor(Math.min(...topFurniture.map(f => f.y1)) - 2) : Math.round(vp.height),
+    };
+    this.trimMode = 'keep';
+    this.drawStack();
+  },
+
+  // Orbit. The pointer handlers on the stack canvas are separate from the
+  // page-mode drag, because one selects and the other rotates.
+  orbitStart(e) {
+    // Claim the gesture. Without this an enclosing sheet (the Claude app's
+    // in-app browser, a mobile drawer) can read a horizontal drag as a swipe to
+    // dismiss and take the pointer away mid-orbit. Capture plus preventDefault
+    // keeps it here; the View sliders exist for where that is not enough.
+    e.preventDefault();
+    this.flashHud();
+    this._orbit = { x: e.clientX, y: e.clientY, yaw: this.yaw, pitch: this.pitch };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  },
+  orbitMove(e) {
+    if (!this._orbit) return;
+    // Normalized per axis, so a drag across the canvas turns the same amount on
+    // a phone as on a desktop. The rates are deliberately unequal: a full-width
+    // horizontal drag is 120 degrees of yaw, a full-height vertical one is 90 of
+    // pitch, and a shared rate made the vertical axis feel twice as fast because
+    // the canvas is taller than it is wide on a phone.
+    const rect = e.currentTarget.getBoundingClientRect();
+    const kx = 120 / Math.max(240, rect.width);
+    const ky = 90 / Math.max(240, rect.height);
+    this.yaw = this._orbit.yaw + (e.clientX - this._orbit.x) * kx;
+    this.pitch = Math.max(-85, Math.min(85, this._orbit.pitch - (e.clientY - this._orbit.y) * ky));
+    this.flashHud();
+    this.drawStack();
+  },
+  orbitEnd() { this._orbit = null; },
+
+  // The comparison the kit exists to make, and it is only meaningful over the
+  // same region: run stream across a whole page and it reads the title, the
+  // leader row, and the unruled block too, so it "differs" from any lattice
+  // table by construction and says nothing. Scoped to the ruled area, the two
+  // readings are actually answerable against each other.
+  readTable(n) {
+    const grids = S.doc.grids(n);
+    const items = S.doc.page(n);
+    if (!grids.length) {
+      const cols = window.pdf.stream.columns(items).map(c => c.x1);
+      this.matrix = window.pdf.stream.split(items, cols).map(r => r.cells);
+      this.agree = false;
+      this.tableInfo = `no ruled table · stream only, ${this.matrix.length} rows`;
+      return;
+    }
+    const g = grids[0];
+    const inside = items.filter(i =>
+      i.x1 >= g.x1 - 1 && i.x2 <= g.x2 + 1 && i.base >= g.y1 - 1 && i.base <= g.y2 + 1);
+    const cols = window.pdf.stream.columns(inside).map(c => c.x1);
+    const streamRows = window.pdf.stream.split(inside, cols).map(r => r.cells);
+    this.matrix = g.matrix;
+    this.agree = JSON.stringify(g.matrix) === JSON.stringify(streamRows);
+    this.tableInfo = `lattice ${g.rows}×${g.cols} · stream ${streamRows.length}×${cols.length} ` +
+      `over the same region · ${this.agree ? 'agree' : 'DIFFER'}`;
+  },
+
+  // Drag selection. Screen coordinates go straight to the kit; the only thing
+  // this page computes is the rectangle the pointer described.
+  dragStart(e) {
+    e.preventDefault();
+    const r = e.currentTarget.getBoundingClientRect();
+    this.drag = { x0: e.clientX - r.left, y0: e.clientY - r.top, x1: e.clientX - r.left, y1: e.clientY - r.top };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  },
+  // The reading under the pointer, whether or not a drag is in progress. Uses
+  // the kit's own hit test against the projected boxes, so what the panel
+  // reports is the same box the overlay drew.
+  hover(e) {
+    if (!S.v || !S.projected.length) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const hit = S.v.at(e.clientX - r.left, e.clientY - r.top,
+                       S.projected.filter(p => p.str.trim()));
+    if (!hit) { this.clearProbe(); return; }
+    const it = hit.source;
+    // Which lattice cell, if any, claims it. Answering "where did this land"
+    // is most of the reason to hover something in the first place.
+    const cell = (S.doc.grids(this.pageNum)[0]?.cells ?? [])
+      .find(c => it.x1 >= c.x1 - 1 && it.x2 <= c.x2 + 1 && it.base >= c.y1 - 1 && it.base <= c.y2 + 1);
+    const mark = document.getElementById('probeMark');
+    mark.innerHTML = '';
+    Object.assign(mark.appendChild(document.createElement('div')).style, {
+      position: 'absolute', left: hit.left + 'px', top: hit.top + 'px',
+      width: Math.max(hit.w, 2) + 'px', height: Math.max(hit.h, 2) + 'px',
+      outline: '2px solid oklch(var(--p))', outlineOffset: '1px',
+      background: 'oklch(var(--p) / 0.12)', borderRadius: '2px',
+    });
+    this.probe = {
+      str: it.str, x1: it.x1, x2: it.x2, w: it.w, h: it.h, base: it.base,
+      font: it.fontName || 'unknown', fontSize: it.fontSize,
+      bold: it.bold, italic: it.italic,
+      underline: it.underline, strikethrough: it.strikethrough,
+      cell: cell ? `cell ${cell.row},${cell.col}` : null,
+    };
+  },
+
+  clearProbe() {
+    this.probe = null;
+    const m = document.getElementById('probeMark');
+    if (m) m.innerHTML = '';
+  },
+
+  dragMove(e) {
+    if (!this.drag) { this.hover(e); return; }
+    const r = e.currentTarget.getBoundingClientRect();
+    this.drag.x1 = e.clientX - r.left; this.drag.y1 = e.clientY - r.top;
+    const { x0, y0, x1, y1 } = this.drag;
+    this.dragStyle = `left:${Math.min(x0, x1)}px;top:${Math.min(y0, y1)}px;` +
+                     `width:${Math.abs(x1 - x0)}px;height:${Math.abs(y1 - y0)}px`;
+  },
+  dragEnd() {
+    if (!this.drag) return;
+    const { x0, y0, x1, y1 } = this.drag;
+    this.drag = null;
+    if (Math.abs(x1 - x0) < 4 || Math.abs(y1 - y0) < 4) return;
+    const rect = { left: x0, top: y0, right: x1, bottom: y1 };
+    const picked = S.v.select(rect, S.projected, { mode: this.selMode })
+      .filter(p => p.str.trim());
+    this.sel = picked.map(p => p.str);
+    const region = S.v.unbox(rect);
+    const sub = picked.map(p => p.source);
+    const subCols = sub.length ? window.pdf.stream.columns(sub).length : 0;
+    this.selInfo = `${picked.length} items · region ` +
+      `${region.x1},${region.y1} → ${region.x2},${region.y2} · ${subCols} columns`;
+    if (picked.length && matchMedia('(max-width: 1023px)').matches) this.panel = true;
+  },
+  clearSel() { this.sel = []; this.selInfo = ''; },
+})));
+</script>
+</body>
+</html>

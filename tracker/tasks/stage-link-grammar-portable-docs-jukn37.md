@@ -1,10 +1,11 @@
 ---
 id: stage-link-grammar-portable-docs-jukn37
 title: Propagate the stage link's new grammar to the portable docs
-status: in-progress
+status: done
 track: independent
 opened: 2026-07-21
 session: claude/stage-link-grammar-docs-jukn37
+closed: 2026-07-26
 ---
 # Propagate the stage link's new grammar to the portable docs
 
@@ -22,3 +23,4 @@ Done means: a reader of `docs/CONVENTIONS.md` (in web-tools or any repo that pul
 ## Progress log
 - 2026-07-21: Filed on main after PR #257 merged. The in-repo mechanics doc and edit-review skill were updated in that PR; the portable CONVENTIONS.md primitive and the rest of the to-go set were not, and now understate the link.
 - 2026-07-21: Claimed on branch claude/stage-link-grammar-docs-jukn37 (PR #259). Updated docs/CONVENTIONS.md's 'Stage a fileset' primitive and the show-repo skill's stage-link bullet for the prompts/mode/query grammar; PORTABLE.md rows only point at the grammar, so left unchanged. Flips to done on merge.
+- 2026-07-26 closed: Delivered in PR #259 (branch fully merged to main). Found by `/in-flight`, which reconciles every in-progress claim against the branch it names.

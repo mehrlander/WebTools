@@ -264,3 +264,22 @@ test('a cache written before per-branch sessions still resolves its old string',
   assert.equal(r.session, SESS('LEGACY'));
   assert.equal(r.sessionsExact, false, 'a legacy string was never exact');
 });
+
+test('past the compare cap the sessions stand but stop claiming completeness', async () => {
+  // GitHub lists at most 250 commits in a compare and reports the true count in
+  // total_commits. The listed tail is the newest end, so the session the icon
+  // opens is still right; only the count would be a lie. firstCommitDate (PR
+  // #298) refuses to answer past the same cap, and this reads the same signal.
+  const gh = {
+    ago: () => '1d ago',
+    compare: async () => ({ files: [{ filename: 'a.txt' }], ahead_by: 400, behind_by: 0,
+      total_commits: 400,
+      commits: [commit(`old\n\nClaude-Session: ${SESS('S1')}`), commit(`new\n\nClaude-Session: ${SESS('S2')}`)] }),
+    req: async () => ({ tree: [{ path: 'a.txt', type: 'blob', sha: 'tip' }] }),
+  };
+  const main = BS.treeSets([{ path: 'a.txt', type: 'blob', sha: 'other' }]);
+  const r = await BS.surveyBranchLive(gh, { name: 'huge', sha: 'tip', date: new Date().toISOString() }, main);
+  assert.deepEqual(r.sessions, [SESS('S2'), SESS('S1')], 'the listed tail is still usable');
+  assert.equal(r.sessionsExact, false, 'but the list is not the whole branch');
+  assert.equal(r.firstDate, '', 'and the lifespan start is unknowable, per #298');
+});

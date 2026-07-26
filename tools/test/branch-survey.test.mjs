@@ -101,3 +101,88 @@ test('daysAgo floors to whole days', () => {
   assert.equal(B.daysAgo('2026-07-17T00:00:00Z', now), 0);
   assert.equal(B.daysAgo('2026-07-10T11:00:00Z', now), 7);
 });
+
+// ── firstCommitDate: the branch's start, off a compare already in hand ──────
+// The lifespan the Open view renders ("5d → 2h") needs the branch's OLDEST
+// unique commit. A compare lists those oldest-first, so the answer is
+// commits[0], free of any extra call, but only when the list is whole.
+
+test('firstCommitDate takes the oldest unique commit (compare is oldest-first)', () => {
+  const cmp = { total_commits: 3, commits: [
+    { commit: { committer: { date: '2026-07-01T00:00:00Z' } } },
+    { commit: { committer: { date: '2026-07-04T00:00:00Z' } } },
+    { commit: { committer: { date: '2026-07-09T00:00:00Z' } } },
+  ] };
+  assert.equal(B.firstCommitDate(cmp), '2026-07-01T00:00:00Z');
+});
+
+test('firstCommitDate: a branch past the 250-commit cap has no knowable start', () => {
+  // GitHub caps the commits array but still reports the true count, so the
+  // oldest entry present is NOT the branch's first. Say nothing rather than
+  // report the 250th-from-tip as the start.
+  const cmp = { total_commits: 300, commits: [{ commit: { committer: { date: '2026-07-01T00:00:00Z' } } }] };
+  assert.equal(B.firstCommitDate(cmp), '');
+});
+
+test('firstCommitDate: empty or malformed compares yield ""', () => {
+  assert.equal(B.firstCommitDate({ commits: [] }), '');
+  assert.equal(B.firstCommitDate({}), '');
+  assert.equal(B.firstCommitDate(null), '');
+  assert.equal(B.firstCommitDate({ commits: [{}] }), '');
+});
+
+test('firstCommitDate: no total_commits falls back to the list length', () => {
+  const cmp = { commits: [{ commit: { committer: { date: '2026-06-02T00:00:00Z' } } }] };
+  assert.equal(B.firstCommitDate(cmp), '2026-06-02T00:00:00Z');
+});
+
+// ── surveyBranchLive carries firstDate through both of its paths ────────────
+
+const treeReq = (shas) => ({ tree: shas.map((sha, i) => ({ path: 'f' + i, type: 'blob', sha })) });
+
+test('surveyBranchLive reports firstDate from the compare it already runs', async () => {
+  const gh = {
+    async compare() {
+      return { ahead_by: 2, behind_by: 0, total_commits: 2,
+               files: [{ filename: 'a.txt' }],
+               commits: [
+                 { commit: { committer: { date: '2026-07-02T00:00:00Z' }, message: 'start' } },
+                 { commit: { committer: { date: '2026-07-08T00:00:00Z' }, message: 'tip\n\nbody' } },
+               ] };
+    },
+    async req() { return treeReq(['tipsha']); },
+  };
+  const main = B.treeSets([{ path: 'a.txt', type: 'blob', sha: 'other' }]);
+  const r = await B.surveyBranchLive(gh, { name: 'feat', sha: 'tipsha' }, main,
+                                     { now: Date.parse('2026-07-09T00:00:00Z') });
+  assert.equal(r.firstDate, '2026-07-02T00:00:00Z');
+  assert.equal(r.date, '2026-07-08T00:00:00Z');   // tip is still the LAST entry
+  assert.equal(r.subject, 'tip');
+  assert.equal(r.aheadBy, 2);
+});
+
+test('surveyBranchLive: no merge base means no honest start', async () => {
+  // With no common ancestor there is no unique-commit list, so the oldest
+  // commit reachable is the repo's history rather than the branch's. The row
+  // shows its tip age alone instead of claiming a start it cannot know.
+  let firstCompare = true;
+  const gh = {
+    async compare() {
+      if (firstCompare) { firstCompare = false; const e = new Error('no merge base'); e.status = 404; throw e; }
+      return { files: [{ filename: 'a.txt' }], commits: [] };
+    },
+    async req(path) {
+      if (path.startsWith('commits?')) return [
+        { sha: 'new', commit: { committer: { date: '2026-07-08T00:00:00Z' }, message: 'tip' }, parents: [{ sha: 'p1' }] },
+        { sha: 'old', commit: { committer: { date: '2026-01-01T00:00:00Z' }, message: 'ancient' }, parents: [{ sha: 'p0' }] },
+      ];
+      return treeReq(['tipsha']);
+    },
+  };
+  const main = B.treeSets([{ path: 'a.txt', type: 'blob', sha: 'other' }]);
+  const r = await B.surveyBranchLive(gh, { name: 'rewritten', sha: 'tipsha' }, main,
+                                     { now: Date.parse('2026-07-09T00:00:00Z') });
+  assert.equal(r.noBase, true);
+  assert.equal(r.firstDate, '');
+  assert.equal(r.date, '2026-07-08T00:00:00Z');
+});
