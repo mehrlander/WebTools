@@ -173,3 +173,94 @@ test('no session anywhere leaves the row falsy, so the icon stays hidden', () =>
   });
   assert.equal(rowFor('quiet').session, '');
 });
+
+// ── the exact path: sessions off the compare the crawl already runs ─────────
+// branchSessions() walks ancestors and can drift into the default branch. The
+// crawl's compare returns exactly the commits the branch has and the default
+// does not, so sessions read there are exact. Measured, collecting ALL sessions
+// from an ancestor walk scores 55% precision at depth 8 and 19% at depth 40;
+// off the compare it is 100% by construction.
+
+const surveySrc = readFileSync(path.join(repoRoot, 'lib/branch-survey.js'), 'utf8');
+const BS = (() => { const w = {}; new Function('window', surveySrc)(w); return w.BranchSurvey; })();
+const commit = (msg) => ({ commit: { message: msg } });
+
+test('sessionsIn reads compare order (oldest first) and returns newest first', () => {
+  const out = BS.sessionsIn([
+    commit(`first\n\nClaude-Session: ${SESS('OLD')}`),
+    commit(`second\n\nClaude-Session: ${SESS('NEW')}`),
+  ]);
+  assert.deepEqual(out, [SESS('NEW'), SESS('OLD')]);
+});
+
+test('sessionsIn dedupes a session repeated across commits', () => {
+  const out = BS.sessionsIn([commit(`a ${SESS('X')}`), commit(`b ${SESS('X')}`), commit(`c ${SESS('Y')}`)]);
+  assert.deepEqual(out, [SESS('Y'), SESS('X')]);
+});
+
+test('sessionsIn ignores commits with no trailer and empty input', () => {
+  assert.deepEqual(BS.sessionsIn([commit('merge branch'), commit('hand-written')]), []);
+  assert.deepEqual(BS.sessionsIn(null), []);
+});
+
+test('surveyBranchLive marks compare-sourced sessions exact', async () => {
+  const gh = {
+    ago: () => '1d ago',
+    compare: async () => ({ files: [{ filename: 'a.txt' }], ahead_by: 2, behind_by: 0,
+      commits: [commit(`one\n\nClaude-Session: ${SESS('S1')}`), commit(`two\n\nClaude-Session: ${SESS('S2')}`)] }),
+    req: async () => ({ tree: [{ path: 'a.txt', type: 'blob', sha: 'tip' }] }),
+  };
+  const main = BS.treeSets([{ path: 'a.txt', type: 'blob', sha: 'other' }]);
+  const r = await BS.surveyBranchLive(gh, { name: 'f', sha: 'tip', date: new Date().toISOString() }, main);
+  assert.deepEqual(r.sessions, [SESS('S2'), SESS('S1')]);
+  assert.equal(r.sessionsExact, true);
+});
+
+test('a no-merge-base branch keeps one session and is not marked exact', async () => {
+  // Its history reaches into whatever line it came from, so a count there would
+  // be counting the old history rather than the branch.
+  const e404 = Object.assign(new Error('404'), { status: 404 });
+  const gh = {
+    ago: () => '1y ago',
+    compare: async (base) => {
+      if (base === 'main') throw e404;
+      return { files: [{ filename: 'a.txt' }] };
+    },
+    req: async (p) => p.startsWith('commits')
+      ? [commit(`newest\n\nClaude-Session: ${SESS('TIP')}`),
+         commit(`older\n\nClaude-Session: ${SESS('DEEP')}`)]
+      : { tree: [{ path: 'a.txt', type: 'blob', sha: 'tip' }] },
+  };
+  const main = BS.treeSets([]);
+  const r = await BS.surveyBranchLive(gh, { name: 'orphan', sha: 'tip', date: '2025-01-01T00:00:00Z' }, main);
+  assert.equal(r.noBase, true);
+  assert.deepEqual(r.sessions, [SESS('TIP')], 'newest only');
+  assert.equal(r.sessionsExact, false);
+});
+
+test('a row prefers the branch exact list over the PR and the walk', () => {
+  data.activity = activity({
+    branches: [{ name: 'f', group: 'stranded', sessions: [SESS('B1'), SESS('B2')], sessionsExact: true,
+                 session: SESS('WALK') }],
+    openPRs: [{ number: 1, head: 'f', sessions: [SESS('P1')], sessionsExact: true }],
+  });
+  const r = rowFor('f');
+  assert.equal(r.session, SESS('B1'), 'the icon opens the newest branch session');
+  assert.equal(r.sessions.length, 2, 'the count is the branch own sessions');
+  assert.equal(r.sessionsExact, true);
+});
+
+test('a row falls back to the PR compare list when the branch has none', () => {
+  data.activity = activity({
+    branches: [{ name: 'f', group: 'stranded' }],
+    openPRs: [{ number: 1, head: 'f', sessions: [SESS('P1'), SESS('P2')], sessionsExact: true }],
+  });
+  assert.deepEqual(rowFor('f').sessions, [SESS('P1'), SESS('P2')]);
+});
+
+test('a cache written before per-branch sessions still resolves its old string', () => {
+  data.activity = activity({ branches: [{ name: 'f', group: 'stranded', session: SESS('LEGACY') }] });
+  const r = rowFor('f');
+  assert.equal(r.session, SESS('LEGACY'));
+  assert.equal(r.sessionsExact, false, 'a legacy string was never exact');
+});

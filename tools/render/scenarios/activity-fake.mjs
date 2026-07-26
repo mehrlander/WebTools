@@ -40,8 +40,8 @@ export default async (page) => {
           { number: 271, title: 'Open view: cross-repo live branches with caption-style links', head: 'claude/open-view-live-branches-yk24d9', draft: false, updatedAt: iso(2), session: sess('01OpenViewReadyAbc123'), aheadBy: 8, behindBy: 0 },
         ],
         survey: { surveyedAt: iso(3), cap: 30, surveyed: 8, older: 12, truncated: false, branches: [
-          { name: 'claude/open-view-live-branches-yk24d9', sha: 'a1', group: 'active', date: iso(2), subject: 'Open view: highlight branches ahead of main, link the session' },
-          { name: 'claude/tighten-mobile-grid-mm01', sha: 'a2', group: 'stranded', date: iso(9), subject: 'Tighten the mobile grid and drop the hard borders', session: sess('01NoPrBranchJkl012'), aheadBy: 3, behindBy: 12 },
+          { name: 'claude/open-view-live-branches-yk24d9', sha: 'a1', group: 'active', date: iso(2), subject: 'Open view: highlight branches ahead of main, link the session', sessions: [sess('01OpenViewReadyAbc123')], sessionsExact: true },
+          { name: 'claude/tighten-mobile-grid-mm01', sha: 'a2', group: 'stranded', date: iso(9), subject: 'Tighten the mobile grid and drop the hard borders', sessions: [sess('01NoPrBranchJkl012'), sess('01NoPrBranchEarlier')], sessionsExact: true, aheadBy: 3, behindBy: 12 },
         ] },
       },
       'mehrlander/web-tools-private': {

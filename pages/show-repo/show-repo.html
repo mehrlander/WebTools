@@ -1200,7 +1200,15 @@ function app(){ return {
         while (pi < openPRs.length){
           const p = openPRs[pi++];
           if (!p.head) continue;
-          try { const d = await g.compare(def, p.head); p.aheadBy = d.ahead_by ?? null; p.behindBy = d.behind_by ?? null; }
+          try {
+            const d = await g.compare(def, p.head);
+            p.aheadBy = d.ahead_by ?? null; p.behindBy = d.behind_by ?? null;
+            // This compare is already paid for, and its commits are exactly the
+            // ones the branch has and the default does not, so the sessions read
+            // off them are exact: no ancestor walk, no bleed.
+            const ex = B.sessionsIn(d.commits || []);
+            if (ex.length){ p.sessions = ex; p.sessionsExact = true; }
+          }
           catch { p.aheadBy = null; p.behindBy = null; }
         }
       };
@@ -1220,10 +1228,17 @@ function app(){ return {
       const older = dated.filter(b => b.daysAgo > B.RECENT_DAYS).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       const surveyed = await B.surveyOlder(g, { defaultRef: def, older, cap: this.ACTIVITY_SURVEY_CAP, pool: 3, now });
       truncated = surveyed.truncated;
+      const prSessions = Object.fromEntries(openPRs.filter(p => p.head && p.sessions?.length).map(p => [p.head, p.sessions]));
+      const sessionsFor = b => {
+        if (b.sessions?.length) return { sessions: b.sessions, sessionsExact: !!b.sessionsExact };
+        if (prSessions[b.name]) return { sessions: prSessions[b.name], sessionsExact: true };
+        const g = branchSessions[b.name];
+        return g ? { sessions: [g], sessionsExact: false } : { sessions: [], sessionsExact: false };
+      };
       const trim = b => ({ name: b.name, date: b.date || '', sha: b.sha || '', subject: b.subject || '', ago: b.ago || '',
                            group: b.group, noBase: !!b.noBase, nUnique: b.nUnique || 0, nLanded: b.nLanded || 0,
                            nMissing: b.nMissing || 0, missingPaths: b.missingPaths || [],
-                           session: branchSessions[b.name] || '',
+                           ...sessionsFor(b),
                            aheadBy: b.aheadBy ?? null, behindBy: b.behindBy ?? null });
       branches = [...recent.map(b => trim({ ...b, group: 'active' })), ...surveyed.rows.map(trim)];
       counts = {
