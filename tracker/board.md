@@ -24,6 +24,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Private-repo landing federation via the home registry next: superseded by tasks generalize-gallery-pages-catalog-m3b8pa (gallery generalization) and app-views-estate-level-btp6m4 (app views); reassess whether any federation-specific work remains
 - 🎫 Repo-designated inbox and outbox in .web-tools.json (`claude/pr-219-review-22csrh`)
 - 🎫 Repo-level GitHub links in show-repo's shield dialog
+- 🎫 Resolve a branch's session from the commit trailer, not the open PR body
 - 🎫 Session-start nudge for unconfigured or legacy-manifest repos (`claude/skills-portable-conventions-8x1lua`) next: write a global SessionStart hook that checks repo state and injects a nudge; wire its install into the Claude Code web account setup script
 - 🎫 Give show-repo the ability to edit a repo's .web-tools.json (`claude/skills-portable-conventions-8x1lua`) next: design a minimal config-edit surface in the show-repo shell; first use is a one-tap migrate of a legacy .show-repo.json to .web-tools.json
 - 🎫 show-repo - first-class projects, defined by tracker presence
