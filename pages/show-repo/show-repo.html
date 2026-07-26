@@ -1394,8 +1394,10 @@ function app(){ return {
     return this.menuRepo === Alpine.store('browser').repo
       ? !!Alpine.store('browser').repoObj?.private : false;
   },
-  // The companion by the -private naming convention, for whichever repo the
-  // menu is about (repoSibling answers only for the open one).
+  // The companion by the -private naming convention (foo ⇄ foo-private), for
+  // whichever repo the menu is about, and only when that companion is itself on
+  // the estate. Empty when there is no such pair, or no token (so sidebarRepos
+  // is empty).
   get menuRepoSibling(){
     const repo = this.menuRepo;
     if (!repo) return '';
@@ -1480,17 +1482,6 @@ function app(){ return {
     const ref = repo === s.repo && s.ref && s.ref !== s.defaultRef ? '/tree/' + s.ref : '';
     return 'https://github.com/' + repo + ref;
   },
-  // The open repo's estate companion by the -private naming convention (foo ⇄
-  // foo-private), but only when that companion is itself on the estate.
-  // Empty when there is no such pair (or no token, so sidebarRepos is empty).
-  get repoSibling(){
-    const repo = Alpine.store('browser').repo;
-    if (!repo) return '';
-    const m = repo.match(/^(.*)-private$/);
-    const sib = m ? m[1] : repo + '-private';
-    return this.sidebarRepos.some(r => r.repo === sib) ? sib : '';
-  },
-
   // Pinned to the default branch, like the custom landing: the Files-view ref
   // picker does not re-point rendered surfaces.
   get atlasUrl(){

@@ -213,7 +213,7 @@ just as page content.
 | **jsdom** | Node | Yes (`runScripts: 'dangerously'`) | inline scripts must execute |
 | **BeautifulSoup / lxml / selectolax / parsel** | Python | No | Python-side traversal |
 
-## Tailwind's browser build never generates a toggle-only utility (2026-07-25)
+## Tailwind's browser build never generates a toggle-only utility (2026-07-26)
 
 A utility class that only ever reaches the DOM by being toggled onto an existing
 element is **never generated** by `@tailwindcss/browser@4`. The class lands in
