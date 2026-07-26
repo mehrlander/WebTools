@@ -50,6 +50,10 @@ Normally none. In local `CLAUDE.md`, name only a slow or non-deterministic gener
 
   Its facts are read from the API on every load (state, ahead/behind, lifespan, the authoring sessions, the PR, commits, changed files), so **the link is current whenever it is opened** and makes no freshness claim: there is nothing authored in it to go stale. That is what the guide PR body, being hand-maintained markdown, cannot offer. Add `&src=<spec>` or `&gz=<payload>` to lay an authored envelope over it (intent, what is open, what was left out, a note per file); the page is complete without one. Token-gated like every `#gh=` address, and subject to the same in-app-browser caveat.
 
+  That address is the deployed form, so it presumes `branch.html` is on the branch Pages serves. Where it is not, the canonical URL 404s and the page has to be tossed like any other un-deployed shell, with its own address handed through the query the params shim answers:
+
+  `…/pages/toss-render.html#gh=owner/repo@ref:pages/branch.html?gh=owner/repo@branch`
+
   🌿 and 🧭 answer different questions and both belong on a working branch: 🌿 is where you *read* the branch, 🧭 is where you *merge* it.
 * **Guide pointer 🧭:** mark the branch's guide PR, or a legacy branch-guide file, with 🧭. A reply may close with `🧭 [PR #N](…) (body synced)`. The parenthetical is a claim about this reply, not about the PR: write `(body synced)` only when this turn rewrote the guide region, and `(body not synced)` otherwise. It exists so a reader can tell, without opening the PR, whether its body describes the current tip. Never carry `(body synced)` forward from an earlier reply.
 * **Task marker 🎫:** where the repo uses [TRACKER.md](TRACKER.md), surface a task as `🎫 [title](<task blob url>)`. Do not show the filename id; 🎫 plus title is the reader's handle.
