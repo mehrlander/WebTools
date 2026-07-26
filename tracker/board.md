@@ -8,6 +8,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Make the branch page a navigation target, swipeable from the lists
 - 🎫 Show the branch lifespan in the per-repo branch review too
 - 🎫 Reach the take-away menu from show-repo's Pages gallery
+- 🎫 The build-on-commit hook did not fire, and nothing said so
 - 🎫 Fold chat-results into the surface schema, or keep it a sibling
 - 🎫 Collapse quickLinks into a projection of the repos manifest next: decide the projection rule (a flag on repos entries, or first-N) and migrate loadQuickLinks
 - 🎫 Confirm-gated cross-repo edit proposals via a web-tools-private channel next: Design the proposal record + the show-repo pending panel; reuse gh-transfer's confirm gate
