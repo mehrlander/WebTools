@@ -7,6 +7,8 @@ This repository uses two hooks:
 * A Claude Code `SessionStart` hook that installs repository dependencies.
 * A commit-time `build-on-commit.sh` hook that stages deterministic derived artifacts when their sources change. See the [`tools/README.md`](../../tools/README.md#the-refresh-model) refresh model.
 
+**Do not assume the `PreToolUse` hook ran** *(observed 2026-07-25)*. In a Claude Code web session, `git commit` calls completed with `dist/web-tools.js` left stale, while `.claude/hooks/build-on-commit.sh` exited 0 and behaved correctly when piped its JSON payload by hand. So the script is sound and the harness did not invoke it. The failure is silent and the artifact it skips is one nobody reads directly, which is how it goes unnoticed. Until this is understood, run the generator yourself (`npm run build:lib`, `npm run pages-index`) after touching a source it derives from, and verify (`grep -c '<a new symbol>' dist/web-tools.js`) rather than trusting the commit.
+
 ## Components
 
 ### Skills
