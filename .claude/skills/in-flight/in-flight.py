@@ -38,6 +38,8 @@
 #   --quiet-days N    a live branch idle this long is reported quiet (default 7)
 #   --fetch           run `git fetch origin --prune` first (the only write)
 #   --all-claims      list healthy claims individually, not just as a count
+#   --worktree        read tracker tasks from the checked-out files rather than
+#                     the base branch (the default; tracker state lives on base)
 #   --json            emit the finding as JSON instead of markdown
 #
 # Exit status is 0 whatever it finds; this is a report, not a gate.
@@ -304,29 +306,60 @@ def parse_frontmatter(text):
     return fm
 
 
-def read_claims(repo):
-    """Tasks marked in-progress, across every tracker in the repo."""
+TASK_PATH_RE = re.compile(r'(?:^|/)tracker/tasks/[^/]+\.md$')
+
+
+def base_task_files(repo, base):
+    """Task file paths as the BASE branch has them.
+
+    Tracker state lives on the base branch by design (see TRACKER.md): that is
+    what makes it the one place every session checks. Reading the working tree
+    instead reads whatever the checked-out branch happens to carry, which is
+    stale the moment another session commits a task to base, and which reports a
+    task closed on base as still in progress. This was measured on this repo:
+    three tasks closed on main went on reading as in-progress from a feature
+    branch until the source moved here.
+    """
+    out = git(repo, 'ls-tree', '-r', '--name-only', base)
+    return sorted(p for p in out.split('\n') if p and TASK_PATH_RE.search(p))
+
+
+def read_claims(repo, base, worktree=False):
+    """Tasks marked in-progress, across every tracker in the repo.
+
+    Reads the base branch unless `worktree` is set or the base carries no
+    tracker at all (an unadopted repo, or a task dir that only exists on this
+    branch), in which case the checked-out files are the only source there is.
+    """
     claims, total = [], 0
-    for tdir in find_task_dirs(repo):
-        for fn in sorted(os.listdir(tdir)):
-            if not fn.endswith('.md'):
-                continue
-            path = os.path.join(tdir, fn)
+    source = 'base'
+    files = [] if worktree else base_task_files(repo, base)
+    if not files:
+        source = 'worktree'
+        files = [os.path.relpath(os.path.join(d, fn), repo)
+                 for d in find_task_dirs(repo)
+                 for fn in sorted(os.listdir(d)) if fn.endswith('.md')]
+
+    for path in files:
+        if source == 'base':
+            text = git(repo, 'show', f'{base}:{path}')
+        else:
             try:
-                with open(path, encoding='utf-8', errors='replace') as fh:
-                    fm = parse_frontmatter(fh.read(8192))
+                with open(os.path.join(repo, path), encoding='utf-8', errors='replace') as fh:
+                    text = fh.read(8192)
             except OSError:
                 continue
-            total += 1
-            if fm.get('status') == CLAIM_STATUS:
-                claims.append({
-                    'title': fm.get('title') or os.path.splitext(fn)[0],
-                    'session': fm.get('session') or '',
-                    'next': fm.get('next') or '',
-                    'opened': fm.get('opened') or '',
-                    'path': os.path.relpath(path, repo),
-                })
-    return claims, total
+        fm = parse_frontmatter(text[:8192])
+        total += 1
+        if fm.get('status') == CLAIM_STATUS:
+            claims.append({
+                'title': fm.get('title') or os.path.splitext(os.path.basename(path))[0],
+                'session': fm.get('session') or '',
+                'next': fm.get('next') or '',
+                'opened': fm.get('opened') or '',
+                'path': path,
+            })
+    return claims, total, source
 
 
 # ── reconciliation ──────────────────────────────────────────────────────────
@@ -385,7 +418,7 @@ def survey(repo, args, all_prs):
         for rec in groups[state]:
             index[rec['branch']] = {**rec, 'state': state}
 
-    claims, total_tasks = read_claims(repo)
+    claims, total_tasks, claims_source = read_claims(repo, base, args.worktree)
     reconcile(claims, index, args.quiet_days)
 
     for rec in groups['live']:
@@ -417,6 +450,7 @@ def survey(repo, args, all_prs):
         'counts': {k: len(v) for k, v in groups.items()},
         'total_branches': sum(len(v) for v in groups.values()),
         'total_tasks': total_tasks,
+        'claims_source': claims_source,
         'live': groups['live'],
         'claims': claims,
         'orphan_prs': orphan_prs,
@@ -484,12 +518,13 @@ def render(results, args):
         bad_claims = [x for x in r['claims'] if x['verdict'] not in ('live', 'quiet')]
         if not r['claims']:
             out.append(f"**Claimed:** nothing. 0 of {r['total_tasks']} tracker tasks "
-                       f"are marked `{CLAIM_STATUS}`"
+                       f"on `{r['base']}` are marked `{CLAIM_STATUS}`"
                        + (', so the claim layer is unfed here and says nothing about '
                           'what is live.' if r['total_tasks'] else '.'))
             out.append('')
         else:
-            out.append(f"**Claimed:** {len(r['claims'])} of {r['total_tasks']} tasks "
+            src = 'the working tree' if r['claims_source'] == 'worktree' else f"`{r['base']}`"
+            out.append(f"**Claimed:** {len(r['claims'])} of {r['total_tasks']} tasks on {src} "
                        f"marked `{CLAIM_STATUS}`, {len(live_claims)} confirmed against "
                        f"a live branch.")
             out.append('')
@@ -660,6 +695,8 @@ def main():
     ap.add_argument('--quiet-days', type=int, default=7)
     ap.add_argument('--fetch', action='store_true', help='git fetch origin --prune first')
     ap.add_argument('--all-claims', action='store_true')
+    ap.add_argument('--worktree', action='store_true',
+                    help='read tracker tasks from the checked-out files instead of the base branch')
     ap.add_argument('--json', action='store_true')
     args = ap.parse_args()
 

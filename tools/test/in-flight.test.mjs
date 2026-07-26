@@ -363,3 +363,54 @@ test('the repo slug survives a proxied origin URL', () => {
   assert.equal(run(proxied).slug, 'acme/widget');
   rmSync(proxied, { recursive: true, force: true });
 });
+
+// ── where claims are read from ──────────────────────────────────────────────
+// Tracker state lives on the base branch by design, so that is the source. The
+// bug this guards: reading the checked-out files reports a task closed on the
+// base branch as still in progress for every session on a feature branch, which
+// is every session. Observed on the real repo before the source moved.
+
+function trackerFixture() {
+  const d = mkdtempSync(path.join(tmpdir(), 'inflight-claims-'));
+  git(d, 'init', '-q', '-b', 'main');
+  git(d, 'remote', 'add', 'origin', 'https://github.com/acme/w.git');
+  commit(d, 'a.txt', 'a\n');
+  mkdirSync(path.join(d, 'tracker/tasks'), { recursive: true });
+  writeFileSync(path.join(d, 'tracker/tasks/t.md'),
+    task({ title: 'Settled', status: 'done', session: 'feature' }));
+  git(d, 'add', '-A'); git(d, 'commit', '-q', '-m', 'tracker: close it');
+  publish(d, 'main');
+  git(d, 'checkout', '-q', '-b', 'feature');
+  commit(d, 'b.txt', 'b\n');
+  publish(d, 'feature');
+  // The branch still carries the pre-close copy, exactly as a feature branch cut
+  // before the close does.
+  writeFileSync(path.join(d, 'tracker/tasks/t.md'),
+    task({ title: 'Settled', status: 'in-progress', session: 'feature' }));
+  return d;
+}
+
+test('claims come from the base branch, not the checked-out files', () => {
+  const d = trackerFixture();
+  const r = run(d);
+  assert.equal(r.claims.length, 0, 'the base branch says the task is done');
+  assert.equal(r.claims_source, 'base');
+  rmSync(d, { recursive: true, force: true });
+});
+
+test('--worktree reads the checked-out files instead', () => {
+  const d = trackerFixture();
+  const r = run(d, ['--worktree']);
+  assert.equal(r.claims.length, 1, 'the branch copy still says in-progress');
+  assert.equal(r.claims_source, 'worktree');
+  rmSync(d, { recursive: true, force: true });
+});
+
+test('a tracker absent from the base branch falls back to the working tree', () => {
+  // A task dir that exists only on this branch is the one case where the
+  // checked-out files are the only source there is.
+  withTracker(dir, { t: task({ title: 'Branch-local', session: 'live-b' }) });
+  const r = run(dir);
+  assert.equal(r.claims_source, 'worktree');
+  assert.equal(r.claims.length, 1);
+});

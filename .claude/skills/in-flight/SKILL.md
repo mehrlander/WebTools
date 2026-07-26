@@ -65,6 +65,8 @@ The report then ends in a collision verdict rather than a list. Only live branch
 
 - **A claim is a statement that decays.** It is worth as much as the last time something checked it. The reconciliation is the product here, not the listing: a board that says "3 in progress" when all three branches have merged is worse than one that says nothing, because it invites trust it has not earned.
 
+- **Claims come from the base branch, not the checked-out files.** Tracker state lives on base by design, which is what makes it the one place every session checks. Reading the working tree reports a task closed on base as still in progress for every session on a feature branch, and every session is on a feature branch. Measured here: three tasks closed on main went on reading as in-progress until the source moved. `--worktree` forces the old behavior; the fallback is automatic when base carries no tracker at all.
+
 - **Report an unfed claim layer as a finding.** Zero claims across a hundred-plus tasks does not mean nothing is happening. It means the mechanism is unused and says nothing about what is live. Say so plainly rather than reporting "nothing in progress."
 
 - **Live but unclaimed and PR-less is the interesting row.** Work that was pushed, never delivered, and never written down. It is the case the branch estate hides and the one most likely to be a surprise.
