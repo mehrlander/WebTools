@@ -1,9 +1,11 @@
 ---
 id: session-link-from-commit-trailer-7a407c
 title: Resolve a branch's session from the commit trailer, not the open PR body
-status: backlog
+status: done
 project: show-repo
 opened: 2026-07-26
+closed: 2026-07-26
+session: claude/active-work-branches-sd289p
 ---
 # Resolve a branch's session from the commit trailer, not the open PR body
 
@@ -53,3 +55,5 @@ Option 3 is likely right given the estate view already batches, but confirm what
 
 ## Progress log
 - 2026-07-26 filed from the in-flight session (PR #297), which built and measured the trailer-based resolution locally
+- 2026-07-26 done on `claude/active-work-branches-sd289p`; lands via PR #297. `branchSessions()` added to `lib/gh-fetch.js` (one GraphQL call per repo, fail-soft), carried through the crawl and the activity cache's change-detection hash, and the icon regated on `row.session` with the PR body as fallback. 12 tests in `tools/test/estate-branch-sessions.test.mjs`; full suite 444/444. Verified headless in the Activity view: the no-PR row carries the icon, genuinely session-less rows stay dark.
+- 2026-07-26 open caveat: the GraphQL shape could not be exercised from the sandbox (its proxy serves only a pinned set of GraphQL operations), so the call is fail-soft by design. Confirm in a real browser that the Open view shows sessions on PR-less rows after the next crawl; if the query is rejected the links are simply absent and nothing else breaks.
