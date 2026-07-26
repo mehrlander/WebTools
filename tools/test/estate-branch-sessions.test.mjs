@@ -283,3 +283,31 @@ test('past the compare cap the sessions stand but stop claiming completeness', a
   assert.equal(r.sessionsExact, false, 'but the list is not the whole branch');
   assert.equal(r.firstDate, '', 'and the lifespan start is unknowable, per #298');
 });
+
+// ── the projection: one reader for every compare-derived field ──────────────
+
+test('compareFields returns both fields and the completeness flag', () => {
+  const r = BS.compareFields({ total_commits: 2, commits: [
+    commit(`a\n\nClaude-Session: ${SESS('S1')}`), commit(`b\n\nClaude-Session: ${SESS('S2')}`)] });
+  assert.deepEqual(r.sessions, [SESS('S2'), SESS('S1')]);
+  assert.equal(r.sessionsExact, true);
+  assert.ok(r.firstDate === '' || typeof r.firstDate === 'string');
+});
+
+test('compareFields applies the cap rule per field, not uniformly', () => {
+  // The reason the projection exists: past the cap the two fields differ.
+  // firstDate is unknowable; the session tail is still the newest end.
+  const r = BS.compareFields({ total_commits: 400, commits: [
+    commit(`a\n\nClaude-Session: ${SESS('S1')}`)] });
+  assert.equal(r.firstDate, '', 'no knowable first commit past the cap');
+  assert.deepEqual(r.sessions, [SESS('S1')], 'the tail still names a session');
+  assert.equal(r.sessionsExact, false, 'but not the whole branch');
+});
+
+test('compareFields tolerates an empty or absent response', () => {
+  for (const cmp of [null, {}, { commits: [] }]) {
+    const r = BS.compareFields(cmp);
+    assert.deepEqual(r.sessions, []);
+    assert.equal(r.firstDate, '');
+  }
+});

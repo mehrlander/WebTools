@@ -1206,13 +1206,9 @@ function app(){ return {
           try {
             const d = await g.compare(def, p.head);
             p.aheadBy = d.ahead_by ?? null; p.behindBy = d.behind_by ?? null;
-            // One compare, every field it can answer. Its commits are exactly
-            // the ones the branch has and the default does not, so both the
-            // lifespan start and the authoring sessions come off it exactly:
-            // no ancestor walk, no bleed, no extra call.
-            p.firstDate = B.firstCommitDate(d);
-            const ex = B.sessionsIn(d.commits || []);
-            if (ex.length){ p.sessions = ex; p.sessionsExact = true; }
+            // One compare, every field it can answer, through the one reader
+            // that knows what each field does past GitHub's commit cap.
+            Object.assign(p, B.compareFields(d));
           }
           catch { p.aheadBy = null; p.behindBy = null; p.firstDate = ''; }
         }
