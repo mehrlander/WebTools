@@ -9,6 +9,7 @@
 <meta property="og:description" content="See what kits/pdf.js extracts, drawn on the page it came from" />
 <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2/src/regular/style.css" rel="stylesheet"/>
 
 <!--
   pdf-inspect.html — the visual half of kits/pdf.js.
@@ -29,12 +30,41 @@
   same geometry as tools/test/pdf-kit-browser.mjs, including the white rule that
   a naive extractor turns into a phantom column.
 
-  Headless: tools/test/pdf-inspect-shot.mjs drives it for screenshots.
+  Affordances worth knowing, since none of them announce themselves:
+    - drop a PDF anywhere on the stage
+    - hover or tap a text box to read its own numbers, font, and cell
+    - drag a rectangle to select, which re-runs the column detector on it
+    - keys: arrows page, p/s mode, c controls, +/- zoom, 0 reset, 1-6 layers
+
+  Headless: npm run shot -- pages/pdf-inspect.html [--width 390] [--script ...]
 -->
 
 <style>
   .layer { position: absolute; inset: 0; pointer-events: none; }
   .lbl { font: 9px/1 ui-monospace, monospace; }
+
+  /* One rhythm for the whole panel. Sections declare themselves by a rule and a
+     small caps heading rather than by boxes, so eight of them stack without the
+     page turning into a stack of cards. */
+  .sec { padding: .75rem .875rem; border-top: 1px solid var(--fallback-b3, oklch(var(--b3))); }
+  .sec:first-child { border-top: 0; }
+  .sec-h {
+    display: flex; align-items: center; gap: .4rem;
+    font-size: .6875rem; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; opacity: .55; margin-bottom: .5rem;
+  }
+  .sec-h .ph { font-size: .95rem; opacity: .8; }
+  .sec-h .tail { margin-left: auto; font-weight: 400; letter-spacing: normal;
+                 text-transform: none; font-family: ui-monospace, monospace; opacity: .8; }
+
+  /* A control row: fixed label gutter, elastic control, fixed numeric readout.
+     Three columns everywhere means the numbers line up down the panel instead
+     of stepping in and out with the label lengths. */
+  .row { display: flex; align-items: center; gap: .625rem; padding: .1875rem 0; }
+  .row > .k { width: 4.5rem; flex: none; opacity: .7; }
+  .row > .v { width: 3.25rem; flex: none; text-align: right;
+              font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  @media (min-width: 1024px) { .row > .k { width: 3.75rem } .row > .v { width: 2.75rem } }
 
   /* A sheet of paper, not a div. The page was reading as unfinished because a
      white rectangle on a near-white background with a hairline ring has no
@@ -64,44 +94,64 @@
 
 <div x-data="pdfInspect()" class="flex flex-col h-[100dvh] overflow-hidden">
 
-  <!-- toolbar: one row at every width. Anything that cannot fit on a phone
-       moves into the panel rather than wrapping into the layer list. -->
-  <div class="flex items-center gap-1.5 px-2 py-1.5 bg-base-100 border-b border-base-300 shrink-0">
-    <span class="font-semibold text-sm pr-1 hidden sm:inline whitespace-nowrap">PDF Inspect</span>
-    <button class="btn btn-sm lg:btn-xs btn-primary shrink-0" @click="loadSample()">Sample</button>
-    <label class="btn btn-sm lg:btn-xs btn-ghost shrink-0">Open
-      <input type="file" accept=".pdf" class="hidden" @change="loadFile($event.target.files[0])">
+  <!-- Toolbar: one row at every width, and it never scrolls. What cannot fit on
+       a phone moves into the panel rather than wrapping into the layer list. -->
+  <header class="flex items-center gap-1.5 px-2.5 py-2 bg-base-100 border-b border-base-300 shrink-0">
+    <span class="hidden sm:flex items-center gap-1.5 font-semibold text-sm pr-1 whitespace-nowrap">
+      <i class="ph ph-magnifying-glass text-primary"></i>PDF Inspect
+    </span>
+
+    <button class="btn btn-sm lg:btn-xs btn-primary shrink-0 gap-1" @click="loadSample()"
+            title="Load the built-in 12-page sample">
+      <i class="ph ph-file-dashed"></i><span>Sample</span>
+    </button>
+    <label class="btn btn-sm lg:btn-xs btn-ghost shrink-0 gap-1" title="Open a PDF">
+      <i class="ph ph-folder-open"></i><span class="hidden sm:inline">Open</span>
+      <input type="file" accept="application/pdf,.pdf" class="hidden"
+             @change="loadFile($event.target.files[0])">
     </label>
+
     <div class="join shrink-0" x-show="mode==='page'">
-      <button class="btn btn-sm lg:btn-xs join-item" @click="go(-1)" :disabled="pageNum<=1">&lsaquo;</button>
-      <span class="btn btn-sm lg:btn-xs join-item no-animation pointer-events-none font-mono whitespace-nowrap"
+      <button class="btn btn-sm lg:btn-xs join-item px-2" @click="go(-1)" :disabled="pageNum<=1"
+              title="Previous page"><i class="ph ph-caret-left"></i></button>
+      <span class="btn btn-sm lg:btn-xs join-item no-animation pointer-events-none font-mono whitespace-nowrap px-2"
             x-text="`${pageNum}/${numPages||'-'}`"></span>
-      <button class="btn btn-sm lg:btn-xs join-item" @click="go(1)" :disabled="pageNum>=numPages">&rsaquo;</button>
+      <button class="btn btn-sm lg:btn-xs join-item px-2" @click="go(1)" :disabled="pageNum>=numPages"
+              title="Next page"><i class="ph ph-caret-right"></i></button>
     </div>
+
     <div class="join shrink-0 hidden lg:flex">
-      <button class="btn btn-xs join-item" :class="mode==='page' && 'btn-active'"
-              @click="mode='page'; redraw()">Page</button>
-      <button class="btn btn-xs join-item" :class="mode==='stack' && 'btn-active'"
-              @click="mode='stack'; redraw()">Stack</button>
+      <button class="btn btn-xs join-item gap-1" :class="mode==='page' && 'btn-active'"
+              @click="setMode('page')"><i class="ph ph-file"></i>Page</button>
+      <button class="btn btn-xs join-item gap-1" :class="mode==='stack' && 'btn-active'"
+              @click="setMode('stack')"><i class="ph ph-stack"></i>Stack</button>
     </div>
-    <button class="btn btn-sm join-item lg:hidden shrink-0 gap-1"
-            @click="mode = mode === 'page' ? 'stack' : 'page'; redraw()">
+    <button class="btn btn-sm lg:hidden shrink-0 gap-1"
+            @click="setMode(mode === 'page' ? 'stack' : 'page')">
+      <i class="ph" :class="mode === 'page' ? 'ph-stack' : 'ph-file'"></i>
       <span x-text="mode === 'page' ? 'Stack' : 'Page'"></span>
     </button>
-    <select class="select select-xs w-[4.5rem] shrink-0 hidden lg:block" x-show="mode==='page'" x-model="scaleMode" @change="redraw()">
-      <option value="fit">fit</option>
-      <option value="1">1x</option><option value="1.5">1.5x</option>
-      <option value="2">2x</option><option value="3">3x</option>
-    </select>
-    <span class="text-xs opacity-60 font-mono truncate hidden lg:inline" x-text="status"></span>
+
+    <div class="join shrink-0 hidden lg:flex" x-show="mode==='page'">
+      <button class="btn btn-xs join-item px-2" @click="zoom(-1)" title="Zoom out"><i class="ph ph-minus"></i></button>
+      <button class="btn btn-xs join-item px-2 font-mono" @click="scaleMode='fit'; redraw()"
+              x-text="scaleMode === 'fit' ? 'fit' : scale.toFixed(1) + 'x'" title="Fit to width"></button>
+      <button class="btn btn-xs join-item px-2" @click="zoom(1)" title="Zoom in"><i class="ph ph-plus"></i></button>
+    </div>
+
+    <span class="text-xs opacity-55 font-mono truncate hidden xl:inline" x-text="status"></span>
+
     <button class="btn btn-sm btn-ghost ml-auto lg:hidden gap-1 shrink-0" @click="panel = !panel">
-      <span x-text="panel ? 'Close' : 'Layers'"></span>
+      <i class="ph" :class="panel ? 'ph-x' : 'ph-sliders-horizontal'"></i>
+      <span class="hidden sm:inline" x-text="panel ? 'Close' : 'Controls'"></span>
     </button>
-  </div>
+  </header>
 
   <div class="flex-1 flex min-h-0 relative overflow-hidden">
     <!-- page -->
-    <main class="flex-1 overflow-auto p-3 sm:p-6 bg-base-200 min-w-0 flex flex-col items-center" id="scroll">
+    <main class="flex-1 overflow-auto p-3 sm:p-6 bg-base-200 min-w-0 relative grid place-items-center" id="scroll"
+          @dragover.prevent="dropping = true" @dragleave="dropping = false"
+          @drop.prevent="dropping = false; loadFile($event.dataTransfer.files[0])">
       <div x-show="mode==='stack'" class="w-full h-full flex items-center justify-center relative">
         <canvas id="stack" class="max-w-full touch-none cursor-grab"
                 @pointerdown="orbitStart($event)" @pointermove="orbitMove($event)"
@@ -112,11 +162,36 @@
       <div x-show="mode==='page'"
            class="paper relative inline-block select-none touch-none shrink-0" id="stage"
            @pointerdown="dragStart($event)" @pointermove="dragMove($event)"
-           @pointerup="dragEnd($event)" @pointercancel="dragEnd($event)">
+           @pointerup="dragEnd($event)" @pointercancel="dragEnd($event)"
+           @pointerleave="clearProbe()">
         <canvas id="page" class="block"></canvas>
         <svg class="layer" id="ov" :width="W" :height="H"></svg>
+        <div class="layer" id="probeMark"></div>
         <div x-show="drag" class="absolute border-2 border-warning bg-warning/20 pointer-events-none"
              :style="dragStyle"></div>
+      </div>
+      <!-- Drop anywhere on the stage. The file input stays for the phone, where
+           there is nothing to drop from. -->
+      <div x-show="dropping" x-transition.opacity
+           class="absolute inset-3 z-20 rounded-lg border-2 border-dashed border-primary
+                  bg-primary/5 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
+        <div class="flex flex-col items-center gap-2 text-primary">
+          <i class="ph ph-file-arrow-down text-4xl"></i>
+          <span class="font-medium">Drop a PDF</span>
+        </div>
+      </div>
+
+      <div x-show="busy" x-transition.opacity
+           class="absolute inset-0 z-20 bg-base-200/70 flex items-center justify-center pointer-events-none">
+        <div class="flex items-center gap-2 text-sm opacity-70">
+          <i class="ph ph-circle-notch animate-spin text-lg"></i><span x-text="status"></span>
+        </div>
+      </div>
+
+      <div x-show="error" class="absolute inset-x-3 top-3 z-30 alert alert-error text-sm">
+        <i class="ph ph-warning-circle text-lg"></i>
+        <span x-text="error"></span>
+        <button class="btn btn-xs btn-ghost" @click="error = ''"><i class="ph ph-x"></i></button>
       </div>
     </main>
 
@@ -129,125 +204,215 @@
                   lg:static lg:translate-x-0 lg:w-80 lg:max-w-none
                   shrink-0 flex flex-col bg-base-100 border-l border-base-300 overflow-y-auto"
            :class="panel && '!translate-x-0 shadow-2xl'">
-    <div class="p-3 space-y-1" x-show="mode==='page'">
-      <div class="text-sm font-mono opacity-60 mb-2 lg:hidden" x-text="status"></div>
-      <label class="flex items-center gap-3 text-sm py-1 lg:hidden">
-        <span class="w-16 opacity-70 shrink-0">zoom</span>
+    <!-- PAGE MODE ------------------------------------------------------- -->
+
+    <div class="sec" x-show="mode==='page'">
+      <div class="sec-h"><i class="ph ph-squares-four"></i>Layers
+        <span class="tail">
+          <button class="link link-hover" @click="setAllLayers(true)">all</button>
+          <span class="opacity-40">/</span>
+          <button class="link link-hover" @click="setAllLayers(false)">none</button>
+        </span>
+      </div>
+      <div class="text-sm font-mono opacity-55 mb-2 lg:hidden" x-text="status"></div>
+      <template x-for="l in layerList" :key="l.key">
+        <label class="flex items-center gap-3 lg:gap-2 cursor-pointer py-1.5 lg:py-1 rounded hover:bg-base-200 px-1 -mx-1">
+          <input type="checkbox" class="checkbox checkbox-sm lg:checkbox-xs" x-model="layers[l.key]" @change="redraw()">
+          <span class="w-3 h-3 rounded-[3px] border shrink-0"
+                :style="`background:${l.color}44;border-color:${l.color}`"></span>
+          <span class="text-sm leading-tight" x-text="l.label"></span>
+          <span class="ml-auto text-xs opacity-45 font-mono tabular-nums" x-text="counts[l.key] ?? ''"></span>
+        </label>
+      </template>
+      <div class="lg:hidden pt-2">
+      <label class="row text-sm">
+        <span class="k">zoom</span>
         <select class="select select-sm flex-1" x-model="scaleMode" @change="redraw()">
           <option value="fit">fit to width</option>
           <option value="1">1x</option><option value="1.5">1.5x</option>
           <option value="2">2x</option><option value="3">3x</option>
         </select>
       </label>
-      <div class="text-sm lg:text-xs uppercase tracking-wider opacity-50 mb-2">Layers</div>
-      <template x-for="l in layerList" :key="l.key">
-        <label class="flex items-center gap-3 lg:gap-2 cursor-pointer py-1.5 lg:py-0.5">
-          <input type="checkbox" class="checkbox checkbox-sm lg:checkbox-xs" x-model="layers[l.key]" @change="redraw()">
-          <span class="w-3 h-3 rounded-sm border" :style="`background:${l.color}55;border-color:${l.color}`"></span>
-          <span class="text-base lg:text-sm" x-text="l.label"></span>
-          <span class="ml-auto text-sm lg:text-xs opacity-50 font-mono" x-text="counts[l.key] ?? ''"></span>
-        </label>
-      </template>
+      </div>
     </div>
 
-    <div class="p-3 border-t border-base-300 space-y-2" x-show="mode==='stack'">
-      <details class="mb-1" x-bind:open="viewOpen">
-        <summary class="text-sm lg:text-xs uppercase tracking-wider opacity-50 cursor-pointer select-none py-1">
-          View
-          <span class="font-mono normal-case tracking-normal opacity-70"
-                x-text="`yaw ${Math.round(yaw)}° · pitch ${Math.round(pitch)}°`"></span>
-        </summary>
-        <div class="space-y-1 pt-1">
-          <div class="flex gap-1 flex-wrap">
-            <template x-for="v in ['front','iso','side','top']" :key="v">
-              <button class="btn btn-sm lg:btn-xs" @click="viewPreset(v)" x-text="v"></button>
-            </template>
+    <!-- What the pointer is over. An inspector should answer "what is this box"
+         without a console, and this is the only place the item's own numbers,
+         font, and decoration are visible at all. -->
+    <div class="sec" x-show="mode==='page'">
+      <div class="sec-h"><i class="ph ph-crosshair-simple"></i>Under the pointer</div>
+      <template x-if="!probe">
+        <p class="text-sm opacity-50 leading-snug">Hover or tap a text box on the page.</p>
+      </template>
+      <template x-if="probe">
+        <div class="space-y-1.5">
+          <div class="text-sm font-medium break-words leading-snug" x-text="probe.str"></div>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs font-mono opacity-70 tabular-nums">
+            <span x-text="`x ${probe.x1} → ${probe.x2}`"></span>
+            <span x-text="`w ${probe.w}`"></span>
+            <span x-text="`base ${probe.base}`"></span>
+            <span x-text="`h ${probe.h}`"></span>
           </div>
-          <label class="flex items-center gap-3 lg:gap-2 text-sm lg:text-xs py-1 lg:py-0">
-            <span class="w-16 lg:w-14 opacity-70 shrink-0">yaw</span>
-            <input type="range" class="range range-sm lg:range-xs flex-1" min="-180" max="180" step="1"
-                   x-model.number="yaw" @input="flashHud(); drawStack()">
-            <span class="w-12 lg:w-10 text-right font-mono shrink-0" x-text="Math.round(yaw)"></span>
-          </label>
-          <label class="flex items-center gap-3 lg:gap-2 text-sm lg:text-xs py-1 lg:py-0">
-            <span class="w-16 lg:w-14 opacity-70 shrink-0">pitch</span>
-            <input type="range" class="range range-sm lg:range-xs flex-1" min="-85" max="85" step="1"
-                   x-model.number="pitch" @input="flashHud(); drawStack()">
-            <span class="w-12 lg:w-10 text-right font-mono shrink-0" x-text="Math.round(pitch)"></span>
-          </label>
-          <p class="text-sm lg:text-xs opacity-60 leading-snug">
-            Dragging the stack orbits it. In a sheet or an in-app browser that
-            gesture can be taken as a swipe to dismiss, so these are the
-            reliable path.
-          </p>
+          <div class="flex flex-wrap gap-1">
+            <span class="badge badge-sm badge-ghost font-mono" x-text="probe.font"></span>
+            <span class="badge badge-sm badge-ghost font-mono" x-text="probe.fontSize + 'pt'"></span>
+            <template x-if="probe.bold"><span class="badge badge-sm">bold</span></template>
+            <template x-if="probe.italic"><span class="badge badge-sm">italic</span></template>
+            <template x-if="probe.underline"><span class="badge badge-sm badge-error">underline</span></template>
+            <template x-if="probe.strikethrough"><span class="badge badge-sm badge-error">strike</span></template>
+            <template x-if="probe.cell"><span class="badge badge-sm badge-primary" x-text="probe.cell"></span></template>
+          </div>
         </div>
-      </details>
-      <div class="text-sm lg:text-xs uppercase tracking-wider opacity-50">Trim</div>
-      <p class="text-sm lg:text-xs opacity-60 leading-snug">
-        Six numbers, not a gesture. A depth cannot be dragged honestly in a
-        projection, so the cut planes are set here and drawn there.
-      </p>
-      <template x-for="f in trimFields" :key="f.key">
-        <label class="flex items-center gap-3 lg:gap-2 text-sm lg:text-xs py-1 lg:py-0">
-          <span class="w-16 lg:w-14 opacity-70 shrink-0" x-text="f.label"></span>
-          <input type="range" class="range range-sm lg:range-xs flex-1" :min="f.min" :max="f.max" :step="f.step"
-                 x-model.number="trim[f.key]" @input="drawStack()">
-          <span class="w-12 lg:w-10 text-right font-mono shrink-0" x-text="Math.round(trim[f.key])"></span>
-        </label>
       </template>
-      <label class="flex items-center gap-3 lg:gap-2 text-sm lg:text-xs py-1 lg:py-0">
-        <span class="w-16 lg:w-14 opacity-70 shrink-0">spread</span>
-        <input type="range" class="range range-sm lg:range-xs flex-1" min="4" max="70" step="1"
-               x-model.number="spread" @input="flashHud(); drawStack()">
-        <span class="w-12 lg:w-10 text-right font-mono shrink-0" x-text="spread"></span>
-      </label>
-      <label class="flex items-center gap-3 lg:gap-2 text-sm lg:text-xs cursor-pointer py-1 lg:py-0">
-        <input type="checkbox" class="checkbox checkbox-sm lg:checkbox-xs" x-model="onlyFixed" @change="drawStack()">
-        <span>show only fixed-text furniture</span>
-      </label>
-      <div class="flex items-center gap-2 pt-1">
-        <button class="btn btn-sm lg:btn-xs" :class="trimMode==='keep' && 'btn-active'" @click="trimMode='keep'; drawStack()">keep</button>
-        <button class="btn btn-sm lg:btn-xs" :class="trimMode==='drop' && 'btn-active'" @click="trimMode='drop'; drawStack()">drop</button>
-        <button class="btn btn-sm lg:btn-xs btn-ghost ml-auto" @click="proposeTrim()">from furniture</button>
+    </div>
+
+    <div class="sec" x-show="mode==='page'">
+      <div class="sec-h"><i class="ph ph-selection"></i>Selection
+        <span class="tail" x-text="sel.length ? sel.length + ' items' : ''"></span>
       </div>
-      <div class="text-sm lg:text-xs font-mono opacity-70" x-text="trimInfo"></div>
-      <div class="max-h-40 overflow-auto text-sm lg:text-xs font-mono bg-base-200 rounded p-2" x-show="furniture.length">
-        <template x-for="(f,i) in furniture" :key="i">
-          <div class="truncate" x-text="`${Math.round(f.ratio*100)}% y${Math.round(f.base)} ${f.varies?'~':'='} ${f.samples[0]}`"></div>
-        </template>
+      <div class="flex items-center gap-1.5">
+        <div class="join">
+          <button class="btn btn-sm lg:btn-xs join-item" :class="selMode==='intersect' && 'btn-active'"
+                  @click="selMode='intersect'">touch</button>
+          <button class="btn btn-sm lg:btn-xs join-item" :class="selMode==='contain' && 'btn-active'"
+                  @click="selMode='contain'">enclose</button>
+        </div>
+        <button class="btn btn-sm lg:btn-xs btn-ghost gap-1 ml-auto" x-show="sel.length"
+                @click="copy(sel.join('\n'), 'selection')"><i class="ph ph-copy"></i></button>
+        <button class="btn btn-sm lg:btn-xs btn-ghost" x-show="sel.length" @click="clearSel()">clear</button>
+      </div>
+      <p class="text-sm opacity-50 leading-snug mt-2" x-show="!sel.length">
+        Drag a rectangle on the page. The region comes back in PDF coordinates
+        with the column detector re-run over just that selection.
+      </p>
+      <div class="text-xs font-mono opacity-65 mt-2" x-text="selInfo"></div>
+      <div class="max-h-40 overflow-auto text-sm lg:text-xs font-mono bg-base-200 rounded p-2 mt-1.5" x-show="sel.length">
+        <template x-for="(t,i) in sel.slice(0,60)" :key="i"><div class="truncate" x-text="t"></div></template>
       </div>
     </div>
 
-    <div class="p-3 border-t border-base-300 space-y-2" x-show="mode==='page'">
-      <div class="text-sm lg:text-xs uppercase tracking-wider opacity-50">Selection</div>
-      <div class="flex gap-1">
-        <button class="btn btn-sm lg:btn-xs" :class="selMode==='intersect' && 'btn-active'"
-                @click="selMode='intersect'">touch</button>
-        <button class="btn btn-sm lg:btn-xs" :class="selMode==='contain' && 'btn-active'"
-                @click="selMode='contain'">enclose</button>
-        <button class="btn btn-sm lg:btn-xs btn-ghost ml-auto" @click="clearSel()">clear</button>
+    <div class="sec flex-1" x-show="mode==='page'">
+      <div class="sec-h"><i class="ph ph-table"></i>Table, read two ways
+        <span class="tail">
+          <button class="link link-hover" x-show="matrix.length"
+                  @click="copy(matrix.map(r => r.join('\t')).join('\n'), 'table')">copy TSV</button>
+        </span>
       </div>
-      <div class="text-sm lg:text-xs font-mono opacity-70" x-text="selInfo"></div>
-      <div class="max-h-44 overflow-auto text-sm lg:text-xs font-mono bg-base-200 rounded p-2" x-show="sel.length">
-        <template x-for="(s,i) in sel.slice(0,40)" :key="i">
-          <div class="truncate" x-text="s"></div>
-        </template>
+      <div class="text-xs mb-1.5 opacity-65 flex items-center gap-1">
+        <i class="ph text-sm" :class="agree ? 'ph-check-circle text-success' : 'ph-warning-circle text-warning'"
+           x-show="matrix.length"></i>
+        <span x-text="tableInfo"></span>
       </div>
-    </div>
-
-    <div class="p-3 border-t border-base-300 flex-1" x-show="mode==='page'">
-      <div class="text-sm lg:text-xs uppercase tracking-wider opacity-50 mb-2">Table read two ways</div>
-      <div class="text-xs mb-1 opacity-70" x-text="tableInfo"></div>
-      <div class="overflow-auto max-h-72 text-xs">
+      <div class="overflow-auto max-h-72 rounded border border-base-300" x-show="matrix.length">
         <table class="table table-xs">
           <tbody>
             <template x-for="(row,r) in matrix" :key="r">
-              <tr><template x-for="(c,i) in row" :key="i"><td class="font-mono" x-text="c"></td></template></tr>
+              <tr :class="r === 0 && 'bg-base-200 font-medium'">
+                <template x-for="(c,i) in row" :key="i"><td class="font-mono" x-text="c"></td></template>
+              </tr>
             </template>
           </tbody>
         </table>
       </div>
     </div>
+
+    <!-- STACK MODE ------------------------------------------------------ -->
+
+    <div class="sec" x-show="mode==='stack'">
+      <div class="sec-h"><i class="ph ph-cube"></i>View
+        <span class="tail" x-text="`${Math.round(yaw)}° / ${Math.round(pitch)}°`"></span>
+      </div>
+      <div class="flex gap-1 flex-wrap mb-1">
+        <template x-for="v in ['front','iso','side','top']" :key="v">
+          <button class="btn btn-sm lg:btn-xs" :class="preset===v && 'btn-active'"
+                  @click="viewPreset(v)" x-text="v"></button>
+        </template>
+        <button class="btn btn-sm lg:btn-xs btn-ghost gap-1 ml-auto" @click="viewPreset('iso')"
+                title="Reset orientation"><i class="ph ph-arrow-counter-clockwise"></i></button>
+      </div>
+      <label class="row text-sm lg:text-xs">
+        <span class="k">yaw</span>
+        <input type="range" class="range range-sm lg:range-xs flex-1" min="-180" max="180" step="1"
+               x-model.number="yaw" @input="preset=''; flashHud(); drawStack()">
+        <span class="v" x-text="Math.round(yaw) + '°'"></span>
+      </label>
+      <label class="row text-sm lg:text-xs">
+        <span class="k">pitch</span>
+        <input type="range" class="range range-sm lg:range-xs flex-1" min="-85" max="85" step="1"
+               x-model.number="pitch" @input="preset=''; flashHud(); drawStack()">
+        <span class="v" x-text="Math.round(pitch) + '°'"></span>
+      </label>
+      <label class="row text-sm lg:text-xs">
+        <span class="k">spread</span>
+        <input type="range" class="range range-sm lg:range-xs flex-1" min="4" max="70" step="1"
+               x-model.number="spread" @input="flashHud(); drawStack()">
+        <span class="v" x-text="spread"></span>
+      </label>
+      <p class="text-xs opacity-50 leading-snug mt-1">
+        Dragging the stack orbits it. In a sheet or an in-app browser that gesture
+        can be taken as a swipe to dismiss, so these are the reliable path.
+      </p>
+    </div>
+
+    <!-- The four hues carry meaning and nothing on the canvas says so. -->
+    <div class="sec" x-show="mode==='stack'">
+      <div class="sec-h"><i class="ph ph-palette"></i>Legend</div>
+      <div class="space-y-1">
+        <template x-for="l in stackLegend" :key="l.label">
+          <div class="flex items-start gap-2.5 text-sm">
+            <span class="w-3 h-3 rounded-[3px] mt-0.5 shrink-0" :style="`background:${l.color}`"></span>
+            <div class="leading-tight">
+              <span x-text="l.label"></span>
+              <span class="opacity-50 block text-xs" x-text="l.note"></span>
+            </div>
+          </div>
+        </template>
+      </div>
+      <label class="flex items-center gap-3 lg:gap-2 text-sm cursor-pointer mt-2 py-1">
+        <input type="checkbox" class="checkbox checkbox-sm lg:checkbox-xs" x-model="onlyFixed" @change="drawStack()">
+        <span class="leading-tight">Hide everything but fixed-text furniture</span>
+      </label>
+    </div>
+
+    <div class="sec flex-1" x-show="mode==='stack'">
+      <div class="sec-h"><i class="ph ph-scissors"></i>Trim
+        <span class="tail" x-text="trimMode"></span>
+      </div>
+      <p class="text-xs opacity-55 leading-snug mb-2">
+        Six numbers, not a gesture: a depth cannot be dragged honestly in a
+        projection, so the cut planes are set here and drawn there.
+      </p>
+      <template x-for="f in trimFields" :key="f.key">
+        <label class="row text-sm lg:text-xs">
+          <span class="k" x-text="f.label"></span>
+          <input type="range" class="range range-sm lg:range-xs flex-1" :min="f.min" :max="f.max" :step="f.step"
+                 x-model.number="trim[f.key]" @input="drawStack()">
+          <span class="v" x-text="Math.round(trim[f.key])"></span>
+        </label>
+      </template>
+      <div class="flex items-center gap-1.5 pt-2">
+        <div class="join">
+          <button class="btn btn-sm lg:btn-xs join-item" :class="trimMode==='keep' && 'btn-active'"
+                  @click="trimMode='keep'; drawStack()">keep</button>
+          <button class="btn btn-sm lg:btn-xs join-item" :class="trimMode==='drop' && 'btn-active'"
+                  @click="trimMode='drop'; drawStack()">drop</button>
+        </div>
+        <button class="btn btn-sm lg:btn-xs btn-ghost ml-auto gap-1" @click="proposeTrim()"
+                title="Set the bounds from what recurs across pages">
+          <i class="ph ph-magic-wand"></i>propose
+        </button>
+        <button class="btn btn-sm lg:btn-xs btn-ghost gap-1" @click="copyKept()"
+                title="Copy the text the trim keeps"><i class="ph ph-copy"></i></button>
+      </div>
+      <div class="text-xs font-mono opacity-65 mt-2" x-text="trimInfo"></div>
+      <div class="max-h-40 overflow-auto text-xs font-mono bg-base-200 rounded p-2 mt-1.5" x-show="furniture.length">
+        <template x-for="(f,i) in furniture.slice(0,40)" :key="i">
+          <div class="truncate" :class="!f.varies && 'text-success'"
+               x-text="`${String(Math.round(f.ratio*100)).padStart(3)}%  y${Math.round(f.base)}  ${f.varies?'~':'='}  ${f.samples[0]}`"></div>
+        </template>
+      </div>
+    </div>
+
   </aside>
 </div>
 
@@ -280,6 +445,15 @@ const LAYERS = [
 // (counts, strings, the matrix) crosses into the component.
 const S = { doc: null, v: null, items: [], projected: [] };
 
+// What each hue means in the stack. The canvas cannot label itself without
+// becoming unreadable, so the key lives in the panel beside it.
+const STACK_LEGEND = [
+  { color: 'rgba(37,99,235,.65)',  label: 'Content',        note: 'unique to its page' },
+  { color: 'rgba(21,128,61,.85)',  label: 'Fixed furniture', note: 'same text, same place, most pages' },
+  { color: 'rgba(202,138,4,.75)',  label: 'Moving furniture', note: 'same place, text changes: folios, data rows' },
+  { color: 'rgba(220,38,38,.7)',   label: 'Cut',            note: 'falls outside the trim' },
+];
+
 document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => ({
   pageNum: 1, numPages: 0, scaleMode: 'fit', scale: 1.5, panel: false,
   mode: 'page', yaw: -32, pitch: 26, spread: 26, trimMode: 'keep', onlyFixed: false,
@@ -289,15 +463,68 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
   W: 0, H: 0, status: 'no document', layerList: LAYERS,
   layers: { items: true, glyphs: false, rules: true, columns: false, gutters: false, cells: true },
   counts: {}, sel: [], selMode: 'contain', selInfo: '', drag: null, dragStyle: '',
-  matrix: [], tableInfo: '',
+  matrix: [], tableInfo: '', agree: false,
+  stackLegend: STACK_LEGEND, preset: 'iso',
+  busy: false, error: '', dropping: false, probe: null, toast: '',
 
   async init() {
     let t;
     addEventListener('resize', () => {
-      if (this.scaleMode !== 'fit') return;
-      clearTimeout(t); t = setTimeout(() => this.redraw(), 150);
+      clearTimeout(t);
+      t = setTimeout(() => this.redraw(), 150);
+    });
+    // Keyboard, for the desktop half of the audience. Nothing here is the only
+    // way to reach a function; every one of these has a control too.
+    addEventListener('keydown', e => {
+      if (e.target.matches('input, select, textarea')) return;
+      const k = e.key;
+      if (k === 'ArrowLeft') { this.go(-1); }
+      else if (k === 'ArrowRight') { this.go(1); }
+      else if (k === 'p') { this.setMode('page'); }
+      else if (k === 's') { this.setMode('stack'); }
+      else if (k === 'c') { this.panel = !this.panel; }
+      else if (k === '+' || k === '=') { this.zoom(1); }
+      else if (k === '-') { this.zoom(-1); }
+      else if (k === '0') { this.mode === 'stack' ? this.viewPreset('iso') : (this.scaleMode = 'fit', this.redraw()); }
+      else if (k >= '1' && k <= '6') {
+        const key = LAYERS[+k - 1]?.key;
+        if (key) { this.layers[key] = !this.layers[key]; this.redraw(); }
+      } else return;
+      e.preventDefault();
     });
     await this.loadSample();
+  },
+
+  setMode(m) { if (this.mode !== m) { this.mode = m; this.clearProbe(); this.redraw(); } },
+
+  setAllLayers(on) {
+    for (const l of LAYERS) this.layers[l.key] = on;
+    this.redraw();
+  },
+
+  // Steps through the same ladder the select offers, from wherever `fit` landed.
+  zoom(dir) {
+    const steps = [0.5, 0.75, 1, 1.5, 2, 3];
+    const near = steps.reduce((a, b) => Math.abs(b - this.scale) < Math.abs(a - this.scale) ? b : a);
+    const i = Math.min(steps.length - 1, Math.max(0, steps.indexOf(near) + dir));
+    this.scaleMode = String(steps[i]);
+    this.redraw();
+  },
+
+  async copy(text, what) {
+    try { await navigator.clipboard.writeText(text); this.flash(`copied ${what}`); }
+    catch { this.error = 'clipboard blocked in this context'; }
+  },
+
+  copyKept() {
+    const { kept } = window.pdf.stream.trim(S.doc.items, { ...this.trim, mode: this.trimMode });
+    this.copy(window.pdf.stream.rows(kept).map(r => r.str).join('\n'), `${kept.length} items`);
+  },
+
+  flash(msg) {
+    this.toast = msg;
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => { this.toast = ''; }, 1600);
   },
 
   // Built here rather than committed, so the fixture is readable as code and
@@ -362,11 +589,34 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     return doc.save();
   },
 
-  async loadSample() { this.status = 'building sample…'; await this.open(await this.sampleBytes()); },
-  async loadFile(f) { if (f) { this.status = 'reading…'; await this.open(await f.arrayBuffer()); } },
+  async loadSample() { await this.open(() => this.sampleBytes(), 'building sample'); },
 
-  async open(bytes) {
-    this.status = 'parsing…';
+  async loadFile(f) {
+    if (!f) return;
+    if (!/pdf$/i.test(f.type) && !/\.pdf$/i.test(f.name)) {
+      this.error = `${f.name} is not a PDF`;
+      return;
+    }
+    await this.open(() => f.arrayBuffer(), `reading ${f.name}`);
+  },
+
+  // One entry point for every source, so the busy state, the error surface, and
+  // the reset of per-document state cannot drift apart between them.
+  async open(source, what) {
+    this.busy = true; this.error = ''; this.status = what + '…'; this.clearProbe(); this.clearSel();
+    try {
+      const bytes = await source();
+      this.status = 'parsing…';
+      await this.parse(bytes);
+    } catch (e) {
+      this.error = `could not open: ${e.message}`;
+      this.status = 'no document';
+    } finally {
+      this.busy = false;
+    }
+  },
+
+  async parse(bytes) {
     S.doc = await window.pdf.open(bytes);
     this.numPages = S.doc.numPages;
     this.pageNum = 1;
@@ -385,7 +635,11 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     await this.redraw();
   },
 
-  go(d) { this.pageNum = Math.min(this.numPages, Math.max(1, this.pageNum + d)); this.clearSel(); this.redraw(); },
+  go(d) {
+    const n = Math.min(this.numPages, Math.max(1, this.pageNum + d));
+    if (n === this.pageNum) return;
+    this.pageNum = n; this.clearSel(); this.clearProbe(); this.redraw();
+  },
 
   async redraw() {
     if (!S.doc) return;
@@ -518,11 +772,6 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     this.counts = counts;
   },
 
-  // The comparison the kit exists to make. It is only meaningful over the same
-  // region: run stream across a whole page and it reads the title, the leader
-  // row, and the unruled block too, so it "differs" from any lattice table by
-  // construction and the comparison says nothing. Scope it to the ruled area
-  // and the two readings are actually answerable against each other.
   // --- the stack -----------------------------------------------------------
   //
   // Pages laid out along a third axis, so what repeats becomes a column through
@@ -659,7 +908,7 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
   // wanting "straight on" should not mean dragging back to zero.
   viewPreset(name) {
     const p = { front: [0, 0], iso: [-32, 26], side: [-78, 8], top: [-14, 72] }[name];
-    if (p) { this.yaw = p[0]; this.pitch = p[1]; this.flashHud(); this.drawStack(); }
+    if (p) { this.yaw = p[0]; this.pitch = p[1]; this.preset = name; this.flashHud(); this.drawStack(); }
   },
 
   // Turn the detector's output into a proposed cut, which is the point of
@@ -709,12 +958,18 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
   },
   orbitEnd() { this._orbit = null; },
 
+  // The comparison the kit exists to make, and it is only meaningful over the
+  // same region: run stream across a whole page and it reads the title, the
+  // leader row, and the unruled block too, so it "differs" from any lattice
+  // table by construction and says nothing. Scoped to the ruled area, the two
+  // readings are actually answerable against each other.
   readTable(n) {
     const grids = S.doc.grids(n);
     const items = S.doc.page(n);
     if (!grids.length) {
       const cols = window.pdf.stream.columns(items).map(c => c.x1);
       this.matrix = window.pdf.stream.split(items, cols).map(r => r.cells);
+      this.agree = false;
       this.tableInfo = `no ruled table · stream only, ${this.matrix.length} rows`;
       return;
     }
@@ -724,9 +979,9 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     const cols = window.pdf.stream.columns(inside).map(c => c.x1);
     const streamRows = window.pdf.stream.split(inside, cols).map(r => r.cells);
     this.matrix = g.matrix;
-    const same = JSON.stringify(g.matrix) === JSON.stringify(streamRows);
-    this.tableInfo = `lattice ${g.rows}x${g.cols} · stream ${streamRows.length}x${cols.length} ` +
-      `over the same region · ${same ? 'agree' : 'DIFFER'}`;
+    this.agree = JSON.stringify(g.matrix) === JSON.stringify(streamRows);
+    this.tableInfo = `lattice ${g.rows}×${g.cols} · stream ${streamRows.length}×${cols.length} ` +
+      `over the same region · ${this.agree ? 'agree' : 'DIFFER'}`;
   },
 
   // Drag selection. Screen coordinates go straight to the kit; the only thing
@@ -737,8 +992,45 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     this.drag = { x0: e.clientX - r.left, y0: e.clientY - r.top, x1: e.clientX - r.left, y1: e.clientY - r.top };
     e.currentTarget.setPointerCapture?.(e.pointerId);
   },
+  // The reading under the pointer, whether or not a drag is in progress. Uses
+  // the kit's own hit test against the projected boxes, so what the panel
+  // reports is the same box the overlay drew.
+  hover(e) {
+    if (!S.v || !S.projected.length) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const hit = S.v.at(e.clientX - r.left, e.clientY - r.top,
+                       S.projected.filter(p => p.str.trim()));
+    if (!hit) { this.clearProbe(); return; }
+    const it = hit.source;
+    // Which lattice cell, if any, claims it. Answering "where did this land"
+    // is most of the reason to hover something in the first place.
+    const cell = (S.doc.grids(this.pageNum)[0]?.cells ?? [])
+      .find(c => it.x1 >= c.x1 - 1 && it.x2 <= c.x2 + 1 && it.base >= c.y1 - 1 && it.base <= c.y2 + 1);
+    const mark = document.getElementById('probeMark');
+    mark.innerHTML = '';
+    Object.assign(mark.appendChild(document.createElement('div')).style, {
+      position: 'absolute', left: hit.left + 'px', top: hit.top + 'px',
+      width: Math.max(hit.w, 2) + 'px', height: Math.max(hit.h, 2) + 'px',
+      outline: '2px solid oklch(var(--p))', outlineOffset: '1px',
+      background: 'oklch(var(--p) / 0.12)', borderRadius: '2px',
+    });
+    this.probe = {
+      str: it.str, x1: it.x1, x2: it.x2, w: it.w, h: it.h, base: it.base,
+      font: it.fontName || 'unknown', fontSize: it.fontSize,
+      bold: it.bold, italic: it.italic,
+      underline: it.underline, strikethrough: it.strikethrough,
+      cell: cell ? `cell ${cell.row},${cell.col}` : null,
+    };
+  },
+
+  clearProbe() {
+    this.probe = null;
+    const m = document.getElementById('probeMark');
+    if (m) m.innerHTML = '';
+  },
+
   dragMove(e) {
-    if (!this.drag) return;
+    if (!this.drag) { this.hover(e); return; }
     const r = e.currentTarget.getBoundingClientRect();
     this.drag.x1 = e.clientX - r.left; this.drag.y1 = e.clientY - r.top;
     const { x0, y0, x1, y1 } = this.drag;
