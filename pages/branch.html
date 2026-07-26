@@ -104,12 +104,33 @@
       input: '', target: null,
 
       async init() {
-        const t = window.reviewTarget.parse(location.hash || location.search);
-        if (!t || t.kind !== 'ref' || !t.repo || !t.ref) {
-          if (t?.repo) this.input = t.repo;
-          return;
+        const t = this.resolve();
+        if (!t) return;
+        this.input = t.repo + (t.ref ? '@' + t.ref : '');
+        if (t.ref) await this.open(t);
+      },
+
+      // The address, from wherever this page is being run.
+      //
+      // Normally that is location.hash. Inside a toss the frame has no address
+      // bar of its own: toss-render's params shim hands the address suffix over
+      // as location.search instead, and the blob URL's hash carries only an
+      // optional #frag. So both are tried, and the first that yields a usable
+      // ref wins rather than the first that parses at all.
+      resolve() {
+        const sources = [location.hash, location.search];
+        for (const s of sources) {
+          const t = window.reviewTarget.parse(s);
+          if (t && t.kind === 'ref' && t.repo && t.ref) return t;
         }
-        this.input = t.repo + '@' + t.ref;
+        for (const s of sources) {          // repo only: prefill the form
+          const t = window.reviewTarget.parse(s);
+          if (t && t.repo) return t;
+        }
+        return null;
+      },
+
+      async open(t) {
         // The base: an explicit &base= wins, else the repo's own default.
         let base = t.base;
         if (!base) {
@@ -120,10 +141,16 @@
         }
         const authored = await this.readAuthored();
         this.target = { repo: t.repo, branch: t.ref, base, authored };
+        window.__branchTarget = this.target;
         this.$nextTick(() => {
-          const el = document.getElementById('mount');
+          // A fresh element each time: Alpine cannot re-initialise a tree it
+          // already owns, so opening a second branch replaces the mount rather
+          // than re-running it.
+          const old = document.getElementById('mount');
+          const el = document.createElement('div');
+          el.id = 'mount';
           el.setAttribute('x-data', 'branchBrief(window.__branchTarget)');
-          window.__branchTarget = this.target;
+          old.replaceWith(el);
           Alpine.initTree(el);
         });
       },
@@ -132,7 +159,7 @@
       // Failure is silent by design: the derived page is the product, and an
       // unreadable envelope should cost its own contents and nothing else.
       async readAuthored() {
-        const params = new URLSearchParams(location.search);
+        const params = new URLSearchParams(location.search.replace(/^\?/, ''));
         const hash = new URLSearchParams((location.hash || '').replace(/^#/, ''));
         const gz = hash.get('gz') || params.get('gz');
         const src = params.get('src') || hash.get('src');
@@ -154,11 +181,18 @@
         return null;
       },
 
-      go() {
+      // Open what the field names, in place. Deliberately NOT a reload: inside
+      // a toss the frame has no address of its own, so reloading would drop the
+      // shimmed address and land back on the empty form. The hash is updated
+      // where there is one, for sharing, but the mount is what opens the branch.
+      async go() {
         const v = (this.input || '').trim();
         if (!v) return;
-        location.hash = 'gh=' + v;
-        location.reload();
+        const t = window.reviewTarget.parse('gh=' + v);
+        if (!t || !t.repo || !t.ref) return;
+        try { history.replaceState(null, '', '#gh=' + v); } catch {}
+        this.target = null;
+        await this.open(t);
       },
     }));
   });
