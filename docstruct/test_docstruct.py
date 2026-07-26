@@ -432,6 +432,20 @@ class Adjudication(unittest.TestCase):
         hits = compose.overlapping(target, [far, near])
         self.assertEqual([w.text for w in hits], ["y"])
 
+    def test_a_merged_token_still_matches(self):
+        # A method that joined two cells makes a bigger box; it should match.
+        target = Word("x", 100, 100, 100, 20)
+        merged = Word("xy", 100, 100, 260, 20)
+        self.assertEqual([w.text for w in compose.overlapping(target, [merged])], ["xy"])
+
+    def test_a_fragment_inside_the_cell_does_not_match(self):
+        # A stray glyph sitting inside the cell covers little of it. Scoring
+        # against the smaller box would call this a perfect hit and let
+        # readings like `3` into the evidence beside real proposals.
+        target = Word("1,356", 1000, 100, 100, 20)
+        fragment = Word("3", 1040, 101, 12, 18)
+        self.assertEqual(compose.overlapping(target, [fragment]), [])
+
 
 class GroupLines(unittest.TestCase):
     def test_splits_on_vertical_gaps(self):

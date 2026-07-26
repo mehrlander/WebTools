@@ -124,17 +124,27 @@ def overlapping(word: Word, candidates: list[Word], min_overlap: float = 0.5) ->
 
     Matching is by box overlap rather than by index, because methods segment
     differently: one may split a token another joins, and neither produces the
-    same word list. Overlap is measured against the smaller box so that a
-    method which merged two cells still matches each of them.
+    same word list.
+
+    Overlap is measured **against `word`, the cell being replaced**, and the
+    asymmetry is deliberate. A method that merged two cells produces a box
+    larger than the target and should still match it, so the candidate is
+    allowed to be bigger. A method that split the cell, or that landed a stray
+    glyph inside it, produces a box much smaller, and that must not match:
+    measuring against the smaller box instead scored a one-character fragment
+    as a perfect hit, which put readings like `inherited=3` into the evidence
+    beside real proposals.
     """
+    area = word.width * word.height
+    if area <= 0:
+        return []
     hits = []
     for other in candidates:
         ix = min(word.right, other.right) - max(word.left, other.left)
         iy = min(word.bottom, other.bottom) - max(word.top, other.top)
         if ix <= 0 or iy <= 0:
             continue
-        smaller = min(word.width * word.height, other.width * other.height)
-        if smaller > 0 and (ix * iy) / smaller >= min_overlap:
+        if (ix * iy) / area >= min_overlap:
             hits.append(other)
     return hits
 
@@ -185,7 +195,14 @@ def adjudicate(record: dict, primary: str | None = None) -> list[Adjudication]:
                 candidates: list[Candidate] = []
                 for key, words in others:
                     for hit in overlapping(cell, words):
-                        if hit.text != cell.text:
+                        # Only money-shaped readings are candidates for a money
+                        # cell. A method that segments differently can overlap
+                        # the cell with a fragment of the row label, and those
+                        # were reaching the output as noise (`inherited=r`).
+                        # They can never win, since a non-numeric reading cannot
+                        # close a relation, so they are only ever clutter in the
+                        # evidence that travels with a proposal.
+                        if hit.text != cell.text and tables.parse_money(hit.text) is not None:
                             candidates.append(Candidate(key, hit.text, hit.conf))
                 if not candidates:
                     continue
