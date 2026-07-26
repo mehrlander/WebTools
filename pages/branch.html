@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Branch</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🌿</text></svg>">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+
+<!--
+  branch.html — one branch as a page.
+
+  Every other branch surface here is a LIST (the estate's Open view, the
+  per-repo Branches view, the FAB's render tab), and every one of them ends in
+  a link out to github.com because there was nowhere of ours to go. This is the
+  destination those rows were missing.
+
+  Address grammar, reusing kits/review-target.js unchanged (the toss #gh= form
+  plus a base), fragment preferred and query accepted:
+
+    #gh=owner/repo@branch            the branch, against the repo's default
+    ...&base=main                    an explicit base
+    #gh=owner/repo                   opens the form prefilled
+
+  Two layers, and the split is the point:
+
+    DERIVED   read from the API on every load: state, ahead/behind, lifespan,
+              authoring sessions, the PR, commits, the changed files. Because
+              nothing here is authored, nothing here can be stale, and the page
+              needs no sync step. A link to it is current whenever it is opened,
+              which a hand-maintained markdown body can never promise.
+
+    AUTHORED  an optional envelope carrying what the API cannot know: why the
+              branch exists, what is still open, what was left out, and a note
+              per file. Delivered the way the rest of the envelope family is
+              (docs/envelopes/):
+
+                ?src=<owner/repo[@ref]:path>   fetched through the contents API
+                #gz=<base64url>                gzipped into the fragment
+
+              Discriminated bare-vs-envelope by BranchBrief.readAuthored rather
+              than by asking, mirroring lib/data-payload.js. A `branch-review/1`
+              surface is accepted as well as the plain form, so that profile can
+              become the format later without this page changing.
+
+  The layers are independent: a branch with no envelope renders completely, and
+  the envelope only ever adds. That is what lets this ship before any authoring
+  convention exists for it.
+
+  Per-file cards are alpineComponents/file-review.js, the same dossier
+  pages/review.html mounts, so a file reads identically in both places.
+
+  Token: like every #gh= address here, a private repo or un-deployed branch
+  renders only in a browser holding the viewer's ghToken. Public repos read
+  anonymously.
+
+  ?use=<branch|tag|sha> pins this page's own lib chain to a ref, fetched from
+  raw.githubusercontent and blob-imported so a branch name is cache-safe.
+-->
+<script type="module">
+  const ref = new URLSearchParams(location.search).get('use');
+  if (ref) {
+    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`);
+    if (!src.ok) throw new Error(`?use=${ref}: could not fetch the bundle (HTTP ${src.status})`);
+    const url = URL.createObjectURL(new Blob([await src.text()], { type: 'text/javascript' }));
+    try { await import(url); } finally { URL.revokeObjectURL(url); }
+  } else {
+    await import('../dist/web-tools.js');
+  }
+  await gh.load('kits/review-target.js');
+  // branch-brief reads compareFields from BranchSurvey, so it loads first.
+  await gh.load('branch-survey.js');
+  await gh.load('kits/branch-brief.js');
+  await gh.load('kits/cm6-merge.js');
+  await gh.load('alpineComponents/file-review.js');
+  await gh.load('alpineComponents/branch-brief.js');
+</script>
+<style>
+  [x-cloak]{display:none!important}
+</style>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content" x-data="branchPage()" x-cloak>
+
+  <div class="border-b border-base-300 bg-base-100">
+    <div class="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
+      <span class="text-lg">🌿</span>
+      <input x-model="input" @keydown.enter="go()" placeholder="owner/repo@branch"
+             class="input input-sm input-bordered font-mono flex-1 min-w-0">
+      <button @click="go()" class="btn btn-sm btn-primary">Open</button>
+    </div>
+  </div>
+
+  <div x-show="!target" class="max-w-4xl mx-auto p-8 text-center opacity-60 text-sm">
+    Address a branch above, or link straight to one:
+    <code class="text-xs">#gh=owner/repo@branch</code>
+  </div>
+
+  <div x-show="target" id="mount"></div>
+
+<script>
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('branchPage', () => ({
+      input: '', target: null,
+
+      async init() {
+        const t = window.reviewTarget.parse(location.hash || location.search);
+        if (!t || t.kind !== 'ref' || !t.repo || !t.ref) {
+          if (t?.repo) this.input = t.repo;
+          return;
+        }
+        this.input = t.repo + '@' + t.ref;
+        // The base: an explicit &base= wins, else the repo's own default.
+        let base = t.base;
+        if (!base) {
+          try {
+            const meta = await new window.GH({ token: window.TOKEN, repo: t.repo }).req('');
+            base = meta?.default_branch || 'main';
+          } catch { base = 'main'; }
+        }
+        const authored = await this.readAuthored();
+        this.target = { repo: t.repo, branch: t.ref, base, authored };
+        this.$nextTick(() => {
+          const el = document.getElementById('mount');
+          el.setAttribute('x-data', 'branchBrief(window.__branchTarget)');
+          window.__branchTarget = this.target;
+          Alpine.initTree(el);
+        });
+      },
+
+      // The optional authored layer, by whichever delivery the link used.
+      // Failure is silent by design: the derived page is the product, and an
+      // unreadable envelope should cost its own contents and nothing else.
+      async readAuthored() {
+        const params = new URLSearchParams(location.search);
+        const hash = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+        const gz = hash.get('gz') || params.get('gz');
+        const src = params.get('src') || hash.get('src');
+        try {
+          if (gz) {
+            const bin = Uint8Array.from(atob(gz.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+            const ds = new DecompressionStream('gzip');
+            const text = await new Response(new Blob([bin]).stream().pipeThrough(ds)).text();
+            return window.BranchBrief.readAuthored(JSON.parse(text));
+          }
+          if (src) {
+            const spec = window.DataPayload?.parseSpec?.(src);
+            const g = new window.GH({ token: window.TOKEN, repo: spec?.repo || 'mehrlander/web-tools',
+                                      ref: spec?.ref || 'main' });
+            const f = await g.get(spec?.path || src);
+            return window.BranchBrief.readAuthored(JSON.parse(f.text));
+          }
+        } catch (e) { console.warn('authored layer:', e?.message || e); }
+        return null;
+      },
+
+      go() {
+        const v = (this.input || '').trim();
+        if (!v) return;
+        location.hash = 'gh=' + v;
+        location.reload();
+      },
+    }));
+  });
+</script>
+</body>
+</html>
