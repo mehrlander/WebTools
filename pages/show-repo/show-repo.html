@@ -1190,15 +1190,22 @@ function app(){ return {
       g.pulls('open', 30).catch(() => []),
     ]);
     // Ahead/behind for each open PR head, so the Open view can show it without a
-    // per-visit compare. Bounded pool, best-effort: a failure leaves it null.
+    // per-visit compare. The same response carries the branch's oldest unique
+    // commit (BranchSurvey.firstCommitDate), which is what lets the Open row
+    // show a lifespan for a PR head the survey never reached. Bounded pool,
+    // best-effort: a failure leaves it null.
     {
       let pi = 0;
       const prAheadBehind = async () => {
         while (pi < openPRs.length){
           const p = openPRs[pi++];
           if (!p.head) continue;
-          try { const d = await g.compare(def, p.head); p.aheadBy = d.ahead_by ?? null; p.behindBy = d.behind_by ?? null; }
-          catch { p.aheadBy = null; p.behindBy = null; }
+          try {
+            const d = await g.compare(def, p.head);
+            p.aheadBy = d.ahead_by ?? null; p.behindBy = d.behind_by ?? null;
+            p.firstDate = B.firstCommitDate(d);
+          }
+          catch { p.aheadBy = null; p.behindBy = null; p.firstDate = ''; }
         }
       };
       await Promise.all(Array.from({ length: Math.min(4, openPRs.length) }, prAheadBehind));
@@ -1217,7 +1224,8 @@ function app(){ return {
       const older = dated.filter(b => b.daysAgo > B.RECENT_DAYS).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       const surveyed = await B.surveyOlder(g, { defaultRef: def, older, cap: this.ACTIVITY_SURVEY_CAP, pool: 3, now });
       truncated = surveyed.truncated;
-      const trim = b => ({ name: b.name, date: b.date || '', sha: b.sha || '', subject: b.subject || '', ago: b.ago || '',
+      const trim = b => ({ name: b.name, date: b.date || '', firstDate: b.firstDate || '',
+                           sha: b.sha || '', subject: b.subject || '', ago: b.ago || '',
                            group: b.group, noBase: !!b.noBase, nUnique: b.nUnique || 0, nLanded: b.nLanded || 0,
                            nMissing: b.nMissing || 0, missingPaths: b.missingPaths || [],
                            aheadBy: b.aheadBy ?? null, behindBy: b.behindBy ?? null });
@@ -1430,24 +1438,36 @@ function app(){ return {
   repoMenuAt: null,          // { x, y } viewport coords, or null when closed
   MENU_W: 200,
   MENU_ROW: 36,
-  openRepoMenu(repo, ev){
-    this.crumbMenu = false;
-    this.menuRepo = repo;
+  // The positioning half of an anchored row menu, shared rather than copied:
+  // the sidebar's repo menu and the Open view's per-branch GitHub menu
+  // (estate.js) are two item lists and two panels, but one geometry. Returns
+  // viewport coords for a FIXED panel, tight to the trigger (2 px), flipped
+  // above when it would run off the bottom, and clamped into the viewport.
+  // The panel's edge is aligned with the trigger's SAME edge, so it reads as
+  // belonging to that button: right for a trigger at its row's right edge
+  // (the sidebar's), left for one at the left (the Open row's, whose menu is
+  // the first thing on its action line). Right is the default; a caller at
+  // the left edge asks for align:'left', or the panel opens away from the
+  // button and, on a wide menu, straight into the viewport clamp.
+  anchorMenu(ev, rows, opts = {}){
     const b = ev?.currentTarget?.getBoundingClientRect?.();
-    if (!b){ this.repoMenuAt = null; return; }
-    const h = Math.min(this.repoMenuItems.length * this.MENU_ROW + 8, Math.round(innerHeight * 0.6));
+    if (!b) return null;
+    const w = opts.width || this.MENU_W;
+    const h = Math.min(rows * this.MENU_ROW + 8, Math.round(innerHeight * 0.6));
     const below = innerHeight - b.bottom > h + 8;
-    // Tight to the trigger (2 px) and right-aligned with it, so the panel
-    // reads as belonging to that button rather than floating near the row.
-    this.repoMenuAt = {
-      x: Math.max(8, Math.min(b.right - this.MENU_W, innerWidth - this.MENU_W - 8)),
+    const x = opts.align === 'left' ? b.left : b.right - w;
+    return {
+      x: Math.max(8, Math.min(x, innerWidth - w - 8)),
       y: below ? b.bottom + 2 : Math.max(8, b.top - h - 2),
     };
   },
-  get repoMenuStyle(){
-    const a = this.repoMenuAt;
-    return a ? 'left:' + a.x + 'px;top:' + a.y + 'px' : 'left:-9999px;top:-9999px';
+  menuStyle(at){ return at ? 'left:' + at.x + 'px;top:' + at.y + 'px' : 'left:-9999px;top:-9999px'; },
+  openRepoMenu(repo, ev){
+    this.crumbMenu = false;
+    this.menuRepo = repo;
+    this.repoMenuAt = this.anchorMenu(ev, this.repoMenuItems.length);
   },
+  get repoMenuStyle(){ return this.menuStyle(this.repoMenuAt); },
   async runRepoMenu(key){
     const repo = this.menuRepo;
     if (!repo) return;
@@ -2278,9 +2298,12 @@ function overview(){ return {
   THE REPO MENU (repo-menu.js, over the shell's menuRepo / repoMenuItems /
   runRepoMenu) is where you act ON a repo rather than navigate to it. It hangs
   off a Repos row's trailing button as an anchored dropdown, positioned FIXED
-  from that button's rect (openRepoMenu/repoMenuStyle) because the rows sit in
+  from that button's rect (openRepoMenu) because the rows sit in
   an overflow-y-auto column that would clip a nested panel; it flips above the
-  trigger near the bottom of the list.
+  trigger near the bottom of the list. That geometry is SHARED, not copied:
+  anchorMenu/menuStyle also position the Open view's per-branch GitHub menu
+  (estate.js), so the two anchored menus behave identically while each keeps
+  its own items and its own panel.
     Its rows: Config / Open on GitHub / the -private companion / Copy browse
     link. FLAT and COMPACT (36 px rows, not the 44 px floor, which is for a cold
     target in chrome rather than a panel already aimed at and opened). An Open
@@ -2326,7 +2349,10 @@ function overview(){ return {
   repo, since the menu speaks for whichever one summoned it). The explorer's
   breadcrumb links the current folder (ghFolderUrl), the viewer's actions link
   the open file's blob, and every estate card and surface item carries its
-  github-logo link. When adding a view, add its jump-over.
+  github-logo link. The Activity view's Open rows carry a whole small SET of
+  them (tree, compare, commits, the PR's files and checks, new PR), which is
+  why theirs is a menu rather than a link. When adding a view, add its
+  jump-over.
 
   Today: web-tools -> 'gallery' (its pages index); any repo declaring a `pages`
   catalog -> 'gallery' too (fed from that catalog, tiles live via toss-render);
