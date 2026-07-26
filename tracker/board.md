@@ -4,6 +4,7 @@ _Generated from tasks/. Do not hand-edit._
 
 ## On deck
 - 🎫 Backfill guide regions into old PR bodies and full-regenerate the merge guide
+- 🎫 Show the branch lifespan in the per-repo branch review too
 - 🎫 Reach the take-away menu from show-repo's Pages gallery
 - 🎫 Fold chat-results into the surface schema, or keep it a sibling
 - 🎫 Collapse quickLinks into a projection of the repos manifest next: decide the projection rule (a flag on repos entries, or first-N) and migrate loadQuickLinks
