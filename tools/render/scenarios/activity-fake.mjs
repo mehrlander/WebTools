@@ -41,7 +41,7 @@ export default async (page) => {
         ],
         survey: { surveyedAt: iso(3), cap: 30, surveyed: 8, older: 12, truncated: false, branches: [
           { name: 'claude/open-view-live-branches-yk24d9', sha: 'a1', group: 'active', date: iso(2), subject: 'Open view: highlight branches ahead of main, link the session' },
-          { name: 'claude/tighten-mobile-grid-mm01', sha: 'a2', group: 'stranded', date: iso(9), subject: 'Tighten the mobile grid and drop the hard borders', aheadBy: 3, behindBy: 12 },
+          { name: 'claude/tighten-mobile-grid-mm01', sha: 'a2', group: 'stranded', date: iso(9), subject: 'Tighten the mobile grid and drop the hard borders', session: sess('01NoPrBranchJkl012'), aheadBy: 3, behindBy: 12 },
         ] },
       },
       'mehrlander/web-tools-private': {
@@ -62,7 +62,7 @@ export default async (page) => {
           { number: 109, title: 'Tooling: branch-survey report refinements', head: 'claude/branch-survey-report-rr04', draft: false, updatedAt: iso(70), session: sess('01OlderPrGhi789'), aheadBy: 0, behindBy: 41 },
         ],
         survey: { surveyedAt: iso(15), cap: 30, surveyed: 10, older: 18, truncated: false, branches: [
-          { name: 'claude/chron-drain-2607-qq03', sha: 'c1', group: 'active', date: iso(14), subject: 'Promote nine dump files, seed the datashelf thread' },
+          { name: 'claude/chron-drain-2607-qq03', sha: 'c1', group: 'active', date: iso(14), subject: 'Promote nine dump files, seed the datashelf thread' },   // no session anywhere: icon stays hidden
         ] },
       },
       'mehrlander/chat-histories': {
