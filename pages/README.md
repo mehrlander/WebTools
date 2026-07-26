@@ -13,6 +13,7 @@ the link-dense text twin of the visual index above.
 
 | Page | Title | Links |
 |---|---|---|
+| `branch` | Branch | [view](https://mehrlander.github.io/web-tools/pages/branch.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/branch.html) |
 | `chat-results` | Chat Search Results | [view](https://mehrlander.github.io/web-tools/pages/chat-results.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/chat-results.html) |
 | `compression-helper` | Compression Helper (v5) | [view](https://mehrlander.github.io/web-tools/pages/compression-helper.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/compression-helper.html) |
 | `console-playground` | Console Suite Guide | [view](https://mehrlander.github.io/web-tools/pages/console-playground.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/console-playground.html) |
