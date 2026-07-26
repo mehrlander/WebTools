@@ -16,7 +16,9 @@
     "pages": "npm run pages-shots && npm run pages-index",
     "wsl-fetch": "node pages/wsl-sync/fetch-data.mjs",
     "tracker-board": "python3 .claude/skills/tasks/build-board.py tracker/tasks tracker/board.md",
-    "sunset": "python3 scripts/sunset-scan.py --all"
+    "sunset": "python3 scripts/sunset-scan.py --all",
+    "test:pdf": "node tools/test/pdf-kit-browser.mjs && node tools/test/pdf-ink-alignment.mjs",
+    "test:pdf-versions": "node tools/test/pdf-version-probe.mjs"
   },
   "devDependencies": {
     "@alpinejs/collapse": "^3.15.12",
@@ -40,6 +42,8 @@
     "jsdom": "^29.1.0",
     "marked": "^18.0.6",
     "papaparse": "^5.5.3",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^3.4.120",
     "playwright": "1.56.0",
     "subtlex-word-frequencies": "^2.0.0",
     "tabulator-tables": "^6.4.0",

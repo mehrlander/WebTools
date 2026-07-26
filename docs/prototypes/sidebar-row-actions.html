@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>show-repo sidebar · row actions prototype</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<!-- unpkg, not jsdelivr: the bake script strips the unpkg form and would
+     otherwise inline Alpine and leave this tag fetching a second copy. -->
+<script defer src="https://unpkg.com/alpinejs@3/dist/cdn.min.js"></script>
+<style>
+  [x-cloak]{display:none!important}
+  .no-scrollbar::-webkit-scrollbar{display:none}
+  .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+  /* Rows are press-and-hold targets: kill the iOS callout, the text selection
+     the hold would otherwise start, and the tap highlight. pan-y keeps vertical
+     scrolling alive while the hold timer runs. */
+  .row-hold{touch-action:pan-y;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  .row-swipe{touch-action:pan-y}
+  .snapback{transition:transform .22s cubic-bezier(.32,.72,0,1)}
+  .hit-box{position:fixed;border:1px solid;pointer-events:none;z-index:70;font:9px/1 ui-monospace,monospace}
+  .hit-lbl{position:absolute;top:-11px;left:0;padding:0 2px;color:#fff;white-space:nowrap}
+</style>
+</head>
+<body class="min-h-dvh bg-base-200 text-base-content" x-data="proto()" x-cloak>
+
+<div class="max-w-6xl mx-auto px-4 py-6 flex flex-col gap-5">
+
+  <header class="flex flex-col gap-1">
+    <h1 class="text-xl font-bold">show-repo sidebar: row actions</h1>
+    <p class="text-base text-base-content/60 max-w-2xl">
+      Four treatments of the same list. The row must navigate on a single tap, so every
+      treatment differs only in how the <em>secondary</em> actions are reached. Try them at
+      phone width; the frame below is 390&nbsp;px.
+      <br><strong>Outcome:</strong> show-repo shipped <em>none</em> of these four as drawn.
+      It kept the row's public/private marker and promoted it from an inert span to a
+      visible 44&nbsp;px control that opens the menu on a single tap: closest to the kebab
+      variant, but always visible rather than hover-only, and carrying the marker's glyph so
+      the row loses no state. Press-and-hold was built and then removed, on the grounds that
+      a visible control answering a plain tap does the same work with nothing to discover.
+      This page is kept for the measurement below, which is the argument that survived.
+    </p>
+  </header>
+
+  <!-- ── Controls ──────────────────────────────────────────────────────── -->
+  <div class="flex flex-wrap items-center gap-2">
+    <template x-for="v in variants" :key="v.key">
+      <button @click="variant = v.key; closeAll()"
+              class="px-3 py-2 rounded-lg text-base font-medium transition-colors border"
+              :class="variant === v.key ? 'bg-primary text-primary-content border-primary' : 'bg-base-100 border-base-300 hover:bg-base-200'">
+        <span x-text="v.label"></span>
+      </button>
+    </template>
+    <div class="grow"></div>
+    <label class="flex items-center gap-2 text-base cursor-pointer bg-base-100 border border-base-300 rounded-lg px-3 py-2">
+      <input type="checkbox" class="checkbox checkbox-sm" x-model="showHits" @change="remeasure()">
+      <span>Show tap targets</span>
+    </label>
+  </div>
+
+  <div class="alert bg-base-100 border border-base-300 text-base py-2">
+    <i class="ph ph-info text-lg shrink-0"></i>
+    <span x-text="variants.find(v => v.key === variant).blurb"></span>
+  </div>
+
+  <!-- ── The frame + notes ─────────────────────────────────────────────── -->
+  <div class="flex flex-wrap items-start gap-6">
+
+    <!-- Phone frame -->
+    <div class="shrink-0 mx-auto">
+      <div class="rounded-[2rem] border-8 border-neutral bg-neutral shadow-2xl overflow-hidden"
+           style="width:406px">
+        <div class="bg-base-100 relative overflow-hidden" style="height:720px">
+
+          <!-- App header, as show-repo has it. The brand sits here, which is the
+               problem the breadcrumb solves: with the drawer open on mobile it
+               is behind the drawer. -->
+          <div class="h-14 flex items-center gap-1 px-4 border-b border-base-300 bg-base-100">
+            <i class="ph ph-cube text-2xl text-primary"></i>
+            <nav class="flex items-center gap-0.5 min-w-0 overflow-x-auto no-scrollbar text-base-content/60">
+              <span class="px-2 py-1 shrink-0">Activity</span>
+              <span class="px-2 py-1 shrink-0">Repos</span>
+              <span class="px-2 py-1 shrink-0">Surfaces</span>
+              <span class="px-2 py-1 shrink-0">Stage</span>
+            </nav>
+            <div class="grow"></div>
+            <i class="ph ph-list text-xl"></i>
+          </div>
+
+          <!-- Dimmed main area behind the drawer -->
+          <div class="absolute inset-x-0 bottom-0 top-14 bg-black/30"></div>
+
+          <!-- The drawer -->
+          <aside class="absolute inset-y-0 left-0 w-72 bg-base-100 border-r border-base-300 shadow-xl flex flex-col">
+
+            <!-- ── Sidebar top bar: the breadcrumb ────────────────────────
+                 In a repo this used to be a dead label plus three icons. As a
+                 breadcrumb it earns its 56 px: crumb 1 is the way home (the one
+                 route the open drawer hides), crumb 2 is where you are and opens
+                 the same menu a row's press-and-hold opens. Dropping the owner
+                 prefix is what buys the room. -->
+            <div class="h-14 flex items-center gap-1 px-2 border-b border-base-300 shrink-0">
+              <template x-if="inRepo">
+                <div class="flex items-center gap-0.5 min-w-0 flex-1">
+                  <button data-hit @click="inRepo = null; closeAll()"
+                          class="shrink-0 h-11 w-11 flex items-center justify-center rounded-lg hover:bg-base-200 active:bg-base-300 transition-colors text-base-content/60"
+                          title="Dashboard">
+                    <i class="ph ph-house text-xl leading-none"></i>
+                  </button>
+                  <i class="ph ph-caret-right text-sm text-base-content/25 shrink-0"></i>
+                  <button data-hit @click="openMenu(inRepo, 'crumb')"
+                          class="min-w-0 flex-1 h-11 flex items-center gap-1 px-2 rounded-lg hover:bg-base-200 active:bg-base-300 transition-colors">
+                    <span class="font-mono text-base truncate" x-text="inRepo.short"></span>
+                    <i class="ph ph-caret-down text-sm text-base-content/40 shrink-0"></i>
+                  </button>
+                </div>
+              </template>
+              <template x-if="!inRepo">
+                <span class="font-mono text-base text-base-content/60 px-2">Views</span>
+              </template>
+            </div>
+
+            <!-- ── The list ──────────────────────────────────────────────── -->
+            <div class="flex-1 overflow-y-auto px-2 py-3 flex flex-col gap-3" @scroll="cancelHold()">
+              <div class="flex flex-col gap-0.5">
+                <div class="flex items-center gap-1.5 px-2 pb-1">
+                  <span class="text-base font-mono uppercase tracking-widest text-base-content/40">Repos</span>
+                </div>
+
+                <template x-for="grp in groups" :key="grp.group">
+                  <div class="flex flex-col gap-0.5">
+                    <div class="flex items-center gap-1.5 px-2 pt-1 text-sm font-mono uppercase tracking-wider text-base-content/30">
+                      <i class="ph ph-folder text-sm"></i><span x-text="grp.group"></span>
+                    </div>
+
+                    <template x-for="r in grp.repos" :key="r.repo">
+                      <div class="relative overflow-hidden rounded-lg">
+
+                        <!-- Swipe variant: the actions parked under the row. -->
+                        <div x-show="variant === 'swipe'"
+                             class="absolute inset-y-0 right-0 flex items-stretch">
+                          <button data-hit @click="act('config', r)"
+                                  class="w-14 flex items-center justify-center bg-base-300 text-base-content/70">
+                            <i class="ph ph-gear-six text-xl"></i></button>
+                          <a data-hit :href="'https://github.com/' + r.repo" target="_blank" rel="noopener"
+                             class="w-14 flex items-center justify-center bg-neutral text-neutral-content">
+                            <i class="ph ph-github-logo text-xl"></i></a>
+                        </div>
+
+                        <!-- The row itself. One element, one tap target, whatever
+                             the variant. -->
+                        <div class="relative bg-base-100"
+                             :class="[
+                               variant === 'swipe' ? 'row-swipe' : 'row-hold',
+                               swipeOpen === r.repo || dragRepo === r.repo ? '' : 'snapback'
+                             ]"
+                             :style="variant === 'swipe' ? ('transform:translateX(' + offsetFor(r) + 'px)') : ''"
+                             @pointerdown="onDown($event, r)"
+                             @pointermove="onMove($event, r)"
+                             @pointerup="onUp($event, r)"
+                             @pointercancel="onCancel()"
+                             @pointerleave="onCancel()"
+                             @contextmenu.prevent="openMenu(r, 'row')">
+
+                          <button data-hit @click="onClick(r)"
+                                  class="w-full min-h-11 flex items-center gap-2 pl-2 pr-2 py-2 rounded-lg text-left transition-colors"
+                                  :class="[
+                                    inRepo && inRepo.repo === r.repo ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80',
+                                    holdRepo === r.repo ? 'scale-[.98]' : ''
+                                  ]">
+                            <i class="ph text-lg shrink-0" :class="r.icon"></i>
+                            <span class="truncate flex-1" x-text="r.short"></span>
+
+                            <!-- Today's cluster, on the "today" variant only. -->
+                            <template x-if="variant === 'today'">
+                              <span class="flex items-center gap-0.5 shrink-0">
+                                <span data-hit class="text-base-content/30">
+                                  <i class="ph text-base leading-none" :class="r.priv ? 'ph-lock' : 'ph-globe'"></i></span>
+                                <span data-hit @click.stop="act('config', r)" class="text-base-content/30 hover:text-primary">
+                                  <i class="ph ph-gear-six text-base leading-none"></i></span>
+                                <span data-hit @click.stop="act('github', r)" class="text-base-content/30 hover:text-base-content/70">
+                                  <i class="ph ph-github-logo text-base leading-none"></i></span>
+                              </span>
+                            </template>
+
+                            <!-- Kebab variant: one target, and only where a
+                                 pointer can hover. On touch the hold still works,
+                                 so the kebab is the desktop discovery hint, not a
+                                 second mechanism. -->
+                            <template x-if="variant === 'kebab'">
+                              <span data-hit @click.stop="openMenu(r, 'row')"
+                                    class="shrink-0 h-9 w-9 -mr-1 hidden sm:flex items-center justify-center rounded-lg text-base-content/30 hover:bg-base-300 hover:text-base-content">
+                                <i class="ph ph-dots-three-vertical text-lg leading-none"></i></span>
+                            </template>
+
+                            <!-- The private marker survives every variant: it is
+                                 state, not an action, and nothing else says it. -->
+                            <template x-if="variant !== 'today' && r.priv">
+                              <i class="ph ph-lock text-sm text-base-content/25 shrink-0"></i>
+                            </template>
+                          </button>
+
+                          <!-- Hold progress: without this the hold reads as a
+                               dead press. Wipes left to right over 450 ms. -->
+                          <div x-show="holdRepo === r.repo" x-cloak
+                               class="absolute inset-y-0 left-0 bg-primary/15 pointer-events-none rounded-lg"
+                               :style="'width:' + (holdPct * 100) + '%'"></div>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </aside>
+
+          <!-- ── The menu, as a bottom sheet. Same sheet for the row hold, the
+               kebab, and the breadcrumb caret: one menu, three triggers. ──── -->
+          <div x-show="menuRepo" x-cloak class="absolute inset-0 z-50">
+            <div class="absolute inset-0 bg-black/40 transition-opacity" @click="closeMenu()"></div>
+            <div class="absolute inset-x-0 bottom-0 bg-base-100 rounded-t-2xl shadow-2xl transition-transform duration-200"
+                 :class="menuRepo ? 'translate-y-0' : 'translate-y-full'">
+              <div class="flex justify-center pt-2 pb-1"><div class="h-1 w-10 rounded-full bg-base-300"></div></div>
+              <div class="px-4 pb-2 pt-1 flex items-center gap-2 border-b border-base-200">
+                <i class="ph text-lg text-primary" :class="menuRepo && menuRepo.icon"></i>
+                <span class="font-mono text-base font-semibold truncate" x-text="menuRepo && menuRepo.short"></span>
+                <span x-show="menuRepo && menuRepo.priv" class="badge badge-ghost badge-sm">private</span>
+              </div>
+              <div class="py-2 pb-6">
+                <template x-for="item in menuItems" :key="item.key">
+                  <button data-hit @click="act(item.key, menuRepo)"
+                          class="w-full min-h-12 flex items-center gap-3 px-4 text-left text-base hover:bg-base-200 active:bg-base-300 transition-colors">
+                    <i class="ph text-xl text-base-content/50 shrink-0" :class="item.icon"></i>
+                    <span x-text="item.label"></span>
+                    <div class="grow"></div>
+                    <i x-show="item.nav" class="ph ph-caret-right text-base text-base-content/25"></i>
+                  </button>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Toast, so an action reads as having happened. -->
+          <div x-show="toast" x-cloak
+               class="absolute bottom-4 inset-x-4 z-[60] bg-neutral text-neutral-content rounded-xl px-4 py-3 text-base shadow-lg">
+            <span x-text="toast"></span>
+          </div>
+
+        </div>
+      </div>
+      <p class="text-sm text-base-content/50 text-center mt-2">
+        Long-press works with a mouse too. Right-click opens the same menu.
+      </p>
+    </div>
+
+    <!-- Notes column -->
+    <div class="flex-1 min-w-[18rem] flex flex-col gap-4">
+      <div class="bg-base-100 border border-base-300 rounded-xl p-4">
+        <h2 class="font-semibold text-base mb-2 flex items-center gap-2">
+          <i class="ph ph-ruler text-lg text-primary"></i>Why today's row fails
+        </h2>
+        <p class="text-base text-base-content/70 mb-2">
+          Turn on <strong>Show tap targets</strong> and switch to <strong>Today</strong>.
+          The three trailing icons measure about 16&nbsp;px square. Apple's minimum is
+          44&nbsp;px, Google's is 48&nbsp;dp. They are not small-ish; they are a third
+          of the floor, and the <span class="font-mono">gap-0.5</span> between them is
+          2&nbsp;px, well under the 8&nbsp;px usually asked for between adjacent targets.
+        </p>
+        <p class="text-base text-base-content/70">
+          The deeper problem is that they buy one tap. Open the repo and its GitHub link
+          is the sidebar's own name and Config is a row in the list. So the cluster
+          duplicates, on every row, forever, what is one tap away.
+        </p>
+      </div>
+
+      <div class="bg-base-100 border border-base-300 rounded-xl p-4">
+        <h2 class="font-semibold text-base mb-2 flex items-center gap-2">
+          <i class="ph ph-hand-tap text-lg text-primary"></i>What the menu is worth
+        </h2>
+        <p class="text-base text-base-content/70">
+          A menu that only repeats Config and GitHub is not worth a gesture. It earns one
+          by carrying what the row cannot: jumping straight into that repo's
+          <strong>Files</strong> or <strong>Branches</strong>, switching to its
+          public/private companion, and copying a browse link. Those are the things you
+          currently cannot do without opening the repo first.
+        </p>
+      </div>
+
+      <div class="bg-base-100 border border-base-300 rounded-xl p-4">
+        <h2 class="font-semibold text-base mb-2 flex items-center gap-2">
+          <i class="ph ph-path text-lg text-primary"></i>The breadcrumb
+        </h2>
+        <p class="text-base text-base-content/70">
+          Tap a row, and the top bar becomes <span class="font-mono">⌂ › name ⌄</span>.
+          The house is the route home that the open drawer otherwise hides, at a full
+          44&nbsp;px. The name opens the same menu the hold opens, with a visible caret,
+          because here it labels where you are rather than competing with a navigation
+          tap. Dropping <span class="font-mono">mehrlander/</span> is what pays for it.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tap-target overlay -->
+<template x-for="b in hits" :key="b.id">
+  <div class="hit-box" :style="'left:' + b.x + 'px;top:' + b.y + 'px;width:' + b.w + 'px;height:' + b.h + 'px;border-color:' + b.color">
+    <span class="hit-lbl" :style="'background:' + b.color" x-text="b.label"></span>
+  </div>
+</template>
+
+<script>
+function proto() {
+  return {
+    variants: [
+      { key: 'hold',  label: 'Press & hold',
+        blurb: 'No trailing icons at all. The whole row navigates on a tap; press and hold (or right-click) opens the menu. Costs zero pixels, adds no clutter, and the row becomes one big target.' },
+      { key: 'kebab', label: 'Hold + hover kebab',
+        blurb: 'The same hold, plus a single ⋮ that appears on hover where a pointer exists. The kebab is the discovery hint for desktop; touch never sees it, so the row stays clean on the phone.' },
+      { key: 'swipe', label: 'Swipe to reveal',
+        blurb: 'Drag a row left to expose its actions, iOS-Mail style. Big targets, but invisible until discovered, and it burns the horizontal drag this app already uses elsewhere.' },
+      { key: 'today', label: 'Today',
+        blurb: 'Three ~16 px icons on the right of every row. Turn on Show tap targets to see them against the 44 px floor.' },
+    ],
+    variant: 'hold',
+    showHits: false,
+    hits: [],
+
+    repos: [
+      { repo: 'mehrlander/web-tools', short: 'web-tools', icon: 'ph-toolbox', group: 'core', priv: false, sib: 'web-tools-private' },
+      { repo: 'mehrlander/web-tools-private', short: 'web-tools-private', icon: 'ph-lock-key', group: 'core', priv: true, sib: 'web-tools' },
+      { repo: 'mehrlander/home', short: 'home', icon: 'ph-house-line', group: 'core', priv: true, sib: '' },
+      { repo: 'mehrlander/wring', short: 'wring', icon: 'ph-funnel', group: 'data', priv: false, sib: '' },
+      { repo: 'mehrlander/wsl-sync', short: 'wsl-sync', icon: 'ph-scales', group: 'data', priv: false, sib: '' },
+      { repo: 'mehrlander/drop', short: 'drop', icon: 'ph-drop', group: 'tools', priv: false, sib: '' },
+    ],
+    get groups() {
+      const order = [], by = new Map();
+      for (const r of this.repos) {
+        if (!by.has(r.group)) { by.set(r.group, []); order.push(r.group); }
+        by.get(r.group).push(r);
+      }
+      return order.map(g => ({ group: g, repos: by.get(g) }));
+    },
+
+    inRepo: null,
+    menuRepo: null,
+    menuFrom: '',
+    toast: '',
+    _toastT: null,
+
+    // ── Press and hold ───────────────────────────────────────────────────
+    // 450 ms is the common floor: long enough that a scroll flick or a
+    // deliberate tap never trips it, short enough not to feel stuck. The wipe
+    // gives it a visible clock, and the 10 px move budget lets a scroll win.
+    HOLD_MS: 450,
+    MOVE_SLOP: 10,
+    holdRepo: null,
+    holdPct: 0,
+    holdFired: false,
+    _t0: 0, _raf: 0, _x0: 0, _y0: 0,
+
+    // ── Swipe ────────────────────────────────────────────────────────────
+    REVEAL: 112,
+    swipeOpen: null,
+    dragRepo: null,
+    dragDx: 0,
+
+    onDown(e, r) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      this._x0 = e.clientX; this._y0 = e.clientY;
+      if (this.variant === 'swipe') {
+        this.dragRepo = r.repo; this.dragDx = 0;
+        return;
+      }
+      this.holdRepo = r.repo;
+      this.holdPct = 0;
+      this.holdFired = false;
+      this._t0 = performance.now();
+      const tick = () => {
+        if (this.holdRepo !== r.repo) return;
+        const p = Math.min(1, (performance.now() - this._t0) / this.HOLD_MS);
+        this.holdPct = p;
+        if (p >= 1) { this.fireHold(r); return; }
+        this._raf = requestAnimationFrame(tick);
+      };
+      this._raf = requestAnimationFrame(tick);
+    },
+    onMove(e, r) {
+      const dx = e.clientX - this._x0, dy = e.clientY - this._y0;
+      if (this.variant === 'swipe') {
+        if (this.dragRepo !== r.repo) return;
+        if (Math.abs(dy) > Math.abs(dx)) { this.dragRepo = null; return; }
+        this.dragDx = Math.max(-this.REVEAL - 24, Math.min(0, dx + (this.swipeOpen === r.repo ? -this.REVEAL : 0)));
+        return;
+      }
+      if (!this.holdRepo) return;
+      if (Math.hypot(dx, dy) > this.MOVE_SLOP) this.cancelHold();
+    },
+    onUp(e, r) {
+      if (this.variant === 'swipe') {
+        if (this.dragRepo === r.repo) {
+          this.swipeOpen = this.dragDx < -this.REVEAL / 2 ? r.repo : null;
+          this.dragRepo = null; this.dragDx = 0;
+        }
+        return;
+      }
+      this.cancelHold();
+    },
+    onCancel() {
+      if (this.variant === 'swipe') { this.dragRepo = null; this.dragDx = 0; return; }
+      this.cancelHold();
+    },
+    cancelHold() {
+      if (this._raf) cancelAnimationFrame(this._raf);
+      this._raf = 0; this.holdRepo = null; this.holdPct = 0;
+    },
+    fireHold(r) {
+      this.holdFired = true;
+      this.cancelHold();
+      if (navigator.vibrate) navigator.vibrate(12);
+      this.openMenu(r, 'row');
+    },
+    offsetFor(r) {
+      if (this.dragRepo === r.repo) return this.dragDx;
+      return this.swipeOpen === r.repo ? -this.REVEAL : 0;
+    },
+
+    // A hold that fired must not also navigate on the click that follows.
+    onClick(r) {
+      if (this.holdFired) { this.holdFired = false; return; }
+      if (this.swipeOpen === r.repo) { this.swipeOpen = null; return; }
+      this.open(r);
+    },
+    open(r) { this.inRepo = r; this.closeMenu(); this.say('Opened ' + r.short); this.remeasure(); },
+
+    // ── The menu ─────────────────────────────────────────────────────────
+    get menuItems() {
+      const r = this.menuRepo;
+      if (!r) return [];
+      const out = [];
+      if (this.menuFrom === 'row') out.push({ key: 'open', label: 'Open', icon: 'ph-arrow-right', nav: true });
+      out.push({ key: 'files', label: 'Files', icon: 'ph-folders', nav: true });
+      out.push({ key: 'branches', label: 'Branches', icon: 'ph-git-branch', nav: true });
+      out.push({ key: 'config', label: 'Config', icon: 'ph-gear-six' });
+      out.push({ key: 'github', label: 'Open on GitHub', icon: 'ph-github-logo' });
+      if (r.sib) out.push({ key: 'sib', label: 'Switch to ' + r.sib, icon: r.priv ? 'ph-globe' : 'ph-lock' });
+      out.push({ key: 'copy', label: 'Copy browse link', icon: 'ph-link' });
+      return out;
+    },
+    openMenu(r, from) { this.menuRepo = r; this.menuFrom = from; this.remeasure(); },
+    closeMenu() { this.menuRepo = null; this.menuFrom = ''; },
+    closeAll() { this.closeMenu(); this.cancelHold(); this.swipeOpen = null; this.remeasure(); },
+
+    act(key, r) {
+      if (!r) return;
+      if (key === 'open')   { this.open(r); return; }
+      if (key === 'sib')    { const s = this.repos.find(x => x.short === r.sib); if (s) this.open(s); return; }
+      if (key === 'github') { window.open('https://github.com/' + r.repo, '_blank', 'noopener'); this.closeMenu(); return; }
+      this.closeMenu();
+      this.swipeOpen = null;
+      this.say(key === 'copy' ? 'Copied browse link for ' + r.short
+             : key === 'config' ? 'Config for ' + r.short
+             : key[0].toUpperCase() + key.slice(1) + ' in ' + r.short);
+    },
+    say(m) {
+      this.toast = m;
+      clearTimeout(this._toastT);
+      this._toastT = setTimeout(() => { this.toast = ''; }, 1600);
+    },
+
+    // ── Tap-target overlay ───────────────────────────────────────────────
+    // Measures real hit rects rather than guessing from classes: green at the
+    // 44 px floor on both axes, amber within 8 px of it, red below.
+    measure() {
+      if (!this.showHits) { this.hits = []; return; }
+      const out = [];
+      document.querySelectorAll('[data-hit]').forEach((el, i) => {
+        const b = el.getBoundingClientRect();
+        if (!b.width || !b.height) return;
+        const m = Math.min(b.width, b.height);
+        const color = m >= 44 ? '#16a34a' : m >= 36 ? '#d97706' : '#dc2626';
+        out.push({ id: i, x: b.x, y: b.y, w: b.width, h: b.height, color,
+                   label: Math.round(b.width) + '×' + Math.round(b.height) });
+      });
+      this.hits = out;
+    },
+    // Two frames, not one: the first lets Alpine apply the DOM change, the
+    // second lets layout settle before the rects are read.
+    remeasure() {
+      requestAnimationFrame(() => requestAnimationFrame(() => this.measure()));
+    },
+    init() {
+      addEventListener('resize', () => this.measure());
+      addEventListener('scroll', () => this.measure(), true);
+    },
+  };
+}
+</script>
+</body>
+</html>

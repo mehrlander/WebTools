@@ -4,17 +4,23 @@ _Generated from tasks/. Do not hand-edit._
 
 ## On deck
 - 🎫 Backfill guide regions into old PR bodies and full-regenerate the merge guide
+- 🎫 Reach the take-away menu from show-repo's Pages gallery
 - 🎫 Fold chat-results into the surface schema, or keep it a sibling
 - 🎫 Collapse quickLinks into a projection of the repos manifest next: decide the projection rule (a flag on repos entries, or first-N) and migrate loadQuickLinks
 - 🎫 Confirm-gated cross-repo edit proposals via a web-tools-private channel next: Design the proposal record + the show-repo pending panel; reuse gh-transfer's confirm gate
 - 🎫 Have data-view open at an addressed item via the fragment next: decide the fragment vocabulary (item index, item name, or both) before building; the delivery half already works
 - 🎫 Reclaim the phone viewport in data-view next: user is reviewing the five options; start with demoting the notes (option 3) and the full-bleed toggle (option 5), which need no cross-frame work
 - 🎫 A multi-method harness for extracting structure from scanned documents
+- 🎫 Estate cards still carry the retired three-icon cluster next: Decide whether a card gets the repo menu, a trimmed cluster, or stays as it is
 - 🎫 Generalize FAB embed handling to declared embeds next: Build only when a real composite page (multiple interactive embeds) exists; nothing schedules this.
+- 🎫 Find a way to focus attention on one piece of a page's UI
 - 🎫 Finish GitHub jump-over coverage across show-repo views next: sweep the remaining views (stage rows, atlas, recent panel, compare) for missing one-tap GitHub links
 - 🎫 Integrate the stage with the surfacer's .surface format next: run in a session with both web-tools and the home repo, to read the surfacer's .surface files directly
 - 🎫 One parser for the owner/repo[@ref]:path address next: decide what an unspecified ref means at the link-building boundary; that is the whole question, and the parser follows from it
 - 🎫 Build our own JSON tree for display, keep vanilla-jsoneditor for editing next: user was leaning toward replacing it outright; the recommendation is the split below, so confirm the split before building
+- 🎫 Pinch-zoom and pan for pdf-inspect's page view
+- 🎫 Close open table perimeters in the pdf kit's lattice
+- 🎫 A column-splitter page for the pdf kit
 - 🎫 Private-repo landing federation via the home registry next: superseded by tasks generalize-gallery-pages-catalog-m3b8pa (gallery generalization) and app-views-estate-level-btp6m4 (app views); reassess whether any federation-specific work remains
 - 🎫 Repo-designated inbox and outbox in .web-tools.json (`claude/pr-219-review-22csrh`)
 - 🎫 Repo-level GitHub links in show-repo's shield dialog
@@ -23,7 +29,10 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 show-repo - first-class projects, defined by tracker presence
 - 🎫 Spike the snags log (friction learned the hard way) (`claude/pr-219-review-22csrh`)
 - 🎫 Move StageLink.read onto the shared fragment-first param read next: confirm the empty-key change is wanted before touching it; it is the only observable difference
+- 🎫 Give the stage a way to carry part of a file
 - 🎫 Converge the stage and surface item schemas
+- 🎫 Make the take-away menu work inside a toss
+- 🎫 Toggle-only Tailwind classes are never generated, so the spinners do not spin next: Sweep for animate-spin and any other toggle-only utility, then pick a remedy
 - 🎫 toss-render ?query forwarding drops multi-param page queries next: decode the gh param from the raw fragment slice (not URLSearchParams) so a bare & in the page query survives, or document the %26 requirement in the head comment and the on-page help
 - 🎫 Extend fetch + blob-import to the gh-api.js-chain ?use= boot
 

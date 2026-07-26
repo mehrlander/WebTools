@@ -43,14 +43,34 @@ all-repo context) or in a **repo** (a per-repo context with its own views).
 The **header carries the app-level nav**: a fixed, app-owned set of the estate's
 own views, **Activity** (Open / To-do / Jots by pill), **Repos**, **Surfaces**,
 **Stage**, **Tools**, and **Map**, as icon buttons (icon + label on desktop,
-icon-only on mobile), lit on the active view and present on every viewport. Beside them, in a
-repo, sits a compact `owner/name @ref` readout (the ref switcher is kept; the
-GitHub jump too), and on the right the auth shield (token / config dialog). The
-brand icon returns to the **dashboard**: Open for a signed-in viewer, Repos
+icon-only on mobile), lit on the active view and present on every viewport. That is the whole
+header: the `#repo` component sits beside the nav but renders nothing (it is the
+repo/auth controller and hosts the shared dialog), and there is no auth shield.
+The brand icon returns to the **dashboard**: Open for a signed-in viewer, Repos
 for a signed-out one. There is no repo-list dropdown and no quick-links row:
 **repo selection happens on the Repos dashboard** (a card opens the repo), which
 reads better than a dropdown and keeps the header a fixed set rather than one
 repos opt into.
+
+The sidebar's **top bar is a crumb trail** (`crumbBar`, the shell's
+`sidebarCrumbs`) in both contexts. At the app level it is the **product mark
+alone**, which says what a "Views" label used to say and says it in the
+vocabulary the repo trail already teaches. In a repo it is the mark, the repo,
+and the ref only when it is off the default. The house is the route to the dashboard, which matters on mobile
+because an open drawer hides the header brand entirely; dropping the owner
+prefix, always this account, is what pays for it, and the full `owner/name`
+stays in the tooltip. The mark renders grayscale at rest and in colour on hover,
+so it reads as a control rather than as branding. Tapping the repo crumb opens a
+**repo switcher**: which repository is showing, current one checked, and nothing
+else. A trail names where you are, so the only menu it earns is the set of other
+places that slot could hold; acting on a repo lives in the row menu below.
+**The drawer no longer closes when you navigate.** It used to dismiss itself on
+every tap, on the reasoning that it covers the main area on mobile. But the
+sidebar is also the thing you navigate *with*: closing it after each tap means
+reopening it for the next, and it hides the fact that the list itself just
+changed (a repo's views for the estate's, say). It now closes only when you say
+so, by the scrim or the X, which makes the mobile drawer behave like the pinned
+desktop sidebar that never closed.
 
 The **sidebar** holds what is contextual: in a repo, its views (landing, atlas,
 files, branches) plus pins and recents; in the estate, only the repo-sourced
@@ -251,15 +271,18 @@ aside. Deep links: `?view=estate` (the bare URL is the Repos estate already; the
 param is stamped only when a `repo`/`ref` param is also present), `?view=surfaces`
 and `?view=activity` (always stamped, so each is shareable on its own).
 
-**The shield dialog is scoped by context.** Opened from the sidebar shield at the
-estate level it is an **account panel**: the token control plus the estate
-actions (**Refresh views**, which forces a config-cache rebuild), with no repo
-tabs. Opened from a card gear or the repo-level shield it is the **repo dialog**:
-the **Info** tab (repo facts, the token control, a Public-browse shortcut, and
-the repo name as the one-tap GitHub link), plus the **Settings** and **Config**
-tabs. The dialog's former GitHub / jsDelivr-CDN / flat-tree link list was retired
-(2026-07-19): GitHub is the header link, and a file listing lives in Public
-browse.
+**The shared dialog is scoped by how it is opened.** With no repo, from the
+**account row** at the top right of the Repos view, it is an **account panel**:
+the token control alone, no repo tabs (**Refresh views** left with the header
+shield, being the same `refreshConfigs` the Repos view's own **Refresh** button
+already ran; the account row is where the token lives now).
+With a repo, from a card gear, a sidebar Repos row, or the Map, it is the **repo
+dialog**: the **Info** tab (repo facts, the token control, a Public-browse
+shortcut, and the repo name as the one-tap GitHub link), plus the **Settings**
+and **Config** tabs. It is the path for a repo you are *not* in; the open repo's
+manifest is edited in the roomier Config view. The dialog's former GitHub /
+jsDelivr-CDN / flat-tree link list was retired (2026-07-19): GitHub is the header
+link, and a file listing lives in Public browse.
 
 **Map** (`?view=map`, always stamped; `?view=portable` still resolves here) turns
 the coordination layer itself into a first-class object, and is the operational
@@ -656,22 +679,57 @@ spends write access on agent-authored instructions. It is manual-triggered, not
 live: show-repo is the worker and only runs when the user opens it. Protocol and
 schema: `web-tools-private/mailbox/README.md`.
 
+### The repo menu
+
+`repo-menu.js` is where you act **on** a repo rather than navigate to it. It
+hangs off a Repos row's trailing button as a dropdown anchored to that button,
+positioned from its rect (the rows sit in a scrolling column that would clip a
+nested panel) and flipped above the trigger near the bottom of the list.
+
+Its rows: **Config**, **Open on GitHub**, the `-private` companion switch, and
+**Copy browse link**. It is flat, short, and compact: 36 px rows rather than the
+44 px floor, which is for a cold target in chrome, not for a panel the pointer
+has already aimed at and opened. Files and Branches were here and
+expanded into the repo's folders and branch list; both are gone, because "what
+is inside" is a browsing question the sidebar and the Files view already answer
+once you are in the repo. Nothing expands, so nothing carries a chevron, and the
+single row that leaves the app carries an out-arrow.
+
+An **Open** row went too: tapping the row itself is what opens the repo, so the
+menu was offering the one thing you had just declined to do.
+
+This replaced a three-icon cluster (visibility marker, config gear, GitHub logo)
+on every row. Those icons measured about 16 px against a 44 px tap-target floor,
+and each bought exactly one tap, since opening the repo puts Config in the
+sidebar and GitHub in this menu. The marker survives as the trailing button
+itself, promoted from an inert `<span>` to a real 44 px control, so the row
+keeps its public/private state while carrying the menu on a plain tap. Two other
+presentations were built here and taken back out: a press-and-hold, since a
+visible control answering a single tap does the same work without a gesture to
+discover, and a bottom sheet, since nothing about five short actions justifies
+throwing the menu to the far edge of the screen.
+
 ### Editing the manifest from the shell
 
-The sidebar **shield** dialog (the repo dialog, `repoModal` in
-`lib/alpineComponents/repo.js`) has two tabs, switched top-right: a **link** tab
-(repo info, stats, auth, and URLs) and a **gear** tab, the config editor for the
-**currently-open repo**. The editor is a JSON editor over the repo's manifest:
-it loads the current `.web-tools.json` (or an all-empty template when the repo
-has none, so the shape is there to fill in), validates on every keystroke, links
-to this doc for the field format, and on Save commits the file through the
-viewer's token (`gh-store.js`'s `save`, a Contents API PUT to the repo's default
-branch). Editing needs auth, so Save is disabled until the link tab's token is
-set.
+Two surfaces edit the same file. The **Config view** (`lib/alpineComponents/config.js`,
+the sidebar's Config row) is the roomy one and covers the **currently-open
+repo**: a Settings form and a raw JSON pane side by side on desktop, tabbed on
+mobile, kept in sync both ways. The **repo dialog** (`repoModal` in
+`lib/alpineComponents/repo.js`) is the compact one and covers **any** repo
+without navigating to it, reached from an estate card's gear, a sidebar Repos
+row, or the Map; its **Settings** and **Config** tabs are the same two panes.
 
-- **Where it lives**: a tab in the shield dialog rather than a standalone
-  control, so the repo's stats, links, auth, and config sit in one place.
-  Switching to the gear tab seeds the editor.
+Either way the JSON editor loads the current `.web-tools.json` (or an all-empty
+template when the repo has none, so the shape is there to fill in), validates on
+every keystroke, links to this doc for the field format, and on Save commits the
+file through the viewer's token (`gh-store.js`'s `save`, a Contents API PUT to
+the repo's default branch). Editing needs auth, so Save is disabled without a
+token.
+
+- **Where it lives**: the open repo's config is a sidebar row like any other
+  repo view, so it sits with the views rather than behind an icon; the sidebar's
+  top-bar gear was retired as a duplicate of that row. Another repo's config
+  stays a dialog, so opening it does not move you off the repo you are in.
 - **Auto-migration**: a save always writes `.web-tools.json`. A repo still on the
   legacy `.show-repo.json` is edited the same way; the save lands the new name,
   which readers already prefer, so the legacy file goes inert. No delete step
