@@ -19,7 +19,7 @@ A short report answering "is something already going on here?" It is meant to be
 
 Three findings, in descending reliability:
 
-1. **Live branches.** Branches carrying commits the base branch lacks, with ahead-count, age, PR, and claim.
+1. **Live branches.** Branches carrying commits the base branch lacks, with ahead-count, age, PR, authoring session, and claim.
 2. **Claims.** Tracker tasks marked `in-progress`, each reconciled against the branch it names.
 3. **Stale claims.** Claims whose branch has merged, vanished, or never shared history. These are the repair list.
 
@@ -45,10 +45,11 @@ The report then ends in a collision verdict rather than a list. Only live branch
 
 ```json
 [{"number": 337, "title": "…", "head": "claude/branch-name",
-  "draft": false, "repo": "owner/repo", "html_url": "https://…"}]
+  "draft": false, "repo": "owner/repo", "html_url": "https://…",
+  "body": "…"}]
 ```
 
-`repo` keeps a branch name common to two repos from picking up the other's PR. Skip this step for a quick local check; the branch findings stand without it.
+`repo` keeps a branch name common to two repos from picking up the other's PR. `body` is optional and used only to recover a session link for a branch whose commits carry no trailer. Skip this step for a quick local check; the branch findings stand without it.
 
 **4. Report, then offer the repair.** Give the verdict first: what is live, and whether it touches the coming work. Then, if there are stale claims, offer to fix them. A stale claim is a task-file edit (`status`, `closed`, a progress-log line) committed straight to the base branch per `docs/TRACKER.md`, not branch work. Do not fix them silently: closing a task is a statement about someone's work, and the reason it landed unnoticed may matter.
 
@@ -67,6 +68,12 @@ The report then ends in a collision verdict rather than a list. Only live branch
 - **Report an unfed claim layer as a finding.** Zero claims across a hundred-plus tasks does not mean nothing is happening. It means the mechanism is unused and says nothing about what is live. Say so plainly rather than reporting "nothing in progress."
 
 - **Live but unclaimed and PR-less is the interesting row.** Work that was pushed, never delivered, and never written down. It is the case the branch estate hides and the one most likely to be a surprise.
+
+- **The `Claude-Session:` commit trailer is the only session identity git carries.** Commits are SSH-signed, but the key is Anthropic's and constant: measured across 41 distinct sessions in one repo, the signing key never varied, so the signature authenticates the author and not the session. Author and committer are a fixed `Claude <noreply@anthropic.com>`. Nothing else in the object names a session.
+
+- **Read the trailer from the branch's own commits, not a window back from the tip.** A fixed window runs past the branch point into the base branch and counts sessions that never touched this branch. Own commits give a true "worked across N sessions"; a merged branch, having none, falls back to the tip and yields one session rather than a count.
+
+- **Prefer the trailer to the PR body.** Scraping the PR body only works while a PR is open, which is the smallest possible window: one repo measured 2 open PRs against 404 branches. The trailer is attached to the work, survives merge and close, and covered 96% of branches active in the last 30 days across two repos. The misses are honest ones: commits a human authored have no session, and GitHub-generated merge commits carry no trailer.
 
 ## Extending
 

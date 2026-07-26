@@ -283,6 +283,76 @@ test('the REST head shape (an object, not a string) is accepted', () => {
   assert.equal(run(dir, ['--prs', prs]).live.find((b) => b.branch === 'live-b').pr.number, 13);
 });
 
+// ── session resolution ──────────────────────────────────────────────────────
+
+const SESS = (id) => `\n\nClaude-Session: https://claude.ai/code/session_${id}`;
+
+test('the authoring session is read from the commit trailer', () => {
+  const s = run(dir).live.find((b) => b.branch === 'live-b').sessions;
+  assert.deepEqual(s, []);   // the shared fixture's commits carry no trailer
+});
+
+test('sessions come back most-recent-first, counted per branch', () => {
+  const d = mkdtempSync(path.join(tmpdir(), 'inflight-sess-'));
+  git(d, 'init', '-q', '-b', 'main');
+  git(d, 'remote', 'add', 'origin', 'https://github.com/acme/w.git');
+  commit(d, 'a.txt', 'a\n');
+  git(d, 'checkout', '-q', '-b', 'two-sessions');
+  commit(d, 'b.txt', 'b\n', 'first pass' + SESS('AAA'));
+  commit(d, 'c.txt', 'c\n', 'second pass' + SESS('BBB'));
+  for (const b of ['main', 'two-sessions']) publish(d, b);
+  const s = run(d).live.find((b) => b.branch === 'two-sessions').sessions;
+  assert.equal(s.length, 2, 'a branch worked across two sessions reports both');
+  assert.match(s[0], /session_BBB$/, 'newest first');
+  rmSync(d, { recursive: true, force: true });
+});
+
+test('the session count stops at the branch point, not the base branch history', () => {
+  // The regression this guards: reading a fixed window back from the tip runs
+  // past the branch point and counts the base branch's sessions as this
+  // branch's. Main here carries three sessions the branch never touched.
+  const d = mkdtempSync(path.join(tmpdir(), 'inflight-bleed-'));
+  git(d, 'init', '-q', '-b', 'main');
+  git(d, 'remote', 'add', 'origin', 'https://github.com/acme/w.git');
+  commit(d, 'a.txt', 'a\n', 'base' + SESS('OLD1'));
+  commit(d, 'b.txt', 'b\n', 'base' + SESS('OLD2'));
+  commit(d, 'c.txt', 'c\n', 'base' + SESS('OLD3'));
+  git(d, 'checkout', '-q', '-b', 'mine');
+  commit(d, 'd.txt', 'd\n', 'my work' + SESS('MINE'));
+  for (const b of ['main', 'mine']) publish(d, b);
+  const s = run(d).live.find((b) => b.branch === 'mine').sessions;
+  assert.equal(s.length, 1, 'only the branch own commits count');
+  assert.match(s[0], /session_MINE$/);
+  rmSync(d, { recursive: true, force: true });
+});
+
+test('a PR body supplies the session when no commit trailer does', () => {
+  const prs = path.join(dir, 'prs-sess.json');
+  writeFileSync(prs, JSON.stringify([{
+    number: 21, title: 'From the body', head: 'live-b',
+    body: 'work\n\nhttps://claude.ai/code/session_FROMPR',
+  }]));
+  const row = run(dir, ['--prs', prs]).live.find((b) => b.branch === 'live-b');
+  assert.match(row.sessions[0], /session_FROMPR$/);
+  assert.equal(row.session_from, 'pr', 'a PR-sourced link is marked, not passed off as the commit trailer');
+});
+
+test('the commit trailer wins over the PR body when both exist', () => {
+  const d = mkdtempSync(path.join(tmpdir(), 'inflight-pref-'));
+  git(d, 'init', '-q', '-b', 'main');
+  git(d, 'remote', 'add', 'origin', 'https://github.com/acme/w.git');
+  commit(d, 'a.txt', 'a\n');
+  git(d, 'checkout', '-q', '-b', 'both');
+  commit(d, 'b.txt', 'b\n', 'work' + SESS('COMMIT'));
+  for (const b of ['main', 'both']) publish(d, b);
+  const prs = path.join(d, 'prs.json');
+  writeFileSync(prs, JSON.stringify([{ number: 5, title: 'x', head: 'both', session: 'https://claude.ai/code/session_PRBODY' }]));
+  const row = run(d, ['--prs', prs]).live.find((b) => b.branch === 'both');
+  assert.match(row.sessions[0], /session_COMMIT$/);
+  assert.equal(row.session_from, 'commit');
+  rmSync(d, { recursive: true, force: true });
+});
+
 test('the repo slug survives a proxied origin URL', () => {
   const proxied = mkdtempSync(path.join(tmpdir(), 'inflight-proxy-'));
   git(proxied, 'init', '-q', '-b', 'main');

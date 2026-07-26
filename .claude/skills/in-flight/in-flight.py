@@ -209,6 +209,48 @@ def content_signal(repo, base, branch):
     return {'touched': sorted(touched), 'unlanded': sorted(touched & differ)}
 
 
+SESSION_RE = re.compile(r'https://claude\.ai/code/session_[A-Za-z0-9]+')
+
+
+def sessions_for(repo, base, branch):
+    """The Claude Code session(s) that authored a branch, read from the
+    `Claude-Session:` commit trailer.
+
+    That trailer is the only session identity git carries. The commits are
+    SSH-signed, but the signing key is Anthropic's and constant: measured across
+    41 distinct sessions in one repo it never varied, so the signature
+    authenticates the author, not the session. Nothing else in the object,
+    author, or committer names a session either.
+
+    The branch's own commits are read first, since that set is exactly its work:
+    a count drawn from them is a true "worked across N sessions". Reading a
+    window back from the tip instead would run past the branch point into the
+    base branch's history and inflate the count with sessions that never touched
+    this branch. Merge commits are skipped throughout: GitHub generates them and
+    they carry no trailer.
+
+    A merged branch has no own commits, so it falls back to a short window at
+    the tip, which still names the session that wrote it. That fallback can
+    reach past the branch point, so it yields one session rather than a count.
+
+    Returns the most recent session first.
+    """
+    def scan(text):
+        ordered, seen = [], set()
+        for m in SESSION_RE.finditer(text):
+            if m.group(0) not in seen:
+                seen.add(m.group(0))
+                ordered.append(m.group(0))
+        return ordered
+
+    own = scan(git(repo, 'log', '--no-merges', '-40', '--format=%B',
+                   f'origin/{branch}', '--not', base))
+    if own:
+        return own
+    return scan(git(repo, 'log', '--no-merges', '-3', '--format=%B',
+                    f'origin/{branch}'))[:1]
+
+
 def touches(paths, targets):
     """Which target paths a branch's touched set hits. A target naming a folder
     matches everything beneath it."""
@@ -334,6 +376,7 @@ def survey(repo, args, all_prs):
         rec['touched'] = len(sig['touched'])
         rec['unlanded'] = len(sig['unlanded'])
         rec['unlanded_paths'] = sig['unlanded'][:12]
+        rec['sessions'] = sessions_for(repo, base, rec['branch'])
         if args.paths:
             rec['hits'] = touches(sig['touched'], args.paths)
 
@@ -348,6 +391,12 @@ def survey(repo, args, all_prs):
     for rec in groups['live']:
         pr = prs_by_head.get(rec['branch'])
         rec['pr'] = pr
+        # The commit trailer is preferred: it is attached to the work and
+        # survives the PR being merged or closed. The PR body is the fallback.
+        rec['session_from'] = 'commit' if rec['sessions'] else ''
+        if not rec['sessions'] and pr and pr.get('session'):
+            rec['sessions'] = [pr['session']]
+            rec['session_from'] = 'pr'
         rec['claim'] = next((c['title'] for c in claims
                              if c['session'] == rec['branch']), None)
 
@@ -386,6 +435,18 @@ def plink(slug, pr):
     url = pr.get('url') or (f"https://github.com/{slug}/pull/{pr['number']}" if slug else '')
     label = f"#{pr['number']}" + (' (draft)' if pr.get('draft') else '')
     return f'[{label}]({url})' if url else label
+
+
+def slink(sessions, origin):
+    """The authoring session as a link. A second session on the same branch is
+    reported by count rather than listed: the point is that the branch changed
+    hands, and the most recent session is the one to open."""
+    if not sessions:
+        return '**none**'
+    label = 'session' + (f' +{len(sessions) - 1}' if len(sessions) > 1 else '')
+    # A PR-sourced link describes the PR's author, which need not be the author
+    # of the branch's latest commits. Mark it rather than implying equivalence.
+    return f'[{label}]({sessions[0]})' + (' (via PR)' if origin == 'pr' else '')
 
 
 def humanize(seconds):
@@ -455,7 +516,8 @@ def render(results, args):
             out.append(f"**Live branches ({len(r['live'])}).**")
             out.append('')
             cols = [('Branch', '---'), ('Ahead', '--:'), ('Last', '---'),
-                    ('Unlanded paths', '--:'), ('PR', '---'), ('Claimed', '---')]
+                    ('Unlanded paths', '--:'), ('PR', '---'), ('Session', '---'),
+                    ('Claimed', '---')]
             if args.paths:
                 cols.append(('Touches', '---'))
             out.append('| ' + ' | '.join(c[0] for c in cols) + ' |')
@@ -468,6 +530,7 @@ def render(results, args):
                     x['last'],
                     f"{unl}/{x['touched']}" + (' ⚠' if unl == 0 else ''),
                     plink(r['slug'], x['pr']) if x.get('pr') else '**none**',
+                    slink(x.get('sessions') or [], x.get('session_from')),
                     ('🎫 ' + x['claim']) if x.get('claim') else '**none**',
                 ]
                 if args.paths:
@@ -557,12 +620,19 @@ def load_prs(path):
             m = re.search(r'github\.com/(?:repos/)?([^/]+/[^/]+)/pulls?/', pr.get('url') or
                           pr.get('html_url') or '')
             slug = m.group(1) if m else None
+        # The PR body carries the session footer, the fallback for a branch whose
+        # commits have no trailer. Accept it pre-extracted or scrape the body.
+        sess = pr.get('session')
+        if not sess:
+            m = SESSION_RE.search(str(pr.get('body') or ''))
+            sess = m.group(0) if m else ''
         out.setdefault(head, []).append({
             'number': pr.get('number'),
             'title': (pr.get('title') or '').strip(),
             'head': head,
             'repo': slug,
             'draft': bool(pr.get('draft')),
+            'session': sess,
             'url': pr.get('html_url') or pr.get('url') or '',
         })
     return out
