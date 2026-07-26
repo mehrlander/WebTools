@@ -4,6 +4,8 @@ _Generated from tasks/. Do not hand-edit._
 
 ## On deck
 - 🎫 Backfill guide regions into old PR bodies and full-regenerate the merge guide
+- 🎫 Converge the branch page's authored layer on the branch-review surface
+- 🎫 Make the branch page a navigation target, swipeable from the lists
 - 🎫 Show the branch lifespan in the per-repo branch review too
 - 🎫 Reach the take-away menu from show-repo's Pages gallery
 - 🎫 Fold chat-results into the surface schema, or keep it a sibling
@@ -14,6 +16,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 A multi-method harness for extracting structure from scanned documents
 - 🎫 Estate cards still carry the retired three-icon cluster next: Decide whether a card gets the repo menu, a trimmed cluster, or stays as it is
 - 🎫 Generalize FAB embed handling to declared embeds next: Build only when a real composite page (multiple interactive embeds) exists; nothing schedules this.
+- 🎫 Give the file-review collapsed row more than a name and a count
 - 🎫 Find a way to focus attention on one piece of a page's UI
 - 🎫 Finish GitHub jump-over coverage across show-repo views next: sweep the remaining views (stage rows, atlas, recent panel, compare) for missing one-tap GitHub links
 - 🎫 Integrate the stage with the surfacer's .surface format next: run in a session with both web-tools and the home repo, to read the surfacer's .surface files directly
