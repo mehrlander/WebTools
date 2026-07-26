@@ -223,9 +223,9 @@ graph and emits no `dist/` artifact. It walks the `pages/` tree, reads each page
   a **live** iframe of the page or its **HTML source**. Per-page blurbs live in the
   `NOTES` map at the top of `pages-index.mjs` — edit them there.
 
-It's a *catalog*, deliberately kept off the load → build → bake → export vocabulary
-(those four verbs are about a page's own-code graph; this is about the repo's set of
-pages). The catalogs regenerate automatically at commit time (see
+It's a *catalog*, deliberately kept off the load → build → bake → export → brief
+vocabulary (those five verbs are about a page's own-code graph; this is about the
+repo's set of pages). The catalogs regenerate automatically at commit time (see
 [The refresh model](#the-refresh-model)); `npm run pages` (= `pages-shots` then
 `pages-index`) is the manual full refresh, and `pages-index --check` exits non-zero
 when either committed catalog is stale, as an audit. The thumbnails are committed
