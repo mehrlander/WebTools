@@ -11,6 +11,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Have data-view open at an addressed item via the fragment next: decide the fragment vocabulary (item index, item name, or both) before building; the delivery half already works
 - 🎫 Reclaim the phone viewport in data-view next: user is reviewing the five options; start with demoting the notes (option 3) and the full-bleed toggle (option 5), which need no cross-frame work
 - 🎫 A multi-method harness for extracting structure from scanned documents
+- 🎫 Estate cards still carry the retired three-icon cluster next: Decide whether a card gets the repo menu, a trimmed cluster, or stays as it is
 - 🎫 Generalize FAB embed handling to declared embeds next: Build only when a real composite page (multiple interactive embeds) exists; nothing schedules this.
 - 🎫 Find a way to focus attention on one piece of a page's UI
 - 🎫 Finish GitHub jump-over coverage across show-repo views next: sweep the remaining views (stage rows, atlas, recent panel, compare) for missing one-tap GitHub links
@@ -30,6 +31,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Give the stage a way to carry part of a file
 - 🎫 Converge the stage and surface item schemas
 - 🎫 Make the take-away menu work inside a toss
+- 🎫 Toggle-only Tailwind classes are never generated, so the spinners do not spin next: Sweep for animate-spin and any other toggle-only utility, then pick a remedy
 - 🎫 toss-render ?query forwarding drops multi-param page queries next: decode the gh param from the raw fragment slice (not URLSearchParams) so a bare & in the page query survives, or document the %26 requirement in the head comment and the on-page help
 - 🎫 Extend fetch + blob-import to the gh-api.js-chain ?use= boot
 
