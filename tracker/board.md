@@ -4,6 +4,7 @@ _Generated from tasks/. Do not hand-edit._
 
 ## On deck
 - 🎫 Backfill guide regions into old PR bodies and full-regenerate the merge guide
+- 🎫 Reach the take-away menu from show-repo's Pages gallery
 - 🎫 Fold chat-results into the surface schema, or keep it a sibling
 - 🎫 Collapse quickLinks into a projection of the repos manifest next: decide the projection rule (a flag on repos entries, or first-N) and migrate loadQuickLinks
 - 🎫 Confirm-gated cross-repo edit proposals via a web-tools-private channel next: Design the proposal record + the show-repo pending panel; reuse gh-transfer's confirm gate
@@ -11,6 +12,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Reclaim the phone viewport in data-view next: user is reviewing the five options; start with demoting the notes (option 3) and the full-bleed toggle (option 5), which need no cross-frame work
 - 🎫 A multi-method harness for extracting structure from scanned documents
 - 🎫 Generalize FAB embed handling to declared embeds next: Build only when a real composite page (multiple interactive embeds) exists; nothing schedules this.
+- 🎫 Find a way to focus attention on one piece of a page's UI
 - 🎫 Finish GitHub jump-over coverage across show-repo views next: sweep the remaining views (stage rows, atlas, recent panel, compare) for missing one-tap GitHub links
 - 🎫 Integrate the stage with the surfacer's .surface format next: run in a session with both web-tools and the home repo, to read the surfacer's .surface files directly
 - 🎫 One parser for the owner/repo[@ref]:path address next: decide what an unspecified ref means at the link-building boundary; that is the whole question, and the parser follows from it
@@ -25,7 +27,9 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 show-repo - first-class projects, defined by tracker presence
 - 🎫 Spike the snags log (friction learned the hard way) (`claude/pr-219-review-22csrh`)
 - 🎫 Move StageLink.read onto the shared fragment-first param read next: confirm the empty-key change is wanted before touching it; it is the only observable difference
+- 🎫 Give the stage a way to carry part of a file
 - 🎫 Converge the stage and surface item schemas
+- 🎫 Make the take-away menu work inside a toss
 - 🎫 toss-render ?query forwarding drops multi-param page queries next: decode the gh param from the raw fragment slice (not URLSearchParams) so a bare & in the page query survives, or document the %26 requirement in the head comment and the on-page help
 - 🎫 Extend fetch + blob-import to the gh-api.js-chain ?use= boot
 
