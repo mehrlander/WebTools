@@ -17,6 +17,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Find a way to focus attention on one piece of a page's UI
 - 🎫 Finish GitHub jump-over coverage across show-repo views next: sweep the remaining views (stage rows, atlas, recent panel, compare) for missing one-tap GitHub links
 - 🎫 Integrate the stage with the surfacer's .surface format next: run in a session with both web-tools and the home repo, to read the surfacer's .surface files directly
+- 🎫 Move the kit-shaped files out of lib/ root into kits/
 - 🎫 Live-confirm the two GraphQL queries the estate depends on
 - 🎫 One parser for the owner/repo[@ref]:path address next: decide what an unspecified ref means at the link-building boundary; that is the whole question, and the parser follows from it
 - 🎫 Build our own JSON tree for display, keep vanilla-jsoneditor for editing next: user was leaning toward replacing it outright; the recommendation is the split below, so confirm the split before building
