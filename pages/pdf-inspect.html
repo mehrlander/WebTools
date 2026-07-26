@@ -439,11 +439,24 @@
 </div>
 
 <script type="module">
-  const REPO   = 'mehrlander/web-tools';
-  const BRANCH = new URLSearchParams(location.search).get('use') || 'main';
-  const mod = await import(`https://cdn.jsdelivr.net/gh/${REPO}@main/lib/gh-api.js`);
-  window.GH = mod.default;
-  const gh = new window.GH({ repo: REPO, ref: BRANCH, loadBase: 'lib/' });
+  // The canonical boot block (README.md). gh-api.js's auto-bootstrap
+  // instantiates window.gh and chains gh-boot.js, which auto-loads gh-auth.js,
+  // gh-fetch.js, kits/console.js, and vanilla-bundle.js, and mounts the FAB.
+  //   - No ?use: import from jsDelivr @main, the repo's one CDN entry point.
+  //   - ?use=<ref>: fetch gh-api.js from raw.githubusercontent (no branch-tip
+  //     lag) and blob-import it, handing repo/ref via window.__ghBlobBoot,
+  //     since a blob: import URL has no ref to parse.
+  const ref = new URLSearchParams(location.search).get('use');
+  if (ref) {
+    window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
+    const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`);
+    if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
+    const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+    try { await import(u); } finally { URL.revokeObjectURL(u); }
+  } else {
+    await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
+  }
+
   await gh.load('kits/pdf.js');
   await gh.load('kits/persistence.js');
   await gh.load('alpine-bundle.js');
