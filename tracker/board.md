@@ -15,10 +15,12 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Reclaim the phone viewport in data-view next: user is reviewing the five options; start with demoting the notes (option 3) and the full-bleed toggle (option 5), which need no cross-frame work
 - 🎫 A multi-method harness for extracting structure from scanned documents
 - 🎫 Estate cards still carry the retired three-icon cluster next: Decide whether a card gets the repo menu, a trimmed cluster, or stays as it is
+- 🎫 Capture button on the FAB, serializing what it already collects
 - 🎫 Generalize FAB embed handling to declared embeds next: Build only when a real composite page (multiple interactive embeds) exists; nothing schedules this.
 - 🎫 Give the file-review collapsed row more than a name and a count
 - 🎫 Find a way to focus attention on one piece of a page's UI
 - 🎫 Finish GitHub jump-over coverage across show-repo views next: sweep the remaining views (stage rows, atlas, recent panel, compare) for missing one-tap GitHub links
+- 🎫 Check GraphQL query shape offline against GitHub's published schema
 - 🎫 Integrate the stage with the surfacer's .surface format next: run in a session with both web-tools and the home repo, to read the surfacer's .surface files directly
 - 🎫 Move the kit-shaped files out of lib/ root into kits/
 - 🎫 Live-confirm the two GraphQL queries the estate depends on
