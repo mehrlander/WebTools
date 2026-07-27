@@ -263,3 +263,40 @@ Two carried-over notes that remain correct on their own terms:
 `isVisible` is separately misleading for a bottom sheet, which parks itself
 off-screen with a transform rather than hiding, so it reads as visible when
 closed; compare `getBoundingClientRect()` against the viewport instead.
+
+## The harness cannot see a lib-load race (2026-07-26)
+
+`tools/render/screenshot.mjs` resolves every `gh.load()` to a file on the local
+tree. That is what makes it fast and hermetic, and it is also a blind spot with
+a specific shape: **the loader never takes time**. On the real host each
+`gh.load` is a contents-API round trip, so a four-file chain on a phone can run
+for seconds; on the harness it completes in the same tick.
+
+That matters because `gh-boot.js` mounts the FAB on a 1500ms timer and, finding
+no Alpine, loads and starts its own. A page whose boot block ends with
+`gh.load('alpine-bundle.js')` is relying on winning a race it cannot see itself
+losing: locally the page's chain always finishes first, so the component inits
+with its helpers present. On a slow connection gh-boot's Alpine starts first and
+inits `x-data` against globals that do not exist yet. The symptom is a variable
+error naming whichever helper the chain had not reached, which reads like a page
+bug rather than a load-order bug, and it will not reproduce on a desktop.
+
+**Reproduce it** by inverting the order rather than by simulating latency: copy
+the page, move `alpine-bundle.js` to the front of the chain, add a `setTimeout`
+stall after it, and shoot that. Without a guard it fails; with one it renders
+identically to the normal order.
+
+**The guard** is to publish the boot as a promise and await it, rather than to
+trust the ordering:
+
+```js
+window.__pageReady = (async () => { /* imports, gh.load chain */ })();
+await window.__pageReady;                     // keeps module semantics
+// in the component: async init() { await window.__pageReady; this.ready = true; … }
+// and gate the template: <template x-if="ready && …">
+```
+
+Gating the template matters as much as awaiting in `init()`: Alpine renders on
+init, so a template that calls into a helper throws before any `await` in
+`init()` can help. `pages/shorter.html` carries the worked version. Every other
+lib-booting page with an inline `x-data` has the same exposure.

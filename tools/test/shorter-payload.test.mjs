@@ -180,6 +180,15 @@ test('the page reads its inputs through the shared helpers and registers the rou
   assert.match(page, /gh\.load\('url-params\.js'\)/);
   assert.match(page, /gh\.load\('shorter-payload\.js'\)/);
   assert.match(page, /gh\.load\('shorter-merge\.js'\)/);
+  // The boot must be awaitable, and init() must await it. Loading Alpine last
+  // is not enough on its own: gh-boot.js starts its own Alpine on a 1500ms
+  // timer, so on a slow connection the component inits before these helpers
+  // exist. Verified headlessly by running the chain with Alpine deliberately
+  // first; without the guard that reproduces "ShorterMerge is not defined".
+  assert.match(page, /window\.__shorterReady\s*=/, 'the boot publishes a promise');
+  assert.match(page, /await\s*\(window\.__shorterReady/, 'and init() awaits it');
+  assert.match(page, /x-if="ready && mode==='edit'"/, 'the surface is gated on it');
+  assert.match(page, /x-if="ready && mode==='review'"/);
   assert.match(page, /UrlParams\.get\('gz',\s*loc\)/);
   assert.match(page, /UrlParams\.get\('src',\s*loc\)/);
   // The baked channel: a self-contained copy has no address bar, so it sets

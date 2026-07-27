@@ -10,24 +10,34 @@
   <script src="https://cdn.jsdelivr.net/npm/diff@5.2.0/dist/diff.min.js"></script>
 
   <script type="module">
-    // ?use=<branch|tag|sha> picks which ref the lib chain loads from; defaults
-    // to main. gh-api.js auto-boots window.gh from its import URL or window.__ghBlobBoot.
-    const ref = new URLSearchParams(location.search).get('use');
-    if (ref) {
-      window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
-      const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`);
-      if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
-      const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
-      try { await import(u); } finally { URL.revokeObjectURL(u); }
-    } else {
-      await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
-    }
-    await gh.load('url-params.js');
-    await gh.load('shorter-payload.js');
-    await gh.load('shorter-merge.js');
-    // Alpine last, so the component's init() finds the helpers defined. Same
-    // boot order as the other renderer pages.
-    await gh.load('alpine-bundle.js');
+    // The boot is published as a PROMISE, not just awaited, because loading
+    // Alpine last does not by itself guarantee the component starts last.
+    // gh-boot.js mounts the FAB on a 1500ms timer and, finding no Alpine yet,
+    // loads and starts its own. On a fast connection this chain wins and the
+    // question never comes up; on a slow one (a phone, four sequential
+    // contents-API round trips) gh-boot's Alpine starts first and inits
+    // x-data="shorter()" against helpers that do not exist, which surfaces as
+    // "Can't find variable: ShorterPayload". So init() awaits this instead of
+    // trusting the order.
+    window.__shorterReady = (async () => {
+      // ?use=<branch|tag|sha> picks which ref the lib chain loads from; defaults
+      // to main. gh-api.js auto-boots window.gh from its import URL or window.__ghBlobBoot.
+      const ref = new URLSearchParams(location.search).get('use');
+      if (ref) {
+        window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
+        const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`);
+        if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
+        const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+        try { await import(u); } finally { URL.revokeObjectURL(u); }
+      } else {
+        await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
+      }
+      await gh.load('url-params.js');
+      await gh.load('shorter-payload.js');
+      await gh.load('shorter-merge.js');
+      await gh.load('alpine-bundle.js');
+    })();
+    await window.__shorterReady;
   </script>
 
   <!--
@@ -122,8 +132,12 @@
     </span>
   </header>
 
+  <div x-show="bootError" class="alert alert-error mb-4 text-sm" style="display:none">
+    <i class="ph ph-warning-octagon"></i><span x-text="bootError"></span>
+  </div>
+
   <!-- ══ EDIT ════════════════════════════════════════════════════════ -->
-  <template x-if="mode==='edit'">
+  <template x-if="ready && mode==='edit'">
     <div class="mx-auto max-w-5xl">
       <div x-show="linkError" class="alert alert-warning mb-4 text-sm">
         <i class="ph ph-warning"></i><span x-text="linkError"></span>
@@ -208,7 +222,7 @@
   </template>
 
   <!-- ══ REVIEW ══════════════════════════════════════════════════════ -->
-  <template x-if="mode==='review'">
+  <template x-if="ready && mode==='review'">
     <div class="flex gap-4">
 
       <!-- ── rail ───────────────────────────────────────────────── -->
@@ -402,7 +416,21 @@ function shorter() {
     model: { status: 'idle', pct: 0, note: '', error: '', engine: null, _loading: null },
     _key: 0,
 
+    // `ready` gates the whole surface. Alpine may init this component before
+    // the lib chain resolves (see the boot block), and the templates below
+    // call into ShorterMerge on their first render, so gating is what makes
+    // the page independent of which of the two finishes first.
+    ready: false,
+    bootError: '',
+
     async init() {
+      try {
+        await (window.__shorterReady || Promise.resolve());
+      } catch (e) {
+        this.bootError = 'Could not load this page’s libraries: ' + (e?.message || e);
+        return;
+      }
+      this.ready = true;
       this.addVersion();
       window.addEventListener('keydown', e => {
         if (e.key === 'Escape') this.closePop();
