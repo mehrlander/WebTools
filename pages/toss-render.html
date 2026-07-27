@@ -194,7 +194,22 @@
   // what's on screen; the FAB's "Copy toss link" action calls it.
   let tossLinkFn = null;
 
-  const absUrl = frag => location.origin + location.pathname + frag;
+  // This page's own address, plus the fragment: the durable bookmark.
+  //
+  // Nested (this shell is itself a toss subject) `location` is the frame's
+  // blob: URL, and a blob: URL's `pathname` is the WHOLE blob string, origin
+  // included, so origin + pathname doubles it. A blob: shell also has no
+  // visitable address of its own, which is the real problem: the enclosing page
+  // is the thing a bookmark can name. Same-origin in address mode, so read it.
+  const absUrl = frag => {
+    if (location.protocol === 'blob:') {
+      try { return top.location.origin + top.location.pathname + frag; } catch (e) {}
+      // Sandboxed under an opaque origin (a payload toss), so the enclosing
+      // address is unreadable. The blob href is at least not malformed.
+      return location.href.split('#')[0] + frag;
+    }
+    return location.origin + location.pathname + frag;
+  };
 
   function showInput(error, tokenHint) {
     tossLinkFn = null;

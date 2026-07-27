@@ -719,9 +719,15 @@ function app(){ return {
     const href = new URL(src, location.href).href;
     // `group` files it in the FAB's take grid under Open, whose heading already
     // says "navigates away". Without one it would sit in a Page group of its own.
+    //
+    // Returns { nav } rather than navigating. Setting location.href here moves
+    // whatever window this closure lives in, and when this page is itself a toss
+    // subject that is the FRAME: "leave the embed" would reload the embed. The
+    // FAB performs the returned nav in the top window, which is the one the
+    // action means. Nothing changes when the page is not tossed.
     return [{ label, icon: 'ph-arrow-square-out', group: 'Open',
               desc: 'Leave the embed and open the framed page full-viewport.',
-              run: () => { location.href = href; } }];
+              run: () => ({ nav: href }) }];
   },
   view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'map' | 'tools' | 'landing' | 'pages' | 'atlas' | 'files' | 'stage' | 'branches' | 'config' | 'app' | 'public'
   drawer: false,          // mobile sidebar (pinned on desktop, ignores this)
