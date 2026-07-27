@@ -44,7 +44,18 @@ Normally none. In local `CLAUDE.md`, name only a slow or non-deterministic gener
 * **Carry content in an envelope:** use a **content envelope** when a curated, annotated set of files, chats, diffs, or search hits should travel and render together. The carriers are **stage**, **surface** (the cross-repo shelf rendered by show-repo's estate view and the Surfacer app), **chat-results envelope** (`pages/chat-results.html`), and **data view** (`pages/data-view.html`). They share the `owner/repo[@ref]:path` item grammar, the `#gz=`/`?src=` delivery split, and live-code rendering. Prefer an envelope to an ad-hoc format. Contracts and schemas: [`docs/envelopes/`](envelopes/).
 * **Toss data, not just a page 📊:** to hand over a CSV, a JSON array, or a log as something readable rather than a raw blob, address it through the data route: `…/toss-render.html#data=owner/repo[@ref]:path`. It opens in the shared multi-mode viewer (table, tree, preview, code, raw), picking by content and leaving every other mode one tap away. Bare bytes need no wrapper; an `items` envelope adds several files, a default view each, and notes. Same token gate as `#gh=`; use `#gz=` on the page itself for a token-less reader. Contract: [`docs/envelopes/data-view.md`](envelopes/data-view.md).
 * **Branch anchor:** the first file-modifying reply leads with `Working branch: [branch-name](url)`.
-* **Guide pointer 🧭:** mark the branch's guide PR, or a legacy branch-guide file, with 🧭. A reply may close with `🧭 [PR #N](…)`.
+* **Open the branch 🌿:** for work in flight, link the branch page beside the guide PR:
+
+  `…/pages/branch.html#gh=owner/repo@branch[&base=ref]`
+
+  Its facts are read from the API on every load (state, ahead/behind, lifespan, the authoring sessions, the PR, commits, changed files), so **the link is current whenever it is opened** and makes no freshness claim: there is nothing authored in it to go stale. That is what the guide PR body, being hand-maintained markdown, cannot offer. Add `&src=<spec>` or `&gz=<payload>` to lay an authored envelope over it (intent, what is open, what was left out, a note per file); the page is complete without one. Token-gated like every `#gh=` address, and subject to the same in-app-browser caveat.
+
+  That address is the deployed form, so it presumes `branch.html` is on the branch Pages serves. Where it is not, the canonical URL 404s and the page has to be tossed like any other un-deployed shell, with its own address handed through the query the params shim answers:
+
+  `…/pages/toss-render.html#gh=owner/repo@ref:pages/branch.html?gh=owner/repo@branch`
+
+  🌿 and 🧭 answer different questions and both belong on a working branch: 🌿 is where you *read* the branch, 🧭 is where you *merge* it.
+* **Guide pointer 🧭:** mark the branch's guide PR, or a legacy branch-guide file, with 🧭. A reply may close with `🧭 [PR #N](…) (body synced)`. The parenthetical is a claim about this reply, not about the PR: write `(body synced)` only when this turn rewrote the guide region, and `(body not synced)` otherwise. It exists so a reader can tell, without opening the PR, whether its body describes the current tip. Never carry `(body synced)` forward from an earlier reply.
 * **Task marker 🎫:** where the repo uses [TRACKER.md](TRACKER.md), surface a task as `🎫 [title](<task blob url>)`. Do not show the filename id; 🎫 plus title is the reader's handle.
 * **Surfacing caption:** end a file-modifying turn with a uniform bulleted file list. Filenames stay plain and link words are tappable:
 

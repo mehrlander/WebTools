@@ -1185,9 +1185,12 @@ function app(){ return {
   async crawlRepoActivity(repo, meta, now, A, B){
     const def = meta?.default_branch || 'main';
     const g = new window.GH({ token: window.TOKEN, repo, ref: def });
-    const [recentCommits, openPRs] = await Promise.all([
+    const [recentCommits, openPRs, branchSessions] = await Promise.all([
       g.commits(this.ACTIVITY_RECENT_COMMITS).catch(() => []),
       g.pulls('open', 30).catch(() => []),
+      // Optional by design: the session links are a nicety, so a failure here
+      // leaves them blank rather than costing the repo its activity row.
+      g.branchSessions().catch(() => ({})),
     ]);
     // Ahead/behind for each open PR head, so the Open view can show it without a
     // per-visit compare. The same response carries the branch's oldest unique
@@ -1203,7 +1206,9 @@ function app(){ return {
           try {
             const d = await g.compare(def, p.head);
             p.aheadBy = d.ahead_by ?? null; p.behindBy = d.behind_by ?? null;
-            p.firstDate = B.firstCommitDate(d);
+            // One compare, every field it can answer, through the one reader
+            // that knows what each field does past GitHub's commit cap.
+            Object.assign(p, B.compareFields(d));
           }
           catch { p.aheadBy = null; p.behindBy = null; p.firstDate = ''; }
         }
@@ -1224,10 +1229,18 @@ function app(){ return {
       const older = dated.filter(b => b.daysAgo > B.RECENT_DAYS).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       const surveyed = await B.surveyOlder(g, { defaultRef: def, older, cap: this.ACTIVITY_SURVEY_CAP, pool: 3, now });
       truncated = surveyed.truncated;
+      const prSessions = Object.fromEntries(openPRs.filter(p => p.head && p.sessions?.length).map(p => [p.head, p.sessions]));
+      const sessionsFor = b => {
+        if (b.sessions?.length) return { sessions: b.sessions, sessionsExact: !!b.sessionsExact };
+        if (prSessions[b.name]) return { sessions: prSessions[b.name], sessionsExact: true };
+        const g = branchSessions[b.name];
+        return g ? { sessions: [g], sessionsExact: false } : { sessions: [], sessionsExact: false };
+      };
       const trim = b => ({ name: b.name, date: b.date || '', firstDate: b.firstDate || '',
                            sha: b.sha || '', subject: b.subject || '', ago: b.ago || '',
                            group: b.group, noBase: !!b.noBase, nUnique: b.nUnique || 0, nLanded: b.nLanded || 0,
                            nMissing: b.nMissing || 0, missingPaths: b.missingPaths || [],
+                           ...sessionsFor(b),
                            aheadBy: b.aheadBy ?? null, behindBy: b.behindBy ?? null });
       branches = [...recent.map(b => trim({ ...b, group: 'active' })), ...surveyed.rows.map(trim)];
       counts = {
