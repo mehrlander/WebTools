@@ -101,6 +101,19 @@ async function open(url, { block = false } = {}) {
   });
   await page.goto(url, { waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(2500);
+  // The module registry keeps growing after load: gh-boot injects the FAB, which
+  // self-loads its own kits. Sampling it on a fixed timer compares a settled page
+  // against an unsettled one and fails on the difference, which is a defect in
+  // the measurement rather than in the copy. Wait for it to stop moving.
+  await page.evaluate(async () => {
+    let last = -1, stable = 0;
+    while (stable < 4) {
+      const n = (window.__loadedScripts || []).length;
+      stable = n === last ? stable + 1 : 0;
+      last = n;
+      await new Promise(r => setTimeout(r, 150));
+    }
+  }).catch(() => {});
   return { ctx, page, errors, reached };
 }
 
@@ -146,8 +159,13 @@ for (const c of CASES) {
     `reads=${JSON.stringify(out.reads)} dropped=${JSON.stringify(out.dropped)}`);
   // The rewrite, stated positively. A "no gh-api.js anywhere" assertion would be
   // wrong: the inlined build carries the loader's own source, comments included.
-  check(`${c.page}: the boot import now points at the inlined build`,
-    out.html.includes('import("data:text/javascript;charset=utf-8,'));
+  check(`${c.page}: the boot import now points at the carried build`,
+    out.html.includes('import(window.__wtBuild)') && out.html.includes('id="__wt-build"'));
+  // The build is carried verbatim, not encoded. This is the property that keeps a
+  // baked page readable, and it is worth about a third of the file: percent
+  // encoding the same bytes measures 1.71x.
+  check(`${c.page}: the build is carried as readable source`,
+    out.html.includes('const __CACHE = {') && !out.html.includes('data:text/javascript;charset=utf-8,'));
 
   copiedHtml = out.html;
   const liveScripts = out.before;
@@ -222,7 +240,7 @@ console.log('\n── toss #gh=pages/shorter.html  (subject in a frame) ──�
       // The subject's <title>, not the shell's, is the cheapest proof of which
       // page came back: toss-render and shorter cannot both be right.
       title: (h.match(/<title[^>]*>([^<]*)</i) || [])[1] || '',
-      hasBuild: h.includes('import("data:text/javascript;charset=utf-8,'),
+      hasBuild: h.includes('import(window.__wtBuild)') && h.includes('const __CACHE = {'),
     };
   }).catch(e => ({ error: String(e) }));
 
