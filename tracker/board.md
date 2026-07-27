@@ -18,6 +18,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Estate cards still carry the retired three-icon cluster next: Decide whether a card gets the repo menu, a trimmed cluster, or stays as it is
 - 🎫 Capture button on the FAB, serializing what it already collects
 - 🎫 Generalize FAB embed handling to declared embeds next: Build only when a real composite page (multiple interactive embeds) exists; nothing schedules this.
+- 🎫 Let the FAB collect a toss subject's page actions, not just the shell's
 - 🎫 Give the file-review collapsed row more than a name and a count
 - 🎫 Find a way to focus attention on one piece of a page's UI
 - 🎫 Finish GitHub jump-over coverage across show-repo views next: sweep the remaining views (stage rows, atlas, recent panel, compare) for missing one-tap GitHub links
