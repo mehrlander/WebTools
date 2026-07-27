@@ -1,0 +1,736 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Word Select</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>✍️</text></svg>">
+
+<!--
+  Word Select: a touch-first, word-level selection engine.
+
+  The unit of selection is the word. There is no character-level selection and
+  no native selection at all: `user-select: none` is set everywhere, so iOS
+  never raises its magnifier or callout bar, and every highlight on screen is
+  ours. What the page draws instead is a run of word spans and the gap spans
+  between them, so a contiguous selection paints as one unbroken band with no
+  structural artifact between words.
+
+  DOM shape, per paragraph:
+      <span class="w" data-i="12">word</span><span class="g"> </span><span class="w" …>
+
+  A gap span holds one real space, so it is a genuine wrap opportunity and the
+  text flows exactly as unmarked prose would. A gap paints only when the words
+  on both sides belong to the *same* range, which is what keeps two adjacent
+  but distinct selections visibly isolated. The one thing a painted gap could
+  have cost is a stub of highlight hanging past the end of a wrapped line;
+  measured, it does not: a gap at a line break collapses to exactly zero width
+  at the last word's right edge, because collapsible white space at a soft wrap
+  opportunity is not measured, so there is no box left to fill.
+
+  Model: `ranges` is a sorted list of disjoint, non-adjacent {a,b} inclusive
+  word-index pairs. `drag` is the single in-flight range, painted tentative.
+  Committing merges the drag range into `ranges` (touching ranges coalesce).
+
+  Gestures (pointer events, one pointer at a time, extra fingers ignored):
+    tap on an unselected word   -> new one-word range, pins appear
+    tap on a selected word/pin  -> context menu, bounds untouched
+    hold 350ms then drag        -> new range, snapping word by word
+    drag a pin                  -> that range detaches and re-forms live
+    mouse press then move       -> drag immediately, no hold required
+
+  Viewport lock: the body is a fixed app shell (no document scroll, so no
+  pull-to-refresh and no rubber-band), the reading pane scrolls internally with
+  `overscroll-behavior: contain` and `touch-action: pan-y`, and while a drag is
+  live a non-passive touchmove listener calls preventDefault(), which is the
+  one thing that reliably stops a scroll mid-gesture in both Blink and WebKit.
+  A hold cannot have scrolled yet, so the cancel window never opens.
+
+  No dependencies, no CDN, no lib chain. The page is self-contained on purpose:
+  it has to survive being opened from a file, a data URL, or a 🥏 #gz= toss on a
+  phone, and its whole job is precise control of inline text flow, which is not
+  something a utility framework helps with.
+-->
+
+<style>
+:root {
+  --bg: #ffffff;
+  --fg: #16181d;
+  --muted: #6e7481;
+  --line: #e4e6ea;
+  --accent: #2563eb;
+  --sel: color-mix(in srgb, var(--accent) 18%, transparent);
+  --on-accent: #ffffff;
+  --hover: color-mix(in srgb, var(--accent) 8%, transparent);
+  --bar: 40px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1013;
+    --fg: #e6e8ec;
+    --muted: #868d99;
+    --line: #23272e;
+    --accent: #5b91f5;
+    --sel: color-mix(in srgb, var(--accent) 26%, transparent);
+    --on-accent: #0b0d10;
+    --hover: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---- bar ---------------------------------------------------------------- */
+
+.bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: calc(var(--bar) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left));
+  border-bottom: 1px solid var(--line);
+}
+.bar h1 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  white-space: nowrap;
+}
+.bar .stat {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+button {
+  appearance: none;
+  margin: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button:disabled { color: var(--muted); opacity: .5; cursor: default; }
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):hover { background: var(--hover); border-color: var(--accent); }
+}
+
+.hint {
+  flex: 0 0 auto;
+  padding: 5px max(12px, env(safe-area-inset-left));
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.hint[hidden] { display: none; }
+
+/* ---- reading pane ------------------------------------------------------- */
+
+.pane {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+.pane.dragging { touch-action: none; }
+
+.content { position: relative; }
+
+#doc {
+  margin: 0;
+  padding: 12px max(14px, env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  max-width: 46rem;
+  font-size: 17px;
+  line-height: 1.75;
+  hyphens: none;
+}
+#doc p { margin: 0 0 .85em; }
+#doc p:last-child { margin-bottom: 0; }
+
+/* A word and the gap after it are the only paintable units. Vertical padding on
+   an inline box does not affect layout, so switching it on with the highlight
+   thickens the band without moving a single glyph. */
+.w, .g { padding: .17em 0; }
+.w.sel, .g.sel { background: var(--sel); }
+/* Tentative is solid and inverted, the way a live native selection looks;
+   committed settles back to a translucent mark over unchanged text. The two
+   states differ in fill, alpha and text colour at once, so which one is on
+   screen is never a judgment call. No transition: the word-by-word snap has to
+   land on the frame it is asked for. */
+.w.tent, .g.tent { background: var(--accent); }
+.w.tent { color: var(--on-accent); }
+@media (hover: hover) and (pointer: fine) {
+  .w:not(.sel):not(.tent):hover { background: var(--hover); }
+}
+
+/* ---- pins --------------------------------------------------------------- */
+
+.pins { position: absolute; inset: 0; pointer-events: none; }
+.pin { position: absolute; width: 2px; background: var(--accent); }
+.pin .knob {
+  position: absolute;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translate(-50%, -50%);
+  transition: width .12s ease, height .12s ease;
+}
+.pin.start .knob { top: 0; }
+.pin.end .knob { top: 100%; }
+.pin.grabbed .knob { width: 16px; height: 16px; }
+.pin .pad {
+  position: absolute;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  touch-action: none;
+}
+.pin.start .pad { top: 0; }
+.pin.end .pad { top: 100%; }
+
+/* ---- context menu ------------------------------------------------------- */
+
+.menu {
+  position: fixed;
+  z-index: 10;
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.menu[hidden] { display: none; }
+.menu button {
+  border: 0;
+  border-radius: 0;
+  padding: 7px 13px;
+  font-size: 12.5px;
+}
+.menu button + button { border-left: 1px solid var(--line); }
+</style>
+</head>
+
+<body>
+
+<header class="bar">
+  <h1>Word Select</h1>
+  <span class="stat" id="stat">no selection</span>
+  <button id="copy" disabled>Copy</button>
+  <button id="clear" disabled>Clear</button>
+</header>
+
+<div class="hint" id="hint">Tap a word to select it. Hold and drag to extend. Drag a pin to adjust.</div>
+
+<main class="pane" id="pane">
+  <div class="content" id="content">
+    <article id="doc"></article>
+    <div class="pins" id="pins"></div>
+  </div>
+</main>
+
+<div class="menu" id="menu" hidden>
+  <button data-act="copy">Copy</button>
+  <button data-act="remove">Remove</button>
+</div>
+
+<script>
+'use strict';
+
+const HOLD_MS = 350;   // press duration that turns a touch into a drag
+const MOVE_TOL = 8;    // px of travel that disqualifies a press from being a tap
+const EDGE = 56;       // px band at the pane edges that auto-scrolls during a drag
+const EDGE_MAX = 20;   // px per frame, the auto-scroll ceiling
+
+const PARAGRAPHS = [
+  `Reading on a phone is a matter of aim. The finger covers what it is pointing at, the target is smaller than the thing pointing at it, and the system underneath was designed for a mouse that could land on a single character. Every selection interface that feels wrong on a touch screen feels wrong for the same reason: it asks for a precision the hand cannot supply and then punishes the miss.`,
+  `The fix is to stop asking. A word is a unit a person can actually hit. It is large enough to be a target, it is the smallest fragment that carries meaning on its own, and it has an unambiguous boundary that needs no judgment to find. Snap to it and the aim problem disappears, because anywhere inside the word is the word, and anywhere between two words is whichever one is closer.`,
+  `That single decision settles a surprising amount. There is no partial word to render, so a highlight never ends mid-glyph. There is no caret to place, so nothing has to be drawn between characters. The selection can be stored as two integers rather than a pair of node offsets, which means it survives a reflow, a font change, and a rotation without any of the repair work a range-based model needs.`,
+  `What remains is feedback. While the finger is down the selection is a proposal, and it should look like one: brighter, more saturated, visibly unfinished. The moment the finger lifts the proposal becomes a fact and settles into something quieter that can sit on the page without shouting. The two states are the whole grammar. Tentative means the system is still listening. Committed means it has stopped.`,
+  `Discontinuity is the other thing touch gets wrong. Selections on paper are not one span; a reader marks a phrase here, a clause four lines down, a single word on the next page, and expects all three to persist. Nothing about that is hard once selection is a list rather than a singleton. Each span keeps its own pins, each can be adjusted without disturbing its neighbours, and two spans that grow into each other simply become one.`,
+  `The last requirement is the least visible and the most work. A drag has to mean a drag. The page must not scroll under the finger, the magnifier must not appear, the view must not bounce at the edges, and a downward pull must not reload anything. None of that is default behaviour, and all of it has to be taken away deliberately before the interaction can be trusted. When it works, nobody notices, which is the point.`,
+];
+
+// ---- build ---------------------------------------------------------------
+
+const doc = document.getElementById('doc');
+const pane = document.getElementById('pane');
+const content = document.getElementById('content');
+const pinLayer = document.getElementById('pins');
+const menu = document.getElementById('menu');
+const hint = document.getElementById('hint');
+const statEl = document.getElementById('stat');
+const copyBtn = document.getElementById('copy');
+const clearBtn = document.getElementById('clear');
+
+const words = [];   // span elements, one per word
+const texts = [];   // the word strings
+const gaps = [];    // gaps[i] is the span between word i and i+1, absent across paragraphs
+
+for (const para of PARAGRAPHS) {
+  const p = document.createElement('p');
+  para.trim().split(/\s+/).forEach((tok, ti) => {
+    if (ti > 0) {
+      const g = document.createElement('span');
+      g.className = 'g';
+      g.textContent = ' ';
+      p.append(g);
+      gaps[words.length - 1] = g;
+    }
+    const w = document.createElement('span');
+    w.className = 'w';
+    w.textContent = tok;
+    w.dataset.i = words.length;
+    p.append(w);
+    words.push(w);
+    texts.push(tok);
+  });
+  doc.append(p);
+}
+
+const N = words.length;
+
+// ---- model ---------------------------------------------------------------
+
+let ranges = [];    // sorted, disjoint, non-adjacent {a,b} inclusive
+let drag = null;    // {anchor, focus, pin} while a gesture is live
+
+const dragRange = () => ({ a: Math.min(drag.anchor, drag.focus), b: Math.max(drag.anchor, drag.focus) });
+
+/** Insert a range and coalesce anything it touches, so `ranges` stays a set of
+ *  isolated spans: two runs that meet or overlap are one run. */
+function addRange(r) {
+  const all = [...ranges, r].sort((x, y) => x.a - y.a);
+  const out = [];
+  for (const cur of all) {
+    const last = out[out.length - 1];
+    if (last && cur.a <= last.b + 1) last.b = Math.max(last.b, cur.b);
+    else out.push({ ...cur });
+  }
+  ranges = out;
+}
+
+const rangeAt = i => ranges.findIndex(r => i >= r.a && i <= r.b);
+const rangeText = r => texts.slice(r.a, r.b + 1).join(' ');
+
+// ---- paint ---------------------------------------------------------------
+
+const kind = new Int8Array(N);      // 0 clear, 1 committed, 2 tentative
+const owner = new Int32Array(N);    // which range each word belongs to
+const prevW = new Int8Array(N);
+const prevG = new Int8Array(N);
+const CLS = ['w', 'w sel', 'w tent'];
+const GCLS = ['g', 'g sel', 'g tent'];
+
+function paint() {
+  kind.fill(0);
+  owner.fill(-1);
+  ranges.forEach((r, ri) => {
+    for (let i = r.a; i <= r.b; i++) { kind[i] = 1; owner[i] = ri; }
+  });
+  if (drag) {
+    const r = dragRange();
+    for (let i = r.a; i <= r.b; i++) { kind[i] = 2; owner[i] = 1e6; }
+  }
+
+  for (let i = 0; i < N; i++) {
+    if (kind[i] !== prevW[i]) { words[i].className = CLS[kind[i]]; prevW[i] = kind[i]; }
+  }
+  // A gap paints only when both neighbours are in the same run. That is the
+  // rule that leaves no seam inside a selection and no bridge between two.
+  for (let i = 0; i < N - 1; i++) {
+    const g = gaps[i];
+    if (!g) continue;
+    const k = owner[i] >= 0 && owner[i] === owner[i + 1] ? kind[i] : 0;
+    if (k !== prevG[i]) { g.className = GCLS[k]; prevG[i] = k; }
+  }
+
+  paintPins();
+  paintStat();
+}
+
+function paintPins() {
+  const shown = ranges.map((r, ri) => ({ r, ri }));
+  if (drag) shown.push({ r: dragRange(), ri: -1 });
+
+  // Two pins per range, and there are never many ranges, so a rebuild is
+  // cheaper than reconciling and cannot drift out of step with the model.
+  const cr = content.getBoundingClientRect();
+  const frag = document.createDocumentFragment();
+  for (const { r, ri } of shown) {
+    frag.append(pin('start', words[r.a].getBoundingClientRect(), cr, ri));
+    frag.append(pin('end', words[r.b].getBoundingClientRect(), cr, ri));
+  }
+  pinLayer.replaceChildren(frag);
+}
+
+function pin(edge, wr, cr, ri) {
+  const el = document.createElement('div');
+  el.className = 'pin ' + edge + (drag && drag.pin === edge && ri === -1 ? ' grabbed' : '');
+  el.dataset.r = ri;
+  el.dataset.e = edge;
+  el.style.left = ((edge === 'start' ? wr.left : wr.right) - cr.left - 1) + 'px';
+  el.style.top = (wr.top - cr.top) + 'px';
+  el.style.height = wr.height + 'px';
+  el.append(Object.assign(document.createElement('i'), { className: 'knob' }),
+            Object.assign(document.createElement('i'), { className: 'pad' }));
+  return el;
+}
+
+/** Read the counts off `owner`, the same array the painter uses, so the readout
+ *  reports what is on screen. Summing the range lengths instead would double
+ *  count wherever a drag lies over a committed range, and would drop the
+ *  detached range the moment a pin was grabbed. */
+function paintStat() {
+  let n = 0, spans = 0;
+  for (let i = 0; i < N; i++) {
+    if (owner[i] < 0) continue;
+    n++;
+    if (i === 0 || owner[i - 1] !== owner[i]) spans++;
+  }
+  statEl.textContent = n === 0
+    ? 'no selection'
+    : `${n} word${n === 1 ? '' : 's'} in ${spans} span${spans === 1 ? '' : 's'}`;
+  copyBtn.disabled = clearBtn.disabled = ranges.length === 0;
+}
+
+// ---- geometry ------------------------------------------------------------
+
+let lines = null;   // [{mid, top, bottom, items:[{i,left,right}]}] in content coordinates
+
+function measure() {
+  const cr = content.getBoundingClientRect();
+  const lh = parseFloat(getComputedStyle(doc).lineHeight) || 24;
+  const out = [];
+  let line = null;
+  for (let i = 0; i < N; i++) {
+    const r = words[i].getBoundingClientRect();
+    const top = r.top - cr.top, bottom = r.bottom - cr.top, mid = (top + bottom) / 2;
+    // Group by vertical centre, not by top: a selected word carries extra
+    // vertical padding, and only the centre is invariant to it.
+    if (!line || mid > line.mid + lh * 0.5) {
+      line = { mid, top, bottom, items: [] };
+      out.push(line);
+    } else {
+      line.top = Math.min(line.top, top);
+      line.bottom = Math.max(line.bottom, bottom);
+    }
+    line.items.push({ i, left: r.left - cr.left, right: r.right - cr.left });
+  }
+  lines = out;
+}
+
+/** The word a point resolves to, snapping outward: past the end of a line is
+ *  that line's last word, between two words is the nearer one, off the block
+ *  entirely is the nearest line. Never returns null, so a drag cannot stall. */
+function wordAtPoint(cx, cy) {
+  if (!lines) measure();
+  const cr = content.getBoundingClientRect();
+  const x = cx - cr.left, y = cy - cr.top;
+
+  let line = lines.find(L => y >= L.top && y <= L.bottom);
+  if (!line) {
+    let best = Infinity;
+    for (const L of lines) {
+      const d = y < L.top ? L.top - y : y - L.bottom;
+      if (d < best) { best = d; line = L; }
+    }
+  }
+
+  const it = line.items;
+  if (x <= it[0].left) return it[0].i;
+  const last = it[it.length - 1];
+  if (x >= last.right) return last.i;
+  for (let k = 0; k < it.length; k++) {
+    if (x <= it[k].right) {
+      if (x >= it[k].left || k === 0) return it[k].i;
+      return x - it[k - 1].right <= it[k].left - x ? it[k - 1].i : it[k].i;
+    }
+  }
+  return last.i;
+}
+
+const wordIndexOf = el => {
+  const w = el && el.closest && el.closest('.w');
+  return w ? +w.dataset.i : null;
+};
+
+// ---- gestures ------------------------------------------------------------
+
+let pointerId = null;
+let startPt = null;
+let moved = false;
+let pressWord = null;
+let holdTimer = null;
+let mouseArmed = false;
+let lastPt = null;
+let scrollRaf = 0;
+
+const clearHold = () => { clearTimeout(holdTimer); holdTimer = null; };
+
+// Capture keeps a drag alive when the finger leaves the pane. It throws on a
+// pointer the browser no longer owns, which is not a reason to drop the drag.
+const capture = id => { try { pane.setPointerCapture(id); } catch {} };
+
+function beginDrag(anchor, focus, pinEdge) {
+  drag = { anchor, focus, pin: pinEdge || null };
+  pane.classList.add('dragging');
+  hideMenu();
+  hint.hidden = true;
+  if (!pinEdge && navigator.vibrate) navigator.vibrate(8);
+  paint();
+  autoScroll();
+}
+
+function moveDragTo(cx, cy) {
+  const i = wordAtPoint(cx, cy);
+  if (i !== drag.focus) { drag.focus = i; paint(); }
+}
+
+function endDrag() {
+  const r = dragRange();
+  addRange(r);
+  drag = null;
+  pane.classList.remove('dragging');
+  cancelAnimationFrame(scrollRaf);
+  scrollRaf = 0;
+  paint();
+  return r;
+}
+
+function autoScroll() {
+  scrollRaf = requestAnimationFrame(function tick() {
+    if (!drag || !lastPt) return;
+    const r = pane.getBoundingClientRect();
+    let v = 0;
+    if (lastPt.y < r.top + EDGE) v = -Math.min(EDGE_MAX, (r.top + EDGE - lastPt.y) / 2.5);
+    else if (lastPt.y > r.bottom - EDGE) v = Math.min(EDGE_MAX, (lastPt.y - (r.bottom - EDGE)) / 2.5);
+    if (v) {
+      const before = pane.scrollTop;
+      pane.scrollTop += v;
+      if (pane.scrollTop !== before) moveDragTo(lastPt.x, lastPt.y);
+    }
+    scrollRaf = requestAnimationFrame(tick);
+  });
+}
+
+pane.addEventListener('pointerdown', e => {
+  if (pointerId !== null) return;              // one pointer at a time, always the first
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  pointerId = e.pointerId;
+  startPt = { x: e.clientX, y: e.clientY };
+  lastPt = { x: e.clientX, y: e.clientY };
+  moved = false;
+  mouseArmed = false;
+  pressWord = null;
+
+  const pad = e.target.closest('.pad');
+  if (pad) {
+    // A pin is an explicit handle, so it grabs on contact with no hold. The
+    // range detaches from the model and re-forms from the drag on release.
+    const el = pad.parentElement;
+    const ri = +el.dataset.r;
+    const edge = el.dataset.e;
+    const r = ranges[ri];
+    if (!r) return;
+    ranges.splice(ri, 1);
+    capture(e.pointerId);
+    beginDrag(edge === 'start' ? r.b : r.a, edge === 'start' ? r.a : r.b, edge);
+    e.preventDefault();
+    return;
+  }
+
+  pressWord = wordIndexOf(e.target);
+  if (e.pointerType === 'mouse') {
+    mouseArmed = pressWord !== null;
+  } else if (pressWord !== null) {
+    holdTimer = setTimeout(() => {
+      holdTimer = null;
+      capture(pointerId);
+      beginDrag(pressWord, pressWord, null);
+    }, HOLD_MS);
+  }
+});
+
+pane.addEventListener('pointermove', e => {
+  if (e.pointerId !== pointerId) return;
+  lastPt = { x: e.clientX, y: e.clientY };
+  if (!moved && Math.hypot(e.clientX - startPt.x, e.clientY - startPt.y) > MOVE_TOL) moved = true;
+
+  if (drag) {
+    moveDragTo(e.clientX, e.clientY);
+    e.preventDefault();
+  } else if (moved) {
+    if (mouseArmed) {
+      capture(e.pointerId);
+      beginDrag(pressWord, pressWord, null);
+      moveDragTo(e.clientX, e.clientY);
+    } else {
+      clearHold();      // a touch that travelled before the hold matured is a scroll
+    }
+  }
+});
+
+function finish(e) {
+  if (e.pointerId !== pointerId) return;
+  clearHold();
+  if (drag) {
+    // A pin touched and released without travel is a tap on the pin, not a
+    // zero-length adjustment. The range re-commits either way; what a tap adds
+    // is the menu, so a pin offers the same actions as the run it belongs to.
+    const pinTap = drag.pin && !moved;
+    const edge = drag.pin === 'start' ? 'a' : 'b';
+    const r = endDrag();
+    if (pinTap) {
+      const ri = rangeAt(r[edge]);
+      if (ri >= 0) showMenu(ri, words[r[edge]]);
+    }
+  } else if (!moved) tap(e);
+  pointerId = null;
+  startPt = lastPt = null;
+  pressWord = null;
+  mouseArmed = false;
+}
+
+pane.addEventListener('pointerup', finish);
+pane.addEventListener('pointercancel', finish);
+
+function tap(e) {
+  const pad = e.target.closest('.pad');
+  if (pad) {
+    const ri = +pad.parentElement.dataset.r;
+    if (ranges[ri]) showMenu(ri, pad);
+    return;
+  }
+  const i = wordIndexOf(e.target);      // a tap must land on a word, not near one
+  if (i === null) { hideMenu(); return; }
+  const ri = rangeAt(i);
+  if (ri >= 0) {
+    showMenu(ri, words[i]);             // an existing selection offers actions, unchanged
+  } else {
+    hideMenu();
+    hint.hidden = true;
+    addRange({ a: i, b: i });
+    paint();
+  }
+}
+
+// ---- viewport lock -------------------------------------------------------
+
+// The one intervention that reliably stops a scroll already in flight. A hold
+// cannot have moved, so this always fires before the browser has committed.
+document.addEventListener('touchmove', e => { if (drag) e.preventDefault(); }, { passive: false });
+document.addEventListener('gesturestart', e => e.preventDefault());
+pane.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('selectstart', e => e.preventDefault());
+document.addEventListener('dragstart', e => e.preventDefault());
+
+// ---- menu ----------------------------------------------------------------
+
+let menuRange = -1;
+
+/** Open above whatever was touched (the word, or the pin), falling below it when
+ *  the pane's top edge is in the way. Anchoring to the touch rather than to the
+ *  range start keeps the menu where the finger already is. */
+function showMenu(ri, anchor) {
+  menuRange = ri;
+  menu.hidden = false;
+  const a = anchor.getBoundingClientRect();
+  const m = menu.getBoundingClientRect();
+  const pr = pane.getBoundingClientRect();
+
+  let top = a.top - m.height - 8;
+  if (top < pr.top + 4) top = a.bottom + 8;
+  top = Math.max(pr.top + 4, Math.min(top, pr.bottom - m.height - 4));
+  const left = Math.max(6, Math.min(a.left + a.width / 2 - m.width / 2, innerWidth - m.width - 6));
+
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+}
+
+function hideMenu() { menu.hidden = true; menuRange = -1; }
+
+menu.addEventListener('pointerdown', e => e.stopPropagation());
+menu.addEventListener('click', async e => {
+  const act = e.target.dataset.act;
+  if (!act || !ranges[menuRange]) return;
+  if (act === 'remove') { ranges.splice(menuRange, 1); paint(); }
+  else if (act === 'copy') await copy(rangeText(ranges[menuRange]));
+  hideMenu();
+});
+document.addEventListener('pointerdown', e => {
+  if (!menu.hidden && !menu.contains(e.target)) hideMenu();
+}, true);
+pane.addEventListener('scroll', () => { if (!menu.hidden) hideMenu(); }, { passive: true });
+
+// ---- bar actions ---------------------------------------------------------
+
+async function copy(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    flash('copied');
+  } catch {
+    flash('copy blocked');
+  }
+}
+
+let flashTimer = 0;
+function flash(msg) {
+  statEl.textContent = msg;
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(paintStat, 1200);
+}
+
+copyBtn.addEventListener('click', () => copy(ranges.map(rangeText).join('\n')));
+clearBtn.addEventListener('click', () => { ranges = []; hideMenu(); paint(); });
+
+// ---- layout invalidation -------------------------------------------------
+
+const remeasure = () => { lines = null; hideMenu(); paint(); };
+addEventListener('resize', remeasure);
+addEventListener('orientationchange', remeasure);
+if (document.fonts) document.fonts.ready.then(remeasure);
+
+paint();
+</script>
+</body>
+</html>

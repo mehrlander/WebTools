@@ -366,12 +366,15 @@ runs (same execution, same gh-boot registry), and third-party CDN
 libraries stay on the network.
 
 ```js
-window.buildKit.emit({ ghApiSrc, cache, repo, defaultRef, header?, extraBoot? })
+window.buildKit.emit({ ghApiSrc, cache, data?, repo, defaultRef, header?, extraBoot? })
                                         // assemble the build JS (a string)
-window.buildKit.bake(pageHtml, buildJs) // rewrite the page's jsDelivr
-                                        //   gh-api.js import to a data: URL
-                                        //   carrying the build
-await window.buildKit.collectCache(gh)  // { ghApiSrc, cache } gathered at
+window.buildKit.bake(pageHtml, buildJs) // rewrite the page's gh-api.js
+                                        //   import to a data: URL carrying
+                                        //   the build
+window.buildKit.bakeable(pageHtml)      // whether there is an import to
+                                        //   rewrite at all
+await window.buildKit.collectCache(gh, { scripts? })
+                                        // { ghApiSrc, cache } gathered at
                                         //   runtime from __loadedScripts
 window.buildKit.stripLoader(ghApiSrc)   // gh-api.js minus its bootstrap
                                         //   tail and `export default`
@@ -379,8 +382,20 @@ window.buildKit.stripLoader(ghApiSrc)   // gh-api.js minus its bootstrap
 
 `emit` reproduces the bootstrap offline, still honoring `?use=<ref>` (an
 explicit ref falls through to the network), and sets
-`window.__builtOffline`. `bake` throws if the page has no jsDelivr
-`gh-api.js` import to rewrite. See "Load and build are one contract" in
+`window.__builtOffline`. Optional `data` does for `read()` what `cache`
+does for `get()`: a `path → value` map consulted before the local probe
+and before the network, which is how a single-file copy carries data it
+cannot lay down as sibling files.
+
+`bake` matches the import **call**, not a literal URL, because two boot
+idioms are in use: the canonical block imports the jsDelivr URL directly
+(25 pages) while every kit demo builds it from a `base` const and imports
+`` `${base}/gh-api.js` `` (33 pages). Matching only the literal form left
+the larger half looking chainless when it was merely unreachable, which is
+the worse failure: the output looks finished and then asks the network for
+its modules. `bakeable` is the honest predicate for "there is nothing to
+inline," which is a real state (a page with no chain is already a
+standalone artifact). See "Load and build are one contract" in
 [`docs/loader.md`](../../docs/loader.md) and the pipeline in
 [`tools/README.md`](../../tools/README.md).
 
@@ -396,7 +411,24 @@ libraries still load from the CDN. This is the "export" leg of the
 vocabulary: load → build → bake → export → brief. The FAB's take-away
 menu drives it, alongside `brief.js`, its reader-facing sibling below.
 
+`renderCopy` is the third output and answers a different question: not
+"archive this page" but "let me render it somewhere else." It returns one
+HTML string for pasting into CodePen or any bare HTML preview, so it has
+nowhere to put sibling files and inlines the `read()` data as well as the
+code. Third-party CDN tags are left alone on purpose, since the
+destination has a network and untouched tags are what keep the paste
+small. What it cannot inline it counts: `cdnRefs` is the number of
+run-time references to this repo's CDN that survive baking (a kit demo
+injects `${base}/kits/<kit>.js` into each proof frame as a plain
+`<script src>`, which is no `gh.load` and so not in the cache). Those
+resolve wherever jsDelivr does and break on a private repo, so they are
+reported at copy time rather than discovered on paste.
+
 ```js
+await window.exporter.renderCopy(opts)  // one pasteable HTML string:
+                                        //   { html, path, base, codeFiles,
+                                        //     reads, dropped, bytes,
+                                        //     chainless, cdnRefs }
 await window.exporter.page({ offline?, path?, reads?, filename? })
                                    // build and download the zip
 await window.exporter.build(opts)  // same, minus the download: returns
@@ -404,7 +436,14 @@ await window.exporter.build(opts)  // same, minus the download: returns
                                    //     codeFiles, reads, files }
 window.exporter.localForm(path, value) // one read() value in its local
                                        //   <script> deposit form
+window.exporter.cdnRefs(html)          // count the run-time CDN references
+                                       //   a baked page still carries
 ```
+
+Every entry point takes `opts.gh` / `opts.scripts` / `opts.reads`, so a
+caller can aim the kit at something other than the current window. The FAB
+does exactly that inside a toss, where the page on screen is the subject in
+the frame and the globals belong to the shell around it.
 
 The page path comes from `opts.path` or the FAB's `[data-path]` stamp;
 the page source is fetched pristine from the repo at the booted ref, not
