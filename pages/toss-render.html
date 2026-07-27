@@ -67,10 +67,12 @@
 
   Page actions live in the FAB, not a floating pill. A tiny `tossRender`
   x-data component exposes the FAB's opt-in contract — a `description` and an
-  `actions` array — so the toolbox renders "Copy toss link" (rebuilds the
-  durable #gz=/#url=/#gh= bookmark for what's on screen) and "New toss" in its
-  header strip. The component only holds metadata closing over the render
-  state below, so the critical render path stays vanilla and instant.
+  `actions` array — so the toolbox renders "Copy toss link", which rebuilds the
+  durable #gz=/#url=/#gh= bookmark for what's on screen. It declares
+  `group: 'Copy'`, so it lands in the FAB's take grid beside the other clipboard
+  outputs rather than in a strip of its own. The component only holds metadata
+  closing over the render state below, so the critical render path stays vanilla
+  and instant.
 
   The FAB (alpineComponents/fab.js) also brings the take menu (rendering copy,
   review brief, stage, zip/offline export), the component/script/console tabs,
@@ -163,8 +165,8 @@
   </p>
 </div>
 
-<!-- Page actions ("Copy toss link", "New toss") are surfaced through the FAB's
-     header strip via the x-data `actions` contract, not a floating pill. -->
+<!-- "Copy toss link" is surfaced through the FAB's take grid via the x-data
+     `actions` contract, not a floating pill. -->
 <div x-data="tossRender" data-marker="toss"></div>
 
 <!-- Toolbox: page actions, zip/offline export, component/script/console tabs. -->
@@ -679,17 +681,17 @@ window.fetch=function(input,init){try{
       description: 'Full-viewport renderer for tossed HTML, URLs, and GitHub files ' +
         '(#gz / #html / #url / #gh, plus typed #<page>= content tosses). Paste or use ' +
         'the panel to render; "Copy toss link" rebuilds the durable bookmark for what is on screen.',
+      // `group` files this with the FAB's other clipboard outputs instead of
+      // standing apart: copying the address of what is on screen belongs beside
+      // copying its HTML. "New toss" is retired; it only cleared the URL, which
+      // the empty panel and the address bar both already offer.
       get actions() {
-        const list = [];
-        if (tossLinkFn) list.push({
-          label: 'Copy toss link', icon: 'ph-link',
+        if (!tossLinkFn) return [];
+        return [{
+          label: 'Copy toss link', icon: 'ph-link', group: 'Copy',
+          desc: 'The durable #gz=/#url=/#gh= bookmark for what is on screen.',
           run: async () => { await navigator.clipboard.writeText(await tossLinkFn()); return 'Copied'; }
-        });
-        list.push({
-          label: 'New toss', icon: 'ph-plus',
-          run: () => { location.href = location.pathname; }  // drop params, clean panel
-        });
-        return list;
+        }];
       }
     }));
   });

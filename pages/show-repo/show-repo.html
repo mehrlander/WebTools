@@ -717,7 +717,11 @@ function app(){ return {
     }
     if (!src) return [];
     const href = new URL(src, location.href).href;
-    return [{ label, icon: 'ph-arrow-square-out', run: () => { location.href = href; } }];
+    // `group` files it in the FAB's take grid under Open, whose heading already
+    // says "navigates away". Without one it would sit in a Page group of its own.
+    return [{ label, icon: 'ph-arrow-square-out', group: 'Open',
+              desc: 'Leave the embed and open the framed page full-viewport.',
+              run: () => { location.href = href; } }];
   },
   view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'map' | 'tools' | 'landing' | 'pages' | 'atlas' | 'files' | 'stage' | 'branches' | 'config' | 'app' | 'public'
   drawer: false,          // mobile sidebar (pinned on desktop, ignores this)
