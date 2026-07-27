@@ -23,6 +23,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Finish GitHub jump-over coverage across show-repo views next: sweep the remaining views (stage rows, atlas, recent panel, compare) for missing one-tap GitHub links
 - 🎫 Check GraphQL query shape offline against GitHub's published schema
 - 🎫 Integrate the stage with the surfacer's .surface format next: run in a session with both web-tools and the home repo, to read the surfacer's .surface files directly
+- 🎫 Guard every lib-booting page against the Alpine load race (`claude/shorter-tool-toss-render-nr7zoc`)
 - 🎫 Move the kit-shaped files out of lib/ root into kits/
 - 🎫 Live-confirm the two GraphQL queries the estate depends on
 - 🎫 One parser for the owner/repo[@ref]:path address next: decide what an unspecified ref means at the link-building boundary; that is the whole question, and the parser follows from it
@@ -31,6 +32,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Close open table perimeters in the pdf kit's lattice
 - 🎫 A column-splitter page for the pdf kit
 - 🎫 Private-repo landing federation via the home registry next: superseded by tasks generalize-gallery-pages-catalog-m3b8pa (gallery generalization) and app-views-estate-level-btp6m4 (app views); reassess whether any federation-specific work remains
+- 🎫 Inline the run-time CDN references a rendering copy still carries
 - 🎫 Repo-designated inbox and outbox in .web-tools.json (`claude/pr-219-review-22csrh`)
 - 🎫 Repo-level GitHub links in show-repo's shield dialog
 - 🎫 Session-start nudge for unconfigured or legacy-manifest repos (`claude/skills-portable-conventions-8x1lua`) next: write a global SessionStart hook that checks repo state and injects a nudge; wire its install into the Claude Code web account setup script
