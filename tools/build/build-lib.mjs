@@ -72,8 +72,25 @@ const header = `// dist/web-tools.js — the pre-build: the whole web-tools lib/
 const out = buildKit.emit({ ghApiSrc, cache, repo: REPO, defaultRef: 'main', header, extraBoot });
 
 const distDir = path.join(repoRoot, 'dist');
-mkdirSync(distDir, { recursive: true });
 const outPath = path.join(distDir, 'web-tools.js');
+
+// --check: compare instead of write, the same idiom pages-index uses. The
+// commit hook is supposed to keep this file in lockstep with lib/, but a hook
+// only runs where it is wired: a session whose project root sits above the repo
+// never loads .claude/settings.json, and the staleness was silent. Emit is
+// deterministic, so comparing bytes is the whole test.
+if (process.argv.includes('--check')) {
+  let cur = '';
+  try { cur = readFileSync(outPath, 'utf8'); } catch {}
+  if (cur !== out) {
+    console.error('build:lib: dist/web-tools.js is stale — run `npm run build:lib`.');
+    process.exit(1);
+  }
+  console.log('build:lib: dist/web-tools.js is up to date.');
+  process.exit(0);
+}
+
+mkdirSync(distDir, { recursive: true });
 writeFileSync(outPath, out);
 
 const kb = (Buffer.byteLength(out) / 1024).toFixed(0);
