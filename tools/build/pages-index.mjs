@@ -43,6 +43,7 @@ const NOTES = {
   'repo-atlas.html':           'Zoomable treemap map of any GitHub repo — files as tiles, sized by bytes or count.',
   'news/news.html':            "Read-only view of home's news ledger, grouped and filterable by topic and date; backfilled items held distinct.",
   'toss-render.html':          'Render tossed HTML payloads or allowlisted repo paths — the 🥏 target.',
+  'word-select.html':          'Touch-first word-level selection: tap, hold-drag, discontinuous runs, adjustable pins, no native selection anywhere.',
   'gist-editor.html':          'Browse and edit GitHub gists in the browser.',
   'launcher.html':             'Popup launcher setup — paste a token, copy out the bookmarklet.',
   'demos/wring-text.html':     'Template induction on logs/records — kits/wring.js live.',
