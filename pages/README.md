@@ -30,6 +30,7 @@ the link-dense text twin of the visual index above.
 | `table-compress` | Transform | [view](https://mehrlander.github.io/web-tools/pages/table-compress.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/table-compress.html) |
 | `table-compress-multi` | Transform Multi | [view](https://mehrlander.github.io/web-tools/pages/table-compress-multi.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/table-compress-multi.html) |
 | `toss-render` | Toss Render | [view](https://mehrlander.github.io/web-tools/pages/toss-render.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/toss-render.html) |
+| `word-select` | Word Select | [view](https://mehrlander.github.io/web-tools/pages/word-select.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/word-select.html) |
 
 ## pages/demos/
 
