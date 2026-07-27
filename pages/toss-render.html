@@ -688,7 +688,7 @@ window.fetch=function(input,init){try{
       get actions() {
         if (!tossLinkFn) return [];
         return [{
-          label: 'Copy toss link', icon: 'ph-link', group: 'Copy',
+          label: 'Link', icon: 'ph-link', group: 'Copy',
           desc: 'The durable #gz=/#url=/#gh= bookmark for what is on screen.',
           run: async () => { await navigator.clipboard.writeText(await tossLinkFn()); return 'Copied'; }
         }];
