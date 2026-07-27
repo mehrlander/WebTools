@@ -133,14 +133,53 @@
   </header>
 
   <div x-show="bootError" class="alert alert-error mb-4 text-sm" style="display:none">
-    <i class="ph ph-warning-octagon"></i><span x-text="bootError"></span>
+    <i class="ph ph-warning-octagon"></i>
+    <span class="flex-1" x-text="bootError"></span>
+    <button class="btn btn-xs" @click="copyDiagnostics()" x-text="copiedKey==='diag' ? 'Copied' : 'Copy details'"></button>
   </div>
 
   <!-- ══ EDIT ════════════════════════════════════════════════════════ -->
   <template x-if="ready && mode==='edit'">
     <div class="mx-auto max-w-5xl">
-      <div x-show="linkError" class="alert alert-warning mb-4 text-sm">
-        <i class="ph ph-warning"></i><span x-text="linkError"></span>
+      <!-- A failed link reports the resolved address, not just the status: the
+           same 404 means a missing ref, a missing token, or a wrong path, and
+           only the address distinguishes them. -->
+      <div x-show="linkError" class="mb-4 rounded-box border border-warning/40 bg-warning/10 p-3 text-sm">
+        <div class="flex items-start gap-2">
+          <i class="ph ph-warning mt-0.5 text-warning"></i>
+          <div class="min-w-0 flex-1">
+            <div class="font-medium">Could not load that link</div>
+            <div class="mt-0.5 break-words text-xs text-base-content/70" x-text="linkError"></div>
+            <div x-show="linkHint" class="mt-1.5 text-xs" x-text="linkHint"></div>
+
+            <dl class="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-[11px] text-base-content/60">
+              <template x-for="row in [
+                    ['repo', (target&&target.repo) || '-'],
+                    ['ref', (target&&target.ref) || 'default branch'],
+                    ['path', (target&&target.path) || '-'],
+                    ['token', hasToken ? 'present' : 'absent'],
+                    ['lib ref', (window.gh&&window.gh.ref) || '-']]" :key="row[0]">
+                <template x-if="true">
+                  <div class="contents">
+                    <dt class="text-base-content/45" x-text="row[0]"></dt>
+                    <dd class="break-all" x-text="row[1]"></dd>
+                  </div>
+                </template>
+              </template>
+            </dl>
+
+            <div class="mt-2 flex gap-1">
+              <button class="btn btn-xs gap-1" @click="copyDiagnostics()"
+                      title="Copy a full report: address, token, which libraries loaded, and the browser">
+                <i class="ph" :class="copiedKey==='diag' ? 'ph-check' : 'ph-copy'"></i>
+                <span x-text="copiedKey==='diag' ? 'Copied' : 'Copy details'"></span>
+              </button>
+              <button class="btn btn-ghost btn-xs gap-1" @click="linkError=''">
+                <i class="ph ph-x"></i> Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- original -->
@@ -409,6 +448,7 @@ function shorter() {
     touchedIds: [],
     copiedKey: '',
     linkError: '',
+    target: null,          // the resolved {repo, ref, path} of the last fetch
     activeId: null,
     anchor: null,
     writing: false,
@@ -474,15 +514,59 @@ function shorter() {
         if (payload.title) { this.docTitle = payload.title; document.title = payload.title + ' · Shorter'; }
         if (ShorterPayload.isReviewable(payload)) this.review();
       } catch (e) {
-        this.linkError = 'Could not read that link: ' + (e?.message || e);
+        this.linkError = e?.message || String(e);
       }
     },
 
+    // What the page can say about a failed load without guessing. The status
+    // narrows it; the resolved address is what makes the status actionable.
+    get linkHint() {
+      const t = this.target, e = this.linkError;
+      if (!e) return '';
+      if (/\b404\b/.test(e)) {
+        if (t && t.defaulted) return 'Nothing at that path on the default branch. If the file only exists on a branch, the address needs @ref.';
+        if (!this.hasToken) return 'A private file reads as 404 when no token travelled. This browser has no stored ghToken.';
+        return 'The repo answered, but there is no file at that ref and path.';
+      }
+      if (/\b40[13]\b/.test(e)) return this.hasToken ? 'Authenticated, but not permitted to read that path.' : 'No stored ghToken in this browser.';
+      if (/\b5\d\d\b/.test(e)) return 'GitHub-side failure. Worth one retry.';
+      if (/Failed to load script/.test(e)) return 'A library did not load, so this is a boot failure rather than a payload one.';
+      if (/Failed to fetch|NetworkError|Load failed|ERR_/i.test(e)) return 'The request never completed: network, CORS, or the browser blocked it before GitHub answered.';
+      if (/rate limit/i.test(e)) return 'Rate limited. Unauthenticated requests share 60 per hour per IP.';
+      return 'Copy the details below; they say what was asked for and what loaded.';
+    },
+    get hasToken() { return !!(window.TOKEN && String(window.TOKEN).length); },
+    // One tap gives a report worth pasting back, rather than a retyped sentence.
+    copyDiagnostics() {
+      const t = this.target || {};
+      const lines = [
+        'Shorter: could not load link',
+        'error:  ' + this.linkError,
+        'repo:   ' + (t.repo || '(none)'),
+        'ref:    ' + (t.ref || '(default branch)'),
+        'path:   ' + (t.path || '(none)'),
+        'token:  ' + (this.hasToken ? 'present' : 'ABSENT'),
+        'libref: ' + ((window.gh && window.gh.ref) || '(unknown)'),
+        'libs:   ' + ['UrlParams', 'ShorterPayload', 'ShorterMerge', 'Alpine', 'Diff']
+          .map(k => k + (window[k] ? '=ok' : '=MISSING')).join(' '),
+        'url:    ' + location.href,
+        'agent:  ' + navigator.userAgent,
+      ];
+      this.copy(lines.join('\n'), 'diag');
+    },
+
+    // Records what it is about to fetch before fetching it, so a failure can
+    // report the resolved address rather than only the status. "404" on its own
+    // is the least useful thing this page can say: the same code means the ref
+    // has no such file, the repo is private and the token did not travel, or
+    // the path is wrong, and the reader cannot tell which without seeing what
+    // was actually asked for.
     async fetchSpec(spec, raw) {
-      const g = spec
-        ? new window.GH({ token: window.TOKEN, repo: spec.repo, ref: spec.ref })
-        : new window.GH({ token: window.TOKEN, repo: 'mehrlander/web-tools', ref: 'main' });
-      return (await g.get(spec ? spec.path : String(raw || ''))).text;
+      const repo = spec ? spec.repo : 'mehrlander/web-tools';
+      const ref = spec ? spec.ref : 'main';
+      const path = spec ? spec.path : String(raw || '');
+      this.target = { repo, ref, path, defaulted: !ref };
+      return (await new window.GH({ token: window.TOKEN, repo, ref }).get(path)).text;
     },
     async gunzipB64url(s) {
       const b64 = s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (s.length % 4)) % 4);
