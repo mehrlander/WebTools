@@ -45,3 +45,17 @@ a 1283-line component in a PR already touching it, which is why it waited.
 - 2026-07-28: filed at wrap-up of the session that built the channel. Neither
   gap blocks the channel's first use (five proposals are staged and applicable
   as shipped); both are what the second use will want.
+
+## An applied record does not link its commit
+
+`apply()` stores the target commit's sha (`commit: res?.commit?.sha`), which is
+the right fact, but a reader holding \`proposals/applied/<id>.json\` has to
+build the GitHub URL by hand to see what actually landed. A `commitUrl`, or a
+link rendered wherever applied records are read, closes the loop from intent to
+bytes. Small, and it belongs with the two above.
+
+- 2026-07-28: added from the first read-through of the channel by someone other
+  than its author. The same pass found the record's vocabulary unclear (a record
+  reads as though it should carry a patch, and never does) and the `why` bar too
+  low; both were fixed in web-tools PR #305 and web-tools-private PR #9 rather
+  than filed here, since they were documentation rather than mechanism.
