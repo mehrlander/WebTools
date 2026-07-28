@@ -25,12 +25,33 @@ buckets = {"backlog": [], "in-progress": [], "blocked": [], "done": []}
 for m in tasks:
     buckets.get(m.get("status", "backlog"), buckets["backlog"]).append(m)
 
+by_id = {m["id"]: m for m in tasks if m.get("id")}
+
+def blocker(m):
+    # `track: depends-on:<id>` names a task this one waits on. Render it only
+    # while it still bites: an unmet dependency on an open task, on a task that
+    # is itself not done. A satisfied dependency is history, and a done task's
+    # dependency is history twice over, so both stay quiet. Resolve the id to
+    # the blocker's title, because the id means nothing to a reader who did not
+    # write the task (TRACKER.md, Conventions).
+    track = m.get("track", "")
+    if not track.startswith("depends-on:") or m.get("status") == "done":
+        return ""
+    dep = track.split(":", 1)[1].strip()
+    target = by_id.get(dep)
+    if target is None:
+        return f" (needs `{dep}`, which no task file defines)"
+    if target.get("status") == "done":
+        return ""
+    return f" (needs: {target.get('title', dep)})"
+
 def row(m):
     who = f" (`{m['session']}`)" if m.get("session") else ""
+    dep = blocker(m)
     nxt = f" next: {m['next']}" if m.get("next") else ""
     # 🎫 marks a tracker task wherever one is surfaced (see CONVENTIONS.md /
     # TRACKER.md): the ticket says "this is a filed task."
-    return f"- 🎫 {m.get('title', '(untitled)')}{who}{nxt}"
+    return f"- 🎫 {m.get('title', '(untitled)')}{who}{dep}{nxt}"
 
 lines = ["# Board", "", "_Generated from tasks/. Do not hand-edit._", ""]
 for head, key in [("On deck", "backlog"), ("In progress", "in-progress"),

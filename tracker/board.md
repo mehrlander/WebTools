@@ -7,7 +7,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Converge the branch page's authored layer on the branch-review surface
 - 🎫 Make the branch page a navigation target, swipeable from the lists
 - 🎫 Show the branch lifespan in the per-repo branch review too
-- 🎫 Reach the take-away menu from show-repo's Pages gallery
+- 🎫 Reach the take-away menu from show-repo's Pages gallery (needs: Find a way to focus attention on one piece of a page's UI)
 - 🎫 The build-on-commit hook did not fire, and nothing said so
 - 🎫 Fold chat-results into the surface schema, or keep it a sibling
 - 🎫 Have data-view open at an addressed item via the fragment next: decide the fragment vocabulary (item index, item name, or both) before building; the delivery half already works
@@ -37,7 +37,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Give show-repo the ability to edit a repo's .web-tools.json (`claude/skills-portable-conventions-8x1lua`) next: design a minimal config-edit surface in the show-repo shell; first use is a one-tap migrate of a legacy .show-repo.json to .web-tools.json
 - 🎫 show-repo - first-class projects, defined by tracker presence
 - 🎫 Spike the snags log (friction learned the hard way) (`claude/pr-219-review-22csrh`)
-- 🎫 Move StageLink.read onto the shared fragment-first param read next: confirm the empty-key change is wanted before touching it; it is the only observable difference
+- 🎫 Move StageLink.read onto the shared fragment-first param read (needs: One parser for the owner/repo[@ref]:path address) next: confirm the empty-key change is wanted before touching it; it is the only observable difference
 - 🎫 Give the stage a way to carry part of a file
 - 🎫 Converge the stage and surface item schemas
 - 🎫 Make the take-away menu work inside a toss

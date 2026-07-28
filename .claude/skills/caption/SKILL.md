@@ -212,9 +212,19 @@ omitting it, so the form stays fixed.
 
 ## Syncing a guide PR body
 
-The full caption is the core of the guide PR body's managed region
-(`<!-- guide -->` … `<!-- /guide -->`). To sync after a push: regenerate the
-region (⭐ Look line, Changed list, Next steps / open threads, Notes / Risk),
-rewrite only that region via the GitHub API (`update_pull_request`), and leave
-everything outside the fences untouched. Narrative goes in PR comments, not
-the body.
+The full caption is the core of the guide PR body's managed region, delimited by
+the markdown link labels `[//]: # (guide)` … `[//]: # (/guide)`. To sync after a
+push: regenerate the region (⭐ Look line, Changed list, Next steps / open
+threads, Notes / Risk), rewrite only that region via the GitHub API
+(`update_pull_request`), and leave everything outside the delimiters untouched.
+Narrative goes in PR comments, not the body.
+
+**Read both delimiters, write only the link-label one.** Bodies written before
+2026-07-28 carry `<!-- guide -->` … `<!-- /guide -->`, so treat either pair as
+the region when locating it, and emit the link-label form when rewriting. The
+reason is not cosmetic: reading a body back through the GitHub MCP strips HTML
+comments, so the older markers are invisible to the very step that needs them,
+and a sync that cannot find its region appends a second one or overwrites
+hand-written prose. If neither pair is present, stop and say so rather than
+guessing at the boundary. Link labels are reference definitions, so keep each on
+its own line with blank lines around it.

@@ -119,7 +119,8 @@ Keep the body under one screen. **Next steps / open threads** is its heart and m
 ```markdown
 <One sentence: what this branch is doing and why.> [Follow-up to #N.]
 
-<!-- guide -->
+[//]: # (guide)
+
 ⭐ **Look:** [<the thing to open>](<branch preview w/ commit SHA, else [new] blob>)
 
 **Changed:**
@@ -130,10 +131,13 @@ Keep the body under one screen. **Next steps / open threads** is its heart and m
 - <current and honest; revise on every sync>
 
 **Notes / Risk:** <what to scrutinize, test status, non-obvious why>
-<!-- /guide -->
+
+[//]: # (/guide)
 
 <session-link footer>
 ```
+
+**The region markers are markdown link labels, not HTML comments.** Both render as nothing on GitHub, but reading a PR body back through the GitHub MCP strips HTML comments and tags, so a sync could not find the region it was meant to rewrite, and a sync that cannot find its region appends a second one or overwrites hand-written prose. Write the link-label form. Recognition still accepts the older `<!-- guide -->` pair, since bodies written before 2026-07-28 carry it and would otherwise orphan. The one constraint the new form brings: a link label is a reference definition, so it must start a line and sit between blank lines, and inside a list item or a blockquote it can render literally. Measured, with the probe and the controls, in [environment/capabilities.md](environment/capabilities.md).
 
 ### Merge guide
 

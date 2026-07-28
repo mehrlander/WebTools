@@ -76,7 +76,9 @@ To take a task, edit its file on `main`: set `status: in-progress`, set `session
 - **Blocked** (`status: blocked`)
 - **Done** (`status: done`)
 
-One line per task, each prefixed with the 🎫 task marker (see Conventions below), keyed by title (not id); in-progress lines also show the owning branch. The generator also renders an optional `next` tag if a task carries one, an open tag it tolerates but the schema does not feature. The board is a faithful projection of the task files. Regenerate and commit `board.md` with any commit that changes what the board shows: status or owning branch.
+One line per task, each prefixed with the 🎫 task marker (see Conventions below), keyed by title (not id); in-progress lines also show the owning branch. The generator also renders an optional `next` tag if a task carries one, an open tag it tolerates but the schema does not feature. The board is a faithful projection of the task files. Regenerate and commit `board.md` with any commit that changes what the board shows: status, owning branch, or an unmet dependency.
+
+**Dependencies render only while they bite.** A task carrying `track: depends-on:<id>` shows ` (needs: <blocker title>)`, resolved to the blocker's title because the id means nothing to a reader who did not write the task. The line is suppressed once the dependency is satisfied (the blocker is `done`) and on a `done` task, whose dependency is history either way. So a board stays quiet about the dependencies it has already cleared and speaks up about the ones a session would trip over. A `depends-on:` pointing at an id no task file defines renders as such rather than silently vanishing, since a dangling reference is the one case worth interrupting for.
 
 The generator ships with the `portable` plugin as `tasks/build-board.py` (python3, stdlib only, zero dependencies). It is one canonical implementation, so every tracker's board comes out the same shape and a repo does not write its own. Operate it through `/tasks`, which invokes the bundled copy:
 

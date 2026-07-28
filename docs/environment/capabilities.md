@@ -198,3 +198,69 @@ agent gets back a bare "delivered" with no view of the chip, so this is one of
 the few capabilities here that can't be self-verified by rendering. Treat the
 list above as observed, not exhaustive, and extend it (re-date) as more types
 are confirmed.
+
+## Reading a PR body back: the GitHub MCP readback strips HTML
+
+*(measured 2026-07-28)*
+
+The GitHub MCP tools are the only path to the GitHub API from this box: a direct
+`curl` to `api.github.com` with the session's `GITHUB_TOKEN` returns 403 with
+`"GitHub access is not enabled for this session"`, from the agent proxy rather
+than from GitHub. That matters here because it removes the obvious way to check
+what the API actually stored.
+
+**Reading a pull request body through `pull_request_read` does not return the
+body as written.** The readback strips HTML comments and HTML tags, and it does
+so anywhere in the string, including inside code spans and fenced blocks, which
+is what makes it a raw-text strip rather than markdown-aware sanitization. It
+also entity-encodes text, so an apostrophe comes back as `&#39;`.
+
+Probe results, written with `update_pull_request` and read with
+`pull_request_read`:
+
+| Written | Read back |
+| --- | --- |
+| a plain sentinel word | survives |
+| `'` in ordinary prose | `&#39;` |
+| an HTML comment | removed |
+| the same comment inside a code span | removed, leaving empty backticks |
+| the same comment inside a fence | removed, leaving an empty fence |
+| `[//]: # (label)` | **survives** |
+| `<a name="x"></a>` | removed |
+
+**Why this is a readback fault and not a write fault.** The same content written
+through `create_or_update_file` and read back with `git show` from a fetched ref,
+with no MCP in the read, round-trips byte for byte. So tool arguments arrive
+intact and the write path does not sanitize. Rule 1 of the probing discipline
+above, in a new costume: one observation through one tool looked like a corrupted
+PR body, and a control through a second, non-MCP read path localized the fault to
+the reader.
+
+**The honest limit.** The stored body could not be observed directly, because the
+REST API is proxy-blocked and the session's two GitHub MCP servers ship identical
+instructions, so their agreement is not independent confirmation. That the store
+is intact is an inference from the file-write control. Viewing the PR's source in
+a browser would settle it.
+
+**Consequence for the guide region, since fixed.** [SURFACING.md](../SURFACING.md)
+and the `caption` skill used to delimit the managed region of a PR body with
+`<!-- guide -->` and `<!-- /guide -->`. An agent reading the body through this
+path saw no delimiters and therefore no region, and a sync that cannot find its
+region appends a second one or overwrites hand-written prose, which is the
+outcome the delimiters exist to prevent. A human editing in the GitHub UI was
+unaffected throughout.
+
+The markdown link-label form `[//]: # (guide)` survives the round trip and also
+renders as nothing, so it is now what gets written. Recognition accepts both, in
+`SURFACING.md`, the `caption` skill, and
+[`scripts/build-merge-guide.py`](../../scripts/build-merge-guide.py), because
+every body written before 2026-07-28 carries the HTML pair and would otherwise
+orphan its region. The constraint the new form brings: a link label is a
+reference definition, so it must start a line and sit between blank lines, and
+inside a list item or a blockquote it can render literally.
+
+The generalizable half is worth more than the fix. A delimiter is only as good
+as its worst reader, and this one was chosen for how GitHub renders it without
+anyone checking how an agent reads it back. When a marker exists so that a
+machine can find something later, test the round trip through the path that
+machine will actually use.
