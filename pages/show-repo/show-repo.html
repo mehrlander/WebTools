@@ -1492,10 +1492,18 @@ function app(){ return {
     // before it was noticed). Dispatch reads the row, not the key, so the
     // prefix costs nothing downstream.
     return [
+      ...this.menuExtra,
       ...this.repoAppItems.map(r => ({ ...r, group: 'In show-repo' })),
       ...this.githubMenuItems.map(r => ({ ...r, key: 'gh:' + r.key, group: 'On GitHub' })),
     ];
   },
+  // Rows the CALLER contributed for this opening, ahead of the standard ones.
+  // A menu about a repo is opened from somewhere, and that somewhere sometimes
+  // has an action only it can offer: the Activity view's chip contributes
+  // "Show only this repo", which acts on that view's filter and would be
+  // meaningless from the sidebar. Each carries its own `group` label and its
+  // own `run`, so the shell hosts them without knowing what they do.
+  menuExtra: [],
   // Where the repo goes IN THIS APP. Only the combined list carries these: the
   // sidebar's own menu leaves them out, since a row that opens the repo on a
   // tap, above a list of every other repo, has answered the question already.
@@ -1612,6 +1620,7 @@ function app(){ return {
     this.crumbMenu = false;
     this.menuRepo = repo;
     this.menuKind = kind;
+    this.menuExtra = kind === 'repo' && Array.isArray(opts.extra) ? opts.extra : [];
     // Group labels take height too, so they count toward the measure that
     // decides whether the panel fits below the trigger.
     const items = this.repoMenuItems;
@@ -1693,10 +1702,12 @@ function app(){ return {
   async runRepoMenu(key){
     const repo = this.menuRepo;
     if (!repo) return;
-    // A GitHub row carries its own destination, so it leaves here. Keyed off
-    // the row rather than off menuKind, since the combined list mixes both
-    // kinds of row and only one of them has a url.
+    // Dispatch reads the ROW, not the key, since the combined list mixes three
+    // kinds: a contributed row brings its own handler, a GitHub row carries a
+    // url and leaves the app, and the rest fall through to the shell's own
+    // navigation below.
     const row = this.repoMenuItems.find(r => r.key === key);
+    if (typeof row?.run === 'function'){ row.run(); return; }
     if (row?.url){ window.open(row.url, '_blank', 'noopener'); return; }
     if (key === 'config' && repo !== Alpine.store('browser').repo) return this.openRepoDialog(repo);
     if (key === 'copy'){
@@ -2503,16 +2514,28 @@ function overview(){ return {
       public, so thumbnails (jsDelivr), the hosted render URL, and the blob
       source all resolve with no token. A cross-repo or off-default entry
       renders through toss-render #gh= the same way the pages catalog does.
-    Open (?view=activity): the estate's live branches in one cross-repo list,
-      read off the registry's activity cache (state/activity.json,
-      lib/repo-activity-cache.js) in one GET — every branch with recent work
-      ahead of its default or an open PR, freshest first, highlighted by PR state
-      (ready / draft / no-PR) and carrying a caption-style link cluster (browse
-      here, the branch's GitHub menu, the guide PR, the authoring Claude Code
-      session lifted from the PR body). Each row opens with its repo as a CHIP,
-      the repo's own declared icon plus its short name, which opens that repo's
-      GitHub menu (the sidebar's, filled from the same list). The key stays
-      'activity' so old links resolve. The Repos
+    Branches (?view=activity): EVERY branch of the estate in one cross-repo
+      list, read off the registry's activity cache (state/activity.json,
+      lib/repo-activity-cache.js) in one GET, freshest first, highlighted by PR
+      state (ready / draft / no-PR) and carrying a caption-style link cluster
+      (browse here, the branch's GitHub menu, the guide PR, the authoring Claude
+      Code session lifted from the PR body) plus the survey's content verdict
+      (of the paths this branch uniquely touched, how many are on the default
+      branch now). Each row opens with its repo as a CHIP, the repo's own
+      declared icon plus its short name, which opens that repo's whole grouped
+      menu. The key stays 'activity' so old links resolve, and the pane was
+      called Open until the scope chips arrived.
+      TWO AXES narrow it. SCOPE (branchScope over BRANCH_SCOPES) picks which of
+      the survey's groups to show: Open (an open PR, or stranded: work in
+      flight, which is NOT the same as recent, since a branch merged by a merge
+      commit is an ancestor of the default and stages to nothing while its date
+      still reads fresh), Recent ('active'), Stranded, Landed, All. Each chip
+      counts off the FULL list, so the row doubles as the estate's branch
+      census. REPO chips then narrow to one repo, and the row's own chip menu
+      contributes "Show only this repo", the same filter reached from the row
+      you are reading. Landed is the addition that matters: the crawl always
+      stored it, one hard filter here hid it, and the per-repo branch review was
+      the only place a landed branch appeared, one repo at a time. The Repos
       view borrows the same cache for a freshness rollup on each card. The
       cache is refreshActivityCache's output: a ~12h-throttled crawl that runs
       the capped branch survey (shared with the branches view via

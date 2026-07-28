@@ -223,14 +223,37 @@ drained. The two lists live under `lists/` because they are authored content
 with the registry as their source of truth; `state/` stays derived caches
 only.
 
-**Open** (`?view=activity`) is the estate's live branches in one cross-repo list,
-freshest first. A branch qualifies only if it holds genuinely-open work: it has an
-**open PR**, or the content survey marks it **stranded** (its content is nowhere on
-the default branch, the honest "ahead of main" signal). A branch that is merely
-recent does **not** qualify on recency alone: one merged via a merge commit is an
-ancestor of the default, so it holds nothing ahead and would stage to nothing, yet
-its commit date still reads recent. Gating on open-PR-or-stranded drops the flood
-of merged-but-undeleted session branches that would otherwise fill the list. Each row is **highlighted by PR state** (a colored left rail plus
+**Branches** (`?view=activity`, called Open until the scope chips arrived) is
+**every** branch of the estate in one cross-repo list, freshest first, narrowed
+by two axes: **scope** and **repo**.
+
+**Scope** picks which of the survey's `group` values to show, and the chips
+carry their counts off the full list, so the row doubles as the estate's branch
+census:
+
+| Scope | Shows | For |
+| --- | --- | --- |
+| **Open** (default) | an open PR, or `stranded` | work in flight |
+| **Recent** | `active` | what was touched lately, unjudged |
+| **Stranded** | `stranded` | content that exists nowhere on the default branch |
+| **Landed** | `landed` | the cleanup pass: content already on the default branch |
+| **All** | everything surveyed | the census |
+
+Open is not "recent", which is why it is its own scope rather than a date sort:
+a branch merged via a merge commit is an ancestor of the default, so it holds
+nothing ahead and would stage to nothing, yet its commit date still reads
+recent. Gating on open-PR-or-stranded drops the flood of merged-but-undeleted
+session branches.
+
+**Landed is the scope that had no home before.** The crawl always surveyed and
+stored it (`state/activity.json` holds every branch it reached, classified, with
+the content counts), but this view hard-filtered it away in one line, so the
+per-repo **branch review** was the only place a landed branch appeared, one repo
+at a time. Exposing `group` as a control is what turns this into the estate's
+one branch list; see "The branch review" for what stays repo-scoped (the live
+uncapped survey, a repo outside the estate, the in-app compare).
+
+Each row is **highlighted by PR state** (a colored left rail plus
 faint tint: green for a ready PR, amber for a draft, muted for a branch with no
 PR yet) and carries a **caption-style link cluster**. The row's **primary action
 (the branch name, and the leading Stage link) stages the files this branch
@@ -254,8 +277,17 @@ merge base has no unique-commit list, and a compare past GitHub's 250-commit cap
 reports a total larger than the list it returns, so the oldest entry present is
 not the first. Those rows show the tip age alone.
 
-**Repo chips** above the list narrow it to one repo, `All` first and a count on
-each. Only repos that have open rows get a chip, since the estate is larger than
+Where the survey reached a branch, the row also states its **content verdict**:
+of the paths the branch uniquely touched, how many are present on the default
+branch now (`6/6`, or `1/5` plus `4 missing` with the paths on hover). It is
+what makes a Landed row actionable rather than a claim, and it costs nothing:
+the crawl stored it. An unsurveyed row shows nothing rather than `0/0`, since
+"not measured" and "measured zero" are different answers.
+
+**Repo chips** below the scope chips narrow the list to one repo, `All` first
+and a count on each. The row's own **repo chip menu** contributes **Show only
+this repo** (and **Show all repos** once filtered), the same filter reached from
+the row you are reading rather than from the chip row above. Only repos that have open rows get a chip, since the estate is larger than
 the set with work in flight and a row of zeroes says nothing, and the row hides
 below two of them. It scrolls sideways rather than wrapping, which is what keeps
 a second row of controls from pushing the first branch off a phone screen. The

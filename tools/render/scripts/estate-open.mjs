@@ -29,6 +29,13 @@ const ACTIVITY = {
         subject: 'Confirm branchesForPath against a live token', aheadBy: 12, behindBy: 3 },
       { name: 'claude/pdf-ink-alignment', sha: 'c1', group: 'stranded', date: iso(200), firstDate: iso(230),
         subject: 'Align ink strokes to the page box', aheadBy: 3, behindBy: 9 },
+      // Landed rows: invisible at the default scope, and the whole point of the
+      // Landed one. Two of them, so the chip count is not mistakable for a
+      // rounding of the stranded set.
+      { name: 'claude/menu-hover-swap', sha: 'g1', group: 'landed', date: iso(300), firstDate: iso(340),
+        subject: 'Swap the anchored menu on hover', nUnique: 6, nLanded: 6, nMissing: 0, aheadBy: 0, behindBy: 14 },
+      { name: 'claude/thumbs-refresh', sha: 'h1', group: 'landed', date: iso(700), firstDate: iso(760),
+        subject: 'Refresh the page thumbnails', nUnique: 3, nLanded: 3, nMissing: 0, aheadBy: 0, behindBy: 61 },
     ] },
   },
   'me/home': {
@@ -87,6 +94,13 @@ export default async (page) => {
     if (process.env.HOVER) { await locator.hover(); await page.waitForTimeout(500); }
     else { await locator.click(); await page.waitForTimeout(400); }
   };
+  // SCOPE=landed (or recent / stranded / all) switches the list's scope chip
+  // before anything else, since the rows a menu hangs off depend on it.
+  if (process.env.SCOPE) {
+    const label = { landed: 'Landed', recent: 'Recent', stranded: 'Stranded', all: 'All', open: 'Open' }[process.env.SCOPE];
+    await page.locator(`button:has-text("${label}")`).first().click();
+    await page.waitForTimeout(400);
+  }
   if (process.env.MENU) await open(page.locator('button:has-text("GitHub")').first());
   if (process.env.REPOCHIP) await open(page.locator('button[title^="Repo menu: "]').first());
 };
