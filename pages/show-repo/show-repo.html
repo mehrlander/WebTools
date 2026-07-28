@@ -57,14 +57,20 @@
 .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
 /* The anchored menus (the repo menu, the Activity view's branch menu). Their
    rows sit inside a panel the pointer has already aimed at and opened, so they
-   run below the 44 px floor that governs a cold target in chrome: 30 px for a
-   fine pointer, which can land on a 30 px row all day, and 36 px on a touch
+   run below the 44 px floor that governs a cold target in chrome: 26 px for a
+   fine pointer, which can land on a 26 px row all day, and 32 px on a touch
    screen, where the row is still a thumb target. Kept here rather than in the
    two templates so both menus stay the same size, and in step with the shell's
    MENU_ROW, which is what anchorMenu measures to decide whether the panel fits
    below the trigger. */
-.wt-menu-row{min-height:1.875rem;font-size:.875rem;line-height:1.25rem}
-@media (pointer:coarse){.wt-menu-row{min-height:2.25rem}}</style>
+.wt-menu-row{min-height:1.625rem;font-size:.8125rem;line-height:1rem}
+@media (pointer:coarse){.wt-menu-row{min-height:2rem;font-size:.875rem}}
+/* The Repos row's two menu buttons. Narrow and chrome-free on a fine pointer,
+   where they are a pair of glyphs at the row's edge and a hover background made
+   each one read as a separate tile; the row's own hover tint is the feedback,
+   and the glyph going primary is the state. A thumb still gets a real target. */
+.wt-row-btn{width:1.75rem}
+@media (pointer:coarse){.wt-row-btn{width:2.5rem}}</style>
 </head>
 <!-- A repo browser fronted by a per-repo landing page. The repo picker is up
      front (header). The sidebar lists the repo's views — landing, atlas,
@@ -239,14 +245,14 @@
                 <button @click.stop="rowMenu(r.repo, $event, 'github')"
                         @mouseenter="rowMenuHover(r.repo, $event, 'github')" @mouseleave="hoverLeaveMenu()"
                         :title="'GitHub links for ' + r.short"
-                        class="shrink-0 h-11 w-9 flex items-center justify-center rounded-lg text-base-content/30 hover:text-primary hover:bg-base-300/60 transition-colors"
-                        :class="repoMenuAt && menuRepo===r.repo && menuKind==='github' && 'text-primary bg-base-300/60'">
+                        class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
+                        :class="repoMenuAt && menuRepo===r.repo && menuKind==='github' && 'text-primary'">
                   <i class="ph ph-github-logo text-base leading-none"></i></button>
                 <button @click.stop="rowMenu(r.repo, $event)"
                         @mouseenter="rowMenuHover(r.repo, $event)" @mouseleave="hoverLeaveMenu()"
                         :title="(r.priv === null ? '' : (r.priv ? 'Private. ' : 'Public. ')) + 'Actions for ' + r.short"
-                        class="shrink-0 h-11 w-9 flex items-center justify-center rounded-lg text-base-content/30 hover:text-primary hover:bg-base-300/60 transition-colors"
-                        :class="repoMenuAt && menuRepo===r.repo && menuKind==='actions' && 'text-primary bg-base-300/60'">
+                        class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
+                        :class="repoMenuAt && menuRepo===r.repo && menuKind==='actions' && 'text-primary'">
                   <i class="ph text-base leading-none"
                      :class="r.priv === null ? 'ph-dots-three-vertical' : (r.priv ? 'ph-lock' : 'ph-globe')"></i></button>
               </div>
@@ -1525,14 +1531,14 @@ function app(){ return {
   // in the sidebar and below it elsewhere, flipping when it would otherwise run
   // off an edge.
   repoMenuAt: null,          // { x, y } viewport coords, or null when closed
-  MENU_W: 200,
-  // Row height, and it moves with the pointer: 30 px where the panel was opened
-  // by a hover (a pointer can land on a 30 px row all day) and 36 px on a touch
+  MENU_W: 184,
+  // Row height, and it moves with the pointer: 26 px where the panel was opened
+  // by a hover (a pointer can land on a 26 px row all day) and 32 px on a touch
   // screen, where the row is still a thumb target even though the panel has
   // already been aimed at. This is the height anchorMenu measures with, so the
   // flip-above decision stays honest under either. Keep it in step with the
   // .wt-menu-row rule in <style>, which is what actually sizes the rows.
-  get MENU_ROW(){ return this.finePointer ? 30 : 36; },
+  get MENU_ROW(){ return this.finePointer ? 26 : 32; },
   // The positioning half of an anchored row menu, shared rather than copied:
   // the sidebar's repo menu and the Open view's per-branch GitHub menu
   // (estate.js) are three item lists but one geometry. Returns viewport coords
@@ -1580,6 +1586,11 @@ function app(){ return {
     this.menuRepo = repo;
     this.menuKind = kind;
     this.repoMenuAt = this.anchorMenu(ev, this.repoMenuItems.length, opts);
+    // The Activity view runs a second anchored panel of its own, so announce
+    // the open rather than have every caller remember to put the other one
+    // away. Announced HERE, at the moment of opening, not when a hover starts:
+    // a pointer merely passing over a trigger should close nothing.
+    document.dispatchEvent(new CustomEvent('web-tools:repo-menu-open'));
   },
   closeRepoMenu(){ this.repoMenuAt = null; this.cancelMenuClose(); },
   // A click on a trigger whose menu is already showing puts it away, so the
@@ -1620,13 +1631,20 @@ function app(){ return {
   HOVER_CLOSE_MS: 220,  // long enough to cross the 2 px gap into the panel
   // The trigger's element is captured NOW, not read off the event later: by the
   // time the timer fires the event is spent and currentTarget is null.
+  //
+  // The delay applies to a SWAP as well as to a first open, which is not an
+  // aesthetic choice: the two triggers sit side by side and the panel opens
+  // past both, so the pointer's route from one button to that panel crosses its
+  // neighbour. Swapping on contact meant the github menu could not be reached
+  // from the github button without the marker's menu replacing it on the way.
+  // A crossing takes tens of milliseconds and a decision takes longer, so the
+  // same ~140 ms that keeps a menu from opening as the pointer crosses a row
+  // keeps it from swapping as the pointer crosses a button.
   hoverRepoMenu(repo, ev, kind = 'actions', opts = {}){
     if (!this.finePointer) return;
     const el = ev?.nodeType === 1 ? ev : ev?.currentTarget;
     this.cancelMenuClose();
-    clearTimeout(this._menuOpenT);
-    // Already showing something: swap in place, with no delay to sit through.
-    if (this.repoMenuAt) return this.openRepoMenu(repo, el, kind, opts);
+    if (this.repoMenuAt && this.menuRepo === repo && this.menuKind === kind) return;
     this._menuOpenT = setTimeout(() => this.openRepoMenu(repo, el, kind, opts), this.HOVER_OPEN_MS);
   },
   // Leaving the trigger, or the panel, starts a short countdown rather than
@@ -2518,21 +2536,35 @@ function overview(){ return {
     the rows in place, where two panels would close one under the pointer. The
     same list serves the Activity view's repo chip, so the control is learned
     once (estate.js repoChipMenu).
-    FLAT and COMPACT, and now compact by pointer: 30 px rows for a fine pointer,
-    36 px for a thumb (.wt-menu-row in <style>, measured by the shell's
-    MENU_ROW). Both are under the 44 px floor, which is for a cold target in
-    chrome rather than a panel already aimed at and opened.
+    FLAT and COMPACT, and compact by pointer: 26 px rows at 13 px for a fine
+    pointer, 32 px for a thumb (.wt-menu-row in <style>, measured by the shell's
+    MENU_ROW), in a 184 px panel. Both heights are under the 44 px floor, which
+    is for a cold target in chrome rather than a panel already aimed at and
+    opened. The out-arrow column is dropped from a list where EVERY row leaves
+    the app (repo-menu.js allExternal): the GitHub menu's seven identical arrows
+    said what the github-logo that opened it already said, and the width is
+    worth more to the labels. A mixed list (the branch menu) keeps them, where
+    the arrow marks the odd row out.
     OPENS ON HOVER where the pointer can hover ((hover:hover) and
     (pointer:fine), hoverRepoMenu), after ~140 ms so crossing a row does not
     open it, and closes ~220 ms after the pointer leaves both the trigger and
     the panel, which is what lets it cross the 2 px gap between them. A tap
     works everywhere and a second tap on the same trigger dismisses.
+    THE DELAY APPLIES TO A SWAP TOO, and that is not polish: the two triggers
+    are neighbours and the panel opens past both, so the pointer's route from
+    one button to the panel runs over the other. Swapping on contact made the
+    github menu unreachable from the github button, the marker's menu replacing
+    it every time. A crossing takes tens of milliseconds and a decision takes
+    longer, so one threshold separates them.
     This replaced a three-icon cluster on every row (marker + gear + github
     logo). Those icons were ~16 px against a 44 px floor and each bought one
-    tap; the two that came back are 36 px wide, are real controls, and each
-    opens a list rather than a single destination. The marker is the old inert
-    span promoted, so the row keeps its public/private state while carrying its
-    menu. Two presentations were tried here and taken back out, a press-and-hold
+    tap; the two that came back each open a list rather than a single
+    destination. They are 28 px wide and CHROME-FREE on a fine pointer
+    (.wt-row-btn): a hover background on each made a pair of glyphs read as two
+    separate tiles, where the row's own tint is already the feedback and the
+    glyph going primary is already the state. A thumb still gets 40 px. The
+    marker is the old inert span promoted, so the row keeps its public/private
+    state while carrying its menu. Two presentations were tried here and taken back out, a press-and-hold
     and a bottom sheet: a visible control answering a single tap does the work
     without a gesture to discover, and nothing about a short list justifies the
     far edge of the screen. The estate CARDS still carry the old cluster, where

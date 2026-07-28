@@ -969,9 +969,13 @@ let it grow, and it stays cheap because the two lists share one panel, so
 hovering from one trigger to the other swaps the rows in place where two panels
 would close one under the pointer.
 
-Both lists are flat, short, and **compact by pointer**: 30 px rows for a fine
-pointer, 36 px for a thumb. Both are under the 44 px floor, which is for a cold
-target in chrome, not for a panel the pointer has already aimed at and opened.
+Both lists are flat, short, and **compact by pointer**: 26 px rows at 13 px for
+a fine pointer, 32 px for a thumb, in a 184 px panel. Both heights are under the
+44 px floor, which is for a cold target in chrome, not for a panel the pointer
+has already aimed at and opened. A list where **every** row leaves the app drops
+the out-arrow column: the GitHub menu's seven identical arrows said what the
+github-logo that opened it already said. A mixed list, like the branch menu,
+keeps them, since there the arrow marks the odd row out.
 
 Where the pointer can hover (`(hover: hover) and (pointer: fine)`) either
 trigger **opens on hover**, after ~140 ms so that crossing a row does not open
@@ -980,12 +984,22 @@ which is what lets it cross the 2 px gap between them. A tap works everywhere,
 and a second tap on the same trigger dismisses. The Activity view's two menus
 (its repo chip and its per-branch GitHub menu) follow the same timings.
 
+**The delay applies to a swap as well as to a first open**, which is the part
+that had to be found by using it. The two triggers are neighbours and the panel
+opens past both, so the pointer's route from one button to the panel runs over
+the other; swapping on contact made the GitHub menu unreachable from the GitHub
+button, the marker's menu replacing it every time. A crossing takes tens of
+milliseconds and a decision takes longer, so one threshold separates them.
+
 The pair replaced a three-icon cluster (visibility marker, config gear, GitHub
 logo) on every row. Those icons measured about 16 px against a 44 px tap-target
-floor and each bought exactly one tap. The two that came back are 36 px wide,
-are real controls, and each opens a list rather than a single destination; the
-marker is the old inert `<span>` promoted, so the row keeps its public/private
-state while carrying its menu. Two other presentations were built here and taken
+floor and each bought exactly one tap. The two that came back each open a list
+rather than a single destination; the marker is the old inert `<span>` promoted,
+so the row keeps its public/private state while carrying its menu. They sit
+tight together and carry **no chrome of their own** on a fine pointer (28 px
+wide, no hover background), since a background per glyph made the pair read as
+two tiles when the row's own tint is already the feedback and the glyph turning
+primary is already the state. A thumb gets 40 px. Two other presentations were built here and taken
 back out: a press-and-hold, since a visible control answering a single tap does
 the same work without a gesture to discover, and a bottom sheet, since nothing
 about a short list justifies throwing the menu to the far edge of the screen.
