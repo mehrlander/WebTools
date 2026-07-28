@@ -22,6 +22,16 @@ counted.)*
 
 ---
 
+### phosphor-weight-is-a-family — an icon renders as nothing at all
+`ph-push-pin-fill` is not an icon. Phosphor's weights are font families, not name
+suffixes, so the class pair is `{weight} ph-{name}` (`ph-fill ph-push-pin`). A
+name the font does not carry produces a zero-width blank with no console error,
+so a missing glyph reads as a logic bug and gets debugged as one. Measure the
+element's width before suspecting the state that controls it.
+*(seen: 2026-07-28)*
+→ [../skills/phosphor-icons/SKILL.md](../skills/phosphor-icons/SKILL.md)
+---
+
 ### daisy-divide-paints-black — hairlines come out black, not grey
 `divide-y divide-base-200` renders black lines. daisyUI ships its semantic colours
 as its own utilities and `divide-*` is not among them, so `divide-base-200`
