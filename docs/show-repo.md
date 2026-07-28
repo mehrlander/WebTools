@@ -811,8 +811,23 @@ unresolved with its error and no Apply. The write goes through `gh-transfer.js`'
 `gh-store` has no delete, so a result file is the tombstone, exactly as in the
 mailbox.
 
-`why` is required. A proposal a reviewer cannot read is not reviewable, so
-validation refuses it before the network is touched.
+**A record is an instruction, not a patch.** Nothing in the channel carries a
+diff in any format, and none is stored. The before/after in the review pane is
+computed when the card renders, against the target as it stands at that moment,
+which is why a `(not set)` line is a live fact about the target rather than a
+claim made when the proposal was written. A stored diff would describe the file
+as it was on the day it was authored and quietly go wrong afterwards. Once
+applied, the resulting bytes are an ordinary commit in the target repo, which is
+where a durable diff belongs; the `applied/` record keeps the outcome and that
+commit's sha.
+
+**Write the `why` for a stranger.** It is required, and validation refuses a
+record without one before the network is touched, but non-empty is not the bar.
+A `why` is read cold, possibly weeks later, on a phone, by someone deciding
+whether to write to a repository. Open at the top, with what this is, why it
+exists, and what applying it does, rather than in the middle with a note to
+whoever already had the authoring session in their head. Verbose beats cryptic:
+the reader has no other context, and the record is the only thing they have.
 
 ### The repo menu
 
