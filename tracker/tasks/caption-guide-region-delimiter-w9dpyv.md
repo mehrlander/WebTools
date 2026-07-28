@@ -1,10 +1,11 @@
 ---
 id: caption-guide-region-delimiter-w9dpyv
 title: Teach the guide region a delimiter that survives an agent's readback
-status: backlog
+status: done
 track: independent
 opened: 2026-07-28
-next: recognize both delimiters, write only the surviving one; the HTML form must keep parsing or every existing guide region orphans
+closed: 2026-07-28
+session: claude/budget-drs-tracker-review-s64mc6
 ---
 # Teach the guide region a delimiter that survives an agent's readback
 
@@ -46,3 +47,16 @@ Worked example of the alternative in place: PR #303's body.
 - 2026-07-28 filed at the wrap-up of the tracker-review session (PR #303), which
   hit the bug while syncing its own guide body and lost the region twice before
   measuring the cause.
+- 2026-07-28 done on `claude/budget-drs-tracker-review-s64mc6`; lands via PR #303.
+  Closed the same day it was filed, and the filing was the error. It was raised
+  at wrap-up as a follow-up, then challenged on whether it was resolvable
+  in-session, and it was: one constant pair became a tuple of pairs with a loop,
+  plus two doc surfaces. Recognition accepts both delimiters so no existing body
+  orphans; new syncs write the link-label form.
+  `build-merge-guide.py` had no tests and this change touches the function that
+  decides what shipped history says, so `tools/test/build-merge-guide.test.mjs`
+  now pins both forms, the structural fallback, an unmatched opener, and the
+  terse-body case. Suite 583 passing.
+  Worth keeping: the filing failed the tracker's own test, "never file for work
+  the current session could simply do." The tell was there at filing time, since
+  the scope section already named all three files.
