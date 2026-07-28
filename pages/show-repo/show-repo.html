@@ -1486,16 +1486,31 @@ function app(){ return {
   get repoMenuItems(){
     if (this.menuKind === 'github') return this.githubMenuItems;
     if (this.menuKind !== 'repo') return this.repoActionItems;
+    // Each half opens with a HEAD ROW rather than a label: a real row, carrying
+    // the mark of WHERE (this app, then GitHub) and the name of WHAT (the
+    // repo), and acting as that half's default destination. It replaces both a
+    // dead label and the row underneath it, since "Open repo" and "Repository"
+    // were the same idea named twice and read as an inconsistency between the
+    // two halves. Now the parallel is exact: same name, different mark, and
+    // each half's remaining rows are the places inside it.
+    //
     // The GitHub keys are prefixed here, and it is load-bearing rather than
     // tidy: both halves name a `branches` row, the loop keys on `key`, and a
     // duplicate key silently drops the second row (it cost one Branches row
     // before it was noticed). Dispatch reads the row, not the key, so the
     // prefix costs nothing downstream.
+    const repo = this.menuRepo;
+    const short = repo.split('/')[1] || repo;
+    const [ghHome, ...ghRest] = this.githubMenuItems.map(r => ({ ...r, key: 'gh:' + r.key }));
     return [
       ...this.menuExtra,
-      ...this.repoAppItems.map(r => ({ ...r, group: 'In show-repo' })),
-      ...this.githubMenuItems.map(r => ({ ...r, key: 'gh:' + r.key, group: 'On GitHub' })),
-    ];
+      { key: 'open', head: true, label: short, img: '../../lib/favicon.svg',
+        title: 'Open ' + repo + ' here' },
+      ...this.repoAppItems,
+      ghHome && { ...ghHome, head: true, label: short, icon: 'ph-github-logo',
+                  title: repo + ' on GitHub' },
+      ...ghRest,
+    ].filter(Boolean);
   },
   // Rows the CALLER contributed for this opening, ahead of the standard ones.
   // A menu about a repo is opened from somewhere, and that somewhere sometimes
@@ -1509,7 +1524,7 @@ function app(){ return {
   // tap, above a list of every other repo, has answered the question already.
   get repoAppItems(){
     return [
-      { key: 'open', label: 'Open repo', icon: 'ph-arrow-square-in' },
+      // No "Open repo" row: the head row above these IS that destination.
       { key: 'files', label: 'Files', icon: 'ph-folders' },
       // "Branch review" rather than "Branches", which is what the sidebar's
       // own nav calls it: in THIS list the GitHub group names a Branches row
@@ -1621,11 +1636,11 @@ function app(){ return {
     this.menuRepo = repo;
     this.menuKind = kind;
     this.menuExtra = kind === 'repo' && Array.isArray(opts.extra) ? opts.extra : [];
-    // Group labels take height too, so they count toward the measure that
-    // decides whether the panel fits below the trigger.
+    // The rules above the head rows take height too, so the measure that
+    // decides whether the panel fits below the trigger allows for them.
     const items = this.repoMenuItems;
-    const groups = new Set(items.map(r => r.group).filter(Boolean)).size;
-    this.repoMenuAt = this.anchorMenu(ev, items.length + groups, opts);
+    const heads = items.filter(r => r.head).length;
+    this.repoMenuAt = this.anchorMenu(ev, items.length + heads * 0.4, opts);
     // The Activity view runs a second anchored panel of its own, so announce
     // the open rather than have every caller remember to put the other one
     // away. Announced HERE, at the moment of opening, not when a hover starts:
@@ -2591,18 +2606,25 @@ function overview(){ return {
     the lists share the panel: hovering from one trigger to another swaps the
     rows in place, where separate panels would close one under the pointer.
     REPO (the Activity view's chip, estate.js repoChipMenu): both of the above
-    in LABELLED GROUPS, "In show-repo" (Open repo / Files / Branch review /
-    Config) over "On GitHub". The sidebar can afford to split its material
-    across two buttons because the row itself opens the repo and the list shows
-    every sibling; an Activity row is about a BRANCH, in a view with no sidebar
-    on screen, so its chip is the reader's only route to the repo and carries
-    the lot. Groups rather than a submenu: a submenu hides half the answer
-    behind a second gesture, and seeing where you can go is the whole point of
-    a jump-over list. A group label rides on the row it introduces (item.group,
-    drawn when it differs from the row above), so a grouped list and a flat one
-    are the same array and the same loop. The GitHub keys are prefixed 'gh:' in
-    the combined list because both halves name a `branches` row and the loop
-    keys on `key`; a duplicate silently drops the second row.
+    in two sections, each opened by a HEAD ROW. The sidebar can afford to split
+    its material across two buttons because the row itself opens the repo and
+    the list shows every sibling; an Activity row is about a BRANCH, in a view
+    with no sidebar on screen, so its chip is the reader's only route to the
+    repo and carries the lot. Sections rather than a submenu: a submenu hides
+    half the answer behind a second gesture, and seeing where you can go is the
+    whole point of a jump-over list.
+      A HEAD ROW is the section's label and its default destination at once: the
+      mark of WHERE (the app's own favicon, then the github-logo) beside the
+      name of WHAT (the repo, in mono), over the places inside it. It replaced
+      an inert uppercase label plus the row underneath it, since "Open repo" and
+      "Repository" were one idea named twice and read as two vocabularies for
+      the same thing. Now the two sections are the same name under two marks. A
+      rule sits above each head row but the first, so nothing needs reading to
+      see the split. item.img carries the app mark, which is an SVG file rather
+      than a Phosphor glyph.
+      The GitHub keys are prefixed 'gh:' in the combined list because both
+      halves name a `branches` row and the loop keys on `key`; a duplicate
+      silently drops the second row.
     FLAT and COMPACT, and compact by pointer: 26 px rows at 13 px for a fine
     pointer, 32 px for a thumb (.wt-menu-row in <style>, measured by the shell's
     MENU_ROW), in a 184 px panel. Both heights are under the 44 px floor, which

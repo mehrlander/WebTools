@@ -285,9 +285,11 @@ the crawl stored it. An unsurveyed row shows nothing rather than `0/0`, since
 "not measured" and "measured zero" are different answers.
 
 **Repo chips** below the scope chips narrow the list to one repo, `All` first
-and a count on each. The row's own **repo chip menu** contributes **Show only
-this repo** (and **Show all repos** once filtered), the same filter reached from
-the row you are reading rather than from the chip row above. Only repos that have open rows get a chip, since the estate is larger than
+and a count on each. The row's own **repo chip menu** contributes **Only
+`<repo>`** (and **All repos** once filtered), the same filter reached from the
+row you are reading rather than from the chip row above. It names the repo
+rather than saying "this repo", since the menu is read after the pointer has
+left the row it belongs to. Only repos that have open rows get a chip, since the estate is larger than
 the set with work in flight and a row of zeroes says nothing, and the row hides
 below two of them. It scrolls sideways rather than wrapping, which is what keeps
 a second row of controls from pushing the first branch off a phone screen. The
@@ -1006,16 +1008,32 @@ let it grow, and it stays cheap because the lists share one panel, so hovering
 from one trigger to another swaps the rows in place where separate panels would
 close one under the pointer.
 
-**Repo**, off the Activity view's chip, is both of the above in **labelled
-groups**: `In show-repo` (Open repo, Files, Branch review, Config) over
-`On GitHub`. The sidebar can afford to split its material across two buttons,
-because the row itself opens the repo and the list shows every sibling; an
-Activity row is about a **branch**, in a view with no sidebar on screen, so its
-chip is the reader's only route to the repo and carries the lot. Groups rather
-than a submenu: a submenu hides half the answer behind a second gesture, and
-seeing where you can go is the whole point of a jump-over list. A group label
-rides on the row it introduces, so a grouped list and a flat one are the same
-array and the same loop.
+**Repo**, off the Activity view's chip, is both of the above in two sections.
+The sidebar can afford to split its material across two buttons, because the
+row itself opens the repo and the list shows every sibling; an Activity row is
+about a **branch**, in a view with no sidebar on screen, so its chip is the
+reader's only route to the repo and carries the lot. Sections rather than a
+submenu: a submenu hides half the answer behind a second gesture, and seeing
+where you can go is the whole point of a jump-over list.
+
+Each section opens with a **head row**, which is its label and its default
+destination at once: the mark of **where** (the app's own favicon, then the
+GitHub logo) beside the name of **what** (the repo), over the places inside it.
+
+```
+  Only web-tools            ← contributed by the view; no heading, it is one row
+  ─────────────
+  ◇ web-tools               ← opens the repo here
+    Files · Branch review · Config
+  ─────────────
+  ⌥ web-tools            ↗  ← opens the repo on GitHub
+    Pull requests · Issues · Task board · Branches · Commits · Actions ↗
+```
+
+That replaced an inert uppercase label plus a row underneath it: **Open repo**
+and **Repository** were one idea named twice, and reading them together made
+the two halves look like two vocabularies for the same thing. Now they are the
+same name under two marks, and a rule does the separating that a label used to.
 
 Both lists are flat, short, and **compact by pointer**: 26 px rows at 13 px for
 a fine pointer, 32 px for a thumb, in a 184 px panel. Both heights are under the
