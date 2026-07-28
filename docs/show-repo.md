@@ -949,13 +949,17 @@ used, positioned from its rect (the rows sit in a scrolling column that would
 clip a nested panel) and flipped above the trigger near the bottom of the list.
 
 **Actions**, off the visibility marker, is where you act **on** a repo rather
-than navigate to it: **Config**, the `-private` companion switch, its declared
-outbox, and **Copy browse link**. Files and Branches were here and expanded into
-the repo's folders and branch list; both are gone, because "what is inside" is a
-browsing question the sidebar and the Files view already answer once you are in
-the repo. Nothing expands, so nothing carries a chevron. An **Open** row went
-too: tapping the row itself is what opens the repo, so the menu was offering the
-one thing you had just declined to do.
+than navigate to it: **Config**, its declared outbox, and **Copy browse link**.
+It is a short list because every row that left had somewhere better to be. Files
+and Branches expanded into the repo's folders and its branch list, and "what is
+inside" is a browsing question the sidebar and the Files view already answer
+once you are in the repo. **Open** went because tapping the row itself is what
+opens the repo. **Switch to the `-private` companion** went because the sidebar
+lists that companion as its own row: the jump was built for a list that shows
+one of a pair and hides the other, which is the estate **cards** (they nest the
+private repo inside its public parent), not this one. A menu offering a jump to
+a row three lines down answers a question the list has already answered.
+Nothing expands, so nothing carries a chevron.
 
 **GitHub**, off the github-logo button beside it, is where that repo lives:
 **Repository**, **Pull requests**, **Issues**, its **Task board** (the

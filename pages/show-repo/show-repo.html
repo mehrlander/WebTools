@@ -68,8 +68,10 @@
 /* The Repos row's two menu buttons. Narrow and chrome-free on a fine pointer,
    where they are a pair of glyphs at the row's edge and a hover background made
    each one read as a separate tile; the row's own hover tint is the feedback,
-   and the glyph going primary is the state. A thumb still gets a real target. */
-.wt-row-btn{width:1.75rem}
+   and the glyph going primary is the state. 24 px is the glyph (16 px) plus 4
+   either side, so the pair reads as one cluster rather than two controls that
+   happen to be adjacent. A thumb still gets a real target. */
+.wt-row-btn{width:1.5rem}
 @media (pointer:coarse){.wt-row-btn{width:2.5rem}}</style>
 </head>
 <!-- A repo browser fronted by a per-repo landing page. The repo picker is up
@@ -164,7 +166,7 @@
       <!-- The repo crumb opens a REPO SWITCHER: which repository is showing,
            and nothing else. A breadcrumb names where you are, so the only menu
            it earns is the set of other places that slot could hold. Acting ON a
-           repo (config, GitHub, the companion) belongs to the Repos rows' menu,
+           repo (config, GitHub, its outbox) belongs to the Repos rows' menus,
            not to the trail. Anchored under the bar in path-picker's panel idiom
            (inset, top-full, rounded-box, shadow). -->
       <div x-show="crumbMenu" x-cloak x-transition.opacity.duration.120ms
@@ -219,7 +221,7 @@
                    different lists: the github-logo gives GITHUB LINKS for that
                    repo (repository, pull requests, issues, its task board,
                    branches, commits, actions) and the visibility marker gives
-                   the REPO MENU (config, its companion, copy link).
+                   the REPO MENU (config, its outbox, copy link).
 
                    Splitting them is what let the GitHub side grow past the
                    single "Open on GitHub" row it used to be, which pointed at
@@ -1460,23 +1462,6 @@ function app(){ return {
   // than on the browser store. Open is offered only for a repo you are not
   // already in.
   menuRepo: '',
-  get menuRepoPrivate(){
-    const r = this.estateRepos.find(x => x.repo === this.menuRepo);
-    if (r && r.priv !== null && r.priv !== undefined) return r.priv;
-    return this.menuRepo === Alpine.store('browser').repo
-      ? !!Alpine.store('browser').repoObj?.private : false;
-  },
-  // The companion by the -private naming convention (foo ⇄ foo-private), for
-  // whichever repo the menu is about, and only when that companion is itself on
-  // the estate. Empty when there is no such pair, or no token (so estateRepos
-  // is empty).
-  get menuRepoSibling(){
-    const repo = this.menuRepo;
-    if (!repo) return '';
-    const m = repo.match(/^(.*)-private$/);
-    const sib = m ? m[1] : repo + '-private';
-    return this.estateRepos.some(r => r.repo === sib) ? sib : '';
-  },
   // Which of the two menus the one panel is showing: 'actions' (things you do
   // TO a repo, off the visibility marker) or 'github' (where that repo lives on
   // GitHub, off the github button beside it). One panel and one geometry for
@@ -1487,21 +1472,24 @@ function app(){ return {
   get repoMenuItems(){
     return this.menuKind === 'github' ? this.githubMenuItems : this.repoActionItems;
   },
-  // Things you do TO a repo, not inside one. Files and Branches used to sit
-  // here and expand; both are gone, because "what is inside" is a browsing
-  // question the sidebar and the Files view answer once you are in the repo,
-  // and starting a browse from a row's menu was never the point of the menu.
-  // "Open on GitHub" left too, and for the same reason in reverse: GitHub is a
-  // whole small set of destinations, so it earns the button next door rather
-  // than one row in here. Nothing expands now, so nothing carries a chevron.
+  // Things you do TO a repo, not inside one, and by now a SHORT list, because
+  // every row that left had somewhere better to be:
+  //   Files and Branches expanded into the repo's folders and its branch list,
+  //     and "what is inside" is a browsing question the sidebar and the Files
+  //     view answer once you are in the repo.
+  //   Open, because tapping the row itself is what opens the repo.
+  //   Open on GitHub, because GitHub is a whole small set of destinations, so
+  //     it earns the button next door rather than one row in here.
+  //   Switch to <the -private companion>, because the sidebar lists that
+  //     companion as its OWN row. The jump existed for a list that showed one
+  //     of a pair and hid the other, which is the estate CARDS (they nest the
+  //     private repo inside its public parent), not this list. Offering a jump
+  //     to a repo three rows down is a menu answering a question the list has
+  //     already answered.
+  // Nothing expands, so nothing carries a chevron.
   get repoActionItems(){
-    const sib = this.menuRepoSibling;
     return [
-      // No "Open" row: tapping the row itself opens the repo, so offering it
-      // here is offering the thing you just chose not to tap.
       { key: 'config', label: 'Config', icon: 'ph-gear-six' },
-      sib && { key: 'sibling', label: 'Switch to ' + (sib.split('/')[1] || sib),
-               icon: this.menuRepoPrivate ? 'ph-globe' : 'ph-lock' },
       this.menuRepoOutbox && { key: 'outbox', label: 'Open outbox', icon: 'ph-tray-arrow-up' },
       { key: 'copy', label: 'Copy browse link', icon: 'ph-link' },
     ].filter(Boolean);
@@ -1675,21 +1663,16 @@ function app(){ return {
       catch { notify('Could not copy the link'); }
       return;
     }
-    // Everything below acts inside a repo, so make it the open one first.
-    const target = key === 'sibling' ? this.menuRepoSibling : repo;
-    if (!target) return;
-    await this.ensureBrowser(target);
-    if (Alpine.store('browser').repo !== target) return;
+    // What is left acts INSIDE a repo, so make it the open one first.
+    await this.ensureBrowser(repo);
+    if (Alpine.store('browser').repo !== repo) return;
     if (key === 'outbox'){
       const box = this.menuRepoOutbox;
       this.goFiles();
       if (box?.dir) await this.openFolder(box.dir);
       return;
     }
-    if (key === 'files') this.goFiles();
-    else if (key === 'branches') this.goBranches();
-    else if (key === 'config') this.goConfig();
-    else this.goLanding();
+    if (key === 'config') this.goConfig();
   },
 
   // Any repo@ref on GitHub. show-repo is a wrapper over GitHub, not a wall, so
@@ -2519,13 +2502,18 @@ function overview(){ return {
   the trigger near the bottom of the list. That geometry is SHARED, not copied:
   anchorMenu/menuStyle also position the Open view's per-branch GitHub menu
   (estate.js), so every anchored menu here behaves identically.
-    ACTIONS (the marker button): Config / the -private companion / its outbox /
-    Copy browse link. Things you do TO a repo rather than inside one. An Open
-    row went too: tapping the row itself opens the repo. Files and Branches were
-    here and expanded into the repo's folders and branch list; both are gone,
-    because "what is inside" is a browsing question the sidebar and the Files
-    view already answer once you are in the repo. Nothing expands, so nothing
-    carries a chevron.
+    ACTIONS (the marker button): Config / its outbox / Copy browse link. Things
+    you do TO a repo rather than inside one, and a SHORT list, because every row
+    that left had somewhere better to be. Files and Branches expanded into the
+    repo's folders and its branch list, and "what is inside" is a browsing
+    question the sidebar and the Files view already answer once you are in the
+    repo. Open went because tapping the row itself opens the repo. Switch to the
+    -private companion went because THE SIDEBAR LISTS THAT COMPANION AS ITS OWN
+    ROW: the jump was built for a list that shows one of a pair and hides the
+    other, which is the estate CARDS (they nest the private repo inside its
+    public parent), not this one. A menu offering a jump to a row three lines
+    down is answering a question the list has already answered. Nothing expands,
+    so nothing carries a chevron.
     GITHUB (the github-logo button beside it, lib/github-links.js): Repository /
     Pull requests / Issues / the declared task board / Branches / Commits /
     Actions, each with the out-arrow. This was one row inside the actions list,
