@@ -13,7 +13,8 @@
 
     rail      entries flagged rail:true, projected across the masthead in area
               order. A flag, never a second list.
-    board     ordered areas of ordered items, each area a section of the index.
+    board     ordered areas, each a column; within a column, ordered items
+              under optional small-caps group headings.
     dossier   an area's own markdown file, set as prose in place and edited
               here. It opens by itself when you filter to that area alone.
 
@@ -34,7 +35,12 @@
 
   Data contract (all in mehrlander/home, read and written through the token):
     links/board.json     the store; an area may carry accent (any CSS colour),
-                         an item may carry doors: [{ label, url }]
+                         an item may carry doors: [{ label, url }] and a group
+                         label. Groups are consecutive runs, so array order
+                         drives both group order and membership, and an item
+                         with no group falls under the column's lead run.
+                         An item with no url renders as plain text, for a
+                         reference that has no address.
     links/<area>.md      an area's dossier, fetched on first open
 
   Renderer lives here in web-tools; the content lives in home, which is private,
@@ -44,15 +50,24 @@
   error: the file does not exist on this ref yet, so it opens empty and writable.
 
   ── The visual argument ────────────────────────────────────────────────────
-  An index, not a deck. Nothing here is a card: no borders, no fills, no
-  rounded containers, no shadows. Structure comes from three type voices
-  (serif for headings and prose, sans for entries, mono for addresses), from
-  whitespace, and from one hairline per section, which is the only rule that
-  earns its keep. Colour is spent on the accent glyph and nowhere else, so a
-  scan reads as areas rather than as boxes. An entry is one line: glyph, title,
-  note trailing in grey and truncating. Wide screens flow those lines into
-  newspaper columns, which is what an index wants and what a grid of tiles is
-  a poor imitation of.
+  A portal, not a deck and not a flat index. Nothing here is a card: no fills,
+  no rounded containers, no shadows. An area is a COLUMN, headed by its name
+  over a heavy rule, and inside the column small-caps group labels carry the
+  substructure. That is the shape a dense reference page has always had, and it
+  beats flowing one area across newspaper columns because it puts the two
+  questions a launcher answers (which area, then which thing) on the two axes
+  of the page rather than both on one.
+
+  Density is the point, so an entry is one tight line: an optional glyph, the
+  title, its doors, then a qualifier in grey. Colour has exactly one job, which
+  is telling columns apart: the area rule, its glyph, and its group labels take
+  the accent, and link text stays a single blue throughout. A row whose item has
+  no url is not a link at all; it renders as plain weight, for a reference that
+  has no address.
+
+  Filtering to one area drops the grid to a single wide column and opens that
+  area's dossier, because prose set in a fifth of the page is unreadable and a
+  portal column is the wrong place to think.
 
   The accent system is one custom property. A section sets --a and everything
   tinted below is a color-mix off it, so a new area needs a hex in board.json
@@ -78,13 +93,19 @@
 
   .sec   { --a: var(--color-base-content); }
   .rule  { height: 1px; background: color-mix(in oklch, var(--a) 28%, transparent); }
+  .rule-heavy { height: 2px; background: color-mix(in oklch, var(--a) 80%, transparent); }
   .accent{ color: var(--a); }
 
-  /* A row is a line of type. The only thing that moves on hover is the title. */
+  .grp { font-size: 10.5px; font-weight: 600; letter-spacing: .085em;
+         text-transform: uppercase; color: color-mix(in oklch, var(--a) 78%, transparent); }
+
+  /* A row is a line of type. Link text is one blue everywhere; the accent is
+     spent on telling columns apart, not on colouring every link differently. */
   .row .t { transition: color .12s; }
-  .row:hover .t { color: var(--a); }
-  .row:hover .g { opacity: 1; }
-  .g { opacity: .72; transition: opacity .12s; }
+  .row .t.lk { color: var(--color-primary); }
+  .row:hover .t.lk { text-decoration: underline; text-underline-offset: 2px; }
+  .row:hover .g { opacity: .85 }
+  .g { opacity: .45; transition: opacity .12s; }
 
   .snip .t { text-decoration: underline dotted; text-underline-offset: 3px; }
 
@@ -93,9 +114,7 @@
   .doors a { position: relative; }
   .doors a + a::before { content: '·'; margin-right: .45rem; opacity: .35 }
 
-  /* Newspaper columns for the index; one column on a phone. */
-  .index { column-gap: 2.5rem; }
-  .index > * { break-inside: avoid; }
+
 
   .prose-d { font-family: var(--serif); }
   .prose-d h3 { font-family: var(--serif); color: var(--a); font-size: .8rem;
@@ -194,24 +213,33 @@
         if (!q) return a.items;
         return a.items.filter(i => `${i.title} ${i.note || ''} ${i.url}`.toLowerCase().includes(q));
       },
+      linkable(it) { return !!this.href(it) || it.kind === 'snippet' },
+      groups(a) {
+        const out = []; let cur = null;
+        for (const it of this.items(a)) {
+          const label = it.group || '';
+          if (!cur || cur.label !== label) { cur = { label, items: [] }; out.push(cur) }
+          cur.items.push(it);
+        }
+        return out;
+      },
       // An item's own icon wins. Failing that, a plain link borrows its area's
       // glyph, so the default says where a thing lives and only the exceptions
       // (action, repo, snippet) spend a glyph saying what they are.
       icon(it, a) { return it.icon || (it.kind === 'link' ? (a?.icon || this.KIND.link.icon) : this.KIND[it.kind].icon) },
       accent(a) { return a.accent || 'currentColor' },
       href(it) {
+        if (!it.url) return null;                       // a reference with no address
         if (it.kind === 'snippet') return null;
         if (it.kind === 'repo') return `${this.SHOW_REPO}?repo=${encodeURIComponent(it.url)}`;
         return it.url;
       },
+      // In a column the qualifier is what a note is for; a bare host repeated
+      // down the page is noise, so only a note (or a repo address) shows.
       trail(it) {
         if (it.note) return it.note;
-        // Doors already establish that this is one destination, so the bare
-        // host beside them is redundant and only steals width from the labels.
-        if (it.doors?.length) return '';
         if (it.kind === 'repo') return it.url;
-        if (it.kind === 'snippet') return it.url.slice(0, it.url.indexOf(':') + 1);
-        try { return new URL(it.url).hostname.replace(/^www\./, '') } catch { return '' }
+        return '';
       },
 
       // Filtering to one area is a statement that you came for that subject, so
@@ -224,7 +252,13 @@
 
       // ── board edits ──────────────────────────────────────────────────────
       uid(p) { return p + Math.random().toString(36).slice(2, 7) },
-      add(a) { a.items.push({ id: this.uid('i'), title: '', kind: 'link', url: '', note: '', rail: false }) },
+      add(a) {
+        // A new entry inherits the last one's group, since adding to a group is
+        // the common case and re-typing the label every time is friction.
+        const last = a.items[a.items.length - 1];
+        a.items.push({ id: this.uid('i'), title: '', kind: 'link', url: '', note: '',
+                       group: last?.group || '', rail: false });
+      },
       addDoor(it) { (it.doors ||= []).push({ label: '', url: '' }) },
       removeDoor(it, d) { it.doors = it.doors.filter(x => x !== d); if (!it.doors.length) delete it.doors },
       remove(a, it) { a.items = a.items.filter(x => x !== it) },
@@ -303,7 +337,7 @@
 
 <body class="bg-base-100 min-h-screen text-base-content">
 
-<div x-data="links" x-cloak class="max-w-4xl mx-auto px-5 sm:px-8 py-8 sm:py-12">
+<div x-data="links" x-cloak class="max-w-[88rem] mx-auto px-5 sm:px-8 py-8 sm:py-10">
 
   <!-- ── masthead ─────────────────────────────────────────────────────── -->
   <div class="flex items-baseline gap-3 mb-1">
@@ -357,132 +391,144 @@
         <button x-show="editing" class="opacity-40 hover:opacity-100" @click="addArea()">+ area</button>
       </div>
 
-      <!-- ── sections ─────────────────────────────────────────────────── -->
-      <template x-for="a in visibleAreas" :key="a.id">
-        <section class="sec mb-11" :style="`--a:${accent(a)}`">
+      <!-- ── columns ──────────────────────────────────────────────────── -->
+      <!-- A grid, not CSS column flow: column-count balances to the shortest
+           possible height and so collapses four unbreakable areas into two
+           columns. A portal wants one area per column, standing at its own
+           height, which is what a grid with items-start gives. -->
+      <div class="grid items-start gap-x-9 gap-y-9"
+           :class="area === 'all' ? 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5' : 'max-w-2xl'">
+        <template x-for="a in visibleAreas" :key="a.id">
+          <section class="sec" :style="`--a:${accent(a)}`">
 
-          <div class="flex items-baseline gap-3 mb-1">
-            <i class="ph accent text-sm translate-y-px" :class="a.icon"></i>
-            <template x-if="!editing">
-              <h2 class="serif text-lg tracking-tight" x-text="a.label"></h2>
-            </template>
-            <template x-if="editing">
-              <div class="flex flex-wrap gap-1.5">
-                <input class="input input-xs input-bordered w-32" x-model="a.label" placeholder="area">
-                <input class="input input-xs input-bordered w-28 mono text-[11px]" x-model="a.icon" placeholder="ph-circle">
-                <input class="input input-xs input-bordered w-24 mono text-[11px]" x-model="a.accent" placeholder="#64748b">
-                <input class="input input-xs input-bordered w-40 mono text-[11px]" x-model="a.dossier" placeholder="links/….md">
-              </div>
-            </template>
-            <div class="rule grow"></div>
-            <button x-show="a.dossier" class="text-[11px] tracking-wide uppercase accent opacity-60 hover:opacity-100"
-                    @click="toggleDossier(a)" x-text="open===a.id ? 'hide' : 'notes'"></button>
-            <span class="mono text-[10px] opacity-25" x-text="count(a)"></span>
-            <button x-show="editing" class="text-[11px] text-error opacity-60 hover:opacity-100"
-                    @click="removeArea(a)">remove</button>
-          </div>
-
-          <!-- level 2: the dossier, set as prose -->
-          <div x-show="open===a.id" x-transition class="mb-5 mt-4">
-            <template x-if="dossiers[a.dossier]?.loading">
-              <div class="py-3"><span class="loading loading-dots loading-sm opacity-20"></span></div>
-            </template>
-            <template x-if="dossiers[a.dossier]?.error">
-              <div class="text-xs text-warning mono" x-text="dossiers[a.dossier].error"></div>
-            </template>
-            <template x-if="dossiers[a.dossier] && !dossiers[a.dossier].loading && !dossiers[a.dossier].error">
-              <div>
-                <div x-show="!editing" class="prose-d text-[15px] leading-relaxed max-w-prose"
-                     x-html="render(dossiers[a.dossier].text)"></div>
-                <textarea x-show="editing" x-model="dossiers[a.dossier].text" rows="14"
-                          class="textarea textarea-bordered w-full mono text-xs leading-relaxed"></textarea>
-              </div>
-            </template>
-          </div>
-
-          <!-- level 1: the index -->
-          <div x-show="!editing" class="index mt-3 sm:columns-2 lg:columns-3">
-            <template x-for="it in items(a)" :key="it.id">
-              <!-- The whole line is the target, not just the title: a launcher
-                   read on a phone cannot ask for a tap on 14px of text. A
-                   stretched overlay carries the click and the content sits
-                   under it, so the row needs no container to be tappable. -->
-              <div class="row relative flex items-baseline gap-2.5 py-[6px]"
-                   :class="it.kind === 'snippet' && 'snip'">
-
-                <a x-show="it.kind !== 'snippet'" :href="href(it)" target="_blank" rel="noopener"
-                   class="absolute -inset-x-2 inset-y-0" :aria-label="it.title"></a>
-                <button x-show="it.kind === 'snippet'" @click="copy(it)"
-                        class="absolute -inset-x-2 inset-y-0" :aria-label="it.title"></button>
-
-                <!-- Phosphor weights are font families (ph, ph-fill), not name
-                     suffixes, so the weight is bound instead of stacked. -->
-                <i class="g accent text-sm shrink-0 translate-y-0.5 pointer-events-none"
-                   :class="[icon(it, a), it.kind === 'action' ? 'ph-fill' : 'ph']"></i>
-
-                <span class="t text-[14px] leading-snug shrink-0 pointer-events-none"
-                      :class="it.kind === 'repo' ? 'mono text-[12.5px]' : ''" x-text="it.title"></span>
-
-                <span x-show="it.doors?.length" class="doors flex items-baseline gap-1.5 text-[12px] shrink-0">
-                  <template x-for="d in (it.doors || [])" :key="d.url">
-                    <a :href="d.url" target="_blank" rel="noopener"
-                       class="accent opacity-55 hover:opacity-100 transition-opacity" x-text="d.label"></a>
-                  </template>
-                </span>
-
-                <span class="text-[12px] leading-snug opacity-35 truncate grow pointer-events-none"
-                      :class="!it.note && 'mono text-[11px]'" x-text="trail(it)"></span>
-
-                <i x-show="it.rail" class="ph-fill ph-push-pin accent text-[10px] opacity-55 shrink-0 pointer-events-none"></i>
-              </div>
-            </template>
-          </div>
-
-          <!-- editing: rows, because an index is for reading and a form is for changing -->
-          <div x-show="editing" class="mt-3 space-y-1">
-            <template x-for="it in items(a)" :key="it.id">
-             <div>
-              <div class="flex items-center gap-1.5">
-                <i class="ph text-sm shrink-0 accent opacity-50" :class="icon(it, a)"></i>
-                <div class="flex flex-col sm:flex-row gap-1.5 grow min-w-0">
-                  <select class="select select-xs select-bordered w-24" x-model="it.kind">
-                    <template x-for="(v, k) in KIND" :key="k">
-                      <option :value="k" x-text="v.label"></option>
-                    </template>
-                  </select>
-                  <input class="input input-xs input-bordered sm:w-32" x-model="it.title" placeholder="title">
-                  <input class="input input-xs input-bordered sm:w-28 mono text-[11px]" x-model="it.icon" placeholder="icon">
-                  <input class="input input-xs input-bordered grow mono text-[11px]" x-model="it.url" placeholder="url">
-                  <input class="input input-xs input-bordered sm:w-40" x-model="it.note" placeholder="note">
+            <div class="flex items-baseline gap-2">
+              <i class="ph accent text-sm translate-y-px shrink-0" :class="a.icon"></i>
+              <template x-if="!editing">
+                <h2 class="font-semibold text-[15px] tracking-tight" x-text="a.label"></h2>
+              </template>
+              <template x-if="editing">
+                <div class="flex flex-wrap gap-1.5">
+                  <input class="input input-xs input-bordered w-28" x-model="a.label" placeholder="area">
+                  <input class="input input-xs input-bordered w-24 mono text-[11px]" x-model="a.icon" placeholder="ph-circle">
+                  <input class="input input-xs input-bordered w-20 mono text-[11px]" x-model="a.accent" placeholder="#64748b">
+                  <input class="input input-xs input-bordered w-36 mono text-[11px]" x-model="a.dossier" placeholder="links/….md">
                 </div>
-                <button class="px-1" :class="it.rail ? 'accent' : 'opacity-25'" @click="it.rail = !it.rail">
-                  <i class="ph-push-pin text-xs" :class="it.rail ? 'ph-fill' : 'ph'"></i>
-                </button>
-                <button class="px-0.5 opacity-35 hover:opacity-100" @click="move(a, it, -1)"><i class="ph ph-caret-up text-xs"></i></button>
-                <button class="px-0.5 opacity-35 hover:opacity-100" @click="move(a, it, 1)"><i class="ph ph-caret-down text-xs"></i></button>
-                <button class="px-1 opacity-30 hover:opacity-100" @click="addDoor(it)" title="Add a door">
-                  <i class="ph ph-door-open text-xs"></i>
-                </button>
-                <button class="px-1 text-error opacity-60 hover:opacity-100" @click="remove(a, it)"><i class="ph ph-x text-xs"></i></button>
-              </div>
+              </template>
+              <div class="grow"></div>
+              <button x-show="a.dossier && area === a.id" class="grp opacity-70 hover:opacity-100"
+                      @click="toggleDossier(a)" x-text="open===a.id ? 'hide' : 'notes'"></button>
+              <span class="mono text-[10px] opacity-25" x-text="count(a)"></span>
+              <button x-show="editing" class="text-[11px] text-error opacity-60 hover:opacity-100"
+                      @click="removeArea(a)">remove</button>
+            </div>
+            <div class="rule-heavy mt-1.5 mb-3"></div>
 
-              <div x-show="it.doors?.length" class="pl-8 mt-1 space-y-1">
-                <template x-for="(d, di) in (it.doors || [])" :key="di">
-                  <div class="flex items-center gap-1.5">
-                    <i class="ph ph-arrow-elbow-down-right text-xs shrink-0 opacity-25"></i>
-                    <input class="input input-xs input-bordered w-24" x-model="d.label" placeholder="door">
-                    <input class="input input-xs input-bordered grow mono text-[11px]" x-model="d.url" placeholder="url">
-                    <button class="px-1 text-error opacity-60 hover:opacity-100" @click="removeDoor(it, d)"><i class="ph ph-x text-xs"></i></button>
+            <!-- level 3: the dossier, only where there is width to read it -->
+            <div x-show="open===a.id && area===a.id" x-transition class="mb-5">
+              <template x-if="dossiers[a.dossier]?.loading">
+                <div class="py-2"><span class="loading loading-dots loading-sm opacity-20"></span></div>
+              </template>
+              <template x-if="dossiers[a.dossier]?.error">
+                <div class="text-xs text-warning mono" x-text="dossiers[a.dossier].error"></div>
+              </template>
+              <template x-if="dossiers[a.dossier] && !dossiers[a.dossier].loading && !dossiers[a.dossier].error">
+                <div>
+                  <div x-show="!editing" class="prose-d text-[15px] leading-relaxed max-w-prose"
+                       x-html="render(dossiers[a.dossier].text)"></div>
+                  <textarea x-show="editing" x-model="dossiers[a.dossier].text" rows="12"
+                            class="textarea textarea-bordered w-full mono text-xs leading-relaxed"></textarea>
+                </div>
+              </template>
+            </div>
+
+            <!-- level 1 and 2: groups of entries -->
+            <div x-show="!editing">
+              <template x-for="(g, gi) in groups(a)" :key="gi">
+                <div class="mb-3.5 last:mb-0">
+                  <div x-show="g.label" class="grp mb-1" x-text="g.label"></div>
+
+                  <template x-for="it in g.items" :key="it.id">
+                    <div class="row relative flex items-baseline gap-1.5 leading-6"
+                         :class="it.kind === 'snippet' && 'snip'">
+
+                      <a x-show="href(it)" :href="href(it)" target="_blank" rel="noopener"
+                         class="absolute -inset-x-1.5 inset-y-0" :aria-label="it.title"></a>
+                      <button x-show="!href(it) && it.kind === 'snippet'" @click="copy(it)"
+                              class="absolute -inset-x-1.5 inset-y-0" :aria-label="it.title"></button>
+
+                      <i class="g accent text-[11px] w-3.5 shrink-0 pointer-events-none"
+                         :class="[icon(it, a), it.kind === 'action' ? 'ph-fill' : 'ph']"></i>
+
+                      <span class="t text-[13.5px] shrink-0 pointer-events-none"
+                            :class="{ 'mono text-[12px]': it.kind === 'repo',
+                                      'lk': linkable(it), 'font-medium': !linkable(it) }"
+                            x-text="it.title"></span>
+
+                      <span x-show="it.doors?.length" class="doors flex items-baseline gap-1.5 text-[12px] shrink-0">
+                        <template x-for="d in (it.doors || [])" :key="d.url">
+                          <a :href="d.url" target="_blank" rel="noopener"
+                             class="accent opacity-60 hover:opacity-100 transition-opacity" x-text="d.label"></a>
+                        </template>
+                      </span>
+
+                      <span x-show="trail(it)" class="text-[12px] opacity-40 truncate pointer-events-none"
+                            :class="it.kind === 'repo' && 'mono text-[11px]'">
+                        <span class="opacity-50">&ndash;</span> <span x-text="trail(it)"></span>
+                      </span>
+
+                      <i x-show="it.rail" class="ph-fill ph-push-pin accent text-[9px] opacity-45 shrink-0 ml-auto pointer-events-none"></i>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+
+            <!-- editing: rows, because a column is for reading and a form is for changing -->
+            <div x-show="editing" class="space-y-1">
+              <template x-for="it in items(a)" :key="it.id">
+               <div>
+                <div class="flex items-center gap-1.5">
+                  <i class="ph text-sm shrink-0 accent opacity-50" :class="icon(it, a)"></i>
+                  <div class="flex flex-col sm:flex-row gap-1.5 grow min-w-0">
+                    <select class="select select-xs select-bordered w-24" x-model="it.kind">
+                      <template x-for="(v, k) in KIND" :key="k">
+                        <option :value="k" x-text="v.label"></option>
+                      </template>
+                    </select>
+                    <input class="input input-xs input-bordered sm:w-28" x-model="it.group" placeholder="group">
+                    <input class="input input-xs input-bordered sm:w-32" x-model="it.title" placeholder="title">
+                    <input class="input input-xs input-bordered sm:w-28 mono text-[11px]" x-model="it.icon" placeholder="icon">
+                    <input class="input input-xs input-bordered grow mono text-[11px]" x-model="it.url" placeholder="url">
+                    <input class="input input-xs input-bordered sm:w-40" x-model="it.note" placeholder="note">
                   </div>
-                </template>
-              </div>
-             </div>
-            </template>
+                  <button class="px-1" :class="it.rail ? 'accent' : 'opacity-25'" @click="it.rail = !it.rail">
+                    <i class="ph-push-pin text-xs" :class="it.rail ? 'ph-fill' : 'ph'"></i>
+                  </button>
+                  <button class="px-0.5 opacity-35 hover:opacity-100" @click="move(a, it, -1)"><i class="ph ph-caret-up text-xs"></i></button>
+                  <button class="px-0.5 opacity-35 hover:opacity-100" @click="move(a, it, 1)"><i class="ph ph-caret-down text-xs"></i></button>
+                  <button class="px-1 opacity-30 hover:opacity-100" @click="addDoor(it)" title="Add a door">
+                    <i class="ph ph-door-open text-xs"></i>
+                  </button>
+                  <button class="px-1 text-error opacity-60 hover:opacity-100" @click="remove(a, it)"><i class="ph ph-x text-xs"></i></button>
+                </div>
 
-            <button class="text-[12px] opacity-40 hover:opacity-100 pl-6 pt-1" @click="add(a)">+ entry</button>
-          </div>
-        </section>
-      </template>
+                <div x-show="it.doors?.length" class="pl-8 mt-1 space-y-1">
+                  <template x-for="(d, di) in (it.doors || [])" :key="di">
+                    <div class="flex items-center gap-1.5">
+                      <i class="ph ph-arrow-elbow-down-right text-xs shrink-0 opacity-25"></i>
+                      <input class="input input-xs input-bordered w-24" x-model="d.label" placeholder="door">
+                      <input class="input input-xs input-bordered grow mono text-[11px]" x-model="d.url" placeholder="url">
+                      <button class="px-1 text-error opacity-60 hover:opacity-100" @click="removeDoor(it, d)"><i class="ph ph-x text-xs"></i></button>
+                    </div>
+                  </template>
+                </div>
+               </div>
+              </template>
+              <button class="text-[12px] opacity-40 hover:opacity-100 pl-6 pt-1" @click="add(a)">+ entry</button>
+            </div>
+          </section>
+        </template>
+      </div>
 
       <!-- ── the write path ───────────────────────────────────────────── -->
       <div x-show="dirty" x-transition class="sticky bottom-0 -mx-5 sm:-mx-8 px-5 sm:px-8 py-3 bg-base-100/95 backdrop-blur">
