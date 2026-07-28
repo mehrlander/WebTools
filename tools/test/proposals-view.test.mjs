@@ -25,12 +25,17 @@ const good = {
 };
 const bad = { id: 'broken', kind: 'set-json-field', repo: 'mehrlander/fn-data',
   path: '.web-tools.json', field: 'scope', value: 'x', why: 'same' };
+// A proposal against a branch rather than the default, to hold the ref-aware
+// target link and the fact that the review reads that branch's copy.
+const onBranch = { id: 'on-branch', kind: 'put-file', repo: 'mehrlander/wa-bills',
+  ref: 'feat/x', path: 'docs/note.md', content: 'new\n', why: 'branch-targeted' };
 
 const writes = [], saves = [];
 const files = {
   [REG]: {
     'proposals/pending/scope-wa-bills.json': JSON.stringify(good),
     'proposals/pending/broken.json': JSON.stringify(bad),
+    'proposals/pending/on-branch.json': JSON.stringify(onBranch),
     'proposals/pending/spent.json': JSON.stringify({ ...good, id: 'spent' }),
     'proposals/applied/spent.json': '{"ok":true}',
   },
@@ -71,7 +76,7 @@ await data.load();
 
 test('mounts and lists only what is still pending', () => {
   assert.deepEqual(problems, []);
-  assert.deepEqual([...data.items.map(i => i.id)].sort(), ['broken', 'scope-wa-bills'],
+  assert.deepEqual([...data.items.map(i => i.id)].sort(), ['broken', 'on-branch', 'scope-wa-bills'],
     'a proposal with an applied record is spent and does not reappear');
 });
 
@@ -91,7 +96,13 @@ test('a row whose target cannot be read is listed unresolved, not silently dropp
   assert.match(row.resolveErr, /not valid JSON/);
   // The template disables Apply on !resolved; the record stays visible so the
   // failure is reportable rather than invisible.
-  assert.equal(data.items.length, 2);
+  assert.equal(data.items.length, 3);
+});
+
+test('a branch-targeted proposal links to that branch, not the default', () => {
+  const row = data.items.find(i => i.id === 'on-branch');
+  assert.equal(row.targetGh, 'https://github.com/mehrlander/wa-bills/blob/feat/x/docs/note.md',
+    'a HEAD link would show the wrong copy of the file being changed');
 });
 
 test('applying takes a confirm, writes the target, and records the result', async () => {
@@ -116,7 +127,7 @@ test('applying takes a confirm, writes the target, and records the result', asyn
 test('after applying, the proposal is no longer pending', async () => {
   files[REG]['proposals/applied/scope-wa-bills.json'] = '{"ok":true}';
   await data.load();
-  assert.deepEqual([...data.items.map(i => i.id)], ['broken']);
+  assert.deepEqual([...data.items.map(i => i.id)].sort(), ['broken', 'on-branch']);
 });
 
 test('no token means no read at all', async () => {

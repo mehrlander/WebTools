@@ -800,6 +800,17 @@ A proposal record (`proposals/pending/<id>.json`) carries `id`, `kind`, `repo`,
   honest kind when the session cannot read the target: it proposes a field, not
   a guess at the rest of the file. Key order is preserved, a new key lands last,
   and the file is re-serialized with two-space indent and a trailing newline.
+  **`field` is a literal top-level key, not a path**: there is no dot or bracket
+  notation, so `"a.b"` sets a key named `a.b` rather than descending, and a JSON
+  file whose top level is an array is refused. The `value` may be any JSON, so a
+  key can be set to a whole nested structure; what is missing is addressing into
+  one.
+
+A record's optional **`ref` targets a branch**. Both halves honor it: the review
+pane reads the target at that ref, so the before/after is that branch's file,
+and the write commits to that branch. The branch must already exist, since the
+Contents API can write to a ref but not create one. Omitted, `ref` means the
+repo's **default branch**, whatever it is named, rather than literally `main`.
 
 Every row **resolves against the live target before it can be applied**, and the
 view shows the resulting bytes (a before/after on the key, or the two files side
