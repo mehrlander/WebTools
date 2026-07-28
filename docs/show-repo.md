@@ -124,6 +124,8 @@ the header nav the way a repo shows landing/atlas/files/…:
   **To-do** (`?view=todo`), **Jots** (`?view=jots`) (all below).
 - **Tools** (`?view=tools`) — a curated gallery of utility pages (below).
 - **Map** (`?view=map`) — the portable set, each repo's scope, and its adoption (below).
+- **Proposals** (`?view=proposals`) — pending cross-repo edits awaiting a confirm
+  (below). The one conditional entry: shown only while something is pending.
 
 The estate component renders Repos / Surfaces / Activity, sharing one lazy mount;
 Tools and Map are their own components on their own lazy mounts.
@@ -724,6 +726,45 @@ repos and only write results into the mailbox, so auto-fulfilling on load never
 spends write access on agent-authored instructions. It is manual-triggered, not
 live: show-repo is the worker and only runs when the user opens it. Protocol and
 schema: `web-tools-private/mailbox/README.md`.
+
+### Proposals (`proposals/pending` → `proposals/applied`)
+
+The write-side counterpart to the mailbox, built by `lib/repo-proposals.js` and
+reviewed in the **Proposals** view (`?view=proposals`,
+`lib/alpineComponents/proposals.js`). A session that cannot reach a repo drops a
+proposed edit into the registry; show-repo shows it and commits it to the target
+with the user's token, on a two-tap confirm.
+
+The asymmetry with the mailbox is the point. The mailbox fulfills on load
+because its kinds only read. A proposal writes to a repo the session could not
+reach, so **nothing is ever applied automatically**: page load costs one
+directory listing to count what is pending, and the count is all that happens
+without a gesture. The nav entry appears only while something is pending, so an
+empty channel costs no attention.
+
+A proposal record (`proposals/pending/<id>.json`) carries `id`, `kind`, `repo`,
+`path`, `why`, and an optional `ref`. Two kinds:
+
+- **`put-file`** replaces `path` with `content` in full. Use when the session
+  knows the file end to end.
+- **`set-json-field`** sets one top-level `field` to `value` in a JSON file,
+  read-modify-write against whatever the file says at apply time. This is the
+  honest kind when the session cannot read the target: it proposes a field, not
+  a guess at the rest of the file. Key order is preserved, a new key lands last,
+  and the file is re-serialized with two-space indent and a trailing newline.
+
+Every row **resolves against the live target before it can be applied**, and the
+view shows the resulting bytes (a before/after on the key, or the two files side
+by side), so a reviewer confirms what will happen rather than what was promised.
+A target that cannot be read, or is not the JSON it claims to be, lists as
+unresolved with its error and no Apply. The write goes through `gh-transfer.js`'s
+`saveRaw` (lazy-loaded, stale-SHA retry), and the outcome is written to
+`proposals/applied/<same-name>.json`, which is what marks a proposal spent:
+`gh-store` has no delete, so a result file is the tombstone, exactly as in the
+mailbox.
+
+`why` is required. A proposal a reviewer cannot read is not reviewable, so
+validation refuses it before the network is touched.
 
 ### The repo menu
 

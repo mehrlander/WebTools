@@ -42,6 +42,8 @@
   await gh.load('repo-activity-cache.js');
   // The private request/response mailbox (mailbox/requests -> results).
   await gh.load('repo-mailbox.js');
+  // The write-side channel: proposed cross-repo edits, applied only on confirm.
+  await gh.load('repo-proposals.js');
   // Pure alignment assessment behind the Portable view (window.PortableAlign).
   await gh.load('portable-align.js');
 </script>
@@ -613,6 +615,18 @@
       </div>
     </div>
 
+    <!-- The Proposals view: cross-repo edits an agent session proposed but
+         could not make, applied here on the user's confirm with the user's
+         token. Estate-level, token-gated, its own component and lazy mount;
+         the nav entry appears only while something is pending. -->
+    <div x-show="view==='proposals'" class="h-full overflow-y-auto">
+      <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 max-w-4xl">
+        <template x-if="proposalsSeen">
+          <div x-data="proposals()"></div>
+        </template>
+      </div>
+    </div>
+
     <!-- The Tools view: a curated gallery of the owner's utility pages (the
          text-diff tool and the like), fed from the hub's docs/tools.json.
          Estate-level, public (no token), its own component and lazy mount. -->
@@ -758,6 +772,8 @@ function app(){ return {
   // from the same config cache as appViews (loadEstateSidebar), so it is
   // token-gated and empty without a token.
   estateRepos: [], // resolved [{repo, short, icon, group, order}]
+  proposalCount: 0, // pending cross-repo edit proposals; gates the nav entry
+  proposalsSeen: false,
   configRefreshing: false,  // the estate refresh button is mid-crawl
   activityRefreshing: false, // the activity crawl (heavier: per-repo survey) is running
   // Recently-committed files for the current repo@ref, shown in the sidebar.
@@ -801,7 +817,7 @@ function app(){ return {
     // and reload when auth arrives. Editing any repo's config (config-saved)
     // can change membership, so that path rebuilds the cache and reloads.
     this.$watch(() => this._authState, (s) => {
-      if (s === 'auth') { this.loadEstateSidebar().then(() => this.refreshConfigCache()).then(() => this.refreshActivityCache()); this.processMailbox(); }
+      if (s === 'auth') { this.loadEstateSidebar().then(() => this.refreshConfigCache()).then(() => this.refreshActivityCache()); this.processMailbox(); this.loadProposalCount(); }
     });
     document.addEventListener('web-tools:config-saved', async () => {
       // Rebuild the cache, THEN fan out the reload. refreshConfigs awaits the
@@ -814,6 +830,7 @@ function app(){ return {
     });
     this.loadEstateSidebar().then(() => this.refreshConfigCache());
     this.processMailbox();
+    this.loadProposalCount();
 
     // Folder navigation in the explorer keeps the ?path deep link honest.
     this.$watch(() => Alpine.store('browser').path, () => {
@@ -841,6 +858,7 @@ function app(){ return {
     else if (url && url.view === 'activity') this.goActivity();
     else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap();
     else if (url && url.view === 'tools') this.goTools();
+    else if (url && url.view === 'proposals') this.goProposals();
     else if (url && url.view === 'atlas') this.goAtlas();
     else if (url && url.view === 'stage') this.goStage();
     else if (url && url.view === 'public') this.goPublicBrowse();
@@ -1237,6 +1255,25 @@ function app(){ return {
   // wants prompt service and listing is cheap); a dropped request is picked up
   // on the next load. Results are keyed by the request filename so nothing
   // re-runs. See lib/repo-mailbox.js and web-tools-private/mailbox/README.md.
+  // How many proposals are waiting. One cheap pair of directory reads at boot,
+  // token-gated like everything that touches the registry; the count is what
+  // gates the nav entry, so an empty channel is invisible rather than a stop
+  // with nothing behind it. The Proposals component does the real work.
+  async loadProposalCount(){
+    if (!this.hasToken() || !window.RepoProposals) { this.proposalCount = 0; return; }
+    const P = window.RepoProposals;
+    try {
+      const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
+      let pend = [], done = [];
+      try { pend = await reg.ls(P.PENDING_DIR); } catch { this.proposalCount = 0; return; }  // 404 = no channel
+      try { done = await reg.ls(P.APPLIED_DIR); } catch {}
+      this.proposalCount = P.pending(
+        pend.filter(f => f.type === 'file').map(f => f.name),
+        done.filter(f => f.type === 'file').map(f => f.name),
+      ).length;
+    } catch { this.proposalCount = 0; }
+  },
+
   async processMailbox(){
     if (!this.hasToken() || !window.RepoMailbox) return;
     const M = window.RepoMailbox;
@@ -1570,6 +1607,7 @@ function app(){ return {
       else if (url && url.view === 'activity') this.goActivity();
       else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap();
       else if (url && url.view === 'tools') this.goTools();
+    else if (url && url.view === 'proposals') this.goProposals();
       else if (url && url.view === 'pages') this.goPages();
       else if (url && url.view === 'atlas') this.goAtlas();
       else if (url && url.view === 'stage') this.goStage();
@@ -1673,6 +1711,14 @@ function app(){ return {
       { view: 'stage',    icon: 'ph-stack',        label: 'Stage',    go: () => this.goStage() },
       { view: 'tools',    icon: 'ph-wrench',       label: 'Tools',    go: () => this.goTools() },
       { view: 'map',      icon: 'ph-compass',      label: 'Map',      go: () => this.goMap() },
+      // Proposals is the one conditional entry: an empty channel should cost no
+      // attention, so it appears only while something is pending (or while the
+      // view is open, so the nav does not vanish under the user on the apply
+      // that empties it).
+      ...(this.proposalCount || this.view === 'proposals'
+        ? [{ view: 'proposals', icon: 'ph-git-pull-request', label: 'Proposals',
+             badge: this.proposalCount, go: () => this.goProposals() }]
+        : []),
     ];
   },
   navActive(v){ return (v.views || [v.view]).includes(this.view); },
@@ -1694,6 +1740,8 @@ function app(){ return {
   goPortable(){ this.goMap(); },
   // The Tools view: the curated utility-page gallery (docs/tools.json), public.
   goTools(){ this.toolsSeen = true; this.view = 'tools'; this.syncUrl(); },
+  // The Proposals view: pending cross-repo edits awaiting the user's confirm.
+  goProposals(){ this.proposalsSeen = true; this.view = 'proposals'; this.syncUrl(); },
   // Open is the estate's cross-repo live-branch view; the one estate component
   // renders it by reading the shell view (internal key 'activity'). A visit
   // kicks the throttled activity crawl (like Repos kicks the config crawl) so
