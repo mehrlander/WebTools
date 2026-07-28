@@ -1,7 +1,9 @@
-// alpineComponents/estate.js — the Activity view's Open list: the projection
-// from the activity cache to rows (openBranches), the repo filter chips
-// (openRepos / activeRepoFilter / openRows), the lifespan pair each row shows
-// (branchStart), and the per-row GitHub menu (branchMenuItems / runBranchMenu).
+// alpineComponents/estate.js — the Activity view's branch list: the projection
+// from the activity cache to rows (allBranchRows), the SCOPE axis over the
+// survey's groups (branchScope / inScope / branchScopes, with openBranches the
+// scoped list), the repo filter chips (openRepos / activeRepoFilter /
+// openRows), the lifespan pair each row shows (branchStart), and the per-row
+// GitHub menu (branchMenuItems / runBranchMenu).
 //
 // `activity` is assigned directly rather than loaded over a fake registry: all
 // of the above are pure getters over that map, so the load path (covered in
@@ -178,4 +180,57 @@ test('runBranchMenu builds the GitHub destinations', () => {
   assert.equal(urlFor('prFiles', row), 'https://github.com/me/tools/pull/12/files');
   assert.equal(urlFor('prChecks', row), 'https://github.com/me/tools/pull/12/checks');
   assert.equal(urlFor('newPr', bare), 'https://github.com/me/tools/compare/main...feat%2Fb?expand=1');
+});
+
+// ── The scope axis ───────────────────────────────────────────────────────
+// The list used to hard-filter to open work, so landed branches had no route
+// anywhere in the estate. These hold the two halves apart: allBranchRows is
+// everything the cache knows, openBranches is what the chosen scope shows.
+
+test('allBranchRows: everything the cache knows, landed included', () => {
+  assert.deepEqual(names(data.allBranchRows),
+    ['me/tools/feat/a', 'me/tools/feat/b', 'me/home/fresh',
+     'me/tools/old/landed', 'me/quiet/done']);
+});
+
+test('the default scope is open, and it is the old list exactly', () => {
+  assert.equal(data.branchScope, 'open');
+  assert.deepEqual(names(data.openBranches), names(data.allBranchRows.filter(r => r.pr || r.group === 'stranded')));
+});
+
+test('each scope shows its own group', () => {
+  data.branchScope = 'landed';
+  assert.deepEqual(names(data.openBranches), ['me/tools/old/landed', 'me/quiet/done']);
+  data.branchScope = 'stranded';
+  assert.deepEqual(names(data.openBranches), ['me/tools/feat/a', 'me/tools/feat/b']);
+  data.branchScope = 'active';
+  // The one row the survey never reached: an open PR, so the crawl could not
+  // have classified it, and 'active' is the honest default.
+  assert.deepEqual(names(data.openBranches), ['me/home/fresh']);
+  data.branchScope = 'all';
+  assert.equal(data.openBranches.length, 5);
+  data.branchScope = 'open';
+});
+
+test('branchScopes: counts off the FULL list, not the current scope', () => {
+  data.branchScope = 'landed';           // counting must not follow the selection
+  const by = Object.fromEntries(data.branchScopes.map(s => [s.key, s.count]));
+  assert.deepEqual(by, { open: 3, active: 1, stranded: 2, landed: 2, all: 5 });
+  data.branchScope = 'open';
+});
+
+test('the repo chips follow the scope', () => {
+  data.branchScope = 'landed';
+  // Both landed rows are alone in their repo, so the busiest-first sort falls
+  // through to the name tiebreak.
+  assert.deepEqual(plain_(data.openRepos.map(r => [r.short, r.count])), [['quiet', 1], ['tools', 1]]);
+  data.branchScope = 'open';
+});
+
+test('a row carries the survey evidence, and an unsurveyed one carries zeros', () => {
+  const landed = data.allBranchRows.find(r => r.name === 'old/landed');
+  assert.equal(landed.group, 'landed');
+  assert.equal(landed.nUnique, 0);        // this fixture row was stored without counts
+  const fresh = data.allBranchRows.find(r => r.name === 'fresh');
+  assert.deepEqual(plain_([fresh.nUnique, fresh.nLanded, fresh.nMissing, fresh.noBase]), [0, 0, 0, false]);
 });

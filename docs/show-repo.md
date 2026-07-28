@@ -223,14 +223,37 @@ drained. The two lists live under `lists/` because they are authored content
 with the registry as their source of truth; `state/` stays derived caches
 only.
 
-**Open** (`?view=activity`) is the estate's live branches in one cross-repo list,
-freshest first. A branch qualifies only if it holds genuinely-open work: it has an
-**open PR**, or the content survey marks it **stranded** (its content is nowhere on
-the default branch, the honest "ahead of main" signal). A branch that is merely
-recent does **not** qualify on recency alone: one merged via a merge commit is an
-ancestor of the default, so it holds nothing ahead and would stage to nothing, yet
-its commit date still reads recent. Gating on open-PR-or-stranded drops the flood
-of merged-but-undeleted session branches that would otherwise fill the list. Each row is **highlighted by PR state** (a colored left rail plus
+**Branches** (`?view=activity`, called Open until the scope chips arrived) is
+**every** branch of the estate in one cross-repo list, freshest first, narrowed
+by two axes: **scope** and **repo**.
+
+**Scope** picks which of the survey's `group` values to show, and the chips
+carry their counts off the full list, so the row doubles as the estate's branch
+census:
+
+| Scope | Shows | For |
+| --- | --- | --- |
+| **Open** (default) | an open PR, or `stranded` | work in flight |
+| **Recent** | `active` | what was touched lately, unjudged |
+| **Stranded** | `stranded` | content that exists nowhere on the default branch |
+| **Landed** | `landed` | the cleanup pass: content already on the default branch |
+| **All** | everything surveyed | the census |
+
+Open is not "recent", which is why it is its own scope rather than a date sort:
+a branch merged via a merge commit is an ancestor of the default, so it holds
+nothing ahead and would stage to nothing, yet its commit date still reads
+recent. Gating on open-PR-or-stranded drops the flood of merged-but-undeleted
+session branches.
+
+**Landed is the scope that had no home before.** The crawl always surveyed and
+stored it (`state/activity.json` holds every branch it reached, classified, with
+the content counts), but this view hard-filtered it away in one line, so the
+per-repo **branch review** was the only place a landed branch appeared, one repo
+at a time. Exposing `group` as a control is what turns this into the estate's
+one branch list; see "The branch review" for what stays repo-scoped (the live
+uncapped survey, a repo outside the estate, the in-app compare).
+
+Each row is **highlighted by PR state** (a colored left rail plus
 faint tint: green for a ready PR, amber for a draft, muted for a branch with no
 PR yet) and carries a **caption-style link cluster**. The row's **primary action
 (the branch name, and the leading Stage link) stages the files this branch
@@ -254,8 +277,19 @@ merge base has no unique-commit list, and a compare past GitHub's 250-commit cap
 reports a total larger than the list it returns, so the oldest entry present is
 not the first. Those rows show the tip age alone.
 
-**Repo chips** above the list narrow it to one repo, `All` first and a count on
-each. Only repos that have open rows get a chip, since the estate is larger than
+Where the survey reached a branch, the row also states its **content verdict**:
+of the paths the branch uniquely touched, how many are present on the default
+branch now (`6/6`, or `1/5` plus `4 missing` with the paths on hover). It is
+what makes a Landed row actionable rather than a claim, and it costs nothing:
+the crawl stored it. An unsurveyed row shows nothing rather than `0/0`, since
+"not measured" and "measured zero" are different answers.
+
+**Repo chips** below the scope chips narrow the list to one repo, `All` first
+and a count on each. The row's own **repo chip menu** contributes **Only
+`<repo>`** (and **All repos** once filtered), the same filter reached from the
+row you are reading rather than from the chip row above. It names the repo
+rather than saying "this repo", since the menu is read after the pointer has
+left the row it belongs to. Only repos that have open rows get a chip, since the estate is larger than
 the set with work in flight and a row of zeroes says nothing, and the row hides
 below two of them. It scrolls sideways rather than wrapping, which is what keeps
 a second row of controls from pushing the first branch off a phone screen. The
@@ -269,12 +303,19 @@ each and a menu is two, which pays only because the menu carries destinations
 that had no route at all: the PR's **Files changed** and **Checks** tabs, the
 branch's **Commits**, and **New pull request** for a row with no PR, plus copy
 actions for the branch name and the compare link. It also gives the row's action
-line back the width the pair was spending. It is the same anchored panel as the
-sidebar's repo menu and shares its geometry (`shell.anchorMenu` / `menuStyle`:
-fixed, right-aligned to the trigger, flipped above near the viewport bottom),
-with that menu's row spec (36 px, flat, an out-arrow on anything leaving the
-app). The `#`-number and the session mark stay outside it: neither is GitHub
-navigation, and the session mark has no other route.
+line back the width the pair was spending. It shares the sidebar repo menu's
+geometry (`shell.anchorMenu` / `menuStyle`: fixed, aligned to the trigger's own
+edge, flipped above near the viewport bottom), its row spec (`.wt-menu-row`,
+flat, an out-arrow on anything leaving the app), and its hover behavior. The
+`#`-number and the session mark stay outside it: neither is GitHub navigation,
+and the session mark has no other route.
+
+Each row opens with its **repo chip**, the repo's own declared icon plus its
+short name. It is a control, not a label: it opens the repo's whole grouped
+menu in the sidebar's panel, so the branch's destinations and its repo's are
+one gesture apart and the control is learned once. The icon is the mark the
+repo declares for its estate card, so a row is identifiable before its name is
+read.
 
 It reads the registry's **activity cache**
 (`state/activity.json`, below) in one GET, so the whole estate renders without a
@@ -650,6 +691,13 @@ repos. All are optional; a repo with no config is simply off the estate.
 - **pins**: folders/files surfaced in the sidebar Pinned block. A last segment
   with an extension opens as a file; otherwise it opens the Files view at that
   folder.
+- **tracker**: where the repo keeps its task board (`"tracker/board.md"`, or a
+  folder). Adds one row, **Task board**, to the repo's **GitHub menu** (the
+  sidebar Repos row's github button, and the Activity view's repo chip). It is
+  the one row in that menu GitHub cannot name for itself: every other row is a
+  fixed GitHub route, while where a repo tracks its work is a repo property. A
+  path with an extension links the blob, a bare path links the tree; declaring
+  none simply drops the row. See [TRACKER.md](TRACKER.md) for the board itself.
 - **scope**: the repo's own account of what it holds and why, surfaced as the
   headline of its card in the estate's **Map** view. Either **inline prose**
   (`"scope": "A private orchestration base…"`, a sentence or a few) or a **file
@@ -929,33 +977,118 @@ down the list.
 
 ### The repo menu
 
-`repo-menu.js` is where you act **on** a repo rather than navigate to it. It
-hangs off a Repos row's trailing button as a dropdown anchored to that button,
-positioned from its rect (the rows sit in a scrolling column that would clip a
-nested panel) and flipped above the trigger near the bottom of the list.
+`repo-menu.js` is one panel showing one of **three lists** for one repo. It
+hangs off a Repos row's two trailing buttons, and off the Activity view's repo
+chip, as a dropdown anchored to whichever was used, positioned from its rect
+(the rows sit in a scrolling column that would clip a nested panel) and flipped
+above the trigger near the bottom of the list.
 
-Its rows: **Config**, **Open on GitHub**, the `-private` companion switch, and
-**Copy browse link**. It is flat, short, and compact: 36 px rows rather than the
+**Actions**, off the visibility marker, is where you act **on** a repo rather
+than navigate to it: **Config**, its declared outbox, and **Copy browse link**.
+It is a short list because every row that left had somewhere better to be. Files
+and Branches expanded into the repo's folders and its branch list, and "what is
+inside" is a browsing question the sidebar and the Files view already answer
+once you are in the repo. **Open** went because tapping the row itself is what
+opens the repo. **Switch to the `-private` companion** went because the sidebar
+lists that companion as its own row: the jump was built for a list that shows
+one of a pair and hides the other, which is the estate **cards** (they nest the
+private repo inside its public parent), not this one. A menu offering a jump to
+a row three lines down answers a question the list has already answered.
+Nothing expands, so nothing carries a chevron.
+
+**GitHub**, off the github-logo button beside it, is where that repo lives:
+**Repository**, **Pull requests**, **Issues**, its **Task board** (the
+`tracker` field), **Branches**, **Commits**, **Actions**, each with an
+out-arrow. The list is `lib/github-links.js`, a pure string builder with no
+fetches, so the Activity view's repo chip fills the same panel from the same
+rows. This was a single **Open on GitHub** row inside the actions list, pointing
+at the repo root: the one destination a reader could have guessed, while the
+rest of a repo's GitHub surface had no route at all. Splitting it out is what
+let it grow, and it stays cheap because the lists share one panel, so hovering
+from one trigger to another swaps the rows in place where separate panels would
+close one under the pointer.
+
+**Repo**, off the Activity view's chip, is both of the above in two sections.
+The sidebar can afford to split its material across two buttons, because the
+row itself opens the repo and the list shows every sibling; an Activity row is
+about a **branch**, in a view with no sidebar on screen, so its chip is the
+reader's only route to the repo and carries the lot. Sections rather than a
+submenu: a submenu hides half the answer behind a second gesture, and seeing
+where you can go is the whole point of a jump-over list.
+
+It is **the repo, twice**, then where it goes on GitHub, as one flat list:
+
+```
+  Show web-tools branches only     ← contributed by the view
+  ────────────────────────────
+  ⟨⟩ web-tools                     ← opens the repo here
+  ⌥ web-tools                   ↗  ← opens the repo on GitHub
+  Pull requests · Issues · Task board · Branches · Commits · Actions ↗
+```
+
+**Flat, and flat again on purpose.** The list briefly grew two sections, each
+with an indent and a bold head row, and then the app section lost its children;
+one section is not a structure, and the styling was carrying a hierarchy that
+had stopped existing. What separates the two halves now is the **out-arrow**,
+which is the honest distinction anyway: those rows leave the app and these do
+not. The only styling left is mono on the two rows whose label is a **repo
+name** rather than a phrase, matching how repo names are set everywhere else,
+and one rule under the caller's row, which acts on the list you are in rather
+than going anywhere.
+
+The app half used to carry **Files**, **Branch review** and **Config**. They
+are gone for the reason the sidebar's own menu never had them: once the repo is
+open, its views **are** the sidebar, so each row bought one tap and made the app
+half look like a section when it is a destination.
+
+The app's mark is drawn **inline** rather than loaded from `lib/favicon.svg`,
+as an outline rendition of it: an `<img>` cannot take `currentColor`, so the
+file would sit in brand blue beside a column of muted glyphs and stay blue on
+hover. Two numbers in it are derived from Phosphor rather than chosen, and both
+were wrong on the first pass: the **viewBox** is padded to 29 units around a
+22-unit mark (~76%), since a Phosphor glyph keeps margin inside its own box and
+a mark drawn edge-to-edge in the same 16 px reads a size larger; the **stroke**
+is `29 × 16/256 = 1.81`, Phosphor's regular weight carried onto that viewBox.
+
+That replaced an inert uppercase label plus a row underneath it: **Open repo**
+and **Repository** were one idea named twice, and reading them together made
+the two halves look like two vocabularies for the same thing. Now they are the
+same name under two marks, and a rule does the separating that a label used to.
+
+Both lists are flat, short, and **compact by pointer**: 26 px rows at 13 px for
+a fine pointer, 32 px for a thumb, in a 184 px panel. Both heights are under the
 44 px floor, which is for a cold target in chrome, not for a panel the pointer
-has already aimed at and opened. Files and Branches were here and
-expanded into the repo's folders and branch list; both are gone, because "what
-is inside" is a browsing question the sidebar and the Files view already answer
-once you are in the repo. Nothing expands, so nothing carries a chevron, and the
-single row that leaves the app carries an out-arrow.
+has already aimed at and opened. A list where **every** row leaves the app drops
+the out-arrow column: the GitHub menu's seven identical arrows said what the
+github-logo that opened it already said. A mixed list, like the branch menu,
+keeps them, since there the arrow marks the odd row out.
 
-An **Open** row went too: tapping the row itself is what opens the repo, so the
-menu was offering the one thing you had just declined to do.
+Where the pointer can hover (`(hover: hover) and (pointer: fine)`) either
+trigger **opens on hover**, after ~140 ms so that crossing a row does not open
+it, closing ~220 ms after the pointer leaves both the trigger and the panel,
+which is what lets it cross the 2 px gap between them. A tap works everywhere,
+and a second tap on the same trigger dismisses. The Activity view's two menus
+(its repo chip and its per-branch GitHub menu) follow the same timings.
 
-This replaced a three-icon cluster (visibility marker, config gear, GitHub logo)
-on every row. Those icons measured about 16 px against a 44 px tap-target floor,
-and each bought exactly one tap, since opening the repo puts Config in the
-sidebar and GitHub in this menu. The marker survives as the trailing button
-itself, promoted from an inert `<span>` to a real 44 px control, so the row
-keeps its public/private state while carrying the menu on a plain tap. Two other
-presentations were built here and taken back out: a press-and-hold, since a
-visible control answering a single tap does the same work without a gesture to
-discover, and a bottom sheet, since nothing about five short actions justifies
-throwing the menu to the far edge of the screen.
+**The delay applies to a swap as well as to a first open**, which is the part
+that had to be found by using it. The two triggers are neighbours and the panel
+opens past both, so the pointer's route from one button to the panel runs over
+the other; swapping on contact made the GitHub menu unreachable from the GitHub
+button, the marker's menu replacing it every time. A crossing takes tens of
+milliseconds and a decision takes longer, so one threshold separates them.
+
+The pair replaced a three-icon cluster (visibility marker, config gear, GitHub
+logo) on every row. Those icons measured about 16 px against a 44 px tap-target
+floor and each bought exactly one tap. The two that came back each open a list
+rather than a single destination; the marker is the old inert `<span>` promoted,
+so the row keeps its public/private state while carrying its menu. They sit
+tight together and carry **no chrome of their own** on a fine pointer (28 px
+wide, no hover background), since a background per glyph made the pair read as
+two tiles when the row's own tint is already the feedback and the glyph turning
+primary is already the state. A thumb gets 40 px. Two other presentations were built here and taken
+back out: a press-and-hold, since a visible control answering a single tap does
+the same work without a gesture to discover, and a bottom sheet, since nothing
+about a short list justifies throwing the menu to the far edge of the screen.
 
 ### Editing the manifest from the shell
 

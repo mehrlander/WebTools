@@ -48,10 +48,34 @@
   await gh.load('repo-address.js');
   // Pure alignment assessment behind the Portable view (window.PortableAlign).
   await gh.load('portable-align.js');
+  // The GitHub destinations for one repo, shared by the sidebar's github menu
+  // and the Activity view's repo chip (window.GithubLinks).
+  await gh.load('github-links.js');
 </script>
 <style>[x-cloak]{display:none!important}
 .no-scrollbar::-webkit-scrollbar{display:none}
-.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}</style>
+.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+/* The anchored menus (the repo menu, the Activity view's branch menu). Their
+   rows sit inside a panel the pointer has already aimed at and opened, so they
+   run below the 44 px floor that governs a cold target in chrome: 26 px for a
+   fine pointer, which can land on a 26 px row all day, and 32 px on a touch
+   screen, where the row is still a thumb target. Kept here rather than in the
+   two templates so both menus stay the same size, and in step with the shell's
+   MENU_ROW, which is what anchorMenu measures to decide whether the panel fits
+   below the trigger. */
+.wt-menu-row{min-height:1.625rem;font-size:.8125rem;line-height:1rem}
+@media (pointer:coarse){.wt-menu-row{min-height:2rem;font-size:.875rem}}
+/* The Repos row's two menu buttons. Narrow and chrome-free on a fine pointer,
+   where they are a pair of glyphs at the row's edge and a hover background made
+   each one read as a separate tile; the row's own hover tint is the feedback,
+   and the glyph going primary is the state. 20 px is the glyph (16 px) plus 2
+   either side, so the pair reads as one cluster rather than two controls that
+   happen to be adjacent. A thumb gets 24 px, and the row's full 44 px of
+   height is what pays for a width that narrow: a thumb misses sideways far
+   less than it misses vertically, and these two are the only targets on their
+   half of the row, so a near miss lands on the row, not on the wrong control. */
+.wt-row-btn{width:1.25rem}
+@media (pointer:coarse){.wt-row-btn{width:1.5rem}}</style>
 </head>
 <!-- A repo browser fronted by a per-repo landing page. The repo picker is up
      front (header). The sidebar lists the repo's views — landing, atlas,
@@ -145,7 +169,7 @@
       <!-- The repo crumb opens a REPO SWITCHER: which repository is showing,
            and nothing else. A breadcrumb names where you are, so the only menu
            it earns is the set of other places that slot could hold. Acting ON a
-           repo (config, GitHub, the companion) belongs to the Repos rows' menu,
+           repo (config, GitHub, its outbox) belongs to the Repos rows' menus,
            not to the trail. Anchored under the bar in path-picker's panel idiom
            (inset, top-full, rounded-box, shadow). -->
       <div x-show="crumbMenu" x-cloak x-transition.opacity.duration.120ms
@@ -195,20 +219,27 @@
               <i class="ph ph-folder text-sm"></i><span x-text="grp.group"></span>
             </div>
             <template x-for="r in grp.repos" :key="r.repo">
-              <!-- Two targets, both single-tap. The name opens the repo. The
-                   trailing button opens the REPO MENU, which holds every
-                   secondary action (config, GitHub, its Files or Branches, its
-                   companion). No gesture: a press-and-hold was tried here and
-                   dropped, because a visible control that answers a plain tap
-                   does the same job without having to be discovered.
+              <!-- Three targets, all single-tap. The name opens the repo. The
+                   two trailing buttons open the one anchored panel with two
+                   different lists: the github-logo gives GITHUB LINKS for that
+                   repo (repository, pull requests, issues, its task board,
+                   branches, commits, actions) and the visibility marker gives
+                   the REPO MENU (config, its outbox, copy link).
 
-                   That button is the old visibility marker promoted from an
-                   inert <span> to a real 44 px control, so the row still says
-                   public/private with its glyph while carrying the menu. The
-                   gear and github-logo it used to sit beside are gone: they
-                   were ~16 px, a third of the tap-target floor, and each bought
-                   exactly one tap (open the repo and its Config is a sidebar
-                   row, its GitHub link is this menu). -->
+                   Splitting them is what let the GitHub side grow past the
+                   single "Open on GitHub" row it used to be, which pointed at
+                   the one destination a reader could have guessed. Two lists,
+                   one panel: hovering from one button to the other swaps the
+                   rows in place rather than closing a panel under the pointer.
+
+                   On a pointer that can hover, either button opens on hover
+                   after a short delay; a tap works everywhere and a second tap
+                   on the same button puts it away. No gesture: a press-and-hold
+                   was tried here and dropped, because a visible control that
+                   answers a plain tap does the same job without having to be
+                   discovered. The marker button is the old inert <span>
+                   promoted to a real control, so the row still says
+                   public/private with its glyph while carrying its menu. -->
               <div class="flex items-center rounded-lg transition-colors hover:bg-base-200"
                    :class="$store.browser.repo===r.repo && 'bg-primary/10'">
                 <button @click="openPinned(r.repo)" :title="r.repo"
@@ -216,9 +247,17 @@
                         :class="$store.browser.repo===r.repo ? 'text-primary font-semibold' : 'text-base-content/80'">
                   <i class="ph text-base shrink-0" :class="r.icon"></i><span class="truncate" x-text="r.short"></span>
                 </button>
-                <button @click.stop="openRepoMenu(r.repo, $event)"
+                <button @click.stop="rowMenu(r.repo, $event, 'github')"
+                        @mouseenter="rowMenuHover(r.repo, $event, 'github')" @mouseleave="hoverLeaveMenu()"
+                        :title="'GitHub links for ' + r.short"
+                        class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
+                        :class="repoMenuAt && menuRepo===r.repo && menuKind==='github' && 'text-primary'">
+                  <i class="ph ph-github-logo text-base leading-none"></i></button>
+                <button @click.stop="rowMenu(r.repo, $event)"
+                        @mouseenter="rowMenuHover(r.repo, $event)" @mouseleave="hoverLeaveMenu()"
                         :title="(r.priv === null ? '' : (r.priv ? 'Private. ' : 'Public. ')) + 'Actions for ' + r.short"
-                        class="shrink-0 h-11 w-11 flex items-center justify-center rounded-lg text-base-content/30 hover:text-primary hover:bg-base-300/60 transition-colors">
+                        class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
+                        :class="repoMenuAt && menuRepo===r.repo && menuKind==='actions' && 'text-primary'">
                   <i class="ph text-base leading-none"
                      :class="r.priv === null ? 'ph-dots-three-vertical' : (r.priv ? 'ph-lock' : 'ph-globe')"></i></button>
               </div>
@@ -643,8 +682,10 @@
   </main>
 </div>
 
-<!-- ── The repo menu: the actions for one repo, opened by a Repos row's
-     trailing button. A dropdown, anchored to that button.
+<!-- ── The repo menu: ONE panel, two lists (menuKind), opened by either of a
+     Repos row's trailing buttons and by the Activity view's repo chip. The
+     actions list is the marker button's; the github list is the github
+     button's.
 
      Positioned FIXED from the trigger's rect rather than nested beside it,
      because the rows live in an overflow-y-auto column that would clip an
@@ -652,9 +693,14 @@
      <aside>, for the same reason. z-[55] clears the drawer (z-50) that summons
      it and stays under the toast row (z-[60]). A bottom sheet was tried for
      this and taken back out: nothing about a menu of five short actions
-     justifies throwing it to the far edge of the screen. ────────────────── -->
+     justifies throwing it to the far edge of the screen.
+
+     The pointer handlers are the other half of hover-to-open: entering the
+     panel cancels the countdown a trigger's mouseleave started, so the trip
+     across the 2 px gap does not close what it is heading for. ─────────── -->
 <div x-show="repoMenuAt" x-cloak @click.outside="repoMenuAt = null"
-     class="fixed z-[55] w-50 max-h-[60vh] overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg"
+     @mouseenter="cancelMenuClose()" @mouseleave="hoverLeaveMenu()"
+     class="fixed z-[55] max-h-[60vh] overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg"
      :style="repoMenuStyle">
   <div x-data="repoMenu()" @repo-menu-done="repoMenuAt = null"></div>
 </div>
@@ -1419,41 +1465,103 @@ function app(){ return {
   // than on the browser store. Open is offered only for a repo you are not
   // already in.
   menuRepo: '',
-  get menuRepoPrivate(){
-    const r = this.estateRepos.find(x => x.repo === this.menuRepo);
-    if (r && r.priv !== null && r.priv !== undefined) return r.priv;
-    return this.menuRepo === Alpine.store('browser').repo
-      ? !!Alpine.store('browser').repoObj?.private : false;
-  },
-  // The companion by the -private naming convention (foo ⇄ foo-private), for
-  // whichever repo the menu is about, and only when that companion is itself on
-  // the estate. Empty when there is no such pair, or no token (so estateRepos
-  // is empty).
-  get menuRepoSibling(){
-    const repo = this.menuRepo;
-    if (!repo) return '';
-    const m = repo.match(/^(.*)-private$/);
-    const sib = m ? m[1] : repo + '-private';
-    return this.estateRepos.some(r => r.repo === sib) ? sib : '';
-  },
-  // Things you do TO a repo, not inside one. Files and Branches used to sit
-  // here and expand; both are gone, because "what is inside" is a browsing
-  // question the sidebar and the Files view answer once you are in the repo,
-  // and starting a browse from a row's menu was never the point of the menu.
-  // Nothing expands now, so nothing carries a chevron; `external` marks the
-  // one row that leaves the app.
+  // Which list the one panel is showing. One panel and one geometry for all
+  // three, because they are lists rather than widgets: hovering from one
+  // trigger to another re-anchors and swaps the rows in place, which separate
+  // panels could not do without one closing under the pointer.
+  //
+  //   actions  things you do TO a repo, off the sidebar's visibility marker.
+  //   github   where that repo lives on GitHub, off the github button beside it.
+  //   repo     BOTH, in labelled groups, plus the in-app destinations. This is
+  //            the whole repo in one list, for a trigger that is the reader's
+  //            only route to it: the Activity view's repo chip, where the
+  //            sidebar is not on screen and the row is about a branch.
+  //
+  // The sidebar splits the same material across two buttons because the row
+  // itself already opens the repo and the list already shows every sibling;
+  // the chip has neither, so it carries the lot. GROUPS rather than a
+  // submenu: a submenu hides half the answer behind a second gesture, and the
+  // whole point of a jump-over list is seeing where you can go.
+  menuKind: 'actions',
   get repoMenuItems(){
-    const sib = this.menuRepoSibling;
+    if (this.menuKind === 'github') return this.githubMenuItems;
+    if (this.menuKind !== 'repo') return this.repoActionItems;
+    // THE REPO, TWICE, then where it goes on GitHub, as one FLAT list. The two
+    // named rows carry the same name under two marks, this app's and GitHub's,
+    // and each opens the repo in that place; the rest are the places inside
+    // GitHub. It has been through an uppercase-label version and a sectioned
+    // one, and flat is where it landed: the labels needed an "Open repo" /
+    // "Repository" pair underneath them to be useful, which was one idea named
+    // twice, and the sections needed a hierarchy that stopped existing when the
+    // app half lost its children. The out-arrow separates the halves now,
+    // which is the honest distinction anyway.
+    //
+    // The app side USED to carry Files / Branch review / Config under its head.
+    // They are gone for the reason the sidebar's own menu never had them: once
+    // the repo is open its views ARE the sidebar, so those rows bought one tap
+    // each and made the app half look like a section when it is a destination.
+    // What is left states the true shape, which is that only GitHub has places
+    // worth naming from out here.
+    //
+    // The GitHub keys are prefixed here, and it is load-bearing rather than
+    // tidy: the list used to name a `branches` row on both sides, the loop keys
+    // on `key`, and a duplicate key silently drops the second row (it cost one
+    // Branches row before it was noticed). Dispatch reads the row, not the key,
+    // so the prefix costs nothing downstream.
+    const repo = this.menuRepo;
+    const short = repo.split('/')[1] || repo;
+    const [ghHome, ...ghRest] = this.githubMenuItems.map(r => ({ ...r, key: 'gh:' + r.key }));
     return [
-      // No "Open" row: tapping the row itself opens the repo, so offering it
-      // here is offering the thing you just chose not to tap.
+      ...this.menuExtra,
+      { key: 'open', head: true, label: short, mark: 'app',
+        title: 'Open ' + repo + ' here' },
+      ghHome && { ...ghHome, head: true, label: short, icon: 'ph-github-logo',
+                  title: repo + ' on GitHub' },
+      ...ghRest,
+    ].filter(Boolean);
+  },
+  // Rows the CALLER contributed for this opening, ahead of the standard ones.
+  // A menu about a repo is opened from somewhere, and that somewhere sometimes
+  // has an action only it can offer: the Activity view's chip contributes
+  // "Show only this repo", which acts on that view's filter and would be
+  // meaningless from the sidebar. Each carries its own `group` label and its
+  // own `run`, so the shell hosts them without knowing what they do.
+  menuExtra: [],
+  // Things you do TO a repo, not inside one, and by now a SHORT list, because
+  // every row that left had somewhere better to be:
+  //   Files and Branches expanded into the repo's folders and its branch list,
+  //     and "what is inside" is a browsing question the sidebar and the Files
+  //     view answer once you are in the repo.
+  //   Open, because tapping the row itself is what opens the repo.
+  //   Open on GitHub, because GitHub is a whole small set of destinations, so
+  //     it earns the button next door rather than one row in here.
+  //   Switch to <the -private companion>, because the sidebar lists that
+  //     companion as its OWN row. The jump existed for a list that showed one
+  //     of a pair and hid the other, which is the estate CARDS (they nest the
+  //     private repo inside its public parent), not this list. Offering a jump
+  //     to a repo three rows down is a menu answering a question the list has
+  //     already answered.
+  // Nothing expands, so nothing carries a chevron.
+  get repoActionItems(){
+    return [
       { key: 'config', label: 'Config', icon: 'ph-gear-six' },
-      { key: 'github', label: 'Open on GitHub', icon: 'ph-github-logo', external: true },
-      sib && { key: 'sibling', label: 'Switch to ' + (sib.split('/')[1] || sib),
-               icon: this.menuRepoPrivate ? 'ph-globe' : 'ph-lock' },
       this.menuRepoOutbox && { key: 'outbox', label: 'Open outbox', icon: 'ph-tray-arrow-up' },
       { key: 'copy', label: 'Copy browse link', icon: 'ph-link' },
     ].filter(Boolean);
+  },
+  // Where the menu's repo lives on GitHub (lib/github-links.js). The ref rides
+  // along only for the OPEN repo, since a ref is meaningless for one you are
+  // not browsing; the task-board row appears only for a repo whose config
+  // declares where its board is.
+  get githubMenuItems(){
+    const repo = this.menuRepo;
+    if (!repo || !window.GithubLinks) return [];
+    const s = Alpine.store('browser');
+    const open = repo === s.repo;
+    return window.GithubLinks.rows(repo, {
+      ref: open ? s.ref : '', defaultRef: open ? s.defaultRef : '',
+      tracker: this.estateConfigs?.[repo]?.tracker || '',
+    });
   },
   // A repo's declared outbox, from the config cache the estate already holds:
   // the shelf it stages material on for others to pull. Menu-only, so a repo
@@ -1462,29 +1570,53 @@ function app(){ return {
     const cfg = this.estateConfigs?.[this.menuRepo];
     return (cfg && window.RepoAddress) ? window.RepoAddress.box(cfg, 'outbox', this.menuRepo) : null;
   },
-  // The row menu: anchor a fixed panel to the button that opened it. Right
-  // edges are aligned rather than left, since the trigger sits at the row's
-  // right edge, and the panel flips above the trigger when it would otherwise
-  // run off the bottom.
+  // The row menu: anchor a fixed panel to the button that opened it, beside it
+  // in the sidebar and below it elsewhere, flipping when it would otherwise run
+  // off an edge.
   repoMenuAt: null,          // { x, y } viewport coords, or null when closed
-  MENU_W: 200,
-  MENU_ROW: 36,
+  // One width for the panel and for the measure that places it. They used to
+  // be two numbers (a Tailwind class on the panel, a constant here) and they
+  // had drifted 16 px apart, which put a right-aligned panel that far off its
+  // trigger. repoMenuStyle stamps this, so there is nothing to keep in step.
+  MENU_W: 216,
+  // Row height, and it moves with the pointer: 26 px where the panel was opened
+  // by a hover (a pointer can land on a 26 px row all day) and 32 px on a touch
+  // screen, where the row is still a thumb target even though the panel has
+  // already been aimed at. This is the height anchorMenu measures with, so the
+  // flip-above decision stays honest under either. Keep it in step with the
+  // .wt-menu-row rule in <style>, which is what actually sizes the rows.
+  get MENU_ROW(){ return this.finePointer ? 26 : 32; },
   // The positioning half of an anchored row menu, shared rather than copied:
   // the sidebar's repo menu and the Open view's per-branch GitHub menu
-  // (estate.js) are two item lists and two panels, but one geometry. Returns
-  // viewport coords for a FIXED panel, tight to the trigger (2 px), flipped
-  // above when it would run off the bottom, and clamped into the viewport.
-  // The panel's edge is aligned with the trigger's SAME edge, so it reads as
-  // belonging to that button: right for a trigger at its row's right edge
-  // (the sidebar's), left for one at the left (the Open row's, whose menu is
-  // the first thing on its action line). Right is the default; a caller at
-  // the left edge asks for align:'left', or the panel opens away from the
-  // button and, on a wide menu, straight into the viewport clamp.
+  // (estate.js) are three item lists but one geometry. Returns viewport coords
+  // for a FIXED panel, tight to the trigger (2 px) and clamped into the
+  // viewport. Two placements:
+  //
+  //   DROP (default) below the trigger, flipped above near the viewport bottom,
+  //     with the panel's edge aligned to the trigger's SAME edge so it reads as
+  //     belonging to that button: right for a trigger at its row's right edge,
+  //     left for one at the left (align:'left'; the Activity view's repo chip
+  //     and its branch menu, both of which lead their rows).
+  //   SIDE (side:'right') to the right of the trigger, top-aligned to it. This
+  //     is the SIDEBAR's placement, and hover is why: a drop there covers the
+  //     rows underneath, which is tolerable for a menu you asked for by tapping
+  //     and not for one that appears as the pointer crosses the list. Opening
+  //     into the main area leaves the list readable the whole time. It falls
+  //     back to a drop where there is no room beside the trigger (a narrow
+  //     phone), since a clamped side panel would land back on top of the list.
+  //
+  // Takes an event OR the trigger element itself. The element form is what the
+  // hover path needs: `currentTarget` is nulled the moment the handler returns,
+  // so a menu that opens after a hover delay has to have captured the element
+  // up front and hand it over here.
   anchorMenu(ev, rows, opts = {}){
-    const b = ev?.currentTarget?.getBoundingClientRect?.();
+    const el = ev?.nodeType === 1 ? ev : (ev?.currentTarget || ev?.target);
+    const b = el?.getBoundingClientRect?.();
     if (!b) return null;
     const w = opts.width || this.MENU_W;
     const h = Math.min(rows * this.MENU_ROW + 8, Math.round(innerHeight * 0.6));
+    if (opts.side === 'right' && b.right + 2 + w <= innerWidth - 8)
+      return { x: b.right + 2, y: Math.max(8, Math.min(b.top, innerHeight - h - 8)) };
     const below = innerHeight - b.bottom > h + 8;
     const x = opts.align === 'left' ? b.left : b.right - w;
     return {
@@ -1493,16 +1625,103 @@ function app(){ return {
     };
   },
   menuStyle(at){ return at ? 'left:' + at.x + 'px;top:' + at.y + 'px' : 'left:-9999px;top:-9999px'; },
-  openRepoMenu(repo, ev){
+  // `kind` picks the item list ('actions' by default, 'github' for the button
+  // beside it); `opts` reaches anchorMenu, so a trigger at the left edge of its
+  // row can ask for align:'left' (the Activity view's repo chip does).
+  openRepoMenu(repo, ev, kind = 'actions', opts = {}){
     this.crumbMenu = false;
     this.menuRepo = repo;
-    this.repoMenuAt = this.anchorMenu(ev, this.repoMenuItems.length);
+    this.menuKind = kind;
+    this.menuExtra = kind === 'repo' && Array.isArray(opts.extra) ? opts.extra : [];
+    // A rule takes height too, so the measure that decides whether the panel
+    // fits below the trigger allows for the ones that will actually be drawn
+    // (above a head row that does not follow another head row).
+    const items = this.repoMenuItems;
+    const rules = items.filter((r, i) => r.head && i && !items[i - 1]?.head).length;
+    this.repoMenuAt = this.anchorMenu(ev, items.length + rules * 0.5, opts);
+    // The Activity view runs a second anchored panel of its own, so announce
+    // the open rather than have every caller remember to put the other one
+    // away. Announced HERE, at the moment of opening, not when a hover starts:
+    // a pointer merely passing over a trigger should close nothing.
+    document.dispatchEvent(new CustomEvent('web-tools:repo-menu-open'));
   },
-  get repoMenuStyle(){ return this.menuStyle(this.repoMenuAt); },
+  closeRepoMenu(){ this.repoMenuAt = null; this.cancelMenuClose(); },
+  // A click on a trigger whose menu is already showing puts it away, so the
+  // same control both opens and dismisses. Matters most on desktop, where the
+  // hover has usually opened it already and the click would otherwise be a
+  // no-op the pointer cannot undo without leaving the row.
+  toggleRepoMenu(repo, ev, kind = 'actions', opts = {}){
+    if (this.repoMenuAt && this.menuRepo === repo && this.menuKind === kind) return this.closeRepoMenu();
+    this.openRepoMenu(repo, ev, kind, opts);
+  },
+  // The sidebar Repos row's pair of buttons. Both anchor to the ROW rather than
+  // to the button pressed, so the panel lands in the same place either way,
+  // beside the row and clear of the list, instead of shifting sideways with the
+  // trigger and, from the github button, opening across its neighbour.
+  rowMenu(repo, ev, kind = 'actions'){
+    this.toggleRepoMenu(repo, ev?.currentTarget?.parentElement, kind, { side: 'right' });
+  },
+  rowMenuHover(repo, ev, kind = 'actions'){
+    this.hoverRepoMenu(repo, ev?.currentTarget?.parentElement, kind, { side: 'right' });
+  },
+
+  // ── Hover on desktop ────────────────────────────────────────────────────
+  // A pointer that can hover gets the menu without a click; touch gets nothing
+  // new, since there is no hover to read and a tap already opens it. Guarded on
+  // (hover: hover) and (pointer: fine) together, because a coarse pointer that
+  // reports hover support (some hybrids) would otherwise open menus on a stray
+  // finger. Memoized: the match cannot change mid-session in any way that
+  // matters, and this is read from a getter on every menu measure.
+  get finePointer(){
+    if (this._fine === undefined)
+      this._fine = !!window.matchMedia?.('(hover: hover) and (pointer: fine)')?.matches;
+    return this._fine;
+  },
+  _fine: undefined,
+  _menuOpenT: null,
+  _menuCloseT: null,
+  HOVER_OPEN_MS: 140,   // long enough that crossing a row does not open it
+  HOVER_CLOSE_MS: 220,  // long enough to cross the 2 px gap into the panel
+  // The trigger's element is captured NOW, not read off the event later: by the
+  // time the timer fires the event is spent and currentTarget is null.
+  //
+  // The delay applies to a SWAP as well as to a first open, which is not an
+  // aesthetic choice: the two triggers sit side by side and the panel opens
+  // past both, so the pointer's route from one button to that panel crosses its
+  // neighbour. Swapping on contact meant the github menu could not be reached
+  // from the github button without the marker's menu replacing it on the way.
+  // A crossing takes tens of milliseconds and a decision takes longer, so the
+  // same ~140 ms that keeps a menu from opening as the pointer crosses a row
+  // keeps it from swapping as the pointer crosses a button.
+  hoverRepoMenu(repo, ev, kind = 'actions', opts = {}){
+    if (!this.finePointer) return;
+    const el = ev?.nodeType === 1 ? ev : ev?.currentTarget;
+    this.cancelMenuClose();
+    if (this.repoMenuAt && this.menuRepo === repo && this.menuKind === kind) return;
+    this._menuOpenT = setTimeout(() => this.openRepoMenu(repo, el, kind, opts), this.HOVER_OPEN_MS);
+  },
+  // Leaving the trigger, or the panel, starts a short countdown rather than
+  // closing: the pointer has to cross the gap between the two, and entering
+  // either one cancels it.
+  hoverLeaveMenu(){
+    if (!this.finePointer) return;
+    clearTimeout(this._menuOpenT);
+    clearTimeout(this._menuCloseT);
+    this._menuCloseT = setTimeout(() => { this.repoMenuAt = null; }, this.HOVER_CLOSE_MS);
+  },
+  cancelMenuClose(){ clearTimeout(this._menuOpenT); clearTimeout(this._menuCloseT); },
+
+  get repoMenuStyle(){ return this.menuStyle(this.repoMenuAt) + ';width:' + this.MENU_W + 'px'; },
   async runRepoMenu(key){
     const repo = this.menuRepo;
     if (!repo) return;
-    if (key === 'github'){ window.open(this.githubUrlFor(repo), '_blank', 'noopener'); return; }
+    // Dispatch reads the ROW, not the key, since the combined list mixes three
+    // kinds: a contributed row brings its own handler, a GitHub row carries a
+    // url and leaves the app, and the rest fall through to the shell's own
+    // navigation below.
+    const row = this.repoMenuItems.find(r => r.key === key);
+    if (typeof row?.run === 'function'){ row.run(); return; }
+    if (row?.url){ window.open(row.url, '_blank', 'noopener'); return; }
     if (key === 'config' && repo !== Alpine.store('browser').repo) return this.openRepoDialog(repo);
     if (key === 'copy'){
       const url = location.origin + location.pathname + '?repo=' + encodeURIComponent(repo);
@@ -1510,34 +1729,28 @@ function app(){ return {
       catch { notify('Could not copy the link'); }
       return;
     }
-    // Everything below acts inside a repo, so make it the open one first.
-    const target = key === 'sibling' ? this.menuRepoSibling : repo;
-    if (!target) return;
-    await this.ensureBrowser(target);
-    if (Alpine.store('browser').repo !== target) return;
+    // What is left acts INSIDE a repo, so make it the open one first.
+    await this.ensureBrowser(repo);
+    if (Alpine.store('browser').repo !== repo) return;
     if (key === 'outbox'){
       const box = this.menuRepoOutbox;
       this.goFiles();
       if (box?.dir) await this.openFolder(box.dir);
       return;
     }
-    if (key === 'files') this.goFiles();
-    else if (key === 'branches') this.goBranches();
-    else if (key === 'config') this.goConfig();
-    else this.goLanding();
+    if (key === 'config') this.goConfig();
+    else if (key === 'open') this.goLanding();
   },
 
   // Any repo@ref on GitHub. show-repo is a wrapper over GitHub, not a wall, so
   // every view keeps a one-tap route to the GitHub presentation of what it is
-  // showing; the sidebar's is the repo menu's "Open on GitHub", which is why
-  // this takes a repo rather than reading the open one: the menu speaks for
-  // whichever repo it was summoned on. The ref rides along only for the OPEN
-  // repo, since a ref is meaningless for a repo you are not browsing.
+  // showing; the sidebar's is the github button beside each Repos row, whose
+  // first row this is. It takes a repo rather than reading the open one, since
+  // the menu speaks for whichever repo summoned it, and the ref rides along
+  // only for the OPEN repo (a ref is meaningless for one you are not browsing).
   githubUrlFor(repo){
-    if (!repo) return '';
     const s = Alpine.store('browser');
-    const ref = repo === s.repo && s.ref && s.ref !== s.defaultRef ? '/tree/' + s.ref : '';
-    return 'https://github.com/' + repo + ref;
+    return window.GithubLinks?.repoUrl(repo, repo === s.repo ? s.ref : '', s.defaultRef) || '';
   },
   // Pinned to the default branch, like the custom landing: the Files-view ref
   // picker does not re-point rendered surfaces.
@@ -2312,13 +2525,28 @@ function overview(){ return {
       public, so thumbnails (jsDelivr), the hosted render URL, and the blob
       source all resolve with no token. A cross-repo or off-default entry
       renders through toss-render #gh= the same way the pages catalog does.
-    Open (?view=activity): the estate's live branches in one cross-repo list,
-      read off the registry's activity cache (state/activity.json,
-      lib/repo-activity-cache.js) in one GET — every branch with recent work
-      ahead of its default or an open PR, freshest first, highlighted by PR state
-      (ready / draft / no-PR) and carrying a caption-style link cluster (browse
-      here, tree, compare, the guide PR, the authoring Claude Code session lifted
-      from the PR body). The key stays 'activity' so old links resolve. The Repos
+    Branches (?view=activity): EVERY branch of the estate in one cross-repo
+      list, read off the registry's activity cache (state/activity.json,
+      lib/repo-activity-cache.js) in one GET, freshest first, highlighted by PR
+      state (ready / draft / no-PR) and carrying a caption-style link cluster
+      (browse here, the branch's GitHub menu, the guide PR, the authoring Claude
+      Code session lifted from the PR body) plus the survey's content verdict
+      (of the paths this branch uniquely touched, how many are on the default
+      branch now). Each row opens with its repo as a CHIP, the repo's own
+      declared icon plus its short name, which opens that repo's whole grouped
+      menu. The key stays 'activity' so old links resolve, and the pane was
+      called Open until the scope chips arrived.
+      TWO AXES narrow it. SCOPE (branchScope over BRANCH_SCOPES) picks which of
+      the survey's groups to show: Open (an open PR, or stranded: work in
+      flight, which is NOT the same as recent, since a branch merged by a merge
+      commit is an ancestor of the default and stages to nothing while its date
+      still reads fresh), Recent ('active'), Stranded, Landed, All. Each chip
+      counts off the FULL list, so the row doubles as the estate's branch
+      census. REPO chips then narrow to one repo, and the row's own chip menu
+      contributes "Show only this repo", the same filter reached from the row
+      you are reading. Landed is the addition that matters: the crawl always
+      stored it, one hard filter here hid it, and the per-repo branch review was
+      the only place a landed branch appeared, one repo at a time. The Repos
       view borrows the same cache for a freshness rollup on each card. The
       cache is refreshActivityCache's output: a ~12h-throttled crawl that runs
       the capped branch survey (shared with the branches view via
@@ -2337,40 +2565,103 @@ function overview(){ return {
       the open repo.
   The estate SIDEBAR also carries a Repos index: the estate members (estate:true),
     grouped/ordered like the grid. The row name opens that repo's landing
-    (openPinned); everything else about that repo is in the REPO MENU (below).
+    (openPinned); everything else about that repo is behind the row's two
+    trailing buttons, the REPO MENU's two lists (below).
     The section's header icon opens the full Repos grid. Same cache read as the
     app views (loadEstateSidebar), token-gated; privacy for the row's marker is
     filled by enrichSidebarPrivacy (the cache has none).
   No token: the public default card only, and no surfaces, activity, app views, or
     sidebar Repos index.
 
-  THE REPO MENU (repo-menu.js, over the shell's menuRepo / repoMenuItems /
-  runRepoMenu) is where you act ON a repo rather than navigate to it. It hangs
-  off a Repos row's trailing button as an anchored dropdown, positioned FIXED
-  from that button's rect (openRepoMenu) because the rows sit in
-  an overflow-y-auto column that would clip a nested panel; it flips above the
-  trigger near the bottom of the list. That geometry is SHARED, not copied:
+  THE REPO MENU (repo-menu.js, over the shell's menuRepo / menuKind /
+  repoMenuItems / runRepoMenu) is ONE panel showing one of THREE lists for one
+  repo. It hangs off a Repos row's trailing buttons as an anchored dropdown,
+  positioned FIXED from the trigger's rect (openRepoMenu) because the rows sit
+  in an overflow-y-auto column that would clip a nested panel; it flips above
+  the trigger near the bottom of the list. That geometry is SHARED, not copied:
   anchorMenu/menuStyle also position the Open view's per-branch GitHub menu
-  (estate.js), so the two anchored menus behave identically while each keeps
-  its own items and its own panel.
-    Its rows: Config / Open on GitHub / the -private companion / Copy browse
-    link. FLAT and COMPACT (36 px rows, not the 44 px floor, which is for a cold
-    target in chrome rather than a panel already aimed at and opened). An Open
-    row went too: tapping the row itself opens the repo. Files and Branches were here and
-    expanded into the repo's folders and branch list; both are gone, because
-    "what is inside" is a browsing question the sidebar and the Files view
-    already answer once you are in the repo. Nothing expands, so nothing carries
-    a chevron, and the one row that leaves the app carries an out-arrow.
+  (estate.js), so every anchored menu here behaves identically.
+    ACTIONS (the marker button): Config / its outbox / Copy browse link. Things
+    you do TO a repo rather than inside one, and a SHORT list, because every row
+    that left had somewhere better to be. Files and Branches expanded into the
+    repo's folders and its branch list, and "what is inside" is a browsing
+    question the sidebar and the Files view already answer once you are in the
+    repo. Open went because tapping the row itself opens the repo. Switch to the
+    -private companion went because THE SIDEBAR LISTS THAT COMPANION AS ITS OWN
+    ROW: the jump was built for a list that shows one of a pair and hides the
+    other, which is the estate CARDS (they nest the private repo inside its
+    public parent), not this one. A menu offering a jump to a row three lines
+    down is answering a question the list has already answered. Nothing expands,
+    so nothing carries a chevron.
+    GITHUB (the github-logo button beside it, lib/github-links.js): Repository /
+    Pull requests / Issues / the declared task board / Branches / Commits /
+    Actions, each with the out-arrow. This was one row inside the actions list,
+    "Open on GitHub", pointing at the repo root: the single destination a reader
+    could have guessed, while the rest of a repo's GitHub surface had no route
+    at all. Splitting it out is what let it grow, and the split is cheap because
+    the lists share the panel: hovering from one trigger to another swaps the
+    rows in place, where separate panels would close one under the pointer.
+    REPO (the Activity view's chip, estate.js repoChipMenu): both of the above
+    in two sections, each opened by a HEAD ROW. The sidebar can afford to split
+    its material across two buttons because the row itself opens the repo and
+    the list shows every sibling; an Activity row is about a BRANCH, in a view
+    with no sidebar on screen, so its chip is the reader's only route to the
+    repo and carries the lot. Sections rather than a submenu: a submenu hides
+    half the answer behind a second gesture, and seeing where you can go is the
+    whole point of a jump-over list.
+      A HEAD ROW is the section's label and its default destination at once: the
+      mark of WHERE (the app's own favicon, then the github-logo) beside the
+      name of WHAT (the repo, in mono), over the places inside it. It replaced
+      an inert uppercase label plus the row underneath it, since "Open repo" and
+      "Repository" were one idea named twice and read as two vocabularies for
+      the same thing. Now the two sections are the same name under two marks. A
+      rule sits above each head row but the first, so nothing needs reading to
+      see the split, and the rows under a head are INDENTED to their head's
+      label, so the sections read as structure rather than as a flat list with
+      two odd entries in it. A row contributed by the caller is neither, so it
+      is set in bold and sits at the left margin: its own thing, above the first
+      rule.
+      The app's mark is drawn INLINE (item.mark:'app', an outline rendition of
+      lib/favicon.svg living in repo-menu.js) rather than loaded as that file:
+      an <img> cannot take currentColor, so it would sit in brand blue beside a
+      column of muted glyphs and stay blue on hover. Inline with
+      stroke:currentColor it behaves like the Phosphor glyphs around it.
+      The GitHub keys are prefixed 'gh:' in the combined list because both
+      halves name a `branches` row and the loop keys on `key`; a duplicate
+      silently drops the second row.
+    FLAT and COMPACT, and compact by pointer: 26 px rows at 13 px for a fine
+    pointer, 32 px for a thumb (.wt-menu-row in <style>, measured by the shell's
+    MENU_ROW), in a 184 px panel. Both heights are under the 44 px floor, which
+    is for a cold target in chrome rather than a panel already aimed at and
+    opened. The out-arrow column is dropped from a list where EVERY row leaves
+    the app (repo-menu.js allExternal): the GitHub menu's seven identical arrows
+    said what the github-logo that opened it already said, and the width is
+    worth more to the labels. A mixed list (the branch menu) keeps them, where
+    the arrow marks the odd row out.
+    OPENS ON HOVER where the pointer can hover ((hover:hover) and
+    (pointer:fine), hoverRepoMenu), after ~140 ms so crossing a row does not
+    open it, and closes ~220 ms after the pointer leaves both the trigger and
+    the panel, which is what lets it cross the 2 px gap between them. A tap
+    works everywhere and a second tap on the same trigger dismisses.
+    THE DELAY APPLIES TO A SWAP TOO, and that is not polish: the two triggers
+    are neighbours and the panel opens past both, so the pointer's route from
+    one button to the panel runs over the other. Swapping on contact made the
+    github menu unreachable from the github button, the marker's menu replacing
+    it every time. A crossing takes tens of milliseconds and a decision takes
+    longer, so one threshold separates them.
     This replaced a three-icon cluster on every row (marker + gear + github
-    logo). Those icons were ~16 px against a 44 px floor, and each bought one
-    tap: open the repo and Config is a sidebar row, GitHub is this menu. The
-    marker survives as the trailing button itself, promoted from an inert span
-    to a real 44 px control, so the row keeps its public/private state while
-    carrying the menu on a plain tap. Two presentations were tried here and
-    taken back out, a press-and-hold and a bottom sheet: a visible control
-    answering a single tap does the work without a gesture to discover, and
-    nothing about five short actions justifies the far edge of the screen. The
-    estate CARDS still carry the old cluster, where there is room for it.
+    logo). Those icons were ~16 px against a 44 px floor and each bought one
+    tap; the two that came back each open a list rather than a single
+    destination. They are 28 px wide and CHROME-FREE on a fine pointer
+    (.wt-row-btn): a hover background on each made a pair of glyphs read as two
+    separate tiles, where the row's own tint is already the feedback and the
+    glyph going primary is already the state. A thumb still gets 40 px. The
+    marker is the old inert span promoted, so the row keeps its public/private
+    state while carrying its menu. Two presentations were tried here and taken back out, a press-and-hold
+    and a bottom sheet: a visible control answering a single tap does the work
+    without a gesture to discover, and nothing about a short list justifies the
+    far edge of the screen. The estate CARDS still carry the old cluster, where
+    there is room for it.
 
   THE SIDEBAR CRUMB TRAIL (crumbBar, sidebarCrumbs) replaced the top bar's dead
   label in BOTH contexts. At the app level it is the MARK ALONE, which says what
@@ -2394,14 +2685,15 @@ function overview(){ return {
 
   GITHUB JUMP-OVERS: show-repo is a wrapper over GitHub, not a wall — every
   view keeps a one-tap route to the GitHub presentation of what it is showing.
-  The sidebar's is the repo menu's "Open on GitHub" (githubUrlFor, which takes a
-  repo, since the menu speaks for whichever one summoned it). The explorer's
-  breadcrumb links the current folder (ghFolderUrl), the viewer's actions link
-  the open file's blob, and every estate card and surface item carries its
-  github-logo link. The Activity view's Open rows carry a whole small SET of
-  them (tree, compare, commits, the PR's files and checks, new PR), which is
-  why theirs is a menu rather than a link. When adding a view, add its
-  jump-over.
+  A jump-over for a FILE or a FOLDER is one link: the explorer's breadcrumb
+  links the current folder (ghFolderUrl), the viewer's actions link the open
+  file's blob, and every estate card and surface item carries its github-logo
+  link. A jump-over for a REPO or a BRANCH is a small set, which is what earns
+  a menu: the repo's is lib/github-links.js, off the sidebar row's github
+  button and the Activity view's repo chip, and the branch's is estate.js's
+  branchMenuItems, off each Open row (tree, compare, commits, the PR's files
+  and checks, new PR). When adding a view, add its jump-over, and prefer the
+  shared list to a fresh one.
 
   Today: web-tools -> 'gallery' (its pages index); any repo declaring a `pages`
   catalog -> 'gallery' too (fed from that catalog, tiles live via toss-render);
@@ -2452,6 +2744,12 @@ function overview(){ return {
     pins     folders/files surfaced in the sidebar Pinned block; a last
              segment with an extension opens as a file, else opens the Files
              view at that folder.
+    tracker  where the repo keeps its task board ("tracker/board.md", or a
+             folder). One row in the repo's GITHUB MENU, since it is the one
+             destination in that menu GitHub cannot name for itself: every
+             other row is a fixed GitHub route, and where a repo tracks work is
+             a repo property. A path with an extension links the blob, a bare
+             path links the tree. Declaring none simply drops the row.
     stage    { files: [...], targets: ["owner/repo:dir", ...] } — a durable
              staged-files list and the default destinations the Stage view's
              transfer UI offers. Entries in files are bare paths (this repo at
