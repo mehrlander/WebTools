@@ -7,6 +7,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Converge the branch page's authored layer on the branch-review surface
 - 🎫 Make the branch page a navigation target, swipeable from the lists
 - 🎫 Show the branch lifespan in the per-repo branch review too
+- 🎫 Decide whether the per-repo branch review still earns a sidebar slot next: use the new Activity scopes for a while, then check what the repo view was still opened for
 - 🎫 Reach the take-away menu from show-repo's Pages gallery (needs: Find a way to focus attention on one piece of a page's UI)
 - 🎫 The build-on-commit hook did not fire, and nothing said so
 - 🎫 Fold chat-results into the surface schema, or keep it a sibling
@@ -30,6 +31,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Pinch-zoom and pan for pdf-inspect's page view
 - 🎫 Close open table perimeters in the pdf kit's lattice
 - 🎫 A column-splitter page for the pdf kit
+- 🎫 Decide whether a -private companion gets its own Repos card next: decide, then make the sidebar and the cards agree either way
 - 🎫 Two gaps the proposal channel showed on first use next: the removal kind is the one with a waiting job (six inert quickLink flags); the diff pane is polish
 - 🎫 Inline the run-time CDN references a rendering copy still carries
 - 🎫 Repo-level GitHub links in show-repo's shield dialog
