@@ -806,6 +806,35 @@ A proposal record (`proposals/pending/<id>.json`) carries `id`, `kind`, `repo`,
   key can be set to a whole nested structure; what is missing is addressing into
   one.
 
+**Three deliveries, and the tap decides.** A record may suggest one with
+`deliver`, but both routes are always on the card, because the person holding
+the token knows whether this repo wants a PR today and the proposing session
+does not:
+
+| `deliver` | What the apply does |
+| --- | --- |
+| `commit` (default) | commits straight onto the target ref, the original behavior |
+| `branch` | cuts `proposal/<id>` off the target ref and commits there, leaving the target untouched |
+| `pr` | the same branch, plus a **draft** pull request |
+
+The PR's title and body are authored from the record: the `why` becomes the
+body, a `set-json-field` gets its before/after as a fenced block, and the
+signature and record path go in a footer. It opens as a draft, since marking a
+PR ready is the reviewer's move.
+
+PR delivery is the only route that works against a **protected branch**, and it
+is the honest one for a code change, since GitHub's diff view reads better than
+any card and the PR survives as the durable record. A one-key config edit is
+usually better off as a commit.
+
+Two implementation notes worth knowing. Creating the branch needs the Git Data
+API (`createRef` in `gh-transfer.js`), since the Contents API can write to a ref
+but not make one; an existing `proposal/<id>` is treated as a resume rather than
+a collision. And **opening the PR is a separate permission** from writing: a
+fine-grained token can carry `contents: write` without `pull_requests: write`,
+so a PR failure never erases the branch and commit that already landed. The
+record reports both and hands over a compare link.
+
 **The staleness guard.** A record may carry **`expectSha`**, the blob sha of the
 target as it stood when the proposal was written. At apply time a different sha
 refuses the write, with the two shas named, and a target that has since been

@@ -25,9 +25,20 @@ const proposal = (over = {}) => ({
 
 // A GH stub: `files` maps repo -> path -> text. A missing path 404s the way the
 // contents API does, since "the file does not exist yet" is a normal proposal.
-function stubGH(files, log = []) {
+function stubGH(files, log = [], opts = {}) {
   return class {
     constructor({ repo, ref }) { this.repo = repo; this.ref = ref; }
+    async defaultBranch() { return 'main'; }
+    async createRef(branch, from) {
+      log.push({ createRef: branch, from });
+      if (opts.refExists) return { branch, sha: 'basesha', created: false };
+      return { branch, sha: 'basesha', created: true };
+    }
+    async createPull(args) {
+      log.push({ createPull: args });
+      if (opts.prFails) { const e = new Error('Resource not accessible by personal access token'); e.status = 403; throw e; }
+      return { html_url: 'https://github.com/' + this.repo + '/pull/7', number: 7 };
+    }
     async get(p) {
       const text = files[this.repo]?.[p];
       if (text === undefined) { const e = new Error('Not Found'); e.status = 404; throw e; }
@@ -234,4 +245,92 @@ test('an unsigned proposal still applies, and simply carries no attribution', as
   assert.equal(res.ok, true);
   assert.equal('by' in res, false);
   assert.equal('session' in res, false);
+});
+
+// ── delivery: commit, branch, pr ────────────────────────────────────────────
+// The channel used to have one way to land a change. A PR is the honest form
+// for anything a reviewer should read as a diff, and the only form that works
+// against a protected branch.
+
+test('the default delivery is still a commit on the target', async () => {
+  const log = [];
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{}' } }, log);
+  const res = await P.apply(proposal(), { GH, token: 't' });
+  assert.equal(res.deliver, 'commit');
+  assert.equal(res.branch, undefined);
+  assert.equal(log.filter(l => l.createRef).length, 0, 'no branch is cut for a plain commit');
+});
+
+test('branch delivery cuts proposal/<id> and commits there, leaving the target alone', async () => {
+  const log = [];
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{}' } }, log);
+  const res = await P.apply(proposal({ deliver: 'branch' }), { GH, token: 't' });
+  assert.equal(res.ok, true);
+  assert.equal(res.deliver, 'branch');
+  assert.equal(res.branch, 'proposal/p1');
+  assert.equal(res.baseBranch, 'main');
+  assert.equal(res.branchCreated, true);
+  assert.equal(log.find(l => l.createRef)?.createRef, 'proposal/p1');
+  assert.equal(log.find(l => l.path)?.branch, 'proposal/p1', 'the write goes to the branch, not the default');
+  assert.equal(res.pr, undefined, 'branch delivery opens nothing');
+});
+
+test('pr delivery opens a draft PR carrying the why and the signature', async () => {
+  const log = [];
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{\n  "estate": true\n}\n' } }, log);
+  const res = await P.apply(proposal({ deliver: 'pr', by: 'claude-code', session: 'https://claude.ai/x' }),
+    { GH, token: 't' });
+  assert.equal(res.ok, true);
+  assert.equal(res.deliver, 'pr');
+  assert.equal(res.pr, 'https://github.com/me/target/pull/7');
+  assert.equal(res.prNumber, 7);
+  const call = log.find(l => l.createPull).createPull;
+  assert.equal(call.head, 'proposal/p1');
+  assert.equal(call.base, 'main');
+  assert.equal(call.draft, true, 'ready is the reviewer move, not the channel-s');
+  assert.match(call.title, /Set scope in \.web-tools\.json/);
+  assert.match(call.body, /the Map shows a blank scope/, 'the why is the body');
+  assert.match(call.body, /claude-code/);
+  assert.match(call.body, /https:\/\/claude\.ai\/x/);
+  assert.match(call.body, /proposals\/pending\/p1\.json/);
+});
+
+test('a PR that cannot be opened still reports the branch and a compare link', async () => {
+  const log = [];
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{}' } }, log, { prFails: true });
+  const res = await P.apply(proposal({ deliver: 'pr' }), { GH, token: 't' });
+  assert.equal(res.ok, true, 'the branch and commit landed, so the record is not a failure');
+  assert.equal(res.branch, 'proposal/p1');
+  assert.match(res.prError, /not accessible/);
+  assert.match(res.compare, /compare\/main\.\.\.proposal%2Fp1/);
+});
+
+test('an existing proposal branch is a resume, not a collision', async () => {
+  const log = [];
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{}' } }, log, { refExists: true });
+  const res = await P.apply(proposal({ deliver: 'branch' }), { GH, token: 't' });
+  assert.equal(res.ok, true);
+  assert.equal(res.branchCreated, false);
+});
+
+test('the tap can override the record-s suggestion in either direction', async () => {
+  const log = [];
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{}' } }, log);
+  const asPr = await P.apply(proposal(), { GH, token: 't', deliver: 'pr' });
+  assert.equal(asPr.deliver, 'pr', 'a commit-shaped record can still go out as a PR');
+  const asCommit = await P.apply(proposal({ deliver: 'pr' }), { GH, token: 't', deliver: 'commit' });
+  assert.equal(asCommit.deliver, 'commit', 'and a pr-shaped one can be committed directly');
+});
+
+test('an unknown delivery is refused rather than guessed', async () => {
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{}' } });
+  assert.match(P.validate(proposal({ deliver: 'merge-it' })).error, /unsupported deliver/);
+  const res = await P.apply(proposal(), { GH, token: 't', deliver: 'yolo' });
+  assert.equal(res.ok, false);
+  assert.match(res.error, /unsupported deliver/);
+});
+
+test('branch names are safe for a ref, whatever the id looks like', () => {
+  assert.equal(P.branchFor({ id: 'scope wa/bills!' }), 'proposal/scope-wa-bills-');
+  assert.equal(P.branchFor({}), 'proposal/unnamed');
 });

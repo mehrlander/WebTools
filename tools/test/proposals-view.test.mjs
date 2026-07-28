@@ -58,7 +58,10 @@ window.GH = class {
     if (text === undefined) { const e = new Error('Not Found'); e.status = 404; throw e; }
     return { text };
   }
-  async saveRaw(p, content, message) { writes.push({ repo: this.repo, path: p, content, message }); return { commit: { sha: 'abc123' } }; }
+  async saveRaw(p, content, message, branch) { writes.push({ repo: this.repo, path: p, content, message, branch }); return { commit: { sha: 'abc123' } }; }
+  async defaultBranch() { return 'main'; }
+  async createRef(branch, from) { writes.push({ createRef: branch, from }); return { branch, sha: 'base', created: true }; }
+  async createPull(args) { writes.push({ createPull: args }); return { html_url: 'https://github.com/' + this.repo + '/pull/12', number: 12 }; }
   async save(p, body) { saves.push({ repo: this.repo, path: p, body }); }
 };
 window.__shell = { REGISTRY_REPO: REG, hasToken: () => true, loadProposalCount: () => { window.__shell._counted = true; } };
@@ -137,4 +140,39 @@ test('no token means no read at all', async () => {
   assert.equal(data.items.length, 0);
   assert.equal(writes.length, before);
   window.__shell.hasToken = () => true;
+});
+
+test('the PR button arms its own confirm and delivers as a pull request', async () => {
+  await data.load();   // the token test above left the list empty on purpose
+  const row = data.items.find(i => i.id === 'on-branch');
+  const before = writes.length;
+  data.arm(row, 'pr');                       // the first tap, on Open PR
+  assert.equal(data.armedMode, 'pr');
+  assert.match(data.confirmLabel(row), /Open a PR on mehrlander\/wa-bills\?/);
+  await data.apply(row);                     // the second
+
+  const made = writes.slice(before);
+  assert.equal(made.find(w => w.createRef)?.createRef, 'proposal/on-branch');
+  assert.equal(made.find(w => w.path)?.branch, 'proposal/on-branch', 'the commit lands on the proposal branch');
+  const pr = made.find(w => w.createPull)?.createPull;
+  assert.equal(pr.base, 'feat/x', 'a branch-targeted proposal bases its PR on that branch');
+  assert.equal(pr.draft, true);
+  assert.equal(row.delivered, 'Opened PR #12 on mehrlander/wa-bills.');
+  assert.equal(row.deliveredUrl, 'https://github.com/mehrlander/wa-bills/pull/12');
+  assert.equal(data.armedMode, null, 'the arm resets after the write');
+});
+
+test('the commit button still delivers a plain commit', async () => {
+  files[REG]['proposals/pending/plain.json'] = JSON.stringify({
+    id: 'plain', kind: 'set-json-field', repo: 'mehrlander/wa-bills', path: '.web-tools.json',
+    field: 'note', value: 'x', why: 'a one-key edit does not want a PR' });
+  await data.load();
+  const row = data.items.find(i => i.id === 'plain');
+  assert.equal(data.prPrimary(row), false, 'no hint means commit is the filled button');
+  const before = writes.length;
+  data.arm(row, 'commit');
+  await data.apply(row);
+  const made = writes.slice(before);
+  assert.equal(made.filter(w => w.createRef).length, 0, 'no branch for a commit delivery');
+  assert.equal(made.filter(w => w.createPull).length, 0);
 });
