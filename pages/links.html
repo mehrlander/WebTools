@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Links</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🔖</text></svg>">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+
+<!--
+  links.html — the bookmarks and resources board, in three levels:
+
+    rail      entries flagged rail:true, projected out of the board in area
+              order. A flag, never a second list, so each entry has one home.
+    board     ordered areas of ordered items. The page.
+    dossier   an area's own markdown file, expanded in place and edited here.
+
+  Item kinds decide what a row does:
+    link      an href
+    action    an href that performs rather than shows (a new-file form)
+    repo      owner/repo, opened in show-repo rather than on github.com
+    snippet   javascript: or data:, which no page can follow, so it copies
+
+  Data contract (all in mehrlander/home, read and written through the token):
+    links/board.json     the store
+    links/<area>.md      an area's dossier, fetched on first open
+
+  Renderer lives here in web-tools; the content lives in home, which is private,
+  so this renders only in a browser holding the viewer's ghToken (gh-auth raises
+  the prompt on 401). Every edit is local until Commit; Commit writes board.json
+  and any touched dossier, each a whole-file PUT.
+
+  ?use=<branch|tag|sha> pins this page's own lib chain to a ref. &data=<ref>
+  pins which ref of home the content is read from (defaults to main).
+-->
+<script type="module">
+  const ref = new URLSearchParams(location.search).get('use');
+  if (ref) {
+    window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
+    const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`);
+    if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
+    const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+    try { await import(u); } finally { URL.revokeObjectURL(u); }
+  } else {
+    await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
+  }
+  await gh.load('gh-auth.js');
+  await gh.load('gh-store.js');
+
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('links', () => ({
+      REPO: 'mehrlander/home',
+      PATH: 'links/board.json',
+      DATA_REF: new URLSearchParams(location.search).get('data') || 'main',
+      SHOW_REPO: 'https://mehrlander.github.io/web-tools/pages/show-repo/show-repo.html',
+
+      home: null,
+      board: { areas: [] },
+      baseline: '',
+      dossiers: {},          // path -> { text, baseline, loading, error }
+      open: null,            // area id whose dossier is expanded
+
+      loading: true,
+      error: '',
+      committing: false,
+      commitError: '',
+
+      q: '',
+      area: 'all',
+      editing: false,
+
+      KIND: {
+        link:    { icon: 'ph-arrow-square-out', label: 'link' },
+        action:  { icon: 'ph-lightning',        label: 'action' },
+        repo:    { icon: 'ph-folder-open',      label: 'repo' },
+        snippet: { icon: 'ph-brackets-curly',   label: 'snippet' },
+      },
+
+      async init() {
+        try {
+          const home = this.home = new window.GH({ token: window.TOKEN || '', repo: this.REPO, ref: this.DATA_REF });
+          const res = await home.get(this.PATH);
+          (home._shas ||= {})[this.PATH] = res.sha;
+          const b = JSON.parse(res.text);
+          b.areas = (b.areas || []).map(a => ({ ...a, items: a.items || [] }));
+          this.board = b;
+          this.baseline = this.snapshot();
+        } catch (e) {
+          this.error = e.message || String(e);
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      // ── reads ────────────────────────────────────────────────────────────
+      snapshot() { return JSON.stringify(this.board) },
+      get dirty() {
+        return this.snapshot() !== this.baseline
+          || Object.values(this.dossiers).some(d => d.text !== d.baseline);
+      },
+      get total() { return this.board.areas.reduce((n, a) => n + a.items.length, 0) },
+      get rail()  { return this.board.areas.flatMap(a => a.items.filter(i => i.rail).map(i => ({ ...i, icon: a.icon }))) },
+      get visibleAreas() {
+        return this.board.areas
+          .filter(a => this.area === 'all' || a.id === this.area)
+          .filter(a => !this.q || this.items(a).length || this.editing);
+      },
+      items(a) {
+        const q = this.q.trim().toLowerCase();
+        if (!q) return a.items;
+        return a.items.filter(i => `${i.title} ${i.note || ''} ${i.url}`.toLowerCase().includes(q));
+      },
+      icon(it) { return (this.KIND[it.kind] || this.KIND.link).icon },
+      href(it) {
+        if (it.kind === 'snippet') return null;
+        if (it.kind === 'repo') return `${this.SHOW_REPO}?repo=${encodeURIComponent(it.url)}`;
+        return it.url;
+      },
+
+      // ── board edits ──────────────────────────────────────────────────────
+      uid(p) { return p + Math.random().toString(36).slice(2, 7) },
+      add(a) { a.items.push({ id: this.uid('i'), title: '', kind: 'link', url: '', note: '', rail: false }) },
+      remove(a, it) { a.items = a.items.filter(x => x !== it) },
+      move(a, it, d) {
+        const i = a.items.indexOf(it), j = i + d;
+        if (j < 0 || j >= a.items.length) return;
+        a.items.splice(j, 0, ...a.items.splice(i, 1));
+      },
+      addArea() {
+        this.board.areas.push({ id: this.uid('a'), label: '', icon: 'ph-folder', items: [] });
+        this.editing = true;
+      },
+      removeArea(a) { this.board.areas = this.board.areas.filter(x => x !== a) },
+      copy(it) { navigator.clipboard?.writeText(it.url) },
+
+      // ── dossiers ─────────────────────────────────────────────────────────
+      async toggleDossier(a) {
+        if (this.open === a.id) { this.open = null; return; }
+        this.open = a.id;
+        if (this.dossiers[a.dossier]) return;
+        this.dossiers[a.dossier] = { text: '', baseline: '', loading: true, error: '' };
+        try {
+          const res = await this.home.get(a.dossier);
+          (this.home._shas ||= {})[a.dossier] = res.sha;
+          this.dossiers[a.dossier] = { text: res.text, baseline: res.text, loading: false, error: '' };
+        } catch (e) {
+          this.dossiers[a.dossier] = { text: '', baseline: '', loading: false, error: e.message || String(e) };
+        }
+      },
+
+      // ── write ────────────────────────────────────────────────────────────
+      discard() { location.reload() },
+      async commit() {
+        if (!this.dirty || this.committing) return;
+        this.committing = true; this.commitError = '';
+        try {
+          if (this.snapshot() !== this.baseline) {
+            await this.home.save(this.PATH, this.board, `links: update board (${this.total} entries)`);
+            this.baseline = this.snapshot();
+          }
+          for (const [path, d] of Object.entries(this.dossiers)) {
+            if (d.text === d.baseline) continue;
+            await this.home.save(path, d.text, `links: update ${path.split('/').pop()}`);
+            d.baseline = d.text;
+          }
+          this.editing = false;
+        } catch (e) {
+          this.commitError = e.message || String(e);
+        } finally {
+          this.committing = false;
+        }
+      },
+
+      // ── markdown-lite, enough for a dossier ──────────────────────────────
+      render(md) {
+        if (!md) return '';
+        const inline = s => s
+          .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="link link-primary">$1</a>')
+          .replace(/`([^`]+)`/g, '<code class="text-xs bg-base-200 px-1 rounded">$1</code>')
+          .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+        return md.split('\n').map(l => {
+          if (/^#{1,2}\s/.test(l)) return `<h3 class="font-semibold mt-3 first:mt-0">${inline(l.replace(/^#+\s/, ''))}</h3>`;
+          if (/^#{3,}\s/.test(l)) return `<h4 class="font-medium text-base-content/70 mt-2">${inline(l.replace(/^#+\s/, ''))}</h4>`;
+          if (/^[-*]\s/.test(l))  return `<div class="pl-4 -indent-3">• ${inline(l.slice(2))}</div>`;
+          return l.trim() ? `<p>${inline(l)}</p>` : '';
+        }).join('');
+      },
+    }));
+  });
+
+  await gh.load('alpine-bundle.js');   // starts Alpine
+</script>
+<style>[x-cloak]{display:none!important}</style>
+</head>
+<body class="bg-base-200 min-h-screen text-base-content">
+
+<div x-data="links" x-cloak class="max-w-5xl mx-auto px-4 py-6">
+
+  <div class="flex items-center gap-2 sm:gap-3 mb-3">
+    <i class="ph ph-bookmarks-simple text-2xl text-primary"></i>
+    <h1 class="text-xl font-semibold">Links</h1>
+    <span class="badge badge-ghost badge-sm font-mono" x-text="total"></span>
+    <div class="grow"></div>
+    <label class="input input-sm input-bordered flex items-center gap-2 w-32 sm:w-64">
+      <i class="ph ph-magnifying-glass opacity-50"></i>
+      <input type="text" class="grow" placeholder="filter" x-model="q">
+    </label>
+    <button class="btn btn-sm" :class="editing ? 'btn-neutral' : 'btn-ghost'" @click="editing = !editing">
+      <i class="ph" :class="editing ? 'ph-check' : 'ph-pencil-simple'"></i>
+    </button>
+  </div>
+
+  <div x-show="loading" class="flex justify-center py-16">
+    <span class="loading loading-dots loading-md opacity-30"></span>
+  </div>
+  <div x-show="error" class="alert alert-error text-sm" x-text="error"></div>
+
+  <template x-if="!loading && !error">
+    <div>
+
+      <div class="flex flex-wrap gap-1.5 mb-5 pb-4 border-b border-base-300">
+        <template x-for="it in rail" :key="it.id">
+          <a :href="href(it)" target="_blank" rel="noopener"
+             class="btn btn-sm btn-ghost bg-base-100 border border-base-300 gap-1.5 font-normal">
+            <i class="ph" :class="it.icon"></i><span x-text="it.title"></span>
+          </a>
+        </template>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1 mb-5">
+        <button class="btn btn-xs" :class="area==='all' ? 'btn-neutral' : 'btn-ghost'" @click="area='all'">All</button>
+        <template x-for="a in board.areas" :key="a.id">
+          <button class="btn btn-xs gap-1" :class="area===a.id ? 'btn-neutral' : 'btn-ghost'" @click="area=a.id">
+            <i class="ph" :class="a.icon"></i><span x-text="a.label"></span>
+            <span class="opacity-40 font-mono" x-text="a.items.length"></span>
+          </button>
+        </template>
+        <button x-show="editing" class="btn btn-xs btn-ghost text-primary" @click="addArea()">
+          <i class="ph ph-plus"></i>
+        </button>
+      </div>
+
+      <template x-for="a in visibleAreas" :key="a.id">
+        <section class="mb-7">
+
+          <div class="flex items-center gap-2 mb-2">
+            <i class="ph text-lg text-base-content/60" :class="a.icon"></i>
+            <template x-if="!editing">
+              <h2 class="font-semibold" x-text="a.label"></h2>
+            </template>
+            <template x-if="editing">
+              <div class="flex gap-1">
+                <input class="input input-xs input-bordered w-40" x-model="a.label" placeholder="area">
+                <input class="input input-xs input-bordered w-32 font-mono text-[11px]" x-model="a.icon" placeholder="ph-folder">
+                <input class="input input-xs input-bordered w-44 font-mono text-[11px]" x-model="a.dossier" placeholder="links/….md">
+              </div>
+            </template>
+            <span class="badge badge-ghost badge-xs font-mono" x-text="a.items.length"></span>
+            <button x-show="a.dossier" class="btn btn-xs btn-ghost gap-1"
+                    :class="open===a.id ? 'text-primary' : 'text-base-content/50'" @click="toggleDossier(a)">
+              <i class="ph ph-notebook"></i>
+            </button>
+            <div class="grow"></div>
+            <button x-show="editing" class="btn btn-xs btn-ghost text-error" @click="removeArea(a)">
+              <i class="ph ph-trash"></i>
+            </button>
+          </div>
+
+          <div x-show="open===a.id" x-transition class="mb-3">
+            <template x-if="dossiers[a.dossier]?.loading">
+              <div class="p-4"><span class="loading loading-dots loading-sm opacity-30"></span></div>
+            </template>
+            <template x-if="dossiers[a.dossier]?.error">
+              <div class="alert alert-warning text-xs" x-text="dossiers[a.dossier].error"></div>
+            </template>
+            <template x-if="dossiers[a.dossier] && !dossiers[a.dossier].loading && !dossiers[a.dossier].error">
+              <div>
+                <div x-show="!editing"
+                     class="p-4 rounded-xl bg-base-100 border border-primary/25 text-sm leading-relaxed space-y-1"
+                     x-html="render(dossiers[a.dossier].text)"></div>
+                <textarea x-show="editing" x-model="dossiers[a.dossier].text" rows="14"
+                          class="textarea textarea-bordered w-full font-mono text-xs leading-relaxed"></textarea>
+              </div>
+            </template>
+          </div>
+
+          <div class="rounded-xl bg-base-100 border border-base-300 divide-y divide-base-200 overflow-hidden">
+            <template x-for="it in items(a)" :key="it.id">
+              <div class="flex items-center gap-2.5 px-3 py-2 hover:bg-base-200/50 group">
+
+                <i class="ph text-base shrink-0 text-base-content/60" :class="icon(it)" :title="it.kind"></i>
+
+                <template x-if="!editing">
+                  <div class="flex items-baseline gap-2 min-w-0 grow">
+                    <template x-if="it.kind === 'snippet'">
+                      <button class="font-medium truncate text-left hover:text-primary" @click="copy(it)" x-text="it.title"></button>
+                    </template>
+                    <template x-if="it.kind !== 'snippet'">
+                      <a :href="href(it)" target="_blank" rel="noopener"
+                         class="font-medium truncate hover:text-primary hover:underline" x-text="it.title"></a>
+                    </template>
+                    <span class="text-xs text-base-content/50 truncate hidden sm:inline" x-text="it.note"></span>
+                  </div>
+                </template>
+
+                <template x-if="editing">
+                  <div class="flex flex-col sm:flex-row gap-1.5 grow min-w-0">
+                    <select class="select select-xs select-bordered w-24" x-model="it.kind">
+                      <template x-for="(v, k) in KIND" :key="k">
+                        <option :value="k" x-text="v.label"></option>
+                      </template>
+                    </select>
+                    <input class="input input-xs input-bordered sm:w-40" x-model="it.title" placeholder="title">
+                    <input class="input input-xs input-bordered grow font-mono text-[11px]" x-model="it.url" placeholder="url">
+                    <input class="input input-xs input-bordered sm:w-44" x-model="it.note" placeholder="note">
+                  </div>
+                </template>
+
+                <div class="flex items-center gap-0.5 shrink-0">
+                  <button class="btn btn-ghost btn-xs px-1.5"
+                          :class="it.rail ? 'text-warning' : 'text-base-content/20 opacity-0 group-hover:opacity-100'"
+                          @click="it.rail = !it.rail" title="Rail">
+                    <i class="ph" :class="it.rail ? 'ph-push-pin-fill' : 'ph-push-pin'"></i>
+                  </button>
+                  <button class="btn btn-ghost btn-xs px-1.5 text-base-content/30 opacity-0 group-hover:opacity-100"
+                          @click="copy(it)" title="Copy">
+                    <i class="ph ph-copy"></i>
+                  </button>
+                  <template x-if="editing">
+                    <div class="flex items-center gap-0.5">
+                      <button class="btn btn-ghost btn-xs px-1 text-base-content/40" @click="move(a, it, -1)">
+                        <i class="ph ph-caret-up"></i>
+                      </button>
+                      <button class="btn btn-ghost btn-xs px-1 text-base-content/40" @click="move(a, it, 1)">
+                        <i class="ph ph-caret-down"></i>
+                      </button>
+                      <button class="btn btn-ghost btn-xs px-1.5 text-error" @click="remove(a, it)">
+                        <i class="ph ph-trash"></i>
+                      </button>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+
+            <div x-show="editing" class="px-3 py-1.5">
+              <button class="btn btn-xs btn-ghost text-primary" @click="add(a)">
+                <i class="ph ph-plus"></i>
+              </button>
+            </div>
+          </div>
+        </section>
+      </template>
+
+      <div x-show="dirty" x-transition class="sticky bottom-4">
+        <div class="rounded-xl bg-base-100 border border-primary/30 shadow-lg px-3 py-2 flex items-center gap-3">
+          <i class="ph ph-git-commit text-primary"></i>
+          <code class="text-xs text-base-content/50 grow truncate" x-text="`${REPO} @ ${DATA_REF}`"></code>
+          <span x-show="commitError" class="text-xs text-error truncate" x-text="commitError"></span>
+          <button class="btn btn-ghost btn-sm" @click="discard()" :disabled="committing">Discard</button>
+          <button class="btn btn-primary btn-sm gap-2" @click="commit()" :disabled="committing">
+            <span x-show="!committing">Commit</span>
+            <span x-show="committing" class="loading loading-spinner loading-xs"></span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </template>
+</div>
+
+</body>
+</html>
