@@ -22,6 +22,17 @@ counted.)*
 
 ---
 
+### daisy-divide-paints-black — hairlines come out black, not grey
+`divide-y divide-base-200` renders black lines. daisyUI ships its semantic colours
+as its own utilities and `divide-*` is not among them, so `divide-base-200`
+compiles to nothing and is dropped silently; Tailwind v4 then defaults
+`border-color` to `currentColor` (v3 defaulted to `gray-200`), leaving the
+divider painted in the text colour. Use `gap`, or an explicit
+`[&>*+*]:border-t border-base-200`. Same trap in `ring-*` and `outline-*`.
+*(seen: 2026-07-28)*
+→ [../skills/daisy-alpine/SKILL.md](../skills/daisy-alpine/SKILL.md)
+---
+
 ### x-collapse-needs-x-show — a panel renders at zero size
 A component mounts with correct state yet renders at zero size: `x-collapse` with
 no companion `x-show` sets `el.hidden` (the plugin keys on `_x_isShown`). Pair

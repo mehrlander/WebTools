@@ -12,28 +12,67 @@
   links.html — the bookmarks and resources board, in three levels:
 
     rail      entries flagged rail:true, projected out of the board in area
-              order. A flag, never a second list, so each entry has one home.
-    board     ordered areas of ordered items. The page.
+              order and laid out as the top grid. A flag, never a second list.
+    board     ordered areas of ordered items, each area a zone carrying its own
+              accent colour and its own icon.
     dossier   an area's own markdown file, expanded in place and edited here.
+              It opens by itself when you filter to that area alone.
 
-  Item kinds decide what a row does:
+  Item kinds decide what a card does and how it looks:
     link      an href
-    action    an href that performs rather than shows (a new-file form)
+    action    an href that performs rather than shows; filled badge
     repo      owner/repo, opened in show-repo rather than on github.com
-    snippet   javascript: or data:, which no page can follow, so it copies
+    snippet   javascript: or data:, which no page can follow, so it copies;
+              dashed border
 
   Data contract (all in mehrlander/home, read and written through the token):
-    links/board.json     the store
+    links/board.json     the store; an area may carry accent (any CSS colour)
     links/<area>.md      an area's dossier, fetched on first open
 
   Renderer lives here in web-tools; the content lives in home, which is private,
   so this renders only in a browser holding the viewer's ghToken (gh-auth raises
   the prompt on 401). Every edit is local until Commit; Commit writes board.json
-  and any touched dossier, each a whole-file PUT.
+  and any touched dossier, each a whole-file PUT. A 404 on either is not an
+  error: the file does not exist on this ref yet, so it opens empty and writable.
+
+  The accent system is one custom property. A zone sets --a, and every tint below
+  is a color-mix off it, so a new area needs a hex in board.json and nothing here.
+
+  Deliberately NOT using divide-* : daisyUI ships its semantic colours as its own
+  utilities and divide-* is not among them, so divide-base-200 compiles to
+  nothing, and Tailwind v4 defaults border-color to currentColor (v3 defaulted to
+  gray-200). The pair paints black hairlines. Gaps, not dividers. → docs/SNAGS.md
 
   ?use=<branch|tag|sha> pins this page's own lib chain to a ref. &data=<ref>
   pins which ref of home the content is read from (defaults to main).
 -->
+<style>
+  [x-cloak] { display: none !important }
+
+  .zone      { --a: var(--color-base-content); }
+  .zone-wash { background: color-mix(in oklch, var(--a) 4%, transparent); }
+  .disc      { background: color-mix(in oklch, var(--a) 13%, transparent); color: var(--a); }
+  .hair      { background: color-mix(in oklch, var(--a) 22%, transparent); }
+
+  .tile {
+    background: var(--color-base-100);
+    border: 1px solid color-mix(in oklch, var(--a) 15%, transparent);
+    transition: border-color .14s, box-shadow .14s, transform .14s;
+  }
+  .tile:hover {
+    border-color: color-mix(in oklch, var(--a) 45%, transparent);
+    box-shadow: 0 3px 14px -4px color-mix(in oklch, var(--a) 40%, transparent);
+    transform: translateY(-1px);
+  }
+  .tile-snippet { border-style: dashed; }
+  .tile-action .disc { background: var(--a); color: var(--color-base-100); }
+
+  .dossier { border-left: 3px solid var(--a); background: color-mix(in oklch, var(--a) 5%, transparent); }
+  .dossier h3 { color: var(--a); }
+
+  .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+</style>
+
 <script type="module">
   const ref = new URLSearchParams(location.search).get('use');
   if (ref) {
@@ -58,8 +97,8 @@
       home: null,
       board: { areas: [] },
       baseline: '',
-      dossiers: {},          // path -> { text, baseline, loading, error }
-      open: null,            // area id whose dossier is expanded
+      dossiers: {},
+      open: null,
 
       loading: true,
       error: '',
@@ -71,16 +110,12 @@
       editing: false,
 
       KIND: {
-        link:    { icon: 'ph-arrow-square-out', label: 'link' },
+        link:    { icon: 'ph-arrow-up-right',   label: 'link' },
         action:  { icon: 'ph-lightning',        label: 'action' },
-        repo:    { icon: 'ph-folder-open',      label: 'repo' },
+        repo:    { icon: 'ph-folder-simple',    label: 'repo' },
         snippet: { icon: 'ph-brackets-curly',   label: 'snippet' },
       },
 
-      // A 404 on the store is not an error: the file does not exist on this ref
-      // yet, so open empty and let the first Commit create it. Anything else is
-      // reported with the address that failed, since "404" alone never says
-      // which of repo, ref, and path was wrong.
       async init() {
         try {
           const home = this.home = new window.GH({ token: window.TOKEN || '', repo: this.REPO, ref: this.DATA_REF });
@@ -105,7 +140,10 @@
           || Object.values(this.dossiers).some(d => d.text !== d.baseline);
       },
       get total() { return this.board.areas.reduce((n, a) => n + a.items.length, 0) },
-      get rail()  { return this.board.areas.flatMap(a => a.items.filter(i => i.rail).map(i => ({ ...i, icon: a.icon }))) },
+      get rail() {
+        return this.board.areas.flatMap(a =>
+          a.items.filter(i => i.rail).map(i => ({ ...i, accent: a.accent, glyph: this.icon(i, a) })));
+      },
       get visibleAreas() {
         return this.board.areas
           .filter(a => this.area === 'all' || a.id === this.area)
@@ -116,11 +154,29 @@
         if (!q) return a.items;
         return a.items.filter(i => `${i.title} ${i.note || ''} ${i.url}`.toLowerCase().includes(q));
       },
-      icon(it) { return (this.KIND[it.kind] || this.KIND.link).icon },
+      // An item's own icon wins. Failing that, a plain link borrows its zone's
+      // glyph, so the default carries area identity and only the exceptions
+      // (action, repo, snippet) spend a glyph saying what they are.
+      icon(it, a) { return it.icon || (it.kind === 'link' ? (a?.icon || this.KIND.link.icon) : this.KIND[it.kind].icon) },
+      accent(a) { return a.accent || 'currentColor' },
       href(it) {
         if (it.kind === 'snippet') return null;
         if (it.kind === 'repo') return `${this.SHOW_REPO}?repo=${encodeURIComponent(it.url)}`;
         return it.url;
+      },
+      host(it) {
+        if (it.kind === 'repo') return it.url;
+        if (it.kind === 'snippet') return it.url.slice(0, it.url.indexOf(':') + 1);
+        try { return new URL(it.url).hostname.replace(/^www\./, '') } catch { return '' }
+      },
+
+      // ── navigation ───────────────────────────────────────────────────────
+      // Filtering to one area is a statement that you came for that subject, so
+      // its dossier opens with it; All is a launcher and stays uncluttered.
+      pick(id) {
+        this.area = id;
+        const a = this.board.areas.find(x => x.id === id);
+        if (id !== 'all' && a?.dossier) this.toggleDossier(a, true); else this.open = null;
       },
 
       // ── board edits ──────────────────────────────────────────────────────
@@ -133,15 +189,15 @@
         a.items.splice(j, 0, ...a.items.splice(i, 1));
       },
       addArea() {
-        this.board.areas.push({ id: this.uid('a'), label: '', icon: 'ph-folder', items: [] });
+        this.board.areas.push({ id: this.uid('a'), label: '', icon: 'ph-folder', accent: '#64748b', items: [] });
         this.editing = true;
       },
       removeArea(a) { this.board.areas = this.board.areas.filter(x => x !== a) },
       copy(it) { navigator.clipboard?.writeText(it.url) },
 
       // ── dossiers ─────────────────────────────────────────────────────────
-      async toggleDossier(a) {
-        if (this.open === a.id) { this.open = null; return; }
+      async toggleDossier(a, force) {
+        if (this.open === a.id && !force) { this.open = null; return; }
         this.open = a.id;
         if (this.dossiers[a.dossier]) return;
         this.dossiers[a.dossier] = { text: '', baseline: '', loading: true, error: '' };
@@ -150,7 +206,6 @@
           (this.home._shas ||= {})[a.dossier] = res.sha;
           this.dossiers[a.dossier] = { text: res.text, baseline: res.text, loading: false, error: '' };
         } catch (e) {
-          // Same rule as the store: a missing dossier opens empty and writable.
           const err = e.status === 404 ? '' : `${e.message || e} — ${this.REPO}@${this.DATA_REF} ${a.dossier}`;
           this.dossiers[a.dossier] = { text: '', baseline: '', loading: false, error: err };
         }
@@ -183,14 +238,15 @@
       render(md) {
         if (!md) return '';
         const inline = s => s
-          .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="link link-primary">$1</a>')
-          .replace(/`([^`]+)`/g, '<code class="text-xs bg-base-200 px-1 rounded">$1</code>')
+          .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="underline decoration-1 underline-offset-2 hover:opacity-70">$1</a>')
+          .replace(/`([^`]+)`/g, '<code class="text-[11px] bg-base-200 px-1 py-0.5 rounded">$1</code>')
           .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
         return md.split('\n').map(l => {
-          if (/^#{1,2}\s/.test(l)) return `<h3 class="font-semibold mt-3 first:mt-0">${inline(l.replace(/^#+\s/, ''))}</h3>`;
+          if (/^#\s/.test(l))     return '';
+          if (/^##\s/.test(l))    return `<h3 class="font-semibold text-xs uppercase tracking-wider mt-4 first:mt-0 mb-1">${inline(l.slice(3))}</h3>`;
           if (/^#{3,}\s/.test(l)) return `<h4 class="font-medium text-base-content/70 mt-2">${inline(l.replace(/^#+\s/, ''))}</h4>`;
-          if (/^[-*]\s/.test(l))  return `<div class="pl-4 -indent-3">• ${inline(l.slice(2))}</div>`;
-          return l.trim() ? `<p>${inline(l)}</p>` : '';
+          if (/^[-*]\s/.test(l))  return `<div class="pl-3.5 -indent-3.5 before:content-['·'] before:mr-2 before:opacity-40">${inline(l.slice(2))}</div>`;
+          return l.trim() ? `<p class="mt-1.5">${inline(l)}</p>` : '';
         }).join('');
       },
     }));
@@ -198,173 +254,196 @@
 
   await gh.load('alpine-bundle.js');   // starts Alpine
 </script>
-<style>[x-cloak]{display:none!important}</style>
 </head>
-<body class="bg-base-200 min-h-screen text-base-content">
 
-<div x-data="links" x-cloak class="max-w-5xl mx-auto px-4 py-6">
+<body class="bg-base-200/60 min-h-screen text-base-content">
 
-  <div class="flex items-center gap-2 sm:gap-3 mb-3">
-    <i class="ph ph-bookmarks-simple text-2xl text-primary"></i>
-    <h1 class="text-xl font-semibold">Links</h1>
-    <span class="badge badge-ghost badge-sm font-mono" x-text="total"></span>
+<div x-data="links" x-cloak class="max-w-5xl mx-auto px-3 sm:px-5 py-5">
+
+  <!-- ── header ───────────────────────────────────────────────────────── -->
+  <div class="flex items-center gap-2 sm:gap-3 mb-5">
+    <i class="ph-fill ph-bookmarks-simple text-2xl text-primary"></i>
+    <h1 class="text-xl font-semibold tracking-tight">Links</h1>
+    <span class="text-xs font-mono text-base-content/35" x-text="total"></span>
     <div class="grow"></div>
-    <label class="input input-sm input-bordered flex items-center gap-2 w-32 sm:w-64">
-      <i class="ph ph-magnifying-glass opacity-50"></i>
+    <label class="input input-sm input-bordered rounded-full flex items-center gap-2 w-32 sm:w-56 bg-base-100">
+      <i class="ph ph-magnifying-glass opacity-40"></i>
       <input type="text" class="grow" placeholder="filter" x-model="q">
     </label>
-    <button class="btn btn-sm" :class="editing ? 'btn-neutral' : 'btn-ghost'" @click="editing = !editing">
+    <button class="btn btn-sm btn-circle" :class="editing ? 'btn-neutral' : 'btn-ghost'" @click="editing = !editing">
       <i class="ph" :class="editing ? 'ph-check' : 'ph-pencil-simple'"></i>
     </button>
   </div>
 
-  <div x-show="loading" class="flex justify-center py-16">
-    <span class="loading loading-dots loading-md opacity-30"></span>
+  <div x-show="loading" class="flex justify-center py-20">
+    <span class="loading loading-dots loading-md opacity-25"></span>
   </div>
   <div x-show="error" class="alert alert-error text-sm" x-text="error"></div>
 
   <template x-if="!loading && !error">
     <div>
 
-      <div class="flex flex-wrap gap-1.5 mb-5 pb-4 border-b border-base-300">
+      <!-- ── rail: level 0, the top grid ─────────────────────────────── -->
+      <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 mb-7">
         <template x-for="it in rail" :key="it.id">
           <a :href="href(it)" target="_blank" rel="noopener"
-             class="btn btn-sm btn-ghost bg-base-100 border border-base-300 gap-1.5 font-normal">
-            <i class="ph" :class="it.icon"></i><span x-text="it.title"></span>
+             class="tile zone rounded-2xl px-2.5 py-3 flex flex-col items-center gap-1.5 text-center"
+             :style="`--a:${it.accent || 'currentColor'}`">
+            <span class="disc w-9 h-9 rounded-xl grid place-items-center shrink-0"
+                  :class="it.kind === 'action' && 'tile-action'">
+              <i class="ph text-lg" :class="it.glyph"></i>
+            </span>
+            <span class="text-[11px] sm:text-xs font-medium leading-tight clamp2" x-text="it.title"></span>
           </a>
         </template>
       </div>
 
-      <div class="flex flex-wrap items-center gap-1 mb-5">
-        <button class="btn btn-xs" :class="area==='all' ? 'btn-neutral' : 'btn-ghost'" @click="area='all'">All</button>
+      <!-- ── area switcher ───────────────────────────────────────────── -->
+      <div class="flex flex-wrap items-center gap-1.5 mb-6">
+        <button class="btn btn-xs rounded-full" :class="area==='all' ? 'btn-neutral' : 'btn-ghost'"
+                @click="pick('all')">All</button>
         <template x-for="a in board.areas" :key="a.id">
-          <button class="btn btn-xs gap-1" :class="area===a.id ? 'btn-neutral' : 'btn-ghost'" @click="area=a.id">
-            <i class="ph" :class="a.icon"></i><span x-text="a.label"></span>
-            <span class="opacity-40 font-mono" x-text="a.items.length"></span>
+          <button class="btn btn-xs rounded-full gap-1.5 zone" @click="pick(a.id)"
+                  :class="area===a.id ? 'text-base-100 border-transparent' : 'btn-ghost'"
+                  :style="area===a.id ? `background:${accent(a)}` : ''">
+            <i class="ph" :class="a.icon" :style="area===a.id ? '' : `color:${accent(a)}`"></i>
+            <span x-text="a.label"></span>
+            <span class="font-mono opacity-50" x-text="a.items.length"></span>
           </button>
         </template>
-        <button x-show="editing" class="btn btn-xs btn-ghost text-primary" @click="addArea()">
+        <button x-show="editing" class="btn btn-xs btn-ghost rounded-full text-primary" @click="addArea()">
           <i class="ph ph-plus"></i>
         </button>
       </div>
 
+      <!-- ── zones ───────────────────────────────────────────────────── -->
       <template x-for="a in visibleAreas" :key="a.id">
-        <section class="mb-7">
+        <section class="zone zone-wash rounded-3xl p-3 sm:p-4 mb-5" :style="`--a:${accent(a)}`">
 
-          <div class="flex items-center gap-2 mb-2">
-            <i class="ph text-lg text-base-content/60" :class="a.icon"></i>
+          <div class="flex items-center gap-2.5 mb-3 px-0.5">
+            <span class="disc w-8 h-8 rounded-xl grid place-items-center shrink-0">
+              <i class="ph text-base" :class="a.icon"></i>
+            </span>
             <template x-if="!editing">
-              <h2 class="font-semibold" x-text="a.label"></h2>
+              <h2 class="font-semibold tracking-tight" x-text="a.label"></h2>
             </template>
             <template x-if="editing">
-              <div class="flex gap-1">
-                <input class="input input-xs input-bordered w-40" x-model="a.label" placeholder="area">
-                <input class="input input-xs input-bordered w-32 font-mono text-[11px]" x-model="a.icon" placeholder="ph-folder">
-                <input class="input input-xs input-bordered w-44 font-mono text-[11px]" x-model="a.dossier" placeholder="links/….md">
+              <div class="flex flex-wrap gap-1">
+                <input class="input input-xs input-bordered w-36" x-model="a.label" placeholder="area">
+                <input class="input input-xs input-bordered w-28 font-mono text-[11px]" x-model="a.icon" placeholder="ph-folder">
+                <input class="input input-xs input-bordered w-24 font-mono text-[11px]" x-model="a.accent" placeholder="#64748b">
+                <input class="input input-xs input-bordered w-40 font-mono text-[11px]" x-model="a.dossier" placeholder="links/….md">
               </div>
             </template>
-            <span class="badge badge-ghost badge-xs font-mono" x-text="a.items.length"></span>
-            <button x-show="a.dossier" class="btn btn-xs btn-ghost gap-1"
-                    :class="open===a.id ? 'text-primary' : 'text-base-content/50'" @click="toggleDossier(a)">
-              <i class="ph ph-notebook"></i>
+            <div class="hair h-px grow rounded-full"></div>
+            <span class="text-[11px] font-mono opacity-40" x-text="a.items.length"></span>
+            <button x-show="a.dossier" class="btn btn-xs btn-ghost btn-circle"
+                    :style="`color:${accent(a)}`" @click="toggleDossier(a)">
+              <i class="ph" :class="open===a.id ? 'ph-book-open' : 'ph-notebook'"></i>
             </button>
-            <div class="grow"></div>
-            <button x-show="editing" class="btn btn-xs btn-ghost text-error" @click="removeArea(a)">
+            <button x-show="editing" class="btn btn-xs btn-ghost btn-circle text-error" @click="removeArea(a)">
               <i class="ph ph-trash"></i>
             </button>
           </div>
 
+          <!-- level 2: the dossier -->
           <div x-show="open===a.id" x-transition class="mb-3">
             <template x-if="dossiers[a.dossier]?.loading">
-              <div class="p-4"><span class="loading loading-dots loading-sm opacity-30"></span></div>
+              <div class="p-4"><span class="loading loading-dots loading-sm opacity-25"></span></div>
             </template>
             <template x-if="dossiers[a.dossier]?.error">
               <div class="alert alert-warning text-xs" x-text="dossiers[a.dossier].error"></div>
             </template>
             <template x-if="dossiers[a.dossier] && !dossiers[a.dossier].loading && !dossiers[a.dossier].error">
               <div>
-                <div x-show="!editing"
-                     class="p-4 rounded-xl bg-base-100 border border-primary/25 text-sm leading-relaxed space-y-1"
+                <div x-show="!editing" class="dossier rounded-r-2xl px-4 py-3 text-sm leading-relaxed"
                      x-html="render(dossiers[a.dossier].text)"></div>
                 <textarea x-show="editing" x-model="dossiers[a.dossier].text" rows="14"
-                          class="textarea textarea-bordered w-full font-mono text-xs leading-relaxed"></textarea>
+                          class="textarea textarea-bordered w-full font-mono text-xs leading-relaxed bg-base-100"></textarea>
               </div>
             </template>
           </div>
 
-          <div class="rounded-xl bg-base-100 border border-base-300 divide-y divide-base-200 overflow-hidden">
+          <!-- level 1: the cards -->
+          <div x-show="!editing" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
             <template x-for="it in items(a)" :key="it.id">
-              <div class="flex items-center gap-2.5 px-3 py-2 hover:bg-base-200/50 group">
+              <!-- One markup path for every kind: the card is a div, and a
+                   stretched overlay carries the click. An <a> for anything with
+                   an address (so long-press and middle-click behave), a button
+                   for a snippet, which copies instead. The pin sits above it. -->
+              <div class="tile rounded-2xl p-2.5 relative group"
+                   :class="{ 'tile-snippet': it.kind === 'snippet', 'tile-action': it.kind === 'action' }">
 
-                <i class="ph text-base shrink-0 text-base-content/60" :class="icon(it)" :title="it.kind"></i>
+                <a x-show="it.kind !== 'snippet'" :href="href(it)" target="_blank" rel="noopener"
+                   class="absolute inset-0 rounded-2xl" :aria-label="it.title"></a>
+                <button x-show="it.kind === 'snippet'" @click="copy(it)"
+                        class="absolute inset-0 rounded-2xl" :aria-label="it.title"></button>
 
-                <template x-if="!editing">
-                  <div class="flex items-baseline gap-2 min-w-0 grow">
-                    <template x-if="it.kind === 'snippet'">
-                      <button class="font-medium truncate text-left hover:text-primary" @click="copy(it)" x-text="it.title"></button>
-                    </template>
-                    <template x-if="it.kind !== 'snippet'">
-                      <a :href="href(it)" target="_blank" rel="noopener"
-                         class="font-medium truncate hover:text-primary hover:underline" x-text="it.title"></a>
-                    </template>
-                    <span class="text-xs text-base-content/50 truncate hidden sm:inline" x-text="it.note"></span>
+                <div class="pointer-events-none flex flex-col gap-1.5">
+                  <span class="disc w-7 h-7 rounded-lg grid place-items-center shrink-0">
+                    <i class="ph text-sm" :class="icon(it, a)"></i>
+                  </span>
+                  <div class="min-w-0">
+                    <div class="text-[13px] font-medium leading-snug clamp2" x-text="it.title"></div>
+                    <div class="text-[10.5px] leading-snug mt-0.5 clamp2"
+                         :class="it.note ? 'text-base-content/55' : 'text-base-content/30 font-mono'"
+                         x-text="it.note || host(it)"></div>
                   </div>
-                </template>
-
-                <template x-if="editing">
-                  <div class="flex flex-col sm:flex-row gap-1.5 grow min-w-0">
-                    <select class="select select-xs select-bordered w-24" x-model="it.kind">
-                      <template x-for="(v, k) in KIND" :key="k">
-                        <option :value="k" x-text="v.label"></option>
-                      </template>
-                    </select>
-                    <input class="input input-xs input-bordered sm:w-40" x-model="it.title" placeholder="title">
-                    <input class="input input-xs input-bordered grow font-mono text-[11px]" x-model="it.url" placeholder="url">
-                    <input class="input input-xs input-bordered sm:w-44" x-model="it.note" placeholder="note">
-                  </div>
-                </template>
-
-                <div class="flex items-center gap-0.5 shrink-0">
-                  <button class="btn btn-ghost btn-xs px-1.5"
-                          :class="it.rail ? 'text-warning' : 'text-base-content/20 opacity-0 group-hover:opacity-100'"
-                          @click="it.rail = !it.rail" title="Rail">
-                    <i class="ph" :class="it.rail ? 'ph-push-pin-fill' : 'ph-push-pin'"></i>
-                  </button>
-                  <button class="btn btn-ghost btn-xs px-1.5 text-base-content/30 opacity-0 group-hover:opacity-100"
-                          @click="copy(it)" title="Copy">
-                    <i class="ph ph-copy"></i>
-                  </button>
-                  <template x-if="editing">
-                    <div class="flex items-center gap-0.5">
-                      <button class="btn btn-ghost btn-xs px-1 text-base-content/40" @click="move(a, it, -1)">
-                        <i class="ph ph-caret-up"></i>
-                      </button>
-                      <button class="btn btn-ghost btn-xs px-1 text-base-content/40" @click="move(a, it, 1)">
-                        <i class="ph ph-caret-down"></i>
-                      </button>
-                      <button class="btn btn-ghost btn-xs px-1.5 text-error" @click="remove(a, it)">
-                        <i class="ph ph-trash"></i>
-                      </button>
-                    </div>
-                  </template>
                 </div>
+
+                <span class="absolute top-1.5 right-1.5 w-6 h-6 grid place-items-center rounded-full cursor-pointer hover:bg-base-200"
+                      :class="it.rail ? 'text-warning' : 'opacity-0 group-hover:opacity-100 text-base-content/25'"
+                      @click.prevent.stop="it.rail = !it.rail">
+                  <i class="ph text-xs" :class="it.rail ? 'ph-push-pin-fill' : 'ph-push-pin'"></i>
+                </span>
               </div>
             </template>
+          </div>
 
-            <div x-show="editing" class="px-3 py-1.5">
-              <button class="btn btn-xs btn-ghost text-primary" @click="add(a)">
-                <i class="ph ph-plus"></i>
-              </button>
+          <!-- editing: rows, because a grid is for reading and a table is for changing -->
+          <div x-show="editing" class="rounded-2xl bg-base-100 border border-base-300 overflow-hidden">
+            <template x-for="it in items(a)" :key="it.id">
+              <div class="flex items-center gap-1.5 px-2 py-1.5 [&+&]:border-t [&+&]:border-base-200">
+                <i class="ph text-sm shrink-0 opacity-40" :class="icon(it, a)"></i>
+                <div class="flex flex-col sm:flex-row gap-1.5 grow min-w-0">
+                  <select class="select select-xs select-bordered w-24" x-model="it.kind">
+                    <template x-for="(v, k) in KIND" :key="k">
+                      <option :value="k" x-text="v.label"></option>
+                    </template>
+                  </select>
+                  <input class="input input-xs input-bordered sm:w-32" x-model="it.title" placeholder="title">
+                  <input class="input input-xs input-bordered sm:w-28 font-mono text-[11px]" x-model="it.icon" placeholder="icon">
+                  <input class="input input-xs input-bordered grow font-mono text-[11px]" x-model="it.url" placeholder="url">
+                  <input class="input input-xs input-bordered sm:w-44" x-model="it.note" placeholder="note">
+                </div>
+                <button class="btn btn-ghost btn-xs px-1" :class="it.rail ? 'text-warning' : 'text-base-content/25'"
+                        @click="it.rail = !it.rail">
+                  <i class="ph" :class="it.rail ? 'ph-push-pin-fill' : 'ph-push-pin'"></i>
+                </button>
+                <button class="btn btn-ghost btn-xs px-0.5 text-base-content/40" @click="move(a, it, -1)">
+                  <i class="ph ph-caret-up"></i>
+                </button>
+                <button class="btn btn-ghost btn-xs px-0.5 text-base-content/40" @click="move(a, it, 1)">
+                  <i class="ph ph-caret-down"></i>
+                </button>
+                <button class="btn btn-ghost btn-xs px-1 text-error" @click="remove(a, it)">
+                  <i class="ph ph-trash"></i>
+                </button>
+              </div>
+            </template>
+            <div class="px-2 py-1.5 border-t border-base-200">
+              <button class="btn btn-xs btn-ghost text-primary" @click="add(a)"><i class="ph ph-plus"></i></button>
             </div>
           </div>
         </section>
       </template>
 
-      <div x-show="dirty" x-transition class="sticky bottom-4">
-        <div class="rounded-xl bg-base-100 border border-primary/30 shadow-lg px-3 py-2 flex items-center gap-3">
+      <!-- ── the write path ──────────────────────────────────────────── -->
+      <div x-show="dirty" x-transition class="sticky bottom-3 z-10">
+        <div class="rounded-2xl bg-base-100 border border-primary/30 shadow-xl px-3 py-2 flex items-center gap-3">
           <i class="ph ph-git-commit text-primary"></i>
-          <code class="text-xs text-base-content/50 grow truncate" x-text="`${REPO} @ ${DATA_REF}`"></code>
-          <span x-show="commitError" class="text-xs text-error truncate" x-text="commitError"></span>
+          <code class="text-[11px] text-base-content/45 grow truncate" x-text="`${REPO} @ ${DATA_REF}`"></code>
+          <span x-show="commitError" class="text-[11px] text-error truncate" x-text="commitError"></span>
           <button class="btn btn-ghost btn-sm" @click="discard()" :disabled="committing">Discard</button>
           <button class="btn btn-primary btn-sm gap-2" @click="commit()" :disabled="committing">
             <span x-show="!committing">Commit</span>
