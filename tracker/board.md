@@ -13,7 +13,6 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Have data-view open at an addressed item via the fragment next: decide the fragment vocabulary (item index, item name, or both) before building; the delivery half already works
 - 🎫 Reclaim the phone viewport in data-view next: user is reviewing the five options; start with demoting the notes (option 3) and the full-bleed toggle (option 5), which need no cross-frame work
 - 🎫 A multi-method harness for extracting structure from scanned documents
-- 🎫 Name the app-view split in docs/show-repo.md
 - 🎫 Estate cards still carry the retired three-icon cluster next: Decide whether a card gets the repo menu, a trimmed cluster, or stays as it is
 - 🎫 Capture button on the FAB, serializing what it already collects
 - 🎫 Generalize FAB embed handling to declared embeds next: Build only when a real composite page (multiple interactive embeds) exists; nothing schedules this.
@@ -25,7 +24,6 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Integrate the stage with the surfacer's .surface format next: run in a session with both web-tools and the home repo, to read the surfacer's .surface files directly
 - 🎫 Guard every lib-booting page against the Alpine load race (`claude/shorter-tool-toss-render-nr7zoc`)
 - 🎫 Move the kit-shaped files out of lib/ root into kits/
-- 🎫 Expose the links rail in show-repo's own chrome
 - 🎫 Live-confirm the two GraphQL queries the estate depends on
 - 🎫 One parser for the owner/repo[@ref]:path address next: the module exists (lib/repo-address.js) and the ref question is answered; what remains is delegating the three copies and the data-view render check
 - 🎫 Build our own JSON tree for display, keep vanilla-jsoneditor for editing next: user was leaning toward replacing it outright; the recommendation is the split below, so confirm the split before building
