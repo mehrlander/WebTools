@@ -31,7 +31,9 @@ function stubGH(files, log = []) {
     async get(p) {
       const text = files[this.repo]?.[p];
       if (text === undefined) { const e = new Error('Not Found'); e.status = 404; throw e; }
-      return { text };
+      // The blob sha is what the staleness guard compares, so the stub has to
+      // carry one; a deterministic stand-in keeps the assertions readable.
+      return { text, sha: 'sha-' + p.replace(/\W/g, '') + '-' + text.length };
     }
     async saveRaw(p, content, message, branch) {
       log.push({ repo: this.repo, path: p, content, message, branch });
@@ -150,4 +152,86 @@ test('apply without gh-transfer loaded reports that, rather than throwing', asyn
   const res = await P.apply(proposal(), { GH: NoSaveRaw, token: 't' });
   assert.equal(res.ok, false);
   assert.match(res.error, /gh-transfer/);
+});
+
+// ── the staleness guard ─────────────────────────────────────────────────────
+// A record may claim it was written against a specific version of the target.
+// The guard exists because put-file replaces rather than merges: applying a
+// stale one erases whatever arrived in between, and nobody reviewed that.
+
+const shaOf = (path, text) => 'sha-' + path.replace(/\W/g, '') + '-' + text.length;
+
+test('a proposal whose target is unchanged applies normally', async () => {
+  const log = [];
+  const cur = '{\n  "estate": true\n}\n';
+  const GH = stubGH({ 'me/target': { '.web-tools.json': cur } }, log);
+  const res = await P.apply(proposal({ expectSha: shaOf('.web-tools.json', cur) }), { GH, token: 't' });
+  assert.equal(res.ok, true);
+  assert.equal(res.forced, undefined, 'nothing to force when nothing moved');
+  assert.equal(log.length, 1);
+});
+
+test('a stale proposal refuses, names both shas, and writes nothing', async () => {
+  const log = [];
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{\n  "estate": true,\n  "note": "changed since"\n}\n' } }, log);
+  const res = await P.apply(proposal({ expectSha: 'sha-webtoolsjson-22' }), { GH, token: 't' });
+  assert.equal(res.ok, false);
+  assert.equal(res.stale, true);
+  assert.match(res.error, /changed since this was proposed/);
+  assert.match(res.error, /sha-web/, 'the expected sha is named');
+  assert.equal(log.length, 0, 'a refused guard never reaches the write');
+});
+
+test('force overrides the guard and says so in the record', async () => {
+  const log = [];
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{\n  "estate": true,\n  "note": "changed since"\n}\n' } }, log);
+  const res = await P.apply(proposal({ expectSha: 'sha-webtoolsjson-22' }), { GH, token: 't', force: true });
+  assert.equal(res.ok, true);
+  assert.equal(res.forced, true, 'a deliberate override stays distinguishable from a clean apply');
+  assert.equal(res.expectedSha, 'sha-webtoolsjson-22');
+  assert.ok(res.foundSha, 'and the record keeps what it actually found');
+  assert.equal(log.length, 1);
+});
+
+test('a target deleted since authoring refuses too, until forced', async () => {
+  const log = [];
+  const GH = stubGH({}, log);
+  const p = proposal({ expectSha: 'sha-whatever' });
+  const res = await P.apply(p, { GH, token: 't' });
+  assert.equal(res.ok, false);
+  assert.match(res.error, /no longer exists/);
+  assert.equal(log.length, 0);
+  const forced = await P.apply(p, { GH, token: 't', force: true });
+  assert.equal(forced.ok, true);
+  assert.equal(forced.created, true, 'forcing recreates the file');
+});
+
+test('no expectSha keeps the old last-write-wins behavior', async () => {
+  const log = [];
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{"estate":true,"note":"changed"}' } }, log);
+  const res = await P.apply(proposal(), { GH, token: 't' });
+  assert.equal(res.ok, true, 'a session that never read the file cannot claim a sha, and is not blocked');
+  assert.equal(res.forced, undefined);
+});
+
+test('an expectSha that is not a string is refused at validation', () => {
+  assert.match(P.validate(proposal({ expectSha: 12345 })).error, /expectSha/);
+});
+
+// ── provenance ──────────────────────────────────────────────────────────────
+
+test('by and session ride through to the applied record', async () => {
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{}' } });
+  const res = await P.apply(proposal({ by: 'claude-code', session: 'https://claude.ai/code/session_x' }),
+    { GH, token: 't' });
+  assert.equal(res.by, 'claude-code');
+  assert.equal(res.session, 'https://claude.ai/code/session_x');
+});
+
+test('an unsigned proposal still applies, and simply carries no attribution', async () => {
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{}' } });
+  const res = await P.apply(proposal(), { GH, token: 't' });
+  assert.equal(res.ok, true);
+  assert.equal('by' in res, false);
+  assert.equal('session' in res, false);
 });

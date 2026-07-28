@@ -806,6 +806,24 @@ A proposal record (`proposals/pending/<id>.json`) carries `id`, `kind`, `repo`,
   key can be set to a whole nested structure; what is missing is addressing into
   one.
 
+**The staleness guard.** A record may carry **`expectSha`**, the blob sha of the
+target as it stood when the proposal was written. At apply time a different sha
+refuses the write, with the two shas named, and a target that has since been
+deleted refuses the same way. This matters most for `put-file`, which replaces
+rather than merges and would otherwise erase a change nobody reviewed;
+`set-json-field` merges into current content, so it is safer without one. The
+refusal is not the end: the card offers an explicit **Apply anyway**, and a
+forced write is stamped `forced` in the applied record along with both shas, so
+a deliberate override stays distinguishable from a clean apply. A record with no
+`expectSha` behaves as before, last write wins, which is the honest default for
+a session that never read the file.
+
+**Provenance.** Three optional fields ride along and are copied into the applied
+record: **`by`** (who or what authored it), **`session`** (a link back to the
+session that did), and **`authored`** (the date). A proposal is an instruction
+to write to a repository, so who issued it, and from where, is part of what a
+reviewer is judging. The card shows them under the diff.
+
 A record's optional **`ref` targets a branch**. Both halves honor it: the review
 pane reads the target at that ref, so the before/after is that branch's file,
 and the write commits to that branch. The branch must already exist, since the
