@@ -602,6 +602,11 @@ repos. All are optional; a repo with no config is simply off the estate.
 - **note**: the card's one-line description; overrides the GitHub description.
 - **order**: arrangement weight. Group order (a group sorts by its lowest
   member's `order`) and within-group order both derive from it.
+- **inbox**: where an unaddressed deposit lands (`"inbox"`, `"@ref:dir"`, or a
+  full `owner/repo[@ref]:dir`). See "Inbox and outbox" below. Absent means the
+  repo root.
+- **outbox**: where this repo stages material for others to pull. Same shape;
+  adds an "Open outbox" row to the repo menu.
 - **landing**: path to the repo's own landing page, rendered live via
   toss-render `#gh=` (token-authed, so private repos and branches work; gated by
   toss-render's OWNERS allowlist). "The repo builds its own page." Takes the
@@ -726,6 +731,49 @@ repos and only write results into the mailbox, so auto-fulfilling on load never
 spends write access on agent-authored instructions. It is manual-triggered, not
 live: show-repo is the worker and only runs when the user opens it. Protocol and
 schema: `web-tools-private/mailbox/README.md`.
+
+### Inbox and outbox
+
+Two optional manifest fields naming where material lands and where it is
+staged. `inbox` is the **receiver's** declared landing spot for a deposit that
+names no directory; `outbox` is a **sender's** shelf of material it is making
+available to be pulled. Both are read by `lib/repo-address.js`
+(`RepoAddress.box(config, 'inbox'|'outbox', repo)`).
+
+**A box is a folder by default, and can name a branch.** That was an open
+design question, and it is settled as a per-repo choice rather than a global
+one, with the discoverable option as the default:
+
+| Declaration | Means |
+| --- | --- |
+| `"inbox": "inbox"` | the folder `inbox/` on the repo's default branch |
+| `"outbox": "@shelf:out"` | the folder `out/` on the branch `shelf` |
+| `"inbox": "owner/repo@ref:dir"` | a box that lives in another repo |
+| absent | nothing declared (deposits land at the root) |
+
+Folder is the default because a folder is visible in ordinary browsing while a
+branch is invisible unless something points at it, and a consumer that forgets
+the ref reads the default branch and silently finds nothing. Writing into a
+branch also presumes the branch exists: the Contents API can PUT to an existing
+one, but creating a ref needs the Git Data API, which this lib does not carry.
+A repo that wants transient bulk kept off its main history says so by naming a
+ref, and pays the discoverability cost knowingly.
+
+**Inbox, on the send side.** The Stage view's send resolves an unaddressed
+deposit (a repo picked with no directory) against the *destination* repo's
+manifest, one read keyed to that repo, cached for the session. The armed
+button names the resolved directory (`Send to inbox/ ?`), so the second tap
+confirms where the files actually go rather than hiding a redirect. Root stays
+the fallback, so a repo declaring nothing behaves exactly as before. Nothing
+creates the folder in the background: the commit that lands the first file is
+what makes it exist.
+
+**Outbox, on the pull side.** A repo declaring one gets an **Open outbox** row
+in its repo menu, which opens the Files view at that folder. The pull itself is
+ordinary browsing or staging from there. For a **public** repo the outbox is
+also the one cross-repo handoff that needs no token at all: `raw.githubusercontent.com/owner/repo/<ref>/<path>`
+serves it to any reader, which is the gap the `#gz=` bundle form is contemplated
+for on the private side.
 
 ### Proposals (`proposals/pending` → `proposals/applied`)
 

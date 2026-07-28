@@ -44,6 +44,8 @@
   await gh.load('repo-mailbox.js');
   // The write-side channel: proposed cross-repo edits, applied only on confirm.
   await gh.load('repo-proposals.js');
+  // The owner/repo[@ref]:path grammar, and the inbox/outbox boxes built on it.
+  await gh.load('repo-address.js');
   // Pure alignment assessment behind the Portable view (window.PortableAlign).
   await gh.load('portable-align.js');
 </script>
@@ -772,6 +774,7 @@ function app(){ return {
   // from the same config cache as appViews (loadEstateSidebar), so it is
   // token-gated and empty without a token.
   estateRepos: [], // resolved [{repo, short, icon, group, order}]
+  estateConfigs: {}, // repo -> its .web-tools.json, from the same cache pass
   proposalCount: 0, // pending cross-repo edit proposals; gates the nav entry
   proposalsSeen: false,
   configRefreshing: false,  // the estate refresh button is mid-crawl
@@ -954,15 +957,19 @@ function app(){ return {
   // Token-gated: without a token there is no cache read, so both stay empty and
   // no private repo or page is named, matching Surfaces and the private estate.
   async loadEstateSidebar(){
-    if (!this.hasToken()) { this.appViews = []; this.estateRepos = []; return; }
+    if (!this.hasToken()) { this.appViews = []; this.estateRepos = []; this.estateConfigs = {}; return; }
     try {
       const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
-      const views = [], repos = [];
+      const views = [], repos = [], configs = {};
       try {
         const cache = JSON.parse((await reg.get('state/configs.json')).text);
         for (const [repo, e] of Object.entries(cache.repos || {})) {
           const cfg = e?.config;
           if (!cfg) continue;
+          // Keep the raw config beside the derived lists: it is already read
+          // and parsed, and menu-time questions (does this repo declare an
+          // outbox?) should not cost a second fetch.
+          configs[repo] = cfg;
           if (cfg.estate === true) {
             repos.push({
               repo,
@@ -997,8 +1004,9 @@ function app(){ return {
       repos.sort((a, b) => a.group.localeCompare(b.group) || (a.order - b.order) || a.repo.localeCompare(b.repo));
       this.appViews = views;
       this.estateRepos = repos;
+      this.estateConfigs = configs;
       this.enrichSidebarPrivacy();   // independent; the list renders without it
-    } catch { this.appViews = []; this.estateRepos = []; }
+    } catch { this.appViews = []; this.estateRepos = []; this.estateConfigs = {}; }
   },
 
   // The config cache carries no visibility, so the sidebar Repos rows get their
@@ -1443,8 +1451,16 @@ function app(){ return {
       { key: 'github', label: 'Open on GitHub', icon: 'ph-github-logo', external: true },
       sib && { key: 'sibling', label: 'Switch to ' + (sib.split('/')[1] || sib),
                icon: this.menuRepoPrivate ? 'ph-globe' : 'ph-lock' },
+      this.menuRepoOutbox && { key: 'outbox', label: 'Open outbox', icon: 'ph-tray-arrow-up' },
       { key: 'copy', label: 'Copy browse link', icon: 'ph-link' },
     ].filter(Boolean);
+  },
+  // A repo's declared outbox, from the config cache the estate already holds:
+  // the shelf it stages material on for others to pull. Menu-only, so a repo
+  // that declares none simply has no row, and no read is spent asking.
+  get menuRepoOutbox(){
+    const cfg = this.estateConfigs?.[this.menuRepo];
+    return (cfg && window.RepoAddress) ? window.RepoAddress.box(cfg, 'outbox', this.menuRepo) : null;
   },
   // The row menu: anchor a fixed panel to the button that opened it. Right
   // edges are aligned rather than left, since the trigger sits at the row's
@@ -1499,6 +1515,12 @@ function app(){ return {
     if (!target) return;
     await this.ensureBrowser(target);
     if (Alpine.store('browser').repo !== target) return;
+    if (key === 'outbox'){
+      const box = this.menuRepoOutbox;
+      this.goFiles();
+      if (box?.dir) await this.openFolder(box.dir);
+      return;
+    }
     if (key === 'files') this.goFiles();
     else if (key === 'branches') this.goBranches();
     else if (key === 'config') this.goConfig();
