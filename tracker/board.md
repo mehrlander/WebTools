@@ -30,6 +30,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Pinch-zoom and pan for pdf-inspect's page view
 - 🎫 Close open table perimeters in the pdf kit's lattice
 - 🎫 A column-splitter page for the pdf kit
+- 🎫 Two gaps the proposal channel showed on first use next: the removal kind is the one with a waiting job (six inert quickLink flags); the diff pane is polish
 - 🎫 Inline the run-time CDN references a rendering copy still carries
 - 🎫 Repo-level GitHub links in show-repo's shield dialog
 - 🎫 Session-start nudge for unconfigured or legacy-manifest repos (`claude/skills-portable-conventions-8x1lua`) next: write a global SessionStart hook that checks repo state and injects a nudge; wire its install into the Claude Code web account setup script
