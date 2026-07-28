@@ -800,6 +800,64 @@ A proposal record (`proposals/pending/<id>.json`) carries `id`, `kind`, `repo`,
   honest kind when the session cannot read the target: it proposes a field, not
   a guess at the rest of the file. Key order is preserved, a new key lands last,
   and the file is re-serialized with two-space indent and a trailing newline.
+  **`field` is a literal top-level key, not a path**: there is no dot or bracket
+  notation, so `"a.b"` sets a key named `a.b` rather than descending, and a JSON
+  file whose top level is an array is refused. The `value` may be any JSON, so a
+  key can be set to a whole nested structure; what is missing is addressing into
+  one.
+
+**Three deliveries, and the tap decides.** A record may suggest one with
+`deliver`, but both routes are always on the card, because the person holding
+the token knows whether this repo wants a PR today and the proposing session
+does not:
+
+| `deliver` | What the apply does |
+| --- | --- |
+| `commit` (default) | commits straight onto the target ref, the original behavior |
+| `branch` | cuts `proposal/<id>` off the target ref and commits there, leaving the target untouched |
+| `pr` | the same branch, plus a **draft** pull request |
+
+The PR's title and body are authored from the record: the `why` becomes the
+body, a `set-json-field` gets its before/after as a fenced block, and the
+signature and record path go in a footer. It opens as a draft, since marking a
+PR ready is the reviewer's move.
+
+PR delivery is the only route that works against a **protected branch**, and it
+is the honest one for a code change, since GitHub's diff view reads better than
+any card and the PR survives as the durable record. A one-key config edit is
+usually better off as a commit.
+
+Two implementation notes worth knowing. Creating the branch needs the Git Data
+API (`createRef` in `gh-transfer.js`), since the Contents API can write to a ref
+but not make one; an existing `proposal/<id>` is treated as a resume rather than
+a collision. And **opening the PR is a separate permission** from writing: a
+fine-grained token can carry `contents: write` without `pull_requests: write`,
+so a PR failure never erases the branch and commit that already landed. The
+record reports both and hands over a compare link.
+
+**The staleness guard.** A record may carry **`expectSha`**, the blob sha of the
+target as it stood when the proposal was written. At apply time a different sha
+refuses the write, with the two shas named, and a target that has since been
+deleted refuses the same way. This matters most for `put-file`, which replaces
+rather than merges and would otherwise erase a change nobody reviewed;
+`set-json-field` merges into current content, so it is safer without one. The
+refusal is not the end: the card offers an explicit **Apply anyway**, and a
+forced write is stamped `forced` in the applied record along with both shas, so
+a deliberate override stays distinguishable from a clean apply. A record with no
+`expectSha` behaves as before, last write wins, which is the honest default for
+a session that never read the file.
+
+**Provenance.** Three optional fields ride along and are copied into the applied
+record: **`by`** (who or what authored it), **`session`** (a link back to the
+session that did), and **`authored`** (the date). A proposal is an instruction
+to write to a repository, so who issued it, and from where, is part of what a
+reviewer is judging. The card shows them under the diff.
+
+A record's optional **`ref` targets a branch**. Both halves honor it: the review
+pane reads the target at that ref, so the before/after is that branch's file,
+and the write commits to that branch. The branch must already exist, since the
+Contents API can write to a ref but not create one. Omitted, `ref` means the
+repo's **default branch**, whatever it is named, rather than literally `main`.
 
 Every row **resolves against the live target before it can be applied**, and the
 view shows the resulting bytes (a before/after on the key, or the two files side
@@ -811,8 +869,34 @@ unresolved with its error and no Apply. The write goes through `gh-transfer.js`'
 `gh-store` has no delete, so a result file is the tombstone, exactly as in the
 mailbox.
 
-`why` is required. A proposal a reviewer cannot read is not reviewable, so
-validation refuses it before the network is touched.
+**A record is an instruction, not a patch.** Nothing in the channel carries a
+diff in any format, and none is stored. The before/after in the review pane is
+computed when the card renders, against the target as it stands at that moment,
+which is why a `(not set)` line is a live fact about the target rather than a
+claim made when the proposal was written. A stored diff would describe the file
+as it was on the day it was authored and quietly go wrong afterwards. Once
+applied, the resulting bytes are an ordinary commit in the target repo, which is
+where a durable diff belongs; the `applied/` record keeps the outcome and that
+commit's sha.
+
+**Three prose fields, three jobs.** A record is read cold, weeks later, on a
+phone, by someone deciding whether to write to a repository. The first attempt
+at that put everything in one `why`, which rendered as a wall of text repeating
+the same explanation on every card, so they are split:
+
+| Field | Job | On the card |
+| --- | --- | --- |
+| `summary` | one line: what this does to which repo | always visible |
+| `why` | the detail worth reading once: context, provenance, consequence | behind the **Why** toggle |
+| `caution` | the judgment call the reader must not scroll past | always visible, amber |
+
+Only `why` is required, and validation still refuses a record without one before
+the network is touched. A record carrying just a `why` reads correctly anyway:
+its first sentence stands in as the summary and the remainder becomes the
+detail, so nothing written before the split needs rewriting. Keep the shared
+explanation (what a `scope` field is, say) in `why`, where it collapses, and
+keep `summary` specific to the one repo, since that is the line that repeats
+down the list.
 
 ### The repo menu
 
