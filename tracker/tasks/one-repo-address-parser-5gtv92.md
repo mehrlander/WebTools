@@ -3,7 +3,7 @@ id: one-repo-address-parser-5gtv92
 title: One parser for the owner/repo[@ref]:path address
 status: backlog
 opened: 2026-07-25
-next: decide what an unspecified ref means at the link-building boundary; that is the whole question, and the parser follows from it
+next: the module exists (lib/repo-address.js) and the ref question is answered; what remains is delegating the three copies and the data-view render check
 ---
 # One parser for the owner/repo[@ref]:path address
 
@@ -79,3 +79,22 @@ honest ref may be available without a new call.
   left the other two alone: touching `DataPayload` changes data-view's rendered
   links, which is a behavior change that wants its own change and its own
   verification, not a wrap-up drive-by.
+- 2026-07-28: the deciding question is answered and the module is built, on
+  `claude/tracker-status-cjogjn` (web-tools PR #302), because the inbox/outbox
+  work needed the grammar and should not have added a fourth copy.
+  `lib/repo-address.js` takes the shape this task proposed: `parse(spec)`
+  reports what the address said, so a missing ref is `''` and never a guess,
+  and `ref(addr, fallback)` is the link-building boundary where a fallback is
+  legitimate. It also carries the `inbox`/`outbox` box parser built on the same
+  grammar.
+  What remains is the mechanical half, unchanged in shape: delegate
+  `StageLink.parseItem`, `ShorterPayload.parseSpec`, and
+  `DataPayload.parseSpec`, keeping their exported names, and verify data-view's
+  GitHub/Raw/CDN links by a render rather than by reading. Note the load-order
+  constraint found while building: the three copies are used by pages whose
+  boot chains differ, so each consuming page needs `gh.load('repo-address.js')`
+  before delegation, which is why this PR did not sweep them.
+  `tools/test/repo-address.test.mjs` already asserts the copies agree with the
+  module on shape today, so the delegation is a refactor rather than a
+  behavior change; DataPayload's `'main'` remains the one real difference, and
+  whether data-view keeps guessing is now the only judgment left.

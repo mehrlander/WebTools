@@ -18,16 +18,15 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const SCRIPT = path.join(repoRoot, '.claude/skills/in-flight/in-flight.py');
 
-// Two days before the suite runs, not a calendar date. `in-flight.py` reads a
-// branch's age against wall-clock and calls one idle past --quiet-days (default
-// 7) quiet rather than live, so an absolute fixture date is a time bomb: it
-// passes when written and starts failing the day the threshold is crossed, for
-// a reason that has nothing to do with the code. It did, on 2026-07-28, eight
-// days after the 2026-07-20 this used to pin. Two days keeps every branch here
-// comfortably live under the default while staying far from the boundary.
-// The determinism the commit() note below depends on is unchanged: one
-// timestamp is computed per run and shared by every commit in it.
-const FIXTURE_DATE = new Date(Date.now() - 2 * 86400_000).toISOString();
+// One timestamp for the whole run, two days old: fixed enough that two commits
+// sharing a tree, a parent, and a message still collide (see commit() below),
+// but relative rather than a wall-clock date. A hardcoded date was the original
+// form and it aged into a failure: the script calls a branch idle past
+// --quiet-days quiet, so once the calendar passed the pinned date by a week,
+// three tests expecting `live` got `quiet`. Two days is the age that keeps both
+// sides testable: inside the 7-day default (live), outside --quiet-days 0
+// (quiet), with no date to go stale.
+const FIXTURE_DATE = new Date(Date.now() - 2 * 86400 * 1000).toISOString();
 
 const ENV = {
   ...process.env,
