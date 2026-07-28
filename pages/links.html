@@ -18,8 +18,8 @@
               headings inside the column. Array order drives both the order of
               the groups and their membership; an item with no group falls
               under the column's lead run.
-    item      one line: glyph, title, doors, qualifier. A line wraps rather
-              than truncating, its continuation hanging under the title.
+    item      one line: glyph, title, doors. Nothing else; a note rides the
+              row's title attribute, where it costs no ink.
     doors     further ways into the SAME destination (Claude, code, usage),
               inline after the title. One row, three places.
     dossier   an area's own markdown, opened full width below the columns,
@@ -96,6 +96,10 @@
       committing: false,
       commitError: '',
       editing: false,
+      // Promoted into show-repo as an app view, this page renders inside the
+      // shell's iframe, which already supplies a header and a sidebar label.
+      // Two mastheads is one too many, so the title stands down when framed.
+      framed: window.self !== window.top,
 
       KIND: {
         link:    { icon: 'ph-arrow-up-right',  label: 'link' },
@@ -158,9 +162,6 @@
         return it.url;
       },
       linkable(it) { return !!this.href(it) || it.kind === 'snippet' },
-      // The qualifier is what a note is for. A bare host repeated down a column
-      // says nothing, so only a note (or a repo's address) earns the space.
-      trail(it) { return it.note || (it.kind === 'repo' ? it.url : '') },
 
       // ── board edits ──────────────────────────────────────────────────────
       uid(p) { return p + Math.random().toString(36).slice(2, 7) },
@@ -252,19 +253,20 @@
 
 <body class="bg-base-100 min-h-screen text-base-content">
 
-<div x-data="links" x-cloak class="max-w-[78rem] mx-auto px-5 sm:px-7 py-7 sm:py-9"
+<div x-data="links" x-cloak class="max-w-[78rem] mx-auto px-5 sm:px-7"
+     :class="framed ? 'py-4' : 'py-7 sm:py-9'"
      style="--a: var(--color-base-content)">
 
   <!-- ── masthead ─────────────────────────────────────────────────────── -->
   <div class="flex items-baseline gap-3">
-    <h1 class="font-serif text-[26px] sm:text-3xl tracking-tight">Links</h1>
+    <h1 x-show="!framed" class="font-serif text-[26px] sm:text-3xl tracking-tight">Links</h1>
     <span class="font-mono text-[11px] opacity-25" x-text="total"></span>
     <div class="grow"></div>
     <button class="text-[13px] opacity-35 hover:opacity-100 transition-opacity"
             :class="editing && 'opacity-100 font-medium'"
             @click="editing = !editing" x-text="editing ? 'done' : 'edit'"></button>
   </div>
-  <div class="h-px mt-2 bg-[color-mix(in_oklch,var(--a)_22%,transparent)]"></div>
+  <div x-show="!framed" class="h-px mt-2 bg-[color-mix(in_oklch,var(--a)_22%,transparent)]"></div>
 
   <div x-show="loading" class="py-24 text-center"><span class="loading loading-dots loading-md opacity-20"></span></div>
   <div x-show="error" class="font-mono text-sm text-error py-4" x-text="error"></div>
@@ -334,7 +336,8 @@
                   <template x-for="it in g.items" :key="it.id">
                     <!-- Inline flow, not a flex row: a long qualifier wraps and
                          hangs under the title instead of truncating. -->
-                    <div class="group relative pl-[18px] pr-4 py-[1px] text-[13.5px] leading-[1.45]">
+                    <div class="group relative pl-[18px] pr-4 py-[1px] text-[13.5px] leading-[1.45]"
+                         :title="it.note || ''">
 
                       <a x-show="href(it)" :href="href(it)" target="_blank" rel="noopener"
                          class="absolute -inset-x-1.5 inset-y-0" :aria-label="it.title"></a>
@@ -356,11 +359,6 @@
                           class="relative text-[var(--a)] opacity-60 hover:opacity-100 hover:underline underline-offset-2 transition-opacity"
                           x-text="d.label"></a></span>
                       </template>
-
-                      <span x-show="trail(it)" class="text-[12px] opacity-40"
-                            :class="it.kind === 'repo' && 'font-mono text-[11px]'">
-                        <span class="opacity-50 mx-0.5">&ndash;</span><span x-text="trail(it)"></span>
-                      </span>
 
                       <!-- Anchored to the first line's right edge rather than
                            flowed, so a wrapped qualifier does not push it onto
