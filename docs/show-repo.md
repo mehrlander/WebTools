@@ -1016,35 +1016,39 @@ reader's only route to the repo and carries the lot. Sections rather than a
 submenu: a submenu hides half the answer behind a second gesture, and seeing
 where you can go is the whole point of a jump-over list.
 
-It is **the repo, twice**, then where it goes on GitHub. A **head row** is its
-section's label and its destination at once: the mark of **where** (the app's
-own mark, then the GitHub logo) beside the name of **what** (the repo).
+It is **the repo, twice**, then where it goes on GitHub, as one flat list:
 
 ```
-  Only web-tools            ← contributed by the view: bold, at the margin
-  ─────────────
-  ⟨⟩ web-tools              ← opens the repo here
-  ⌥ web-tools           ↗   ← opens the repo on GitHub
-     Pull requests · Issues · Task board · Branches · Commits · Actions ↗
+  Show web-tools branches only     ← contributed by the view
+  ────────────────────────────
+  ⟨⟩ web-tools                     ← opens the repo here
+  ⌥ web-tools                   ↗  ← opens the repo on GitHub
+  Pull requests · Issues · Task board · Branches · Commits · Actions ↗
 ```
 
-The two head rows sit **adjacent**, because they are peers: one question with
-two answers. A rule separates blocks, not peers, so it is drawn above a head
-row only when the row before it is not itself a head. The rows under a head are
-indented to their head's label, so the structure reads with nothing to read.
+**Flat, and flat again on purpose.** The list briefly grew two sections, each
+with an indent and a bold head row, and then the app section lost its children;
+one section is not a structure, and the styling was carrying a hierarchy that
+had stopped existing. What separates the two halves now is the **out-arrow**,
+which is the honest distinction anyway: those rows leave the app and these do
+not. The only styling left is mono on the two rows whose label is a **repo
+name** rather than a phrase, matching how repo names are set everywhere else,
+and one rule under the caller's row, which acts on the list you are in rather
+than going anywhere.
 
-The app head used to carry **Files**, **Branch review** and **Config** beneath
-it. They are gone for the reason the sidebar's own menu never had them: once
-the repo is open, its views **are** the sidebar, so each row bought one tap and
-made the app half look like a section when it is a destination. What is left
-states the true shape, which is that only GitHub has places worth naming from
-out here.
+The app half used to carry **Files**, **Branch review** and **Config**. They
+are gone for the reason the sidebar's own menu never had them: once the repo is
+open, its views **are** the sidebar, so each row bought one tap and made the app
+half look like a section when it is a destination.
 
 The app's mark is drawn **inline** rather than loaded from `lib/favicon.svg`,
 as an outline rendition of it: an `<img>` cannot take `currentColor`, so the
 file would sit in brand blue beside a column of muted glyphs and stay blue on
-hover. Its stroke is `1.44`, which is Phosphor's regular weight (a 16-unit
-stroke on a 256 canvas) carried onto this 23-unit viewBox.
+hover. Two numbers in it are derived from Phosphor rather than chosen, and both
+were wrong on the first pass: the **viewBox** is padded to 29 units around a
+22-unit mark (~76%), since a Phosphor glyph keeps margin inside its own box and
+a mark drawn edge-to-edge in the same 16 px reads a size larger; the **stroke**
+is `29 × 16/256 = 1.81`, Phosphor's regular weight carried onto that viewBox.
 
 That replaced an inert uppercase label plus a row underneath it: **Open repo**
 and **Repository** were one idea named twice, and reading them together made

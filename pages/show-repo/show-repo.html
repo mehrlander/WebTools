@@ -700,7 +700,7 @@
      across the 2 px gap does not close what it is heading for. ─────────── -->
 <div x-show="repoMenuAt" x-cloak @click.outside="repoMenuAt = null"
      @mouseenter="cancelMenuClose()" @mouseleave="hoverLeaveMenu()"
-     class="fixed z-[55] w-50 max-h-[60vh] overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg"
+     class="fixed z-[55] max-h-[60vh] overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg"
      :style="repoMenuStyle">
   <div x-data="repoMenu()" @repo-menu-done="repoMenuAt = null"></div>
 </div>
@@ -1486,14 +1486,15 @@ function app(){ return {
   get repoMenuItems(){
     if (this.menuKind === 'github') return this.githubMenuItems;
     if (this.menuKind !== 'repo') return this.repoActionItems;
-    // THE REPO, TWICE, then where it goes on GitHub. The two HEAD ROWS carry
-    // the same name under two marks, this app's and GitHub's, and each opens
-    // the repo in that place; the indented rows under the GitHub one are the
-    // places inside it. Adjacent rather than ruled apart, because they are
-    // peers: one question ("open this repo") with two answers. A head row is
-    // its section's label and its destination at once, which is what retired
-    // the inert uppercase labels and the "Open repo" / "Repository" pair
-    // underneath them, one idea named twice in two vocabularies.
+    // THE REPO, TWICE, then where it goes on GitHub, as one FLAT list. The two
+    // named rows carry the same name under two marks, this app's and GitHub's,
+    // and each opens the repo in that place; the rest are the places inside
+    // GitHub. It has been through an uppercase-label version and a sectioned
+    // one, and flat is where it landed: the labels needed an "Open repo" /
+    // "Repository" pair underneath them to be useful, which was one idea named
+    // twice, and the sections needed a hierarchy that stopped existing when the
+    // app half lost its children. The out-arrow separates the halves now,
+    // which is the honest distinction anyway.
     //
     // The app side USED to carry Files / Branch review / Config under its head.
     // They are gone for the reason the sidebar's own menu never had them: once
@@ -1573,7 +1574,11 @@ function app(){ return {
   // in the sidebar and below it elsewhere, flipping when it would otherwise run
   // off an edge.
   repoMenuAt: null,          // { x, y } viewport coords, or null when closed
-  MENU_W: 184,
+  // One width for the panel and for the measure that places it. They used to
+  // be two numbers (a Tailwind class on the panel, a constant here) and they
+  // had drifted 16 px apart, which put a right-aligned panel that far off its
+  // trigger. repoMenuStyle stamps this, so there is nothing to keep in step.
+  MENU_W: 216,
   // Row height, and it moves with the pointer: 26 px where the panel was opened
   // by a hover (a pointer can land on a 26 px row all day) and 32 px on a touch
   // screen, where the row is still a thumb target even though the panel has
@@ -1706,7 +1711,7 @@ function app(){ return {
   },
   cancelMenuClose(){ clearTimeout(this._menuOpenT); clearTimeout(this._menuCloseT); },
 
-  get repoMenuStyle(){ return this.menuStyle(this.repoMenuAt); },
+  get repoMenuStyle(){ return this.menuStyle(this.repoMenuAt) + ';width:' + this.MENU_W + 'px'; },
   async runRepoMenu(key){
     const repo = this.menuRepo;
     if (!repo) return;
