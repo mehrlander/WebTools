@@ -594,8 +594,9 @@ repos. All are optional; a repo with no config is simply off the estate.
 - **note**: the card's one-line description; overrides the GitHub description.
 - **order**: arrangement weight. Group order (a group sorts by its lowest
   member's `order`) and within-group order both derive from it.
-- **quickLink**: `true` to appear in the header quick-link row, ordered by
-  `order`, icon from this repo's `icon`.
+- **quickLink**: vestigial. It named the header quick-link row, which the
+  header-nav redesign removed; nothing displays it now. See "Quick links
+  (vestigial)" below before setting it on a new repo.
 - **landing**: path to the repo's own landing page, rendered live via
   toss-render `#gh=` (token-authed, so private repos and branches work; gated by
   toss-render's OWNERS allowlist). "The repo builds its own page." Takes the
@@ -661,20 +662,24 @@ repos. All are optional; a repo with no config is simply off the estate.
   deliberately not adopted the portable conventions, so a session-start nudge
   stops asking. Absent means unset. Documented in [PORTABLE.md](PORTABLE.md).
 
-### Quick-link row
+### Quick links (vestigial)
 
-The header quick-link row is data-driven, not a hardcoded list. `show-repo` is a
-public page, so its source must not enumerate private repos. The shell ships a
-public-only default (`PUBLIC_QUICK_LINKS`, just the public web-tools repo). With
-a token, `loadQuickLinks()` reads the **config cache** (below) and takes every
-repo opting in with `quickLink: true`, ordered by its own `order`, icon from its
-own `icon`. Membership is a repo property, like estate membership: there is no
-registry list. The **one** private string this public page names is the registry
-repo itself (`REGISTRY_REPO = mehrlander/web-tools-private`), where the cache
-lives, never the repos in it. Editing a repo's config re-runs the load (via the
-`web-tools:config-saved` event), so the row updates without a page reload. (A
-legacy `quickLinks` list in the registry is still read as a fallback until the
-cutover.)
+The header once carried a data-driven quick-link row. The header-nav redesign
+removed it: the nav is now a fixed app-owned set and repo selection happens on
+the Repos dashboard, so nothing renders `quickLinks` any more. The resolver
+survives one level down. `loadQuickLinks()` still reads the **config cache**
+(below) for repos opting in with `quickLink: true`, ordered by their own
+`order`, falling back to the registry's legacy `quickLinks` list and then to the
+public-only `PUBLIC_QUICK_LINKS`; its only consumer is `refreshConfigCache()`,
+which uses the resolved list as a seed when the account enumeration fails. So
+`quickLink: true` is inert for display and matters only to that fallback.
+
+The membership principle it demonstrated is the durable part, and the estate and
+app views both run on it: opting in is a property of each repo's own
+`.web-tools.json`, not a list in the registry. The **one** private string this
+public page names is the registry repo itself
+(`REGISTRY_REPO = mehrlander/web-tools-private`), where the cache lives, never
+the repos in it.
 
 ### Config cache (`state/configs.json`)
 

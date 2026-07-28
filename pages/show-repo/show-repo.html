@@ -929,12 +929,13 @@ function app(){ return {
     if (this._configKey === key) { s.config = cfg; s.configName = name; }
   },
 
-  // Resolve the quick-link row. With a token, read the private registry repo's
-  // .web-tools.json (a `quickLinks: [{repo, icon}]` list — the curated set,
-  // order, and icons, private repos included) on its own lightweight GH
-  // instance and use it. Without a token, or on any failure, fall back to the
-  // public-only default. The registry name is the one private string this
-  // public page references; it never enumerates the private repos themselves.
+  // Resolve the quick-link list: the config cache's quickLink:true opt-ins,
+  // then the registry's legacy quickLinks list, then the public-only default
+  // (also the no-token answer). Nothing renders it since the header-nav
+  // redesign dropped the row; the surviving consumer is refreshConfigCache(),
+  // which seeds its crawl from this list when the account enumeration fails.
+  // The registry name is the one private string this public page references;
+  // it never enumerates the private repos themselves.
   hasToken(){ return !!window.TOKEN && window.TOKEN !== '🎟️GitHubToken'; },
   async loadQuickLinks(){
     if (!this.hasToken()) { this.quickLinks = [...this.PUBLIC_QUICK_LINKS]; return; }
@@ -2434,17 +2435,17 @@ function overview(){ return {
              Copying goes through gh-transfer.js (lib/): per-file Contents-API
              commits, base64 pass-through, viewer's token, two-tap confirm.
 
-  THE QUICK-LINK ROW: the header row is data-driven, not a hardcoded list. This
-  page is public, so its source must not enumerate private repos. The built-in
-  default (PUBLIC_QUICK_LINKS) lists only the public repo. With a token,
-  loadQuickLinks() reads the config cache (state/configs.json in REGISTRY_REPO =
-  web-tools-private) and takes every repo opting in with quickLink:true, ordered
-  by its own `order`, icon from its own config (legacy fallback: the registry's
-  old quickLinks list, retired at cutover). Membership is a repo property, like
-  estate membership. The one private string this public page names is the
-  registry repo itself, never the repos in it. Editing a repo's config re-runs
-  loadQuickLinks (via the web-tools:config-saved event), so the row updates
-  without a reload.
+  QUICK LINKS, VESTIGIAL: the header once carried a data-driven quick-link row,
+  and the header-nav redesign removed it, so no markup reads `quickLinks` now.
+  loadQuickLinks() still resolves the list (config cache first, taking every
+  repo opting in with quickLink:true ordered by its own `order`; then the
+  registry's legacy quickLinks list; then the public-only PUBLIC_QUICK_LINKS),
+  and its one consumer is refreshConfigCache(), which seeds the crawl from it
+  when the account enumeration fails. Keep that seam in mind before deleting
+  the resolver: the flag is dead for display and live for the fallback. What
+  outlived the row is its membership principle, which the estate and app views
+  both use: a repo opts in through its own config, so this public page names
+  the registry repo and never the repos in it.
 
   THE CONFIG CACHE: state/configs.json in the registry is a periodic crawl of
   every account repo's .web-tools.json (refreshConfigCache, throttled ~6h,
