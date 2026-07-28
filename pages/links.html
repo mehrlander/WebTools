@@ -77,6 +77,10 @@
         snippet: { icon: 'ph-brackets-curly',   label: 'snippet' },
       },
 
+      // A 404 on the store is not an error: the file does not exist on this ref
+      // yet, so open empty and let the first Commit create it. Anything else is
+      // reported with the address that failed, since "404" alone never says
+      // which of repo, ref, and path was wrong.
       async init() {
         try {
           const home = this.home = new window.GH({ token: window.TOKEN || '', repo: this.REPO, ref: this.DATA_REF });
@@ -85,10 +89,11 @@
           const b = JSON.parse(res.text);
           b.areas = (b.areas || []).map(a => ({ ...a, items: a.items || [] }));
           this.board = b;
-          this.baseline = this.snapshot();
         } catch (e) {
-          this.error = e.message || String(e);
+          if (e.status === 404) this.editing = true;
+          else this.error = `${e.message || e} — ${this.REPO}@${this.DATA_REF} ${this.PATH}`;
         } finally {
+          this.baseline = this.snapshot();
           this.loading = false;
         }
       },
@@ -145,7 +150,9 @@
           (this.home._shas ||= {})[a.dossier] = res.sha;
           this.dossiers[a.dossier] = { text: res.text, baseline: res.text, loading: false, error: '' };
         } catch (e) {
-          this.dossiers[a.dossier] = { text: '', baseline: '', loading: false, error: e.message || String(e) };
+          // Same rule as the store: a missing dossier opens empty and writable.
+          const err = e.status === 404 ? '' : `${e.message || e} — ${this.REPO}@${this.DATA_REF} ${a.dossier}`;
+          this.dossiers[a.dossier] = { text: '', baseline: '', loading: false, error: err };
         }
       },
 
