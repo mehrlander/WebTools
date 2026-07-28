@@ -68,13 +68,14 @@
 /* The Repos row's two menu buttons. Narrow and chrome-free on a fine pointer,
    where they are a pair of glyphs at the row's edge and a hover background made
    each one read as a separate tile; the row's own hover tint is the feedback,
-   and the glyph going primary is the state. 24 px is the glyph (16 px) plus 4
+   and the glyph going primary is the state. 20 px is the glyph (16 px) plus 2
    either side, so the pair reads as one cluster rather than two controls that
-   happen to be adjacent. A thumb gets 30 px, which is the compromise: the two
-   sat 40 px apart and read as two separate controls on a phone, and the row is
-   44 px tall, so the target stays comfortable in the axis a thumb misses in. */
-.wt-row-btn{width:1.5rem}
-@media (pointer:coarse){.wt-row-btn{width:1.875rem}}</style>
+   happen to be adjacent. A thumb gets 24 px, and the row's full 44 px of
+   height is what pays for a width that narrow: a thumb misses sideways far
+   less than it misses vertically, and these two are the only targets on their
+   half of the row, so a near miss lands on the row, not on the wrong control. */
+.wt-row-btn{width:1.25rem}
+@media (pointer:coarse){.wt-row-btn{width:1.5rem}}</style>
 </head>
 <!-- A repo browser fronted by a per-repo landing page. The repo picker is up
      front (header). The sidebar lists the repo's views — landing, atlas,
