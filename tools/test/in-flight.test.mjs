@@ -18,12 +18,19 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const SCRIPT = path.join(repoRoot, '.claude/skills/in-flight/in-flight.py');
 
+// One day back from now, not a calendar date. An absolute date ages past
+// --quiet-days (7 by default) and silently turns every "live" fixture quiet;
+// pinned to 2026-07-20, this suite went red on its own on 2026-07-27. The
+// offset is still uniform across every commit in a run, so the hash-collision
+// note on commit() below holds exactly as before.
+const FIXTURE_DATE = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
 const ENV = {
   ...process.env,
   GIT_AUTHOR_NAME: 'T', GIT_AUTHOR_EMAIL: 't@e',
   GIT_COMMITTER_NAME: 'T', GIT_COMMITTER_EMAIL: 't@e',
-  GIT_AUTHOR_DATE: '2026-07-20T00:00:00Z',
-  GIT_COMMITTER_DATE: '2026-07-20T00:00:00Z',
+  GIT_AUTHOR_DATE: FIXTURE_DATE,
+  GIT_COMMITTER_DATE: FIXTURE_DATE,
 };
 
 const git = (cwd, ...args) =>
