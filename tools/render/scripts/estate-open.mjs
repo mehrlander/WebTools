@@ -6,8 +6,8 @@
 //
 //   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scripts/estate-open.mjs
 //
-// Pass MENU=1 in the environment to open one row's GitHub menu for the shot,
-// REPOCHIP=1 to open a row's repo chip (the repo's own GitHub menu, in the
+// Pass MENU=1 in the environment to open one row's branch menu for the shot,
+// REPOCHIP=1 to open a row's repo chip (the repo's whole grouped menu, in the
 // shell's panel), or CHIP=1 to narrow the list to one repo through its filter
 // chip. HOVER=1 opens either menu by hovering rather than clicking, which is
 // what proves the desktop path.
@@ -88,5 +88,5 @@ export default async (page) => {
     else { await locator.click(); await page.waitForTimeout(400); }
   };
   if (process.env.MENU) await open(page.locator('button:has-text("GitHub")').first());
-  if (process.env.REPOCHIP) await open(page.locator('button[title^="GitHub links for me/"]').first());
+  if (process.env.REPOCHIP) await open(page.locator('button[title^="Repo menu: "]').first());
 };

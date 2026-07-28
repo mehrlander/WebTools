@@ -70,9 +70,11 @@
    each one read as a separate tile; the row's own hover tint is the feedback,
    and the glyph going primary is the state. 24 px is the glyph (16 px) plus 4
    either side, so the pair reads as one cluster rather than two controls that
-   happen to be adjacent. A thumb still gets a real target. */
+   happen to be adjacent. A thumb gets 30 px, which is the compromise: the two
+   sat 40 px apart and read as two separate controls on a phone, and the row is
+   44 px tall, so the target stays comfortable in the axis a thumb misses in. */
 .wt-row-btn{width:1.5rem}
-@media (pointer:coarse){.wt-row-btn{width:2.5rem}}</style>
+@media (pointer:coarse){.wt-row-btn{width:1.875rem}}</style>
 </head>
 <!-- A repo browser fronted by a per-repo landing page. The repo picker is up
      front (header). The sidebar lists the repo's views — landing, atlas,
@@ -1462,15 +1464,51 @@ function app(){ return {
   // than on the browser store. Open is offered only for a repo you are not
   // already in.
   menuRepo: '',
-  // Which of the two menus the one panel is showing: 'actions' (things you do
-  // TO a repo, off the visibility marker) or 'github' (where that repo lives on
-  // GitHub, off the github button beside it). One panel and one geometry for
-  // both, because they are two lists rather than two widgets: hovering from one
-  // trigger to the other re-anchors and swaps the rows in place, which two
+  // Which list the one panel is showing. One panel and one geometry for all
+  // three, because they are lists rather than widgets: hovering from one
+  // trigger to another re-anchors and swaps the rows in place, which separate
   // panels could not do without one closing under the pointer.
+  //
+  //   actions  things you do TO a repo, off the sidebar's visibility marker.
+  //   github   where that repo lives on GitHub, off the github button beside it.
+  //   repo     BOTH, in labelled groups, plus the in-app destinations. This is
+  //            the whole repo in one list, for a trigger that is the reader's
+  //            only route to it: the Activity view's repo chip, where the
+  //            sidebar is not on screen and the row is about a branch.
+  //
+  // The sidebar splits the same material across two buttons because the row
+  // itself already opens the repo and the list already shows every sibling;
+  // the chip has neither, so it carries the lot. GROUPS rather than a
+  // submenu: a submenu hides half the answer behind a second gesture, and the
+  // whole point of a jump-over list is seeing where you can go.
   menuKind: 'actions',
   get repoMenuItems(){
-    return this.menuKind === 'github' ? this.githubMenuItems : this.repoActionItems;
+    if (this.menuKind === 'github') return this.githubMenuItems;
+    if (this.menuKind !== 'repo') return this.repoActionItems;
+    // The GitHub keys are prefixed here, and it is load-bearing rather than
+    // tidy: both halves name a `branches` row, the loop keys on `key`, and a
+    // duplicate key silently drops the second row (it cost one Branches row
+    // before it was noticed). Dispatch reads the row, not the key, so the
+    // prefix costs nothing downstream.
+    return [
+      ...this.repoAppItems.map(r => ({ ...r, group: 'In show-repo' })),
+      ...this.githubMenuItems.map(r => ({ ...r, key: 'gh:' + r.key, group: 'On GitHub' })),
+    ];
+  },
+  // Where the repo goes IN THIS APP. Only the combined list carries these: the
+  // sidebar's own menu leaves them out, since a row that opens the repo on a
+  // tap, above a list of every other repo, has answered the question already.
+  get repoAppItems(){
+    return [
+      { key: 'open', label: 'Open repo', icon: 'ph-arrow-square-in' },
+      { key: 'files', label: 'Files', icon: 'ph-folders' },
+      // "Branch review" rather than "Branches", which is what the sidebar's
+      // own nav calls it: in THIS list the GitHub group names a Branches row
+      // too, and two rows a few lines apart with the same label and the same
+      // glyph is a double-take the group labels do not fully answer.
+      { key: 'branches', label: 'Branch review', icon: 'ph-git-branch' },
+      { key: 'config', label: 'Config', icon: 'ph-gear-six' },
+    ];
   },
   // Things you do TO a repo, not inside one, and by now a SHORT list, because
   // every row that left had somewhere better to be:
@@ -1573,7 +1611,11 @@ function app(){ return {
     this.crumbMenu = false;
     this.menuRepo = repo;
     this.menuKind = kind;
-    this.repoMenuAt = this.anchorMenu(ev, this.repoMenuItems.length, opts);
+    // Group labels take height too, so they count toward the measure that
+    // decides whether the panel fits below the trigger.
+    const items = this.repoMenuItems;
+    const groups = new Set(items.map(r => r.group).filter(Boolean)).size;
+    this.repoMenuAt = this.anchorMenu(ev, items.length + groups, opts);
     // The Activity view runs a second anchored panel of its own, so announce
     // the open rather than have every caller remember to put the other one
     // away. Announced HERE, at the moment of opening, not when a hover starts:
@@ -1650,12 +1692,11 @@ function app(){ return {
   async runRepoMenu(key){
     const repo = this.menuRepo;
     if (!repo) return;
-    // The GitHub rows carry their own destination, so they all leave here.
-    if (this.menuKind === 'github'){
-      const row = this.githubMenuItems.find(r => r.key === key);
-      if (row?.url) window.open(row.url, '_blank', 'noopener');
-      return;
-    }
+    // A GitHub row carries its own destination, so it leaves here. Keyed off
+    // the row rather than off menuKind, since the combined list mixes both
+    // kinds of row and only one of them has a url.
+    const row = this.repoMenuItems.find(r => r.key === key);
+    if (row?.url){ window.open(row.url, '_blank', 'noopener'); return; }
     if (key === 'config' && repo !== Alpine.store('browser').repo) return this.openRepoDialog(repo);
     if (key === 'copy'){
       const url = location.origin + location.pathname + '?repo=' + encodeURIComponent(repo);
@@ -1673,6 +1714,9 @@ function app(){ return {
       return;
     }
     if (key === 'config') this.goConfig();
+    else if (key === 'files') this.goFiles();
+    else if (key === 'branches') this.goBranches();
+    else if (key === 'open') this.goLanding();
   },
 
   // Any repo@ref on GitHub. show-repo is a wrapper over GitHub, not a wall, so
@@ -2495,7 +2539,7 @@ function overview(){ return {
     sidebar Repos index.
 
   THE REPO MENU (repo-menu.js, over the shell's menuRepo / menuKind /
-  repoMenuItems / runRepoMenu) is ONE panel showing one of TWO lists for one
+  repoMenuItems / runRepoMenu) is ONE panel showing one of THREE lists for one
   repo. It hangs off a Repos row's trailing buttons as an anchored dropdown,
   positioned FIXED from the trigger's rect (openRepoMenu) because the rows sit
   in an overflow-y-auto column that would clip a nested panel; it flips above
@@ -2520,10 +2564,21 @@ function overview(){ return {
     "Open on GitHub", pointing at the repo root: the single destination a reader
     could have guessed, while the rest of a repo's GitHub surface had no route
     at all. Splitting it out is what let it grow, and the split is cheap because
-    the two lists share the panel: hovering from one trigger to the other swaps
-    the rows in place, where two panels would close one under the pointer. The
-    same list serves the Activity view's repo chip, so the control is learned
-    once (estate.js repoChipMenu).
+    the lists share the panel: hovering from one trigger to another swaps the
+    rows in place, where separate panels would close one under the pointer.
+    REPO (the Activity view's chip, estate.js repoChipMenu): both of the above
+    in LABELLED GROUPS, "In show-repo" (Open repo / Files / Branch review /
+    Config) over "On GitHub". The sidebar can afford to split its material
+    across two buttons because the row itself opens the repo and the list shows
+    every sibling; an Activity row is about a BRANCH, in a view with no sidebar
+    on screen, so its chip is the reader's only route to the repo and carries
+    the lot. Groups rather than a submenu: a submenu hides half the answer
+    behind a second gesture, and seeing where you can go is the whole point of
+    a jump-over list. A group label rides on the row it introduces (item.group,
+    drawn when it differs from the row above), so a grouped list and a flat one
+    are the same array and the same loop. The GitHub keys are prefixed 'gh:' in
+    the combined list because both halves name a `branches` row and the loop
+    keys on `key`; a duplicate silently drops the second row.
     FLAT and COMPACT, and compact by pointer: 26 px rows at 13 px for a fine
     pointer, 32 px for a thumb (.wt-menu-row in <style>, measured by the shell's
     MENU_ROW), in a 184 px panel. Both heights are under the 44 px floor, which

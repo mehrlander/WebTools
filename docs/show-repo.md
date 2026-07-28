@@ -277,11 +277,11 @@ flat, an out-arrow on anything leaving the app), and its hover behavior. The
 and the session mark has no other route.
 
 Each row opens with its **repo chip**, the repo's own declared icon plus its
-short name. It is a control, not a label: it opens that repo's GitHub menu, the
-sidebar's panel filled from the same `github-links.js` rows, so the branch's
-destinations and its repo's are one gesture apart and the control is learned
-once. The icon is the mark the repo declares for its estate card, so a row is
-identifiable before its name is read.
+short name. It is a control, not a label: it opens the repo's whole grouped
+menu in the sidebar's panel, so the branch's destinations and its repo's are
+one gesture apart and the control is learned once. The icon is the mark the
+repo declares for its estate card, so a row is identifiable before its name is
+read.
 
 It reads the registry's **activity cache**
 (`state/activity.json`, below) in one GET, so the whole estate renders without a
@@ -943,10 +943,11 @@ down the list.
 
 ### The repo menu
 
-`repo-menu.js` is one panel showing one of **two lists** for one repo. It hangs
-off a Repos row's two trailing buttons as a dropdown anchored to whichever was
-used, positioned from its rect (the rows sit in a scrolling column that would
-clip a nested panel) and flipped above the trigger near the bottom of the list.
+`repo-menu.js` is one panel showing one of **three lists** for one repo. It
+hangs off a Repos row's two trailing buttons, and off the Activity view's repo
+chip, as a dropdown anchored to whichever was used, positioned from its rect
+(the rows sit in a scrolling column that would clip a nested panel) and flipped
+above the trigger near the bottom of the list.
 
 **Actions**, off the visibility marker, is where you act **on** a repo rather
 than navigate to it: **Config**, its declared outbox, and **Copy browse link**.
@@ -969,9 +970,20 @@ fetches, so the Activity view's repo chip fills the same panel from the same
 rows. This was a single **Open on GitHub** row inside the actions list, pointing
 at the repo root: the one destination a reader could have guessed, while the
 rest of a repo's GitHub surface had no route at all. Splitting it out is what
-let it grow, and it stays cheap because the two lists share one panel, so
-hovering from one trigger to the other swaps the rows in place where two panels
-would close one under the pointer.
+let it grow, and it stays cheap because the lists share one panel, so hovering
+from one trigger to another swaps the rows in place where separate panels would
+close one under the pointer.
+
+**Repo**, off the Activity view's chip, is both of the above in **labelled
+groups**: `In show-repo` (Open repo, Files, Branch review, Config) over
+`On GitHub`. The sidebar can afford to split its material across two buttons,
+because the row itself opens the repo and the list shows every sibling; an
+Activity row is about a **branch**, in a view with no sidebar on screen, so its
+chip is the reader's only route to the repo and carries the lot. Groups rather
+than a submenu: a submenu hides half the answer behind a second gesture, and
+seeing where you can go is the whole point of a jump-over list. A group label
+rides on the row it introduces, so a grouped list and a flat one are the same
+array and the same loop.
 
 Both lists are flat, short, and **compact by pointer**: 26 px rows at 13 px for
 a fine pointer, 32 px for a thumb, in a 184 px panel. Both heights are under the
