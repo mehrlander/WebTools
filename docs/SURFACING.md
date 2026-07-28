@@ -169,10 +169,10 @@ Offer: *"want me to wrap up (per-session refreshes, then mark the PR ready)?"* A
 
 1. **Preflight:** run `git fetch origin main && git merge-tree --write-tree origin/main HEAD` to test-merge without touching the tree. Resolve any conflicts and report the result.
 2. Execute per-session refreshes.
-3. Finalize the guide: convert next steps to follow-ups or tracker tasks and make Notes / Risk reviewer-current. Do not hand-write a merge-guide entry.
+3. Finalize the guide: make Notes / Risk reviewer-current, and settle the next steps. A next step the branch will not reach either rides forward in the guide body or becomes a task, which goes through `/tasks` and its filing rules rather than being written straight to `tracker/`. Do not hand-write a merge-guide entry.
 4. Mark the PR ready.
 
-**Last look before the container goes.** Preserve any **precious work product** that would cost real tokens to reproduce and exists only in session context, such as a fan-out's findings, a spike's conclusion, or an uncommitted diagnosis. Route it to the guide, a tracker task, or a PR comment; let cheaply reconstructable context go. Then check that new files landed where they belong and name any placement that sits uneasily.
+**Last look before the container goes.** Preserve any **precious work product** that would cost real tokens to reproduce and exists only in session context, such as a fan-out's findings, a spike's conclusion, or an uncommitted diagnosis. Route it to the guide or a PR comment, both of which are durable and neither of which adds a backlog item; a tracker task is for work that remains, not for a place to park findings (see `/tasks`). Let cheaply reconstructable context go. Then check that new files landed where they belong and name any placement that sits uneasily.
 
 **UI trigger:** if the user marks ready or merges in the UI before wrap-up, run steps 1 through 3 silently and surface any conflict.
 
@@ -186,7 +186,7 @@ Post-merge edits require a new PR, even on the same branch. The next push opens,
 
 Merge terminates the session branch.
 
-Where the repo uses [TRACKER.md](TRACKER.md), make follow-ups tasks; the handoff prompt can collapse to "check the tracker and assess how to proceed." Otherwise:
+Where the repo uses [TRACKER.md](TRACKER.md), a follow-up worth keeping goes through `/tasks`, which carries the bar and the gate, and the handoff prompt can then collapse to "check the tracker and assess how to proceed." A one-off issue not worth a task keeps the full diagnostic handoff below. Otherwise:
 
 * **Option 1 (default):** issue a diagnostic handoff prompt (HP) and wind down.
 * **Option 2:** continue edits only on explicit instruction; a new PR is required.

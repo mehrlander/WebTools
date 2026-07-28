@@ -3,35 +3,215 @@
   "hub": "mehrlander/web-tools",
   "plugin": {
     "marketplace": "mehrlander/web-tools",
-    "plugins": ["portable", "daisy-alpine"]
+    "plugins": [
+      "portable",
+      "daisy-alpine"
+    ]
   },
   "items": [
-    { "kind": "skill", "command": "/portable:web-tools", "path": ".claude/skills/web-tools/SKILL.md", "title": "web-tools", "role": "loads the working conventions live (surfacing primitives plus the guide-PR course)", "use": "plugin" },
-    { "kind": "skill", "command": "/portable:caption", "path": ".claude/skills/caption/SKILL.md", "title": "caption", "role": "the surfacing caption, and the guide-PR body sync", "use": "plugin" },
-    { "kind": "skill", "command": "/portable:load-skill", "path": ".claude/skills/load-skill/SKILL.md", "title": "load-skill", "role": "fetch any skill from the library on demand", "use": "plugin" },
-    { "kind": "skill", "command": "/portable:show-repo", "path": ".claude/skills/show-repo/SKILL.md", "title": "show-repo", "role": "browse any repo and move files across repos", "use": "plugin" },
-    { "kind": "skill", "command": "/portable:tree", "path": ".claude/skills/tree/SKILL.md", "title": "tree", "role": "render a linked file tree of the repo, table-first for mobile", "use": "plugin" },
-    { "kind": "skill", "command": "/portable:in-flight", "path": ".claude/skills/in-flight/SKILL.md", "title": "in-flight", "role": "check whether a branch, PR, or task is already working on something, and reconcile stale tracker claims", "use": "plugin" },
-    { "kind": "skill", "command": "/portable:tasks", "path": ".claude/skills/tasks/SKILL.md", "title": "tasks", "role": "operate the cross-session project tracker", "use": "plugin" },
-    { "kind": "doc", "path": "docs/CONVENTIONS.md", "title": "Working conventions", "role": "the general-behavior hub: prose style, standing decisions, make-work, the session/repository/workstream vocabulary", "use": "live" },
-    { "kind": "doc", "path": "docs/SURFACING.md", "title": "Surfacing", "role": "the surfacing system: primitives (chat-handoff mechanics) plus the guide-PR / merge-guide course; loaded with CONVENTIONS.md as one set", "use": "live" },
-    { "kind": "doc", "path": "docs/PORTABLE.md", "title": "The to-go bag", "role": "catalog of everything here that travels; the prose parent of this manifest", "use": "reference" },
-    { "kind": "doc", "path": "docs/TRACKER.md", "title": "Project tracker", "role": "opt-in cross-session tracker: one file per task plus a generated board", "use": "adopt" },
-    { "kind": "doc", "path": "docs/CONSTELLATION.md", "title": "Constellation architecture", "role": "the portable kernel of the what-goes-where doctrine: commit discipline, visibility forces repo boundaries, conventions pull from a public hub, the repo owns its own scope. The theory behind show-repo's Map view", "use": "reference" },
-    { "kind": "doc", "path": "docs/show-repo.md", "title": "show-repo", "role": "the hosted shell, the stage, and the .web-tools.json manifest", "use": "on-demand" },
-    { "kind": "doc", "path": "docs/artifacts.md", "title": "Artifacts", "role": "the bake-and-publish pipeline and the 📦 marker's place in the link-choice matrix", "use": "on-demand" },
-    { "kind": "doc", "path": "docs/headless-vendoring.md", "title": "Headless vendoring", "role": "build with CDN stacks and test them headless where the sandbox blocks their CDNs", "use": "on-demand" },
-    { "kind": "doc", "path": "docs/markdown-in-chat.md", "title": "Markdown in chat", "role": "working visually with markdown in a chat client; tables over nested bullets", "use": "on-demand" },
-    { "kind": "doc", "path": "docs/github/markdown.md", "title": "GitHub markdown", "role": "what GitHub's renderer does with Mermaid, math, alerts, sparklines", "use": "on-demand" },
-    { "kind": "doc", "path": "docs/github/mcp-server-routing.md", "title": "MCP server routing", "role": "unexpected approval prompts with two GitHub MCP servers are often routing artifacts", "use": "on-demand" },
-    { "kind": "dir", "path": "docs/environment", "title": "Web sandbox environment", "role": "dated facts about the Claude Code web sandbox: network, persistence, testing recipes", "use": "on-demand" },
-    { "kind": "dir", "path": "docs/envelopes", "title": "Content envelopes", "role": "the envelope family: the surface contract, chat-results, and the schemas that validate them", "use": "on-demand" },
-    { "kind": "dir", "path": "skills", "title": "Skill library", "role": "the personal skill library load-skill pulls from, published as static resources", "use": "on-demand" },
-    { "kind": "script", "path": ".claude/skills/tasks/build-board.py", "title": "build-board.py", "role": "regenerate a tracker's board.md from task frontmatter; ships inside the plugin", "use": "plugin" },
-    { "kind": "script", "path": ".claude/skills/in-flight/in-flight.py", "title": "in-flight.py", "role": "classify a branch estate into live / merged / unrelated and reconcile tracker claims against it; ships inside the plugin", "use": "plugin" },
-    { "kind": "script", "path": "scripts/build-merge-guide.py", "title": "build-merge-guide.py", "role": "generate docs/MERGE-GUIDE.md from merged PR bodies, non-destructively", "use": "on-demand" },
-    { "kind": "script", "path": "scripts/sunset-scan.py", "title": "sunset-scan.py", "role": "report SUNSET(date) markers now due for removal", "use": "on-demand" },
-    { "kind": "script", "path": "scripts/build-tree.py", "title": "build-tree.py", "role": "render a repo tree as a linked markdown table for chat", "use": "on-demand" },
-    { "kind": "script", "path": "scripts/ocr-pdf.py", "title": "ocr-pdf.py", "role": "OCR a scanned PDF and report per-page confidence; needs tesseract + poppler", "use": "on-demand" }
+    {
+      "kind": "skill",
+      "command": "/portable:web-tools",
+      "path": ".claude/skills/web-tools/SKILL.md",
+      "title": "web-tools",
+      "role": "loads the working conventions live (surfacing primitives plus the guide-PR course)",
+      "use": "plugin"
+    },
+    {
+      "kind": "skill",
+      "command": "/portable:caption",
+      "path": ".claude/skills/caption/SKILL.md",
+      "title": "caption",
+      "role": "the surfacing caption, and the guide-PR body sync",
+      "use": "plugin"
+    },
+    {
+      "kind": "skill",
+      "command": "/portable:load-skill",
+      "path": ".claude/skills/load-skill/SKILL.md",
+      "title": "load-skill",
+      "role": "fetch any skill from the library on demand",
+      "use": "plugin"
+    },
+    {
+      "kind": "skill",
+      "command": "/portable:show-repo",
+      "path": ".claude/skills/show-repo/SKILL.md",
+      "title": "show-repo",
+      "role": "browse any repo and move files across repos",
+      "use": "plugin"
+    },
+    {
+      "kind": "skill",
+      "command": "/portable:tree",
+      "path": ".claude/skills/tree/SKILL.md",
+      "title": "tree",
+      "role": "render a linked file tree of the repo, table-first for mobile",
+      "use": "plugin"
+    },
+    {
+      "kind": "skill",
+      "command": "/portable:in-flight",
+      "path": ".claude/skills/in-flight/SKILL.md",
+      "title": "in-flight",
+      "role": "check whether a branch, PR, or task is already working on something, and reconcile stale tracker claims",
+      "use": "plugin"
+    },
+    {
+      "kind": "skill",
+      "command": "/portable:tasks",
+      "path": ".claude/skills/tasks/SKILL.md",
+      "title": "tasks",
+      "role": "operate the cross-session project tracker (propose, file, claim, close, regenerate the board) and carry the filing rules: the bar, the propose-first gate, and no fragmenting",
+      "use": "plugin"
+    },
+    {
+      "kind": "skill",
+      "command": "/portable:repo-review",
+      "path": ".claude/skills/repo-review/SKILL.md",
+      "title": "repo-review",
+      "role": "read the repo's own state and report what stands out, at three depths (light, deep, sweep); probes, layers, lenses and destinations declared per repo",
+      "use": "plugin"
+    },
+    {
+      "kind": "doc",
+      "path": "docs/CONVENTIONS.md",
+      "title": "Working conventions",
+      "role": "the general-behavior hub: prose style, standing decisions, make-work, the session/repository/workstream vocabulary",
+      "use": "live"
+    },
+    {
+      "kind": "doc",
+      "path": "docs/SURFACING.md",
+      "title": "Surfacing",
+      "role": "the surfacing system: primitives (chat-handoff mechanics) plus the guide-PR / merge-guide course; loaded with CONVENTIONS.md as one set",
+      "use": "live"
+    },
+    {
+      "kind": "doc",
+      "path": "docs/PORTABLE.md",
+      "title": "The to-go bag",
+      "role": "catalog of everything here that travels; the prose parent of this manifest",
+      "use": "reference"
+    },
+    {
+      "kind": "doc",
+      "path": "docs/TRACKER.md",
+      "title": "Project tracker",
+      "role": "opt-in cross-session tracker: one file per task plus a generated board",
+      "use": "adopt"
+    },
+    {
+      "kind": "doc",
+      "path": "docs/CONSTELLATION.md",
+      "title": "Constellation architecture",
+      "role": "the portable kernel of the what-goes-where doctrine: commit discipline, visibility forces repo boundaries, conventions pull from a public hub, the repo owns its own scope. The theory behind show-repo's Map view",
+      "use": "reference"
+    },
+    {
+      "kind": "doc",
+      "path": "docs/show-repo.md",
+      "title": "show-repo",
+      "role": "the hosted shell, the stage, and the .web-tools.json manifest",
+      "use": "on-demand"
+    },
+    {
+      "kind": "doc",
+      "path": "docs/artifacts.md",
+      "title": "Artifacts",
+      "role": "the bake-and-publish pipeline and the \ud83d\udce6 marker's place in the link-choice matrix",
+      "use": "on-demand"
+    },
+    {
+      "kind": "doc",
+      "path": "docs/headless-vendoring.md",
+      "title": "Headless vendoring",
+      "role": "build with CDN stacks and test them headless where the sandbox blocks their CDNs",
+      "use": "on-demand"
+    },
+    {
+      "kind": "doc",
+      "path": "docs/markdown-in-chat.md",
+      "title": "Markdown in chat",
+      "role": "working visually with markdown in a chat client; tables over nested bullets",
+      "use": "on-demand"
+    },
+    {
+      "kind": "doc",
+      "path": "docs/github/markdown.md",
+      "title": "GitHub markdown",
+      "role": "what GitHub's renderer does with Mermaid, math, alerts, sparklines",
+      "use": "on-demand"
+    },
+    {
+      "kind": "doc",
+      "path": "docs/github/mcp-server-routing.md",
+      "title": "MCP server routing",
+      "role": "unexpected approval prompts with two GitHub MCP servers are often routing artifacts",
+      "use": "on-demand"
+    },
+    {
+      "kind": "dir",
+      "path": "docs/environment",
+      "title": "Web sandbox environment",
+      "role": "dated facts about the Claude Code web sandbox: network, persistence, testing recipes",
+      "use": "on-demand"
+    },
+    {
+      "kind": "dir",
+      "path": "docs/envelopes",
+      "title": "Content envelopes",
+      "role": "the envelope family: the surface contract, chat-results, and the schemas that validate them",
+      "use": "on-demand"
+    },
+    {
+      "kind": "dir",
+      "path": "skills",
+      "title": "Skill library",
+      "role": "the personal skill library load-skill pulls from, published as static resources",
+      "use": "on-demand"
+    },
+    {
+      "kind": "script",
+      "path": ".claude/skills/tasks/build-board.py",
+      "title": "build-board.py",
+      "role": "regenerate a tracker's board.md from task frontmatter; ships inside the plugin",
+      "use": "plugin"
+    },
+    {
+      "kind": "script",
+      "path": ".claude/skills/in-flight/in-flight.py",
+      "title": "in-flight.py",
+      "role": "classify a branch estate into live / merged / unrelated and reconcile tracker claims against it; ships inside the plugin",
+      "use": "plugin"
+    },
+    {
+      "kind": "script",
+      "path": "scripts/build-merge-guide.py",
+      "title": "build-merge-guide.py",
+      "role": "generate docs/MERGE-GUIDE.md from merged PR bodies, non-destructively",
+      "use": "on-demand"
+    },
+    {
+      "kind": "script",
+      "path": "scripts/sunset-scan.py",
+      "title": "sunset-scan.py",
+      "role": "report SUNSET(date) markers now due for removal",
+      "use": "on-demand"
+    },
+    {
+      "kind": "script",
+      "path": "scripts/build-tree.py",
+      "title": "build-tree.py",
+      "role": "render a repo tree as a linked markdown table for chat",
+      "use": "on-demand"
+    },
+    {
+      "kind": "script",
+      "path": "scripts/ocr-pdf.py",
+      "title": "ocr-pdf.py",
+      "role": "OCR a scanned PDF and report per-page confidence; needs tesseract + poppler",
+      "use": "on-demand"
+    }
   ]
 }

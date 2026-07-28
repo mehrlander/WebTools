@@ -1,49 +1,92 @@
 ---
 name: tasks
 description: >-
-  Operate the project tracker in mehrlander/web-tools: file a task, claim a
-  task, update or close one, and regenerate the board, following the
+  Operate a repo's project tracker: propose and file a task, claim one, update
+  or close it, groom the backlog, and regenerate the board, following the
   docs/TRACKER.md schema and the rule that task files and board.md commit
-  straight to main (not a feature branch). Invoking this skill bare (no
-  further ask) surfaces a caption of the current board. Use when the user
-  says "add a task", "file a task", "make a tracker task", "claim a task",
-  "check the tracker", "what's on the board", "regenerate the board",
-  "close task X", "groom the tracker", "clean up the backlog", "audit the
-  tasks", or "prune stale tasks", or when a follow-up needs to survive
-  across sessions. Owns the tracker's file format and main-branch workflow;
-  the web-tools skill owns PR bodies, surfacing links, and the
-  merge guide, so route those there.
+  straight to main (not a feature branch). Carries the filing rules: the bar
+  for what deserves a task, the gate that a new task is proposed rather than
+  filed unprompted, and the rule against fragmenting one outcome into several
+  tasks. Invoking this skill bare (no further ask) surfaces a caption of the
+  current board. Use when the user says "add a task", "file a task", "make a
+  tracker task", "claim a task", "check the tracker", "what's on the board",
+  "regenerate the board", "close task X", "groom the tracker", "clean up the
+  backlog", "audit the tasks", or "prune stale tasks", or when a follow-up
+  needs to survive across sessions. Owns the tracker's operations and filing
+  rules; the web-tools skill owns PR bodies, surfacing links, and the merge
+  guide, so route those there.
 ---
 
 # tasks
 
 The tracker is cross-session memory on `main`: `tracker/tasks/<id>.md` is the
-source of truth, `tracker/board.md` is a generated rollup. Canonical spec is
-[`docs/TRACKER.md`](../../../docs/TRACKER.md); this skill carries the operations
-so a session need not hand-read it. Substitute the current repo into URL
+source of truth, `tracker/board.md` is a generated rollup.
+
+**This skill owns every rule about operating a tracker**, including when a task
+should exist at all. [`docs/TRACKER.md`](https://raw.githubusercontent.com/mehrlander/web-tools/main/docs/TRACKER.md)
+is the contract behind it: the file schema, the id scheme, the board's shape,
+the parser guarantees, and why each is the way it is. Fetch it when you need the
+schema in full or are changing the design. It states no behavioral rules, so
+nothing here is a restatement of it. Substitute the current repo into URL
 templates.
+
+## The filing rules
+
+Read these before writing a task file. They answer the failure a tracker
+actually has, which is not too few tasks.
+
+**1. The bar.** File only work that a later session would otherwise have to
+rebuild context to rediscover. Not every edit, and never work the current
+session could simply do. Filing what you could finish now converts an hour of
+work into a standing item someone must re-read, re-prioritize, and reconstruct.
+Do the work; let the diff and the reply be the record. A finding already written
+into a report, a chron entry, or a PR body is durable, so it does not also need
+a task. This is [Beware make-work](https://raw.githubusercontent.com/mehrlander/web-tools/main/docs/CONVENTIONS.md)
+at the filing step.
+
+**2. The gate.** Filing a *new* task needs the user's assent. Propose in your
+reply, one line each, and file the ones they name. Batch the proposal at the end
+of a pass so it is one decision rather than several, and keep it short enough to
+answer with "the first two" or "none". This is a standing decision: take the
+gate without asking whether to ask, and do not read a general instruction to use
+the tracker as blanket permission to file.
+
+Only *creating* a task is gated. The rest is unattended, because it describes
+work that already exists and gating it would grow the backlog:
+
+| Operation | Gate |
+| --- | --- |
+| File a new task | propose first |
+| Claim, update, close, groom-close | unattended |
+| Regenerate the board | unattended |
+| Push tracker state to `main` | unattended, per the standing exception below |
+
+**3. No fragmenting.** File by outcome, not by observation. Related fixes that
+would land together belong in one task with a scoped list. Splitting them hides
+the backlog's shape and multiplies filing overhead. Split only where the pieces
+genuinely decouple: different claimants, different timing, or a real dependency
+boundary. Do not pre-authorize a split inside a task file either ("or split this
+out later if it does not fit"), which is how one task silently becomes two.
+
+Delivery scope stays elastic in the other direction: a branch or PR may deliver
+several tasks, and a task may span several PRs. When adjacent small items can be
+cleared in one pass, bundle them into the open branch rather than minting a
+branch per item. The task files, not the branch topology, carry the accounting.
 
 ## Bare invocation: caption the board
 
-Called with no further ask (e.g. `/tasks` on its own), show a caption of the
-current board before doing anything else, one single-column table per status
-section, in the format below. Read `tracker/tasks/*.md` directly rather than
-parsing `board.md`'s prose, so the rows can link. Close with a one-line offer
-of the next action (file, claim, update, close, regenerate). When the ask
-names an action instead ("file a task", "claim X"), skip the caption and go
-straight to that operation.
+Called with no further ask (e.g. `/tasks` on its own), caption the current board
+before doing anything else. Read `tracker/tasks/*.md` directly rather than
+parsing `board.md`'s prose, so the rows can link. Close with a one-line offer of
+the next action. When the ask names an action instead, skip the caption and go
+straight to it.
 
-**Format:** one single-column table per section, the header the section name
-in caps (`IN PROGRESS`, `BACKLOG`, `BLOCKED`); no header row above the table,
-the column header is the label. Each task row leads with the 🎫 task marker
-(after the `↳` where present) and links the title to its blob. In-progress
-groups by owning branch: the full
-branch name **bold** as its own row, then every task under it on its own row
-prefixed `↳` (always, even for a single task). Backlog and blocked have no
-branch to group by, so each is a flat one-row-per-task table, no arrow. This
-is a longer-not-wider layout: one task per line rather than packing several
-into a cell, which reads better on a narrow screen. Omit a section with no
-tasks (e.g. no `BLOCKED` table when nothing is blocked).
+One single-column table per status section, no header row, the column header
+being the section name in caps. In-progress groups by owning branch: the branch
+name bold on its own row, then each task under it prefixed `↳` (always, even for
+a single task). Backlog and blocked are flat. Omit an empty section. This is the
+`caption` skill's grouped-table grammar applied to tasks; that skill owns the
+general form.
 
 ```
 | IN PROGRESS |
@@ -51,72 +94,30 @@ tasks (e.g. no `BLOCKED` table when nothing is blocked).
 | **claude/some-branch-abc123** |
 | ↳ 🎫 [Task title](<blob url>) |
 | ↳ 🎫 [Second task on the same branch](<blob url>) |
-| **claude/other-branch-xyz789** |
-| ↳ 🎫 [Solo task on its own branch](<blob url>) |
 
 | BACKLOG |
 |---|
 | 🎫 [Task title](<blob url>) |
-| 🎫 [Another task title](<blob url>) |
 ```
 
 ## No tracker yet
 
 If `tracker/tasks/` doesn't exist in this repo, say so rather than silently
-improvising: don't invent a task file format or fail quietly. Offer to
-bootstrap one (an empty `tracker/tasks/` plus a first task file, per
-`docs/TRACKER.md`'s schema, landed on `main` per the rule below) rather than
-assuming a tracker is wanted. A repo may deliberately run no tracker.
+improvising a format. Offer to bootstrap one (an empty `tracker/tasks/` plus a
+first task file) rather than assuming a tracker is wanted. A repo may
+deliberately run no tracker.
 
-## The one rule that is easy to miss
+## File a task
 
-**Task files and `board.md` commit directly to `main`, never to a feature
-branch.** That is what makes the tracker shared: every session knows to look at
-`main`. Feature work rides its branch as usual; the task file that tracks it
-does not. Practically, do the tracker edit on a scratch branch cut fresh from
-`origin/main` and push it to `main`, then return to your working branch:
-
-```
-git fetch origin main
-git checkout -B tmp-tracker origin/main
-#   ... edit tracker/tasks/*.md ...
-python3 "${CLAUDE_PLUGIN_ROOT}/tasks/build-board.py" tracker/tasks tracker/board.md   # web-tools: npm run tracker-board
-git add tracker/ && git commit -m "tracker: <what>"
-git push origin tmp-tracker:main
-git checkout <your-branch> && git branch -D tmp-tracker
-```
-
-In this repo the commit hook regenerates `board.md` when `tracker/tasks/`
-changes, so the explicit generator call is belt-and-suspenders; run it anyway
-when working outside the hook.
-
-If the push is rejected as non-fast-forward, another session advanced `main`:
-`git fetch origin main`, `git rebase origin/main`, regenerate the board, and
-push again. Task files with distinct ids do not conflict; `board.md` may, and
-it is generated, so take either side and rerun the generator.
-
-## Minting an id
-
-An id is a short interpretable slug from the title plus a 6-char base36 random
-suffix, `<slug>-<rrrrrr>`, mirroring how a working branch is named. The slug is
-a few lowercase hyphen-separated words (under ~40 chars), so a directory listing
-reads as a table of contents and a `depends-on:<id>` reference reads as a phrase.
-The random suffix is what keeps two sessions from colliding when they file at
-once (a sequential integer would: both pick the same next number and the later
-merge silently drops one task). Mint one, passing the slug:
+After the gate above clears. Mint the id as `<slug>-<rrrrrr>`, a short
+interpretable slug from the title plus a 6-char base36 suffix that keeps two
+sessions from colliding:
 
 ```
 python3 -c "import random,string,sys;print(sys.argv[1]+'-'+''.join(random.choices(string.digits+string.ascii_lowercase,k=6)))" cross-corpus-note-index
 ```
 
-The filename is `<id>.md`. The slug is frozen at filing: if the title later
-changes, leave the id as it is. Migrate any legacy id (an integer like `0001`,
-or the earlier dated form) to this scheme the next time you touch the tracker.
-
-## File a task
-
-Write `tracker/tasks/<id>.md` with flat `key: value` frontmatter (split on the
-first colon, scalars only, no YAML nesting or lists) and a body:
+Write `tracker/tasks/<id>.md`:
 
 ```markdown
 ---
@@ -135,70 +136,68 @@ next: <optional one-line next step; the board renders it>
 - <YYYY-MM-DD>: <what happened, and the intended next step>
 ```
 
-Recognized keys: `id`, `title`, `status` (required); `project`, `track`,
-`opened`, `closed`, `session` (optional, acted on). Any other scalar (`priority:
-high`, `size: L`) is an open tag: preserved, shown, not acted on. Status is one
-of `backlog | in-progress | blocked | done`.
+Status is one of `backlog | in-progress | blocked | done`. Any other scalar
+(`priority: high`, `size: L`) is an open tag: preserved, shown, not acted on.
+Full schema in `TRACKER.md`.
 
-## Claim a task
+## Claim, update, close
 
-Set `status: in-progress`, add `session: <your working branch>`, and append a
-progress-log line. This marks the task in flight and names the owning branch.
-Do the feature work on that branch; update the task file on `main` when status,
-owning branch, or the progress log changes.
+**Claim:** set `status: in-progress`, add `session: <your working branch>`, and
+append a progress-log line. Do the feature work on that branch; update the task
+file on `main` when status, owning branch, or the progress log changes.
 
-## Close a task
-
-Close a task when its branch work is complete. Do not wait for merge; nothing
-updates the task then.
-
-Set `status: done`, `closed: <YYYY-MM-DD>`, and `session:` to the completing
-branch. Add a final log entry citing the branch and delivery PR:
-
-> Done on `claude/foo-ab12`; lands via PR #299.
-
-Close tasks as they finish, even when other tasks remain in progress on the
-same branch. Commit the closed task file directly to `main` under the tracker
-exception, and report that you closed it and on which branch.
+**Close:** set `status: done`, `closed: <YYYY-MM-DD>`, `session:` to the
+completing branch, and add a final log entry citing the branch and delivery PR
+("Done on `claude/foo-ab12`; lands via PR #299"). Close when the branch work is
+complete, not at merge, because nothing updates the task at merge time and a
+close deferred to merge never happens. Close each task as it finishes even when
+others remain in progress on the same branch. Report the close and its branch in
+your reply.
 
 ## Groom the tracker
 
 Read every task file's body and progress log, not just `board.md`. Flag each
-`backlog`/`blocked` task that's superseded, stale, a duplicate, or oversized
-(wants splitting), and any `in-progress` task whose `session:` branch is
-merged or gone. Propose findings; get confirmation before closing or
-splitting anything.
+`backlog`/`blocked` task that is superseded, stale, a duplicate, or oversized
+(wants splitting), and any `in-progress` task whose `session:` branch is merged
+or gone. Propose findings; get confirmation before closing or splitting.
 
-The schema has no status for a groomed close, a task retired without being
-done (a real `done` means its work was completed). Use an open tag instead:
-`status: done`, `closed: <date>`, `resolution: superseded | stale | duplicate |
-dropped`, and name the cause in a progress-log line.
+There is no status for a groomed close, since a real `done` means the work was
+completed. Use open tags: `status: done`, `closed: <date>`, `resolution:
+superseded | stale | duplicate | dropped`, and name the cause in a progress-log
+line.
 
-Regenerate `board.md` and commit via the usual scratch-branch-to-main flow.
-Report what closed, what's proposed, and what was left alone.
+## Commit tracker state to main
 
-## Comments split by append vs overwrite
+**Task files and `board.md` commit directly to `main`, never to a feature
+branch.** That is what makes the tracker shared. Do the edit on a scratch branch
+cut fresh from `origin/main`, push it to `main`, and return to your working
+branch:
 
-Current-state facts (a priority, a size, a flag) are frontmatter tags,
-overwritten in place. Narrative is body prose: the description for standing
-context, `## Progress log` for the append-only dated thread. Never put lists or
-threads in frontmatter; that is the one thing that would force a real YAML
-parser.
+```
+git fetch origin main
+git checkout -B tmp-tracker origin/main
+#   ... edit tracker/tasks/*.md ...
+python3 "${CLAUDE_PLUGIN_ROOT}/tasks/build-board.py" tracker/tasks tracker/board.md
+git add tracker/ && git commit -m "tracker: <what>"
+git push origin tmp-tracker:main
+git checkout <your-branch> && git branch -D tmp-tracker
+```
 
-## Board
+This push is the standing exception to any instruction to keep commits on the
+feature branch. It needs no confirmation, only a note in your reply.
 
-`tracker/board.md` is generated, four sections (On deck, In progress, Blocked,
-Done), one line per task keyed by title, in-progress lines naming the branch.
-Never hand-edit it. The generator ships with the plugin, so regenerate with
-`python3 "${CLAUDE_PLUGIN_ROOT}/tasks/build-board.py" <tasks_dir> <board_out>`
-and commit it alongside the task change (web-tools' own copy runs it as
-`npm run tracker-board`).
+If the push is rejected as non-fast-forward, another session advanced `main`:
+fetch, rebase, regenerate the board, push again. Task files with distinct ids do
+not conflict; `board.md` may, and it is generated, so take either side and rerun
+the generator.
+
+Never hand-edit `board.md`. Where a repo's commit hook regenerates it (web-tools
+runs `npm run tracker-board`), the explicit call above is belt-and-suspenders;
+run it anyway when working outside the hook.
 
 ## Boundary with web-tools
 
-This skill owns the tracker: the task-file format, the id scheme, and the
-main-branch workflow. The `web-tools` skill owns the surfacing
-layer: PR bodies, `[new]/[main]/[diff]` links, the merge guide, wrap-up. Both
-touch post-merge handoff language ("follow-ups become tasks"); when the ask is
-about a task file or the board, stay here; when it is about a PR, a caption, or
-a merge-guide entry, use conventions (or `caption`).
+This skill owns the tracker: operations, filing rules, and the main-branch
+workflow. The `web-tools` skill owns the surfacing layer: PR bodies,
+`[new]/[main]/[diff]` links, the 🎫 marker's display form, the merge guide, and
+wrap-up. When the ask is about a task file or the board, stay here.
