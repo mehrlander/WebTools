@@ -242,12 +242,25 @@ instructions, so their agreement is not independent confirmation. That the store
 is intact is an inference from the file-write control. Viewing the PR's source in
 a browser would settle it.
 
-**Consequence for the guide region.** [SURFACING.md](../SURFACING.md) and the
-`caption` skill delimit the managed region of a PR body with `<!-- guide -->` and
-`<!-- /guide -->`. An agent that reads the body through this path sees no
-delimiters and therefore no region, and a sync that cannot find its region
-appends a second one or overwrites hand-written prose, which is the outcome the
-delimiters exist to prevent. A human editing in the GitHub UI is unaffected. The
-markdown link-label form `[//]: # (guide)` survives the round trip and renders as
-nothing, so it is the working alternative; it must start a line with blank lines
-around it, and inside a list or blockquote it can render literally.
+**Consequence for the guide region, since fixed.** [SURFACING.md](../SURFACING.md)
+and the `caption` skill used to delimit the managed region of a PR body with
+`<!-- guide -->` and `<!-- /guide -->`. An agent reading the body through this
+path saw no delimiters and therefore no region, and a sync that cannot find its
+region appends a second one or overwrites hand-written prose, which is the
+outcome the delimiters exist to prevent. A human editing in the GitHub UI was
+unaffected throughout.
+
+The markdown link-label form `[//]: # (guide)` survives the round trip and also
+renders as nothing, so it is now what gets written. Recognition accepts both, in
+`SURFACING.md`, the `caption` skill, and
+[`scripts/build-merge-guide.py`](../../scripts/build-merge-guide.py), because
+every body written before 2026-07-28 carries the HTML pair and would otherwise
+orphan its region. The constraint the new form brings: a link label is a
+reference definition, so it must start a line and sit between blank lines, and
+inside a list item or a blockquote it can render literally.
+
+The generalizable half is worth more than the fix. A delimiter is only as good
+as its worst reader, and this one was chosen for how GitHub renders it without
+anyone checking how an agent reads it back. When a marker exists so that a
+machine can find something later, test the round trip through the path that
+machine will actually use.
