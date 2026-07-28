@@ -46,36 +46,18 @@ at the filing step.
 
 **2. The gate.** Filing a *new* task needs the user's assent. Propose in your
 reply, one line each, and file the ones they name. Batch the proposal at the end
-of a pass so it is one decision rather than several, and keep it short enough to
-answer with "the first two" or "none". This is a standing decision: take the
-gate without asking whether to ask, and do not read a general instruction to use
-the tracker as blanket permission to file.
+of a pass so it is one decision rather than several.
 
-Only *creating* a task is gated. The rest is unattended, because it describes
-work that already exists and gating it would grow the backlog:
+**Know why you are asking.** It is not that writing to `main` needs clearance;
+that permission is standing and covers every tracker write. You are asking
+because the backlog is the scarce thing and a task nobody will claim costs more
+than it saves. So the question is "is this worth carrying", not "may I commit".
+Ask it once, take the answer, and move on.
 
-| Operation | Tool | Gate |
-| --- | --- | --- |
-| File a new task | Write | propose first |
-| Claim, update, close, groom-close | Edit | unattended |
-| Regenerate the board | generator | unattended |
-| Push tracker state to `main` | Bash | unattended, per the standing exception below |
-
-That split lines up with the tools, so a repo can back the gate mechanically
-rather than trusting this paragraph. Creating a task file is a `Write`; claiming
-and closing are `Edit`s. A repo that wants the harness to enforce it adds to
-`.claude/settings.json`:
-
-```json
-"permissions": {
-  "ask": ["Write(**/tracker/tasks/**)", "Write(tracker/tasks/**)"]
-}
-```
-
-Now the user is asked before a new task file appears, and no existing task is
-disturbed. It is a guardrail rather than a control: a file written through a
-Bash heredoc goes around it. That is acceptable, since the failure being
-prevented is an over-eager session, not an adversary.
+Only *creating* a task is gated. Claiming, updating, closing, groom-closing,
+regenerating the board, and pushing to `main` are unattended: they describe work
+that already exists, and gating them would grow the backlog. This is a standing
+decision, so take the gate without asking whether to ask.
 
 **3. No fragmenting.** File by outcome, not by observation. Related fixes that
 would land together belong in one task with a scoped list. Splitting them hides
