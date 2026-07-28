@@ -818,9 +818,13 @@ Three cross-repo live-view channels, one job each:
   listing files.
 - Batch-as-one-commit transfer (needs the Git Data API; Contents-API
   per-file commits are the current scope).
-- Private-repo landing federation via `mehrlander/home` (tracker task 0002):
-  with a token, fold featured private repos' landings into the gallery through a
-  single `HOME_REPO` hinge; no token, the private section is simply absent.
+
+Private-repo landing presence used to sit on this list as *federation*: a
+curated `landing.json` in `mehrlander/home`, read through a single `HOME_REPO`
+hinge. It is off the list because it shipped in the per-repo form described
+above: a repo opts itself in through its own `.web-tools.json` (`estate`,
+`quickLink`, `pages`, `appView`), the config cache aggregates the opt-ins, and
+the registry repo is the only private name this public page carries.
 
 ## Using it from a Claude session
 

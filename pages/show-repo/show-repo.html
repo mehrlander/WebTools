@@ -2485,11 +2485,16 @@ function overview(){ return {
   embed toss-render the same way. show-repo shows and moves files; toss-render
   runs pages.
 
-  Next, aligned with tracker task 0002 (private-repo landing federation via
-  mehrlander/home): with a token, read mehrlander/home's landing.json and fold
-  each featured private repo's landing into web-tools' own gallery as
-  additional cards/sections. HOME_REPO becomes the one public-private hinge, a
-  single lib/ constant. No token: the private section is absent, no leak.
+  A private repo's landing presence was once planned as federation: read a
+  landing.json in mehrlander/home and fold each featured repo's landing into
+  web-tools' own gallery, through a single HOME_REPO constant as the one
+  public-private hinge. It shipped in the per-repo form instead, and the
+  distinction is worth keeping straight, since the federated form keeps
+  getting re-proposed. Membership is a property of each repo's own
+  .web-tools.json (estate, quickLink, pages, appView), aggregated by the
+  config cache; the one private string this page names is REGISTRY_REPO, and
+  no curated list of featured repos exists to maintain. The no-token posture
+  is the same either way: no cache read, so nothing private is named.
 
   The seam stays small: each landing kind is a branch in landingKind() plus a
   matching landing block. `pages` now has two read sites (landingKind()'s
