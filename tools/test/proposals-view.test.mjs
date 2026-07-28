@@ -176,3 +176,61 @@ test('the commit button still delivers a plain commit', async () => {
   assert.equal(made.filter(w => w.createRef).length, 0, 'no branch for a commit delivery');
   assert.equal(made.filter(w => w.createPull).length, 0);
 });
+
+// ── what a real run taught ──────────────────────────────────────────────────
+// Both of these are regressions of observed behavior, not hypotheticals: on
+// 2026-07-28 one apply failed with a 409 and was marked spent anyway, and
+// successful rows lingered because the reload raced GitHub's listing.
+
+test('a failed apply leaves the proposal pending and records an attempt', async () => {
+  files[REG]['proposals/pending/willfail.json'] = JSON.stringify({
+    id: 'willfail', kind: 'set-json-field', repo: 'mehrlander/willfail',
+    path: '.web-tools.json', field: 'scope', value: 'x', why: 'a write that 409s' });
+  files['mehrlander/willfail'] = { '.web-tools.json': '{}' };
+  await data.load();
+  const row = data.items.find(i => i.id === 'willfail');
+  assert.ok(row, 'it lists');
+
+  const realSave = window.GH.prototype.saveRaw;
+  window.GH.prototype.saveRaw = async function () { const e = new Error('GitHub Error 409'); e.status = 409; throw e; };
+  try {
+    data.arm(row, 'commit');
+    await data.apply(row);
+  } finally { window.GH.prototype.saveRaw = realSave; }
+
+  assert.equal(saves.some(s => s.path === 'proposals/applied/willfail.json'), false,
+    'a failure must not write the tombstone that retires a proposal');
+  assert.ok(saves.some(s => s.path.startsWith('proposals/attempts/willfail-')),
+    'it is kept as an attempt instead, so the failure is diagnosable');
+  assert.ok(data.items.some(i => i.id === 'willfail'), 'and the proposal is still pending');
+});
+
+test('a successful apply drops the row without waiting for the listing to catch up', async () => {
+  files[REG]['proposals/pending/quick.json'] = JSON.stringify({
+    id: 'quick', kind: 'set-json-field', repo: 'mehrlander/wa-bills',
+    path: '.web-tools.json', field: 'note', value: 'q', why: 'x' });
+  await data.load();
+  const row = data.items.find(i => i.id === 'quick');
+  data.arm(row, 'commit');
+  await data.apply(row);
+  // The stub's listing still reports it pending, exactly like the real API a
+  // second after a write. The row is gone anyway.
+  assert.equal(data.items.some(i => i.id === 'quick'), false);
+});
+
+test('a change already in place reads as done, and retires without touching the target', async () => {
+  files['mehrlander/done-repo'] = { '.web-tools.json': '{\n  "scope": "already here"\n}\n' };
+  files[REG]['proposals/pending/already.json'] = JSON.stringify({
+    id: 'already', kind: 'set-json-field', repo: 'mehrlander/done-repo',
+    path: '.web-tools.json', field: 'scope', value: 'already here', why: 'x' });
+  await data.load();
+  const row = data.items.find(i => i.id === 'already');
+  assert.equal(row.done, true, 'the premise check sees the value is already there');
+  assert.equal(row.checks.find(c => c.key === 'needed').state, 'done');
+
+  const before = writes.length;
+  await data.retire(row);
+  assert.equal(writes.length, before, 'retiring writes nothing to the target');
+  assert.ok(saves.some(s => s.path === 'proposals/applied/already.json'), 'only the tombstone');
+  assert.equal(data.items.some(i => i.id === 'already'), false);
+});

@@ -25,7 +25,8 @@ export default async (page) => {
           'Describe wa-bills as the WA legislation corpus and tooling.', SHARED,
           'confirm the repo’s visibility. The draft says downstream analysis references this corpus, which reads differently in public.'),
       },
-      'mehrlander/chat-histories': { '.web-tools.json': '{\n  "icon": "ph-chats",\n  "estate": true\n}\n' },
+      // chat-histories already carries the value, which is the 'done' state.
+      'mehrlander/chat-histories': { '.web-tools.json': '{\n  "icon": "ph-chats",\n  "estate": true,\n  "scope": "The chat archive: raw conversations plus the catalogs, arcs, and indexes that navigate them, all keyed by chat URL (GUIDE.md)."\n}\n' },
       'mehrlander/fn-data': { '.web-tools.json': '{\n  "icon": "ph-chart-line-up",\n  "estate": true\n}\n' },
       'mehrlander/wa-bills': { '.web-tools.json': '{\n  "icon": "ph-scales",\n  "estate": true\n}\n' },
     };
