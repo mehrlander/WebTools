@@ -10,7 +10,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Reach the take-away menu from show-repo's Pages gallery
 - 🎫 The build-on-commit hook did not fire, and nothing said so
 - 🎫 Fold chat-results into the surface schema, or keep it a sibling
-- 🎫 Collapse quickLinks into a projection of the repos manifest next: decide the projection rule (a flag on repos entries, or first-N) and migrate loadQuickLinks
+- 🎫 Collapse quickLinks into a projection of the repos manifest next: decide whether to retire the resolver and the registry's legacy list, or close this as overtaken; the row it was about no longer exists
 - 🎫 Confirm-gated cross-repo edit proposals via a web-tools-private channel next: Design the proposal record + the show-repo pending panel; reuse gh-transfer's confirm gate
 - 🎫 Have data-view open at an addressed item via the fragment next: decide the fragment vocabulary (item index, item name, or both) before building; the delivery half already works
 - 🎫 Reclaim the phone viewport in data-view next: user is reviewing the five options; start with demoting the notes (option 3) and the full-bleed toggle (option 5), which need no cross-frame work
