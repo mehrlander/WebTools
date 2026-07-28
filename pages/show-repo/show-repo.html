@@ -1486,19 +1486,27 @@ function app(){ return {
   get repoMenuItems(){
     if (this.menuKind === 'github') return this.githubMenuItems;
     if (this.menuKind !== 'repo') return this.repoActionItems;
-    // Each half opens with a HEAD ROW rather than a label: a real row, carrying
-    // the mark of WHERE (this app, then GitHub) and the name of WHAT (the
-    // repo), and acting as that half's default destination. It replaces both a
-    // dead label and the row underneath it, since "Open repo" and "Repository"
-    // were the same idea named twice and read as an inconsistency between the
-    // two halves. Now the parallel is exact: same name, different mark, and
-    // each half's remaining rows are the places inside it.
+    // THE REPO, TWICE, then where it goes on GitHub. The two HEAD ROWS carry
+    // the same name under two marks, this app's and GitHub's, and each opens
+    // the repo in that place; the indented rows under the GitHub one are the
+    // places inside it. Adjacent rather than ruled apart, because they are
+    // peers: one question ("open this repo") with two answers. A head row is
+    // its section's label and its destination at once, which is what retired
+    // the inert uppercase labels and the "Open repo" / "Repository" pair
+    // underneath them, one idea named twice in two vocabularies.
+    //
+    // The app side USED to carry Files / Branch review / Config under its head.
+    // They are gone for the reason the sidebar's own menu never had them: once
+    // the repo is open its views ARE the sidebar, so those rows bought one tap
+    // each and made the app half look like a section when it is a destination.
+    // What is left states the true shape, which is that only GitHub has places
+    // worth naming from out here.
     //
     // The GitHub keys are prefixed here, and it is load-bearing rather than
-    // tidy: both halves name a `branches` row, the loop keys on `key`, and a
-    // duplicate key silently drops the second row (it cost one Branches row
-    // before it was noticed). Dispatch reads the row, not the key, so the
-    // prefix costs nothing downstream.
+    // tidy: the list used to name a `branches` row on both sides, the loop keys
+    // on `key`, and a duplicate key silently drops the second row (it cost one
+    // Branches row before it was noticed). Dispatch reads the row, not the key,
+    // so the prefix costs nothing downstream.
     const repo = this.menuRepo;
     const short = repo.split('/')[1] || repo;
     const [ghHome, ...ghRest] = this.githubMenuItems.map(r => ({ ...r, key: 'gh:' + r.key }));
@@ -1506,7 +1514,6 @@ function app(){ return {
       ...this.menuExtra,
       { key: 'open', head: true, label: short, mark: 'app',
         title: 'Open ' + repo + ' here' },
-      ...this.repoAppItems,
       ghHome && { ...ghHome, head: true, label: short, icon: 'ph-github-logo',
                   title: repo + ' on GitHub' },
       ...ghRest,
@@ -1519,21 +1526,6 @@ function app(){ return {
   // meaningless from the sidebar. Each carries its own `group` label and its
   // own `run`, so the shell hosts them without knowing what they do.
   menuExtra: [],
-  // Where the repo goes IN THIS APP. Only the combined list carries these: the
-  // sidebar's own menu leaves them out, since a row that opens the repo on a
-  // tap, above a list of every other repo, has answered the question already.
-  get repoAppItems(){
-    return [
-      // No "Open repo" row: the head row above these IS that destination.
-      { key: 'files', label: 'Files', icon: 'ph-folders' },
-      // "Branch review" rather than "Branches", which is what the sidebar's
-      // own nav calls it: in THIS list the GitHub group names a Branches row
-      // too, and two rows a few lines apart with the same label and the same
-      // glyph is a double-take the group labels do not fully answer.
-      { key: 'branches', label: 'Branch review', icon: 'ph-git-branch' },
-      { key: 'config', label: 'Config', icon: 'ph-gear-six' },
-    ];
-  },
   // Things you do TO a repo, not inside one, and by now a SHORT list, because
   // every row that left had somewhere better to be:
   //   Files and Branches expanded into the repo's folders and its branch list,
@@ -1636,11 +1628,12 @@ function app(){ return {
     this.menuRepo = repo;
     this.menuKind = kind;
     this.menuExtra = kind === 'repo' && Array.isArray(opts.extra) ? opts.extra : [];
-    // The rules above the head rows take height too, so the measure that
-    // decides whether the panel fits below the trigger allows for them.
+    // A rule takes height too, so the measure that decides whether the panel
+    // fits below the trigger allows for the ones that will actually be drawn
+    // (above a head row that does not follow another head row).
     const items = this.repoMenuItems;
-    const heads = items.filter(r => r.head).length;
-    this.repoMenuAt = this.anchorMenu(ev, items.length + heads * 0.4, opts);
+    const rules = items.filter((r, i) => r.head && i && !items[i - 1]?.head).length;
+    this.repoMenuAt = this.anchorMenu(ev, items.length + rules * 0.5, opts);
     // The Activity view runs a second anchored panel of its own, so announce
     // the open rather than have every caller remember to put the other one
     // away. Announced HERE, at the moment of opening, not when a hover starts:
@@ -1741,8 +1734,6 @@ function app(){ return {
       return;
     }
     if (key === 'config') this.goConfig();
-    else if (key === 'files') this.goFiles();
-    else if (key === 'branches') this.goBranches();
     else if (key === 'open') this.goLanding();
   },
 

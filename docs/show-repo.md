@@ -1016,26 +1016,35 @@ reader's only route to the repo and carries the lot. Sections rather than a
 submenu: a submenu hides half the answer behind a second gesture, and seeing
 where you can go is the whole point of a jump-over list.
 
-Each section opens with a **head row**, which is its label and its default
-destination at once: the mark of **where** (the app's own favicon, then the
-GitHub logo) beside the name of **what** (the repo), over the places inside it.
+It is **the repo, twice**, then where it goes on GitHub. A **head row** is its
+section's label and its destination at once: the mark of **where** (the app's
+own mark, then the GitHub logo) beside the name of **what** (the repo).
 
 ```
   Only web-tools            ← contributed by the view: bold, at the margin
   ─────────────
   ⟨⟩ web-tools              ← opens the repo here
-     Files · Branch review · Config
-  ─────────────
   ⌥ web-tools           ↗   ← opens the repo on GitHub
      Pull requests · Issues · Task board · Branches · Commits · Actions ↗
 ```
 
-A rule sits above each head row but the first, and the rows under a head are
-indented to their head's label, so the sections read as structure with nothing
-to read. The app's mark is drawn **inline** rather than loaded from
-`lib/favicon.svg`, as an outline rendition of it: an `<img>` cannot take
-`currentColor`, so the file would sit in brand blue beside a column of muted
-glyphs and stay blue on hover.
+The two head rows sit **adjacent**, because they are peers: one question with
+two answers. A rule separates blocks, not peers, so it is drawn above a head
+row only when the row before it is not itself a head. The rows under a head are
+indented to their head's label, so the structure reads with nothing to read.
+
+The app head used to carry **Files**, **Branch review** and **Config** beneath
+it. They are gone for the reason the sidebar's own menu never had them: once
+the repo is open, its views **are** the sidebar, so each row bought one tap and
+made the app half look like a section when it is a destination. What is left
+states the true shape, which is that only GitHub has places worth naming from
+out here.
+
+The app's mark is drawn **inline** rather than loaded from `lib/favicon.svg`,
+as an outline rendition of it: an `<img>` cannot take `currentColor`, so the
+file would sit in brand blue beside a column of muted glyphs and stay blue on
+hover. Its stroke is `1.44`, which is Phosphor's regular weight (a 16-unit
+stroke on a 256 canvas) carried onto this 23-unit viewBox.
 
 That replaced an inert uppercase label plus a row underneath it: **Open repo**
 and **Repository** were one idea named twice, and reading them together made
