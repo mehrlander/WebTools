@@ -9,6 +9,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Show the branch lifespan in the per-repo branch review too
 - 🎫 Reach the take-away menu from show-repo's Pages gallery
 - 🎫 The build-on-commit hook did not fire, and nothing said so
+- 🎫 Teach the guide region a delimiter that survives an agent's readback next: recognize both delimiters, write only the surviving one; the HTML form must keep parsing or every existing guide region orphans
 - 🎫 Fold chat-results into the surface schema, or keep it a sibling
 - 🎫 Confirm-gated cross-repo edit proposals via a web-tools-private channel next: Design the proposal record + the show-repo pending panel; reuse gh-transfer's confirm gate
 - 🎫 Have data-view open at an addressed item via the fragment next: decide the fragment vocabulary (item index, item name, or both) before building; the delivery half already works
