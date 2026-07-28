@@ -22,6 +22,27 @@ counted.)*
 
 ---
 
+### phosphor-weight-is-a-family — an icon renders as nothing at all
+`ph-push-pin-fill` is not an icon. Phosphor's weights are font families, not name
+suffixes, so the class pair is `{weight} ph-{name}` (`ph-fill ph-push-pin`). A
+name the font does not carry produces a zero-width blank with no console error,
+so a missing glyph reads as a logic bug and gets debugged as one. Measure the
+element's width before suspecting the state that controls it.
+*(seen: 2026-07-28)*
+→ [../skills/phosphor-icons/SKILL.md](../skills/phosphor-icons/SKILL.md)
+---
+
+### daisy-divide-paints-black — hairlines come out black, not grey
+`divide-y divide-base-200` renders black lines. daisyUI ships its semantic colours
+as its own utilities and `divide-*` is not among them, so `divide-base-200`
+compiles to nothing and is dropped silently; Tailwind v4 then defaults
+`border-color` to `currentColor` (v3 defaulted to `gray-200`), leaving the
+divider painted in the text colour. Use `gap`, or an explicit
+`[&>*+*]:border-t border-base-200`. Same trap in `ring-*` and `outline-*`.
+*(seen: 2026-07-28)*
+→ [../skills/daisy-alpine/SKILL.md](../skills/daisy-alpine/SKILL.md)
+---
+
 ### x-collapse-needs-x-show — a panel renders at zero size
 A component mounts with correct state yet renders at zero size: `x-collapse` with
 no companion `x-show` sets `el.hidden` (the plugin keys on `_x_isShown`). Pair

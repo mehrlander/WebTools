@@ -686,6 +686,20 @@ repos. All are optional; a repo with no config is simply off the estate.
     view, like Surfaces), and rendered live in the estate main area via
     toss-render `#gh=`. The page still appears in the repo's own gallery too;
     the flag is additive.
+
+    *When to reach for it.* A view whose subject is **the estate** is built into
+    the shell (Activity, Repos, Surfaces, Stage, Map, Proposals, and the To-do
+    and Jots lists, which are operational to the tool). A view whose subject is
+    **content** is an app view over the repo that owns it: the renderer stays
+    public here, the content stays wherever it belongs. News and Links are both
+    that shape, home's data through a web-tools page. Two consequences worth
+    knowing before building one: the page gets the main area minus the sidebar,
+    so it has to survive at two thirds width; and the shell already supplies a
+    header and the sidebar label, so a promoted page should stand its own
+    masthead down when `window.self !== window.top` (`pages/links.html` does,
+    `pages/news/news.html` does not yet). An app view cannot reach the shell's
+    chrome at all, being in an iframe, so anything wanting persistent presence
+    has to be built into the shell instead.
   - **viewLabel**: the sidebar label for the promoted view (defaults to `title`,
     then the filename).
 - **pins**: folders/files surfaced in the sidebar Pinned block. A last segment
