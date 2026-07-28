@@ -373,3 +373,70 @@ test('the PR body carries the three fields as three things, not one paragraph', 
   assert.ok(body.includes('The Map shows a blank card.'));
   assert.match(body, /> \*\*Before merging:\*\* confirm visibility/, 'the caution is a blockquote, not buried');
 });
+
+// ── preflight checks ────────────────────────────────────────────────────────
+// The premises a proposal rests on, answered before the write rather than
+// discovered by it.
+
+test('checks report a readable target, a needed change, and no sha to compare', async () => {
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{\n  "estate": true\n}\n' } });
+  const r = await P.resolve(proposal(), { GH, token: 't' });
+  const { list, blocking, done } = P.checks(proposal(), r);
+  assert.equal(blocking, false);
+  assert.equal(done, false);
+  assert.equal(list.find(c => c.key === 'readable').state, 'pass');
+  assert.equal(list.find(c => c.key === 'needed').state, 'pass');
+  assert.equal(list.find(c => c.key === 'unchanged').state, 'skip', 'no expectSha means nothing to compare');
+});
+
+test('a change already in place reads as done rather than as a failure', async () => {
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{"scope":"A one-line story."}' } });
+  const p = proposal();
+  const r = await P.resolve(p, { GH, token: 't' });
+  const pre = P.checks(p, r);
+  assert.equal(pre.done, true);
+  assert.equal(pre.list.find(c => c.key === 'needed').state, 'done');
+  assert.match(pre.list.find(c => c.key === 'needed').note, /already holds/);
+});
+
+test('apply refuses a proposal that is already applied, and says so', async () => {
+  const log = [];
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{"scope":"A one-line story."}' } }, log);
+  const res = await P.apply(proposal(), { GH, token: 't' });
+  assert.equal(res.ok, false);
+  assert.equal(res.done, true);
+  assert.match(res.error, /already applied/);
+  assert.equal(log.length, 0, 'and writes nothing');
+});
+
+test('a declared premise that does not hold blocks the write', async () => {
+  const log = [];
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{"estate":true,"scope":"something else"}' } }, log);
+  const p = proposal({ expect: [{ field: 'scope', absent: true }] });
+  const r = await P.resolve(p, { GH, token: 't' });
+  const pre = P.checks(p, r);
+  assert.equal(pre.blocking, true);
+  assert.equal(pre.list.find(c => c.key === 'expect:scope').state, 'fail');
+
+  const res = await P.apply(p, { GH, token: 't' });
+  assert.equal(res.ok, false);
+  assert.match(res.error, /premise does not hold/);
+  assert.equal(log.length, 0);
+});
+
+test('a declared premise that holds passes and lets the write through', async () => {
+  const log = [];
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{"estate":true}' } }, log);
+  const p = proposal({ expect: [{ field: 'scope', absent: true }, { field: 'estate', equals: true }] });
+  const res = await P.apply(p, { GH, token: 't' });
+  assert.equal(res.ok, true);
+  assert.equal(log.length, 1);
+});
+
+test('a stale target fails its unchanged check, visibly, before any tap', async () => {
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{"estate":true,"note":"moved"}' } });
+  const p = proposal({ expectSha: 'sha-webtoolsjson-1' });
+  const r = await P.resolve(p, { GH, token: 't' });
+  const pre = P.checks(p, r);
+  assert.equal(pre.list.find(c => c.key === 'unchanged').state, 'fail');
+});

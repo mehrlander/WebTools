@@ -835,6 +835,35 @@ fine-grained token can carry `contents: write` without `pull_requests: write`,
 so a PR failure never erases the branch and commit that already landed. The
 record reports both and hands over a compare link.
 
+**Preflight checks, on the card, before the tap.** Every row answers the
+premises the proposal rests on, live against the target:
+
+| Check | Means |
+| --- | --- |
+| **Target is readable** | the file exists and parses (JSON, for `set-json-field`) |
+| **Change is still needed** | the target does not already carry this exact change |
+| **Target unchanged since proposed** | `expectSha` still matches, skipped when none was recorded |
+| **declared premises** | each entry in the record's optional `expect: [{ field, equals }｜{ field, absent }]` |
+
+A failing check disables Apply, so a proposal whose premises no longer hold
+cannot be tapped through by mistake. **Already applied is a state, not a
+failure**: when the target already carries the change, the row says so and
+offers **Already done, retire it**, which writes the tombstone without touching
+the target. `apply()` refuses such a proposal even if called directly.
+
+**Only a success retires a proposal.** A failed apply used to write the same
+`applied/` tombstone as a successful one, so a write that failed marked the
+record spent and it vanished from the list without ever landing. A failure is
+now kept under `proposals/attempts/<id>-<timestamp>.json`, and the proposal
+stays pending. When reading the channel's state, `applied/` means it landed,
+`attempts/` means it did not.
+
+**The list drops a row without waiting for the API.** The contents listing is
+eventually consistent, so a read a second after the tombstone lands often still
+reports the proposal pending, which made applied rows appear to linger. The view
+remembers what it retired for the life of the page and filters those names out
+of every reload.
+
 **The staleness guard.** A record may carry **`expectSha`**, the blob sha of the
 target as it stood when the proposal was written. At apply time a different sha
 refuses the write, with the two shas named, and a target that has since been
