@@ -1,10 +1,12 @@
 ---
 id: cross-repo-edit-proposals-evo1ml
 title: Confirm-gated cross-repo edit proposals via a web-tools-private channel
-status: backlog
+status: done
 track: independent
 opened: 2026-07-23
-next: Design the proposal record + the show-repo pending panel; reuse gh-transfer's confirm gate
+closed: 2026-07-28
+session: claude/tracker-status-cjogjn
+next: done as a first cut; the four scope drafts are staged as pending proposals for the user to apply
 ---
 # Confirm-gated cross-repo edit proposals via a web-tools-private channel
 
@@ -80,3 +82,24 @@ repo's visibility (the doctrine keys the boundary on it).
 - 2026-07-23: Filed. Surfaced while adding `scope` to the roster from a session
   that could not reach those repos (the Map view work, web-tools PRs #281/#282).
   The read-only mailbox and gh-transfer are the two halves to build between.
+- 2026-07-28: first cut done on `claude/tracker-status-cjogjn`, landing via
+  web-tools PR #302 and web-tools-private PR #8. `lib/repo-proposals.js` is the
+  contract (pending/applied dirs, validate, resolve, apply, and the tombstone
+  convention borrowed from the mailbox);
+  `lib/alpineComponents/proposals.js` is the review view at `?view=proposals`,
+  a nav entry that appears only while something is pending. Every row resolves
+  against the live target and shows the bytes the write would send, and Apply
+  is a two-tap confirm through gh-transfer's saveRaw. Two kinds shipped:
+  `put-file` and `set-json-field`, the latter a read-modify-write so a session
+  that cannot read the target proposes a field rather than guessing at the rest
+  of the file. Tests: `tools/test/repo-proposals.test.mjs` (12) and
+  `tools/test/proposals-view.test.mjs` (6), plus a stubbed headless shot
+  (`tools/render/scripts/proposals-demo.mjs`).
+  The four `scope` drafts above are staged as pending proposals in
+  web-tools-private; applying them is the user's tap, and each still wants its
+  visibility confirmed, which is what the review pane is for.
+  Deliberately not built, and not yet tasks: a patch kind (whole-file and
+  field-set cover the cases at hand), batching several proposals into one
+  confirm, and any proposal a repo could send rather than receive. The panel
+  lives in its own estate view rather than folded into the Map or the repo
+  dialog, on the grounds that a pending write is not a property of any one repo.

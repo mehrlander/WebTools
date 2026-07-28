@@ -3,7 +3,6 @@
   "estate": true,
   "group": "core",
   "order": 11,
-  "quickLink": true,
   "note": "Browser tools and kits; hosts this shell and the portable conventions.",
   "scope": "The public hub: the browser tools and kits, the show-repo shell, and the portable conventions every repo pulls. Public on purpose, since conventions are not secret and a public hub is what lets private repos fetch them with no credentials at session start.",
   "pins": [

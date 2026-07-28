@@ -18,12 +18,15 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const SCRIPT = path.join(repoRoot, '.claude/skills/in-flight/in-flight.py');
 
-// One day back from now, not a calendar date. An absolute date ages past
-// --quiet-days (7 by default) and silently turns every "live" fixture quiet;
-// pinned to 2026-07-20, this suite went red on its own on 2026-07-27. The
-// offset is still uniform across every commit in a run, so the hash-collision
-// note on commit() below holds exactly as before.
-const FIXTURE_DATE = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+// One timestamp for the whole run, two days old: fixed enough that two commits
+// sharing a tree, a parent, and a message still collide (see commit() below),
+// but relative rather than a wall-clock date. A hardcoded date was the original
+// form and it aged into a failure: the script calls a branch idle past
+// --quiet-days quiet, so once the calendar passed the pinned date by a week,
+// three tests expecting `live` got `quiet`. Two days is the age that keeps both
+// sides testable: inside the 7-day default (live), outside --quiet-days 0
+// (quiet), with no date to go stale.
+const FIXTURE_DATE = new Date(Date.now() - 2 * 86400 * 1000).toISOString();
 
 const ENV = {
   ...process.env,
