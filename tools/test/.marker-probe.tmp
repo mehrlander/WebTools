@@ -1,0 +1,7 @@
+PROBE-A-CONTROL-alpha
+<!-- guide -->
+PROBE-B-AFTER-COMMENT-bravo
+<!--guide-->
+[//]: # (PROBE-D-MDLINKLABEL-delta)
+<a name="PROBE-E-ANCHOR-echo"></a>
+PROBE-F-CONTROL2-foxtrot
