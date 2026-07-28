@@ -1,7 +1,7 @@
 ---
 id: lib-load-race-on-slow-connections-9kx2mv
 title: Guard every lib-booting page against the Alpine load race
-status: open
+status: backlog
 track: independent
 opened: 2026-07-26
 session: claude/shorter-tool-toss-render-nr7zoc

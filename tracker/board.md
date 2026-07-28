@@ -32,7 +32,6 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Pinch-zoom and pan for pdf-inspect's page view
 - 🎫 Close open table perimeters in the pdf kit's lattice
 - 🎫 A column-splitter page for the pdf kit
-- 🎫 Private-repo landing federation via the home registry next: superseded by tasks generalize-gallery-pages-catalog-m3b8pa (gallery generalization) and app-views-estate-level-btp6m4 (app views); reassess whether any federation-specific work remains
 - 🎫 Inline the run-time CDN references a rendering copy still carries
 - 🎫 Repo-designated inbox and outbox in .web-tools.json (`claude/pr-219-review-22csrh`)
 - 🎫 Repo-level GitHub links in show-repo's shield dialog
@@ -64,6 +63,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Extract drop-zone as a reusable Alpine component (`claude/tracker-summary-nu74te`)
 - 🎫 Generalize the gallery to a per-repo pages catalog (`claude/web-tools-app-views-m3pkyo`) next: landed; live gallery for home needs home#314 on main (config cache reads main)
 - 🎫 History-safe shim for toss-render address-mode renders next: done; hash-routing pages now switch views inside toss #gh= renders
+- 🎫 Private-repo landing federation via the home registry next: closed as superseded; the goal shipped per-repo, not federated
 - 🎫 Render files over 1 MB in toss-render and the shell viewers next: done — raw media type with git-blobs fallback landed in toss-render (ghText, showAddress, fetchShim) and gh-api.js get(); A/B headless test confirms the 5.9 MB DRS bundle is delivered where the old path returned blank
 - 🎫 Resolve a branch's session from the commit trailer, not the open PR body (`claude/active-work-branches-sd289p`)
 - 🎫 Singleton fab with toss-render integration (`claude/fab-render-toss-render-ua6p3p`)
