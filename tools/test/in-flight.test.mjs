@@ -18,12 +18,23 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const SCRIPT = path.join(repoRoot, '.claude/skills/in-flight/in-flight.py');
 
+// Two days before the suite runs, not a calendar date. `in-flight.py` reads a
+// branch's age against wall-clock and calls one idle past --quiet-days (default
+// 7) quiet rather than live, so an absolute fixture date is a time bomb: it
+// passes when written and starts failing the day the threshold is crossed, for
+// a reason that has nothing to do with the code. It did, on 2026-07-28, eight
+// days after the 2026-07-20 this used to pin. Two days keeps every branch here
+// comfortably live under the default while staying far from the boundary.
+// The determinism the commit() note below depends on is unchanged: one
+// timestamp is computed per run and shared by every commit in it.
+const FIXTURE_DATE = new Date(Date.now() - 2 * 86400_000).toISOString();
+
 const ENV = {
   ...process.env,
   GIT_AUTHOR_NAME: 'T', GIT_AUTHOR_EMAIL: 't@e',
   GIT_COMMITTER_NAME: 'T', GIT_COMMITTER_EMAIL: 't@e',
-  GIT_AUTHOR_DATE: '2026-07-20T00:00:00Z',
-  GIT_COMMITTER_DATE: '2026-07-20T00:00:00Z',
+  GIT_AUTHOR_DATE: FIXTURE_DATE,
+  GIT_COMMITTER_DATE: FIXTURE_DATE,
 };
 
 const git = (cwd, ...args) =>
