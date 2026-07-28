@@ -11,7 +11,6 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 The build-on-commit hook did not fire, and nothing said so
 - 🎫 Teach the guide region a delimiter that survives an agent's readback next: recognize both delimiters, write only the surviving one; the HTML form must keep parsing or every existing guide region orphans
 - 🎫 Fold chat-results into the surface schema, or keep it a sibling
-- 🎫 Confirm-gated cross-repo edit proposals via a web-tools-private channel next: Design the proposal record + the show-repo pending panel; reuse gh-transfer's confirm gate
 - 🎫 Have data-view open at an addressed item via the fragment next: decide the fragment vocabulary (item index, item name, or both) before building; the delivery half already works
 - 🎫 Reclaim the phone viewport in data-view next: user is reviewing the five options; start with demoting the notes (option 3) and the full-bleed toggle (option 5), which need no cross-frame work
 - 🎫 A multi-method harness for extracting structure from scanned documents
@@ -59,6 +58,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Automate the merge guide from PR bodies (`claude/task-tracker-discussion-wg27xv`)
 - 🎫 Branch-review view in show-repo (`claude/web-tools-branch-tracking-n1zawm`) next: session refreshes (show-repo thumbnail) at wrap-up, then review via PR #236
 - 🎫 Collapse quickLinks into a projection of the repos manifest (`claude/tracker-status-cjogjn`) next: done; landing via web-tools PR #302 and web-tools-private PR #8 (merge #302 first)
+- 🎫 Confirm-gated cross-repo edit proposals via a web-tools-private channel (`claude/tracker-status-cjogjn`) next: done as a first cut; the four scope drafts are staged as pending proposals for the user to apply
 - 🎫 Estate activity signals from a registry activity cache (`claude/branches-view-api-caching-ef4l5d`)
 - 🎫 Update estate tests to the groupSections layout (`claude/viewer-button-dropdown-0h4u57`)
 - 🎫 Extract drop-zone as a reusable Alpine component (`claude/tracker-summary-nu74te`)
