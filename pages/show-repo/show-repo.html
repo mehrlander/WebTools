@@ -42,6 +42,10 @@
   await gh.load('repo-activity-cache.js');
   // The private request/response mailbox (mailbox/requests -> results).
   await gh.load('repo-mailbox.js');
+  // The write-side channel: proposed cross-repo edits, applied only on confirm.
+  await gh.load('repo-proposals.js');
+  // The owner/repo[@ref]:path grammar, and the inbox/outbox boxes built on it.
+  await gh.load('repo-address.js');
   // Pure alignment assessment behind the Portable view (window.PortableAlign).
   await gh.load('portable-align.js');
 </script>
@@ -147,7 +151,7 @@
       <div x-show="crumbMenu" x-cloak x-transition.opacity.duration.120ms
            class="absolute inset-x-2 top-full z-40 mt-1 max-h-[60vh] overflow-y-auto rounded-box border border-base-300 bg-base-100 shadow-xl">
         <div class="flex flex-col py-1">
-          <template x-for="r in sidebarRepos" :key="r.repo">
+          <template x-for="r in estateRepos" :key="r.repo">
             <button @click="pickRepo(r.repo)"
                     class="w-full min-h-11 flex items-center gap-2.5 px-3 rounded-lg text-left text-base transition-colors hover:bg-base-200 active:bg-base-300"
                     :class="$store.browser.repo === r.repo ? 'text-primary font-semibold' : 'text-base-content/80'">
@@ -157,7 +161,7 @@
               <i x-show="$store.browser.repo === r.repo" class="ph ph-check shrink-0 text-base text-primary"></i>
             </button>
           </template>
-          <p x-show="!sidebarRepos.length" class="px-3 py-2 text-sm text-base-content/50">
+          <p x-show="!estateRepos.length" class="px-3 py-2 text-sm text-base-content/50">
             No other repositories loaded.
           </p>
         </div>
@@ -176,7 +180,7 @@
            grid. The header nav's Repos opens the full grid; this is the one-tap
            jump list beside it, so the sidebar carries the repos even when no app
            view does. The icon on the right opens that grid. -->
-      <div class="flex flex-col gap-0.5" x-show="estateCtx && sidebarRepos.length">
+      <div class="flex flex-col gap-0.5" x-show="estateCtx && estateRepos.length">
         <div class="flex items-center gap-1.5 px-2 pb-0.5">
           <span class="text-base font-mono uppercase tracking-widest text-base-content/40">Repos</span>
           <div class="grow"></div>
@@ -224,7 +228,7 @@
       </div>
 
       <div class="border-t border-base-200"
-           x-show="estateCtx && sidebarRepos.length && sidebarAppViews.length"></div>
+           x-show="estateCtx && estateRepos.length && sidebarAppViews.length"></div>
 
       <!-- App views: pages a repo promotes to an estate-level entry (appView:true,
            e.g. News), rendered live in the main area through toss-render. -->
@@ -613,6 +617,18 @@
       </div>
     </div>
 
+    <!-- The Proposals view: cross-repo edits an agent session proposed but
+         could not make, applied here on the user's confirm with the user's
+         token. Estate-level, token-gated, its own component and lazy mount;
+         the nav entry appears only while something is pending. -->
+    <div x-show="view==='proposals'" class="h-full overflow-y-auto">
+      <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 max-w-4xl">
+        <template x-if="proposalsSeen">
+          <div x-data="proposals()"></div>
+        </template>
+      </div>
+    </div>
+
     <!-- The Tools view: a curated gallery of the owner's utility pages (the
          text-diff tool and the like), fed from the hub's docs/tools.json.
          Estate-level, public (no token), its own component and lazy mount. -->
@@ -741,18 +757,12 @@ function app(){ return {
   publicSeed: '',         // repo the public browser should open; a card sets it, the component watches it
   _restoring: false,      // true while restoring state from a popstate (see syncUrl)
   DEFAULT_REPO: 'mehrlander/web-tools',
-  // The header quick-link row is data-driven. This public page must not
-  // enumerate private repos in its source, so the built-in default lists only
-  // the public repo. The real, curated list (order, membership, icons — private
-  // repos included) lives in a private registry repo and is fetched at boot
-  // when the viewer has a token (loadQuickLinks). No token: this default only.
+  // The one private string this public page names. The repos inside it are
+  // never enumerated here: membership is each repo's own `estate: true`, read
+  // through the config cache below.
   REGISTRY_REPO: 'mehrlander/web-tools-private',
-  PUBLIC_QUICK_LINKS: [
-    { repo: 'mehrlander/web-tools', icon: 'ph-toolbox' },
-  ],
-  quickLinks: [],   // resolved row; seeded from PUBLIC_QUICK_LINKS in init
   // App views: pages any repo promotes to their own estate-level entry via an
-  // `appView:true` flag on a `pages` catalog entry (the quickLink pattern, one
+  // `appView:true` flag on a `pages` catalog entry (estate membership, one
   // level up: the target is a rendered page, not a repo). Collected across every
   // repo's config through the same config cache, token-gated: no token, no app
   // views (like Surfaces). Each is a sidebar entry in the estate switcher,
@@ -763,7 +773,10 @@ function app(){ return {
   // estate:true in its own config, grouped/ordered like the Repos grid. Read
   // from the same config cache as appViews (loadEstateSidebar), so it is
   // token-gated and empty without a token.
-  sidebarRepos: [], // resolved [{repo, short, icon, group, order}]
+  estateRepos: [], // resolved [{repo, short, icon, group, order}]
+  estateConfigs: {}, // repo -> its .web-tools.json, from the same cache pass
+  proposalCount: 0, // pending cross-repo edit proposals; gates the nav entry
+  proposalsSeen: false,
   configRefreshing: false,  // the estate refresh button is mid-crawl
   activityRefreshing: false, // the activity crawl (heavier: per-repo survey) is running
   // Recently-committed files for the current repo@ref, shown in the sidebar.
@@ -802,14 +815,12 @@ function app(){ return {
       this.loadConfig();
     });
 
-    // The quick-link row is the public default until a token lets us read the
-    // private registry. Auth resolves after boot, so load then, and reload when
-    // auth arrives. After the row resolves, refresh the config cache (guarded).
-    // Editing any repo's config (config-saved) can change membership or a
-    // quickLink flag, so rebuild the cache and reload the row.
-    this.quickLinks = [...this.PUBLIC_QUICK_LINKS];
+    // Estate membership needs a token to resolve, since it is read from the
+    // cache in the private registry. Auth resolves after boot, so load then,
+    // and reload when auth arrives. Editing any repo's config (config-saved)
+    // can change membership, so that path rebuilds the cache and reloads.
     this.$watch(() => this._authState, (s) => {
-      if (s === 'auth') { this.loadQuickLinks().then(() => this.refreshConfigCache()).then(() => this.refreshActivityCache()); this.loadEstateSidebar(); this.processMailbox(); }
+      if (s === 'auth') { this.loadEstateSidebar().then(() => this.refreshConfigCache()).then(() => this.refreshActivityCache()); this.processMailbox(); this.loadProposalCount(); }
     });
     document.addEventListener('web-tools:config-saved', async () => {
       // Rebuild the cache, THEN fan out the reload. refreshConfigs awaits the
@@ -820,9 +831,9 @@ function app(){ return {
       this.loadConfig();
       await this.refreshConfigs();
     });
-    this.loadQuickLinks().then(() => this.refreshConfigCache());
-    this.loadEstateSidebar();
+    this.loadEstateSidebar().then(() => this.refreshConfigCache());
     this.processMailbox();
+    this.loadProposalCount();
 
     // Folder navigation in the explorer keeps the ?path deep link honest.
     this.$watch(() => Alpine.store('browser').path, () => {
@@ -850,6 +861,7 @@ function app(){ return {
     else if (url && url.view === 'activity') this.goActivity();
     else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap();
     else if (url && url.view === 'tools') this.goTools();
+    else if (url && url.view === 'proposals') this.goProposals();
     else if (url && url.view === 'atlas') this.goAtlas();
     else if (url && url.view === 'stage') this.goStage();
     else if (url && url.view === 'public') this.goPublicBrowse();
@@ -929,52 +941,15 @@ function app(){ return {
     if (this._configKey === key) { s.config = cfg; s.configName = name; }
   },
 
-  // Resolve the quick-link row. With a token, read the private registry repo's
-  // .web-tools.json (a `quickLinks: [{repo, icon}]` list — the curated set,
-  // order, and icons, private repos included) on its own lightweight GH
-  // instance and use it. Without a token, or on any failure, fall back to the
-  // public-only default. The registry name is the one private string this
-  // public page references; it never enumerates the private repos themselves.
   hasToken(){ return !!window.TOKEN && window.TOKEN !== '🎟️GitHubToken'; },
-  async loadQuickLinks(){
-    if (!this.hasToken()) { this.quickLinks = [...this.PUBLIC_QUICK_LINKS]; return; }
-    try {
-      const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
-      let links = [];
-      // Per-repo model: read the config cache and take every repo opting in with
-      // quickLink:true, ordered by its own `order`. Membership and icon are the
-      // repo's, not a registry list.
-      try {
-        const cache = JSON.parse((await reg.get('state/configs.json')).text);
-        links = Object.entries(cache.repos || {})
-          .map(([repo, e]) => ({ repo, cfg: e?.config || {} }))
-          .filter(x => x.cfg.quickLink === true)
-          .sort((a, b) => ((a.cfg.order ?? 0) - (b.cfg.order ?? 0)) || a.repo.localeCompare(b.repo))
-          .map(x => ({ repo: x.repo, icon: x.cfg.icon || 'ph-bookmark-simple' }));
-      } catch {}
-      // Legacy fallback: the registry's own quickLinks list (pre-migration).
-      if (!links.length){
-        try {
-          const parsed = JSON.parse((await reg.get('.web-tools.json')).text);
-          const list = Array.isArray(parsed?.quickLinks)
-            ? parsed.quickLinks.filter(e => e && typeof e.repo === 'string') : null;
-          if (list && list.length) links = list.map(e => ({ repo: e.repo, icon: e.icon || 'ph-bookmark-simple' }));
-        } catch {}
-      }
-      this.quickLinks = links.length ? links : [...this.PUBLIC_QUICK_LINKS];
-    } catch {
-      this.quickLinks = [...this.PUBLIC_QUICK_LINKS];
-    }
-  },
-
-  // The row's icon is the registry entry's icon. Config editing lives in the
-  // sidebar shield dialog (repoModal, lib/alpineComponents/repo.js).
+  // A pin row carries its own icon. Config editing lives in the sidebar shield
+  // dialog (repoModal, lib/alpineComponents/repo.js).
   pinnedIcon(p){ return p.icon; },
 
   // Build the estate-context sidebar from one read of the registry's config
   // cache (state/configs.json), the same source the quick-link row and the
   // estate grid use. Two lists come out of the one cache pass:
-  //   sidebarRepos — every repo opting into the estate (estate:true), a compact
+  //   estateRepos — every repo opting into the estate (estate:true), a compact
   //                  index beside the header nav's Repos grid, carrying each
   //                  repo's own icon/group/order so it groups like that grid.
   //   appViews     — a `pages` entry flagged appView:true in any repo, promoted
@@ -982,15 +957,19 @@ function app(){ return {
   // Token-gated: without a token there is no cache read, so both stay empty and
   // no private repo or page is named, matching Surfaces and the private estate.
   async loadEstateSidebar(){
-    if (!this.hasToken()) { this.appViews = []; this.sidebarRepos = []; return; }
+    if (!this.hasToken()) { this.appViews = []; this.estateRepos = []; this.estateConfigs = {}; return; }
     try {
       const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
-      const views = [], repos = [];
+      const views = [], repos = [], configs = {};
       try {
         const cache = JSON.parse((await reg.get('state/configs.json')).text);
         for (const [repo, e] of Object.entries(cache.repos || {})) {
           const cfg = e?.config;
           if (!cfg) continue;
+          // Keep the raw config beside the derived lists: it is already read
+          // and parsed, and menu-time questions (does this repo declare an
+          // outbox?) should not cost a second fetch.
+          configs[repo] = cfg;
           if (cfg.estate === true) {
             repos.push({
               repo,
@@ -1024,9 +1003,10 @@ function app(){ return {
       views.sort((a, b) => (a.order - b.order) || a.label.localeCompare(b.label));
       repos.sort((a, b) => a.group.localeCompare(b.group) || (a.order - b.order) || a.repo.localeCompare(b.repo));
       this.appViews = views;
-      this.sidebarRepos = repos;
+      this.estateRepos = repos;
+      this.estateConfigs = configs;
       this.enrichSidebarPrivacy();   // independent; the list renders without it
-    } catch { this.appViews = []; this.sidebarRepos = []; }
+    } catch { this.appViews = []; this.estateRepos = []; this.estateConfigs = {}; }
   },
 
   // The config cache carries no visibility, so the sidebar Repos rows get their
@@ -1034,11 +1014,11 @@ function app(){ return {
   // Mutates priv on the existing objects (the key is present, so it is reactive);
   // an entry the list does not cover stays null (unknown) and shows no marker.
   async enrichSidebarPrivacy(){
-    if (!this.hasToken() || !this.sidebarRepos.length) return;
+    if (!this.hasToken() || !this.estateRepos.length) return;
     try {
       const acct = await new window.GH({ token: window.TOKEN }).repos();
       const byName = new Map(acct.map(r => [r.full_name, !!r.private]));
-      for (const r of this.sidebarRepos){ const p = byName.get(r.repo); if (p !== undefined) r.priv = p; }
+      for (const r of this.estateRepos){ const p = byName.get(r.repo); if (p !== undefined) r.priv = p; }
     } catch {}
   },
 
@@ -1055,7 +1035,7 @@ function app(){ return {
     this.configRefreshing = true;
     try {
       await this.refreshConfigCache(true);
-      await Promise.all([this.loadQuickLinks(), this.loadEstateSidebar()]);
+      await this.loadEstateSidebar();
       document.dispatchEvent(new CustomEvent('web-tools:configs-refreshed'));
     } finally { this.configRefreshing = false; }
   },
@@ -1072,11 +1052,12 @@ function app(){ return {
     if (!this.hasToken() || !window.RepoConfigCache) return;
     // Seed the crawl from the account's repos (the enumeration that discovers
     // estate members), so a repo opting in via its own config is picked up
-    // without any registry list. Fall back to the quick-link row if the
-    // enumeration fails.
+    // without any registry list. If the enumeration fails, fall back to the
+    // members already resolved from the cache: that re-crawls what is known
+    // and cannot discover a new joiner, which is the honest degradation.
     let repos = [];
     try { repos = (await new window.GH({ token: window.TOKEN }).repos()).map(r => r.full_name); }
-    catch { repos = this.quickLinks.map(q => q.repo); }
+    catch { repos = this.estateRepos.map(r => r.repo); }
     if (!repos.length) return;
     if (!force){
       try {
@@ -1282,6 +1263,25 @@ function app(){ return {
   // wants prompt service and listing is cheap); a dropped request is picked up
   // on the next load. Results are keyed by the request filename so nothing
   // re-runs. See lib/repo-mailbox.js and web-tools-private/mailbox/README.md.
+  // How many proposals are waiting. One cheap pair of directory reads at boot,
+  // token-gated like everything that touches the registry; the count is what
+  // gates the nav entry, so an empty channel is invisible rather than a stop
+  // with nothing behind it. The Proposals component does the real work.
+  async loadProposalCount(){
+    if (!this.hasToken() || !window.RepoProposals) { this.proposalCount = 0; return; }
+    const P = window.RepoProposals;
+    try {
+      const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
+      let pend = [], done = [];
+      try { pend = await reg.ls(P.PENDING_DIR); } catch { this.proposalCount = 0; return; }  // 404 = no channel
+      try { done = await reg.ls(P.APPLIED_DIR); } catch {}
+      this.proposalCount = P.pending(
+        pend.filter(f => f.type === 'file').map(f => f.name),
+        done.filter(f => f.type === 'file').map(f => f.name),
+      ).length;
+    } catch { this.proposalCount = 0; }
+  },
+
   async processMailbox(){
     if (!this.hasToken() || !window.RepoMailbox) return;
     const M = window.RepoMailbox;
@@ -1377,7 +1377,7 @@ function app(){ return {
       { key: 'repo', label: s.repo.split('/')[1] || s.repo, title: s.repo, mono: true,
         // No caret when the switcher would have nothing to offer (no token, so
         // no estate list). The crumb is then just a label.
-        menu: this.sidebarRepos.length > 1,
+        menu: this.estateRepos.length > 1,
         action: (open) => this.toggleCrumbMenu(s.repo, open) },
     ];
     if (s.ref && s.defaultRef && s.ref !== s.defaultRef)
@@ -1420,21 +1420,21 @@ function app(){ return {
   // already in.
   menuRepo: '',
   get menuRepoPrivate(){
-    const r = this.sidebarRepos.find(x => x.repo === this.menuRepo);
+    const r = this.estateRepos.find(x => x.repo === this.menuRepo);
     if (r && r.priv !== null && r.priv !== undefined) return r.priv;
     return this.menuRepo === Alpine.store('browser').repo
       ? !!Alpine.store('browser').repoObj?.private : false;
   },
   // The companion by the -private naming convention (foo ⇄ foo-private), for
   // whichever repo the menu is about, and only when that companion is itself on
-  // the estate. Empty when there is no such pair, or no token (so sidebarRepos
+  // the estate. Empty when there is no such pair, or no token (so estateRepos
   // is empty).
   get menuRepoSibling(){
     const repo = this.menuRepo;
     if (!repo) return '';
     const m = repo.match(/^(.*)-private$/);
     const sib = m ? m[1] : repo + '-private';
-    return this.sidebarRepos.some(r => r.repo === sib) ? sib : '';
+    return this.estateRepos.some(r => r.repo === sib) ? sib : '';
   },
   // Things you do TO a repo, not inside one. Files and Branches used to sit
   // here and expand; both are gone, because "what is inside" is a browsing
@@ -1451,8 +1451,16 @@ function app(){ return {
       { key: 'github', label: 'Open on GitHub', icon: 'ph-github-logo', external: true },
       sib && { key: 'sibling', label: 'Switch to ' + (sib.split('/')[1] || sib),
                icon: this.menuRepoPrivate ? 'ph-globe' : 'ph-lock' },
+      this.menuRepoOutbox && { key: 'outbox', label: 'Open outbox', icon: 'ph-tray-arrow-up' },
       { key: 'copy', label: 'Copy browse link', icon: 'ph-link' },
     ].filter(Boolean);
+  },
+  // A repo's declared outbox, from the config cache the estate already holds:
+  // the shelf it stages material on for others to pull. Menu-only, so a repo
+  // that declares none simply has no row, and no read is spent asking.
+  get menuRepoOutbox(){
+    const cfg = this.estateConfigs?.[this.menuRepo];
+    return (cfg && window.RepoAddress) ? window.RepoAddress.box(cfg, 'outbox', this.menuRepo) : null;
   },
   // The row menu: anchor a fixed panel to the button that opened it. Right
   // edges are aligned rather than left, since the trigger sits at the row's
@@ -1507,6 +1515,12 @@ function app(){ return {
     if (!target) return;
     await this.ensureBrowser(target);
     if (Alpine.store('browser').repo !== target) return;
+    if (key === 'outbox'){
+      const box = this.menuRepoOutbox;
+      this.goFiles();
+      if (box?.dir) await this.openFolder(box.dir);
+      return;
+    }
     if (key === 'files') this.goFiles();
     else if (key === 'branches') this.goBranches();
     else if (key === 'config') this.goConfig();
@@ -1615,6 +1629,7 @@ function app(){ return {
       else if (url && url.view === 'activity') this.goActivity();
       else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap();
       else if (url && url.view === 'tools') this.goTools();
+    else if (url && url.view === 'proposals') this.goProposals();
       else if (url && url.view === 'pages') this.goPages();
       else if (url && url.view === 'atlas') this.goAtlas();
       else if (url && url.view === 'stage') this.goStage();
@@ -1682,14 +1697,14 @@ function app(){ return {
   // content — the Repos index or the app views (News). Both are token-gated, so
   // a signed-out estate has neither and the dashboard takes the full width (the
   // mobile drawer still opens via the hamburger regardless).
-  get showSidebar(){ return !this.estateCtx || this.sidebarRepos.length > 0 || this.sidebarAppViews.length > 0; },
+  get showSidebar(){ return !this.estateCtx || this.estateRepos.length > 0 || this.sidebarAppViews.length > 0; },
   // The sidebar Repos index, folded into its groups (core / data / tools …) in
-  // the sorted order sidebarRepos already carries, so each group's rows stay
+  // the sorted order estateRepos already carries, so each group's rows stay
   // contiguous under one label, matching the Repos grid. Ungrouped repos ride an
   // empty-string group that renders without a label.
   get sidebarRepoGroups(){
     const order = [], byGroup = new Map();
-    for (const r of this.sidebarRepos){
+    for (const r of this.estateRepos){
       if (!byGroup.has(r.group)){ byGroup.set(r.group, []); order.push(r.group); }
       byGroup.get(r.group).push(r);
     }
@@ -1718,6 +1733,14 @@ function app(){ return {
       { view: 'stage',    icon: 'ph-stack',        label: 'Stage',    go: () => this.goStage() },
       { view: 'tools',    icon: 'ph-wrench',       label: 'Tools',    go: () => this.goTools() },
       { view: 'map',      icon: 'ph-compass',      label: 'Map',      go: () => this.goMap() },
+      // Proposals is the one conditional entry: an empty channel should cost no
+      // attention, so it appears only while something is pending (or while the
+      // view is open, so the nav does not vanish under the user on the apply
+      // that empties it).
+      ...(this.proposalCount || this.view === 'proposals'
+        ? [{ view: 'proposals', icon: 'ph-git-pull-request', label: 'Proposals',
+             badge: this.proposalCount, go: () => this.goProposals() }]
+        : []),
     ];
   },
   navActive(v){ return (v.views || [v.view]).includes(this.view); },
@@ -1739,6 +1762,8 @@ function app(){ return {
   goPortable(){ this.goMap(); },
   // The Tools view: the curated utility-page gallery (docs/tools.json), public.
   goTools(){ this.toolsSeen = true; this.view = 'tools'; this.syncUrl(); },
+  // The Proposals view: pending cross-repo edits awaiting the user's confirm.
+  goProposals(){ this.proposalsSeen = true; this.view = 'proposals'; this.syncUrl(); },
   // Open is the estate's cross-repo live-branch view; the one estate component
   // renders it by reading the shell view (internal key 'activity'). A visit
   // kicks the throttled activity crawl (like Repos kicks the config crawl) so
@@ -2304,7 +2329,8 @@ function overview(){ return {
     App views (?view=app&appRepo&appPath): pages any repo promotes to their own
       estate-level entry with appView:true on a `pages` catalog entry, collected
       across every repo's config through the config cache (loadEstateSidebar,
-      which the sidebar Repos index shares, the quickLink pattern one level up).
+      which the sidebar Repos index shares: estate membership one level up,
+      the target a rendered page rather than a repo).
       Each is a sidebar peer of Repos/Surfaces/Stage rather than the estate grid,
       rendered live in the main area via toss-render #gh=. The link stands alone
       (like Surfaces), stamping the promoted page's repo and path independent of
@@ -2403,7 +2429,6 @@ function overview(){ return {
     note     the card's one-line description (overrides the GitHub description).
     order    arrangement weight: group order (a group sorts by its lowest
              member's order) and within-group order both derive from it.
-    quickLink  true to appear in the header quick-link row, ordered by `order`.
     landing  path to the repo's own landing page (e.g. "pages/landing.html"),
              rendered live via toss-render #gh= — token-authed, so private
              repos and branches work; gated by toss-render's OWNERS allowlist.
@@ -2421,8 +2446,8 @@ function overview(){ return {
              (no committed thumbs for a private repo). An entry also flagged
              `appView: true` (with `viewLabel` and `icon`) is promoted to its
              own estate-level view beside Repos/Surfaces/Stage, collected across
-             every repo's config through the config cache, the quickLink
-             pattern, one level up, the target a rendered page not a repo.
+             every repo's config through the config cache: estate membership
+             one level up, the target a rendered page not a repo.
              Token-gated: no token, no app views (like Surfaces).
     pins     folders/files surfaced in the sidebar Pinned block; a last
              segment with an extension opens as a file, else opens the Files
@@ -2434,17 +2459,16 @@ function overview(){ return {
              Copying goes through gh-transfer.js (lib/): per-file Contents-API
              commits, base64 pass-through, viewer's token, two-tap confirm.
 
-  THE QUICK-LINK ROW: the header row is data-driven, not a hardcoded list. This
-  page is public, so its source must not enumerate private repos. The built-in
-  default (PUBLIC_QUICK_LINKS) lists only the public repo. With a token,
-  loadQuickLinks() reads the config cache (state/configs.json in REGISTRY_REPO =
-  web-tools-private) and takes every repo opting in with quickLink:true, ordered
-  by its own `order`, icon from its own config (legacy fallback: the registry's
-  old quickLinks list, retired at cutover). Membership is a repo property, like
-  estate membership. The one private string this public page names is the
-  registry repo itself, never the repos in it. Editing a repo's config re-runs
-  loadQuickLinks (via the web-tools:config-saved event), so the row updates
-  without a reload.
+  ONE MEMBERSHIP LIST: a repo is in the estate when its own .web-tools.json
+  says `estate: true`, and that answer serves every consumer: the Repos grid,
+  the sidebar index (estateRepos), the activity crawl, the stage's repo
+  pickers, and the Map's adoption roster. Two rival lists were retired in
+  favor of it. `quickLink: true` fed a header row the nav redesign deleted,
+  and by then it named seven of the eight members, distinguishing nothing. The
+  registry manifest's `repos` array fed the Map, and it had drifted a member
+  short. Both were central lists standing in for a property each repo can
+  state itself, which is what made them drift. A future prominence subset
+  belongs in `order` on the membership, not in a second flag.
 
   THE CONFIG CACHE: state/configs.json in the registry is a periodic crawl of
   every account repo's .web-tools.json (refreshConfigCache, throttled ~6h,
@@ -2485,11 +2509,17 @@ function overview(){ return {
   embed toss-render the same way. show-repo shows and moves files; toss-render
   runs pages.
 
-  Next, aligned with tracker task 0002 (private-repo landing federation via
-  mehrlander/home): with a token, read mehrlander/home's landing.json and fold
-  each featured private repo's landing into web-tools' own gallery as
-  additional cards/sections. HOME_REPO becomes the one public-private hinge, a
-  single lib/ constant. No token: the private section is absent, no leak.
+  A private repo's landing presence was once planned as federation: read a
+  landing.json in mehrlander/home and fold each featured repo's landing into
+  web-tools' own gallery, through a single HOME_REPO constant as the one
+  public-private hinge. It shipped in the per-repo form instead, and the
+  distinction is worth keeping straight, since the federated form keeps
+  getting re-proposed. Membership is a property of each repo's own
+  .web-tools.json (estate, plus pages and appView for what it publishes),
+  aggregated by the config cache; the one private string this page names is
+  REGISTRY_REPO, and
+  no curated list of featured repos exists to maintain. The no-token posture
+  is the same either way: no cache read, so nothing private is named.
 
   The seam stays small: each landing kind is a branch in landingKind() plus a
   matching landing block. `pages` now has two read sites (landingKind()'s

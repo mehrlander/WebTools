@@ -70,7 +70,7 @@ test('mounts with no startup warnings or errors', () => {
 test('pickerRoots: open repo, then quick links, then targets, deduped', () => {
   store.repo = 'me/open';
   store.config = { stage: { targets: ['me/dest:pkg', 'me/open:vendor', 'other/lib@dev:src'] } };
-  window.__shell = { quickLinks: [{ repo: 'me/fav' }, { repo: 'me/open' }] };
+  window.__shell = { estateRepos: [{ repo: 'me/fav' }, { repo: 'me/open' }] };
   assert.deepEqual(plain_(data.pickerRoots()), [
     { repo: 'me/open', ref: '' },
     { repo: 'me/fav', ref: '' },
@@ -255,7 +255,7 @@ test('loadRecent merges root repos newest-first, tagging each file with its repo
   reset();
   store.repo = 'me/open';
   store.config = null;
-  window.__shell = { quickLinks: [{ repo: 'me/fav' }] };
+  window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
   await data.loadRecent(true);
   delete window.__shell;
   assert.deepEqual(plain_(data.recent.map(r => [r.repo, r.path])), [
@@ -280,7 +280,7 @@ test('repo pills are single-select: one repo, switch, back to all', async () => 
   reset();
   store.repo = 'me/open';
   store.config = null;
-  window.__shell = { quickLinks: [{ repo: 'me/fav' }] };
+  window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
   await data.loadRecent(true);
   delete window.__shell;
   assert.deepEqual(plain_(data.repoPills()), [{ repo: 'me/open', n: 2 }, { repo: 'me/fav', n: 1 }]);

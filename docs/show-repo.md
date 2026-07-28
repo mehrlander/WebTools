@@ -124,6 +124,8 @@ the header nav the way a repo shows landing/atlas/files/…:
   **To-do** (`?view=todo`), **Jots** (`?view=jots`) (all below).
 - **Tools** (`?view=tools`) — a curated gallery of utility pages (below).
 - **Map** (`?view=map`) — the portable set, each repo's scope, and its adoption (below).
+- **Proposals** (`?view=proposals`) — pending cross-repo edits awaiting a confirm
+  (below). The one conditional entry: shown only while something is pending.
 
 The estate component renders Repos / Surfaces / Activity, sharing one lazy mount;
 Tools and Map are their own components on their own lazy mounts.
@@ -345,7 +347,14 @@ from its `.web-tools.json` `scope` field (inline prose, or a repo path ending in
 statements, so the cross-repo picture is a view, never an authored central list.
 This is the same shape as estate membership and the surface split: a repo owns
 what tells its own story. **Adoption** is the alignment read. The roster is the
-registry's `repos` manifest plus the hub and the registry themselves; each repo
+hub, the registry, and every **estate member** (`estate: true`, read from the
+config cache in each repo's own `order`), so the Map grades the same set the
+Repos dashboard shows rather than keeping a list of its own. Grading stops at
+members deliberately: probing every repo in the cache would make this an
+account-wide survey mostly composed of repos that will never carry the set, at
+three live reads each. The blind spot that buys is that a repo adopting nothing
+is invisible here, since the file that would list it is the first thing adoption
+writes. Each repo
 is probed live (three parallel reads on its default branch) for the environmental
 hooks that carry the set: the plugin-marketplace subscription and enabled plugins
 in `.claude/settings.json`, a conventions-wired `CLAUDE.md`, and a
@@ -567,7 +576,6 @@ deprecation window. Fields:
   "group": "data",
   "note": "One-line description shown on the estate card.",
   "order": 30,
-  "quickLink": true,
   "landing": "pages/landing.html",
   "pages": [
     { "path": "pages/news/news.html", "title": "News", "note": "The news dashboard.",
@@ -594,8 +602,11 @@ repos. All are optional; a repo with no config is simply off the estate.
 - **note**: the card's one-line description; overrides the GitHub description.
 - **order**: arrangement weight. Group order (a group sorts by its lowest
   member's `order`) and within-group order both derive from it.
-- **quickLink**: `true` to appear in the header quick-link row, ordered by
-  `order`, icon from this repo's `icon`.
+- **inbox**: where an unaddressed deposit lands (`"inbox"`, `"@ref:dir"`, or a
+  full `owner/repo[@ref]:dir`). See "Inbox and outbox" below. Absent means the
+  repo root.
+- **outbox**: where this repo stages material for others to pull. Same shape;
+  adds an "Open outbox" row to the repo menu.
 - **landing**: path to the repo's own landing page, rendered live via
   toss-render `#gh=` (token-authed, so private repos and branches work; gated by
   toss-render's OWNERS allowlist). "The repo builds its own page." Takes the
@@ -628,8 +639,8 @@ repos. All are optional; a repo with no config is simply off the estate.
   - **note**: the card's one-line description.
   - **icon**: Phosphor class, used as the app-view sidebar icon when promoted.
   - **appView**: `true` to promote this page to its own **estate-level view**,
-    a peer of Repos / Surfaces / Stage in the switcher (the `quickLink` pattern,
-    one level up: the target is a rendered page, not a repo). Collected across
+    a peer of Repos / Surfaces / Stage in the switcher (estate membership one
+    level up: the target is a rendered page, not a repo). Collected across
     every repo's config through the config cache, token-gated (no token, no app
     view, like Surfaces), and rendered live in the estate main area via
     toss-render `#gh=`. The page still appears in the repo's own gallery too;
@@ -661,20 +672,27 @@ repos. All are optional; a repo with no config is simply off the estate.
   deliberately not adopted the portable conventions, so a session-start nudge
   stops asking. Absent means unset. Documented in [PORTABLE.md](PORTABLE.md).
 
-### Quick-link row
+### One membership list
 
-The header quick-link row is data-driven, not a hardcoded list. `show-repo` is a
-public page, so its source must not enumerate private repos. The shell ships a
-public-only default (`PUBLIC_QUICK_LINKS`, just the public web-tools repo). With
-a token, `loadQuickLinks()` reads the **config cache** (below) and takes every
-repo opting in with `quickLink: true`, ordered by its own `order`, icon from its
-own `icon`. Membership is a repo property, like estate membership: there is no
-registry list. The **one** private string this public page names is the registry
-repo itself (`REGISTRY_REPO = mehrlander/web-tools-private`), where the cache
-lives, never the repos in it. Editing a repo's config re-runs the load (via the
-`web-tools:config-saved` event), so the row updates without a page reload. (A
-legacy `quickLinks` list in the registry is still read as a fallback until the
-cutover.)
+A repo is in the estate when its own `.web-tools.json` says `estate: true`. That
+one answer, aggregated by the config cache, serves every consumer: the Repos
+grid, the sidebar index (`estateRepos`), the activity crawl, the stage's repo
+pickers, and the Map's adoption roster. The **one** private string this public
+page names is the registry repo itself
+(`REGISTRY_REPO = mehrlander/web-tools-private`), where the cache lives, never
+the repos in it.
+
+Two rival lists were retired in favor of it, and both had drifted:
+
+- `quickLink: true` fed the header quick-link row. The header-nav redesign
+  deleted the row, and by then the flag was set on seven of the eight members,
+  so as a prominence subset it distinguished nothing.
+- The registry manifest's `repos` array fed the Map's roster. It sat one member
+  short, having never picked up a repo that joined the estate.
+
+Each was a central list standing in for a property every repo can state itself,
+which is what let them drift. If a prominence subset is wanted again, it belongs
+in `order` on the membership, not in a second flag.
 
 ### Config cache (`state/configs.json`)
 
@@ -686,7 +704,7 @@ bounded on-change version history per repo. A per-browser throttle
 (`localStorage`, default 6h) keeps the crawl occasional, forced after a config
 save; a material-change check keeps commits sparse.
 
-This cache is the **read path** for estate membership and the quick-link row, so
+This cache is the **read path** for estate membership, so
 a normal load is two GETs (the cache + the account list), not an N-repo scan; a
 cold cache falls back to a live per-repo scan and then rebuilds. Source of truth
 stays each repo's own `.web-tools.json`; the cache is derived, for breadth
@@ -713,6 +731,88 @@ repos and only write results into the mailbox, so auto-fulfilling on load never
 spends write access on agent-authored instructions. It is manual-triggered, not
 live: show-repo is the worker and only runs when the user opens it. Protocol and
 schema: `web-tools-private/mailbox/README.md`.
+
+### Inbox and outbox
+
+Two optional manifest fields naming where material lands and where it is
+staged. `inbox` is the **receiver's** declared landing spot for a deposit that
+names no directory; `outbox` is a **sender's** shelf of material it is making
+available to be pulled. Both are read by `lib/repo-address.js`
+(`RepoAddress.box(config, 'inbox'|'outbox', repo)`).
+
+**A box is a folder by default, and can name a branch.** That was an open
+design question, and it is settled as a per-repo choice rather than a global
+one, with the discoverable option as the default:
+
+| Declaration | Means |
+| --- | --- |
+| `"inbox": "inbox"` | the folder `inbox/` on the repo's default branch |
+| `"outbox": "@shelf:out"` | the folder `out/` on the branch `shelf` |
+| `"inbox": "owner/repo@ref:dir"` | a box that lives in another repo |
+| absent | nothing declared (deposits land at the root) |
+
+Folder is the default because a folder is visible in ordinary browsing while a
+branch is invisible unless something points at it, and a consumer that forgets
+the ref reads the default branch and silently finds nothing. Writing into a
+branch also presumes the branch exists: the Contents API can PUT to an existing
+one, but creating a ref needs the Git Data API, which this lib does not carry.
+A repo that wants transient bulk kept off its main history says so by naming a
+ref, and pays the discoverability cost knowingly.
+
+**Inbox, on the send side.** The Stage view's send resolves an unaddressed
+deposit (a repo picked with no directory) against the *destination* repo's
+manifest, one read keyed to that repo, cached for the session. The armed
+button names the resolved directory (`Send to inbox/ ?`), so the second tap
+confirms where the files actually go rather than hiding a redirect. Root stays
+the fallback, so a repo declaring nothing behaves exactly as before. Nothing
+creates the folder in the background: the commit that lands the first file is
+what makes it exist.
+
+**Outbox, on the pull side.** A repo declaring one gets an **Open outbox** row
+in its repo menu, which opens the Files view at that folder. The pull itself is
+ordinary browsing or staging from there. For a **public** repo the outbox is
+also the one cross-repo handoff that needs no token at all: `raw.githubusercontent.com/owner/repo/<ref>/<path>`
+serves it to any reader, which is the gap the `#gz=` bundle form is contemplated
+for on the private side.
+
+### Proposals (`proposals/pending` → `proposals/applied`)
+
+The write-side counterpart to the mailbox, built by `lib/repo-proposals.js` and
+reviewed in the **Proposals** view (`?view=proposals`,
+`lib/alpineComponents/proposals.js`). A session that cannot reach a repo drops a
+proposed edit into the registry; show-repo shows it and commits it to the target
+with the user's token, on a two-tap confirm.
+
+The asymmetry with the mailbox is the point. The mailbox fulfills on load
+because its kinds only read. A proposal writes to a repo the session could not
+reach, so **nothing is ever applied automatically**: page load costs one
+directory listing to count what is pending, and the count is all that happens
+without a gesture. The nav entry appears only while something is pending, so an
+empty channel costs no attention.
+
+A proposal record (`proposals/pending/<id>.json`) carries `id`, `kind`, `repo`,
+`path`, `why`, and an optional `ref`. Two kinds:
+
+- **`put-file`** replaces `path` with `content` in full. Use when the session
+  knows the file end to end.
+- **`set-json-field`** sets one top-level `field` to `value` in a JSON file,
+  read-modify-write against whatever the file says at apply time. This is the
+  honest kind when the session cannot read the target: it proposes a field, not
+  a guess at the rest of the file. Key order is preserved, a new key lands last,
+  and the file is re-serialized with two-space indent and a trailing newline.
+
+Every row **resolves against the live target before it can be applied**, and the
+view shows the resulting bytes (a before/after on the key, or the two files side
+by side), so a reviewer confirms what will happen rather than what was promised.
+A target that cannot be read, or is not the JSON it claims to be, lists as
+unresolved with its error and no Apply. The write goes through `gh-transfer.js`'s
+`saveRaw` (lazy-loaded, stale-SHA retry), and the outcome is written to
+`proposals/applied/<same-name>.json`, which is what marks a proposal spent:
+`gh-store` has no delete, so a result file is the tombstone, exactly as in the
+mailbox.
+
+`why` is required. A proposal a reviewer cannot read is not reviewable, so
+validation refuses it before the network is touched.
 
 ### The repo menu
 
@@ -818,9 +918,13 @@ Three cross-repo live-view channels, one job each:
   listing files.
 - Batch-as-one-commit transfer (needs the Git Data API; Contents-API
   per-file commits are the current scope).
-- Private-repo landing federation via `mehrlander/home` (tracker task 0002):
-  with a token, fold featured private repos' landings into the gallery through a
-  single `HOME_REPO` hinge; no token, the private section is simply absent.
+
+Private-repo landing presence used to sit on this list as *federation*: a
+curated `landing.json` in `mehrlander/home`, read through a single `HOME_REPO`
+hinge. It is off the list because it shipped in the per-repo form described
+above: a repo opts itself in through its own `.web-tools.json` (`estate`, plus `pages`
+and `appView` for what it publishes), the config cache aggregates the opt-ins, and
+the registry repo is the only private name this public page carries.
 
 ## Using it from a Claude session
 
