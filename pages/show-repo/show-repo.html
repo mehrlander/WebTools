@@ -1504,7 +1504,7 @@ function app(){ return {
     const [ghHome, ...ghRest] = this.githubMenuItems.map(r => ({ ...r, key: 'gh:' + r.key }));
     return [
       ...this.menuExtra,
-      { key: 'open', head: true, label: short, img: '../../lib/favicon.svg',
+      { key: 'open', head: true, label: short, mark: 'app',
         title: 'Open ' + repo + ' here' },
       ...this.repoAppItems,
       ghHome && { ...ghHome, head: true, label: short, icon: 'ph-github-logo',
@@ -2620,8 +2620,16 @@ function overview(){ return {
       "Repository" were one idea named twice and read as two vocabularies for
       the same thing. Now the two sections are the same name under two marks. A
       rule sits above each head row but the first, so nothing needs reading to
-      see the split. item.img carries the app mark, which is an SVG file rather
-      than a Phosphor glyph.
+      see the split, and the rows under a head are INDENTED to their head's
+      label, so the sections read as structure rather than as a flat list with
+      two odd entries in it. A row contributed by the caller is neither, so it
+      is set in bold and sits at the left margin: its own thing, above the first
+      rule.
+      The app's mark is drawn INLINE (item.mark:'app', an outline rendition of
+      lib/favicon.svg living in repo-menu.js) rather than loaded as that file:
+      an <img> cannot take currentColor, so it would sit in brand blue beside a
+      column of muted glyphs and stay blue on hover. Inline with
+      stroke:currentColor it behaves like the Phosphor glyphs around it.
       The GitHub keys are prefixed 'gh:' in the combined list because both
       halves name a `branches` row and the loop keys on `key`; a duplicate
       silently drops the second row.

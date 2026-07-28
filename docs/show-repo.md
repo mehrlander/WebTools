@@ -1021,14 +1021,21 @@ destination at once: the mark of **where** (the app's own favicon, then the
 GitHub logo) beside the name of **what** (the repo), over the places inside it.
 
 ```
-  Only web-tools            ← contributed by the view; no heading, it is one row
+  Only web-tools            ← contributed by the view: bold, at the margin
   ─────────────
-  ◇ web-tools               ← opens the repo here
-    Files · Branch review · Config
+  ⟨⟩ web-tools              ← opens the repo here
+     Files · Branch review · Config
   ─────────────
-  ⌥ web-tools            ↗  ← opens the repo on GitHub
-    Pull requests · Issues · Task board · Branches · Commits · Actions ↗
+  ⌥ web-tools           ↗   ← opens the repo on GitHub
+     Pull requests · Issues · Task board · Branches · Commits · Actions ↗
 ```
+
+A rule sits above each head row but the first, and the rows under a head are
+indented to their head's label, so the sections read as structure with nothing
+to read. The app's mark is drawn **inline** rather than loaded from
+`lib/favicon.svg`, as an outline rendition of it: an `<img>` cannot take
+`currentColor`, so the file would sit in brand blue beside a column of muted
+glyphs and stay blue on hover.
 
 That replaced an inert uppercase label plus a row underneath it: **Open repo**
 and **Repository** were one idea named twice, and reading them together made
