@@ -345,7 +345,14 @@ from its `.web-tools.json` `scope` field (inline prose, or a repo path ending in
 statements, so the cross-repo picture is a view, never an authored central list.
 This is the same shape as estate membership and the surface split: a repo owns
 what tells its own story. **Adoption** is the alignment read. The roster is the
-registry's `repos` manifest plus the hub and the registry themselves; each repo
+hub, the registry, and every **estate member** (`estate: true`, read from the
+config cache in each repo's own `order`), so the Map grades the same set the
+Repos dashboard shows rather than keeping a list of its own. Grading stops at
+members deliberately: probing every repo in the cache would make this an
+account-wide survey mostly composed of repos that will never carry the set, at
+three live reads each. The blind spot that buys is that a repo adopting nothing
+is invisible here, since the file that would list it is the first thing adoption
+writes. Each repo
 is probed live (three parallel reads on its default branch) for the environmental
 hooks that carry the set: the plugin-marketplace subscription and enabled plugins
 in `.claude/settings.json`, a conventions-wired `CLAUDE.md`, and a
@@ -567,7 +574,6 @@ deprecation window. Fields:
   "group": "data",
   "note": "One-line description shown on the estate card.",
   "order": 30,
-  "quickLink": true,
   "landing": "pages/landing.html",
   "pages": [
     { "path": "pages/news/news.html", "title": "News", "note": "The news dashboard.",
@@ -594,9 +600,6 @@ repos. All are optional; a repo with no config is simply off the estate.
 - **note**: the card's one-line description; overrides the GitHub description.
 - **order**: arrangement weight. Group order (a group sorts by its lowest
   member's `order`) and within-group order both derive from it.
-- **quickLink**: vestigial. It named the header quick-link row, which the
-  header-nav redesign removed; nothing displays it now. See "Quick links
-  (vestigial)" below before setting it on a new repo.
 - **landing**: path to the repo's own landing page, rendered live via
   toss-render `#gh=` (token-authed, so private repos and branches work; gated by
   toss-render's OWNERS allowlist). "The repo builds its own page." Takes the
@@ -629,8 +632,8 @@ repos. All are optional; a repo with no config is simply off the estate.
   - **note**: the card's one-line description.
   - **icon**: Phosphor class, used as the app-view sidebar icon when promoted.
   - **appView**: `true` to promote this page to its own **estate-level view**,
-    a peer of Repos / Surfaces / Stage in the switcher (the `quickLink` pattern,
-    one level up: the target is a rendered page, not a repo). Collected across
+    a peer of Repos / Surfaces / Stage in the switcher (estate membership one
+    level up: the target is a rendered page, not a repo). Collected across
     every repo's config through the config cache, token-gated (no token, no app
     view, like Surfaces), and rendered live in the estate main area via
     toss-render `#gh=`. The page still appears in the repo's own gallery too;
@@ -662,24 +665,27 @@ repos. All are optional; a repo with no config is simply off the estate.
   deliberately not adopted the portable conventions, so a session-start nudge
   stops asking. Absent means unset. Documented in [PORTABLE.md](PORTABLE.md).
 
-### Quick links (vestigial)
+### One membership list
 
-The header once carried a data-driven quick-link row. The header-nav redesign
-removed it: the nav is now a fixed app-owned set and repo selection happens on
-the Repos dashboard, so nothing renders `quickLinks` any more. The resolver
-survives one level down. `loadQuickLinks()` still reads the **config cache**
-(below) for repos opting in with `quickLink: true`, ordered by their own
-`order`, falling back to the registry's legacy `quickLinks` list and then to the
-public-only `PUBLIC_QUICK_LINKS`; its only consumer is `refreshConfigCache()`,
-which uses the resolved list as a seed when the account enumeration fails. So
-`quickLink: true` is inert for display and matters only to that fallback.
-
-The membership principle it demonstrated is the durable part, and the estate and
-app views both run on it: opting in is a property of each repo's own
-`.web-tools.json`, not a list in the registry. The **one** private string this
-public page names is the registry repo itself
+A repo is in the estate when its own `.web-tools.json` says `estate: true`. That
+one answer, aggregated by the config cache, serves every consumer: the Repos
+grid, the sidebar index (`estateRepos`), the activity crawl, the stage's repo
+pickers, and the Map's adoption roster. The **one** private string this public
+page names is the registry repo itself
 (`REGISTRY_REPO = mehrlander/web-tools-private`), where the cache lives, never
 the repos in it.
+
+Two rival lists were retired in favor of it, and both had drifted:
+
+- `quickLink: true` fed the header quick-link row. The header-nav redesign
+  deleted the row, and by then the flag was set on seven of the eight members,
+  so as a prominence subset it distinguished nothing.
+- The registry manifest's `repos` array fed the Map's roster. It sat one member
+  short, having never picked up a repo that joined the estate.
+
+Each was a central list standing in for a property every repo can state itself,
+which is what let them drift. If a prominence subset is wanted again, it belongs
+in `order` on the membership, not in a second flag.
 
 ### Config cache (`state/configs.json`)
 
@@ -691,7 +697,7 @@ bounded on-change version history per repo. A per-browser throttle
 (`localStorage`, default 6h) keeps the crawl occasional, forced after a config
 save; a material-change check keeps commits sparse.
 
-This cache is the **read path** for estate membership and the quick-link row, so
+This cache is the **read path** for estate membership, so
 a normal load is two GETs (the cache + the account list), not an N-repo scan; a
 cold cache falls back to a live per-repo scan and then rebuilds. Source of truth
 stays each repo's own `.web-tools.json`; the cache is derived, for breadth
@@ -827,8 +833,8 @@ Three cross-repo live-view channels, one job each:
 Private-repo landing presence used to sit on this list as *federation*: a
 curated `landing.json` in `mehrlander/home`, read through a single `HOME_REPO`
 hinge. It is off the list because it shipped in the per-repo form described
-above: a repo opts itself in through its own `.web-tools.json` (`estate`,
-`quickLink`, `pages`, `appView`), the config cache aggregates the opt-ins, and
+above: a repo opts itself in through its own `.web-tools.json` (`estate`, plus `pages`
+and `appView` for what it publishes), the config cache aggregates the opt-ins, and
 the registry repo is the only private name this public page carries.
 
 ## Using it from a Claude session

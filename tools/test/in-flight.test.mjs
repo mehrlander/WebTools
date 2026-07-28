@@ -18,12 +18,22 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const SCRIPT = path.join(repoRoot, '.claude/skills/in-flight/in-flight.py');
 
+// One timestamp for the whole run, two days old: fixed enough that two commits
+// sharing a tree, a parent, and a message still collide (see commit() below),
+// but relative rather than a wall-clock date. A hardcoded date was the original
+// form and it aged into a failure: the script calls a branch idle past
+// --quiet-days quiet, so once the calendar passed the pinned date by a week,
+// three tests expecting `live` got `quiet`. Two days is the age that keeps both
+// sides testable: inside the 7-day default (live), outside --quiet-days 0
+// (quiet), with no date to go stale.
+const FIXTURE_DATE = new Date(Date.now() - 2 * 86400 * 1000).toISOString();
+
 const ENV = {
   ...process.env,
   GIT_AUTHOR_NAME: 'T', GIT_AUTHOR_EMAIL: 't@e',
   GIT_COMMITTER_NAME: 'T', GIT_COMMITTER_EMAIL: 't@e',
-  GIT_AUTHOR_DATE: '2026-07-20T00:00:00Z',
-  GIT_COMMITTER_DATE: '2026-07-20T00:00:00Z',
+  GIT_AUTHOR_DATE: FIXTURE_DATE,
+  GIT_COMMITTER_DATE: FIXTURE_DATE,
 };
 
 const git = (cwd, ...args) =>
