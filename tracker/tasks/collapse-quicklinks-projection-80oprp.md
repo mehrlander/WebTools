@@ -1,10 +1,12 @@
 ---
 id: collapse-quicklinks-projection-80oprp
 title: Collapse quickLinks into a projection of the repos manifest
-status: backlog
+status: done
 project: show-repo
 opened: 2026-07-17
-next: decide whether to retire the resolver and the registry's legacy list, or close this as overtaken; the row it was about no longer exists
+closed: 2026-07-28
+session: claude/tracker-status-cjogjn
+next: done; landing via web-tools PR #302 and web-tools-private PR #8 (merge #302 first)
 ---
 # Collapse quickLinks into a projection of the repos manifest
 
@@ -38,3 +40,17 @@ source.
   task wanted to prevent. Stale docs and comments describing a live row were
   corrected on branch claude/tracker-status-cjogjn; the code and the registry
   manifest were left alone pending a decision.
+- 2026-07-28: done on `claude/tracker-status-cjogjn`. The task asked for one
+  list defining membership, and the answer went further than a projection:
+  `estate: true` in each repo's own .web-tools.json is now the only membership
+  answer, and both rivals are retired. Evidence for the collapse: `quickLink`
+  was set on 7 of the 8 members, so as a subset it distinguished nothing, and
+  the registry's `repos` array listed 7 while 8 carried `estate: true`, so the
+  Map graded a roster missing spend-wa. map.js roster() reads the config cache;
+  loadQuickLinks() and PUBLIC_QUICK_LINKS are deleted; the shell's resolved
+  list is renamed sidebarRepos -> estateRepos and now feeds the stage's repo
+  pickers and the crawl-seed fallback. tools/test/map-roster.test.mjs holds the
+  roster. Lands via web-tools PR #302; the registry manifest cleanup is
+  web-tools-private PR #8, which must merge second, since deployed map.js
+  reads the array until #302 lands. Left alone: six other repos still carry an
+  inert `quickLink: true`, out of this session's repo scope.
