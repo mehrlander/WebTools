@@ -1,10 +1,11 @@
 ---
 name: repo-review
 description: >-
-  Read a repo's own state and report what stands out, at one of three depths:
-  light (a quick read of what is moving, stalled, or emerging), deep (an
-  on-demand audit of every layer with ranked findings), or sweep (a parallel
-  fan-out where each agent reads a different slice and proposes one find).
+  Read a repo's own state and report what stands out, at one of three depths,
+  named by argument: rounds (a quick read of what is moving, stalled, or
+  emerging), SOR (state of the repo: an on-demand audit of every layer with
+  ranked findings), or sweep (a parallel fan-out where each agent reads a
+  different slice and proposes one find).
   All three run the repo's mechanical probes before forming impressions, and
   all three end in a written report rather than a pile of tracker tasks. Use
   when the user asks for the state of the repo, a health check, a full review
@@ -25,14 +26,18 @@ The three depths differ in cost and in what they are for, not in method:
 
 | Depth | Cost | For | Ends in |
 | --- | --- | --- | --- |
-| **light** | minutes | the everyday read, run freely | a short dated report |
-| **deep** | expensive | the on-demand audit, by request only | a ranked write-up |
-| **sweep** | parallel fan-out | what the repo noticed unprompted | a rolling file |
+| **`rounds`** | minutes | the everyday read, run freely | a short dated report |
+| **`SOR`** | expensive | the on-demand audit, by request only | a ranked write-up |
+| **`sweep`** | parallel fan-out | what the repo noticed unprompted | a rolling file |
 
-Pick from the ask: "how are things", "what's moving" is light; "look at
-everything", "full review", "audit" is deep; "what has the repo noticed",
-"sweep" is the fan-out. When the depth is genuinely unclear, run light and offer
-to escalate. Escalating is cheap; a deep pass the user did not ask for is not.
+Invoke as `/repo-review <depth>`. The depth names are the vocabulary, not
+`light`/`deep`/`heavy`: `rounds` is doing rounds, `SOR` is the state of the
+repo, `sweep` is the fan-out.
+
+Pick from the ask when no depth is named: "how are things", "what's moving" is
+`rounds`; "look at everything", "full review", "audit" is `SOR`; "what has the
+repo noticed" is `sweep`. When it is genuinely unclear, run `rounds` and offer
+to escalate. Escalating is cheap; an `SOR` the user did not ask for is not.
 
 ## Extension points (declared in the repo's CLAUDE.md)
 
@@ -40,8 +45,8 @@ This skill carries the method. The repo carries its own material, declared once
 in its `CLAUDE.md` so every depth reads the same list:
 
 - **Probes:** the repo's own mechanical instruments, each with what it reports
-  and whether it is cheap or slow. Light runs the cheap ones; deep runs all.
-- **Layers:** the parts of the repo a deep pass must cover (an active area, the
+  and whether it is cheap or slow. `rounds` runs the cheap ones; `SOR` runs all.
+- **Layers:** the parts of the repo an `SOR` must cover (an active area, the
   neglected periphery, generated surfaces against their sources, docs against
   practice).
 - **Lenses:** for sweep, the slices to fan out over, one agent each.
@@ -63,7 +68,7 @@ Freshness stamps against actual motion are the cheapest staleness detector any
 repo has: compare the as-of date on each generated surface to recent commit
 activity. A stamp that trails the motion is a finding on its own.
 
-## Depth: light
+## Depth: rounds
 
 The everyday read. Cheap, fast, evidence-first. Run the cheap probes, then hold
 these questions against what they show:
@@ -80,7 +85,7 @@ these questions against what they show:
 Write it short: observations, not essays. Run a slow probe only if a cheap one
 points at it, and say so if you did.
 
-## Depth: deep
+## Depth: SOR
 
 By request only, and never on a schedule. The mandate is broader than the
 checklist: **look at everything, every layer, and find anything that stands
@@ -98,8 +103,8 @@ complete. Anything genuinely noticed counts, whether or not a step asked for it.
    is the bar, not membership in a category.
 3. **Report**, in this order: ranked actionable findings, most consequential
    first, each grounded in a probe output or a file and each with the fix named;
-   then time-sensitive items, separated from mere drift, which is where a deep
-   pass earns its keep; then observations worth a look that demand nothing; then
+   then time-sensitive items, separated from mere drift, which is where an
+   `SOR` earns its keep; then observations worth a look that demand nothing; then
    signals not acted on.
 
 ## Depth: sweep

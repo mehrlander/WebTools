@@ -2,6 +2,10 @@
   "permissions": {
     "deny": [
       "AskUserQuestion"
+    ],
+    "ask": [
+      "Write(**/tracker/tasks/**)",
+      "Write(tracker/tasks/**)"
     ]
   },
   "enabledPlugins": {

@@ -54,12 +54,28 @@ the tracker as blanket permission to file.
 Only *creating* a task is gated. The rest is unattended, because it describes
 work that already exists and gating it would grow the backlog:
 
-| Operation | Gate |
-| --- | --- |
-| File a new task | propose first |
-| Claim, update, close, groom-close | unattended |
-| Regenerate the board | unattended |
-| Push tracker state to `main` | unattended, per the standing exception below |
+| Operation | Tool | Gate |
+| --- | --- | --- |
+| File a new task | Write | propose first |
+| Claim, update, close, groom-close | Edit | unattended |
+| Regenerate the board | generator | unattended |
+| Push tracker state to `main` | Bash | unattended, per the standing exception below |
+
+That split lines up with the tools, so a repo can back the gate mechanically
+rather than trusting this paragraph. Creating a task file is a `Write`; claiming
+and closing are `Edit`s. A repo that wants the harness to enforce it adds to
+`.claude/settings.json`:
+
+```json
+"permissions": {
+  "ask": ["Write(**/tracker/tasks/**)", "Write(tracker/tasks/**)"]
+}
+```
+
+Now the user is asked before a new task file appears, and no existing task is
+disturbed. It is a guardrail rather than a control: a file written through a
+Bash heredoc goes around it. That is acceptable, since the failure being
+prevented is an over-eager session, not an adversary.
 
 **3. No fragmenting.** File by outcome, not by observation. Related fixes that
 would land together belong in one task with a scoped list. Splitting them hides
