@@ -879,13 +879,24 @@ applied, the resulting bytes are an ordinary commit in the target repo, which is
 where a durable diff belongs; the `applied/` record keeps the outcome and that
 commit's sha.
 
-**Write the `why` for a stranger.** It is required, and validation refuses a
-record without one before the network is touched, but non-empty is not the bar.
-A `why` is read cold, possibly weeks later, on a phone, by someone deciding
-whether to write to a repository. Open at the top, with what this is, why it
-exists, and what applying it does, rather than in the middle with a note to
-whoever already had the authoring session in their head. Verbose beats cryptic:
-the reader has no other context, and the record is the only thing they have.
+**Three prose fields, three jobs.** A record is read cold, weeks later, on a
+phone, by someone deciding whether to write to a repository. The first attempt
+at that put everything in one `why`, which rendered as a wall of text repeating
+the same explanation on every card, so they are split:
+
+| Field | Job | On the card |
+| --- | --- | --- |
+| `summary` | one line: what this does to which repo | always visible |
+| `why` | the detail worth reading once: context, provenance, consequence | behind the **Why** toggle |
+| `caution` | the judgment call the reader must not scroll past | always visible, amber |
+
+Only `why` is required, and validation still refuses a record without one before
+the network is touched. A record carrying just a `why` reads correctly anyway:
+its first sentence stands in as the summary and the remainder becomes the
+detail, so nothing written before the split needs rewriting. Keep the shared
+explanation (what a `scope` field is, say) in `why`, where it collapses, and
+keep `summary` specific to the one repo, since that is the line that repeats
+down the list.
 
 ### The repo menu
 

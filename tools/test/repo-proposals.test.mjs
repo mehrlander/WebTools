@@ -334,3 +334,42 @@ test('branch names are safe for a ref, whatever the id looks like', () => {
   assert.equal(P.branchFor({ id: 'scope wa/bills!' }), 'proposal/scope-wa-bills-');
   assert.equal(P.branchFor({}), 'proposal/unnamed');
 });
+
+// ── the three prose fields ──────────────────────────────────────────────────
+// One line always on screen, the detail behind a tap, the judgment call
+// impossible to scroll past. The split exists because a card cannot collapse
+// prose halfway, and four cards of full prose is a wall on a phone.
+
+test('a split record reports its own summary and keeps why as the detail', () => {
+  const p = { summary: 'Add a scope line.', why: 'The Map shows a blank card without one. Drafted 2026-07-23.' };
+  assert.equal(P.summaryOf(p), 'Add a scope line.');
+  assert.equal(P.detailOf(p), 'The Map shows a blank card without one. Drafted 2026-07-23.');
+});
+
+test('an old record with only why still reads well: first sentence up, rest behind the tap', () => {
+  const p = { why: 'Adds a scope line to this repo. The Map shows a blank card without one. Drafted 2026-07-23.' };
+  assert.equal(P.summaryOf(p), 'Adds a scope line to this repo.');
+  assert.equal(P.detailOf(p), 'The Map shows a blank card without one. Drafted 2026-07-23.');
+});
+
+test('a one-sentence why has no detail to hide', () => {
+  const p = { why: 'Adds a scope line to this repo.' };
+  assert.equal(P.summaryOf(p), 'Adds a scope line to this repo.');
+  assert.equal(P.detailOf(p), '', 'nothing left over means no Why toggle on the card');
+});
+
+test('summary and caution are refused when they are not strings', () => {
+  const base = { id: 'x', kind: 'put-file', repo: 'me/t', path: 'a', content: '', why: 'w' };
+  assert.match(P.validate({ ...base, summary: 12 }).error, /summary must be a string/);
+  assert.match(P.validate({ ...base, caution: [] }).error, /caution must be a string/);
+  assert.equal(P.validate({ ...base, summary: 'ok', caution: 'check first' }).ok, true);
+});
+
+test('the PR body carries the three fields as three things, not one paragraph', () => {
+  const p = proposal({ summary: 'Add a scope line.', why: 'The Map shows a blank card.', caution: 'confirm visibility' });
+  const body = P.prBody(p, { fieldBefore: undefined });
+  const lines = body.split('\n');
+  assert.equal(lines[0], 'Add a scope line.', 'the summary leads');
+  assert.ok(body.includes('The Map shows a blank card.'));
+  assert.match(body, /> \*\*Before merging:\*\* confirm visibility/, 'the caution is a blockquote, not buried');
+});
