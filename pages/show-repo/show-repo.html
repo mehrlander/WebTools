@@ -336,15 +336,29 @@
            has the width for it. This is the phone's route to the rail, and on
            desktop it is the labeled reading of the icons above. -->
       <div class="flex flex-col gap-0.5" x-show="estateCtx && rail.length">
+        <!-- Two icons, the same split the Repos section uses: one opens the
+             whole thing, one acts on it. The rail is a projection of a file, so
+             the question "how do I change what is up here" needs an answer in
+             the chrome that shows it, not only inside the board's own page. The
+             pencil opens the board's editor (?edit=1 through the toss address),
+             which is where the rail flags, order, labels, and doors live. -->
         <div class="flex items-center gap-1.5 px-2 pb-0.5">
           <span class="text-base font-mono uppercase tracking-widest text-base-content/40">Links</span>
           <div class="grow"></div>
           <button x-show="railView" @click="goAppView(railView)" title="Open the links board"
                   class="text-base-content/30 hover:text-primary transition-colors">
             <i class="ph ph-bookmark-simple text-base leading-none"></i></button>
+          <button x-show="railView" @click="goAppView({ ...railView, query: 'edit=1' })"
+                  title="Edit the board: which items ride the rail, their order, labels, and doors"
+                  class="text-base-content/30 hover:text-primary transition-colors">
+            <i class="ph ph-pencil-simple text-base leading-none"></i></button>
         </div>
+        <!-- flex-wrap, not truncate: an item with several doors (GitHub's
+             notifications / PRs / agents) should spill onto a second line here
+             rather than losing them off the right edge. The sidebar is the wide
+             reading of the rail; that is the whole reason it renders twice. -->
         <template x-for="it in rail" :key="it.key">
-          <div class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-base-200 transition-colors">
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 px-2 py-1.5 rounded-lg hover:bg-base-200 transition-colors">
             <a :href="it.url || null" :target="it.url ? '_blank' : null" :rel="it.url ? 'noopener' : null"
                @click="it.repo && (openPinned(it.repo), $event.preventDefault())"
                :title="it.note || it.title"
@@ -2205,11 +2219,17 @@ function app(){ return {
       icon: url.appIcon || 'ph-app-window', key,
     };
   },
+  // An app view's toss address. `query` is optional and rides the address the
+  // way the toss grammar allows (?query on the addressed path), which the
+  // renderer's params shim answers inside the frame; the Links pencil uses it
+  // to open the board straight into edit mode. It is deliberately NOT stamped
+  // into the shell's URL: opening an editor is an action, not a place, so a
+  // reload lands on the board's reading view.
   get appViewUrl(){
     const v = this.appView;
     if (!v || !v.repo || !v.path) return '';
     const ref = v.ref ? '@' + v.ref : '';
-    return '../toss-render.html#gh=' + v.repo + ref + ':' + v.path;
+    return '../toss-render.html#gh=' + v.repo + ref + ':' + v.path + (v.query ? '?' + v.query : '');
   },
   // The sidebar app-view list: the collected app views (from the config cache,
   // main-only), plus the app view currently open if it is not already among

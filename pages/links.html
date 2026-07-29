@@ -12,7 +12,12 @@
   links.html — the bookmarks and resources board, as a portal:
 
     rail      items flagged rail:true, projected into the masthead band in area
-              order. A flag, never a second list.
+              order. A flag, never a second list. show-repo's shell reads the
+              same flag out of the same file (a repo declares the board with
+              `links` in its .web-tools.json) and renders it in its own chrome,
+              so the rail reaches you from anywhere rather than only from here.
+              An iframe cannot paint into its parent's chrome, but the board is
+              a file and the shell can read a file, so nothing crosses the frame.
     area      a column, headed by its name over a heavy rule in its accent.
     group     consecutive runs of an item's `group` label, as small-caps
               headings inside the column. Array order drives both the order of
@@ -95,7 +100,12 @@
       error: '',
       committing: false,
       commitError: '',
-      editing: false,
+      // ?edit=1 opens straight into edit mode, so a caller can hand over the
+      // board's editor rather than its reading view. show-repo's sidebar uses
+      // it: the Links block's pencil is one tap to here from anywhere in the
+      // shell. Through a toss the parameter arrives via the params shim, which
+      // answers URLSearchParams.get for the addressed query.
+      editing: new URLSearchParams(location.search).has('edit'),
       // Promoted into show-repo as an app view, this page renders inside the
       // shell's iframe, which already supplies a header and a sidebar label.
       // Two mastheads is one too many, so the title stands down when framed.

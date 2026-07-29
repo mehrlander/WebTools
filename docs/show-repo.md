@@ -721,6 +721,29 @@ repos. All are optional; a repo with no config is simply off the estate.
 - **pins**: folders/files surfaced in the sidebar Pinned block. A last segment
   with an extension opens as a file; otherwise it opens the Files view at that
   folder.
+- **links**: path to the repo's **links board** (`"links/board.json"`, or a
+  qualified `owner/repo[@ref]:path`), the store `pages/links.html` renders. The
+  shell reads it and surfaces the items flagged `rail: true` as **the rail**:
+  the handful of destinations worth a tap from anywhere. Nothing is re-authored,
+  since the flag already drives the board's own masthead band.
+
+  Two layers, both declarative, and the split is what keeps the rail honest.
+  **Which board** is this field, in the repo's own config, editable through the
+  repo dialog's Config tab. **What is on the rail** is the board itself: the
+  `rail` flag, array order, each item's `icon`, `title`, and `doors`. The
+  sidebar's Links block carries an icon for each layer's answer: a bookmark that
+  opens the board, and a pencil that opens it in edit mode (`?edit=1` on the
+  toss address, which the params shim delivers to the page).
+
+  Placement follows the verb. A rail item leaves the app, or opens a repo in it,
+  which is not what a nav item does, so it sits at the **far end of the header**
+  rather than as a third nav group: icon-only, tooltip carrying the title and
+  note. That cluster is desktop-only, the one place the two viewports differ,
+  because below `lg` the nav already scrolls and a second header cluster would
+  compete for the same overflow. The **sidebar block** is the phone's route to
+  the rail and the wide reading of it on desktop, spelling out each label and
+  wrapping its doors. A `snippet` item is skipped in both: a `javascript:` URL
+  is something to copy, not somewhere to go.
 - **tracker**: where the repo keeps its task board (`"tracker/board.md"`, or a
   folder). Adds one row, **Task board**, to the repo's **GitHub menu** (the
   sidebar Repos row's github button, and the Activity view's repo chip). It is
