@@ -82,7 +82,10 @@
 </head>
 <body class="min-h-screen bg-base-200 text-base-content" x-data="branchPage()" x-cloak>
 
-  <div class="border-b border-base-300 bg-base-100">
+  <!-- The masthead stands down inside a frame (show-repo's branch-detail
+       takeover embeds this page and supplies its own header), the same
+       courtesy links.html pays its embedder. Standalone use is unchanged. -->
+  <div x-show="!framed" class="border-b border-base-300 bg-base-100">
     <div class="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
       <span class="text-lg">🌿</span>
       <input x-model="input" @keydown.enter="go()" placeholder="owner/repo@branch"
@@ -102,6 +105,7 @@
   document.addEventListener('alpine:init', () => {
     Alpine.data('branchPage', () => ({
       input: '', target: null,
+      framed: (() => { try { return window.self !== window.top; } catch { return true; } })(),
 
       async init() {
         const t = this.resolve();
