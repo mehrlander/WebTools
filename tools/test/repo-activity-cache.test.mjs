@@ -74,6 +74,23 @@ test('cacheChanged ignores timestamps, catches hash and membership', () => {
   assert.equal(A.cacheChanged(a, changed), true);
 });
 
+// The count behind the refresh toast. cacheChanged is defined as this list
+// being non-empty, so the gate that skips the commit and the number the toast
+// reports can never disagree.
+test('changedRepos names movers and membership changes, sorted', () => {
+  const a = A.buildCache(null, { 'o/a': { counts: { branches: 1 } }, 'o/b': { counts: { branches: 1 } } }, 't0');
+  const same = A.buildCache(a, { 'o/a': { counts: { branches: 1 } }, 'o/b': { counts: { branches: 1 } } }, 't1');
+  assert.deepEqual(A.changedRepos(a, same), []);
+  const moved = A.buildCache(a, { 'o/a': { counts: { branches: 9 } }, 'o/b': { counts: { branches: 1 } } }, 't2');
+  assert.deepEqual(A.changedRepos(a, moved), ['o/a']);
+  const joined = A.buildCache(a, { 'o/a': { counts: { branches: 1 } }, 'o/b': { counts: { branches: 1 } },
+                                   'o/c': { counts: { branches: 1 } } }, 't3');
+  assert.deepEqual(A.changedRepos(a, joined), ['o/c']);        // a joiner counts
+  const left = A.buildCache(a, { 'o/a': { counts: { branches: 1 } } }, 't4');
+  assert.deepEqual(A.changedRepos(a, left), ['o/b']);          // so does a leaver
+  assert.equal(A.cacheChanged(a, left), true);                 // and the gate agrees
+});
+
 test('recentStream merges and caps across repos, newest-first, repo-tagged', () => {
   const cache = A.buildCache(null, {
     'o/a': { recentCommits: [commit('a', 7), commit('b', 3)] },

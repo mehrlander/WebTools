@@ -147,13 +147,13 @@ test('branchMenuItems: a PR row offers its tabs, a bare branch offers New PR', (
   const withPr = data.openBranches[0], noPr = data.openBranches[1];
   data.menuBranch = withPr;
   let keys = plain_(data.branchMenuItems.map(i => i.key));
-  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'prFiles', 'prChecks', 'copyName', 'copyCompare']);
+  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'stageDiff', 'prFiles', 'prChecks', 'copyName', 'copyCompare']);
   assert.equal(data.branchMenuItems.find(i => i.key === 'prFiles').label, 'Files changed (#12)');
   assert.equal(data.branchMenuItems.find(i => i.key === 'compare').label, 'Compare to main');
 
   data.menuBranch = noPr;
   keys = plain_(data.branchMenuItems.map(i => i.key));
-  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'newPr', 'copyName', 'copyCompare']);
+  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'stageDiff', 'newPr', 'copyName', 'copyCompare']);
   assert.ok(!keys.includes('prFiles'));
 });
 
@@ -180,6 +180,85 @@ test('runBranchMenu builds the GitHub destinations', () => {
   assert.equal(urlFor('prFiles', row), 'https://github.com/me/tools/pull/12/files');
   assert.equal(urlFor('prChecks', row), 'https://github.com/me/tools/pull/12/checks');
   assert.equal(urlFor('newPr', bare), 'https://github.com/me/tools/compare/main...feat%2Fb?expand=1');
+});
+
+// ── Drop a file here ─────────────────────────────────────────────────────
+// The branch menu's one write-shaped destination: GitHub's new-file form
+// opened ON the branch with the filename prefilled, so pasted content commits
+// to the branch without riding through chat. The branch keeps its slashes raw
+// (the form GitHub's own UI emits); the filename lands in the repo's declared
+// inbox, else dump/, date-stamped.
+
+// ── The branch detail takeover ───────────────────────────────────────────
+// Tap a name, get the full-viewport detail with the list as its sequence.
+// The sequence is frozen at open (a cache refresh must not yank it), the
+// stepping clamps at the ends, and the iframe address carries a per-branch
+// query so stepping actually navigates (a fragment-only change would not).
+
+test('tapping a row takes over: frozen sequence, position, clamped stepping', () => {
+  const row = data.openBranches[1];
+  data.openBranchDetail(row);
+  assert.equal(data.detail.i, 1);
+  assert.equal(data.detail.rows.length, 3);
+  assert.equal(data.detailRow.name, row.name);
+  assert.equal(data.detailUrl,
+    '../branch.html?swipe=me%2Ftools%40feat%2Fb#gh=me/tools@feat/b');
+  assert.equal(data.detailReady, false, 'the facts card is the content until the page reports ready');
+  data.detailReady = true;                 // as if the embedded brief reported in
+  data.detailStep(1);
+  assert.equal(data.detailRow.name, 'fresh');
+  assert.equal(data.detailReady, false, 'stepping re-arms the instant layer');
+  data.detailStep(1);
+  assert.equal(data.detail.i, 2, 'clamped at the end, no wrap');
+  data.detailStep(-1); data.detailStep(-1); data.detailStep(-1);
+  assert.equal(data.detail.i, 0, 'clamped at the start');
+  data.closeDetail();
+  assert.equal(data.detail, null);
+  assert.equal(data.detailUrl, '', 'no address when nothing is open');
+});
+
+test('swipe: a horizontal move steps, vertical and short moves do not', () => {
+  data.openBranchDetail(data.openBranches[0]);
+  const touch = (x1, y1, x2, y2) => {
+    data.dTouchStart({ touches: [{ clientX: x1, clientY: y1 }] });
+    data.dTouchEnd({ changedTouches: [{ clientX: x2, clientY: y2 }] });
+  };
+  touch(200, 100, 60, 110);       // left swipe: next
+  assert.equal(data.detail.i, 1);
+  touch(60, 100, 200, 90);        // right swipe: previous
+  assert.equal(data.detail.i, 0);
+  touch(100, 100, 130, 110);      // too short
+  touch(100, 100, 180, 220);      // mostly vertical: a scroll, not a step
+  assert.equal(data.detail.i, 0);
+  data.closeDetail();
+});
+
+test('keyboard: arrows step, Escape closes, all dead when nothing is open', () => {
+  data.openBranchDetail(data.openBranches[0]);
+  data.detailKeys({ key: 'ArrowRight' });
+  assert.equal(data.detail.i, 1);
+  data.detailKeys({ key: 'ArrowLeft' });
+  assert.equal(data.detail.i, 0);
+  data.detailKeys({ key: 'Escape', preventDefault: () => {} });
+  assert.equal(data.detail, null);
+  data.detailKeys({ key: 'ArrowRight' });   // must not throw with no detail
+  assert.equal(data.detail, null);
+});
+
+test('dropFileUrl: the new-file form on the branch, filename in the inbox', () => {
+  const row = data.openBranches[0];                       // me/tools feat/a
+  window.__shell.estateConfigs = { 'me/tools': { inbox: 'inbox/' } };
+  const u = data.dropFileUrl(row);
+  assert.match(u, /^https:\/\/github\.com\/me\/tools\/new\/feat\/a\?filename=/);
+  const name = decodeURIComponent(u.split('filename=')[1]);
+  assert.match(name, /^inbox\/\d{4}-\d{2}-\d{2}-\d{4}-drop\.md$/,
+    'the declared inbox, trailing slash trimmed, date-stamped');
+  window.__shell.estateConfigs = {};
+  assert.match(decodeURIComponent(data.dropFileUrl(row).split('filename=')[1]),
+    /^dump\//, 'no declared inbox falls back to dump/');
+  const items = (data.menuBranch = row, data.branchMenuItems);
+  assert.ok(items.some(i => i.key === 'dropFile' && i.external),
+    'the menu carries the row, marked as leaving the app');
 });
 
 // ── The scope axis ───────────────────────────────────────────────────────

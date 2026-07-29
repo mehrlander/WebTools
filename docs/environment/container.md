@@ -26,6 +26,46 @@ The environment cache includes files, packages, tools, and Docker images install
 
 Packages installed during a session do not transfer to other sessions unless their installation is added to the setup script. Repository `SessionStart` hooks run separately at their configured lifecycle events.
 
+## The session transcript
+
+*(measured 2026-07-29)*
+
+Each session writes a JSONL transcript at
+`~/.claude/projects/<slug>/<session-id>.jsonl`, appended turn by turn. A `Stop`
+hook receives its path as `transcript_path`. Every line carries `timestamp`,
+`cwd`, `sessionId`, and the CLI `version`; assistant lines add `message.model`
+and `message.usage`, so per-session model and token totals are readable without
+instrumenting anything.
+
+**It does not persist.** The container holds exactly one transcript, the running
+session's. There is no on-disk history of prior sessions, no session list in the
+CLI config, and no MCP tool that enumerates them. The session's own
+`claude.ai/code/session_...` URL is not fetchable from inside the box. So a
+transcript not copied out before the container is reclaimed is gone, and the copy
+has to be made by the session that produced it.
+
+**Most of it is tool output.** Measured on one working session:
+
+| Form | Size | Share |
+| --- | --- | --- |
+| Raw JSONL | 691 KB | 100% |
+| Conversation only, tool results dropped | 24 KB | 3% |
+
+The other 97% is file reads, command output, and search results: bulky, largely
+reconstructable from the repo, and the reason a transcript's size is out of
+proportion to what it says.
+
+**It is as sensitive as the most sensitive thing the session read.** Tool results
+are recorded verbatim, so a transcript inherits whatever secrets, private file
+contents, and API responses passed through it. Archiving one is a disclosure
+decision, not a backup.
+
+**Two fields do not mean what their names suggest.** `gitBranch` reads `HEAD`
+rather than a branch name, so a branch has to be read from the repo instead. And
+the user role carries harness-injected turns, a retry notice being the common
+one, so counting user messages overstates how many times the user actually said
+something.
+
 ## Repository observations
 
 *Observed 2026-05-30.*

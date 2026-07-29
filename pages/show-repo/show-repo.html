@@ -250,6 +250,14 @@
       <div class="flex flex-col gap-0.5" x-show="estateCtx && estateRepos.length">
         <div class="flex items-center gap-1.5 px-2 pb-0.5">
           <span class="text-base font-mono uppercase tracking-widest text-base-content/40">Repos</span>
+          <!-- Branch-overlay chip: a preview must say it is one. Present only
+               under ?overlay=; the tooltip names the branch and which repos
+               carry it, and each overlaid row below gets a matching glyph. -->
+          <span x-show="overlayBranch" x-cloak :title="overlayTip"
+                class="flex items-center gap-1 min-w-0 px-1.5 py-0.5 rounded bg-warning/15 text-warning text-sm font-mono">
+            <i class="ph ph-git-branch text-sm leading-none shrink-0"></i>
+            <span class="truncate" x-text="overlayShort"></span>
+          </span>
           <div class="grow"></div>
           <button @click="goEstate()" title="Open the Repos dashboard"
                   class="text-base-content/30 hover:text-primary transition-colors">
@@ -283,26 +291,48 @@
                    discovered. The marker button is the old inert <span>
                    promoted to a real control, so the row still says
                    public/private with its glyph while carrying its menu. -->
-              <div class="flex items-center rounded-lg transition-colors hover:bg-base-200"
-                   :class="$store.browser.repo===r.repo && 'bg-primary/10'">
-                <button @click="openPinned(r.repo)" :title="r.repo"
-                        class="flex items-center gap-2 min-w-0 flex-1 min-h-11 pl-2 text-left transition-colors"
-                        :class="$store.browser.repo===r.repo ? 'text-primary font-semibold' : 'text-base-content/80'">
-                  <i class="ph text-base shrink-0" :class="r.icon"></i><span class="truncate" x-text="r.short"></span>
-                </button>
-                <button @click.stop="rowMenu(r.repo, $event, 'github')"
-                        @mouseenter="rowMenuHover(r.repo, $event, 'github')" @mouseleave="hoverLeaveMenu()"
-                        :title="'GitHub links for ' + r.short"
-                        class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
-                        :class="repoMenuAt && menuRepo===r.repo && menuKind==='github' && 'text-primary'">
-                  <i class="ph ph-github-logo text-base leading-none"></i></button>
-                <button @click.stop="rowMenu(r.repo, $event)"
-                        @mouseenter="rowMenuHover(r.repo, $event)" @mouseleave="hoverLeaveMenu()"
-                        :title="(r.priv === null ? '' : (r.priv ? 'Private. ' : 'Public. ')) + 'Actions for ' + r.short"
-                        class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
-                        :class="repoMenuAt && menuRepo===r.repo && menuKind==='actions' && 'text-primary'">
-                  <i class="ph text-base leading-none"
-                     :class="r.priv === null ? 'ph-dots-three-vertical' : (r.priv ? 'ph-lock' : 'ph-globe')"></i></button>
+              <div class="flex flex-col">
+                <div class="flex items-center rounded-lg transition-colors hover:bg-base-200"
+                     :class="$store.browser.repo===r.repo && 'bg-primary/10'">
+                  <button @click="openPinned(r.repo)"
+                          :title="r.repo + (overlayRefFor(r.repo) ? ' (overlay: opens at ' + overlayRefFor(r.repo) + ')' : '')"
+                          class="flex items-center gap-2 min-w-0 flex-1 min-h-11 pl-2 text-left transition-colors"
+                          :class="$store.browser.repo===r.repo ? 'text-primary font-semibold' : 'text-base-content/80'">
+                    <i class="ph text-base shrink-0" :class="r.icon"></i><span class="truncate" x-text="r.short"></span>
+                    <i x-show="overlayRefFor(r.repo)" x-cloak
+                       class="ph ph-git-branch text-sm text-warning shrink-0"></i>
+                  </button>
+                  <button @click.stop="rowMenu(r.repo, $event, 'github')"
+                          @mouseenter="rowMenuHover(r.repo, $event, 'github')" @mouseleave="hoverLeaveMenu()"
+                          :title="'GitHub links for ' + r.short"
+                          class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
+                          :class="repoMenuAt && menuRepo===r.repo && menuKind==='github' && 'text-primary'">
+                    <i class="ph ph-github-logo text-base leading-none"></i></button>
+                  <button @click.stop="rowMenu(r.repo, $event)"
+                          @mouseenter="rowMenuHover(r.repo, $event)" @mouseleave="hoverLeaveMenu()"
+                          :title="(r.priv === null ? '' : (r.priv ? 'Private. ' : 'Public. ')) + 'Actions for ' + r.short"
+                          class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
+                          :class="repoMenuAt && menuRepo===r.repo && menuKind==='actions' && 'text-primary'">
+                    <i class="ph text-base leading-none"
+                       :class="r.priv === null ? 'ph-dots-three-vertical' : (r.priv ? 'ph-lock' : 'ph-globe')"></i></button>
+                </div>
+                <!-- PROJECTS, indented under their repo. A repo carrying several
+                     workspaces declares them in its manifest's `projects` field
+                     (the defining convention: a workspace running a tracker is a
+                     project; the repo root's tracker marks the repo itself and
+                     earns no row). The list rides the config cache the section
+                     already read, so these rows cost no extra fetch. A tap opens
+                     the repo's Files view at the workspace folder, the same
+                     route a folder pin takes; the indent (pl-8) puts the project
+                     icon under the repo label, so the column reads as
+                     containment rather than a second list. -->
+                <template x-for="p in repoProjects(r.repo)" :key="r.repo + ':' + p.path">
+                  <button @click="openProject(r.repo, p)" :title="r.repo + ': ' + p.path"
+                          class="flex items-center gap-2 min-h-8 pl-8 pr-2 py-0.5 rounded-lg text-left text-sm transition-colors hover:bg-base-200 text-base-content/60 hover:text-base-content/90">
+                    <i class="ph text-sm shrink-0" :class="p.icon"></i>
+                    <span class="truncate" x-text="p.label"></span>
+                  </button>
+                </template>
               </div>
             </template>
           </div>
@@ -930,10 +960,34 @@ function app(){ return {
   // token-gated and empty without a token.
   estateRepos: [], // resolved [{repo, short, icon, group, order}]
   estateConfigs: {}, // repo -> its .web-tools.json, from the same cache pass
+  // ── Branch overlay (?overlay=<branch>): preview the estate as if that
+  // branch were merged wherever it exists. Sessions name ONE branch across
+  // every repo they touch (a workstream), so a same-named branch is a
+  // session's signature and the join this rides. Two effects compose: each
+  // overlaid repo's MANIFEST is read live at the branch and spliced over the
+  // config cache (the cache is derived from main-side crawls, so no view-time
+  // ref redirection can reach it), and opening an overlaid repo browses it at
+  // the branch ref. A repo without the branch reads main, untouched. The
+  // parameter rides the query so a toss can deliver it (the params shim
+  // answers URLSearchParams reads inside a frame), which is what makes a
+  // coordinated cross-repo change previewable before any of it merges.
+  overlayBranch: '',   // the branch named by ?overlay=; '' = no overlay
+  overlayRefs: {},     // repo -> branch, for the repos where it exists
+  _overlayResolved: null, // memoized resolution (the branch never changes mid-session)
   proposalCount: 0, // pending cross-repo edit proposals; gates the nav entry
   proposalsSeen: false,
   configRefreshing: false,  // the estate refresh button is mid-crawl
   activityRefreshing: false, // the activity crawl (heavier: per-repo survey) is running
+  // Live progress for the Activity header while that crawl runs, or null when
+  // idle. The unit is the ESTATE REPO: it is the only quantity known before the
+  // fanout starts, and it is what a reader watching the button is counting. The
+  // per-repo work (branches surveyed, PR compares) is deliberately NOT counted:
+  // those tick several times a second, read as churn rather than progress, and
+  // would suggest a precision the crawl does not have, since one repo can cost
+  // an order of magnitude more than the next. `active` carries every repo in
+  // flight rather than the newest, because ACTIVITY_REPO_POOL runs two at once
+  // and naming one of them would describe the crawl wrongly.
+  activityProgress: null, // { done, total, active: [repo, …] }
   // Recently-committed files for the current repo@ref, shown in the sidebar.
   // Generated artifacts a build hook writes on every commit are noise here,
   // not real edits, so they're filtered out for web-tools specifically.
@@ -945,6 +999,10 @@ function app(){ return {
 
   async init(){
     window.__shell = this;
+    // Read the branch overlay once at boot; the value never changes within a
+    // session, and reading through URLSearchParams is what lets a toss deliver
+    // it to the framed shell (the params shim answers this lookup).
+    this.overlayBranch = (new URLSearchParams(location.search).get('overlay') || '').trim();
     const ready = await waitFor(() => window.GH);
     if (!ready) return notify('Boot timed out waiting for modules. Reload to retry.');
     const gh = new window.GH({ token: window.TOKEN });
@@ -1118,7 +1176,11 @@ function app(){ return {
       const views = [], repos = [], configs = {};
       try {
         const cache = JSON.parse((await reg.get('state/configs.json')).text);
-        for (const [repo, e] of Object.entries(cache.repos || {})) {
+        const entries = cache.repos || {};
+        // Under an overlay, splice each overlaid repo's live branch manifest
+        // over its cached entry before anything derives from the cache.
+        await this.overlayEntries(entries);
+        for (const [repo, e] of Object.entries(entries)) {
           const cfg = e?.config;
           if (!cfg) continue;
           // Keep the raw config beside the derived lists: it is already read
@@ -1214,6 +1276,58 @@ function app(){ return {
     this.rail = out;
   },
 
+  // ── Branch-overlay mechanics (see the state fields above for the idea) ────
+  // Resolution: one branch-existence probe per cached repo, in parallel, run
+  // once per session (memoized; the branch named in the address never
+  // changes). "Where it exists" is answered by GitHub, not assumed, so a repo
+  // the session never touched keeps reading main.
+  async resolveOverlay(repos){
+    if (!this.overlayBranch || !this.hasToken()) return {};
+    if (!this._overlayResolved) {
+      this._overlayResolved = (async () => {
+        const found = {};
+        await Promise.all(repos.map(async (repo) => {
+          try {
+            await new window.GH({ token: window.TOKEN, repo }).req('branches/' + encodeURIComponent(this.overlayBranch));
+            found[repo] = this.overlayBranch;
+          } catch {}
+        }));
+        this.overlayRefs = found;
+        return found;
+      })();
+    }
+    return this._overlayResolved;
+  },
+  // The cache splice: for each repo carrying the branch, read its manifest
+  // live at that ref and lay it over the cached entry. This is the honest
+  // limit of the overlay stated in code: the config cache is a main-derived
+  // artifact, so previewing a branch means re-deriving the piece we need
+  // (one GET per overlaid repo), not redirecting a read that never happens.
+  // A branch without a manifest keeps the cached one. Mutates `entries` in
+  // place; no-op without an overlay.
+  async overlayEntries(entries){
+    if (!this.overlayBranch) return;
+    const refs = await this.resolveOverlay(Object.keys(entries));
+    await Promise.all(Object.entries(refs).map(async ([repo, ref]) => {
+      try {
+        const parsed = JSON.parse((await new window.GH({ token: window.TOKEN, repo, ref }).get('.web-tools.json')).text);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
+          entries[repo] = { ...entries[repo], config: parsed };
+      } catch {}
+    }));
+  },
+  overlayRefFor(repo){ return this.overlayRefs[repo] || ''; },
+  get overlayShort(){
+    const b = this.overlayBranch;
+    return b.length > 22 ? '…' + b.slice(-20) : b;
+  },
+  get overlayTip(){
+    const on = Object.keys(this.overlayRefs);
+    return 'Previewing branch ' + this.overlayBranch + ' across the estate. '
+      + (on.length ? 'Applied to: ' + on.map(r => r.split('/')[1] || r).join(', ') + '. ' : 'Resolving where it exists… ')
+      + 'Repos without the branch read main, and main-derived surfaces (Activity ages, boards) are not overlaid.';
+  },
+
   // The config cache carries no visibility, so the sidebar Repos rows get their
   // public/private marker from the account repos list, one call matched by name.
   // Mutates priv on the existing objects (the key is present, so it is reactive);
@@ -1253,6 +1367,16 @@ function app(){ return {
   // material-change check keeps commits sparse, so nav triggers cost nothing.
   CONFIG_CACHE_INTERVAL_MS: 6 * 3600 * 1000,
   _cacheCheckKey: 'wt:configCacheCheckedAt',
+  // OVERLAY-BLIND BY CONSTRUCTION, and deliberately not guarded: this crawl
+  // (and the activity crawl below) builds its own GH clients pinned at main,
+  // so its inputs and output are identical under a branch overlay, and a
+  // Refresh tap works in a preview the way intuition says it should. This
+  // shipped guarded at first ("a preview must not commit derived state"),
+  // which mis-filed these writes: the hazardous class is writes whose INPUTS
+  // or TARGETS the overlay touches, and a main-read, main-derived crawl is
+  // not in it. The invariant that keeps this true is held by
+  // tools/test/show-repo-overlay.test.mjs: every client the crawl constructs
+  // reads at main, never at the overlay branch.
   async refreshConfigCache(force){
     if (!this.hasToken() || !window.RepoConfigCache) return;
     // Seed the crawl from the account's repos (the enumeration that discovers
@@ -1305,10 +1429,38 @@ function app(){ return {
   async refreshActivity(){
     if (this.activityRefreshing || !this.hasToken()) return;
     this.activityRefreshing = true;
+    this.activityProgress = { done: 0, total: 0, active: [] };
     try {
-      await this.refreshActivityCache(true);
+      const result = await this.refreshActivityCache(true);
       document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
-    } finally { this.activityRefreshing = false; }
+      this.reportActivityRefresh(result);
+    } finally { this.activityRefreshing = false; this.activityProgress = null; }
+  },
+
+  // The crawl's one moment of feedback, and the reason the toast belongs at the
+  // end rather than during: the run takes tens of seconds (so a toast could not
+  // outlive it) and commits only when something materially changed (so a
+  // productive refresh and a no-op refresh used to end identically, with the
+  // spinner stopping and nothing saying which happened). Per-repo failures are
+  // surfaced here too; they were previously a console.warn and nothing else.
+  reportActivityRefresh(r){
+    if (!r) return;
+    const toast = Alpine.store('toast');
+    if (!toast) return;
+    if (r.skipped) {
+      if (r.reason) toast('warning', 'Activity refresh skipped: ' + r.reason, 'alert-warning', 4000);
+      return;
+    }
+    if (r.error) return toast('warning', 'Activity refresh failed: ' + r.error, 'alert-error', 6000);
+    const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+    const fail = r.failed.length;
+    const tail = fail ? ' · ' + plural(fail, 'repo') + ' failed, see console' : '';
+    if (r.changed.length)
+      toast('arrows-clockwise', 'Activity refreshed · ' + plural(r.changed.length, 'repo') + ' changed' + tail,
+            fail ? 'alert-warning' : 'alert-success', 4000);
+    else
+      toast('check', 'No activity changes · ' + plural(r.total, 'repo') + ' checked' + tail,
+            fail ? 'alert-warning' : 'alert-info', 3000);
   },
 
   // ── Activity aggregate: crawl each ESTATE repo (estate:true, read from the
@@ -1325,13 +1477,17 @@ function app(){ return {
   ACTIVITY_RECENT_COMMITS: 12,   // newest commits fetched per repo per crawl
   ACTIVITY_REPO_POOL: 2,         // repos crawled at once (each runs its own survey pool)
   _activityCheckKey: 'wt:activityCacheCheckedAt',
+  // Returns a summary of the run for the caller to report: {total, changed,
+  // failed, committed}, or {skipped, reason} when there was nothing to do. The
+  // background (unforced) caller ignores it; refreshActivity turns it into the
+  // closing toast.
   async refreshActivityCache(force){
-    if (!this.hasToken() || !window.RepoActivityCache || !window.BranchSurvey) return;
+    if (!this.hasToken() || !window.RepoActivityCache || !window.BranchSurvey) return { skipped: true };
     const A = window.RepoActivityCache, B = window.BranchSurvey;
     if (!force){
       try {
         const last = +localStorage.getItem(this._activityCheckKey) || 0;
-        if (Date.now() - last < this.ACTIVITY_CACHE_INTERVAL_MS) return;
+        if (Date.now() - last < this.ACTIVITY_CACHE_INTERVAL_MS) return { skipped: true };
       } catch {}
     }
     // Estate membership from the config cache (estate:true). The activity crawl
@@ -1343,23 +1499,32 @@ function app(){ return {
       const cc = JSON.parse((await reg.get(window.RepoConfigCache.CACHE_PATH)).text);
       members = Object.entries(cc.repos || {}).filter(([, e]) => e?.config?.estate === true).map(([n]) => n);
     } catch {}
-    if (!members.length) return;
+    if (!members.length) return { skipped: true, reason: 'no estate members in the config cache yet' };
+    this.tickActivityProgress(0, members.length, []);
 
     // One account-repos read for pushed-at / default-branch, matched by name.
     let metaByName = new Map();
     try { metaByName = new Map((await new window.GH({ token: window.TOKEN }).repos()).map(r => [r.full_name, r])); } catch {}
 
+    const failed = [];
     try {
       const now = Date.now(), nowISO = new Date().toISOString();
       const fetched = {};
       // Bounded outer concurrency: each repo runs its own inner survey pool, so
-      // a small repo pool keeps total in-flight GitHub calls reasonable.
-      let mi = 0;
+      // a small repo pool keeps total in-flight GitHub calls reasonable. The
+      // two progress ticks bracket exactly one repo's work, which is what makes
+      // done/total a count of finished repos rather than an estimate.
+      let mi = 0, done = 0;
+      const active = [];
       const crawlOne = async () => {
         while (mi < members.length){
           const repo = members[mi++];
+          active.push(repo);
+          this.tickActivityProgress(done, members.length, active);
           try { fetched[repo] = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B); }
-          catch(e){ console.warn('activity crawl', repo, e?.message || e); }
+          catch(e){ failed.push(repo); console.warn('activity crawl', repo, e?.message || e); }
+          active.splice(active.indexOf(repo), 1);
+          this.tickActivityProgress(++done, members.length, active);
         }
       };
       await Promise.all(Array.from({ length: Math.min(this.ACTIVITY_REPO_POOL, members.length) }, crawlOne));
@@ -1368,10 +1533,23 @@ function app(){ return {
       try { prev = JSON.parse((await reg.get(A.CACHE_PATH)).text); } catch {}
       const next = A.buildCache(prev, fetched, nowISO);
       try { localStorage.setItem(this._activityCheckKey, String(Date.now())); } catch {}
-      if (A.cacheChanged(prev, next)){
+      const changed = A.changedRepos(prev, next);
+      if (changed.length){
         await reg.save(A.CACHE_PATH, next, 'Update activity cache (state/activity.json) via show-repo');
       }
-    } catch(e){ console.warn('activity cache refresh:', e?.message || e); }
+      return { total: members.length, changed, failed, committed: changed.length > 0 };
+    } catch(e){
+      console.warn('activity cache refresh:', e?.message || e);
+      return { total: members.length, changed: [], failed, error: e?.message || String(e) };
+    }
+  },
+
+  // Publish crawl progress for the Activity header. A no-op unless the run was
+  // started by the Refresh button: the throttled background pass sets no
+  // activityProgress, and has no header to report into. Reassigns rather than
+  // mutating so the whole shape lands on the view in one reactive step.
+  tickActivityProgress(done, total, active){
+    if (this.activityProgress) this.activityProgress = { done, total, active: [...active] };
   },
 
   // Crawl one repo's activity: the cheap summary (pushed-at, recent commits,
@@ -1558,6 +1736,36 @@ function app(){ return {
   async openPin(p){
     if (this.pinIsFile(p)) return this.openFile(p);
     await this.openFolder(p.replace(/\/+$/, ''));
+  },
+
+  // ── Projects: the workspaces a repo declares in its manifest ──────────────
+  // Rendered indented under the repo's row in the sidebar Repos index. The
+  // defining convention (docs/show-repo.md): a workspace running a tracker is
+  // a project, so `projects` is declarative and generatable (home's
+  // tools/generate-tracker-registry.py syncs the field from the trackers it
+  // finds), and the sidebar reads it from the config cache already in hand
+  // (estateConfigs) rather than walking any tree. Entries are bare folder
+  // paths or { path, label, icon } objects; label defaults to the path's last
+  // segment, icon to the task-board glyph the rows share.
+  repoProjects(repo){
+    const list = this.estateConfigs?.[repo]?.projects;
+    if (!Array.isArray(list)) return [];
+    const out = [];
+    for (const e of list){
+      const o = typeof e === 'string' ? { path: e } : e;
+      if (!o || typeof o.path !== 'string' || !o.path) continue;
+      const path = o.path.replace(/\/+$/, '');
+      out.push({ path, label: o.label || path.split('/').pop(), icon: o.icon || 'ph-kanban' });
+    }
+    return out;
+  },
+  // Open the project: its repo's Files view at the workspace folder, the same
+  // route a folder pin takes, reachable from the estate for any member repo.
+  // Under a branch overlay an overlaid repo opens at the branch (openPinned's
+  // rule), so a project declared only on the branch browses where it lives.
+  async openProject(repo, p){
+    await this.ensureBrowser(repo, this.overlayRefFor(repo) || undefined);
+    if (Alpine.store('browser').repo === repo) await this.openFolder(p.path);
   },
 
   // Auth state drives which pinned private repos are dimmed, the token-gated
@@ -2198,7 +2406,16 @@ function app(){ return {
   // The per-repo Config view: the open repo's .web-tools.json as a roomy editor,
   // reached from the sidebar Config entry and the Pinned gear. The shared repo
   // dialog stays for the token and for configuring a repo you are not in.
-  goConfig(){ this.configSeen = true; this.view = 'config'; this.syncUrl(); },
+  goConfig(){
+    this.configSeen = true; this.view = 'config'; this.syncUrl();
+    // The one known member of the overlay's hazardous-write class: the
+    // contents-API save path commits to the DEFAULT branch (gh-store's
+    // putContent sends no branch), so under an overlay the editor would read
+    // branch state and write it to main. Warn rather than block: the mix is
+    // the hazard, and sometimes main is exactly the intended target.
+    if (this.overlayBranch && this.overlayRefFor(Alpine.store('browser').repo))
+      notify('Overlay preview: this editor reads the branch, but Save commits to the default branch. Edit outside the overlay unless that mix is what you mean.', 'alert-warning', 'git-branch');
+  },
   // Open the config dialog for ANY repo without navigating to it, the way the
   // estate card's gear does. Used by the sidebar Repos index rows, whose config
   // icon edits that repo in place rather than switching the open repo (the
@@ -2374,7 +2591,10 @@ function app(){ return {
   // repo-change watcher, which never fires when the tapped repo is already
   // open (e.g. the default repo's card while on the estate).
   async openPinned(repo){
-    await this.ensureBrowser(repo);
+    // Under a branch overlay, an overlaid repo opens AT the branch, so the
+    // whole per-repo experience (landing, pins, files, its own manifest)
+    // previews the branch; the crumb trail's ref chip makes the state visible.
+    await this.ensureBrowser(repo, this.overlayRefFor(repo) || undefined);
     if (Alpine.store('browser').repo === repo) this.goLanding();
   }
 }}
@@ -2755,6 +2975,15 @@ function overview(){ return {
       neither this view nor the branch review fans out per visit. The branch
       review renders cache-first, live only on Refresh. See docs/show-repo.md
       "The estate" and web-tools-private/DESIGN.md.
+      REFRESH REPORTS ITSELF, in the two places a tens-of-seconds crawl needs it:
+      while it runs the as-of readout becomes the repo count (activityProgress,
+      written by refreshActivityCache, read by the estate's activityProgress*
+      getters) over a determinate bar, and when it lands reportActivityRefresh
+      toasts what changed. Repos finished over repos total is the whole measure;
+      the per-repo work is deliberately not counted, since it ticks several times
+      a second and would read as the churn this replaced. The toast is the only
+      thing that distinguishes a productive refresh from a no-op one, because the
+      crawl commits only on a material change.
     App views (?view=app&appRepo&appPath): pages any repo promotes to their own
       estate-level entry with appView:true on a `pages` catalog entry, collected
       across every repo's config through the config cache (loadEstateSidebar,
@@ -2947,6 +3176,13 @@ function overview(){ return {
     pins     folders/files surfaced in the sidebar Pinned block; a last
              segment with an extension opens as a file, else opens the Files
              view at that folder.
+    projects the repo's workspaces, indented under its row in the sidebar
+             Repos index. Bare folder paths or { path, label, icon } objects;
+             a row opens the Files view at that folder. The defining
+             convention: a workspace running a tracker is a project (the repo
+             root's tracker marks the repo itself, no row), so the field is
+             generatable from a tracker walk and discovery costs the shell
+             nothing beyond the config cache it already reads.
     tracker  where the repo keeps its task board ("tracker/board.md", or a
              folder). One row in the repo's GITHUB MENU, since it is the one
              destination in that menu GitHub cannot name for itself: every
@@ -2978,6 +3214,23 @@ function overview(){ return {
   quick-link row, so a normal load is two GETs (the cache + the account list),
   not an N-repo scan. Each repo's own file stays the source of truth; the cache
   is derived. Cold cache falls back to a live per-repo scan, then rebuilds.
+
+  THE BRANCH OVERLAY (?overlay=<branch>): preview the estate as if that branch
+  were merged wherever it exists. Rides the fact that a session names ONE
+  branch across every repo it touches, so a same-named branch is a session's
+  signature. Per overlaid repo: manifest read live at the branch and spliced
+  over the cache entry (the cache is main-derived, so this is the only honest
+  source), and the repo opens AT the branch. Repos without the branch read
+  main. The Repos header chip + per-row glyph make the posture visible. The
+  cache crawls RUN under overlay: their clients are pinned at main, so a
+  Refresh in a preview reads and commits exactly what a normal session would
+  (held by test; this shipped guarded at first and the guard defended
+  nothing). The hazardous-write class is the one the overlay touches, and its
+  known member is the config editor, whose contents-API save lands on the
+  default branch while the editor would be reading the branch; entering it
+  under overlay warns. Because the toss params shim delivers a subject's
+  ?query, the whole thing works through main's deployed toss before any of it
+  merges. Full write-up: docs/show-repo.md, "The branch overlay".
 
   THE STAGE: a cross-repo fileset (store.stage, [{repo, ref, path}]) fed by the
   explorer's "+" buttons, a manifest's stage.files, or a #stage= link, and
