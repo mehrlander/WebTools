@@ -12,7 +12,12 @@
   links.html — the bookmarks and resources board, as a portal:
 
     rail      items flagged rail:true, projected into the masthead band in area
-              order. A flag, never a second list.
+              order. A flag, never a second list. show-repo's shell reads the
+              same flag out of the same file (a repo declares the board with
+              `links` in its .web-tools.json) and renders it in its own chrome,
+              so the rail reaches you from anywhere rather than only from here.
+              An iframe cannot paint into its parent's chrome, but the board is
+              a file and the shell can read a file, so nothing crosses the frame.
     area      a column, headed by its name over a heavy rule in its accent.
     group     consecutive runs of an item's `group` label, as small-caps
               headings inside the column. Array order drives both the order of
@@ -95,7 +100,12 @@
       error: '',
       committing: false,
       commitError: '',
-      editing: false,
+      // ?edit=1 opens straight into edit mode, so a caller can hand over the
+      // board's editor rather than its reading view. show-repo's sidebar uses
+      // it: the Links block's pencil is one tap to here from anywhere in the
+      // shell. Through a toss the parameter arrives via the params shim, which
+      // answers URLSearchParams.get for the addressed query.
+      editing: new URLSearchParams(location.search).has('edit'),
       // Promoted into show-repo as an app view, this page renders inside the
       // shell's iframe, which already supplies a header and a sidebar label.
       // Two mastheads is one too many, so the title stands down when framed.
@@ -153,7 +163,15 @@
       // An item's own icon wins. Failing that, a plain link borrows its area's
       // glyph, so the default says where a thing lives and only the exceptions
       // (action, repo, snippet) spend a glyph saying what they are.
-      icon(it, a) { return it.icon || (it.kind === 'link' ? (a?.icon || this.KIND.link.icon) : this.KIND[it.kind].icon) },
+      // The KIND lookup is guarded because the store is a hand-editable JSON
+      // file: an item with a missing or misspelled `kind` used to throw inside
+      // the x-for, which blanks the WHOLE BOARD rather than the one row. A bad
+      // row should cost its own glyph and nothing else.
+      icon(it, a) {
+        return it.icon
+          || (it.kind === 'link' ? (a?.icon || this.KIND.link.icon) : this.KIND[it.kind]?.icon)
+          || this.KIND.link.icon;
+      },
       accent(a) { return a?.accent || 'currentColor' },
       href(it) {
         if (!it.url) return null;                       // a reference with no address

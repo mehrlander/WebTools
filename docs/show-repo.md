@@ -73,9 +73,11 @@ so, by the scrim or the X, which makes the mobile drawer behave like the pinned
 desktop sidebar that never closed.
 
 The **sidebar** holds what is contextual: in a repo, its views (landing, atlas,
-files, branches) plus pins and recents; in the estate, only the repo-sourced
-**app views** (promoted with `appView:true`, e.g. News), since those are the
-ones repos opt into. The header set never appears in the sidebar. On desktop the
+files, branches) plus pins and recents; in the estate, the Repos index and the
+repo-sourced **app views** (promoted with `appView:true`, e.g. News). The app's
+own view set never appears in the sidebar; the app views appear in both places,
+since the header is the one-tap route and the sidebar is the one that holds up
+when the header nav is too narrow to show them. On desktop the
 pinned sidebar hides entirely when the estate has no app views, so the dashboard
 runs full-width; on mobile it is a drawer behind the hamburger. See "The
 estate", "The stage", and "Public browse" below.
@@ -129,6 +131,18 @@ the header nav the way a repo shows landing/atlas/files/…:
 
 The estate component renders Repos / Surfaces / Activity, sharing one lazy mount;
 Tools and Map are their own components on their own lazy mounts.
+
+Behind those, past a hairline rule, the header carries a **second nav group: the
+repo-sponsored app views** (`appView:true`), one button each, carrying the icon
+its repo declared. The list is the sidebar's list (`appNav` reads
+`sidebarAppViews`), so the two cannot disagree, and it is the same on desktop and
+mobile: the nav scrolls rather than clipping, and the sidebar copy is what a
+phone reaches without scrolling it. The rule plus the icons is the whole of the
+separation; the app's own entries stay label-only. The header used to be a closed
+set the app owned, which left room beside it unused and a published view
+reachable only through the drawer. What did not move is the **swipe carousel**,
+which still pages `estateNav` alone: an app view renders as an iframe that owns
+its own gesture surface, so a swipe could page in and not back out.
 
 **Repos: membership and fields live on each repo.** A repo appears on the estate
 by opting in with `estate: true` in its **own** `.web-tools.json`. Every
@@ -805,9 +819,11 @@ repos. All are optional; a repo with no config is simply off the estate.
     home's data through the viewer's token regardless of where it is hosted).
   - **title**: the card's heading (defaults to the filename).
   - **note**: the card's one-line description.
-  - **icon**: Phosphor class, used as the app-view sidebar icon when promoted.
+  - **icon**: Phosphor class, used as the app-view icon when promoted, in the
+    header nav and the sidebar alike.
   - **appView**: `true` to promote this page to its own **estate-level view**,
-    a peer of Repos / Surfaces / Stage in the switcher (estate membership one
+    a peer of Repos / Surfaces / Stage, shown in the header nav's second group
+    and in the sidebar (estate membership one
     level up: the target is a rendered page, not a repo). Collected across
     every repo's config through the config cache, token-gated (no token, no app
     view, like Surfaces), and rendered live in the estate main area via
@@ -832,6 +848,29 @@ repos. All are optional; a repo with no config is simply off the estate.
 - **pins**: folders/files surfaced in the sidebar Pinned block. A last segment
   with an extension opens as a file; otherwise it opens the Files view at that
   folder.
+- **links**: path to the repo's **links board** (`"links/board.json"`, or a
+  qualified `owner/repo[@ref]:path`), the store `pages/links.html` renders. The
+  shell reads it and surfaces the items flagged `rail: true` as **the rail**:
+  the handful of destinations worth a tap from anywhere. Nothing is re-authored,
+  since the flag already drives the board's own masthead band.
+
+  Two layers, both declarative, and the split is what keeps the rail honest.
+  **Which board** is this field, in the repo's own config, editable through the
+  repo dialog's Config tab. **What is on the rail** is the board itself: the
+  `rail` flag, array order, each item's `icon`, `title`, and `doors`. The
+  sidebar's Links block carries an icon for each layer's answer: a bookmark that
+  opens the board, and a pencil that opens it in edit mode (`?edit=1` on the
+  toss address, which the params shim delivers to the page).
+
+  Placement follows the verb. A rail item leaves the app, or opens a repo in it,
+  which is not what a nav item does, so it sits at the **far end of the header**
+  rather than as a third nav group: icon-only, tooltip carrying the title and
+  note. That cluster is desktop-only, the one place the two viewports differ,
+  because below `lg` the nav already scrolls and a second header cluster would
+  compete for the same overflow. The **sidebar block** is the phone's route to
+  the rail and the wide reading of it on desktop, spelling out each label and
+  wrapping its doors. A `snippet` item is skipped in both: a `javascript:` URL
+  is something to copy, not somewhere to go.
 - **projects**: the repo's workspaces, rendered indented under the repo's row
   in the sidebar Repos index. Entries are bare folder paths
   (`"projects/budget-wa"`) or `{ path, label, icon }` objects; `label` defaults

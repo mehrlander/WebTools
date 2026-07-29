@@ -108,17 +108,31 @@
         <img src="../../lib/favicon.svg" alt="web-tools" width="24" height="24" class="w-6 h-6">
       </button>
       <!-- App-level views: Open / Repos / Surfaces / To-do / Stage, the
-           estate's own closed set, always labeled, inline on one row (there is
+           estate's own set, always labeled, inline on one row (there is
            room next to the brand at any phone width). Public browse left the
            header (a signed-out affordance, still on the no-token banner and
            every repo card); the nav scrolls rather than clipping on the
-           narrowest devices. -->
+           narrowest devices.
+
+           Then a hairline, then the REPO-SPONSORED views (appView:true): the
+           header now carries both classes of destination, the app's own and the
+           ones repos publish. Same set on every viewport, since the nav already
+           scrolls; the sidebar keeps its copy, which is what saves a phone from
+           scrolling the nav to reach them. -->
       <nav class="flex items-center gap-0.5 min-w-0 overflow-x-auto no-scrollbar">
         <template x-for="v in estateNav" :key="v.view">
           <button @click="v.go()" :title="v.label"
                   class="shrink-0 px-2.5 py-1 rounded-lg text-base font-medium transition-colors"
                   :class="navActive(v) ? 'text-primary bg-primary/10' : 'text-base-content/70 hover:bg-base-200'"
                   x-text="v.label"></button>
+        </template>
+        <div x-show="appNav.length" class="shrink-0 mx-1.5 h-5 w-px bg-base-300"></div>
+        <template x-for="v in appNav" :key="v.key">
+          <button @click="v.go()" :title="v.title"
+                  class="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-base font-medium transition-colors"
+                  :class="navActive(v) ? 'text-primary bg-primary/10' : 'text-base-content/70 hover:bg-base-200'">
+            <i class="ph text-base leading-none" :class="v.icon"></i><span x-text="v.label"></span>
+          </button>
         </template>
       </nav>
       <!-- The repo component runs headless here: the repo/auth controller plus
@@ -129,6 +143,35 @@
            from a header shield. -->
       <div id="repo" x-data="repo({ inline: true })" class="min-w-0"></div>
       <div class="grow"></div>
+
+      <!-- ── The rail: the far end of the header ──────────────────────────
+           The `rail: true` items of the links board (loadRail), which are
+           destinations rather than views: they leave the app, or open a repo
+           in it. That is a different verb from switching a pane, so they sit
+           at the OPPOSITE END from the nav rather than as a third group in it.
+           Icon-only, because the set is small, recognizable, and daily; the
+           title and note ride the tooltip, and the Links view carries the full
+           board with every label spelled out.
+
+           Desktop only, and this is the one place the two viewports differ:
+           the nav already scrolls at phone widths, so a second header cluster
+           there would compete for the same overflow. Below lg the rail renders
+           in the sidebar instead (its own block under App views), which is
+           where a phone reaches it. -->
+      <!-- No rule on this side: the flexible gap after the nav is already the
+           separation, and a border with nothing after it reads as a stray line
+           against the window edge. -->
+      <div x-show="rail.length" class="hidden lg:flex items-center gap-0.5 shrink-0">
+        <template x-for="it in rail" :key="it.key">
+          <a :href="it.url || null" :target="it.url ? '_blank' : null" :rel="it.url ? 'noopener' : null"
+             @click="it.repo && (openPinned(it.repo), $event.preventDefault())"
+             :title="it.title + (it.note ? ' — ' + it.note : '')"
+             class="shrink-0 p-1.5 rounded-lg text-base-content/45 hover:text-primary hover:bg-base-200 transition-colors">
+            <i class="ph text-lg leading-none" :class="it.icon"></i>
+          </a>
+        </template>
+      </div>
+
       <!-- Drawer toggle, where the sidebar is a drawer (below lg). -->
       <button @click="openSidebar()" class="shrink-0 p-1 rounded-lg hover:bg-base-200 transition-colors lg:hidden" title="Menu">
         <i class="ph ph-list text-lg leading-none"></i>
@@ -195,9 +238,9 @@
     <div class="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-3">
       <!-- Estate-context sidebar. Two repo-sourced sections, both token-gated
            (empty and hidden when unauthed): the Repos index on top, then the
-           app views. The app's own views (Open / Repos / Surfaces / Stage /
-           Tools / Map) live in the header nav, a fixed set the app owns. These
-           two are what repos opt into, so they sit here. -->
+           app views. The app views also ride in the header now, behind the
+           hairline; the copy stays here because the header nav scrolls on a
+           narrow phone and this list does not. -->
 
       <!-- Repos: a compact index of the estate members (repos declaring
            estate:true in their OWN config), grouped and ordered like the Repos
@@ -300,7 +343,9 @@
            x-show="estateCtx && estateRepos.length && sidebarAppViews.length"></div>
 
       <!-- App views: pages a repo promotes to an estate-level entry (appView:true,
-           e.g. News), rendered live in the main area through toss-render. -->
+           e.g. News), rendered live in the main area through toss-render. The
+           same set the header's second nav group shows (appNav reads this list),
+           so the two never disagree. -->
       <div class="flex flex-col gap-0.5" x-show="estateCtx && sidebarAppViews.length">
         <div class="text-base font-mono uppercase tracking-widest text-base-content/40 px-2 pb-0.5">App views</div>
         <template x-for="v in sidebarAppViews" :key="v.key">
@@ -309,6 +354,58 @@
                   :class="view==='app' && appView && appView.key===v.key ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
             <i class="ph text-base" :class="v.icon"></i><span x-text="v.label"></span>
           </button>
+        </template>
+      </div>
+
+      <div class="border-t border-base-200"
+           x-show="estateCtx && sidebarAppViews.length && rail.length"></div>
+
+      <!-- The rail again, spelled out. The header cluster is icon-only and
+           desktop-only; here each item gets its label and its doors, the way
+           the links board's own masthead band renders them, since a sidebar row
+           has the width for it. This is the phone's route to the rail, and on
+           desktop it is the labeled reading of the icons above. -->
+      <div class="flex flex-col gap-0.5" x-show="estateCtx && rail.length">
+        <!-- Two icons, the same split the Repos section uses: one opens the
+             whole thing, one acts on it. The rail is a projection of a file, so
+             the question "how do I change what is up here" needs an answer in
+             the chrome that shows it, not only inside the board's own page. The
+             pencil opens the board's editor (?edit=1 through the toss address),
+             which is where the rail flags, order, labels, and doors live. -->
+        <div class="flex items-center gap-1.5 px-2 pb-0.5">
+          <span class="text-base font-mono uppercase tracking-widest text-base-content/40">Links</span>
+          <div class="grow"></div>
+          <button x-show="railView" @click="goAppView(railView)" title="Open the links board"
+                  class="text-base-content/30 hover:text-primary transition-colors">
+            <i class="ph ph-bookmark-simple text-base leading-none"></i></button>
+          <button x-show="railView" @click="goAppView({ ...railView, query: 'edit=1' })"
+                  title="Edit the board: which items ride the rail, their order, labels, and doors"
+                  class="text-base-content/30 hover:text-primary transition-colors">
+            <i class="ph ph-pencil-simple text-base leading-none"></i></button>
+        </div>
+        <!-- flex-wrap, not truncate: an item with several doors (GitHub's
+             notifications / PRs / agents) should spill onto a second line here
+             rather than losing them off the right edge. The sidebar is the wide
+             reading of the rail; that is the whole reason it renders twice. -->
+        <template x-for="it in rail" :key="it.key">
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 px-2 py-1.5 rounded-lg hover:bg-base-200 transition-colors">
+            <a :href="it.url || null" :target="it.url ? '_blank' : null" :rel="it.url ? 'noopener' : null"
+               @click="it.repo && (openPinned(it.repo), $event.preventDefault())"
+               :title="it.note || it.title"
+               class="flex items-center gap-2 min-w-0 text-base text-base-content/80 hover:text-primary transition-colors">
+              <i class="ph text-base shrink-0" :class="it.icon"></i><span class="truncate" x-text="it.title"></span>
+            </a>
+            <!-- Doors: further ways into the SAME destination, the board's own
+                 idiom. They fit here and they do not fit in an icon cluster,
+                 which is the other half of why the rail renders twice. -->
+            <template x-for="(d, di) in it.doors" :key="d.url">
+              <span class="flex items-baseline text-sm shrink-0">
+                <span x-show="di > 0" class="text-base-content/25 mr-1">·</span>
+                <a :href="d.url" target="_blank" rel="noopener"
+                   class="text-base-content/45 hover:text-primary transition-colors" x-text="d.label"></a>
+              </span>
+            </template>
+          </div>
         </template>
       </div>
 
@@ -402,7 +499,8 @@
   <!-- ── Main area: the selected view for the repo. On touch devices a
        horizontal swipe here pages between the estate's dashboard views
        (estateNav: Activity / Repos / Surfaces / Stage / Tools / Map; Activity's
-       Open / To-do / Jots sub-tabs switch by pill, not swipe); see
+       Open / To-do / Jots sub-tabs switch by pill, not swipe; the header's
+       repo-sponsored group is out of the carousel, being iframes); see
        swipeToView. ─────────────────────────────────────────────────────────── -->
   <main class="flex-1 min-w-0 min-h-0"
         @touchstart.passive="onSwipeStart($event)" @touchmove="onSwipeMove($event)"
@@ -774,6 +872,13 @@ function resolveCatalogPath(rawPath, declRepo, declRef){
   return { repo: declRepo, ref: declRef || '', path: rawPath };
 }
 
+// The links board's item kinds, as the shell renders them. It carries only the
+// glyph fallbacks pages/links.html uses, since the shell shows a rail item as a
+// destination and nothing else. `snippet` is absent on purpose: a javascript:
+// or data: URL is something to copy, not somewhere to go, so the rail drops it
+// rather than offering a button that cannot be followed.
+const RAIL_KIND = { link: 'ph-arrow-up-right', action: 'ph-lightning', repo: 'ph-folder-simple' };
+
 // marked, loaded once on demand for the overview README render.
 let _markedP = null;
 function loadMarked(){
@@ -845,6 +950,10 @@ function app(){ return {
   // rendered live through toss-render #gh=.
   appViews: [],     // resolved [{repo, path, label, icon, order, key}]
   appView: null,    // the selected app view when view==='app'
+  // The rail: `rail: true` items from the links board a repo declares with
+  // `links` in its own config (loadRail). Outbound destinations, not views, so
+  // they sit at the far end of the header rather than in the nav.
+  rail: [],         // resolved [{key, title, icon, url|repo, doors, note}]
   // Estate members for the sidebar Repos index: every repo declaring
   // estate:true in its own config, grouped/ordered like the Repos grid. Read
   // from the same config cache as appViews (loadEstateSidebar), so it is
@@ -1114,7 +1223,57 @@ function app(){ return {
       this.estateRepos = repos;
       this.estateConfigs = configs;
       this.enrichSidebarPrivacy();   // independent; the list renders without it
+      this.loadRail(configs);        // likewise: one extra GET, off the render path
     } catch { this.appViews = []; this.estateRepos = []; this.estateConfigs = {}; }
+  },
+
+  // The RAIL: the handful of destinations worth a tap from anywhere, read from
+  // the same links board pages/links.html renders, so there is no second list.
+  // A repo declares its board with `links` in its own .web-tools.json (a bare
+  // path, or a qualified owner/repo[@ref]:path), the way `pages` declares a
+  // catalog; the shell reads it and keeps the items flagged `rail: true`.
+  //
+  // Why the shell reads the file rather than the page handing it up: promoted
+  // as an app view, links.html renders in an iframe, and an iframe cannot paint
+  // into its parent's chrome. That constraint is real but narrow, and it says
+  // nothing about where the DATA comes from. The board is a file; the shell can
+  // read a file. No cross-frame anything.
+  //
+  // Independent of the sidebar render, like enrichSidebarPrivacy: a slow or
+  // missing board must not hold up the Repos index. A 404 is not an error here,
+  // just a repo that declares a board it has not written yet.
+  async loadRail(configs){
+    const decls = [];
+    for (const [repo, cfg] of Object.entries(configs || {})) {
+      if (cfg && cfg.links) decls.push(resolveCatalogPath(cfg.links, repo, ''));
+    }
+    if (!decls.length) { this.rail = []; return; }
+    const out = [];
+    for (const d of decls) {
+      try {
+        const gh = new window.GH({ token: window.TOKEN, repo: d.repo, ref: d.ref || 'main' });
+        const board = JSON.parse((await gh.get(d.path)).text);
+        for (const a of (board.areas || [])) {
+          for (const it of (a.items || [])) {
+            if (!it.rail || !it.url || it.kind === 'snippet') continue;
+            out.push({
+              key: d.repo + ':' + (it.id || it.title),
+              title: it.title, note: it.note || '',
+              accent: a.accent || '',
+              // Same fallback links.html uses: an item's own icon wins, a plain
+              // link borrows its area's glyph, so only the exceptions spend one.
+              icon: it.icon || (it.kind === 'link' ? (a.icon || 'ph-arrow-up-right') : RAIL_KIND[it.kind] || 'ph-arrow-up-right'),
+              // A repo item is a destination in THIS shell, not an outbound
+              // link, so it routes internally rather than reloading the page.
+              repo: it.kind === 'repo' ? it.url : '',
+              url: it.kind === 'repo' ? '' : it.url,
+              doors: (it.doors || []).filter(x => x && x.url),
+            });
+          }
+        }
+      } catch {}
+    }
+    this.rail = out;
   },
 
   // ── Branch-overlay mechanics (see the state fields above for the idea) ────
@@ -2136,10 +2295,13 @@ function app(){ return {
   // all-repo read), Repos for a signed-out one (Open is token-gated, so it
   // would land on an empty state). Brand tap and a bare open route here.
   goDashboard(){ this.hasToken() ? this.goActivity() : this.goEstate(); },
-  // The header's app-level nav: the CLOSED set of the estate's own views, in
-  // display order (Activity first). Repo-sourced app views (appView:true, e.g.
-  // News) are deliberately NOT here; they stay in the sidebar, since the header
-  // is a fixed set the app owns, not one repos opt into. Each item maps to the
+  // The header's app-level nav: the estate's own views, in
+  // display order (Activity first). Repo-sourced app views ride behind it as a
+  // second group (appNav below), separated by a hairline, so the header carries
+  // both classes of destination while still showing which is which. It used to
+  // carry only this set, on the reasoning that the header is fixed and repos do
+  // not write it; what that bought was a header with unused room beside it and a
+  // published view reachable only after opening a drawer. Each item maps to the
   // same go* method and `view` string the router already uses. Activity is one
   // nav stop covering three sub-views (`views`): Open (internal key
   // 'activity', kept so existing ?view=activity links resolve), To-do, and
@@ -2164,7 +2326,30 @@ function app(){ return {
         : []),
     ];
   },
-  navActive(v){ return (v.views || [v.view]).includes(this.view); },
+  // The header's second nav group: the repo-sponsored views, the same list the
+  // sidebar shows (sidebarAppViews, so a deep-linked view whose config has not
+  // merged yet still appears, selected). They carry their icon where the app's
+  // own entries are label-only: the hairline says a boundary, the icon says
+  // which side of it a button sits on, and the icon is the repo's own choice.
+  // One entry per view rather than a menu, since the set is small and the room
+  // is there; a header this fills would be the signal to fold it into one.
+  get appNav(){
+    return this.sidebarAppViews.map(v => ({
+      view: 'app', key: v.key, icon: v.icon, label: v.label,
+      title: v.label + ' — ' + v.repo, go: () => this.goAppView(v),
+    }));
+  },
+  // The board behind the rail, if some repo also promotes it as an app view:
+  // the Links section's header icon then opens the full board, the way the
+  // Repos section's icon opens the full grid. Matched on the page rather than
+  // on a second declaration, since a repo that publishes both means one thing.
+  get railView(){ return this.appViews.find(v => /links\.html$/.test(v.path)) || null; },
+  // An app-view entry is active on its own key, not on the bare view string:
+  // every sponsored view shares view==='app'.
+  navActive(v){
+    if (v.key) return this.view === 'app' && this.appView?.key === v.key;
+    return (v.views || [v.view]).includes(this.view);
+  },
   // NO go* METHOD CLOSES THE DRAWER. Navigating used to dismiss it, on the
   // reasoning that the drawer covers the main area on mobile. But the sidebar
   // is also the thing you navigate WITH: closing it after every tap means
@@ -2251,11 +2436,17 @@ function app(){ return {
       icon: url.appIcon || 'ph-app-window', key,
     };
   },
+  // An app view's toss address. `query` is optional and rides the address the
+  // way the toss grammar allows (?query on the addressed path), which the
+  // renderer's params shim answers inside the frame; the Links pencil uses it
+  // to open the board straight into edit mode. It is deliberately NOT stamped
+  // into the shell's URL: opening an editor is an action, not a place, so a
+  // reload lands on the board's reading view.
   get appViewUrl(){
     const v = this.appView;
     if (!v || !v.repo || !v.path) return '';
     const ref = v.ref ? '@' + v.ref : '';
-    return '../toss-render.html#gh=' + v.repo + ref + ':' + v.path;
+    return '../toss-render.html#gh=' + v.repo + ref + ':' + v.path + (v.query ? '?' + v.query : '');
   },
   // The sidebar app-view list: the collected app views (from the config cache,
   // main-only), plus the app view currently open if it is not already among
@@ -2272,7 +2463,11 @@ function app(){ return {
 
   // ── Swipe paging between dashboard views (touch only) ─────────────────────
   // The estateNav set (Activity / Repos / Surfaces / Stage / Tools / Map) is a
-  // closed, ordered carousel; Activity's three sub-views count as one stop
+  // closed, ordered carousel. The header's second group (the repo-sponsored
+  // views) stays out of it: each renders as an iframe, which owns its own
+  // gesture surface, so a swipe could page IN and never back out. Paging
+  // remains the app's own panes; the tabs reach everything either way.
+  // Activity's three sub-views count as one stop
   // (navActive matches the alias list), switched by pill rather than swipe. On a phone the active dashboard pane FOLLOWS THE
   // FINGER through a horizontal drag and slides out to commit, so paging reads
   // as one continuous surface rather than a dead-then-snap view swap. The
@@ -2647,11 +2842,14 @@ function overview(){ return {
   through the config-saved event), the counterpart to the shared repo dialog,
   which stays for the token and for configuring a repo you are not in.
 
-  The HEADER carries the app-level nav (estateNav): a fixed, app-owned set of the
-  estate's own views — Activity (Open / To-do / Jots by pill), Repos, Surfaces,
-  Stage, Tools, Map — as icon
-  buttons (icon+label on desktop, icon-only on mobile), lit on the active view,
-  on every viewport. On a touch device this set is also a SWIPE CAROUSEL: the
+  The HEADER carries the view nav in TWO GROUPS, split by a hairline. First
+  estateNav, the app's own views — Activity (Open / To-do / Jots by pill), Repos,
+  Surfaces, Stage, Tools, Map — as labeled buttons, lit on the active view, on
+  every viewport. Then appNav, the REPO-SPONSORED views (appView:true, e.g.
+  News), each with the icon its repo declared, which is what tells the two groups
+  apart beyond the rule between them. The sponsored group is the same on desktop
+  and mobile; the sidebar keeps its own copy, which is the phone's way to them
+  without scrolling the nav. On a touch device the FIRST group is also a SWIPE CAROUSEL: the
   active dashboard pane follows the finger through a horizontal drag and slides
   out to commit one step along estateNav (onSwipeStart/Move/End → _commit), an
   accelerator for the tabs that stay the visible state. The estate sub-views
@@ -2669,12 +2867,15 @@ function overview(){ return {
   other job, REFRESH VIEWS, was already the Repos view's own Refresh button
   (both call refreshConfigs), so it needed no new home.
   There is no repo-list dropdown and no quick-links row: REPO SELECTION HAPPENS
-  ON THE REPOS DASHBOARD (tap a card) or from the sidebar Repos index, which
-  keeps the header a fixed set rather than one repos opt into. The SIDEBAR holds
+  ON THE REPOS DASHBOARD (tap a card) or from the sidebar Repos index. Repos
+  reach the header through their published VIEWS, not through a list of
+  themselves. The SIDEBAR holds
   only what is contextual: in a repo its views + pins + recents; in the estate a
   compact Repos index (the estate members, grouped like the grid; its header icon
-  opens the full grid) and any repo-sourced app views (appView:true, e.g. News),
-  both token-gated. It hides on desktop only when the estate has neither
+  opens the full grid) and the same app views the header's second group carries,
+  both token-gated. The app views sit in both places on purpose: the header is
+  the one-tap route, the sidebar the one that survives a header too narrow to
+  show them. It hides on desktop only when the estate has neither
   (showSidebar), so a signed-out dashboard runs full-width, and is a drawer on
   mobile.
   app.landingKind(repo) is the one landing decision point within a repo.
@@ -2788,7 +2989,9 @@ function overview(){ return {
       across every repo's config through the config cache (loadEstateSidebar,
       which the sidebar Repos index shares: estate membership one level up,
       the target a rendered page rather than a repo).
-      Each is a sidebar peer of Repos/Surfaces/Stage rather than the estate grid,
+      Each is a peer of Repos/Surfaces/Stage rather than an estate-grid card,
+      and appears twice: in the header's second nav group (appNav, behind the
+      hairline) and in the sidebar,
       rendered live in the main area via toss-render #gh=. The link stands alone
       (like Surfaces), stamping the promoted page's repo and path independent of
       the open repo.
