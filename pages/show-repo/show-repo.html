@@ -240,26 +240,45 @@
                    discovered. The marker button is the old inert <span>
                    promoted to a real control, so the row still says
                    public/private with its glyph while carrying its menu. -->
-              <div class="flex items-center rounded-lg transition-colors hover:bg-base-200"
-                   :class="$store.browser.repo===r.repo && 'bg-primary/10'">
-                <button @click="openPinned(r.repo)" :title="r.repo"
-                        class="flex items-center gap-2 min-w-0 flex-1 min-h-11 pl-2 text-left transition-colors"
-                        :class="$store.browser.repo===r.repo ? 'text-primary font-semibold' : 'text-base-content/80'">
-                  <i class="ph text-base shrink-0" :class="r.icon"></i><span class="truncate" x-text="r.short"></span>
-                </button>
-                <button @click.stop="rowMenu(r.repo, $event, 'github')"
-                        @mouseenter="rowMenuHover(r.repo, $event, 'github')" @mouseleave="hoverLeaveMenu()"
-                        :title="'GitHub links for ' + r.short"
-                        class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
-                        :class="repoMenuAt && menuRepo===r.repo && menuKind==='github' && 'text-primary'">
-                  <i class="ph ph-github-logo text-base leading-none"></i></button>
-                <button @click.stop="rowMenu(r.repo, $event)"
-                        @mouseenter="rowMenuHover(r.repo, $event)" @mouseleave="hoverLeaveMenu()"
-                        :title="(r.priv === null ? '' : (r.priv ? 'Private. ' : 'Public. ')) + 'Actions for ' + r.short"
-                        class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
-                        :class="repoMenuAt && menuRepo===r.repo && menuKind==='actions' && 'text-primary'">
-                  <i class="ph text-base leading-none"
-                     :class="r.priv === null ? 'ph-dots-three-vertical' : (r.priv ? 'ph-lock' : 'ph-globe')"></i></button>
+              <div class="flex flex-col">
+                <div class="flex items-center rounded-lg transition-colors hover:bg-base-200"
+                     :class="$store.browser.repo===r.repo && 'bg-primary/10'">
+                  <button @click="openPinned(r.repo)" :title="r.repo"
+                          class="flex items-center gap-2 min-w-0 flex-1 min-h-11 pl-2 text-left transition-colors"
+                          :class="$store.browser.repo===r.repo ? 'text-primary font-semibold' : 'text-base-content/80'">
+                    <i class="ph text-base shrink-0" :class="r.icon"></i><span class="truncate" x-text="r.short"></span>
+                  </button>
+                  <button @click.stop="rowMenu(r.repo, $event, 'github')"
+                          @mouseenter="rowMenuHover(r.repo, $event, 'github')" @mouseleave="hoverLeaveMenu()"
+                          :title="'GitHub links for ' + r.short"
+                          class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
+                          :class="repoMenuAt && menuRepo===r.repo && menuKind==='github' && 'text-primary'">
+                    <i class="ph ph-github-logo text-base leading-none"></i></button>
+                  <button @click.stop="rowMenu(r.repo, $event)"
+                          @mouseenter="rowMenuHover(r.repo, $event)" @mouseleave="hoverLeaveMenu()"
+                          :title="(r.priv === null ? '' : (r.priv ? 'Private. ' : 'Public. ')) + 'Actions for ' + r.short"
+                          class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
+                          :class="repoMenuAt && menuRepo===r.repo && menuKind==='actions' && 'text-primary'">
+                    <i class="ph text-base leading-none"
+                       :class="r.priv === null ? 'ph-dots-three-vertical' : (r.priv ? 'ph-lock' : 'ph-globe')"></i></button>
+                </div>
+                <!-- PROJECTS, indented under their repo. A repo carrying several
+                     workspaces declares them in its manifest's `projects` field
+                     (the defining convention: a workspace running a tracker is a
+                     project; the repo root's tracker marks the repo itself and
+                     earns no row). The list rides the config cache the section
+                     already read, so these rows cost no extra fetch. A tap opens
+                     the repo's Files view at the workspace folder, the same
+                     route a folder pin takes; the indent (pl-8) puts the project
+                     icon under the repo label, so the column reads as
+                     containment rather than a second list. -->
+                <template x-for="p in repoProjects(r.repo)" :key="r.repo + ':' + p.path">
+                  <button @click="openProject(r.repo, p)" :title="r.repo + ': ' + p.path"
+                          class="flex items-center gap-2 min-h-8 pl-8 pr-2 py-0.5 rounded-lg text-left text-sm transition-colors hover:bg-base-200 text-base-content/60 hover:text-base-content/90">
+                    <i class="ph text-sm shrink-0" :class="p.icon"></i>
+                    <span class="truncate" x-text="p.label"></span>
+                  </button>
+                </template>
               </div>
             </template>
           </div>
@@ -1399,6 +1418,34 @@ function app(){ return {
   async openPin(p){
     if (this.pinIsFile(p)) return this.openFile(p);
     await this.openFolder(p.replace(/\/+$/, ''));
+  },
+
+  // ── Projects: the workspaces a repo declares in its manifest ──────────────
+  // Rendered indented under the repo's row in the sidebar Repos index. The
+  // defining convention (docs/show-repo.md): a workspace running a tracker is
+  // a project, so `projects` is declarative and generatable (home's
+  // tools/generate-tracker-registry.py syncs the field from the trackers it
+  // finds), and the sidebar reads it from the config cache already in hand
+  // (estateConfigs) rather than walking any tree. Entries are bare folder
+  // paths or { path, label, icon } objects; label defaults to the path's last
+  // segment, icon to the task-board glyph the rows share.
+  repoProjects(repo){
+    const list = this.estateConfigs?.[repo]?.projects;
+    if (!Array.isArray(list)) return [];
+    const out = [];
+    for (const e of list){
+      const o = typeof e === 'string' ? { path: e } : e;
+      if (!o || typeof o.path !== 'string' || !o.path) continue;
+      const path = o.path.replace(/\/+$/, '');
+      out.push({ path, label: o.label || path.split('/').pop(), icon: o.icon || 'ph-kanban' });
+    }
+    return out;
+  },
+  // Open the project: its repo's Files view at the workspace folder, the same
+  // route a folder pin takes, reachable from the estate for any member repo.
+  async openProject(repo, p){
+    await this.ensureBrowser(repo);
+    if (Alpine.store('browser').repo === repo) await this.openFolder(p.path);
   },
 
   // Auth state drives which pinned private repos are dimmed, the token-gated
@@ -2744,6 +2791,13 @@ function overview(){ return {
     pins     folders/files surfaced in the sidebar Pinned block; a last
              segment with an extension opens as a file, else opens the Files
              view at that folder.
+    projects the repo's workspaces, indented under its row in the sidebar
+             Repos index. Bare folder paths or { path, label, icon } objects;
+             a row opens the Files view at that folder. The defining
+             convention: a workspace running a tracker is a project (the repo
+             root's tracker marks the repo itself, no row), so the field is
+             generatable from a tracker walk and discovery costs the shell
+             nothing beyond the config cache it already reads.
     tracker  where the repo keeps its task board ("tracker/board.md", or a
              folder). One row in the repo's GITHUB MENU, since it is the one
              destination in that menu GitHub cannot name for itself: every

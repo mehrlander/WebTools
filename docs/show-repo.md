@@ -705,6 +705,21 @@ repos. All are optional; a repo with no config is simply off the estate.
 - **pins**: folders/files surfaced in the sidebar Pinned block. A last segment
   with an extension opens as a file; otherwise it opens the Files view at that
   folder.
+- **projects**: the repo's workspaces, rendered indented under the repo's row
+  in the sidebar Repos index. Entries are bare folder paths
+  (`"projects/budget-wa"`) or `{ path, label, icon }` objects; `label` defaults
+  to the path's last segment and `icon` to `ph-kanban`, the task-board glyph. A
+  row opens the repo's Files view at that folder, the same route a folder pin
+  takes, but reachable from the estate for any member repo. The **defining
+  convention**: a workspace running a tracker (a `tracker/` directory holding
+  `tasks/`, per [TRACKER.md](TRACKER.md)) is a project. A tracker at the repo
+  root marks the repo itself and earns no row, so "repo or project" needs no
+  separate registry of what counts. The field is declarative rather than
+  discovered live (walking a tree for `tracker/` dirs is API-costly), which
+  makes it generatable: home's `tools/generate-tracker-registry.py` syncs it
+  from the trackers it finds, so the manifest cannot drift from the ground
+  truth. The sidebar reads the field from the config cache it already holds,
+  so the rows cost no extra fetch.
 - **tracker**: where the repo keeps its task board (`"tracker/board.md"`, or a
   folder). Adds one row, **Task board**, to the repo's **GitHub menu** (the
   sidebar Repos row's github button, and the Activity view's repo chip). It is
