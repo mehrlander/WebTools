@@ -147,13 +147,13 @@ test('branchMenuItems: a PR row offers its tabs, a bare branch offers New PR', (
   const withPr = data.openBranches[0], noPr = data.openBranches[1];
   data.menuBranch = withPr;
   let keys = plain_(data.branchMenuItems.map(i => i.key));
-  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'prFiles', 'prChecks', 'copyName', 'copyCompare']);
+  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'prFiles', 'prChecks', 'copyName', 'copyCompare']);
   assert.equal(data.branchMenuItems.find(i => i.key === 'prFiles').label, 'Files changed (#12)');
   assert.equal(data.branchMenuItems.find(i => i.key === 'compare').label, 'Compare to main');
 
   data.menuBranch = noPr;
   keys = plain_(data.branchMenuItems.map(i => i.key));
-  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'newPr', 'copyName', 'copyCompare']);
+  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'newPr', 'copyName', 'copyCompare']);
   assert.ok(!keys.includes('prFiles'));
 });
 
@@ -180,6 +180,29 @@ test('runBranchMenu builds the GitHub destinations', () => {
   assert.equal(urlFor('prFiles', row), 'https://github.com/me/tools/pull/12/files');
   assert.equal(urlFor('prChecks', row), 'https://github.com/me/tools/pull/12/checks');
   assert.equal(urlFor('newPr', bare), 'https://github.com/me/tools/compare/main...feat%2Fb?expand=1');
+});
+
+// ── Drop a file here ─────────────────────────────────────────────────────
+// The branch menu's one write-shaped destination: GitHub's new-file form
+// opened ON the branch with the filename prefilled, so pasted content commits
+// to the branch without riding through chat. The branch keeps its slashes raw
+// (the form GitHub's own UI emits); the filename lands in the repo's declared
+// inbox, else dump/, date-stamped.
+
+test('dropFileUrl: the new-file form on the branch, filename in the inbox', () => {
+  const row = data.openBranches[0];                       // me/tools feat/a
+  window.__shell.estateConfigs = { 'me/tools': { inbox: 'inbox/' } };
+  const u = data.dropFileUrl(row);
+  assert.match(u, /^https:\/\/github\.com\/me\/tools\/new\/feat\/a\?filename=/);
+  const name = decodeURIComponent(u.split('filename=')[1]);
+  assert.match(name, /^inbox\/\d{4}-\d{2}-\d{2}-\d{4}-drop\.md$/,
+    'the declared inbox, trailing slash trimmed, date-stamped');
+  window.__shell.estateConfigs = {};
+  assert.match(decodeURIComponent(data.dropFileUrl(row).split('filename=')[1]),
+    /^dump\//, 'no declared inbox falls back to dump/');
+  const items = (data.menuBranch = row, data.branchMenuItems);
+  assert.ok(items.some(i => i.key === 'dropFile' && i.external),
+    'the menu carries the row, marked as leaving the app');
 });
 
 // ── The scope axis ───────────────────────────────────────────────────────

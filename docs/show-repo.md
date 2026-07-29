@@ -669,6 +669,19 @@ overlay link is only as durable as the branch it names: once the branch
 merges and is deleted, every probe misses and the link degrades to a plain
 main view, which is the correct end state for a preview.
 
+### Drop a file on a branch
+
+The Activity view's branch menu carries **Drop a file here**: GitHub's
+new-file form opened on that branch with the filename prefilled
+(`github.com/<repo>/new/<branch>?filename=…`), defaulting into the repo's
+declared `inbox` (else `dump/`), date-stamped and still editable in the form.
+It exists for the phone flow: paste long content straight onto a session's
+branch without routing it through a chat context, with no placeholder commit
+and no cleanup. In the frame vocabulary above this is a deliberately
+*ambient* write with matching frames: the form both shows and targets the
+named branch. The chat-side twin is the `drop-link` skill, which mints the
+same URL on request.
+
 ## `.web-tools.json`: the repo manifest
 
 Root `.web-tools.json` is the repo's **web-tools config file** (canonical location
