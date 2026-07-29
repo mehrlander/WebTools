@@ -26,11 +26,17 @@ in the form, so the prefill is a default, not a decision.
 1. **Pick the branch.** The session's working branch for the repo the content
    belongs to. If the session spans repos, the one the content is for; ask
    only if genuinely ambiguous.
-2. **Pick the filename.** Default to the repo's intake directory: its
-   `.web-tools.json` `inbox` field if declared, else the repo's dump
-   convention (home: `chron/dump/`), else `dump/` at the root. Name it
-   `<dir>/<YYYY-MM-DD>-<slug>.md` with a slug from what the user said the
-   content is; fall back to `-drop.md` when there is no hint.
+2. **Pick the filename.** Default to the repo's own content-intake
+   convention when it has one (home: `chron/dump/`, which its drain flow
+   processes); else the `.web-tools.json` `inbox` field (the estate's
+   receiving folder, which in home serves cross-repo deposits, a different
+   job); else `dump/` at the root. Name it `<dir>/<YYYY-MM-DD>-<slug>.md`
+   with a slug from what the user said the content is; fall back to
+   `-drop.md` when there is no hint.
+   For a **binary** (a PDF, an image), hand over the sibling upload form
+   instead, which takes files rather than pasted text:
+   `https://github.com/<owner>/<repo>/upload/<branch>` (no filename prefill;
+   GitHub keeps the uploaded name).
 3. **Mint and hand over.** URL-encode the `filename` value only; the branch
    rides the path with its slashes raw. Reply with one tappable markdown
    link, labeled with the filename, plus one line saying what to do: open,
