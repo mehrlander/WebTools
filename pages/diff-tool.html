@@ -441,7 +441,7 @@
         <div class="shrink-0 px-2 pb-1.5 bg-base-200/60" x-show="slots[id].src === 'gh'" x-cloak>
           <template x-if="pickerReady">
             <div :id="'grab-' + id"
-                 x-data="pathPicker({ mode: 'file', roots: () => grabRoots(), placeholder: '@ browse a repo for a file' })"
+                 x-data="pathPicker({ mode: 'file', roots: () => grabRoots(), placeholder: 'Browse a repo for a file' })"
                  @path-pick="onGrab(id, $event.detail)"></div>
           </template>
           <template x-if="!pickerReady">
@@ -618,6 +618,8 @@ function diffApp() {
 
     // Repos the page has read from, newest first: the @-grab picker's roots.
     recentRepos: [],
+    // Promise for the token's repo listing, shared by both slots' pickers.
+    _repoList: null,
     // Whether alpineComponents/path-picker.js loaded (set by the boot chain).
     // Read once at init: if the load failed, the grab row says so instead of
     // rendering as blank space that reads like an unbuilt feature.
@@ -699,8 +701,11 @@ function diffApp() {
     },
     applySize() { document.documentElement.style.setProperty('--dsz', (13 + this.fontStep) + 'px'); },
     promptToken() {
-      if (window.ghAuth && ghAuth.prompt) ghAuth.prompt('Paste a GitHub token to read private repos and branches.');
-      else this.showToast('The auth helper has not loaded yet');
+      if (!window.ghAuth || !ghAuth.prompt) { this.showToast('The auth helper has not loaded yet'); return; }
+      ghAuth.prompt('Paste a GitHub token to read private repos and branches.');
+      // The repo listing is token-gated, so a token entered now should be able
+      // to produce one without a reload.
+      this.resetPickers();
     },
 
     // ── sources ──────────────────────────────────────────────────────────
@@ -745,6 +750,7 @@ function diffApp() {
         s.loading = false;
         this.onEdit();
       }
+      if (!s.error && s.src === 'gh') this.resetPickers();
     },
 
     // owner/repo[@ref]:path through the stored token, so a private repo or an
@@ -761,22 +767,63 @@ function diffApp() {
       this.rememberRepo(addr.repo);
     },
 
-    // ── the @ grab row ───────────────────────────────────────────────────
-    // pathPicker fetches each root's whole tree eagerly at first open, so the
-    // root set has to stay small. Repos this page has actually read from are the
-    // useful set, newest first, with the hub repo as the standing fallback so
-    // the picker is never empty on a first visit.
-    grabRoots() {
-      const roots = this.recentRepos.slice(0, 6).map(repo => ({ repo, ref: '' }));
-      const hub = window.gh && gh.repo;
-      if (hub && !roots.some(r => r.repo === hub)) roots.push({ repo: hub, ref: '' });
+    // ── the browse row's roots ───────────────────────────────────────────
+    // Every repo the stored token can see, most-recently-updated first, with the
+    // repos this page has actually read from pulled to the top. pathPicker loads
+    // a repo's tree on entry rather than at first open, so a long list is free
+    // to show; without that this had to stay a handful.
+    //
+    // Awaited by pathPicker, and memoized on the promise so the two slots'
+    // pickers share one listing rather than each fetching it.
+    async grabRoots() {
+      const seen = new Set();
+      const roots = [];
+      const add = repo => {
+        if (!repo || seen.has(repo)) return;
+        seen.add(repo);
+        roots.push({ repo, ref: '' });
+      };
+      this.recentRepos.forEach(add);
+      if (window.gh && gh.repo) add(gh.repo);
+      for (const repo of await this.repoList()) add(repo);
       return roots;
+    },
+
+    repoList() {
+      if (!this._repoList) {
+        this._repoList = (async () => {
+          if (!window.gh || typeof gh.repos !== 'function') return [];
+          // With a token gh.repos() reads /user/repos, which includes private
+          // repos and org repos the token can reach. Without one it falls back
+          // to a public listing, so pass this repo's owner rather than the
+          // library's default.
+          const owner = (gh.repo || '/').split('/')[0];
+          try {
+            const list = await gh.repos(owner);
+            return (list || []).map(r => r && r.full_name).filter(Boolean);
+          } catch (e) {
+            console.warn('could not list repositories:', e);
+            return [];
+          }
+        })();
+      }
+      return this._repoList;
     },
 
     rememberRepo(repo) {
       if (!repo) return;
       this.recentRepos = [repo, ...this.recentRepos.filter(r => r !== repo)].slice(0, 8);
       this.persist();
+    },
+
+    // Reset the picker so a newly-read repo reaches the top of the list, and so
+    // a token entered after the first failed listing is retried.
+    resetPickers() {
+      this._repoList = null;
+      for (const id of ['A', 'B']) {
+        const picker = document.getElementById('grab-' + id)?.__pathPicker;
+        if (picker) { picker._loaded = false; picker.tree = []; picker.scope = []; picker.error = ''; }
+      }
     },
 
     // "@" in the address field opens the picker. The trigger is the value being
