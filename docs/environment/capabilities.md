@@ -294,6 +294,8 @@ Controls, all in the same body or an adjacent one:
 | `mehrlander.github.io/…/toss-render.html#gz=<base64url>` | link survives (bodies merged through 2026-07-12, preserved in [MERGE-GUIDE.md](../MERGE-GUIDE.md)) |
 | `mehrlander.github.io/…/toss-render.html#gh=owner/repo@ref:path` | **URL wrapped in double backticks** |
 | the same, percent-encoded as `%40` and `%3A` | **still wrapped** |
+| `github.com/…/blob/main/<path>#<long-hyphenated-anchor>` | **wrapped** *(2026-07-29)* |
+| `[main](<blob url>)/[diff](<compare url>)`, the caption's own pair | **wrapped from `[main](` to the end** *(2026-07-29)* |
 
 So it is neither the host, nor the fragment, nor a fragment-bearing link in
 general, and it is not the `@` or the `:` as literal characters, since encoding
@@ -308,6 +310,25 @@ that view, and it agrees with the readback: the link renders as plain text on
 GitHub. For this construct the mangling is therefore in what got stored, which
 is a different fault from the HTML-stripping readback and has to be worked
 around at write time rather than tolerated at read time.
+
+**It is not only the toss URL, and the anchor row above has a counterexample.**
+*(measured 2026-07-29)* Two further constructs mangle, both confirmed at the
+render level by `WebFetch` of the PR's own page, not merely in the readback. A
+blob URL carrying a long hyphenated heading anchor wraps, though the table's
+short-anchor row says such links survive, so anchor length or content matters and
+"survives with an anchor" is too strong. And the surfacing caption's own
+`[main](…)/[diff](…)` pair wraps as one span running from `[main](` to the end of
+the bullet, which matters more than the rest of this section: [SURFACING.md](../SURFACING.md)
+makes that pair the standard shape of every Changed row, so the default caption
+does not survive being written into a body.
+
+The trigger still is not isolated, and the earlier judgment that isolating it is
+not worth a write per probe stands. What is settled is the workaround, so prefer
+the empirical rule over a theory: **in a PR body, use one standalone
+`[label](url)` per link, keep `blob/<branch>/<path>` URLs, drop heading anchors,
+and put the compare link on its own line.** Those forms were observed intact in
+the same bodies where the pairs wrapped. The full caption, pairs and all, still
+belongs in chat, where it renders correctly.
 
 **What to do.** Put the tappable 🥏 in **chat**, where the same markdown links
 correctly. In the body, state the toss address as a code span, which is what it
