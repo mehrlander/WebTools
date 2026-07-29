@@ -209,6 +209,13 @@ The GitHub MCP tools are the only path to the GitHub API from this box: a direct
 than from GitHub. That matters here because it removes the obvious way to check
 what the API actually stored.
 
+The token is not inert, which is what makes this worth stating precisely
+(*sharpened 2026-07-29*): `GET /user` returns 200 and identifies the account.
+Only repository-scoped paths are refused, and account-wide ones are refused
+separately with `sessions are bound to their configured repositories`. So the
+token reaches identity and nothing else, and an authenticated probe against
+`/user` is not evidence that the API is usable.
+
 **Reading a pull request body through `pull_request_read` does not return the
 body as written.** The readback strips HTML comments and HTML tags, and it does
 so anywhere in the string, including inside code spans and fenced blocks, which
@@ -264,3 +271,48 @@ as its worst reader, and this one was chosen for how GitHub renders it without
 anyone checking how an agent reads it back. When a marker exists so that a
 machine can find something later, test the round trip through the path that
 machine will actually use.
+
+## MCP: two servers can share a tool name, and only one may work
+
+*(measured 2026-07-29)*
+
+A session carries both **built-in** MCP servers and **connectors** installed
+through claude.ai. The two can expose identical tool names, and tool discovery
+returns either. Connector calls in a web session fail:
+
+```
+MCP error -32003: MCP tool call requires approval
+```
+
+Server-level approval validation fires before Claude Code's own permission
+logic, and no approval UI is reachable from here. One tool, two servers, minutes
+apart in the same session:
+
+| Server | Log directory | `update_pull_request` |
+| --- | --- | --- |
+| `mcp__github__` (built-in) | `mcp-logs-github` | completed in 1s |
+| `mcp__8d0009e2-…__` (a GitHub connector) | `mcp-logs-8d0009e2-…` | `-32003` |
+
+**Telling them apart.** A connector is surfaced under a UUID, which names
+nothing. Its per-server log resolves it: `mcp-logs-<id>/` under
+`~/.cache/claude-cli-nodejs/<root>/` records each call under the server's real
+name (`tool_name=mcp__mehrlander__update_pull_request`). One grep, and it is
+worth making the first triage step rather than the last.
+
+**The rules.** On `-32003`, call the built-in equivalent rather than whatever
+discovery returned first. A capability that exists *only* on a connector has no
+in-session workaround, which for `add_repo` means attaching repositories when
+the session is created.
+
+Upstream reports the same failure for Gmail, Calendar, and Microsoft 365
+connectors in scheduled runs, and calls it a regression:
+[#61044](https://github.com/anthropics/claude-code/issues/61044) (open) and
+[#61027](https://github.com/anthropics/claude-code/issues/61027) (closed as a
+duplicate of #61015). Reconnecting the connector, allowlisting its tools in
+`settings.json`, and `CLAUDE_PERMISSION_MODE=bypassPermissions` were all tried
+there and all failed.
+
+**A `No token data found` line in these logs is not the tell,** though it reads
+like one. It appears throughout the log of a server whose calls succeed.
+Probing-discipline rule 1 in another costume: the conspicuous log line was the
+visible thing, and the working control was the fact.
