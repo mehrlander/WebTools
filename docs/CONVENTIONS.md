@@ -68,6 +68,8 @@ Adding to a doc is a pass over it, not just an append. New material has to match
 
 When asked to look for improvements, be wary of ideas that address a hypothetical problem. A simple, clear fix is worth making, especially when it is as easy to fix as to bring up. The trap is speculative work that draws attention and goes off course.
 
+**Its most common form is filing.** Turning an observation into a tracker task feels like diligence and costs nothing in the moment, which is how a backlog fills with items nobody will claim and the real work gets buried among them. Where a repo runs a tracker ([TRACKER.md](TRACKER.md)), the filing rules have one owner, the `tasks` skill: file only what a later session would have to rebuild context to rediscover, propose a new task rather than filing it unprompted, and keep one outcome in one task. Load `/tasks` before writing a task file, whatever pass you are in the middle of. A review that ends in a written report has already made its findings durable; it does not also owe the tracker a row per finding.
+
 ## Adding your own, without clobbering
 
 The install owns only what it ships. Plugin skills are namespaced (`/portable:caption`), so a same-named skill of yours coexists; the fallback fetch hook writes a fixed file list and touches nothing else. Your own skills and any `CLAUDE.md` text below the import are never overwritten.

@@ -42,6 +42,7 @@ const NOTES = {
   'shorter.html':              'Adjudicate a shorter draft against your text: word-diff, accept-by-default edits, per-span rewrite with an optional in-browser LLM.',
   'repo-atlas.html':           'Zoomable treemap map of any GitHub repo — files as tiles, sized by bytes or count.',
   'news/news.html':            "Read-only view of home's news ledger, grouped and filterable by topic and date; backfilled items held distinct.",
+  'links.html':                "home's bookmarks board: a pinned rail, areas of links, and an area's markdown dossier, all editable in place.",
   'toss-render.html':          'Render tossed HTML payloads or allowlisted repo paths — the 🥏 target.',
   'word-select.html':          'Touch-first word-level selection: tap, hold-drag, discontinuous runs, adjustable pins, no native selection anywhere.',
   'gist-editor.html':          'Browse and edit GitHub gists in the browser.',
