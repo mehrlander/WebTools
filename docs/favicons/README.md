@@ -18,15 +18,15 @@ Eleven pages carry their own emoji favicon, written inline as a `data:image/svg+
 
 ## Treatments
 
+A treatment is a mark this project does not own, restyled to say something about how it is being shown. One so far.
+
 ### Dimmed (a toss)
 
-[`pages/toss-render.html`](../../pages/toss-render.html) shows the **subject's** favicon rather than its own, redrawn desaturated and faded, so the tab says which page is open without impersonating the deployed one. The frisbee survives as the fallback and gains a meaning: no addressable subject behind this render.
+A toss shows its **subject's** favicon, not its own, desaturated to `saturate(0.15)` and faded to `globalAlpha` 0.78 on a 64 px canvas, emitted as a PNG. So the tab names the page being rendered without impersonating the deployed one, and the 🥏 frisbee becomes the mark for a render with no addressable subject behind it.
 
-Address mode renders same-origin, so the shell reads the icon the frame actually resolved (`link[rel~=icon]`, by attribute) rather than reconstructing what it ought to be; that picks up `gh-boot`'s runtime injection and any page that sets its icon late. A repo-relative href is fetched through the token at the same ref, which is the only way a private repo's icon file is reachable. A `#gz=` payload gets the same treatment when its icon is self-contained, since a payload renders under an opaque origin and only the shell's copy of the HTML is readable.
+The values were picked against real icons on a light and a dark tab strip: fading harder reads well on light and muddies on dark, where the strip is already dark, and full grayscale is unmistakable but discards the color that makes an icon recognizable at 16 px. Buy the signal in saturation, not in alpha. Dimming rather than a corner badge because a favicon is 16 CSS px, where a badge is about five pixels of mush; the silhouette is the channel that survives.
 
-Values are `saturate(0.15)` at `globalAlpha` 0.78, drawn to a 64 px canvas and emitted as a PNG data URI. They were picked against real icons on a light and a dark tab strip: fading harder reads well on light and muddies on dark, and full grayscale is unmistakable but discards the color that makes an icon recognizable at 16 px. Buy the signal in saturation, not in alpha. Canvas rather than an SVG `<image>` wrapper, because SVG favicons render under a restricted mode whose handling of nested images is not worth depending on.
-
-Chrome keys its favicon cache by **icon** URL, and a data URI is its own content, so every subject gets a distinct entry and none can go stale. History and bookmarks key on the **page** URL, which is identical for every toss (the address rides in the fragment), so those surfaces keep whichever icon was recorded last. Not fixable from the page.
+Mechanics, and the reason the output is a PNG rather than an SVG, live in the block comment above `adoptSubjectIcon` in [`pages/toss-render.html`](../../pages/toss-render.html). Whether the tab can preview a change to it is a different question, answered in `CLAUDE.md` under the preview mechanism.
 
 ## Retired
 
