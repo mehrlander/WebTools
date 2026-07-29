@@ -73,9 +73,11 @@ so, by the scrim or the X, which makes the mobile drawer behave like the pinned
 desktop sidebar that never closed.
 
 The **sidebar** holds what is contextual: in a repo, its views (landing, atlas,
-files, branches) plus pins and recents; in the estate, only the repo-sourced
-**app views** (promoted with `appView:true`, e.g. News), since those are the
-ones repos opt into. The header set never appears in the sidebar. On desktop the
+files, branches) plus pins and recents; in the estate, the Repos index and the
+repo-sourced **app views** (promoted with `appView:true`, e.g. News). The app's
+own view set never appears in the sidebar; the app views appear in both places,
+since the header is the one-tap route and the sidebar is the one that holds up
+when the header nav is too narrow to show them. On desktop the
 pinned sidebar hides entirely when the estate has no app views, so the dashboard
 runs full-width; on mobile it is a drawer behind the hamburger. See "The
 estate", "The stage", and "Public browse" below.
@@ -129,6 +131,18 @@ the header nav the way a repo shows landing/atlas/files/…:
 
 The estate component renders Repos / Surfaces / Activity, sharing one lazy mount;
 Tools and Map are their own components on their own lazy mounts.
+
+Behind those, past a hairline rule, the header carries a **second nav group: the
+repo-sponsored app views** (`appView:true`), one button each, carrying the icon
+its repo declared. The list is the sidebar's list (`appNav` reads
+`sidebarAppViews`), so the two cannot disagree, and it is the same on desktop and
+mobile: the nav scrolls rather than clipping, and the sidebar copy is what a
+phone reaches without scrolling it. The rule plus the icons is the whole of the
+separation; the app's own entries stay label-only. The header used to be a closed
+set the app owned, which left room beside it unused and a published view
+reachable only through the drawer. What did not move is the **swipe carousel**,
+which still pages `estateNav` alone: an app view renders as an iframe that owns
+its own gesture surface, so a swipe could page in and not back out.
 
 **Repos: membership and fields live on each repo.** A repo appears on the estate
 by opting in with `estate: true` in its **own** `.web-tools.json`. Every
@@ -678,9 +692,11 @@ repos. All are optional; a repo with no config is simply off the estate.
     home's data through the viewer's token regardless of where it is hosted).
   - **title**: the card's heading (defaults to the filename).
   - **note**: the card's one-line description.
-  - **icon**: Phosphor class, used as the app-view sidebar icon when promoted.
+  - **icon**: Phosphor class, used as the app-view icon when promoted, in the
+    header nav and the sidebar alike.
   - **appView**: `true` to promote this page to its own **estate-level view**,
-    a peer of Repos / Surfaces / Stage in the switcher (estate membership one
+    a peer of Repos / Surfaces / Stage, shown in the header nav's second group
+    and in the sidebar (estate membership one
     level up: the target is a rendered page, not a repo). Collected across
     every repo's config through the config cache, token-gated (no token, no app
     view, like Surfaces), and rendered live in the estate main area via
