@@ -1156,7 +1156,7 @@ function app(){ return {
     const on = Object.keys(this.overlayRefs);
     return 'Previewing branch ' + this.overlayBranch + ' across the estate. '
       + (on.length ? 'Applied to: ' + on.map(r => r.split('/')[1] || r).join(', ') + '. ' : 'Resolving where it exists… ')
-      + 'Repos without the branch read main. Cache rebuilds are paused.';
+      + 'Repos without the branch read main, and main-derived surfaces (Activity ages, boards) are not overlaid.';
   },
 
   // The config cache carries no visibility, so the sidebar Repos rows get their
@@ -1181,11 +1181,6 @@ function app(){ return {
   // crawl first is what makes the new entry appear immediately). The estate
   // component reloads its cards off the dispatched event.
   async refreshConfigs(){
-    // The overlay pause on cache rebuilds must be LOUD on the user-invoked
-    // path: a Refresh button that silently does nothing reads as broken (it
-    // did, the day this shipped). The ambient boot-time refreshes stay
-    // silently guarded inside refreshConfigCache/refreshActivityCache.
-    if (this.overlayBranch) return notify('Branch-overlay preview: cache refreshes are paused. Open the page without ?overlay= to refresh.', 'alert-info', 'git-branch');
     if (this.configRefreshing || !this.hasToken()) return;
     this.configRefreshing = true;
     try {
@@ -1203,12 +1198,18 @@ function app(){ return {
   // material-change check keeps commits sparse, so nav triggers cost nothing.
   CONFIG_CACHE_INTERVAL_MS: 6 * 3600 * 1000,
   _cacheCheckKey: 'wt:configCacheCheckedAt',
+  // OVERLAY-BLIND BY CONSTRUCTION, and deliberately not guarded: this crawl
+  // (and the activity crawl below) builds its own GH clients pinned at main,
+  // so its inputs and output are identical under a branch overlay, and a
+  // Refresh tap works in a preview the way intuition says it should. This
+  // shipped guarded at first ("a preview must not commit derived state"),
+  // which mis-filed these writes: the hazardous class is writes whose INPUTS
+  // or TARGETS the overlay touches, and a main-read, main-derived crawl is
+  // not in it. The invariant that keeps this true is held by
+  // tools/test/show-repo-overlay.test.mjs: every client the crawl constructs
+  // reads at main, never at the overlay branch.
   async refreshConfigCache(force){
     if (!this.hasToken() || !window.RepoConfigCache) return;
-    // An overlay session is a preview and stays read-only toward the derived
-    // caches: the crawl itself would read main (harmless) but committing from
-    // a preview posture invites confusion, so it simply waits for a normal load.
-    if (this.overlayBranch) return;
     // Seed the crawl from the account's repos (the enumeration that discovers
     // estate members), so a repo opting in via its own config is picked up
     // without any registry list. If the enumeration fails, fall back to the
@@ -1257,7 +1258,6 @@ function app(){ return {
   // config refresh because the activity crawl is much heavier (a capped branch
   // survey per repo), so it is not folded into every config refresh.
   async refreshActivity(){
-    if (this.overlayBranch) return notify('Branch-overlay preview: cache refreshes are paused. Open the page without ?overlay= to refresh.', 'alert-info', 'git-branch');   // loud on the button path (see refreshConfigs)
     if (this.activityRefreshing || !this.hasToken()) return;
     this.activityRefreshing = true;
     try {
@@ -1282,7 +1282,6 @@ function app(){ return {
   _activityCheckKey: 'wt:activityCacheCheckedAt',
   async refreshActivityCache(force){
     if (!this.hasToken() || !window.RepoActivityCache || !window.BranchSurvey) return;
-    if (this.overlayBranch) return;   // preview posture: no cache commits (see refreshConfigCache)
     const A = window.RepoActivityCache, B = window.BranchSurvey;
     if (!force){
       try {
@@ -2158,7 +2157,16 @@ function app(){ return {
   // The per-repo Config view: the open repo's .web-tools.json as a roomy editor,
   // reached from the sidebar Config entry and the Pinned gear. The shared repo
   // dialog stays for the token and for configuring a repo you are not in.
-  goConfig(){ this.configSeen = true; this.view = 'config'; this.syncUrl(); },
+  goConfig(){
+    this.configSeen = true; this.view = 'config'; this.syncUrl();
+    // The one known member of the overlay's hazardous-write class: the
+    // contents-API save path commits to the DEFAULT branch (gh-store's
+    // putContent sends no branch), so under an overlay the editor would read
+    // branch state and write it to main. Warn rather than block: the mix is
+    // the hazard, and sometimes main is exactly the intended target.
+    if (this.overlayBranch && this.overlayRefFor(Alpine.store('browser').repo))
+      notify('Overlay preview: this editor reads the branch, but Save commits to the default branch. Edit outside the overlay unless that mix is what you mean.', 'alert-warning', 'git-branch');
+  },
   // Open the config dialog for ANY repo without navigating to it, the way the
   // estate card's gear does. Used by the sidebar Repos index rows, whose config
   // icon edits that repo in place rather than switching the open repo (the
@@ -2937,11 +2945,16 @@ function overview(){ return {
   signature. Per overlaid repo: manifest read live at the branch and spliced
   over the cache entry (the cache is main-derived, so this is the only honest
   source), and the repo opens AT the branch. Repos without the branch read
-  main. The Repos header chip + per-row glyph make the posture visible, and
-  the cache crawls are paused (a preview must not commit derived state).
-  Because the toss params shim delivers a subject's ?query, the whole thing
-  works through main's deployed toss before any of it merges. Full write-up:
-  docs/show-repo.md, "The branch overlay".
+  main. The Repos header chip + per-row glyph make the posture visible. The
+  cache crawls RUN under overlay: their clients are pinned at main, so a
+  Refresh in a preview reads and commits exactly what a normal session would
+  (held by test; this shipped guarded at first and the guard defended
+  nothing). The hazardous-write class is the one the overlay touches, and its
+  known member is the config editor, whose contents-API save lands on the
+  default branch while the editor would be reading the branch; entering it
+  under overlay warns. Because the toss params shim delivers a subject's
+  ?query, the whole thing works through main's deployed toss before any of it
+  merges. Full write-up: docs/show-repo.md, "The branch overlay".
 
   THE STAGE: a cross-repo fileset (store.stage, [{repo, ref, path}]) fed by the
   explorer's "+" buttons, a manifest's stage.files, or a #stage= link, and

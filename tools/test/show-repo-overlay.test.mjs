@@ -15,12 +15,14 @@ import { page, makeShell } from './show-repo-shell.mjs';
 const REGISTRY = 'mehrlander/web-tools-private';
 const BRANCH = 'claude/some-branch';
 
-// A GH stub serving three shapes the shell asks for: the registry's config
-// cache, per-repo branch-existence probes, and per-repo manifests at a ref.
-// Every construction is recorded so tests can assert what was (not) asked.
-function fakeGH({ cache, branches = {}, manifests = {} }, log) {
+// A GH stub serving the shapes the shell asks for: the registry's config
+// cache, per-repo branch-existence probes, per-repo manifests at a ref, the
+// account enumeration, and the registry save. Every construction and every
+// save is recorded so tests can assert what was (not) asked and written.
+function fakeGH({ cache, branches = {}, manifests = {}, account = [] }, log) {
   return class FakeGH {
     constructor(opts) { this.opts = opts; log.push(opts); }
+    async save(p) { log.push({ save: p, repo: this.opts.repo }); }
     async req(p) {
       if (p.startsWith('branches/')) {
         const b = decodeURIComponent(p.slice('branches/'.length));
@@ -38,7 +40,7 @@ function fakeGH({ cache, branches = {}, manifests = {} }, log) {
       }
       const e = new Error('GitHub Error 404'); e.status = 404; throw e;
     }
-    async repos() { return []; }   // enrichSidebarPrivacy's probe; irrelevant here
+    async repos() { return account.map(n => ({ full_name: n, private: true })); }
   };
 }
 
@@ -49,11 +51,11 @@ const CACHE = {
   },
 };
 
-function overlayShell({ branches, manifests } = {}) {
+function overlayShell({ branches, manifests, account } = {}) {
   const log = [];
   const { shell, win, toasts } = makeShell();
   win.TOKEN = 'tok';
-  win.GH = fakeGH({ cache: structuredClone(CACHE), branches, manifests }, log);
+  win.GH = fakeGH({ cache: structuredClone(CACHE), branches, manifests, account }, log);
   return { shell, win, log, toasts };
 }
 
@@ -97,31 +99,58 @@ test('overlay: a branch without a manifest keeps the cached config', async () =>
   assert.equal(shell.estateConfigs['me/home'].icon, 'ph-house');
 });
 
-test('overlay is read-only toward the derived caches: the crawls decline to run', async () => {
-  const { shell, win, log } = overlayShell();
+// The crawls are deliberately NOT guarded under overlay: their inputs are
+// pinned at main by construction, so their output is byte-identical to a
+// normal session's and a Refresh tap works inside a preview. (This shipped
+// guarded at first; the guard defended nothing and made Refresh a silent
+// no-op in the field.) The invariant that keeps the un-guarding safe is the
+// one held here: the crawl never reads at the overlay branch.
+test('the config crawl runs under overlay, reads at main only, and commits', async () => {
+  const { shell, win, log } = overlayShell({
+    account: ['me/home', 'me/ledger'],
+    manifests: {
+      'me/home@main': { estate: true },
+      'me/ledger@main': { estate: true },
+    },
+  });
   shell.overlayBranch = BRANCH;
-  // Present the cache/survey builders so ONLY the overlay guard can stop the
-  // crawls; a builder that gets invoked anyway fails the test loudly.
-  const boom = () => { throw new Error('crawl ran under overlay'); };
-  win.RepoConfigCache = { CACHE_PATH: 'state/configs.json', buildCache: boom, cacheChanged: boom };
-  win.RepoActivityCache = { buildCache: boom };
-  win.BranchSurvey = {};
-  const before = log.length;
+  const built = [];
+  win.RepoConfigCache = {
+    CACHE_PATH: 'state/configs.json',
+    buildCache: (prev, fetched, now) => { built.push(fetched); return { generatedAt: now, repos: fetched }; },
+    cacheChanged: () => true,
+  };
   await shell.refreshConfigCache(true);
-  await shell.refreshActivityCache(true);
-  assert.equal(log.length, before, 'a preview session must not run cache crawls');
+  assert.equal(built.length, 1, 'the crawl must run under overlay');
+  const perRepoReads = log.filter(o => o.repo && o.repo !== REGISTRY && o.ref !== undefined);
+  assert.ok(perRepoReads.length >= 2, 'the crawl read the account repos');
+  for (const o of perRepoReads)
+    assert.equal(o.ref, 'main', 'crawl inputs must never read the overlay branch');
+  assert.ok(log.some(o => o.save === 'state/configs.json' && o.repo === REGISTRY),
+    'the rebuilt cache must commit to the registry');
 });
 
-test('the user-invoked refreshes announce the pause instead of silently no-oping', async () => {
-  const { shell, log, toasts } = overlayShell();
+test('refreshConfigs under overlay rebuilds the cache, then re-applies the splice', async () => {
+  const { shell, win } = overlayShell({
+    account: ['me/home', 'me/ledger'],
+    branches: { 'me/home': [BRANCH] },
+    manifests: {
+      'me/home@main': { estate: true, icon: 'ph-house', group: 'core', order: 1 },
+      'me/ledger@main': { estate: true, icon: 'ph-scales', group: 'data', order: 2 },
+      ['me/home@' + BRANCH]: { estate: true, icon: 'ph-house', group: 'core', order: 1,
+                               projects: ['projects/x'] },
+    },
+  });
   shell.overlayBranch = BRANCH;
-  const before = log.length;
-  await shell.refreshActivity();
+  win.RepoConfigCache = {
+    CACHE_PATH: 'state/configs.json',
+    buildCache: (prev, fetched, now) => ({ generatedAt: now, repos: prev?.repos || {} }),
+    cacheChanged: () => false,
+  };
   await shell.refreshConfigs();
-  assert.equal(log.length, before, 'the crawls must still not run');
-  assert.equal(toasts.length, 2, 'each Refresh tap must say the pause out loud');
-  assert.match(toasts[0].msg, /paused/);
-  assert.equal(toasts[0].cls, 'alert-info');
+  assert.deepEqual(shell.repoProjects('me/home'),
+    [{ path: 'projects/x', label: 'x', icon: 'ph-kanban' }],
+    'after a Refresh the sidebar must still show the branch-spliced view');
 });
 
 test('an overlaid repo opens at the branch; others open at their default', async () => {
@@ -138,6 +167,19 @@ test('an overlaid repo opens at the branch; others open at their default', async
     ['me/ledger', undefined],
     ['me/home', BRANCH],
   ]);
+});
+
+test('entering the Config view for an overlaid repo warns about the read/write mix', () => {
+  const { shell, browserStore, toasts } = makeShell();
+  browserStore.repo = 'me/home';
+  shell.overlayBranch = BRANCH;
+  shell.overlayRefs = { 'me/home': BRANCH };
+  shell.goConfig();
+  assert.equal(toasts.length, 1, 'the hazardous-write warning must fire');
+  assert.match(toasts[0].msg, /default branch/);
+  shell.overlayRefs = {};
+  shell.goConfig();
+  assert.equal(toasts.length, 1, 'no warning when the open repo is not overlaid');
 });
 
 test('the boot reads ?overlay= through URLSearchParams (the toss params shim answers it)', () => {

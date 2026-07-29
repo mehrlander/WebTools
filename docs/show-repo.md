@@ -634,11 +634,21 @@ overlay closes both gaps for the piece that matters:
 - **A preview says it is one.** The Repos header carries a warning-tinted
   branch chip (tooltip: which repos the branch applied to), and each overlaid
   row gets a matching glyph.
-- **Read-only posture.** Under an overlay the shell does not run the config or
-  activity cache crawls: a preview session must not commit derived state. The
-  Refresh buttons say so with a toast rather than silently doing nothing, and
-  the Activity view's ages therefore stay as stale as its "as of" stamp says
-  they are until the page is opened without `?overlay=`.
+- **Writes are classified, not banned.** The split that matters is whether the
+  overlay touches a write's **inputs** or its **target**, and refreshing the
+  derived caches touches neither: the crawls build their own clients pinned at
+  main, so a Refresh under overlay reads and commits exactly what a normal
+  session would, and the buttons work inside a preview the way intuition says
+  they should (held by test: the crawl never reads at the overlay branch).
+  This shipped guarded at first, on the instinct that a preview must not
+  commit derived state; the guard defended nothing and turned Refresh into a
+  silent no-op, which is the worse failure. The genuinely hazardous class is
+  writes the overlay *does* touch, and it has one known member: the
+  contents-API save path commits to the default branch, so editing an
+  overlaid repo's config would read branch state into the editor and write it
+  to main. Entering the Config view under overlay warns about exactly that
+  mix. Note the residual honesty gap the crawls keep: Activity ages update on
+  Refresh but describe main, per the general limit below.
 
 Because the parameter rides the query and the toss params shim delivers a
 subject's `?query`, a coordinated preview works **before any of it merges**,
