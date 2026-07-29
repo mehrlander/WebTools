@@ -42,6 +42,60 @@ done
 the repo is public, so this needs no auth. Fetch both: surfacing lives in
 `SURFACING.md`, so `CONVENTIONS.md` alone loses every surfacing rule.
 
+## Report what this repo pins (do this every time)
+
+Immediately after the fetch, before any editing, report the repo's frozen
+paths. This is the step that makes pinned material legible **at edit time**;
+everything else about the status convention (the declaration, the verify-suite
+gate) fires after the work is already done, which is too late to stop a session
+from editing an exhibit and reverting it.
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/markers/status.py" declared
+```
+
+Outside a skill invocation, resolve the script per the recipe in
+[`markers/SKILL.md`](../markers/SKILL.md).
+
+- **Nothing declared** (most repos): say nothing. Silence is the correct
+  report, and a line of boilerplate every session trains the reader to skip it.
+- **Anything declared:** name the frozen areas in one line, and say that a
+  frozen artifact is re-anchored through its builder, never hand-edited. Then
+  run `status.py is <path>` before touching anything near one.
+
+The register is short by construction, so this costs a line. Read the reason it
+exists as narrowly as it is meant: it tells you what **not** to edit. It says
+nothing about where new material belongs.
+
+## Check that this repo's guards are actually registered (do this every time)
+
+A repo's `.claude/settings.json` is read only when the session's **project root
+is the repo**. Where the root sits above it (the repo arriving as an additional
+directory), that file is never read, so every hook it declares silently never
+fires: no build-on-commit, no dependency install, and no `SessionStart` step
+that installs git hooks. Nothing reports this, and the failure looks exactly
+like everything working.
+
+```bash
+root=$(git rev-parse --show-toplevel) && key="${root//\//-}"
+if grep -q '"hooks"' "$root/.claude/settings.json" 2>/dev/null \
+   && [ ! -d "$HOME/.claude/projects/$key" ]; then
+  echo "UNREGISTERED: $root declares hooks, but the session project root is elsewhere"
+  ls "$HOME/.claude/projects/"
+fi
+```
+
+When it fires, say so in one line and name the consequence, since the user
+cannot see it. Then, for the rest of the session, run by hand whatever those
+hooks were meant to do. Git hooks are the recoverable case and worth doing
+immediately: `git config core.hooksPath .githooks` (or whatever path the repo
+uses) restores a pre-commit guard for the life of the container.
+
+This is why a check that must not be skipped belongs in a **test or verify
+suite**, which runs wherever it is invoked, rather than in a hook. Plugins are
+the dependable channel for the same reason: they install from user settings,
+not project settings, so they are present either way.
+
 ## Apply
 
 Apply the two files as one set, substituting the current repo into the URL
