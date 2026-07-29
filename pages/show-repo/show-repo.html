@@ -825,6 +825,16 @@ function app(){ return {
   proposalsSeen: false,
   configRefreshing: false,  // the estate refresh button is mid-crawl
   activityRefreshing: false, // the activity crawl (heavier: per-repo survey) is running
+  // Live progress for the Activity header while that crawl runs, or null when
+  // idle. The unit is the ESTATE REPO: it is the only quantity known before the
+  // fanout starts, and it is what a reader watching the button is counting. The
+  // per-repo work (branches surveyed, PR compares) is deliberately NOT counted:
+  // those tick several times a second, read as churn rather than progress, and
+  // would suggest a precision the crawl does not have, since one repo can cost
+  // an order of magnitude more than the next. `active` carries every repo in
+  // flight rather than the newest, because ACTIVITY_REPO_POOL runs two at once
+  // and naming one of them would describe the crawl wrongly.
+  activityProgress: null, // { done, total, active: [repo, …] }
   // Recently-committed files for the current repo@ref, shown in the sidebar.
   // Generated artifacts a build hook writes on every commit are noise here,
   // not real edits, so they're filtered out for web-tools specifically.
@@ -1146,10 +1156,38 @@ function app(){ return {
   async refreshActivity(){
     if (this.activityRefreshing || !this.hasToken()) return;
     this.activityRefreshing = true;
+    this.activityProgress = { done: 0, total: 0, active: [] };
     try {
-      await this.refreshActivityCache(true);
+      const result = await this.refreshActivityCache(true);
       document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
-    } finally { this.activityRefreshing = false; }
+      this.reportActivityRefresh(result);
+    } finally { this.activityRefreshing = false; this.activityProgress = null; }
+  },
+
+  // The crawl's one moment of feedback, and the reason the toast belongs at the
+  // end rather than during: the run takes tens of seconds (so a toast could not
+  // outlive it) and commits only when something materially changed (so a
+  // productive refresh and a no-op refresh used to end identically, with the
+  // spinner stopping and nothing saying which happened). Per-repo failures are
+  // surfaced here too; they were previously a console.warn and nothing else.
+  reportActivityRefresh(r){
+    if (!r) return;
+    const toast = Alpine.store('toast');
+    if (!toast) return;
+    if (r.skipped) {
+      if (r.reason) toast('warning', 'Activity refresh skipped: ' + r.reason, 'alert-warning', 4000);
+      return;
+    }
+    if (r.error) return toast('warning', 'Activity refresh failed: ' + r.error, 'alert-error', 6000);
+    const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+    const fail = r.failed.length;
+    const tail = fail ? ' · ' + plural(fail, 'repo') + ' failed, see console' : '';
+    if (r.changed.length)
+      toast('arrows-clockwise', 'Activity refreshed · ' + plural(r.changed.length, 'repo') + ' changed' + tail,
+            fail ? 'alert-warning' : 'alert-success', 4000);
+    else
+      toast('check', 'No activity changes · ' + plural(r.total, 'repo') + ' checked' + tail,
+            fail ? 'alert-warning' : 'alert-info', 3000);
   },
 
   // ── Activity aggregate: crawl each ESTATE repo (estate:true, read from the
@@ -1166,13 +1204,17 @@ function app(){ return {
   ACTIVITY_RECENT_COMMITS: 12,   // newest commits fetched per repo per crawl
   ACTIVITY_REPO_POOL: 2,         // repos crawled at once (each runs its own survey pool)
   _activityCheckKey: 'wt:activityCacheCheckedAt',
+  // Returns a summary of the run for the caller to report: {total, changed,
+  // failed, committed}, or {skipped, reason} when there was nothing to do. The
+  // background (unforced) caller ignores it; refreshActivity turns it into the
+  // closing toast.
   async refreshActivityCache(force){
-    if (!this.hasToken() || !window.RepoActivityCache || !window.BranchSurvey) return;
+    if (!this.hasToken() || !window.RepoActivityCache || !window.BranchSurvey) return { skipped: true };
     const A = window.RepoActivityCache, B = window.BranchSurvey;
     if (!force){
       try {
         const last = +localStorage.getItem(this._activityCheckKey) || 0;
-        if (Date.now() - last < this.ACTIVITY_CACHE_INTERVAL_MS) return;
+        if (Date.now() - last < this.ACTIVITY_CACHE_INTERVAL_MS) return { skipped: true };
       } catch {}
     }
     // Estate membership from the config cache (estate:true). The activity crawl
@@ -1184,23 +1226,32 @@ function app(){ return {
       const cc = JSON.parse((await reg.get(window.RepoConfigCache.CACHE_PATH)).text);
       members = Object.entries(cc.repos || {}).filter(([, e]) => e?.config?.estate === true).map(([n]) => n);
     } catch {}
-    if (!members.length) return;
+    if (!members.length) return { skipped: true, reason: 'no estate members in the config cache yet' };
+    this.tickActivityProgress(0, members.length, []);
 
     // One account-repos read for pushed-at / default-branch, matched by name.
     let metaByName = new Map();
     try { metaByName = new Map((await new window.GH({ token: window.TOKEN }).repos()).map(r => [r.full_name, r])); } catch {}
 
+    const failed = [];
     try {
       const now = Date.now(), nowISO = new Date().toISOString();
       const fetched = {};
       // Bounded outer concurrency: each repo runs its own inner survey pool, so
-      // a small repo pool keeps total in-flight GitHub calls reasonable.
-      let mi = 0;
+      // a small repo pool keeps total in-flight GitHub calls reasonable. The
+      // two progress ticks bracket exactly one repo's work, which is what makes
+      // done/total a count of finished repos rather than an estimate.
+      let mi = 0, done = 0;
+      const active = [];
       const crawlOne = async () => {
         while (mi < members.length){
           const repo = members[mi++];
+          active.push(repo);
+          this.tickActivityProgress(done, members.length, active);
           try { fetched[repo] = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B); }
-          catch(e){ console.warn('activity crawl', repo, e?.message || e); }
+          catch(e){ failed.push(repo); console.warn('activity crawl', repo, e?.message || e); }
+          active.splice(active.indexOf(repo), 1);
+          this.tickActivityProgress(++done, members.length, active);
         }
       };
       await Promise.all(Array.from({ length: Math.min(this.ACTIVITY_REPO_POOL, members.length) }, crawlOne));
@@ -1209,10 +1260,23 @@ function app(){ return {
       try { prev = JSON.parse((await reg.get(A.CACHE_PATH)).text); } catch {}
       const next = A.buildCache(prev, fetched, nowISO);
       try { localStorage.setItem(this._activityCheckKey, String(Date.now())); } catch {}
-      if (A.cacheChanged(prev, next)){
+      const changed = A.changedRepos(prev, next);
+      if (changed.length){
         await reg.save(A.CACHE_PATH, next, 'Update activity cache (state/activity.json) via show-repo');
       }
-    } catch(e){ console.warn('activity cache refresh:', e?.message || e); }
+      return { total: members.length, changed, failed, committed: changed.length > 0 };
+    } catch(e){
+      console.warn('activity cache refresh:', e?.message || e);
+      return { total: members.length, changed: [], failed, error: e?.message || String(e) };
+    }
+  },
+
+  // Publish crawl progress for the Activity header. A no-op unless the run was
+  // started by the Refresh button: the throttled background pass sets no
+  // activityProgress, and has no header to report into. Reassigns rather than
+  // mutating so the whole shape lands on the view in one reactive step.
+  tickActivityProgress(done, total, active){
+    if (this.activityProgress) this.activityProgress = { done, total, active: [...active] };
   },
 
   // Crawl one repo's activity: the cheap summary (pushed-at, recent commits,
@@ -2554,6 +2618,15 @@ function overview(){ return {
       neither this view nor the branch review fans out per visit. The branch
       review renders cache-first, live only on Refresh. See docs/show-repo.md
       "The estate" and web-tools-private/DESIGN.md.
+      REFRESH REPORTS ITSELF, in the two places a tens-of-seconds crawl needs it:
+      while it runs the as-of readout becomes the repo count (activityProgress,
+      written by refreshActivityCache, read by the estate's activityProgress*
+      getters) over a determinate bar, and when it lands reportActivityRefresh
+      toasts what changed. Repos finished over repos total is the whole measure;
+      the per-repo work is deliberately not counted, since it ticks several times
+      a second and would read as the churn this replaced. The toast is the only
+      thing that distinguishes a productive refresh from a no-op one, because the
+      crawl commits only on a material change.
     App views (?view=app&appRepo&appPath): pages any repo promotes to their own
       estate-level entry with appView:true on a `pages` catalog entry, collected
       across every repo's config through the config cache (loadEstateSidebar,

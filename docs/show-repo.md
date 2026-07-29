@@ -328,6 +328,21 @@ route into the branch review). The view's Refresh forces the crawl through the
 shell (`refreshActivity`); a normal visit kicks it throttled. The internal view
 key stays `activity` (and `?view=activity`), so existing links resolve.
 
+That forced crawl runs for tens of seconds across the whole estate, so it
+**reports itself**. While it runs, the header's as-of readout becomes
+`Refreshing activity · 4 of 11 repos` with the repos currently in flight named
+after it (the pool runs two at once, so it is a list), over a determinate bar
+whose only input is repos finished over repos total. Nothing finer is counted
+and no in-flight fraction is estimated: per-repo cost varies by an order of
+magnitude, and a sub-counter ticking several times a second is the churn this
+replaces. The crawl **commits only when something materially changed**, which
+used to make a productive refresh and a no-op refresh end identically, so the
+run closes with a toast, `Activity refreshed · 3 repos changed` or `No activity
+changes · 11 repos checked`, and names any repo the crawl failed on (previously
+a `console.warn` and nothing else). The count comes from
+`RepoActivityCache.changedRepos`, which `cacheChanged` is defined in terms of,
+so the number reported and the gate that skipped the commit cannot disagree.
+
 The cache is what makes this affordable. The branch review costs ~2 + 2N calls to
 survey N branches, so surveying every repo live on a dashboard is a flood.
 Instead `refreshActivityCache` crawls each estate repo on a ~12h per-browser
