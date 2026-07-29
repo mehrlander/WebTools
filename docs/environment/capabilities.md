@@ -264,3 +264,46 @@ as its worst reader, and this one was chosen for how GitHub renders it without
 anyone checking how an agent reads it back. When a marker exists so that a
 machine can find something later, test the round trip through the path that
 machine will actually use.
+
+## Writing a PR body: a `#gh=` toss URL comes back code-fenced
+
+*(measured 2026-07-29)*
+
+A 🥏 toss link written into a pull request body as ordinary markdown does not
+stay a link. Written as `[label](https://mehrlander.github.io/web-tools/pages/toss-render.html#gh=owner/repo@ref:path)`,
+it is stored with the URL wrapped in double backticks, `[label](``https://…``)`,
+which GitHub then renders as plain text. The label survives; the link does not.
+This matters because [SURFACING.md](../SURFACING.md) makes a branch toss the
+guide PR's "thing to open" whenever the change is a page shell, so the body's
+most important link is exactly the one that breaks.
+
+Controls, all in the same body or an adjacent one:
+
+| URL in a markdown link | Result |
+| --- | --- |
+| `github.com/…/blob/<ref>/<path>` | link survives |
+| `github.com/…/compare/main...<branch>` | link survives |
+| `github.com/…/blob/main/<path>#<heading-anchor>` | link survives |
+| `mehrlander.github.io/…/toss-render.html#gz=<base64url>` | link survives (bodies merged through 2026-07-12, preserved in [MERGE-GUIDE.md](../MERGE-GUIDE.md)) |
+| `mehrlander.github.io/…/toss-render.html#gh=owner/repo@ref:path` | **URL wrapped in double backticks** |
+| the same, percent-encoded as `%40` and `%3A` | **still wrapped** |
+
+So it is neither the host, nor the fragment, nor a fragment-bearing link in
+general, and it is not the `@` or the `:` as literal characters, since encoding
+them changes nothing. The trigger was not isolated further; two candidates
+remain, a slash-bearing fragment and a repo-reference shape, and separating them
+would cost a write per probe for no gain in what to do about it.
+
+**The store is at fault, not only the readback.** The section above could not
+observe the stored body, because the REST API is proxy-blocked, and it named a
+browser view as what would settle it. `WebFetch` of the PR's own HTML page is
+that view, and it agrees with the readback: the link renders as plain text on
+GitHub. For this construct the mangling is therefore in what got stored, which
+is a different fault from the HTML-stripping readback and has to be worked
+around at write time rather than tolerated at read time.
+
+**What to do.** Put the tappable 🥏 in **chat**, where the same markdown links
+correctly. In the body, state the toss address as a code span, which is what it
+is going to become anyway, and let the reader copy it; or reach for a form that
+survives, a `#gz=` toss or a `[new]` blob link, keeping the honesty gate in mind
+(a blob is a view, not a render).
