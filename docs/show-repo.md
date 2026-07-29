@@ -599,6 +599,118 @@ tree and `main...branch` compare on GitHub (ground truth), opens the branch or
 the in-shell compare here, and the header links GitHub's branches UI, where the
 delete action itself lives. Deep link: `?view=branches`.
 
+## The branch overlay: preview a cross-repo change before it merges
+
+```
+show-repo.html?overlay=<branch>
+```
+
+Previews the estate **as if `<branch>` were merged wherever it exists**. The
+join it rides is a platform fact the conventions already name: a session uses
+one branch name across every repository it touches (a workstream), so a
+same-named branch across repos is a session's signature, not a coincidence.
+The overlay applies the branch per repo where it exists and falls back to the
+default branch where it does not; existence is asked of GitHub (one branch
+probe per cached repo, once per session), never assumed.
+
+Why this needs to exist at all: the toss machinery pins two of the three
+things a preview depends on, and the third is the one cross-repo changes live
+in. `#gh=` pins the subject file and its same-repo dependencies; `?use=` pins
+the lib the shell loads; neither reaches the **runtime data reads** the
+running app composes itself ("read that other repo's manifest"). Worse, the
+read that feeds the sidebar is not even a read of the other repo: it is a
+read of the **config cache** (`state/configs.json`), a derived artifact baked
+from main-side crawls, which no view-time ref redirection can change. The
+overlay closes both gaps for the piece that matters:
+
+- **Manifest splice.** Each overlaid repo's `.web-tools.json` is fetched live
+  at the branch and laid over its cached entry before anything derives from
+  the cache (membership, groups, icons, `projects` rows, app views). One GET
+  per overlaid repo; a branch without a manifest keeps the cached one.
+- **Browse at the branch.** Opening an overlaid repo (its row, a project row)
+  opens it at the branch ref, so the landing, pins, files, and the repo's own
+  live-read config all preview the branch. The crumb trail's ref chip shows
+  the off-default ref as usual.
+- **A preview says it is one.** The Repos header carries a warning-tinted
+  branch chip (tooltip: which repos the branch applied to), and each overlaid
+  row gets a matching glyph.
+- **Writes are classified, not banned.** The split that matters is whether the
+  overlay touches a write's **inputs** or its **target**, and refreshing the
+  derived caches touches neither: the crawls build their own clients pinned at
+  main, so a Refresh under overlay reads and commits exactly what a normal
+  session would, and the buttons work inside a preview the way intuition says
+  they should (held by test: the crawl never reads at the overlay branch).
+  This shipped guarded at first, on the instinct that a preview must not
+  commit derived state; the guard defended nothing and turned Refresh into a
+  silent no-op, which is the worse failure. The genuinely hazardous class is
+  writes the overlay *does* touch, and it has one known member: the
+  contents-API save path commits to the default branch, so editing an
+  overlaid repo's config would read branch state into the editor and write it
+  to main. Entering the Config view under overlay warns about exactly that
+  mix. Note the residual honesty gap the crawls keep: Activity ages update on
+  Refresh but describe main, per the general limit below.
+
+Because the parameter rides the query and the toss params shim delivers a
+subject's `?query`, a coordinated preview works **before any of it merges**,
+through main's deployed toss renderer:
+
+```
+…/toss-render.html#gh=owner/web-tools@<branch>:pages/show-repo/show-repo.html?overlay=<branch>
+```
+
+The outer `@<branch>` pins the shell (the code half); `?overlay=` pins the
+data half. After the shell change merges, the deployed form
+`show-repo.html?overlay=<branch>` does the same for data-only branches.
+
+The honest limits, stated rather than implied: the overlay re-derives only
+the per-repo **manifests**; other main-derived artifacts (the activity cache,
+tracker boards, generated catalogs) are not overlaid and read main. And an
+overlay link is only as durable as the branch it names: once the branch
+merges and is deleted, every probe misses and the link degrades to a plain
+main view, which is the correct end state for a preview.
+
+### Branch detail: the takeover
+
+Tapping a branch name in the Activity view's Open list opens the branch
+**here**: a full-viewport takeover whose header carries the repo, branch, PR
+number, and position (n of m), with the embedded [branch
+page](../pages/branch.html) as the body, live at its `#gh=` address so every
+fact is an API read at open time. The list supplies the sequence, frozen at
+the tap so a cache refresh cannot yank it; swipe on the header or the edge
+strips, arrow keys, or the chevrons move through it, clamped at the ends;
+Escape or the X closes. Staging a branch's changed files, the name's old tap
+action, moved into the branch menu as **Stage changed files**.
+
+This settles the host question in the branch-page-as-navigation task: the
+sequence lives in the shell, which already holds the list, and the standalone
+`branch.html` survives as both the shareable single-branch form and the
+renderer the takeover embeds, so there is exactly one branch-detail
+implementation. Once this deploys, the in-app route replaces the exit to
+GitHub as the Open row's primary read, and the 🌿 surfacing entry can point
+at `?view=activity` plus a tap rather than a tossed page (that doc update
+rides the task at merge).
+
+### Drop a file on a branch
+
+The Activity view's branch menu carries **Drop a file here**: GitHub's
+new-file form opened on that branch with the filename prefilled
+(`github.com/<repo>/new/<branch>?filename=…`), defaulting into the repo's
+declared `inbox` (else `dump/`), date-stamped and still editable in the form.
+It exists for the phone flow: paste long content straight onto a session's
+branch without routing it through a chat context, with no placeholder commit
+and no cleanup. In the frame vocabulary above this is a deliberately
+*ambient* write with matching frames: the form both shows and targets the
+named branch. The chat-side twin is the `drop-link` skill, which mints the
+same URL on request.
+
+Session drops are intake, not cargo: the session that receives one promotes
+or consumes it, and wrap-up leaves the intake folder empty, so a merge
+carries no drop residue. Gitignore cannot do that job (it governs untracked
+files, and a drop is a commit); the convention is the mechanism, and it is
+the same one home's `chron/dump` already runs ("trends toward empty"). A
+repo that instead wants transient bulk kept off main entirely declares a
+branch box (`"inbox": "@drops:inbox"`), per Inbox and outbox below.
+
 ## `.web-tools.json`: the repo manifest
 
 Root `.web-tools.json` is the repo's **web-tools config file** (canonical location
@@ -705,6 +817,23 @@ repos. All are optional; a repo with no config is simply off the estate.
 - **pins**: folders/files surfaced in the sidebar Pinned block. A last segment
   with an extension opens as a file; otherwise it opens the Files view at that
   folder.
+- **projects**: the repo's workspaces, rendered indented under the repo's row
+  in the sidebar Repos index. Entries are bare folder paths
+  (`"projects/budget-wa"`) or `{ path, label, icon }` objects; `label` defaults
+  to the path's last segment and `icon` to `ph-kanban`, the task-board glyph. A
+  row opens the repo's Files view at that folder, the same route a folder pin
+  takes, but reachable from the estate for any member repo. The **defining
+  convention**: a workspace running a tracker (a `tracker/` directory holding
+  `tasks/`, per [TRACKER.md](TRACKER.md)) is a project. A tracker at the repo
+  root marks the repo itself and earns no row, so "repo or project" needs no
+  separate registry of what counts. The field is declarative rather than
+  discovered live (walking a tree for `tracker/` dirs is API-costly), which
+  makes it generatable: home's `tools/generate-tracker-registry.py` syncs it
+  from the trackers it finds, so the manifest cannot drift from the ground
+  truth. The sidebar reads the field from the config cache it already holds,
+  so the rows cost no extra fetch. A `projects` field that exists only on a
+  branch is invisible to the cache (a main-derived artifact) until it merges;
+  the **branch overlay** above previews it live.
 - **tracker**: where the repo keeps its task board (`"tracker/board.md"`, or a
   folder). Adds one row, **Task board**, to the repo's **GitHub menu** (the
   sidebar Repos row's github button, and the Activity view's repo chip). It is
