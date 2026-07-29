@@ -296,6 +296,7 @@ Controls, all in the same body or an adjacent one:
 | the same, percent-encoded as `%40` and `%3A` | **still wrapped** |
 | `github.com/…/blob/main/<path>#<long-hyphenated-anchor>` | **wrapped** *(2026-07-29)* |
 | `[main](<blob url>)/[diff](<compare url>)`, the caption's own pair | **wrapped from `[main](` to the end** *(2026-07-29)* |
+| a bare `blob/<branch>/<path>`, siblings in the same folder unaffected | **wrapped, inconsistently** *(2026-07-29)* |
 
 So it is neither the host, nor the fragment, nor a fragment-bearing link in
 general, and it is not the `@` or the `:` as literal characters, since encoding
@@ -323,12 +324,19 @@ makes that pair the standard shape of every Changed row, so the default caption
 does not survive being written into a body.
 
 The trigger still is not isolated, and the earlier judgment that isolating it is
-not worth a write per probe stands. What is settled is the workaround, so prefer
-the empirical rule over a theory: **in a PR body, use one standalone
-`[label](url)` per link, keep `blob/<branch>/<path>` URLs, drop heading anchors,
-and put the compare link on its own line.** Those forms were observed intact in
-the same bodies where the pairs wrapped. The full caption, pairs and all, still
-belongs in chat, where it renders correctly.
+not worth a write per probe stands. Rewriting a body into plain standalone
+`[label](url)` rows, no pairs and no anchors, cut it from every row to one of
+nine, so it **reduces incidence and does not eliminate it**: in that rewritten
+body a bare `blob/<branch>/<path>` link wrapped while two sibling links to files
+in the same folder did not. So there is no known-safe form to prescribe, and any
+rule of the shape "this construct is fine" would be the overclaim this file's
+probing discipline warns about.
+
+What survives as guidance is a procedure, not a form: **after writing a body,
+read it back and look for `` `` `` around a URL, then rewrite or drop whatever
+wrapped.** Restructuring usually clears it (linking a folder once instead of
+three files in it). The full caption, pairs and all, still belongs in chat, where
+it renders correctly.
 
 **What to do.** Put the tappable 🥏 in **chat**, where the same markdown links
 correctly. In the body, state the toss address as a code span, which is what it
