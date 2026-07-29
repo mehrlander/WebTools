@@ -94,6 +94,14 @@
   its header, version readout, and render tab describe the tossed page, not
   this shell, and "Re-toss at ref" re-addresses in place via __tossNavigate.
 
+  The tab shows the SUBJECT's favicon, dimmed. Address mode is same-origin, so
+  the shell reads the icon the rendered page actually resolved (gh-boot's
+  injected default included) and redraws it desaturated and faded through a
+  canvas, so the tab names which page is open without impersonating the
+  deployed one. A #gz= payload gets the same treatment when its icon is
+  self-contained. The frisbee is the fallback, and now carries a meaning: no
+  addressable subject behind this render.
+
   How the frame is mounted: a blob: URL, not srcdoc. A srcdoc document's
   location.hash is permanently "" and the property is non-configurable, so no
   prelude can shim it the way the params shim covers ?query; a blob: URL
@@ -267,10 +275,15 @@
     return Uint8Array.from(atob(b), c => c.charCodeAt(0));
   }
   const decodeB64 = s => new TextDecoder().decode(b64Bytes(s));
-  function b64urlEncode(bytes) {
+  // Standard alphabet, padded: what a data: URI needs. The URL-safe form below
+  // is the same bytes with the two substitutions and the padding stripped.
+  function b64Std(bytes) {
     let s = '';
     for (const c of bytes) s += String.fromCharCode(c);
-    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return btoa(s);
+  }
+  function b64urlEncode(bytes) {
+    return b64Std(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
   const utf8 = str => new TextEncoder().encode(str);
 
@@ -295,15 +308,209 @@
     return '<head>' + g + '</head>' + text;
   }
 
+  // ── The subject's favicon, dimmed ────────────────────────────────────────
+  //
+  // A toss is a rendering OF a page, so the tab should say which page. The
+  // frisbee only ever said that some toss was open, which is the one fact the
+  // viewer already knows. So the subject's own icon is adopted, and dimmed so
+  // the tab never impersonates the deployed page.
+  //
+  // Where the icon comes from: not a reconstruction. Address mode renders
+  // same-origin, so the frame's resolved <link rel=icon> is readable directly,
+  // which picks up gh-boot's runtime injection (the hex nut, on any lib page
+  // declaring no icon of its own) and any page that sets its icon late. The
+  // alternative (parsing the fetched source, or reading `icon` out of
+  // .web-tools.json) reconstructs what the icon OUGHT to be and gets the
+  // runtime cases wrong. Read the href ATTRIBUTE, not the property: the
+  // property is already resolved against the <base> addressHtml stamps, and a
+  // private repo's icon file is not fetchable from that URL without the token.
+  //
+  // Why dimming rather than a badge: a favicon is 16 CSS px in the tab strip,
+  // where a corner badge is about five pixels of mush. Desaturating and fading
+  // keeps the silhouette, which is the channel that actually survives, and
+  // reads as "this thing, but a rendering of it."
+  //
+  // Rasterized to PNG through a canvas rather than wrapped in an SVG <image>:
+  // SVG favicons render under a restricted mode whose handling of nested
+  // images is not worth betting the feature on, while a PNG data URI is
+  // unambiguous. Also sidesteps escaping a data URI inside XML.
+  //
+  // On caching: Chrome keys the favicon cache by ICON url, and a data URI is
+  // its own content, so every subject gets its own entry and none can go
+  // stale. History and bookmarks key on the PAGE url instead, which is
+  // identical for every toss (the address rides in the fragment), so those
+  // surfaces keep whichever icon was recorded last. Not fixable from here.
+  // Picked against real icons on both a light and a dark tab strip. Fading
+  // harder (alpha ~0.55) reads well on light and goes muddy on dark, where the
+  // strip is already dark; going fully grayscale is unmistakable but throws
+  // away the color that makes an icon recognizable at a glance. Most of the
+  // signal is cheaper to buy in saturation than in alpha.
+  const DIM_SATURATE  = 0.15;   // 0 = grayscale, 1 = untouched
+  const DIM_ALPHA     = 0.78;
+  const ICON_PX       = 64;     // covers the 16 and 32 px tab renditions
+  const ICON_WATCH_MS = 5000;   // how long to keep watching for a late icon
+
+  // The frisbee, captured before anything replaces it: the mark for a render
+  // with no subject behind it.
+  const baseIcon = (document.querySelector('link[rel~="icon"]') || {}).href || '';
+
+  function setFavicon(href) {
+    if (!href) return;
+    document.querySelectorAll('link[rel~="icon"]').forEach(el => el.remove());
+    const link = document.createElement('link');
+    link.rel = 'icon';
+    link.href = href;
+    document.head.appendChild(link);
+  }
+
+  const ICON_MIME = { svg: 'image/svg+xml', png: 'image/png', ico: 'image/x-icon',
+                      gif: 'image/gif', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+                      webp: 'image/webp', avif: 'image/avif' };
+
+  // A repo file as a data URI. Bytes, not text: an icon is usually binary, and
+  // the raw media type serves it directly (the JSON-labeled reply is the
+  // metadata form, whose base64 payload we unwrap).
+  async function ghDataUri(owner, name, ref, filePath) {
+    const apiBase = 'https://api.github.com/repos/' + owner + '/' + name;
+    const res = await fetch(apiBase + '/contents/' + filePath +
+      (ref ? '?ref=' + encodeURIComponent(ref) : ''), { headers: ghHeaders(RAW_MEDIA) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    let bytes = new Uint8Array(await res.arrayBuffer());
+    if (jsonLabeled(res)) {
+      try {
+        const d = JSON.parse(new TextDecoder().decode(bytes));
+        if (contentsMeta(d) && d.content) bytes = b64Bytes(d.content);
+      } catch (e) {}
+    }
+    const ext = (filePath.split('.').pop() || '').toLowerCase();
+    return 'data:' + (ICON_MIME[ext] || 'image/png') + ';base64,' + b64Std(bytes);
+  }
+
+  // Whatever the page declared, resolved to something this origin can draw.
+  // A repo-relative href goes through the token at the same ref, which is the
+  // whole point in address mode: a private repo's icon file is reachable no
+  // other way. An absolute URL is fetched and inlined so the canvas stays
+  // untainted; if that is blocked, give up rather than draw a broken icon.
+  async function iconDataUri(href, subject) {
+    if (!href) return null;
+    if (href.startsWith('data:')) return href;
+    if (isRelativeRef(href) && subject) {
+      const dir = subject.path.includes('/')
+        ? subject.path.slice(0, subject.path.lastIndexOf('/') + 1) : '';
+      const p = resolveRepoPath(dir, href);
+      if (!p) return null;
+      const [owner, name] = subject.repo.split('/');
+      return await ghDataUri(owner, name, subject.ref, p);
+    }
+    if (/^https?:\/\//i.test(href)) {
+      const res = await fetch(href);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      const mime = (res.headers.get('Content-Type') || 'image/png').split(';')[0];
+      return 'data:' + mime + ';base64,' + b64Std(bytes);
+    }
+    return null;
+  }
+
+  // Draw the icon dimmed. globalAlpha carries the fade on its own, so a
+  // browser without canvas filter support still gets the treatment, just
+  // without the desaturation.
+  function dimIcon(src) {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const c = document.createElement('canvas');
+          c.width = c.height = ICON_PX;
+          const ctx = c.getContext('2d');
+          ctx.filter = 'saturate(' + DIM_SATURATE + ')';
+          ctx.globalAlpha = DIM_ALPHA;
+          // An SVG with only a viewBox reports no intrinsic size in some
+          // engines; fall back to square so it still draws.
+          const iw = img.naturalWidth || ICON_PX, ih = img.naturalHeight || ICON_PX;
+          const s = Math.min(ICON_PX / iw, ICON_PX / ih);   // letterbox, never stretch
+          const w = iw * s, h = ih * s;
+          ctx.drawImage(img, (ICON_PX - w) / 2, (ICON_PX - h) / 2, w, h);
+          resolve(c.toDataURL('image/png'));
+        } catch (e) { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  }
+
+  // Watch the frame for its icon. gh-boot injects its default asynchronously
+  // and a page may set its own later still, so sample on load and then keep
+  // observing briefly, rather than reading once and accepting whatever was
+  // there first.
+  let cancelIconWatch = null;
+  function adoptSubjectIcon(subject) {
+    let stopped = false, seen = '';
+    const apply = async () => {
+      if (stopped) return;
+      let doc;
+      try { doc = frame.contentDocument; } catch (e) { return; }   // opaque origin
+      if (!doc) return;
+      const el = doc.querySelector('link[rel~="icon"]');
+      const href = el && el.getAttribute('href');
+      if (!href || href === seen) return;
+      seen = href;
+      try {
+        const src = await iconDataUri(href, subject);
+        const dimmed = src && await dimIcon(src);
+        if (dimmed && !stopped) setFavicon(dimmed);
+      } catch (e) { /* a favicon is cosmetic; never surface this */ }
+    };
+    let obs = null;
+    const onLoad = () => {
+      apply();
+      try {
+        const doc = frame.contentDocument;
+        if (!doc) return;
+        obs = new MutationObserver(apply);
+        obs.observe(doc.head || doc.documentElement,
+          { childList: true, subtree: true, attributes: true, attributeFilter: ['href', 'rel'] });
+        setTimeout(() => { try { obs.disconnect(); } catch (e) {} }, ICON_WATCH_MS);
+      } catch (e) {}
+    };
+    frame.addEventListener('load', onLoad);
+    cancelIconWatch = () => {
+      stopped = true;
+      frame.removeEventListener('load', onLoad);
+      try { obs && obs.disconnect(); } catch (e) {}
+    };
+  }
+
+  // A payload renders under an opaque origin, so the frame cannot be read and
+  // there is no repo to resolve a relative href against. The shell is holding
+  // the exact HTML, though, so a self-contained icon still comes through.
+  async function adoptPayloadIcon(html) {
+    try {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const el = doc.querySelector('link[rel~="icon"]');
+      const href = el && el.getAttribute('href');
+      if (!href || !href.startsWith('data:')) return;
+      const dimmed = await dimIcon(href);
+      if (dimmed) setFavicon(dimmed);
+    } catch (e) {}
+  }
+
   // Announce the rendered subject (the repo/ref/path the viewer is actually
   // looking at) to the shell's own chrome; the fab adopts it. Cleared for
   // renders with no repo behind them (inline HTML, external URLs, the panel).
   // __tossFrame hands the frame itself along: an address-mode render is
   // same-origin, so the fab's Inspect can scan the subject document and its
   // script registry (payload renders are opaque-origin; access just fails).
+  //
+  // Also the one place that knows whether a render has a subject, so the
+  // favicon resets here: back to the frisbee, then upgraded to the subject's
+  // own icon if the frame turns out to have one.
   function setSubject(s) {
     window.__tossSubject = s || null;
     window.__tossFrame = s ? frame : null;
+    if (cancelIconWatch) { cancelIconWatch(); cancelIconWatch = null; }
+    setFavicon(baseIcon);
+    if (s) adoptSubjectIcon(s);
     window.dispatchEvent(new CustomEvent('toss-subject'));
   }
 
@@ -322,6 +529,7 @@
     // or a paste, so it must not run as this page's origin (which can hold a
     // gh token in localStorage). Scripts still run, but under an opaque origin.
     mountFrame(guardHtml(html), 'allow-scripts allow-popups allow-forms allow-modals allow-downloads', frag);
+    adoptPayloadIcon(html);
     tossLinkFn = async () => absUrl('#gz=' + await gzipB64(html) + (frag ? '#' + frag : ''));
     reveal();
   }
