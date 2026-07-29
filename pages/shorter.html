@@ -10,42 +10,58 @@
   <script src="https://cdn.jsdelivr.net/npm/diff@5.2.0/dist/diff.min.js"></script>
 
   <script type="module">
-    // ?use=<branch|tag|sha> picks which ref the lib chain loads from; defaults
-    // to main. gh-api.js auto-boots window.gh from its import URL or window.__ghBlobBoot.
-    const ref = new URLSearchParams(location.search).get('use');
-    if (ref) {
-      window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
-      const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`);
-      if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
-      const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
-      try { await import(u); } finally { URL.revokeObjectURL(u); }
-    } else {
-      await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
-    }
-    await gh.load('url-params.js');
-    await gh.load('shorter-payload.js');
-    // Alpine last, so the component's init() finds both helpers defined. Same
-    // boot order as the other renderer pages.
-    await gh.load('alpine-bundle.js');
+    // The boot is published as a PROMISE, not just awaited, because loading
+    // Alpine last does not by itself guarantee the component starts last.
+    // gh-boot.js mounts the FAB on a 1500ms timer and, finding no Alpine yet,
+    // loads and starts its own. On a fast connection this chain wins and the
+    // question never comes up; on a slow one (a phone, four sequential
+    // contents-API round trips) gh-boot's Alpine starts first and inits
+    // x-data="shorter()" against helpers that do not exist, which surfaces as
+    // "Can't find variable: ShorterPayload". So init() awaits this instead of
+    // trusting the order.
+    window.__shorterReady = (async () => {
+      // ?use=<branch|tag|sha> picks which ref the lib chain loads from; defaults
+      // to main. gh-api.js auto-boots window.gh from its import URL or window.__ghBlobBoot.
+      const ref = new URLSearchParams(location.search).get('use');
+      if (ref) {
+        window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
+        const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`);
+        if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
+        const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+        try { await import(u); } finally { URL.revokeObjectURL(u); }
+      } else {
+        await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
+      }
+      await gh.load('url-params.js');
+      await gh.load('shorter-payload.js');
+      await gh.load('shorter-merge.js');
+      await gh.load('alpine-bundle.js');
+    })();
+    await window.__shorterReady;
   </script>
 
   <!--
     Shorter: a proposal-adjudication tool.
 
-    You bring two things: your original text, and a shorter version of it
-    (pasted from any model, or drafted here by the local model). The page
-    word-diffs them and lays the shorter version out as a stream of discrete
-    edits, each one defaulting to ACCEPTED. The work is then subtraction:
-    skim, reject the cuts that went too far, regenerate any span you don't
-    like, and copy the assembled result. Getting a shortening is cheap; this
-    page is the part that was expensive: going through it piece by piece.
+    You bring a document and one or more shorter versions of it. The page puts
+    every version onto one surface anchored on the original (lib/shorter-merge.js),
+    so each place the versions disagree becomes a single decision carrying one
+    option per distinct wording. The work is subtraction: pick a version as the
+    baseline, walk the decisions where you would have cut differently, copy the
+    assembled result. Getting a shortening is cheap; going through it piece by
+    piece is what this page is for.
 
-    The local model (Llama-3.2-1B via web-llm, WebGPU) is OPTIONAL and lazy.
-    Nothing is fetched from huggingface.co until you press a ✨ Shorten
-    action, so the review flow works with zero model, and a network that
-    can't reach the weights (cert/proxy) no longer breaks page load. web-llm
-    still needs a real https origin (github.io) and a WebGPU browser; when a
-    ✨ action can't get there, the failure is reported inline, on the span.
+    Two ways the versions arrive. Pasted by hand, one or several, which is the
+    everyday case. Or seeded from a committed bundle, which is what the
+    shorter/2 envelope exists for: several independent shortenings written by a
+    model under different instructions, stored as sparse block maps so the
+    bundle stays small, adjudicated here.
+
+    The local model (Llama-3.2-1B via web-llm, WebGPU) is OPTIONAL, lazy, and
+    deliberately secondary: a 1B model is a poor whole-document editor, and the
+    seeded-bundle path is the answer to that. It stays for one job it is
+    adequate at, rewriting a single span on request. Nothing is fetched from
+    huggingface.co until a ✨ action is pressed.
 
     Input by URL, first match wins (contract: docs/envelopes/shorter.md):
       #gz=<base64url>   gzipped text or envelope in the fragment
@@ -54,214 +70,365 @@
     Each key is read fragment first, query as fallback (lib/url-params.js).
     Prose is unbounded, so it belongs in '#'; ?src= is how the #shorter= toss
     route hands an address to this page through toss-render's params shim.
-    A payload carrying both sides opens in review, already diffed.
+
+    UI note: no explanatory paragraphs. Anything a caption would have said is
+    carried by a label, a count, an ordering, or a title= tooltip.
   -->
 
   <style>
-    :root { --seam:#e5e7eb; }
     body { -webkit-font-smoothing:antialiased; }
 
-    .review { white-space:pre-wrap; word-break:break-word; line-height:2.05; font-size:1.05rem; }
+    .review { white-space:pre-wrap; word-break:break-word; line-height:2.1; font-size:1.05rem; }
 
-    /* An edit span: the selected candidate for one changed region. Default
-       tone is "accept" (the shorter reading), so a clean skim reads as the
-       proposal; rejected/custom spans stand out against it. */
+    /* A decision. Colour names WHICH version is currently selected, so a skim
+       reads as a map of whose cut is in force where; the original reads as
+       untouched prose with a dotted underline. The palette is defined once
+       here and mirrored by --v<i> on the chips and popover rows. */
     .seg { border-radius:4px; padding:1px 2px; transition:background .12s, box-shadow .12s; }
-    .seg-equal { }
-    .seg-edit  { cursor:pointer; box-shadow:inset 0 -1px 0 rgba(0,0,0,.18); }
-    .seg-edit:hover { background:rgba(0,0,0,.04); }
-    .seg-accept { background:#dcfce7; box-shadow:inset 0 -1px 0 #86efac; }
-    .seg-accept:hover { background:#bbf7d0; }
-    .seg-reject { background:#f1f5f9; box-shadow:inset 0 -1px 0 #cbd5e1; color:#475569; }
-    .seg-reject:hover { background:#e2e8f0; }
-    .seg-custom { background:#ede9fe; box-shadow:inset 0 -1px 0 #c4b5fd; }
-    .seg-custom:hover { background:#ddd6fe; }
-    .seg-empty  { background:#f1f5f9; box-shadow:inset 0 -1px 0 #cbd5e1; padding:1px 4px; color:#94a3b8; }
-    .seg-active { outline:2px solid #6366f1; outline-offset:1px; }
+    .seg-choice { cursor:pointer; }
+    .seg-choice:hover { filter:brightness(.97); }
+    .seg-orig { box-shadow:inset 0 -1px 0 rgba(100,116,139,.55); }
+    .seg-orig:hover { background:rgba(100,116,139,.10); }
+    .seg-v { box-shadow:inset 0 -1.5px 0 var(--vc); background:color-mix(in srgb, var(--vc) 16%, transparent); }
+    .seg-v:hover { background:color-mix(in srgb, var(--vc) 26%, transparent); }
+    .seg-empty { padding:1px 5px; color:#94a3b8; background:#f1f5f9; box-shadow:inset 0 -1px 0 #cbd5e1; }
+    .seg-active { outline:2px solid #4f46e5; outline-offset:2px; }
+    .seg-flash { animation:flash 1s ease-out; }
+    @keyframes flash { from { background:#fde68a; } to { background:transparent; } }
 
-    /* The ✨ affordance that lets you rewrite an *unchanged* sentence: the
-       stuff the proposal left alone but you might still want tightened. */
-    .seg-spark { opacity:0; margin-left:1px; font-size:.72em; color:#8b5cf6; vertical-align:super;
-      transition:opacity .12s; cursor:pointer; }
-    .seg-equal:hover .seg-spark { opacity:.55; }
-    .seg-spark:hover { opacity:1 !important; }
+    .v0 { --vc:#16a34a; } .v1 { --vc:#2563eb; } .v2 { --vc:#d97706; }
+    .v3 { --vc:#9333ea; } .v4 { --vc:#0891b2; } .v5 { --vc:#db2777; }
+    .vo { --vc:#64748b; }
 
     .pop { box-shadow:0 12px 40px -8px rgba(0,0,0,.35); }
-    .opt-preview { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+    .clamp2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .clamp3 { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+    .rail { scrollbar-width:thin; }
   </style>
 </head>
 
 <body class="min-h-dvh bg-base-200 text-base-content">
-<div x-data="shorter()" x-init="init()" class="mx-auto max-w-3xl px-4 py-6 sm:py-9">
+<!-- No x-init here: Alpine calls a component's own init() automatically, and
+     this one is not idempotent (it seeds the first version card). -->
+<div x-data="shorter()" class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
 
   <!-- ── header ─────────────────────────────────────────────────────── -->
-  <header class="mb-6 flex items-start justify-between gap-4">
-    <div>
-      <h1 class="text-2xl font-semibold tracking-tight flex items-center gap-2">
-        <!-- Phosphor's ph-diamond is a bare rhombus; a brilliant-cut gem needs
-             facets, so this is a small inline SVG. currentColor keeps the
-             text-primary tint, and the faint fill gives it stone weight. -->
-        <svg viewBox="0 0 24 24" class="text-primary h-6 w-6" fill="none" stroke="currentColor"
-             stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
-          <path d="M7 4 H17 L21 9 L12 20 L3 9 Z" fill="currentColor" fill-opacity=".1"/>
-          <path d="M3 9 H21"/>
-          <path d="M7 4 L9 9 L12 4 L15 9 L17 4"/>
-          <path d="M9 9 L12 20 L15 9"/>
-        </svg> Shorter
-      </h1>
-      <p class="mt-1 text-sm text-base-content/60">Line up a shorter draft against your text and accept it piece by piece.</p>
-    </div>
-    <button class="badge badge-sm gap-1 shrink-0 mt-1 cursor-default"
-            :class="{'badge-ghost':model.status==='idle','badge-warning':model.status==='loading','badge-success':model.status==='ready','badge-error':model.status==='error'}"
-            :title="model.status==='error' ? model.error : 'Local model runs in your browser; it loads only when you use ✨'">
-      <i class="ph" :class="{'ph-circle-dashed':model.status==='idle','ph-spinner-gap animate-spin':model.status==='loading','ph-check-circle':model.status==='ready','ph-warning-circle':model.status==='error'}"></i>
-      <span x-text="modelLabel()"></span>
-    </button>
+  <header class="mb-4 flex items-center gap-3">
+    <h1 class="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+      <svg viewBox="0 0 24 24" class="h-6 w-6 text-primary" fill="none" stroke="currentColor"
+           stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+        <path d="M7 4 H17 L21 9 L12 20 L3 9 Z" fill="currentColor" fill-opacity=".1"/>
+        <path d="M3 9 H21"/><path d="M7 4 L9 9 L12 4 L15 9 L17 4"/><path d="M9 9 L12 20 L15 9"/>
+      </svg>
+      <span x-text="docTitle || 'Shorter'"></span>
+    </h1>
+    <!-- The model chip earns its place only once the model is doing something.
+         Idle, it was a permanent label for a feature most sessions never use. -->
+    <span x-show="model.status!=='idle'" class="badge badge-sm gap-1"
+          :class="{'badge-warning':model.status==='loading','badge-success':model.status==='ready','badge-error':model.status==='error'}"
+          :title="model.error || 'Local model, running in your browser'">
+      <i class="ph" :class="{'ph-spinner-gap animate-spin':model.status==='loading','ph-check-circle':model.status==='ready','ph-warning-circle':model.status==='error'}"></i>
+      <span x-text="model.status==='loading' ? model.pct+'%' : (model.status==='error' ? 'no model' : 'model')"></span>
+    </span>
   </header>
 
-  <!-- ── EDIT MODE : the two inputs ─────────────────────────────────── -->
-  <template x-if="mode==='edit'">
-    <div>
-      <!-- A link that could not be read: GitHub answers 404 (not 401) for a
-           private repo fetched with no token, so say so rather than showing an
-           empty form that looks like the link simply carried nothing. -->
-      <div x-show="linkError" class="alert alert-warning mb-4 text-sm">
-        <i class="ph ph-warning"></i><span x-text="linkError"></span>
-      </div>
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label class="mb-1.5 flex items-center justify-between text-sm font-medium">
-            <span>Your text</span>
-            <span class="text-xs font-normal text-base-content/50" x-text="w(original)+' words'"></span>
-          </label>
-          <textarea x-model="original" placeholder="Paste the original, longer text."
-            class="textarea textarea-bordered min-h-52 w-full leading-relaxed"></textarea>
-        </div>
-        <div>
-          <label class="mb-1.5 flex items-center justify-between text-sm font-medium">
-            <span>A shorter version</span>
-            <span class="text-xs font-normal text-base-content/50" x-text="proposal.trim() ? w(proposal)+' words' : 'optional'"></span>
-          </label>
-          <textarea x-model="proposal" placeholder="Paste a shortened version from any model, or leave this empty and let the local model draft one."
-            class="textarea textarea-bordered min-h-52 w-full leading-relaxed"></textarea>
+  <div x-show="bootError" class="alert alert-error mb-4 text-sm" style="display:none">
+    <i class="ph ph-warning-octagon"></i>
+    <span class="flex-1" x-text="bootError"></span>
+    <button class="btn btn-xs" @click="copyDiagnostics()" x-text="copiedKey==='diag' ? 'Copied' : 'Copy details'"></button>
+  </div>
+
+  <!-- ══ EDIT ════════════════════════════════════════════════════════ -->
+  <template x-if="ready && mode==='edit'">
+    <div class="mx-auto max-w-5xl">
+      <!-- A failed link reports the resolved address, not just the status: the
+           same 404 means a missing ref, a missing token, or a wrong path, and
+           only the address distinguishes them. -->
+      <div x-show="linkError" class="mb-4 rounded-box border border-warning/40 bg-warning/10 p-3 text-sm">
+        <div class="flex items-start gap-2">
+          <i class="ph ph-warning mt-0.5 text-warning"></i>
+          <div class="min-w-0 flex-1">
+            <div class="font-medium">Could not load that link</div>
+            <div class="mt-0.5 break-words text-xs text-base-content/70" x-text="linkError"></div>
+            <div x-show="linkHint" class="mt-1.5 text-xs" x-text="linkHint"></div>
+
+            <dl class="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-[11px] text-base-content/60">
+              <template x-for="row in [
+                    ['repo', (target&&target.repo) || '-'],
+                    ['ref', (target&&target.ref) || 'default branch'],
+                    ['path', (target&&target.path) || '-'],
+                    ['token', hasToken ? 'present' : 'absent'],
+                    ['lib ref', (window.gh&&window.gh.ref) || '-']]" :key="row[0]">
+                <template x-if="true">
+                  <div class="contents">
+                    <dt class="text-base-content/45" x-text="row[0]"></dt>
+                    <dd class="break-all" x-text="row[1]"></dd>
+                  </div>
+                </template>
+              </template>
+            </dl>
+
+            <div class="mt-2 flex gap-1">
+              <button class="btn btn-xs gap-1" @click="copyDiagnostics()"
+                      title="Copy a full report: address, token, which libraries loaded, and the browser">
+                <i class="ph" :class="copiedKey==='diag' ? 'ph-check' : 'ph-copy'"></i>
+                <span x-text="copiedKey==='diag' ? 'Copied' : 'Copy details'"></span>
+              </button>
+              <button class="btn btn-ghost btn-xs gap-1" @click="linkError=''">
+                <i class="ph ph-x"></i> Dismiss
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="mt-4 flex flex-wrap items-center gap-2">
-        <button class="btn btn-primary gap-2" :disabled="!original.trim() || busy" @click="compare()">
-          <i class="ph" :class="busy ? 'ph-spinner-gap animate-spin' : (proposal.trim() ? 'ph-git-diff' : 'ph-sparkle')"></i>
-          <span x-text="proposal.trim() ? 'Merge & review' : 'Draft a shorter version'"></span>
+      <!-- original -->
+      <section class="mb-4">
+        <div class="mb-1.5 flex items-center gap-2">
+          <span class="text-sm font-medium">Original</span>
+          <span class="text-xs tabular-nums text-base-content/50" x-text="w(original)+' words'"></span>
+          <span class="ml-auto flex items-center gap-0.5">
+            <button class="btn btn-ghost btn-xs btn-square" title="Copy the original"
+                    :disabled="!original" @click="copy(original,'orig')">
+              <i class="ph" :class="copiedKey==='orig' ? 'ph-check text-success' : 'ph-copy'"></i>
+            </button>
+            <button class="btn btn-ghost btn-xs btn-square" title="Paste over the original" @click="pasteInto('original')">
+              <i class="ph ph-clipboard-text"></i>
+            </button>
+            <button class="btn btn-ghost btn-xs btn-square" title="Clear everything"
+                    :disabled="!original && !versions.some(v=>v.text)" @click="clearAll()">
+              <i class="ph ph-eraser"></i>
+            </button>
+          </span>
+        </div>
+        <textarea x-model="original" class="textarea textarea-bordered min-h-44 w-full leading-relaxed"></textarea>
+      </section>
+
+      <!-- versions -->
+      <section class="grid gap-3 sm:grid-cols-2">
+        <template x-for="(v,i) in versions" :key="v.key">
+          <div class="rounded-box border border-base-300 bg-base-100 p-2.5" :class="'v'+(i%6)">
+            <div class="mb-1.5 flex items-center gap-1.5">
+              <span class="h-2.5 w-2.5 shrink-0 rounded-full" :style="'background:var(--vc)'"></span>
+              <input x-model="v.label" class="input input-xs input-ghost w-28 px-1 font-medium"
+                     title="Name this version; the name is what you pick by later">
+              <span class="text-xs tabular-nums text-base-content/50"
+                    x-text="v.text.trim() ? w(v.text)+'w · '+pct(v.text) : ''"></span>
+              <span class="ml-auto flex items-center gap-0.5">
+                <button class="btn btn-ghost btn-xs btn-square" title="Copy this version"
+                        :disabled="!v.text" @click="copy(v.text,'v'+i)">
+                  <i class="ph" :class="copiedKey==='v'+i ? 'ph-check text-success' : 'ph-copy'"></i>
+                </button>
+                <button class="btn btn-ghost btn-xs btn-square" title="Paste into this version" @click="pasteInto(i)">
+                  <i class="ph ph-clipboard-text"></i>
+                </button>
+                <button class="btn btn-ghost btn-xs btn-square" title="Remove this version"
+                        :disabled="versions.length<2" @click="removeVersion(i)">
+                  <i class="ph ph-x"></i>
+                </button>
+              </span>
+            </div>
+            <textarea x-model="v.text" class="textarea textarea-bordered min-h-36 w-full text-sm leading-relaxed"></textarea>
+            <div class="mt-1 flex items-center gap-1">
+              <input x-model="v.note" class="input input-xs input-ghost flex-1 px-1 text-xs text-base-content/60"
+                     placeholder="note" title="A line about what this version does, shown when you choose between them">
+              <button x-show="!v.text.trim()" class="btn btn-ghost btn-xs gap-1" :disabled="!original.trim() || v.busy"
+                      title="Draft this version with a small model in your browser. Slow, and weaker than pasting one in."
+                      @click="draft(i)">
+                <i class="ph" :class="v.busy ? 'ph-spinner-gap animate-spin' : 'ph-sparkle'"></i>
+                <span x-text="v.busy ? (model.note||'working') : 'draft locally'"></span>
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <button class="rounded-box border border-dashed border-base-300 py-6 text-sm text-base-content/50 transition hover:border-primary hover:text-primary"
+                title="Adjudicate several shortenings at once" @click="addVersion()">
+          <i class="ph ph-plus"></i> version
         </button>
-        <button class="btn btn-ghost btn-sm gap-2" @click="loadExample()"><i class="ph ph-book-open-text"></i> Example</button>
-        <button class="btn btn-ghost btn-sm gap-2" :disabled="!original && !proposal" @click="clearAll()"><i class="ph ph-eraser"></i> Clear</button>
-        <span x-show="busy && !proposal.trim()" class="text-xs text-base-content/50" x-text="model.note"></span>
-      </div>
+      </section>
 
-      <p class="mt-4 text-xs leading-relaxed text-base-content/50">
-        Two ways in. Paste both columns to review a draft you already have, or fill only the left and let the in-browser model
-        propose the right. Either way the next screen shows every change as an accept-by-default edit you can keep, reject, rewrite, or regenerate.
-      </p>
+      <div class="mt-4 flex items-center gap-2">
+        <button class="btn btn-primary gap-2" :disabled="!canReview" @click="review()">
+          <i class="ph ph-git-diff"></i> Review
+          <span x-show="readyCount>1" class="badge badge-sm badge-neutral" x-text="readyCount"></span>
+        </button>
+        <button class="btn btn-ghost btn-sm gap-2" title="Load a short worked example" @click="loadExample()">
+          <i class="ph ph-book-open-text"></i> Example
+        </button>
+      </div>
     </div>
   </template>
 
-  <!-- ── REVIEW MODE : the adjudication surface ─────────────────────── -->
-  <template x-if="mode==='review'">
-    <div>
-      <!-- toolbar -->
-      <div class="sticky top-2 z-20 mb-4 rounded-box border border-base-300 bg-base-100/95 backdrop-blur px-3 py-2 shadow-sm
-                  flex flex-wrap items-center gap-x-3 gap-y-2">
-        <button class="btn btn-ghost btn-sm gap-1" @click="mode='edit'"><i class="ph ph-arrow-left"></i> Edit</button>
-        <div class="flex items-center gap-2 text-sm">
-          <span class="tabular-nums text-base-content/60" x-text="baseWords"></span>
-          <i class="ph ph-arrow-right text-xs text-base-content/40"></i>
-          <span class="tabular-nums font-semibold" x-text="curWords"></span>
-          <span class="text-base-content/50">words</span>
-          <span class="badge badge-sm" :class="reductionPct>=0 ? 'badge-success badge-outline' : 'badge-error badge-outline'"
-                x-text="(reductionPct>=0?'−':'+')+Math.abs(reductionPct)+'%'"></span>
+  <!-- ══ REVIEW ══════════════════════════════════════════════════════ -->
+  <template x-if="ready && mode==='review'">
+    <div class="flex gap-4">
+
+      <!-- ── rail ───────────────────────────────────────────────── -->
+      <aside class="rail sticky top-4 hidden max-h-[calc(100dvh-2rem)] w-72 shrink-0 flex-col gap-3 overflow-y-auto lg:flex">
+        <div class="rounded-box border border-base-300 bg-base-100 p-2.5">
+          <div class="mb-2 flex items-baseline gap-1.5">
+            <span class="text-lg font-semibold tabular-nums" x-text="curWords"></span>
+            <span class="text-xs text-base-content/50">of</span>
+            <span class="text-xs tabular-nums text-base-content/50" x-text="baseWords"></span>
+            <span class="badge badge-sm ml-auto" :class="reduction>=0?'badge-success badge-outline':'badge-error badge-outline'"
+                  x-text="(reduction>=0?'−':'+')+Math.abs(reduction)+'%'"></span>
+          </div>
+          <!-- Wholesale baselines. One tap sets every decision to that version,
+               so comparing whole shortenings is a tap, not 88 clicks. -->
+          <div class="flex flex-col gap-1">
+            <button class="vo flex items-center gap-2 rounded-btn border px-2 py-1 text-left text-xs transition"
+                    :class="baseline==='original' ? 'border-base-content/40 bg-base-200' : 'border-transparent hover:bg-base-200'"
+                    title="Set every decision back to the original wording" @click="applyAll('original')">
+              <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background:var(--vc)"></span>
+              <span class="font-medium">Original</span>
+              <span class="ml-auto tabular-nums text-base-content/45" x-text="baseWords+'w'"></span>
+            </button>
+            <template x-for="(v,i) in versions" :key="v.key">
+              <button class="flex items-start gap-2 rounded-btn border px-2 py-1 text-left text-xs transition"
+                      :class="[ 'v'+(i%6), baseline===v.label ? 'border-base-content/40 bg-base-200' : 'border-transparent hover:bg-base-200' ]"
+                      :title="v.note || ('Apply '+v.label+' throughout')" @click="applyAll(v.label)">
+                <span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style="background:var(--vc)"></span>
+                <span class="min-w-0 flex-1">
+                  <span class="flex items-baseline gap-1">
+                    <span class="truncate font-medium" x-text="v.label"></span>
+                    <span class="ml-auto shrink-0 tabular-nums text-base-content/45"
+                          x-text="w(v.text)+'w · '+pct(v.text)"></span>
+                  </span>
+                  <span x-show="v.note" class="clamp2 mt-0.5 block text-[11px] leading-snug text-base-content/50" x-text="v.note"></span>
+                </span>
+              </button>
+            </template>
+          </div>
         </div>
-        <div class="ml-auto flex flex-wrap items-center gap-1">
-          <button class="btn btn-ghost btn-xs gap-1" @click="acceptAll()"><i class="ph ph-check-fat"></i> Accept all</button>
-          <button class="btn btn-ghost btn-xs gap-1" @click="rejectAll()"><i class="ph ph-arrow-counter-clockwise"></i> Restore original</button>
-          <button class="btn btn-primary btn-xs gap-1" @click="copyResult()">
-            <i class="ph" :class="copied ? 'ph-check' : 'ph-copy'"></i> <span x-text="copied ? 'Copied' : 'Copy result'"></span>
+
+        <!-- decisions -->
+        <div class="rounded-box border border-base-300 bg-base-100 p-2.5">
+          <div class="mb-1.5 flex items-center gap-1.5 text-xs">
+            <span class="font-medium" x-text="decisions.length+' decisions'"></span>
+            <label class="ml-auto flex cursor-pointer items-center gap-1 text-base-content/60"
+                   title="Show only the decisions where you moved off the baseline">
+              <input type="checkbox" class="checkbox checkbox-xs" x-model="onlyTouched"> touched
+            </label>
+          </div>
+          <div class="flex flex-col">
+            <template x-for="seg in visibleDecisions" :key="seg.id">
+              <button class="flex items-start gap-1.5 rounded-btn border-l-2 px-1.5 py-1 text-left text-[11px] leading-snug transition hover:bg-base-200"
+                      :class="[ vClass(sel(seg)), activeId===seg.id ? 'bg-base-200' : '' ]"
+                      :style="'border-color:'+(sel(seg).isOriginal ? '#94a3b8' : 'var(--vc)')"
+                      @click="jumpTo(seg)">
+                <span class="min-w-0 flex-1">
+                  <span class="clamp2 block text-base-content/70" x-text="preview(seg)"></span>
+                  <span class="mt-0.5 flex items-center gap-1 text-[10px] text-base-content/45">
+                    <span x-text="sel(seg).label"></span>
+                    <span x-show="touched(seg)" class="text-primary" title="You changed this one">•</span>
+                    <span class="ml-auto tabular-nums" x-text="delta(seg)"></span>
+                  </span>
+                </span>
+              </button>
+            </template>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ── document ───────────────────────────────────────────── -->
+      <div class="min-w-0 flex-1">
+        <div class="sticky top-2 z-20 mb-3 flex flex-wrap items-center gap-2 rounded-box border border-base-300 bg-base-100/95 px-2.5 py-1.5 shadow-sm backdrop-blur">
+          <button class="btn btn-ghost btn-sm btn-square" title="Back to the inputs" @click="mode='edit'">
+            <i class="ph ph-arrow-left"></i>
+          </button>
+          <div class="flex items-center gap-1.5 text-sm lg:hidden">
+            <span class="tabular-nums font-semibold" x-text="curWords"></span>
+            <span class="badge badge-sm" :class="reduction>=0?'badge-success badge-outline':'badge-error badge-outline'"
+                  x-text="(reduction>=0?'−':'+')+Math.abs(reduction)+'%'"></span>
+          </div>
+          <!-- On narrow screens the rail's baselines collapse to this select,
+               which is the one control you cannot work without. -->
+          <select class="select select-bordered select-sm max-w-40 lg:hidden" @change="applyAll($event.target.value)"
+                  title="Apply a version throughout">
+            <option value="original" :selected="baseline==='original'">Original</option>
+            <template x-for="v in versions" :key="v.key">
+              <option :value="v.label" :selected="baseline===v.label" x-text="v.label+' · '+pct(v.text)"></option>
+            </template>
+          </select>
+          <button class="btn btn-ghost btn-sm btn-square ml-auto" title="Download the result as a file" @click="download()">
+            <i class="ph ph-download-simple"></i>
+          </button>
+          <button class="btn btn-primary btn-sm gap-1.5" title="Copy the assembled result" @click="copy(assembled,'result')">
+            <i class="ph" :class="copiedKey==='result' ? 'ph-check' : 'ph-copy'"></i>
+            <span x-text="copiedKey==='result' ? 'Copied' : 'Copy'"></span>
           </button>
         </div>
+
+        <!-- The container is white-space:pre-wrap so paragraph breaks in the
+             source survive, which means every character between these spans
+             renders literally. The x-for is therefore on one line with no
+             incidental whitespace; the only whitespace in the flow is the
+             segment text itself. -->
+        <article class="review rounded-box border border-base-300 bg-base-100 p-4 sm:p-6"
+          ><template x-for="seg in segments" :key="seg.id"><span :id="'seg'+seg.id" class="seg" :class="segClass(seg)" @click="seg.kind==='choice' && !seg.trivial && openPop(seg,$event)"><template x-if="seg.kind==='equal'"><span x-text="seg.text"></span></template><template x-if="seg.kind==='choice' && !isEmpty(seg)"><span x-text="sel(seg).text"></span></template><template x-if="seg.kind==='choice' && isEmpty(seg) && !seg.trivial"><span class="seg-empty"><i class="ph ph-dots-three"></i></span></template><template x-if="seg.busy"><span class="loading loading-dots loading-xs align-middle text-primary"></span></template></span></template></article>
       </div>
-
-      <!-- legend -->
-      <div class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-base-content/60">
-        <span class="flex items-center gap-1"><span class="inline-block h-3 w-3 rounded-sm" style="background:#dcfce7;box-shadow:inset 0 -1px 0 #86efac"></span> accepted (shorter)</span>
-        <span class="flex items-center gap-1"><span class="inline-block h-3 w-3 rounded-sm" style="background:#f1f5f9;box-shadow:inset 0 -1px 0 #cbd5e1"></span> original kept</span>
-        <span class="flex items-center gap-1"><span class="inline-block h-3 w-3 rounded-sm" style="background:#ede9fe;box-shadow:inset 0 -1px 0 #c4b5fd"></span> rewritten</span>
-        <span class="flex items-center gap-1 text-base-content/45"><i class="ph ph-sparkle" style="color:#8b5cf6"></i> hover an unchanged sentence to rewrite it</span>
-      </div>
-
-      <!-- The assembled document, inline and interactive. NOTE: the container
-           is white-space:pre-wrap so paragraph breaks in the source text
-           survive, which means every character between these spans renders
-           literally. The x-for below is therefore written on a single line
-           with no incidental whitespace; the only whitespace in the flow is
-           the segment text itself. -->
-      <article class="review rounded-box border border-base-300 bg-base-100 p-5 sm:p-6"
-        ><template x-for="seg in segments" :key="seg.id"><span class="seg" :class="segClass(seg) + (activeId===seg.id ? ' seg-active' : '')" @click="seg.kind==='edit' && openPop(seg, $event)"><template x-if="!isEmpty(seg)"><span x-text="selectedText(seg)"></span></template><template x-if="isEmpty(seg)"><span class="seg-empty"><i class="ph ph-dots-three-outline"></i></span></template><template x-if="seg.kind==='equal' && seg.text.trim()"><button class="seg-spark" title="Rewrite this sentence with the local model" @click.stop="shorten(seg, $event)"><i class="ph ph-sparkle"></i></button></template><template x-if="seg.busy"><span class="loading loading-dots loading-xs align-middle text-primary"></span></template></span></template></article>
-
-      <p class="mt-3 text-xs text-base-content/45">
-        Click any highlighted edit to switch between the shorter and original wording, write your own, or regenerate it. Green is what you'll copy.
-      </p>
     </div>
   </template>
 
-  <!-- ── shared popover for one edit ────────────────────────────────── -->
-  <div x-show="activeId!==null" x-transition.opacity @click="closePop()"
-       class="fixed inset-0 z-30" style="display:none"></div>
-  <div x-show="activeId!==null && aSeg()" x-transition
-       class="pop fixed z-40 w-[min(22rem,calc(100vw-1.5rem))] rounded-box border border-base-300 bg-base-100 p-3"
-       :style="popStyle()" @click.stop style="display:none">
+  <!-- ── popover: one decision ──────────────────────────────────────── -->
+  <div x-show="activeId!==null" x-transition.opacity @click="closePop()" class="fixed inset-0 z-30" style="display:none"></div>
+  <div x-show="activeId!==null && aSeg()" x-transition @click.stop style="display:none"
+       class="pop fixed z-40 w-[min(26rem,calc(100vw-1.5rem))] rounded-box border border-base-300 bg-base-100 p-2.5"
+       :style="popStyle()">
     <template x-if="aSeg()">
       <div>
-        <div class="mb-2 flex items-center justify-between">
-          <span class="text-xs font-semibold uppercase tracking-wide text-base-content/50">Choose wording</span>
-          <button class="btn btn-ghost btn-xs btn-circle" @click="closePop()"><i class="ph ph-x"></i></button>
+        <div class="mb-1.5 flex items-center gap-2">
+          <span class="text-[11px] font-semibold uppercase tracking-wide text-base-content/45"
+                x-text="(decisions.indexOf(aSeg())+1)+' of '+decisions.length"></span>
+          <span class="ml-auto flex gap-0.5">
+            <button class="btn btn-ghost btn-xs btn-square" title="Previous decision" @click="step(-1)"><i class="ph ph-caret-up"></i></button>
+            <button class="btn btn-ghost btn-xs btn-square" title="Next decision" @click="step(1)"><i class="ph ph-caret-down"></i></button>
+            <button class="btn btn-ghost btn-xs btn-square" title="Close" @click="closePop()"><i class="ph ph-x"></i></button>
+          </span>
         </div>
 
-        <div class="flex flex-col gap-1.5 max-h-72 overflow-y-auto pr-0.5">
+        <div class="rail flex max-h-[22rem] flex-col gap-1 overflow-y-auto pr-0.5">
           <template x-for="opt in aSeg().options" :key="opt.id">
-            <button class="w-full rounded-btn border px-2.5 py-1.5 text-left transition"
-                    :class="aSeg().selected===opt.id ? 'border-primary bg-primary/5' : 'border-base-300 hover:bg-base-200'"
-                    @click="pick(aSeg(), opt.id)">
-              <div class="flex items-center justify-between gap-2">
-                <span class="badge badge-xs" :class="toneBadge(opt.tone)" x-text="opt.label"></span>
-                <span class="text-[11px] tabular-nums text-base-content/45" x-text="w(opt.text)+'w'"></span>
+            <button class="w-full rounded-btn border px-2 py-1.5 text-left transition"
+                    :class="[ opt.isOriginal ? 'vo' : 'v'+(opt.vi%6),
+                              aSeg().selected===opt.id ? 'bg-base-200' : 'hover:bg-base-200/60' ]"
+                    :style="'border-color:'+(aSeg().selected===opt.id ? 'var(--vc)' : 'transparent')"
+                    @click="pick(aSeg(),opt.id)">
+              <div class="flex items-center gap-1.5">
+                <span class="h-2 w-2 shrink-0 rounded-full" style="background:var(--vc)"></span>
+                <span class="truncate text-xs font-medium" x-text="opt.label"></span>
+                <span x-show="opt.isOriginal && opt.agreed.length" class="truncate text-[10px] text-base-content/45"
+                      :title="'These versions did not cut here: '+opt.agreed.join(', ')"
+                      x-text="'· kept by '+opt.agreed.join(', ')"></span>
+                <span class="ml-auto shrink-0 text-[10px] tabular-nums text-base-content/45" x-text="w(opt.text)+'w'"></span>
               </div>
-              <div class="mt-1 text-xs leading-snug opt-preview"
+              <div class="clamp3 mt-1 text-xs leading-snug"
                    :class="opt.text.trim() ? 'text-base-content/80' : 'italic text-base-content/40'"
-                   x-text="opt.text.trim() || '(nothing; removes this text)'"></div>
+                   x-text="opt.text.trim() || '(nothing; removes this passage)'"></div>
             </button>
           </template>
         </div>
 
-        <template x-if="aSeg().error">
-          <div class="mt-2 rounded-btn bg-error/10 px-2 py-1 text-[11px] text-error" x-text="aSeg().error"></div>
-        </template>
+        <div x-show="aSeg().error" class="mt-1.5 rounded-btn bg-error/10 px-2 py-1 text-[11px] text-error" x-text="aSeg().error"></div>
 
-        <div class="mt-3 flex items-center gap-2">
-          <button class="btn btn-xs btn-secondary gap-1 flex-1" :disabled="aSeg().busy" @click="shorten(aSeg())">
-            <i class="ph" :class="aSeg().busy ? 'ph-spinner-gap animate-spin' : 'ph-sparkle'"></i>
-            <span x-text="aSeg().busy ? 'Working…' : 'Shorten with local model'"></span>
+        <div class="mt-2 flex items-center gap-1">
+          <button class="btn btn-ghost btn-xs gap-1" @click="toggleWrite()" title="Write your own wording for this passage">
+            <i class="ph ph-pencil-simple"></i> write
           </button>
-          <button class="btn btn-xs btn-ghost gap-1" @click="toggleWrite()"><i class="ph ph-pencil-simple"></i> Write</button>
+          <button class="btn btn-ghost btn-xs gap-1" :disabled="aSeg().busy" @click="shorten(aSeg())"
+                  title="Rewrite just this passage with the small in-browser model">
+            <i class="ph" :class="aSeg().busy ? 'ph-spinner-gap animate-spin' : 'ph-sparkle'"></i> local
+          </button>
         </div>
 
-        <template x-if="writing">
-          <div class="mt-2">
-            <textarea x-model="draft" rows="3" class="textarea textarea-bordered textarea-xs w-full leading-snug"
-                      placeholder="Your own wording for this span."></textarea>
-            <div class="mt-1 flex justify-end gap-1">
-              <button class="btn btn-ghost btn-xs" @click="writing=false">Cancel</button>
-              <button class="btn btn-primary btn-xs" :disabled="!draft.trim()" @click="saveCustom(aSeg())">Use this</button>
-            </div>
+        <div x-show="writing" class="mt-1.5">
+          <textarea x-model="draftText" rows="3" class="textarea textarea-bordered textarea-xs w-full leading-snug"></textarea>
+          <div class="mt-1 flex justify-end gap-1">
+            <button class="btn btn-ghost btn-xs" @click="writing=false">cancel</button>
+            <button class="btn btn-primary btn-xs" :disabled="!draftText.trim()" @click="saveCustom(aSeg())">use</button>
           </div>
-        </template>
+        </div>
       </div>
     </template>
   </div>
@@ -272,39 +439,65 @@
 function shorter() {
   return {
     mode: 'edit',
+    docTitle: '',
     original: '',
-    proposal: '',
+    versions: [],            // [{key, label, note, text, busy}]
     segments: [],
-    busy: false,
-    copied: false,
+    baseline: 'original',    // which version was last applied wholesale
+    onlyTouched: false,
+    touchedIds: [],
+    copiedKey: '',
     linkError: '',
-    // popover
+    target: null,          // the resolved {repo, ref, path} of the last fetch
     activeId: null,
     anchor: null,
     writing: false,
-    draft: '',
-    // local model
+    draftText: '',
     model: { status: 'idle', pct: 0, note: '', error: '', engine: null, _loading: null },
+    _key: 0,
+
+    // `ready` gates the whole surface. Alpine may init this component before
+    // the lib chain resolves (see the boot block), and the templates below
+    // call into ShorterMerge on their first render, so gating is what makes
+    // the page independent of which of the two finishes first.
+    ready: false,
+    bootError: '',
 
     async init() {
-      window.addEventListener('keydown', e => { if (e.key === 'Escape') this.closePop(); });
+      try {
+        await (window.__shorterReady || Promise.resolve());
+      } catch (e) {
+        this.bootError = 'Could not load this page’s libraries: ' + (e?.message || e);
+        return;
+      }
+      this.ready = true;
+      this.addVersion();
+      window.addEventListener('keydown', e => {
+        if (e.key === 'Escape') this.closePop();
+        if (this.activeId !== null && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+          e.preventDefault(); this.step(e.key === 'ArrowDown' ? 1 : -1);
+        }
+      });
       await this.ingestLink();
     },
 
-    // Input by URL. Fragment first, query as fallback, per key
-    // (lib/url-params.js): the text wants '#' because a query string is
-    // capped at roughly 8KB by the Pages edge, while ?src= is how a routed
-    // toss delivers an address through toss-render's params shim.
-    //
+    // ── input by URL ─────────────────────────────────────────────────
     //   #gz=<base64url>   gzipped text or envelope, carried in the link
     //   ?src=<spec>       owner/repo[@ref]:path, fetched via the contents API
-    //   (neither)         the empty form, exactly as before
-    //
-    // A payload carrying both sides opens in review; anything else fills the
-    // left column and leaves the adjudication to the user.
+    //   (neither)         the empty form
+    // Fragment first, query as fallback, per key (lib/url-params.js): the text
+    // wants '#' because a query string is capped at roughly 8KB by the Pages
+    // edge, while ?src= is how a routed toss delivers an address through
+    // toss-render's params shim.
+    // window.__shorterLoc is the BAKED channel: a self-contained copy of this
+    // page (published as an artifact, or opened from file://) has no address
+    // bar to read, so it sets {hash} here and the page reads its payload from
+    // that instead. UrlParams.get already takes the location to read, so this
+    // costs one argument rather than a second input path.
     async ingestLink() {
-      const gz = UrlParams.get('gz');
-      const src = UrlParams.get('src');
+      const loc = window.__shorterLoc || undefined;
+      const gz = UrlParams.get('gz', loc);
+      const src = UrlParams.get('src', loc);
       if (!gz && !src) return;
       try {
         let payload;
@@ -315,161 +508,198 @@ function shorter() {
           payload = ShorterPayload.read(await this.fetchSpec(spec, src), { name: spec ? spec.path : src });
         }
         this.original = payload.original;
-        this.proposal = payload.proposal;
-        if (payload.title) document.title = payload.title + ' · Shorter';
-        if (ShorterPayload.isReviewable(payload)) await this.compare();
+        if (payload.proposals.length) {
+          this.versions = payload.proposals.map(p => ({ key: this._key++, label: p.label, note: p.note, text: p.text, busy: false }));
+        }
+        if (payload.title) { this.docTitle = payload.title; document.title = payload.title + ' · Shorter'; }
+        if (ShorterPayload.isReviewable(payload)) this.review();
       } catch (e) {
-        this.linkError = 'Could not read that link: ' + (e?.message || e);
+        this.linkError = e?.message || String(e);
       }
     },
 
-    // An addressed payload, or a plain path in the hub repo. The parse is
-    // ShorterPayload's, so the '' ref (meaning the repo's default branch)
-    // stays in one place rather than being restated here.
+    // What the page can say about a failed load without guessing. The status
+    // narrows it; the resolved address is what makes the status actionable.
+    get linkHint() {
+      const t = this.target, e = this.linkError;
+      if (!e) return '';
+      if (/\b404\b/.test(e)) {
+        if (t && t.defaulted) return 'Nothing at that path on the default branch. If the file only exists on a branch, the address needs @ref.';
+        if (!this.hasToken) return 'A private file reads as 404 when no token travelled. This browser has no stored ghToken.';
+        return 'The repo answered, but there is no file at that ref and path.';
+      }
+      if (/\b40[13]\b/.test(e)) return this.hasToken ? 'Authenticated, but not permitted to read that path.' : 'No stored ghToken in this browser.';
+      if (/\b5\d\d\b/.test(e)) return 'GitHub-side failure. Worth one retry.';
+      if (/Failed to load script/.test(e)) return 'A library did not load, so this is a boot failure rather than a payload one.';
+      if (/Failed to fetch|NetworkError|Load failed|ERR_/i.test(e)) return 'The request never completed: network, CORS, or the browser blocked it before GitHub answered.';
+      if (/rate limit/i.test(e)) return 'Rate limited. Unauthenticated requests share 60 per hour per IP.';
+      return 'Copy the details below; they say what was asked for and what loaded.';
+    },
+    get hasToken() { return !!(window.TOKEN && String(window.TOKEN).length); },
+    // One tap gives a report worth pasting back, rather than a retyped sentence.
+    copyDiagnostics() {
+      const t = this.target || {};
+      const lines = [
+        'Shorter: could not load link',
+        'error:  ' + this.linkError,
+        'repo:   ' + (t.repo || '(none)'),
+        'ref:    ' + (t.ref || '(default branch)'),
+        'path:   ' + (t.path || '(none)'),
+        'token:  ' + (this.hasToken ? 'present' : 'ABSENT'),
+        'libref: ' + ((window.gh && window.gh.ref) || '(unknown)'),
+        'libs:   ' + ['UrlParams', 'ShorterPayload', 'ShorterMerge', 'Alpine', 'Diff']
+          .map(k => k + (window[k] ? '=ok' : '=MISSING')).join(' '),
+        'url:    ' + location.href,
+        'agent:  ' + navigator.userAgent,
+      ];
+      this.copy(lines.join('\n'), 'diag');
+    },
+
+    // Records what it is about to fetch before fetching it, so a failure can
+    // report the resolved address rather than only the status. "404" on its own
+    // is the least useful thing this page can say: the same code means the ref
+    // has no such file, the repo is private and the token did not travel, or
+    // the path is wrong, and the reader cannot tell which without seeing what
+    // was actually asked for.
     async fetchSpec(spec, raw) {
-      const g = spec
-        ? new window.GH({ token: window.TOKEN, repo: spec.repo, ref: spec.ref })
-        : new window.GH({ token: window.TOKEN, repo: 'mehrlander/web-tools', ref: 'main' });
-      return (await g.get(spec ? spec.path : String(raw || ''))).text;
+      const repo = spec ? spec.repo : 'mehrlander/web-tools';
+      const ref = spec ? spec.ref : 'main';
+      const path = spec ? spec.path : String(raw || '');
+      this.target = { repo, ref, path, defaulted: !ref };
+      return (await new window.GH({ token: window.TOKEN, repo, ref }).get(path)).text;
     },
     async gunzipB64url(s) {
       const b64 = s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (s.length % 4)) % 4);
       const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-      const ds = new DecompressionStream('gzip');
-      return new Response(new Blob([bytes]).stream().pipeThrough(ds)).text();
+      return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
     },
 
     // ── helpers ──────────────────────────────────────────────────────
-    w(s) { return s ? (s.trim().match(/\S+/g) || []).length : 0; },
-    modelLabel() {
-      return { idle: 'model off', loading: 'model ' + this.model.pct + '%', ready: 'model ready', error: 'model unavailable' }[this.model.status];
+    w(s) { return ShorterMerge.words(s); },
+    pct(text) {
+      const b = this.w(this.original);
+      return b ? Math.round(this.w(text) / b * 100) + '%' : '';
     },
-    toneBadge(t) { return { accept: 'badge-success', reject: 'badge-ghost', custom: 'badge-secondary' }[t] || 'badge-ghost'; },
-
-    // ── building the diff ────────────────────────────────────────────
-    async compare() {
-      if (!this.original.trim()) return;
-      let prop = this.proposal;
-      if (!prop.trim()) {
-        // No proposal supplied: draft one with the local model over the whole text.
-        this.busy = true;
-        this.model.note = 'loading model…';
-        try {
-          const engine = await this.ensureModel();
-          this.model.note = 'drafting…';
-          prop = await this.generate(engine, this.original);
-          this.proposal = prop;
-        } catch (e) {
-          this.busy = false;
-          this.model.note = '';
-          alert('Local model unavailable: ' + e.message + '\n\nPaste a shorter version into the right column instead.');
-          return;
-        }
-        this.busy = false;
-        this.model.note = '';
-      }
-      this.segments = this.build(this.original, prop);
-      this.mode = 'review';
-    },
-
-    build(a, b) {
-      const parts = Diff.diffWordsWithSpace(a || '', b || '');
-      // 1. coarse equal / change nodes
-      const coarse = [];
-      let cur = null;
-      const flush = () => { if (cur) { coarse.push({ type: 'change', o: cur.o, p: cur.p }); cur = null; } };
-      for (const part of parts) {
-        if (part.added) { (cur ||= { o: '', p: '' }).p += part.value; }
-        else if (part.removed) { (cur ||= { o: '', p: '' }).o += part.value; }
-        else { flush(); coarse.push({ type: 'equal', text: part.value }); }
-      }
-      flush();
-      // 2. absorb tiny equal runs wedged between two changes, so a flipped
-      //    word doesn't shatter a sentence into a dozen toggles.
-      const T = 4;
-      for (let again = true; again;) {
-        again = false;
-        for (let i = 1; i < coarse.length - 1; i++) {
-          const e = coarse[i];
-          if (e.type === 'equal' && e.text.trim().length <= T && coarse[i - 1].type === 'change' && coarse[i + 1].type === 'change') {
-            const a2 = coarse[i - 1], b2 = coarse[i + 1];
-            coarse.splice(i - 1, 3, { type: 'change', o: a2.o + e.text + b2.o, p: a2.p + e.text + b2.p });
-            again = true; break;
-          }
-        }
-      }
-      // 3. expand to segments; equal runs split to sentences so each is a
-      //    click target for the ✨ rewrite.
-      let id = 0;
-      const segs = [];
-      for (const n of coarse) {
-        if (n.type === 'equal') {
-          for (const s of this.sentences(n.text)) if (s) segs.push({ id: id++, kind: 'equal', text: s, busy: false });
-        } else {
-          segs.push(this.makeEdit(id++, n.o, n.p));
-        }
-      }
-      return segs;
-    },
-
-    sentences(text) {
-      // Keep trailing whitespace attached so re-assembly is lossless.
-      return text.match(/[^.!?]*[.!?]+[\s]*|[^.!?]+[\s]*$/g) || [text];
-    },
-
-    makeEdit(id, o, p) {
-      let changeLabel, origLabel;
-      if (o && p) { changeLabel = 'Shorter'; origLabel = 'Original'; }
-      else if (!o && p) { changeLabel = 'Added'; origLabel = 'Skip'; }
-      else { changeLabel = 'Removed'; origLabel = 'Keep'; }
-      return {
-        id, kind: 'edit', original: o, busy: false, error: '',
-        selected: 'change',            // accept-by-default
-        options: [
-          { id: 'change', label: changeLabel, text: p, tone: 'accept', isChange: true },
-          { id: 'original', label: origLabel, text: o, tone: 'reject', isOriginal: true },
-        ],
-      };
-    },
-
-    // ── rendering the segments ───────────────────────────────────────
-    selOpt(seg) { return seg.options ? seg.options.find(o => o.id === seg.selected) : null; },
-    selectedText(seg) { return seg.kind === 'equal' ? seg.text : (this.selOpt(seg)?.text ?? ''); },
-    isEmpty(seg) { return seg.kind === 'edit' && this.selectedText(seg) === ''; },
+    get readyCount() { return this.versions.filter(v => v.text.trim()).length; },
+    get canReview() { return !!this.original.trim() && this.readyCount > 0; },
+    // Every choice segment, including the whitespace-only ones a reflow
+    // produced. applyAll walks THESE, so a version still reassembles byte for
+    // byte; only `decisions` is the reader-facing list.
+    get choices() { return this.segments.filter(s => s.kind === 'choice'); },
+    get decisions() { return this.choices.filter(s => !s.trivial); },
+    get visibleDecisions() { return this.onlyTouched ? this.decisions.filter(s => this.touched(s)) : this.decisions; },
+    sel(seg) { return seg.options.find(o => o.id === seg.selected) || seg.options[0]; },
+    isEmpty(seg) { return this.sel(seg).text === ''; },
+    touched(seg) { return this.touchedIds.includes(seg.id); },
+    vClass(opt) { return opt.isOriginal ? 'vo' : 'v' + (opt.vi % 6); },
     segClass(seg) {
-      if (seg.kind === 'equal') return 'seg-equal';
-      if (this.isEmpty(seg)) return 'seg-edit seg-empty';
-      const t = this.selOpt(seg)?.tone;
-      return 'seg-edit ' + (t === 'accept' ? 'seg-accept' : t === 'custom' ? 'seg-custom' : 'seg-reject');
+      // A trivial region is a line wrap, not a question: render it as prose.
+      if (seg.kind === 'equal' || seg.trivial) return 'seg-equal';
+      const o = this.sel(seg);
+      const base = 'seg-choice ' + this.vClass(o) + ' ' + (o.isOriginal ? 'seg-orig' : 'seg-v');
+      return base + (this.activeId === seg.id ? ' seg-active' : '');
+    },
+    preview(seg) {
+      const t = (seg.options[0].text || '').trim().replace(/\s+/g, ' ');
+      // An empty ORIGINAL means every version added something here, which is
+      // the opposite of a deletion and used to be labelled as one.
+      if (!t) return '(an insertion)';
+      return t.length > 90 ? t.slice(0, 90) + '…' : t;
+    },
+    delta(seg) {
+      const d = this.w(this.sel(seg).text) - this.w(seg.options[0].text);
+      return d === 0 ? '0' : (d > 0 ? '+' : '−') + Math.abs(d);
     },
 
     get assembled() {
-      return this.segments.map(s => this.selectedText(s)).join('');
+      return this.segments.map(s => s.kind === 'equal' ? s.text : this.sel(s).text).join('');
     },
     get baseWords() { return this.w(this.original); },
     get curWords() { return this.w(this.assembled); },
-    get reductionPct() {
-      const b = this.baseWords; if (!b) return 0;
-      return Math.round((1 - this.curWords / b) * 100);
+    get reduction() {
+      const b = this.baseWords;
+      return b ? Math.round((1 - this.curWords / b) * 100) : 0;
     },
 
-    // ── toolbar actions ──────────────────────────────────────────────
-    acceptAll() {
-      for (const s of this.segments) if (s.kind === 'edit') {
-        // prefer an explicit change; else the shortest non-... option.
-        const change = s.options.find(o => o.isChange);
-        s.selected = (change || [...s.options].sort((a, b) => this.w(a.text) - this.w(b.text))[0]).id;
+    // ── edit-mode actions ────────────────────────────────────────────
+    addVersion() {
+      this.versions.push({ key: this._key++, label: 'Version ' + (this.versions.length + 1), note: '', text: '', busy: false });
+    },
+    removeVersion(i) { this.versions.splice(i, 1); },
+    clearAll() { this.original = ''; this.versions = []; this.addVersion(); this.segments = []; this.docTitle = ''; },
+    async copy(text, key) {
+      try { await navigator.clipboard.writeText(text); }
+      catch { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+      this.copiedKey = key; setTimeout(() => { if (this.copiedKey === key) this.copiedKey = ''; }, 1400);
+    },
+    async pasteInto(target) {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (!text) return;
+        if (target === 'original') this.original = text; else this.versions[target].text = text;
+      } catch (e) {
+        this.linkError = 'The browser would not hand over the clipboard; paste into the box directly.';
       }
     },
-    rejectAll() {
-      for (const s of this.segments) if (s.kind === 'edit') {
-        s.selected = (s.options.find(o => o.isOriginal) || s.options[0]).id;
+    download() {
+      const name = (this.docTitle || 'shorter').replace(/[^\w.-]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+      const url = URL.createObjectURL(new Blob([this.assembled], { type: 'text/markdown' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = name + '.md'; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    },
+    loadExample() {
+      this.original = "In light of the fact that the committee had not yet reached a final determination on the matter, it was decided by the members that they would postpone the vote until such time as additional information could be gathered and reviewed in a comprehensive manner.\n\nIt is worth noting that several of the participants expressed a degree of concern regarding the timeline, which they felt was perhaps somewhat too aggressive given the current circumstances.";
+      this.versions = [
+        { key: this._key++, label: 'Tight', note: 'Same coverage, plainer sentences.', busy: false,
+          text: "Because the committee had not yet decided, the members postponed the vote until they could gather and review more information.\n\nSeveral participants worried the timeline was too aggressive." },
+        { key: this._key++, label: 'Minutes', note: 'Reduced to the decisions only.', busy: false,
+          text: "The committee postponed the vote pending more information.\n\nSeveral participants objected to the timeline." },
+      ];
+    },
+
+    // ── review ───────────────────────────────────────────────────────
+    review() {
+      const list = this.versions.filter(v => v.text.trim());
+      if (!this.original.trim() || !list.length) return;
+      this.segments = ShorterMerge.build(this.original, list, Diff.diffWordsWithSpace);
+      this.touchedIds = [];
+      this.applyAll(list[0].label);          // a readable result on arrival, not a wall of untouched original
+      this.mode = 'review';
+    },
+
+    // Set every decision to one version's wording. A version that did not cut
+    // at a given decision has no option of its own there, so it falls through
+    // to the original, which is exactly what that version says.
+    applyAll(which) {
+      for (const seg of this.choices) {
+        const hit = which === 'original' ? null : seg.options.find(o => o.agreed.includes(which));
+        seg.selected = hit ? hit.id : seg.options[0].id;
+      }
+      this.baseline = which;
+      this.touchedIds = [];
+    },
+    pick(seg, id) {
+      seg.selected = id;
+      if (!this.touchedIds.includes(seg.id)) this.touchedIds.push(seg.id);
+    },
+
+    jumpTo(seg) {
+      const el = document.getElementById('seg' + seg.id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('seg-flash');
+        setTimeout(() => el.classList.remove('seg-flash'), 1000);
+        this.activeId = seg.id;
+        this.anchor = el.getBoundingClientRect();
+        this.writing = false;
       }
     },
-    async copyResult() {
-      try { await navigator.clipboard.writeText(this.assembled); }
-      catch { const t = document.createElement('textarea'); t.value = this.assembled; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
-      this.copied = true; setTimeout(() => this.copied = false, 1400);
+    step(dir) {
+      const list = this.decisions;
+      const i = list.findIndex(s => s.id === this.activeId);
+      const next = list[i + dir];
+      if (next) this.jumpTo(next);
     },
 
     // ── popover ──────────────────────────────────────────────────────
@@ -477,33 +707,35 @@ function shorter() {
     openPop(seg, ev) {
       this.activeId = seg.id;
       this.anchor = ev.currentTarget.getBoundingClientRect();
-      this.writing = false; this.draft = '';
+      this.writing = false; this.draftText = '';
     },
     closePop() { this.activeId = null; this.writing = false; },
-    pick(seg, id) { seg.selected = id; },
     popStyle() {
       if (!this.anchor) return '';
       const vw = window.innerWidth, vh = window.innerHeight;
-      if (vw < 520) return 'left:0.75rem; right:0.75rem; bottom:0.75rem;';
-      const width = Math.min(352, vw - 24);
-      let left = Math.min(Math.max(this.anchor.left, 12), vw - width - 12);
+      if (vw < 640) return 'left:0.75rem; right:0.75rem; bottom:0.75rem;';
+      const width = Math.min(416, vw - 24);
+      const left = Math.min(Math.max(this.anchor.left, 12), vw - width - 12);
       let top = this.anchor.bottom + 8;
-      if (top > vh - 200) top = Math.max(12, this.anchor.top - 8 - 320);
+      if (top > vh - 240) top = Math.max(12, this.anchor.top - 8 - 380);
       return `left:${left}px; top:${top}px; width:${width}px;`;
     },
     toggleWrite() {
       this.writing = !this.writing;
-      if (this.writing) this.draft = this.selectedText(this.aSeg());
+      if (this.writing) this.draftText = this.sel(this.aSeg()).text;
     },
     saveCustom(seg) {
-      const n = seg.options.filter(o => o.tone === 'custom').length + 1;
+      this.addOption(seg, 'Yours', this.draftText);
+      this.writing = false; this.draftText = '';
+    },
+    addOption(seg, label, text) {
+      const n = seg.options.filter(o => o.custom).length + 1;
       const id = 'custom' + n;
-      seg.options.push({ id, label: 'Yours', text: this.draft, tone: 'custom' });
-      seg.selected = id;
-      this.writing = false; this.draft = '';
+      seg.options.push({ id, label: label + (n > 1 ? ' ' + n : ''), agreed: [], isOriginal: false, vi: 5, text, custom: true });
+      this.pick(seg, id);
     },
 
-    // ── the local model ──────────────────────────────────────────────
+    // ── the local model, kept to the one job it is adequate at ───────
     async ensureModel() {
       if (this.model.engine) return this.model.engine;
       if (this.model._loading) return this.model._loading;
@@ -513,17 +745,16 @@ function shorter() {
         if (!('caches' in window)) throw new Error('The Cache API is unavailable here (opaque origin); open the page from its https URL.');
         const adapter = await navigator.gpu.requestAdapter();
         if (!adapter) throw new Error('WebGPU is present but no GPU adapter was found.');
-        const model = adapter.features.has('shader-f16')
+        const name = adapter.features.has('shader-f16')
           ? 'Llama-3.2-1B-Instruct-q4f16_1-MLC' : 'Llama-3.2-1B-Instruct-q4f32_1-MLC';
         const { CreateMLCEngine } = await import('https://esm.run/@mlc-ai/web-llm@0.2.84');
-        const engine = await CreateMLCEngine(model, {
+        const engine = await CreateMLCEngine(name, {
           initProgressCallback: p => { this.model.pct = Math.round((p.progress || 0) * 100); },
         });
         this.model.engine = engine; this.model.status = 'ready';
         return engine;
-      })().catch(e => {
-        this.model.status = 'error'; this.model.error = e.message; throw e;
-      }).finally(() => { this.model._loading = null; });
+      })().catch(e => { this.model.status = 'error'; this.model.error = e.message; throw e; })
+        .finally(() => { this.model._loading = null; });
       return this.model._loading;
     },
 
@@ -539,50 +770,34 @@ function shorter() {
       return (res.choices[0]?.message?.content || '').trim();
     },
 
-    // Regenerate one span with the model. Works on an unchanged sentence
-    // (converts it into an edit) or on an existing edit (appends a variant).
-    async shorten(seg, ev) {
-      if (ev) ev.stopPropagation();
+    async draft(i) {
+      const v = this.versions[i];
+      if (v.busy) return;
+      v.busy = true; this.model.note = 'loading';
+      try {
+        const engine = await this.ensureModel();
+        this.model.note = 'drafting';
+        v.text = await this.generate(engine, this.original);
+        if (!v.note) v.note = 'Drafted in-browser by Llama-3.2-1B.';
+      } catch (e) {
+        this.linkError = 'Local model unavailable: ' + e.message + ' Paste a version in instead.';
+      } finally { v.busy = false; this.model.note = ''; }
+    },
+
+    async shorten(seg) {
       if (seg.busy) return;
-
-      // Promote an equal sentence to an editable span first.
-      if (seg.kind === 'equal') {
-        const promoted = {
-          id: seg.id, kind: 'edit', original: seg.text, busy: true, error: '',
-          selected: 'original',
-          options: [{ id: 'original', label: 'Original', text: seg.text, tone: 'reject', isOriginal: true }],
-        };
-        const i = this.segments.findIndex(s => s.id === seg.id);
-        this.segments.splice(i, 1, promoted);
-        seg = promoted;
-        if (this.activeId !== null) this.activeId = seg.id;
-      }
-
-      const base = seg.original || this.selectedText(seg) || '';
+      const base = seg.options[0].text;
       const lead = (base.match(/^\s*/) || [''])[0];
       const trail = (base.match(/\s*$/) || [''])[0];
-
       seg.busy = true; seg.error = '';
       try {
         const engine = await this.ensureModel();
         const out = await this.generate(engine, base.trim());
         if (!out) throw new Error('Model returned nothing.');
-        const n = seg.options.filter(o => o.tone === 'custom').length + 1;
-        const id = 'model' + n;
-        seg.options.push({ id, label: 'Model' + (n > 1 ? ' ' + n : ''), text: lead + out + trail, tone: 'custom' });
-        seg.selected = id;
+        this.addOption(seg, 'Local', lead + out + trail);
       } catch (e) {
         seg.error = e.message;
-      } finally {
-        seg.busy = false;
-      }
-    },
-
-    // ── inputs ───────────────────────────────────────────────────────
-    clearAll() { this.original = ''; this.proposal = ''; this.segments = []; },
-    loadExample() {
-      this.original = "In light of the fact that the committee had not yet reached a final determination on the matter, it was decided by the members that they would postpone the vote until such time as additional information could be gathered and reviewed in a comprehensive manner. It is worth noting that several of the participants expressed a degree of concern regarding the timeline, which they felt was perhaps somewhat too aggressive given the current circumstances.";
-      this.proposal = "Because the committee had not yet decided, the members postponed the vote until they could gather and review more information. Several participants worried the timeline was too aggressive.";
+      } finally { seg.busy = false; }
     },
   };
 }

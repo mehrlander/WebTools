@@ -5,3 +5,8 @@ __pycache__/
 dist/*
 !dist/web-tools.js
 package-lock.json
+
+# bake-page scratch (scripts/bake.js writes these beside the input)
+_bake_in.css
+_bake_out.css
+_bake_src.html

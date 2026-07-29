@@ -1,0 +1,35 @@
+{
+ "kind": "shorter/2",
+ "title": "Committee note",
+ "source": "",
+ "original": "# Committee note\n\nIn light of the fact that the committee had not yet reached a final determination on the matter, it was decided by the members that they would postpone the vote until such time as additional information could be gathered and reviewed in a comprehensive manner.\n\nIt is worth noting that several of the participants expressed a degree of concern regarding the timeline, which they felt was perhaps somewhat too aggressive given the current circumstances.\n\nThe chair undertook to circulate a revised schedule in advance of the next meeting, which is currently anticipated to take place in the early part of next month.\n",
+ "proposals": [
+  {
+   "label": "Tight",
+   "note": "Same coverage, plainer sentences.",
+   "blocks": {
+    "1": "Because the committee had not yet decided, the members postponed the vote until they could gather and review more information.",
+    "2": "Several participants worried the timeline was too aggressive.",
+    "3": "The chair will circulate a revised schedule before the next meeting, expected early next month."
+   }
+  },
+  {
+   "label": "Terse",
+   "note": "Cuts the scheduling detail.",
+   "blocks": {
+    "1": "Because the committee had not yet decided, the members postponed the vote until they could gather and review more information.",
+    "2": "Several participants called the timeline too aggressive.",
+    "3": ""
+   }
+  },
+  {
+   "label": "Minutes",
+   "note": "Reduced to the decisions only.",
+   "blocks": {
+    "1": "The committee postponed the vote pending more information.",
+    "2": "Several participants objected to the timeline.",
+    "3": "The chair will circulate a revised schedule before the next meeting."
+   }
+  }
+ ]
+}
