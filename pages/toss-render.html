@@ -319,8 +319,8 @@
   // same-origin, so the frame's resolved <link rel=icon> is readable directly,
   // which picks up gh-boot's runtime injection (the hex nut, on any lib page
   // declaring no icon of its own) and any page that sets its icon late. The
-  // alternative — parsing the fetched source, or reading `icon` out of
-  // .web-tools.json — reconstructs what the icon OUGHT to be and gets the
+  // alternative (parsing the fetched source, or reading `icon` out of
+  // .web-tools.json) reconstructs what the icon OUGHT to be and gets the
   // runtime cases wrong. Read the href ATTRIBUTE, not the property: the
   // property is already resolved against the <base> addressHtml stamps, and a
   // private repo's icon file is not fetchable from that URL without the token.
