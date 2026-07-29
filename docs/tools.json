@@ -1,7 +1,7 @@
 {
   "note": "Curated list of utility pages surfaced by show-repo's Tools view (lib/alpineComponents/tools.js). Hand-maintained, a sibling to pins and stage.files, not generated. Each entry is { path, title, note, icon }; path is a bare hub path (mehrlander/web-tools at main) or a qualified cross-repo ref (owner/repo[@ref]:path), the same grammar as a pages catalog entry.",
   "items": [
-    { "path": "pages/diff-tool.html", "title": "Diff", "note": "Drop-in side-by-side text compare.", "icon": "ph-git-diff" },
+    { "path": "pages/diff-tool.html", "title": "Diff", "note": "Full-window side-by-side compare: URL, GitHub or file sources, normalize, patch.", "icon": "ph-git-diff" },
     { "path": "pages/table-compress.html", "title": "Transform", "note": "Row transform with a brotli/gz bundle round-trip.", "icon": "ph-function" },
     { "path": "pages/compression-helper.html", "title": "Compression Helper", "note": "Pack a bookmarklet with compression.", "icon": "ph-file-zip" },
     { "path": "pages/shorter.html", "title": "Shorter", "note": "Adjudicate a shorter draft against your text, word-diffed.", "icon": "ph-scissors" }
