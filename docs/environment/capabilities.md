@@ -209,6 +209,13 @@ The GitHub MCP tools are the only path to the GitHub API from this box: a direct
 than from GitHub. That matters here because it removes the obvious way to check
 what the API actually stored.
 
+The token is not inert, which is what makes this worth stating precisely
+(*sharpened 2026-07-29*): `GET /user` returns 200 and identifies the account.
+Only repository-scoped paths are refused, and account-wide ones are refused
+separately with `sessions are bound to their configured repositories`. So the
+token reaches identity and nothing else, and an authenticated probe against
+`/user` is not evidence that the API is usable.
+
 **Reading a pull request body through `pull_request_read` does not return the
 body as written.** The readback strips HTML comments and HTML tags, and it does
 so anywhere in the string, including inside code spans and fenced blocks, which
@@ -287,6 +294,9 @@ Controls, all in the same body or an adjacent one:
 | `mehrlander.github.io/…/toss-render.html#gz=<base64url>` | link survives (bodies merged through 2026-07-12, preserved in [MERGE-GUIDE.md](../MERGE-GUIDE.md)) |
 | `mehrlander.github.io/…/toss-render.html#gh=owner/repo@ref:path` | **URL wrapped in double backticks** |
 | the same, percent-encoded as `%40` and `%3A` | **still wrapped** |
+| `github.com/…/blob/main/<path>#<long-hyphenated-anchor>` | **wrapped** *(2026-07-29)* |
+| `[main](<blob url>)/[diff](<compare url>)`, the caption's own pair | **wrapped from `[main](` to the end** *(2026-07-29)* |
+| a bare `blob/<branch>/<path>`, siblings in the same folder unaffected | **wrapped, inconsistently** *(2026-07-29)* |
 
 So it is neither the host, nor the fragment, nor a fragment-bearing link in
 general, and it is not the `@` or the `:` as literal characters, since encoding
@@ -302,8 +312,79 @@ GitHub. For this construct the mangling is therefore in what got stored, which
 is a different fault from the HTML-stripping readback and has to be worked
 around at write time rather than tolerated at read time.
 
+**It is not only the toss URL, and the anchor row above has a counterexample.**
+*(measured 2026-07-29)* Two further constructs mangle, both confirmed at the
+render level by `WebFetch` of the PR's own page, not merely in the readback. A
+blob URL carrying a long hyphenated heading anchor wraps, though the table's
+short-anchor row says such links survive, so anchor length or content matters and
+"survives with an anchor" is too strong. And the surfacing caption's own
+`[main](…)/[diff](…)` pair wraps as one span running from `[main](` to the end of
+the bullet, which matters more than the rest of this section: [SURFACING.md](../SURFACING.md)
+makes that pair the standard shape of every Changed row, so the default caption
+does not survive being written into a body.
+
+The trigger still is not isolated, and the earlier judgment that isolating it is
+not worth a write per probe stands. Rewriting a body into plain standalone
+`[label](url)` rows, no pairs and no anchors, cut it from every row to one of
+nine, so it **reduces incidence and does not eliminate it**: in that rewritten
+body a bare `blob/<branch>/<path>` link wrapped while two sibling links to files
+in the same folder did not. So there is no known-safe form to prescribe, and any
+rule of the shape "this construct is fine" would be the overclaim this file's
+probing discipline warns about.
+
+What survives as guidance is a procedure, not a form: **after writing a body,
+read it back and look for `` `` `` around a URL, then rewrite or drop whatever
+wrapped.** Restructuring usually clears it (linking a folder once instead of
+three files in it). The full caption, pairs and all, still belongs in chat, where
+it renders correctly.
+
 **What to do.** Put the tappable 🥏 in **chat**, where the same markdown links
 correctly. In the body, state the toss address as a code span, which is what it
 is going to become anyway, and let the reader copy it; or reach for a form that
 survives, a `#gz=` toss or a `[new]` blob link, keeping the honesty gate in mind
 (a blob is a view, not a render).
+
+## MCP: two servers can share a tool name, and only one may work
+
+*(measured 2026-07-29)*
+
+A session carries both **built-in** MCP servers and **connectors** installed
+through claude.ai. The two can expose identical tool names, and tool discovery
+returns either. Connector calls in a web session fail:
+
+```
+MCP error -32003: MCP tool call requires approval
+```
+
+Server-level approval validation fires before Claude Code's own permission
+logic, and no approval UI is reachable from here. One tool, two servers, minutes
+apart in the same session:
+
+| Server | Log directory | `update_pull_request` |
+| --- | --- | --- |
+| `mcp__github__` (built-in) | `mcp-logs-github` | completed in 1s |
+| `mcp__8d0009e2-…__` (a GitHub connector) | `mcp-logs-8d0009e2-…` | `-32003` |
+
+**Telling them apart.** A connector is surfaced under a UUID, which names
+nothing. Its per-server log resolves it: `mcp-logs-<id>/` under
+`~/.cache/claude-cli-nodejs/<root>/` records each call under the server's real
+name (`tool_name=mcp__mehrlander__update_pull_request`). One grep, and it is
+worth making the first triage step rather than the last.
+
+**The rules.** On `-32003`, call the built-in equivalent rather than whatever
+discovery returned first. A capability that exists *only* on a connector has no
+in-session workaround, which for `add_repo` means attaching repositories when
+the session is created.
+
+Upstream reports the same failure for Gmail, Calendar, and Microsoft 365
+connectors in scheduled runs, and calls it a regression:
+[#61044](https://github.com/anthropics/claude-code/issues/61044) (open) and
+[#61027](https://github.com/anthropics/claude-code/issues/61027) (closed as a
+duplicate of #61015). Reconnecting the connector, allowlisting its tools in
+`settings.json`, and `CLAUDE_PERMISSION_MODE=bypassPermissions` were all tried
+there and all failed.
+
+**A `No token data found` line in these logs is not the tell,** though it reads
+like one. It appears throughout the log of a server whose calls succeed.
+Probing-discipline rule 1 in another costume: the conspicuous log line was the
+visible thing, and the working control was the fact.
