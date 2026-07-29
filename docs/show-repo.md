@@ -669,6 +669,27 @@ overlay link is only as durable as the branch it names: once the branch
 merges and is deleted, every probe misses and the link degrades to a plain
 main view, which is the correct end state for a preview.
 
+### Branch detail: the takeover
+
+Tapping a branch name in the Activity view's Open list opens the branch
+**here**: a full-viewport takeover whose header carries the repo, branch, PR
+number, and position (n of m), with the embedded [branch
+page](../pages/branch.html) as the body, live at its `#gh=` address so every
+fact is an API read at open time. The list supplies the sequence, frozen at
+the tap so a cache refresh cannot yank it; swipe on the header or the edge
+strips, arrow keys, or the chevrons move through it, clamped at the ends;
+Escape or the X closes. Staging a branch's changed files, the name's old tap
+action, moved into the branch menu as **Stage changed files**.
+
+This settles the host question in the branch-page-as-navigation task: the
+sequence lives in the shell, which already holds the list, and the standalone
+`branch.html` survives as both the shareable single-branch form and the
+renderer the takeover embeds, so there is exactly one branch-detail
+implementation. Once this deploys, the in-app route replaces the exit to
+GitHub as the Open row's primary read, and the 🌿 surfacing entry can point
+at `?view=activity` plus a tap rather than a tossed page (that doc update
+rides the task at merge).
+
 ### Drop a file on a branch
 
 The Activity view's branch menu carries **Drop a file here**: GitHub's
@@ -681,6 +702,14 @@ and no cleanup. In the frame vocabulary above this is a deliberately
 *ambient* write with matching frames: the form both shows and targets the
 named branch. The chat-side twin is the `drop-link` skill, which mints the
 same URL on request.
+
+Session drops are intake, not cargo: the session that receives one promotes
+or consumes it, and wrap-up leaves the intake folder empty, so a merge
+carries no drop residue. Gitignore cannot do that job (it governs untracked
+files, and a drop is a commit); the convention is the mechanism, and it is
+the same one home's `chron/dump` already runs ("trends toward empty"). A
+repo that instead wants transient bulk kept off main entirely declares a
+branch box (`"inbox": "@drops:inbox"`), per Inbox and outbox below.
 
 ## `.web-tools.json`: the repo manifest
 
