@@ -10,7 +10,9 @@
 // REPOCHIP=1 to open a row's repo chip (the repo's whole grouped menu, in the
 // shell's panel), or CHIP=1 to narrow the list to one repo through its filter
 // chip. HOVER=1 opens either menu by hovering rather than clicking, which is
-// what proves the desktop path.
+// what proves the desktop path. DETAIL=1 taps the first row's branch name so
+// the full-viewport branch-detail takeover renders (pair with --width 390
+// --height 844 for the phone posture it was built for).
 const iso = (d) => new Date(Date.now() - d * 3600000).toISOString();
 
 const ACTIVITY = {
@@ -100,6 +102,13 @@ export default async (page) => {
     const label = { landed: 'Landed', recent: 'Recent', stranded: 'Stranded', all: 'All', open: 'Open' }[process.env.SCOPE];
     await page.locator(`button:has-text("${label}")`).first().click();
     await page.waitForTimeout(400);
+  }
+  if (process.env.DETAIL) {
+    await page.evaluate(() => {
+      const d = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));
+      d.openBranchDetail(d.openRows[0]);
+    });
+    await page.waitForTimeout(900);
   }
   if (process.env.MENU) await open(page.locator('button:has-text("GitHub")').first());
   if (process.env.REPOCHIP) await open(page.locator('button[title^="Repo menu: "]').first());
