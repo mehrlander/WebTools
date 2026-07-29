@@ -153,7 +153,15 @@
       // An item's own icon wins. Failing that, a plain link borrows its area's
       // glyph, so the default says where a thing lives and only the exceptions
       // (action, repo, snippet) spend a glyph saying what they are.
-      icon(it, a) { return it.icon || (it.kind === 'link' ? (a?.icon || this.KIND.link.icon) : this.KIND[it.kind].icon) },
+      // The KIND lookup is guarded because the store is a hand-editable JSON
+      // file: an item with a missing or misspelled `kind` used to throw inside
+      // the x-for, which blanks the WHOLE BOARD rather than the one row. A bad
+      // row should cost its own glyph and nothing else.
+      icon(it, a) {
+        return it.icon
+          || (it.kind === 'link' ? (a?.icon || this.KIND.link.icon) : this.KIND[it.kind]?.icon)
+          || this.KIND.link.icon;
+      },
       accent(a) { return a?.accent || 'currentColor' },
       href(it) {
         if (!it.url) return null;                       // a reference with no address
