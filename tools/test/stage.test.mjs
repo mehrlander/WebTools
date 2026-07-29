@@ -38,9 +38,12 @@ const { window, problems } = makeWindow({
 
 // alpine-bundle.js defines the browser store; the stager composes dropZone and
 // pathPicker, and its inline preview mounts a viewer, so all three must be
-// registered before it mounts.
+// registered before it mounts. kits/text-diff.js is the Diff lens's engine,
+// shared with pages/diff-tool.html: it attaches window.textDiff, which the
+// stager's diffLines requires.
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
+  'lib/kits/text-diff.js',
   'lib/alpineComponents/drop-zone.js',
   'lib/alpineComponents/path-picker.js',
   'lib/alpineComponents/viewer.js',
@@ -334,6 +337,37 @@ test('runDiff resolves a local text item against a ref item', async () => {
   assert.ok(data.diffRows, 'diff produced');
   assert.deepEqual(plain_(data.diffRows.filter(r => r.t !== 'ctx')), [{ t: 'add', line: 'extra' }]);
   assert.equal(data.diffStat, '+1 \u22120');
+});
+
+test('diffHandoff builds the Diff page address, honoring ref overrides', () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'lib/x.js' },
+    { repo: 'me/b', ref: 'feat/y', path: 'docs/z.md' },
+  ];
+  data.diffA = 0; data.diffB = 1; data.diffARef = ''; data.diffBRef = '';
+  const u = new URL(data.diffHandoff);
+  assert.match(u.pathname, /\/diff-tool\.html$/, 'points at the Diff page');
+  assert.equal(u.searchParams.get('a'), 'me/a:lib/x.js');
+  assert.equal(u.searchParams.get('b'), 'me/b@feat/y:docs/z.md');
+
+  // An override ref is what makes same-file-twice a version diff, so the
+  // handoff has to carry it, not the item's own ref.
+  data.diffARef = 'main';
+  assert.equal(new URL(data.diffHandoff).searchParams.get('a'), 'me/a@main:lib/x.js');
+  data.diffARef = '';
+});
+
+test('diffHandoff hides when either side is a local file', () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'lib/x.js' },
+    { local: true, id: 98, name: 'pasted.txt', path: 'pasted.txt', size: 4, isText: true, text: 'hi' },
+  ];
+  data.diffA = 0; data.diffB = 1;
+  assert.equal(data.diffHandoff, '', 'a dropped file has no address to hand over');
+  data.diffB = 0;
+  assert.ok(data.diffHandoff, 'two repo items are handoffable');
 });
 
 test('whereFrom reads as repo short name, then the folder', () => {

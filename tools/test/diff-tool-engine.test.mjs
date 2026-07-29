@@ -1,15 +1,20 @@
-// Holds pages/diff-tool.html's patience/Myers line differ to its contract.
+// Holds kits/text-diff.js and pages/diff-tool.html to their contracts.
 //
-// The engine is the part of that page with no visual tell when it goes wrong: a
-// mis-anchored diff still renders as a clean grid. So the ops sequence is
-// checked structurally (it must reconstruct both sides exactly) and its edit
-// count is compared against a brute-force LCS, which is optimal by
+// The engine is the part with no visual tell when it goes wrong: a mis-anchored
+// diff still renders as a clean grid. So the ops sequence is checked
+// structurally (it must reconstruct both sides exactly and stay monotone) and
+// its edit count is compared against a brute-force LCS, which is optimal by
 // construction. Patience diff is allowed to be non-minimal, since anchoring on
 // unique lines is the point, but it must stay within a stated factor.
 //
-// The component factory is lifted out of the page and evaluated directly: it
-// touches `this.$watch` only inside init(), so the diff methods run against a
-// bare object with no Alpine and no DOM.
+// Two subjects, loaded the way each is written. The kit is a plain IIFE that
+// attaches window.textDiff, so it is evaluated against a global stub. The
+// page's component factory is lifted out of the HTML and evaluated directly: it
+// touches `this.$watch` only inside init(), so its normalization, patch and
+// state methods run against a bare object with no Alpine and no DOM.
+//
+// The kit is shared with the stage's Diff lens (lib/alpineComponents/stage.js),
+// so these tests cover both consumers' engine.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,13 +28,19 @@ import { JSDOM } from 'jsdom';
 globalThis.DOMParser = new JSDOM('').window.DOMParser;
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const html = await readFile(path.join(repoRoot, 'pages', 'diff-tool.html'), 'utf8');
 
-// The page's last <script> block is the component; take it whole.
+// The kit: a plain IIFE that attaches window.textDiff.
+const kitSrc = await readFile(path.join(repoRoot, 'lib', 'kits', 'text-diff.js'), 'utf8');
+const win = globalThis;
+new Function('window', kitSrc)(win);
+const textDiff = win.textDiff;
+assert.ok(textDiff && textDiff.lines, 'kits/text-diff.js did not attach window.textDiff');
+
+// The page component, for the layers above the engine.
+const html = await readFile(path.join(repoRoot, 'pages', 'diff-tool.html'), 'utf8');
 const blocks = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 const src = blocks.find(b => b.includes('function diffApp()'));
 assert.ok(src, 'diffApp() factory not found in pages/diff-tool.html');
-
 const app = new Function(src + '\nreturn diffApp();')();
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -178,13 +189,14 @@ test('two unrelated large texts degrade to a replacement, and say so', () => {
   const ops = app.diffLines(a, b);
   assert.deepEqual(reconstruct(ops, a, b).left, a);
   assert.deepEqual(reconstruct(ops, a, b).right, b);
-  assert.match(app._diffWarn, /too different to align/);
+  assert.match(textDiff.lastWarning, /too different to align/);
   assert.equal(editCount(ops), 6000);
 });
 
 test('the warning clears on the next clean diff', () => {
   app.diffLines(['x'], ['y']);
-  assert.equal(app._diffWarn, '', 'a small diff should leave no warning behind');
+  assert.equal(textDiff.lastWarning, '', 'a small diff should leave no warning behind');
+  assert.equal(app._diffWarn, '', 'the page mirrors the kit rather than keeping its own');
 });
 
 test('randomised inputs always reconstruct', () => {
@@ -336,4 +348,64 @@ test('a v1 file from the previous page still opens', () => {
 
 test('an unknown state version is refused', () => {
   assert.throws(() => app.loadState({ v: 99 }), /Unsupported file version/);
+});
+
+// ── the kit's own surface, which the stage's Diff lens uses ─────────────────
+
+test('the page and the kit are the same engine, not two copies', () => {
+  const a = ['x', 'y', 'z'], b = ['x', 'Y', 'z'];
+  assert.deepEqual(app.diffLines(a, b), textDiff.lines(a, b));
+  assert.deepEqual(app.wordDiff('a b', 'a c'), textDiff.words('a b', 'a c'));
+  assert.equal(app.esc('<x>'), textDiff.esc('<x>'));
+});
+
+test('rows() flattens ops to the stage lens shape, with full context', () => {
+  const a = ['keep', 'old', 'tail'], b = ['keep', 'new', 'tail'];
+  const rows = textDiff.rows(textDiff.lines(a, b), a, b);
+  assert.deepEqual(rows, [
+    { t: 'ctx', line: 'keep' },
+    { t: 'del', line: 'old' },
+    { t: 'add', line: 'new' },
+    { t: 'ctx', line: 'tail' },
+  ]);
+});
+
+test('rows() reconstructs both sides too, so a copied dump is faithful', () => {
+  const a = Array.from({ length: 300 }, (_, i) => 'a' + i);
+  const b = a.slice();
+  b.splice(50, 5);
+  b.splice(120, 0, 'inserted one', 'inserted two');
+  b[200] = 'changed';
+  const rows = textDiff.rows(textDiff.lines(a, b), a, b);
+  assert.deepEqual(rows.filter(r => r.t !== 'add').map(r => r.line), a);
+  assert.deepEqual(rows.filter(r => r.t !== 'del').map(r => r.line), b);
+});
+
+test('the pair the stage used to refuse now diffs', () => {
+  // stage.js capped its old LCS table at n*m > 4,000,000 and threw "files too
+  // large to diff". This pair is 25 million cells.
+  const a = Array.from({ length: 5000 }, (_, i) => 'line ' + i);
+  const b = a.slice();
+  b[4999] = 'line 4999 changed';
+  const rows = textDiff.rows(textDiff.lines(a, b), a, b);
+  assert.equal(rows.filter(r => r.t === 'add').length, 1);
+  assert.equal(rows.filter(r => r.t === 'del').length, 1);
+});
+
+test('words() handles a null or empty side without throwing', () => {
+  assert.deepEqual(textDiff.words('', ''), { lh: '', rh: '' });
+  const { lh, rh } = textDiff.words(null, 'added');
+  assert.equal(lh, '');
+  assert.match(rh, /w-add/);
+});
+
+test('an indented changed line emits no empty highlight spans', () => {
+  // '  x'.split(/(\s+)/) leads with an empty token; wrapping it produced a
+  // zero-width colored span on every indented line the diff touched.
+  const { lh, rh } = textDiff.words('    return old;', '    return next;');
+  for (const html of [lh, rh]) {
+    assert.ok(!/<span class="w-(add|del)"><\/span>/.test(html), `empty span in ${html}`);
+  }
+  assert.match(lh, /w-del/);
+  assert.match(rh, /w-add/);
 });

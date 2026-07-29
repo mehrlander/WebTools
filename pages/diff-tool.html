@@ -29,6 +29,8 @@
   }
   await gh.load('url-params.js');
   await gh.load('repo-address.js');
+  await gh.load('kits/text-diff.js');
+  await gh.load('alpineComponents/path-picker.js');
   // Alpine last, so the component's init() finds both helpers defined.
   await gh.load('alpine-bundle.js');
 </script>
@@ -65,15 +67,10 @@
   side looks like HTML the tags found in it appear as chips, and clicking one
   adds a rule that strips it.
 
-  THE ENGINE is patience diff over lines: trim the shared prefix and suffix,
-  anchor on lines occurring exactly once on each side, take the longest
-  increasing subsequence of those anchors, and recurse into the gaps, running
-  Myers only on anchor-free blocks. This replaces an O(n*m) DP table that
-  allocated n*m int32s and could not survive two long documents (two 5,000-line
-  files wanted 100 MB). It also aligns better, since a once-only line is a more
-  reliable anchor than whatever an LCS walk happens to pair up. Anchor-free
-  blocks are capped (MYERS_CAP); past that the block is reported as a single
-  replacement and the page says so, rather than hanging.
+  THE ENGINE is kits/text-diff.js, patience diff over lines, shared with the
+  stage's Diff lens rather than inlined here. It replaced an O(n*m) DP table
+  that allocated n*m int32s and could not survive two long documents. The why,
+  the trade, and the caps are documented in the kit.
 
   Input by URL, fragment first, query as fallback (lib/url-params.js):
     #d=<base64url>        gzipped full state, what "Copy share link" writes
@@ -147,6 +144,14 @@
 
   textarea.slot { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
                   font-size: 12px; line-height: 1.6; }
+
+  /* One height for every control in a slot's loader row. daisyUI's -xs sizes do
+     not agree across input, select and btn, so a joined input and button came
+     out mismatched: the button sat short inside the taller field with visible
+     gaps above and below it. Stating the height once makes the join flush and
+     survives whatever the size tokens do next. */
+  .lctl { height: 1.75rem; min-height: 1.75rem; }
+  .lctl.select { padding-top: 0; padding-bottom: 0; }
 </style>
 </head>
 
@@ -376,7 +381,7 @@
         </div>
 
         <div class="shrink-0 flex items-center gap-1 px-2 py-1.5 border-b border-base-300 bg-base-200/60">
-          <select x-model="slots[id].src" class="select select-xs select-bordered shrink-0 w-[5.5rem] font-mono text-[11px]">
+          <select x-model="slots[id].src" class="select select-xs select-bordered lctl shrink-0 w-[5.5rem] font-mono text-[11px]">
             <option value="url">URL</option>
             <option value="gh">GitHub</option>
             <option value="file">File</option>
@@ -387,8 +392,8 @@
             <div class="join grow min-w-0">
               <input x-model="slots[id].value" @keydown.enter="fill(id)"
                      :placeholder="slots[id].src === 'gh' ? 'owner/repo[@ref]:path' : 'https://…'"
-                     class="input input-xs input-bordered join-item grow min-w-0 font-mono text-[11px]">
-              <button class="btn btn-xs btn-primary join-item" @click="fill(id)" :disabled="slots[id].loading">
+                     class="input input-xs input-bordered lctl join-item grow min-w-0 font-mono text-[11px]">
+              <button class="btn btn-xs btn-primary lctl join-item px-3" @click="fill(id)" :disabled="slots[id].loading">
                 <span x-show="slots[id].loading" class="loading loading-spinner loading-xs"></span>
                 <span x-show="!slots[id].loading">Get</span>
               </button>
@@ -396,14 +401,27 @@
           </template>
 
           <template x-if="slots[id].src === 'file'">
-            <button class="btn btn-xs btn-ghost border border-base-300 grow" @click="pickFile(id)">
+            <button class="btn btn-xs btn-ghost border border-base-300 lctl grow" @click="pickFile(id)">
               <i class="ph ph-upload-simple"></i>Choose a file</button>
           </template>
 
           <template x-if="slots[id].src === 'paste'">
-            <button class="btn btn-xs btn-ghost border border-base-300 grow" @click="pasteInto(id)">
+            <button class="btn btn-xs btn-ghost border border-base-300 lctl grow" @click="pasteInto(id)">
               <i class="ph ph-clipboard-text"></i>Paste from clipboard</button>
           </template>
+        </div>
+
+        <!-- The @-grab row, GitHub mode only. pathPicker is the sibling of the
+             mention component built for exactly this case: where mention embeds
+             an @path inside prose, this one is for when the path IS the field.
+             It is a tap-through tree with no text input, so no mobile keyboard
+             and no iOS focus zoom. The address field above stays authoritative:
+             a pick writes into it, so a picked file and a pasted address end up
+             in the same place and both survive into the share link. -->
+        <div class="shrink-0 px-2 pb-1.5 bg-base-200/60" x-show="slots[id].src === 'gh'" x-cloak>
+          <div :id="'grab-' + id"
+               x-data="pathPicker({ mode: 'file', roots: () => grabRoots(), placeholder: '@ grab a file from a repo' })"
+               @path-pick="onGrab(id, $event.detail)"></div>
         </div>
 
         <p class="shrink-0 px-2 py-1 text-[11px] text-error leading-snug" x-show="slots[id].error"
@@ -528,15 +546,6 @@
 
 <script>
 function diffApp() {
-  // Blocks with no unique anchor line fall through to Myers. The cap bounds its
-  // trace memory (about cap^2 int32s worst case); past it the block is reported
-  // as one replacement, which is the honest answer for two texts with nothing
-  // in common, and the page says so.
-  const MYERS_CAP = 1200;
-  // A changed line pair is word-diffed only when both sides are short enough
-  // that the O(n*m) token walk stays cheap. Minified JS and long bill
-  // paragraphs are exactly what this guard is for.
-  const WORD_CAP = 600;
   // Past this the grid stops being readable and the browser starts to hurt.
   const ROW_CAP = 6000;
   // Per-side localStorage ceiling. Above it the text is not persisted, but the
@@ -580,6 +589,9 @@ function diffApp() {
       B: { src: 'url', value: '', name: '', content: '', loading: false, error: '' },
     },
 
+    // Repos the page has read from, newest first: the @-grab picker's roots.
+    recentRepos: [],
+
     rows: [], unified: [], patch: '', patchLines: [],
     stats: { add: 0, del: 0, sim: 100 },
     numChanges: 0, curChange: 0, gapCount: 0,
@@ -593,6 +605,15 @@ function diffApp() {
       // Two columns of code do not fit a phone, so the narrow default is
       // unified. A stored preference wins over it.
       this.view = window.innerWidth < 768 ? 'unified' : 'split';
+      // pathPicker reads its GH instance from the shared browser store, which
+      // the show-repo shell normally fills. This page has no shell, so it seeds
+      // the store itself from its own boot instance.
+      const store = Alpine.store('browser');
+      if (store && !store.gh && window.gh) {
+        store.gh = window.gh;
+        store.repo = gh.repo || '';
+        store.ref = gh.ref || '';
+      }
       this.restore();
       await this.loadFromUrl();
       this.applySource = this.slots.A.content;
@@ -702,6 +723,36 @@ function diffApp() {
       const s = this.slots[id];
       s.content = file.text;
       if (!s.name) s.name = addr.path.split('/').pop() + (addr.ref ? '@' + addr.ref : '');
+      this.rememberRepo(addr.repo);
+    },
+
+    // ── the @ grab row ───────────────────────────────────────────────────
+    // pathPicker fetches each root's whole tree eagerly at first open, so the
+    // root set has to stay small. Repos this page has actually read from are the
+    // useful set, newest first, with the hub repo as the standing fallback so
+    // the picker is never empty on a first visit.
+    grabRoots() {
+      const roots = this.recentRepos.slice(0, 6).map(repo => ({ repo, ref: '' }));
+      const hub = window.gh && gh.repo;
+      if (hub && !roots.some(r => r.repo === hub)) roots.push({ repo: hub, ref: '' });
+      return roots;
+    },
+
+    rememberRepo(repo) {
+      if (!repo) return;
+      this.recentRepos = [repo, ...this.recentRepos.filter(r => r !== repo)].slice(0, 8);
+      this.persist();
+    },
+
+    // A pick writes the address into the slot's field and loads it, so the
+    // picker is a way to fill that input rather than a second source of truth.
+    // That keeps one value flowing into ?a=/?b= and the share link.
+    onGrab(id, detail) {
+      if (!detail || !detail.repo || !detail.path) return;
+      const spec = detail.repo + (detail.ref ? '@' + detail.ref : '') + ':' + detail.path;
+      this.slots[id].src = 'gh';
+      this.slots[id].value = spec;
+      this.fill(id);
     },
 
     readFailure(e, src, spec) {
@@ -801,149 +852,20 @@ function diffApp() {
       this.tags = [...seen].sort().slice(0, 60);
     },
 
-    // ── diff engine: patience over lines ─────────────────────────────────
-    // Trim the shared prefix and suffix, anchor on lines occurring exactly once
-    // on each side, take the longest increasing subsequence of those anchors,
-    // and recurse into the gaps. Myers runs only on anchor-free blocks, so its
-    // cost tracks the real difference rather than the product of the lengths.
+    // ── diff engine ──────────────────────────────────────────────────────
+    // The engine lives in kits/text-diff.js so this page and the stage's Diff
+    // lens share one implementation. It used to be inlined here, which is how
+    // the repo ended up with two LCS tables that disagreed about how large a
+    // document was too large.
     diffLines(a, b) {
-      this._diffWarn = '';
-      const ops = [];
-      this._patience(a, b, 0, a.length, 0, b.length, ops, 0);
+      const ops = textDiff.lines(a, b);
+      this._diffWarn = textDiff.lastWarning;
       return ops;
     },
 
-    _patience(a, b, lo1, hi1, lo2, hi2, out, depth) {
-      while (lo1 < hi1 && lo2 < hi2 && a[lo1] === b[lo2]) out.push({ type: 'eq', a: lo1++, b: lo2++ });
-      const tail = [];
-      while (lo1 < hi1 && lo2 < hi2 && a[hi1 - 1] === b[hi2 - 1]) {
-        hi1--; hi2--;
-        tail.push({ type: 'eq', a: hi1, b: hi2 });
-      }
+    wordDiff(o, m) { return textDiff.words(o, m); },
 
-      if (lo1 === hi1 || lo2 === hi2) {
-        for (let i = lo1; i < hi1; i++) out.push({ type: 'del', a: i });
-        for (let j = lo2; j < hi2; j++) out.push({ type: 'add', b: j });
-      } else {
-        const anchors = depth < 32 ? this._anchors(a, b, lo1, hi1, lo2, hi2) : [];
-        if (anchors.length) {
-          let x = lo1, y = lo2;
-          for (const pair of anchors) {
-            this._patience(a, b, x, pair[0], y, pair[1], out, depth + 1);
-            out.push({ type: 'eq', a: pair[0], b: pair[1] });
-            x = pair[0] + 1; y = pair[1] + 1;
-          }
-          this._patience(a, b, x, hi1, y, hi2, out, depth + 1);
-        } else {
-          const mid = this._myers(a, b, lo1, hi1, lo2, hi2);
-          if (mid) {
-            for (const op of mid) out.push(op);
-          } else {
-            this._diffWarn = 'One block was too different to align; shown as a replacement.';
-            for (let i = lo1; i < hi1; i++) out.push({ type: 'del', a: i });
-            for (let j = lo2; j < hi2; j++) out.push({ type: 'add', b: j });
-          }
-        }
-      }
-      for (let i = tail.length - 1; i >= 0; i--) out.push(tail[i]);
-    },
-
-    // Lines appearing exactly once in each range, paired up, then the longest
-    // increasing subsequence by b-index. A once-only line is a far better
-    // anchor than whatever an LCS walk happens to match.
-    _anchors(a, b, lo1, hi1, lo2, hi2) {
-      const ca = new Map(), cb = new Map();
-      for (let i = lo1; i < hi1; i++) ca.set(a[i], (ca.get(a[i]) || 0) + 1);
-      for (let j = lo2; j < hi2; j++) cb.set(b[j], (cb.get(b[j]) || 0) + 1);
-      const posB = new Map();
-      for (let j = lo2; j < hi2; j++) if (cb.get(b[j]) === 1 && ca.get(b[j]) === 1) posB.set(b[j], j);
-      const pairs = [];
-      for (let i = lo1; i < hi1; i++) {
-        if (ca.get(a[i]) !== 1) continue;
-        const j = posB.get(a[i]);
-        if (j !== undefined) pairs.push([i, j]);
-      }
-      if (pairs.length < 2) return pairs;
-
-      // Patience sorting: one pile per strictly increasing b-index, each new
-      // card carrying a back-pointer to the top of the pile to its left.
-      const tops = [], piles = [], back = new Array(pairs.length).fill(-1);
-      for (let k = 0; k < pairs.length; k++) {
-        const j = pairs[k][1];
-        let lo = 0, hi = tops.length;
-        while (lo < hi) { const m = (lo + hi) >> 1; if (tops[m] < j) lo = m + 1; else hi = m; }
-        tops[lo] = j;
-        piles[lo] = k;
-        back[k] = lo > 0 ? piles[lo - 1] : -1;
-      }
-      const seq = [];
-      for (let k = piles[piles.length - 1]; k >= 0; k = back[k]) seq.push(pairs[k]);
-      return seq.reverse();
-    },
-
-    // Myers O(ND) over a[lo1,hi1) against b[lo2,hi2). Returns ops, or null when
-    // the edit distance exceeds MYERS_CAP.
-    _myers(a, b, lo1, hi1, lo2, hi2) {
-      const n = hi1 - lo1, m = hi2 - lo2;
-      const max = Math.min(MYERS_CAP, n + m);
-      const off = max + 1;
-      const v = new Int32Array(2 * max + 3).fill(-1);
-      v[off + 1] = 0;
-      const trace = [];
-      let found = -1;
-      for (let d = 0; d <= max && found < 0; d++) {
-        // Only |k| <= d is live at depth d, so a snapshot is 2d+3 wide rather
-        // than full width: the trace costs about d^2, not d*(n+m).
-        trace.push(v.slice(off - d - 1, off + d + 2));
-        for (let k = -d; k <= d; k += 2) {
-          let x = (k === -d || (k !== d && v[off + k - 1] < v[off + k + 1]))
-            ? v[off + k + 1]
-            : v[off + k - 1] + 1;
-          let y = x - k;
-          while (x < n && y < m && a[lo1 + x] === b[lo2 + y]) { x++; y++; }
-          v[off + k] = x;
-          if (x >= n && y >= m) { found = d; break; }
-        }
-      }
-      if (found < 0) return null;
-
-      const ops = [];
-      let x = n, y = m;
-      for (let d = found; d > 0; d--) {
-        const vp = trace[d], vo = d + 1;   // trace[d] is indexed by k + (d + 1)
-        const k = x - y;
-        const prevK = (k === -d || (k !== d && vp[vo + k - 1] < vp[vo + k + 1])) ? k + 1 : k - 1;
-        const prevX = vp[vo + prevK], prevY = prevX - prevK;
-        while (x > prevX && y > prevY) { x--; y--; ops.push({ type: 'eq', a: lo1 + x, b: lo2 + y }); }
-        if (x > prevX) { x--; ops.push({ type: 'del', a: lo1 + x }); }
-        else { y--; ops.push({ type: 'add', b: lo2 + y }); }
-      }
-      while (x > 0 && y > 0) { x--; y--; ops.push({ type: 'eq', a: lo1 + x, b: lo2 + y }); }
-      return ops.reverse();
-    },
-
-    // Word-level LCS inside one changed line pair. Small by construction, so
-    // the plain DP is the right tool; WORD_CAP keeps a pathological line out.
-    wordDiff(o, m) {
-      const oa = o.split(/(\s+)/), ma = m.split(/(\s+)/);
-      if (oa.length > WORD_CAP || ma.length > WORD_CAP) return { lh: this.esc(o), rh: this.esc(m) };
-      const n = oa.length, w = ma.length;
-      const dp = Array.from({ length: n + 1 }, () => new Int32Array(w + 1));
-      for (let i = n - 1; i >= 0; i--)
-        for (let j = w - 1; j >= 0; j--)
-          dp[i][j] = oa[i] === ma[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
-      let lh = '', rh = '', i = 0, j = 0;
-      while (i < n && j < w) {
-        if (oa[i] === ma[j]) { lh += this.esc(oa[i++]); rh += this.esc(ma[j++]); }
-        else if (dp[i + 1][j] >= dp[i][j + 1]) lh += '<span class="w-del">' + this.esc(oa[i++]) + '</span>';
-        else rh += '<span class="w-add">' + this.esc(ma[j++]) + '</span>';
-      }
-      while (i < n) lh += '<span class="w-del">' + this.esc(oa[i++]) + '</span>';
-      while (j < w) rh += '<span class="w-add">' + this.esc(ma[j++]) + '</span>';
-      return { lh, rh };
-    },
-
-    esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); },
+    esc(s) { return textDiff.esc(s); },
     key(s) {
       let v = s;
       if (this.ignoreWs) v = v.replace(/\s+/g, ' ').trim();
@@ -1330,6 +1252,7 @@ function diffApp() {
         localStorage.setItem('diffTool.v2', JSON.stringify({
           view: this.view, wrap: this.wrap, fontStep: this.fontStep,
           stripHtml: this.stripHtml, rules: this.rules, slots,
+          recentRepos: this.recentRepos,
         }));
       } catch { /* quota, or a private window: the tool still works */ }
     },
@@ -1343,6 +1266,7 @@ function diffApp() {
       if (typeof saved.fontStep === 'number') this.fontStep = saved.fontStep;
       this.stripHtml = !!saved.stripHtml;
       if (Array.isArray(saved.rules)) this.rules = saved.rules;
+      if (Array.isArray(saved.recentRepos)) this.recentRepos = saved.recentRepos.filter(r => typeof r === 'string');
       for (const id of ['A', 'B']) {
         const s = saved.slots && saved.slots[id];
         if (s) Object.assign(this.slots[id], {
