@@ -203,8 +203,11 @@ test('tapping a row takes over: frozen sequence, position, clamped stepping', ()
   assert.equal(data.detailRow.name, row.name);
   assert.equal(data.detailUrl,
     '../branch.html?swipe=me%2Ftools%40feat%2Fb#gh=me/tools@feat/b');
+  assert.equal(data.detailReady, false, 'the facts card is the content until the page reports ready');
+  data.detailReady = true;                 // as if the embedded brief reported in
   data.detailStep(1);
   assert.equal(data.detailRow.name, 'fresh');
+  assert.equal(data.detailReady, false, 'stepping re-arms the instant layer');
   data.detailStep(1);
   assert.equal(data.detail.i, 2, 'clamped at the end, no wrap');
   data.detailStep(-1); data.detailStep(-1); data.detailStep(-1);
