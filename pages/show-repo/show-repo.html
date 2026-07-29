@@ -143,6 +143,35 @@
            from a header shield. -->
       <div id="repo" x-data="repo({ inline: true })" class="min-w-0"></div>
       <div class="grow"></div>
+
+      <!-- ── The rail: the far end of the header ──────────────────────────
+           The `rail: true` items of the links board (loadRail), which are
+           destinations rather than views: they leave the app, or open a repo
+           in it. That is a different verb from switching a pane, so they sit
+           at the OPPOSITE END from the nav rather than as a third group in it.
+           Icon-only, because the set is small, recognizable, and daily; the
+           title and note ride the tooltip, and the Links view carries the full
+           board with every label spelled out.
+
+           Desktop only, and this is the one place the two viewports differ:
+           the nav already scrolls at phone widths, so a second header cluster
+           there would compete for the same overflow. Below lg the rail renders
+           in the sidebar instead (its own block under App views), which is
+           where a phone reaches it. -->
+      <!-- No rule on this side: the flexible gap after the nav is already the
+           separation, and a border with nothing after it reads as a stray line
+           against the window edge. -->
+      <div x-show="rail.length" class="hidden lg:flex items-center gap-0.5 shrink-0">
+        <template x-for="it in rail" :key="it.key">
+          <a :href="it.url || null" :target="it.url ? '_blank' : null" :rel="it.url ? 'noopener' : null"
+             @click="it.repo && (openPinned(it.repo), $event.preventDefault())"
+             :title="it.title + (it.note ? ' — ' + it.note : '')"
+             class="shrink-0 p-1.5 rounded-lg text-base-content/45 hover:text-primary hover:bg-base-200 transition-colors">
+            <i class="ph text-lg leading-none" :class="it.icon"></i>
+          </a>
+        </template>
+      </div>
+
       <!-- Drawer toggle, where the sidebar is a drawer (below lg). -->
       <button @click="openSidebar()" class="shrink-0 p-1 rounded-lg hover:bg-base-200 transition-colors lg:hidden" title="Menu">
         <i class="ph ph-list text-lg leading-none"></i>
@@ -295,6 +324,44 @@
                   :class="view==='app' && appView && appView.key===v.key ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
             <i class="ph text-base" :class="v.icon"></i><span x-text="v.label"></span>
           </button>
+        </template>
+      </div>
+
+      <div class="border-t border-base-200"
+           x-show="estateCtx && sidebarAppViews.length && rail.length"></div>
+
+      <!-- The rail again, spelled out. The header cluster is icon-only and
+           desktop-only; here each item gets its label and its doors, the way
+           the links board's own masthead band renders them, since a sidebar row
+           has the width for it. This is the phone's route to the rail, and on
+           desktop it is the labeled reading of the icons above. -->
+      <div class="flex flex-col gap-0.5" x-show="estateCtx && rail.length">
+        <div class="flex items-center gap-1.5 px-2 pb-0.5">
+          <span class="text-base font-mono uppercase tracking-widest text-base-content/40">Links</span>
+          <div class="grow"></div>
+          <button x-show="railView" @click="goAppView(railView)" title="Open the links board"
+                  class="text-base-content/30 hover:text-primary transition-colors">
+            <i class="ph ph-bookmark-simple text-base leading-none"></i></button>
+        </div>
+        <template x-for="it in rail" :key="it.key">
+          <div class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-base-200 transition-colors">
+            <a :href="it.url || null" :target="it.url ? '_blank' : null" :rel="it.url ? 'noopener' : null"
+               @click="it.repo && (openPinned(it.repo), $event.preventDefault())"
+               :title="it.note || it.title"
+               class="flex items-center gap-2 min-w-0 text-base text-base-content/80 hover:text-primary transition-colors">
+              <i class="ph text-base shrink-0" :class="it.icon"></i><span class="truncate" x-text="it.title"></span>
+            </a>
+            <!-- Doors: further ways into the SAME destination, the board's own
+                 idiom. They fit here and they do not fit in an icon cluster,
+                 which is the other half of why the rail renders twice. -->
+            <template x-for="(d, di) in it.doors" :key="d.url">
+              <span class="flex items-baseline text-sm shrink-0">
+                <span x-show="di > 0" class="text-base-content/25 mr-1">·</span>
+                <a :href="d.url" target="_blank" rel="noopener"
+                   class="text-base-content/45 hover:text-primary transition-colors" x-text="d.label"></a>
+              </span>
+            </template>
+          </div>
         </template>
       </div>
 
@@ -761,6 +828,13 @@ function resolveCatalogPath(rawPath, declRepo, declRef){
   return { repo: declRepo, ref: declRef || '', path: rawPath };
 }
 
+// The links board's item kinds, as the shell renders them. It carries only the
+// glyph fallbacks pages/links.html uses, since the shell shows a rail item as a
+// destination and nothing else. `snippet` is absent on purpose: a javascript:
+// or data: URL is something to copy, not somewhere to go, so the rail drops it
+// rather than offering a button that cannot be followed.
+const RAIL_KIND = { link: 'ph-arrow-up-right', action: 'ph-lightning', repo: 'ph-folder-simple' };
+
 // marked, loaded once on demand for the overview README render.
 let _markedP = null;
 function loadMarked(){
@@ -832,6 +906,10 @@ function app(){ return {
   // rendered live through toss-render #gh=.
   appViews: [],     // resolved [{repo, path, label, icon, order, key}]
   appView: null,    // the selected app view when view==='app'
+  // The rail: `rail: true` items from the links board a repo declares with
+  // `links` in its own config (loadRail). Outbound destinations, not views, so
+  // they sit at the far end of the header rather than in the nav.
+  rail: [],         // resolved [{key, title, icon, url|repo, doors, note}]
   // Estate members for the sidebar Repos index: every repo declaring
   // estate:true in its own config, grouped/ordered like the Repos grid. Read
   // from the same config cache as appViews (loadEstateSidebar), so it is
@@ -1069,7 +1147,57 @@ function app(){ return {
       this.estateRepos = repos;
       this.estateConfigs = configs;
       this.enrichSidebarPrivacy();   // independent; the list renders without it
+      this.loadRail(configs);        // likewise: one extra GET, off the render path
     } catch { this.appViews = []; this.estateRepos = []; this.estateConfigs = {}; }
+  },
+
+  // The RAIL: the handful of destinations worth a tap from anywhere, read from
+  // the same links board pages/links.html renders, so there is no second list.
+  // A repo declares its board with `links` in its own .web-tools.json (a bare
+  // path, or a qualified owner/repo[@ref]:path), the way `pages` declares a
+  // catalog; the shell reads it and keeps the items flagged `rail: true`.
+  //
+  // Why the shell reads the file rather than the page handing it up: promoted
+  // as an app view, links.html renders in an iframe, and an iframe cannot paint
+  // into its parent's chrome. That constraint is real but narrow, and it says
+  // nothing about where the DATA comes from. The board is a file; the shell can
+  // read a file. No cross-frame anything.
+  //
+  // Independent of the sidebar render, like enrichSidebarPrivacy: a slow or
+  // missing board must not hold up the Repos index. A 404 is not an error here,
+  // just a repo that declares a board it has not written yet.
+  async loadRail(configs){
+    const decls = [];
+    for (const [repo, cfg] of Object.entries(configs || {})) {
+      if (cfg && cfg.links) decls.push(resolveCatalogPath(cfg.links, repo, ''));
+    }
+    if (!decls.length) { this.rail = []; return; }
+    const out = [];
+    for (const d of decls) {
+      try {
+        const gh = new window.GH({ token: window.TOKEN, repo: d.repo, ref: d.ref || 'main' });
+        const board = JSON.parse((await gh.get(d.path)).text);
+        for (const a of (board.areas || [])) {
+          for (const it of (a.items || [])) {
+            if (!it.rail || !it.url || it.kind === 'snippet') continue;
+            out.push({
+              key: d.repo + ':' + (it.id || it.title),
+              title: it.title, note: it.note || '',
+              accent: a.accent || '',
+              // Same fallback links.html uses: an item's own icon wins, a plain
+              // link borrows its area's glyph, so only the exceptions spend one.
+              icon: it.icon || (it.kind === 'link' ? (a.icon || 'ph-arrow-up-right') : RAIL_KIND[it.kind] || 'ph-arrow-up-right'),
+              // A repo item is a destination in THIS shell, not an outbound
+              // link, so it routes internally rather than reloading the page.
+              repo: it.kind === 'repo' ? it.url : '',
+              url: it.kind === 'repo' ? '' : it.url,
+              doors: (it.doors || []).filter(x => x && x.url),
+            });
+          }
+        }
+      } catch {}
+    }
+    this.rail = out;
   },
 
   // The config cache carries no visibility, so the sidebar Repos rows get their
@@ -1989,6 +2117,11 @@ function app(){ return {
       title: v.label + ' — ' + v.repo, go: () => this.goAppView(v),
     }));
   },
+  // The board behind the rail, if some repo also promotes it as an app view:
+  // the Links section's header icon then opens the full board, the way the
+  // Repos section's icon opens the full grid. Matched on the page rather than
+  // on a second declaration, since a repo that publishes both means one thing.
+  get railView(){ return this.appViews.find(v => /links\.html$/.test(v.path)) || null; },
   // An app-view entry is active on its own key, not on the bare view string:
   // every sponsored view shares view==='app'.
   navActive(v){
