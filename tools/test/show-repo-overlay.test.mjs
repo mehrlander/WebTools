@@ -51,10 +51,10 @@ const CACHE = {
 
 function overlayShell({ branches, manifests } = {}) {
   const log = [];
-  const { shell, win } = makeShell();
+  const { shell, win, toasts } = makeShell();
   win.TOKEN = 'tok';
   win.GH = fakeGH({ cache: structuredClone(CACHE), branches, manifests }, log);
-  return { shell, win, log };
+  return { shell, win, log, toasts };
 }
 
 test('no overlay: the cache is served as-is and no per-repo reads happen', async () => {
@@ -110,6 +110,18 @@ test('overlay is read-only toward the derived caches: the crawls decline to run'
   await shell.refreshConfigCache(true);
   await shell.refreshActivityCache(true);
   assert.equal(log.length, before, 'a preview session must not run cache crawls');
+});
+
+test('the user-invoked refreshes announce the pause instead of silently no-oping', async () => {
+  const { shell, log, toasts } = overlayShell();
+  shell.overlayBranch = BRANCH;
+  const before = log.length;
+  await shell.refreshActivity();
+  await shell.refreshConfigs();
+  assert.equal(log.length, before, 'the crawls must still not run');
+  assert.equal(toasts.length, 2, 'each Refresh tap must say the pause out loud');
+  assert.match(toasts[0].msg, /paused/);
+  assert.equal(toasts[0].cls, 'alert-info');
 });
 
 test('an overlaid repo opens at the branch; others open at their default', async () => {

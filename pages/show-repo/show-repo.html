@@ -1181,6 +1181,11 @@ function app(){ return {
   // crawl first is what makes the new entry appear immediately). The estate
   // component reloads its cards off the dispatched event.
   async refreshConfigs(){
+    // The overlay pause on cache rebuilds must be LOUD on the user-invoked
+    // path: a Refresh button that silently does nothing reads as broken (it
+    // did, the day this shipped). The ambient boot-time refreshes stay
+    // silently guarded inside refreshConfigCache/refreshActivityCache.
+    if (this.overlayBranch) return notify('Branch-overlay preview: cache refreshes are paused. Open the page without ?overlay= to refresh.', 'alert-info', 'git-branch');
     if (this.configRefreshing || !this.hasToken()) return;
     this.configRefreshing = true;
     try {
@@ -1252,6 +1257,7 @@ function app(){ return {
   // config refresh because the activity crawl is much heavier (a capped branch
   // survey per repo), so it is not folded into every config refresh.
   async refreshActivity(){
+    if (this.overlayBranch) return notify('Branch-overlay preview: cache refreshes are paused. Open the page without ?overlay= to refresh.', 'alert-info', 'git-branch');   // loud on the button path (see refreshConfigs)
     if (this.activityRefreshing || !this.hasToken()) return;
     this.activityRefreshing = true;
     try {

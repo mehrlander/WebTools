@@ -635,7 +635,10 @@ overlay closes both gaps for the piece that matters:
   branch chip (tooltip: which repos the branch applied to), and each overlaid
   row gets a matching glyph.
 - **Read-only posture.** Under an overlay the shell does not run the config or
-  activity cache crawls: a preview session must not commit derived state.
+  activity cache crawls: a preview session must not commit derived state. The
+  Refresh buttons say so with a toast rather than silently doing nothing, and
+  the Activity view's ages therefore stay as stale as its "as of" stamp says
+  they are until the page is opened without `?overlay=`.
 
 Because the parameter rides the query and the toss params shim delivers a
 subject's `?query`, a coordinated preview works **before any of it merges**,

@@ -30,12 +30,16 @@ export function shellScript(src = page) {
 export function makeShell({ browserStore, search = '', win = {} } = {}) {
   const store = browserStore ?? { repo: '' };
   const doc = { addEventListener: () => {}, getElementById: () => null, dispatchEvent: () => {} };
-  const alpine = { store: (name) => (name === 'browser' ? store : {}) };
+  // The 'toast' store is the function notify() prefers; recording it lets
+  // tests assert that a code path SPOKE, not just that it declined to act.
+  const toasts = [];
+  const alpine = { store: (name) => (name === 'browser' ? store
+    : name === 'toast' ? ((icon, msg, cls) => toasts.push({ icon, msg, cls })) : {}) };
   const loc = { search, href: 'https://localhost/', pathname: '/pages/show-repo/show-repo.html', hash: '' };
   const hist = { pushState: () => {}, replaceState: () => {} };
   const exports = {};
   new Function('window', 'document', 'Alpine', 'location', 'history', '__exports',
     shellScript(page) + '\n;__exports.app = app;')(
     win, doc, alpine, loc, hist, exports);
-  return { shell: exports.app(), browserStore: store, win };
+  return { shell: exports.app(), browserStore: store, win, toasts };
 }
