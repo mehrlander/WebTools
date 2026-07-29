@@ -30,7 +30,16 @@
   await gh.load('url-params.js');
   await gh.load('repo-address.js');
   await gh.load('kits/text-diff.js');
-  await gh.load('alpineComponents/path-picker.js');
+  // The grab row's component. Caught, because an uncaught gh.load rejection
+  // aborts this module and Alpine then never starts: a missing file browser
+  // would take the whole page with it. Flag it instead and let the row say so.
+  window.__pickerLoaded = true;
+  try {
+    await gh.load('alpineComponents/path-picker.js');
+  } catch (e) {
+    window.__pickerLoaded = false;
+    console.warn('path-picker.js did not load; the @ browse row will be unavailable:', e);
+  }
   // Alpine last, so the component's init() finds both helpers defined.
   await gh.load('alpine-bundle.js');
 </script>
@@ -77,7 +86,8 @@
     ?a=<spec>&b=<spec>    two owner/repo[@ref]:path addresses, fetched on load
 
   Keys (outside a text box): n/p next and previous change, u split/unified,
-  w wrap, s/d/f/a jump to a tab.
+  w wrap, s/d/f/a jump to a tab. In a GitHub slot's address field, "@" on its
+  own opens the file browser.
 
   ?use=<ref> pins the lib chain for branch preview; gh-boot mounts the FAB.
 -->
@@ -390,8 +400,8 @@
 
           <template x-if="slots[id].src === 'url' || slots[id].src === 'gh'">
             <div class="join grow min-w-0">
-              <input x-model="slots[id].value" @keydown.enter="fill(id)"
-                     :placeholder="slots[id].src === 'gh' ? 'owner/repo[@ref]:path' : 'https://…'"
+              <input x-model="slots[id].value" @keydown.enter="fill(id)" @input="onAddrInput(id)"
+                     :placeholder="slots[id].src === 'gh' ? 'owner/repo[@ref]:path, or @ to browse' : 'https://…'"
                      class="input input-xs input-bordered lctl join-item grow min-w-0 font-mono text-[11px]">
               <button class="btn btn-xs btn-primary lctl join-item px-3" @click="fill(id)" :disabled="slots[id].loading">
                 <span x-show="slots[id].loading" class="loading loading-spinner loading-xs"></span>
@@ -415,13 +425,30 @@
              mention component built for exactly this case: where mention embeds
              an @path inside prose, this one is for when the path IS the field.
              It is a tap-through tree with no text input, so no mobile keyboard
-             and no iOS focus zoom. The address field above stays authoritative:
-             a pick writes into it, so a picked file and a pasted address end up
-             in the same place and both survive into the share link. -->
+             and no iOS focus zoom.
+
+             TWO WAYS IN, because "@" is what the muscle memory reaches for:
+             typing @ into the empty address field above opens this panel (see
+             onAddrInput), and the row itself is a tap target. The address field
+             stays authoritative either way, since a pick writes into it, so a
+             picked file and a pasted address end up in the same place and both
+             survive into ?a=/?b= and the share link.
+
+             The x-if is a legibility guard, not caution for its own sake: an
+             unregistered component leaves `x-data` throwing and the row renders
+             as blank space, which reads exactly like a feature that was never
+             built. If the component is missing, say so. -->
         <div class="shrink-0 px-2 pb-1.5 bg-base-200/60" x-show="slots[id].src === 'gh'" x-cloak>
-          <div :id="'grab-' + id"
-               x-data="pathPicker({ mode: 'file', roots: () => grabRoots(), placeholder: '@ grab a file from a repo' })"
-               @path-pick="onGrab(id, $event.detail)"></div>
+          <template x-if="pickerReady">
+            <div :id="'grab-' + id"
+                 x-data="pathPicker({ mode: 'file', roots: () => grabRoots(), placeholder: '@ browse a repo for a file' })"
+                 @path-pick="onGrab(id, $event.detail)"></div>
+          </template>
+          <template x-if="!pickerReady">
+            <p class="text-[11px] text-warning flex items-center gap-1 py-1">
+              <i class="ph ph-warning"></i>The file browser did not load; paste an address instead.
+            </p>
+          </template>
         </div>
 
         <p class="shrink-0 px-2 py-1 text-[11px] text-error leading-snug" x-show="slots[id].error"
@@ -591,6 +618,10 @@ function diffApp() {
 
     // Repos the page has read from, newest first: the @-grab picker's roots.
     recentRepos: [],
+    // Whether alpineComponents/path-picker.js loaded (set by the boot chain).
+    // Read once at init: if the load failed, the grab row says so instead of
+    // rendering as blank space that reads like an unbuilt feature.
+    pickerReady: false,
 
     rows: [], unified: [], patch: '', patchLines: [],
     stats: { add: 0, del: 0, sim: 100 },
@@ -614,6 +645,10 @@ function diffApp() {
         store.repo = gh.repo || '';
         store.ref = gh.ref || '';
       }
+      // Read the boot flag, never Alpine's registry: Alpine.data(name) with one
+      // argument is a SETTER, so probing it would assign undefined and unregister
+      // the very component being checked. Measured, not assumed.
+      this.pickerReady = window.__pickerLoaded !== false;
       this.restore();
       await this.loadFromUrl();
       this.applySource = this.slots.A.content;
@@ -742,6 +777,24 @@ function diffApp() {
       if (!repo) return;
       this.recentRepos = [repo, ...this.recentRepos.filter(r => r !== repo)].slice(0, 8);
       this.persist();
+    },
+
+    // "@" in the address field opens the picker. The trigger is the value being
+    // exactly '@', not merely containing one, because '@' is legitimate inside
+    // an address: owner/repo@ref:path would otherwise reopen the panel on every
+    // keystroke of the ref. So: '@' on its own in an empty field means browse,
+    // and it is consumed rather than left in the field.
+    onAddrInput(id) {
+      if (this.slots[id].src !== 'gh' || this.slots[id].value.trim() !== '@') return;
+      this.slots[id].value = '';
+      this.openPicker(id);
+    },
+
+    openPicker(id) {
+      const host = document.getElementById('grab-' + id);
+      const picker = host && host.__pathPicker;
+      if (!picker) { this.showToast('The file browser did not load'); return; }
+      if (!picker.open) picker.toggle();
     },
 
     // A pick writes the address into the slot's field and loads it, so the
