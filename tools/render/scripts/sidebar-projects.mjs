@@ -8,6 +8,10 @@
 // trackers it finds.
 //
 //   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scripts/sidebar-projects.mjs
+//
+// OVERLAY=1 additionally seeds the branch-overlay state (?overlay=), so the
+// shot shows the preview posture: the chip on the Repos header and the glyph
+// on the overlaid repo's row.
 
 const REPOS = [
   { repo: 'me/web-tools', short: 'web-tools', icon: 'ph-toolbox', group: 'core', order: 11, priv: false },
@@ -33,12 +37,14 @@ const CONFIGS = {
 
 export default async (page) => {
   await page.waitForFunction(() => window.__shell && window.Alpine, null, { timeout: 15000 });
-  await page.evaluate(([repos, configs]) => {
+  const overlay = process.env.OVERLAY ? 'claude/repo-sidebar-project-indent-a4b2b7' : '';
+  await page.evaluate(([repos, configs, branch]) => {
     const s = window.__shell;
     s.goDashboard();
     s.estateRepos = repos;
     s.estateConfigs = configs;
+    if (branch) { s.overlayBranch = branch; s.overlayRefs = { 'me/home': branch }; }
     s.drawer = true;
-  }, [REPOS, CONFIGS]);
+  }, [REPOS, CONFIGS, overlay]);
   await page.waitForTimeout(600);
 };

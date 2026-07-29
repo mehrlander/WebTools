@@ -599,6 +599,63 @@ tree and `main...branch` compare on GitHub (ground truth), opens the branch or
 the in-shell compare here, and the header links GitHub's branches UI, where the
 delete action itself lives. Deep link: `?view=branches`.
 
+## The branch overlay: preview a cross-repo change before it merges
+
+```
+show-repo.html?overlay=<branch>
+```
+
+Previews the estate **as if `<branch>` were merged wherever it exists**. The
+join it rides is a platform fact the conventions already name: a session uses
+one branch name across every repository it touches (a workstream), so a
+same-named branch across repos is a session's signature, not a coincidence.
+The overlay applies the branch per repo where it exists and falls back to the
+default branch where it does not; existence is asked of GitHub (one branch
+probe per cached repo, once per session), never assumed.
+
+Why this needs to exist at all: the toss machinery pins two of the three
+things a preview depends on, and the third is the one cross-repo changes live
+in. `#gh=` pins the subject file and its same-repo dependencies; `?use=` pins
+the lib the shell loads; neither reaches the **runtime data reads** the
+running app composes itself ("read that other repo's manifest"). Worse, the
+read that feeds the sidebar is not even a read of the other repo: it is a
+read of the **config cache** (`state/configs.json`), a derived artifact baked
+from main-side crawls, which no view-time ref redirection can change. The
+overlay closes both gaps for the piece that matters:
+
+- **Manifest splice.** Each overlaid repo's `.web-tools.json` is fetched live
+  at the branch and laid over its cached entry before anything derives from
+  the cache (membership, groups, icons, `projects` rows, app views). One GET
+  per overlaid repo; a branch without a manifest keeps the cached one.
+- **Browse at the branch.** Opening an overlaid repo (its row, a project row)
+  opens it at the branch ref, so the landing, pins, files, and the repo's own
+  live-read config all preview the branch. The crumb trail's ref chip shows
+  the off-default ref as usual.
+- **A preview says it is one.** The Repos header carries a warning-tinted
+  branch chip (tooltip: which repos the branch applied to), and each overlaid
+  row gets a matching glyph.
+- **Read-only posture.** Under an overlay the shell does not run the config or
+  activity cache crawls: a preview session must not commit derived state.
+
+Because the parameter rides the query and the toss params shim delivers a
+subject's `?query`, a coordinated preview works **before any of it merges**,
+through main's deployed toss renderer:
+
+```
+…/toss-render.html#gh=owner/web-tools@<branch>:pages/show-repo/show-repo.html?overlay=<branch>
+```
+
+The outer `@<branch>` pins the shell (the code half); `?overlay=` pins the
+data half. After the shell change merges, the deployed form
+`show-repo.html?overlay=<branch>` does the same for data-only branches.
+
+The honest limits, stated rather than implied: the overlay re-derives only
+the per-repo **manifests**; other main-derived artifacts (the activity cache,
+tracker boards, generated catalogs) are not overlaid and read main. And an
+overlay link is only as durable as the branch it names: once the branch
+merges and is deleted, every probe misses and the link degrades to a plain
+main view, which is the correct end state for a preview.
+
 ## `.web-tools.json`: the repo manifest
 
 Root `.web-tools.json` is the repo's **web-tools config file** (canonical location
@@ -719,7 +776,9 @@ repos. All are optional; a repo with no config is simply off the estate.
   makes it generatable: home's `tools/generate-tracker-registry.py` syncs it
   from the trackers it finds, so the manifest cannot drift from the ground
   truth. The sidebar reads the field from the config cache it already holds,
-  so the rows cost no extra fetch.
+  so the rows cost no extra fetch. A `projects` field that exists only on a
+  branch is invisible to the cache (a main-derived artifact) until it merges;
+  the **branch overlay** above previews it live.
 - **tracker**: where the repo keeps its task board (`"tracker/board.md"`, or a
   folder). Adds one row, **Task board**, to the repo's **GitHub menu** (the
   sidebar Repos row's github button, and the Activity view's repo chip). It is

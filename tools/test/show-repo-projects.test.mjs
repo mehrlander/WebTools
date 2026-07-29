@@ -7,42 +7,13 @@
 // markup wiring (the x-for actually feeds those rows, and a row opens the
 // repo's Files view at the workspace folder).
 //
-// The shell's app() lives inline in show-repo.html, so the test extracts the
-// plain <script> block and evaluates it against stubs — the same
-// read-the-page-source tactic routes-manifest.test.mjs uses for TOSS_ROUTES,
-// upgraded from regex to execution since a factory evaluates cleanly (the
-// block's top level only defines; nothing mounts until Alpine starts).
+// The shell's app() lives inline in show-repo.html, so the test evaluates the
+// plain <script> block against stubs via the shared show-repo-shell.mjs
+// harness (see its header for the tactic and its provenance).
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { repoRoot } from './bootstrap.mjs';
-
-const page = readFileSync(path.join(repoRoot, 'pages/show-repo/show-repo.html'), 'utf8');
-
-// The one plain <script> block (the module boot loads lib and is not wanted
-// here). Anchored on the token seed so a reshuffle fails loudly.
-function shellScript(src) {
-  const m = src.match(/<script>\n(window\.TOKEN[\s\S]*?)<\/script>/);
-  assert.ok(m, 'the inline shell script block was not found');
-  return m[1];
-}
-
-// Evaluate the block with stubbed globals and hand back a fresh app() object
-// plus the browser-store stub its methods read. Alpine is only dereferenced
-// inside methods, so a plain per-call stub suffices.
-function makeShell(opts) {
-  const win = {};
-  const doc = { addEventListener: () => {}, getElementById: () => null, dispatchEvent: () => {} };
-  const browserStore = opts?.browserStore ?? { repo: '' };
-  const alpine = { store: (name) => (name === 'browser' ? browserStore : {}) };
-  const exports = {};
-  new Function('window', 'document', 'Alpine', 'location', '__exports',
-    shellScript(page) + '\n;__exports.app = app;')(
-    win, doc, alpine, { search: '', href: 'https://localhost/' }, exports);
-  return { shell: exports.app(), browserStore };
-}
+import { page, makeShell } from './show-repo-shell.mjs';
 
 test('repoProjects: absent, non-array, or empty config yields no rows', () => {
   const { shell } = makeShell();
