@@ -54,8 +54,13 @@ for (const rel of allJs) cache['lib/' + rel] = readFileSync(path.join(libDir, re
 
 // Register all components, then boot Alpine (alpine-bundle.js last — it fires
 // alpine:init, which runs every component's registration handler).
+//
+// repo-address.js goes FIRST, ahead of the components. It is the one lib-root
+// module a component reads at init: stage.js delegates the owner/repo[@ref]:path
+// grammar to it, and a page's own gh.load chain runs AFTER this import, so a
+// component that read a stage link during init would find it undefined.
 const components = allJs.filter(p => p.startsWith('alpineComponents/'));
-const extraBoot = [...components, 'alpine-bundle.js'];
+const extraBoot = ['repo-address.js', ...components, 'alpine-bundle.js'];
 
 const header = `// dist/web-tools.js — the pre-build: the whole web-tools lib/ frozen into one
 // self-booting, offline artifact (the gh-api.js loader + an inlined source cache

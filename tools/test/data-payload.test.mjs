@@ -12,7 +12,11 @@ import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
 const window = {};
-new Function('window', readFileSync(path.join(repoRoot, 'lib', 'data-payload.js'), 'utf8'))(window);
+// The address grammar first: parseSpec delegates to it (lib/repo-address.js),
+// and this is the same load order every consuming page keeps.
+for (const f of ['lib/repo-address.js', 'lib/data-payload.js']) {
+  new Function('window', readFileSync(path.join(repoRoot, f), 'utf8'))(window);
+}
 const DP = window.DataPayload;
 
 // ── the discriminator ──
@@ -27,7 +31,7 @@ test('a JSON object with item-shaped entries reads as an envelope', () => {
   assert.equal(out.note, 'N');
   assert.equal(out.items.length, 2);
   assert.equal(out.items[0].content, 'x,y');
-  assert.deepEqual(out.items[1].spec, { repo: 'o/r', ref: 'main', path: 'b.json' });
+  assert.deepEqual(out.items[1].spec, { repo: 'o/r', ref: '', path: 'b.json' });
 });
 
 test('an explicit kind wins even with no items array', () => {
@@ -97,8 +101,14 @@ test('an item with only src is named from its path', () => {
 
 // ── spec parsing ──
 
+// A missing @ref reads as '' since the delegation to lib/repo-address.js: this
+// module used to fill in 'main', which was a guess about a repo's default
+// branch name rather than a reading of the address. Fetching wants '' (the
+// contents API resolves the default), and the ref a LINK needs is supplied at
+// the link-building boundary instead (RepoAddress.ref, in the viewer's
+// fileUrls).
 test('parseSpec splits owner/repo[@ref]:path, and returns null otherwise', () => {
-  assert.deepEqual(DP.parseSpec('o/r:a/b.json'), { repo: 'o/r', ref: 'main', path: 'a/b.json' });
+  assert.deepEqual(DP.parseSpec('o/r:a/b.json'), { repo: 'o/r', ref: '', path: 'a/b.json' });
   assert.deepEqual(DP.parseSpec('o/r@feat/x:a.json'), { repo: 'o/r', ref: 'feat/x', path: 'a.json' });
   assert.equal(DP.parseSpec('pages/local.json'), null);
   assert.equal(DP.parseSpec(''), null);
