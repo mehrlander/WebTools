@@ -41,7 +41,6 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Give the stage a way to carry part of a file
 - 🎫 Converge the stage and surface item schemas
 - 🎫 Make the take-away menu work inside a toss
-- 🎫 toss-render ?query forwarding drops multi-param page queries next: decode the gh param from the raw fragment slice (not URLSearchParams) so a bare & in the page query survives, or document the %26 requirement in the head comment and the on-page help
 - 🎫 Extend fetch + blob-import to the gh-api.js-chain ?use= boot
 
 ## In progress
@@ -78,4 +77,5 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Toggle-only Tailwind classes do generate, and the spinners do spin (`claude/web-tools-tracker-review-m49yxc`)
 - 🎫 Pass a trailing fragment through toss-render to the rendered page (`claude/toss-render-data-formats-4t55x7`) next: done on claude/toss-render-data-formats-4t55x7; lands via PR #288. Follow-on: have data-view consume the fragment for item selection
 - 🎫 Structural response decode + differentiated errors in toss-render next: done; renders survive every media-type labeling and the error panel names the failing stage
+- 🎫 toss-render ?query forwarding drops multi-param page queries (`claude/web-tools-tracker-review-bw48ga`) next: done on claude/web-tools-tracker-review-bw48ga; both fixes taken, the slice read and the documentation
 - 🎫 Load the ?use= bundle by fetch + blob-import instead of jsDelivr (`claude/loading-behavior-tracker-aqbf4f`)
