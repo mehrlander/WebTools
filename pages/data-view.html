@@ -60,6 +60,8 @@
     await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
   }
   await gh.load('url-params.js');
+  // The owner/repo[@ref]:path grammar, which data-payload.js delegates to.
+  await gh.load('repo-address.js');
   await gh.load('data-payload.js');
   await gh.load('alpineComponents/viewer.js');
 
@@ -76,7 +78,11 @@
   const fetchText = async spec => {
     const s = DataPayload.parseSpec(spec);
     if (!s) return (await gh.get(spec)).text;
-    const data = await gh.req(`/repos/${s.repo}/contents/${s.path}?ref=${encodeURIComponent(s.ref)}`);
+    // An address with no @ref parses as '' now, and the contents API resolves
+    // the repo's default branch when the parameter is absent. Sending an empty
+    // one instead is not the same request, so omit it.
+    const at = s.ref ? `?ref=${encodeURIComponent(s.ref)}` : '';
+    const data = await gh.req(`/repos/${s.repo}/contents/${s.path}${at}`);
     if (Array.isArray(data)) throw new Error('that path is a directory, not a file');
     const content = data.content || (await gh.req(`/repos/${s.repo}/git/blobs/${data.sha}`)).content;
     return gh.decode(content);

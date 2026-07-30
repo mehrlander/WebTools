@@ -60,3 +60,9 @@ stage and the toss routes sharing implementations rather than only conventions.
 - 2026-07-25: filed at wrap-up of PR #291. The divergence was found by running
   both readers side by side while answering how the toss routes compare to the
   stage, not by reading the code.
+- 2026-07-30 unblocked: `one-repo-address-parser-5gtv92` closed, so
+  `StageLink.parseItem` now delegates and `lib/repo-address.js` is loaded
+  wherever the stage runs. This task is unchanged in scope. It is about the
+  other half of `StageLink.read`, the fragment-first param read, and its open
+  decision (whether a bare `#stage=` should fall back to a populated `?stage=`)
+  is still a decision, not a discovery.

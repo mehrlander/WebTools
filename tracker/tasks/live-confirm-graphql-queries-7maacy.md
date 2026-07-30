@@ -33,3 +33,10 @@ Neither query is on a hot path. `branchSessions` runs once per repo per crawl (t
 
 ## Progress log
 - 2026-07-26 filed from the in-flight session, consolidating the residual live-confirm from PR #241 with the same check for PR #297
+- 2026-07-30 the sibling task (`graphql-schema-contract-check-cpuvb5`) landed, so
+  the shape half is now answered offline in `npm test`: both queries validate
+  clean against GitHub's published schema. This task is unchanged in scope, but
+  narrower in expectation. The failure it was written to catch, a field name or
+  a nesting the schema does not allow, is ruled out for the documents as
+  written, so what remains to look for is semantic: whether `messageBody` holds
+  the trailer we assume, and whether permissions elide nodes we expect.

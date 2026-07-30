@@ -10,6 +10,7 @@
     "build:console": "node tools/build/console-suite.mjs",
     "bake": "node tools/build/bake.mjs",
     "verify-build": "node tools/build/verify-build.mjs",
+    "graphql-schema": "node tools/build/graphql-schema.mjs",
     "pages-shots": "node tools/build/pages-shots.mjs",
     "pages-index": "node tools/build/pages-index.mjs",
     "pages": "npm run pages-shots && npm run pages-index",
@@ -20,7 +21,9 @@
     "test:pdf-versions": "node tools/test/pdf-version-probe.mjs",
     "test:word-select": "node tools/test/word-select-touch.mjs",
     "test:render-copy": "node tools/test/render-copy.mjs",
-    "test:subject-actions": "node tools/test/subject-actions.mjs"
+    "test:subject-actions": "node tools/test/subject-actions.mjs",
+    "test:toss-multiparam": "node tools/test/toss-multiparam.mjs",
+    "test:data-view-links": "node tools/test/data-view-links.mjs"
   },
   "devDependencies": {
     "@alpinejs/collapse": "^3.15.12",
@@ -39,6 +42,7 @@
     "fake-indexeddb": "^6.2.5",
     "fast-xml-parser": "^4.5.1",
     "flat": "^6.0.0",
+    "graphql": "^17.0.2",
     "idb-keyval": "^6.2.2",
     "jquery": "^3.7.1",
     "jsdom": "^29.1.0",

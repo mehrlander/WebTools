@@ -9,7 +9,11 @@ import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
 const win = {};
-new Function('window', readFileSync(path.join(repoRoot, 'lib/shorter-payload.js'), 'utf8')).call(win, win);
+// The address grammar first: parseSpec delegates to it (lib/repo-address.js),
+// and this is the same load order pages/shorter.html keeps.
+for (const f of ['lib/repo-address.js', 'lib/shorter-payload.js']) {
+  new Function('window', readFileSync(path.join(repoRoot, f), 'utf8')).call(win, win);
+}
 const { read, isEnvelope, isReviewable, parseSpec, KIND } = win.ShorterPayload;
 
 test('plain prose is bare, verbatim, with the right column left empty', () => {

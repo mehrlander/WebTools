@@ -116,6 +116,13 @@
   short, so either form works. All base64 params accept standard or URL-safe
   alphabet, with or without padding.
 
+  One key per fragment, and it is read by slice (see readFragment below), so a
+  multi-param page query survives with bare '&'s:
+  #gh=…:pages/show-repo/show-repo.html?view=app&appRepo=X&appPath=Y hands all
+  three params to the page. The same address in the QUERY string does not: '&'
+  delimits there, so past the first one the params are the renderer's, not the
+  page's. Put a multi-param address on the fragment, or encode its '&' as %26.
+
   Caveat for #url=: sites that send X-Frame-Options or CSP frame-ancestors
   will refuse to load in the iframe.
 
@@ -169,7 +176,7 @@
   <a id="empty-token" target="_blank" rel="noreferrer" class="link link-primary text-xs hidden"
      href="https://github.com/settings/tokens/new?scopes=repo&description=web-tools">Get or renew a GitHub token</a>
   <p class="text-[10px] text-base-content/30 max-w-md leading-relaxed">
-    URL forms: <code>#gh=owner/repo@ref:path?query</code> (the ?query reaches the page), <code>#gz=</code>/<code>#html=</code> base64 HTML, <code>#url=</code> base64 URL.
+    URL forms: <code>#gh=owner/repo@ref:path?a=1&amp;b=2</code> (the whole ?query reaches the page), <code>#gz=</code>/<code>#html=</code> base64 HTML, <code>#url=</code> base64 URL.
   </p>
 </div>
 
@@ -186,9 +193,34 @@
 
   // Fragment first (never sent to the server, so no edge URL-length cap),
   // query string as fallback.
-  const hashParams  = new URLSearchParams(location.hash.slice(1));
+  //
+  // The fragment is read by SLICE, not URLSearchParams. A toss fragment carries
+  // exactly one key, and that key's value routinely contains a page query of its
+  // own (#gh=…:show-repo.html?view=app&appRepo=X&appPath=Y). URLSearchParams
+  // splits the whole fragment on '&' before it looks at any key, so everything
+  // past the first '&' was torn off the address and became sibling fragment
+  // params nothing here reads: the page got ?view=app and its other two params
+  // arrived null, silently. Reading the one key by slice keeps a bare '&' inside
+  // the value. Percent-escapes are still decoded, so links minted with the old
+  // %26 workaround keep working, and a value that is not valid escaping is used
+  // verbatim rather than throwing. The '+' is left alone here (URLSearchParams
+  // would have made it a space); the params shim re-parses the page query with
+  // URLSearchParams, which decodes '+' there, where it means something.
+  //
+  // The query string keeps URLSearchParams: there a '&' really does delimit, and
+  // a page query with more than one param has to ride the fragment (or encode
+  // its '&' as %26) to survive the trip.
+  function readFragment(hash) {
+    const raw = String(hash || '').replace(/^#/, '');
+    const m = raw.match(/^([A-Za-z][\w-]*)=([\s\S]*)$/);
+    if (!m) return [null, null];
+    let value = m[2];
+    try { value = decodeURIComponent(value); } catch (e) {}
+    return [m[1], value];
+  }
+  const [hashKey, hashValue] = readFragment(location.hash);
   const queryParams = new URLSearchParams(location.search);
-  const param = k => hashParams.get(k) ?? queryParams.get(k);
+  const param = k => (k === hashKey ? hashValue : null) ?? queryParams.get(k);
 
   // Fragment-only navigation is same-document: this script wouldn't re-run
   // when the user follows a second toss link, so force a real reload.

@@ -43,6 +43,9 @@ const { window, problems } = makeWindow({
 // stager's diffLines requires.
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
+  // The address grammar, ahead of the components: parseItem delegates to it,
+  // and the pre-build boots it in this position for the same reason.
+  'lib/repo-address.js',
   'lib/kits/text-diff.js',
   'lib/alpineComponents/drop-zone.js',
   'lib/alpineComponents/path-picker.js',
