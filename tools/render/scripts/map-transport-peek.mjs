@@ -35,7 +35,9 @@ export default async (page) => {
   const which = process.env.PEEK || 'curate';
   if (which === 'none') return;
   const icon =
-    which === 'renderer' ? page.locator('a[title$="on GitHub"][data-peek]').first() :
+    // Exact title: "… on GitHub" also matches the set tab's rows, which are
+    // rendered but hidden behind their tab, and .first() would pick one of those.
+    which === 'renderer' ? page.locator('a[title="pages/toss-render.html on GitHub"]').first() :
     which === 'route'    ? page.locator('a[title="Open the renderer on GitHub"][data-peek]').first() :
                            page.locator('a[title^="Curate the manifest"]').first();
   // A route row's icon only appears on row hover, so land on the row first.

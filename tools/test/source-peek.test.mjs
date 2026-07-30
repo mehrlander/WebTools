@@ -75,7 +75,7 @@ test('unparseable JSON is left alone and says so', () => {
 });
 
 test('a long file peeks; only the reformat is skipped when it is huge', () => {
-  // The first draft refused to peek above 64 KB, which was backwards: a 20-line
+  // The first draft refused to peek above 64 KB, which was backwards: a short
   // excerpt is most useful for a file too long to open casually. A peek at an
   // 86 KB doc must render, and a JSON too large to reformat must still show its
   // head rather than an error.
@@ -83,7 +83,7 @@ test('a long file peeks; only the reformat is skipped when it is huge', () => {
   const out = SP.body('docs/show-repo.md', big);
   assert.equal(out.kind, 'markdown');
   assert.equal(out.text.split('\n')[0], '# Title');
-  assert.match(out.note, /first 20 of 20001 lines/);
+  assert.equal(out.note, `first ${SP.LINES} of 20001 lines`);
 
   const hugeJson = '{"a":[' + '1,'.repeat(400000) + '1]}';
   assert.ok(hugeJson.length > 512 * 1024);
@@ -104,7 +104,7 @@ test('the body pulls the three decisions together', () => {
   const long = SP.body('lib/big.js', Array.from({ length: 80 }, (_, i) => 'x' + i).join('\n'));
   assert.equal(long.kind, 'source');
   assert.equal(long.truncated, true);
-  assert.match(long.note, /first 20 of 80 lines/);
+  assert.equal(long.note, `first ${SP.LINES} of 80 lines`);
 });
 
 test('markdown frontmatter is fenced, not left to render as prose', () => {
