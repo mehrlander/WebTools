@@ -79,7 +79,19 @@ The hook applies only to sessions using a branch that contains its configuration
 
 #### Stop: the session recorder
 
-*Added 2026-07-30.* The `portable` plugin declares a [`Stop`](https://code.claude.com/docs/en/hooks) hook in [`.claude/skills/hooks/hooks.json`](../../.claude/skills/hooks/hooks.json), running [`.claude/skills/hooks/session-record.sh`](../../.claude/skills/hooks/session-record.sh). A marketplace plugin entry accepts any plugin-manifest field, so the entry declares `"hooks": "./hooks/hooks.json"` relative to its `source`; the path is also the default discovery location.
+*Added 2026-07-30; wiring corrected the same day.* The `portable` plugin carries a [`Stop`](https://code.claude.com/docs/en/hooks) hook in [`.claude/skills/hooks/hooks.json`](../../.claude/skills/hooks/hooks.json), running [`.claude/skills/hooks/session-record.sh`](../../.claude/skills/hooks/session-record.sh). It is found by **default discovery**: `hooks/hooks.json` in the plugin root, and the plugin root is the entry's `source`, so the file already sits where the loader looks. The marketplace entry declares nothing.
+
+**Wrong 2026-07-30 → the paragraph below:** this section first said a marketplace entry accepts any plugin-manifest field, and so declared `"hooks": "./hooks/hooks.json"` on the entry. The loader rejects that form and refuses the whole plugin:
+
+```
+Status: × failed to load
+Error: Hook load failed: hooks: the file-path and array forms are not yet
+supported in a marketplace entry. Define hooks in the plugin's own
+hooks/hooks.json (or its plugin.json), or inline them here as an object
+mapping hook event names to matcher arrays.
+```
+
+Removing the key flipped the same command to `√ enabled`. The declaration was redundant even when it worked, since it named the location discovery already uses, so the fix costs nothing. The pinning assertion in the suite is inverted to match: the key must now be **absent**, because re-adding it reads as diligence.
 
 **The distribution channel is the whole point, and the alternative was measured failing.** `mehrlander/web-tools-private` holds a session recorder that writes one JSON record per session. Its own installer writes `~/.claude/settings.json`, correctly avoiding a repo hook for the project-root reason above. But that file is provisioned fresh for every container, carrying the account's marketplace and plugin configuration and nothing else, so a hand-installed hook survives exactly as long as the container. On 2026-07-30 the store held one record, dated 2026-07-29, the session that built the recorder. At least four other sessions ran that day and merged pull requests; none was recorded, and nothing reported the gap. The installed-by-hand hook records the session that installs it and no other.
 
@@ -91,11 +103,17 @@ A plugin install is the only channel that repeats, because the platform performs
 
 Two states are deliberately quiet rather than loud. A checkout can declare the store on a branch that predates the tooling, so a declaration whose `tools/on-stop.sh` is absent is declined rather than reported. And a malformed manifest is skipped, not raised.
 
-Coverage is [`tools/test/session-record-hook.test.mjs`](../../tools/test/session-record-hook.test.mjs): the three discovery shapes, byte-identical payload hand-off, the quiet paths, the override, and the assertion that the plugin still declares the hook. A script present on disk but not wired to the loader is the failure this change exists to fix, so that last one is not ceremony.
+Coverage is [`tools/test/session-record-hook.test.mjs`](../../tools/test/session-record-hook.test.mjs): the three discovery shapes, byte-identical payload hand-off, the quiet paths, the override, and the assertion that the hook sits at the default location with no redeclaration on the entry. A script present on disk but not wired to the loader is the failure this change exists to fix, so that last one is not ceremony.
 
-**Two things measured while wiring it, both worth knowing before trusting a plugin hook.**
+**Three things measured while wiring it, all worth knowing before trusting a plugin hook.**
 
-`claude plugin validate` does not read the hooks file. It passed `--strict` with `"hooks"` pointing at a nonexistent path, and passed again with valid JSON of the wrong shape (`"Stop": "not-an-array"`) at the real path. So a passing validation says nothing about whether the hook will load, and the structural check has to live in the repo's own suite. What does report the truth is [`claude plugin details <name>`](https://code.claude.com/docs/en/plugins-reference), which lists the loaded inventory: installing this marketplace from a local path into a scratch `HOME` reported `Hooks (1) Stop (harness-only, no model context cost)` alongside `Skills (9)`. The skill count is the second half of that check, confirming a `hooks/` directory inside the plugin's skills-directory source is not picked up as a tenth skill.
+`claude plugin validate` does not read the hooks file. It passed `--strict` with `"hooks"` pointing at a nonexistent path, and passed again with valid JSON of the wrong shape (`"Stop": "not-an-array"`) at the real path. So a passing validation says nothing about whether the hook will load, and the structural check has to live in the repo's own suite. It also passed cleanly on the entry that the loader refused outright, which is how the broken wiring shipped.
+
+**`claude plugin details` does not report the truth either, and this section used to say it did.** It reads the declared inventory, not the loader's verdict, so on 2026-07-30 it reported `Skills (10)` and `Hooks (1) Stop` for a plugin that `claude plugin list` was simultaneously refusing to load. Both commands were run against the same install, seconds apart. The earlier verification here (a local-path install into a scratch `HOME`, reporting `Hooks (1)` alongside `Skills (9)`) was real but was reading intent, and a local-path install is a different channel from the delivered github-marketplace one. **`claude plugin list` is the command that shows a load failure**, and it is the one to run.
+
+The skill count remains the useful second half of a `details` check, confirming a `hooks/` directory inside the plugin's skills-directory source is not picked up as an extra skill.
+
+**Status is per-directory, so run the check where the plugin is meant to be enabled.** The same `claude plugin list` reported `× failed to load` from `/home/user` and `/home/user/home` and `× disabled` from `/home/user/web-tools`, because this repo does not enable a plugin it *is* the source of. A status read in the wrong directory answers a different question than the one asked.
 
 **The delivered copy is not executable.** A plugin is installed by copy into `~/.claude/plugins/cache/<marketplace>/<plugin>/<sha>/`, and the cached files arrive `rw-r--r--`. A hook command written as a bare path would therefore fail on the permission bit, so the declaration invokes the interpreter explicitly (`bash "${CLAUDE_PLUGIN_ROOT}/..."`). Verified by running the cached copy through the declared command line, which recorded a real session.
 
