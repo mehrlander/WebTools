@@ -76,11 +76,20 @@ if (libs.has('@phosphor-icons/web')) html = swapIcons(html);
 
 let styles = '';
 if (libs.has('tailwindcss')) {
-  fs.writeFileSync('_bake_src.html', html);
-  const plugin = libs.has('daisyui') ? '@plugin "daisyui";\n' : '';
-  fs.writeFileSync('_bake_in.css', `@import "tailwindcss" source(none);\n${plugin}@source "./_bake_src.html";\n`);
-  execSync('npx @tailwindcss/cli -i _bake_in.css -o _bake_out.css --minify', { stdio: 'ignore' });
-  styles += `<style>\n${fs.readFileSync('_bake_out.css', 'utf8')}\n</style>\n`;
+  // The Tailwind CLI needs real files to scan, so the compile writes three
+  // scratch files into the working directory. Clean them up: this runs inside
+  // whoever's repo is being baked, and 600 KB of intermediates left in a
+  // working tree is how they end up in a commit that used `git add -A`.
+  const scratch = ['_bake_src.html', '_bake_in.css', '_bake_out.css'];
+  try {
+    fs.writeFileSync('_bake_src.html', html);
+    const plugin = libs.has('daisyui') ? '@plugin "daisyui";\n' : '';
+    fs.writeFileSync('_bake_in.css', `@import "tailwindcss" source(none);\n${plugin}@source "./_bake_src.html";\n`);
+    execSync('npx @tailwindcss/cli -i _bake_in.css -o _bake_out.css --minify', { stdio: 'ignore' });
+    styles += `<style>\n${fs.readFileSync('_bake_out.css', 'utf8')}\n</style>\n`;
+  } finally {
+    for (const f of scratch) fs.rmSync(f, { force: true });
+  }
 }
 
 let scripts = '';
