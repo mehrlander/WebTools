@@ -33,6 +33,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Session-start nudge for unconfigured or legacy-manifest repos (`claude/skills-portable-conventions-8x1lua`) next: write a global SessionStart hook that checks repo state and injects a nudge; wire its install into the Claude Code web account setup script
 - 🎫 Give show-repo the ability to edit a repo's .web-tools.json (`claude/skills-portable-conventions-8x1lua`) next: design a minimal config-edit surface in the show-repo shell; first use is a one-tap migrate of a legacy .show-repo.json to .web-tools.json
 - 🎫 show-repo - first-class projects, defined by tracker presence
+- 🎫 Assess the orphan docs for skillification, and boil them down next: start with the duplicated MCP material, which is one rule recorded twice
 - 🎫 Spike the snags log (friction learned the hard way) (`claude/pr-219-review-22csrh`)
 - 🎫 Move StageLink.read onto the shared fragment-first param read next: confirm the empty-key change is wanted before touching it; it is the only observable difference
 - 🎫 Give the stage a way to carry part of a file
