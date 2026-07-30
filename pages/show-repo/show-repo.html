@@ -779,7 +779,7 @@
          repo-owned scope story plus a live adoption read. The operational face
          of the constellation doctrine. Estate-level, its own component and lazy
          mount. (Formerly "Portable"; ?view=portable still resolves here.) -->
-    <div x-show="view==='map'" class="h-full overflow-y-auto">
+    <div x-show="view==='map'" data-pane="map" class="h-full overflow-y-auto">
       <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 !max-w-none">
         <template x-if="mapSeen">
           <div x-data="map()"></div>
@@ -791,7 +791,7 @@
          could not make, applied here on the user's confirm with the user's
          token. Estate-level, token-gated, its own component and lazy mount;
          the nav entry appears only while something is pending. -->
-    <div x-show="view==='proposals'" class="h-full overflow-y-auto">
+    <div x-show="view==='proposals'" data-pane="proposals" class="h-full overflow-y-auto">
       <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 max-w-4xl">
         <template x-if="proposalsSeen">
           <div x-data="proposals()"></div>
@@ -802,7 +802,7 @@
     <!-- The Tools view: a curated gallery of the owner's utility pages (the
          text-diff tool and the like), fed from the hub's docs/tools.json.
          Estate-level, public (no token), its own component and lazy mount. -->
-    <div x-show="view==='tools'" class="h-full overflow-y-auto">
+    <div x-show="view==='tools'" data-pane="tools" class="h-full overflow-y-auto">
       <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 !max-w-none">
         <template x-if="toolsSeen">
           <div x-data="tools()"></div>
@@ -2465,34 +2465,46 @@ function app(){ return {
   openSidebar(){ this.drawer = true; },
 
   // ── Swipe paging between dashboard views (touch only) ─────────────────────
-  // The estateNav set (Activity / Repos / Surfaces / Stage / Tools / Map) is a
-  // closed, ordered carousel. The header's second group (the repo-sponsored
-  // views) stays out of it: each renders as an iframe, which owns its own
-  // gesture surface, so a swipe could page IN and never back out. Paging
-  // remains the app's own panes; the tabs reach everything either way.
-  // Activity's three sub-views count as one stop
-  // (navActive matches the alias list), switched by pill rather than swipe. On a phone the active dashboard pane FOLLOWS THE
-  // FINGER through a horizontal drag and slides out to commit, so paging reads
-  // as one continuous surface rather than a dead-then-snap view swap. The
-  // estate sub-views share one component (the estate pane re-renders its own content on
-  // a view change), so a neighbour cannot be shown live mid-drag; instead the
-  // commit slides the incoming content in from the dragged edge. It reuses the
-  // go* methods a tab tap runs, so there is one navigation path and the lit
-  // header tab stays the source of truth. Touch-only, so pointer users are never
+  // The estateNav set (Activity / Repos / Surfaces / Stage / Tools / Map, plus
+  // Proposals while it is showing) is a closed, ordered carousel. The header's
+  // second group (the repo-sponsored views) stays out of it: each renders as an
+  // iframe, which owns its own gesture surface, so a swipe could page IN and
+  // never back out. Paging remains the app's own panes; the tabs reach
+  // everything either way. Activity's three sub-views count as one stop
+  // (navActive matches the alias list), switched by pill rather than swipe.
+  //
+  // On a phone the active dashboard pane FOLLOWS THE FINGER through a
+  // horizontal drag and slides out to commit, so paging reads as one continuous
+  // surface rather than a dead-then-snap view swap. The estate sub-views share
+  // one component (the estate pane re-renders its own content on a view
+  // change), so a neighbour cannot be shown live mid-drag; instead the commit
+  // slides the incoming content in from the dragged edge. It reuses the go*
+  // methods a tab tap runs, so there is one navigation path and the lit header
+  // tab stays the source of truth. Touch-only, so pointer users are never
   // affected; a drag outside the carousel (inside a repo) no-ops.
+  //
+  // The same idiom, against an embedded page rather than a local pane, drives
+  // the estate's branch-detail takeover (alpineComponents/estate.js, dTouch*).
   _pX: 0, _pY: 0, _pLock: null, _pPane: null, _pW: 0, _pBusy: false,
   DRAG_MIN: 8,          // px before the gesture locks to an axis
   COMMIT_FRAC: 0.22,    // fraction of pane width that commits a page…
   COMMIT_MAX: 90,       // …but never demand more than this many px
 
-  // The dashboard pane on screen: the estate container (Activity / Repos /
-  // Surfaces / To-do all live in it) or the stage container. Null for a repo
-  // view, which is not part of the carousel.
+  // Which pane the carousel would move for the current view. The estate's five
+  // sub-views share one container, so they all name it; every other carousel
+  // stop names itself, and a repo view names nothing (it is not a stop).
+  //
+  // CARRYING data-pane IS WHAT MAKES A VIEW SWIPEABLE, and the two lists have
+  // to agree: this used to answer only 'estate' and 'stage', while estateNav
+  // already carried Tools, Map, and Proposals. Swiping INTO one of those worked
+  // (the commit runs the tab's own go()), and then the gesture found no pane
+  // and no-op'd, so the carousel was a one-way trip and paging out again took
+  // the header. Nothing reported it: a pager whose pane lookup returns null
+  // looks exactly like a pager on a repo view, where declining is correct.
+  // tools/test/show-repo-panes.test.mjs holds the two lists in step.
+  get _paneKey(){ return this.isEstate ? 'estate' : this.view; },
   _activePane(){
-    const q = s => document.querySelector('main [data-pane="' + s + '"]');
-    if (this.view === 'stage') return q('stage');
-    if (this.isEstate) return q('estate');
-    return null;
+    return document.querySelector('main [data-pane="' + this._paneKey + '"]');
   },
   // Skip the pager when a gesture starts inside a horizontally-scrollable region
   // (a wide code block, the stage bundle) so its native scroll is never stolen.
