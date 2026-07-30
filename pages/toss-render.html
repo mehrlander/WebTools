@@ -124,7 +124,10 @@
   the page's own relative deps would 404. Two shims close the basic case, both
   fetching through the authenticated contents API at the same ref: render-time
   inlining (inlineRelativeDeps) pulls each relative <script src> and
-  <link rel=stylesheet href> ahead of render, and a fetch shim (addressHtml)
+  <link rel=stylesheet href> ahead of render, escaping any literal close tag in
+  what it pulls, since the result is serialised with outerHTML and an unescaped
+  one would end the element early and truncate the dep on re-parse (added
+  2026-07-30, covered by tools/test/toss-inline-deps.test.mjs). A fetch shim (addressHtml)
   reroutes the page's relative runtime GET fetch()es (e.g. './data.json',
   './rows.csv') on demand. A third shim makes history.replaceState/pushState
   safe: a RELATIVE replaceState('#x') resolves against the stamped <base>
@@ -741,6 +744,16 @@ window.fetch=function(input,init){try{
   // gh.load. Static first-level refs only: nested module imports, CSS
   // url()/@import, and images are left to <base> and a later pass. Runs only in
   // trusted address mode, and is a no-op when there are no relative deps.
+  // outerHTML serialisation is how the inlined doc gets back to a string, so a dep
+  // carrying a literal close tag for the element we just put it inside would end
+  // that element early: the re-parse truncates the code and leaks the remainder as
+  // body text, silently. Escaping is lossless, since the close sequence can only
+  // legally appear inside a JS or CSS string and the browser parses the escaped
+  // form back to the original there. Found downstream, porting this into the
+  // budget-drs appendix embed (mehrlander/home).
+  function escapeClose(text, tag) {
+    return String(text).replace(new RegExp('</(' + tag + ')', 'gi'), '<\\/$1');
+  }
   function isRelativeRef(u) {
     return !!u && !/^[a-z][a-z0-9+.-]*:/i.test(u) &&
       !u.startsWith('//') && !u.startsWith('/') && !u.startsWith('#') && !u.startsWith('data:');
@@ -765,7 +778,7 @@ window.fetch=function(input,init){try{
           const code = await ghText(owner, name, ref, p);
           const s = doc.createElement('script');
           for (const a of el.attributes) if (a.name !== 'src') s.setAttribute(a.name, a.value);
-          s.textContent = code;
+          s.textContent = escapeClose(code, 'script');
           el.replaceWith(s);
         } catch (e) { el.setAttribute('data-inline-error', (e && e.message) || String(e)); }
       })());
@@ -781,7 +794,7 @@ window.fetch=function(input,init){try{
           const css = await ghText(owner, name, ref, p);
           const st = doc.createElement('style');
           if (el.getAttribute('media')) st.setAttribute('media', el.getAttribute('media'));
-          st.textContent = css;
+          st.textContent = escapeClose(css, 'style');
           el.replaceWith(st);
         } catch (e) { el.setAttribute('data-inline-error', (e && e.message) || String(e)); }
       })());
