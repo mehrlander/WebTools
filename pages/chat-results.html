@@ -168,7 +168,7 @@
           const text = await fetchText(spec);
           messages = r.source.path.endsWith('.json') ? JSON.parse(text) : text;
         }
-        chatRender.openTranscript(messages, { title: r.title, provider: r.provider, date: r.date });
+        chatRender.openTranscript(messages, { title: r.title, provider: r.provider, date: r.date, url: r.url });
       } catch (e) {
         r._error = `Couldn't load transcript: ${e.message}`;
       } finally {
@@ -292,10 +292,26 @@
         <template x-for="r in results" :key="r.id">
           <article data-card class="rounded-box bg-base-100 border border-base-300 overflow-hidden">
             <div class="px-4 pt-3.5 pb-3">
+              <!-- Read chat rides the title row as an icon. It used to sit in a
+                   full-width footer bar of its own, which spent a band of card
+                   the height of a turn on one button. -->
               <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <h2 class="font-semibold text-[0.98rem] leading-snug" x-text="r.title"></h2>
                 <span class="badge badge-xs font-mono" :class="providerBadge(r.provider)" x-text="r.provider"></span>
                 <span class="font-mono text-[10px] opacity-40" x-text="r.date"></span>
+                <span class="grow"></span>
+                <button x-show="hasTranscript(r)" @click="viewTranscript(r)"
+                        class="btn btn-ghost btn-xs gap-1 self-center px-1.5 text-primary"
+                        title="Read the chat" aria-label="Read the chat">
+                  <span class="loading loading-spinner loading-xs" x-show="r._loading"></span>
+                  <i class="ph ph-cards-three text-base" x-show="!r._loading"></i>
+                  <span class="font-mono text-[10px]">Read</span>
+                </button>
+                <a x-show="blobUrl(r)" :href="blobUrl(r)" target="_blank" rel="noopener"
+                   class="btn btn-ghost btn-xs self-center px-1.5 opacity-50"
+                   title="Source in the archive" aria-label="Source in the archive">
+                  <i class="ph ph-github-logo text-sm"></i>
+                </a>
               </div>
               <p class="text-[0.83rem] opacity-70 mt-1" x-show="r.relevance" x-text="r.relevance"></p>
               <div class="flex flex-wrap gap-1 mt-1.5" x-show="(r.tags||[]).length">
@@ -311,20 +327,6 @@
               <div x-init="mountExcerpts($el, r)"></div>
             </div>
 
-            <!-- footer: open the full chat (fullscreen takeover) + source link -->
-            <div class="flex items-center gap-2 px-3 py-2 border-t border-base-300 bg-base-200/50"
-                 x-show="hasTranscript(r) || blobUrl(r)">
-              <button x-show="hasTranscript(r)" class="btn btn-sm btn-primary gap-1.5"
-                      @click="viewTranscript(r)">
-                <span class="loading loading-spinner loading-xs" x-show="r._loading"></span>
-                <i class="ph ph-cards-three text-[15px]" x-show="!r._loading"></i>
-                <span>Read chat</span>
-              </button>
-              <a x-show="blobUrl(r)" :href="blobUrl(r)" target="_blank" rel="noopener"
-                 class="btn btn-sm btn-ghost gap-1 font-mono text-[10px] opacity-60">
-                <i class="ph ph-github-logo text-[13px]"></i> Source
-              </a>
-            </div>
             <p x-show="r._error" x-text="r._error" class="text-error text-xs px-4 py-2 border-t border-base-300"></p>
           </article>
         </template>

@@ -22,6 +22,11 @@ const { window } = makeWindow();
 // assert which turns reach markdown, not what marked does with them.
 const marked = { lexer: () => [], parser: () => '', parse: () => '' };
 globalThis.marked = window.marked = marked;
+// openTranscript dereferences addEventListener/removeEventListener/history bare
+// too (it locks background scroll and pushes a history entry so the phone back
+// button dismisses it). Point them at the jsdom realm.
+for (const k of ['addEventListener', 'removeEventListener', 'history', 'location'])
+  globalThis[k] = typeof window[k] === 'function' ? window[k].bind(window) : window[k];
 new Function('window', 'document', readFileSync(path.join(repoRoot, 'lib/chat-render.js'), 'utf8'))(window, window.document);
 const cr = window.chatRender;
 
@@ -97,4 +102,60 @@ test('expanding puts the paste in its own bounded scroller, so the reply stays r
   assert.equal(expand.textContent.trim(), 'Collapse');
   expand.dispatchEvent(new window.Event('click'));
   assert.equal(el.querySelector('.overflow-y-auto'), null, 'collapse drops the expanded panes again');
+});
+
+// ── the fullscreen header owns the chat's identity ──────────────────────────
+// extract_chat.py's leading header block (title, uuid, created/updated,
+// messages) parses as a meta note. In openTranscript it was rendering as a
+// full turn-sized card directly under a header that already said the same
+// thing, so the reader opened on a restatement instead of the conversation.
+
+const HEADER = [
+  '# WebI Data Modeling',
+  'uuid: 69b8ef63-66f0-8330-b83c-e8fc8b89beec',
+  'created: 2026-03-17  updated: 2026-03-17  messages: 4',
+  '',
+  '--- Human ---',
+  'What columns do I need?',
+  '',
+  '--- Assistant ---',
+  'These ones.',
+].join('\n');
+
+// deckCore builds slides in a requestAnimationFrame, so the turn cards do not
+// exist on the frame openTranscript returns. Wait two frames before reading.
+const openHeaderText = async (md, opts) => {
+  const { el, close } = cr.openTranscript(md, opts);
+  await new Promise(r => window.requestAnimationFrame(() => window.requestAnimationFrame(r)));
+  const text = el.querySelector('h1').parentElement.textContent;
+  const link = el.querySelector('a[href]');
+  const cards = el.querySelectorAll('article').length;
+  const body = el.textContent;
+  close();
+  return { text, href: link?.getAttribute('href') || null, cards, body };
+};
+
+test('a pure header note is lifted into the header, not rendered as a card', async () => {
+  const r = await openHeaderText(HEADER, { title: 'WebI Data Modeling', provider: 'chatgpt', date: '2026-03-17' });
+  assert.match(r.text, /WebI Data Modeling/);
+  assert.match(r.text, /4 messages/, 'the count comes off the lifted note');
+  assert.doesNotMatch(r.body, /69b8ef63/, 'the uuid line is gone from the slides');
+  assert.equal(r.cards, 2, 'two turns, and no note card in front of them');
+});
+
+test('the header links to the live chat when there is one', async () => {
+  const url = 'https://chatgpt.com/c/69b8ef63-66f0-8330-b83c-e8fc8b89beec';
+  assert.equal((await openHeaderText(HEADER, { url })).href, url);
+  assert.equal((await openHeaderText(HEADER, {})).href, null, 'no link rather than a dead one');
+});
+
+test('a meta note carrying real preamble is content and stays a card', async () => {
+  const md = ['Notes from the archivist: this export is partial.', '',
+    '--- Human ---', 'ok', '', '--- Assistant ---', 'right'].join('\n');
+  // marked is stubbed here, so the note's prose does not render; its card and
+  // its "Note" role label are what prove it was not lifted away.
+  const r = await openHeaderText(md, { title: 'Partial' });
+  assert.equal(r.cards, 3, 'the note keeps its card alongside the two turns');
+  assert.match(r.body, /Note/, 'and keeps its role label');
+  assert.match(r.text, /2 messages/, 'a note is not a turn, so it is not counted as one');
 });
