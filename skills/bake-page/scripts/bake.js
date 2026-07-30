@@ -92,8 +92,14 @@ for (const name of libs) {
 const order = [...libs].filter(n => RUNTIME[n] && RUNTIME[n].js).sort((a, b) => (a === 'alpinejs') - (b === 'alpinejs'));
 for (const name of order) scripts += `<script>\n${fs.readFileSync(RUNTIME[name].js, 'utf8')}\n</script>\n`;
 
-html = html.includes('<!--CSS-->') ? html.replace('<!--CSS-->', styles) : html.replace('</head>', styles + '</head>');
-html = html.includes('<!--JS-->') ? html.replace('<!--JS-->', scripts) : html.replace('</body>', scripts + '</body>');
+// Function replacers, not strings. String.replace reads $$, $&, $`, $' and $1
+// in a replacement STRING as patterns, and a minified bundle is full of them.
+// Alpine registers every magic through Object.defineProperty(t, `$${n}`, ...);
+// as a string replacement that becomes `${n}`, so $el, $refs, $dispatch, $watch
+// and $nextTick all silently register without their $ and read as undefined in
+// every expression. A function replacer is passed through verbatim.
+html = html.includes('<!--CSS-->') ? html.replace('<!--CSS-->', () => styles) : html.replace('</head>', () => styles + '</head>');
+html = html.includes('<!--JS-->') ? html.replace('<!--JS-->', () => scripts) : html.replace('</body>', () => scripts + '</body>');
 
 fs.writeFileSync(OUTPUT, html);
 console.log('baked:', [...libs].join(', '));
