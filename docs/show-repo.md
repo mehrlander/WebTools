@@ -315,9 +315,11 @@ no lit chip to explain it.
 The row's **GitHub menu** replaced a Tree and a Compare link. Those were one tap
 each and a menu is two, which pays only because the menu carries destinations
 that had no route at all: the PR's **Files changed** and **Checks** tabs, the
-branch's **Commits**, and **New pull request** for a row with no PR, plus copy
-actions for the branch name and the compare link. It also gives the row's action
-line back the width the pair was spending. It shares the sidebar repo menu's
+branch's **Commits**, and **New pull request** for a row with no PR, plus a copy
+action for the branch name. It also gives the row's action
+line back the width the pair was spending. A **Copy compare link** row sat
+beside that one until 2026-07-30 and was cut: `Compare to <default>` opens the
+page the URL names, and the browser copies it from there. It shares the sidebar repo menu's
 geometry (`shell.anchorMenu` / `menuStyle`: fixed, aligned to the trigger's own
 edge, flipped above near the viewport bottom), its row spec (`.wt-menu-row`,
 flat, an out-arrow on anything leaving the app), and its hover behavior. The
