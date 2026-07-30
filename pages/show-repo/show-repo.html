@@ -334,19 +334,23 @@
                      name opens the repo's Files view at the workspace folder, the
                      same route a folder pin takes.
 
-                     NO LEADING GLYPH, and the indent carries the containment on
-                     its own. Every row here took the same icon, since the field
-                     defaults it, so a column of identical marks distinguished
-                     nothing and read as a second list rather than as rows under
-                     their repo. What replaces it is a deeper indent: pl-10
-                     starts a project label PAST its repo's label (pl-2 plus a
-                     16 px glyph plus gap-2 puts that at 32 px), because a label
-                     flush with the one above reads as its sibling. Smaller and
-                     dimmer text carries the rest. The rows also came in a step,
-                     to min-h-7 with no vertical padding, since a list of six
-                     under one repo was spending more height on air than the
-                     repo rows above it, which are full 44 px targets and have
-                     to be.
+                     NO LEADING GLYPH AND NO INDENT. Every row here took the
+                     same icon, since the field defaults it, so a column of
+                     identical marks distinguished nothing and read as a second
+                     list rather than as rows under their repo. The indent went
+                     the same way and by the owner's decision, in two steps: it
+                     first went deeper (pl-10, past the repo label) on the
+                     reasoning that a step is what says "inside", and then to
+                     pl-2, flush with the repo rows' own left edge.
+
+                     So what carries the containment is the type: a project row
+                     is text-sm against the repo's text-base, dimmed a stop
+                     further, and with no icon in a column where every repo has
+                     one. Those three read as subordinate without spending
+                     width, which on a 320 px sidebar is the scarce thing. The
+                     rows also came in a step, to min-h-7 with no vertical
+                     padding, since a list of six under one repo was spending
+                     more height on air than the repo rows above it.
 
                      The two trailing buttons are the repo row's pattern at
                      project scale, and the pair is short because a workspace has
@@ -386,7 +390,7 @@
                 <template x-for="p in repoProjects(r.repo)" :key="r.repo + ':' + p.path">
                   <div class="flex items-center rounded-lg transition-colors hover:bg-base-200">
                     <button @click="openProject(r.repo, p)" :title="r.repo + ': ' + p.path"
-                            class="flex items-center min-w-0 flex-1 min-h-7 pl-10 text-left text-sm transition-colors text-base-content/60 hover:text-base-content/90">
+                            class="flex items-center min-w-0 flex-1 min-h-7 pl-2 text-left text-sm transition-colors text-base-content/60 hover:text-base-content/90">
                       <span class="truncate" x-text="p.label"></span>
                     </button>
                     <a :href="projectGithubUrl(r.repo, p)" target="_blank" rel="noopener" @click.stop
