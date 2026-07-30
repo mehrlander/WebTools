@@ -44,6 +44,7 @@ start): add the `extraKnownMarketplaces` and `enabledPlugins` block to
 | `/portable:repo-review` | read the repo's own state and report what stands out, at three depths (light, deep, sweep) |
 | `/portable:in-flight` | check whether a branch, PR, or task is already working on something, and reconcile stale tracker claims |
 | `/portable:markers` | what is frozen, stale, or wrong: mark a claim, declare a path in `.paths.json`, inventory both, check that they agree |
+| `/portable:sandbox-traps` | the web sandbox's enumerable failures, each of which impersonates a worse one: the test that tells them apart, and the rule. Triggers on the symptom rather than waiting to be asked, since a session hits these while concluding, not while stuck |
 | the session recorder | a `Stop` hook that records the session where a checkout declares a `"sessions"` store, and does nothing at all where none does |
 
 That is the whole day-to-day set. Everything above the last row is invoked; the
