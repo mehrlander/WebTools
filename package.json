@@ -20,7 +20,8 @@
     "test:pdf-versions": "node tools/test/pdf-version-probe.mjs",
     "test:word-select": "node tools/test/word-select-touch.mjs",
     "test:render-copy": "node tools/test/render-copy.mjs",
-    "test:subject-actions": "node tools/test/subject-actions.mjs"
+    "test:subject-actions": "node tools/test/subject-actions.mjs",
+    "test:toss-multiparam": "node tools/test/toss-multiparam.mjs"
   },
   "devDependencies": {
     "@alpinejs/collapse": "^3.15.12",
