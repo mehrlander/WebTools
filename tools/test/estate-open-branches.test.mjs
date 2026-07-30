@@ -217,21 +217,10 @@ test('tapping a row takes over: frozen sequence, position, clamped stepping', ()
   assert.equal(data.detailUrl, '', 'no address when nothing is open');
 });
 
-test('swipe: a horizontal move steps, vertical and short moves do not', () => {
-  data.openBranchDetail(data.openBranches[0]);
-  const touch = (x1, y1, x2, y2) => {
-    data.dTouchStart({ touches: [{ clientX: x1, clientY: y1 }] });
-    data.dTouchEnd({ changedTouches: [{ clientX: x2, clientY: y2 }] });
-  };
-  touch(200, 100, 60, 110);       // left swipe: next
-  assert.equal(data.detail.i, 1);
-  touch(60, 100, 200, 90);        // right swipe: previous
-  assert.equal(data.detail.i, 0);
-  touch(100, 100, 130, 110);      // too short
-  touch(100, 100, 180, 220);      // mostly vertical: a scroll, not a step
-  assert.equal(data.detail.i, 0);
-  data.closeDetail();
-});
+// The takeover's swipe lives in estate-branch-swipe.test.mjs: it now follows
+// the finger, so the gesture needs a move phase and a surface to translate,
+// and a start-then-end pair (all this file's DOM could offer) no longer
+// describes it.
 
 test('keyboard: arrows step, Escape closes, all dead when nothing is open', () => {
   data.openBranchDetail(data.openBranches[0]);
