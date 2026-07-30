@@ -19,7 +19,6 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Let the FAB collect a toss subject's page actions, not just the shell's
 - 🎫 Give the file-review collapsed row more than a name and a count
 - 🎫 Find a way to focus attention on one piece of a page's UI
-- 🎫 Finish GitHub jump-over coverage across show-repo views next: sweep the remaining views (stage rows, atlas, recent panel, compare) for missing one-tap GitHub links
 - 🎫 Check GraphQL query shape offline against GitHub's published schema
 - 🎫 Integrate the stage with the surfacer's .surface format next: run in a session with both web-tools and the home repo, to read the surfacer's .surface files directly
 - 🎫 Guard every lib-booting page against the Alpine load race (`claude/shorter-tool-toss-render-nr7zoc`)
@@ -63,6 +62,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Update estate tests to the groupSections layout (`claude/viewer-button-dropdown-0h4u57`)
 - 🎫 Extract drop-zone as a reusable Alpine component (`claude/tracker-summary-nu74te`)
 - 🎫 Generalize the gallery to a per-repo pages catalog (`claude/web-tools-app-views-m3pkyo`) next: landed; live gallery for home needs home#314 on main (config cache reads main)
+- 🎫 Finish GitHub jump-over coverage across show-repo views (`claude/github-icon-placement-3d06i7`) next: none; the named views all carry their jump-over
 - 🎫 History-safe shim for toss-render address-mode renders next: done; hash-routing pages now switch views inside toss #gh= renders
 - 🎫 Private-repo landing federation via the home registry next: closed as superseded; the goal shipped per-repo, not federated
 - 🎫 Render files over 1 MB in toss-render and the shell viewers next: done — raw media type with git-blobs fallback landed in toss-render (ghText, showAddress, fetchShim) and gh-api.js get(); A/B headless test confirms the 5.9 MB DRS bundle is delivered where the old path returned blank
