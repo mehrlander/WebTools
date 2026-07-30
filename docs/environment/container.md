@@ -56,9 +56,26 @@ claude plugin update <plugin>@<marketplace>
 
 The CLI answers "Restart to apply changes," and the [plugin documentation](https://code.claude.com/docs/en/discover-plugins) offers `/reload-plugins` as the in-session equivalent. Neither was needed here. Skills from the updated cache appeared in the session's own skill listing within the turn, and the plugin's `Stop` hook fired 43 minutes later with nothing restarted and no reload typed. [Settings-file hooks are documented as reloading live](https://code.claude.com/docs/en/settings); on CLI 2.1.220 plugin hooks did too. Treat `/reload-plugins` as the fallback for an update that does not take.
 
-Durably, that update belongs in the setup script, which both refreshes the pin and
-invalidates the snapshot, so the next session starts from the refreshed pin rather
-than waiting out the roughly seven-day expiry.
+**Putting that update in the setup script does not solve it,** which is the part
+worth stating plainly, because it is the obvious fix and it fails quietly. The
+setup script runs when the snapshot is built, not when a session starts, so its
+`claude plugin update` pins the version current on build day and every later
+session restores that result. The measurement is direct: a setup script whose
+first act is an unconditional heredoc into `~/.claude/CLAUDE.md` left that file
+dated 2026-07-28 02:08 in a container booted 2026-07-30 19:31, alongside a plugin
+pin from the same instant. A script that has not run cannot refresh anything.
+
+What runs every session is a `SessionStart` hook, and the setup script is the
+right place to write one, since `~/.claude/settings.json` rides the snapshot and
+therefore persists. That inverts the roles: the setup script installs the
+refresher once, and the refresher tracks the tip on every boot. Whether the
+newly-pulled version registers its own hooks inside the session that pulled it is
+the open question, and the one measurement here says yes, 43 minutes after an
+update with nothing restarted.
+
+Editing the setup script at all invalidates the snapshot, so the next session
+rebuilds rather than waiting out the roughly seven-day expiry. That makes the
+first fix free and is worth knowing whenever an environment looks stuck.
 
 The pin reaches the repository checkout as well, by the same route. `node_modules/`
 is gitignored, so it cannot arrive with the fresh clone; the setup script installs
