@@ -931,9 +931,11 @@ repos. All are optional; a repo with no config is simply off the estate.
   directly rather than opening a panel, because a workspace has one of each
   where a repo has seven GitHub destinations to choose among. The estate's rows
   draw no leading glyph: the field defaulted one, so every row took the same
-  mark and it distinguished nothing; the rule and the smaller type carry the
-  containment, and the card carries names only, its board and folder being one
-  tap further in. An `icon` on an entry is accepted and ignored. The **defining
+  mark and it distinguished nothing; the rule and that empty icon column carry
+  the containment, so the two sidebar lists are otherwise sized identically (the
+  estate's rows were smaller and dimmer until the rule made the argument for
+  shrinking them unnecessary). The card carries names only, its board and folder
+  being one tap further in. An `icon` on an entry is accepted and ignored. The **defining
   convention**: a workspace running a tracker (a `tracker/` directory holding
   `tasks/`, per [TRACKER.md](TRACKER.md)) is a project. A tracker at the repo
   root marks the repo itself and earns no row, so "repo or project" needs no

@@ -267,12 +267,16 @@ test('all three project lists hang off the same rule', () => {
     'a card project row no longer opens the project view');
 });
 
-test('the project block hugs its repo row, and hangs from a guideline', () => {
-  // The gap between a repo row and a project row is the repo row's own slack,
-  // not a declared margin, so the block is pulled back to close it; the rule at
-  // ml-4 sits on the centre of the repo icon above, which is what makes it read
-  // as hanging from the parent rather than as a margin.
-  assert.match(page,
-    /<div class="flex flex-col -mt-1 ml-4 pl-2 border-l border-base-300" x-show="repoProjects\(r\.repo\)\.length">/,
-    'the project block no longer pulls up under its repo row on a guideline');
+test('the two sidebar project lists are sized the same', () => {
+  // The estate's nested rows were smaller and dimmer than the repo sidebar's
+  // for a while; the guideline made that argument unnecessary. Both now carry
+  // the same row metrics, and this is what catches one drifting from the other.
+  const rows = [...page.matchAll(
+    /class="flex items-center min-w-0 flex-1 px-2 py-1\.5 text-base text-left transition-colors/g)];
+  assert.equal(rows.length, 2, 'the two project lists no longer share their row size');
+  const blocks = [...page.matchAll(/flex flex-col gap-0\.5 ml-4 pl-2 border-l border-base-300/g)];
+  assert.equal(blocks.length, 2, 'the two project blocks no longer share their guideline and gap');
+  // The negative margin is gone with the size difference that needed it: at
+  // equal row heights there is no slack to close and the pull would crowd.
+  assert.doesNotMatch(page, /-mt-1 ml-4 pl-2/, 'the project block pulls up again');
 });

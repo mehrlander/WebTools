@@ -352,12 +352,15 @@
                      start, against the 32 an indent was spending, on a sidebar
                      where width is the scarce thing.
 
-                     Type carries the rest: a project row is text-sm against the
-                     repo's text-base, dimmed a stop further, and has nothing in
-                     the icon column every repo fills. The rows also came in a
-                     step, to min-h-7 with no vertical padding, since a list of
-                     six under one repo was spending more height on air than the
-                     repo rows above it.
+                     The rows are then the REPO SIDEBAR'S PROJECT ROWS, exactly:
+                     same px-2 py-1.5, same text-base at /80, same gap-0.5, same
+                     h-8 buttons. They were smaller and dimmer here for a while
+                     (text-sm, min-h-7, /60), on the reasoning that a nested list
+                     should read as subordinate, and the rule made that argument
+                     unnecessary: once something says "these belong to that",
+                     shrinking them says it a second time and costs legibility.
+                     What still separates a project from a repo is the rule and
+                     the empty icon column, which is enough.
 
                      The two trailing buttons are the repo row's pattern at
                      project scale, and the pair is short because a workspace has
@@ -376,22 +379,17 @@
                      drops its last button rather than sliding the other one
                      into a different column.
 
-                     THE -mt-1 IS THE HUG, and it is a correction for a gap
-                     nothing declares. No margin separates a repo row from its
-                     first project; the space is the repo row's own, since a
-                     taller row centres its label with more slack above and below
-                     than a 28 px one and half of that lands between the two. The
-                     repo rows came down to min-h-9 for this: at 36 px the slack
-                     to make up is 4 px rather than 12, so one -mt-1 closes it
-                     and a project sits at exactly the pitch of the project
-                     below it. That is the whole reason the parent shrank, and
-                     it is why it did not shrink further: the pull overlaps the
-                     row above by its own 4 px, so what the repo row keeps to
-                     tap is 32 px, and taking more would spend the row itself to
-                     buy spacing. Pulling the block up also widens the space
-                     BELOW the last project by the same 4 px, which is the right
-                     direction: a project should sit nearer its own repo than
-                     the next one.
+                     NO NEGATIVE MARGIN ANY MORE, and the reason is worth
+                     keeping because it is the same measurement twice. The gap
+                     between a repo row and its first project was never a
+                     declared margin: it was the repo row's own slack, since a
+                     taller row centres its label with more air above and below
+                     than a short one and half of that lands between the two. A
+                     -mt-1 closed it while the rows were 36 px and 28 px. Now
+                     both are 36 px, the slack is zero, and the same pull would
+                     crowd the rows it used to align. The repo rows keep the
+                     min-h-9 they came down to for that earlier arithmetic; at
+                     equal heights it is simply the sidebar's row size.
 
                      The trailing buttons carry the REPO ROW'S OWN /30, and that
                      is now load-bearing rather than tidy. They were written at
@@ -407,21 +405,21 @@
                      class list. -->
 
 
-                <div class="flex flex-col -mt-1 ml-4 pl-2 border-l border-base-300" x-show="repoProjects(r.repo).length">
+                <div class="flex flex-col gap-0.5 ml-4 pl-2 border-l border-base-300" x-show="repoProjects(r.repo).length">
                 <template x-for="p in repoProjects(r.repo)" :key="r.repo + ':' + p.path">
                   <div class="flex items-center rounded-lg transition-colors hover:bg-base-200">
                     <button @click="openProject(r.repo, p)" :title="r.repo + ': ' + p.path"
-                            class="flex items-center min-w-0 flex-1 min-h-7 pl-2 text-left text-sm transition-colors text-base-content/60 hover:text-base-content/90">
+                            class="flex items-center min-w-0 flex-1 px-2 py-1.5 text-base text-left transition-colors text-base-content/80">
                       <span class="truncate" x-text="p.label"></span>
                     </button>
                     <a :href="projectGithubUrl(r.repo, p)" target="_blank" rel="noopener" @click.stop
                        :title="p.path + ' on GitHub'"
-                       class="wt-row-btn shrink-0 h-7 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors">
-                      <i class="ph ph-github-logo text-sm leading-none"></i></a>
+                       class="wt-row-btn shrink-0 h-8 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors">
+                      <i class="ph ph-github-logo text-base leading-none"></i></a>
                     <button x-show="p.board" @click.stop="openProjectBoard(r.repo, p)"
                             :title="'Task board: ' + p.board"
-                            class="wt-row-btn shrink-0 h-7 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors">
-                      <i class="ph ph-list-checks text-sm leading-none"></i></button>
+                            class="wt-row-btn shrink-0 h-8 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors">
+                      <i class="ph ph-list-checks text-base leading-none"></i></button>
                   </div>
                 </template>
                 </div>
@@ -551,8 +549,11 @@
            project view (openProject switches the repo first, goProject is
            already in it), so a workspace reads the same however you reached it.
            The rows are duplicated in markup rather than shared, the way the rail
-           is, because the two contexts size them differently: nested and small
-           up there, a first-class sidebar row down here with an active state.
+           is. They are also now sized ALIKE, which the duplication no longer
+           earns on its own: the two differ in exactly two ways, the estate's
+           extra repo argument and this one's active state. Keep them in step by
+           hand (a test checks the row class and the block class appear twice),
+           or fold them into a component the day a third difference appears.
 
            The list is read from the OPEN repo's live manifest (repoProjects
            prefers it over the estate cache), so it needs no token and follows
