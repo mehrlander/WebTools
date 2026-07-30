@@ -252,9 +252,12 @@ test('the repo sidebar carries the same list, and the pane binds the open one', 
   assert.match(page, /x-html="projectHtml"/, 'the project pane no longer renders its README');
 });
 
-test('the project block hugs its repo row', () => {
-  // The gap between a 44 px repo row and a 28 px project row is the repo row's
-  // own slack, not a declared margin, so the block is pulled back to close it.
-  assert.match(page, /<div class="flex flex-col -mt-1" x-show="repoProjects\(r\.repo\)\.length">/,
-    'the project block no longer pulls up under its repo row');
+test('the project block hugs its repo row, and hangs from a guideline', () => {
+  // The gap between a repo row and a project row is the repo row's own slack,
+  // not a declared margin, so the block is pulled back to close it; the rule at
+  // ml-4 sits on the centre of the repo icon above, which is what makes it read
+  // as hanging from the parent rather than as a margin.
+  assert.match(page,
+    /<div class="flex flex-col -mt-1 ml-4 pl-2 border-l border-base-300" x-show="repoProjects\(r\.repo\)\.length">/,
+    'the project block no longer pulls up under its repo row on a guideline');
 });

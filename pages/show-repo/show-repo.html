@@ -334,23 +334,30 @@
                      name opens the repo's Files view at the workspace folder, the
                      same route a folder pin takes.
 
-                     NO LEADING GLYPH AND NO INDENT. Every row here took the
-                     same icon, since the field defaults it, so a column of
-                     identical marks distinguished nothing and read as a second
-                     list rather than as rows under their repo. The indent went
-                     the same way and by the owner's decision, in two steps: it
-                     first went deeper (pl-10, past the repo label) on the
-                     reasoning that a step is what says "inside", and then to
-                     pl-2, flush with the repo rows' own left edge.
+                     NO LEADING GLYPH, AND A GUIDELINE INSTEAD OF AN INDENT.
+                     Every row here took the same icon, since the field defaults
+                     it, so a column of identical marks distinguished nothing
+                     and read as a second list rather than as rows under their
+                     repo. The indent then went through three positions before
+                     landing here: pl-10 (past the repo label, on the reasoning
+                     that a step says "inside"), flush at pl-2, and now a 1 px
+                     rule down the block with the rows just clear of it.
 
-                     So what carries the containment is the type: a project row
-                     is text-sm against the repo's text-base, dimmed a stop
-                     further, and with no icon in a column where every repo has
-                     one. Those three read as subordinate without spending
-                     width, which on a 320 px sidebar is the scarce thing. The
-                     rows also came in a step, to min-h-7 with no vertical
-                     padding, since a list of six under one repo was spending
-                     more height on air than the repo rows above it.
+                     The rule is the cheap version of what the indent was buying.
+                     ml-4 puts it at 16 px, which is the CENTRE OF THE REPO
+                     ICON above (pl-2 plus half of a 16 px glyph), so it reads
+                     as hanging from the parent rather than as a stray margin,
+                     and the -mt-1 above starts it inside the repo row's box
+                     rather than below it. What it costs is 17 px of label
+                     start, against the 32 an indent was spending, on a sidebar
+                     where width is the scarce thing.
+
+                     Type carries the rest: a project row is text-sm against the
+                     repo's text-base, dimmed a stop further, and has nothing in
+                     the icon column every repo fills. The rows also came in a
+                     step, to min-h-7 with no vertical padding, since a list of
+                     six under one repo was spending more height on air than the
+                     repo rows above it.
 
                      The two trailing buttons are the repo row's pattern at
                      project scale, and the pair is short because a workspace has
@@ -386,7 +393,7 @@
                      direction: a project should sit nearer its own repo than
                      the next one. -->
 
-                <div class="flex flex-col -mt-1" x-show="repoProjects(r.repo).length">
+                <div class="flex flex-col -mt-1 ml-4 pl-2 border-l border-base-300" x-show="repoProjects(r.repo).length">
                 <template x-for="p in repoProjects(r.repo)" :key="r.repo + ':' + p.path">
                   <div class="flex items-center rounded-lg transition-colors hover:bg-base-200">
                     <button @click="openProject(r.repo, p)" :title="r.repo + ': ' + p.path"
