@@ -128,7 +128,10 @@ everything else as source, always the first 20 lines with a footer saying what
 was left behind. A call site adds one attribute,
 `:data-peek="owner/repo[@ref]:path"`, and a delegated listener does the rest; a
 view holding the bytes already (the Map's two manifests) passes them with
-`SourcePeek.seed` so the peek costs no fetch. The peek is what makes the fourth
+`SourcePeek.seed` so the peek costs no fetch. `lib/gh-boot.js` loads it, the way
+it loads the FAB: standing equipment for every page that boots the chain, rather
+than a line each page's boot block has to remember. That placement is also what
+makes it previewable, since a page shell is served from main even under `?use=`. The peek is what makes the fourth
 meaning self-evident: an icon that can show you the file is pointing at a file,
 and one that cannot is pointing at something broader. So repo, branch, folder,
 and menu icons have none, and neither do the viewer's and the config view's

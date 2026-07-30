@@ -51,10 +51,6 @@
   // The GitHub destinations for one repo, shared by the sidebar's github menu
   // and the Activity view's repo chip (window.GithubLinks).
   await gh.load('github-links.js');
-  // The hover card behind an exact-file jump-over: one delegated listener over
-  // every [data-peek] icon in the shell (window.SourcePeek). Loaded after
-  // repo-address.js, whose grammar it reads the address with.
-  await gh.load('source-peek.js');
   // The line/word differ behind the stage's Diff lens, shared with
   // pages/diff-tool.html (window.textDiff).
   await gh.load('kits/text-diff.js');
@@ -3187,7 +3183,13 @@ function overview(){ return {
     else as source, always the first 20 lines with a footer saying what was left
     behind. One attribute at the call site (:data-peek="owner/repo[@ref]:path"),
     one delegated listener on document, so a row Alpine renders later needs no
-    wiring. It is what makes the fourth meaning self-evident: an icon that can
+    wiring. gh-boot.js loads it, alongside the FAB and for the same reason, so
+    this page's boot block does not: it belongs wherever a peek-bearing icon is
+    rendered, and a page's own boot list is the wrong owner of that. It first
+    hung off the boot block below and failed the one test that matters, since a
+    page shell is served from main even under ?use=, so a preview of the branch
+    ran the new components with no SourcePeek behind them and every :data-peek
+    bound to null. It is what makes the fourth meaning self-evident: an icon that can
     show you the file is pointing at a file, and one that cannot is pointing at
     something broader. So repo, branch and menu icons deliberately have none,
     and neither does a folder.
