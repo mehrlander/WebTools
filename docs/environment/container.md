@@ -68,10 +68,30 @@ pin from the same instant. A script that has not run cannot refresh anything.
 What runs every session is a `SessionStart` hook, and the setup script is the
 right place to write one, since `~/.claude/settings.json` rides the snapshot and
 therefore persists. That inverts the roles: the setup script installs the
-refresher once, and the refresher tracks the tip on every boot. Whether the
-newly-pulled version registers its own hooks inside the session that pulled it is
-the open question, and the one measurement here says yes, 43 minutes after an
-update with nothing restarted.
+refresher once, and the refresher tracks the tip on every boot. Match
+`startup|resume`, not `startup` alone: reopening an expired session provisions a
+fresh environment, and that fires `resume`.
+
+**The documentation and the measurement disagree about what a mid-session update
+reaches, and the disagreement is the whole risk in that design.** The hooks
+reference says plugins are loaded once at startup, and gives `SessionStart`'s
+`reloadSkills` the explicit carve-out that it reloads user and project skills
+while plugin-provided skills are not reloaded. If that holds strictly, a refresher
+that runs at session start pulls a version that only takes effect at the next
+boot, which in a one-session-per-container environment means never. Measured twice
+on 2026-07-30, CLI 2.1.220, it did not hold: after `claude plugin update` ran
+mid-session, a skill present only in the newer version appeared in the session's
+own skill listing on the following turn, and the newer version's `Stop` hook fired
+43 minutes later, with no restart and no `/reload-plugins`. Something picks up a
+changed plugin cache; the documented sentence is about `reloadSkills`, not about
+every path.
+
+Treat that as measured on one version and not as a guarantee. The decisive test is
+cheap and belongs to whoever depends on it: change something visible on the
+plugin's `main`, start a fresh session, and check whether it is present or arrives
+one session late. Until then a refresher should say what it did, since
+`SessionStart` stdout is added to the session's context, which turns a silent
+one-session lag into a line someone can read.
 
 Editing the setup script at all invalidates the snapshot, so the next session
 rebuilds rather than waiting out the roughly seven-day expiry. That makes the
