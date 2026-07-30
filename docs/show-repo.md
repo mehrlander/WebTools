@@ -345,9 +345,11 @@ no lit chip to explain it.
 The row's **GitHub menu** replaced a Tree and a Compare link. Those were one tap
 each and a menu is two, which pays only because the menu carries destinations
 that had no route at all: the PR's **Files changed** and **Checks** tabs, the
-branch's **Commits**, and **New pull request** for a row with no PR, plus copy
-actions for the branch name and the compare link. It also gives the row's action
-line back the width the pair was spending. It shares the sidebar repo menu's
+branch's **Commits**, and **New pull request** for a row with no PR, plus a copy
+action for the branch name. It also gives the row's action
+line back the width the pair was spending. A **Copy compare link** row sat
+beside that one until 2026-07-30 and was cut: `Compare to <default>` opens the
+page the URL names, and the browser copies it from there. It shares the sidebar repo menu's
 geometry (`shell.anchorMenu` / `menuStyle`: fixed, aligned to the trigger's own
 edge, flipped above near the viewport bottom), its row spec (`.wt-menu-row`,
 flat, an out-arrow on anything leaving the app), and its hover behavior. The
@@ -1075,7 +1077,7 @@ without a gesture. The nav entry appears only while something is pending, so an
 empty channel costs no attention.
 
 A proposal record (`proposals/pending/<id>.json`) carries `id`, `kind`, `repo`,
-`path`, `why`, and an optional `ref`. Two kinds:
+`path`, `why`, and an optional `ref`. Three kinds:
 
 - **`put-file`** replaces `path` with `content` in full. Use when the session
   knows the file end to end.
@@ -1089,6 +1091,16 @@ A proposal record (`proposals/pending/<id>.json`) carries `id`, `kind`, `repo`,
   file whose top level is an array is refused. The `value` may be any JSON, so a
   key can be set to a whole nested structure; what is missing is addressing into
   one.
+- **`unset-json-field`** removes one top-level `field`, the same
+  read-modify-write with a delete in place of the assignment, and the same
+  literal-key limit. It exists because absence is not expressible any other way:
+  `set-json-field` can only assign, and `put-file` needs the rest of the file,
+  which a session scoped out of the target repo does not have. A record carrying
+  a `value` is refused rather than ignored, since it almost always means a set
+  was intended. **A removal that finds nothing to remove is done, not failed**:
+  the end state is what was asked for, so it reports through the same *Already
+  applied* path below and is retired rather than written again. A missing target
+  file counts the same way, so a removal never creates a file.
 
 **Three deliveries, and the tap decides.** A record may suggest one with
 `deliver`, but both routes are always on the card, because the person holding
@@ -1102,7 +1114,8 @@ does not:
 | `pr` | the same branch, plus a **draft** pull request |
 
 The PR's title and body are authored from the record: the `why` becomes the
-body, a `set-json-field` gets its before/after as a fenced block, and the
+body, a `*-json-field` kind gets its before/after as a fenced block (a removal
+showing `(removed)` on the after side), and the
 signature and record path go in a footer. It opens as a draft, since marking a
 PR ready is the reviewer's move.
 
@@ -1124,7 +1137,7 @@ premises the proposal rests on, live against the target:
 
 | Check | Means |
 | --- | --- |
-| **Target is readable** | the file exists and parses (JSON, for `set-json-field`) |
+| **Target is readable** | the file exists and parses (JSON, for the two `*-json-field` kinds) |
 | **Change is still needed** | the target does not already carry this exact change |
 | **Target unchanged since proposed** | `expectSha` still matches, skipped when none was recorded |
 | **declared premises** | each entry in the record's optional `expect: [{ field, equals }｜{ field, absent }]` |
@@ -1152,8 +1165,8 @@ of every reload.
 target as it stood when the proposal was written. At apply time a different sha
 refuses the write, with the two shas named, and a target that has since been
 deleted refuses the same way. This matters most for `put-file`, which replaces
-rather than merges and would otherwise erase a change nobody reviewed;
-`set-json-field` merges into current content, so it is safer without one. The
+rather than merges and would otherwise erase a change nobody reviewed; the
+`*-json-field` kinds merge into current content, so they are safer without one. The
 refusal is not the end: the card offers an explicit **Apply anyway**, and a
 forced write is stamped `forced` in the applied record along with both shas, so
 a deliberate override stays distinguishable from a clean apply. A record with no

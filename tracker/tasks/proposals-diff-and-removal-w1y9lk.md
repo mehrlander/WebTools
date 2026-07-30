@@ -4,7 +4,7 @@ title: Two gaps the proposal channel showed on first use
 status: backlog
 project: show-repo
 opened: 2026-07-28
-next: the removal kind is the one with a waiting job (six inert quickLink flags); the diff pane is polish
+next: the removal kind landed; what remains is the put-file diff pane (extract diffLines from stage.js to lib/) and the applied record's commit link
 ---
 # Two gaps the proposal channel showed on first use
 
@@ -59,3 +59,18 @@ bytes. Small, and it belongs with the two above.
   reads as though it should carry a patch, and never does) and the `why` bar too
   low; both were fixed in web-tools PR #305 and web-tools-private PR #9 rather
   than filed here, since they were documentation rather than mechanism.
+- 2026-07-30: the removal kind landed on `claude/repo-info-map-view-ultmlm`
+  (web-tools PR pending). `unset-json-field` is applyField's shape with a delete:
+  same parse, same object-at-top-level rule, same literal-key limit, same
+  re-serialization. The open question in this file is answered as it proposed, a
+  no-op: a removal finding nothing to remove reports the existing `done` state
+  rather than an error, so the record is retired rather than written again, and a
+  missing target file counts the same way (a removal never creates a file). One
+  thing this file predicted correctly: the review pane needed no new UI, since
+  the one-key before/after already used by `set-json-field` covers both kinds
+  with `(removed)` on the after side. A record carrying a `value` is refused
+  rather than ignored, which was not in the plan; it almost always means a set
+  was intended, and silently dropping it would apply the opposite of what was
+  written. Ten unit tests, docs/show-repo.md updated. The six inert `quickLink`
+  flags are now expressible; nothing has proposed them yet.
+  Still open: the put-file diff pane and the applied record's commit link.
