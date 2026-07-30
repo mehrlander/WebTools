@@ -147,13 +147,13 @@ test('branchMenuItems: a PR row offers its tabs, a bare branch offers New PR', (
   const withPr = data.openBranches[0], noPr = data.openBranches[1];
   data.menuBranch = withPr;
   let keys = plain_(data.branchMenuItems.map(i => i.key));
-  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'stageDiff', 'prFiles', 'prChecks', 'copyName', 'copyCompare']);
+  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'stageDiff', 'prFiles', 'prChecks', 'copyName']);
   assert.equal(data.branchMenuItems.find(i => i.key === 'prFiles').label, 'Files changed (#12)');
   assert.equal(data.branchMenuItems.find(i => i.key === 'compare').label, 'Compare to main');
 
   data.menuBranch = noPr;
   keys = plain_(data.branchMenuItems.map(i => i.key));
-  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'stageDiff', 'newPr', 'copyName', 'copyCompare']);
+  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'stageDiff', 'newPr', 'copyName']);
   assert.ok(!keys.includes('prFiles'));
 });
 

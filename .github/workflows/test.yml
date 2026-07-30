@@ -1,0 +1,67 @@
+name: Tests
+
+# The repo's one VERIFICATION workflow. Everything else under .github/workflows/
+# is an errand (a cron or a button), and an errand's run has no commit under
+# review to attach to, so it lives in the Actions tab and nowhere else. This one
+# is triggered by a pull request, so its result attaches to the PR's head commit
+# and becomes a check: the green or red mark in the merge box, the Checks tab,
+# and the tick beside the commit wherever GitHub lists it.
+#
+# Why it exists: .claude/hooks/build-on-commit.sh regenerates dist/web-tools.js
+# and the page catalogs before a commit, but a hook only fires where the harness
+# registers it, and where it does not, it fails silently (cause and tells in
+# docs/environment/extending.md). tools/test/artifacts-lockstep.test.mjs is the
+# backstop for that, and until now it only ran when someone remembered to run the
+# suite. Here it runs on every PR, so a stale artifact is caught by the platform
+# rather than by memory.
+#
+# The suite is browser-free: `node --test` globs tools/test/**/*.test.mjs, and
+# every Playwright-driven check (subject-actions, render-copy, the pdf probes) is
+# deliberately named without `.test.` and stays a manual run. That is what lets
+# the install below skip the browser download.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    # The monthly WSL snapshot commits data and touches no code, so there is
+    # nothing for the suite to say about it.
+    paths-ignore: ['pages/wsl-sync/data/**']
+  workflow_dispatch:
+
+# Read-only: this one reports, it does not commit. (wsl-fetch.yml takes
+# contents: write because it pushes its snapshot back.)
+permissions:
+  contents: read
+
+# A second push to a branch supersedes the first, so cancel the run it
+# obsoleted instead of paying for both.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # 22, not 20, and not by preference: `node --test` only expands a glob
+      # pattern from 22 on, so on 20 the test script looks for a directory
+      # literally named ** and exits 1 before running anything. It also matches
+      # the sandbox (22.22.2), which is the version the suite is written against.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      # package-lock.json is gitignored in this repo, so there is no lockfile to
+      # `npm ci` against or to key setup-node's cache with. The env var stops the
+      # playwright dev dependency's postinstall from fetching browsers the suite
+      # never launches, which is most of the install time.
+      - name: Install
+        run: npm install
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+
+      - name: Run the suite
+        run: npm test
