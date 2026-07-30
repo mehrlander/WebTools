@@ -541,10 +541,21 @@ function renderCrumbs() {
   $('upBtn').classList.toggle('hidden', !S.viewRoot?.parent);
 }
 
+// The repo's own jump-over: the header's ref chip is where the atlas already
+// names repo@ref, so it is the chip that becomes the link rather than a new
+// control beside it. A ref only appears in the URL when it is off-default, the
+// same rule GithubLinks.repoUrl follows. A local folder has no GitHub home, so
+// its chip stays inert.
+const repoGhUrl = () =>
+  `https://github.com/${S.repo}` +
+  (S.ref && S.defaultRef && S.ref !== S.defaultRef ? `/tree/${encodeURIComponent(S.ref)}` : '');
+
 function renderStats() {
   const r = S.root;
   const refChip = S.source === 'github'
-    ? `<span class="chip">${esc(S.ref)}</span>`
+    ? `<a class="chip inline-flex items-center gap-1 hover:border-black/20" target="_blank" rel="noopener"
+          style="color:var(--ink-2)" title="${esc(S.repo)} at ${esc(S.ref)} on GitHub"
+          href="${esc(repoGhUrl())}"><i class="ph ph-github-logo"></i>${esc(S.ref)}</a>`
     : `<span class="chip"><i class="ph ph-folder-open"></i> local</span>`;
   $('statChips').innerHTML = r ? `
     <span class="chip">${r.fileCount.toLocaleString()} files</span>

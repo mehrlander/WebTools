@@ -106,10 +106,37 @@ The per-repo views in the sidebar:
 
 **GitHub jump-overs.** show-repo is a wrapper over GitHub, not a wall: every
 view keeps a one-tap route to the GitHub presentation of what it is showing.
-The sidebar top bar links the open repo@ref, the explorer breadcrumb links the
-current folder, the viewer's actions link the open file's blob, and every
-estate card and surface item carries its github-logo link. A new view should
-ship with its jump-over.
+The sidebar top bar links the open repo@ref and its recent entries link their
+files, the explorer breadcrumb links the current folder, the viewer's actions
+link the open file's blob, each staged item and finder row links its own
+`repo@ref`, each compare row links its blob at head, and every estate card and
+surface item carries its github-logo link. A new view should ship with its
+jump-over.
+
+The one glyph carries four meanings, and two rules keep them apart:
+
+| Meaning | Example | Treatment |
+| --- | --- | --- |
+| Repo **menu** | the sidebar row's github button (`lib/github-links.js`) | icon opens a list |
+| Repo or branch **destination** | an estate card, the atlas header's ref chip | plain icon |
+| The **manifest** behind a whole view | Map's Transport, Tools' curated list | icon **plus a label** ("Curate"), at the header's far edge |
+| An **exact file** | a set row, a route's renderer, a staged item | plain icon **plus a source peek** |
+
+A **source peek** (`lib/source-peek.js`) is a hover card showing the file:
+markdown rendered, JSON pretty-printed with its top-level shape named,
+everything else as source, always the first 20 lines with a footer saying what
+was left behind. A call site adds one attribute,
+`:data-peek="owner/repo[@ref]:path"`, and a delegated listener does the rest; a
+view holding the bytes already (the Map's two manifests) passes them with
+`SourcePeek.seed` so the peek costs no fetch. The peek is what makes the fourth
+meaning self-evident: an icon that can show you the file is pointing at a file,
+and one that cannot is pointing at something broader. So repo, branch, folder,
+and menu icons have none, and neither do the viewer's and the config view's
+GitHub actions, which sit above the file's full contents already on screen.
+
+It opens on hover where the pointer can hover, and on focus for a keyboard
+reader. On a touch screen it never opens: the icon keeps its single meaning,
+which is a tap that jumps to GitHub.
 
 ## The estate: the all-repo view
 
