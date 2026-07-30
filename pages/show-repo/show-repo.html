@@ -556,11 +556,15 @@
 
            The list is read from the OPEN repo's live manifest (repoProjects
            prefers it over the estate cache), so it needs no token and follows
-           the browsed ref. The trailing buttons are the estate row's pair. -->
+           the browsed ref. The trailing buttons are the estate row's pair, and
+           the rows hang off the same 1 px rule at the same ml-4, which here
+           lands on the centre of the section head's own glyph rather than on a
+           repo row's. Three lists of projects, one treatment. -->
       <div class="flex flex-col gap-0.5" x-show="!estateCtx && repoProjects($store.browser.repo).length">
         <div class="text-base font-semibold text-base-content/50 px-2 pb-1 flex items-center gap-1.5">
           <i class="ph ph-kanban"></i><span>Projects</span>
         </div>
+        <div class="flex flex-col gap-0.5 ml-4 pl-2 border-l border-base-300">
         <template x-for="p in repoProjects($store.browser.repo)" :key="p.path">
           <div class="flex items-center rounded-lg transition-colors hover:bg-base-200"
                :class="view==='project' && projectPath===p.path && 'bg-primary/10'">
@@ -579,6 +583,7 @@
               <i class="ph ph-list-checks text-base leading-none"></i></button>
           </div>
         </template>
+        </div>
       </div>
 
       <div class="border-t border-base-200"
@@ -1969,9 +1974,13 @@ function app(){ return {
   // An entry's `icon` is read no more: the rows no longer draw one (the field
   // defaulted, so every row took the same glyph and it distinguished nothing).
   // A stale `icon` in a manifest is simply ignored rather than being an error.
-  repoProjects(repo){
+  // A caller holding the manifest already (the estate cards read their own copy
+  // of the cache, and on a cold estate a live scan rather than the cache) passes
+  // it as `cfg` and gets the same normalizing, so the rule for what a project
+  // row IS lives here once rather than in every list that draws one.
+  repoProjects(repo, cfg){
     const s = Alpine.store('browser');
-    const cfg = (repo && repo === s.repo && s.config) ? s.config : this.estateConfigs?.[repo];
+    if (!cfg) cfg = (repo && repo === s.repo && s.config) ? s.config : this.estateConfigs?.[repo];
     const list = cfg?.projects;
     if (!Array.isArray(list)) return [];
     const out = [];

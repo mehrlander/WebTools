@@ -20,7 +20,8 @@ export default async function (page) {
     // The config cache the estate reads: { repos: { name: { config } } }, each
     // repo carrying its own estate:true, group, order, icon, note, and pins.
     const CONFIGS = { repos: {
-      'mehrlander/home':              { config: { estate: true, icon: 'ph-house',         group: 'core',     order: 0, note: 'Knowledge base and agent memory layer.', pins: ['chron', 'created'] } },
+      'mehrlander/home':              { config: { estate: true, icon: 'ph-house',         group: 'core',     order: 0, note: 'Knowledge base and agent memory layer.', pins: ['chron', 'created'],
+                                                    projects: ['projects/news', 'projects/bills', 'projects/budget-wa'] } },
       'mehrlander/web-tools':         { config: { estate: true, icon: 'ph-toolbox',       group: 'core',     order: 1, note: 'Browser tools and kits; hosts this shell.', pins: ['pages', 'lib', 'docs/CONVENTIONS.md'] } },
       'mehrlander/web-tools-private': { config: { estate: true, icon: 'ph-shield-check',  group: 'core',     order: 2, note: 'The private registry.', pins: ['surfaces', 'state'] } },
       'mehrlander/field-notes':       { config: { estate: true, icon: 'ph-chats',         group: 'archives', order: 3, note: 'An archive repo, off to the side.' } },

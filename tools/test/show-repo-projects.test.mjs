@@ -252,6 +252,21 @@ test('the repo sidebar carries the same list, and the pane binds the open one', 
   assert.match(page, /x-html="projectHtml"/, 'the project pane no longer renders its README');
 });
 
+test('all three project lists hang off the same rule', () => {
+  // The estate sidebar's nested rows, the repo sidebar's Projects section, and
+  // the estate card. One treatment; a change to one that skips the others is
+  // exactly the drift this catches.
+  const estate = readFileSync(path.join(repoRoot, 'lib/alpineComponents/estate.js'), 'utf8');
+  assert.match(page, /class="flex flex-col gap-0\.5 ml-4 pl-2 border-l border-base-300"/,
+    'the repo sidebar\'s Projects section no longer hangs off the rule');
+  assert.match(estate, /border-l border-base-300"[\s\S]{0,200}face\(e\)\.projects/,
+    'the estate card no longer hangs its projects off the rule');
+  assert.match(estate, /projects: window\.__shell\?\.repoProjects\?\.\(name, cfg\)/,
+    'the card entries no longer normalize through the shell, so the three lists can disagree');
+  assert.match(estate, /openProjectFrom\(face\(e\), p\)/,
+    'a card project row no longer opens the project view');
+});
+
 test('the project block hugs its repo row, and hangs from a guideline', () => {
   // The gap between a repo row and a project row is the repo row's own slack,
   // not a declared margin, so the block is pulled back to close it; the rule at
