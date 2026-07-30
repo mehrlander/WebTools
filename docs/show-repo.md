@@ -45,9 +45,13 @@ own views, **Activity** (Open / To-do / Jots by pill), **Repos**, **Surfaces**,
 **Stage**, **Tools**, and **Map**, as icon buttons (icon + label on desktop,
 icon-only on mobile), lit on the active view and present on every viewport. That is the whole
 header: the `#repo` component sits beside the nav but renders nothing (it is the
-repo/auth controller and hosts the shared dialog), and there is no auth shield.
-The brand icon returns to the **dashboard**: Open for a signed-in viewer, Repos
-for a signed-out one. There is no repo-list dropdown and no quick-links row:
+repo/auth controller and hosts the shared dialog), and there is neither an auth
+shield nor a brand icon. The mark left the header because its tap was the
+**dashboard** (Activity for a signed-in viewer, Repos for a signed-out one) and
+both of those are the first item of the nav it sat against: a second route to a
+destination named a few pixels away. It still leads the sidebar crumb trail,
+where it is the route home from inside a repo, so the app keeps one copy of it
+rather than two. There is no repo-list dropdown and no quick-links row:
 **repo selection happens on the Repos dashboard** (a card opens the repo), which
 reads better than a dropdown and keeps the header a fixed set rather than one
 repos opt into.
@@ -56,10 +60,10 @@ The sidebar's **top bar is a crumb trail** (`crumbBar`, the shell's
 `sidebarCrumbs`) in both contexts. At the app level it is the **product mark
 alone**, which says what a "Views" label used to say and says it in the
 vocabulary the repo trail already teaches. In a repo it is the mark, the repo,
-and the ref only when it is off the default. The house is the route to the dashboard, which matters on mobile
-because an open drawer hides the header brand entirely; dropping the owner
-prefix, always this account, is what pays for it, and the full `owner/name`
-stays in the tooltip. The mark renders grayscale at rest and in colour on hover,
+and the ref only when it is off the default. The mark is the route to the
+dashboard from inside a repo, and now the only one in the chrome; dropping the
+owner prefix, always this account, is what pays for its slot, and the full
+`owner/name` stays in the tooltip. The mark renders grayscale at rest and in colour on hover,
 so it reads as a control rather than as branding. Tapping the repo crumb opens a
 **repo switcher**: which repository is showing, current one checked, and nothing
 else. A trail names where you are, so the only menu it earns is the set of other
@@ -145,8 +149,8 @@ which is a tap that jumps to GitHub.
 
 The estate (`lib/alpineComponents/estate.js`) is the central dashboard over the
 whole repo constellation, and the page's global context (above any single repo,
-reached from the header selector's "Repositories" entry, the brand icon, or a
-bare page open). It is a context with **views of its own**, switched from
+reached from the header nav, the sidebar crumb trail's mark, or a bare page
+open). It is a context with **views of its own**, switched from
 the header nav the way a repo shows landing/atlas/files/…:
 
 - **Repos** (`?view=estate`) — the repo cards.
@@ -905,14 +909,25 @@ repos. All are optional; a repo with no config is simply off the estate.
   is something to copy, not somewhere to go.
 - **projects**: the repo's workspaces, rendered indented under the repo's row
   in the sidebar Repos index. Entries are bare folder paths
-  (`"projects/budget-wa"`) or `{ path, label, icon }` objects; `label` defaults
-  to the path's last segment and `icon` to `ph-kanban`, the task-board glyph. A
-  row opens the repo's Files view at that folder, the same route a folder pin
-  takes, but reachable from the estate for any member repo. The **defining
+  (`"projects/budget-wa"`) or `{ path, label, tracker }` objects; `label`
+  defaults to the path's last segment. Tapping the name opens the repo's Files
+  view at that folder, the same route a folder pin takes, but reachable from the
+  estate for any member repo. Two trailing buttons carry the project's other two
+  destinations, the repo rows' pattern at project scale: its **task board**,
+  opened here in the file viewer, and its **folder on GitHub**. Both act
+  directly rather than opening a panel, because a workspace has one of each
+  where a repo has seven GitHub destinations to choose among. The rows draw no
+  leading glyph: the field defaulted one, so every row took the same mark and it
+  distinguished nothing; the indent and the smaller type carry the containment.
+  An `icon` on an entry is accepted and ignored. The **defining
   convention**: a workspace running a tracker (a `tracker/` directory holding
   `tasks/`, per [TRACKER.md](TRACKER.md)) is a project. A tracker at the repo
   root marks the repo itself and earns no row, so "repo or project" needs no
-  separate registry of what counts. The field is declarative rather than
+  separate registry of what counts. That convention is also what lets the board
+  button need no declaration: the same layout puts the generated rollup at
+  `<workspace>/tracker/board.md`, so the row derives it. An entry names a
+  different one with `tracker` (a repo-root-relative file or folder) and drops
+  the button with `tracker: false`. The field is declarative rather than
   discovered live (walking a tree for `tracker/` dirs is API-costly), which
   makes it generatable: home's `tools/generate-tracker-registry.py` syncs it
   from the trackers it finds, so the manifest cannot drift from the ground
