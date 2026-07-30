@@ -391,7 +391,21 @@
                      buy spacing. Pulling the block up also widens the space
                      BELOW the last project by the same 4 px, which is the right
                      direction: a project should sit nearer its own repo than
-                     the next one. -->
+                     the next one.
+
+                     The trailing buttons carry the REPO ROW'S OWN /30, and that
+                     is now load-bearing rather than tidy. They were written at
+                     /25, meaning to sit a shade below the repo's, and rendered
+                     DARKER instead: this page's Tailwind browser build emits no
+                     rule for text-base-content/25, so the glyphs fell through to
+                     base-content at full strength while the repo's /30 above
+                     them was honoured. Same family as the caret in
+                     crumb-bar.js, where a utility that never appears in the
+                     compiled sheet simply does not exist. So match a value the
+                     page already uses rather than picking a fresh step, and if a
+                     new one is wanted, check the computed colour rather than the
+                     class list. -->
+
 
                 <div class="flex flex-col -mt-1 ml-4 pl-2 border-l border-base-300" x-show="repoProjects(r.repo).length">
                 <template x-for="p in repoProjects(r.repo)" :key="r.repo + ':' + p.path">
@@ -402,11 +416,11 @@
                     </button>
                     <a :href="projectGithubUrl(r.repo, p)" target="_blank" rel="noopener" @click.stop
                        :title="p.path + ' on GitHub'"
-                       class="wt-row-btn shrink-0 h-7 flex items-center justify-center text-base-content/25 hover:text-primary transition-colors">
+                       class="wt-row-btn shrink-0 h-7 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors">
                       <i class="ph ph-github-logo text-sm leading-none"></i></a>
                     <button x-show="p.board" @click.stop="openProjectBoard(r.repo, p)"
                             :title="'Task board: ' + p.board"
-                            class="wt-row-btn shrink-0 h-7 flex items-center justify-center text-base-content/25 hover:text-primary transition-colors">
+                            class="wt-row-btn shrink-0 h-7 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors">
                       <i class="ph ph-list-checks text-sm leading-none"></i></button>
                   </div>
                 </template>
@@ -557,11 +571,11 @@
             </button>
             <a :href="projectGithubUrl($store.browser.repo, p)" target="_blank" rel="noopener" @click.stop
                :title="p.path + ' on GitHub'"
-               class="wt-row-btn shrink-0 h-8 flex items-center justify-center text-base-content/25 hover:text-primary transition-colors">
+               class="wt-row-btn shrink-0 h-8 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors">
               <i class="ph ph-github-logo text-base leading-none"></i></a>
             <button x-show="p.board" @click.stop="openProjectBoard($store.browser.repo, p)"
                     :title="'Task board: ' + p.board"
-                    class="wt-row-btn shrink-0 h-8 flex items-center justify-center text-base-content/25 hover:text-primary transition-colors">
+                    class="wt-row-btn shrink-0 h-8 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors">
               <i class="ph ph-list-checks text-base leading-none"></i></button>
           </div>
         </template>
