@@ -918,18 +918,22 @@ repos. All are optional; a repo with no config is simply off the estate.
   is something to copy, not somewhere to go.
 - **projects**: the repo's workspaces. Entries are bare folder paths
   (`"projects/budget-wa"`) or `{ path, label, tracker }` objects; `label`
-  defaults to the path's last segment. They render in **two lists, one
+  defaults to the path's last segment. They render in **three lists, one
   destination**: nested under the repo's row in the estate sidebar's Repos
-  index, and as the **Projects** section of that repo's own sidebar. Tapping the
-  name in either opens the repo's **project view** (above); from the estate the
-  repo switches first. Two trailing buttons carry the project's other two
+  index, as the **Projects** section of that repo's own sidebar, and on the
+  repo's **card** in the Repos dashboard. Tapping the name in any of them opens
+  the repo's **project view** (above); from the estate the repo switches first.
+  All three hang the rows off the same 1 px rule, placed on the centre of the
+  glyph above them (the repo row's icon, or the section head's), which is what
+  says "these belong to that" without spending an indent. Two trailing buttons carry the project's other two
   destinations, the repo rows' pattern at project scale: its **task board**,
   opened here in the file viewer, and its **folder on GitHub**. Both act
   directly rather than opening a panel, because a workspace has one of each
   where a repo has seven GitHub destinations to choose among. The estate's rows
   draw no leading glyph: the field defaulted one, so every row took the same
-  mark and it distinguished nothing; the indent and the smaller type carry the
-  containment. An `icon` on an entry is accepted and ignored. The **defining
+  mark and it distinguished nothing; the rule and the smaller type carry the
+  containment, and the card carries names only, its board and folder being one
+  tap further in. An `icon` on an entry is accepted and ignored. The **defining
   convention**: a workspace running a tracker (a `tracker/` directory holding
   `tasks/`, per [TRACKER.md](TRACKER.md)) is a project. A tracker at the repo
   root marks the repo itself and earns no row, so "repo or project" needs no
