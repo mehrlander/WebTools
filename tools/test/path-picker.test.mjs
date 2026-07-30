@@ -208,3 +208,110 @@ test('a repo whose tree fails reads as empty and says why', async () => {
   assert.match(d.error, /Could not read me\/broken/);
   assert.equal(d.loading, false, 'the spinner is cleared on failure');
 });
+
+// ---- host-driven filtering: the pieces a field drives --------------------
+
+test('setQuery filters the current level and keeps a row active', () => {
+  file.scope = []; file.setQuery('');
+  file.choose(byName(file, 'me/open'));
+  assert.deepEqual(plain_(file.matches().map(n => n.name)), ['lib', 'README.md']);
+
+  file.setQuery('read');
+  assert.deepEqual(plain_(file.matches().map(n => n.name)), ['README.md']);
+  assert.equal(file.active, 0, 'the top match is always the active row');
+
+  file.setQuery('zzz');
+  assert.deepEqual(plain_(file.matches()), [], 'no match is an empty list, not everything');
+  file.setQuery('');
+});
+
+test('ranking is exact, then prefix, then substring, containers first', () => {
+  const d = file;
+  d.scope = []; d.setQuery('');
+  d.tree = [
+    { name: 'zz-ab', kind: 'folder', children: [] },
+    { name: 'ab', kind: 'file' },
+    { name: 'abc', kind: 'file' },
+    { name: 'ab-dir', kind: 'folder', children: [] },
+    { name: 'nope', kind: 'file' },
+  ];
+  d.setQuery('ab');
+  assert.deepEqual(plain_(d.matches().map(n => n.name)),
+    ['ab', 'ab-dir', 'abc', 'zz-ab'],
+    'exact first, then prefix with the folder ahead of the file, then substring');
+  d.tree = TREE(); d.scope = []; d.setQuery('');
+});
+
+test('move wraps in both directions and survives an empty list', () => {
+  file.scope = []; file.setQuery('');
+  const n = file.matches().length;
+  assert.ok(n >= 2, 'need at least two roots for this to mean anything');
+  assert.equal(file.active, 0);
+  file.move(1);
+  assert.equal(file.active, 1);
+  file.move(-1);
+  assert.equal(file.active, 0);
+  file.move(-1);
+  assert.equal(file.active, n - 1, 'up from the top wraps to the bottom');
+  file.move(1);
+  assert.equal(file.active, 0, 'down from the bottom wraps to the top');
+
+  file.setQuery('no-such-thing');
+  file.move(1);
+  assert.equal(file.active, 0, 'an empty list leaves the active row at zero');
+  file.setQuery('');
+});
+
+test('commitActive descends a container and emits a file', () => {
+  picks.length = 0;
+  file.scope = []; file.open = true; file.setQuery('');
+
+  // The active row is a repo: committing descends rather than emitting.
+  file.setQuery('open');
+  assert.equal(file.matches()[file.active].name, 'me/open');
+  assert.equal(file.commitActive(), true);
+  assert.deepEqual(plain_(file.scope.map(n => n.name)), ['me/open']);
+  assert.deepEqual(picks, [], 'descending is not a pick');
+  assert.equal(file.query, '', 'a new level starts unfiltered');
+
+  // Now a file: committing emits it. The match is case-insensitive.
+  file.setQuery('readme');
+  assert.equal(file.matches()[file.active].name, 'README.md');
+  assert.equal(file.commitActive(), true);
+  assert.deepEqual(plain_(picks), [{ repo: 'me/open', ref: '', path: 'README.md' }]);
+
+  // And a folder deeper in: committing descends again, no pick emitted.
+  file.jump(1);
+  file.setQuery('lib');
+  assert.equal(file.commitActive(), true);
+  assert.deepEqual(plain_(file.scope.map(n => n.name)), ['me/open', 'lib']);
+  assert.equal(picks.length, 1, 'descending still is not a pick');
+});
+
+test('commitActive on an empty list is a no-op that reports itself', () => {
+  file.scope = []; file.setQuery('nothing matches this');
+  assert.equal(file.commitActive(), false);
+  file.setQuery('');
+});
+
+test('walking back up clears the filter with the level', () => {
+  file.scope = []; file.setQuery('');
+  file.choose(byName(file, 'me/open'));
+  file.setQuery('read');
+  assert.equal(file.query, 'read');
+  file.up();
+  assert.equal(file.query, '', 'a stale query must not keep filtering the level above');
+  assert.equal(file.active, 0);
+});
+
+test('descending announces itself so a host can clear its own field', () => {
+  const seen = [];
+  const host = window.document.getElementById('pf');
+  const onDescend = e => seen.push(e.detail.scope);
+  host.addEventListener('path-descend', onDescend);
+  file.scope = []; file.setQuery('');
+  file.choose(byName(file, 'me/open'));
+  file.choose(byName(file, 'lib'));
+  host.removeEventListener('path-descend', onDescend);
+  assert.deepEqual(plain_(seen), [['me/open'], ['me/open', 'lib']]);
+});

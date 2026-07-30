@@ -86,8 +86,10 @@
     ?a=<spec>&b=<spec>    two owner/repo[@ref]:path addresses, fetched on load
 
   Keys (outside a text box): n/p next and previous change, u split/unified,
-  w wrap, s/d/f/a jump to a tab. In a GitHub slot's address field, "@" on its
-  own opens the file browser.
+  w wrap, s/d/f/a jump to a tab. In a GitHub slot's address field, a leading "@"
+  opens the file browser and what follows it filters: arrows move the highlight,
+  Tab or Enter takes it (descending a repo or folder, committing a file),
+  Backspace at a bare "@" goes up a level, Escape backs out.
 
   ?use=<ref> pins the lib chain for branch preview; gh-boot mounts the FAB.
 -->
@@ -400,7 +402,7 @@
 
           <template x-if="slots[id].src === 'url' || slots[id].src === 'gh'">
             <div class="join grow min-w-0">
-              <input x-model="slots[id].value" @keydown.enter="fill(id)" @input="onAddrInput(id)"
+              <input x-model="slots[id].value" @input="onAddrInput(id)" @keydown="onAddrKey(id, $event)"
                      :placeholder="slots[id].src === 'gh' ? 'owner/repo[@ref]:path, or @ to browse' : 'https://…'"
                      class="input input-xs input-bordered lctl join-item grow min-w-0 font-mono text-[11px]">
               <button class="btn btn-xs btn-primary lctl join-item px-3" @click="fill(id)" :disabled="slots[id].loading">
@@ -442,7 +444,7 @@
           <template x-if="pickerReady">
             <div :id="'grab-' + id"
                  x-data="pathPicker({ mode: 'file', roots: () => grabRoots(), placeholder: 'Browse a repo for a file' })"
-                 @path-pick="onGrab(id, $event.detail)"></div>
+                 @path-pick="onGrab(id, $event.detail)" @path-descend="onDescend(id)"></div>
           </template>
           <template x-if="!pickerReady">
             <p class="text-[11px] text-warning flex items-center gap-1 py-1">
@@ -616,8 +618,6 @@ function diffApp() {
       B: { src: 'url', value: '', name: '', content: '', loading: false, error: '' },
     },
 
-    // Repos the page has read from, newest first: the @-grab picker's roots.
-    recentRepos: [],
     // Promise for the token's repo listing, shared by both slots' pickers.
     _repoList: null,
     // Whether alpineComponents/path-picker.js loaded (set by the boot chain).
@@ -750,7 +750,7 @@ function diffApp() {
         s.loading = false;
         this.onEdit();
       }
-      if (!s.error && s.src === 'gh') this.resetPickers();
+
     },
 
     // owner/repo[@ref]:path through the stored token, so a private repo or an
@@ -764,29 +764,25 @@ function diffApp() {
       const s = this.slots[id];
       s.content = file.text;
       if (!s.name) s.name = addr.path.split('/').pop() + (addr.ref ? '@' + addr.ref : '');
-      this.rememberRepo(addr.repo);
     },
 
     // ── the browse row's roots ───────────────────────────────────────────
-    // Every repo the stored token can see, most-recently-updated first, with the
-    // repos this page has actually read from pulled to the top. pathPicker loads
-    // a repo's tree on entry rather than at first open, so a long list is free
-    // to show; without that this had to stay a handful.
+    // Every repo the stored token can see, in the order GitHub returns them
+    // (most recently updated first), and nothing reordered on top of that.
     //
-    // Awaited by pathPicker, and memoized on the promise so the two slots'
-    // pickers share one listing rather than each fetching it.
+    // An earlier pass pulled the repos this page had read from to the front. It
+    // was wrong twice over: on a first visit that is one repo, so the list
+    // looked broken; and once the panel filters as you type with the top row
+    // pre-selected, an authored first item is what Tab commits. A guessed
+    // default is worse than a neutral one when a keystroke accepts it.
+    //
+    // Awaited by pathPicker, memoized so the two slots' pickers share one fetch.
     async grabRoots() {
-      const seen = new Set();
-      const roots = [];
-      const add = repo => {
-        if (!repo || seen.has(repo)) return;
-        seen.add(repo);
-        roots.push({ repo, ref: '' });
-      };
-      this.recentRepos.forEach(add);
-      if (window.gh && gh.repo) add(gh.repo);
-      for (const repo of await this.repoList()) add(repo);
-      return roots;
+      const repos = await this.repoList();
+      if (repos.length) return repos.map(repo => ({ repo, ref: '' }));
+      // No listing (no token, or the call failed): at least offer this repo, so
+      // the panel is navigable rather than empty.
+      return window.gh && gh.repo ? [{ repo: gh.repo, ref: '' }] : [];
     },
 
     repoList() {
@@ -810,14 +806,8 @@ function diffApp() {
       return this._repoList;
     },
 
-    rememberRepo(repo) {
-      if (!repo) return;
-      this.recentRepos = [repo, ...this.recentRepos.filter(r => r !== repo)].slice(0, 8);
-      this.persist();
-    },
-
-    // Reset the picker so a newly-read repo reaches the top of the list, and so
-    // a token entered after the first failed listing is retried.
+    // Drop the cached listing and the picker trees, so a token entered after a
+    // failed listing is retried without a reload.
     resetPickers() {
       this._repoList = null;
       for (const id of ['A', 'B']) {
@@ -826,22 +816,58 @@ function diffApp() {
       }
     },
 
-    // "@" in the address field opens the picker. The trigger is the value being
-    // exactly '@', not merely containing one, because '@' is legitimate inside
-    // an address: owner/repo@ref:path would otherwise reopen the panel on every
-    // keystroke of the ref. So: '@' on its own in an empty field means browse,
-    // and it is consumed rather than left in the field.
+    // ── the address field as the picker's keyboard ───────────────────────
+    // A value that STARTS with '@' puts the field in browse mode: the panel
+    // opens and everything after the '@' is the filter. That rule beats the
+    // earlier "exactly @" one on both sides. It supports typing to filter, and
+    // it still cannot collide with a real address, because owner/repo@ref:path
+    // has its '@' in the middle, never at the front.
+    //
+    // The field is the only text box: pathPicker deliberately has none, and a
+    // second input beside the one already focused would be worse than none.
     onAddrInput(id) {
-      if (this.slots[id].src !== 'gh' || this.slots[id].value.trim() !== '@') return;
-      this.slots[id].value = '';
-      this.openPicker(id);
+      const picker = this.pickerFor(id);
+      if (!picker) return;
+      const v = this.slots[id].value;
+      if (this.slots[id].src !== 'gh' || !v.startsWith('@')) {
+        if (picker.open) { picker.open = false; picker.setQuery(''); }
+        return;
+      }
+      if (!picker.open) picker.toggle();
+      picker.setQuery(v.slice(1));
     },
 
-    openPicker(id) {
-      const host = document.getElementById('grab-' + id);
-      const picker = host && host.__pathPicker;
-      if (!picker) { this.showToast('The file browser did not load'); return; }
-      if (!picker.open) picker.toggle();
+    // Arrow keys move the highlight, Tab or Enter takes it, Escape backs out.
+    // Only while browsing: otherwise Tab must still move focus and Enter must
+    // still fetch the typed address.
+    onAddrKey(id, e) {
+      const picker = this.pickerFor(id);
+      const browsing = picker && picker.open && this.slots[id].value.startsWith('@');
+      if (!browsing) {
+        if (e.key === 'Enter') { e.preventDefault(); this.fill(id); }
+        return;
+      }
+      if (e.key === 'ArrowDown') { e.preventDefault(); picker.move(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); picker.move(-1); }
+      else if (e.key === 'Tab' || e.key === 'Enter') { e.preventDefault(); picker.commitActive(); }
+      else if (e.key === 'Escape') { e.preventDefault(); picker.open = false; this.slots[id].value = ''; }
+      else if (e.key === 'Backspace' && this.slots[id].value === '@' && picker.scope.length) {
+        // Backspacing past the query walks up a level rather than closing.
+        e.preventDefault();
+        picker.up();
+      }
+    },
+
+    pickerFor(id) {
+      const picker = document.getElementById('grab-' + id)?.__pathPicker;
+      if (!picker) this.showToast('The file browser did not load');
+      return picker || null;
+    },
+
+    // Descending resets the picker's filter, so the field has to follow or the
+    // two disagree about what is being filtered.
+    onDescend(id) {
+      if (this.slots[id].value.startsWith('@')) this.slots[id].value = '@';
     },
 
     // A pick writes the address into the slot's field and loads it, so the
@@ -852,6 +878,9 @@ function diffApp() {
       const spec = detail.repo + (detail.ref ? '@' + detail.ref : '') + ':' + detail.path;
       this.slots[id].src = 'gh';
       this.slots[id].value = spec;
+      // The pick replaces the '@query' in the field, so browse mode is over.
+      const picker = document.getElementById('grab-' + id)?.__pathPicker;
+      if (picker) { picker.open = false; picker.setQuery(''); }
       this.fill(id);
     },
 
@@ -1352,7 +1381,6 @@ function diffApp() {
         localStorage.setItem('diffTool.v2', JSON.stringify({
           view: this.view, wrap: this.wrap, fontStep: this.fontStep,
           stripHtml: this.stripHtml, rules: this.rules, slots,
-          recentRepos: this.recentRepos,
         }));
       } catch { /* quota, or a private window: the tool still works */ }
     },
@@ -1366,7 +1394,6 @@ function diffApp() {
       if (typeof saved.fontStep === 'number') this.fontStep = saved.fontStep;
       this.stripHtml = !!saved.stripHtml;
       if (Array.isArray(saved.rules)) this.rules = saved.rules;
-      if (Array.isArray(saved.recentRepos)) this.recentRepos = saved.recentRepos.filter(r => typeof r === 'string');
       for (const id of ['A', 'B']) {
         const s = saved.slots && saved.slots[id];
         if (s) Object.assign(this.slots[id], {
