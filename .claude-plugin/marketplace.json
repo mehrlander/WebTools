@@ -9,7 +9,8 @@
       "name": "portable",
       "source": "./.claude/skills",
       "strict": false,
-      "description": "The to-go bag: /portable:web-tools (load the portable working conventions), /portable:caption (the surfacing caption), /portable:load-skill (fetch any skill from the library), /portable:show-repo (browse and move files across repos), /portable:tasks (operate the cross-session project tracker), /portable:repo-review (read the repo's state and report what stands out, at three depths), /portable:tree (render a linked file tree for chat), /portable:in-flight (check whether any branch, PR, or task is already working on something), and /portable:markers (what is frozen, stale, or wrong, and what must not be edited).",
+      "description": "The to-go bag: /portable:web-tools (load the portable working conventions), /portable:caption (the surfacing caption), /portable:load-skill (fetch any skill from the library), /portable:show-repo (browse and move files across repos), /portable:tasks (operate the cross-session project tracker), /portable:repo-review (read the repo's state and report what stands out, at three depths), /portable:tree (render a linked file tree for chat), /portable:in-flight (check whether any branch, PR, or task is already working on something), and /portable:markers (what is frozen, stale, or wrong, and what must not be edited). Also carries the session recorder as a Stop hook, inert unless a checkout declares a sessions store.",
+      "hooks": "./hooks/hooks.json",
       "author": {
         "name": "mehrlander"
       },

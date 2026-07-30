@@ -916,6 +916,15 @@ repos. All are optional; a repo with no config is simply off the estate.
 - **conventions**: not a show-repo field. `"optout"` marks a repo that has
   deliberately not adopted the portable conventions, so a session-start nudge
   stops asking. Absent means unset. Documented in [PORTABLE.md](PORTABLE.md).
+- **sessions**: not a show-repo field. A path (`"sessions"`) to the directory
+  where this repo keeps its session records, alongside the `tools/` that write
+  them. Declaring it is what makes the repo the store for the portable plugin's
+  `Stop` hook, which records any session that has this repo checked out and does
+  nothing where no checkout declares one. The hook finds the store by reading
+  this field rather than by knowing a repo name, so the recorder stays private
+  while the hook stays public. At most one checkout in a session should declare
+  it; the first found wins. Absent means no recording.
+  See [environment/extending.md](environment/extending.md#stop-the-session-recorder).
 
 ### One membership list
 

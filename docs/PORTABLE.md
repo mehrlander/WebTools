@@ -44,8 +44,19 @@ start): add the `extraKnownMarketplaces` and `enabledPlugins` block to
 | `/portable:repo-review` | read the repo's own state and report what stands out, at three depths (light, deep, sweep) |
 | `/portable:in-flight` | check whether a branch, PR, or task is already working on something, and reconcile stale tracker claims |
 | `/portable:markers` | what is frozen, stale, or wrong: mark a claim, declare a path in `.paths.json`, inventory both, check that they agree |
+| the session recorder | a `Stop` hook that records the session where a checkout declares a `"sessions"` store, and does nothing at all where none does |
 
-That is the whole day-to-day set. One script rides inside the plugin: the board
+That is the whole day-to-day set. Everything above the last row is invoked; the
+last row is not. **The recorder is the one piece that runs on its own**, on every
+turn of every session that installs the plugin, which is why it is here rather
+than installed per repo: the per-container settings file it would otherwise live
+in is provisioned fresh each session, so a hand-installed copy records exactly
+one session and then vanishes. It is inert without a store, costing one `grep`
+before it exits, and it holds no knowledge of the record format. Mechanism,
+measurements, and the declaration it looks for:
+[environment/extending.md](environment/extending.md#stop-the-session-recorder).
+
+One script rides inside the plugin: the board
 generator (`build-board.py`) is bundled with the `tasks` skill, so `/tasks`
 regenerates a board with nothing to fetch. The reference docs and the other
 scripts below are not in the plugin: they are fetched by raw URL when a task
@@ -72,6 +83,7 @@ Top-level fields, not namespaced by consumer, so any web-tools page can read the
 | `pins` | show-repo | folders/files surfaced in the sidebar Pinned block |
 | `stage` | show-repo | `{ files, targets }`: a durable staged-files list and default transfer destinations |
 | `conventions` | session-start nudge | `"optout"` marks a repo that has deliberately not adopted the conventions, so the nudge stops asking |
+| `sessions` | the plugin's `Stop` hook | path to the directory holding this repo's session records and their `tools/`, which makes this repo the store the recorder writes to. Declaring it is what turns recording on; at most one checkout in a session should carry it |
 
 Full field semantics for the show-repo fields are in [`docs/show-repo.md`](show-repo.md).
 The file was formerly `.show-repo.json`; readers fall back to that name so an
