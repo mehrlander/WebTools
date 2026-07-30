@@ -1,7 +1,9 @@
 // alpineComponents/path-picker.js — logic-level tests for the tap-through
 // path selector: descent by choose(), crumb jumps, file picks (emit and stay
-// open), dir mode (folder-as-target, files naming their folder). There is no
-// text input by design. The tree is injected directly; no network, no pixels.
+// open), dir mode (folder-as-target, files naming their folder), and the lazy
+// root loading that lets a caller offer every repo a token can see. There is no
+// text input by design. Most tests inject the tree directly; the lazy ones use a
+// fake GH that counts calls. No network, no pixels.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -104,4 +106,212 @@ test('dir mode: pickDir commits the bare repo root as owner/repo', () => {
   dir.choose(byName(dir, 'me/open'));
   dir.pickDir();
   assert.deepEqual(plain_(picks), [{ repo: 'me/open', ref: '', dir: '', spec: 'me/open' }]);
+});
+
+// ---- lazy roots: the tree loads on entry, not at first open ---------------
+
+// A GH stand-in that records every tree request, so "how many calls did showing
+// the root list cost" is an assertion rather than a guess.
+//
+// The roots fixtures hang off globalThis rather than window: Alpine is imported
+// into the Node realm, so its expression evaluator closes over globalThis, while
+// the component files run in the jsdom window realm.
+const treeCalls = [];
+class CountingGH {
+  constructor(conf = {}) { this.token = conf.token || ''; this.repo = conf.repo || ''; this.ref = ''; }
+  async req(path) {
+    treeCalls.push({ repo: this.repo, path });
+    if (this.repo === 'me/broken') throw new Error('GitHub Error 404');
+    return {
+      truncated: false,
+      tree: [
+        { type: 'tree', path: 'src' },
+        { type: 'blob', path: 'src/main.js' },
+        { type: 'blob', path: 'LICENSE' },
+      ],
+    };
+  }
+}
+
+test('listing many roots costs no tree calls until one is entered', async () => {
+  const host = window.document.createElement('div');
+  host.setAttribute('x-data', "pathPicker({ mode: 'file', roots: () => ROOTS_MANY })");
+  globalThis.ROOTS_MANY = Array.from({ length: 40 }, (_, i) => ({ repo: 'me/r' + i, ref: '' }));
+  window.document.body.appendChild(host);
+  Alpine.initTree(host);
+  await new Promise(r => setTimeout(r, 0));
+
+  const d = Alpine.$data(host);
+  Alpine.store('browser').gh = new CountingGH({ token: 't', repo: 'me/open' });
+  treeCalls.length = 0;
+
+  await d.ensureTree();
+  assert.equal(d.tree.length, 40, 'every root is listed');
+  assert.equal(treeCalls.length, 0, 'showing the list must not fetch 40 trees');
+  assert.equal(d.tree[0].children, null, 'an unentered repo is marked unloaded');
+
+  await d.choose(d.tree[3]);
+  assert.equal(treeCalls.length, 1, 'entering one repo costs exactly one call');
+  assert.equal(treeCalls[0].repo, 'me/r3');
+  assert.deepEqual(plain_(d.children().map(n => n.name)), ['src', 'LICENSE']);
+
+  // Re-entering is free: the children are cached on the node.
+  d.jump(0);
+  await d.choose(d.tree[3]);
+  assert.equal(treeCalls.length, 1, 're-entering a loaded repo refetches nothing');
+});
+
+test('an async roots function is awaited', async () => {
+  const host = window.document.createElement('div');
+  host.setAttribute('x-data', "pathPicker({ mode: 'file', roots: () => ROOTS_ASYNC() })");
+  globalThis.ROOTS_ASYNC = async () => {
+    await new Promise(r => setTimeout(r, 1));
+    return ['me/from-a-promise'];
+  };
+  window.document.body.appendChild(host);
+  Alpine.initTree(host);
+  await new Promise(r => setTimeout(r, 0));
+
+  const d = Alpine.$data(host);
+  Alpine.store('browser').gh = new CountingGH({ token: 't', repo: 'me/open' });
+  await d.ensureTree();
+  assert.deepEqual(plain_(d.tree.map(n => n.name)), ['me/from-a-promise']);
+});
+
+test('a roots function that throws leaves a stated error, not a blank panel', async () => {
+  const host = window.document.createElement('div');
+  host.setAttribute('x-data', "pathPicker({ mode: 'file', roots: () => ROOTS_BAD() })");
+  globalThis.ROOTS_BAD = async () => { throw new Error('401 bad token'); };
+  window.document.body.appendChild(host);
+  Alpine.initTree(host);
+  await new Promise(r => setTimeout(r, 0));
+
+  const d = Alpine.$data(host);
+  Alpine.store('browser').gh = new CountingGH({ token: '', repo: 'me/open' });
+  await d.ensureTree();
+  assert.match(d.error, /Could not list repositories.*401 bad token/);
+  assert.deepEqual(plain_(d.tree), []);
+});
+
+test('a repo whose tree fails reads as empty and says why', async () => {
+  const host = window.document.createElement('div');
+  host.setAttribute('x-data', "pathPicker({ mode: 'file', roots: () => ['me/broken'] })");
+  window.document.body.appendChild(host);
+  Alpine.initTree(host);
+  await new Promise(r => setTimeout(r, 0));
+
+  const d = Alpine.$data(host);
+  Alpine.store('browser').gh = new CountingGH({ token: 't', repo: 'me/open' });
+  await d.ensureTree();
+  await d.choose(d.tree[0]);
+  assert.deepEqual(plain_(d.children()), [], 'an unreadable repo is empty, not null');
+  assert.match(d.error, /Could not read me\/broken/);
+  assert.equal(d.loading, false, 'the spinner is cleared on failure');
+});
+
+// ---- host-driven filtering: the pieces a field drives --------------------
+
+test('setQuery filters the current level and keeps a row active', () => {
+  file.scope = []; file.setQuery('');
+  file.choose(byName(file, 'me/open'));
+  assert.deepEqual(plain_(file.matches().map(n => n.name)), ['lib', 'README.md']);
+
+  file.setQuery('read');
+  assert.deepEqual(plain_(file.matches().map(n => n.name)), ['README.md']);
+  assert.equal(file.active, 0, 'the top match is always the active row');
+
+  file.setQuery('zzz');
+  assert.deepEqual(plain_(file.matches()), [], 'no match is an empty list, not everything');
+  file.setQuery('');
+});
+
+test('ranking is exact, then prefix, then substring, containers first', () => {
+  const d = file;
+  d.scope = []; d.setQuery('');
+  d.tree = [
+    { name: 'zz-ab', kind: 'folder', children: [] },
+    { name: 'ab', kind: 'file' },
+    { name: 'abc', kind: 'file' },
+    { name: 'ab-dir', kind: 'folder', children: [] },
+    { name: 'nope', kind: 'file' },
+  ];
+  d.setQuery('ab');
+  assert.deepEqual(plain_(d.matches().map(n => n.name)),
+    ['ab', 'ab-dir', 'abc', 'zz-ab'],
+    'exact first, then prefix with the folder ahead of the file, then substring');
+  d.tree = TREE(); d.scope = []; d.setQuery('');
+});
+
+test('move wraps in both directions and survives an empty list', () => {
+  file.scope = []; file.setQuery('');
+  const n = file.matches().length;
+  assert.ok(n >= 2, 'need at least two roots for this to mean anything');
+  assert.equal(file.active, 0);
+  file.move(1);
+  assert.equal(file.active, 1);
+  file.move(-1);
+  assert.equal(file.active, 0);
+  file.move(-1);
+  assert.equal(file.active, n - 1, 'up from the top wraps to the bottom');
+  file.move(1);
+  assert.equal(file.active, 0, 'down from the bottom wraps to the top');
+
+  file.setQuery('no-such-thing');
+  file.move(1);
+  assert.equal(file.active, 0, 'an empty list leaves the active row at zero');
+  file.setQuery('');
+});
+
+test('commitActive descends a container and emits a file', () => {
+  picks.length = 0;
+  file.scope = []; file.open = true; file.setQuery('');
+
+  // The active row is a repo: committing descends rather than emitting.
+  file.setQuery('open');
+  assert.equal(file.matches()[file.active].name, 'me/open');
+  assert.equal(file.commitActive(), true);
+  assert.deepEqual(plain_(file.scope.map(n => n.name)), ['me/open']);
+  assert.deepEqual(picks, [], 'descending is not a pick');
+  assert.equal(file.query, '', 'a new level starts unfiltered');
+
+  // Now a file: committing emits it. The match is case-insensitive.
+  file.setQuery('readme');
+  assert.equal(file.matches()[file.active].name, 'README.md');
+  assert.equal(file.commitActive(), true);
+  assert.deepEqual(plain_(picks), [{ repo: 'me/open', ref: '', path: 'README.md' }]);
+
+  // And a folder deeper in: committing descends again, no pick emitted.
+  file.jump(1);
+  file.setQuery('lib');
+  assert.equal(file.commitActive(), true);
+  assert.deepEqual(plain_(file.scope.map(n => n.name)), ['me/open', 'lib']);
+  assert.equal(picks.length, 1, 'descending still is not a pick');
+});
+
+test('commitActive on an empty list is a no-op that reports itself', () => {
+  file.scope = []; file.setQuery('nothing matches this');
+  assert.equal(file.commitActive(), false);
+  file.setQuery('');
+});
+
+test('walking back up clears the filter with the level', () => {
+  file.scope = []; file.setQuery('');
+  file.choose(byName(file, 'me/open'));
+  file.setQuery('read');
+  assert.equal(file.query, 'read');
+  file.up();
+  assert.equal(file.query, '', 'a stale query must not keep filtering the level above');
+  assert.equal(file.active, 0);
+});
+
+test('descending announces itself so a host can clear its own field', () => {
+  const seen = [];
+  const host = window.document.getElementById('pf');
+  const onDescend = e => seen.push(e.detail.scope);
+  host.addEventListener('path-descend', onDescend);
+  file.scope = []; file.setQuery('');
+  file.choose(byName(file, 'me/open'));
+  file.choose(byName(file, 'lib'));
+  host.removeEventListener('path-descend', onDescend);
+  assert.deepEqual(plain_(seen), [['me/open'], ['me/open', 'lib']]);
 });

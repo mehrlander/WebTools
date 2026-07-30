@@ -51,6 +51,9 @@
   // The GitHub destinations for one repo, shared by the sidebar's github menu
   // and the Activity view's repo chip (window.GithubLinks).
   await gh.load('github-links.js');
+  // The line/word differ behind the stage's Diff lens, shared with
+  // pages/diff-tool.html (window.textDiff).
+  await gh.load('kits/text-diff.js');
 </script>
 <style>[x-cloak]{display:none!important}
 .no-scrollbar::-webkit-scrollbar{display:none}

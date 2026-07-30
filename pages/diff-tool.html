@@ -1,563 +1,1193 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="light">
+<!doctype html>
+<html lang="en" data-theme="winter" class="h-full">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Diff</title>
-<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400,0,0&display=block" rel="stylesheet"/>
-<script defer src="https://unpkg.com/alpinejs/dist/cdn.min.js"></script>
-<style>
-  :root {
-    --g-surface:#ffffff; --g-bg:#f8f9fa;
-    --g-text:#1f1f1f; --g-text-2:#444746; --g-text-3:#5f6368; --g-line:#80868b;
-    --g-border:#e1e3e6; --g-divider:#ebedf0;
-    --g-blue:#0b57d0; --g-blue-bg:#d3e3fd; --g-blue-hover:rgba(11,87,208,.08);
-    --g-add:#e6f4ea; --g-add-strong:#a8dab5; --g-add-text:#0b6b3a; --g-add-bar:#188038;
-    --g-del:#fce8e6; --g-del-strong:#f5b3ad; --g-del-text:#b3261e; --g-del-bar:#d33b30;
-    --g-hunk-bg:#e8f0fe;
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🔀</text></svg>">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<!-- The gallery thumbnail (tools/build/pages-shots.mjs) needs a page with
+     something in it, and this page opens empty on purpose. So the shot is
+     driven by a share payload: the same #d= state a "Copy share link" writes,
+     handed over in the query, which UrlParams reads as the fragment fallback.
+     It affects the screenshot only; a real visit still opens to empty slots. -->
+<meta name="shot-query" content="d=H4sIAAAAAAACA7VSwWrcMBD9lYko2CHGG3L0stA2FHrqoRB66Bai2ONdJbLkjuR1g6N_r2R5vSY0JIX2Jr1580aa9wZ2YMVVxjgrBqZ4g6xgNdpyf2OQ8nvzvuFCsYyVWllU1ldF02qyMABvBTioSTeQ5KtSCl9P1lu1VfhrpHDzqEqoO1VaoRXMsqmozmHYKgCvaiwQGtgA77mwQTTfoU2TVeeZZpXABXj6OrBFDann5sZy2xk422zg6vJykgKwe9I9KOzhE5GmNPmKPzv0-jUXEqskirjT3Ipb7gcHyTtdPa5PlZZ07Xt8MXDy4_XpCQY30ghtR-o4WVRFJIoqi0jY5ISF44SiX6ac4PE84kHRLdY2L6yUyOmal3tMj_sKl3zE0_Adx1zG7l6yjrDmpdX0d_bNBKl3O6QFJwJvtTgD3dpg7OBedft2cvvdICp3GztPnp8Fh_TDbHR8R95zUmkyjzzanPmnh-kxJQUsEuOi5jIqH1rx57Rki8aXkhM_EXj3Rqv0_D8lqO6k_PJaigD4wSM0FeLlhv5NxLwfnm1C0A4Cex8j00phfbB64i0rLHWYMWNJtJ9tI1lRc2k8Qp1E3_X9R8bETmnCb2auReCaG3wGfZRcPUyYc78BYLlrqaEEAAA">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+
+<script type="module">
+  // ?use=<branch|tag|sha> picks which ref the lib chain loads from; defaults to
+  // main. gh-api.js auto-boots window.gh from its import URL or __ghBlobBoot.
+  const ref = new URLSearchParams(location.search).get('use');
+  if (ref) {
+    window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
+    const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`);
+    if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
+    const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+    try { await import(u); } finally { URL.revokeObjectURL(u); }
+  } else {
+    await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
   }
-  html, body { background:var(--g-bg); }
-  body { font-family:'Inter', system-ui, sans-serif; color:var(--g-text); -webkit-font-smoothing:antialiased; }
-  .mono { font-family:'Roboto Mono', ui-monospace, monospace; }
-  .msym { font-family:'Material Symbols Outlined'; font-weight:normal; font-style:normal;
-    font-size:20px; line-height:1; letter-spacing:normal; text-transform:none; display:inline-block;
-    white-space:nowrap; direction:ltr; -webkit-font-feature-settings:'liga'; font-feature-settings:'liga';
-    -webkit-font-smoothing:antialiased; }
-  .msym.s18 { font-size:18px; } .msym.s20 { font-size:20px; } .msym.s22 { font-size:22px; }
+  await gh.load('url-params.js');
+  await gh.load('repo-address.js');
+  await gh.load('kits/text-diff.js');
+  // The grab row's component. Caught, because an uncaught gh.load rejection
+  // aborts this module and Alpine then never starts: a missing file browser
+  // would take the whole page with it. Flag it instead and let the row say so.
+  window.__pickerLoaded = true;
+  try {
+    await gh.load('alpineComponents/path-picker.js');
+  } catch (e) {
+    window.__pickerLoaded = false;
+    console.warn('path-picker.js did not load; the @ browse row will be unavailable:', e);
+  }
+  // Alpine last, so the component's init() finds both helpers defined.
+  await gh.load('alpine-bundle.js');
+</script>
 
-  .appbar { background:var(--g-surface); border-bottom:1px solid var(--g-divider); }
+<!--
+  diff-tool.html — compare two texts, full window.
 
-  /* Material text + tonal + icon buttons */
-  .tbtn { display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 12px;
-    border-radius:999px; font:500 14px 'Inter'; color:var(--g-blue); background:transparent; transition:background .15s; cursor:pointer; }
-  .tbtn:hover { background:var(--g-blue-hover); }
-  .tbtn.neutral { color:var(--g-text-2); } .tbtn.neutral:hover { background:rgba(31,31,31,.05); }
-  .tonal { display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 16px; border-radius:999px;
-    font:500 14px 'Inter'; color:#041e49; background:var(--g-blue-bg); transition:background .15s; cursor:pointer; }
-  .tonal:hover { background:#c7dbfa; }
-  .iconbtn { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px;
-    border-radius:999px; color:var(--g-text-2); background:transparent; transition:background .15s; cursor:pointer; }
-  .iconbtn:hover { background:rgba(31,31,31,.06); }
-  .iconbtn:disabled { color:#c4c7c5; cursor:default; } .iconbtn:disabled:hover { background:transparent; }
+  A window-filling app shell rather than a centered document: the app bar and
+  the control bar are fixed, and only the diff body scrolls. That holds from
+  390px to a wide desktop, which is the point of the layout. At no width does
+  the tool sit in a narrow column with dead margins.
 
-  /* Material tabs */
-  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--g-divider); }
-  .tab { position:relative; height:44px; padding:0 18px; font:500 14px 'Inter'; color:var(--g-text-2);
-    background:transparent; display:inline-flex; align-items:center; gap:8px; cursor:pointer; }
-  .tab:hover { background:rgba(31,31,31,.04); border-radius:8px 8px 0 0; }
-  .tab.on { color:var(--g-blue); }
-  .tab.on::after { content:''; position:absolute; left:8px; right:8px; bottom:-1px; height:3px;
-    background:var(--g-blue); border-radius:3px 3px 0 0; }
+  Four tabs, left to right in the order you use them:
 
-  /* Material 3 segmented button */
-  .seg { display:inline-flex; height:36px; border:1px solid #c4c7c5; border-radius:999px; overflow:hidden; }
-  .seg button { display:inline-flex; align-items:center; gap:8px; padding:0 16px; font:500 14px 'Inter';
-    color:var(--g-text); background:transparent; transition:background .15s; cursor:pointer; }
-  .seg button:hover { background:rgba(31,31,31,.05); }
-  .seg button + button { border-left:1px solid #c4c7c5; }
-  .seg button.on { background:var(--g-blue-bg); color:#041e49; }
+    Sources   two slots, A and B. Each holds editable text and can be filled
+              from a URL, a GitHub address (owner/repo[@ref]:path, read through
+              the stored token so private repos and un-pushed branches work),
+              a local file, or the clipboard. Contents persist in localStorage
+              under 512 KB a side, so the tool still holds your text tomorrow.
+    Diff      split or unified, word-level highlighting inside changed lines,
+              unchanged stretches folded behind expand bars, prev/next change
+              navigation. Defaults to unified below 768px, where two columns of
+              code do not fit.
+    Patch     a unified diff with a context selector, copyable as text, as a
+              fenced markdown block, or downloadable as .patch.
+    Apply     apply a unified patch to a source text and load the result into B.
 
-  /* Material filter chip */
-  .fchip { display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 12px; border-radius:8px;
-    border:1px solid #c4c7c5; font:500 13px 'Inter'; color:var(--g-text-2); background:transparent; transition:.15s; cursor:pointer; }
-  .fchip:hover { background:rgba(31,31,31,.04); }
-  .fchip.on { background:var(--g-blue-bg); border-color:transparent; color:#041e49; padding-left:8px; }
+  NORMALIZATION is the stage between the sources and the diff, and it is what
+  makes comparing two documents (rather than two source files) readable. It
+  descends from pages/drop/diff-tool.html, the legislative version-comparison
+  tool this page absorbs: strip HTML to text, then an ordered list of regex
+  rules. The `Prose` preset breaks on sentence ends so two drafts diff sentence
+  by sentence instead of showing one enormous changed paragraph. When either
+  side looks like HTML the tags found in it appear as chips, and clicking one
+  adds a rule that strips it.
 
-  /* Material switch */
-  .sw { position:relative; width:34px; height:20px; flex:none; display:inline-block; }
-  .sw input { position:absolute; inset:0; opacity:0; margin:0; cursor:pointer; z-index:2; }
-  .sw .track { position:absolute; inset:0; border-radius:999px; background:#c4c7c5; transition:background .2s; }
-  .sw .thumb { position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%;
-    background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.35); transition:transform .2s; }
-  .sw input:checked ~ .track { background:var(--g-blue); }
-  .sw input:checked ~ .thumb { transform:translateX(14px); }
+  THE ENGINE is kits/text-diff.js, patience diff over lines, shared with the
+  stage's Diff lens rather than inlined here. It replaced an O(n*m) DP table
+  that allocated n*m int32s and could not survive two long documents. The why,
+  the trade, and the caps are documented in the kit.
 
-  .card-elev { background:var(--g-surface); border-radius:16px;
-    box-shadow:0 1px 2px 0 rgba(60,64,67,.30), 0 1px 3px 1px rgba(60,64,67,.15); }
+  Input by URL, fragment first, query as fallback (lib/url-params.js):
+    #d=<base64url>        gzipped full state, what "Copy share link" writes
+    ?a=<spec>&b=<spec>    two owner/repo[@ref]:path addresses, fetched on load
 
-  .chip { display:inline-flex; align-items:center; height:24px; padding:0 10px; border-radius:999px; font:500 12px/1 'Roboto Mono'; }
-  .chip.add { background:var(--g-add); color:var(--g-add-text); }
-  .chip.del { background:var(--g-del); color:var(--g-del-text); }
-  .caption { font:500 12px 'Inter'; color:var(--g-text-3); }
+  Keys (outside a text box): n/p next and previous change, u split/unified,
+  w wrap, s/d/f/a jump to a tab. In a GitHub slot's address field, a leading "@"
+  opens the file browser and what follows it filters: arrows move the highlight,
+  Tab or Enter takes it (descending a repo or folder, committing a file),
+  Backspace at a bare "@" goes up a level, Escape backs out.
 
-  .drow { display:flex; min-height:22px; }
-  .drow.add { background:var(--g-add); box-shadow:inset 3px 0 0 var(--g-add-bar); }
-  .drow.del { background:var(--g-del); box-shadow:inset 3px 0 0 var(--g-del-bar); }
-  .drow.empty { background:#fbfcfd; }
-  .ln { flex:none; width:56px; text-align:right; padding:0 16px 0 0; color:var(--g-line);
-    font:400 12px/22px 'Roboto Mono'; font-variant-numeric:tabular-nums; user-select:none; }
-  .sign { flex:none; width:18px; text-align:center; font:400 13px/22px 'Roboto Mono'; user-select:none; }
-  .sign.add { color:var(--g-add-bar); } .sign.del { color:var(--g-del-bar); }
-  .code { padding:0 12px; font:400 13px/22px 'Roboto Mono'; color:#202124; white-space:pre-wrap; word-break:break-word; }
-  .w-add { background:var(--g-add-strong); border-radius:2px; }
-  .w-del { background:var(--g-del-strong); border-radius:2px; }
+  ?use=<ref> pins the lib chain for branch preview; gh-boot mounts the FAB.
+-->
 
-  /* Collapse / expand context bar */
-  .dgap { display:flex; align-items:center; gap:8px; padding:4px 16px; background:#f1f3f4; color:var(--g-blue);
-    font:500 12px 'Inter'; cursor:pointer; border-top:1px solid var(--g-divider); border-bottom:1px solid var(--g-divider); }
-  .dgap:hover { background:#e8f0fe; }
+<style>
+  [x-cloak] { display: none !important; }
 
-  /* Patch view */
-  .patchwrap { font:400 13px/22px 'Roboto Mono'; }
-  .pl { display:flex; padding:0 16px; white-space:pre-wrap; word-break:break-word; }
-  .pl.add { background:var(--g-add); color:var(--g-add-text); }
-  .pl.del { background:var(--g-del); color:var(--g-del-text); }
-  .pl.hunk { background:var(--g-hunk-bg); color:var(--g-blue); }
-  .pl.meta { color:var(--g-text-3); }
+  /* One variable drives the whole diff body, so the size control moves line
+     numbers, signs and code together. */
+  .dbody { font-size: var(--dsz, 13px); line-height: 1.65;
+           font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
-  textarea.ed { font-family:'Roboto Mono', monospace; background:var(--g-surface);
-    border:1px solid var(--g-border); border-radius:12px; line-height:1.55; color:#202124; }
-  textarea.ed:focus { outline:2px solid var(--g-blue); outline-offset:-1px; border-color:transparent; }
+  /* The diff is a CSS grid, which is what guarantees the two sides of a split
+     row share a height: alignment is structural, not a wrapping coincidence. */
+  .dgrid { display: grid; align-items: stretch; }
+  .dgrid.split   { grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr); }
+  .dgrid.unified { grid-template-columns: max-content max-content max-content minmax(0, 1fr); }
+  /* Nowrap scrolls the grid sideways; columns then size to their own content,
+     so the A|B seam leaves the midpoint. Row alignment still holds. */
+  .dgrid.nowrap { width: max-content; min-width: 100%; }
+  .dgrid.nowrap.split,
+  .dgrid.nowrap.unified { grid-template-columns: repeat(4, max-content); }
 
-  .snack { position:fixed; left:24px; bottom:24px; background:#323232; color:#fff; border-radius:8px;
-    padding:12px 18px; font:500 14px 'Inter'; box-shadow:0 3px 5px rgba(0,0,0,.3); z-index:50; }
+  .dln { text-align: right; padding: 0 .6em 0 .5em; opacity: .4;
+         font-variant-numeric: tabular-nums; user-select: none; }
+  .dsg { text-align: center; padding: 0 .25em; user-select: none; }
+  .dcode { padding: 0 .6em; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
+  .nowrap .dcode { white-space: pre; word-break: normal; overflow-wrap: normal; padding-right: 1.5em; }
+
+  /* Row tones. Both cells of a side carry the class, so a tone spans the line
+     number and the code together. */
+  .t-add   { background: #e6f4ea; color: #0b6b3a; }
+  .t-del   { background: #fce8e6; color: #8c1d18; }
+  .t-empty { background: #fafafa; }
+  .b-add { box-shadow: inset 2px 0 0 #188038; }
+  .b-del { box-shadow: inset 2px 0 0 #d33b30; }
+  .w-add { background: #a8dab5; border-radius: 2px; }
+  .w-del { background: #f5b3ad; border-radius: 2px; }
+  .dcur  { outline: 2px solid #0b57d0; outline-offset: -2px; }
+
+  .dhead { position: sticky; top: 0; z-index: 2; background: var(--color-base-100, #fff);
+           border-bottom: 1px solid var(--color-base-300, #d4d4d4);
+           font: 600 10px/1.4 ui-sans-serif, system-ui; letter-spacing: .06em; text-transform: uppercase;
+           padding: .5em .7em; opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dgap { grid-column: 1 / -1; display: flex; align-items: center; gap: .5em; padding: .25em .8em;
+          background: var(--color-base-200, #f2f2f2); cursor: pointer;
+          font: 500 11px/1.6 ui-sans-serif, system-ui;
+          border-top: 1px solid var(--color-base-300, #d4d4d4);
+          border-bottom: 1px solid var(--color-base-300, #d4d4d4); }
+  .dgap:hover { background: var(--color-base-300, #e4e4e4); }
+
+  .patchline { padding: 0 .8em; white-space: pre-wrap; word-break: break-word; }
+  .patchline.add  { background: #e6f4ea; color: #0b6b3a; }
+  .patchline.del  { background: #fce8e6; color: #8c1d18; }
+  .patchline.hunk { background: #e8f0fe; color: #0b57d0; }
+  .patchline.meta { opacity: .6; }
+
+  /* The control bar scrolls sideways rather than wrapping into a tall stack,
+     which is what keeps the diff body full-height on a phone. */
+  .barscroll { overflow-x: auto; scrollbar-width: none; }
+  .barscroll::-webkit-scrollbar { display: none; }
+  .vrule { width: 1px; align-self: center; height: 1.25rem; flex: none;
+           background: var(--color-base-300, #d4d4d4); margin: 0 .25rem; }
+
+  textarea.slot { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+                  font-size: 12px; line-height: 1.6; }
+
+  /* One height for every control in a slot's loader row. daisyUI's -xs sizes do
+     not agree across input, select and btn, so a joined input and button came
+     out mismatched: the button sat short inside the taller field with visible
+     gaps above and below it. Stating the height once makes the join flush and
+     survives whatever the size tokens do next. */
+  .lctl { height: 1.75rem; min-height: 1.75rem; }
+  .lctl.select { padding-top: 0; padding-bottom: 0; }
 </style>
 </head>
-<body class="min-h-screen flex flex-col" x-data="diffApp()" x-init="init()">
 
-<!-- App bar -->
-<header class="appbar sticky top-0 z-10">
-  <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <span class="msym s22" style="color:var(--g-blue)">difference</span>
-      <span style="font:500 22px 'Inter'; color:var(--g-text); letter-spacing:-.2px">Diff</span>
-    </div>
-    <div class="flex items-center gap-1.5">
-      <button class="tonal" @click="shareLink()"><span class="msym s18">link</span> Share link</button>
-      <button class="tbtn neutral" @click="saveJSON()"><span class="msym s18">save</span> Save</button>
-      <button class="tbtn neutral" @click="$refs.file.click()"><span class="msym s18">folder_open</span> Open</button>
-      <input type="file" x-ref="file" class="hidden" accept=".json,.patch,.diff,.txt" @change="openFile($event)">
-    </div>
+<body class="h-dvh min-h-0 flex flex-col overflow-hidden bg-base-200 text-base-content"
+      x-data="diffApp()" x-init="init()" x-cloak @keydown.window="onKey($event)">
+
+<!-- ── App bar ──────────────────────────────────────────────────────────── -->
+<header class="shrink-0 h-11 px-2 flex items-center gap-1.5 bg-base-100 border-b border-base-300">
+  <i class="ph ph-git-diff text-primary text-xl shrink-0"></i>
+  <span class="font-semibold text-sm shrink-0 hidden sm:inline">Diff</span>
+
+  <div class="join shrink-0 ml-0.5">
+    <template x-for="t in TABS" :key="t.id">
+      <button class="btn btn-xs join-item gap-1"
+              :class="tab === t.id ? 'btn-primary' : 'btn-ghost border border-base-300'"
+              @click="tab = t.id" :title="t.label">
+        <i class="ph" :class="t.icon"></i>
+        <span class="hidden md:inline" x-text="t.label"></span>
+      </button>
+    </template>
   </div>
+
+  <!-- Where the two sides came from. Truncates rather than pushing anything off
+       the bar, which is what keeps the header intact at 390px. -->
+  <div class="grow min-w-0 hidden sm:flex items-baseline gap-1.5 font-mono text-[11px] opacity-70 px-1">
+    <span class="truncate" x-text="slots.A.name || 'A'"></span>
+    <i class="ph ph-arrow-right text-[10px] shrink-0"></i>
+    <span class="truncate" x-text="slots.B.name || 'B'"></span>
+  </div>
+  <div class="grow sm:hidden"></div>
+
+  <button class="btn btn-ghost btn-xs btn-square shrink-0" @click="swap()" title="Swap A and B">
+    <i class="ph ph-arrows-left-right"></i>
+  </button>
+
+  <div class="dropdown dropdown-end shrink-0">
+    <button tabindex="0" class="btn btn-ghost btn-xs btn-square" title="More">
+      <i class="ph ph-dots-three-vertical"></i></button>
+    <ul tabindex="0" class="dropdown-content menu menu-sm bg-base-100 rounded-box border border-base-300 shadow-lg z-50 w-64 mt-1">
+      <li><a @click="shareLink()"><i class="ph ph-link"></i>Copy share link</a></li>
+      <li><a @click="saveJSON()"><i class="ph ph-floppy-disk"></i>Save comparison (.json)</a></li>
+      <li><a @click="$refs.stateFile.click()"><i class="ph ph-folder-open"></i>Open comparison or .patch</a></li>
+      <li><a @click="copyForLLM()"><i class="ph ph-robot"></i>Copy patch for an LLM</a></li>
+      <li class="menu-title pt-2">Display</li>
+      <li>
+        <label class="flex items-center justify-between cursor-pointer">
+          <span>Wrap long lines</span>
+          <input type="checkbox" class="toggle toggle-xs toggle-primary" x-model="wrap">
+        </label>
+      </li>
+      <li>
+        <div class="flex items-center justify-between">
+          <span>Text size</span>
+          <span class="join">
+            <button class="btn btn-xs join-item" @click.stop="sizeBy(-1)">A-</button>
+            <button class="btn btn-xs join-item" @click.stop="sizeBy(1)">A+</button>
+          </span>
+        </div>
+      </li>
+      <li class="menu-title pt-2">Access</li>
+      <li><a @click="promptToken()"><i class="ph ph-key"></i>GitHub token</a></li>
+    </ul>
+  </div>
+  <input type="file" x-ref="stateFile" class="hidden" accept=".json,.patch,.diff,.txt" @change="openStateFile($event)">
 </header>
 
-<main class="flex-1 w-full max-w-6xl mx-auto px-6 py-6 space-y-5">
+<!-- ── Control bar, per tab ─────────────────────────────────────────────── -->
+<div class="shrink-0 bg-base-100/60 border-b border-base-300 barscroll">
+  <div class="flex items-center gap-1.5 px-2 py-1.5 w-max min-w-full">
 
-  <!-- Mode tabs -->
-  <div class="tabs">
-    <button class="tab" :class="tab==='compare' && 'on'" @click="tab='compare'"><span class="msym s18">compare_arrows</span> Compare</button>
-    <button class="tab" :class="tab==='patch' && 'on'" @click="tab='patch'"><span class="msym s18">difference</span> Patch</button>
-    <button class="tab" :class="tab==='apply' && 'on'" @click="tab='apply'"><span class="msym s18">note_add</span> Apply patch</button>
+    <template x-if="tab === 'diff'">
+      <div class="flex items-center gap-1.5">
+        <div class="join">
+          <button class="btn btn-xs join-item" :class="view === 'split' ? 'btn-primary' : 'btn-ghost border border-base-300'"
+                  @click="view = 'split'" title="Side by side">
+            <i class="ph ph-columns"></i><span class="hidden sm:inline ml-1">Split</span></button>
+          <button class="btn btn-xs join-item" :class="view === 'unified' ? 'btn-primary' : 'btn-ghost border border-base-300'"
+                  @click="view = 'unified'" title="One column">
+            <i class="ph ph-rows"></i><span class="hidden sm:inline ml-1">Unified</span></button>
+        </div>
+
+        <span class="vrule"></span>
+
+        <button class="btn btn-xs" :class="ignoreWs ? 'btn-primary' : 'btn-ghost border border-base-300'"
+                @click="ignoreWs = !ignoreWs; recompute()" title="Ignore whitespace differences">
+          <i class="ph ph-text-indent"></i><span class="hidden lg:inline ml-1">Whitespace</span></button>
+        <button class="btn btn-xs" :class="ignoreCase ? 'btn-primary' : 'btn-ghost border border-base-300'"
+                @click="ignoreCase = !ignoreCase; recompute()" title="Ignore case differences">
+          <i class="ph ph-text-aa"></i><span class="hidden lg:inline ml-1">Case</span></button>
+        <button class="btn btn-xs" :class="ignoreBlank ? 'btn-primary' : 'btn-ghost border border-base-300'"
+                @click="ignoreBlank = !ignoreBlank; recompute()" title="Ignore blank lines">
+          <i class="ph ph-arrows-in-line-vertical"></i><span class="hidden lg:inline ml-1">Blank lines</span></button>
+
+        <span class="vrule"></span>
+
+        <div class="join">
+          <button class="btn btn-xs btn-ghost border border-base-300 join-item" :disabled="!numChanges"
+                  @click="goChange(-1)" title="Previous change (p)"><i class="ph ph-caret-up"></i></button>
+          <span class="btn btn-xs join-item no-animation pointer-events-none border border-base-300 border-x-0 font-mono font-normal"
+                x-text="numChanges ? (curChange + 1) + ' / ' + numChanges : 'no changes'"></span>
+          <button class="btn btn-xs btn-ghost border border-base-300 join-item" :disabled="!numChanges"
+                  @click="goChange(1)" title="Next change (n)"><i class="ph ph-caret-down"></i></button>
+        </div>
+
+        <button class="btn btn-xs btn-ghost border border-base-300" x-show="gapCount" @click="expandAll()">
+          <i class="ph ph-arrows-out-line-vertical"></i><span class="hidden sm:inline ml-1">Expand all</span></button>
+
+        <span class="badge badge-sm badge-success badge-soft font-mono" x-text="'+' + stats.add"></span>
+        <span class="badge badge-sm badge-error badge-soft font-mono" x-text="'−' + stats.del"></span>
+        <span class="text-[11px] opacity-60 font-mono whitespace-nowrap" x-text="stats.sim + '% match'"></span>
+      </div>
+    </template>
+
+    <template x-if="tab === 'patch'">
+      <div class="flex items-center gap-1.5">
+        <span class="text-[11px] font-semibold uppercase opacity-60 tracking-wide">Context</span>
+        <div class="join">
+          <template x-for="c in [1, 3, 8, 999]" :key="c">
+            <button class="btn btn-xs join-item" :class="patchContext === c ? 'btn-primary' : 'btn-ghost border border-base-300'"
+                    @click="patchContext = c; genPatch()" x-text="c === 999 ? 'all' : c"></button>
+          </template>
+        </div>
+        <span class="vrule"></span>
+        <button class="btn btn-xs btn-ghost border border-base-300" @click="copy(patch, 'Patch copied')">
+          <i class="ph ph-copy"></i><span class="hidden sm:inline ml-1">Copy</span></button>
+        <button class="btn btn-xs btn-ghost border border-base-300" @click="copyMarkdown()">
+          <i class="ph ph-markdown-logo"></i><span class="hidden sm:inline ml-1">Markdown</span></button>
+        <button class="btn btn-xs btn-ghost border border-base-300" @click="downloadPatch()">
+          <i class="ph ph-download-simple"></i><span class="hidden sm:inline ml-1">.patch</span></button>
+        <span class="text-[11px] opacity-60 font-mono whitespace-nowrap"
+              x-text="patchLines.length + ' lines · ' + patch.length + ' bytes'"></span>
+      </div>
+    </template>
+
+    <!-- The normalization strip belongs to the input tabs. -->
+    <template x-if="tab === 'sources' || tab === 'apply'">
+      <div class="flex items-center gap-1.5">
+        <button class="btn btn-xs" :class="normActive ? 'btn-primary' : 'btn-ghost border border-base-300'"
+                @click="normOpen = !normOpen">
+          <i class="ph" :class="normOpen ? 'ph-caret-down' : 'ph-caret-right'"></i>
+          <i class="ph ph-funnel"></i><span class="ml-1">Normalize</span>
+          <span class="badge badge-xs badge-neutral" x-show="activeRuleCount" x-text="activeRuleCount"></span>
+        </button>
+        <span class="text-[11px] opacity-60 font-mono whitespace-nowrap" x-text="normSummary"></span>
+      </div>
+    </template>
+
+    <div class="grow"></div>
+    <span class="text-[11px] text-warning font-medium whitespace-nowrap" x-show="notice" x-text="notice"></span>
+  </div>
+</div>
+
+<!-- ── Normalization strip ──────────────────────────────────────────────── -->
+<div class="shrink-0 bg-base-200 border-b border-base-300 px-2 py-2 flex flex-col gap-2 max-h-[45vh] overflow-y-auto"
+     x-show="normOpen && (tab === 'sources' || tab === 'apply')" x-cloak>
+  <div class="flex items-center gap-2 flex-wrap">
+    <label class="flex items-center gap-2 cursor-pointer">
+      <input type="checkbox" class="checkbox checkbox-xs checkbox-primary" x-model="stripHtml" @change="recompute()">
+      <span class="text-xs">Strip HTML to text</span>
+    </label>
+    <span class="vrule"></span>
+    <span class="text-[11px] font-semibold uppercase opacity-60 tracking-wide">Preset</span>
+    <template x-for="p in PRESETS" :key="p.id">
+      <button class="btn btn-xs btn-ghost border border-base-300" @click="applyPreset(p.id)"
+              :title="p.hint" x-text="p.label"></button>
+    </template>
   </div>
 
-  <!-- ============ COMPARE ============ -->
-  <div x-show="tab==='compare'" class="space-y-5">
-
-    <!-- Controls -->
-    <div class="flex items-center gap-3 flex-wrap justify-between">
-      <div class="flex items-center gap-3 flex-wrap">
-        <div class="seg">
-          <button :class="view==='split' && 'on'" @click="view='split'">
-            <span class="msym s18" x-text="view==='split' ? 'check' : 'view_column'"></span> Split
-          </button>
-          <button :class="view==='unified' && 'on'" @click="view='unified'">
-            <span class="msym s18" x-text="view==='unified' ? 'check' : 'reorder'"></span> Unified
-          </button>
-        </div>
-        <button class="fchip" :class="ignoreWs && 'on'" @click="ignoreWs=!ignoreWs; compute()">
-          <span class="msym s18" x-show="ignoreWs">check</span> Ignore whitespace
-        </button>
-        <button class="fchip" :class="ignoreCase && 'on'" @click="ignoreCase=!ignoreCase; compute()">
-          <span class="msym s18" x-show="ignoreCase">check</span> Ignore case
-        </button>
-        <button class="fchip" :class="ignoreBlank && 'on'" @click="ignoreBlank=!ignoreBlank; compute()">
-          <span class="msym s18" x-show="ignoreBlank">check</span> Ignore blank lines
-        </button>
-      </div>
-      <div class="flex items-center gap-1">
-        <button class="iconbtn" :disabled="!numChanges" @click="goChange(-1)" title="Previous change"><span class="msym s20">keyboard_arrow_up</span></button>
-        <span class="mono" style="font-size:12px;color:var(--g-text-3);min-width:64px;text-align:center"
-              x-text="numChanges ? `${curChange+1} / ${numChanges} changes` : 'No changes'"></span>
-        <button class="iconbtn" :disabled="!numChanges" @click="goChange(1)" title="Next change"><span class="msym s20">keyboard_arrow_down</span></button>
-        <button class="tbtn ml-1" @click="editing=!editing">
-          <span class="msym s18" x-text="editing ? 'visibility' : 'edit'"></span>
-          <span x-text="editing ? 'View diff' : 'Edit input'"></span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Editors -->
-    <div x-show="editing" class="grid grid-cols-2 gap-5">
-      <div>
-        <div class="caption mb-2">Original</div>
-        <textarea class="ed w-full text-sm p-4 h-72" x-model="original" @input="onEdit()"></textarea>
-      </div>
-      <div>
-        <div class="caption mb-2">Modified</div>
-        <textarea class="ed w-full text-sm p-4 h-72" x-model="modified" @input="onEdit()"></textarea>
-      </div>
-    </div>
-
-    <!-- Diff panel -->
-    <div x-show="!editing" class="card-elev overflow-hidden">
-      <div class="flex items-center justify-between px-5 py-3" style="border-bottom:1px solid var(--g-divider)">
-        <div class="flex items-center gap-2.5">
-          <span class="msym s18" style="color:var(--g-text-3)">description</span>
-          <span class="mono" style="font-size:13px;font-weight:500;color:var(--g-text)" x-text="filename"></span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="mono" style="font-size:12px;color:var(--g-text-3)" x-text="`${stats.sim}% match`"></span>
-          <span class="chip add">+<span x-text="stats.add"></span></span>
-          <span class="chip del">−<span x-text="stats.del"></span></span>
-        </div>
-      </div>
-
-      <template x-if="view==='split'">
-        <div style="border-bottom:1px solid var(--g-divider)" class="grid grid-cols-2">
-          <div class="caption px-5 py-2" style="padding-left:74px">Original</div>
-          <div class="caption px-5 py-2" style="padding-left:74px;border-left:1px solid var(--g-divider)">Modified</div>
-        </div>
+  <!-- Tags found in either side; clicking one adds a rule that strips it. -->
+  <div class="flex items-start gap-2" x-show="tags.length">
+    <span class="text-[11px] font-semibold uppercase opacity-60 tracking-wide pt-1 shrink-0">Tags</span>
+    <div class="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
+      <template x-for="t in tags" :key="t">
+        <button class="badge badge-sm badge-ghost font-mono hover:badge-primary" @click="stripTag(t)" x-text="t"></button>
       </template>
+    </div>
+  </div>
 
-      <template x-if="view==='split'">
-        <div class="grid grid-cols-2">
-          <template x-for="(row,i) in rows" :key="i">
+  <div class="flex flex-wrap items-center gap-1.5">
+    <template x-for="(r, i) in rules" :key="i">
+      <div class="join">
+        <button class="btn btn-xs join-item px-1.5" :class="r.on ? 'btn-primary' : 'btn-ghost border border-base-300'"
+                @click="r.on = !r.on; onRules()" :title="r.on ? 'Rule on' : 'Rule off'">
+          <i class="ph" :class="r.on ? 'ph-check' : 'ph-minus'"></i>
+        </button>
+        <input x-model="r.find" @input.debounce.400="onRules()" placeholder="find (regex)"
+               class="input input-xs join-item w-28 sm:w-40 font-mono text-[11px]"
+               :class="r.bad ? 'input-error' : 'input-bordered'"
+               :title="r.bad ? 'Not a valid regular expression' : 'Regular expression, applied to both sides'">
+        <span class="btn btn-xs join-item no-animation pointer-events-none border border-base-300 border-x-0 px-1">
+          <i class="ph ph-arrow-right"></i></span>
+        <input x-model="r.replace" @input.debounce.400="onRules()" placeholder="replace"
+               class="input input-xs input-bordered join-item w-20 sm:w-28 font-mono text-[11px]">
+        <button class="btn btn-xs btn-ghost border border-base-300 join-item text-error px-1.5"
+                @click="rules.splice(i, 1); onRules()"><i class="ph ph-x"></i></button>
+      </div>
+    </template>
+    <button class="btn btn-xs btn-ghost border border-dashed border-base-300"
+            @click="rules.push({ find: '', replace: '', on: true }); onRules()">
+      <i class="ph ph-plus"></i>Rule</button>
+  </div>
+
+  <p class="text-[11px] opacity-55 leading-snug">
+    Rules run in order on both sides before the diff. In the replacement,
+    <code>\n</code> and <code>\t</code> become a real newline and tab, and <code>$1</code> refers to a capture group.
+    Breaking on sentence ends is what makes two prose drafts diff sentence by sentence rather than as one
+    changed paragraph.
+  </p>
+</div>
+
+<!-- ── Body: the only thing that scrolls ────────────────────────────────── -->
+<main class="grow min-h-0 relative">
+
+  <!-- ============ SOURCES ============ -->
+  <section x-show="tab === 'sources'" class="absolute inset-0 flex flex-col md:flex-row gap-px bg-base-300">
+    <template x-for="id in ['A', 'B']" :key="id">
+      <div class="grow basis-0 min-h-0 md:min-w-0 flex flex-col bg-base-100">
+
+        <div class="shrink-0 flex items-center gap-1.5 px-2 py-1.5 border-b border-base-300">
+          <span class="badge badge-sm font-mono shrink-0"
+                :class="id === 'A' ? 'badge-error badge-soft' : 'badge-success badge-soft'" x-text="id"></span>
+          <input x-model="slots[id].name" :placeholder="id === 'A' ? 'original' : 'modified'"
+                 class="input input-xs input-ghost grow min-w-0 font-mono text-[11px]">
+          <span class="text-[11px] opacity-55 font-mono shrink-0 whitespace-nowrap" x-text="lineCount(id)"></span>
+          <button class="btn btn-ghost btn-xs btn-square shrink-0" @click="resetSlot(id)" title="Clear this side">
+            <i class="ph ph-x"></i></button>
+        </div>
+
+        <div class="shrink-0 flex items-center gap-1 px-2 py-1.5 border-b border-base-300 bg-base-200/60">
+          <select x-model="slots[id].src" class="select select-xs select-bordered lctl shrink-0 w-[5.5rem] font-mono text-[11px]">
+            <option value="url">URL</option>
+            <option value="gh">GitHub</option>
+            <option value="file">File</option>
+            <option value="paste">Paste</option>
+          </select>
+
+          <template x-if="slots[id].src === 'url' || slots[id].src === 'gh'">
+            <div class="join grow min-w-0">
+              <input x-model="slots[id].value" @input="onAddrInput(id)" @keydown="onAddrKey(id, $event)"
+                     :placeholder="slots[id].src === 'gh' ? 'owner/repo[@ref]:path, or @ to browse' : 'https://…'"
+                     class="input input-xs input-bordered lctl join-item grow min-w-0 font-mono text-[11px]">
+              <button class="btn btn-xs btn-primary lctl join-item px-3" @click="fill(id)" :disabled="slots[id].loading">
+                <span x-show="slots[id].loading" class="loading loading-spinner loading-xs"></span>
+                <span x-show="!slots[id].loading">Get</span>
+              </button>
+            </div>
+          </template>
+
+          <template x-if="slots[id].src === 'file'">
+            <button class="btn btn-xs btn-ghost border border-base-300 lctl grow" @click="pickFile(id)">
+              <i class="ph ph-upload-simple"></i>Choose a file</button>
+          </template>
+
+          <template x-if="slots[id].src === 'paste'">
+            <button class="btn btn-xs btn-ghost border border-base-300 lctl grow" @click="pasteInto(id)">
+              <i class="ph ph-clipboard-text"></i>Paste from clipboard</button>
+          </template>
+        </div>
+
+        <!-- The @-grab row, GitHub mode only. pathPicker is the sibling of the
+             mention component built for exactly this case: where mention embeds
+             an @path inside prose, this one is for when the path IS the field.
+             It is a tap-through tree with no text input, so no mobile keyboard
+             and no iOS focus zoom.
+
+             TWO WAYS IN, because "@" is what the muscle memory reaches for:
+             typing @ into the empty address field above opens this panel (see
+             onAddrInput), and the row itself is a tap target. The address field
+             stays authoritative either way, since a pick writes into it, so a
+             picked file and a pasted address end up in the same place and both
+             survive into ?a=/?b= and the share link.
+
+             The x-if is a legibility guard, not caution for its own sake: an
+             unregistered component leaves `x-data` throwing and the row renders
+             as blank space, which reads exactly like a feature that was never
+             built. If the component is missing, say so. -->
+        <div class="shrink-0 px-2 pb-1.5 bg-base-200/60" x-show="slots[id].src === 'gh'" x-cloak>
+          <template x-if="pickerReady">
+            <div :id="'grab-' + id"
+                 x-data="pathPicker({ mode: 'file', roots: () => grabRoots(), placeholder: 'Browse a repo for a file' })"
+                 @path-pick="onGrab(id, $event.detail)" @path-descend="onDescend(id)"></div>
+          </template>
+          <template x-if="!pickerReady">
+            <p class="text-[11px] text-warning flex items-center gap-1 py-1">
+              <i class="ph ph-warning"></i>The file browser did not load; paste an address instead.
+            </p>
+          </template>
+        </div>
+
+        <p class="shrink-0 px-2 py-1 text-[11px] text-error leading-snug" x-show="slots[id].error"
+           x-text="slots[id].error"></p>
+
+        <textarea class="slot grow basis-0 min-h-0 w-full resize-none p-3 bg-base-100 border-0 outline-none focus:outline-none"
+                  x-model="slots[id].content" @input.debounce.300="onEdit()" spellcheck="false"
+                  :placeholder="'Paste ' + (id === 'A' ? 'the original' : 'the modified version')
+                                + ' here, or load it from the row above.'"></textarea>
+      </div>
+    </template>
+  </section>
+
+  <!-- ============ DIFF ============ -->
+  <section x-show="tab === 'diff'" class="absolute inset-0 overflow-auto bg-base-100" x-ref="scroller">
+    <template x-if="!rows.length">
+      <div class="h-full flex flex-col items-center justify-center gap-3 opacity-50 px-6 text-center">
+        <i class="ph ph-git-diff text-6xl"></i>
+        <p class="text-sm" x-text="bothLoaded ? 'The two sides are identical.' : 'Load A and B in Sources to compare.'"></p>
+        <button class="btn btn-sm btn-primary" x-show="!bothLoaded" @click="tab = 'sources'">
+          <i class="ph ph-textbox"></i>Open Sources</button>
+      </div>
+    </template>
+
+    <!-- Split: four columns, so a row's two sides are the same grid row and
+         therefore the same height. -->
+    <div x-show="view === 'split' && rows.length" class="dbody dgrid split" :class="wrap ? '' : 'nowrap'">
+      <div class="dhead" style="grid-column: 1 / 3" x-text="slots.A.name || 'Original (A)'"></div>
+      <div class="dhead" style="grid-column: 3 / 5" x-text="slots.B.name || 'Modified (B)'"></div>
+      <template x-for="(row, i) in rows" :key="i">
+        <div class="contents">
+          <template x-if="row.gap">
+            <div class="dgap" @click="expand(row.id)">
+              <i class="ph ph-arrows-out-line-vertical"></i>
+              <span x-text="'Expand ' + row.count + ' unchanged line' + (row.count > 1 ? 's' : '')"></span>
+            </div>
+          </template>
+          <template x-if="!row.gap">
             <div class="contents">
-              <template x-if="row.gap">
-                <div class="dgap" style="grid-column:1/-1" @click="expand(row.id)">
-                  <span class="msym s18">unfold_more</span><span x-text="`Expand ${row.count} unchanged line${row.count>1?'s':''}`"></span>
-                </div>
-              </template>
-              <template x-if="!row.gap">
-                <div class="contents">
-                  <div class="drow" :class="row.left.type" :id="row.anchor">
-                    <span class="ln" x-text="row.left.n"></span>
-                    <span class="code" x-html="row.left.html"></span>
-                  </div>
-                  <div class="drow" :class="row.right.type" style="border-left:1px solid var(--g-divider)">
-                    <span class="ln" x-text="row.right.n"></span>
-                    <span class="code" x-html="row.right.html"></span>
-                  </div>
-                </div>
-              </template>
-            </div>
-          </template>
-        </div>
-      </template>
-
-      <template x-if="view==='unified'">
-        <div>
-          <template x-for="(line,i) in unified" :key="i">
-            <div>
-              <template x-if="line.gap">
-                <div class="dgap" @click="expand(line.id)">
-                  <span class="msym s18">unfold_more</span><span x-text="`Expand ${line.count} unchanged line${line.count>1?'s':''}`"></span>
-                </div>
-              </template>
-              <template x-if="!line.gap">
-                <div class="drow" :class="line.type" :id="line.anchor">
-                  <span class="ln" style="width:48px" x-text="line.ln"></span>
-                  <span class="ln" style="width:48px" x-text="line.rn"></span>
-                  <span class="sign" :class="line.type" x-text="sign(line.type)"></span>
-                  <span class="code" x-html="line.html"></span>
-                </div>
-              </template>
+              <div class="dln" :class="tone(row.left.type)" :id="row.anchor" x-text="row.left.n"></div>
+              <div class="dcode" :class="tone(row.left.type)" x-html="row.left.html"></div>
+              <div class="dln" :class="tone(row.right.type)" x-text="row.right.n"></div>
+              <div class="dcode" :class="tone(row.right.type)" x-html="row.right.html"></div>
             </div>
           </template>
         </div>
       </template>
     </div>
-  </div>
+
+    <!-- Unified -->
+    <div x-show="view === 'unified' && unified.length" class="dbody dgrid unified" :class="wrap ? '' : 'nowrap'">
+      <div class="dhead" style="grid-column: 1 / -1">
+        <span x-text="slots.A.name || 'A'"></span> &rarr; <span x-text="slots.B.name || 'B'"></span>
+      </div>
+      <template x-for="(line, i) in unified" :key="i">
+        <div class="contents">
+          <template x-if="line.gap">
+            <div class="dgap" @click="expand(line.id)">
+              <i class="ph ph-arrows-out-line-vertical"></i>
+              <span x-text="'Expand ' + line.count + ' unchanged line' + (line.count > 1 ? 's' : '')"></span>
+            </div>
+          </template>
+          <template x-if="!line.gap">
+            <div class="contents">
+              <div class="dln" :class="tone(line.type)" :id="line.anchor" x-text="line.ln"></div>
+              <div class="dln" :class="tone(line.type)" x-text="line.rn"></div>
+              <div class="dsg" :class="tone(line.type)" x-text="sign(line.type)"></div>
+              <div class="dcode" :class="tone(line.type)" x-html="line.html"></div>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+  </section>
 
   <!-- ============ PATCH ============ -->
-  <div x-show="tab==='patch'" class="space-y-5">
-    <div class="flex items-center gap-3 flex-wrap justify-between">
-      <div class="flex items-center gap-2">
-        <span class="caption">Context</span>
-        <div class="seg">
-          <template x-for="c in [1,3,8]" :key="c">
-            <button :class="patchContext===c && 'on'" @click="patchContext=c; genPatch()" x-text="c"></button>
-          </template>
-        </div>
-      </div>
-      <div class="flex items-center gap-1.5">
-        <button class="tbtn" @click="copy(patch); showToast('Patch copied')"><span class="msym s18">content_copy</span> Copy patch</button>
-        <button class="tbtn" @click="copyMarkdown()"><span class="msym s18">markdown</span> Copy as Markdown</button>
-        <button class="tonal" @click="downloadPatch()"><span class="msym s18">download</span> Download .patch</button>
-      </div>
+  <section x-show="tab === 'patch'" class="absolute inset-0 overflow-auto bg-base-100">
+    <div class="dbody py-2">
+      <template x-for="(pl, i) in patchLines" :key="i">
+        <div class="patchline" :class="pl.cls" x-text="pl.text || ' '"></div>
+      </template>
     </div>
-    <div class="card-elev overflow-hidden">
-      <div class="flex items-center justify-between px-5 py-3" style="border-bottom:1px solid var(--g-divider)">
-        <div class="flex items-center gap-2.5">
-          <span class="msym s18" style="color:var(--g-text-3)">difference</span>
-          <span class="mono" style="font-size:13px;font-weight:500" x-text="filename + '.patch'"></span>
-        </div>
-        <span class="mono" style="font-size:12px;color:var(--g-text-3)" x-text="`${patchLines.length} lines · ${patch.length} bytes`"></span>
-      </div>
-      <div class="patchwrap py-2">
-        <template x-for="(pl,i) in patchLines" :key="i">
-          <div class="pl" :class="pl.cls" x-text="pl.text || ' '"></div>
-        </template>
-      </div>
-    </div>
-  </div>
+  </section>
 
   <!-- ============ APPLY ============ -->
-  <div x-show="tab==='apply'" class="space-y-5">
-    <div class="grid grid-cols-2 gap-5">
-      <div>
-        <div class="flex items-center justify-between mb-2">
-          <span class="caption">Source (original)</span>
-          <button class="tbtn" style="height:28px" @click="applySource = original"><span class="msym s18">sync</span> Use current original</button>
+  <section x-show="tab === 'apply'" class="absolute inset-0 flex flex-col gap-px bg-base-300">
+    <div class="grow basis-0 min-h-0 flex flex-col md:flex-row gap-px">
+      <div class="grow basis-0 min-h-0 md:min-w-0 flex flex-col bg-base-100">
+        <div class="shrink-0 flex items-center gap-2 px-2 py-1.5 border-b border-base-300">
+          <span class="text-[11px] font-semibold uppercase opacity-60 tracking-wide grow">Source</span>
+          <button class="btn btn-xs btn-ghost border border-base-300" @click="applySource = slots.A.content">
+            <i class="ph ph-arrow-line-down"></i>Use A</button>
         </div>
-        <textarea class="ed w-full text-sm p-4 h-64" x-model="applySource"></textarea>
+        <textarea class="slot grow basis-0 min-h-0 w-full resize-none p-3 border-0 outline-none"
+                  x-model="applySource" spellcheck="false"></textarea>
       </div>
-      <div>
-        <div class="flex items-center justify-between mb-2">
-          <span class="caption">Unified patch</span>
-          <button class="tbtn" style="height:28px" @click="applyPatchText = patch"><span class="msym s18">difference</span> Use generated patch</button>
+      <div class="grow basis-0 min-h-0 md:min-w-0 flex flex-col bg-base-100">
+        <div class="shrink-0 flex items-center gap-2 px-2 py-1.5 border-b border-base-300">
+          <span class="text-[11px] font-semibold uppercase opacity-60 tracking-wide grow">Unified patch</span>
+          <button class="btn btn-xs btn-ghost border border-base-300" @click="applyPatchText = patch">
+            <i class="ph ph-arrow-line-down"></i>Use generated</button>
         </div>
-        <textarea class="ed w-full text-sm p-4 h-64" x-model="applyPatchText" placeholder="Paste a unified diff, or Open a .patch file…"></textarea>
+        <textarea class="slot grow basis-0 min-h-0 w-full resize-none p-3 border-0 outline-none" x-model="applyPatchText"
+                  spellcheck="false" placeholder="Paste a unified diff, or open a .patch file from the menu."></textarea>
       </div>
     </div>
-    <div class="flex items-center gap-3">
-      <button class="tonal" @click="doApply()"><span class="msym s18">play_arrow</span> Apply patch</button>
-      <button class="tbtn" :disabled="!applyResult" @click="useResult()" :style="!applyResult && 'opacity:.4;pointer-events:none'"><span class="msym s18">east</span> Load result into Compare</button>
-      <span x-show="applyError" style="color:var(--g-del-text);font:500 13px 'Inter'" class="flex items-center gap-1.5"><span class="msym s18">error</span><span x-text="applyError"></span></span>
+    <div class="shrink-0 bg-base-100 px-2 py-2 flex items-center gap-2 flex-wrap">
+      <button class="btn btn-xs btn-primary" @click="doApply()"><i class="ph ph-play"></i>Apply</button>
+      <button class="btn btn-xs btn-ghost border border-base-300" :disabled="applyResult === null" @click="useResult()">
+        <i class="ph ph-arrow-right"></i>Load result into B</button>
+      <span class="text-[11px] text-error" x-show="applyError" x-text="applyError"></span>
+      <span class="text-[11px] text-success" x-show="applyResult !== null && !applyError">
+        Applied cleanly, <span x-text="(applyResult || '').split('\n').length"></span> lines out.</span>
     </div>
-    <div x-show="applyResult !== null" class="card-elev overflow-hidden">
-      <div class="flex items-center justify-between px-5 py-3" style="border-bottom:1px solid var(--g-divider)">
-        <div class="flex items-center gap-2.5">
-          <span class="msym s18" style="color:var(--g-add-bar)">task_alt</span>
-          <span class="mono" style="font-size:13px;font-weight:500">Result</span>
-        </div>
-        <div class="flex items-center gap-1.5">
-          <button class="tbtn" style="height:28px" @click="copy(applyResult); showToast('Result copied')"><span class="msym s18">content_copy</span> Copy</button>
-        </div>
-      </div>
-      <pre class="mono" style="font-size:13px;line-height:22px;color:#202124;padding:12px 16px;white-space:pre-wrap;word-break:break-word" x-text="applyResult"></pre>
-    </div>
-  </div>
+  </section>
 
 </main>
 
-<!-- Snackbar -->
-<div x-show="toast" x-transition.opacity class="snack" x-text="toast" style="display:none"></div>
+<div class="toast toast-start z-50" x-show="toast" x-transition.opacity x-cloak>
+  <div class="alert alert-neutral py-2 px-4 text-sm" x-text="toast"></div>
+</div>
 
 <script>
 function diffApp() {
+  // Past this the grid stops being readable and the browser starts to hurt.
+  const ROW_CAP = 6000;
+  // Per-side localStorage ceiling. Above it the text is not persisted, but the
+  // slot's address is, so a reload can refetch.
+  const STORE_CAP = 512 * 1024;
+  // Tag detection scans a prefix, not the whole document: it runs on every
+  // recompute and only needs to name the tags in use.
+  const TAG_SCAN = 200 * 1024;
+
   return {
-    tab: 'compare',
+    TABS: [
+      { id: 'sources', label: 'Sources', icon: 'ph-textbox' },
+      { id: 'diff',    label: 'Diff',    icon: 'ph-git-diff' },
+      { id: 'patch',   label: 'Patch',   icon: 'ph-file-text' },
+      { id: 'apply',   label: 'Apply',   icon: 'ph-bandaids' },
+    ],
+    PRESETS: [
+      { id: 'clear',    label: 'None',            hint: 'Remove every rule' },
+      { id: 'prose',    label: 'Prose',           hint: 'One sentence per line, so drafts diff sentence by sentence' },
+      { id: 'tags',     label: 'Drop tags',       hint: 'Replace every < > tag with a space' },
+      { id: 'collapse', label: 'Collapse spaces', hint: 'Runs of spaces and tabs become one space' },
+    ],
+
+    tab: 'sources',
     view: 'split',
-    editing: false,
+    wrap: true,
+    fontStep: 0,
     ignoreWs: false, ignoreCase: false, ignoreBlank: false,
-    foldContext: 3, patchContext: 3,
+    foldContext: 3,
+    patchContext: 3,
     expanded: {},
-    filename: 'fetchUser.js',
-    original: `import { api } from './client';
 
-export async function fetchUser(id) {
-  const res = await api.get('/users/' + id);
-  if (res.status !== 200) {
-    throw new Error('Request failed');
-  }
-  const data = res.body;
-  const profile = data.profile || {};
-  return {
-    id: data.id,
-    name: data.name,
-    email: data.email,
-  };
-}
+    stripHtml: false,
+    normOpen: false,
+    rules: [],
+    tags: [],
+    normSummary: '',
 
-export function clearCache() {
-  cache.clear();
-}`,
-    modified: `import { api } from './client';
-import { logger } from './logger';
-
-export async function fetchUser(id, opts = {}) {
-  const res = await api.get(\`/users/\${id}\`, opts);
-  if (!res.ok) {
-    logger.warn('fetchUser failed', { id, status: res.status });
-    throw new ApiError('Request failed', res.status);
-  }
-  const data = await res.json();
-  const profile = data.profile || {};
-  return {
-    id: data.id,
-    name: data.fullName,
-    email: data.email,
-    avatar: data.avatarUrl,
-  };
-}
-
-export function clearCache() {
-  cache.clear();
-}`,
-    rows: [], unified: [], patch: '', patchLines: [],
-    stats: { add: 0, del: 0, sim: 100 },
-    numChanges: 0, curChange: 0,
-    applySource: '', applyPatchText: '', applyResult: null, applyError: '',
-    toast: '', _toastT: null,
-
-    async init() {
-      await this.loadFromHash();
-      this.applySource = this.original;
-      this.compute();
-      this.genPatch();
+    slots: {
+      A: { src: 'url', value: '', name: '', content: '', loading: false, error: '' },
+      B: { src: 'url', value: '', name: '', content: '', loading: false, error: '' },
     },
 
-    esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); },
-    key(s) { let v = s; if (this.ignoreWs) v = v.replace(/\s+/g,' ').trim(); if (this.ignoreCase) v = v.toLowerCase(); return v; },
-    sign(t) { return t==='add' ? '+' : t==='del' ? '−' : ''; },
-    onEdit() { this.compute(); this.genPatch(); },
-    swap() { [this.original, this.modified] = [this.modified, this.original]; this.compute(); this.genPatch(); },
+    // Promise for the token's repo listing, shared by both slots' pickers.
+    _repoList: null,
+    // Whether alpineComponents/path-picker.js loaded (set by the boot chain).
+    // Read once at init: if the load failed, the grab row says so instead of
+    // rendering as blank space that reads like an unbuilt feature.
+    pickerReady: false,
 
-    lcsDiff(a, b) {
-      const n = a.length, m = b.length;
-      const dp = Array.from({length: n+1}, () => new Int32Array(m+1));
-      for (let i = n-1; i >= 0; i--)
-        for (let j = m-1; j >= 0; j--)
-          dp[i][j] = a[i] === b[j] ? dp[i+1][j+1]+1 : Math.max(dp[i+1][j], dp[i][j+1]);
-      const ops = []; let i = 0, j = 0;
-      while (i < n && j < m) {
-        if (a[i] === b[j]) { ops.push({type:'eq', a:i, b:j}); i++; j++; }
-        else if (dp[i+1][j] >= dp[i][j+1]) { ops.push({type:'del', a:i}); i++; }
-        else { ops.push({type:'add', b:j}); j++; }
+    rows: [], unified: [], patch: '', patchLines: [],
+    stats: { add: 0, del: 0, sim: 100 },
+    numChanges: 0, curChange: 0, gapCount: 0,
+    notice: '',
+    applySource: '', applyPatchText: '', applyResult: null, applyError: '',
+    toast: '', _toastT: null,
+    _opsCache: null, _diffWarn: '',
+
+    // ── lifecycle ────────────────────────────────────────────────────────
+    async init() {
+      // Two columns of code do not fit a phone, so the narrow default is
+      // unified. A stored preference wins over it.
+      this.view = window.innerWidth < 768 ? 'unified' : 'split';
+      // pathPicker reads its GH instance from the shared browser store, which
+      // the show-repo shell normally fills. This page has no shell, so it seeds
+      // the store itself from its own boot instance.
+      const store = Alpine.store('browser');
+      if (store && !store.gh && window.gh) {
+        store.gh = window.gh;
+        store.repo = gh.repo || '';
+        store.ref = gh.ref || '';
       }
-      while (i < n) ops.push({type:'del', a:i++});
-      while (j < m) ops.push({type:'add', b:j++});
+      // Read the boot flag, never Alpine's registry: Alpine.data(name) with one
+      // argument is a SETTER, so probing it would assign undefined and unregister
+      // the very component being checked. Measured, not assumed.
+      this.pickerReady = window.__pickerLoaded !== false;
+      this.restore();
+      await this.loadFromUrl();
+      this.applySource = this.slots.A.content;
+      this.applySize();
+      this.recompute();
+      if (this.bothLoaded) this.tab = 'diff';
+
+      this.$watch('wrap', () => this.persist());
+      this.$watch('view', () => this.persist());
+      for (const id of ['A', 'B']) {
+        for (const k of ['src', 'value', 'name', 'content']) {
+          this.$watch('slots.' + id + '.' + k, () => this.persist());
+        }
+      }
+    },
+
+    get bothLoaded() { return !!(this.slots.A.content && this.slots.B.content); },
+    get activeRuleCount() { return this.rules.filter(r => r.on && r.find).length; },
+    get normActive() { return this.stripHtml || this.activeRuleCount > 0; },
+
+    // Every input change funnels here: one diff, then the patch off the same
+    // cached ops.
+    recompute() { this.compute(); this.genPatch(); },
+    onEdit() { this._opsCache = null; this.recompute(); },
+    onRules() { this.validateRules(); this._opsCache = null; this.recompute(); this.persist(); },
+
+    onKey(e) {
+      const t = e.target;
+      if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const act = {
+        n: () => this.goChange(1),
+        p: () => this.goChange(-1),
+        u: () => { this.view = this.view === 'split' ? 'unified' : 'split'; },
+        w: () => { this.wrap = !this.wrap; },
+        s: () => { this.tab = 'sources'; },
+        d: () => { this.tab = 'diff'; },
+        f: () => { this.tab = 'patch'; },
+        a: () => { this.tab = 'apply'; },
+      }[e.key];
+      if (act) { e.preventDefault(); act(); }
+    },
+
+    sizeBy(d) {
+      this.fontStep = Math.max(-3, Math.min(6, this.fontStep + d));
+      this.applySize();
+      this.persist();
+    },
+    applySize() { document.documentElement.style.setProperty('--dsz', (13 + this.fontStep) + 'px'); },
+    promptToken() {
+      if (!window.ghAuth || !ghAuth.prompt) { this.showToast('The auth helper has not loaded yet'); return; }
+      ghAuth.prompt('Paste a GitHub token to read private repos and branches.');
+      // The repo listing is token-gated, so a token entered now should be able
+      // to produce one without a reload.
+      this.resetPickers();
+    },
+
+    // ── sources ──────────────────────────────────────────────────────────
+    lineCount(id) {
+      const c = this.slots[id].content;
+      if (!c) return 'empty';
+      const n = c.split('\n').length;
+      return n.toLocaleString() + (n === 1 ? ' line' : ' lines');
+    },
+
+    resetSlot(id) {
+      Object.assign(this.slots[id], { content: '', value: '', name: '', error: '' });
+      this.expanded = {};
+      this.onEdit();
+    },
+
+    swap() {
+      const a = JSON.parse(JSON.stringify(this.slots.A));
+      this.slots.A = JSON.parse(JSON.stringify(this.slots.B));
+      this.slots.B = a;
+      this.expanded = {};
+      this.onEdit();
+    },
+
+    async fill(id) {
+      const s = this.slots[id];
+      const spec = (s.value || '').trim();
+      if (!spec) return;
+      s.loading = true;
+      s.error = '';
+      try {
+        if (s.src === 'gh') await this.fillFromGitHub(id, spec);
+        else {
+          const res = await fetch(spec);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          s.content = await res.text();
+          if (!s.name) s.name = spec.split(/[/?#]/).filter(Boolean).pop() || spec;
+        }
+      } catch (e) {
+        s.error = this.readFailure(e, s.src, spec);
+      } finally {
+        s.loading = false;
+        this.onEdit();
+      }
+
+    },
+
+    // owner/repo[@ref]:path through the stored token, so a private repo or an
+    // un-pushed branch reads the same way a public file does.
+    async fillFromGitHub(id, spec) {
+      if (!window.RepoAddress || !window.GH) throw new Error('The GitHub helpers have not loaded yet.');
+      const addr = RepoAddress.parse(spec);
+      if (!addr) throw new Error('Not an address. Use owner/repo[@ref]:path.');
+      const api = new window.GH({ repo: addr.repo, ref: addr.ref || 'HEAD' });
+      const file = await api.get(addr.path);
+      const s = this.slots[id];
+      s.content = file.text;
+      if (!s.name) s.name = addr.path.split('/').pop() + (addr.ref ? '@' + addr.ref : '');
+    },
+
+    // ── the browse row's roots ───────────────────────────────────────────
+    // Every repo the stored token can see, in the order GitHub returns them
+    // (most recently updated first), and nothing reordered on top of that.
+    //
+    // An earlier pass pulled the repos this page had read from to the front. It
+    // was wrong twice over: on a first visit that is one repo, so the list
+    // looked broken; and once the panel filters as you type with the top row
+    // pre-selected, an authored first item is what Tab commits. A guessed
+    // default is worse than a neutral one when a keystroke accepts it.
+    //
+    // Awaited by pathPicker, memoized so the two slots' pickers share one fetch.
+    async grabRoots() {
+      const repos = await this.repoList();
+      if (repos.length) return repos.map(repo => ({ repo, ref: '' }));
+      // No listing (no token, or the call failed): at least offer this repo, so
+      // the panel is navigable rather than empty.
+      return window.gh && gh.repo ? [{ repo: gh.repo, ref: '' }] : [];
+    },
+
+    repoList() {
+      if (!this._repoList) {
+        this._repoList = (async () => {
+          if (!window.gh || typeof gh.repos !== 'function') return [];
+          // With a token gh.repos() reads /user/repos, which includes private
+          // repos and org repos the token can reach. Without one it falls back
+          // to a public listing, so pass this repo's owner rather than the
+          // library's default.
+          const owner = (gh.repo || '/').split('/')[0];
+          try {
+            const list = await gh.repos(owner);
+            return (list || []).map(r => r && r.full_name).filter(Boolean);
+          } catch (e) {
+            console.warn('could not list repositories:', e);
+            return [];
+          }
+        })();
+      }
+      return this._repoList;
+    },
+
+    // Drop the cached listing and the picker trees, so a token entered after a
+    // failed listing is retried without a reload.
+    resetPickers() {
+      this._repoList = null;
+      for (const id of ['A', 'B']) {
+        const picker = document.getElementById('grab-' + id)?.__pathPicker;
+        if (picker) { picker._loaded = false; picker.tree = []; picker.scope = []; picker.error = ''; }
+      }
+    },
+
+    // ── the address field as the picker's keyboard ───────────────────────
+    // A value that STARTS with '@' puts the field in browse mode: the panel
+    // opens and everything after the '@' is the filter. That rule beats the
+    // earlier "exactly @" one on both sides. It supports typing to filter, and
+    // it still cannot collide with a real address, because owner/repo@ref:path
+    // has its '@' in the middle, never at the front.
+    //
+    // The field is the only text box: pathPicker deliberately has none, and a
+    // second input beside the one already focused would be worse than none.
+    onAddrInput(id) {
+      const picker = this.pickerFor(id);
+      if (!picker) return;
+      const v = this.slots[id].value;
+      if (this.slots[id].src !== 'gh' || !v.startsWith('@')) {
+        if (picker.open) { picker.open = false; picker.setQuery(''); }
+        return;
+      }
+      if (!picker.open) picker.toggle();
+      picker.setQuery(v.slice(1));
+    },
+
+    // Arrow keys move the highlight, Tab or Enter takes it, Escape backs out.
+    // Only while browsing: otherwise Tab must still move focus and Enter must
+    // still fetch the typed address.
+    onAddrKey(id, e) {
+      const picker = this.pickerFor(id);
+      const browsing = picker && picker.open && this.slots[id].value.startsWith('@');
+      if (!browsing) {
+        if (e.key === 'Enter') { e.preventDefault(); this.fill(id); }
+        return;
+      }
+      if (e.key === 'ArrowDown') { e.preventDefault(); picker.move(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); picker.move(-1); }
+      else if (e.key === 'Tab' || e.key === 'Enter') { e.preventDefault(); picker.commitActive(); }
+      else if (e.key === 'Escape') { e.preventDefault(); picker.open = false; this.slots[id].value = ''; }
+      else if (e.key === 'Backspace' && this.slots[id].value === '@' && picker.scope.length) {
+        // Backspacing past the query walks up a level rather than closing.
+        e.preventDefault();
+        picker.up();
+      }
+    },
+
+    pickerFor(id) {
+      const picker = document.getElementById('grab-' + id)?.__pathPicker;
+      if (!picker) this.showToast('The file browser did not load');
+      return picker || null;
+    },
+
+    // Descending resets the picker's filter, so the field has to follow or the
+    // two disagree about what is being filtered.
+    onDescend(id) {
+      if (this.slots[id].value.startsWith('@')) this.slots[id].value = '@';
+    },
+
+    // A pick writes the address into the slot's field and loads it, so the
+    // picker is a way to fill that input rather than a second source of truth.
+    // That keeps one value flowing into ?a=/?b= and the share link.
+    onGrab(id, detail) {
+      if (!detail || !detail.repo || !detail.path) return;
+      const spec = detail.repo + (detail.ref ? '@' + detail.ref : '') + ':' + detail.path;
+      this.slots[id].src = 'gh';
+      this.slots[id].value = spec;
+      // The pick replaces the '@query' in the field, so browse mode is over.
+      const picker = document.getElementById('grab-' + id)?.__pathPicker;
+      if (picker) { picker.open = false; picker.setQuery(''); }
+      this.fill(id);
+    },
+
+    readFailure(e, src, spec) {
+      const msg = String((e && e.message) || e);
+      if (src === 'url' && /Failed to fetch|NetworkError|CORS|Load failed/i.test(msg)) {
+        return 'The other site refused a cross-origin read (CORS). Use the GitHub source, or paste the text.';
+      }
+      if (/\b40[13]\b/.test(msg)) return 'Not authorized. Set a GitHub token from the menu.';
+      if (/\b404\b/.test(msg)) return 'Nothing at that path and ref: ' + spec;
+      return msg;
+    },
+
+    pickFile(id) {
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.onchange = async () => {
+        const f = inp.files && inp.files[0];
+        if (!f) return;
+        const s = this.slots[id];
+        s.content = await f.text();
+        if (!s.name) s.name = f.name;
+        s.error = '';
+        this.onEdit();
+      };
+      inp.click();
+    },
+
+    async pasteInto(id) {
+      try {
+        this.slots[id].content = await navigator.clipboard.readText();
+        this.slots[id].error = '';
+        this.onEdit();
+      } catch {
+        this.slots[id].error = 'The browser would not hand over the clipboard. Paste into the box below instead.';
+      }
+    },
+
+    // ── normalization ────────────────────────────────────────────────────
+    validateRules() {
+      for (const r of this.rules) {
+        if (!r.find) { r.bad = false; continue; }
+        try { new RegExp(r.find, 'g'); r.bad = false; } catch { r.bad = true; }
+      }
+    },
+
+    applyPreset(id) {
+      const sets = {
+        clear:    [],
+        // Break after a sentence end, keeping any closing quote or bracket with
+        // it, and drop the space that followed.
+        prose:    [{ find: '([.!?][")\\u2019\\u201d]?)\\s+', replace: '$1\\n', on: true }],
+        tags:     [{ find: '<[^>]+>', replace: ' ', on: true }],
+        collapse: [{ find: '[ \\t]+', replace: ' ', on: true }],
+      };
+      this.rules = JSON.parse(JSON.stringify(sets[id] || []));
+      if (id === 'clear') this.stripHtml = false;
+      this.onRules();
+    },
+
+    stripTag(tag) {
+      const find = '</?' + tag + '\\b[^>]*>';
+      if (!this.rules.some(r => r.find === find)) this.rules.push({ find, replace: ' ', on: true });
+      this.onRules();
+    },
+
+    htmlToText(html) {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      doc.querySelectorAll('script,style,noscript,svg,template,nav,footer,header').forEach(el => el.remove());
+      // textContent on a document that was never rendered ignores block layout,
+      // so the line breaks have to be put back explicitly.
+      doc.querySelectorAll('p,div,section,article,li,tr,br,h1,h2,h3,h4,h5,h6,blockquote,pre,td,th,dt,dd')
+         .forEach(el => el.insertAdjacentText('afterend', '\n'));
+      return (doc.body ? doc.body.textContent : html)
+        .replace(/[ \t]+\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n');
+    },
+
+    normalize(text) {
+      let t = String(text || '').replace(/\r\n?/g, '\n');
+      if (this.stripHtml && /<[a-z!/]/i.test(t)) t = this.htmlToText(t);
+      for (const r of this.rules) {
+        if (!r.on || !r.find || r.bad) continue;
+        const rep = String(r.replace || '').replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+        try { t = t.replace(new RegExp(r.find, 'g'), rep); } catch { /* flagged in validateRules */ }
+      }
+      return t.trim();
+    },
+
+    detectTags() {
+      const both = (this.slots.A.content.slice(0, TAG_SCAN) + '\n' + this.slots.B.content.slice(0, TAG_SCAN));
+      if (!/<[a-z!/]/i.test(both)) { this.tags = []; return; }
+      const seen = new Set();
+      for (const m of both.matchAll(/<\s*\/?\s*([a-zA-Z][\w:-]*)/g)) {
+        const t = m[1].toLowerCase();
+        if (!['script', 'style', 'link', 'meta', 'doctype'].includes(t)) seen.add(t);
+      }
+      this.tags = [...seen].sort().slice(0, 60);
+    },
+
+    // ── diff engine ──────────────────────────────────────────────────────
+    // The engine lives in kits/text-diff.js so this page and the stage's Diff
+    // lens share one implementation. It used to be inlined here, which is how
+    // the repo ended up with two LCS tables that disagreed about how large a
+    // document was too large.
+    diffLines(a, b) {
+      const ops = textDiff.lines(a, b);
+      this._diffWarn = textDiff.lastWarning;
       return ops;
     },
 
-    wordDiff(o, m) {
-      const split = s => s.split(/(\s+)/);
-      const oa = split(o), ma = split(m);
-      const ops = this.lcsDiff(oa, ma);
-      let lh = '', rh = '';
-      for (const op of ops) {
-        if (op.type === 'eq') { lh += this.esc(oa[op.a]); rh += this.esc(ma[op.b]); }
-        else if (op.type === 'del') lh += `<span class="w-del">${this.esc(oa[op.a])}</span>`;
-        else rh += `<span class="w-add">${this.esc(ma[op.b])}</span>`;
-      }
-      return { lh, rh };
+    wordDiff(o, m) { return textDiff.words(o, m); },
+
+    esc(s) { return textDiff.esc(s); },
+    key(s) {
+      let v = s;
+      if (this.ignoreWs) v = v.replace(/\s+/g, ' ').trim();
+      if (this.ignoreCase) v = v.toLowerCase();
+      return v;
+    },
+    sign(t) { return t === 'add' ? '+' : t === 'del' ? '−' : ''; },
+    tone(t) {
+      return t === 'add' ? 't-add b-add' : t === 'del' ? 't-del b-del' : t === 'empty' ? 't-empty' : '';
+    },
+
+    // One diff per input state, shared by the Diff and Patch tabs. The Patch
+    // tab always wants the plain (un-ignored) alignment, which is also what the
+    // Diff tab uses whenever no ignore flag is set: the common case runs one
+    // diff, not two.
+    plainOps() {
+      const a = this.normalize(this.slots.A.content);
+      const b = this.normalize(this.slots.B.content);
+      const c = this._opsCache;
+      if (c && c.a === a && c.b === b) return c;
+      const al = a.split('\n'), bl = b.split('\n');
+      const ops = this.diffLines(al, bl);
+      this._opsCache = { a, b, al, bl, ops, warn: this._diffWarn };
+      return this._opsCache;
     },
 
     compute() {
-      // optional blank-line filtering, keeping original line numbers via index maps
-      let aAll = this.original.split('\n'), bAll = this.modified.split('\n');
-      let a = aAll, b = bAll, aIdx = aAll.map((_,i)=>i), bIdx = bAll.map((_,i)=>i);
-      if (this.ignoreBlank) {
-        a = []; aIdx = []; aAll.forEach((l,i)=>{ if (l.trim() !== '') { a.push(l); aIdx.push(i); } });
-        b = []; bIdx = []; bAll.forEach((l,i)=>{ if (l.trim() !== '') { b.push(l); bIdx.push(i); } });
+      this.detectTags();
+      const cache = this.plainOps();
+      this.normSummary = this.normActive
+        ? 'normalized to ' + cache.al.length.toLocaleString() + ' / ' + cache.bl.length.toLocaleString() + ' lines'
+        : '';
+
+      if (!cache.a && !cache.b) {
+        this.rows = []; this.unified = [];
+        this.numChanges = 0; this.gapCount = 0; this.notice = '';
+        this.stats = { add: 0, del: 0, sim: 100 };
+        return;
       }
-      const ops = this.lcsDiff(a.map(s=>this.key(s)), b.map(s=>this.key(s)));
+
+      // Ignore flags change the alignment, so they need their own diff over
+      // keyed (and possibly filtered) lines. Index maps keep the displayed line
+      // numbers pointing at the real lines.
+      const anyIgnore = this.ignoreWs || this.ignoreCase || this.ignoreBlank;
+      let a = cache.al, b = cache.bl, ops = cache.ops, aIdx = null, bIdx = null;
+      this.notice = cache.warn || '';
+      if (anyIgnore) {
+        if (this.ignoreBlank) {
+          a = []; aIdx = []; cache.al.forEach((l, i) => { if (l.trim() !== '') { a.push(l); aIdx.push(i); } });
+          b = []; bIdx = []; cache.bl.forEach((l, i) => { if (l.trim() !== '') { b.push(l); bIdx.push(i); } });
+        }
+        ops = this.diffLines(a.map(s => this.key(s)), b.map(s => this.key(s)));
+        this.notice = this._diffWarn;
+      }
+      const an = i => (aIdx ? aIdx[i] : i) + 1;
+      const bn = j => (bIdx ? bIdx[j] : j) + 1;
+
       const n = ops.length;
-      // which ops to keep unfolded (changes + context)
       const keep = new Array(n).fill(false);
       for (let i = 0; i < n; i++)
         if (ops[i].type !== 'eq')
-          for (let d = -this.foldContext; d <= this.foldContext; d++) { const p = i+d; if (p>=0 && p<n) keep[p] = true; }
+          for (let d = -this.foldContext; d <= this.foldContext; d++) {
+            const p = i + d;
+            if (p >= 0 && p < n) keep[p] = true;
+          }
 
       const rows = [], unified = [];
-      let eqCount = 0, add = 0, del = 0, changeIdx = 0;
-      let k = 0;
-      while (k < n) {
+      let eqCount = 0, add = 0, del = 0, changeIdx = 0, gaps = 0, k = 0;
+      const pushEq = (ia, ib) => {
+        const t = this.esc(a[ia]);
+        rows.push({ left: { n: an(ia), type: 'eq', html: t }, right: { n: bn(ib), type: 'eq', html: t } });
+        unified.push({ ln: an(ia), rn: bn(ib), type: 'eq', html: t });
+      };
+
+      while (k < n && rows.length < ROW_CAP) {
         const op = ops[k];
         if (op.type === 'eq') {
-          if (keep[k]) {
-            const t = this.esc(a[op.a]);
-            rows.push({ left:{n:aIdx[op.a]+1,type:'eq',html:t}, right:{n:bIdx[op.b]+1,type:'eq',html:t} });
-            unified.push({ ln:aIdx[op.a]+1, rn:bIdx[op.b]+1, type:'eq', html:t });
-            eqCount++; k++;
+          if (keep[k]) { pushEq(op.a, op.b); eqCount++; k++; continue; }
+          const s = k;
+          while (k < n && ops[k].type === 'eq' && !keep[k]) { eqCount++; k++; }
+          const id = 'g' + s, count = k - s;
+          if (this.expanded[id]) {
+            for (let q = s; q < k; q++) pushEq(ops[q].a, ops[q].b);
           } else {
-            const s = k; while (k < n && ops[k].type === 'eq' && !keep[k]) { eqCount++; k++; }
-            const id = 'g' + s, count = k - s;
-            if (this.expanded[id]) {
-              for (let q = s; q < k; q++) {
-                const t = this.esc(a[ops[q].a]);
-                rows.push({ left:{n:aIdx[ops[q].a]+1,type:'eq',html:t}, right:{n:bIdx[ops[q].b]+1,type:'eq',html:t} });
-                unified.push({ ln:aIdx[ops[q].a]+1, rn:bIdx[ops[q].b]+1, type:'eq', html:t });
-              }
-            } else {
-              rows.push({ gap:true, id, count });
-              unified.push({ gap:true, id, count });
-            }
+            rows.push({ gap: true, id, count });
+            unified.push({ gap: true, id, count });
+            gaps++;
           }
-        } else {
-          const dels = [], adds = [];
-          while (k < n && ops[k].type === 'del') dels.push(ops[k++]);
-          while (k < n && ops[k].type === 'add') adds.push(ops[k++]);
-          const anchor = 'chg' + changeIdx; changeIdx++;
-          const max = Math.max(dels.length, adds.length); const addLines = [];
-          for (let r = 0; r < max; r++) {
-            const d = dels[r], ad = adds[r];
-            let lhtml = d ? this.esc(a[d.a]) : '', rhtml = ad ? this.esc(b[ad.b]) : '';
-            if (d && ad) { const w = this.wordDiff(a[d.a], b[ad.b]); lhtml = w.lh; rhtml = w.rh; }
-            rows.push({
-              anchor: r===0 ? anchor : undefined,
-              left: d ? {n:aIdx[d.a]+1,type:'del',html:lhtml} : {n:'',type:'empty',html:''},
-              right: ad ? {n:bIdx[ad.b]+1,type:'add',html:rhtml} : {n:'',type:'empty',html:''}
-            });
-            if (d) { unified.push({ anchor: (r===0?anchor:undefined), ln:aIdx[d.a]+1, rn:'', type:'del', html:lhtml }); del++; }
-            if (ad) { addLines.push({ ln:'', rn:bIdx[ad.b]+1, type:'add', html:rhtml }); add++; }
-          }
-          if (!dels.length && addLines.length) addLines[0].anchor = anchor;
-          unified.push(...addLines);
+          continue;
         }
+        const dels = [], adds = [];
+        while (k < n && ops[k].type === 'del') dels.push(ops[k++]);
+        while (k < n && ops[k].type === 'add') adds.push(ops[k++]);
+        const anchor = 'chg' + changeIdx;
+        changeIdx++;
+        const span = Math.max(dels.length, adds.length), addLines = [];
+        for (let r = 0; r < span; r++) {
+          const d = dels[r], ad = adds[r];
+          let lhtml = d ? this.esc(a[d.a]) : '', rhtml = ad ? this.esc(b[ad.b]) : '';
+          if (d && ad) { const wd = this.wordDiff(a[d.a], b[ad.b]); lhtml = wd.lh; rhtml = wd.rh; }
+          rows.push({
+            anchor: r === 0 ? anchor : undefined,
+            left:  d  ? { n: an(d.a),  type: 'del', html: lhtml } : { n: '', type: 'empty', html: '' },
+            right: ad ? { n: bn(ad.b), type: 'add', html: rhtml } : { n: '', type: 'empty', html: '' },
+          });
+          if (d) {
+            unified.push({ anchor: r === 0 ? anchor : undefined, ln: an(d.a), rn: '', type: 'del', html: lhtml });
+            del++;
+          }
+          if (ad) { addLines.push({ ln: '', rn: bn(ad.b), type: 'add', html: rhtml }); add++; }
+        }
+        if (!dels.length && addLines.length) addLines[0].anchor = anchor;
+        for (const l of addLines) unified.push(l);
       }
+
+      if (k < n) this.notice = 'Showing the first ' + ROW_CAP.toLocaleString() + ' rows.';
+
       const total = a.length + b.length;
-      this.rows = rows; this.unified = unified;
-      this.numChanges = changeIdx; this.curChange = changeIdx ? Math.min(this.curChange, changeIdx-1) : 0;
-      this.stats = { add, del, sim: total ? Math.round(2*eqCount/total*100) : 100 };
+      this.rows = rows;
+      this.unified = unified;
+      this.gapCount = gaps;
+      this.numChanges = changeIdx;
+      this.curChange = changeIdx ? Math.min(this.curChange, changeIdx - 1) : 0;
+      this.stats = { add, del, sim: total ? Math.round(2 * eqCount / total * 100) : 100 };
     },
 
     expand(id) { this.expanded[id] = true; this.compute(); },
-    goChange(dir) {
-      if (!this.numChanges) return;
-      this.curChange = (this.curChange + dir + this.numChanges) % this.numChanges;
-      const el = document.getElementById('chg' + this.curChange);
-      if (el) el.scrollIntoView({ behavior:'smooth', block:'center' });
+    expandAll() {
+      for (const r of this.rows) if (r.gap) this.expanded[r.id] = true;
+      this.compute();
     },
 
-    // ---------- PATCH ----------
-    tagged(a, b, ops) {
-      let oi = 0, ni = 0; const t = [];
-      for (const op of ops) {
-        if (op.type === 'eq') { t.push({tag:' ', old:oi, new:ni, text:a[op.a]}); oi++; ni++; }
-        else if (op.type === 'del') { t.push({tag:'-', old:oi, new:null, text:a[op.a]}); oi++; }
-        else { t.push({tag:'+', old:null, new:ni, text:b[op.b]}); ni++; }
-      }
-      return t;
+    goChange(dir) {
+      if (!this.numChanges) return;
+      this.tab = 'diff';
+      this.curChange = (this.curChange + dir + this.numChanges) % this.numChanges;
+      this.$nextTick(() => {
+        const el = document.getElementById('chg' + this.curChange);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('dcur');
+        setTimeout(() => el.classList.remove('dcur'), 1200);
+      });
     },
+
+    // ── patch ────────────────────────────────────────────────────────────
+    nameA() { return this.slots.A.name || 'a.txt'; },
+    nameB() { return this.slots.B.name || this.slots.A.name || 'b.txt'; },
+
     genPatch() {
-      const a = this.original.split('\n'), b = this.modified.split('\n');
+      const cache = this.plainOps();
+      const a = cache.al, b = cache.bl;
       const ctx = this.patchContext;
-      const t = this.tagged(a, b, this.lcsDiff(a, b));
+      const t = [];
+      let oi = 0, ni = 0;
+      for (const op of cache.ops) {
+        if (op.type === 'eq') t.push({ tag: ' ', old: oi++, new: ni++, text: a[op.a] });
+        else if (op.type === 'del') t.push({ tag: '-', old: oi++, new: null, text: a[op.a] });
+        else t.push({ tag: '+', old: null, new: ni++, text: b[op.b] });
+      }
       const n = t.length;
       let out = '';
       if (t.some(x => x.tag !== ' ')) {
         const keep = new Array(n).fill(false);
         for (let i = 0; i < n; i++)
           if (t[i].tag !== ' ')
-            for (let d = -ctx; d <= ctx; d++) { const p = i+d; if (p>=0 && p<n) keep[p] = true; }
-        const lines = [`--- a/${this.filename}`, `+++ b/${this.filename}`];
+            for (let d = -ctx; d <= ctx; d++) {
+              const p = i + d;
+              if (p >= 0 && p < n) keep[p] = true;
+            }
+        const lines = ['--- a/' + this.nameA(), '+++ b/' + this.nameB()];
         let i = 0;
         while (i < n) {
           if (!keep[i]) { i++; continue; }
-          const s = i; while (i < n && keep[i]) i++;
-          let oldStart=null, newStart=null, oc=0, nc=0; const body=[];
+          const s = i;
+          while (i < n && keep[i]) i++;
+          let oldStart = null, newStart = null, oc = 0, nc = 0;
+          const body = [];
           for (let q = s; q < i; q++) {
             const x = t[q];
-            if (x.tag===' '||x.tag==='-') { if (oldStart===null) oldStart=x.old; oc++; }
-            if (x.tag===' '||x.tag==='+') { if (newStart===null) newStart=x.new; nc++; }
-            body.push((x.tag===' '?' ':x.tag)+x.text);
+            if (x.tag === ' ' || x.tag === '-') { if (oldStart === null) oldStart = x.old; oc++; }
+            if (x.tag === ' ' || x.tag === '+') { if (newStart === null) newStart = x.new; nc++; }
+            body.push((x.tag === ' ' ? ' ' : x.tag) + x.text);
           }
-          if (oldStart===null) oldStart = s>0 ? t[s-1].old+1 : 0;
-          if (newStart===null) newStart = s>0 ? t[s-1].new+1 : 0;
-          lines.push(`@@ -${oldStart+1},${oc} +${newStart+1},${nc} @@`);
-          lines.push(...body);
+          if (oldStart === null) oldStart = s > 0 ? t[s - 1].old + 1 : 0;
+          if (newStart === null) newStart = s > 0 ? t[s - 1].new + 1 : 0;
+          lines.push('@@ -' + (oldStart + 1) + ',' + oc + ' +' + (newStart + 1) + ',' + nc + ' @@');
+          for (const l of body) lines.push(l);
         }
         out = lines.join('\n') + '\n';
       }
       this.patch = out;
-      this.patchLines = (out ? out.split('\n') : ['(files are identical)']).map(text => {
+      this.patchLines = (out ? out.split('\n') : ['(the two sides are identical)']).map(text => {
         let cls = '';
         if (text.startsWith('--- ') || text.startsWith('+++ ')) cls = 'meta';
         else if (text.startsWith('@@')) cls = 'hunk';
@@ -568,87 +1198,237 @@ export function clearCache() {
     },
 
     applyPatch(srcText, patchText) {
-      const src = srcText.split('\n'); const out = []; let si = 0;
-      const lines = patchText.split('\n'); let li = 0; let hunks = 0;
+      const src = srcText.split('\n'), out = [];
+      const lines = patchText.split('\n');
+      let si = 0, li = 0, hunks = 0;
       while (li < lines.length) {
-        const L = lines[li];
-        if (L.startsWith('@@')) {
-          hunks++;
-          const m = L.match(/@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/);
-          if (!m) throw new Error('Malformed hunk header');
-          const oldStart = parseInt(m[1]) - 1;
-          while (si < oldStart) out.push(src[si++]);
+        if (!lines[li].startsWith('@@')) { li++; continue; }
+        hunks++;
+        const m = lines[li].match(/@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/);
+        if (!m) throw new Error('Malformed hunk header on line ' + (li + 1));
+        const oldStart = parseInt(m[1], 10) - 1;
+        if (oldStart < si) throw new Error('Hunks are out of order at line ' + (li + 1));
+        while (si < oldStart && si < src.length) out.push(src[si++]);
+        li++;
+        while (li < lines.length && !/^(@@|--- |\+\+\+ )/.test(lines[li])) {
+          const pl = lines[li];
+          if (pl === '') { li++; continue; }
+          const tag = pl[0], txt = pl.slice(1);
+          if (tag === ' ') out.push(src[si++]);
+          else if (tag === '-') si++;
+          else if (tag === '+') out.push(txt);
+          else if (tag === '\\') { /* "\ No newline at end of file" */ }
+          else throw new Error('Unexpected patch line: ' + pl.slice(0, 24));
           li++;
-          while (li < lines.length && !lines[li].startsWith('@@') && !lines[li].startsWith('--- ') && !lines[li].startsWith('+++ ')) {
-            const pl = lines[li];
-            if (pl === '') { li++; continue; }
-            const tag = pl[0], txt = pl.slice(1);
-            if (tag === ' ') { out.push(src[si]); si++; }
-            else if (tag === '-') { si++; }
-            else if (tag === '+') { out.push(txt); }
-            else throw new Error('Unexpected line: ' + pl.slice(0,20));
-            li++;
-          }
-        } else li++;
+        }
       }
-      if (!hunks) throw new Error('No hunks found in patch');
+      if (!hunks) throw new Error('No hunks found in that patch.');
       while (si < src.length) out.push(src[si++]);
       return out.join('\n');
     },
+
     doApply() {
-      this.applyError = ''; this.applyResult = null;
+      this.applyError = '';
+      this.applyResult = null;
       try { this.applyResult = this.applyPatch(this.applySource, this.applyPatchText); }
       catch (e) { this.applyError = e.message; }
     },
+
     useResult() {
-      this.original = this.applySource; this.modified = this.applyResult;
-      this.tab = 'compare'; this.compute(); this.genPatch(); this.showToast('Loaded into Compare');
+      this.slots.A.content = this.applySource;
+      this.slots.B.content = this.applyResult;
+      if (!this.slots.B.name) this.slots.B.name = 'patched';
+      this.expanded = {};
+      this.tab = 'diff';
+      this.onEdit();
+      this.showToast('Result loaded into B');
     },
 
-    // ---------- SERIALIZATION ----------
-    b64urlEncode(bytes) { let s=''; for (const x of bytes) s+=String.fromCharCode(x); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); },
-    b64urlDecode(str) { str=str.replace(/-/g,'+').replace(/_/g,'/'); while (str.length%4) str+='='; const s=atob(str); const b=new Uint8Array(s.length); for (let i=0;i<s.length;i++) b[i]=s.charCodeAt(i); return b; },
-    async gzipB64(str) { const stream=new Blob([str]).stream().pipeThrough(new CompressionStream('gzip')); const buf=await new Response(stream).arrayBuffer(); return this.b64urlEncode(new Uint8Array(buf)); },
-    async gunzipB64(b64) { const stream=new Blob([this.b64urlDecode(b64)]).stream().pipeThrough(new DecompressionStream('gzip')); return await new Response(stream).text(); },
-    state() { return { v:1, filename:this.filename, original:this.original, modified:this.modified,
-      options:{ view:this.view, ignoreWs:this.ignoreWs, ignoreCase:this.ignoreCase, ignoreBlank:this.ignoreBlank } }; },
+    // ── serialization ────────────────────────────────────────────────────
+    b64urlEncode(bytes) {
+      let s = '';
+      for (const x of bytes) s += String.fromCharCode(x);
+      return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    },
+    b64urlDecode(str) {
+      let s = str.replace(/-/g, '+').replace(/_/g, '/');
+      while (s.length % 4) s += '=';
+      const raw = atob(s), b = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) b[i] = raw.charCodeAt(i);
+      return b;
+    },
+    async gzipB64(str) {
+      const stream = new Blob([str]).stream().pipeThrough(new CompressionStream('gzip'));
+      return this.b64urlEncode(new Uint8Array(await new Response(stream).arrayBuffer()));
+    },
+    async gunzipB64(b64) {
+      const stream = new Blob([this.b64urlDecode(b64)]).stream().pipeThrough(new DecompressionStream('gzip'));
+      return await new Response(stream).text();
+    },
+
+    state() {
+      return {
+        v: 2,
+        a: { name: this.slots.A.name, content: this.slots.A.content },
+        b: { name: this.slots.B.name, content: this.slots.B.content },
+        options: {
+          view: this.view, wrap: this.wrap, stripHtml: this.stripHtml, rules: this.rules,
+          ignoreWs: this.ignoreWs, ignoreCase: this.ignoreCase, ignoreBlank: this.ignoreBlank,
+        },
+      };
+    },
+
     loadState(o) {
-      if (!o || o.v !== 1) throw new Error('Unsupported file');
-      this.filename = o.filename || 'untitled.txt'; this.original = o.original || ''; this.modified = o.modified || '';
-      const op = o.options || {}; this.view = op.view || 'split';
-      this.ignoreWs = !!op.ignoreWs; this.ignoreCase = !!op.ignoreCase; this.ignoreBlank = !!op.ignoreBlank;
-    },
-    async loadFromHash() {
-      const h = location.hash;
-      if (h.startsWith('#d=')) {
-        try { this.loadState(JSON.parse(await this.gunzipB64(h.slice(3)))); } catch (e) { /* ignore bad hash */ }
+      if (!o) throw new Error('Nothing to load');
+      const op = o.options || {};
+      if (o.v === 2) {
+        this.slots.A.name = (o.a || {}).name || '';
+        this.slots.A.content = (o.a || {}).content || '';
+        this.slots.B.name = (o.b || {}).name || '';
+        this.slots.B.content = (o.b || {}).content || '';
+        this.rules = Array.isArray(op.rules) ? op.rules : [];
+        this.stripHtml = !!op.stripHtml;
+        if (typeof op.wrap === 'boolean') this.wrap = op.wrap;
+      } else if (o.v === 1) {
+        // The v1 shape this page shipped with: one filename, two bodies.
+        this.slots.A.name = o.filename || '';
+        this.slots.A.content = o.original || '';
+        this.slots.B.name = o.filename || '';
+        this.slots.B.content = o.modified || '';
+      } else {
+        throw new Error('Unsupported file version');
       }
+      if (op.view) this.view = op.view;
+      this.ignoreWs = !!op.ignoreWs;
+      this.ignoreCase = !!op.ignoreCase;
+      this.ignoreBlank = !!op.ignoreBlank;
+      this.validateRules();
+      this.expanded = {};
+      this._opsCache = null;
     },
+
+    // #d= payload first, then a pair of ?a= / ?b= addresses; fragment before
+    // query on both, per lib/url-params.js.
+    async loadFromUrl() {
+      const P = window.UrlParams;
+      if (!P) return;
+      const d = P.get('d');
+      if (d) {
+        try { this.loadState(JSON.parse(await this.gunzipB64(d))); return; }
+        catch { this.showToast('That share link would not decode'); }
+      }
+      const jobs = [];
+      for (const id of ['A', 'B']) {
+        const spec = P.get(id.toLowerCase());
+        if (!spec) continue;
+        this.slots[id].src = 'gh';
+        this.slots[id].value = spec;
+        jobs.push(this.fill(id));
+      }
+      if (jobs.length) await Promise.all(jobs);
+    },
+
     async shareLink() {
-      const enc = await this.gzipB64(JSON.stringify(this.state()));
-      location.hash = 'd=' + enc;
-      try { await navigator.clipboard.writeText(location.href); this.showToast('Share link copied'); }
-      catch { this.showToast('Link in address bar'); }
+      try {
+        const enc = await this.gzipB64(JSON.stringify(this.state()));
+        const url = location.origin + location.pathname + '#d=' + enc;
+        history.replaceState(null, '', '#d=' + enc);
+        if (url.length > 7500) {
+          this.showToast('Over 7.5 KB, which some hosts truncate. Save the .json instead.');
+          return;
+        }
+        await navigator.clipboard.writeText(url);
+        this.showToast('Share link copied');
+      } catch { this.showToast('The link is in the address bar'); }
     },
-    saveJSON() { this.download(this.filename.replace(/\.[^.]+$/,'') + '.diff.json', JSON.stringify(this.state(), null, 2), 'application/json'); },
-    async openFile(e) {
-      const f = e.target.files[0]; if (!f) return;
+
+    saveJSON() {
+      const base = this.nameA().replace(/\.[^.]+$/, '') || 'comparison';
+      this.download(base + '.diff.json', JSON.stringify(this.state(), null, 2), 'application/json');
+    },
+
+    async openStateFile(e) {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
       const text = await f.text();
-      if (f.name.endsWith('.json')) { try { this.loadState(JSON.parse(text)); this.compute(); this.genPatch(); this.showToast('Comparison loaded'); } catch (err) { this.showToast('Invalid JSON'); } }
-      else { this.applyPatchText = text; this.applySource = this.original; this.tab = 'apply'; this.showToast('Patch loaded — review and Apply'); }
+      if (f.name.endsWith('.json')) {
+        try {
+          this.loadState(JSON.parse(text));
+          this.recompute();
+          this.tab = 'diff';
+          this.showToast('Comparison loaded');
+        } catch (err) { this.showToast('Could not read that file: ' + err.message); }
+      } else {
+        this.applyPatchText = text;
+        this.applySource = this.slots.A.content;
+        this.tab = 'apply';
+        this.showToast('Patch loaded. Review, then Apply.');
+      }
       e.target.value = '';
     },
 
-    // ---------- CLIPBOARD / DOWNLOAD ----------
-    copy(text) { navigator.clipboard?.writeText(text).catch(()=>{}); },
-    copyMarkdown() { this.copy('```diff\n' + this.patch + '```\n'); this.showToast('Markdown copied'); },
-    downloadPatch() { this.download(this.filename + '.patch', this.patch, 'text/x-patch'); },
+    // ── persistence: a tool you come back to should still hold your text ──
+    persist() {
+      try {
+        const slots = {};
+        for (const id of ['A', 'B']) {
+          const s = this.slots[id];
+          slots[id] = {
+            src: s.src, value: s.value, name: s.name,
+            content: s.content.length <= STORE_CAP ? s.content : '',
+          };
+        }
+        localStorage.setItem('diffTool.v2', JSON.stringify({
+          view: this.view, wrap: this.wrap, fontStep: this.fontStep,
+          stripHtml: this.stripHtml, rules: this.rules, slots,
+        }));
+      } catch { /* quota, or a private window: the tool still works */ }
+    },
+
+    restore() {
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem('diffTool.v2') || 'null'); } catch { return; }
+      if (!saved) return;
+      if (saved.view) this.view = saved.view;
+      if (typeof saved.wrap === 'boolean') this.wrap = saved.wrap;
+      if (typeof saved.fontStep === 'number') this.fontStep = saved.fontStep;
+      this.stripHtml = !!saved.stripHtml;
+      if (Array.isArray(saved.rules)) this.rules = saved.rules;
+      for (const id of ['A', 'B']) {
+        const s = saved.slots && saved.slots[id];
+        if (s) Object.assign(this.slots[id], {
+          src: s.src || 'url', value: s.value || '', name: s.name || '', content: s.content || '',
+        });
+      }
+      this.validateRules();
+    },
+
+    // ── clipboard / download ─────────────────────────────────────────────
+    copy(text, msg) {
+      if (!navigator.clipboard) { this.showToast('No clipboard access here'); return; }
+      navigator.clipboard.writeText(text)
+        .then(() => this.showToast(msg || 'Copied'))
+        .catch(() => this.showToast('The browser refused the copy'));
+    },
+    copyMarkdown() { this.copy('```diff\n' + this.patch + '```\n', 'Markdown copied'); },
+    copyForLLM() {
+      const head = 'Comparison of ' + this.nameA() + ' (A) and ' + this.nameB() + ' (B).\n'
+        + this.stats.add + ' lines added, ' + this.stats.del + ' removed, ' + this.stats.sim + '% match.\n\n';
+      this.copy(head + '```diff\n' + this.patch + '```\n', 'Patch copied for an LLM');
+    },
+    downloadPatch() { this.download(this.nameB() + '.patch', this.patch, 'text/x-patch'); },
     download(name, text, mime) {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([text], { type: mime }));
-      a.download = name; a.click(); URL.revokeObjectURL(a.href);
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
     },
-    showToast(msg) { this.toast = msg; clearTimeout(this._toastT); this._toastT = setTimeout(()=>this.toast='', 2200); },
+    showToast(msg) {
+      this.toast = msg;
+      clearTimeout(this._toastT);
+      this._toastT = setTimeout(() => this.toast = '', 2600);
+    },
   };
 }
 </script>
