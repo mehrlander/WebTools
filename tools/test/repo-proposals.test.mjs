@@ -440,3 +440,104 @@ test('a stale target fails its unchanged check, visibly, before any tap', async 
   const pre = P.checks(p, r);
   assert.equal(pre.list.find(c => c.key === 'unchanged').state, 'fail');
 });
+
+// ── unset-json-field ────────────────────────────────────────────────────────
+// The removal kind. Its one interesting decision is what a removal that finds
+// nothing should do: it reports `done` rather than failing, because the end
+// state is what was asked for. Everything else is applyField's shape with a
+// delete in place of the assignment, so the tests mirror that pair.
+
+const unset = (over = {}) => proposal({
+  kind: 'unset-json-field', field: 'quickLink', value: undefined,
+  why: 'quickLink went inert after the membership collapse', ...over,
+});
+
+test('unsetField takes the key out, leaves the rest, and keeps the file shape', () => {
+  const before = JSON.stringify({ icon: 'ph-scales', quickLink: true, estate: true }, null, 2) + '\n';
+  const r = P.unsetField(before, 'quickLink');
+  assert.equal(r.ok, true);
+  assert.equal(r.removed, true);
+  assert.equal(r.before, true, 'the removed value is reported for the review pane');
+  assert.deepEqual(JSON.parse(r.text), { icon: 'ph-scales', estate: true });
+  assert.equal(Object.keys(JSON.parse(r.text)).join(','), 'icon,estate', 'the survivors keep their order');
+  assert.ok(r.text.endsWith('}\n'), 'two-space indent and a trailing newline, like applyField');
+});
+
+test('unsetField on a key that is not there is a no-op, not an error', () => {
+  const before = '{\n  "estate": true\n}\n';
+  const r = P.unsetField(before, 'quickLink');
+  assert.equal(r.ok, true);
+  assert.equal(r.removed, false);
+  assert.equal(r.before, undefined);
+  assert.deepEqual(JSON.parse(r.text), { estate: true }, 'nothing else moved');
+});
+
+test('unsetField fails closed on a target that is not a JSON object', () => {
+  assert.match(P.unsetField('not json at all', 'x').error, /not valid JSON/);
+  assert.match(P.unsetField('[1,2]', 'x').error, /not an object/);
+});
+
+test('a removal carrying a value is refused, since it was probably meant as a set', () => {
+  assert.match(P.validate(unset({ value: true })).error, /takes no value/);
+  assert.match(P.validate(unset({ field: '' })).error, /needs a field name/);
+  assert.equal(P.validate(unset()).ok, true);
+});
+
+test('apply removes the key and says so in the commit message', async () => {
+  const log = [];
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{"estate":true,"quickLink":true}' } }, log);
+  const res = await P.apply(unset(), { GH, token: 't' });
+  assert.equal(res.ok, true);
+  assert.equal(log.length, 1);
+  assert.match(log[0].message, /Remove quickLink from \.web-tools\.json/);
+  assert.deepEqual(JSON.parse(Buffer.from(log[0].content, 'base64').toString('utf8')), { estate: true });
+});
+
+test('a removal that finds nothing to remove is done, and writes nothing', async () => {
+  const log = [];
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{"estate":true}' } }, log);
+  const res = await P.apply(unset(), { GH, token: 't' });
+  assert.equal(res.ok, false);
+  assert.equal(res.done, true, 'the end state is what was asked for');
+  assert.equal(log.length, 0, 'no write, so the target is untouched');
+});
+
+test('a missing target counts as nothing to remove, rather than creating a file', async () => {
+  const log = [];
+  const GH = stubGH({ 'me/target': {} }, log);
+  const res = await P.apply(unset(), { GH, token: 't' });
+  assert.equal(res.done, true);
+  assert.equal(log.length, 0);
+});
+
+test('the review pane sees the value that will go, before any tap', async () => {
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{"estate":true,"quickLink":true}' } });
+  const p = unset();
+  const r = await P.resolve(p, { GH, token: 't' });
+  assert.equal(r.fieldBefore, true);
+  assert.equal(r.removed, true);
+  const pre = P.checks(p, r);
+  assert.equal(pre.done, false);
+  assert.equal(pre.list.find(c => c.key === 'readable').label, 'Target is readable JSON');
+  assert.equal(pre.list.find(c => c.key === 'needed').state, 'pass');
+});
+
+test('an already-absent key reads as done on the card, not as a failure', async () => {
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{"estate":true}' } });
+  const p = unset();
+  const pre = P.checks(p, await P.resolve(p, { GH, token: 't' }));
+  assert.equal(pre.done, true);
+  assert.equal(pre.blocking, false, 'done is not a blocking failure');
+  assert.match(pre.list.find(c => c.key === 'needed').note, /already absent/);
+});
+
+test('a removal delivered as a PR titles and diffs itself as a removal', async () => {
+  const GH = stubGH({ 'me/target': { '.web-tools.json': '{"estate":true,"quickLink":true}' } });
+  const p = unset();
+  const r = await P.resolve(p, { GH, token: 't' });
+  assert.equal(P.prTitle(p), 'Remove quickLink from .web-tools.json');
+  const body = P.prBody(p, r);
+  assert.match(body, /\*\*Field:\*\* `quickLink`/);
+  assert.match(body, /- true/);
+  assert.match(body, /\+ \(removed\)/);
+});
