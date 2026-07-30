@@ -111,6 +111,7 @@ though `github.com` itself is allowed: a different failure mode than
 | `rubygems.org`, `proxy.golang.org` | ✅ | gem / go module fetches |
 | `github.com`, `api.github.com`, `codeload.github.com` | ✅ | `api.github.com` 403s without auth/UA, but no deny header → reachable |
 | `raw.githubusercontent.com` | ✅ | raw source files: the reliable fetch path |
+| `docs.github.com` | ✅ | *(2026-07-30)* static documents, no token. The published GraphQL SDL (`/public/fpt/schema.docs.graphql`, 1.5 MB) is the one we fetch. Intermittent 503, twice in about twenty tries from both `curl` and node, so retry before calling it unreachable |
 | `objects.githubusercontent.com`, `release-assets.githubusercontent.com` | ✅ | release-asset binaries |
 | `storage.googleapis.com`, `s3.amazonaws.com` | ✅ | object storage. 400 at root = reached; a 403 on a *bucket path* is GCS's own, not a denial |
 | `fonts.googleapis.com`, `fonts.gstatic.com` | ✅ | Google Fonts load |
@@ -144,6 +145,28 @@ for h in https://registry.npmjs.org/alpinejs \
   https://storage.googleapis.com/ https://cdn.jsdelivr.net/ https://esm.sh/ ; do
   probe "$h"; done
 ```
+
+## GraphQL: cannot be sent, can be typechecked
+
+*(measured 2026-07-30)*
+
+The box cannot POST GraphQL. The proxy serves only a pinned set of operations
+(`This GraphQL query is not enabled for this session`), and direct REST via
+`curl` is gated too, so a query written here ships without ever having run.
+
+The shape question does not need the network, though, and this is the general
+move rather than a GitHub trick: an API that publishes a **static schema** turns
+"will this be accepted" into a typecheck. GitHub's SDL is a plain document on
+`docs.github.com` (allowed, see the table above), and `graphql`'s `parse` +
+`validate` answer offline, catching the failure this code actually hits: a wrong
+field name, a wrong nesting, a missing required argument. `npm run graphql-schema`
+prunes the 1.5 MB document to the ~2 KB slice the repo's queries reach, which is
+what makes it committable; [`tools/test/graphql-schema.test.mjs`](../../tools/test/graphql-schema.test.mjs)
+runs the check in the normal suite.
+
+What stays out of reach is semantics: whether a field holds what we assume, how
+pagination behaves, whether permissions silently elide nodes. Those still need a
+browser with a token.
 
 ## Browsers / headless rendering: available
 

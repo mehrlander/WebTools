@@ -1,9 +1,12 @@
 ---
 id: graphql-schema-contract-check-cpuvb5
 title: Check GraphQL query shape offline against GitHub's published schema
-status: backlog
+status: done
 project: show-repo
 opened: 2026-07-26
+closed: 2026-07-30
+session: claude/web-tools-tracker-review-bw48ga
+next: done on claude/web-tools-tracker-review-bw48ga; the live-confirm task is unchanged and still open
 ---
 # Check GraphQL query shape offline against GitHub's published schema
 
@@ -45,3 +48,35 @@ The schema arrives by another route: a pruned copy committed once, or fetched by
 
 ## Progress log
 - 2026-07-26 filed from the in-flight session, after `branchSessions` shipped unverifiable for the second time in the repo's history
+- 2026-07-30 built. The unknown resolved in the good direction: `docs.github.com`
+  is on the allowlist and the SDL is a plain 1.5 MB GET, no token. It returns an
+  intermittent 503 (twice in about twenty tries, from both `curl` and node), so
+  the generator retries; that is now in
+  [environment/capabilities.md](../../docs/environment/capabilities.md), along
+  with the general form of the move: an API that publishes a static schema turns
+  "will this be accepted" into an offline typecheck.
+
+  Shape as scoped. The three query documents are lifted into `GH.queries` in
+  `lib/gh-fetch.js` and the methods send them by name.
+  `npm run graphql-schema` fetches the published SDL, validates the documents
+  against the **full** schema, then writes the slice they reach to
+  `tools/graphql/github-schema.pruned.graphql`: 16 types, 1.7 KB, which settles
+  the size question in favor of committing. Kept fields carry their whole
+  argument list, so a missing required argument is still an error, and the
+  generator refuses to write a prune the queries do not validate against.
+  `tools/test/graphql-schema.test.mjs` runs the check in `npm test`, offline.
+
+  Because the prune is derived from the queries, the check could have been
+  vacuous, so three controls hold it honest: a misspelled field, a selection
+  into a scalar, and a dropped required argument each have to fail. They do.
+
+  The finding worth keeping: **all three queries validate clean against the
+  published schema.** That is not the live confirmation
+  (`live-confirm-graphql-queries-7maacy`, still open and unchanged), but the
+  most likely failure it anticipates, a field name or a nesting the schema does
+  not allow, is now ruled out for the shapes as written.
+
+  Not wired into `artifacts-lockstep.test.mjs`: regeneration needs the network,
+  so a `--check` there would fail offline. The drift guard is instead in the
+  test, which requires every name in `GH.queries` to appear in the pruned
+  schema's header.

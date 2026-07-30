@@ -15,8 +15,9 @@ Everything here resolves the same two networks of dependencies to local files:
 
 ## Layout
 
-Three categories, one folder each (they share no module imports — render and
-build touch only via subprocess and the `dist/` artifact):
+Three categories, one folder each, plus one folder of generated input (they
+share no module imports — render and build touch only via subprocess and the
+`dist/` artifact):
 
 - [`render/`](render/) — exercise a page headlessly, offline. `preview.mjs`
   (jsdom logic render) + `screenshot.mjs` (Chromium pixel render), with
@@ -33,6 +34,9 @@ build touch only via subprocess and the `dist/` artifact):
   real-Alpine recipe from
   [`docs/environment/testing.md`](../docs/environment/testing.md) for
   component logic tests. One `*.test.mjs` per kit/component beside it.
+- [`graphql/`](graphql/) — one generated file, the pruned GitHub schema the
+  suite typechecks `lib/gh-fetch.js`'s queries against. Tracked, unlike the
+  other generated outputs, because the test needs it offline.
 
 The build/bake
 *format* itself lives outside `tools/`, in [`../lib/kits/build.js`](../lib/kits/build.js)
@@ -54,6 +58,7 @@ contract that makes all of this possible is in [`../docs/loader.md`](../docs/loa
 | `npm run pages-shots` | Regenerate `pages/thumbs/*.png` — one headless screenshot per page, the card previews for the visual index. Uses the [`screenshot.mjs`](render/screenshot.mjs) renderer; see [Cataloging the pages](#cataloging-the-pages). |
 | `npm run pages-index` | Regenerate both catalogs of every page: [`pages/README.md`](../pages/README.md) (link-dense table) and [`pages/index.html`](../pages/index.html) (visual card index). A *catalog* generator, not part of the code pipeline below — see [Cataloging the pages](#cataloging-the-pages). |
 | `npm run pages` | `pages-shots` then `pages-index` — refresh thumbnails and both catalogs in one step. |
+| `npm run graphql-schema [-- --check]` | Regenerate [`graphql/github-schema.pruned.graphql`](graphql/): fetch GitHub's published SDL (1.5 MB) and write only the slice `lib/gh-fetch.js`'s queries reach (~2 KB), so `npm test` can typecheck them offline. The **one generator that needs the network**, which is why it stays out of the commit hook and the lockstep test; the drift guard lives in [`test/graphql-schema.test.mjs`](test/graphql-schema.test.mjs) instead. Run it after editing a query. |
 | `node tools/build/repo-pages-shots.mjs --repo <owner/name> --root <checkout> --out <thumbs-dir>` | Shoot ANOTHER repo's `pages` catalog into the private thumb cache (`web-tools-private/thumbs/`), so show-repo's gallery can show clickable screenshots for that repo. Serves the source checkout, vendors CDN libs from this repo's `node_modules`. Not an npm script (it takes a target). |
 
 Shared internals: [`render/cdn.mjs`](render/cdn.mjs) (URL → local
