@@ -26,6 +26,50 @@ The environment cache includes files, packages, tools, and Docker images install
 
 Packages installed during a session do not transfer to other sessions unless their installation is added to the setup script. Repository `SessionStart` hooks run separately at their configured lifecycle events.
 
+### What `~/.claude` carries
+
+*(measured 2026-07-30)*
+
+The home directory is two layers with different lifetimes, and the modification
+times separate them cleanly. Written fresh at boot: `skills/` (the account's own
+skills, 39 of them), `projects/` (this session's transcript), `session-env/`, and
+the harness's hook scripts. Restored from the environment snapshot, carrying the
+timestamp of the day that snapshot was built: `settings.json`, `CLAUDE.md`, and
+`plugins/`, including `plugins/installed_plugins.json` and the plugin cache below
+it.
+
+So **account skills sync every container and account plugins do not.** A plugin is
+pinned at the commit it held when the snapshot was built. Nothing surfaces that
+from inside a session: the plugin is present, enabled, and stale. In the measured
+case the pin was two days behind and lacked a `Stop` hook the newer version
+shipped, so a fix that had merged was running nowhere. The same lifetime governs a
+hook installed by hand into `~/.claude/settings.json`. It covers exactly the
+session that wrote it, because a session's filesystem changes never enter the
+snapshot.
+
+Two commands freshen a running container:
+
+```bash
+claude plugin marketplace update <marketplace>
+claude plugin update <plugin>@<marketplace>
+```
+
+The CLI answers "Restart to apply changes," and the [plugin documentation](https://code.claude.com/docs/en/discover-plugins) offers `/reload-plugins` as the in-session equivalent. Neither was needed here. Skills from the updated cache appeared in the session's own skill listing within the turn, and the plugin's `Stop` hook fired 43 minutes later with nothing restarted and no reload typed. [Settings-file hooks are documented as reloading live](https://code.claude.com/docs/en/settings); on CLI 2.1.220 plugin hooks did too. Treat `/reload-plugins` as the fallback for an update that does not take.
+
+Durably, that update belongs in the setup script, which both refreshes the pin and
+invalidates the snapshot, so the next session starts from the refreshed pin rather
+than waiting out the roughly seven-day expiry.
+
+The pin reaches the repository checkout as well, by the same route. `node_modules/`
+is gitignored, so it cannot arrive with the fresh clone; the setup script installs
+it and the snapshot preserves it. A dependency added to `package.json` after the
+snapshot was built is therefore missing in a session that has the commit adding
+it. Measured 2026-07-30: `graphql@^17.0.2` landed on main that morning, the
+container's `node_modules/` was dated 2026-07-28, and `npm test` failed one test on
+`ERR_MODULE_NOT_FOUND` while the same suite passed in CI, which installs fresh.
+When a suite fails locally on a missing package, check the dates before believing
+the failure.
+
 ## The session transcript
 
 *(measured 2026-07-29)*
