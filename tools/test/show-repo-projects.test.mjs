@@ -158,3 +158,10 @@ test('the sidebar markup wires the project rows to the shell methods', () => {
   // icon, so a column of identical marks distinguished nothing.
   assert.doesNotMatch(page, /:class="p\.icon"/, 'project rows draw a leading icon again');
 });
+
+test('the project block hugs its repo row', () => {
+  // The gap between a 44 px repo row and a 28 px project row is the repo row's
+  // own slack, not a declared margin, so the block is pulled back to close it.
+  assert.match(page, /<div class="flex flex-col -mt-1" x-show="repoProjects\(r\.repo\)\.length">/,
+    'the project block no longer pulls up under its repo row');
+});

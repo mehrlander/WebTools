@@ -363,7 +363,26 @@
                      in-app action stays at the end of the row in both. It also
                      means a project that declares no board (`tracker: false`)
                      drops its last button rather than sliding the other one
-                     into a different column. -->
+                     into a different column.
+
+                     THE -mt-1 IS THE HUG, and it is a correction for a gap
+                     nothing declares. No margin separates a repo row from its
+                     first project; the space is the repo row's own, since a
+                     44 px row centres its label with 8 px more slack above and
+                     below than a 28 px one, and half of that lands between the
+                     two. So the block is pulled back 4 px, which brings the
+                     step down from a project row's own pitch plus 8 to plus 4
+                     and reads as attached. It is not pulled the full 8: the
+                     rows below overlap the row above by exactly this margin, so
+                     the last of the repo row's 44 px stops being the repo row's
+                     to tap. Four is the trade this list takes, leaving 40 px,
+                     which is the number the coarse-pointer sizing elsewhere in
+                     this sidebar already settles for. Pulling the block up also
+                     widens the space BELOW the last project by the same 4 px,
+                     which is the right direction: a project should sit nearer
+                     its own repo than the next one. -->
+
+                <div class="flex flex-col -mt-1" x-show="repoProjects(r.repo).length">
                 <template x-for="p in repoProjects(r.repo)" :key="r.repo + ':' + p.path">
                   <div class="flex items-center rounded-lg transition-colors hover:bg-base-200">
                     <button @click="openProject(r.repo, p)" :title="r.repo + ': ' + p.path"
@@ -380,6 +399,7 @@
                       <i class="ph ph-list-checks text-sm leading-none"></i></button>
                   </div>
                 </template>
+                </div>
               </div>
             </template>
           </div>
