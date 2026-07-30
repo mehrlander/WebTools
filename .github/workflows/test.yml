@@ -44,11 +44,15 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      # 22, not 20, and not by preference: `node --test` only expands a glob
+      # pattern from 22 on, so on 20 the test script looks for a directory
+      # literally named ** and exits 1 before running anything. It also matches
+      # the sandbox (22.22.2), which is the version the suite is written against.
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
 
       # package-lock.json is gitignored in this repo, so there is no lockfile to
       # `npm ci` against or to key setup-node's cache with. The env var stops the
