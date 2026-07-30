@@ -71,9 +71,18 @@ reported (`NOT baked, add a recipe`), not silently dropped.
   one `<i>` per variant with the full static class and toggle with `x-show`.
 - **Alpine cannot be pruned**; inline it as-is, before `</body>`. Styled-but-no-
   clicks means the inlined Alpine did not run.
-- **Inlined Alpine lacks `$nextTick`** at runtime (npm `cdn.min.js`, seen at
-  3.15.12), though the string appears in the bundle. `requestAnimationFrame` is
-  the drop-in that behaves the same inlined or CDN-delivered.
+- **Injection uses function replacers, and must.** `String.replace` reads `$$`,
+  `$&`, `` $` ``, `$'` and `$1` in a replacement *string* as patterns, and a
+  minified bundle is full of them. This was not theoretical: Alpine registers
+  every magic through ``Object.defineProperty(t, `$${n}`, …)``, so a string
+  replacement shipped ``` `${n}` ``` and each magic registered without its `$`.
+  Every expression using `$el`, `$refs`, `$dispatch`, `$watch` or `$nextTick`
+  then failed with "not defined", silently, in a bundle whose source clearly
+  contains the name. This entry used to read "inlined Alpine lacks `$nextTick`,
+  though the string appears in the bundle" and recommend `requestAnimationFrame`
+  as a drop-in. That was the symptom, one magic of five, mistaken for a
+  property of the runtime. **Verify by diffing:** the inlined bytes must equal
+  the npm dist byte for byte.
 - **Blob URLs abort on opaque origins** (`file://`, data-URL pages): a worklet
   or worker module built via `URL.createObjectURL` throws. Build the module URL
   as `'data:text/javascript,' + encodeURIComponent(src)`.

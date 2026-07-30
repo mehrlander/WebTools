@@ -76,11 +76,20 @@ if (libs.has('@phosphor-icons/web')) html = swapIcons(html);
 
 let styles = '';
 if (libs.has('tailwindcss')) {
-  fs.writeFileSync('_bake_src.html', html);
-  const plugin = libs.has('daisyui') ? '@plugin "daisyui";\n' : '';
-  fs.writeFileSync('_bake_in.css', `@import "tailwindcss" source(none);\n${plugin}@source "./_bake_src.html";\n`);
-  execSync('npx @tailwindcss/cli -i _bake_in.css -o _bake_out.css --minify', { stdio: 'ignore' });
-  styles += `<style>\n${fs.readFileSync('_bake_out.css', 'utf8')}\n</style>\n`;
+  // The Tailwind CLI needs real files to scan, so the compile writes three
+  // scratch files into the working directory. Clean them up: this runs inside
+  // whoever's repo is being baked, and 600 KB of intermediates left in a
+  // working tree is how they end up in a commit that used `git add -A`.
+  const scratch = ['_bake_src.html', '_bake_in.css', '_bake_out.css'];
+  try {
+    fs.writeFileSync('_bake_src.html', html);
+    const plugin = libs.has('daisyui') ? '@plugin "daisyui";\n' : '';
+    fs.writeFileSync('_bake_in.css', `@import "tailwindcss" source(none);\n${plugin}@source "./_bake_src.html";\n`);
+    execSync('npx @tailwindcss/cli -i _bake_in.css -o _bake_out.css --minify', { stdio: 'ignore' });
+    styles += `<style>\n${fs.readFileSync('_bake_out.css', 'utf8')}\n</style>\n`;
+  } finally {
+    for (const f of scratch) fs.rmSync(f, { force: true });
+  }
 }
 
 let scripts = '';
@@ -92,8 +101,14 @@ for (const name of libs) {
 const order = [...libs].filter(n => RUNTIME[n] && RUNTIME[n].js).sort((a, b) => (a === 'alpinejs') - (b === 'alpinejs'));
 for (const name of order) scripts += `<script>\n${fs.readFileSync(RUNTIME[name].js, 'utf8')}\n</script>\n`;
 
-html = html.includes('<!--CSS-->') ? html.replace('<!--CSS-->', styles) : html.replace('</head>', styles + '</head>');
-html = html.includes('<!--JS-->') ? html.replace('<!--JS-->', scripts) : html.replace('</body>', scripts + '</body>');
+// Function replacers, not strings. String.replace reads $$, $&, $`, $' and $1
+// in a replacement STRING as patterns, and a minified bundle is full of them.
+// Alpine registers every magic through Object.defineProperty(t, `$${n}`, ...);
+// as a string replacement that becomes `${n}`, so $el, $refs, $dispatch, $watch
+// and $nextTick all silently register without their $ and read as undefined in
+// every expression. A function replacer is passed through verbatim.
+html = html.includes('<!--CSS-->') ? html.replace('<!--CSS-->', () => styles) : html.replace('</head>', () => styles + '</head>');
+html = html.includes('<!--JS-->') ? html.replace('<!--JS-->', () => scripts) : html.replace('</body>', () => scripts + '</body>');
 
 fs.writeFileSync(OUTPUT, html);
 console.log('baked:', [...libs].join(', '));
