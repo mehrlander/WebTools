@@ -189,14 +189,26 @@ test('SESSIONS_STORE pointing nowhere is not an error', () => {
 
 // The hook is declared to the plugin loader, not merely present on disk. A file
 // nobody wired up is the failure this whole change is fixing.
-test('the plugin declares the hook, and the declaration points at the script', () => {
+// The wiring this pins changed on 2026-07-30. The entry used to carry
+// `"hooks": "./hooks/hooks.json"` and this test asserted it, on the reading
+// that a marketplace entry accepts any plugin-manifest field. The loader
+// rejects that form outright: `claude plugin list` reported "× failed to load
+// / Hook load failed: hooks: the file-path and array forms are not yet
+// supported in a marketplace entry", and removing the key flipped the same
+// command to "√ enabled". So the assertion is inverted. The key must be
+// ABSENT, and the file is found at the plugin root's default location instead,
+// which is where it already sat. Asserting the absence is the point: the old
+// declaration reads as diligence and would otherwise be added back.
+test('the hook is wired at the default location, and the entry does not redeclare it', () => {
   const market = JSON.parse(readFileSync('.claude-plugin/marketplace.json', 'utf8'));
   const portable = market.plugins.find((p) => p.name === 'portable');
   assert.ok(portable, 'the portable plugin should still exist');
-  assert.equal(portable.hooks, './hooks/hooks.json');
+  assert.equal(portable.hooks, undefined,
+    'a file-path `hooks` key in a marketplace entry fails the plugin load; the default location carries it');
 
-  // The declared path is relative to the plugin source, not the repo root.
-  const hooksPath = join(portable.source, portable.hooks);
+  // Default discovery: `hooks/hooks.json` in the plugin root, and the plugin
+  // root is the entry's source, not the repo root.
+  const hooksPath = join(portable.source, 'hooks', 'hooks.json');
   const hooks = JSON.parse(readFileSync(hooksPath, 'utf8'));
   const commands = hooks.hooks.Stop.flatMap((g) => g.hooks.map((h) => h.command));
   assert.equal(commands.length, 1);
