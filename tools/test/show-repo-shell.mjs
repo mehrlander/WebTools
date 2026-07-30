@@ -41,5 +41,5 @@ export function makeShell({ browserStore, search = '', win = {} } = {}) {
   new Function('window', 'document', 'Alpine', 'location', 'history', '__exports',
     shellScript(page) + '\n;__exports.app = app;')(
     win, doc, alpine, loc, hist, exports);
-  return { shell: exports.app(), browserStore: store, win, toasts };
+  return { shell: exports.app(), browserStore: store, win, toasts, history: hist, location: loc };
 }

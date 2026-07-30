@@ -73,6 +73,24 @@ test('a branch name is encoded segment-wise, so its slashes survive', () => {
   assert.ok(!urlOf(rows, 'home').includes('%2F'));
 });
 
+test('pathUrl builds a path inside the repo, tree or blob by extension', () => {
+  // The sidebar's project rows: a workspace folder, at the default branch.
+  assert.equal(GL.pathUrl('me/home', 'projects/budget-wa'),
+    'https://github.com/me/home/tree/HEAD/projects/budget-wa');
+  // A board file is a blob, and the ref given is stamped as given: this one
+  // takes no defaultRef and makes no judgment about whether to name it.
+  assert.equal(GL.pathUrl('me/home', 'projects/budget-wa/tracker/board.md', 'claude/some-branch'),
+    'https://github.com/me/home/blob/claude/some-branch/projects/budget-wa/tracker/board.md');
+  // Same segment-wise encoding, so a branch keeps its slashes and a path keeps
+  // its own while its spaces still escape.
+  assert.equal(GL.pathUrl('me/r', 'a b/c', 'feat/x'), 'https://github.com/me/r/tree/feat/x/a%20b/c');
+  // Stray slashes are trimmed rather than doubling up in the URL.
+  assert.equal(GL.pathUrl('me/r', '/docs/'), 'https://github.com/me/r/tree/HEAD/docs');
+  assert.equal(GL.pathUrl('me/r', ''), '');
+  assert.equal(GL.pathUrl('', 'docs'), '');
+  assert.equal(GL.pathUrl('me/r', '/'), '');
+});
+
 test('url() picks one destination out of the same list', () => {
   assert.equal(GL.url('me/r', 'prs'), 'https://github.com/me/r/pulls');
   assert.equal(GL.url('me/r', 'tracker'), '');                    // undeclared

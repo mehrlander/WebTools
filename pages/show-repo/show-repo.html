@@ -97,22 +97,28 @@
   </template>
 </div>
 
-<!-- ── Header: brand and the app-level view nav (a closed set the app owns).
-     That is all it carries. The old repo-list dropdown and the desktop
-     quick-links row went first (repo selection happens on the Repos dashboard,
-     which is nicer than a dropdown); the auth shield followed, since everything
-     it reached already had an on-page home: the token control is the Repos
-     dashboard's account row, a repo's config is the sidebar's Config view, and
-     "Refresh views" is that same view's Refresh button. ─────────────────── -->
+<!-- ── Header: the app-level view nav (a closed set the app owns). That is all
+     it carries. The old repo-list dropdown and the desktop quick-links row went
+     first (repo selection happens on the Repos dashboard, which is nicer than a
+     dropdown); the auth shield followed, since everything it reached already had
+     an on-page home: the token control is the Repos dashboard's account row, a
+     repo's config is the sidebar's Config view, and "Refresh views" is that same
+     view's Refresh button.
+
+     The BRAND went last, and for the same reason as the rest: it said nothing
+     the row beside it did not. Its tap was goDashboard(), which is Activity for
+     a signed-in viewer and Repos for a signed-out one, and both are the first
+     item of the nav it sat against, so the mark was a second route to a
+     destination already named a few pixels to its right. The mark still leads
+     the sidebar's crumb trail, where it is the route home from inside a repo and
+     is doing work; two copies of it on one screen were the redundancy, not the
+     mark itself. What the header buys is the width. ─────────────────────── -->
 <header class="shrink-0 z-30 bg-base-100 border-b border-base-300">
   <div class="max-w-full px-4">
     <div class="h-14 flex items-center gap-0.5">
-      <button @click="goDashboard()" class="hover:opacity-80 transition-opacity shrink-0" title="Dashboard">
-        <img src="../../lib/favicon.svg" alt="web-tools" width="24" height="24" class="w-6 h-6">
-      </button>
       <!-- App-level views: Open / Repos / Surfaces / To-do / Stage, the
-           estate's own set, always labeled, inline on one row (there is
-           room next to the brand at any phone width). Public browse left the
+           estate's own set, always labeled, inline on one row from the left
+           edge, at any phone width. Public browse left the
            header (a signed-out affordance, still on the no-token banner and
            every repo card); the nav scrolls rather than clipping on the
            narrowest devices.
@@ -193,9 +199,9 @@
   <aside class="fixed inset-y-0 left-0 w-72 max-w-[85vw] z-50 bg-base-100 border-r border-base-300 shadow-xl flex flex-col transition-transform duration-200 ease-out lg:static lg:z-auto lg:shadow-none lg:translate-x-0 lg:w-80 xl:w-[22rem] lg:shrink-0"
          :class="[drawer ? 'translate-x-0' : '-translate-x-full lg:translate-x-0', !showSidebar && 'lg:hidden']">
     <!-- Sidebar top bar: in a repo, a CRUMB TRAIL (crumbBar, sidebarCrumbs).
-         Two crumbs earn the bar back. The house is the route to the dashboard,
-         which on mobile the open drawer otherwise hides completely, since the
-         header brand sits behind it. The repo crumb drops the owner prefix
+         Two crumbs earn the bar back. The mark is the route to the dashboard,
+         and since the header dropped its own copy of it, the only one in the
+         chrome. The repo crumb drops the owner prefix
          (always the same account), and that saved width is what pays for the
          house; the full owner/name stays in its tooltip. Tapping the repo crumb
          opens the repo menu, the same sheet a Repos row opens, so the trailing
@@ -299,7 +305,7 @@
                      :class="$store.browser.repo===r.repo && 'bg-primary/10'">
                   <button @click="openPinned(r.repo)"
                           :title="r.repo + (overlayRefFor(r.repo) ? ' (overlay: opens at ' + overlayRefFor(r.repo) + ')' : '')"
-                          class="flex items-center gap-2 min-w-0 flex-1 min-h-11 pl-2 text-left transition-colors"
+                          class="flex items-center gap-2 min-w-0 flex-1 min-h-9 pl-2 text-left transition-colors"
                           :class="$store.browser.repo===r.repo ? 'text-primary font-semibold' : 'text-base-content/80'">
                     <i class="ph text-base shrink-0" :class="r.icon"></i><span class="truncate" x-text="r.short"></span>
                     <i x-show="overlayRefFor(r.repo)" x-cloak
@@ -308,13 +314,13 @@
                   <button @click.stop="rowMenu(r.repo, $event, 'github')"
                           @mouseenter="rowMenuHover(r.repo, $event, 'github')" @mouseleave="hoverLeaveMenu()"
                           :title="'GitHub links for ' + r.short"
-                          class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
+                          class="wt-row-btn shrink-0 h-9 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
                           :class="repoMenuAt && menuRepo===r.repo && menuKind==='github' && 'text-primary'">
                     <i class="ph ph-github-logo text-base leading-none"></i></button>
                   <button @click.stop="rowMenu(r.repo, $event)"
                           @mouseenter="rowMenuHover(r.repo, $event)" @mouseleave="hoverLeaveMenu()"
                           :title="(r.priv === null ? '' : (r.priv ? 'Private. ' : 'Public. ')) + 'Actions for ' + r.short"
-                          class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
+                          class="wt-row-btn shrink-0 h-9 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
                           :class="repoMenuAt && menuRepo===r.repo && menuKind==='actions' && 'text-primary'">
                     <i class="ph text-base leading-none"
                        :class="r.priv === null ? 'ph-dots-three-vertical' : (r.priv ? 'ph-lock' : 'ph-globe')"></i></button>
@@ -324,18 +330,99 @@
                      (the defining convention: a workspace running a tracker is a
                      project; the repo root's tracker marks the repo itself and
                      earns no row). The list rides the config cache the section
-                     already read, so these rows cost no extra fetch. A tap opens
-                     the repo's Files view at the workspace folder, the same
-                     route a folder pin takes; the indent (pl-8) puts the project
-                     icon under the repo label, so the column reads as
-                     containment rather than a second list. -->
+                     already read, so these rows cost no extra fetch. A tap on the
+                     name opens the repo's Files view at the workspace folder, the
+                     same route a folder pin takes.
+
+                     NO LEADING GLYPH, AND A GUIDELINE INSTEAD OF AN INDENT.
+                     Every row here took the same icon, since the field defaults
+                     it, so a column of identical marks distinguished nothing
+                     and read as a second list rather than as rows under their
+                     repo. The indent then went through three positions before
+                     landing here: pl-10 (past the repo label, on the reasoning
+                     that a step says "inside"), flush at pl-2, and now a 1 px
+                     rule down the block with the rows just clear of it.
+
+                     The rule is the cheap version of what the indent was buying.
+                     ml-4 puts it at 16 px, which is the CENTRE OF THE REPO
+                     ICON above (pl-2 plus half of a 16 px glyph), so it reads
+                     as hanging from the parent rather than as a stray margin,
+                     and the -mt-1 above starts it inside the repo row's box
+                     rather than below it. What it costs is 17 px of label
+                     start, against the 32 an indent was spending, on a sidebar
+                     where width is the scarce thing.
+
+                     The rows are then the REPO SIDEBAR'S PROJECT ROWS, exactly:
+                     same px-2 py-1.5, same text-base at /80, same gap-0.5, same
+                     h-8 buttons. They were smaller and dimmer here for a while
+                     (text-sm, min-h-7, /60), on the reasoning that a nested list
+                     should read as subordinate, and the rule made that argument
+                     unnecessary: once something says "these belong to that",
+                     shrinking them says it a second time and costs legibility.
+                     What still separates a project from a repo is the rule and
+                     the empty icon column, which is enough.
+
+                     The two trailing buttons are the repo row's pattern at
+                     project scale, and the pair is short because a workspace has
+                     exactly two destinations worth naming from out here: its
+                     FOLDER on GitHub, and its BOARD, opened here, which is the
+                     thing that makes it a project at all. Both act directly
+                     rather than opening a menu: the repo's buttons open panels
+                     because a repo has seven GitHub destinations and a set of
+                     actions to choose among, and a two-row menu would be a
+                     gesture in front of a single answer.
+
+                     GitHub FIRST, matching the repo row above it, so the
+                     github-logo column runs straight down the sidebar and the
+                     in-app action stays at the end of the row in both. It also
+                     means a project that declares no board (`tracker: false`)
+                     drops its last button rather than sliding the other one
+                     into a different column.
+
+                     NO NEGATIVE MARGIN ANY MORE, and the reason is worth
+                     keeping because it is the same measurement twice. The gap
+                     between a repo row and its first project was never a
+                     declared margin: it was the repo row's own slack, since a
+                     taller row centres its label with more air above and below
+                     than a short one and half of that lands between the two. A
+                     -mt-1 closed it while the rows were 36 px and 28 px. Now
+                     both are 36 px, the slack is zero, and the same pull would
+                     crowd the rows it used to align. The repo rows keep the
+                     min-h-9 they came down to for that earlier arithmetic; at
+                     equal heights it is simply the sidebar's row size.
+
+                     The trailing buttons carry the REPO ROW'S OWN /30, and that
+                     is now load-bearing rather than tidy. They were written at
+                     /25, meaning to sit a shade below the repo's, and rendered
+                     DARKER instead: this page's Tailwind browser build emits no
+                     rule for text-base-content/25, so the glyphs fell through to
+                     base-content at full strength while the repo's /30 above
+                     them was honoured. Same family as the caret in
+                     crumb-bar.js, where a utility that never appears in the
+                     compiled sheet simply does not exist. So match a value the
+                     page already uses rather than picking a fresh step, and if a
+                     new one is wanted, check the computed colour rather than the
+                     class list. -->
+
+
+                <div class="flex flex-col gap-0.5 ml-4 pl-2 border-l border-base-300" x-show="repoProjects(r.repo).length">
                 <template x-for="p in repoProjects(r.repo)" :key="r.repo + ':' + p.path">
-                  <button @click="openProject(r.repo, p)" :title="r.repo + ': ' + p.path"
-                          class="flex items-center gap-2 min-h-8 pl-8 pr-2 py-0.5 rounded-lg text-left text-sm transition-colors hover:bg-base-200 text-base-content/60 hover:text-base-content/90">
-                    <i class="ph text-sm shrink-0" :class="p.icon"></i>
-                    <span class="truncate" x-text="p.label"></span>
-                  </button>
+                  <div class="flex items-center rounded-lg transition-colors hover:bg-base-200">
+                    <button @click="openProject(r.repo, p)" :title="r.repo + ': ' + p.path"
+                            class="flex items-center min-w-0 flex-1 px-2 py-1.5 text-base text-left transition-colors text-base-content/80">
+                      <span class="truncate" x-text="p.label"></span>
+                    </button>
+                    <a :href="projectGithubUrl(r.repo, p)" target="_blank" rel="noopener" @click.stop
+                       :title="p.path + ' on GitHub'"
+                       class="wt-row-btn shrink-0 h-8 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors">
+                      <i class="ph ph-github-logo text-base leading-none"></i></a>
+                    <button x-show="p.board" @click.stop="openProjectBoard(r.repo, p)"
+                            :title="'Task board: ' + p.board"
+                            class="wt-row-btn shrink-0 h-8 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors">
+                      <i class="ph ph-list-checks text-base leading-none"></i></button>
+                  </div>
                 </template>
+                </div>
               </div>
             </template>
           </div>
@@ -413,8 +500,8 @@
       </div>
 
       <!-- Per-repo views, hidden in the estate (global) context. The estate is
-           reached from the header selector ("Repositories") and the brand icon,
-           not from here, since it is a context above the repo, not a view of it.
+           reached from the header nav and the sidebar trail's mark, not from
+           here, since it is a context above the repo, not a view of it.
            Repo views: the landing (web-tools' is its pages index, a repo with a
            custom `landing` gets that page, others get an overview), an optional
            standalone Pages entry (showPagesNav; a repo with both `landing` and a
@@ -455,6 +542,53 @@
       </div>
 
       <div class="border-t border-base-200" x-show="!estateCtx"></div>
+
+      <!-- PROJECTS, inside a repo: the same list the estate sidebar indents
+           under this repo's row, at the level a repo view sits. One list, two
+           levels, one destination: a row there and a row here both open the
+           project view (openProject switches the repo first, goProject is
+           already in it), so a workspace reads the same however you reached it.
+           The rows are duplicated in markup rather than shared, the way the rail
+           is. They are also now sized ALIKE, which the duplication no longer
+           earns on its own: the two differ in exactly two ways, the estate's
+           extra repo argument and this one's active state. Keep them in step by
+           hand (a test checks the row class and the block class appear twice),
+           or fold them into a component the day a third difference appears.
+
+           The list is read from the OPEN repo's live manifest (repoProjects
+           prefers it over the estate cache), so it needs no token and follows
+           the browsed ref. The trailing buttons are the estate row's pair, and
+           the rows hang off the same 1 px rule at the same ml-4, which here
+           lands on the centre of the section head's own glyph rather than on a
+           repo row's. Three lists of projects, one treatment. -->
+      <div class="flex flex-col gap-0.5" x-show="!estateCtx && repoProjects($store.browser.repo).length">
+        <div class="text-base font-semibold text-base-content/50 px-2 pb-1 flex items-center gap-1.5">
+          <i class="ph ph-kanban"></i><span>Projects</span>
+        </div>
+        <div class="flex flex-col gap-0.5 ml-4 pl-2 border-l border-base-300">
+        <template x-for="p in repoProjects($store.browser.repo)" :key="p.path">
+          <div class="flex items-center rounded-lg transition-colors hover:bg-base-200"
+               :class="view==='project' && projectPath===p.path && 'bg-primary/10'">
+            <button @click="goProject(p.path)" :title="p.path"
+                    class="flex items-center min-w-0 flex-1 px-2 py-1.5 text-base text-left transition-colors"
+                    :class="view==='project' && projectPath===p.path ? 'text-primary font-semibold' : 'text-base-content/80'">
+              <span class="truncate" x-text="p.label"></span>
+            </button>
+            <a :href="projectGithubUrl($store.browser.repo, p)" target="_blank" rel="noopener" @click.stop
+               :title="p.path + ' on GitHub'"
+               class="wt-row-btn shrink-0 h-8 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors">
+              <i class="ph ph-github-logo text-base leading-none"></i></a>
+            <button x-show="p.board" @click.stop="openProjectBoard($store.browser.repo, p)"
+                    :title="'Task board: ' + p.board"
+                    class="wt-row-btn shrink-0 h-8 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors">
+              <i class="ph ph-list-checks text-base leading-none"></i></button>
+          </div>
+        </template>
+        </div>
+      </div>
+
+      <div class="border-t border-base-200"
+           x-show="!estateCtx && repoProjects($store.browser.repo).length"></div>
 
       <!-- Pinned: folders and files the repo designates in .web-tools.json. The
            header carries a config gear, since the pins are a config field. -->
@@ -720,6 +854,52 @@
       </div>
     </div>
 
+    <!-- Project: a workspace's front page, the repo overview one level down.
+         Same shape as that overview on purpose (name, a few facts, the README
+         rendered), because a project is a repo-sized thing inside a repo and a
+         reader arriving at one wants what they want when arriving at a repo.
+         The header's three buttons are the routes out: the workspace as files,
+         its board, its folder on GitHub. -->
+    <div x-show="view==='project'" class="h-full overflow-y-auto">
+      <div class="!max-w-none px-6 py-8">
+        <template x-if="project">
+          <div>
+            <div class="flex items-start justify-between gap-4 flex-wrap mb-4">
+              <div class="min-w-0">
+                <h1 class="text-2xl font-bold tracking-tight truncate" x-text="project.label"></h1>
+                <p class="text-base-content/50 mt-1 font-mono text-base truncate"
+                   x-text="$store.browser.repo + ' / ' + project.path"></p>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button @click="openProjectFiles()" class="btn btn-outline gap-1.5">
+                  <i class="ph ph-folders"></i> Files
+                </button>
+                <button x-show="project.board"
+                        @click="openProjectBoard($store.browser.repo, project)"
+                        class="btn btn-outline gap-1.5">
+                  <i class="ph ph-list-checks"></i> Board
+                </button>
+                <a :href="projectGithubUrl($store.browser.repo, project)" target="_blank" rel="noopener"
+                   :title="project.path + ' on GitHub'" class="btn btn-outline gap-1.5">
+                  <i class="ph ph-github-logo"></i> GitHub
+                </a>
+              </div>
+            </div>
+
+            <div x-show="projectLoading" class="flex justify-center py-16">
+              <span class="loading loading-dots loading-md opacity-30"></span>
+            </div>
+            <article x-show="!projectLoading && projectHtml"
+                     class="prose prose-sm !max-w-none prose-pre:bg-base-200 prose-pre:text-base-content"
+                     x-html="projectHtml"></article>
+            <p x-show="!projectLoading && !projectHtml" class="text-base-content/40 italic text-base py-8">
+              No README in this workspace on this ref. Open its files, or its board.
+            </p>
+          </div>
+        </template>
+      </div>
+    </div>
+
     <!-- Atlas: the treemap for the selected repo, embedded. Available for every
          repo (the "ready mechanism"), even one with its own landing. -->
     <div x-show="view==='atlas'" class="h-full">
@@ -902,9 +1082,9 @@ function loadMarked(){
   });
 }
 
-// ── Shell: repo context + view state. The repo picker is up front; the brand
-// icon goes to the dashboard on every viewport, and the header's list button
-// opens the drawer where the sidebar isn't pinned. The sidebar lists the
+// ── Shell: repo context + view state. The header carries the app-level nav,
+// whose first item is the dashboard, and the list button that opens the drawer
+// where the sidebar isn't pinned. The sidebar lists the
 // repo's views (landing, atlas) and its files. Which
 // landing a repo gets is one decision — landingKind(). ────────────────────────
 function app(){ return {
@@ -1038,6 +1218,9 @@ function app(){ return {
     this.$watch(() => Alpine.store('browser').repo + '@' + Alpine.store('browser').ref, () => {
       this.loadRecent();
       this.loadConfig();
+      // An open project is repo@ref-scoped like the rest: switching the ref
+      // under it re-reads its README from where you now are.
+      if (this.view === 'project') this.loadProjectReadme();
     });
 
     // Estate membership needs a token to resolve, since it is read from the
@@ -1092,6 +1275,7 @@ function app(){ return {
     else if (url && url.view === 'public') this.goPublicBrowse();
     else if (url && url.view === 'branches') this.goBranches();
     else if (url && url.view === 'config') this.goConfig();
+    else if (url && url.view === 'project' && url.project) this.goProject(url.project);
     else if (url && url.view === 'files') { this.goFiles(); if (url.path) await this.openFolder(url.path); }
     const staged = window.StageLink ? window.StageLink.read(location).items : [];
     if (staged.length) {
@@ -1772,28 +1956,146 @@ function app(){ return {
   // a project, so `projects` is declarative and generatable (home's
   // tools/generate-tracker-registry.py syncs the field from the trackers it
   // finds), and the sidebar reads it from the config cache already in hand
-  // (estateConfigs) rather than walking any tree. Entries are bare folder
-  // paths or { path, label, icon } objects; label defaults to the path's last
-  // segment, icon to the task-board glyph the rows share.
-  repoProjects(repo){
-    const list = this.estateConfigs?.[repo]?.projects;
+  // (estateConfigs) rather than walking any tree, EXCEPT for the open repo,
+  // whose live manifest wins: loadConfig has already read it at the browsed
+  // ref, so inside a repo the honest list is the one on the ref you are
+  // standing on, and it needs no token or cache entry to exist. Entries are
+  // bare folder paths or { path, label, tracker } objects; label defaults to
+  // the path's last segment.
+  //
+  // BOARD is derived rather than declared, because the convention that defines
+  // a project already fixes it: a workspace running a tracker is a project, and
+  // a tracker keeps its generated rollup at <workspace>/tracker/board.md
+  // (docs/TRACKER.md). So the row can offer the board without the manifest
+  // saying anything, which keeps `projects` a list of paths and keeps the
+  // generator that writes it (home's tracker walk) from having to learn a
+  // second field. An entry names its own with `tracker` (a repo-root-relative
+  // board file, or a folder) and drops the button with `tracker: false`.
+  //
+  // An entry's `icon` is read no more: the rows no longer draw one (the field
+  // defaulted, so every row took the same glyph and it distinguished nothing).
+  // A stale `icon` in a manifest is simply ignored rather than being an error.
+  // A caller holding the manifest already (the estate cards read their own copy
+  // of the cache, and on a cold estate a live scan rather than the cache) passes
+  // it as `cfg` and gets the same normalizing, so the rule for what a project
+  // row IS lives here once rather than in every list that draws one.
+  repoProjects(repo, cfg){
+    const s = Alpine.store('browser');
+    if (!cfg) cfg = (repo && repo === s.repo && s.config) ? s.config : this.estateConfigs?.[repo];
+    const list = cfg?.projects;
     if (!Array.isArray(list)) return [];
     const out = [];
     for (const e of list){
       const o = typeof e === 'string' ? { path: e } : e;
       if (!o || typeof o.path !== 'string' || !o.path) continue;
       const path = o.path.replace(/\/+$/, '');
-      out.push({ path, label: o.label || path.split('/').pop(), icon: o.icon || 'ph-kanban' });
+      const board = o.tracker === false ? ''
+        : (typeof o.tracker === 'string' && o.tracker
+             ? o.tracker.replace(/\/+$/, '')
+             : path + '/tracker/board.md');
+      out.push({ path, label: o.label || path.split('/').pop(), board });
     }
     return out;
   },
-  // Open the project: its repo's Files view at the workspace folder, the same
-  // route a folder pin takes, reachable from the estate for any member repo.
-  // Under a branch overlay an overlaid repo opens at the branch (openPinned's
-  // rule), so a project declared only on the branch browses where it lives.
+  // Open the project: its repo's PROJECT VIEW, which is a place of its own
+  // rather than a folder listing. The estate row and the repo sidebar's row are
+  // the same destination from two levels, so a project reads the same whether
+  // you arrived from the whole estate or from inside its repo. Under a branch
+  // overlay an overlaid repo opens at the branch (openPinned's rule), so a
+  // project declared only on the branch opens where it lives.
+  //
+  // It used to land on the Files view at the workspace folder, which answered
+  // "what files are in there" when the question a project row asks is "what is
+  // this project". The folder is still one tap away, from the view's own header.
   async openProject(repo, p){
     await this.ensureBrowser(repo, this.overlayRefFor(repo) || undefined);
-    if (Alpine.store('browser').repo === repo) await this.openFolder(p.path);
+    if (Alpine.store('browser').repo === repo) this.goProject(p.path);
+  },
+  // ── The project view: a workspace's front page ───────────────────────────
+  // A repo's landing is its README; a project's is the README in its folder,
+  // which is the same promise one level down. The pane carries the workspace's
+  // name and path, the three routes out of it (its files, its board, its folder
+  // on GitHub), and that README rendered.
+  //
+  // The state lives on the SHELL rather than in a nested component, unlike
+  // overview(). A nested x-data would have to reach back through window.__shell
+  // for which project is open (the handle is the raw object, so Alpine does not
+  // track reads through it) and would go stale on selection. The pane binds
+  // these properties directly instead, which is what makes picking a row in the
+  // sidebar repaint the pane.
+  projectPath: '',
+  projectHtml: '',
+  projectLoading: false,
+  _projectKey: '',
+  // The open project as a row: the declared entry where there is one, so its
+  // label and board carry, else a minimal one derived from the path (a deep
+  // link can name a workspace the manifest has not caught up with).
+  get project(){
+    if (!this.projectPath) return null;
+    const s = Alpine.store('browser');
+    const found = this.repoProjects(s.repo).find(p => p.path === this.projectPath);
+    return found || { path: this.projectPath, label: this.projectPath.split('/').pop(),
+                      board: this.projectPath + '/tracker/board.md' };
+  },
+  goProject(path){
+    const p = String(path || '').replace(/\/+$/, '');
+    if (!p) return;
+    this.projectPath = p;
+    this.view = 'project';
+    this.syncUrl();
+    this.loadProjectReadme();
+  },
+  // The workspace README, at the browsed ref. Same fallback ladder as the repo
+  // overview, since a workspace names its readme with the same freedom a repo
+  // does. Keyed so a repaint of the same project@ref does not refetch.
+  async loadProjectReadme(force){
+    const s = Alpine.store('browser');
+    if (!this.projectPath || !s.repo || !s.gh) return;
+    const key = s.repo + '@' + s.ref + ':' + this.projectPath;
+    if (key === this._projectKey && !force) return;
+    this._projectKey = key;
+    this.projectLoading = true; this.projectHtml = '';
+    let res = null;
+    for (const n of ['README.md', 'readme.md', 'README.markdown', 'Readme.md']){
+      try { res = await s.gh.get(this.projectPath + '/' + n); break; } catch {}
+    }
+    // A late reply for a project the reader has since left must not paint over
+    // the current one.
+    if (key !== this._projectKey) return;
+    if (res){
+      try { await loadMarked(); this.projectHtml = window.marked.parse(res.text); }
+      catch { this.projectHtml = '<pre>' + res.text.replace(/</g, '&lt;') + '</pre>'; }
+    }
+    this.projectLoading = false;
+  },
+  // The three routes out of the view, all one tap: the workspace as files, its
+  // board here, its folder on GitHub (the last two are the sidebar row's own
+  // buttons, spelled out).
+  openProjectFiles(){
+    const p = this.project;
+    if (p) this.openFolder(p.path);
+  },
+  // The board, in the app: the same viewer the Files view opens a file in, so
+  // the board reads here rather than sending the tap to GitHub. A `tracker`
+  // naming a folder rather than a file opens the folder, openPin's rule.
+  async openProjectBoard(repo, p){
+    if (!p.board) return;
+    await this.ensureBrowser(repo, this.overlayRefFor(repo) || undefined);
+    if (Alpine.store('browser').repo !== repo) return;
+    if (this.pinIsFile(p.board)) await this.openFile(p.board);
+    else await this.openFolder(p.board);
+  },
+  // The project's folder on GitHub (lib/github-links.js does the encoding, so
+  // a branch with slashes in its name survives). The ref follows what a tap on
+  // the row itself would browse: the overlay branch where one is in force, the
+  // browsed ref for the open repo, the default branch otherwise.
+  projectGithubUrl(repo, p){
+    if (!window.GithubLinks) return '';
+    const s = Alpine.store('browser');
+    const open = repo === s.repo;
+    const ref = this.overlayRefFor(repo)
+      || (open && s.ref && s.ref !== s.defaultRef ? s.ref : '');
+    return window.GithubLinks.pathUrl(repo, p.path, ref);
   },
 
   // Auth state drives which pinned private repos are dimmed, the token-gated
@@ -2162,6 +2464,7 @@ function app(){ return {
     if (!p.has('repo') && !p.has('file') && !p.has('view')) return null;
     return { repo: p.get('repo') || this.DEFAULT_REPO, ref: p.get('ref') || '',
              file: p.get('file'), view: p.get('view'), path: p.get('path') || '',
+             project: p.get('project') || '',
              appRepo: p.get('appRepo') || '', appPath: p.get('appPath') || '', appRef: p.get('appRef') || '',
              appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '' };
   },
@@ -2173,7 +2476,7 @@ function app(){ return {
     // ?ref= is Files-scoped, like the picker that sets it: it deep-links which
     // ref the file browser reads, so it only accompanies ?file=/?view=files.
     if (this.view === 'files' && s.ref && s.ref !== s.defaultRef) p.set('ref', s.ref); else p.delete('ref');
-    p.delete('file'); p.delete('view'); p.delete('path');
+    p.delete('file'); p.delete('view'); p.delete('path'); p.delete('project');
     p.delete('appRepo'); p.delete('appPath'); p.delete('appRef');
     p.delete('appLabel'); p.delete('appIcon');
     if (this.view === 'files') {
@@ -2184,6 +2487,11 @@ function app(){ return {
       else { p.set('view', 'files'); if (s.path) p.set('path', s.path); }
     }
     else if (this.view === 'pages') p.set('view', 'pages');
+    // A project is repo-scoped, so its link carries the workspace beside the
+    // ?repo= the line above already stamped.
+    else if (this.view === 'project' && this.projectPath) {
+      p.set('view', 'project'); p.set('project', this.projectPath);
+    }
     else if (this.view === 'atlas') p.set('view', 'atlas');
     else if (this.view === 'stage') p.set('view', 'stage');
     else if (this.view === 'public') p.set('view', 'public');
@@ -2244,6 +2552,7 @@ function app(){ return {
       else if (url && url.view === 'public') this.goPublicBrowse();
       else if (url && url.view === 'branches') this.goBranches();
       else if (url && url.view === 'config') this.goConfig();
+    else if (url && url.view === 'project' && url.project) this.goProject(url.project);
       else if (url && url.view === 'files') { this.goFiles(); if (url.path) await this.openFolder(url.path); }
       else if (!url) this.goDashboard();
       else this.goLanding();
@@ -2876,8 +3185,13 @@ function overview(){ return {
 
 <!-- ── Design notes: the estate, the landing mechanism, the views, the stage ───
   The page has TWO CONTEXT LEVELS. The ESTATE is the global, all-repo context;
-  a REPO is a per-repo context, with its own VIEWS (landing, atlas, files,
-  branches, config) plus pinned/recent shortcuts. Config is the open repo's
+  a REPO is a per-repo context, with its own VIEWS (landing, project, atlas,
+  files, branches, config) plus pinned/recent shortcuts. A PROJECT is the third
+  unit and the newest: a workspace inside a repo, declared in `projects`, with a
+  view that is the landing one level down (its README, and the routes to its
+  files, its board, and its folder on GitHub). It is the same destination from
+  either level, since the estate sidebar's nested rows and the repo sidebar's
+  Projects section both open it. Config is the open repo's
   .web-tools.json as a roomy view (a Settings form + a raw JSON tab, saving
   through the config-saved event), the counterpart to the shared repo dialog,
   which stays for the token and for configuring a repo you are not in.
@@ -2898,9 +3212,14 @@ function overview(){ return {
   yields to any horizontally-scrollable region the gesture starts in.
   Beside them the #repo component runs HEADLESS: it is the repo/auth controller
   and hosts the shared dialog, but renders nothing (the old repo-list dropdown and
-  the auth shield are both gone). The brand icon returns to the DASHBOARD
-  (goDashboard: Open if signed in, else Repos) and doubles as nothing else; the
-  mobile drawer toggle is its own hamburger. AUTH left the chrome entirely: the
+  the auth shield are both gone). THE BRAND WENT TOO: its tap was goDashboard
+  (Activity if signed in, else Repos), and both of those are the nav's own first
+  item, so the mark was a second route to a destination sitting a few pixels
+  away. It still leads the sidebar crumb trail, which is where a reader inside a
+  repo goes home from, so the app shows one copy of it rather than two, and the
+  header keeps the width. The mobile drawer toggle is its own hamburger, and it
+  is now the only button in the header outside the nav and the rail.
+  AUTH left the chrome entirely: the
   token control is the account row on the Repos dashboard (estate.js
   accountPanel → the dialog's estate scope), which is where an account-level
   setting belongs, and every token-gated empty state points there. The shield's
@@ -2922,7 +3241,7 @@ function overview(){ return {
 
   THE ESTATE: the all-repo context (lib/alpineComponents/estate.js), and the
   page's front door — a bare open (no ?repo/?file/?view, no #stage=) lands here,
-  and the brand icon returns here on desktop. It is a context above any repo,
+  as does the sidebar trail's mark. It is a context above any repo,
   with three views of its own — Repos, Surfaces, and Open — shown in the
   sidebar the same way a repo shows landing/atlas/files/… One estate component
   renders all three and switches on the shell view, sharing the one lazy mount.
@@ -3140,8 +3459,8 @@ function overview(){ return {
   the word "Views" said and says it in the vocabulary the repo trail already
   teaches; in a repo it is the mark, the repo, and the ref only when
   off-default. The mark
-  is the route to the dashboard, which an open drawer hides on mobile since the
-  header brand is behind it; it renders grayscale at rest and in colour on
+  is the route to the dashboard, and since the header dropped its own copy it is
+  the only one in the chrome; it renders grayscale at rest and in colour on
   hover, so it reads as a control rather than as branding. Dropping the owner
   prefix (always this account) is what pays for it, and the full owner/name
   stays in the tooltip. crumbHome is the one navigation here that LEAVES THE
@@ -3252,13 +3571,23 @@ function overview(){ return {
     pins     folders/files surfaced in the sidebar Pinned block; a last
              segment with an extension opens as a file, else opens the Files
              view at that folder.
-    projects the repo's workspaces, indented under its row in the sidebar
-             Repos index. Bare folder paths or { path, label, icon } objects;
-             a row opens the Files view at that folder. The defining
-             convention: a workspace running a tracker is a project (the repo
-             root's tracker marks the repo itself, no row), so the field is
-             generatable from a tracker walk and discovery costs the shell
-             nothing beyond the config cache it already reads.
+    projects the repo's workspaces. Bare folder paths or { path, label,
+             tracker } objects. TWO LISTS, ONE DESTINATION: nested under the
+             repo's row in the estate sidebar, and the Projects section of that
+             repo's own sidebar; the name in either opens the repo's PROJECT
+             VIEW (view==='project'), which is the landing one level down (the
+             workspace's README, plus its files / board / GitHub folder). Two
+             trailing buttons carry the other two destinations directly. The
+             defining convention: a workspace running a tracker is a project
+             (the repo root's tracker marks the repo itself, no row), so the
+             field is generatable from a tracker walk and discovery costs the
+             shell nothing beyond the config cache it already reads. That same
+             convention fixes the board at <workspace>/tracker/board.md, so the
+             button needs no declaration; `tracker` on an entry names a
+             different one and `tracker: false` drops the button. An `icon` is
+             accepted and ignored (the rows stopped drawing one). The estate
+             list reads the config cache; the OPEN repo reads its own live
+             manifest, so inside a repo the list follows the browsed ref.
     tracker  where the repo keeps its task board ("tracker/board.md", or a
              folder). One row in the repo's GITHUB MENU, since it is the one
              destination in that menu GitHub cannot name for itself: every
