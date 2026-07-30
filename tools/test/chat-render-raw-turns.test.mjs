@@ -144,9 +144,19 @@ test('a pure header note is lifted into the header, not rendered as a card', asy
 });
 
 test('the header links to the live chat when there is one', async () => {
-  const url = 'https://chatgpt.com/c/69b8ef63-66f0-8330-b83c-e8fc8b89beec';
-  assert.equal((await openHeaderText(HEADER, { url })).href, url);
-  assert.equal((await openHeaderText(HEADER, {})).href, null, 'no link rather than a dead one');
+  const url = 'https://example.test/pinned';
+  assert.equal((await openHeaderText(HEADER, { url })).href, url, 'a caller that knows wins');
+
+  // Derived from the uuid the header note gave up, so the link does not depend
+  // on the calling page having thought to pass it.
+  assert.equal((await openHeaderText(HEADER, { provider: 'chatgpt' })).href,
+    'https://chatgpt.com/c/69b8ef63-66f0-8330-b83c-e8fc8b89beec');
+  assert.equal((await openHeaderText(HEADER, { provider: 'claude' })).href,
+    'https://claude.ai/chat/69b8ef63-66f0-8330-b83c-e8fc8b89beec');
+
+  // No addressable session, and no uuid to build from: no link, not a dead one.
+  assert.equal((await openHeaderText(HEADER, { provider: 'gemini' })).href, null);
+  assert.equal((await openHeaderText(HEADER, {})).href, null);
 });
 
 test('a meta note carrying real preamble is content and stays a card', async () => {
