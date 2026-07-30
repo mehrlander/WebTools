@@ -2,10 +2,11 @@
 // declares them in its manifest's `projects` field (the defining convention:
 // a workspace running a tracker is a project; the repo root's tracker marks
 // the repo itself), and the shell renders them indented under the repo's row.
-// This holds the two halves that could drift apart silently: the normalizer
-// (repoProjects: string/object entries, defaults, junk dropped) and the
-// markup wiring (the x-for actually feeds those rows, and a row opens the
-// repo's Files view at the workspace folder).
+// This holds the halves that could drift apart silently: the normalizer
+// (repoProjects: string/object entries, the derived board, junk dropped), the
+// PROJECT VIEW a row opens (goProject, its deep link, the README read), and the
+// markup wiring for both sidebar lists, the estate's nested one and the repo's
+// own.
 //
 // The shell's app() lives inline in show-repo.html, so the test evaluates the
 // plain <script> block against stubs via the shared show-repo-shell.mjs
@@ -79,22 +80,70 @@ test('repoProjects: junk entries drop instead of throwing', () => {
     [{ path: 'ok', label: 'ok', board: 'ok/tracker/board.md' }]);
 });
 
-test('openProject routes to the Files view at the workspace folder', async () => {
+test('openProject switches the repo, then opens the project view', async () => {
   const { shell, browserStore } = makeShell({ browserStore: { repo: '' } });
   const calls = [];
   shell.ensureBrowser = async (repo) => { calls.push(['ensure', repo]); browserStore.repo = repo; };
-  shell.openFolder = async (p) => { calls.push(['folder', p]); };
+  shell.syncUrl = () => {};
+  shell.loadProjectReadme = async () => { calls.push('readme'); };
   await shell.openProject('mehrlander/home', { path: 'projects/budget-drs' });
-  assert.deepEqual(calls, [['ensure', 'mehrlander/home'], ['folder', 'projects/budget-drs']]);
+  assert.deepEqual(calls, [['ensure', 'mehrlander/home'], 'readme']);
+  assert.equal(shell.view, 'project');
+  assert.equal(shell.projectPath, 'projects/budget-drs');
 });
 
 test('openProject does not navigate when the repo switch failed', async () => {
-  const { shell, browserStore } = makeShell({ browserStore: { repo: 'mehrlander/web-tools' } });
+  const { shell } = makeShell({ browserStore: { repo: 'mehrlander/web-tools' } });
   const calls = [];
   shell.ensureBrowser = async () => { calls.push('ensure'); /* pickByName failed; repo unchanged */ };
-  shell.openFolder = async () => { calls.push('folder'); };
+  shell.syncUrl = () => {};
+  shell.loadProjectReadme = async () => { calls.push('readme'); };
   await shell.openProject('mehrlander/home', { path: 'projects/budget-drs' });
-  assert.deepEqual(calls, ['ensure'], 'a failed switch must not open a folder in the wrong repo');
+  assert.deepEqual(calls, ['ensure'], 'a failed switch must not open a project in the wrong repo');
+  assert.notEqual(shell.view, 'project');
+});
+
+test('goProject sets the view, normalizes the path, and reads the README', () => {
+  const { shell } = makeShell({ browserStore: { repo: 'mehrlander/home' } });
+  const reads = [];
+  shell.syncUrl = () => {};
+  shell.loadProjectReadme = async () => { reads.push(shell.projectPath); };
+  shell.goProject('projects/budget-wa/');
+  assert.equal(shell.view, 'project');
+  assert.equal(shell.projectPath, 'projects/budget-wa', 'a trailing slash is trimmed');
+  assert.deepEqual(reads, ['projects/budget-wa']);
+  // An empty path is not a destination.
+  shell.goProject('');
+  assert.equal(shell.projectPath, 'projects/budget-wa');
+});
+
+test('the open project resolves to its declared entry, or a derived one', () => {
+  const { shell } = makeShell({ browserStore: { repo: 'mehrlander/home' } });
+  shell.estateConfigs = {
+    'mehrlander/home': { projects: [{ path: 'projects/a', label: 'Alpha' }] },
+  };
+  shell.syncUrl = () => {};
+  shell.loadProjectReadme = async () => {};
+  shell.goProject('projects/a');
+  assert.deepEqual(shell.project, { path: 'projects/a', label: 'Alpha',
+                                    board: 'projects/a/tracker/board.md' });
+  // A deep link may name a workspace the manifest has not caught up with; the
+  // view still opens, on the conventions the path itself implies.
+  shell.goProject('projects/unlisted');
+  assert.deepEqual(shell.project, { path: 'projects/unlisted', label: 'unlisted',
+                                    board: 'projects/unlisted/tracker/board.md' });
+});
+
+test('repoProjects prefers the OPEN repo\'s live manifest over the estate cache', () => {
+  const { shell, browserStore } = makeShell({ browserStore: { repo: 'mehrlander/home' } });
+  shell.estateConfigs = { 'mehrlander/home': { projects: ['stale'] } };
+  browserStore.config = { projects: ['live'] };
+  assert.deepEqual(shell.repoProjects('mehrlander/home').map(p => p.path), ['live'],
+    'inside a repo the manifest at the browsed ref wins over the main-derived cache');
+  // Any other repo still reads the cache, which is all there is for one you are
+  // not standing in.
+  shell.estateConfigs['mehrlander/other'] = { projects: ['cached'] };
+  assert.deepEqual(shell.repoProjects('mehrlander/other').map(p => p.path), ['cached']);
 });
 
 test('openProjectBoard opens the board in the app, file or folder', async () => {
@@ -143,6 +192,35 @@ test('projectGithubUrl points at the folder, at the ref a row tap would browse',
     'https://github.com/mehrlander/home/tree/claude/overlay/projects/budget-wa');
 });
 
+test('a project deep-links as ?repo&view=project&project=', () => {
+  const { shell, history } = makeShell({
+    browserStore: { repo: 'mehrlander/home', ref: 'main', defaultRef: 'main' },
+  });
+  const stamped = [];
+  history.pushState = (a, b, url) => stamped.push(url);
+  history.replaceState = (a, b, url) => stamped.push(url);
+  shell.loadProjectReadme = async () => {};
+  shell.goProject('projects/budget-wa');
+  const last = stamped.at(-1);
+  assert.match(last, /view=project/);
+  assert.match(last, /project=projects%2Fbudget-wa/);
+  assert.match(last, /repo=mehrlander%2Fhome/);
+  // Leaving the view drops both keys rather than stranding them on the next URL.
+  shell.view = 'landing';
+  shell.syncUrl();
+  assert.doesNotMatch(stamped.at(-1), /view=project|project=/);
+});
+
+test('parseUrl reads the project back off a deep link', () => {
+  const { shell } = makeShell({
+    search: '?repo=mehrlander/home&view=project&project=projects/budget-wa',
+  });
+  const url = shell.parseUrl();
+  assert.equal(url.view, 'project');
+  assert.equal(url.project, 'projects/budget-wa');
+  assert.equal(url.repo, 'mehrlander/home');
+});
+
 test('the sidebar markup wires the project rows to the shell methods', () => {
   assert.match(page, /x-for="p in repoProjects\(r\.repo\)"/,
     'the Repos index no longer iterates repoProjects');
@@ -157,6 +235,21 @@ test('the sidebar markup wires the project rows to the shell methods', () => {
   // The leading glyph is gone on purpose: every row took the same defaulted
   // icon, so a column of identical marks distinguished nothing.
   assert.doesNotMatch(page, /:class="p\.icon"/, 'project rows draw a leading icon again');
+});
+
+test('the repo sidebar carries the same list, and the pane binds the open one', () => {
+  // Inside a repo the projects are a section of their own, reading the same
+  // normalizer the estate list reads, and selecting one lights that row.
+  assert.match(page, /x-for="p in repoProjects\(\$store\.browser\.repo\)"/,
+    'the repo sidebar no longer lists the open repo\'s projects');
+  assert.match(page, /@click="goProject\(p\.path\)"/,
+    'a repo-sidebar project row no longer opens the project view');
+  assert.match(page, /view==='project' && projectPath===p\.path/,
+    'the repo-sidebar row no longer shows which project is open');
+  // The pane is bound to shell state, which is what makes a selection repaint
+  // it; a nested component would have to reach through window.__shell.
+  assert.match(page, /x-show="view==='project'"/, 'the project pane is gone');
+  assert.match(page, /x-html="projectHtml"/, 'the project pane no longer renders its README');
 });
 
 test('the project block hugs its repo row', () => {

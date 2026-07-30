@@ -305,7 +305,7 @@
                      :class="$store.browser.repo===r.repo && 'bg-primary/10'">
                   <button @click="openPinned(r.repo)"
                           :title="r.repo + (overlayRefFor(r.repo) ? ' (overlay: opens at ' + overlayRefFor(r.repo) + ')' : '')"
-                          class="flex items-center gap-2 min-w-0 flex-1 min-h-11 pl-2 text-left transition-colors"
+                          class="flex items-center gap-2 min-w-0 flex-1 min-h-9 pl-2 text-left transition-colors"
                           :class="$store.browser.repo===r.repo ? 'text-primary font-semibold' : 'text-base-content/80'">
                     <i class="ph text-base shrink-0" :class="r.icon"></i><span class="truncate" x-text="r.short"></span>
                     <i x-show="overlayRefFor(r.repo)" x-cloak
@@ -314,13 +314,13 @@
                   <button @click.stop="rowMenu(r.repo, $event, 'github')"
                           @mouseenter="rowMenuHover(r.repo, $event, 'github')" @mouseleave="hoverLeaveMenu()"
                           :title="'GitHub links for ' + r.short"
-                          class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
+                          class="wt-row-btn shrink-0 h-9 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
                           :class="repoMenuAt && menuRepo===r.repo && menuKind==='github' && 'text-primary'">
                     <i class="ph ph-github-logo text-base leading-none"></i></button>
                   <button @click.stop="rowMenu(r.repo, $event)"
                           @mouseenter="rowMenuHover(r.repo, $event)" @mouseleave="hoverLeaveMenu()"
                           :title="(r.priv === null ? '' : (r.priv ? 'Private. ' : 'Public. ')) + 'Actions for ' + r.short"
-                          class="wt-row-btn shrink-0 h-11 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
+                          class="wt-row-btn shrink-0 h-9 flex items-center justify-center text-base-content/30 hover:text-primary transition-colors"
                           :class="repoMenuAt && menuRepo===r.repo && menuKind==='actions' && 'text-primary'">
                     <i class="ph text-base leading-none"
                        :class="r.priv === null ? 'ph-dots-three-vertical' : (r.priv ? 'ph-lock' : 'ph-globe')"></i></button>
@@ -368,19 +368,19 @@
                      THE -mt-1 IS THE HUG, and it is a correction for a gap
                      nothing declares. No margin separates a repo row from its
                      first project; the space is the repo row's own, since a
-                     44 px row centres its label with 8 px more slack above and
-                     below than a 28 px one, and half of that lands between the
-                     two. So the block is pulled back 4 px, which brings the
-                     step down from a project row's own pitch plus 8 to plus 4
-                     and reads as attached. It is not pulled the full 8: the
-                     rows below overlap the row above by exactly this margin, so
-                     the last of the repo row's 44 px stops being the repo row's
-                     to tap. Four is the trade this list takes, leaving 40 px,
-                     which is the number the coarse-pointer sizing elsewhere in
-                     this sidebar already settles for. Pulling the block up also
-                     widens the space BELOW the last project by the same 4 px,
-                     which is the right direction: a project should sit nearer
-                     its own repo than the next one. -->
+                     taller row centres its label with more slack above and below
+                     than a 28 px one and half of that lands between the two. The
+                     repo rows came down to min-h-9 for this: at 36 px the slack
+                     to make up is 4 px rather than 12, so one -mt-1 closes it
+                     and a project sits at exactly the pitch of the project
+                     below it. That is the whole reason the parent shrank, and
+                     it is why it did not shrink further: the pull overlaps the
+                     row above by its own 4 px, so what the repo row keeps to
+                     tap is 32 px, and taking more would spend the row itself to
+                     buy spacing. Pulling the block up also widens the space
+                     BELOW the last project by the same 4 px, which is the right
+                     direction: a project should sit nearer its own repo than
+                     the next one. -->
 
                 <div class="flex flex-col -mt-1" x-show="repoProjects(r.repo).length">
                 <template x-for="p in repoProjects(r.repo)" :key="r.repo + ':' + p.path">
@@ -519,6 +519,45 @@
       </div>
 
       <div class="border-t border-base-200" x-show="!estateCtx"></div>
+
+      <!-- PROJECTS, inside a repo: the same list the estate sidebar indents
+           under this repo's row, at the level a repo view sits. One list, two
+           levels, one destination: a row there and a row here both open the
+           project view (openProject switches the repo first, goProject is
+           already in it), so a workspace reads the same however you reached it.
+           The rows are duplicated in markup rather than shared, the way the rail
+           is, because the two contexts size them differently: nested and small
+           up there, a first-class sidebar row down here with an active state.
+
+           The list is read from the OPEN repo's live manifest (repoProjects
+           prefers it over the estate cache), so it needs no token and follows
+           the browsed ref. The trailing buttons are the estate row's pair. -->
+      <div class="flex flex-col gap-0.5" x-show="!estateCtx && repoProjects($store.browser.repo).length">
+        <div class="text-base font-semibold text-base-content/50 px-2 pb-1 flex items-center gap-1.5">
+          <i class="ph ph-kanban"></i><span>Projects</span>
+        </div>
+        <template x-for="p in repoProjects($store.browser.repo)" :key="p.path">
+          <div class="flex items-center rounded-lg transition-colors hover:bg-base-200"
+               :class="view==='project' && projectPath===p.path && 'bg-primary/10'">
+            <button @click="goProject(p.path)" :title="p.path"
+                    class="flex items-center min-w-0 flex-1 px-2 py-1.5 text-base text-left transition-colors"
+                    :class="view==='project' && projectPath===p.path ? 'text-primary font-semibold' : 'text-base-content/80'">
+              <span class="truncate" x-text="p.label"></span>
+            </button>
+            <a :href="projectGithubUrl($store.browser.repo, p)" target="_blank" rel="noopener" @click.stop
+               :title="p.path + ' on GitHub'"
+               class="wt-row-btn shrink-0 h-8 flex items-center justify-center text-base-content/25 hover:text-primary transition-colors">
+              <i class="ph ph-github-logo text-base leading-none"></i></a>
+            <button x-show="p.board" @click.stop="openProjectBoard($store.browser.repo, p)"
+                    :title="'Task board: ' + p.board"
+                    class="wt-row-btn shrink-0 h-8 flex items-center justify-center text-base-content/25 hover:text-primary transition-colors">
+              <i class="ph ph-list-checks text-base leading-none"></i></button>
+          </div>
+        </template>
+      </div>
+
+      <div class="border-t border-base-200"
+           x-show="!estateCtx && repoProjects($store.browser.repo).length"></div>
 
       <!-- Pinned: folders and files the repo designates in .web-tools.json. The
            header carries a config gear, since the pins are a config field. -->
@@ -781,6 +820,52 @@
           </div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- Project: a workspace's front page, the repo overview one level down.
+         Same shape as that overview on purpose (name, a few facts, the README
+         rendered), because a project is a repo-sized thing inside a repo and a
+         reader arriving at one wants what they want when arriving at a repo.
+         The header's three buttons are the routes out: the workspace as files,
+         its board, its folder on GitHub. -->
+    <div x-show="view==='project'" class="h-full overflow-y-auto">
+      <div class="!max-w-none px-6 py-8">
+        <template x-if="project">
+          <div>
+            <div class="flex items-start justify-between gap-4 flex-wrap mb-4">
+              <div class="min-w-0">
+                <h1 class="text-2xl font-bold tracking-tight truncate" x-text="project.label"></h1>
+                <p class="text-base-content/50 mt-1 font-mono text-base truncate"
+                   x-text="$store.browser.repo + ' / ' + project.path"></p>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button @click="openProjectFiles()" class="btn btn-outline gap-1.5">
+                  <i class="ph ph-folders"></i> Files
+                </button>
+                <button x-show="project.board"
+                        @click="openProjectBoard($store.browser.repo, project)"
+                        class="btn btn-outline gap-1.5">
+                  <i class="ph ph-list-checks"></i> Board
+                </button>
+                <a :href="projectGithubUrl($store.browser.repo, project)" target="_blank" rel="noopener"
+                   :title="project.path + ' on GitHub'" class="btn btn-outline gap-1.5">
+                  <i class="ph ph-github-logo"></i> GitHub
+                </a>
+              </div>
+            </div>
+
+            <div x-show="projectLoading" class="flex justify-center py-16">
+              <span class="loading loading-dots loading-md opacity-30"></span>
+            </div>
+            <article x-show="!projectLoading && projectHtml"
+                     class="prose prose-sm !max-w-none prose-pre:bg-base-200 prose-pre:text-base-content"
+                     x-html="projectHtml"></article>
+            <p x-show="!projectLoading && !projectHtml" class="text-base-content/40 italic text-base py-8">
+              No README in this workspace on this ref. Open its files, or its board.
+            </p>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -1102,6 +1187,9 @@ function app(){ return {
     this.$watch(() => Alpine.store('browser').repo + '@' + Alpine.store('browser').ref, () => {
       this.loadRecent();
       this.loadConfig();
+      // An open project is repo@ref-scoped like the rest: switching the ref
+      // under it re-reads its README from where you now are.
+      if (this.view === 'project') this.loadProjectReadme();
     });
 
     // Estate membership needs a token to resolve, since it is read from the
@@ -1156,6 +1244,7 @@ function app(){ return {
     else if (url && url.view === 'public') this.goPublicBrowse();
     else if (url && url.view === 'branches') this.goBranches();
     else if (url && url.view === 'config') this.goConfig();
+    else if (url && url.view === 'project' && url.project) this.goProject(url.project);
     else if (url && url.view === 'files') { this.goFiles(); if (url.path) await this.openFolder(url.path); }
     const staged = window.StageLink ? window.StageLink.read(location).items : [];
     if (staged.length) {
@@ -1836,9 +1925,12 @@ function app(){ return {
   // a project, so `projects` is declarative and generatable (home's
   // tools/generate-tracker-registry.py syncs the field from the trackers it
   // finds), and the sidebar reads it from the config cache already in hand
-  // (estateConfigs) rather than walking any tree. Entries are bare folder
-  // paths or { path, label, tracker } objects; label defaults to the path's
-  // last segment.
+  // (estateConfigs) rather than walking any tree, EXCEPT for the open repo,
+  // whose live manifest wins: loadConfig has already read it at the browsed
+  // ref, so inside a repo the honest list is the one on the ref you are
+  // standing on, and it needs no token or cache entry to exist. Entries are
+  // bare folder paths or { path, label, tracker } objects; label defaults to
+  // the path's last segment.
   //
   // BOARD is derived rather than declared, because the convention that defines
   // a project already fixes it: a workspace running a tracker is a project, and
@@ -1853,7 +1945,9 @@ function app(){ return {
   // defaulted, so every row took the same glyph and it distinguished nothing).
   // A stale `icon` in a manifest is simply ignored rather than being an error.
   repoProjects(repo){
-    const list = this.estateConfigs?.[repo]?.projects;
+    const s = Alpine.store('browser');
+    const cfg = (repo && repo === s.repo && s.config) ? s.config : this.estateConfigs?.[repo];
+    const list = cfg?.projects;
     if (!Array.isArray(list)) return [];
     const out = [];
     for (const e of list){
@@ -1868,13 +1962,83 @@ function app(){ return {
     }
     return out;
   },
-  // Open the project: its repo's Files view at the workspace folder, the same
-  // route a folder pin takes, reachable from the estate for any member repo.
-  // Under a branch overlay an overlaid repo opens at the branch (openPinned's
-  // rule), so a project declared only on the branch browses where it lives.
+  // Open the project: its repo's PROJECT VIEW, which is a place of its own
+  // rather than a folder listing. The estate row and the repo sidebar's row are
+  // the same destination from two levels, so a project reads the same whether
+  // you arrived from the whole estate or from inside its repo. Under a branch
+  // overlay an overlaid repo opens at the branch (openPinned's rule), so a
+  // project declared only on the branch opens where it lives.
+  //
+  // It used to land on the Files view at the workspace folder, which answered
+  // "what files are in there" when the question a project row asks is "what is
+  // this project". The folder is still one tap away, from the view's own header.
   async openProject(repo, p){
     await this.ensureBrowser(repo, this.overlayRefFor(repo) || undefined);
-    if (Alpine.store('browser').repo === repo) await this.openFolder(p.path);
+    if (Alpine.store('browser').repo === repo) this.goProject(p.path);
+  },
+  // ── The project view: a workspace's front page ───────────────────────────
+  // A repo's landing is its README; a project's is the README in its folder,
+  // which is the same promise one level down. The pane carries the workspace's
+  // name and path, the three routes out of it (its files, its board, its folder
+  // on GitHub), and that README rendered.
+  //
+  // The state lives on the SHELL rather than in a nested component, unlike
+  // overview(). A nested x-data would have to reach back through window.__shell
+  // for which project is open (the handle is the raw object, so Alpine does not
+  // track reads through it) and would go stale on selection. The pane binds
+  // these properties directly instead, which is what makes picking a row in the
+  // sidebar repaint the pane.
+  projectPath: '',
+  projectHtml: '',
+  projectLoading: false,
+  _projectKey: '',
+  // The open project as a row: the declared entry where there is one, so its
+  // label and board carry, else a minimal one derived from the path (a deep
+  // link can name a workspace the manifest has not caught up with).
+  get project(){
+    if (!this.projectPath) return null;
+    const s = Alpine.store('browser');
+    const found = this.repoProjects(s.repo).find(p => p.path === this.projectPath);
+    return found || { path: this.projectPath, label: this.projectPath.split('/').pop(),
+                      board: this.projectPath + '/tracker/board.md' };
+  },
+  goProject(path){
+    const p = String(path || '').replace(/\/+$/, '');
+    if (!p) return;
+    this.projectPath = p;
+    this.view = 'project';
+    this.syncUrl();
+    this.loadProjectReadme();
+  },
+  // The workspace README, at the browsed ref. Same fallback ladder as the repo
+  // overview, since a workspace names its readme with the same freedom a repo
+  // does. Keyed so a repaint of the same project@ref does not refetch.
+  async loadProjectReadme(force){
+    const s = Alpine.store('browser');
+    if (!this.projectPath || !s.repo || !s.gh) return;
+    const key = s.repo + '@' + s.ref + ':' + this.projectPath;
+    if (key === this._projectKey && !force) return;
+    this._projectKey = key;
+    this.projectLoading = true; this.projectHtml = '';
+    let res = null;
+    for (const n of ['README.md', 'readme.md', 'README.markdown', 'Readme.md']){
+      try { res = await s.gh.get(this.projectPath + '/' + n); break; } catch {}
+    }
+    // A late reply for a project the reader has since left must not paint over
+    // the current one.
+    if (key !== this._projectKey) return;
+    if (res){
+      try { await loadMarked(); this.projectHtml = window.marked.parse(res.text); }
+      catch { this.projectHtml = '<pre>' + res.text.replace(/</g, '&lt;') + '</pre>'; }
+    }
+    this.projectLoading = false;
+  },
+  // The three routes out of the view, all one tap: the workspace as files, its
+  // board here, its folder on GitHub (the last two are the sidebar row's own
+  // buttons, spelled out).
+  openProjectFiles(){
+    const p = this.project;
+    if (p) this.openFolder(p.path);
   },
   // The board, in the app: the same viewer the Files view opens a file in, so
   // the board reads here rather than sending the tap to GitHub. A `tracker`
@@ -2265,6 +2429,7 @@ function app(){ return {
     if (!p.has('repo') && !p.has('file') && !p.has('view')) return null;
     return { repo: p.get('repo') || this.DEFAULT_REPO, ref: p.get('ref') || '',
              file: p.get('file'), view: p.get('view'), path: p.get('path') || '',
+             project: p.get('project') || '',
              appRepo: p.get('appRepo') || '', appPath: p.get('appPath') || '', appRef: p.get('appRef') || '',
              appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '' };
   },
@@ -2276,7 +2441,7 @@ function app(){ return {
     // ?ref= is Files-scoped, like the picker that sets it: it deep-links which
     // ref the file browser reads, so it only accompanies ?file=/?view=files.
     if (this.view === 'files' && s.ref && s.ref !== s.defaultRef) p.set('ref', s.ref); else p.delete('ref');
-    p.delete('file'); p.delete('view'); p.delete('path');
+    p.delete('file'); p.delete('view'); p.delete('path'); p.delete('project');
     p.delete('appRepo'); p.delete('appPath'); p.delete('appRef');
     p.delete('appLabel'); p.delete('appIcon');
     if (this.view === 'files') {
@@ -2287,6 +2452,11 @@ function app(){ return {
       else { p.set('view', 'files'); if (s.path) p.set('path', s.path); }
     }
     else if (this.view === 'pages') p.set('view', 'pages');
+    // A project is repo-scoped, so its link carries the workspace beside the
+    // ?repo= the line above already stamped.
+    else if (this.view === 'project' && this.projectPath) {
+      p.set('view', 'project'); p.set('project', this.projectPath);
+    }
     else if (this.view === 'atlas') p.set('view', 'atlas');
     else if (this.view === 'stage') p.set('view', 'stage');
     else if (this.view === 'public') p.set('view', 'public');
@@ -2347,6 +2517,7 @@ function app(){ return {
       else if (url && url.view === 'public') this.goPublicBrowse();
       else if (url && url.view === 'branches') this.goBranches();
       else if (url && url.view === 'config') this.goConfig();
+    else if (url && url.view === 'project' && url.project) this.goProject(url.project);
       else if (url && url.view === 'files') { this.goFiles(); if (url.path) await this.openFolder(url.path); }
       else if (!url) this.goDashboard();
       else this.goLanding();
@@ -2979,8 +3150,13 @@ function overview(){ return {
 
 <!-- ── Design notes: the estate, the landing mechanism, the views, the stage ───
   The page has TWO CONTEXT LEVELS. The ESTATE is the global, all-repo context;
-  a REPO is a per-repo context, with its own VIEWS (landing, atlas, files,
-  branches, config) plus pinned/recent shortcuts. Config is the open repo's
+  a REPO is a per-repo context, with its own VIEWS (landing, project, atlas,
+  files, branches, config) plus pinned/recent shortcuts. A PROJECT is the third
+  unit and the newest: a workspace inside a repo, declared in `projects`, with a
+  view that is the landing one level down (its README, and the routes to its
+  files, its board, and its folder on GitHub). It is the same destination from
+  either level, since the estate sidebar's nested rows and the repo sidebar's
+  Projects section both open it. Config is the open repo's
   .web-tools.json as a roomy view (a Settings form + a raw JSON tab, saving
   through the config-saved event), the counterpart to the shared repo dialog,
   which stays for the token and for configuring a repo you are not in.
@@ -3360,19 +3536,23 @@ function overview(){ return {
     pins     folders/files surfaced in the sidebar Pinned block; a last
              segment with an extension opens as a file, else opens the Files
              view at that folder.
-    projects the repo's workspaces, indented under its row in the sidebar
-             Repos index. Bare folder paths or { path, label, tracker }
-             objects; the name opens the Files view at that folder, and two
-             trailing buttons open its task board here and its folder on
-             GitHub. The defining convention: a workspace running a tracker is
-             a project (the repo root's tracker marks the repo itself, no row),
-             so the field is generatable from a tracker walk and discovery
-             costs the shell nothing beyond the config cache it already reads.
-             That same convention fixes the board at
-             <workspace>/tracker/board.md, so the button needs no declaration;
-             `tracker` on an entry names a different one and `tracker: false`
-             drops the button. An `icon` is accepted and ignored (the rows
-             stopped drawing one).
+    projects the repo's workspaces. Bare folder paths or { path, label,
+             tracker } objects. TWO LISTS, ONE DESTINATION: nested under the
+             repo's row in the estate sidebar, and the Projects section of that
+             repo's own sidebar; the name in either opens the repo's PROJECT
+             VIEW (view==='project'), which is the landing one level down (the
+             workspace's README, plus its files / board / GitHub folder). Two
+             trailing buttons carry the other two destinations directly. The
+             defining convention: a workspace running a tracker is a project
+             (the repo root's tracker marks the repo itself, no row), so the
+             field is generatable from a tracker walk and discovery costs the
+             shell nothing beyond the config cache it already reads. That same
+             convention fixes the board at <workspace>/tracker/board.md, so the
+             button needs no declaration; `tracker` on an entry names a
+             different one and `tracker: false` drops the button. An `icon` is
+             accepted and ignored (the rows stopped drawing one). The estate
+             list reads the config cache; the OPEN repo reads its own live
+             manifest, so inside a repo the list follows the browsed ref.
     tracker  where the repo keeps its task board ("tracker/board.md", or a
              folder). One row in the repo's GITHUB MENU, since it is the one
              destination in that menu GitHub cannot name for itself: every

@@ -77,7 +77,7 @@ so, by the scrim or the X, which makes the mobile drawer behave like the pinned
 desktop sidebar that never closed.
 
 The **sidebar** holds what is contextual: in a repo, its views (landing, atlas,
-files, branches) plus pins and recents; in the estate, the Repos index and the
+files, branches), its projects, plus pins and recents; in the estate, the Repos index and the
 repo-sourced **app views** (promoted with `appView:true`, e.g. News). The app's
 own view set never appears in the sidebar; the app views appear in both places,
 since the header is the one-tap route and the sidebar is the one that holds up
@@ -102,6 +102,15 @@ The per-repo views in the sidebar:
   is where the catalog lives instead. Renders the identical gallery component
   the landing view uses when `landingKind()==='gallery'`; a repo without both
   fields set never needs it and the sidebar omits it.
+- **project**: one workspace's front page, `?repo=…&view=project&project=<path>`.
+  What the landing is to a repo, this is to a project: its name and path, the
+  three routes out (its files, its board, its folder on GitHub), and the README
+  at `<path>/README.md` rendered. The sidebar's **Projects** section lists the
+  open repo's workspaces and lights the one showing; the estate sidebar's nested
+  rows open the same view, switching the repo first. A project reads the same
+  whichever level you arrived from. A deep link may name a workspace the
+  manifest has not listed yet, and the view still opens, on the conventions the
+  path implies.
 - **atlas**: a standing structural view, available for every repo regardless of
   its landing.
 - **files**: the explorer: breadcrumb + listing, selected file's content
@@ -907,19 +916,20 @@ repos. All are optional; a repo with no config is simply off the estate.
   the rail and the wide reading of it on desktop, spelling out each label and
   wrapping its doors. A `snippet` item is skipped in both: a `javascript:` URL
   is something to copy, not somewhere to go.
-- **projects**: the repo's workspaces, rendered indented under the repo's row
-  in the sidebar Repos index. Entries are bare folder paths
+- **projects**: the repo's workspaces. Entries are bare folder paths
   (`"projects/budget-wa"`) or `{ path, label, tracker }` objects; `label`
-  defaults to the path's last segment. Tapping the name opens the repo's Files
-  view at that folder, the same route a folder pin takes, but reachable from the
-  estate for any member repo. Two trailing buttons carry the project's other two
+  defaults to the path's last segment. They render in **two lists, one
+  destination**: nested under the repo's row in the estate sidebar's Repos
+  index, and as the **Projects** section of that repo's own sidebar. Tapping the
+  name in either opens the repo's **project view** (above); from the estate the
+  repo switches first. Two trailing buttons carry the project's other two
   destinations, the repo rows' pattern at project scale: its **task board**,
   opened here in the file viewer, and its **folder on GitHub**. Both act
   directly rather than opening a panel, because a workspace has one of each
-  where a repo has seven GitHub destinations to choose among. The rows draw no
-  leading glyph: the field defaulted one, so every row took the same mark and it
-  distinguished nothing; the indent and the smaller type carry the containment.
-  An `icon` on an entry is accepted and ignored. The **defining
+  where a repo has seven GitHub destinations to choose among. The estate's rows
+  draw no leading glyph: the field defaulted one, so every row took the same
+  mark and it distinguished nothing; the indent and the smaller type carry the
+  containment. An `icon` on an entry is accepted and ignored. The **defining
   convention**: a workspace running a tracker (a `tracker/` directory holding
   `tasks/`, per [TRACKER.md](TRACKER.md)) is a project. A tracker at the repo
   root marks the repo itself and earns no row, so "repo or project" needs no
@@ -931,10 +941,14 @@ repos. All are optional; a repo with no config is simply off the estate.
   discovered live (walking a tree for `tracker/` dirs is API-costly), which
   makes it generatable: home's `tools/generate-tracker-registry.py` syncs it
   from the trackers it finds, so the manifest cannot drift from the ground
-  truth. The sidebar reads the field from the config cache it already holds,
-  so the rows cost no extra fetch. A `projects` field that exists only on a
-  branch is invisible to the cache (a main-derived artifact) until it merges;
-  the **branch overlay** above previews it live.
+  truth. The estate sidebar reads the field from the config cache it already
+  holds, so those rows cost no extra fetch; the **open repo** reads its own live
+  manifest instead, the one `loadConfig` fetched at the browsed ref, so inside a
+  repo the list follows the ref and needs no cache entry. That split is also why
+  a `projects` field that exists only on a branch is invisible from the estate
+  (the cache is a main-derived artifact) until it merges, while the repo's own
+  sidebar shows it as soon as you browse the branch; the **branch overlay**
+  above previews the estate side live.
 - **tracker**: where the repo keeps its task board (`"tracker/board.md"`, or a
   folder). Adds one row, **Task board**, to the repo's **GitHub menu** (the
   sidebar Repos row's github button, and the Activity view's repo chip). It is
