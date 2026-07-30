@@ -486,13 +486,22 @@
         <div x-show="recentLoading" class="flex justify-center py-2">
           <span class="loading loading-dots loading-md opacity-30"></span>
         </div>
+        <!-- A recent entry opens the file in the app; the trailing icon is its
+             jump-over to the same file on GitHub, at the browsed ref. The row is
+             a button, so the anchor sits beside it rather than within. -->
         <template x-for="f in recent" :key="f.path">
-          <button @click="openFile(f.path)"
-                  class="flex items-center justify-between gap-2 px-2 py-1 rounded-lg text-base hover:bg-base-200 transition-colors text-left"
-                  :class="Alpine.store('browser').activeFile?.path===f.path ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
-            <span class="truncate font-mono text-base" :title="f.path" x-text="f.path.split('/').pop()"></span>
-            <span class="text-base text-base-content/40 shrink-0" x-text="f.age"></span>
-          </button>
+          <div class="group flex items-center rounded-lg hover:bg-base-200 transition-colors"
+               :class="Alpine.store('browser').activeFile?.path===f.path ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
+            <button @click="openFile(f.path)"
+                    class="flex items-center justify-between gap-2 px-2 py-1 min-w-0 flex-1 text-base text-left">
+              <span class="truncate font-mono text-base" :title="f.path" x-text="f.path.split('/').pop()"></span>
+              <span class="text-base text-base-content/40 shrink-0" x-text="f.age"></span>
+            </button>
+            <a :href="fileGhUrl(f.path)" :data-peek="filePeek(f.path)" target="_blank" rel="noopener"
+               :title="f.path + ' on GitHub'"
+               class="px-1.5 py-1 opacity-0 group-hover:opacity-100 focus:opacity-100 text-base-content/30 hover:text-primary transition-opacity shrink-0">
+              <i class="ph ph-github-logo text-base leading-none"></i></a>
+          </div>
         </template>
       </div>
 
@@ -1124,6 +1133,22 @@ function app(){ return {
     } finally {
       if (this._recentKey === key) this.recentLoading = false;
     }
+  },
+
+  // One file's GitHub blob in the open repo, at the browsed ref. The sidebar's
+  // recent entries use it; anything else in this shell showing a single path
+  // from the open repo should too, rather than building the URL again.
+  fileGhUrl(path){
+    const s = Alpine.store('browser');
+    if (!s.repo || !path) return '';
+    return 'https://github.com/' + s.repo + '/blob/' + (s.ref || s.defaultRef || 'HEAD') + '/' + path;
+  },
+  // Its source peek (lib/source-peek.js): an exact-file jump-over, so it gets
+  // one. The ref is passed as browsed, unresolved, since '' reads the default.
+  filePeek(path){
+    const s = Alpine.store('browser');
+    if (!s.repo || !path) return null;
+    return window.SourcePeek?.addr(s.repo, s.ref || '', path) || null;
   },
 
   // ── The per-repo manifest: .web-tools.json at the repo root ───────────────
@@ -3134,13 +3159,49 @@ function overview(){ return {
   view keeps a one-tap route to the GitHub presentation of what it is showing.
   A jump-over for a FILE or a FOLDER is one link: the explorer's breadcrumb
   links the current folder (ghFolderUrl), the viewer's actions link the open
-  file's blob, and every estate card and surface item carries its github-logo
-  link. A jump-over for a REPO or a BRANCH is a small set, which is what earns
-  a menu: the repo's is lib/github-links.js, off the sidebar row's github
-  button and the Activity view's repo chip, and the branch's is estate.js's
-  branchMenuItems, off each Open row (tree, compare, commits, the PR's files
-  and checks, new PR). When adding a view, add its jump-over, and prefer the
-  shared list to a fresh one.
+  file's blob, the sidebar's recent entries link theirs (fileGhUrl), each
+  staged item and finder row links its own repo@ref (stage.js itemGh), each
+  compare row links its blob at head, and every estate card and surface item
+  carries its github-logo link. A jump-over for a REPO or a BRANCH is a small
+  set, which is what earns a menu: the repo's is lib/github-links.js, off the
+  sidebar row's github button and the Activity view's repo chip, and the
+  branch's is estate.js's branchMenuItems, off each Open row (tree, compare,
+  commits, the PR's files and checks, new PR). When adding a view, add its
+  jump-over, and prefer the shared list to a fresh one.
+    ONE GLYPH, FOUR MEANINGS, and the reader could not tell them apart. The
+    github-logo marks a repo MENU (a set of destinations), a repo or branch
+    DESTINATION, the MANIFEST behind a whole view, and an EXACT FILE. The
+    ambiguity is not theoretical: the Map's Transport header set a bare icon
+    immediately after the code span naming pages/toss-render.html while pointing
+    at docs/routes.json, so the icon read as belonging to the filename beside it.
+    Two rules separate them now. A manifest link is LABELLED — "Curate", as the
+    Tools view already did — and pushed to the header's far edge, away from any
+    filename; what the header names on the left carries its own jump. And an
+    exact-file link carries a SOURCE PEEK.
+    THE PEEK (lib/source-peek.js) is a hover card showing the file: markdown
+    rendered, JSON pretty-printed with its top-level shape named, everything
+    else as source, always the first 20 lines with a footer saying what was left
+    behind. One attribute at the call site (:data-peek="owner/repo[@ref]:path"),
+    one delegated listener on document, so a row Alpine renders later needs no
+    wiring. gh-boot.js loads it, alongside the FAB and for the same reason, so
+    this page's boot block does not: it belongs wherever a peek-bearing icon is
+    rendered, and a page's own boot list is the wrong owner of that. It first
+    hung off the boot block below and failed the one test that matters, since a
+    page shell is served from main even under ?use=, so a preview of the branch
+    ran the new components with no SourcePeek behind them and every :data-peek
+    bound to null. It is what makes the fourth meaning self-evident: an icon that can
+    show you the file is pointing at a file, and one that cannot is pointing at
+    something broader. So repo, branch and menu icons deliberately have none,
+    and neither does a folder.
+    WHERE IT IS DELIBERATELY ABSENT, beyond the broad destinations: the viewer's
+    GitHub action and the config view's, since both sit above the file's full
+    contents already on screen. A peek that repeats what the page is showing is
+    noise.
+    POINTER AND KEYBOARD, NOT TOUCH: the card opens on hover where the pointer
+    can hover and on focus for a keyboard reader; on a touch screen it never
+    opens, and the icon keeps its single meaning of a tap that jumps to GitHub.
+    A press-and-hold would contradict the finding recorded above about the repo
+    menu, and an icon whose tap does one clear thing needs no gesture.
 
   Today: web-tools -> 'gallery' (its pages index); any repo declaring a `pages`
   catalog -> 'gallery' too (fed from that catalog, tiles live via toss-render);
