@@ -77,15 +77,17 @@ something.
 - Git objects removed from the remote remained present in that running environment.
 - Concurrent sessions could not see each other's uncommitted files.
 
+*Shallow-clone consequence added 2026-07-30.* The shallow checkout is worth separating from the observation, because its effect is silent. `git log` in a shallow clone returns a truncated history with no error and no marker: a file's apparent first commit is the graft boundary rather than its creation, and `git log -S` finds nothing earlier. Two sessions have read that truncation as evidence of a rewritten history, an inference the fourth observation above makes easy to reach for and the second disproves. The two are unrelated. A rewrite replaces commits; a shallow clone omits them. Run `git rev-parse --is-shallow-repository` before drawing any conclusion from `git log`, and `git fetch --unshallow` when the answer is `true` and the question needs real history.
+
 Anthropic documents the [GitHub proxy](https://code.claude.com/docs/en/claude-code-on-the-web#github-proxy) as the authentication boundary for Git and GitHub API operations. Credentials remain outside the VM. The proxy supports cloning, fetching, pushing, and pull-request operations while restricting pushes to the current working branch and limiting operations to repositories attached to the session.
 
-The timestamps and stale local ref established the state of the observed environment. They did not establish that a repository clone is reused across sessions. The current documentation specifies a fresh clone for each session.
+The current documentation specifies a fresh clone for each session. What these observations do and do not establish about persistence is set out under [Evidence limits](#evidence-limits) rather than restated here.
 
 ```bash
 stat -c '%y %n' .git
 uptime -s
 git remote -v
-test -f .git/shallow && echo "shallow clone"
+git rev-parse --is-shallow-repository
 git rev-parse main origin/main
 ```
 
