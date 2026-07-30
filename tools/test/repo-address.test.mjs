@@ -13,8 +13,12 @@
 //      settled as a per-repo choice with the discoverable option as default.
 //
 // The three older copies of the grammar (StageLink.parseItem,
-// DataPayload.parseSpec, ShorterPayload.parseSpec) are asserted here to agree
-// with this module on shape, so the module can be adopted without surprises.
+// DataPayload.parseSpec, ShorterPayload.parseSpec) now DELEGATE here, keeping
+// their exported names. What is tested below is that they return this module's
+// answer rather than merely agreeing with it, including for the case where they
+// used to differ, and that every page loading one of them loads this module
+// first. That load order is the delegation's one real constraint: a component
+// registers during the bundle's boot, before a page's own gh.load chain runs.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -80,25 +84,79 @@ test('box() reads the field off a config, or reports nothing declared', () => {
   assert.equal(RA.box(null, 'inbox', 'me/proj'), null);
 });
 
-// The adoption check: the copies this module is meant to replace must already
-// agree with it, or delegating them later is a behavior change rather than a
-// refactor. Only the ref default differs, and only in DataPayload, which is the
-// known divergence tracker task one-repo-address-parser-5gtv92 carries.
-test('the existing copies agree with this module on shape', async () => {
-  for (const f of ['lib/shorter-payload.js', 'lib/data-payload.js']) {
+// The delegation check. Same inputs, one answer: not "these agree today" but
+// "there is one implementation," which is the difference the task was about.
+const CASES = ['me/proj:a.md', 'me/proj@feat/x:a/b.md', 'me.dash/a.b-c:x/y.json',
+               'a/b@feat/x:p', 'bare/path.md', 'README.md', ''];
+
+test('the three entry points return this module\'s answer, not their own', () => {
+  for (const f of ['lib/shorter-payload.js', 'lib/data-payload.js', 'lib/alpineComponents/stage.js']) {
     new window.Function(readFileSync(path.join(repoRoot, f), 'utf8'))();
   }
-  const cases = ['me/proj:a.md', 'me/proj@feat/x:a/b.md', 'me.dash/a.b-c:x/y.json', 'bare/path.md', 'README.md'];
-  for (const s of cases) {
+  const readers = {
+    'ShorterPayload.parseSpec': window.ShorterPayload.parseSpec,
+    'DataPayload.parseSpec': window.DataPayload.parseSpec,
+    'StageLink.parseItem': window.StageLink.parseItem,
+  };
+  for (const s of CASES) {
     const mine = RA.parse(s);
-    const shorter = window.ShorterPayload.parseSpec(s);
-    const data = window.DataPayload.parseSpec(s);
-    assert.deepEqual(shorter ? {...shorter} : shorter, mine ? {...mine} : mine,
-      'ShorterPayload agrees exactly: ' + s);
-    if (!mine) { assert.equal(data, null, 'DataPayload agrees on non-addresses: ' + s); continue; }
-    assert.equal(data.repo, mine.repo, s);
-    assert.equal(data.path, mine.path, s);
-    assert.equal(data.ref, mine.ref || 'main',
-      'DataPayload differs only by filling a missing ref with main, for its link building: ' + s);
+    for (const [name, read] of Object.entries(readers)) {
+      const got = read(s);
+      assert.deepEqual(got ? {...got} : got, mine ? {...mine} : mine, `${name}: ${JSON.stringify(s)}`);
+    }
   }
+});
+
+test('the one behavior change: DataPayload no longer guesses main', () => {
+  // It used to fill a missing @ref with 'main'. That was the only place the
+  // copies disagreed, and it was the wrong answer for a repo whose default
+  // branch is named otherwise. The fallback moved to the link-building
+  // boundary (RepoAddress.ref, used by the viewer's fileUrls).
+  assert.equal(window.DataPayload.parseSpec('me/proj:a.md').ref, '');
+  assert.equal(RA.ref(window.DataPayload.parseSpec('me/proj:a.md'), 'main'), 'main');
+});
+
+test('a stage group still splits its comma list, through the shared parser', () => {
+  const { items } = window.StageLink.parseLink('#stage=me/proj@dev:a.md,dir/b.md;you/other:c.md');
+  // Array.from, not .map: the items come from the jsdom realm, and strict
+  // deepEqual compares prototypes.
+  assert.deepEqual(Array.from(items, i => ({...i})), [
+    { repo: 'me/proj', ref: 'dev', path: 'a.md' },
+    { repo: 'me/proj', ref: 'dev', path: 'dir/b.md' },
+    { repo: 'you/other', ref: '', path: 'c.md' },
+  ]);
+});
+
+// The load-order constraint, which is what kept the delegation from landing
+// with the module. A page that loads a delegating module without this one gets
+// a thrown error at first parse, so the order is checked rather than trusted.
+test('every page loading a delegating module loads repo-address.js first', () => {
+  const DELEGATES = ['data-payload.js', 'shorter-payload.js', 'alpineComponents/stage.js'];
+  const pages = ['pages/data-view.html', 'pages/shorter.html', 'pages/show-repo/show-repo.html'];
+  for (const rel of pages) {
+    const src = readFileSync(path.join(repoRoot, rel), 'utf8');
+    const at = needle => src.indexOf(`gh.load('${needle}')`);
+    const grammar = at('repo-address.js');
+    for (const d of DELEGATES) {
+      const use = at(d);
+      if (use === -1) continue;
+      assert.ok(grammar !== -1, `${rel} loads ${d} but never repo-address.js`);
+      assert.ok(grammar < use, `${rel} loads ${d} before repo-address.js`);
+    }
+  }
+});
+
+test('the pre-build boots repo-address.js before the components', () => {
+  // show-repo takes the bundle, whose components register and start Alpine
+  // during the import, before the page's own chain runs. So the bundle has to
+  // carry the grammar in its boot list, not just in its source cache.
+  const boot = readFileSync(path.join(repoRoot, 'tools/build/build-lib.mjs'), 'utf8');
+  assert.match(boot, /extraBoot\s*=\s*\['repo-address\.js',\s*\.\.\.components/);
+  // The boot list, not the source cache: the cache is alphabetical and says
+  // nothing about order of execution.
+  const dist = readFileSync(path.join(repoRoot, 'dist/web-tools.js'), 'utf8');
+  const at = p => dist.indexOf(`await window.gh.load("${p}")`);
+  const grammar = at('repo-address.js'), stage = at('alpineComponents/stage.js');
+  assert.ok(grammar !== -1, 'the built bundle never boots repo-address.js');
+  assert.ok(stage !== -1 && grammar < stage, 'the built bundle boots the grammar before stage.js');
 });

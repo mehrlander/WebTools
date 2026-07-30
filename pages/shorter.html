@@ -23,6 +23,8 @@
       await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
     }
     await gh.load('url-params.js');
+    // The owner/repo[@ref]:path grammar, which shorter-payload.js delegates to.
+    await gh.load('repo-address.js');
     await gh.load('shorter-payload.js');
     // Alpine last, so the component's init() finds both helpers defined. Same
     // boot order as the other renderer pages.

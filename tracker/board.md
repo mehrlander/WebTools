@@ -24,7 +24,6 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Guard every lib-booting page against the Alpine load race (`claude/shorter-tool-toss-render-nr7zoc`)
 - 🎫 Move the kit-shaped files out of lib/ root into kits/
 - 🎫 Live-confirm the two GraphQL queries the estate depends on
-- 🎫 One parser for the owner/repo[@ref]:path address next: the module exists (lib/repo-address.js) and the ref question is answered; what remains is delegating the three copies and the data-view render check
 - 🎫 Build our own JSON tree for display, keep vanilla-jsoneditor for editing next: user was leaning toward replacing it outright; the recommendation is the split below, so confirm the split before building
 - 🎫 Pinch-zoom and pan for pdf-inspect's page view
 - 🎫 Close open table perimeters in the pdf kit's lattice
@@ -36,7 +35,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Give show-repo the ability to edit a repo's .web-tools.json (`claude/skills-portable-conventions-8x1lua`) next: design a minimal config-edit surface in the show-repo shell; first use is a one-tap migrate of a legacy .show-repo.json to .web-tools.json
 - 🎫 show-repo - first-class projects, defined by tracker presence
 - 🎫 Spike the snags log (friction learned the hard way) (`claude/pr-219-review-22csrh`)
-- 🎫 Move StageLink.read onto the shared fragment-first param read (needs: One parser for the owner/repo[@ref]:path address) next: confirm the empty-key change is wanted before touching it; it is the only observable difference
+- 🎫 Move StageLink.read onto the shared fragment-first param read next: confirm the empty-key change is wanted before touching it; it is the only observable difference
 - 🎫 Give the stage a way to carry part of a file
 - 🎫 Converge the stage and surface item schemas
 - 🎫 Make the take-away menu work inside a toss
@@ -63,6 +62,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Generalize the gallery to a per-repo pages catalog (`claude/web-tools-app-views-m3pkyo`) next: landed; live gallery for home needs home#314 on main (config cache reads main)
 - 🎫 Check GraphQL query shape offline against GitHub's published schema (`claude/web-tools-tracker-review-bw48ga`) next: done on claude/web-tools-tracker-review-bw48ga; the live-confirm task is unchanged and still open
 - 🎫 History-safe shim for toss-render address-mode renders next: done; hash-routing pages now switch views inside toss #gh= renders
+- 🎫 One parser for the owner/repo[@ref]:path address (`claude/web-tools-tracker-review-bw48ga`) next: done on claude/web-tools-tracker-review-bw48ga; stage-link-onto-url-params-u9o7ny, which depended on this, is now unblocked
 - 🎫 Private-repo landing federation via the home registry next: closed as superseded; the goal shipped per-repo, not federated
 - 🎫 Render files over 1 MB in toss-render and the shell viewers next: done — raw media type with git-blobs fallback landed in toss-render (ghText, showAddress, fetchShim) and gh-api.js get(); A/B headless test confirms the 5.9 MB DRS bundle is delivered where the old path returned blank
 - 🎫 Repo-designated inbox and outbox in .web-tools.json (`claude/tracker-status-cjogjn`) next: done as a first cut; folder-vs-branch settled as a per-repo choice, both fields wired
