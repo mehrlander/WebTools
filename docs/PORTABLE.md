@@ -192,6 +192,7 @@ Top-level fields, not namespaced by consumer, so any web-tools page can read the
 | `landing` | show-repo | path to the repo's own landing page (rendered live via toss-render `#gh=`) |
 | `scope` | show-repo (Map) | the repo's own account of what it holds and why: inline prose, or a repo path ending in `.md` (a file pointer). The repo owns the story; the Map view stacks the per-repo statements rather than keeping a central list |
 | `pins` | show-repo | folders/files surfaced in the sidebar Pinned block |
+| `checks` | show-repo | declared staleness checks, evaluated on sight and surfaced only when failing: in a repo's sidebar **Needs attention** block, and as badges on its estate card. Five kinds, each answerable from the API alone; nothing here runs code, so anything needing execution stays in a test suite |
 | `stage` | show-repo | `{ files, targets }`: a durable staged-files list and default transfer destinations |
 | `conventions` | session-start nudge | `"optout"` marks a repo that has deliberately not adopted the conventions, so the nudge stops asking |
 | `sessions` | the plugin's `Stop` hook | path to the directory holding this repo's session records and their `tools/`, which makes this repo the store the recorder writes to. Declaring it is what turns recording on; at most one checkout in a session should carry it |

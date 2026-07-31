@@ -893,11 +893,12 @@ repos. All are optional; a repo with no config is simply off the estate.
 - **pins**: folders/files surfaced in the sidebar Pinned block. A last segment
   with an extension opens as a file; otherwise it opens the Files view at that
   folder.
-- **checks**: declared staleness checks, evaluated when the repo is opened and
-  rendered in the sidebar **Needs attention** block. Only what is *not* passing
-  shows, so a current repo displays nothing at all; badging green states would
-  make the block furniture. Five kinds, each answerable from the API alone
-  (`lib/repo-checks.js`):
+- **checks**: declared staleness checks, shown on two surfaces. In a repo they
+  fill the sidebar **Needs attention** block; on the estate cards they are
+  badges beside the branch and PR counts. Only what is *not* passing shows on
+  either, so a current repo displays nothing at all; badging green states would
+  make the block furniture, and furniture stops being read. Five kinds, each
+  answerable from the API alone (`lib/repo-checks.js`):
 
   | kind | asks | fields |
   | --- | --- | --- |
@@ -917,9 +918,26 @@ repos. All are optional; a repo with no config is simply off the estate.
   convention cheap and portable, and it is why a repo declaring no checks pays
   nothing (evaluation short-circuits before touching the network).
 
-  Deliberately not on the estate cards yet: M checks across N repos on every
-  load is the per-visit fanout the activity cache exists to avoid, so a card
-  badge has to go through the crawl instead.
+  **Two surfaces, two routes, one definition.** A repo view evaluates live on
+  open: cheap for one repo, and always current. The estate grid cannot, since M
+  checks across N repos on every load is the per-visit fanout the activity cache
+  exists to avoid, so the crawl probes each repo's checks and the cards judge
+  what it stored.
+
+  That works because `repo-checks.js` splits `probe` (gather each check's raw
+  fact) from `verdict` (facts plus a clock become pass/fail). A verdict is
+  volatile and a fact is not: `13d since 2026-07-18` becomes 14d tomorrow with
+  nothing in the repo having changed, while `2026-07-18` changes only when the
+  repo does. Caching verdicts would rehash every cache entry every day and
+  commit on every crawl forever, the same trap `repo-activity-cache`'s
+  crawl-timestamp exclusion already avoids. Caching facts keeps the hash stable
+  and lets a card opened weeks after a crawl render a correct, staler verdict
+  with no network at all.
+
+  A check's declaration rides the cache hash beside its fact, so editing a
+  threshold reaches the cards on the next crawl. A crawl that ran checks and
+  found none clears them; one that skipped keeps what it had, or a retired
+  check would haunt a card forever.
 - **links**: path to the repo's **links board** (`"links/board.json"`, or a
   qualified `owner/repo[@ref]:path`), the store `pages/links.html` renders. The
   shell reads it and surfaces the items flagged `rail: true` as **the rail**:

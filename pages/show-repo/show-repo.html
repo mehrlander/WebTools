@@ -1400,9 +1400,12 @@ function app(){ return {
   // current. A repo declaring no checks costs nothing (evaluate() short-circuits
   // before touching the reader).
   //
-  // Deliberately NOT wired into the estate grid: M checks across N repos on
-  // every load is the per-visit fanout the activity cache exists to avoid, so
-  // the card badge, when it comes, goes through the crawl instead.
+  // The estate grid shows the same checks by a different route, and the split
+  // is not duplication. Live evaluation is right for ONE repo you are looking
+  // at; M checks across N repos on every load is the per-visit fanout the
+  // activity cache exists to avoid, so the cards read facts the crawl already
+  // probed (crawlRepoActivity) and judge them at render. Same declarations,
+  // same module, one definition of each check.
   checkResults: [],
   checksRunning: false,
   async runChecks(key){
