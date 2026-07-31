@@ -1,9 +1,11 @@
 ---
 id: branch-page-as-navigation-adi9ha
 title: Make the branch page a navigation target, swipeable from the lists
-status: backlog
+status: done
 project: show-repo
 opened: 2026-07-26
+closed: 2026-07-31
+session: claude/project-pages-docs-udzi51
 ---
 # Make the branch page a navigation target, swipeable from the lists
 
@@ -48,3 +50,12 @@ Not urgent. The page is useful today by URL, and this is what makes it feel like
 ## Progress log
 - 2026-07-26 filed from the session that built the page (PR #297); the swipe framing and the toss-versus-navigation question are the user's
 - 2026-07-26 added the surfacing consequence (🥏 becomes ⭐, the caveat can be dropped) and the absorb-versus-keep-both fork, after the standalone 🌿 link 404ed on an un-deployed page and made the cost of the current form concrete
+- 2026-07-31 closed. The branch-detail takeover delivered the substance on main
+  (c98ac78 through d82c3ec): Open rows open the branch in-app, swipe moves
+  through the list that opened it (the Open list is the open-PR list), and the
+  host question is decided and written down in docs/show-repo.md ("Branch
+  detail: the takeover"): the sequence lives in the shell, branch.html survives
+  as the shareable single-branch form and the embedded renderer. The one
+  outstanding bullet, the SURFACING.md 🌿 entry, lands via PR #331: canonical
+  branch.html address, ?view=activity named as the browsing route, the tossed
+  fallback retired.

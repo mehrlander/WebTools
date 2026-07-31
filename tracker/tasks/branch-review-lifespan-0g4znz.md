@@ -1,9 +1,11 @@
 ---
 id: branch-review-lifespan-0g4znz
 title: Show the branch lifespan in the per-repo branch review too
-status: backlog
+status: done
 project: show-repo
 opened: 2026-07-26
+closed: 2026-07-31
+session: claude/project-pages-docs-udzi51
 ---
 # Show the branch lifespan in the per-repo branch review too
 
@@ -27,3 +29,10 @@ Small and self-contained. The one judgment call is the table cell: the review is
 
 ## Progress log
 - 2026-07-26 filed at PR #298 wrap-up, from the follow-on the lifespan work exposed
+- 2026-07-31 done on `claude/project-pages-docs-udzi51`; lands via PR #331. The
+  collapse rules moved to lib/branch-survey.js (lifespanStart / lifespanTitle),
+  the estate delegates to them, and the review's Age cell states the span in
+  the Open view's one-cell arrow form (the two-column alternative was not
+  needed at the table's density). The cached render carries firstDate through
+  applyCachedSurvey, so cache-first rows state the same span a live survey
+  would; Recent stays date-only as scoped.

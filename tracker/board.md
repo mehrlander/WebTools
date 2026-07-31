@@ -5,8 +5,6 @@ _Generated from tasks/. Do not hand-edit._
 ## On deck
 - 🎫 Backfill guide regions into old PR bodies and full-regenerate the merge guide
 - 🎫 Converge the branch page's authored layer on the branch-review surface
-- 🎫 Make the branch page a navigation target, swipeable from the lists
-- 🎫 Show the branch lifespan in the per-repo branch review too
 - 🎫 Reach the take-away menu from show-repo's Pages gallery (needs: Find a way to focus attention on one piece of a page's UI)
 - 🎫 The build-on-commit hook did not fire, and nothing said so
 - 🎫 Fold chat-results into the surface schema, or keep it a sibling
@@ -41,7 +39,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Extend fetch + blob-import to the gh-api.js-chain ?use= boot
 
 ## In progress
-- 🎫 show-repo - first-class projects, defined by tracker presence (`claude/project-pages-docs-udzi51`) next: board-as-surface and the doc recording are the open scope after PR #331
+- (none)
 
 ## Blocked
 - (none)
@@ -51,6 +49,8 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Build an agent-assisted file-retrieval skill (`claude/agent-file-retrieval-skill-tv4can`) next: build corpus_search.py (find) with a sources config and a file-per-document default, plus read_doc.py (read) and a SKILL.md that fixes the search-and-present flow; dogfood on this repo's content
 - 🎫 App views - designate a page as an estate-level view (`claude/web-tools-app-views-m3pkyo`) next: landed; News goes live in the estate switcher when home#314 reaches main
 - 🎫 Automate the merge guide from PR bodies (`claude/task-tracker-discussion-wg27xv`)
+- 🎫 Make the branch page a navigation target, swipeable from the lists (`claude/project-pages-docs-udzi51`)
+- 🎫 Show the branch lifespan in the per-repo branch review too (`claude/project-pages-docs-udzi51`)
 - 🎫 Branch-review view in show-repo (`claude/web-tools-branch-tracking-n1zawm`) next: session refreshes (show-repo thumbnail) at wrap-up, then review via PR #236
 - 🎫 Teach the guide region a delimiter that survives an agent's readback (`claude/budget-drs-tracker-review-s64mc6`)
 - 🎫 Collapse quickLinks into a projection of the repos manifest (`claude/tracker-status-cjogjn`) next: done; landing via web-tools PR #302 and web-tools-private PR #8 (merge #302 first)
@@ -67,6 +67,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Render files over 1 MB in toss-render and the shell viewers next: done — raw media type with git-blobs fallback landed in toss-render (ghText, showAddress, fetchShim) and gh-api.js get(); A/B headless test confirms the 5.9 MB DRS bundle is delivered where the old path returned blank
 - 🎫 Repo-designated inbox and outbox in .web-tools.json (`claude/tracker-status-cjogjn`) next: done as a first cut; folder-vs-branch settled as a per-repo choice, both fields wired
 - 🎫 Resolve a branch's session from the commit trailer, not the open PR body (`claude/active-work-branches-sd289p`)
+- 🎫 show-repo - first-class projects, defined by tracker presence (`claude/project-pages-docs-udzi51`)
 - 🎫 Singleton fab with toss-render integration (`claude/fab-render-toss-render-ua6p3p`)
 - 🎫 Speed up show-repo's cold load (`claude/speed-up-show-repo-load-3cdvl0`)
 - 🎫 Fix the stage Diff lens B-select display desync (`claude/web-tools-diff-review-s0nrq7`)
