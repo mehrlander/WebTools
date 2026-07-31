@@ -1784,10 +1784,14 @@ function app(){ return {
     // is estate-scoped, not account-wide: only repos on the dashboard need the
     // survey. No cache yet means nothing to crawl (the config crawl seeds it).
     const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
-    let members = [];
+    let members = [], cfgByName = new Map();
     try {
       const cc = JSON.parse((await reg.get(window.RepoConfigCache.CACHE_PATH)).text);
-      members = Object.entries(cc.repos || {}).filter(([, e]) => e?.config?.estate === true).map(([n]) => n);
+      const entries = Object.entries(cc.repos || {}).filter(([, e]) => e?.config?.estate === true);
+      members = entries.map(([n]) => n);
+      // Each member's own .web-tools.json rides along from the same read, so a
+      // repo's declared checks cost the crawl nothing extra to discover.
+      cfgByName = new Map(entries.map(([n, e]) => [n, e?.config || null]));
     } catch {}
     if (!members.length) return { skipped: true, reason: 'no estate members in the config cache yet' };
     this.tickActivityProgress(0, members.length, []);
@@ -1811,7 +1815,7 @@ function app(){ return {
           const repo = members[mi++];
           active.push(repo);
           this.tickActivityProgress(done, members.length, active);
-          try { fetched[repo] = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B); }
+          try { fetched[repo] = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo)); }
           catch(e){ failed.push(repo); console.warn('activity crawl', repo, e?.message || e); }
           active.splice(active.indexOf(repo), 1);
           this.tickActivityProgress(++done, members.length, active);
@@ -1846,9 +1850,17 @@ function app(){ return {
   // open PRs) plus the capped branch survey. Returns the <fetched> shape
   // repo-activity-cache.mergeRepo folds. Failures on a sub-read degrade to an
   // empty piece rather than dropping the whole repo.
-  async crawlRepoActivity(repo, meta, now, A, B){
+  async crawlRepoActivity(repo, meta, now, A, B, cfg){
     const def = meta?.default_branch || 'main';
     const g = new window.GH({ token: window.TOKEN, repo, ref: def });
+    // Probe the repo's declared checks in the same pass. Cheap when declared
+    // (one tree read plus one commit read per distinct path, shared across the
+    // batch by _checkReader) and free when not: probe() short-circuits on an
+    // empty list before touching the network, so a repo declaring nothing pays
+    // nothing for a feature only some repos use.
+    const checkFacts = (Array.isArray(cfg?.checks) && cfg.checks.length && window.RepoChecks)
+      ? await window.RepoChecks.probe(cfg.checks, this._checkReader(g, def)).catch(() => [])
+      : [];
     const [recentCommits, openPRs, branchSessions] = await Promise.all([
       g.commits(this.ACTIVITY_RECENT_COMMITS).catch(() => []),
       g.pulls('open', 30).catch(() => []),
@@ -1926,6 +1938,12 @@ function app(){ return {
       counts,
       survey: { surveyedAt: new Date(now).toISOString(), cap: this.ACTIVITY_SURVEY_CAP,
                 surveyed: counts.surveyed, older: counts.older, truncated, branches },
+      // Declared checks, PROBED not judged: the stored fact is time-independent
+      // so the cache hash stays stable across crawls, and the card computes the
+      // verdict against its own clock at render. Always an array, never
+      // undefined, so a repo that dropped its declarations clears rather than
+      // keeping a retired check alive through mergeRepo's snapshot fallback.
+      checks: checkFacts,
     };
   },
 

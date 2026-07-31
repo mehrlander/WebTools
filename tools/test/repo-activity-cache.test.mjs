@@ -116,3 +116,53 @@ test('a newly-learned firstDate is material, on both survey rows and PRs', () =>
   // Still stable once learned: a re-crawl reading the same start is a no-op.
   assert.equal(A.hashEntry(surveyed), A.hashEntry({ ...surveyed, generatedAt: 'LATER' }));
 });
+
+// ── Declared checks in the cache ───────────────────────────────────────────
+// The cache stores each check's FACT, never its verdict. These pin the reason:
+// a verdict is time-derived, so hashing one would restamp and recommit every
+// entry on every crawl forever, which is the same trap the crawl-timestamp
+// exclusion in material() already avoids.
+
+const factOf = (label, date) => ({
+  check: { kind: 'content-date', label, path: 's.md', pattern: '(x)', staleAfterDays: 30 },
+  fact: { date }, error: null,
+});
+
+test('an unchanged check fact hashes identically, so a quiet crawl skips the commit', () => {
+  const fetched = { pushedAt: 'p', counts: {}, checks: [factOf('sweep', '2026-07-18')] };
+  const a = A.mergeRepo(null, fetched, '2026-07-31T00:00:00Z');
+  // A later crawl, same repo content: only the crawl stamp differs.
+  const b = A.mergeRepo(a, fetched, '2026-09-30T00:00:00Z');
+  assert.equal(a.hash, b.hash, 'a fact that did not change must not move the hash');
+  assert.equal(A.cacheChanged({ repos: { r: a } }, { repos: { r: b } }), false);
+});
+
+test('a changed check fact does move the hash, or the card would never update', () => {
+  const a = A.mergeRepo(null, { counts: {}, checks: [factOf('sweep', '2026-07-18')] }, 'T');
+  const b = A.mergeRepo(a, { counts: {}, checks: [factOf('sweep', '2026-08-02')] }, 'T');
+  assert.notEqual(a.hash, b.hash);
+});
+
+test('a threshold edit moves the hash, since it changes what the card should say', () => {
+  const strict = { check: { kind: 'content-date', label: 'sweep', path: 's.md', staleAfterDays: 7 }, fact: { date: '2026-07-18' } };
+  const loose = { check: { kind: 'content-date', label: 'sweep', path: 's.md', staleAfterDays: 90 }, fact: { date: '2026-07-18' } };
+  const a = A.mergeRepo(null, { counts: {}, checks: [strict] }, 'T');
+  const b = A.mergeRepo(a, { counts: {}, checks: [loose] }, 'T');
+  assert.notEqual(a.hash, b.hash, 'the declaration rides the hash, not just the fact');
+});
+
+test('a crawl that ran checks and found none CLEARS them; one that skipped keeps them', () => {
+  const prior = A.mergeRepo(null, { counts: {}, checks: [factOf('sweep', '2026-07-18')] }, 'T');
+  assert.equal(prior.checks.length, 1);
+
+  // The repo retired its declarations. An empty array is a finding, not a gap:
+  // falling back to the prior list here would haunt the card with a check the
+  // repo no longer declares.
+  const cleared = A.mergeRepo(prior, { counts: {}, checks: [] }, 'T');
+  assert.deepEqual(cleared.checks, []);
+
+  // A summary-only pass never looked, so it keeps what it had, the same way
+  // survey does.
+  const kept = A.mergeRepo(prior, { counts: {} }, 'T');
+  assert.equal(kept.checks.length, 1);
+});

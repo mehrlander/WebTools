@@ -45,9 +45,26 @@ export default async (page) => {
         'The public hub: conventions, the portable plugin, and the shared page library.', 'core', 1,
         ['lib', 'pages', 'docs', 'tracker'], []),
     ];
+    // Cached check FACTS, exactly the shape the crawl stores. The card runs the
+    // real verdict path over these against its own clock, so what renders is
+    // computed rather than seeded: `sweep` is a date the page ages itself, and
+    // `renamed doc` is the unevaluable case.
+    const check = (label, kind, extra, fact, error) =>
+      ({ check: { label, kind, path: 'x', ...extra }, fact: fact || null, error: error || null });
     d.activity = {
-      'mehrlander/home':      { counts: { branches: 7, stranded: 3, openPRs: 2 } },
-      'mehrlander/web-tools': { counts: { branches: 4, stranded: 0, openPRs: 1 } },
+      'mehrlander/home': {
+        counts: { branches: 7, stranded: 3, openPRs: 2 },
+        checks: [
+          check('sweep', 'content-date', { staleAfterDays: 30 }, { date: '2026-04-02' }),
+          check('chron dump', 'dir-count', { staleOver: 0 }, { count: 4 }),
+          check('renamed doc', 'content-date', { staleAfterDays: 30 }, null, 'full-picture.md not found'),
+        ],
+      },
+      'mehrlander/web-tools': {
+        counts: { branches: 4, stranded: 0, openPRs: 1 },
+        checks: [check('prebuild', 'newer-than', { sources: ['lib/'] },
+          { own: '2026-07-01T00:00:00Z', newest: '2026-07-01T00:00:00Z' })],
+      },
     };
   });
   await page.waitForTimeout(1200);
