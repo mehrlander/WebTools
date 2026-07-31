@@ -53,6 +53,7 @@ window.__shell = {
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
+  'lib/branch-survey.js',
   'lib/alpineComponents/estate.js',
 ]);
 const data = Alpine.$data(window.document.getElementById('es'));
