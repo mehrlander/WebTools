@@ -102,10 +102,36 @@ The per-repo views in the sidebar:
   is where the catalog lives instead. Renders the identical gallery component
   the landing view uses when `landingKind()==='gallery'`; a repo without both
   fields set never needs it and the sidebar omits it.
-- **project**: one workspace's front page, `?repo=…&view=project&project=<path>`.
-  What the landing is to a repo, this is to a project: its name and path, the
-  three routes out (its files, its board, its folder on GitHub), and the README
-  at `<path>/README.md` rendered. The sidebar's **Projects** section lists the
+- **project**: one workspace's front page, `?repo=…&view=project&project=<path>`
+  (`&tab=pages|docs` deep-links a pill). What the landing is to a repo, this is
+  to a project: a constant header (its name and path, and the three routes out:
+  its files, its board, its folder on GitHub) over a segmented pill row of
+  **Overview / Pages / Docs**, so the body changes while the reader never loses
+  which workspace they are standing in.
+
+  - **Overview** repeats the repo's landing decision one level down: an entry
+    declaring a `landing` gets that page rendered live under the header
+    (toss-render `#gh=` at the browsed ref; the FAB carries the full-page
+    bust-out, as for a repo's custom landing), every other project gets the
+    README at `<path>/README.md`.
+  - **Pages** is the workspace's slice of the repo's `pages` catalog,
+    **derived rather than declared**: entries whose path sits under the
+    workspace folder, plus entries claiming it with a `project` key. One
+    catalog, two views of it; there is no per-project pages list to drift
+    against the repo's. The tiles are lean cards (a lazy live preview that is
+    itself the link, plus the GitHub source jump-over); the shot/live/source
+    toggles stay on the repo-level gallery. The pill hides when the slice is
+    empty.
+  - **Docs** is every markdown file in the workspace, off one recursive tree
+    read (the stage Search's primitive, keyed per repo@ref:project): the
+    workspace's own root files first, then one group per folder with its full
+    relative path as the header, READMEs leading, a path filter box, each row
+    opening in the shell's viewer. A workspace keeping a curated `DOCS.md`
+    gets it rendered above the mechanical listing. No manifest field feeds
+    this; a failed tree read reports itself rather than posing as an empty
+    workspace.
+
+  The sidebar's **Projects** section lists the
   open repo's workspaces and lights the one showing; the estate sidebar's nested
   rows open the same view, switching the repo first. A project reads the same
   whichever level you arrived from. A deep link may name a workspace the
@@ -866,6 +892,11 @@ repos. All are optional; a repo with no config is simply off the estate.
   - **note**: the card's one-line description.
   - **icon**: Phosphor class, used as the app-view icon when promoted, in the
     header nav and the sidebar alike.
+  - **project**: the workspace this page belongs to (a `projects` entry's
+    `path`). The project view's **Pages** tab derives its slice of this catalog
+    by path prefix, so a page under the workspace folder needs no claim; this
+    key is the escape for one that lives elsewhere, cross-repo included. There
+    is deliberately no per-project pages list: one catalog, one owner.
   - **appView**: `true` to promote this page to its own **estate-level view**,
     a peer of Repos / Surfaces / Stage, shown in the header nav's second group
     and in the sidebar (estate membership one
@@ -962,8 +993,8 @@ repos. All are optional; a repo with no config is simply off the estate.
   wrapping its doors. A `snippet` item is skipped in both: a `javascript:` URL
   is something to copy, not somewhere to go.
 - **projects**: the repo's workspaces. Entries are bare folder paths
-  (`"projects/budget-wa"`) or `{ path, label, tracker }` objects; `label`
-  defaults to the path's last segment. They render in **three lists, one
+  (`"projects/budget-wa"`) or `{ path, label, tracker, landing }` objects;
+  `label` defaults to the path's last segment. They render in **three lists, one
   destination**: nested under the repo's row in the estate sidebar's Repos
   index, as the **Projects** section of that repo's own sidebar, and on the
   repo's **card** in the Repos dashboard. Tapping the name in any of them opens
@@ -988,8 +1019,13 @@ repos. All are optional; a repo with no config is simply off the estate.
   button need no declaration: the same layout puts the generated rollup at
   `<workspace>/tracker/board.md`, so the row derives it. An entry names a
   different one with `tracker` (a repo-root-relative file or folder) and drops
-  the button with `tracker: false`. The field is declarative rather than
-  discovered live (walking a tree for `tracker/` dirs is API-costly), which
+  the button with `tracker: false`. An entry's **`landing`** (repo-root-relative,
+  like `tracker`) is the repo field one level down: the workspace's own front
+  page, taking the project view's Overview slot ahead of the README the way a
+  repo landing outranks the overview (see the **project** view above; that is
+  the whole of what a project declares, since its Pages and Docs tabs are
+  derived, from the repo catalog and the tree). The field is declarative rather
+  than discovered live (walking a tree for `tracker/` dirs is API-costly), which
   makes it generatable: home's `tools/generate-tracker-registry.py` syncs it
   from the trackers it finds, so the manifest cannot drift from the ground
   truth. The estate sidebar reads the field from the config cache it already

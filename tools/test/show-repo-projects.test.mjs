@@ -43,11 +43,31 @@ test('repoProjects: string and object entries normalize to {path, label, board}'
     },
   };
   assert.deepEqual(shell.repoProjects('mehrlander/home'), [
-    { path: 'news', label: 'news', board: 'news/tracker/board.md' },
+    { path: 'news', label: 'news', board: 'news/tracker/board.md', landing: '' },
     { path: 'projects/budget-drs', label: 'budget-drs',
-      board: 'projects/budget-drs/tracker/board.md' },
+      board: 'projects/budget-drs/tracker/board.md', landing: '' },
     { path: 'projects/budget-wa', label: 'WA budget',
-      board: 'projects/budget-wa/tracker/board.md' },
+      board: 'projects/budget-wa/tracker/board.md', landing: '' },
+  ]);
+});
+
+test('repoProjects: a landing is kept as a root-relative path, junk reads as undeclared', () => {
+  const { shell } = makeShell();
+  shell.estateConfigs = {
+    'mehrlander/home': {
+      projects: [
+        { path: 'projects/a', landing: 'projects/a/app/view/app.html' },
+        { path: 'projects/b', landing: '/projects/b/index.html/' },  // stray slashes trimmed
+        { path: 'projects/c', landing: '' },
+        { path: 'projects/d', landing: 42 },
+        { path: 'projects/e' },
+      ],
+    },
+  };
+  assert.deepEqual(shell.repoProjects('mehrlander/home').map(p => p.landing), [
+    'projects/a/app/view/app.html',
+    'projects/b/index.html',
+    '', '', '',
   ]);
 });
 
@@ -77,7 +97,7 @@ test('repoProjects: junk entries drop instead of throwing', () => {
     'mehrlander/home': { projects: [null, 42, {}, { path: '' }, { label: 'no path' }, 'ok'] },
   };
   assert.deepEqual(shell.repoProjects('mehrlander/home'),
-    [{ path: 'ok', label: 'ok', board: 'ok/tracker/board.md' }]);
+    [{ path: 'ok', label: 'ok', board: 'ok/tracker/board.md', landing: '' }]);
 });
 
 test('openProject switches the repo, then opens the project view', async () => {
@@ -126,12 +146,12 @@ test('the open project resolves to its declared entry, or a derived one', () => 
   shell.loadProjectReadme = async () => {};
   shell.goProject('projects/a');
   assert.deepEqual(shell.project, { path: 'projects/a', label: 'Alpha',
-                                    board: 'projects/a/tracker/board.md' });
+                                    board: 'projects/a/tracker/board.md', landing: '' });
   // A deep link may name a workspace the manifest has not caught up with; the
   // view still opens, on the conventions the path itself implies.
   shell.goProject('projects/unlisted');
   assert.deepEqual(shell.project, { path: 'projects/unlisted', label: 'unlisted',
-                                    board: 'projects/unlisted/tracker/board.md' });
+                                    board: 'projects/unlisted/tracker/board.md', landing: '' });
 });
 
 test('repoProjects prefers the OPEN repo\'s live manifest over the estate cache', () => {
@@ -281,6 +301,180 @@ test('both project lists hang off the same rule, and the card carries neither li
   // make the removal a net loss.
   assert.match(estate, /cardActivity\(face\(e\)\.repo\)/,
     'the card no longer reports branch activity');
+});
+
+test('a landing takes the Overview slot, rendered through toss-render at the browsed ref', () => {
+  const { shell, browserStore } = makeShell({
+    browserStore: { repo: 'mehrlander/home', ref: 'main', defaultRef: 'main' },
+  });
+  browserStore.config = { projects: [{ path: 'projects/a', landing: 'projects/a/app.html' }] };
+  shell.syncUrl = () => {};
+  const reads = [];
+  shell.loadProjectReadme = async () => reads.push('readme');
+  shell.loadProjectDocs = async () => reads.push('docs');
+  shell.goProject('projects/a');
+  assert.equal(shell.projectLandingUrl, '../toss-render.html#gh=mehrlander/home:projects/a/app.html');
+  assert.deepEqual(reads, [], 'a landing Overview must not fetch the README it will not render');
+  // Off the default branch the landing follows the browsed ref, like
+  // projectGithubUrl: inside a repo the honest list is the one on the ref you
+  // are standing on, and its landing is too.
+  browserStore.ref = 'claude/b';
+  assert.equal(shell.projectLandingUrl, '../toss-render.html#gh=mehrlander/home@claude/b:projects/a/app.html');
+  // The pills load only what they render: Docs fetches its listing, Pages
+  // fetches nothing (a pure derivation off the manifest already in hand).
+  shell.goProjectTab('docs');
+  assert.deepEqual(reads, ['docs']);
+  shell.goProjectTab('pages');
+  assert.deepEqual(reads, ['docs']);
+});
+
+test('the FAB busts out of a project landing embed', () => {
+  const { shell, browserStore } = makeShell({
+    browserStore: { repo: 'mehrlander/home', ref: 'main', defaultRef: 'main' },
+  });
+  browserStore.config = { projects: [{ path: 'projects/a', label: 'Alpha', landing: 'projects/a/app.html' }] };
+  shell.view = 'project';
+  shell.projectPath = 'projects/a';
+  shell.projectTab = 'overview';
+  const acts = shell.actions;
+  assert.equal(acts.length, 1);
+  assert.equal(acts[0].label, 'Open Alpha landing full-page');
+  assert.match(acts[0].run().nav, /toss-render\.html#gh=mehrlander\/home:projects\/a\/app\.html$/);
+  // The other pills are not an embed, so there is nothing to bust out of.
+  shell.projectTab = 'docs';
+  assert.deepEqual(shell.actions, []);
+});
+
+test('projectPages is the workspace slice of the repo catalog, derived not declared', () => {
+  const { shell, browserStore } = makeShell({
+    browserStore: { repo: 'mehrlander/home', ref: 'main', defaultRef: 'main' },
+  });
+  browserStore.config = {
+    projects: ['projects/budget-drs'],
+    pages: [
+      { path: 'projects/budget-drs/app/view/app.html', title: 'Budget DRS', note: 'Fiscal explorer.' },
+      { path: 'projects/budget-wa/dashboard/index.html', title: 'Another workspace' },
+      { path: 'chron/blog/index.html', title: 'Claimed', project: 'projects/budget-drs' },
+      { path: 'mehrlander/web-tools:pages/links.html', title: 'Cross-repo, unclaimed' },
+      null, { title: 'no path' },
+    ],
+  };
+  shell.syncUrl = () => {};
+  shell.loadProjectReadme = async () => {};
+  shell.goProject('projects/budget-drs');
+  const items = shell.projectPages;
+  // In-folder by prefix, plus the explicit `project` claim; a sibling
+  // workspace's page and an unclaimed cross-repo page stay out.
+  assert.deepEqual(items.map(i => i.label), ['Budget DRS', 'Claimed']);
+  assert.equal(items[0].live,
+    '../toss-render.html#gh=mehrlander/home:projects/budget-drs/app/view/app.html');
+  assert.equal(items[0].code,
+    'https://github.com/mehrlander/home/blob/main/projects/budget-drs/app/view/app.html');
+  // Browsing off the default branch, the tiles follow the ref like the rest of
+  // the project view.
+  browserStore.ref = 'claude/branch';
+  assert.equal(shell.projectPages[0].live,
+    '../toss-render.html#gh=mehrlander/home@claude/branch:projects/budget-drs/app/view/app.html');
+});
+
+test('groupProjectDocs: root leads, folders alphabetical, READMEs lead their folder', () => {
+  const { shell } = makeShell();
+  const groups = shell.groupProjectDocs([
+    'submittal/plan.md', 'README.md', 'submittal/README.md', 'app/notes.md',
+    'DOCS.md', 'submittal/checklist.md',
+  ]);
+  assert.deepEqual(groups.map(g => g.dir), ['', 'app', 'submittal']);
+  assert.deepEqual(groups[0].files.map(f => f.name), ['README.md', 'DOCS.md']);
+  assert.deepEqual(groups[2].files.map(f => f.rel),
+    ['submittal/README.md', 'submittal/checklist.md', 'submittal/plan.md']);
+});
+
+test('loadProjectDocs filters the tree to workspace markdown, and failure is not "no docs"', async () => {
+  const tree = [
+    { path: 'projects/a/README.md', type: 'blob' },
+    { path: 'projects/a/DOCS.md', type: 'blob' },
+    { path: 'projects/a/notes/x.md', type: 'blob' },
+    { path: 'projects/a/notes', type: 'tree' },        // a folder is not a doc
+    { path: 'projects/a/app.html', type: 'blob' },     // not markdown
+    { path: 'projects/ab/decoy.md', type: 'blob' },    // sibling sharing the prefix chars
+    { path: 'other/y.md', type: 'blob' },
+  ];
+  const gets = [];
+  const { shell } = makeShell({ browserStore: {
+    repo: 'mehrlander/home', ref: '', defaultRef: 'main',
+    gh: {
+      req: async (u) => { assert.equal(u, 'git/trees/HEAD?recursive=1'); return { tree }; },
+      get: async (p) => { gets.push(p); return { text: '# idx' }; },
+    },
+  }});
+  shell.projectPath = 'projects/a';
+  await shell.loadProjectDocs();
+  assert.deepEqual(shell.projectDocs.map(g => g.dir), ['', 'notes']);
+  assert.equal(shell.projectDocsCount, 3);
+  assert.equal(shell.projectDocsLoading, false);
+  // A DOCS.md is fetched as the curated lead when the workspace keeps one (its
+  // render is a browser concern; here the read is what is observable).
+  assert.deepEqual(gets, ['projects/a/DOCS.md']);
+  // The filter narrows by full relative path, dropping emptied groups.
+  shell.projectDocsQ = 'notes';
+  assert.deepEqual(shell.projectDocsGroups.map(g => g.dir), ['notes']);
+
+  const { shell: s2 } = makeShell({ browserStore: {
+    repo: 'mehrlander/home', ref: '', defaultRef: 'main',
+    gh: { req: async () => { throw new Error('nope'); } },
+  }});
+  s2.projectPath = 'projects/a';
+  await s2.loadProjectDocs();
+  assert.equal(s2.projectDocs, null, 'a failed tree read must stay distinct from an empty workspace');
+  assert.equal(s2.projectDocsLoading, false);
+});
+
+test('a docs row opens the file in the shell viewer', () => {
+  const { shell } = makeShell();
+  const opened = [];
+  shell.openFile = async (p) => opened.push(p);
+  shell.projectPath = 'projects/a';
+  shell.openProjectDoc('notes/x.md');
+  shell.openProjectDoc('');
+  assert.deepEqual(opened, ['projects/a/notes/x.md']);
+});
+
+test('a non-default pill rides the deep link as &tab=, and boot routes it back', () => {
+  const { shell, history } = makeShell({
+    browserStore: { repo: 'mehrlander/home', ref: 'main', defaultRef: 'main' },
+  });
+  const stamped = [];
+  history.pushState = (a, b, url) => stamped.push(url);
+  history.replaceState = (a, b, url) => stamped.push(url);
+  shell.loadProjectReadme = async () => {};
+  shell.loadProjectDocs = async () => {};
+  shell.goProject('projects/budget-wa', 'docs');
+  assert.match(stamped.at(-1), /tab=docs/);
+  // Overview is the default, so it stamps no tab; an unknown tab collapses to
+  // it rather than stranding the pane.
+  shell.goProjectTab('overview');
+  assert.doesNotMatch(stamped.at(-1), /tab=/);
+  shell.goProject('projects/budget-wa', 'bogus');
+  assert.equal(shell.projectTab, 'overview');
+
+  const { shell: s2 } = makeShell({
+    search: '?repo=mehrlander/home&view=project&project=projects/budget-wa&tab=docs',
+  });
+  assert.equal(s2.parseUrl().tab, 'docs');
+  // Both boot paths hand the tab through goProject with the project.
+  assert.equal([...page.matchAll(/goProject\(url\.project, url\.tab\)/g)].length, 2,
+    'init and popstate no longer route the tab');
+});
+
+test('the pane wires the pills, the landing embed, the pages grid, and the docs rows', () => {
+  assert.match(page, /@click="goProjectTab\('overview'\)"/, 'the Overview pill is gone');
+  assert.match(page, /x-show="projectPages\.length"[^>]*@click="goProjectTab\('pages'\)"/,
+    'the Pages pill must hide when the workspace claims no pages');
+  assert.match(page, /@click="goProjectTab\('docs'\)"/, 'the Docs pill is gone');
+  assert.match(page, /:src="projectLandingUrl"/, 'the landing iframe is gone');
+  assert.match(page, /x-for="pg in projectPages"/, 'the pages grid no longer iterates projectPages');
+  assert.match(page, /@click="openProjectDoc\(f\.rel\)"/, 'a docs row no longer opens in the viewer');
+  assert.match(page, /x-html="projectDocsIndexHtml"/, 'the curated DOCS.md lead is gone');
 });
 
 test('the two sidebar project lists are sized the same', () => {
