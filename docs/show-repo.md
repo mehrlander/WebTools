@@ -893,6 +893,33 @@ repos. All are optional; a repo with no config is simply off the estate.
 - **pins**: folders/files surfaced in the sidebar Pinned block. A last segment
   with an extension opens as a file; otherwise it opens the Files view at that
   folder.
+- **checks**: declared staleness checks, evaluated when the repo is opened and
+  rendered in the sidebar **Needs attention** block. Only what is *not* passing
+  shows, so a current repo displays nothing at all; badging green states would
+  make the block furniture. Five kinds, each answerable from the API alone
+  (`lib/repo-checks.js`):
+
+  | kind | asks | fields |
+  | --- | --- | --- |
+  | `content-date` | a date written *inside* a file has aged | `path`, `pattern` (one capture group), `staleAfterDays` |
+  | `file-age` | nothing has committed to a path lately | `path`, `staleAfterDays` |
+  | `newer-than` | a generated file fell behind its sources | `path`, `sources[]` |
+  | `absent` | a path that should not exist does | `path` (glob; `**` spans separators) |
+  | `dir-count` | a folder meant to stay empty is not | `path`, `staleOver`, optional `ignore[]` (defaults to `.gitkeep`) |
+
+  Every kind carries an optional `label` for the row. **A check that cannot be
+  evaluated renders too**, in grey rather than amber: a check whose file was
+  renamed out from under it has been silently invalidated, and silence there is
+  the failure the mechanism exists to prevent.
+
+  **The boundary:** checks are questions about *data*, never code that runs.
+  Anything needing execution stays in a test suite. This is what keeps the
+  convention cheap and portable, and it is why a repo declaring no checks pays
+  nothing (evaluation short-circuits before touching the network).
+
+  Deliberately not on the estate cards yet: M checks across N repos on every
+  load is the per-visit fanout the activity cache exists to avoid, so a card
+  badge has to go through the crawl instead.
 - **links**: path to the repo's **links board** (`"links/board.json"`, or a
   qualified `owner/repo[@ref]:path`), the store `pages/links.html` renders. The
   shell reads it and surfaces the items flagged `rail: true` as **the rail**:

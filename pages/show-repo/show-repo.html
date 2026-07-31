@@ -48,6 +48,8 @@
   await gh.load('repo-address.js');
   // Pure alignment assessment behind the Portable view (window.PortableAlign).
   await gh.load('portable-align.js');
+  // Declared staleness checks, evaluated on sight from a repo's own config.
+  await gh.load('repo-checks.js');
   // The GitHub destinations for one repo, shared by the sidebar's github menu
   // and the Activity view's repo chip (window.GithubLinks).
   await gh.load('github-links.js');
@@ -589,6 +591,31 @@
 
       <div class="border-t border-base-200"
            x-show="!estateCtx && repoProjects($store.browser.repo).length"></div>
+
+      <!-- Needs attention: the repo's own declared checks (.web-tools.json
+           "checks"), evaluated on open. Only what is NOT passing renders, so a
+           current repo shows nothing here at all: badging green states would
+           make the block furniture, and furniture is what the eye stops
+           reading. Each row opens the file it is about. -->
+      <div x-show="!estateCtx && checkResults.length" class="flex flex-col gap-0.5">
+        <div class="text-base font-semibold text-base-content/50 px-2 pb-1 flex items-center gap-1.5">
+          <i class="ph ph-warning-circle"></i><span>Needs attention</span>
+          <div class="grow"></div>
+          <button @click="goConfig()" title="Edit checks in the repo config"
+                  class="text-base-content/30 hover:text-primary transition-colors">
+            <i class="ph ph-gear-six"></i>
+          </button>
+        </div>
+        <template x-for="r in checkResults" :key="r.label + r.path">
+          <button @click="r.path && openPin(r.path)" :title="r.detail"
+                  class="flex items-center min-w-0 gap-1.5 px-2 py-1.5 text-base text-left
+                         hover:bg-base-200 rounded transition-colors">
+            <i class="ph shrink-0" :class="[checkIcon(r), checkTone(r)]"></i>
+            <span class="truncate" x-text="r.label"></span>
+            <span class="truncate text-base-content/40 text-sm" x-text="r.detail"></span>
+          </button>
+        </template>
+      </div>
 
       <!-- Pinned: folders and files the repo designates in .web-tools.json. The
            header carries a config gear, since the pins are a config field. -->
@@ -1363,8 +1390,59 @@ function app(){ return {
         if (typeof parsed === 'object' && !Array.isArray(parsed)) { cfg = parsed; name = n; break; }
       } catch {}
     }
-    if (this._configKey === key) { s.config = cfg; s.configName = name; }
+    if (this._configKey === key) { s.config = cfg; s.configName = name; this.runChecks(key); }
   },
+
+  // ── Declared staleness checks (lib/repo-checks.js) ────────────────────────
+  // Evaluated when a repo is opened and thrown away when you leave. No cache,
+  // no crawl, no session hook: the answer is only wanted at the moment someone
+  // is looking at the repo, so computing it then is both cheapest and most
+  // current. A repo declaring no checks costs nothing (evaluate() short-circuits
+  // before touching the reader).
+  //
+  // Deliberately NOT wired into the estate grid: M checks across N repos on
+  // every load is the per-visit fanout the activity cache exists to avoid, so
+  // the card badge, when it comes, goes through the crawl instead.
+  checkResults: [],
+  checksRunning: false,
+  async runChecks(key){
+    const s = Alpine.store('browser');
+    this.checkResults = [];
+    const checks = s.config?.checks;
+    if (!Array.isArray(checks) || !checks.length || !s.gh || !window.RepoChecks) return;
+    this.checksRunning = true;
+    try {
+      const out = await window.RepoChecks.evaluate(checks, this._checkReader(s.gh, s.ref));
+      // The repo may have changed under a slow evaluation; same guard loadConfig
+      // uses, or a stale panel lands on the wrong repo.
+      if (this._configKey === key) this.checkResults = window.RepoChecks.notable(out);
+    } catch {} finally {
+      if (this._configKey === key) this.checksRunning = false;
+    }
+  },
+  // One tree read and one commit read per distinct path, shared across every
+  // check in the batch: several checks routinely want the same tree, and a
+  // lockstep check asks for its sources' dates one at a time.
+  _checkReader(gh, ref){
+    let treeP = null;
+    const dates = new Map();
+    return {
+      text: async p => { try { return (await gh.get(p)).text; } catch { return null; } },
+      tree: () => (treeP ||= gh.req(`git/trees/${encodeURIComponent(ref || 'main')}?recursive=1`)
+        .then(t => (t?.tree || []).filter(e => e.type === 'blob').map(e => ({ path: e.path })))
+        .catch(() => null)),
+      lastCommitDate: p => {
+        if (!dates.has(p)) dates.set(p, gh
+          .req(`commits?sha=${encodeURIComponent(ref || 'main')}&path=${encodeURIComponent(p)}&per_page=1`)
+          .then(cs => cs?.[0]?.commit?.author?.date || null).catch(() => null));
+        return dates.get(p);
+      },
+    };
+  },
+  // A check that could not run is its own finding (a rename usually), so it is
+  // shown, distinctly from a plain failure rather than folded in with it.
+  checkTone(r){ return r.ok === false ? 'text-warning' : 'text-base-content/40'; },
+  checkIcon(r){ return r.ok === false ? 'ph-warning-circle' : 'ph-question'; },
 
   hasToken(){ return !!window.TOKEN && window.TOKEN !== '🎟️GitHubToken'; },
   // A pin row carries its own icon. Config editing lives in the sidebar shield
