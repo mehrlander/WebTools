@@ -46,16 +46,65 @@ start): add the `extraKnownMarketplaces` and `enabledPlugins` block to
 | `/portable:markers` | what is frozen, stale, or wrong: mark a claim, declare a path in `.paths.json`, inventory both, check that they agree |
 | `/portable:sandbox-traps` | the web sandbox's enumerable failures, each of which impersonates a worse one: the test that tells them apart, and the rule. Triggers on the symptom rather than waiting to be asked, since a session hits these while concluding, not while stuck |
 | the session recorder | a `Stop` hook that records the session where a checkout declares a `"sessions"` store, and does nothing at all where none does |
+| the session dispatcher | a `SessionStart` hook that runs every checkout's own `.claude/hooks/session-*.sh`, in every session, whatever the project root is |
 
-That is the whole day-to-day set. Everything above the last row is invoked; the
-last row is not. **The recorder is the one piece that runs on its own**, on every
-turn of every session that installs the plugin, which is why it is here rather
-than installed per repo: the per-container settings file it would otherwise live
-in is provisioned fresh each session, so a hand-installed copy records exactly
-one session and then vanishes. It is inert without a store, costing one `grep`
-before it exits, and it holds no knowledge of the record format. Mechanism,
-measurements, and the declaration it looks for:
+That is the whole day-to-day set. Everything above the last two rows is invoked;
+those two are not. **They are the pieces that run on their own**, which is why
+they ship in the plugin rather than being installed per repo: the per-container
+settings file they would otherwise live in is provisioned fresh each session, so
+a hand-installed copy works for exactly one session and then vanishes.
+
+The recorder is inert without a store, costing one `grep` before it exits, and
+it holds no knowledge of the record format. Mechanism, measurements, and the
+declaration it looks for:
 [environment/extending.md](environment/extending.md#stop-the-session-recorder).
+
+### The session dispatcher
+
+The harness has no glob for session-start scripts. `npm test` finds its whole
+suite from `tools/test/**/*.test.mjs`, and git finds its hooks from a folder
+once `core.hooksPath` is set, but a Claude Code hook has to be named
+individually in `.claude/settings.json`, and that file is read **only when the
+session's project root is that repo**. A session spanning several checkouts has
+its root above all of them, so none of their session hooks fire, and nothing
+reports it. Measured 2026-07-31: a session rooted at `/home/user` ran none of
+the four `SessionStart` hooks a checkout below it had registered.
+
+The dispatcher supplies the missing glob at the one layer that can. The plugin
+registers it once, at user scope, for every session; discovery is then by
+filename, the same contract the test suite already uses:
+
+```
+.claude/hooks/session-*.sh   ->  runs at session start
+anything else in that folder ->  ignored
+```
+
+So a repo adopts it by **naming a file**, with nothing declared anywhere, and
+opts a script out the same way, by calling it something else. web-tools' own
+`session-start.sh` is picked up and its `build-on-commit.sh` is not, exactly as
+`tools/test/bootstrap.mjs` stays out of `node --test`. The name is the whole
+declaration, which is why the executable bit is not also required: a lost mode
+bit should not quietly turn a script off.
+
+Each script runs with its own checkout as both cwd and `CLAUDE_PROJECT_DIR`, so
+a script already written for `.claude/settings.json` moves under the dispatcher
+unchanged. Scripts run in parallel under a per-script timeout, so the wall clock
+is the slowest one rather than the sum, and a script that hangs is stopped and
+named instead of holding the session open. The budget defaults to 120s
+(`WEB_TOOLS_SESSION_BUDGET` overrides it), matching the longest internal timeout
+the existing scripts already set for themselves, so adopting the dispatcher does
+not change what any repo was already willing to wait for.
+
+The dispatcher bounds what a script costs; it does not police it, any more than
+`node --test` polices a slow test. **Keeping session start cheap is the script's
+job**, and the convention is: gate on file reads, and do expensive work only
+when the gate says it is due. A repo whose script genuinely needs minutes should
+background it rather than hold the session open.
+
+One caveat while adopting: a repo that also registers the same script in its own
+`.claude/settings.json` will run it twice in a session rooted at that repo.
+Delete the `settings.json` entry once the dispatcher covers it, keeping one only
+where a repo disables the plugin and so has no dispatcher at all.
 
 One script rides inside the plugin: the board
 generator (`build-board.py`) is bundled with the `tasks` skill, so `/tasks`
