@@ -252,19 +252,35 @@ test('the repo sidebar carries the same list, and the pane binds the open one', 
   assert.match(page, /x-html="projectHtml"/, 'the project pane no longer renders its README');
 });
 
-test('all three project lists hang off the same rule', () => {
-  // The estate sidebar's nested rows, the repo sidebar's Projects section, and
-  // the estate card. One treatment; a change to one that skips the others is
-  // exactly the drift this catches.
-  const estate = readFileSync(path.join(repoRoot, 'lib/alpineComponents/estate.js'), 'utf8');
+test('both project lists hang off the same rule, and the card carries neither list', () => {
+  // Two lists now, not three: the estate sidebar's nested rows and the repo
+  // sidebar's Projects section. One treatment; a change to one that skips the
+  // other is the drift this catches.
   assert.match(page, /class="flex flex-col gap-0\.5 ml-4 pl-2 border-l border-base-300"/,
     'the repo sidebar\'s Projects section no longer hangs off the rule');
-  assert.match(estate, /border-l border-base-300"[\s\S]{0,200}face\(e\)\.projects/,
-    'the estate card no longer hangs its projects off the rule');
-  assert.match(estate, /projects: window\.__shell\?\.repoProjects\?\.\(name, cfg\)/,
-    'the card entries no longer normalize through the shell, so the three lists can disagree');
-  assert.match(estate, /openProjectFrom\(face\(e\), p\)/,
-    'a card project row no longer opens the project view');
+
+  // The estate card dropped its pins and projects bands on 2026-07-31: two
+  // bands of static navigation sat above the only row reporting live state
+  // (branches, stranded, open PRs), and a card answers "does this repo need
+  // me?", which a list that reads the same every day cannot help answer. Both
+  // are one sidebar tap away. Asserted as an absence so a later change has to
+  // be deliberate about putting them back.
+  const estate = readFileSync(path.join(repoRoot, 'lib/alpineComponents/estate.js'), 'utf8');
+  assert.doesNotMatch(estate, /face\(e\)\.projects/,
+    'the estate card renders projects again');
+  assert.doesNotMatch(estate, /face\(e\)\.pins/,
+    'the estate card renders pins again');
+  // And the entry stops carrying what nothing reads, so the dead fields cannot
+  // quietly come back ahead of the markup.
+  assert.doesNotMatch(estate, /^\s*projects: window\.__shell/m,
+    'the card entry carries a projects field again with no consumer');
+  assert.doesNotMatch(estate, /^\s*pins: Array\.isArray\(cfg\.pins\)/m,
+    'the card entry carries a pins field again with no consumer');
+
+  // The live row is what the space was cleared for; losing it silently would
+  // make the removal a net loss.
+  assert.match(estate, /cardActivity\(face\(e\)\.repo\)/,
+    'the card no longer reports branch activity');
 });
 
 test('the two sidebar project lists are sized the same', () => {
