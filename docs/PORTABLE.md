@@ -95,6 +95,30 @@ named instead of holding the session open. The budget defaults to 120s
 the existing scripts already set for themselves, so adopting the dispatcher does
 not change what any repo was already willing to wait for.
 
+**Adopting it is a migration, not an addition.** The dispatcher replaces the
+declaration mechanism rather than sitting beside it, so a repo renames its
+scripts to `session-*.sh` **and drops the `SessionStart` block from its own
+`.claude/settings.json`**. Keeping both means each script runs twice whenever
+that repo is the project root. Parallel execution is the other thing a migration
+has to look at: entries that were an ordered list in `settings.json` no longer
+have an order, so a script depending on an earlier one has to do that work
+itself. home's `session-news-fetch.sh` sets `core.hooksPath` rather than
+assuming `session-git-config.sh` won the race.
+
+An inline command has no filename, so it cannot be discovered and needs a file
+of its own. That is not a technicality: home's `SessionStart` carried a bare
+`git config core.hooksPath .githooks`, and it was the entry whose silent absence
+actually cost something, leaving the repo's pre-commit lint and size guard off
+for any session rooted above it.
+
+Both mistakes are reported rather than left silent. When a checkout's
+`.claude/settings.json` still declares `SessionStart`, the dispatcher says so at
+session start, naming which case it is: no `session-*.sh` to discover (so
+nothing of that repo's ran) or scripts present alongside the declaration (so they
+double-run at that root). The check keys on the repo's own `SessionStart`
+declaration, not on an empty hooks folder, because a repo whose only hook is
+`PreToolUse` is correct rather than misconfigured.
+
 The dispatcher bounds what a script costs; it does not police it, any more than
 `node --test` polices a slow test. **Keeping session start cheap is the script's
 job**, and the convention is: gate on file reads, and do expensive work only

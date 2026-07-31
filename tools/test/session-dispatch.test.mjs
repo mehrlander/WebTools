@@ -150,3 +150,53 @@ test('a script reachable twice by the overlapping searches runs once', () => {
     assert.equal(hits.length, 1);
   } finally { rmSync(box, { recursive: true, force: true }); }
 });
+
+// The audit: a repo that still declares SessionStart in its own settings.json.
+// Both shapes below look exactly like a healthy session from the outside, which
+// is the only reason the dispatcher says anything at all. home sat in the first
+// one on 2026-07-31 with four scripts and a core.hooksPath line, and the visible
+// symptom was a pre-commit lint that quietly did not run.
+
+test('a repo declaring SessionStart with no session-*.sh is reported, not left silent', () => {
+  const { box, ws } = workspace({
+    'repoA/.claude/settings.json':
+      '{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"x"}]}]}}',
+    'repoA/.claude/hooks/load-conventions.sh': '#!/bin/bash\necho "NEVER RUNS"\n'
+  });
+  try {
+    const out = dispatch(ws);
+    // The script is correctly not run: it does not match the glob.
+    assert.doesNotMatch(out, /NEVER RUNS/);
+    // But its absence is now stated rather than inferred.
+    assert.match(out, /\[repoA\] .*declares SessionStart, but no .*session-\*\.sh/);
+  } finally { rmSync(box, { recursive: true, force: true }); }
+});
+
+test('a repo declaring SessionStart alongside session-*.sh is warned about double-running', () => {
+  const { box, ws } = workspace({
+    'repoA/.claude/settings.json':
+      '{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"x"}]}]}}',
+    'repoA/.claude/hooks/session-thing.sh': '#!/bin/bash\necho "thing spoke"\n'
+  });
+  try {
+    const out = dispatch(ws);
+    assert.match(out, /thing spoke/);
+    assert.match(out, /\[repoA\] .*still declares SessionStart.*run twice/s);
+    // The note is a footnote: it must not displace the session's actual notes.
+    assert.ok(out.indexOf('thing spoke') < out.indexOf('still declares SessionStart'));
+  } finally { rmSync(box, { recursive: true, force: true }); }
+});
+
+test('a repo whose only hook is PreToolUse is correct, and draws no complaint', () => {
+  const { box, ws } = workspace({
+    'repoA/.claude/settings.json':
+      '{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"x"}]}]}}',
+    'repoA/.claude/hooks/build-on-commit.sh': '#!/bin/bash\necho "COMMIT HOOK RAN"\n'
+  });
+  try {
+    // Keying the audit on an empty hooks folder instead of on the SessionStart
+    // declaration would fire here, and a check that nags a correct repo is a
+    // check that gets muted.
+    assert.equal(dispatch(ws), '');
+  } finally { rmSync(box, { recursive: true, force: true }); }
+});

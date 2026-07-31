@@ -22,6 +22,11 @@
 # which is why this does not also require the executable bit: a lost mode bit
 # should not turn into a script that silently stops running.
 #
+# Adopting this REPLACES a repo's own SessionStart block rather than joining it:
+# keeping both runs every script twice at that repo's root. The audit below says
+# so out loud, because neither that nor the reverse (a declaration with no
+# matching filenames) is visible in the output otherwise.
+#
 # Scripts run in PARALLEL under a per-script timeout, so total wall clock is
 # the slowest script rather than the sum. The dispatcher does not police what a
 # script costs, any more than `node --test` polices a slow test; it bounds it.
@@ -69,20 +74,60 @@ case "$PARENT" in
 esac
 
 # Collect, deduped by resolved path: the searches above overlap by design, and
-# a script run twice would double a note into the session's context.
+# a script run twice would double a note into the session's context. Repos are
+# deduped alongside, so the audit below counts each checkout once.
 scripts=(); owners=(); seen="|"
+repolist=(); repohas=(); seenrepo="|"
 for repo in "${cands[@]}"; do
-  for s in "$repo"/.claude/hooks/session-*.sh; do
+  rp=$(cd "$repo" 2>/dev/null && pwd) || continue
+  case "$seenrepo" in *"|$rp|"*) continue ;; esac
+  seenrepo="$seenrepo$rp|"
+  had=0
+  for s in "$rp"/.claude/hooks/session-*.sh; do
     [ -f "$s" ] || continue
     dir=$(cd "$(dirname "$s")" 2>/dev/null && pwd) || continue
     real="$dir/$(basename "$s")"
+    had=1
     case "$seen" in *"|$real|"*) continue ;; esac
     seen="$seen$real|"
     scripts+=("$real")
-    owners+=("$(cd "$repo" 2>/dev/null && pwd || echo "$repo")")
+    owners+=("$rp")
   done
+  repolist+=("$rp")
+  repohas+=("$had")
 done
-[ "${#scripts[@]}" -gt 0 ] || exit 0
+
+# The audit, and the reason it exists: both states below look exactly like
+# success from the outside. A repo still declaring SessionStart in its own
+# .claude/settings.json is either invisible here (no session-*.sh to discover,
+# so this runs nothing for it) or running its scripts twice (settings.json
+# fires them when that repo is the root, and so does this). Measured
+# 2026-07-31: home sat in the first state with four scripts and a
+# core.hooksPath line, so a session rooted at /home/user left its pre-commit
+# lint switched off and nothing said so.
+#
+# Keyed on the repo's own SessionStart declaration, not on an empty hooks
+# folder. A repo whose only hook is PreToolUse (web-tools' build-on-commit.sh)
+# is correct rather than misconfigured, and a check that nags it would be
+# muted within a week.
+notes=()
+n=${#repolist[@]}
+for ((r = 0; r < n; r++)); do
+  cfg="${repolist[$r]}/.claude/settings.json"
+  [ -f "$cfg" ] || continue
+  grep -q '"SessionStart"' "$cfg" 2>/dev/null || continue
+  name=$(basename "${repolist[$r]}")
+  if [ "${repohas[$r]}" = "1" ]; then
+    notes+=("[$name] .claude/settings.json still declares SessionStart, and session-*.sh files exist. Those run twice when $name is the project root. Drop the SessionStart block; this dispatcher owns them now.")
+  else
+    notes+=("[$name] .claude/settings.json declares SessionStart, but no .claude/hooks/session-*.sh exists, so none of $name's session work ran here. Give each entry its own session-*.sh file to make it discoverable from any project root.")
+  fi
+done
+
+if [ "${#scripts[@]}" -eq 0 ]; then
+  for note in "${notes[@]}"; do echo "$note"; done
+  exit 0
+fi
 
 TMP=$(mktemp -d 2>/dev/null) || exit 0
 trap 'rm -rf "$TMP"' EXIT
@@ -122,4 +167,8 @@ for s in "${scripts[@]}"; do
   fi
   i=$((i+1))
 done
+
+# Last, so a misconfiguration reads as a footnote to the session's notes
+# rather than burying them.
+for note in "${notes[@]}"; do echo "$note"; done
 exit 0
