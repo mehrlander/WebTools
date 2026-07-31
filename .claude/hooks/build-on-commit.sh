@@ -47,6 +47,19 @@ if git status --porcelain -- console/base.js console/mods/ | grep -q .; then
   fi
 fi
 
+# --- leg 1c: docs/ -> the plugin's vendored conventions -----------------------
+# The plugin ships its own copies of the two conventions docs so injection is a
+# file read rather than a fetch (see .claude/skills/hooks/inject-conventions.sh).
+# A copy is a derived artifact like any other, so it rides the same commit as
+# its source rather than drifting until someone notices.
+if git status --porcelain -- docs/CONVENTIONS.md docs/SURFACING.md | grep -q .; then
+  if cp docs/CONVENTIONS.md docs/SURFACING.md .claude/skills/web-tools/ 2>/dev/null; then
+    git add .claude/skills/web-tools/CONVENTIONS.md .claude/skills/web-tools/SURFACING.md 2>/dev/null || true
+  else
+    echo "build hook: could not refresh the plugin's vendored conventions — committing without them" >&2
+  fi
+fi
+
 # --- leg 2: pages/**/*.html -> the two catalogs -------------------------------
 # Any pending .html change under pages/ (add/edit/delete/retitle) regenerates
 # pages/README.md + pages/index.html so the catalogs ride in the same commit.

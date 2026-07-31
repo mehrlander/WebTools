@@ -45,6 +45,14 @@ cat >/dev/null 2>&1
 
 BUDGET="${WEB_TOOLS_SESSION_BUDGET:-120}"
 
+# Handed to every dispatched script so a repo can call something the plugin
+# ships (inject-conventions.sh) without knowing where the cache put it, or
+# which commit it is pinned at. Resolved from this file rather than from
+# CLAUDE_PLUGIN_ROOT, which is substituted into hook commands but does not
+# resolve in a plain shell.
+WEB_TOOLS_HOOKS=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd) || WEB_TOOLS_HOOKS=""
+export WEB_TOOLS_HOOKS
+
 ROOT=${CLAUDE_PROJECT_DIR:-$PWD}
 [ -d "$ROOT" ] || exit 0
 

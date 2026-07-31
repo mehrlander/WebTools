@@ -106,6 +106,43 @@ One caveat while adopting: a repo that also registers the same script in its own
 Delete the `settings.json` entry once the dispatcher covers it, keeping one only
 where a repo disables the plugin and so has no dispatcher at all.
 
+Every dispatched script gets **`$WEB_TOOLS_HOOKS`**, the directory the plugin's
+own hooks live in, so a repo can call something the plugin ships without knowing
+where the cache put it or which commit it is pinned at. There is one such script
+today, and it is the reason the variable exists.
+
+### Injecting the conventions, with no fetch
+
+The plugin carries the hub's own `CONVENTIONS.md` and `SURFACING.md`, beside the
+loader skill that names them, and ships
+[`inject-conventions.sh`](../.claude/skills/hooks/inject-conventions.sh) to emit
+them into session context. A repo opts in with one line:
+
+```bash
+# .claude/hooks/session-conventions.sh
+exec bash "$WEB_TOOLS_HOOKS/inject-conventions.sh"
+```
+
+That is the whole adoption. Two file reads, no network, no `curl`, no `jq`, and
+no interpreter that can be missing, which retires the sharp edge the fetch-based
+variant below has to warn about. Freshness rides `claude plugin update`, the
+mechanism that already repeats every container; a fetch per session bought
+nothing an update does not, at the cost of a round trip at every start.
+
+It is **not** registered as a hook in its own right, and that is the point of
+routing it through the dispatcher. Injection puts the full conventions into
+every session unconditionally, which is right for a repo whose `CLAUDE.md`
+deliberately does not restate them and wrong for a repo that just wants the
+skills. Naming a file is the opt-in; deleting it is the opt-out.
+
+The vendored copies are a derived artifact, so they have the two owners this
+repo gives every derived artifact: `.claude/hooks/build-on-commit.sh` refreshes
+and stages them in the same commit that touches `docs/`, and
+[`tools/test/artifacts-lockstep.test.mjs`](../tools/test/artifacts-lockstep.test.mjs)
+fails if they fall behind, for the sessions where the hook never fires. A stale
+copy is the failure worth guarding: it injects confidently and governs the
+session with last month's rules.
+
 One script rides inside the plugin: the board
 generator (`build-board.py`) is bundled with the `tasks` skill, so `/tasks`
 regenerates a board with nothing to fetch. The reference docs and the other
@@ -248,6 +285,15 @@ This is a recipe for *consuming* repos; web-tools is the source and doesn't run
 it on itself.
 
 ### Stronger variant: inject the conventions, don't just fetch them
+
+> [!NOTE]
+> **With the plugin, this is one line and no network.** The plugin vendors both
+> docs and ships the injector; a repo opts in by dropping
+> `exec bash "$WEB_TOOLS_HOOKS/inject-conventions.sh"` into
+> `.claude/hooks/session-conventions.sh`. See
+> [the session dispatcher](#injecting-the-conventions-with-no-fetch) above. What
+> follows is the **no-plugin fallback**, for a host where the marketplace is not
+> available.
 
 The hook above still leans on the always-on CLAUDE.md line to close the
 fetch→invoke gap. A `SessionStart` hook can instead **emit the conventions
