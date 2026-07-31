@@ -46,16 +46,102 @@ start): add the `extraKnownMarketplaces` and `enabledPlugins` block to
 | `/portable:markers` | what is frozen, stale, or wrong: mark a claim, declare a path in `.paths.json`, inventory both, check that they agree |
 | `/portable:sandbox-traps` | the web sandbox's enumerable failures, each of which impersonates a worse one: the test that tells them apart, and the rule. Triggers on the symptom rather than waiting to be asked, since a session hits these while concluding, not while stuck |
 | the session recorder | a `Stop` hook that records the session where a checkout declares a `"sessions"` store, and does nothing at all where none does |
+| the session dispatcher | a `SessionStart` hook that runs every checkout's own `.claude/hooks/session-*.sh`, in every session, whatever the project root is |
 
-That is the whole day-to-day set. Everything above the last row is invoked; the
-last row is not. **The recorder is the one piece that runs on its own**, on every
-turn of every session that installs the plugin, which is why it is here rather
-than installed per repo: the per-container settings file it would otherwise live
-in is provisioned fresh each session, so a hand-installed copy records exactly
-one session and then vanishes. It is inert without a store, costing one `grep`
-before it exits, and it holds no knowledge of the record format. Mechanism,
-measurements, and the declaration it looks for:
+That is the whole day-to-day set. Everything above the last two rows is invoked;
+those two are not. **They are the pieces that run on their own**, which is why
+they ship in the plugin rather than being installed per repo: the per-container
+settings file they would otherwise live in is provisioned fresh each session, so
+a hand-installed copy works for exactly one session and then vanishes.
+
+The recorder is inert without a store, costing one `grep` before it exits, and
+it holds no knowledge of the record format. Mechanism, measurements, and the
+declaration it looks for:
 [environment/extending.md](environment/extending.md#stop-the-session-recorder).
+
+### The session dispatcher
+
+The harness has no glob for session-start scripts. `npm test` finds its whole
+suite from `tools/test/**/*.test.mjs`, and git finds its hooks from a folder
+once `core.hooksPath` is set, but a Claude Code hook has to be named
+individually in `.claude/settings.json`, and that file is read **only when the
+session's project root is that repo**. A session spanning several checkouts has
+its root above all of them, so none of their session hooks fire, and nothing
+reports it. Measured 2026-07-31: a session rooted at `/home/user` ran none of
+the four `SessionStart` hooks a checkout below it had registered.
+
+The dispatcher supplies the missing glob at the one layer that can. The plugin
+registers it once, at user scope, for every session; discovery is then by
+filename, the same contract the test suite already uses:
+
+```
+.claude/hooks/session-*.sh   ->  runs at session start
+anything else in that folder ->  ignored
+```
+
+So a repo adopts it by **naming a file**, with nothing declared anywhere, and
+opts a script out the same way, by calling it something else. web-tools' own
+`session-start.sh` is picked up and its `build-on-commit.sh` is not, exactly as
+`tools/test/bootstrap.mjs` stays out of `node --test`. The name is the whole
+declaration, which is why the executable bit is not also required: a lost mode
+bit should not quietly turn a script off.
+
+Each script runs with its own checkout as both cwd and `CLAUDE_PROJECT_DIR`, so
+a script already written for `.claude/settings.json` moves under the dispatcher
+unchanged. Scripts run in parallel under a per-script timeout, so the wall clock
+is the slowest one rather than the sum, and a script that hangs is stopped and
+named instead of holding the session open. The budget defaults to 120s
+(`WEB_TOOLS_SESSION_BUDGET` overrides it), matching the longest internal timeout
+the existing scripts already set for themselves, so adopting the dispatcher does
+not change what any repo was already willing to wait for.
+
+The dispatcher bounds what a script costs; it does not police it, any more than
+`node --test` polices a slow test. **Keeping session start cheap is the script's
+job**, and the convention is: gate on file reads, and do expensive work only
+when the gate says it is due. A repo whose script genuinely needs minutes should
+background it rather than hold the session open.
+
+One caveat while adopting: a repo that also registers the same script in its own
+`.claude/settings.json` will run it twice in a session rooted at that repo.
+Delete the `settings.json` entry once the dispatcher covers it, keeping one only
+where a repo disables the plugin and so has no dispatcher at all.
+
+Every dispatched script gets **`$WEB_TOOLS_HOOKS`**, the directory the plugin's
+own hooks live in, so a repo can call something the plugin ships without knowing
+where the cache put it or which commit it is pinned at. There is one such script
+today, and it is the reason the variable exists.
+
+### Injecting the conventions, with no fetch
+
+The plugin carries the hub's own `CONVENTIONS.md` and `SURFACING.md`, beside the
+loader skill that names them, and ships
+[`inject-conventions.sh`](../.claude/skills/hooks/inject-conventions.sh) to emit
+them into session context. A repo opts in with one line:
+
+```bash
+# .claude/hooks/session-conventions.sh
+exec bash "$WEB_TOOLS_HOOKS/inject-conventions.sh"
+```
+
+That is the whole adoption. Two file reads, no network, no `curl`, no `jq`, and
+no interpreter that can be missing, which retires the sharp edge the fetch-based
+variant below has to warn about. Freshness rides `claude plugin update`, the
+mechanism that already repeats every container; a fetch per session bought
+nothing an update does not, at the cost of a round trip at every start.
+
+It is **not** registered as a hook in its own right, and that is the point of
+routing it through the dispatcher. Injection puts the full conventions into
+every session unconditionally, which is right for a repo whose `CLAUDE.md`
+deliberately does not restate them and wrong for a repo that just wants the
+skills. Naming a file is the opt-in; deleting it is the opt-out.
+
+The vendored copies are a derived artifact, so they have the two owners this
+repo gives every derived artifact: `.claude/hooks/build-on-commit.sh` refreshes
+and stages them in the same commit that touches `docs/`, and
+[`tools/test/artifacts-lockstep.test.mjs`](../tools/test/artifacts-lockstep.test.mjs)
+fails if they fall behind, for the sessions where the hook never fires. A stale
+copy is the failure worth guarding: it injects confidently and governs the
+session with last month's rules.
 
 One script rides inside the plugin: the board
 generator (`build-board.py`) is bundled with the `tasks` skill, so `/tasks`
@@ -199,6 +285,15 @@ This is a recipe for *consuming* repos; web-tools is the source and doesn't run
 it on itself.
 
 ### Stronger variant: inject the conventions, don't just fetch them
+
+> [!NOTE]
+> **With the plugin, this is one line and no network.** The plugin vendors both
+> docs and ships the injector; a repo opts in by dropping
+> `exec bash "$WEB_TOOLS_HOOKS/inject-conventions.sh"` into
+> `.claude/hooks/session-conventions.sh`. See
+> [the session dispatcher](#injecting-the-conventions-with-no-fetch) above. What
+> follows is the **no-plugin fallback**, for a host where the marketplace is not
+> available.
 
 The hook above still leans on the always-on CLAUDE.md line to close the
 fetch→invoke gap. A `SessionStart` hook can instead **emit the conventions
