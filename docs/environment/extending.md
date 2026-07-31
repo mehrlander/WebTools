@@ -42,7 +42,7 @@ MCP tool definitions consume context. Claude Code can defer loading them through
 
 #### SessionStart dependency install
 
-`.claude/settings.json` registers `.claude/hooks/session-start.sh` as a `SessionStart` hook.
+`.claude/hooks/session-start.sh` runs at session start. Nothing registers it: the `portable` plugin's dispatcher discovers it by its `session-*.sh` filename, from whatever project root the session has. This repo's `.claude/settings.json` declared it as a `SessionStart` hook until 2026-07-31 and no longer does, because the two together ran it twice whenever web-tools was the root. `build-on-commit.sh` stays in `settings.json`, correctly: it is a `PreToolUse` hook, and the dispatcher's glob ignores it.
 
 The script:
 
