@@ -888,8 +888,10 @@
          repo. The header's three buttons are the routes out: the workspace as
          files, its board, its folder on GitHub. Below them a segmented pill
          (the shared internal-tab style) switches the body among Overview,
-         Pages, and Docs; the header and pills stay put while the body changes,
-         so the reader never loses which workspace they are standing in.
+         Board, Pages, and Docs; the header and pills stay put while the body
+         changes, so the reader never loses which workspace they are standing
+         in. A FILE board renders as the Board pill (navigable, links resolved
+         in-app) and drops the header button; a folder board keeps the button.
 
          Overview is the repo's landing decision one level down: an entry
          declaring a `landing` gets that page rendered live (toss-render #gh=,
@@ -910,7 +912,10 @@
                 <button @click="openProjectFiles()" class="btn btn-outline gap-1.5">
                   <i class="ph ph-folders"></i> Files
                 </button>
-                <button x-show="project.board"
+                <!-- A file board lives in the pill row below, so the header
+                     button remains only for a folder board, which has no one
+                     file to render in-pane. -->
+                <button x-show="project.board && !projectBoardFile"
                         @click="openProjectBoard($store.browser.repo, project)"
                         class="btn btn-outline gap-1.5">
                   <i class="ph ph-list-checks"></i> Board
@@ -932,6 +937,10 @@
                       class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-base font-medium transition-colors"
                       :class="projectTab==='overview' ? 'bg-base-100 text-primary shadow-sm' : 'text-base-content/60 hover:text-base-content'">
                 <i class="ph text-lg" :class="project.landing ? 'ph-planet' : 'ph-house'"></i>Overview</button>
+              <button role="tab" x-show="projectBoardFile" @click="goProjectTab('board')"
+                      class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-base font-medium transition-colors"
+                      :class="projectTab==='board' ? 'bg-base-100 text-primary shadow-sm' : 'text-base-content/60 hover:text-base-content'">
+                <i class="ph ph-list-checks text-lg"></i>Board</button>
               <button role="tab" x-show="projectPages.length" @click="goProjectTab('pages')"
                       class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-base font-medium transition-colors"
                       :class="projectTab==='pages' ? 'bg-base-100 text-primary shadow-sm' : 'text-base-content/60 hover:text-base-content'">
@@ -967,6 +976,21 @@
                          x-html="projectHtml"></article>
                 <p x-show="!projectLoading && !projectHtml" class="text-base-content/40 italic text-base py-8">
                   No README in this workspace on this ref. Open its files, or its board.
+                </p>
+              </div>
+
+              <!-- Board: the tracker board rendered in-pane, its relative
+                   links resolved into the shell's viewer (onBoardClick), so a
+                   row's task file is one tap without leaving the workspace. -->
+              <div x-show="projectTab==='board'">
+                <div x-show="projectBoardLoading" class="flex justify-center py-16">
+                  <span class="loading loading-dots loading-md opacity-30"></span>
+                </div>
+                <article x-show="!projectBoardLoading && projectBoardHtml" @click="onBoardClick($event)"
+                         class="prose prose-sm !max-w-none prose-pre:bg-base-200 prose-pre:text-base-content"
+                         x-html="projectBoardHtml"></article>
+                <p x-show="!projectBoardLoading && !projectBoardHtml" class="text-base-content/40 italic text-base py-8">
+                  No board file on this ref. Open the workspace's files instead.
                 </p>
               </div>
 
@@ -2260,10 +2284,13 @@ function app(){ return {
   // these properties directly instead, which is what makes picking a row in the
   // sidebar repaint the pane.
   projectPath: '',
-  projectTab: 'overview',   // 'overview' | 'pages' | 'docs' — the pill row
+  projectTab: 'overview',   // 'overview' | 'board' | 'pages' | 'docs' — the pill row
   projectHtml: '',
   projectLoading: false,
   _projectKey: '',
+  projectBoardHtml: '',
+  projectBoardLoading: false,
+  _projectBoardKey: '',
   projectDocs: null,        // grouped listing; null = not loaded (or the tree read failed)
   projectDocsLoading: false,
   projectDocsQ: '',
@@ -2284,7 +2311,7 @@ function app(){ return {
     if (!p) return;
     if (p !== this.projectPath) this.projectDocsQ = '';
     this.projectPath = p;
-    this.projectTab = (tab === 'pages' || tab === 'docs') ? tab : 'overview';
+    this.projectTab = (tab === 'board' || tab === 'pages' || tab === 'docs') ? tab : 'overview';
     this.view = 'project';
     this.syncUrl();
     this.refreshProjectPane();
@@ -2295,11 +2322,13 @@ function app(){ return {
     this.refreshProjectPane();
   },
   // Load what the open tab actually renders, and nothing else: the README only
-  // feeds an Overview without a landing, and the docs listing only feeds Docs
-  // (its tree read is the one project fetch worth deferring). Pages is a pure
-  // derivation off the manifest already in hand, so it loads nothing.
+  // feeds an Overview without a landing, the board only feeds Board, and the
+  // docs listing only feeds Docs (its tree read is the one project fetch worth
+  // deferring). Pages is a pure derivation off the manifest already in hand,
+  // so it loads nothing.
   refreshProjectPane(){
     if (this.projectTab === 'docs') this.loadProjectDocs();
+    else if (this.projectTab === 'board') this.loadProjectBoard();
     else if (this.projectTab === 'overview' && !this.project?.landing) this.loadProjectReadme();
   },
   // The landing rendered live through toss-render #gh=, the same private-safe
@@ -2343,6 +2372,63 @@ function app(){ return {
     }
     return out;
   },
+  // ── Board: the tracker board as a navigable surface ───────────────────────
+  // The generated board.md rendered in-pane rather than as a jump out of the
+  // project view, which is the "first-class trackers" half of the project
+  // layer: the board is where a workspace says what it is doing, so it reads
+  // where the workspace reads. Only a FILE board gets the pill (the convention
+  // fixes one at <workspace>/tracker/board.md); an entry whose `tracker` names
+  // a folder keeps the header button and the old open-the-folder behavior.
+  get projectBoardFile(){
+    const b = this.project?.board;
+    return b && this.pinIsFile(b) ? b : '';
+  },
+  async loadProjectBoard(force){
+    const s = Alpine.store('browser');
+    const file = this.projectBoardFile;
+    if (!file || !s.repo || !s.gh) return;
+    const key = s.repo + '@' + s.ref + ':' + file;
+    if (key === this._projectBoardKey && !force) return;
+    this._projectBoardKey = key;
+    this.projectBoardLoading = true; this.projectBoardHtml = '';
+    let res = null;
+    try { res = await s.gh.get(file); } catch {}
+    if (key !== this._projectBoardKey) return;
+    if (res){
+      try { await loadMarked(); this.projectBoardHtml = window.marked.parse(res.text); }
+      catch { this.projectBoardHtml = '<pre>' + res.text.replace(/</g, '&lt;') + '</pre>'; }
+    }
+    this.projectBoardLoading = false;
+  },
+  // What makes the rendered board NAVIGABLE: its relative links (a row's
+  // `tasks/<id>.md`, the protocol README) resolve against the board file's
+  // folder and open in the shell's viewer instead of dangling off the pane's
+  // own URL. Absolute links (a PR, a compare) keep their default behavior.
+  onBoardClick(e){
+    const a = e.target.closest('a');
+    const href = a?.getAttribute('href');
+    if (!href || /^(https?:|mailto:|#)/.test(href)) return;
+    e.preventDefault();
+    const base = this.projectBoardFile.split('/').slice(0, -1).join('/');
+    const path = this.resolveRepoRelative(base, href);
+    if (!path) return;
+    if (this.pinIsFile(path)) this.openFile(path); else this.openFolder(path);
+  },
+  // Resolve a relative href against a base folder into a repo-root path,
+  // folding ./ and ../ and dropping any query or fragment. Pure, so the
+  // resolution rules are testable. Returns '' for a hop that escapes the root.
+  resolveRepoRelative(base, href){
+    const clean = String(href || '').split(/[?#]/)[0];
+    if (!clean) return '';
+    const out = clean.startsWith('/') ? [] : (base ? base.split('/') : []);
+    for (const seg of clean.replace(/^\//, '').split('/')){
+      if (!seg || seg === '.') continue;
+      if (seg === '..'){ if (!out.length) return ''; out.pop(); }
+      else out.push(seg);
+    }
+    return out.join('/');
+  },
+
   // ── Docs: every markdown file in the workspace, off one recursive tree ────
   // The same primitive the stage's Search and the mention picker use, keyed per
   // repo@ref:project so a repaint costs nothing. Derived entirely: no manifest
@@ -2445,14 +2531,16 @@ function app(){ return {
     const p = this.project;
     if (p) this.openFolder(p.path);
   },
-  // The board, in the app: the same viewer the Files view opens a file in, so
-  // the board reads here rather than sending the tap to GitHub. A `tracker`
-  // naming a folder rather than a file opens the folder, openPin's rule.
+  // The board, in the app: a FILE board routes to the project view's Board
+  // pill, so every board tap (estate row, repo sidebar row, header button)
+  // lands on the same rendered, navigable surface. A `tracker` naming a folder
+  // rather than a file opens the folder, openPin's rule, since a folder has no
+  // one file to render.
   async openProjectBoard(repo, p){
     if (!p.board) return;
     await this.ensureBrowser(repo, this.overlayRefFor(repo) || undefined);
     if (Alpine.store('browser').repo !== repo) return;
-    if (this.pinIsFile(p.board)) await this.openFile(p.board);
+    if (this.pinIsFile(p.board)) this.goProject(p.path, 'board');
     else await this.openFolder(p.board);
   },
   // The project's folder on GitHub (lib/github-links.js does the encoding, so
@@ -3562,11 +3650,13 @@ function overview(){ return {
   unit and the newest: a workspace inside a repo, declared in `projects`, with a
   view that is the landing one level down: a constant header (its name, and the
   routes to its files, its board, and its folder on GitHub) over a pill row of
-  Overview / Pages / Docs. Overview repeats the repo's landing decision at
-  project scale (an entry's `landing` page rendered live, else the README);
-  Pages is the workspace's slice of the repo catalog, derived by path prefix or
-  an entry's `project` claim; Docs is every markdown file in the workspace off
-  one recursive tree, with a curated DOCS.md leading when one exists. It is the
+  Overview / Board / Pages / Docs. Overview repeats the repo's landing decision
+  at project scale (an entry's `landing` page rendered live, else the README);
+  Board renders a file board in-pane with its relative links resolved into the
+  shell's viewer (a folder board keeps the header button instead); Pages is the
+  workspace's slice of the repo catalog, derived by path prefix or an entry's
+  `project` claim; Docs is every markdown file in the workspace off one
+  recursive tree, with a curated DOCS.md leading when one exists. It is the
   same destination from either level, since the estate sidebar's nested rows
   and the repo sidebar's Projects section both open it, and &tab= deep-links a
   specific pill. Config is the open repo's
@@ -3955,7 +4045,8 @@ function overview(){ return {
              section of that repo's own sidebar; the name in either opens the
              repo's PROJECT VIEW (view==='project'), which is the landing one
              level down: a constant header (files / board / GitHub folder)
-             over Overview / Pages / Docs pills (&tab= deep-links one). An
+             over Overview / Board / Pages / Docs pills (&tab= deep-links
+             one; Board renders a file board in-pane, navigable). An
              entry's `landing` (repo-root-relative, like `tracker`) takes the
              Overview slot rendered live, the way a repo landing outranks the
              overview; absent, Overview is the workspace README. Pages and

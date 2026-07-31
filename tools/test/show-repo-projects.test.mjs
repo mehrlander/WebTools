@@ -166,18 +166,20 @@ test('repoProjects prefers the OPEN repo\'s live manifest over the estate cache'
   assert.deepEqual(shell.repoProjects('mehrlander/other').map(p => p.path), ['cached']);
 });
 
-test('openProjectBoard opens the board in the app, file or folder', async () => {
+test('openProjectBoard routes a file board to the Board pill, a folder board to Files', async () => {
   const { shell, browserStore } = makeShell({ browserStore: { repo: '' } });
   const calls = [];
   shell.ensureBrowser = async (repo) => { calls.push(['ensure', repo]); browserStore.repo = repo; };
-  shell.openFile = async (p) => { calls.push(['file', p]); };
   shell.openFolder = async (p) => { calls.push(['folder', p]); };
+  shell.goProject = (path, tab) => { calls.push(['project', path, tab]); };
 
+  // A file board lands on the rendered, navigable pill, so every board tap
+  // (estate row, repo sidebar row, header button) reads the same surface.
   await shell.openProjectBoard('mehrlander/home',
     { path: 'projects/a', board: 'projects/a/tracker/board.md' });
-  assert.deepEqual(calls, [['ensure', 'mehrlander/home'], ['file', 'projects/a/tracker/board.md']]);
+  assert.deepEqual(calls, [['ensure', 'mehrlander/home'], ['project', 'projects/a', 'board']]);
 
-  // A `tracker` naming a folder opens the folder, openPin's rule.
+  // A `tracker` naming a folder has no one file to render: openPin's rule.
   calls.length = 0;
   await shell.openProjectBoard('mehrlander/home', { path: 'projects/b', board: 'projects/b/tracker' });
   assert.deepEqual(calls, [['ensure', 'mehrlander/home'], ['folder', 'projects/b/tracker']]);
@@ -187,6 +189,46 @@ test('openProjectBoard opens the board in the app, file or folder', async () => 
   calls.length = 0;
   await shell.openProjectBoard('mehrlander/home', { path: 'projects/c', board: '' });
   assert.deepEqual(calls, []);
+});
+
+test('the Board pill exists for a file board only, and renders the board keyed per ref', async () => {
+  const gets = [];
+  const { shell, browserStore } = makeShell({ browserStore: {
+    repo: 'mehrlander/home', ref: 'main', defaultRef: 'main',
+    gh: { get: async (p) => { gets.push(p); return { text: '# Board' }; } },
+  }});
+  shell.syncUrl = () => {};
+  browserStore.config = { projects: [
+    { path: 'projects/a' },
+    { path: 'projects/b', tracker: 'projects/b/boards' },
+  ] };
+  shell.goProject('projects/a', 'board');
+  assert.equal(shell.projectBoardFile, 'projects/a/tracker/board.md');
+  await new Promise(r => setTimeout(r));
+  assert.deepEqual(gets, ['projects/a/tracker/board.md']);
+  assert.equal(shell.projectBoardLoading, false);
+  // marked is unloadable under the harness, so the render falls back to the
+  // escaped <pre>; the loader having produced SOMETHING is the contract here.
+  assert.match(shell.projectBoardHtml, /Board/);
+  // A folder board earns no pill; the header button keeps the folder route.
+  shell.projectPath = 'projects/b';
+  assert.equal(shell.projectBoardFile, '');
+});
+
+test('resolveRepoRelative folds board links onto repo-root paths', () => {
+  const { shell } = makeShell();
+  const base = 'projects/a/tracker';
+  assert.equal(shell.resolveRepoRelative(base, 'tasks/foo-x1.md'), 'projects/a/tracker/tasks/foo-x1.md');
+  assert.equal(shell.resolveRepoRelative(base, './README.md'), 'projects/a/tracker/README.md');
+  assert.equal(shell.resolveRepoRelative(base, '../notes/x.md'), 'projects/a/notes/x.md');
+  assert.equal(shell.resolveRepoRelative(base, '../../../tools'), 'tools');
+  assert.equal(shell.resolveRepoRelative(base, 'tasks/foo.md#L10'), 'projects/a/tracker/tasks/foo.md',
+    'a fragment is display baggage, not path');
+  assert.equal(shell.resolveRepoRelative(base, '/docs/TRACKER.md'), 'docs/TRACKER.md',
+    'a root-absolute href resolves from the repo root');
+  assert.equal(shell.resolveRepoRelative(base, '../../../../escape.md'), '',
+    'a hop past the root resolves to nothing rather than guessing');
+  assert.equal(shell.resolveRepoRelative(base, ''), '');
 });
 
 test('projectGithubUrl points at the folder, at the ref a row tap would browse', () => {
@@ -468,6 +510,13 @@ test('a non-default pill rides the deep link as &tab=, and boot routes it back',
 
 test('the pane wires the pills, the landing embed, the pages grid, and the docs rows', () => {
   assert.match(page, /@click="goProjectTab\('overview'\)"/, 'the Overview pill is gone');
+  assert.match(page, /x-show="projectBoardFile"[^>]*@click="goProjectTab\('board'\)"/,
+    'the Board pill must exist for a file board only');
+  assert.match(page, /@click="onBoardClick\(\$event\)"/,
+    'the rendered board no longer resolves its relative links in-app');
+  assert.match(page, /x-html="projectBoardHtml"/, 'the board pane is gone');
+  assert.match(page, /x-show="project\.board && !projectBoardFile"/,
+    'the header Board button must yield to the pill for a file board');
   assert.match(page, /x-show="projectPages\.length"[^>]*@click="goProjectTab\('pages'\)"/,
     'the Pages pill must hide when the workspace claims no pages');
   assert.match(page, /@click="goProjectTab\('docs'\)"/, 'the Docs pill is gone');

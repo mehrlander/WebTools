@@ -103,17 +103,26 @@ The per-repo views in the sidebar:
   the landing view uses when `landingKind()==='gallery'`; a repo without both
   fields set never needs it and the sidebar omits it.
 - **project**: one workspace's front page, `?repo=…&view=project&project=<path>`
-  (`&tab=pages|docs` deep-links a pill). What the landing is to a repo, this is
-  to a project: a constant header (its name and path, and the three routes out:
-  its files, its board, its folder on GitHub) over a segmented pill row of
-  **Overview / Pages / Docs**, so the body changes while the reader never loses
-  which workspace they are standing in.
+  (`&tab=board|pages|docs` deep-links a pill). What the landing is to a repo,
+  this is to a project: a constant header (its name and path, and the routes
+  out: its files, its board, its folder on GitHub) over a segmented pill row of
+  **Overview / Board / Pages / Docs**, so the body changes while the reader
+  never loses which workspace they are standing in.
 
   - **Overview** repeats the repo's landing decision one level down: an entry
     declaring a `landing` gets that page rendered live under the header
     (toss-render `#gh=` at the browsed ref; the FAB carries the full-page
     bust-out, as for a repo's custom landing), every other project gets the
     README at `<path>/README.md`.
+  - **Board** renders a **file** board in-pane (a folder `tracker` keeps the
+    header Board button and its open-the-folder behavior instead, having no one
+    file to render). What makes it a surface rather than a blob: the rendered
+    board's relative links (a row's task file, the protocol README) resolve
+    against the board's folder and open in the shell's viewer, so a task is one
+    tap without leaving the workspace; absolute links behave normally. Every
+    board tap (estate row, repo sidebar row) routes here, so the board reads
+    the same from every level. This is the "first-class trackers" half of the
+    project layer.
   - **Pages** is the workspace's slice of the repo's `pages` catalog,
     **derived rather than declared**: entries whose path sits under the
     workspace folder, plus entries claiming it with a `project` key. One
@@ -785,10 +794,11 @@ This settles the host question in the branch-page-as-navigation task: the
 sequence lives in the shell, which already holds the list, and the standalone
 `branch.html` survives as both the shareable single-branch form and the
 renderer the takeover embeds, so there is exactly one branch-detail
-implementation. Once this deploys, the in-app route replaces the exit to
-GitHub as the Open row's primary read, and the 🌿 surfacing entry can point
-at `?view=activity` plus a tap rather than a tossed page (that doc update
-rides the task at merge).
+implementation. Deployed, the in-app route replaced the exit to GitHub as the
+Open row's primary read, and the 🌿 entry in
+[SURFACING.md](SURFACING.md) now names `branch.html` as the canonical
+shareable address with `?view=activity` as the browsing route, its tossed
+fallback retired.
 
 ### Drop a file on a branch
 
