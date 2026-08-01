@@ -101,9 +101,17 @@ you were already looking at rather than at the front door.
 The branch list is the same survey the fab's Render tab runs
 (`branchesForPath`, degrading to an undated list without a token) and it loads
 **on hover or focus, once**: a page nobody touches the control on pays nothing.
+
 The fab remains the fuller instrument, and the only one on a phone, since this
 cluster is desktop-only, like the rail and for the same overflow reason; the
-fab's launcher goes warning-tinted off the default branch on every viewport.
+fab's launcher goes warning-tinted off the default branch on every viewport. The
+two answer different questions now. This box switches refs and says which one
+you are on. The fab's Render tab, having handed the branch list to a dropdown
+off its own ref bar, spends its body on the branch's **guide**: the open PR's
+body, rendered, with the blob links inside it re-aimed at what can show them (a
+page becomes a toss, markdown and data become a data-view read) and lifted into
+a chip strip. So the header box is for moving between refs and the fab is for
+reading the one you landed on.
 
 The sidebar's **top bar is a crumb trail** (`crumbBar`, the shell's
 `sidebarCrumbs`) in both contexts. At the app level it is the **product mark
