@@ -89,7 +89,9 @@ test('the guide renders the PR body, re-aims its links, and lifts the renderable
         'Lead sentence.',
         '- [new](' + blob('claude/thing', 'pages/show-repo/show-repo.html') + ')',
         '- [doc](' + blob('claude/thing', 'docs/show-repo.md') + ')',
-        '- [again](' + blob('claude/thing', 'pages/show-repo/show-repo.html') + ')',
+        // A guide names each file at BOTH refs by convention ([new] and [main]),
+        // which is what made the strip list every file twice.
+        '- [main](' + blob('main', 'pages/show-repo/show-repo.html') + ')',
         '- [source](' + blob('claude/thing', 'lib/fab.js') + ')',
       ].join('\n'),
     },
@@ -105,13 +107,16 @@ test('the guide renders the PR body, re-aims its links, and lifts the renderable
   const hrefs = [...doc2.querySelectorAll('a')].map(a => a.getAttribute('href'));
   assert.equal(hrefs[0], RENDERER + '#gh=mehrlander/web-tools@claude/thing:pages/show-repo/show-repo.html');
   assert.equal(hrefs[1], RENDERER + '#data=mehrlander/web-tools@claude/thing:docs/show-repo.md');
+  assert.equal(hrefs[2], RENDERER + '#gh=mehrlander/web-tools@main:pages/show-repo/show-repo.html',
+    'the prose re-aims both refs, since the sentence around each says which is which');
   assert.equal(hrefs[3], blob('claude/thing', 'lib/fab.js'), 'a source link is left as source');
   assert.ok([...doc2.querySelectorAll('a')].every(a => a.getAttribute('target') === '_blank'));
 
-  // The chip strip is the same set, deduped, renderable only. Spread first:
-  // the component builds its arrays in the jsdom realm, so a bare deepEqual
-  // against a literal here compares two different Array prototypes.
+  // The strip is deduped BY FILE, not by URL: one row per file, at the ref on
+  // display. Spread first, since the component builds its arrays in the jsdom
+  // realm and a bare deepEqual would compare two Array prototypes.
   assert.deepEqual([...d.prTargets].map(t => t.label), ['show-repo.html', 'show-repo.md']);
+  assert.equal(d.prTargets[0].ref, 'claude/thing', 'the ref on display wins the slot');
 
   // Rendering is keyed to the PR, so a second call is not a second parse.
   const before = d.prBodyHtml;
@@ -139,6 +144,77 @@ test('no PR is two different nothings, and neither is an error', async () => {
   await d.renderPrBody();
   assert.equal(d.prBodyHtml, '');
   assert.equal(d.prTargets.length, 0);
+});
+
+test('the arrows walk every PR the branch has had, newest first', async () => {
+  const d = await mountFab();
+  window.marked = { parse: (md) => '<p>' + md + '</p>' };
+  d.viaToss = true;
+  d.defaultBranch = 'main';
+  d.ref = 'claude/thing';
+  // The survey only ever finds the OPEN one, which is why the fuller list is a
+  // separate read: a merged PR is gone from that list and its body is often the
+  // better account of what the branch did.
+  d.pageBranches = [{ name: 'claude/thing', pr: { number: 333, title: 'open one', body: 'newer' } }];
+  assert.equal(d.guideCount, 1, 'before the read, the open PR stands alone');
+
+  window.GH = class {
+    constructor(o) { this.repo = o.repo; }
+    async req(p) {
+      assert.match(p, /pulls\?state=all&head=mehrlander%3Aclaude%2Fthing/, 'asks for every state');
+      return [
+        { number: 332, title: 'the merged one', body: 'older', merged_at: '2026-07-31T00:00:00Z', state: 'closed' },
+        { number: 333, title: 'open one', body: 'newer', draft: true, state: 'open' },
+      ];
+    }
+  };
+  await d.loadBranchPrs();
+  await tick(2);
+
+  assert.equal(d.guideCount, 2);
+  assert.equal(d.guideIdx, 0);
+  assert.equal(d.guidePr.number, 333, 'newest first');
+
+  d.stepGuide(1);
+  await tick(2);
+  assert.equal(d.guidePr.number, 332);
+  assert.equal(d.guidePr.state, 'merged', 'merged is not the same as closed');
+  assert.match(d.prBodyHtml, /older/, 'the body follows the arrows');
+
+  // The ends are ends: stepping past them is a no-op, not a wrap.
+  d.stepGuide(1);
+  assert.equal(d.guidePr.number, 332);
+  d.stepGuide(-1); d.stepGuide(-1);
+  assert.equal(d.guidePr.number, 333);
+});
+
+test('the github mark is a menu over the ref on display, with the file rows first', async () => {
+  const d = await mountFab();
+  d.viaToss = true;
+  d.defaultBranch = 'main';
+  d.ref = 'claude/thing';
+  delete window.GithubLinks;
+
+  // Without github-links.js loaded the menu still stands up, because the rows
+  // it cannot borrow are the ones it can build.
+  let rows = d.ghRows;
+  assert.deepEqual([...rows].map(r => r.key).slice(0, 2), ['file', 'fileCommits']);
+  const file = rows.find(r => r.key === 'file');
+  // Segment-wise encoding: a slashed branch has to survive as path segments.
+  assert.equal(file.url,
+    'https://github.com/mehrlander/web-tools/blob/claude/thing/pages/show-repo/show-repo.html');
+  assert.equal(rows.find(r => r.key === 'fileCommits').url,
+    'https://github.com/mehrlander/web-tools/commits/claude/thing/pages/show-repo/show-repo.html');
+
+  // With it, the repo rows come from the one list show-repo's sidebar uses.
+  window.GithubLinks = {
+    rows: (repo, opts) => [{ key: 'home', label: 'Repository', icon: 'ph-house', url: 'X' + opts.ref }],
+  };
+  d.ghRowsTick++;
+  rows = d.ghRows;
+  assert.deepEqual([...rows].map(r => r.key), ['file', 'fileCommits', 'home']);
+  assert.equal(rows[2].url, 'Xclaude/thing', 'the menu speaks about the ref on display');
+  delete window.GithubLinks;
 });
 
 test('the dropdown navigates in one tap, and the default branch is the way out', async () => {

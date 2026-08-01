@@ -9,7 +9,9 @@
 //
 // STATE=guide  the guide pane, PR body rendered            (the default)
 // STATE=menu   the ref bar's dropdown, open over the guide
-// STATE=nopr   a branch with no open PR
+// STATE=gh     the github mark's link menu
+// STATE=older  the arrows stepped back to the branch's merged PR
+// STATE=nopr   a branch with no PR, showing the standing info instead
 //
 // marked is a CDN asset, and the sandbox resolves CDN requests from
 // node_modules or refuses them, so this stubs a minimal parser: enough markdown
@@ -46,7 +48,7 @@ export default async (page) => {
   await page.waitForFunction(() => window.Alpine && document.querySelector('[x-data^="fab"]'),
     null, { timeout: 15000 });
 
-  await page.evaluate(([branches, state]) => {
+  await page.evaluate(([branches, state, prBody]) => {
     // A minimal markdown parser: paragraphs, bold, bullet lists, links.
     window.marked = { parse(md) {
       const inline = (s) => s
@@ -72,15 +74,43 @@ export default async (page) => {
     d.path = 'pages/show-repo/show-repo.html';
     d.ref = state === 'nopr' ? 'claude/branch-page-lifespan-9k2xd'
                              : 'claude/show-repo-branch-nav-xzttnt';
+    window.GithubLinks = { rows: (repo, o) => {
+      const at = o.ref && o.ref !== o.defaultRef ? '/' + o.ref : '';
+      const u = p => 'https://github.com/' + repo + p;
+      return [
+        { key: 'home', label: 'Repository', icon: 'ph-house', url: u('') },
+        { key: 'prs', label: 'Pull requests', icon: 'ph-git-pull-request', url: u('/pulls') },
+        { key: 'issues', label: 'Issues', icon: 'ph-record', url: u('/issues') },
+        { key: 'branches', label: 'Branches', icon: 'ph-git-branch', url: u('/branches') },
+        { key: 'commits', label: 'Commits', icon: 'ph-git-commit', url: u('/commits' + at) },
+        { key: 'actions', label: 'Actions', icon: 'ph-play-circle', url: u('/actions') },
+      ];
+    } };
     d.defaultBranch = 'main';
     d.pageBranches = branches;
     d.pageBranchesLoaded = true;
     d.showAllBranches = true;
     d.open = true;
     d.activeTab = 'render';
+    // The branch's full PR history, which the survey's open-PR list cannot
+    // hold: #332 merged, #333 open, both on the same branch.
+    if (state !== 'nopr') d.prHistory = [
+      { number: 333, title: "Put the ref box in show-repo's header; make the fab's render tab a guide",
+        body: prBody, draft: true, state: 'open' },
+      { number: 332, title: 'Say which ref show-repo is running from, in the header',
+        body: 'The first pass: a chip and a panel. Superseded by #333.', state: 'merged' },
+    ];
+    if (state !== 'nopr') d._prsFor = d.ref;
+    d.guideIdx = state === 'older' ? 1 : 0;
+    // The standing info the no-PR pane shows, normally one REST call away.
+    d.ver = { ref: d.ref, sha: 'dca998b', tipUrl: 'https://github.com/x', pr: '332',
+              prTitle: 'Say which ref show-repo is running from', prUrl: 'https://github.com/y',
+              since: 3, ago: '2h ago' };
+    d.verLoaded = true;
     if (state === 'menu') d.refMenu = true;
+    if (state === 'gh') d.ghMenu = true;
     return d.renderPrBody();
-  }, [BRANCHES, STATE]);
+  }, [BRANCHES, STATE, BODY]);
 
   await page.waitForTimeout(900);
 };
