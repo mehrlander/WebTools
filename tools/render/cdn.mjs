@@ -134,7 +134,16 @@ function readSpec(spec, repoRoot) {
       try {
         const m = JSON.parse(readFileSync(manifest, 'utf8'));
         const entry = typeof m.browser === 'string' ? m.browser : m.main;
-        if (entry) {
+        // Only when the entry is the same KIND of file that was asked for. A
+        // package's declared entry is its Node entry, and for a plugin that is
+        // JavaScript no matter what the URL wanted: @tailwindcss/typography
+        // ships no dist CSS, its basename matches its package name, so a
+        // request for dist/typography.min.css resolved to src/index.js and the
+        // page was served a Node module as its stylesheet. It reported a hit
+        // (combine 3/3) and rendered with no prose styles at all, which made a
+        // headless screenshot silently disagree with every real browser. A
+        // miss is the honest answer and shows up as MISS in the log.
+        if (entry && path.extname(entry) === path.extname(fp).replace(/^\.min/, '')) {
           const cand = path.join(repoRoot, 'node_modules', pkg, entry);
           if (existsSync(cand)) fp = cand;
         }

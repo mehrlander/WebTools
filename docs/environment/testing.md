@@ -79,6 +79,24 @@ npm run shot -- pages/nav-repo.html --query "repo=mehrlander/web-tools&file=READ
 
 - `esm.sh` / `cdnjs` modules aren't vendored, so `kits/cm6.js` (CodeMirror)
   doesn't mount in any harness.
+- **The typography plugin is not available (2026-08-01).** `@tailwindcss/typography`
+  publishes no `dist/typography.min.css` in its npm tarball, though jsDelivr
+  serves one, so `cdn.mjs` has nothing to resolve and any page loading it
+  renders **unstyled prose**. A markdown preview therefore looks wider and
+  flatter in a shot than in a browser. Vendor the file into
+  `node_modules/@tailwindcss/typography/dist/` (curl it from jsDelivr) when the
+  shot is *about* prose; `node_modules` is gitignored, so it does not survive
+  the container.
+
+  This one was worth writing down for how it failed rather than for the gap
+  itself. `readSpec` falls back to a package's declared entry when the request's
+  basename matches the package name, which is what makes `npm/marked/marked.min.js`
+  resolve. `@tailwindcss/typography` matches that shape too, so a request for
+  its **CSS** resolved to `src/index.js` and the page was handed a Node module
+  as its stylesheet: the log said `combine 3/3`, no error appeared anywhere, and
+  the screenshot disagreed with every real browser. The fallback now requires the
+  entry to be the same kind of file that was asked for, so this reads `MISS` and
+  the log can be believed.
 - If you're tempted to skip shot and open the live URL instead: GitHub
   **Pages serves `main`**. `?use=<ref>` swaps which ref a page's *loaded
   code* comes from, not the HTML shell, so a brand-new page has no live Pages
