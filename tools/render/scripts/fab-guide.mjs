@@ -116,7 +116,9 @@ export default async (page) => {
       // so the shot is about the panel rather than about the fetch.
       const p = d._picker();
       p._loaded = true;
-      p.tree = [{ name: d.repo + ' @ ' + d.ref, kind: 'repo', repo: d.repo, ref: d.ref,
+      // Labels as pickerRoots() mints them: the owner is dropped when it
+      // matches this page's, which in a one-account estate is always.
+      p.tree = [{ name: 'web-tools @ ' + d.ref, kind: 'repo', repo: d.repo, ref: d.ref,
         children: [
           { name: 'dist', kind: 'folder', children: [{ name: 'web-tools.js', kind: 'file' }] },
           { name: 'docs', kind: 'folder', children: [
@@ -126,8 +128,11 @@ export default async (page) => {
             { name: 'branch.html', kind: 'file' }, { name: 'toss-render.html', kind: 'file' }] },
           { name: 'README.md', kind: 'file' },
         ] },
-        { name: 'mehrlander/home', kind: 'repo', repo: 'mehrlander/home', ref: '', children: null },
-        { name: 'mehrlander/web-tools-private', kind: 'repo', repo: 'mehrlander/web-tools-private', ref: '', children: null }];
+        { name: 'home', kind: 'repo', repo: 'mehrlander/home', ref: '', children: null },
+        { name: 'web-tools-private', kind: 'repo', repo: 'mehrlander/web-tools-private', ref: '', children: null },
+        { name: 'budget-wa', kind: 'repo', repo: 'mehrlander/budget-wa', ref: '', children: null },
+        { name: 'chat-histories', kind: 'repo', repo: 'mehrlander/chat-histories', ref: '', children: null },
+        { name: 'spend-wa', kind: 'repo', repo: 'mehrlander/spend-wa', ref: '', children: null }];
       p.scope = state === 'repos' ? [] : [p.tree[0]];
       p.open = true;
     }

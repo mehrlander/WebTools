@@ -239,6 +239,9 @@ test('the path row is a picker, and a picked file is a request to render it', as
     'this repo leads, and is not repeated');
   assert.equal(roots[0].ref, 'claude/thing');
   assert.equal(roots[1].ref, '', 'another repo opens at its default branch');
+  // The owner is dropped only because it matches this page's.
+  assert.equal(roots[0].label, 'web-tools @ claude/thing');
+  assert.equal(roots[1].label, 'home');
 
   // No token, no listing: the current repo alone, not an error.
   window.GH = class { constructor(o) { this.repo = o.repo; } async repos() { throw new Error('401'); } };
