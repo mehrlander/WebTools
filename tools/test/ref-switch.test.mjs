@@ -242,6 +242,7 @@ test('when the newest branch is the default one, the button retires itself', asy
   await data.load();
   assert.equal(data.newest, null);
   assert.equal(data.showNewest, false);
+  assert.equal(data.onNewest, false, 'no dot either: on main there is no branch to be newest');
 
   const went = [];
   data._go = (u) => went.push(u);
@@ -264,9 +265,13 @@ test('when the newest branch is the one being ridden, there is nowhere to jump',
   assert.equal(data.riding, true);
 
   assert.equal(data.showNewest, true, 'before the survey there is no way to know');
+  assert.equal(data.onNewest, false, 'and the dot claims nothing until it does');
   await data.load();
   assert.equal(data.newest.name, 'claude/newest-thing', 'still the newest, as a fact');
   assert.equal(data.showNewest, false, 'but not an affordance: you are on it');
+  // The header glyph's dot is the same fact read the other way round, and the
+  // two are complements by construction so they can never both be showing.
+  assert.equal(data.onNewest, true);
 
   const went = [];
   data._go = (u) => went.push(u);
