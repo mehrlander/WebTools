@@ -15,7 +15,7 @@ const { window, problems } = makeWindow({
     <div id="f" x-data="fab()" data-repo="mehrlander/web-tools" data-path="pages/toss-render.html"></div>
   </body></html>`,
 });
-const Alpine = await startAlpine(window, ['lib/alpineComponents/fab.js']);
+const Alpine = await startAlpine(window, ['lib/alpineComponents/path-picker.js', 'lib/alpineComponents/fab.js']);
 const doc = window.document;
 
 // Mount a fresh fab under the current window globals and hand back its $data.

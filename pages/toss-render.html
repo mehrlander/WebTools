@@ -903,6 +903,67 @@ window.fetch=function(input,init){try{
     showAddress(addr);
   };
 
+  // A ROUTED re-address, the same move for a file that is not a page: the fab's
+  // path picker can land on a .csv or a .js, and those render through a route
+  // (#data= -> the multi-mode viewer) rather than as a page. __tossNavigate
+  // cannot carry them, since it speaks #gh= only.
+  //
+  // It exists so the route map stays owned by this file. The alternative was
+  // for the fab to resolve `data` to pages/data-view.html itself, which would
+  // put a third copy of TOSS_ROUTES in the estate next to the two that already
+  // need a test to hold them in step.
+  window.__tossRoute = (key, raw) => showRoute(key, String(raw || '').trim());
+
+  // One resolution for both callers: the boot path below and __tossRoute above.
+  // A trailing #frag belongs to the RENDERER, not the envelope address:
+  // #data=owner/repo:rows.csv#item=2 addresses rows.csv and opens the page at
+  // item=2. Split it off before encoding, or it would be percent-escaped into
+  // the ?src= value and the renderer would try to fetch it as part of the path.
+  async function showRoute(key, raw) {
+    const r = TOSS_ROUTES[key];
+    if (!r) return showEmpty('Unknown toss route: ' + key);
+    const [env, frag] = splitFrag(raw);
+    try { history.replaceState(null, '', location.pathname + location.search + '#' + key + '=' + raw); } catch (e) {}
+    // Resolve onto address mode: render the renderer page and hand it the
+    // envelope via ?src=, which the params shim delivers to the page's own
+    // location.search read. The renderer ref is the map's (the app itself);
+    // any @ref inside <env> is the ENVELOPE's ref, untouched here.
+    await showAddress(`${r.repo}@${r.ref}:${r.path}?src=${encodeURIComponent(env)}` + (frag ? '#' + frag : ''));
+    // Re-emit the pretty route form for "Copy toss link", not the resolved #gh=.
+    tossLinkFn = async () => absUrl(`#${key}=${raw}`);
+    // THE SUBJECT IS THE CONTENT, not the app showing it. showAddress just
+    // stamped data-view.html, because that is the document it fetched and
+    // mounted, and the drawer around it duly reported that you were looking at
+    // web-tools@main:pages/data-view.html. You were looking at a markdown file
+    // in another repo. A route is a rendering strategy for a file the same way
+    // the frame is a rendering strategy for a page, and neither is the thing
+    // addressed. Re-stamp with the envelope, keeping the renderer as `via`
+    // (the take actions really do operate on ITS dom, so something has to
+    // still name it) and the route key, so a re-address at another ref comes
+    // back through the same door.
+    //
+    // Only when showAddress actually mounted something. Its failure path is
+    // showEmpty, which clears the subject on the way to the panel, so a
+    // re-stamp here would resurrect a subject for a file that never rendered:
+    // the drawer would describe a document the viewer cannot see, and its take
+    // actions would reach into a frame that is hidden.
+    if (!window.__tossSubject) return;
+    const a = splitAddr(env);
+    if (!a) return;
+    document.title = 'Toss · ' + a.path.split('/').pop() + (a.ref ? ' @ ' + a.ref : '');
+    setSubject({ repo: a.repo, ref: a.ref, path: a.path, route: key,
+                 via: { repo: r.repo, ref: r.ref, path: r.path } });
+  }
+
+  // owner/repo[@ref]:path, with any ?query and #frag trimmed off. The address
+  // regex lives in showAddress, which needs the pieces in flight; this is the
+  // same grammar read for its parts alone.
+  function splitAddr(addr) {
+    const m = String(addr || '').match(/^([^/@:]+\/[^/@:]+)(?:@([^:]+))?:(.+)$/);
+    if (!m) return null;
+    return { repo: m[1], ref: m[2] || '', path: m[3].split(/[?#]/)[0] };
+  }
+
   // Route a pasted string: a github blob URL -> trusted address, a bare URL ->
   // #url load, anything else -> untrusted HTML. Used by both paste paths.
   function renderInput(raw) {
@@ -999,20 +1060,7 @@ window.fetch=function(input,init){try{
   const url  = param('url') || param('u');
 
   if (routeKey) {
-    const r = TOSS_ROUTES[routeKey], raw = param(routeKey).trim();
-    // A trailing #frag belongs to the RENDERER, not the envelope address:
-    // #data=owner/repo:rows.csv#item=2 addresses rows.csv and opens the page
-    // at item=2. Split it off before encoding, or it would be percent-escaped
-    // into the ?src= value and the renderer would try to fetch it as part of
-    // the path.
-    const [env, frag] = splitFrag(raw);
-    // Resolve onto address mode: render the renderer page and hand it the
-    // envelope via ?src=, which the params shim delivers to the page's own
-    // location.search read. The renderer ref is the map's (the app itself);
-    // any @ref inside <env> is the ENVELOPE's ref, untouched here.
-    await showAddress(`${r.repo}@${r.ref}:${r.path}?src=${encodeURIComponent(env)}` + (frag ? '#' + frag : ''));
-    // Re-emit the pretty route form for "Copy toss link", not the resolved #gh=.
-    tossLinkFn = async () => absUrl(`#${routeKey}=${raw}`);
+    await showRoute(routeKey, param(routeKey).trim());
   } else if (gh) {
     await showAddress(gh.trim());
   } else if (gz) {

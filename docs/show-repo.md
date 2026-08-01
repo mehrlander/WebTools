@@ -62,13 +62,28 @@ repos opt into.
 
 Past the rail, behind a hairline, sits the **ref switch**
 (`lib/alpineComponents/refSwitch`), which answers a question none of the rest of
-the chrome does: *which ref is this page running off?* Off the default branch it
-is a warning chip naming the ref, with a house button back to the live page; at
-the default branch it is a plain ghost icon and says nothing, because there is
-nothing to say. Opening it gives a text box that takes a pasted branch, tag or
-sha, the branch list filtered by what is typed, and a **lightning button that
-jumps to the most recently committed branch**, which hides itself when the
-newest branch is the default one.
+the chrome does: *which ref is this page running off?* and lets you change the
+answer.
+
+It is a **text box, always present**, not a button that reveals one. Paste a
+branch, tag, or sha, press Enter, and the page reloads running from it. That is
+the primary verb and it is deliberately not behind a tap: the state it serves
+best is the default branch, where there is nothing to report and everything to
+do, so a control you have to open first puts a door in front of the one thing it
+exists for.
+
+The same box is the **readout**. It holds the current ref as its value and goes
+warning-tinted off the default branch, where a house button appears beside it
+back to the live page. One slot answers "what am I running" and "take me
+somewhere else", rather than a chip and a field competing for the same corner.
+Focus selects the whole value so a paste replaces it; Escape puts the readout
+back. Until the box is edited its value is a readout rather than a query, so it
+does not filter the list and Enter on it goes nowhere.
+
+Two buttons flank it: a **caret** opening the branch list (typing filters it,
+and a Go row appears for a name that is not in the list), and a **lightning
+button that jumps to the most recently committed branch**, which hides itself
+when the newest branch is the default one.
 
 **It is not the Files view's ref picker, and the two are easy to confuse.** That
 one chooses which ref of the *browsed* repo you are reading; this one chooses
@@ -85,10 +100,56 @@ you were already looking at rather than at the front door.
 
 The branch list is the same survey the fab's Render tab runs
 (`branchesForPath`, degrading to an undated list without a token) and it loads
-**on hover, once**: a page nobody touches the control on pays nothing. The fab
-remains the fuller instrument, and the only one on a phone — this cluster is
-desktop-only, like the rail and for the same overflow reason, while the fab's
-launcher goes warning-tinted off the default branch on every viewport.
+**on hover or focus, once**: a page nobody touches the control on pays nothing.
+
+The fab remains the fuller instrument, and the only one on a phone, since this
+cluster is desktop-only, like the rail and for the same overflow reason; the
+fab's launcher goes warning-tinted off the default branch on every viewport. The
+two answer different questions now. This box switches refs and says which one
+you are on. The fab's Render tab reads the ref you landed on, in this order:
+
+- **repo and path as one picker.** Tapping either line opens the tree
+  (`pathPicker`, the same tap-through selector this shell uses), rooted at every
+  repo the token can see with the current one first at the ref on display.
+  Choosing a file renders it **in place**, the same gesture as switching a ref:
+  a page through the toss, anything else through the data view, which mounts the
+  shared multi-mode viewer (`lib/alpineComponents/viewer.js`) whose modules
+  declare their own coverage and whose `raw` module always passes, so no file
+  type resolves nowhere. Inside a toss neither is a navigation at all, only a
+  re-address: `__tossNavigate` for a page, `__tossRoute` for anything routed,
+  which keeps the route map owned by `toss-render.html`. The thing being chosen is a file somewhere, so splitting it in two
+  left the repo half inert and the path half unable to leave its own repo.
+
+  **A routed subject is the file, not the app showing it.** A route resolves by
+  fetching the renderer page and handing it the envelope, so the shell's own
+  stamp names `pages/data-view.html` and the drawer over a markdown read
+  reported that as the thing on screen. It is not: a route is a rendering
+  strategy for a file the same way the frame is one for a page, and neither is
+  what was addressed. `showRoute` re-stamps with the envelope, carrying the
+  route key and a `via` naming the renderer, so the identity block, the ref bar,
+  the github menu, and the guide all follow the file, a ref switch comes back
+  through the same route rather than trying to mount a `.md` as a page, and the
+  default-branch row re-addresses instead of leaving for a `canonicalUrl` that
+  does not exist. One thing deliberately follows `via` instead: the **take
+  grid**, which reaches into the frame's DOM for real, so zipping a markdown
+  read gets you `data-view.html` and says so.
+  Beside it the github mark is a **menu** rather than a link to one blob: this
+  file, its commits, then the repo rows `lib/github-links.js` gives the sidebar
+  (repository, pull requests, issues, branches, commits at this ref, actions).
+- **the ref bar**, which is the picker. One tap on a row renders there.
+- **the guide**: the branch's PR body, rendered, with the blob links inside it
+  re-aimed at what can show them (a page becomes a toss, markdown and data
+  become a data-view read) and lifted into a chip strip, deduped by file so the
+  convention's `[new]` and `[main]` pair does not list everything twice. Arrows
+  step through **every PR the branch has had**, newest first, since a merge ends
+  a PR but not the branch and the merged one's body is often the better account.
+  With no PR the pane still reports the ref's standing: the commit it is at, the
+  PR that code came from, and how long ago. That last part is where the version
+  chip went; it used to sit above the guide, where its PR number was the one the
+  *code* came from and read as competing with the one the *branch* is for.
+
+So the header box is for moving between refs and the fab is for reading the one
+you landed on.
 
 The sidebar's **top bar is a crumb trail** (`crumbBar`, the shell's
 `sidebarCrumbs`) in both contexts. At the app level it is the **product mark

@@ -15,6 +15,8 @@ First match wins:
 
 `#data=` is shorthand, not a separate path: toss-render resolves it onto `?src=` and never opens the payload. Same token gate as `#gh=` (a private file needs the viewer's stored token); for a token-less reader, send the bytes inline with `#gz=` instead. Files over 1 MB work: the page falls back to the git blobs API the way `gh.get` does.
 
+Resolving that way makes this page the document toss-render mounted, which is not the same as the thing addressed. The shell says so: it stamps the **envelope** as the toss subject and carries this page as `via`, so the drawer around the frame names the file being read rather than the reader. Only the take actions follow `via`, since they operate on this page's DOM. See [`docs/show-repo.md`](../show-repo.md) under the render tab.
+
 ## Two shapes, no declaration
 
 A payload is read by [`lib/data-payload.js`](../../lib/data-payload.js), which decides what it is rather than asking:

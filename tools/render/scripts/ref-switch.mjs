@@ -6,8 +6,9 @@
 //
 //   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scripts/ref-switch.mjs
 //
-// STATE=closed  the collapsed control alone (the default row, nothing open)
-// STATE=open    the panel, with the seeded branch list        (the default)
+// STATE=closed  the box alone in the header, nothing open
+// STATE=open    the box plus the branch list panel            (the default)
+// STATE=typed   mid-paste: the box edited, the list filtered, the Go row up
 //
 // The RIDING state is not a STATE here, because it is not something to fake:
 // add `--ref <branch>` and the shot's own address carries ?use=, which is the
@@ -46,6 +47,10 @@ export default async (page) => {
   if (STATE !== 'closed') {
     await data.evaluate((d) => d.toggle());
     await page.waitForTimeout(600);
+  }
+  if (STATE === 'typed') {
+    await data.evaluate((d) => { d.typed = 'branch'; d.dirty = true; });
+    await page.waitForTimeout(400);
   }
   await page.waitForTimeout(400);
 };
