@@ -48,10 +48,9 @@ def blocker(m):
 def row(m):
     who = f" (`{m['session']}`)" if m.get("session") else ""
     dep = blocker(m)
-    nxt = f" next: {m['next']}" if m.get("next") else ""
     # 🎫 marks a tracker task wherever one is surfaced (see CONVENTIONS.md /
     # TRACKER.md): the ticket says "this is a filed task."
-    return f"- 🎫 {m.get('title', '(untitled)')}{who}{dep}{nxt}"
+    return f"- 🎫 {m.get('title', '(untitled)')}{who}{dep}"
 
 lines = ["# Board", "", "_Generated from tasks/. Do not hand-edit._", ""]
 for head, key in [("On deck", "backlog"), ("In progress", "in-progress"),
