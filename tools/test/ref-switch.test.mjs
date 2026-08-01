@@ -250,3 +250,30 @@ test('when the newest branch is the default one, the button retires itself', asy
   assert.match(data.error, /No branch newer than main/);
   assert.equal(data.open, true, 'the panel says why rather than the button doing nothing');
 });
+
+// The other way there is nowhere to jump, and the one that actually bit: a
+// session riding its own newest branch, which is most of the time this control
+// gets used. go() short-circuits on the ref it is already at and revert() only
+// closes the panel, so the tap read as a dead button. Both halves are held: the
+// affordance retires once the survey knows, AND the handler refuses, because
+// before the survey lands the button is deliberately still up.
+test('when the newest branch is the one being ridden, there is nowhere to jump', async () => {
+  setSearch('?use=claude/newest-thing');
+  stubGH();
+  const { data } = await mount();
+  assert.equal(data.riding, true);
+
+  assert.equal(data.showNewest, true, 'before the survey there is no way to know');
+  await data.load();
+  assert.equal(data.newest.name, 'claude/newest-thing', 'still the newest, as a fact');
+  assert.equal(data.showNewest, false, 'but not an affordance: you are on it');
+
+  const went = [];
+  data._go = (u) => went.push(u);
+  data.open = true;
+  await data.goNewest();
+  assert.equal(went.length, 0, 'no navigation to where we already are');
+  assert.match(data.error, /Already running claude\/newest-thing/);
+  assert.equal(data.open, true, 'and the panel stays up saying so, rather than closing');
+  setSearch('');
+});
