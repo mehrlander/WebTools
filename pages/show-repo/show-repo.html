@@ -183,6 +183,34 @@
         </template>
       </div>
 
+      <!-- ── The ref switch: which ref THIS PAGE is running at ─────────────
+           Last in the row, past the rail, behind a hairline. The rail's items
+           are destinations you leave for; this one is a fact about the page you
+           are standing on, so it gets separated from them rather than added to
+           the set.
+
+           It is deliberately NOT the Files view's ref picker. That one chooses
+           which ref of the BROWSED repo you are reading; this one chooses which
+           ref of web-tools show-repo itself RUNS FROM, which is a different
+           question with the same vocabulary, so the panel spells out the repo
+           and path it acts on. The two are visually apart for the same reason:
+           the ref picker lives in the Files toolbar beside the tree it filters,
+           and this lives in the app chrome beside the shell it re-points.
+
+           The switch navigates to the toss renderer, since ?use= alone re-pins
+           only the lib a page loads and would leave this header, and every
+           other line of the shell, at the deployed version.
+
+           Desktop only, matching the rail, and for the same overflow reason.
+           A phone is not left without the fact: the fab's launcher goes
+           warning-tinted off the default branch on every viewport, and its
+           Render tab is the full survey this control is a shortcut past. -->
+      <div x-show="rail.length" class="hidden lg:block mx-1.5 h-5 w-px bg-base-300"></div>
+      <div class="hidden lg:flex shrink-0"
+           x-data="refSwitch({ repo: 'mehrlander/web-tools',
+                               path: 'pages/show-repo/show-repo.html',
+                               query: () => window.__shell.deepLinkParams(new URLSearchParams()).toString() })"></div>
+
       <!-- Drawer toggle, where the sidebar is a drawer (below lg). -->
       <button @click="openSidebar()" class="shrink-0 p-1 rounded-lg hover:bg-base-200 transition-colors lg:hidden" title="Menu">
         <i class="ph ph-list text-lg leading-none"></i>
@@ -2927,9 +2955,17 @@ function app(){ return {
              appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '' };
   },
 
-  syncUrl(){
+  // The shell's state as URL parameters, built onto whatever base is handed in.
+  // Split out of syncUrl() because two callers want the same answer for
+  // different reasons: syncUrl merges it into the live address (so the base is
+  // location.search, and foreign params like ?use= survive), while the header's
+  // ref switch wants the app keys ALONE, to carry the current screen across a
+  // ref change (there the base is empty, and ?use= must NOT survive, since the
+  // switch is setting it). Every app key is set or deleted unconditionally, so
+  // the result never depends on what the base happened to hold.
+  deepLinkParams(base){
+    const p = base || new URLSearchParams();
     const s = Alpine.store('browser');
-    const p = new URLSearchParams(location.search);
     if (s.repo && s.repo !== this.DEFAULT_REPO) p.set('repo', s.repo); else p.delete('repo');
     // ?ref= is Files-scoped, like the picker that sets it: it deep-links which
     // ref the file browser reads, so it only accompanies ?file=/?view=files.
@@ -2977,7 +3013,11 @@ function app(){ return {
       if (this.appView.icon) p.set('appIcon', this.appView.icon);
     }
     else if (this.view === 'estate' && (p.has('repo') || p.has('ref'))) p.set('view', 'estate');
-    const qs = p.toString();
+    return p;
+  },
+
+  syncUrl(){
+    const qs = this.deepLinkParams(new URLSearchParams(location.search)).toString();
     const next = location.pathname + (qs ? '?' + qs : '') + location.hash;
     const cur = location.pathname + location.search + location.hash;
     // Push a new history entry per distinct URL so the browser Back button walks
