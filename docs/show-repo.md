@@ -111,8 +111,13 @@ you are on. The fab's Render tab reads the ref you landed on, in this order:
 - **repo and path as one picker.** Tapping either line opens the tree
   (`pathPicker`, the same tap-through selector this shell uses), rooted at every
   repo the token can see with the current one first at the ref on display.
-  Choosing a file renders it: a page through the toss, anything else through the
-  data view. The thing being chosen is a file somewhere, so splitting it in two
+  Choosing a file renders it **in place**, the same gesture as switching a ref:
+  a page through the toss, anything else through the data view, which mounts the
+  shared multi-mode viewer (`lib/alpineComponents/viewer.js`) whose modules
+  declare their own coverage and whose `raw` module always passes, so no file
+  type resolves nowhere. Inside a toss neither is a navigation at all, only a
+  re-address: `__tossNavigate` for a page, `__tossRoute` for anything routed,
+  which keeps the route map owned by `toss-render.html`. The thing being chosen is a file somewhere, so splitting it in two
   left the repo half inert and the path half unable to leave its own repo.
   Beside it the github mark is a **menu** rather than a link to one blob: this
   file, its commits, then the repo rows `lib/github-links.js` gives the sidebar

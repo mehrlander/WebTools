@@ -254,22 +254,27 @@ test('the path row is a picker, and a picked file is a request to render it', as
 
   // Routing. A page at this repo goes through the toss the ref bar uses, so
   // the fab rides along; everything else opens beside the drawer.
-  const opened = [];
-  window.open = (u) => opened.push(u);
+  const went = [];
+  window.open = () => assert.fail('a pick must never spawn a tab');
   d._handOffDrawer = () => {};
+  d._go = (u) => went.push(u);
 
   assert.equal(d.renderTarget('mehrlander/web-tools', 'claude/thing', 'pages/a.html', true).kind, 'render');
 
   // The picker is allowed to be less careful than a link: a file it cannot
-  // classify still opens, in the data view, because the viewer chose it.
+  // classify still opens, in the data view, because the viewer chose it. Every
+  // module there declares its own coverage and `raw` always passes, so there is
+  // no extension that resolves nowhere.
   const js = d.renderTarget('mehrlander/web-tools', 'claude/thing', 'lib/fab.js', true);
   assert.equal(js.kind, 'read');
+  assert.equal(js.route, 'data');
   assert.match(js.url, /#data=mehrlander\/web-tools@claude\/thing:lib\/fab\.js$/);
   // Without `any` it is the guide's conservative rule, unchanged.
   assert.equal(d.renderTarget('mehrlander/web-tools', 'claude/thing', 'lib/fab.js'), null);
 
+  // OUTSIDE A TOSS a pick navigates in place, the same gesture as a ref switch.
   d.renderPicked({ repo: 'mehrlander/web-tools', ref: 'claude/thing', path: 'docs/x.md' });
-  assert.match(opened.pop(), /#data=mehrlander\/web-tools@claude\/thing:docs\/x\.md$/);
+  assert.match(went.pop(), /#data=mehrlander\/web-tools@claude\/thing:docs\/x\.md$/);
   assert.equal(d.pickerOpen, false, 'picking closes the tree');
 
   // ACROSS REPOS the ref must not carry over: the picker's other roots have
@@ -277,10 +282,42 @@ test('the path row is a picker, and a picked file is a request to render it', as
   // stamping it would address a 404 with nothing saying why. A bare repo:path
   // is the grammar's word for "the default branch".
   d.renderPicked({ repo: 'mehrlander/home', ref: '', path: 'README.md' });
-  assert.match(opened.pop(), /#data=mehrlander\/home:README\.md$/);
+  assert.match(went.pop(), /#data=mehrlander\/home:README\.md$/);
   assert.equal(d.renderTarget('mehrlander/home', '', 'p.html', true).url,
     RENDERER + '#gh=mehrlander/home:p.html');
   assert.match(d.renderTarget('mehrlander/home', '', 'p.html', true).title, /default branch/);
+});
+
+test('inside a toss a pick re-addresses in place, by page or by route', async () => {
+  const d = await mountFab();
+  d.viaToss = true;
+  d.defaultBranch = 'main';
+  d.ref = 'claude/thing';
+
+  const calls = [], went = [];
+  d._go = (u) => went.push(u);
+  d._handOffDrawer = () => {};
+  window.__tossNavigate = (a) => calls.push(['gh', a]);
+  window.__tossRoute = (k, a) => calls.push([k, a]);
+  try {
+    // A page is an address the renderer already speaks.
+    d.renderPicked({ repo: 'mehrlander/web-tools', ref: 'claude/thing', path: 'pages/a.html' });
+    assert.deepEqual(calls.pop(), ['gh', 'mehrlander/web-tools@claude/thing:pages/a.html']);
+
+    // Anything else goes through the route, whose map toss-render owns; the fab
+    // names the key and never resolves it.
+    d.renderPicked({ repo: 'mehrlander/web-tools', ref: 'claude/thing', path: 'lib/fab.js' });
+    assert.deepEqual(calls.pop(), ['data', 'mehrlander/web-tools@claude/thing:lib/fab.js']);
+    assert.equal(went.length, 0, 'no navigation happens inside a toss');
+
+    // An older deployed shell has no __tossRoute. Falling through to a real
+    // navigation is the difference between a slower path and a dead tap.
+    delete window.__tossRoute;
+    d.renderPicked({ repo: 'mehrlander/web-tools', ref: 'claude/thing', path: 'lib/fab.js' });
+    assert.match(went.pop(), /#data=mehrlander\/web-tools@claude\/thing:lib\/fab\.js$/);
+  } finally {
+    delete window.__tossNavigate; delete window.__tossRoute;
+  }
 });
 
 test('a real tap on the trigger opens the tree and leaves it open', async () => {
