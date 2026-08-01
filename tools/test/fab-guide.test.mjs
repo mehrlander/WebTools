@@ -223,17 +223,31 @@ test('the path row is a picker, and a picked file is a request to render it', as
   d.defaultBranch = 'main';
   d.ref = 'claude/thing';
 
-  // The picker really mounts, gets its GH from the fab rather than from
-  // Alpine's browser store, and opens on this repo at the ref on display.
+  // The picker really mounts and gets its GH from the fab rather than from
+  // Alpine's browser store.
   const picker = d._picker();
   assert.ok(picker, 'pathPicker mounted inside the render tab');
-  assert.deepEqual([...d.pickerRoots()].map(r => r.repo), ['mehrlander/web-tools']);
-  assert.equal(d.pickerRoots()[0].ref, 'claude/thing');
+
+  // ROOTS: this repo at the ref on display, first and carrying its ref, then
+  // every other repo the token can see, at their default branch.
+  window.GH = class {
+    constructor(o) { this.repo = o.repo; }
+    async repos() { return [{ full_name: 'mehrlander/home' }, { full_name: 'mehrlander/web-tools' }]; }
+  };
+  const roots = await d.pickerRoots();
+  assert.deepEqual([...roots].map(r => r.repo), ['mehrlander/web-tools', 'mehrlander/home'],
+    'this repo leads, and is not repeated');
+  assert.equal(roots[0].ref, 'claude/thing');
+  assert.equal(roots[1].ref, '', 'another repo opens at its default branch');
+
+  // No token, no listing: the current repo alone, not an error.
+  window.GH = class { constructor(o) { this.repo = o.repo; } async repos() { throw new Error('401'); } };
+  assert.equal((await d.pickerRoots()).length, 1);
 
   assert.equal(d.pickerOpen, false);
   d.togglePicker();
-  assert.equal(d.pickerOpen, true, 'the path row owns the opener');
-  assert.equal(d.ghMenu, false, 'and closes the other menu, since both drop from the same row');
+  assert.equal(d.pickerOpen, true, 'the trigger owns the opener');
+  assert.equal(d.ghMenu, false, 'and closes the other menu, since both drop from the same block');
 
   // Routing. A page at this repo goes through the toss the ref bar uses, so
   // the fab rides along; everything else opens beside the drawer.
@@ -254,6 +268,32 @@ test('the path row is a picker, and a picked file is a request to render it', as
   d.renderPicked({ repo: 'mehrlander/web-tools', ref: 'claude/thing', path: 'docs/x.md' });
   assert.match(opened.pop(), /#data=mehrlander\/web-tools@claude\/thing:docs\/x\.md$/);
   assert.equal(d.pickerOpen, false, 'picking closes the tree');
+});
+
+test('a real tap on the trigger opens the tree and leaves it open', async () => {
+  // The bug this pins: path-picker closes itself on any click outside its own
+  // root, and the trigger IS outside it, so the panel opened and shut inside
+  // one tap and the control read as dead. Calling toggle() directly never saw
+  // it, which is why this dispatches an actual click and lets it bubble.
+  const host = doc.createElement('div');
+  host.innerHTML = '<div x-data="fab()" data-repo="mehrlander/web-tools" data-path="pages/a.html"></div>';
+  doc.body.appendChild(host);
+  Alpine.initTree(host);
+  await tick(3);
+  const d = Alpine.$data(host.firstElementChild);
+
+  const trigger = host.querySelector('button[class*="group/id"]');
+  assert.ok(trigger, 'the repo/path block is one trigger');
+
+  trigger.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+  await tick(3);
+  assert.equal(d.pickerOpen, true, 'the tap that opened it must not also close it');
+
+  // The other half, that a click genuinely outside still closes it, is not
+  // checkable here: Alpine's .outside handler skips elements it measures at
+  // zero size, and jsdom measures everything at zero. What .stop changes is
+  // only whether the click reaches document, so the passing assertion above is
+  // the one that distinguishes the two behaviors.
 });
 
 test('the dropdown navigates in one tap, and the default branch is the way out', async () => {

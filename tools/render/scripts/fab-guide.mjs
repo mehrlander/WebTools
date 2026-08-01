@@ -10,7 +10,8 @@
 // STATE=guide  the guide pane, PR body rendered            (the default)
 // STATE=menu   the ref bar's dropdown, open over the guide
 // STATE=gh     the github mark's link menu
-// STATE=pick   the path row's file picker, open on the repo tree
+// STATE=pick   the repo/path picker, open inside this repo
+// STATE=repos  the same picker at its root level: every repo the token sees
 // STATE=older  the arrows stepped back to the branch's merged PR
 // STATE=nopr   a branch with no PR, showing the standing info instead
 //
@@ -110,12 +111,12 @@ export default async (page) => {
     d.verLoaded = true;
     if (state === 'menu') d.refMenu = true;
     if (state === 'gh') d.ghMenu = true;
-    if (state === 'pick') {
+    if (state === 'pick' || state === 'repos') {
       // The tree normally comes from git/trees over the viewer's token; seed it
       // so the shot is about the panel rather than about the fetch.
       const p = d._picker();
       p._loaded = true;
-      p.tree = [{ name: 'web-tools @ ' + d.ref, kind: 'repo', repo: d.repo, ref: d.ref,
+      p.tree = [{ name: d.repo + ' @ ' + d.ref, kind: 'repo', repo: d.repo, ref: d.ref,
         children: [
           { name: 'dist', kind: 'folder', children: [{ name: 'web-tools.js', kind: 'file' }] },
           { name: 'docs', kind: 'folder', children: [
@@ -124,8 +125,10 @@ export default async (page) => {
           { name: 'pages', kind: 'folder', children: [
             { name: 'branch.html', kind: 'file' }, { name: 'toss-render.html', kind: 'file' }] },
           { name: 'README.md', kind: 'file' },
-        ] }];
-      p.scope = [p.tree[0]];
+        ] },
+        { name: 'mehrlander/home', kind: 'repo', repo: 'mehrlander/home', ref: '', children: null },
+        { name: 'mehrlander/web-tools-private', kind: 'repo', repo: 'mehrlander/web-tools-private', ref: '', children: null }];
+      p.scope = state === 'repos' ? [] : [p.tree[0]];
       p.open = true;
     }
     return d.renderPrBody();
