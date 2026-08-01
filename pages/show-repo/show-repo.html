@@ -214,8 +214,12 @@
            Render tab, several taps in. So the cost of hiding was an
            inconsistency between viewports and no saving to show for it.
 
-           Less convenient on a phone, and that is the accepted trade: the box
-           narrows (see ref-switch.js) and the nav gives up some width. -->
+           What it costs the nav is 2 rem, because below sm the control collapses
+           to a single branch glyph and moves its box, its newest jump and its
+           way home into the panel it opens (see ref-switch.js). A 10 rem box
+           was tried here first and was the wrong trade: it was the widest thing
+           in the header and the least likely to be used, since on a phone this
+           is picked from a list rather than typed into. -->
       <div x-show="rail.length" class="hidden lg:block mx-1.5 h-5 w-px bg-base-300"></div>
       <div class="flex shrink-0"
            x-data="refSwitch({ repo: 'mehrlander/web-tools',
