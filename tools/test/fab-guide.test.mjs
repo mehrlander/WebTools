@@ -271,6 +271,16 @@ test('the path row is a picker, and a picked file is a request to render it', as
   d.renderPicked({ repo: 'mehrlander/web-tools', ref: 'claude/thing', path: 'docs/x.md' });
   assert.match(opened.pop(), /#data=mehrlander\/web-tools@claude\/thing:docs\/x\.md$/);
   assert.equal(d.pickerOpen, false, 'picking closes the tree');
+
+  // ACROSS REPOS the ref must not carry over: the picker's other roots have
+  // none, and this page's branch does not exist in mehrlander/home, so
+  // stamping it would address a 404 with nothing saying why. A bare repo:path
+  // is the grammar's word for "the default branch".
+  d.renderPicked({ repo: 'mehrlander/home', ref: '', path: 'README.md' });
+  assert.match(opened.pop(), /#data=mehrlander\/home:README\.md$/);
+  assert.equal(d.renderTarget('mehrlander/home', '', 'p.html', true).url,
+    RENDERER + '#gh=mehrlander/home:p.html');
+  assert.match(d.renderTarget('mehrlander/home', '', 'p.html', true).title, /default branch/);
 });
 
 test('a real tap on the trigger opens the tree and leaves it open', async () => {
