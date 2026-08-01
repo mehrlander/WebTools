@@ -19,6 +19,18 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeWindow, startAlpine, tick } from './bootstrap.mjs';
 
+// Replace a method and record its calls. The assertion is the point: stubbing
+// by plain assignment CREATES a missing method, so a test can pass against code
+// that never had it. That is exactly how `_go` shipped broken, with these tests
+// green: goTarget called this._go, only ref-switch defined it, and every tap on
+// a picked file threw. Nothing may be stubbed here that does not already exist.
+function spy(obj, name) {
+  assert.equal(typeof obj[name], 'function', 'cannot stub ' + name + ': it does not exist');
+  const calls = [];
+  obj[name] = (...args) => { calls.push(args.length > 1 ? args : args[0]); };
+  return calls;
+}
+
 const { window } = makeWindow({
   html: '<!doctype html><html><body></body></html>',
 });
@@ -254,10 +266,9 @@ test('the path row is a picker, and a picked file is a request to render it', as
 
   // Routing. A page at this repo goes through the toss the ref bar uses, so
   // the fab rides along; everything else opens beside the drawer.
-  const went = [];
   window.open = () => assert.fail('a pick must never spawn a tab');
-  d._handOffDrawer = () => {};
-  d._go = (u) => went.push(u);
+  spy(d, '_handOffDrawer');
+  const went = spy(d, '_go');
 
   assert.equal(d.renderTarget('mehrlander/web-tools', 'claude/thing', 'pages/a.html', true).kind, 'render');
 
@@ -294,9 +305,9 @@ test('inside a toss a pick re-addresses in place, by page or by route', async ()
   d.defaultBranch = 'main';
   d.ref = 'claude/thing';
 
-  const calls = [], went = [];
-  d._go = (u) => went.push(u);
-  d._handOffDrawer = () => {};
+  const calls = [];
+  const went = spy(d, '_go');
+  spy(d, '_handOffDrawer');
   window.__tossNavigate = (a) => calls.push(['gh', a]);
   window.__tossRoute = (k, a) => calls.push([k, a]);
   try {
@@ -352,9 +363,9 @@ test('the dropdown navigates in one tap, and the default branch is the way out',
   d.defaultBranch = 'main';
   d.ref = 'claude/thing';
 
-  const calls = [];
-  d.renderAtRef = (r) => calls.push(['render', r]);
-  d.returnToLive = () => calls.push(['live']);
+  const rendered = spy(d, 'renderAtRef'), lived = spy(d, 'returnToLive');
+  const calls = { pop: () => rendered.length ? ['render', rendered.pop()] : (lived.pop(), ['live']),
+                  get length() { return rendered.length + lived.length; } };
 
   d.refMenu = true;
   d.goToRef('claude/other');
