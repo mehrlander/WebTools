@@ -186,3 +186,18 @@ test('surveyBranchLive: no merge base means no honest start', async () => {
   assert.equal(r.firstDate, '');
   assert.equal(r.date, '2026-07-08T00:00:00Z');
 });
+
+test('lifespan display rules: the start collapses when unknowable or same-label', () => {
+  // Formatters injected, so the rules test independent of GH.ago: label the
+  // hour for a recent stamp, the day otherwise.
+  const agoShort = (iso) => iso.startsWith('2026-07-09') ? '2h' : '15d';
+  const agoOf = (iso) => agoShort(iso) + ' ago';
+  const first = '2026-06-24T00:00:00Z', tip = '2026-07-09T10:00:00Z';
+  assert.equal(B.lifespanStart(first, tip, agoShort), '15d');
+  assert.equal(B.lifespanTitle(first, tip, agoOf), 'started 15d ago, latest 2h ago');
+  // No known start (no merge base, or past the compare cap): tip age alone.
+  assert.equal(B.lifespanStart('', tip, agoShort), '');
+  assert.equal(B.lifespanTitle('', tip, agoOf), 'latest 2h ago');
+  // A same-day branch rounds both halves to one label: "2h → 2h" is noise.
+  assert.equal(B.lifespanStart('2026-07-09T08:00:00Z', tip, agoShort), '');
+});

@@ -882,15 +882,26 @@
     </div>
 
     <!-- Project: a workspace's front page, the repo overview one level down.
-         Same shape as that overview on purpose (name, a few facts, the README
-         rendered), because a project is a repo-sized thing inside a repo and a
-         reader arriving at one wants what they want when arriving at a repo.
-         The header's three buttons are the routes out: the workspace as files,
-         its board, its folder on GitHub. -->
-    <div x-show="view==='project'" class="h-full overflow-y-auto">
-      <div class="!max-w-none px-6 py-8">
+         Same shape as that overview on purpose (name, a few facts, the front
+         door rendered), because a project is a repo-sized thing inside a repo
+         and a reader arriving at one wants what they want when arriving at a
+         repo. The header's three buttons are the routes out: the workspace as
+         files, its board, its folder on GitHub. Below them a segmented pill
+         (the shared internal-tab style) switches the body among Overview,
+         Board, Pages, and Docs; the header and pills stay put while the body
+         changes, so the reader never loses which workspace they are standing
+         in. A FILE board renders as the Board pill (navigable, links resolved
+         in-app) and drops the header button; a folder board keeps the button.
+
+         Overview is the repo's landing decision one level down: an entry
+         declaring a `landing` gets that page rendered live (toss-render #gh=,
+         same as a repo's custom landing), every other project gets its README.
+         Pages and Docs are DERIVED rather than declared: see projectPages and
+         loadProjectDocs below. -->
+    <div x-show="view==='project'" class="h-full flex flex-col">
         <template x-if="project">
-          <div>
+          <div class="flex flex-col h-full min-h-0">
+            <div class="shrink-0 px-6 pt-8">
             <div class="flex items-start justify-between gap-4 flex-wrap mb-4">
               <div class="min-w-0">
                 <h1 class="text-2xl font-bold tracking-tight truncate" x-text="project.label"></h1>
@@ -901,7 +912,10 @@
                 <button @click="openProjectFiles()" class="btn btn-outline gap-1.5">
                   <i class="ph ph-folders"></i> Files
                 </button>
-                <button x-show="project.board"
+                <!-- A file board lives in the pill row below, so the header
+                     button remains only for a folder board, which has no one
+                     file to render in-pane. -->
+                <button x-show="project.board && !projectBoardFile"
                         @click="openProjectBoard($store.browser.repo, project)"
                         class="btn btn-outline gap-1.5">
                   <i class="ph ph-list-checks"></i> Board
@@ -913,18 +927,156 @@
               </div>
             </div>
 
-            <div x-show="projectLoading" class="flex justify-center py-16">
-              <span class="loading loading-dots loading-md opacity-30"></span>
+            <!-- The pill row. Pages appears only when the catalog claims
+                 something for this workspace; a pill for an empty grid would be
+                 furniture. Docs is always offered, since every workspace is
+                 presumed to hold markdown; its count fills in after the first
+                 visit rather than costing a tree fetch up front. -->
+            <div class="inline-flex items-center gap-0.5 rounded-lg bg-base-200/60 p-0.5" role="tablist">
+              <button role="tab" @click="goProjectTab('overview')"
+                      class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-base font-medium transition-colors"
+                      :class="projectTab==='overview' ? 'bg-base-100 text-primary shadow-sm' : 'text-base-content/60 hover:text-base-content'">
+                <i class="ph text-lg" :class="project.landing ? 'ph-planet' : 'ph-house'"></i>Overview</button>
+              <button role="tab" x-show="projectBoardFile" @click="goProjectTab('board')"
+                      class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-base font-medium transition-colors"
+                      :class="projectTab==='board' ? 'bg-base-100 text-primary shadow-sm' : 'text-base-content/60 hover:text-base-content'">
+                <i class="ph ph-list-checks text-lg"></i>Board</button>
+              <button role="tab" x-show="projectPages.length" @click="goProjectTab('pages')"
+                      class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-base font-medium transition-colors"
+                      :class="projectTab==='pages' ? 'bg-base-100 text-primary shadow-sm' : 'text-base-content/60 hover:text-base-content'">
+                <i class="ph ph-squares-four text-lg"></i>Pages
+                <span class="font-mono text-sm opacity-60" x-text="projectPages.length"></span></button>
+              <button role="tab" @click="goProjectTab('docs')"
+                      class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-base font-medium transition-colors"
+                      :class="projectTab==='docs' ? 'bg-base-100 text-primary shadow-sm' : 'text-base-content/60 hover:text-base-content'">
+                <i class="ph ph-files text-lg"></i>Docs
+                <span x-show="projectDocsCount" class="font-mono text-sm opacity-60" x-text="projectDocsCount"></span></button>
             </div>
-            <article x-show="!projectLoading && projectHtml"
-                     class="prose prose-sm !max-w-none prose-pre:bg-base-200 prose-pre:text-base-content"
-                     x-html="projectHtml"></article>
-            <p x-show="!projectLoading && !projectHtml" class="text-base-content/40 italic text-base py-8">
-              No README in this workspace on this ref. Open its files, or its board.
-            </p>
+            </div>
+
+            <!-- Overview with a landing: the page itself, full-bleed under the
+                 header, like a repo's custom landing. The FAB carries the
+                 bust-out to the full-viewport page. -->
+            <template x-if="projectTab==='overview' && project.landing">
+              <iframe :src="projectLandingUrl" class="grow w-full border-0 bg-base-100 mt-4"
+                      sandbox="allow-scripts allow-same-origin allow-popups allow-downloads"></iframe>
+            </template>
+
+            <div x-show="!(projectTab==='overview' && project.landing)"
+                 class="grow min-h-0 overflow-y-auto px-6 pb-8 mt-4">
+
+              <!-- Overview without a landing: the README, the same promise a
+                   repo's default landing makes one level up. -->
+              <div x-show="projectTab==='overview'">
+                <div x-show="projectLoading" class="flex justify-center py-16">
+                  <span class="loading loading-dots loading-md opacity-30"></span>
+                </div>
+                <article x-show="!projectLoading && projectHtml"
+                         class="prose prose-sm !max-w-none prose-pre:bg-base-200 prose-pre:text-base-content"
+                         x-html="projectHtml"></article>
+                <p x-show="!projectLoading && !projectHtml" class="text-base-content/40 italic text-base py-8">
+                  No README in this workspace on this ref. Open its files, or its board.
+                </p>
+              </div>
+
+              <!-- Board: the tracker board rendered in-pane, its relative
+                   links resolved into the shell's viewer (onBoardClick), so a
+                   row's task file is one tap without leaving the workspace. -->
+              <div x-show="projectTab==='board'">
+                <div x-show="projectBoardLoading" class="flex justify-center py-16">
+                  <span class="loading loading-dots loading-md opacity-30"></span>
+                </div>
+                <article x-show="!projectBoardLoading && projectBoardHtml" @click="onBoardClick($event)"
+                         class="prose prose-sm !max-w-none prose-pre:bg-base-200 prose-pre:text-base-content"
+                         x-html="projectBoardHtml"></article>
+                <p x-show="!projectBoardLoading && !projectBoardHtml" class="text-base-content/40 italic text-base py-8">
+                  No board file on this ref. Open the workspace's files instead.
+                </p>
+              </div>
+
+              <!-- Pages: the workspace's slice of the repo catalog. Lean cards
+                   rather than the full gallery component (whose state lives in
+                   a nested x-data the shell's selection cannot repaint): a lazy
+                   live preview that is itself the link, the title, and the
+                   GitHub source jump-over. The repo's own Pages view keeps the
+                   shot/live/source toggles one level up. -->
+              <div x-show="projectTab==='pages'">
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <template x-for="pg in projectPages" :key="pg.key">
+                    <div class="card bg-base-100 border border-base-300 shadow-sm overflow-hidden">
+                      <a :href="pg.live" class="block relative bg-base-200/40 border-b border-base-300 aspect-[16/10] overflow-hidden">
+                        <iframe :src="pg.live" loading="lazy"
+                                sandbox="allow-scripts allow-same-origin"
+                                class="w-full h-full bg-base-100 pointer-events-none"></iframe>
+                      </a>
+                      <div class="card-body p-3 gap-1">
+                        <div class="flex items-baseline justify-between gap-2">
+                          <a :href="pg.live" class="font-semibold text-base hover:text-primary transition-colors truncate"
+                             x-text="pg.label"></a>
+                          <a :href="pg.code" target="_blank" rel="noopener"
+                             class="text-base-content/30 hover:text-base-content/60 shrink-0" title="Source on GitHub">
+                            <i class="ph ph-github-logo"></i></a>
+                        </div>
+                        <p class="text-base text-base-content/50" x-text="pg.note"></p>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Docs: every markdown file in the workspace, derived from one
+                   recursive tree read. The workspace's own root files lead,
+                   then one group per folder with its full relative path as the
+                   header, so depth reads without a tree control; a curated
+                   DOCS.md, where the workspace keeps one, renders above the
+                   mechanical listing. Rows open in the shell's viewer, the
+                   same place the Board button reads. -->
+              <div x-show="projectTab==='docs'">
+                <div x-show="projectDocsLoading" class="flex justify-center py-16">
+                  <span class="loading loading-dots loading-md opacity-30"></span>
+                </div>
+                <template x-if="!projectDocsLoading && projectDocs">
+                  <div>
+                    <article x-show="projectDocsIndexHtml"
+                             class="prose prose-sm !max-w-none prose-pre:bg-base-200 prose-pre:text-base-content mb-8 pb-8 border-b border-base-200"
+                             x-html="projectDocsIndexHtml"></article>
+                    <div class="flex items-center gap-3 mb-4">
+                      <label class="input input-bordered flex items-center gap-1.5 w-64">
+                        <i class="ph ph-magnifying-glass opacity-50"></i>
+                        <input type="search" x-model.debounce="projectDocsQ" placeholder="filter by path…" class="grow min-w-0">
+                      </label>
+                      <span class="text-base text-base-content/40" x-text="projectDocsCount + ' files'"></span>
+                    </div>
+                    <template x-for="g in projectDocsGroups" :key="g.dir">
+                      <section class="mb-6">
+                        <h3 x-show="g.dir" class="text-base font-mono uppercase tracking-widest text-base-content/40 mb-1.5 flex items-center gap-2">
+                          <i class="ph ph-folder"></i><span x-text="g.dir"></span>
+                          <span class="badge badge-ghost badge-sm" x-text="g.files.length"></span>
+                        </h3>
+                        <div class="flex flex-col">
+                          <template x-for="f in g.files" :key="f.rel">
+                            <button @click="openProjectDoc(f.rel)"
+                                    class="flex items-center gap-2 px-2 py-1 text-base text-left rounded-lg hover:bg-base-200 text-base-content/80 hover:text-base-content transition-colors cursor-pointer">
+                              <i class="ph ph-file-text text-base-content/40"></i>
+                              <span class="truncate" x-text="f.name"></span>
+                            </button>
+                          </template>
+                        </div>
+                      </section>
+                    </template>
+                    <p x-show="!projectDocsGroups.length" class="text-base-content/40 italic text-base py-8">
+                      No markdown files<span x-show="projectDocsQ"> match “<span x-text="projectDocsQ"></span>”</span>.
+                    </p>
+                  </div>
+                </template>
+                <p x-show="!projectDocsLoading && !projectDocs" class="text-base-content/40 italic text-base py-8">
+                  Could not list this workspace's files on this ref.
+                </p>
+              </div>
+
+            </div>
           </div>
         </template>
-      </div>
     </div>
 
     <!-- Atlas: the treemap for the selected repo, embedded. Available for every
@@ -1126,6 +1278,9 @@ function app(){ return {
     let src = '', label = '';
     if (this.view === 'landing' && this.landingKind() === 'custom' && this.customLandingUrl) {
       src = this.customLandingUrl; label = 'Open landing full-page';
+    } else if (this.view === 'project' && this.projectTab === 'overview' && this.projectLandingUrl) {
+      src = this.projectLandingUrl;
+      label = 'Open ' + (this.project?.label || 'project') + ' landing full-page';
     } else if (this.view === 'app' && this.appView && this.appViewUrl) {
       src = this.appViewUrl; label = 'Open ' + (this.appView.label || 'app view') + ' full-page';
     } else if (this.view === 'atlas') {
@@ -1246,8 +1401,8 @@ function app(){ return {
       this.loadRecent();
       this.loadConfig();
       // An open project is repo@ref-scoped like the rest: switching the ref
-      // under it re-reads its README from where you now are.
-      if (this.view === 'project') this.loadProjectReadme();
+      // under it re-reads whatever its open tab renders from where you now are.
+      if (this.view === 'project') this.refreshProjectPane();
     });
 
     // Estate membership needs a token to resolve, since it is read from the
@@ -1302,7 +1457,7 @@ function app(){ return {
     else if (url && url.view === 'public') this.goPublicBrowse();
     else if (url && url.view === 'branches') this.goBranches();
     else if (url && url.view === 'config') this.goConfig();
-    else if (url && url.view === 'project' && url.project) this.goProject(url.project);
+    else if (url && url.view === 'project' && url.project) this.goProject(url.project, url.tab);
     else if (url && url.view === 'files') { this.goFiles(); if (url.path) await this.openFolder(url.path); }
     const staged = window.StageLink ? window.StageLink.read(location).items : [];
     if (staged.length) {
@@ -2092,7 +2247,13 @@ function app(){ return {
         : (typeof o.tracker === 'string' && o.tracker
              ? o.tracker.replace(/\/+$/, '')
              : path + '/tracker/board.md');
-      out.push({ path, label: o.label || path.split('/').pop(), board });
+      // `landing` is the repo field one level down: the workspace's own front
+      // page, repo-root-relative like `tracker`, taking the project view's
+      // Overview slot ahead of the README the way a repo landing outranks the
+      // overview. Junk (non-string, empty) reads as undeclared.
+      const landing = (typeof o.landing === 'string' && o.landing)
+        ? o.landing.replace(/^\/+/, '').replace(/\/+$/, '') : '';
+      out.push({ path, label: o.label || path.split('/').pop(), board, landing });
     }
     return out;
   },
@@ -2123,26 +2284,222 @@ function app(){ return {
   // these properties directly instead, which is what makes picking a row in the
   // sidebar repaint the pane.
   projectPath: '',
+  projectTab: 'overview',   // 'overview' | 'board' | 'pages' | 'docs' — the pill row
   projectHtml: '',
   projectLoading: false,
   _projectKey: '',
+  projectBoardHtml: '',
+  projectBoardLoading: false,
+  _projectBoardKey: '',
+  projectDocs: null,        // grouped listing; null = not loaded (or the tree read failed)
+  projectDocsLoading: false,
+  projectDocsQ: '',
+  projectDocsIndexHtml: '', // a curated DOCS.md, rendered above the mechanical listing
+  _projectDocsKey: '',
   // The open project as a row: the declared entry where there is one, so its
-  // label and board carry, else a minimal one derived from the path (a deep
-  // link can name a workspace the manifest has not caught up with).
+  // label, board, and landing carry, else a minimal one derived from the path
+  // (a deep link can name a workspace the manifest has not caught up with).
   get project(){
     if (!this.projectPath) return null;
     const s = Alpine.store('browser');
     const found = this.repoProjects(s.repo).find(p => p.path === this.projectPath);
     return found || { path: this.projectPath, label: this.projectPath.split('/').pop(),
-                      board: this.projectPath + '/tracker/board.md' };
+                      board: this.projectPath + '/tracker/board.md', landing: '' };
   },
-  goProject(path){
+  goProject(path, tab){
     const p = String(path || '').replace(/\/+$/, '');
     if (!p) return;
+    if (p !== this.projectPath) this.projectDocsQ = '';
     this.projectPath = p;
+    this.projectTab = (tab === 'board' || tab === 'pages' || tab === 'docs') ? tab : 'overview';
     this.view = 'project';
     this.syncUrl();
-    this.loadProjectReadme();
+    this.refreshProjectPane();
+  },
+  goProjectTab(tab){
+    this.projectTab = tab;
+    this.syncUrl();
+    this.refreshProjectPane();
+  },
+  // Load what the open tab actually renders, and nothing else: the README only
+  // feeds an Overview without a landing, the board only feeds Board, and the
+  // docs listing only feeds Docs (its tree read is the one project fetch worth
+  // deferring). Pages is a pure derivation off the manifest already in hand,
+  // so it loads nothing.
+  refreshProjectPane(){
+    if (this.projectTab === 'docs') this.loadProjectDocs();
+    else if (this.projectTab === 'board') this.loadProjectBoard();
+    else if (this.projectTab === 'overview' && !this.project?.landing) this.loadProjectReadme();
+  },
+  // The landing rendered live through toss-render #gh=, the same private-safe
+  // path a repo's custom landing takes, but following the browsed ref the way
+  // projectGithubUrl does: inside a repo the honest project list is the one on
+  // the ref you are standing on, and its landing is too.
+  get projectLandingUrl(){
+    const p = this.project;
+    if (!p || !p.landing) return '';
+    const s = Alpine.store('browser');
+    const ref = s.ref && s.ref !== s.defaultRef ? '@' + s.ref : '';
+    return '../toss-render.html#gh=' + s.repo + ref + ':' + p.landing;
+  },
+  // The workspace's slice of the repo catalog, DERIVED rather than declared: an
+  // entry belongs to the open project when its resolved path sits under the
+  // workspace folder, or when it claims the workspace outright with a
+  // `project` key (the escape for a page that lives elsewhere, cross-repo
+  // included). One catalog, one owner; a second per-project list would be the
+  // rival-list drift the estate's membership cleanup retired.
+  get projectPages(){
+    const p = this.project;
+    const s = Alpine.store('browser');
+    if (!p || !Array.isArray(s.config?.pages)) return [];
+    const declRef = s.ref && s.ref !== s.defaultRef ? s.ref : '';
+    const out = [];
+    for (const e of s.config.pages){
+      if (!e || !e.path) continue;
+      const t = resolveCatalogPath(e.path, s.repo, declRef);
+      const claimed = e.project === p.path;
+      const inFolder = t.repo === s.repo && t.path.startsWith(p.path + '/');
+      if (!claimed && !inFolder) continue;
+      const url = '../toss-render.html#gh=' + t.repo + (t.ref ? '@' + t.ref : '') + ':' + t.path;
+      const blobRef = t.ref || (t.repo === s.repo ? (s.defaultRef || 'main') : 'main');
+      out.push({
+        key: t.repo + ':' + t.path,
+        label: e.title || t.path.split('/').pop(),
+        note: e.note || '',
+        live: url,
+        code: 'https://github.com/' + t.repo + '/blob/' + blobRef + '/' + t.path,
+      });
+    }
+    return out;
+  },
+  // ── Board: the tracker board as a navigable surface ───────────────────────
+  // The generated board.md rendered in-pane rather than as a jump out of the
+  // project view, which is the "first-class trackers" half of the project
+  // layer: the board is where a workspace says what it is doing, so it reads
+  // where the workspace reads. Only a FILE board gets the pill (the convention
+  // fixes one at <workspace>/tracker/board.md); an entry whose `tracker` names
+  // a folder keeps the header button and the old open-the-folder behavior.
+  get projectBoardFile(){
+    const b = this.project?.board;
+    return b && this.pinIsFile(b) ? b : '';
+  },
+  async loadProjectBoard(force){
+    const s = Alpine.store('browser');
+    const file = this.projectBoardFile;
+    if (!file || !s.repo || !s.gh) return;
+    const key = s.repo + '@' + s.ref + ':' + file;
+    if (key === this._projectBoardKey && !force) return;
+    this._projectBoardKey = key;
+    this.projectBoardLoading = true; this.projectBoardHtml = '';
+    let res = null;
+    try { res = await s.gh.get(file); } catch {}
+    if (key !== this._projectBoardKey) return;
+    if (res){
+      try { await loadMarked(); this.projectBoardHtml = window.marked.parse(res.text); }
+      catch { this.projectBoardHtml = '<pre>' + res.text.replace(/</g, '&lt;') + '</pre>'; }
+    }
+    this.projectBoardLoading = false;
+  },
+  // What makes the rendered board NAVIGABLE: its relative links (a row's
+  // `tasks/<id>.md`, the protocol README) resolve against the board file's
+  // folder and open in the shell's viewer instead of dangling off the pane's
+  // own URL. Absolute links (a PR, a compare) keep their default behavior.
+  onBoardClick(e){
+    const a = e.target.closest('a');
+    const href = a?.getAttribute('href');
+    if (!href || /^(https?:|mailto:|#)/.test(href)) return;
+    e.preventDefault();
+    const base = this.projectBoardFile.split('/').slice(0, -1).join('/');
+    const path = this.resolveRepoRelative(base, href);
+    if (!path) return;
+    if (this.pinIsFile(path)) this.openFile(path); else this.openFolder(path);
+  },
+  // Resolve a relative href against a base folder into a repo-root path,
+  // folding ./ and ../ and dropping any query or fragment. Pure, so the
+  // resolution rules are testable. Returns '' for a hop that escapes the root.
+  resolveRepoRelative(base, href){
+    const clean = String(href || '').split(/[?#]/)[0];
+    if (!clean) return '';
+    const out = clean.startsWith('/') ? [] : (base ? base.split('/') : []);
+    for (const seg of clean.replace(/^\//, '').split('/')){
+      if (!seg || seg === '.') continue;
+      if (seg === '..'){ if (!out.length) return ''; out.pop(); }
+      else out.push(seg);
+    }
+    return out.join('/');
+  },
+
+  // ── Docs: every markdown file in the workspace, off one recursive tree ────
+  // The same primitive the stage's Search and the mention picker use, keyed per
+  // repo@ref:project so a repaint costs nothing. Derived entirely: no manifest
+  // field, nothing to maintain, and a workspace's whole prose layer surfaces
+  // the day the feature ships. Failure stays distinct from emptiness (null vs
+  // []), so an API miss never reads as "no docs".
+  async loadProjectDocs(force){
+    const s = Alpine.store('browser');
+    if (!this.projectPath || !s.repo || !s.gh) return;
+    const key = s.repo + '@' + s.ref + ':' + this.projectPath;
+    if (key === this._projectDocsKey && !force) return;
+    this._projectDocsKey = key;
+    this.projectDocsLoading = true; this.projectDocs = null; this.projectDocsIndexHtml = '';
+    const prefix = this.projectPath + '/';
+    let rels = null;
+    try {
+      const t = await s.gh.req('git/trees/' + encodeURIComponent(s.ref || 'HEAD') + '?recursive=1');
+      rels = (t.tree || [])
+        .filter(n => n.type === 'blob' && n.path.startsWith(prefix) && /\.(md|markdown)$/i.test(n.path))
+        .map(n => n.path.slice(prefix.length));
+    } catch { /* rels stays null: the pane says the listing failed */ }
+    // A late reply for a project the reader has since left must not paint over
+    // the current one (loadProjectReadme's rule).
+    if (key !== this._projectDocsKey) return;
+    this.projectDocs = rels ? this.groupProjectDocs(rels) : null;
+    this.projectDocsLoading = false;
+    // The curated layer: a workspace keeping a DOCS.md gets it rendered above
+    // the mechanical listing. Curation on top, mechanism underneath, nothing
+    // owed when no index exists.
+    if (rels && rels.includes('DOCS.md')){
+      try {
+        const res = await s.gh.get(this.projectPath + '/DOCS.md');
+        if (key !== this._projectDocsKey) return;
+        await loadMarked();
+        this.projectDocsIndexHtml = window.marked.parse(res.text);
+      } catch {}
+    }
+  },
+  // Group project-relative markdown paths for the Docs tab: the workspace's
+  // own root files first, then one group per folder in path order, each
+  // folder's full relative path as its header so depth reads without a tree
+  // control, READMEs leading their folder. Pure, so the shape is testable.
+  groupProjectDocs(rels){
+    const groups = new Map();
+    for (const rel of rels){
+      const i = rel.lastIndexOf('/');
+      const dir = i === -1 ? '' : rel.slice(0, i);
+      if (!groups.has(dir)) groups.set(dir, []);
+      groups.get(dir).push({ name: i === -1 ? rel : rel.slice(i + 1), rel });
+    }
+    const readmeFirst = (a, b) =>
+      (b.name.toLowerCase() === 'readme.md') - (a.name.toLowerCase() === 'readme.md')
+      || a.name.localeCompare(b.name);
+    return [...groups.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))   // '' sorts first: root leads
+      .map(([dir, files]) => ({ dir, files: files.sort(readmeFirst) }));
+  },
+  get projectDocsGroups(){
+    const q = this.projectDocsQ.trim().toLowerCase();
+    const groups = this.projectDocs || [];
+    if (!q) return groups;
+    return groups
+      .map(g => ({ ...g, files: g.files.filter(f => f.rel.toLowerCase().includes(q)) }))
+      .filter(g => g.files.length);
+  },
+  get projectDocsCount(){
+    return (this.projectDocs || []).reduce((n, g) => n + g.files.length, 0);
+  },
+  // A doc opens in the shell's viewer, the same place the Board button reads.
+  openProjectDoc(rel){
+    if (this.projectPath && rel) this.openFile(this.projectPath + '/' + rel);
   },
   // The workspace README, at the browsed ref. Same fallback ladder as the repo
   // overview, since a workspace names its readme with the same freedom a repo
@@ -2174,14 +2531,16 @@ function app(){ return {
     const p = this.project;
     if (p) this.openFolder(p.path);
   },
-  // The board, in the app: the same viewer the Files view opens a file in, so
-  // the board reads here rather than sending the tap to GitHub. A `tracker`
-  // naming a folder rather than a file opens the folder, openPin's rule.
+  // The board, in the app: a FILE board routes to the project view's Board
+  // pill, so every board tap (estate row, repo sidebar row, header button)
+  // lands on the same rendered, navigable surface. A `tracker` naming a folder
+  // rather than a file opens the folder, openPin's rule, since a folder has no
+  // one file to render.
   async openProjectBoard(repo, p){
     if (!p.board) return;
     await this.ensureBrowser(repo, this.overlayRefFor(repo) || undefined);
     if (Alpine.store('browser').repo !== repo) return;
-    if (this.pinIsFile(p.board)) await this.openFile(p.board);
+    if (this.pinIsFile(p.board)) this.goProject(p.path, 'board');
     else await this.openFolder(p.board);
   },
   // The project's folder on GitHub (lib/github-links.js does the encoding, so
@@ -2563,7 +2922,7 @@ function app(){ return {
     if (!p.has('repo') && !p.has('file') && !p.has('view')) return null;
     return { repo: p.get('repo') || this.DEFAULT_REPO, ref: p.get('ref') || '',
              file: p.get('file'), view: p.get('view'), path: p.get('path') || '',
-             project: p.get('project') || '',
+             project: p.get('project') || '', tab: p.get('tab') || '',
              appRepo: p.get('appRepo') || '', appPath: p.get('appPath') || '', appRef: p.get('appRef') || '',
              appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '' };
   },
@@ -2575,7 +2934,7 @@ function app(){ return {
     // ?ref= is Files-scoped, like the picker that sets it: it deep-links which
     // ref the file browser reads, so it only accompanies ?file=/?view=files.
     if (this.view === 'files' && s.ref && s.ref !== s.defaultRef) p.set('ref', s.ref); else p.delete('ref');
-    p.delete('file'); p.delete('view'); p.delete('path'); p.delete('project');
+    p.delete('file'); p.delete('view'); p.delete('path'); p.delete('project'); p.delete('tab');
     p.delete('appRepo'); p.delete('appPath'); p.delete('appRef');
     p.delete('appLabel'); p.delete('appIcon');
     if (this.view === 'files') {
@@ -2587,9 +2946,11 @@ function app(){ return {
     }
     else if (this.view === 'pages') p.set('view', 'pages');
     // A project is repo-scoped, so its link carries the workspace beside the
-    // ?repo= the line above already stamped.
+    // ?repo= the line above already stamped; a non-default pill rides as &tab=
+    // so "open budget-wa's docs" is one link.
     else if (this.view === 'project' && this.projectPath) {
       p.set('view', 'project'); p.set('project', this.projectPath);
+      if (this.projectTab && this.projectTab !== 'overview') p.set('tab', this.projectTab);
     }
     else if (this.view === 'atlas') p.set('view', 'atlas');
     else if (this.view === 'stage') p.set('view', 'stage');
@@ -2651,7 +3012,7 @@ function app(){ return {
       else if (url && url.view === 'public') this.goPublicBrowse();
       else if (url && url.view === 'branches') this.goBranches();
       else if (url && url.view === 'config') this.goConfig();
-    else if (url && url.view === 'project' && url.project) this.goProject(url.project);
+    else if (url && url.view === 'project' && url.project) this.goProject(url.project, url.tab);
       else if (url && url.view === 'files') { this.goFiles(); if (url.path) await this.openFolder(url.path); }
       else if (!url) this.goDashboard();
       else this.goLanding();
@@ -3287,10 +3648,18 @@ function overview(){ return {
   a REPO is a per-repo context, with its own VIEWS (landing, project, atlas,
   files, branches, config) plus pinned/recent shortcuts. A PROJECT is the third
   unit and the newest: a workspace inside a repo, declared in `projects`, with a
-  view that is the landing one level down (its README, and the routes to its
-  files, its board, and its folder on GitHub). It is the same destination from
-  either level, since the estate sidebar's nested rows and the repo sidebar's
-  Projects section both open it. Config is the open repo's
+  view that is the landing one level down: a constant header (its name, and the
+  routes to its files, its board, and its folder on GitHub) over a pill row of
+  Overview / Board / Pages / Docs. Overview repeats the repo's landing decision
+  at project scale (an entry's `landing` page rendered live, else the README);
+  Board renders a file board in-pane with its relative links resolved into the
+  shell's viewer (a folder board keeps the header button instead); Pages is the
+  workspace's slice of the repo catalog, derived by path prefix or an entry's
+  `project` claim; Docs is every markdown file in the workspace off one
+  recursive tree, with a curated DOCS.md leading when one exists. It is the
+  same destination from either level, since the estate sidebar's nested rows
+  and the repo sidebar's Projects section both open it, and &tab= deep-links a
+  specific pill. Config is the open repo's
   .web-tools.json as a roomy view (a Settings form + a raw JSON tab, saving
   through the config-saved event), the counterpart to the shared repo dialog,
   which stays for the token and for configuring a repo you are not in.
@@ -3671,22 +4040,30 @@ function overview(){ return {
              segment with an extension opens as a file, else opens the Files
              view at that folder.
     projects the repo's workspaces. Bare folder paths or { path, label,
-             tracker } objects. TWO LISTS, ONE DESTINATION: nested under the
-             repo's row in the estate sidebar, and the Projects section of that
-             repo's own sidebar; the name in either opens the repo's PROJECT
-             VIEW (view==='project'), which is the landing one level down (the
-             workspace's README, plus its files / board / GitHub folder). Two
-             trailing buttons carry the other two destinations directly. The
-             defining convention: a workspace running a tracker is a project
-             (the repo root's tracker marks the repo itself, no row), so the
-             field is generatable from a tracker walk and discovery costs the
-             shell nothing beyond the config cache it already reads. That same
-             convention fixes the board at <workspace>/tracker/board.md, so the
-             button needs no declaration; `tracker` on an entry names a
-             different one and `tracker: false` drops the button. An `icon` is
-             accepted and ignored (the rows stopped drawing one). The estate
-             list reads the config cache; the OPEN repo reads its own live
-             manifest, so inside a repo the list follows the browsed ref.
+             tracker, landing } objects. TWO LISTS, ONE DESTINATION: nested
+             under the repo's row in the estate sidebar, and the Projects
+             section of that repo's own sidebar; the name in either opens the
+             repo's PROJECT VIEW (view==='project'), which is the landing one
+             level down: a constant header (files / board / GitHub folder)
+             over Overview / Board / Pages / Docs pills (&tab= deep-links
+             one; Board renders a file board in-pane, navigable). An
+             entry's `landing` (repo-root-relative, like `tracker`) takes the
+             Overview slot rendered live, the way a repo landing outranks the
+             overview; absent, Overview is the workspace README. Pages and
+             Docs are derived, not declared: Pages is the repo `pages` catalog
+             filtered to entries under the workspace folder (or claiming it
+             with a `project` key), Docs is every markdown file off one
+             recursive tree. The defining convention: a workspace running a
+             tracker is a project (the repo root's tracker marks the repo
+             itself, no row), so the field is generatable from a tracker walk
+             and discovery costs the shell nothing beyond the config cache it
+             already reads. That same convention fixes the board at
+             <workspace>/tracker/board.md, so the button needs no declaration;
+             `tracker` on an entry names a different one and `tracker: false`
+             drops the button. An `icon` is accepted and ignored (the rows
+             stopped drawing one). The estate list reads the config cache; the
+             OPEN repo reads its own live manifest, so inside a repo the list
+             follows the browsed ref.
     tracker  where the repo keeps its task board ("tracker/board.md", or a
              folder). One row in the repo's GITHUB MENU, since it is the one
              destination in that menu GitHub cannot name for itself: every
