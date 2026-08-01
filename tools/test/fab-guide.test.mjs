@@ -505,3 +505,61 @@ test('under a route, every take label describes the document a take would get', 
       /a\.html at br/);
   } finally { window.__tossSubject = null; }
 });
+
+test('an old shell stamps only the app, so the fab reads the route off the address', async () => {
+  // The deployed toss-render is main's, and the re-stamp that makes a routed
+  // subject the FILE lives on this branch. So a #data= toss opened today hands
+  // the fab pages/data-view.html and nothing else. The address always said
+  // which file was asked for; the fab can read it, and a fab is lib, so ?use=
+  // reaches this while the shell half waits to merge.
+  const d = await mountFab();
+  const back = window.location.hash;
+  const at = (h) => window.history.replaceState(null, '', window.location.pathname + h);
+  try {
+    at('#data=mehrlander/home:CLAUDE.md');
+    window.__tossSubject = { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/data-view.html' };
+    d.adoptSubject();
+    await tick(2);
+    assert.equal(d.repo, 'mehrlander/home');
+    assert.equal(d.path, 'CLAUDE.md');
+    assert.equal(d.subjectRoute, 'data');
+    assert.deepEqual({ ...d.subjectVia },
+      { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/data-view.html' });
+    assert.equal(d.takePath, 'pages/data-view.html', 'the take still follows the frame');
+
+    // A ?query and a trailing #frag are the renderer's, not part of the path.
+    at('#data=mehrlander/home@br:data/rows.csv?view=table#item=2');
+    d.adoptSubject();
+    await tick(2);
+    assert.equal(d.path, 'data/rows.csv');
+    assert.equal(d.ref, 'br');
+
+    // A PLAIN toss is not routed, and must not be mistaken for one. This is the
+    // whole risk of reading the address: #gh= is a delivery mode, not a route.
+    at('#gh=mehrlander/web-tools@br:pages/a.html');
+    window.__tossSubject = { repo: 'mehrlander/web-tools', ref: 'br', path: 'pages/a.html' };
+    d.adoptSubject();
+    await tick(2);
+    assert.equal(d.path, 'pages/a.html');
+    assert.equal(d.subjectRoute, '', 'no route was involved');
+    assert.equal(d.subjectVia, null);
+
+    // Neither is a payload toss, whose fragment is base64 and parses as nothing.
+    at('#gz=H4sIAAAAAAAA');
+    d.adoptSubject();
+    await tick(2);
+    assert.equal(d.subjectRoute, '');
+
+    // And a shell that DOES stamp the route wins: the fallback never runs, so
+    // the two implementations cannot disagree once main carries the fix.
+    at('#data=mehrlander/home:CLAUDE.md');
+    window.__tossSubject = { repo: 'mehrlander/home', ref: 'wip', path: 'CLAUDE.md', route: 'data',
+                             via: { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/data-view.html' } };
+    d.adoptSubject();
+    await tick(2);
+    assert.equal(d.ref, 'wip', "the shell's ref stands, not the address's empty one");
+  } finally {
+    window.__tossSubject = null;
+    at(back);
+  }
+});

@@ -81,3 +81,26 @@ test('every described delivery mode is a parameter toss-render reads', () => {
     assert.ok(tossRender.includes(`param('${m.param}')`), 'not read by toss-render: ' + m.param);
   }
 });
+
+// The fab carries the INVERSE of the route keys: to tell a routed fragment from
+// a plain one it only needs to know toss-render's own delivery params, so it
+// keeps that short list rather than a copy of the route table. Short and stable
+// is not the same as safe, though: adding a delivery mode to toss-render without
+// adding it here would make the fab read the new param as a route key and
+// mislabel whatever it addressed. So the manifest owns this list too.
+test('the fab knows every delivery mode, so it never reads one as a route key', () => {
+  const fab = readFileSync(path.join(repoRoot, 'lib/alpineComponents/fab.js'), 'utf8');
+  const block = fab.match(/_TOSS_MODES: \[([^\]]*)\]/);
+  assert.ok(block, '_TOSS_MODES not found in lib/alpineComponents/fab.js');
+  const modes = [...block[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
+
+  const documented = manifest.modes.map(m => m.param)
+    .filter(p => p !== '<route>' && p !== 'src');   // a route key, and the renderer side
+  for (const p of documented) {
+    assert.ok(modes.includes(p), 'the fab would read ' + p + '= as a route key: ' + p);
+  }
+  // The one extra is url's alias, which toss-render reads and the manifest does
+  // not describe. Pinned so the list cannot quietly grow a third member.
+  assert.deepEqual(modes.filter(m => !documented.includes(m)), ['u']);
+  assert.match(tossRender, /param\('url'\) \|\| param\('u'\)/, 'the u alias is gone; drop it here too');
+});
