@@ -43,10 +43,12 @@ all-repo context) or in a **repo** (a per-repo context with its own views).
 The **header carries the app-level nav**: a fixed, app-owned set of the estate's
 own views, **Activity** (Open / To-do / Jots by pill), **Repos**, **Surfaces**,
 **Stage**, **Tools**, and **Map**, as icon buttons (icon + label on desktop,
-icon-only on mobile), lit on the active view and present on every viewport. That is the whole
-header: the `#repo` component sits beside the nav but renders nothing (it is the
-repo/auth controller and hosts the shared dialog), and there is neither an auth
-shield nor a brand icon. The mark left the header because its tap was the
+icon-only on mobile), lit on the active view and present on every viewport. The
+`#repo` component sits beside the nav but renders nothing (it is the repo/auth
+controller and hosts the shared dialog), and there is neither an auth shield nor
+a brand icon. The far end of the row carries two desktop-only clusters, both
+described below: the **rail** (the manifest's `rail: true` links) and the **ref
+switch**. The mark left the header because its tap was the
 **dashboard** (Activity for a signed-in viewer, Repos for a signed-out one) and
 both of those are the first item of the nav it sat against: a second route to a
 destination named a few pixels away. It still leads the sidebar crumb trail,
@@ -55,6 +57,38 @@ rather than two. There is no repo-list dropdown and no quick-links row:
 **repo selection happens on the Repos dashboard** (a card opens the repo), which
 reads better than a dropdown and keeps the header a fixed set rather than one
 repos opt into.
+
+### The ref switch: which ref show-repo itself is running
+
+Past the rail, behind a hairline, sits the **ref switch**
+(`lib/alpineComponents/refSwitch`), which answers a question none of the rest of
+the chrome does: *which ref is this page running off?* Off the default branch it
+is a warning chip naming the ref, with a house button back to the live page; at
+the default branch it is a plain ghost icon and says nothing, because there is
+nothing to say. Opening it gives a text box that takes a pasted branch, tag or
+sha, the branch list filtered by what is typed, and a **lightning button that
+jumps to the most recently committed branch**, which hides itself when the
+newest branch is the default one.
+
+**It is not the Files view's ref picker, and the two are easy to confuse.** That
+one chooses which ref of the *browsed* repo you are reading; this one chooses
+which ref of `mehrlander/web-tools` **show-repo itself runs from**. Same
+vocabulary, different subject, so the panel spells out the repo and path it acts
+on every time it opens.
+
+It switches by navigating to the toss renderer with the ref pinned on **both
+halves**, `?use=<ref>` for the renderer's own lib chain and `#gh=…@<ref>:…` for
+the page, since `?use=` alone re-pins only the lib a page loads and would leave
+the shell (this header included) at the deployed version. The page's current
+deep link rides along as the trailing `?query`, so a switch lands on the screen
+you were already looking at rather than at the front door.
+
+The branch list is the same survey the fab's Render tab runs
+(`branchesForPath`, degrading to an undated list without a token) and it loads
+**on hover, once**: a page nobody touches the control on pays nothing. The fab
+remains the fuller instrument, and the only one on a phone — this cluster is
+desktop-only, like the rail and for the same overflow reason, while the fab's
+launcher goes warning-tinted off the default branch on every viewport.
 
 The sidebar's **top bar is a crumb trail** (`crumbBar`, the shell's
 `sidebarCrumbs`) in both contexts. At the app level it is the **product mark
