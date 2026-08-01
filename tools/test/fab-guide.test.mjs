@@ -417,3 +417,53 @@ test('the dropdown navigates in one tap, and the default branch is the way out',
   d.goToRef('claude/thing');
   assert.equal(calls.length, 0);
 });
+
+test('a routed subject is the FILE, and the app showing it stays named', async () => {
+  const d = await mountFab();
+
+  // What toss-render stamps for #data=mehrlander/home:CLAUDE.md: the envelope
+  // is the subject and the renderer rides along as `via`. Before this, the
+  // shell stamped the renderer, so the drawer over a markdown read reported
+  // that you were looking at web-tools@main:pages/data-view.html.
+  window.__tossSubject = {
+    repo: 'mehrlander/home', ref: '', path: 'CLAUDE.md', route: 'data',
+    via: { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/data-view.html' },
+  };
+  try {
+    d.adoptSubject();
+    await tick(2);
+    assert.equal(d.repo, 'mehrlander/home', 'the identity is the file, not the viewer');
+    assert.equal(d.path, 'CLAUDE.md');
+    assert.equal(d.subjectRoute, 'data');
+
+    // The take grid is the one place that must NOT follow the file: it reaches
+    // into the frame's dom, and that dom is the renderer's.
+    assert.equal(d.takePath, 'pages/data-view.html');
+    assert.match(d.takeSubject, /^data-view\.html/);
+
+    // Switching refs comes back through the same door. Straight to
+    // __tossNavigate would hand the shell a .md to mount as a page.
+    const calls = [];
+    window.__tossNavigate = (a) => calls.push(['gh', a]);
+    window.__tossRoute = (k, a) => calls.push([k, a]);
+    try {
+      d.defaultBranch = 'main';
+      d.pageBranches = [{ name: 'wip', status: 'differs' }];
+      d.goToRef('wip');
+      assert.deepEqual(calls.pop(), ['data', 'mehrlander/home@wip:CLAUDE.md']);
+
+      // And the default branch does not mean "leave for the live page": a
+      // markdown file has none, and canonicalUrl would invent a 404.
+      d.ref = 'wip';
+      d.goToRef('main');
+      assert.deepEqual(calls.pop(), ['data', 'mehrlander/home@main:CLAUDE.md']);
+    } finally { delete window.__tossNavigate; delete window.__tossRoute; }
+  } finally { window.__tossSubject = null; }
+
+  // Dropping the subject clears both, or a later plain toss would keep
+  // claiming to be shown through an app it no longer is.
+  d.adoptSubject();
+  assert.equal(d.subjectRoute, '');
+  assert.equal(d.subjectVia, null);
+  assert.equal(d.takePath, d.path);
+});

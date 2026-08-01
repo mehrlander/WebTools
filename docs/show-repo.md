@@ -119,6 +119,20 @@ you are on. The fab's Render tab reads the ref you landed on, in this order:
   re-address: `__tossNavigate` for a page, `__tossRoute` for anything routed,
   which keeps the route map owned by `toss-render.html`. The thing being chosen is a file somewhere, so splitting it in two
   left the repo half inert and the path half unable to leave its own repo.
+
+  **A routed subject is the file, not the app showing it.** A route resolves by
+  fetching the renderer page and handing it the envelope, so the shell's own
+  stamp names `pages/data-view.html` and the drawer over a markdown read
+  reported that as the thing on screen. It is not: a route is a rendering
+  strategy for a file the same way the frame is one for a page, and neither is
+  what was addressed. `showRoute` re-stamps with the envelope, carrying the
+  route key and a `via` naming the renderer, so the identity block, the ref bar,
+  the github menu, and the guide all follow the file, a ref switch comes back
+  through the same route rather than trying to mount a `.md` as a page, and the
+  default-branch row re-addresses instead of leaving for a `canonicalUrl` that
+  does not exist. One thing deliberately follows `via` instead: the **take
+  grid**, which reaches into the frame's DOM for real, so zipping a markdown
+  read gets you `data-view.html` and says so.
   Beside it the github mark is a **menu** rather than a link to one blob: this
   file, its commits, then the repo rows `lib/github-links.js` gives the sidebar
   (repository, pull requests, issues, branches, commits at this ref, actions).

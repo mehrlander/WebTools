@@ -61,7 +61,11 @@ export default async (page) => {
       } : null;
     } catch (e) { inner = { err: e.message }; }
     const empty = document.getElementById('empty');
-    return { href: location.href, frame: !!f,
+    const d = window.Alpine.$data(document.querySelector('[x-data^="fab"]'));
+    return { subject: { repo: d.repo, path: d.path, ref: d.ref,
+                        route: d.subjectRoute, via: d.subjectVia && d.subjectVia.path,
+                        take: d.takePath },
+             href: location.href, frame: !!f,
              frameHidden: f ? f.classList.contains('hidden') : null,
              emptyShown: empty ? !empty.classList.contains('hidden') : null,
              emptyMsg: ((document.getElementById('empty-msg') || {}).textContent || '').trim().slice(0, 200),

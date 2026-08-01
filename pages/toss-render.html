@@ -931,6 +931,30 @@ window.fetch=function(input,init){try{
     await showAddress(`${r.repo}@${r.ref}:${r.path}?src=${encodeURIComponent(env)}` + (frag ? '#' + frag : ''));
     // Re-emit the pretty route form for "Copy toss link", not the resolved #gh=.
     tossLinkFn = async () => absUrl(`#${key}=${raw}`);
+    // THE SUBJECT IS THE CONTENT, not the app showing it. showAddress just
+    // stamped data-view.html, because that is the document it fetched and
+    // mounted, and the drawer around it duly reported that you were looking at
+    // web-tools@main:pages/data-view.html. You were looking at a markdown file
+    // in another repo. A route is a rendering strategy for a file the same way
+    // the frame is a rendering strategy for a page, and neither is the thing
+    // addressed. Re-stamp with the envelope, keeping the renderer as `via`
+    // (the take actions really do operate on ITS dom, so something has to
+    // still name it) and the route key, so a re-address at another ref comes
+    // back through the same door.
+    const a = splitAddr(env);
+    if (!a) return;
+    document.title = 'Toss · ' + a.path.split('/').pop() + (a.ref ? ' @ ' + a.ref : '');
+    setSubject({ repo: a.repo, ref: a.ref, path: a.path, route: key,
+                 via: { repo: r.repo, ref: r.ref, path: r.path } });
+  }
+
+  // owner/repo[@ref]:path, with any ?query and #frag trimmed off. The address
+  // regex lives in showAddress, which needs the pieces in flight; this is the
+  // same grammar read for its parts alone.
+  function splitAddr(addr) {
+    const m = String(addr || '').match(/^([^/@:]+\/[^/@:]+)(?:@([^:]+))?:(.+)$/);
+    if (!m) return null;
+    return { repo: m[1], ref: m[2] || '', path: m[3].split(/[?#]/)[0] };
   }
 
   // Route a pasted string: a github blob URL -> trusted address, a bare URL ->
