@@ -467,3 +467,41 @@ test('a routed subject is the FILE, and the app showing it stays named', async (
   assert.equal(d.subjectVia, null);
   assert.equal(d.takePath, d.path);
 });
+
+test('under a route, every take label describes the document a take would get', async () => {
+  const d = await mountFab();
+  window.__tossSubject = {
+    repo: 'mehrlander/home', ref: 'claude/thing', path: 'CLAUDE.md', route: 'data',
+    via: { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/data-view.html' },
+  };
+  try {
+    d.adoptSubject();
+    await tick(2);
+    // The take actions reach into the frame, and the frame holds the RENDERER.
+    // The header already followed it; two rows still read from this.path and
+    // this.ref, so a row could say "CLAUDE.md at claude/thing" over an action
+    // that stages data-view.html at main. Mixed identity reads as considered,
+    // which is worse than either answer on its own.
+    assert.equal(d.takePath, 'pages/data-view.html');
+    assert.equal(d.takeRef, 'main');
+    const rows = d.takeGroups.flatMap(g => g.items);
+    for (const r of rows) {
+      assert.doesNotMatch(r.desc, /CLAUDE\.md/, r.key + ' names the file, not the document');
+      assert.doesNotMatch(r.desc, /claude\/thing/, r.key + ' names the subject ref, not via');
+    }
+    assert.match(rows.find(r => r.key === 'stage').desc, /at main, on show-repo/);
+    assert.match(rows.find(r => r.key === 'export').desc, /^data-view\.html/);
+    assert.match(rows.find(r => r.key === 'render').desc, /data-view\.html/);
+  } finally { window.__tossSubject = null; }
+
+  // Unrouted, the two identities are the same one and nothing shifts.
+  window.__tossSubject = { repo: 'mehrlander/web-tools', ref: 'br', path: 'pages/a.html' };
+  try {
+    d.adoptSubject();
+    await tick(2);
+    assert.equal(d.takePath, 'pages/a.html');
+    assert.equal(d.takeRef, 'br');
+    assert.match(d.takeGroups.flatMap(g => g.items).find(r => r.key === 'stage').desc,
+      /a\.html at br/);
+  } finally { window.__tossSubject = null; }
+});

@@ -941,6 +941,13 @@ window.fetch=function(input,init){try{
     // (the take actions really do operate on ITS dom, so something has to
     // still name it) and the route key, so a re-address at another ref comes
     // back through the same door.
+    //
+    // Only when showAddress actually mounted something. Its failure path is
+    // showEmpty, which clears the subject on the way to the panel, so a
+    // re-stamp here would resurrect a subject for a file that never rendered:
+    // the drawer would describe a document the viewer cannot see, and its take
+    // actions would reach into a frame that is hidden.
+    if (!window.__tossSubject) return;
     const a = splitAddr(env);
     if (!a) return;
     document.title = 'Toss · ' + a.path.split('/').pop() + (a.ref ? ' @ ' + a.ref : '');
