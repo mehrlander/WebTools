@@ -62,13 +62,28 @@ repos opt into.
 
 Past the rail, behind a hairline, sits the **ref switch**
 (`lib/alpineComponents/refSwitch`), which answers a question none of the rest of
-the chrome does: *which ref is this page running off?* Off the default branch it
-is a warning chip naming the ref, with a house button back to the live page; at
-the default branch it is a plain ghost icon and says nothing, because there is
-nothing to say. Opening it gives a text box that takes a pasted branch, tag or
-sha, the branch list filtered by what is typed, and a **lightning button that
-jumps to the most recently committed branch**, which hides itself when the
-newest branch is the default one.
+the chrome does: *which ref is this page running off?* and lets you change the
+answer.
+
+It is a **text box, always present**, not a button that reveals one. Paste a
+branch, tag, or sha, press Enter, and the page reloads running from it. That is
+the primary verb and it is deliberately not behind a tap: the state it serves
+best is the default branch, where there is nothing to report and everything to
+do, so a control you have to open first puts a door in front of the one thing it
+exists for.
+
+The same box is the **readout**. It holds the current ref as its value and goes
+warning-tinted off the default branch, where a house button appears beside it
+back to the live page. One slot answers "what am I running" and "take me
+somewhere else", rather than a chip and a field competing for the same corner.
+Focus selects the whole value so a paste replaces it; Escape puts the readout
+back. Until the box is edited its value is a readout rather than a query, so it
+does not filter the list and Enter on it goes nowhere.
+
+Two buttons flank it: a **caret** opening the branch list (typing filters it,
+and a Go row appears for a name that is not in the list), and a **lightning
+button that jumps to the most recently committed branch**, which hides itself
+when the newest branch is the default one.
 
 **It is not the Files view's ref picker, and the two are easy to confuse.** That
 one chooses which ref of the *browsed* repo you are reading; this one chooses
@@ -85,10 +100,10 @@ you were already looking at rather than at the front door.
 
 The branch list is the same survey the fab's Render tab runs
 (`branchesForPath`, degrading to an undated list without a token) and it loads
-**on hover, once**: a page nobody touches the control on pays nothing. The fab
-remains the fuller instrument, and the only one on a phone — this cluster is
-desktop-only, like the rail and for the same overflow reason, while the fab's
-launcher goes warning-tinted off the default branch on every viewport.
+**on hover or focus, once**: a page nobody touches the control on pays nothing.
+The fab remains the fuller instrument, and the only one on a phone, since this
+cluster is desktop-only, like the rail and for the same overflow reason; the
+fab's launcher goes warning-tinted off the default branch on every viewport.
 
 The sidebar's **top bar is a crumb trail** (`crumbBar`, the shell's
 `sidebarCrumbs`) in both contexts. At the app level it is the **product mark

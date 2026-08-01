@@ -113,27 +113,55 @@ test('with no token it degrades to the undated REST list and retires the newest 
   assert.match(went.pop(), /#gh=mehrlander\/web-tools@claude\/thing:/);
 });
 
-test('at the default branch it says nothing; off it, the chip names the ref', async () => {
+test('the box is present at the default branch, and holds the ref as its value', async () => {
   setSearch('');
-  const { data: plain } = await mount();
+  const { data: plain, el } = await mount();
   assert.equal(plain.riding, false);
   assert.equal(plain.ref, 'main');
-  assert.equal(plain.openerTitle, 'Run this page from a branch');
+
+  // The point of the whole control: the input is in the header at main, with
+  // nothing to open first, because jumping OFF main is what it is for.
+  const box = el.querySelector('input[type="text"]');
+  assert.ok(box, 'the box renders without opening anything');
+  assert.equal(plain.open, false);
+  assert.equal(box.value, 'main', 'and reads back where you are');
+  assert.match(plain.openerTitle, /Paste a branch, tag, or sha/);
 
   setSearch('?use=claude/thing');
   try {
-    const { data: riding, el } = await mount();
+    const { data: riding, el: el2 } = await mount();
     assert.equal(riding.riding, true);
     assert.equal(riding.ref, 'claude/thing');
-    // The tooltip carries the whole ref; the chip carries the part that
-    // distinguishes it, since the prefix is the same on every session branch.
-    assert.match(riding.openerTitle, /Running from claude\/thing/);
-    assert.match(el.textContent, /(^|\W)thing(\W|$)/, 'the chip renders the ref, not just the state');
-    assert.doesNotMatch(el.textContent, /claude\/thing/, 'and renders its tail, not the prefix');
+    assert.equal(riding.typed, 'claude/thing', 'the same box is the riding readout');
+    assert.equal(el2.querySelector('input[type="text"]').value, 'claude/thing');
+    assert.match(riding.openerTitle, /Running from claude\/thing, not main/);
   } finally { setSearch(''); }
 });
 
-test('inside a toss the ref arrives through the params shim, and the chip reads it', async () => {
+test('an untouched box is a readout: it does not filter, and Enter on it goes nowhere', async () => {
+  setSearch('');
+  stubGH();
+  const { data } = await mount();
+  await data.load();
+
+  assert.equal(data.dirty, false);
+  assert.equal(data.matches.length, data.rows.length, 'the seeded value must not filter the list');
+
+  const went = [];
+  data._go = (u) => went.push(u);
+  data.goTyped();
+  assert.equal(went.length, 0, 'pressing Enter on where you already are is not a navigation');
+
+  // Typing makes it a destination; Escape puts the readout back.
+  data.typed = 'older'; data.dirty = true;
+  assert.deepEqual(data.matches.map(b => b.name), ['claude/older-thing']);
+  data.revert();
+  assert.equal(data.typed, 'main');
+  assert.equal(data.dirty, false);
+  assert.equal(data.open, false);
+});
+
+test('inside a toss the ref arrives through the params shim, and the box reads it', async () => {
   setSearch('');
   // toss-render has no location.search to offer, so it patches URLSearchParams
   // to answer absent keys. Same patch here, same expectation.
@@ -164,7 +192,7 @@ test('loading classifies rows against the default branch and filters by substrin
   assert.equal(data.showNewest, true);
 
   // The memorable part of `claude/<slug>-<suffix>` is in the middle.
-  data.typed = 'older';
+  data.typed = 'older'; data.dirty = true;
   assert.deepEqual(data.matches.map(b => b.name), ['claude/older-thing']);
 
   // A second load is not a second three-page crawl.
@@ -174,27 +202,36 @@ test('loading classifies rows against the default branch and filters by substrin
 });
 
 test('going somewhere leaves the top document, and the default branch means going home', async () => {
+  setSearch('?use=claude/thing');
   stubGH();
-  const { data } = await mount(`, query: () => 'view=stage'`);
+  try {
+    const { data } = await mount(`, query: () => 'view=stage'`);
 
-  const went = [];
-  data._go = (u) => went.push(u);
+    const went = [];
+    data._go = (u) => went.push(u);
 
-  data.go('claude/other');
-  assert.equal(went.pop(), RENDERER +
-    '?use=claude%2Fother#gh=' + REPO + '@claude/other:' + PATH + '?view=stage');
+    data.go('claude/other');
+    assert.equal(went.pop(), RENDERER +
+      '?use=claude%2Fother#gh=' + REPO + '@claude/other:' + PATH + '?view=stage');
 
-  // Picking the default branch is not a toss at main; it is the way out.
-  data.go('main');
-  assert.equal(went.pop(), LIVE + '?view=stage');
+    // Picking the default branch is not a toss at main; it is the way out.
+    data.go('main');
+    assert.equal(went.pop(), LIVE + '?view=stage');
 
-  data.returnToLive();
-  assert.equal(went.pop(), LIVE + '?view=stage');
+    data.returnToLive();
+    assert.equal(went.pop(), LIVE + '?view=stage');
 
-  // One tap from cold: load, then go.
-  await data.goNewest();
-  assert.equal(went.pop(), RENDERER +
-    '?use=claude%2Fnewest-thing#gh=' + REPO + '@claude/newest-thing:' + PATH + '?view=stage');
+    // Typed and submitted, which is the control's primary verb.
+    data.typed = '  claude/pasted  '; data.dirty = true;
+    data.goTyped();
+    assert.equal(went.pop(), RENDERER +
+      '?use=claude%2Fpasted#gh=' + REPO + '@claude/pasted:' + PATH + '?view=stage');
+
+    // One tap from cold: load, then go.
+    await data.goNewest();
+    assert.equal(went.pop(), RENDERER +
+      '?use=claude%2Fnewest-thing#gh=' + REPO + '@claude/newest-thing:' + PATH + '?view=stage');
+  } finally { setSearch(''); }
 });
 
 test('when the newest branch is the default one, the button retires itself', async () => {
