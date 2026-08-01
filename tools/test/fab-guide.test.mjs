@@ -114,7 +114,8 @@ test('the guide renders the PR body, re-aims its links, and lifts the renderable
   await d.renderPrBody();
   await tick(2);
 
-  // Every link opens away from the drawer, whether or not it was re-aimed.
+  // A re-aimed link renders in place; only what the drawer cannot render is
+  // handed to a new tab.
   const doc2 = new window.DOMParser().parseFromString(d.prBodyHtml, 'text/html');
   const hrefs = [...doc2.querySelectorAll('a')].map(a => a.getAttribute('href'));
   assert.equal(hrefs[0], RENDERER + '#gh=mehrlander/web-tools@claude/thing:pages/show-repo/show-repo.html');
@@ -122,7 +123,24 @@ test('the guide renders the PR body, re-aims its links, and lifts the renderable
   assert.equal(hrefs[2], RENDERER + '#gh=mehrlander/web-tools@main:pages/show-repo/show-repo.html',
     'the prose re-aims both refs, since the sentence around each says which is which');
   assert.equal(hrefs[3], blob('claude/thing', 'lib/fab.js'), 'a source link is left as source');
-  assert.ok([...doc2.querySelectorAll('a')].every(a => a.getAttribute('target') === '_blank'));
+  const links = [...doc2.querySelectorAll('a')];
+  assert.deepEqual(links.map(a => a.getAttribute('target')), [null, null, null, '_blank'],
+    'renderable links stay in place; the one that resolves nowhere opens away');
+  assert.deepEqual(links.slice(0, 3).map(a => a.getAttribute('data-render-addr')), [
+    'mehrlander/web-tools@claude/thing:pages/show-repo/show-repo.html',
+    'mehrlander/web-tools@claude/thing:docs/show-repo.md',
+    'mehrlander/web-tools@main:pages/show-repo/show-repo.html',
+  ], 'each stamped with the address the delegated handler looks up');
+
+  // A tap on one of them renders in place rather than following the href. The
+  // whole point of the stamp: prose is x-html, so the links carry no bindings.
+  const went = [];
+  d.goTarget = t => went.push(t.addr);
+  const ev = (hit) => ({ preventDefault() {}, target: { closest: () => hit } });
+  d.onGuideClick(ev(links[1]));
+  assert.deepEqual(went, ['mehrlander/web-tools@claude/thing:docs/show-repo.md']);
+  d.onGuideClick(ev(null));
+  assert.equal(went.length, 1, 'a tap on prose that is not a link does nothing');
 
   // The strip is deduped BY FILE, not by URL: one row per file, at the ref on
   // display. Spread first, since the component builds its arrays in the jsdom
@@ -288,12 +306,9 @@ test('the path row is a picker, and a picked file is a request to render it', as
   d.renderPicked({ repo: 'mehrlander/web-tools', ref: 'claude/thing', path: 'docs/x.md' });
   assert.match(went.pop(), /#data=mehrlander\/web-tools@claude\/thing:docs\/x\.md$/);
   assert.equal(d.pickerOpen, false, 'picking closes the tree');
-  // And closes the DRAWER, without handing it forward. At phone width the
-  // drawer is 352 of 390 pixels, so a reopened drawer sits on top of the file
-  // the pick asked for and the render reads as blank. A ref switch keeps the
-  // drawer (you are comparing); a pick does not (you are looking).
-  assert.equal(d.open, false, 'a pick closes the drawer over what it opens');
-  assert.equal(handed.length, 0, 'and does not hand it forward');
+  // The DRAWER survives, the same as a ref switch: a pick is a step through a
+  // list, and the list should still be there on the far side.
+  assert.equal(handed.length, 1, 'a pick hands the drawer forward');
 
   // ACROSS REPOS the ref must not carry over: the picker's other roots have
   // none, and this page's branch does not exist in mehrlander/home, so
@@ -333,6 +348,21 @@ test('inside a toss a pick re-addresses in place, by page or by route', async ()
     delete window.__tossRoute;
     d.renderPicked({ repo: 'mehrlander/web-tools', ref: 'claude/thing', path: 'lib/fab.js' });
     assert.match(went.pop(), /#data=mehrlander\/web-tools@claude\/thing:lib\/fab\.js$/);
+
+    // And that navigation stays on THIS renderer, keeping the ?use= pin. The
+    // durable t.url is hardcoded at github.io, which would both drop the pin
+    // (reverting a branch preview to the deployed shell on the first pick) and
+    // hop origins, which an in-app browser does not reliably come back from.
+    const t = d.renderTarget('mehrlander/web-tools', 'claude/thing', 'lib/fab.js', true);
+    assert.equal(d.tossHref(t), t.url, 'off the renderer, the durable address is the answer');
+    const back = window.location.pathname + window.location.search;
+    try {
+      window.history.replaceState(null, '', '/web-tools/pages/toss-render.html?use=claude/thing');
+      const here = window.location.origin + '/web-tools/pages/toss-render.html?use=claude/thing';
+      assert.equal(d.tossHref(t), here + '#data=mehrlander/web-tools@claude/thing:lib/fab.js');
+      assert.equal(d.tossHref(d.renderTarget('mehrlander/home', '', 'p.html', true)),
+        here + '#gh=mehrlander/home:p.html', 'a page keeps the #gh= key');
+    } finally { window.history.replaceState(null, '', back); }
   } finally {
     delete window.__tossNavigate; delete window.__tossRoute;
   }
