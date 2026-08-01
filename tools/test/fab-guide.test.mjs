@@ -267,8 +267,9 @@ test('the path row is a picker, and a picked file is a request to render it', as
   // Routing. A page at this repo goes through the toss the ref bar uses, so
   // the fab rides along; everything else opens beside the drawer.
   window.open = () => assert.fail('a pick must never spawn a tab');
-  spy(d, '_handOffDrawer');
+  const handed = spy(d, '_handOffDrawer');
   const went = spy(d, '_go');
+  d.open = true;
 
   assert.equal(d.renderTarget('mehrlander/web-tools', 'claude/thing', 'pages/a.html', true).kind, 'render');
 
@@ -287,6 +288,12 @@ test('the path row is a picker, and a picked file is a request to render it', as
   d.renderPicked({ repo: 'mehrlander/web-tools', ref: 'claude/thing', path: 'docs/x.md' });
   assert.match(went.pop(), /#data=mehrlander\/web-tools@claude\/thing:docs\/x\.md$/);
   assert.equal(d.pickerOpen, false, 'picking closes the tree');
+  // And closes the DRAWER, without handing it forward. At phone width the
+  // drawer is 352 of 390 pixels, so a reopened drawer sits on top of the file
+  // the pick asked for and the render reads as blank. A ref switch keeps the
+  // drawer (you are comparing); a pick does not (you are looking).
+  assert.equal(d.open, false, 'a pick closes the drawer over what it opens');
+  assert.equal(handed.length, 0, 'and does not hand it forward');
 
   // ACROSS REPOS the ref must not carry over: the picker's other roots have
   // none, and this page's branch does not exist in mehrlander/home, so
