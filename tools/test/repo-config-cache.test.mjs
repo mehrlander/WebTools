@@ -60,6 +60,37 @@ test('buildCache tracks the crawl membership and carries history', () => {
   assert.equal(next.repos['o/c'].history.length, 1); // fresh
 });
 
+// The crawl seeds itself from one client's view of the account, and that view
+// can be narrower than the world (a repo-scoped fine-grained token, an account
+// past the un-paginated 100 the listing asks for, a fallback to a short list).
+// Writing such a view over the shared file as if it were complete is what took
+// state/configs.json from 18 repos to 1 on 2026-08-01, and the activity cache
+// with it. Every repo the cache already knew therefore rides forward.
+test('buildCache carries a repo the crawl never visited, whole', () => {
+  const prev = C.buildCache(null, {
+    'o/a': { config: { v: 1 } },
+    'o/unseen': { config: { v: 1, estate: true } },
+  }, 't0');
+  const carry = Object.keys(prev.repos);
+  const next = C.buildCache(prev, { 'o/a': { config: { v: 2 } } }, 't1', C.HISTORY_CAP, carry);
+  assert.deepEqual(Object.keys(next.repos).sort(), ['o/a', 'o/unseen']);
+  assert.deepEqual(next.repos['o/unseen'], prev.repos['o/unseen'],
+                   'history, hash and fetchedAt all untouched');
+  assert.deepEqual(C.cacheChanged(prev, next), true);   // o/a really did move
+  assert.equal(next.repos['o/a'].config.v, 2);
+});
+
+// How a repo does leave: visited, and found to declare nothing. The entry stays
+// with a null config, which de-lists it everywhere downstream, since every
+// consumer filters on a config field rather than on mere presence.
+test('a visited repo with no manifest keeps a row with a null config', () => {
+  const prev = C.buildCache(null, { 'o/a': { config: { estate: true } } }, 't0');
+  const next = C.buildCache(prev, { 'o/a': { config: null, configName: null } }, 't1',
+                            C.HISTORY_CAP, ['o/a']);
+  assert.equal(next.repos['o/a'].config, null);
+  assert.equal(Object.entries(next.repos).filter(([, e]) => e.config?.estate === true).length, 0);
+});
+
 test('cacheChanged ignores timestamps, catches hash and membership', () => {
   const a = C.buildCache(null, { 'o/a': { config: { v: 1 } } }, 't0');
   const sameContent = C.buildCache(a, { 'o/a': { config: { v: 1 } } }, 't1');

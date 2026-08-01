@@ -1899,7 +1899,16 @@ function app(){ return {
       const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
       let prev = null;
       try { prev = JSON.parse((await reg.get(window.RepoConfigCache.CACHE_PATH)).text); } catch {}
-      const next = window.RepoConfigCache.buildCache(prev, fetched, new Date().toISOString());
+      // Every repo the cache already knew rides forward, whether or not this
+      // crawl could see it. The enumeration above is this client's view of the
+      // account, not the world's: a narrowly-scoped token, or an account past
+      // the un-paginated 100 repos it asks for, produces a short list that is
+      // not wrong so much as partial, and a partial list must not be written
+      // over a shared file as if it were complete. See buildCache for how a
+      // repo does leave.
+      const carry = Object.keys(prev?.repos || {});
+      const next = window.RepoConfigCache.buildCache(prev, fetched, new Date().toISOString(),
+                                                     window.RepoConfigCache.HISTORY_CAP, carry);
       try { localStorage.setItem(this._cacheCheckKey, String(Date.now())); } catch {}
       // Only commit when substance changed (buildCache always restamps
       // timestamps, so a deep-equal would never skip).
@@ -2022,7 +2031,10 @@ function app(){ return {
 
       let prev = null;
       try { prev = JSON.parse((await reg.get(A.CACHE_PATH)).text); } catch {}
-      const next = A.buildCache(prev, fetched, nowISO);
+      // `members` is the scope, so a repo whose crawl threw (it is in `failed`,
+      // not in `fetched`) keeps its previous entry instead of being deleted by
+      // a pass that never reached it.
+      const next = A.buildCache(prev, fetched, nowISO, A.COMMIT_CAP, members);
       try { localStorage.setItem(this._activityCheckKey, String(Date.now())); } catch {}
       const changed = A.changedRepos(prev, next);
       if (changed.length){
