@@ -124,7 +124,6 @@ title: <short imperative>
 status: backlog
 opened: <YYYY-MM-DD>
 project: <optional workspace>
-next: <optional one-line next step; the board renders it>
 ---
 # <title>
 

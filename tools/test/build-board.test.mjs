@@ -75,7 +75,7 @@ test('track: independent and other track values render nothing', () => {
   assert.match(md, /- 🎫 Anchor task$/m);
 });
 
-test('the owning branch, the dependency, and next all render in a stable order', () => {
+test('the owning branch and the dependency render in a stable order, and nothing else does', () => {
   const md = board({
     'waiter-000001': {
       title: 'The waiting task', status: 'in-progress', session: 'claude/some-branch',
@@ -83,7 +83,23 @@ test('the owning branch, the dependency, and next all render in a stable order',
     },
     'blocker-000002': { title: 'The blocking task', status: 'backlog' },
   });
-  assert.match(md, /- 🎫 The waiting task \(`claude\/some-branch`\) \(needs: The blocking task\) next: the next step/);
+  assert.match(md, /- 🎫 The waiting task \(`claude\/some-branch`\) \(needs: The blocking task\)$/m);
+});
+
+// An open tag is preserved in the file and never reaches the board (TRACKER.md,
+// the two-layer rule). `next` is the one that got away: rendered for months
+// while the schema did not define it, so it read as recognized without being
+// specified anywhere, and on a closed task it printed "next: done" under Done.
+// Held here by name, since it is the key that already breached the rule once.
+test('an open tag never renders, next included', () => {
+  const md = board({
+    'a-000001': { title: 'Tagged task', status: 'backlog', next: 'the next step', priority: 'high' },
+    'b-000002': { title: 'Closed task', status: 'done', next: 'done; landed on the branch' },
+  });
+  assert.match(md, /- 🎫 Tagged task$/m);
+  assert.match(md, /- 🎫 Closed task$/m);
+  assert.doesNotMatch(md, /next:/);
+  assert.doesNotMatch(md, /priority/);
 });
 
 test('the four sections appear in order, and an empty one says so', () => {
