@@ -115,7 +115,10 @@ stays dormant and the page instantiates `GH` by hand.
   each resolved `read()` onto `window.__reads` (newest value per path,
   fires a `reads` event; the export kit's input), injects the project
   favicon when a page declares none, and under `?use=` paints the corner
-  ref badge and auto-mounts the FAB unless the page mounts its own. The
+  ref badge and auto-mounts the FAB unless the page mounts its own
+  (registering `alpineComponents/path-picker.js` alongside it, since the
+  FAB's render tab mounts one and a component file loaded after Alpine
+  starts never registers). The
   cosmetic pieces are wrapped best-effort; nothing in it may break the
   boot chain.
 - `gh-auth.js` — optional augmentation. Patches the `headers` getter so

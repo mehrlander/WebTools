@@ -22,7 +22,7 @@ import { makeWindow, startAlpine, tick } from './bootstrap.mjs';
 const { window } = makeWindow({
   html: '<!doctype html><html><body></body></html>',
 });
-const Alpine = await startAlpine(window, ['lib/alpineComponents/fab.js']);
+const Alpine = await startAlpine(window, ['lib/alpineComponents/path-picker.js', 'lib/alpineComponents/fab.js']);
 const doc = window.document;
 
 async function mountFab(attrs = 'data-repo="mehrlander/web-tools" data-path="pages/show-repo/show-repo.html"') {
@@ -215,6 +215,45 @@ test('the github mark is a menu over the ref on display, with the file rows firs
   assert.deepEqual([...rows].map(r => r.key), ['file', 'fileCommits', 'home']);
   assert.equal(rows[2].url, 'Xclaude/thing', 'the menu speaks about the ref on display');
   delete window.GithubLinks;
+});
+
+test('the path row is a picker, and a picked file is a request to render it', async () => {
+  const d = await mountFab();
+  d.viaToss = true;
+  d.defaultBranch = 'main';
+  d.ref = 'claude/thing';
+
+  // The picker really mounts, gets its GH from the fab rather than from
+  // Alpine's browser store, and opens on this repo at the ref on display.
+  const picker = d._picker();
+  assert.ok(picker, 'pathPicker mounted inside the render tab');
+  assert.deepEqual([...d.pickerRoots()].map(r => r.repo), ['mehrlander/web-tools']);
+  assert.equal(d.pickerRoots()[0].ref, 'claude/thing');
+
+  assert.equal(d.pickerOpen, false);
+  d.togglePicker();
+  assert.equal(d.pickerOpen, true, 'the path row owns the opener');
+  assert.equal(d.ghMenu, false, 'and closes the other menu, since both drop from the same row');
+
+  // Routing. A page at this repo goes through the toss the ref bar uses, so
+  // the fab rides along; everything else opens beside the drawer.
+  const opened = [];
+  window.open = (u) => opened.push(u);
+  d._handOffDrawer = () => {};
+
+  assert.equal(d.renderTarget('mehrlander/web-tools', 'claude/thing', 'pages/a.html', true).kind, 'render');
+
+  // The picker is allowed to be less careful than a link: a file it cannot
+  // classify still opens, in the data view, because the viewer chose it.
+  const js = d.renderTarget('mehrlander/web-tools', 'claude/thing', 'lib/fab.js', true);
+  assert.equal(js.kind, 'read');
+  assert.match(js.url, /#data=mehrlander\/web-tools@claude\/thing:lib\/fab\.js$/);
+  // Without `any` it is the guide's conservative rule, unchanged.
+  assert.equal(d.renderTarget('mehrlander/web-tools', 'claude/thing', 'lib/fab.js'), null);
+
+  d.renderPicked({ repo: 'mehrlander/web-tools', ref: 'claude/thing', path: 'docs/x.md' });
+  assert.match(opened.pop(), /#data=mehrlander\/web-tools@claude\/thing:docs\/x\.md$/);
+  assert.equal(d.pickerOpen, false, 'picking closes the tree');
 });
 
 test('the dropdown navigates in one tap, and the default branch is the way out', async () => {

@@ -10,6 +10,7 @@
 // STATE=guide  the guide pane, PR body rendered            (the default)
 // STATE=menu   the ref bar's dropdown, open over the guide
 // STATE=gh     the github mark's link menu
+// STATE=pick   the path row's file picker, open on the repo tree
 // STATE=older  the arrows stepped back to the branch's merged PR
 // STATE=nopr   a branch with no PR, showing the standing info instead
 //
@@ -109,6 +110,24 @@ export default async (page) => {
     d.verLoaded = true;
     if (state === 'menu') d.refMenu = true;
     if (state === 'gh') d.ghMenu = true;
+    if (state === 'pick') {
+      // The tree normally comes from git/trees over the viewer's token; seed it
+      // so the shot is about the panel rather than about the fetch.
+      const p = d._picker();
+      p._loaded = true;
+      p.tree = [{ name: 'web-tools @ ' + d.ref, kind: 'repo', repo: d.repo, ref: d.ref,
+        children: [
+          { name: 'dist', kind: 'folder', children: [{ name: 'web-tools.js', kind: 'file' }] },
+          { name: 'docs', kind: 'folder', children: [
+            { name: 'show-repo.md', kind: 'file' }, { name: 'SURFACING.md', kind: 'file' }] },
+          { name: 'lib', kind: 'folder', children: [{ name: 'gh-api.js', kind: 'file' }] },
+          { name: 'pages', kind: 'folder', children: [
+            { name: 'branch.html', kind: 'file' }, { name: 'toss-render.html', kind: 'file' }] },
+          { name: 'README.md', kind: 'file' },
+        ] }];
+      p.scope = [p.tree[0]];
+      p.open = true;
+    }
     return d.renderPrBody();
   }, [BRANCHES, STATE, BODY]);
 

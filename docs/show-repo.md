@@ -108,10 +108,15 @@ fab's launcher goes warning-tinted off the default branch on every viewport. The
 two answer different questions now. This box switches refs and says which one
 you are on. The fab's Render tab reads the ref you landed on, in this order:
 
-- **repo and path**, with the github mark as a **menu** rather than a link to
-  one blob: this file, its commits, then the repo rows `lib/github-links.js`
-  gives the sidebar (repository, pull requests, issues, branches, commits at
-  this ref, actions).
+- **repo and path**, carrying two controls. The **path is a picker**: it opens
+  the repo tree (`pathPicker`, the same tap-through selector this shell uses)
+  at the ref on display, and choosing a file renders it, a page through the
+  toss and anything else through the data view. The drawer could already render
+  any file in the repo; the one control naming a file was the only thing that
+  could not choose a different one. Beside it the github mark is a **menu**
+  rather than a link to one blob: this file, its commits, then the repo rows
+  `lib/github-links.js` gives the sidebar (repository, pull requests, issues,
+  branches, commits at this ref, actions).
 - **the ref bar**, which is the picker. One tap on a row renders there.
 - **the guide**: the branch's PR body, rendered, with the blob links inside it
   re-aimed at what can show them (a page becomes a toss, markdown and data
