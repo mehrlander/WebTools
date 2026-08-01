@@ -201,12 +201,23 @@
            only the lib a page loads and would leave this header, and every
            other line of the shell, at the deployed version.
 
-           Desktop only, matching the rail, and for the same overflow reason.
-           A phone is not left without the fact: the fab's launcher goes
-           warning-tinted off the default branch on every viewport, and its
-           Render tab is the full survey this control is a shortcut past. -->
+           EVERY VIEWPORT, unlike the rail beside it. This shipped desktop-only
+           on the rail's reasoning (a second header cluster competing with a nav
+           that already scrolls), and that reasoning does not survive contact
+           with the header it describes: the nav scrolls, but the drawer toggle
+           to the right of this is pinned and always visible, so the right end
+           of the header is already a place where fixed controls live and one
+           more costs the nav some of its scrolling window, nothing else. The
+           rail's exemption is not the same case and stands: it has a full
+           labeled copy in the sidebar, which is a phone's route to it, while
+           hiding this one left a phone with no route at all except the fab's
+           Render tab, several taps in. So the cost of hiding was an
+           inconsistency between viewports and no saving to show for it.
+
+           Less convenient on a phone, and that is the accepted trade: the box
+           narrows (see ref-switch.js) and the nav gives up some width. -->
       <div x-show="rail.length" class="hidden lg:block mx-1.5 h-5 w-px bg-base-300"></div>
-      <div class="hidden lg:flex shrink-0"
+      <div class="flex shrink-0"
            x-data="refSwitch({ repo: 'mehrlander/web-tools',
                                path: 'pages/show-repo/show-repo.html',
                                query: () => window.__shell.deepLinkParams(new URLSearchParams()).toString() })"></div>
