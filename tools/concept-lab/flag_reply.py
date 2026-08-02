@@ -97,11 +97,49 @@ def flags_for(rec):
     return out
 
 
+class Grounder:
+    """Semantic lookup of the passage that best introduces a term: nearest
+    living paragraphs to "<term> is", kept only if they actually contain
+    the term (hybrid, so static embeddings cannot wander off-topic)."""
+
+    def __init__(self, store: str):
+        import json as _json
+        import numpy as np
+        from model2vec import StaticModel
+        self.np = np
+        self.model = StaticModel.from_pretrained("minishlab/potion-base-8M")
+        self.emb = np.load(f"{store}.npy")
+        self.meta = [_json.loads(l) for l in Path(f"{store}.jsonl").read_text(encoding="utf-8").splitlines()]
+
+    def best(self, term: str):
+        q = self.model.encode([f"{term} is"])[0]
+        q = q / (self.np.linalg.norm(q) + 1e-9)
+        sims = self.emb @ q
+        best, best_score = None, 0.0
+        for i in sims.argsort()[::-1][:200]:
+            m = self.meta[i]
+            low = m["text"].lower()
+            if not m["living"] or term.split()[0] not in low:
+                continue
+            score = float(sims[i])
+            # definitional shape: the term leads the paragraph, or the
+            # passage lives in a doc that introduces things
+            if low.find(term.split()[0]) < 40:
+                score += 0.1
+            if any(k in m["rel"] for k in ("README", "SKILL", "CLAUDE", "docs/")):
+                score += 0.1
+            if score > best_score:
+                best, best_score = m, score
+        return best
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--index", type=Path, required=True)
     p.add_argument("--file", type=Path)
     p.add_argument("--max", type=int, default=20)
+    p.add_argument("--ground", metavar="STORE",
+                   help="exp_semsearch store; append the best grounding passage per flagged term")
     args = p.parse_args()
 
     text = args.file.read_text(encoding="utf-8") if args.file else sys.stdin.read()
@@ -137,8 +175,13 @@ def main():
     if not findings:
         print("No flags.")
         return
+    grounder = Grounder(args.ground) if args.ground else None
     for kind, term, n, why in findings[:args.max]:
         print(f"[{kind}] {term} (×{n}): {why}")
+        if grounder and kind in ("ambiguous", "divergent", "ungrounded"):
+            hit = grounder.best(term)
+            if hit:
+                print(f"    ground it: {hit['repo']}:{hit['rel']} | {hit['text'][:110]}")
     if len(findings) > args.max:
         print(f"… {len(findings) - args.max} more (raise --max)")
 

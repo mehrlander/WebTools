@@ -292,3 +292,16 @@ signature list is designed to demote. Two real terms surface ("task
 file", "Tailwind CSS") but the markedness harvest dominates it for this
 corpus. Negative result, kept so the next "just use a keyword library"
 idea starts here.
+
+## 2026-08-02, grounding pointers: the flag carries its own fix
+
+`flag_reply.py --ground <store>` joins the two halves of the lab: for
+each ambiguous, divergent, or ungrounded flag it queries the semantic
+index for the passage that best introduces the term (hybrid: nearest
+paragraphs to "<term> is", kept only if they contain the term, with a
+bonus for definitional shape and doc-like paths). After the shape bonus,
+"board" and "tracker" ground to docs/TRACKER.md and "diff" to the
+edit-review skill's Diff-lens passage. Quality varies with the flag
+noise feeding it, but the pattern is the finding: a flag that names the
+canonical passage turns "this term is risky" into "link this when you
+use it", which is what a response-time hook should actually emit.
