@@ -1407,14 +1407,18 @@ Contents API can write to a ref but not create one. Omitted, `ref` means the
 repo's **default branch**, whatever it is named, rather than literally `main`.
 
 Every row **resolves against the live target before it can be applied**, and the
-view shows the resulting bytes (a before/after on the key, or the two files side
-by side), so a reviewer confirms what will happen rather than what was promised.
+view shows the resulting bytes (a before/after on the key for the JSON kinds; a
+line diff for `put-file`, via the shared `kits/text-diff.js`, with side-by-side
+panes as the fallback for a new file or a pair past the diff cap), so a reviewer
+confirms what will happen rather than what was promised.
 A target that cannot be read, or is not the JSON it claims to be, lists as
 unresolved with its error and no Apply. The write goes through `gh-transfer.js`'s
 `saveRaw` (lazy-loaded, stale-SHA retry), and the outcome is written to
 `proposals/applied/<same-name>.json`, which is what marks a proposal spent:
 `gh-store` has no delete, so a result file is the tombstone, exactly as in the
-mailbox.
+mailbox. A successful record carries the landed commit as both `commit` (the
+sha) and **`commitUrl`** (the github.com address), so a reader holding only the
+JSON can open what actually landed without building the URL by hand.
 
 **A record is an instruction, not a patch.** Nothing in the channel carries a
 diff in any format, and none is stored. The before/after in the review pane is
