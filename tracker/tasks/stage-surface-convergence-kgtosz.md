@@ -25,3 +25,4 @@ Related smaller lever, take or split: the finder's root repos (Recent/Search) co
   that repo) is the same ref triple as the stage item / v2 `target.source`.
   No work done here; noted so extending this convergence outward doesn't
   start from scratch later.
+- 2026-08-02: Cluster ordering decided while clearing the smaller levers (chat-results decision, StageLink.read, the proposal-channel leftovers, all closed today): this task and integrate-stage-surfacer-format-3bvg2v share the one remaining build (estate.js dual-read, then the two bridges with per-item commentary), and stage-partial-file-selection-k8mtou waits behind them so its grammar lands on the converged schema.

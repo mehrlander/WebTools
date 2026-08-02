@@ -1,7 +1,8 @@
 ---
 id: build-on-commit-hook-silent-bokkl3
 title: The build-on-commit hook did not fire, and nothing said so
-status: backlog
+status: done
+closed: 2026-08-02
 project: tooling
 opened: 2026-07-26
 ---
@@ -39,3 +40,4 @@ The verify-by-rebuild shape is already the repo's stated pattern for derived art
 
 ## Progress log
 - 2026-07-26 filed at wrap-up of the in-flight session, after regenerating `pages/README.md`, `pages/index.html`, `pages/pages.json`, and `tracker/board.md` by hand
+- 2026-08-02: Closed during a tracker groom: the definition of done was met by later work that never updated this task. The hook-independent check shipped as tools/test/artifacts-lockstep.test.mjs (commit 9df43bf, 2026-07-27), CI runs the suite on every PR (.github/workflows/test.yml, commit 756fe3f), and the cause of the silence (hooks register only when the session project root is the repo) is documented in docs/environment/extending.md and CLAUDE.md, which now names the three owners of the lockstep.
