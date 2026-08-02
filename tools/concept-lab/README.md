@@ -29,13 +29,19 @@ model2vec spacy`): wordfreq backs the surprise prior, model2vec and
 scikit-learn back `exp_embed.py`. Everything degrades to the
 dependency-free path without them.
 
-Run:
+Run (three modes; defaults to `single` for one repo, `related` for several):
 
 ```bash
-python3 tools/concept-lab/termlab.py \
-  wt=/path/web-tools home=/path/home chats=/path/chat-histories bwa=/path/budget-wa \
-  --json index.json --report report.md
+python3 tools/concept-lab/termlab.py bwa=/path/budget-wa --report bwa.md
+python3 tools/concept-lab/termlab.py wt=... home=... --report related.md
+python3 tools/concept-lab/termlab.py wt=... home=... chats=... bwa=... \
+  --mode collisions --report collisions.md
 ```
+
+`single` is the concept report for one coherent corpus (concepts split
+into prose and code registers, within-repo senses, grounding, variants).
+`related` is the full pooled report. `collisions` emits only strong
+same-term/different-domain cases across repos.
 
 About three minutes for the four-repo estate (~1,600 files). Output JSON is
 the machine layer (one record per term, all signals); the report is the

@@ -300,7 +300,7 @@ def surprise(term: str, mentions: int, corpus_tokens: int) -> float | None:
     return round(math.log2(est_pm / max(en_pm, 0.001)), 2)
 
 
-def anchored_senses(occs: list[dict], needle_len: int):
+def anchored_senses(occs: list[dict], needle_len: int, use_disjoint: bool = True):
     """Sketch-style sense detection: group a term's occurrences by their
     immediate raw-text neighbor (left of first word, right of last). Strong
     collocates whose surrounding contexts diverge are distinct senses:
@@ -351,11 +351,12 @@ def anchored_senses(occs: list[dict], needle_len: int):
             js = js_divergence(a["ctx"], b["ctx"])
             if js < ANCHOR_JS:
                 continue
-            disjoint = 1 - cosine(a["repos"], b["repos"])
-            pairs.append((round(js * (0.15 + disjoint) * math.log1p(min(a["n"], b["n"], 20)), 3),
-                          js, a, b))
+            disjoint = round(1 - cosine(a["repos"], b["repos"]), 3)
+            weight = (0.15 + disjoint) if use_disjoint else 1.0
+            pairs.append((round(js * weight * math.log1p(min(a["n"], b["n"], 20)), 3),
+                          js, disjoint, a, b))
     pairs.sort(key=lambda x: -x[0])
-    split_pairs = [(js, a, b) for _, js, a, b in pairs[:3]]
+    split_pairs = pairs[:3]
     score = pairs[0][0] if pairs else 0.0
     return out, split_pairs, score
 
@@ -393,7 +394,12 @@ def snippet(doc: Doc, span, width=110) -> str:
     return (("…" if lo else "") + s + ("…" if hi < len(doc.text) else ""))
 
 
-def build(repos: dict[str, Path], min_mentions: int):
+def build(repos: dict[str, Path], min_mentions: int, mode: str = "related"):
+    # In a coherent single-subject repo the undated analysis prose IS the
+    # repo's voice; only dated snapshot paths count as records there. The
+    # broader directory heuristic is for pooled estate runs, where whole
+    # data trees quote outside material.
+    record_fn = (lambda rel: bool(DATED.search(rel))) if mode == "single" else is_record
     docs: list[Doc] = []
     for repo, root in repos.items():
         for path in iter_files(root):
@@ -402,7 +408,9 @@ def build(repos: dict[str, Path], min_mentions: int):
                 text = path.read_text(encoding="utf-8", errors="ignore")
             except OSError:
                 continue
-            docs.append(Doc(repo, rel, text))
+            doc = Doc(repo, rel, text)
+            doc.living = not record_fn(rel)
+            docs.append(doc)
 
     cand, per_doc_forms = harvest_candidates(docs)
     coll = collocations(docs)
@@ -453,7 +461,7 @@ def build(repos: dict[str, Path], min_mentions: int):
             for kind, _, _ in HARVEST_PATS:
                 n = doc_forms[(kind, term)] if (kind, term) in doc_forms else 0
                 forms[kind] += n
-                if not is_record(key[1]):
+                if not record_fn(key[1]):
                     forms_living[kind] += n
 
         per_file = Counter()
@@ -469,7 +477,7 @@ def build(repos: dict[str, Path], min_mentions: int):
             occs_sampled = occs_for_cluster
 
         clusters = cluster_senses(occs_sampled, idf)
-        anchors, anchor_pairs, anchor_split = anchored_senses(occs, len(needle))
+        anchors, anchor_pairs, anchor_split = anchored_senses(occs, len(needle), use_disjoint=(mode != "single"))
         total_in_clusters = sum(len(c["members"]) for c in clusters) or 1
         sense_split = 0.0
         if len(clusters) >= 2:
@@ -510,14 +518,15 @@ def build(repos: dict[str, Path], min_mentions: int):
             "anchor_split": anchor_split,
             "anchor_senses": [
                 {"pair": [f'{a["label"]} ({a["n"]}x)', f'{b["label"]} ({b["n"]}x)'],
-                 "js": js,
+                 "js": js, "disjoint": dj, "min_n": min(a["n"], b["n"]),
+                 "repos": [a["repos"].most_common(1)[0][0], b["repos"].most_common(1)[0][0]],
                  "examples": [
                      {"text": snippet(a["example"]["doc"], a["example"]["span"]),
                       "src": f'{a["example"]["repo"]}:{a["example"]["rel"]}'},
                      {"text": snippet(b["example"]["doc"], b["example"]["span"]),
                       "src": f'{b["example"]["repo"]}:{b["example"]["rel"]}'},
                  ]}
-                for js, a, b in anchor_pairs
+                for _, js, dj, a, b in anchor_pairs
             ],
             "surprise": surprise(term, len(occs), corpus_tokens),
             "purity": round(sum(c.get("purity", 0) * len(c["members"]) for c in clusters)
@@ -588,6 +597,131 @@ def is_termy(rec) -> bool:
     """Evidence the estate treats this as a term, not just a word it uses:
     marked as code/heading/definition at least twice, or a multiword phrase."""
     return rec["strong_forms"] >= 2 or " " in rec["term"]
+
+
+def write_single(data, path: Path, top=30):
+    """Mode 1: one repository, one coherent subject. Concepts, their
+    senses, their grounding. No cross-repo machinery."""
+    recs = list(data["terms"].values())
+    repo = next(iter(data["repos"]))
+    lines = [f"# Concept report: {repo}", ""]
+    lines.append(f"Files scanned from {data['repos'][repo]}. Terms analyzed: {len(recs)}.")
+
+    def concepty(r):
+        sur = r.get("surprise")
+        return (r["living"] >= 8 and r["file_share"] <= 0.35
+                and (r["markedness"] >= 0.05 or (sur is not None and sur >= 2 and r["markedness"] >= 0.02)))
+
+    HEXISH = re.compile(r"[0-9a-f]{4,8}$")
+    def identifier(r):
+        # code-register vocabulary: underscores, digits or hex fragments
+        # (color codes, ids), or words English has never seen (zipf 0 makes
+        # surprise explode past anything prose reaches)
+        return ("_" in r["term"] or (r.get("surprise") or 0) >= 15
+                or any(HEXISH.match(w) or any(c.isdigit() for c in w)
+                       for w in r["term"].split()))
+
+    ranked = sorted((r for r in recs if concepty(r)),
+                    key=lambda r: -(r["markedness"] * math.log1p(r["living"])
+                                    * (0.5 + max(r.get("surprise") or 0, 0))))
+    lines += ["", "## Concepts (the repo's own prose vocabulary)", ""]
+    for rec in [r for r in ranked if not identifier(r)][:top]:
+        lines.append(f'- **{rec["term"]}**: {rec["living"]} living mentions, '
+                     f'markedness {rec["markedness"]}, surprise {rec.get("surprise")}, '
+                     f'grounded {rec["grounded"]}, referential {rec["referential"]}')
+    lines += ["", "## Schema and identifiers (code-register vocabulary)", ""]
+    for rec in [r for r in ranked if identifier(r)][:top]:
+        lines.append(f'- **{rec["term"]}**: {rec["living"]} living mentions, grounded {rec["grounded"]}')
+
+    lines += ["", "## Senses (anchored splits within this repo)", ""]
+    pool = [r for r in recs if r["anchor_senses"] and r["living"] >= 6
+            and (r["markedness"] >= 0.03 or (r.get("surprise") or 0) >= 2)]
+    for rec in sorted(pool, key=lambda r: -r["anchor_split"])[:top]:
+        pr = rec["anchor_senses"][0]
+        lines.append(f'### {rec["term"]}  (score {rec["anchor_split"]}, {rec["mentions"]} mentions)')
+        lines.append(f'- **{pr["pair"][0]}** vs **{pr["pair"][1]}** (JS {pr["js"]})')
+        for ex in pr["examples"]:
+            lines.append(f'  > {ex["text"]}  \n  > — `{ex["src"]}`')
+        lines.append("")
+
+    lines += ["## Ungrounded (leaned on, never introduced)", ""]
+    pool = [r for r in recs if r["living"] >= 8 and r["referential"] >= 5
+            and (r["strong_forms"] >= 1 or " " in r["term"]) and r["file_share"] <= 0.3
+            and (r.get("surprise") is None or r["surprise"] >= 1.5)]
+    for rec in sorted(pool, key=lambda r: -(r["referential"] / (1 + r["grounded"])))[:top]:
+        ratio = round(rec["referential"] / (1 + rec["grounded"]), 1)
+        if ratio < 3:
+            break
+        lines.append(f'- **{rec["term"]}**: {rec["referential"]} referential, {rec["grounded"]} grounded; ratio {ratio}')
+
+    lines += ["", "## Surface variants", ""]
+    for rec in sorted((r for r in recs if r.get("variants")),
+                      key=lambda r: -min(r["variants"].values()))[:top]:
+        v = rec["variants"]
+        lines.append(f'- **{rec["term"]}**: spaced {v["spaced"]}x, hyphenated {v["hyphenated"]}x')
+
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def write_collisions(data, path: Path, top=30):
+    """Mode 3: only strong same-term/different-domain cases across repos."""
+    recs = list(data["terms"].values())
+    lines = ["# Cross-estate collision report", ""]
+    lines.append(f'Corpora: {", ".join(data["repos"])}. Only anchor pairs with high '
+                 "context divergence AND high repo disjointness qualify; everything "
+                 "else belongs in a single-repo report.")
+
+    lines += ["", "## Anchor collisions (same term, different domains)", ""]
+    hits = []
+    for rec in recs:
+        # cross-domain contexts diverge for ANY common word, so the collision
+        # list without a term-ness gate is a list of ordinary vocabulary;
+        # markedness or surprise must vouch for the term first
+        sur = rec.get("surprise")
+        if sur is not None and not (sur >= 4 or (sur >= 1 and rec["markedness"] >= 0.03)):
+            continue
+        if sur is None and rec["markedness"] < 0.03:
+            continue
+        for pr in rec["anchor_senses"]:
+            if pr["js"] >= 0.75 and pr.get("disjoint", 0) >= 0.6 and pr.get("min_n", 0) >= 6:
+                hits.append((pr["js"] * pr["disjoint"] * math.log1p(min(pr["min_n"], 20))
+                             * (1 + rec["markedness"]), rec, pr))
+    hits.sort(key=lambda x: -x[0])
+    seen = set()
+    shown = 0
+    for _, rec, pr in hits:
+        if rec["term"] in seen:
+            continue
+        seen.add(rec["term"])
+        lines.append(f'### {rec["term"]}  ({pr["repos"][0]} vs {pr["repos"][1]}, JS {pr["js"]}, disjoint {pr["disjoint"]})')
+        lines.append(f'- **{pr["pair"][0]}** vs **{pr["pair"][1]}**')
+        for ex in pr["examples"]:
+            lines.append(f'  > {ex["text"]}  \n  > — `{ex["src"]}`')
+        lines.append("")
+        shown += 1
+        if shown >= top:
+            break
+
+    lines += ["## Context divergence (whole-term, strong support)", ""]
+    shown = 0
+    for rec in sorted(recs, key=lambda r: -(r["divergence"][0]["js"] if r["divergence"] else 0)):
+        if not rec["divergence"] or rec["term"] in seen:
+            continue
+        d = rec["divergence"][0]
+        ra, rb = d["repos"]
+        if d["js"] < 0.85 or min(rec["by_repo"].get(ra, 0), rec["by_repo"].get(rb, 0)) < 10:
+            continue
+        lines.append(f'### {rec["term"]}  (JS {d["js"]}, {ra} {rec["by_repo"].get(ra)}x vs {rb} {rec["by_repo"].get(rb)}x)')
+        for r_ in (ra, rb):
+            ex = d["examples"][r_]
+            lines.append(f'- **{r_}**: [{", ".join(d["top"][r_])}]')
+            lines.append(f'  > {ex["text"]}  \n  > — `{r_}:{ex["src"]}`')
+        lines.append("")
+        shown += 1
+        if shown >= top:
+            break
+
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def write_report(data, path: Path, top=25):
@@ -696,20 +830,25 @@ def main():
     p.add_argument("--json", type=Path)
     p.add_argument("--report", type=Path)
     p.add_argument("--min-mentions", type=int, default=4)
+    p.add_argument("--mode", choices=["single", "related", "collisions"],
+                   help="report mode; defaults to single for one repo, related for several")
     args = p.parse_args()
     repos = {}
     for spec in args.repos:
         name, _, path = spec.partition("=")
         repos[name] = Path(path or name).resolve()
-    data = build(repos, args.min_mentions)
+    mode = args.mode or ("single" if len(repos) == 1 else "related")
+    data = build(repos, args.min_mentions, mode)
+    data["mode"] = mode
+    writer = {"single": write_single, "collisions": write_collisions}.get(mode, write_report)
     if args.json:
         args.json.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
         print(f"json: {args.json}")
     if args.report:
-        write_report(data, args.report)
+        writer(data, args.report)
         print(f"report: {args.report}")
     if not args.json and not args.report:
-        write_report(data, Path("termlab-report.md"))
+        writer(data, Path("termlab-report.md"))
         print("report: termlab-report.md")
 
 

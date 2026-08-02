@@ -333,3 +333,39 @@ Three moves approved and landed:
   test in web-tools vs actuarial sufficiency test in home). Registration
   stays opt-in and manual, per the estate's rule against uninvited
   automation.
+
+## 2026-08-02, three modes: single, related, collisions
+
+A reviewing session judged the pooled cross-estate report not yet a
+review surface ("everything", "shows", "reason" ranking) and asked for
+three modes. Built as `--mode single|related|collisions`, defaulting by
+repo count. What the split changed:
+
+- **Single-repo mode needed its own record rule.** The estate-level
+  directory heuristic classified nearly all of budget-wa as records, so
+  its concept section came back empty. In a coherent content repo the
+  undated analysis prose is the repo's voice; only dated snapshot paths
+  are records there. With that rule, budget-wa's concept list became its
+  actual subject vocabulary: state appropriation, appropriations
+  section, veto, provisos, strike, rcw, crosswalk, total appropriation.
+  The reviewing session's hypothesis held: candidate quality improves
+  sharply when the corpus has one subject.
+- **Concepts split into two registers.** Code-register vocabulary
+  (underscores, digits, hex fragments, zipf-zero words) reports
+  separately from prose concepts; budget-drs's list led with hex color
+  codes until the identifier filter learned digits. After the split its
+  prose list is the workspace's own vocabulary: data derived marts,
+  dims, adjustments, agency budgets, analyst's review note.
+- **Anchored senses drop repo-disjointness in single mode** (one repo,
+  nothing to be disjoint about); disjointness is stored per pair and
+  becomes the collision criterion instead.
+- **Collisions mode is real but roughly half-precise.** Requiring JS
+  >= 0.75, disjointness >= 0.6, and per-side support surfaces genuine
+  same-term/different-domain cases: "class" (pension asset classes in
+  home vs CSS class names in web-tools), "balance" (fund balance vs UI),
+  "span" (HTML span vs time span), "import", "syntax", "funding",
+  "opener", "leoff". Interleaved with them: abstract formal-register
+  nouns ("varying", "approach", "notes") that survive every gate tried,
+  including surprise, because government-finance prose genuinely uses
+  them at elevated rates. A reviewable list of thirty at half precision
+  is a usable review surface; the pooled report was not.
