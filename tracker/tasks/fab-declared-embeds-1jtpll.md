@@ -1,7 +1,9 @@
 ---
 id: fab-declared-embeds-1jtpll
 title: Generalize FAB embed handling to declared embeds
-status: backlog
+status: done
+closed: 2026-08-02
+resolution: dropped
 opened: 2026-07-22
 priority: someday
 next: Build only when a real composite page (multiple interactive embeds) exists; nothing schedules this.
@@ -41,3 +43,4 @@ composite page without leaving it.
 ## Progress log
 - 2026-07-22: Filed as the parked item 4 from the FAB sidebar / branch-nav
   session (PR #279), with the do-not-build-yet rationale and trigger recorded.
+- 2026-08-02: Closed as parked, per the groom the user confirmed. The task was filed as do-not-build with an explicit trigger (a composite page with several live interactive embeds), and no such page exists in the estate. The trigger condition and the build sketch stay recorded above, so if a composite page ever appears this can be refiled from the file rather than rediscovered.

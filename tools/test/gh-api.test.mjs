@@ -69,3 +69,26 @@ test('returns fewer than n when commits run out', async () => {
   const out = await gh.recentFiles(5);
   assert.deepEqual(out.map(f => f.path), ['a']);
 });
+
+test('load() keeps an in-flight census on the class for the boot guard', async () => {
+  // gh-boot's load-race guard reads GH._loading / GH._loadQuietAt to tell a
+  // chain still in flight from a page that loads nothing, so the counter has
+  // to rise while a load is pending, pool across instances, and stamp the
+  // quiet time on completion, success and failure alike.
+  const gh = new GH({ repo: 'o/r' });
+  let release;
+  gh.get = () => new Promise(r => { release = () => r({ text: 'void 0' }); });
+  const before = GH._loading || 0;
+  const p = gh.load('slow.js');
+  await new Promise(r => setTimeout(r, 5));
+  assert.equal(GH._loading, before + 1, 'in flight while the fetch is pending');
+  release();
+  await p;
+  assert.equal(GH._loading, before, 'settles back on completion');
+  assert.ok(Date.now() - GH._loadQuietAt < 1000, 'quiet time stamped at completion');
+
+  const failing = new GH({ repo: 'o/r' });
+  failing.get = async () => { throw new Error('404'); };
+  await assert.rejects(() => failing.load('gone.js'));
+  assert.equal(GH._loading, before, 'a failed load never leaks the counter');
+});

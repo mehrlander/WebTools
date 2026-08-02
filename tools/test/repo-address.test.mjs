@@ -146,17 +146,20 @@ test('every page loading a delegating module loads repo-address.js first', () =>
   }
 });
 
-test('the pre-build boots repo-address.js before the components', () => {
+test('the pre-build boots url-params.js and repo-address.js before the components', () => {
   // show-repo takes the bundle, whose components register and start Alpine
   // during the import, before the page's own chain runs. So the bundle has to
-  // carry the grammar in its boot list, not just in its source cache.
+  // carry the grammar and the param read in its boot list, not just in its
+  // source cache: stage.js reads a stage link during init through both.
   const boot = readFileSync(path.join(repoRoot, 'tools/build/build-lib.mjs'), 'utf8');
-  assert.match(boot, /extraBoot\s*=\s*\['repo-address\.js',\s*\.\.\.components/);
+  assert.match(boot, /extraBoot\s*=\s*\['url-params\.js',\s*'repo-address\.js',\s*\.\.\.components/);
   // The boot list, not the source cache: the cache is alphabetical and says
   // nothing about order of execution.
   const dist = readFileSync(path.join(repoRoot, 'dist/web-tools.js'), 'utf8');
   const at = p => dist.indexOf(`await window.gh.load("${p}")`);
-  const grammar = at('repo-address.js'), stage = at('alpineComponents/stage.js');
+  const params = at('url-params.js'), grammar = at('repo-address.js'), stage = at('alpineComponents/stage.js');
+  assert.ok(params !== -1, 'the built bundle never boots url-params.js');
   assert.ok(grammar !== -1, 'the built bundle never boots repo-address.js');
   assert.ok(stage !== -1 && grammar < stage, 'the built bundle boots the grammar before stage.js');
+  assert.ok(params < stage, 'the built bundle boots the param read before stage.js');
 });

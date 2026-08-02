@@ -67,6 +67,9 @@ window.GH = class {
 window.__shell = { REGISTRY_REPO: REG, hasToken: () => true, loadProposalCount: () => { window.__shell._counted = true; } };
 
 new window.Function(readFileSync(path.join(repoRoot, 'lib/repo-proposals.js'), 'utf8'))();
+// The put-file pane diffs through the shared kit when it is present, which it
+// is wherever the view really runs (show-repo loads it in its own chain).
+new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/text-diff.js'), 'utf8'))();
 new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/proposals.js'), 'utf8'))();
 Alpine.store('toast', () => {});
 Alpine.start();
@@ -108,6 +111,26 @@ test('a branch-targeted proposal links to that branch, not the default', () => {
     'a HEAD link would show the wrong copy of the file being changed');
 });
 
+test('a put-file row against an existing file resolves to a line diff', async () => {
+  files['mehrlander/wa-bills']['docs/have.md'] = 'keep\nold line\nkeep too\n';
+  files[REG]['proposals/pending/rewrites.json'] = JSON.stringify({
+    id: 'rewrites', kind: 'put-file', repo: 'mehrlander/wa-bills',
+    path: 'docs/have.md', content: 'keep\nnew line\nkeep too\n', why: 'x' });
+  await data.load();
+  const row = data.items.find(i => i.id === 'rewrites');
+  assert.ok(row.diffRows, 'the pane gets rows, not two files to eyeball');
+  const rows = [...row.diffRows].map(r => ({ t: r.t, line: r.line }));
+  assert.ok(rows.some(r => r.t === 'del' && r.line === 'old line'));
+  assert.ok(rows.some(r => r.t === 'add' && r.line === 'new line'));
+  assert.ok(rows.some(r => r.t === 'ctx' && r.line === 'keep'), 'context rides along');
+  assert.equal(row.diffStat, '+1 / -1');
+  // A put-file that creates a new file has nothing to diff against: the
+  // side-by-side panes stay, so diffRows must stay unset.
+  const creates = data.items.find(i => i.id === 'on-branch');
+  assert.equal(creates.exists, false);
+  assert.equal(creates.diffRows, undefined);
+});
+
 test('applying takes a confirm, writes the target, and records the result', async () => {
   const row = data.items.find(i => i.id === 'scope-wa-bills');
   assert.equal(data.confirming, null, 'nothing is armed on load');
@@ -130,7 +153,7 @@ test('applying takes a confirm, writes the target, and records the result', asyn
 test('after applying, the proposal is no longer pending', async () => {
   files[REG]['proposals/applied/scope-wa-bills.json'] = '{"ok":true}';
   await data.load();
-  assert.deepEqual([...data.items.map(i => i.id)].sort(), ['broken', 'on-branch']);
+  assert.deepEqual([...data.items.map(i => i.id)].sort(), ['broken', 'on-branch', 'rewrites']);
 });
 
 test('no token means no read at all', async () => {
@@ -175,6 +198,9 @@ test('the commit button still delivers a plain commit', async () => {
   const made = writes.slice(before);
   assert.equal(made.filter(w => w.createRef).length, 0, 'no branch for a commit delivery');
   assert.equal(made.filter(w => w.createPull).length, 0);
+  assert.equal(row.delivered, 'Committed to mehrlander/wa-bills.');
+  assert.equal(row.deliveredUrl, 'https://github.com/mehrlander/wa-bills/commit/abc123',
+    'the landed commit is a link, matching the commitUrl in the applied record');
 });
 
 // ── what a real run taught ──────────────────────────────────────────────────

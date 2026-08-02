@@ -1,7 +1,8 @@
 ---
 id: fab-subject-side-actions-t7r4nc
 title: Let the FAB collect a toss subject's page actions, not just the shell's
-status: backlog
+status: done
+closed: 2026-08-02
 project: fab
 opened: 2026-07-27
 ---
@@ -40,3 +41,4 @@ This does not make toss-render fully self-previewing. Even with the change, a ne
 
 ## Progress log
 - 2026-07-27 filed from PR #300, after three rounds of "I removed that, why is it still there" traced to this one gate; the nesting behaviour above was measured, not assumed
+- 2026-08-02: Closed during a tracker groom: delivered by commit e857f07 (2026-07-27) but never closed. detect() now collects subject-side actions with attribution (stacked-windows glyph on shell rows), invocation crosses the window boundary with focus handling and { nav } for navigation, and the definition of done is held by tools/test/subject-actions.mjs (depth 2, headless) and tools/test/fab-subject-actions.test.mjs in npm test. CLAUDE.md documents the behavior under the toss-nesting section.

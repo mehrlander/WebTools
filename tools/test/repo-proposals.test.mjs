@@ -120,6 +120,8 @@ test('apply writes base64 to the target and reports the commit', async () => {
   assert.equal(res.ok, true);
   assert.equal(res.created, false);
   assert.equal(res.commit, 'deadbeef');
+  assert.equal(res.commitUrl, 'https://github.com/me/target/commit/deadbeef',
+    'the record carries the commit as an openable URL, not only a sha');
   assert.equal(res.appliedAt, '2026-07-28T00:00:00Z');
   assert.equal(log.length, 1);
   assert.equal(log[0].repo, 'me/target');
@@ -272,6 +274,8 @@ test('branch delivery cuts proposal/<id> and commits there, leaving the target a
   assert.equal(res.branchCreated, true);
   assert.equal(log.find(l => l.createRef)?.createRef, 'proposal/p1');
   assert.equal(log.find(l => l.path)?.branch, 'proposal/p1', 'the write goes to the branch, not the default');
+  assert.equal(res.commitUrl, 'https://github.com/me/target/commit/deadbeef',
+    'a branch delivery links its commit too');
   assert.equal(res.pr, undefined, 'branch delivery opens nothing');
 });
 
