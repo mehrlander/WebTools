@@ -11,6 +11,17 @@
         ]
       }
     ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/mcp-fail-hint.sh\""
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "",
