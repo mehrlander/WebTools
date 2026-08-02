@@ -70,6 +70,10 @@ measured in [findings.md](findings.md):
 - `../semsearch.py`: the semantic search layer, graduated out of the lab
   to `tools/semsearch.py`; default store `.concept-lab/semidx`
   (gitignored, rebuild at will).
+- `registry.py`: the epistemic content registry (ADR initial stage): a
+  repo's curated `data/design/content.csv` declares creation_mode and
+  analysis_use per locator; `verify` and `corpus` subcommands; termlab
+  and semsearch consult it before falling back to heuristics.
 - `flag_reply.py`: the response-time checker. `--ground <store>` appends
   the canonical passage to link per flag; `--hook` reads a Stop-hook
   payload on stdin, checks the session's last assistant message, and

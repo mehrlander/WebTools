@@ -369,3 +369,46 @@ repo count. What the split changed:
   including surprise, because government-finance prose genuinely uses
   them at elevated rates. A reviewable list of thirty at half precision
   is a usable review surface; the pooled report was not.
+
+## 2026-08-02, the epistemic content registry (ADR initial stage)
+
+An ADR arrived proposing an Epistemic Content and Provenance Registry:
+observe mechanically, declare authoritatively, compare for drift, with a
+curated `data/design/content.csv` (locator, creation_mode, analysis_use,
+description) as the initial stage. This is the principled version of what
+`is_record()` gropes at, so it was implemented as `registry.py` and wired
+in as the corpus authority: declared classifications control membership
+(exclude drops the file, analysis_use decides living), and only
+undeclared content falls back to the heuristic. Two deliberate extensions
+from estate practice: trailing-`/` subtree locators (the `.paths.json`
+idiom) with most-specific-wins resolution, and the ADR's three fragment
+syntaxes (`#heading=`, `#column=`, `#html-id=`).
+
+The ADR's spike ran on budget-wa (16 rows covering supplied snapshots,
+mechanical indices, model-authored catalogs, a hybrid README, code, a
+mixed file, two fragment locators). Results, keyed to the spike's
+questions:
+
+- Verifier: clean on first authoring; after renaming a declared file it
+  reported the unresolved locator and nothing else. Locator maintenance
+  is one advisory line per rename.
+- The `#column=notes` fragment extracted genuine authored join
+  commentary out of an otherwise mechanical CSV: region locators earn
+  their keep on tables.
+- The `#heading=` fragment answered spike question 7 against regions:
+  markdown heading sections include their subsections, so a locator
+  meant to capture "the authored framing above the quoted sections"
+  recaptured 110KB of quoted bill text. For prose files, restructuring
+  beats region annotation; the finding is recorded in the row itself.
+- Corpus effect, measured on the single-repo concept report: with the
+  registry, "state appropriation" (403 mentions, dominated by quoted
+  bill text in source/ catalogs) left the concepts list, and living
+  counts tightened throughout, while the subject vocabulary (veto,
+  provisos, strike, rcw, appropriations section) held. Supplied text
+  now stays out of the authored voice by declaration, not by directory
+  guesswork.
+
+The deferred layers (artifacts/derivations provenance, generated
+inventory, comparison) stay deferred per the ADR; the comparison layer's
+first real customer will be the moment a registry claim and the
+heuristic disagree about a file someone cares about.

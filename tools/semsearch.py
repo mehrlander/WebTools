@@ -47,15 +47,22 @@ def cmd_build(args):
     Path(args.store).parent.mkdir(parents=True, exist_ok=True)
     model = StaticModel.from_pretrained("minishlab/potion-base-8M")
     texts, meta = [], []
+    from registry import Registry
     for spec in args.repos:
         name, _, root = spec.partition("=")
         root = Path(root or name)
+        reg = Registry.load(root)
         for path in iter_files(root):
             rel = path.relative_to(root).as_posix()
+            row = reg.classify(rel) if reg else None
+            if row is not None and row.analysis_use == "exclude":
+                continue
+            living = (row.analysis_use in ("concept-vocabulary", "prose-review")
+                      if row is not None else not is_record(rel))
             doc = Doc(name, rel, path.read_text(encoding="utf-8", errors="ignore"))
             for para in paragraphs(doc.clean):
                 texts.append(para)
-                meta.append({"repo": name, "rel": rel, "living": not is_record(rel), "text": para})
+                meta.append({"repo": name, "rel": rel, "living": living, "text": para})
     emb = model.encode(texts, show_progress_bar=False)
     emb = emb / (np.linalg.norm(emb, axis=1, keepdims=True) + 1e-9)
     np.save(f"{args.store}.npy", emb.astype("float32"))

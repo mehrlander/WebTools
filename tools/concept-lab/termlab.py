@@ -394,22 +394,38 @@ def snippet(doc: Doc, span, width=110) -> str:
     return (("…" if lo else "") + s + ("…" if hi < len(doc.text) else ""))
 
 
+LIVING_USES = {"concept-vocabulary", "prose-review"}
+
+
 def build(repos: dict[str, Path], min_mentions: int, mode: str = "related"):
     # In a coherent single-subject repo the undated analysis prose IS the
     # repo's voice; only dated snapshot paths count as records there. The
     # broader directory heuristic is for pooled estate runs, where whole
     # data trees quote outside material.
     record_fn = (lambda rel: bool(DATED.search(rel))) if mode == "single" else is_record
+    # A repo's epistemic content registry (data/design/content.csv, see
+    # registry.py) is authoritative where it declares: exclude drops the
+    # file, analysis_use decides living, and only undeclared content falls
+    # back to the heuristic. Declaration over observation, per the ADR.
+    try:
+        from registry import Registry
+    except ImportError:
+        Registry = None
+    registries = {r: Registry.load(root) for r, root in repos.items()} if Registry else {}
     docs: list[Doc] = []
     for repo, root in repos.items():
+        reg = registries.get(repo)
         for path in iter_files(root):
             rel = path.relative_to(root).as_posix()
+            row = reg.classify(rel) if reg else None
+            if row is not None and row.analysis_use == "exclude":
+                continue
             try:
                 text = path.read_text(encoding="utf-8", errors="ignore")
             except OSError:
                 continue
             doc = Doc(repo, rel, text)
-            doc.living = not record_fn(rel)
+            doc.living = (row.analysis_use in LIVING_USES) if row is not None else not record_fn(rel)
             docs.append(doc)
 
     cand, per_doc_forms = harvest_candidates(docs)
