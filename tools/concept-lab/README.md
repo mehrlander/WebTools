@@ -60,6 +60,9 @@ measured in [findings.md](findings.md):
   terms.
 - `exp_gold.py`: the gold polysemy benchmark; run it after any scoring
   change.
+- `exp_pos.py`: spaCy noun chunks as candidate source vs shape filter.
+- `exp_semsearch.py`: paragraph-level semantic search over the estate
+  (build once, query instantly); the "where did we settle X" layer.
 - `flag_reply.py`: the response-time checker (see findings).
 
 ## Relation to the concept-index branch (PR #336)

@@ -229,3 +229,66 @@ number.
 | Sense discrimination via embeddings | potion-base-8M + KMeans | correct on clean cases, low margins; verifier not driver |
 | Topic-cluster purity | exclusive centroid mass | negative result; kept as data only |
 | Response-time flagging | index + markedness/file-share/split gates | works on samples; not yet hook-wired |
+| Global "most ambiguous" ranking | any single scalar tried so far | browse view only; per-term evidence is the product |
+| Term-shape filtering | spaCy noun-chunk membership | works; would retire hand verb/adverb lists |
+| Estate semantic retrieval | potion-8M paragraph index (exp_semsearch) | works; 27s build, complements lexical search |
+| Off-the-shelf keywords | YAKE | negative result on this corpus |
+
+## 2026-08-02, ranking search: calling the sense-ranking chase
+
+Offline rescoring over the v9 index (no reruns needed; the JSON carries
+every feature) tried repo-usage entropy, markedness products, mention
+normalizers, living share, and multi-repo gates against the gold set.
+Best variants moved median gold rank from 651 to roughly 500 and top-100
+membership from 1 to 4, but every gate that suppressed the home budget
+vocabulary also cut a gold member ("board" is 85% home by volume, so any
+dominant-repo cap kills it). Conclusion, recorded rather than churned:
+a single global "most split terms" ranking conflates several phenomena
+and is a browse view at best. The hook use case never needed it: given a
+term in a draft, the per-term anchor evidence answers "which senses, in
+which repos, with what example," and that part works. Twelve gold cases
+is also thin ground for formula fitting; growing the gold set is the
+honest prerequisite for another ranking attempt.
+
+## 2026-08-02, exp_pos: noun chunks judge shape, not term-ness
+
+spaCy en_core_web_sm noun chunks over web-tools living prose: 18,387
+chunk types vs 5,679 regex candidates. As a candidate source it loses:
+the top of the chunk list is generic nouns and pronouns ("page", "repo",
+"itself", "nothing"), while the regex harvest's exclusives are the real
+coinages (web-tools json, gh api js, definition done). As a shape filter
+it wins: "actually" and "exactly" are never noun chunks, so a
+chunk-membership gate would retire the hand-kept verb and adverb lists.
+Worth integrating if those lists grow again; not integrated today.
+
+## 2026-08-02, exp_semsearch: a semantic layer over the estate, cheap
+
+New capability, not a term signal: potion-base-8M embeds all 59,172
+prose paragraphs across the four repos in 27 seconds (no torch, ~60MB
+of vectors), and nearest-paragraph query answers arrive instantly.
+Quality on real probes:
+
+- "how do I preview a page from a branch before it merges" hit
+  show-repo's branch-overlay section and CLAUDE.md's preview mechanism,
+  ranks 1 and 2.
+- "the decision that tracker boards commit directly to main" hit the
+  merge-guide entry recording that exact spec decision, the rule
+  statement in the chat-histories CLAUDE.md, and the blog post about the
+  convention's history.
+- "pension contribution rates increased because of investment losses"
+  surfaced ACFR rate-of-return passages from the records layer.
+
+Misses exist (the "who decides ready" query found draft-PR prose but not
+SURFACING.md's "Ready is the user's decision" line in the top 3), so it
+complements rather than replaces lexical search. This answers the "where
+did we settle X" retrieval class that ripgrep cannot.
+
+## 2026-08-02, YAKE: off-the-shelf keywords lose to corpus-aware harvest
+
+`yake` (n≤2) over the same web-tools prose returns "repo, page, file,
+branch, session" at the top: statistical keyword extraction tuned for
+general documents promotes exactly the corpus-frequent words the
+signature list is designed to demote. Two real terms surface ("task
+file", "Tailwind CSS") but the markedness harvest dominates it for this
+corpus. Negative result, kept so the next "just use a keyword library"
+idea starts here.
