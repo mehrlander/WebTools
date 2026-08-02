@@ -105,6 +105,17 @@
     error: '',
     sel: 0,
     srcSpec: '',
+    // The two viewport levers (task data-view-mobile-chrome): on a phone the
+    // notes are the cost, not the controls (measured 2026-07-25: 132px of the
+    // 280 was prose), so below sm they collapse behind the info toggle. bleed
+    // hands the whole viewport to the viewer; deliberately NOT written to the
+    // hash, since the fragment vocabulary is reserved by the
+    // data-view-consume-fragment task and a toggle should not preempt it.
+    notesOpen: false,
+    bleed: false,
+    get hasNotes() {
+      return !!(this.payload?.note || this.items.some(it => it.note));
+    },
 
     async init() {
       try {
@@ -170,7 +181,12 @@
 </script>
 </head>
 <body class="h-dvh m-0 bg-base-200">
-<div x-data="app()" x-init="init()" class="h-full flex flex-col max-w-6xl mx-auto px-4 py-4 gap-3">
+<!-- Bleed collapses the spacing by inline style rather than by class: a p-0
+     layered beside the static px-4 would leave the winner to Tailwind's
+     stylesheet order, and an inline style wins outright. The static classes
+     stay, so nothing flashes unpadded before Alpine starts. -->
+<div x-data="app()" x-init="init()" class="h-full flex flex-col mx-auto px-4 py-4 gap-3 max-w-6xl"
+     :style="bleed ? 'padding:0; gap:0; max-width:none' : ''">
 
   <!-- error. GitHub answers 404 (not 401) for a private repo fetched with no
        token, so gh-auth's automatic prompt never fires here; offer it. -->
@@ -196,20 +212,34 @@
 
       <!-- header: the envelope's title and note, or the addressed file's name.
            A bare payload usually says everything in the viewer's own header,
-           so this stays quiet unless there is something to add. -->
-      <header class="shrink-0" x-show="payload.title || payload.note || srcSpec">
+           so this stays quiet unless there is something to add. Below sm the
+           notes (the envelope's and the selected item's) collapse behind the
+           info toggle: measured 2026-07-25, prose was 132px of the 280px of
+           phone chrome while every control cost under 5%. -->
+      <header class="shrink-0" x-show="!bleed && (payload.title || payload.note || srcSpec)">
         <div class="flex items-baseline gap-2 flex-wrap">
           <h1 class="text-lg font-semibold" x-text="title"></h1>
           <span x-show="srcSpec" class="badge badge-ghost badge-sm font-mono" x-text="srcSpec"></span>
           <span class="badge badge-sm" :class="payload.kind === 'envelope' ? 'badge-primary' : 'badge-ghost'"
                 x-text="payload.kind === 'envelope' ? 'envelope' : 'data'"></span>
+          <div class="grow"></div>
+          <button x-show="hasNotes" @click="notesOpen = !notesOpen"
+                  class="sm:hidden btn btn-ghost btn-xs btn-circle self-center" :class="notesOpen && 'text-primary'"
+                  :title="notesOpen ? 'Tuck the notes away' : 'Show the notes'">
+            <i class="ph ph-info text-base"></i></button>
+          <button @click="bleed = true" class="btn btn-ghost btn-xs btn-circle self-center"
+                  title="Full-bleed: give the whole viewport to the data">
+            <i class="ph ph-arrows-out-simple text-base"></i></button>
         </div>
-        <p x-show="payload.note" x-text="payload.note" class="text-sm opacity-70 mt-1"></p>
+        <p x-show="payload.note" x-text="payload.note" class="text-sm opacity-70 mt-1"
+           :class="!notesOpen && 'hidden sm:block'"></p>
       </header>
 
       <!-- item strip: only earns its space when the payload carries more than
-           one item, which only an envelope can. -->
-      <div x-show="items.length > 1" class="shrink-0 flex gap-1 overflow-x-auto pb-1">
+           one item, which only an envelope can. It stays out of the note
+           demotion on purpose: the 36px strip is how a phone reader knows the
+           payload has three files. -->
+      <div x-show="!bleed && items.length > 1" class="shrink-0 flex gap-1 overflow-x-auto pb-1">
         <template x-for="(it, i) in items" :key="i">
           <button @click="open(i)" :title="it.note || it.name"
                   class="btn btn-sm shrink-0 font-mono font-normal"
@@ -220,8 +250,20 @@
       </div>
 
       <!-- the selected item's note, when it has one to add -->
-      <p x-show="item && item.note && items.length > 1" x-text="item?.note"
-         class="shrink-0 text-sm opacity-70 -mt-1"></p>
+      <p x-show="!bleed && item && item.note && items.length > 1" x-text="item?.note"
+         class="shrink-0 text-sm opacity-70 -mt-1" :class="!notesOpen && 'hidden sm:block'"></p>
+
+      <!-- the way back from full-bleed, floating because the header it would
+           live in is exactly what bleed removes. Bottom-LEFT, mirroring the
+           FAB's bottom-right: the top corners belong to the viewer's own
+           header controls, which a fixed chip there was measured to cover.
+           Entry lives in the page header, so a bare gz payload with no header
+           never shows either control; that case measured fine (56px of
+           chrome) and has nothing to bleed away. -->
+      <button x-show="bleed" x-cloak @click="bleed = false"
+              class="fixed bottom-2 left-2 z-40 btn btn-ghost btn-sm btn-circle bg-base-100/70 border border-base-300 shadow-sm"
+              title="Back to the page chrome">
+        <i class="ph ph-arrows-in-simple text-base"></i></button>
 
       <!-- the shared viewer, embedded: bindStore false so it doesn't track a
            Files view that isn't here, fill so it grows to this column. It

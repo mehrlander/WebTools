@@ -2695,7 +2695,7 @@ function app(){ return {
   menuKind: 'actions',
   get repoMenuItems(){
     if (this.menuKind === 'github') return this.githubMenuItems;
-    if (this.menuKind !== 'repo') return this.repoActionItems;
+    if (this.menuKind !== 'repo') return [...this.menuExtra, ...this.repoActionItems];
     // THE REPO, TWICE, then where it goes on GitHub, as one FLAT list. The two
     // named rows carry the same name under two marks, this app's and GitHub's,
     // and each opens the repo in that place; the rest are the places inside
@@ -2734,8 +2734,10 @@ function app(){ return {
   // A menu about a repo is opened from somewhere, and that somewhere sometimes
   // has an action only it can offer: the Activity view's chip contributes
   // "Show only this repo", which acts on that view's filter and would be
-  // meaningless from the sidebar. Each carries its own `group` label and its
-  // own `run`, so the shell hosts them without knowing what they do.
+  // meaningless from the sidebar, and an estate card with a nested -private
+  // companion contributes its face switch. Each carries its own `run`, so the
+  // shell hosts them without knowing what they do. Accepted for the actions
+  // and repo kinds alike; the GitHub list stays purely destinations.
   menuExtra: [],
   // Things you do TO a repo, not inside one, and by now a SHORT list, because
   // every row that left had somewhere better to be:
@@ -2842,7 +2844,7 @@ function app(){ return {
     this.crumbMenu = false;
     this.menuRepo = repo;
     this.menuKind = kind;
-    this.menuExtra = kind === 'repo' && Array.isArray(opts.extra) ? opts.extra : [];
+    this.menuExtra = kind !== 'github' && Array.isArray(opts.extra) ? opts.extra : [];
     // A rule takes height too, so the measure that decides whether the panel
     // fits below the trigger allows for the ones that will actually be drawn
     // (above a head row that does not follow another head row).
