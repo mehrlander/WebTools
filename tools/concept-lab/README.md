@@ -61,9 +61,15 @@ measured in [findings.md](findings.md):
 - `exp_gold.py`: the gold polysemy benchmark; run it after any scoring
   change.
 - `exp_pos.py`: spaCy noun chunks as candidate source vs shape filter.
-- `exp_semsearch.py`: paragraph-level semantic search over the estate
-  (build once, query instantly); the "where did we settle X" layer.
-- `flag_reply.py`: the response-time checker (see findings).
+- `../semsearch.py`: the semantic search layer, graduated out of the lab
+  to `tools/semsearch.py`; default store `.concept-lab/semidx`
+  (gitignored, rebuild at will).
+- `flag_reply.py`: the response-time checker. `--ground <store>` appends
+  the canonical passage to link per flag; `--hook` reads a Stop-hook
+  payload on stdin, checks the session's last assistant message, and
+  emits `systemMessage` JSON. Nothing registers it automatically; a repo
+  opts in by adding a Stop hook entry that pipes the payload to
+  `flag_reply.py --hook --index <index.json>`.
 
 ## Relation to the concept-index branch (PR #336)
 

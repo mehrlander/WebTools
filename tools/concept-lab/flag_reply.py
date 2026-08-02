@@ -80,7 +80,12 @@ def flags_for(rec):
     # as a term (markedness) and it is not simply everywhere (file share).
     if rec.get("markedness", 0) < MIN_MARKEDNESS or rec.get("file_share", 1) > MAX_FILE_SHARE:
         return out
-    if rec["sense_split"] >= AMBIG_SPLIT and len(rec["clusters"]) >= 2:
+    if rec.get("anchor_senses"):
+        # Anchor pairs read like an explanation ("tracker _ vs _ wsib"),
+        # so prefer them over cluster word-bags whenever they exist.
+        pair = rec["anchor_senses"][0]
+        out.append(("ambiguous", f'{pair["pair"][0]} vs {pair["pair"][1]} (JS {pair["js"]})'))
+    elif rec["sense_split"] >= AMBIG_SPLIT and len(rec["clusters"]) >= 2:
         tops = " / ".join(", ".join(c["top"][:3]) for c in rec["clusters"][:3])
         out.append(("ambiguous", f'{len(rec["clusters"])} senses in corpus: {tops}'))
     if rec["divergence"] and rec["divergence"][0]["js"] >= DIVERGE_JS:
@@ -95,6 +100,28 @@ def flags_for(rec):
         if share / total >= LOCAL_SHARE and rec["keyness"].get(top_repo, 0) >= KEYNESS_LOCAL:
             out.append(("repo-local", f'{round(100 * share / total)}% of uses in {top_repo} (keyness {rec["keyness"][top_repo]})'))
     return out
+
+
+def last_assistant_text(transcript_path: str) -> str:
+    """Pull the final assistant message's text blocks from a session
+    transcript (JSONL, one event per line; schema per the session
+    recorder's reading of the same file)."""
+    try:
+        lines = Path(transcript_path).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return ""
+    for line in reversed(lines):
+        try:
+            ev = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        msg = ev.get("message") or {}
+        if ev.get("type") == "assistant" and msg.get("role") == "assistant":
+            parts = [b.get("text", "") for b in msg.get("content", ())
+                     if isinstance(b, dict) and b.get("type") == "text"]
+            if any(parts):
+                return "\n".join(parts)
+    return ""
 
 
 class Grounder:
@@ -139,10 +166,19 @@ def main():
     p.add_argument("--file", type=Path)
     p.add_argument("--max", type=int, default=20)
     p.add_argument("--ground", metavar="STORE",
-                   help="exp_semsearch store; append the best grounding passage per flagged term")
+                   help="semsearch store; append the best grounding passage per flagged term")
+    p.add_argument("--hook", action="store_true",
+                   help="Stop-hook mode: read the hook payload JSON on stdin, check the "
+                        "session's last assistant message, emit systemMessage JSON if flagged")
     args = p.parse_args()
 
-    text = args.file.read_text(encoding="utf-8") if args.file else sys.stdin.read()
+    if args.hook:
+        payload = json.loads(sys.stdin.read() or "{}")
+        text = last_assistant_text(payload.get("transcript_path", ""))
+        if not text:
+            return
+    else:
+        text = args.file.read_text(encoding="utf-8") if args.file else sys.stdin.read()
     terms = load_index(args.index)
     doc = Doc("draft", "draft.md", text)
 
@@ -172,6 +208,11 @@ def main():
 
     order = {"ambiguous": 0, "divergent": 1, "ungrounded": 2, "repo-local": 3, "novel": 4}
     findings.sort(key=lambda f: (order[f[0]], -f[2]))
+    if args.hook:
+        if findings:
+            lines = [f'{term}: {why}' for kind, term, n, why in findings[:5]]
+            print(json.dumps({"systemMessage": "term-lab flags on last reply | " + " | ".join(lines)}))
+        return
     if not findings:
         print("No flags.")
         return

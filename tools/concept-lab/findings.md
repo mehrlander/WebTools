@@ -305,3 +305,31 @@ edit-review skill's Diff-lens passage. Quality varies with the flag
 noise feeding it, but the pattern is the finding: a flag that names the
 canonical passage turns "this term is risky" into "link this when you
 use it", which is what a response-time hook should actually emit.
+
+## 2026-08-02, graduation: semsearch durable, flag_reply on the hook path
+
+Three moves approved and landed:
+
+- `exp_semsearch.py` graduated to `tools/semsearch.py`: committed
+  builder, gitignored vector store (`.concept-lab/`, ~60MB, rebuilt in
+  under 30 seconds). Two fixes on the way: runt tail chunks from long
+  paragraphs polluted the index (short meta-text embeds near
+  everything), and a phrasing rule was measured: with static
+  embeddings, query like a note ("wrap up sequence preflight mark PR
+  ready" hits SURFACING.md at rank 1), not like a question ("what does
+  wrap up mean" matches question-shaped text instead). A side finding:
+  duplicate top hits expose the estate's duplicated-claims problem
+  automatically (SURFACING.md and its fetched skill copy tied at 0.666).
+  Known limit: URL-ish masking eats filename tokens, so queries naming
+  files ("paths.json") miss.
+- `flag_reply.py` ambiguity evidence now prefers anchor pairs, which
+  read like explanations ("tracker _ (7x) vs _ wsib (103x)") over
+  cluster word-bags; cluster evidence remains the fallback.
+- `flag_reply.py --hook` closes the loop the whole lab aims at: it reads
+  a Stop-hook payload, extracts the last assistant message from the
+  session transcript, and emits `systemMessage` JSON. Tested against
+  this session's own live transcript (501 events): it parsed the reply
+  and flagged, among noise, one genuinely ambiguous term ("test": npm
+  test in web-tools vs actuarial sufficiency test in home). Registration
+  stays opt-in and manual, per the estate's rule against uninvited
+  automation.

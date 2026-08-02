@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""Experiment: paragraph-level semantic search over the estate.
+"""Semantic search over the estate's prose, paragraph by paragraph.
 
-Not a term signal: a new capability probe. model2vec potion-base-8M
-embeds every prose paragraph across the repos; a query embeds the same
-way and returns nearest paragraphs. If quality holds, this is the
-semantic layer the estate's search story lacks (chat-histories search is
-lexical; the file-retrieval skill is ripgrep-based).
+model2vec potion-base-8M embeds every prose paragraph across the given
+repos (~59k paragraphs in under 30 seconds for the four-repo estate, no
+torch); a query embeds the same way and returns nearest paragraphs. This
+is the "where did we settle X" layer that lexical search cannot answer;
+it complements ripgrep and the chat-archive catalog rather than
+replacing them. Graduated from concept-lab (exp_semsearch) 2026-08-02;
+measured examples in tools/concept-lab/findings.md.
 
-Build:  python3 exp_semsearch.py build wt=/path home=/path --store idx
-Query:  python3 exp_semsearch.py query --store idx "how do I preview a branch page"
+The vector store is derived data: rebuild at will, never commit it. The
+default location `.concept-lab/semidx` is gitignored.
+
+Build:  python3 tools/semsearch.py build wt=/path home=/path
+Query:  python3 tools/semsearch.py query "how do I preview a branch page"
 """
 from __future__ import annotations
 
@@ -18,7 +23,7 @@ import re
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "concept-lab"))
 from termlab import Doc, is_record, iter_files  # noqa: E402
 
 MIN_WORDS, MAX_WORDS = 8, 120
@@ -30,12 +35,16 @@ def paragraphs(text: str):
         if not (MIN_WORDS <= len(words)):
             continue
         for i in range(0, len(words), MAX_WORDS):
-            yield " ".join(words[i:i + MAX_WORDS])
+            chunk = words[i:i + MAX_WORDS]
+            # a runt tail chunk embeds near everything meta; fold it away
+            if len(chunk) >= MIN_WORDS:
+                yield " ".join(chunk)
 
 
 def cmd_build(args):
     from model2vec import StaticModel
     import numpy as np
+    Path(args.store).parent.mkdir(parents=True, exist_ok=True)
     model = StaticModel.from_pretrained("minishlab/potion-base-8M")
     texts, meta = [], []
     for spec in args.repos:
@@ -80,13 +89,14 @@ def cmd_query(args):
 def main():
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest="cmd", required=True)
+    default_store = str(Path(__file__).resolve().parent.parent / ".concept-lab" / "semidx")
     b = sub.add_parser("build")
     b.add_argument("repos", nargs="+")
-    b.add_argument("--store", required=True)
+    b.add_argument("--store", default=default_store)
     b.set_defaults(fn=cmd_build)
     q = sub.add_parser("query")
     q.add_argument("text")
-    q.add_argument("--store", required=True)
+    q.add_argument("--store", default=default_store)
     q.add_argument("-k", type=int, default=5)
     q.add_argument("--living-only", action="store_true")
     q.set_defaults(fn=cmd_query)
