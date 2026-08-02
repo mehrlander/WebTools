@@ -34,6 +34,11 @@ import re
 from collections import Counter, defaultdict
 from pathlib import Path
 
+try:  # optional: continuous English-commonness prior (pip install wordfreq)
+    from wordfreq import zipf_frequency
+except ImportError:
+    zipf_frequency = None
+
 TEXT_SUFFIXES = {".md"}
 SKIP_DIRS = {
     ".git", ".concept-index", "node_modules", "dist", "vendor", "archive",
@@ -84,6 +89,10 @@ MAX_OCC_PER_TERM = 400       # cap occurrences fed to clustering
 CLUSTER_JOIN = 0.16          # cosine to join an existing sense cluster
 CLUSTER_MERGE = 0.5          # cosine at which two clusters are the same sense
 MIN_CLUSTER = 3              # occurrences before a cluster counts as a sense
+ANCHOR_MIN = 4               # occurrences before a collocate counts as an anchor
+ANCHOR_JS = 0.55             # inter-anchor context divergence that reads as two senses
+# Determiners never anchor a sense; a few prepositions genuinely do ("on deck").
+ANCHOR_STOP = STOP - set("on off up out down over under".split())
 
 
 def iter_files(root: Path):
@@ -232,11 +241,15 @@ def js_divergence(a: Counter, b: Counter) -> float:
     return round(js, 3)
 
 
-def cluster_senses(occs: list[dict]):
-    """Greedy centroid clustering of occurrence contexts, then a merge pass."""
+def cluster_senses(occs: list[dict], idf: dict | None = None):
+    """Greedy centroid clustering of occurrence contexts, then a merge pass.
+    With idf, context words are weighted by informativeness so ubiquitous
+    words stop gluing unrelated occurrences together."""
     clusters = []  # each: {"centroid": Counter, "members": [occ]}
     for occ in occs:
         ctx = occ["ctx"]
+        if idf:
+            ctx = Counter({w: c * idf.get(w, 1.0) for w, c in ctx.items()})
         if not ctx:
             continue
         best, best_sim = None, 0.0
@@ -261,7 +274,90 @@ def cluster_senses(occs: list[dict]):
                 break
         else:
             merged.append(cl)
-    return [c for c in merged if len(c["members"]) >= MIN_CLUSTER]
+    merged = [c for c in merged if len(c["members"]) >= MIN_CLUSTER]
+    # Purity: how much of each cluster's mass sits on words no other cluster
+    # of this term uses. Topic-broad words score low; true senses score high.
+    if len(merged) >= 2:
+        for i, c in enumerate(merged):
+            others = set()
+            for j, o in enumerate(merged):
+                if j != i:
+                    others.update(o["centroid"])
+            total = sum(c["centroid"].values()) or 1
+            c["purity"] = round(sum(v for w, v in c["centroid"].items() if w not in others) / total, 3)
+    return merged
+
+
+def surprise(term: str, mentions: int, corpus_tokens: int) -> float | None:
+    """Bits of estate-vs-English overuse. A phrase's English rate is proxied
+    by its rarest word, which overestimates it, so phrase surprise runs
+    conservative. None when wordfreq is absent."""
+    if zipf_frequency is None or not corpus_tokens:
+        return None
+    z = min(zipf_frequency(w, "en") for w in term.split())
+    est_pm = mentions / corpus_tokens * 1e6
+    en_pm = 10 ** (z - 3) if z else 0.001
+    return round(math.log2(est_pm / max(en_pm, 0.001)), 2)
+
+
+def anchored_senses(occs: list[dict], needle_len: int):
+    """Sketch-style sense detection: group a term's occurrences by their
+    immediate raw-text neighbor (left of first word, right of last). Strong
+    collocates whose surrounding contexts diverge are distinct senses:
+    tracker|board vs investment|board, slide|deck vs on|deck. Measured
+    2026-08-02 to beat both context clustering and tiny embeddings on the
+    estate's known polysemy; see findings.md."""
+    groups = defaultdict(list)
+    for o in occs:
+        for side, word in o.get("nbrs", ()):
+            if word and word not in ANCHOR_STOP and word not in GENERIC:
+                groups[(side, word)].append(o)
+    anchors = [(k, v) for k, v in groups.items() if len(v) >= ANCHOR_MIN]
+    anchors.sort(key=lambda kv: -len(kv[1]))
+    # Top anchors by volume, plus the strongest anchor from each repo not
+    # already seated. Without the per-repo seats, a dominant repo's
+    # collocates fill the table and the minority sense never reaches the
+    # pairing ("tracker board" at 7x vs five retirement anchors at 30-80x).
+    selected = anchors[:6]
+    seated = {k for k, _ in selected}
+    for repo in {o["repo"] for _, v in anchors for o in v}:
+        for k, v in anchors:
+            if k in seated:
+                continue
+            reps = Counter(o["repo"] for o in v)
+            if reps.most_common(1)[0][0] == repo:
+                selected.append((k, v))
+                seated.add(k)
+                break
+    anchors = selected
+    out = []
+    for (side, word), members in anchors:
+        ctx = Counter()
+        for o in members:
+            ctx.update(o["ctx"])
+        label = f"{word} {'_' * needle_len}".strip() if side == "L" else f"{'_' * needle_len} {word}"
+        out.append({"anchor": word, "side": side, "label": label, "n": len(members),
+                    "ctx": ctx, "repos": Counter(o["repo"] for o in members),
+                    "example": members[0]})
+    # Two collocate groups of a frequent word always diverge lexically, so
+    # JS alone reads subtopics as senses ("employer contributions" vs
+    # "member contributions"). What separates the real cases (tracker|board
+    # vs investment|board, shortcuts|workflow vs github|workflow) is that
+    # their anchors live in different repos: that repo-disjointness is the
+    # estate-relevant meaning of "ambiguous" and it weights the score.
+    pairs = []
+    for i, a in enumerate(out):
+        for b in out[i + 1:]:
+            js = js_divergence(a["ctx"], b["ctx"])
+            if js < ANCHOR_JS:
+                continue
+            disjoint = 1 - cosine(a["repos"], b["repos"])
+            pairs.append((round(js * (0.15 + disjoint) * math.log1p(min(a["n"], b["n"], 20)), 3),
+                          js, a, b))
+    pairs.sort(key=lambda x: -x[0])
+    split_pairs = [(js, a, b) for _, js, a, b in pairs[:3]]
+    score = pairs[0][0] if pairs else 0.0
+    return out, split_pairs, score
 
 
 def log_odds(counts: dict[str, Counter]):
@@ -318,6 +414,12 @@ def build(repos: dict[str, Path], min_mentions: int):
 
     all_occs = find_all_occurrences(docs, terms)
     records = {}
+    df = Counter()
+    for doc in docs:
+        df.update(set(doc.filt))
+    n_docs = len(docs) or 1
+    idf = {w: math.log(n_docs / c) for w, c in df.items()}
+    corpus_tokens = sum(len(d.filt) for d in docs)
 
     for term in terms:
         needle = term.split()
@@ -330,8 +432,15 @@ def build(repos: dict[str, Path], min_mentions: int):
                 + doc.filt[i + len(needle): i + len(needle) + CONTEXT_RADIUS]
                 if w not in GENERIC and w not in needle
             )
+            raw_i = doc.filt_pos[i]
+            last = doc.filt_pos[i + len(needle) - 1] if i + len(needle) - 1 < len(doc.filt_pos) else raw_i
+            nbrs = []
+            if raw_i > 0:
+                nbrs.append(("L", doc.tokens[raw_i - 1]))
+            if last + 1 < len(doc.tokens):
+                nbrs.append(("R", doc.tokens[last + 1]))
             occs.append({"repo": doc.repo, "rel": doc.rel, "ctx": ctx, "doc": doc,
-                         "span": span, "living": doc.living})
+                         "span": span, "living": doc.living, "nbrs": nbrs})
             by_repo_mentions[doc.repo] += 1
             living_mentions += doc.living
         if len(occs) < min_mentions:
@@ -359,7 +468,8 @@ def build(repos: dict[str, Path], min_mentions: int):
         else:
             occs_sampled = occs_for_cluster
 
-        clusters = cluster_senses(occs_sampled)
+        clusters = cluster_senses(occs_sampled, idf)
+        anchors, anchor_pairs, anchor_split = anchored_senses(occs, len(needle))
         total_in_clusters = sum(len(c["members"]) for c in clusters) or 1
         sense_split = 0.0
         if len(clusters) >= 2:
@@ -397,9 +507,25 @@ def build(repos: dict[str, Path], min_mentions: int):
             "grounded": forms_living["definition"] + forms_living["code"] + forms_living["link"],
             "referential": forms_living["referential"],
             "sense_split": sense_split,
+            "anchor_split": anchor_split,
+            "anchor_senses": [
+                {"pair": [f'{a["label"]} ({a["n"]}x)', f'{b["label"]} ({b["n"]}x)'],
+                 "js": js,
+                 "examples": [
+                     {"text": snippet(a["example"]["doc"], a["example"]["span"]),
+                      "src": f'{a["example"]["repo"]}:{a["example"]["rel"]}'},
+                     {"text": snippet(b["example"]["doc"], b["example"]["span"]),
+                      "src": f'{b["example"]["repo"]}:{b["example"]["rel"]}'},
+                 ]}
+                for js, a, b in anchor_pairs
+            ],
+            "surprise": surprise(term, len(occs), corpus_tokens),
+            "purity": round(sum(c.get("purity", 0) * len(c["members"]) for c in clusters)
+                            / max(1, sum(len(c["members"]) for c in clusters)), 3) if len(clusters) >= 2 else 0.0,
             "clusters": [
                 {
                     "size": len(c["members"]),
+                    "purity": c.get("purity"),
                     "top": [w for w, _ in c["centroid"].most_common(8)],
                     "repos": dict(Counter(m["repo"] for m in c["members"])),
                     "example": snippet(c["members"][0]["doc"], c["members"][0]["span"]),
@@ -479,11 +605,14 @@ def write_report(data, path: Path, top=25):
         return spread * r["markedness"] * math.log1p(r["living"])
     for rec in sorted((r for r in recs if r["living"] >= 20
                        and r["markedness"] >= 0.04 and r["file_share"] <= 0.35
+                       and (r.get("surprise") is None or r["surprise"] >= 1.0
+                            or r["markedness"] >= 0.08)
                        and sum(1 for n in r["by_repo"].values() if n >= 3) >= 2),
                       key=lambda r: -sig_score(r))[:top]:
         lines.append(
             f'- **{rec["term"]}**: {rec["mentions"]} mentions ({rec["living"]} living) '
-            f'across {rec["by_repo"]}; marked {rec["strong_forms"]}×, markedness {rec["markedness"]}'
+            f'across {rec["by_repo"]}; marked {rec["strong_forms"]}×, markedness {rec["markedness"]}, '
+            f'surprise {rec.get("surprise")}'
         )
 
     lines += ["", "## Surface variants (same term, written differently)", ""]
@@ -495,14 +624,28 @@ def write_report(data, path: Path, top=25):
             f'repos {rec["by_repo"]}'
         )
 
+    lines += ["", "## Anchored senses (collocates that split a term)", ""]
+    pool = [r for r in recs if r["anchor_split"] > 0 and r["living"] >= 6
+            and r["file_share"] <= 0.4]
+    for rec in sorted(pool, key=lambda r: -r["anchor_split"])[:top]:
+        lines.append(f'### {rec["term"]}  (anchor split {rec["anchor_split"]}, '
+                     f'surprise {rec.get("surprise")}, {rec["mentions"]} mentions, repos {rec["by_repo"]})')
+        for p_ in rec["anchor_senses"]:
+            lines.append(f'- **{p_["pair"][0]}** vs **{p_["pair"][1]}** (JS {p_["js"]})')
+            for ex in p_["examples"]:
+                lines.append(f'  > {ex["text"]}  \n  > — `{ex["src"]}`')
+        lines.append("")
+
     lines += ["", "## Sense splits (one term, multiple lexical neighborhoods)", ""]
     pool = [r for r in recs if r["sense_split"] > 0 and r["markedness"] >= 0.03
             and r["file_share"] <= 0.3
+            and (r.get("surprise") is None or r["surprise"] >= 0.5 or r["markedness"] >= 0.05)
             and r["living"] >= 6 and r["living"] / r["mentions"] >= 0.25]
-    for rec in sorted(pool, key=lambda r: -r["sense_split"])[:top]:
-        lines.append(f'### {rec["term"]}  (split {rec["sense_split"]}, {rec["mentions"]} mentions, repos {rec["by_repo"]})')
+    for rec in sorted(pool, key=lambda r: -r["sense_split"] * (0.2 + r["purity"]))[:top]:
+        lines.append(f'### {rec["term"]}  (split {rec["sense_split"]}, purity {rec["purity"]}, '
+                     f'surprise {rec.get("surprise")}, {rec["mentions"]} mentions, repos {rec["by_repo"]})')
         for c in rec["clusters"]:
-            lines.append(f'- **{c["size"]}×** [{", ".join(c["top"][:6])}] ({c["repos"]})')
+            lines.append(f'- **{c["size"]}×** p{c.get("purity")} [{", ".join(c["top"][:6])}] ({c["repos"]})')
             lines.append(f'  > {c["example"]}  \n  > — `{c["example_src"]}`')
         lines.append("")
 
@@ -525,7 +668,8 @@ def write_report(data, path: Path, top=25):
 
     lines += ["## Referential but ungrounded (assumes you already know)", ""]
     pool = [r for r in recs if r["living"] >= 8 and r["referential"] >= 5
-            and (r["strong_forms"] >= 1 or " " in r["term"]) and r["file_share"] <= 0.3]
+            and (r["strong_forms"] >= 1 or " " in r["term"]) and r["file_share"] <= 0.3
+            and (r.get("surprise") is None or r["surprise"] >= 1.5)]
     for rec in sorted(pool, key=lambda r: -(r["referential"] / (1 + r["grounded"])))[:top]:
         score = round(rec["referential"] / (1 + rec["grounded"]), 1)
         if score < 3:

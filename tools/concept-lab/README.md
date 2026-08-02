@@ -24,6 +24,11 @@ and scores five signals:
 Plus per-repo distinctive vocabulary by log-odds with an informative
 Dirichlet prior (Monroe, Colaresi, Quinn 2008).
 
+Optional dependencies sharpen it (`pip install wordfreq scikit-learn
+model2vec spacy`): wordfreq backs the surprise prior, model2vec and
+scikit-learn back `exp_embed.py`. Everything degrades to the
+dependency-free path without them.
+
 Run:
 
 ```bash
@@ -48,6 +53,14 @@ measured in [findings.md](findings.md):
   volume-ranked list ("across", "actually"). Markedness, the rate at which
   the prose itself marks a word as a term, is what pushes "board" and
   "stage" above them.
+
+## The experiment scripts
+
+- `exp_embed.py`: embeddings vs collocates vs lexical clustering on probe
+  terms.
+- `exp_gold.py`: the gold polysemy benchmark; run it after any scoring
+  change.
+- `flag_reply.py`: the response-time checker (see findings).
 
 ## Relation to the concept-index branch (PR #336)
 

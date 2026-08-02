@@ -142,3 +142,90 @@ ambiguities. Two capture artifacts fixed along the way: adverbs riding
 into referential phrases ("the spine now" minting "spine now") and
 noun+verb captures ("tracker shows"), the latter solved with the boundary
 verb truncation idea from the concept-index branch.
+
+## 2026-08-02, toolchain: what the sandbox will install
+
+pip reaches PyPI through the proxy: wordfreq, scikit-learn, spacy, and
+model2vec all installed. `python3 -m spacy download en_core_web_sm` works
+(after `pip install click`), and model2vec fetches
+`minishlab/potion-base-8M` from the Hugging Face Hub, so a real (tiny)
+embedding model runs in-session with no torch. Nothing is vendored into
+the repo; the imports are optional and the tools degrade to the
+dependency-free path without them.
+
+## 2026-08-02, v5: surprise prior works, purity ranking does not
+
+The continuous commonness hedge: `surprise(term)` compares the term's
+estate rate against its English rate (wordfreq zipf), in bits.
+Calibration on knowns: "actually" -1.0, "stage" 0.0, "board" 0.7,
+"toss" 3.2, "tracker" 5.3, "proviso" 8.0, "biennium" 13.2. It cleanly
+retires the hand-tuned stoplist for gating signature and ungrounded
+sections. The subtlety: common English words with specialized estate
+senses (board, stage) score near zero, so surprise must always be OR-ed
+with markedness, never a lone gate.
+
+Cluster purity was a negative result. With IDF-weighted contexts, big
+topic clusters acquire their own exclusive rare vocabulary, so purity is
+high for exactly the topic-broad words it was meant to demote; gold
+polysemy cases moved down, not up ("board" fell out of the pool entirely
+via the markedness gate). Kept in the JSON, dropped as a ranking.
+
+## 2026-08-02, exp_embed: collocates beat both clustering and embeddings
+
+Head-to-head on gold terms with potion-base-8M (KMeans, silhouette-chosen
+k) vs lexical clustering vs the token immediately left of the term:
+
+- "board": embeddings found the right 2-way split (retirement vs
+  tracker), silhouette only 0.14; the left collocate told the same story
+  instantly (state/investment/services vs tracker).
+- "workflow": embeddings' k=3 did not align with the true split; the
+  collocate did (shortcuts 27x vs github 13x).
+- "deck": collocates crisp, embeddings muddled.
+
+Conclusion adopted: senses anchor on collocates (the Sketch Engine
+insight). Embeddings are a verifier at best here, consistent with the
+2026-06-07 MiniLM finding. Caveat logged: the experiment sampled
+occurrences in repo iteration order, so a 300-occurrence cap can starve
+later repos.
+
+## 2026-08-02, v6 through v9: anchored senses
+
+`anchored_senses()` groups a term's occurrences by immediate raw-text
+neighbor and calls two anchors different senses when their surrounding
+contexts diverge. Four measured iterations:
+
+- v6, JS alone: saturates. Any two collocate groups of a frequent word
+  diverge lexically, so subtopics read as senses ("employer
+  contributions" vs "member contributions").
+- v7, weight by repo-disjointness of the anchor pair: the estate-relevant
+  definition of ambiguous, and it promoted real finds ("component": web
+  component vs ACFR component units). Volume bias remained.
+- v8, cap the volume factor: little change; diagnosis showed the real
+  fault was anchor selection, not scoring: top-8-by-count anchors were
+  all one repo's, so the minority sense never reached the pairing.
+- v9, per-repo anchor seats: each repo's strongest anchor gets a seat.
+  "board" gained the "board game" sense (family-gaming chats) and rose
+  from rank 2134 to 957; "component" reached rank 8.
+
+## 2026-08-02, exp_gold: the benchmark
+
+Twelve hand-verified gold polysemy terms now live in `exp_gold.py`;
+score any index against them. v9 baseline: all 12 in pool, median rank
+639 of 3286, one in the top 100. Every future scoring change gets this
+number.
+
+## Recipe table: what works for what purpose
+
+| Purpose | Method | Verdict |
+| --- | --- | --- |
+| Repo-distinctive vocabulary | log-odds w/ Dirichlet prior | works as-is since v1 |
+| Common-word hedge | wordfreq surprise (estate vs English rate) | works; OR with markedness |
+| Estate coinages (glossary seed) | markedness × spread, surprise gate | works, some heading boilerplate |
+| Spelling drift | spaced-vs-hyphenated counts on masked text | works, cheap; review list not error list |
+| Un-introduced jargon | referential vs grounded, living side only | works after living split + variant merge |
+| Cross-repo same-word divergence | per-repo context JS with support gates | works at the top of the list |
+| Sense discovery (which senses exist) | immediate collocate anchors, per-repo seats | works; best mechanism found |
+| Sense ranking (which terms most split) | anchor JS × repo-disjointness × capped volume | partial; median gold rank 639, the open problem |
+| Sense discrimination via embeddings | potion-base-8M + KMeans | correct on clean cases, low margins; verifier not driver |
+| Topic-cluster purity | exclusive centroid mass | negative result; kept as data only |
+| Response-time flagging | index + markedness/file-share/split gates | works on samples; not yet hook-wired |
