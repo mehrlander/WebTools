@@ -44,6 +44,18 @@ under a UUID that names nothing; resolve it from `mcp-logs-<id>/` under
 `~/.cache/claude-cli-nodejs/<root>/`, which records each call under the server's
 real name. A capability existing only on a connector has no fallback.
 
+Two tells this trap wears after an environment restart, measured 2026-08-02.
+The resume notice may announce the built-in names as *no longer available* and
+list UUID-named replacements; ask ToolSearch for the built-in name anyway, since
+it still resolves. And the error text itself ("requires approval") is the
+misdiagnosis: it survived two sessions being read as a permission wall the user
+had not cleared. The `portable` plugin now delivers this diagnosis by machinery:
+a `PostToolUseFailure` hook (`hooks/mcp-fail-hint.sh`) matches `-32003` on any
+`mcp__*` tool and injects the reissue rule at the moment of failure, so the fix
+no longer depends on recalling this file. (The failure payload carries
+`tool_name` and `error`; `PostToolUse` does not fire on a failed call at all,
+which is itself worth knowing before probing one.)
+
 **A short `git log`.** The checkout is shallow. `git log` truncates with no
 error and no marker, so a file's apparent first commit is the graft boundary
 rather than its creation, and `git log -S` finds nothing earlier. This is not a
