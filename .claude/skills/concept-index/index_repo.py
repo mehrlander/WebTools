@@ -13,6 +13,7 @@ VERSION = 1
 TEXT_SUFFIXES = {".md", ".txt"}
 SKIP = {".git", ".concept-index", "node_modules", "dist", "vendor", "archive"}
 STOP = set("a an and are as at be been but by can do for from had has have he her here him his i if in into is it its may more most not of on one or our she so than that the their them then there these they this those to was we were what when where which who will with you your".split())
+BOUNDARY = STOP | set("adds allows appears becomes builds calls carries changes contains creates defines describes drives enables explains finds gives has holds includes invokes keeps lands looks makes means moves needs offers organizes points provides reads records refers resolves runs says sees shows stores supports takes tells uses writes".split())
 WORD = re.compile(r"[A-Za-z][A-Za-z0-9_-]*")
 PHRASE = re.compile(r"\b(?:the|this|that|our|its)\s+([A-Za-z][\w-]*(?:\s+[A-Za-z][\w-]*){0,3})", re.I)
 CODE = re.compile(r"`([^`\n]{2,80})`")
@@ -23,7 +24,7 @@ DEFINITION = re.compile(r"\b([A-Za-z][\w-]*(?:\s+[A-Za-z][\w-]*){0,3})\s+(?:is|m
 
 def git_head(root: Path) -> str | None:
     try:
-        return subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
+        return subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL).strip()
     except Exception:
         return None
 
@@ -41,9 +42,20 @@ def normalize(text: str) -> str:
     return " ".join(w.lower() for w in WORD.findall(text) if w.lower() not in STOP).strip()
 
 
+def referential_phrase(raw: str) -> str:
+    kept = []
+    for word in WORD.findall(raw):
+        lower = word.lower()
+        if kept and lower in BOUNDARY:
+            break
+        if lower not in STOP:
+            kept.append(lower)
+    return " ".join(kept[:4])
+
+
 def candidates(text: str):
     out = []
-    out += [(normalize(m.group(1)), "referential") for m in PHRASE.finditer(text)]
+    out += [(referential_phrase(m.group(1)), "referential") for m in PHRASE.finditer(text)]
     out += [(normalize(m.group(1)), "code") for m in CODE.finditer(text)]
     out += [(normalize(m.group(1)), "heading") for m in HEADING.finditer(text)]
     out += [(normalize(m.group(1)), "link") for m in LINK.finditer(text)]
