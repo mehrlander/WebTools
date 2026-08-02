@@ -11,7 +11,6 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 A multi-method harness for extracting structure from scanned documents
 - 🎫 Estate cards still carry the retired three-icon cluster
 - 🎫 Capture button on the FAB, serializing what it already collects
-- 🎫 Generalize FAB embed handling to declared embeds
 - 🎫 Give the file-review collapsed row more than a name and a count
 - 🎫 Find a way to focus attention on one piece of a page's UI
 - 🎫 Integrate the stage with the surfacer's .surface format
@@ -53,6 +52,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Estate activity signals from a registry activity cache (`claude/branches-view-api-caching-ef4l5d`)
 - 🎫 Update estate tests to the groupSections layout (`claude/viewer-button-dropdown-0h4u57`)
 - 🎫 Extract drop-zone as a reusable Alpine component (`claude/tracker-summary-nu74te`)
+- 🎫 Generalize FAB embed handling to declared embeds
 - 🎫 Let the FAB collect a toss subject's page actions, not just the shell's
 - 🎫 Generalize the gallery to a per-repo pages catalog (`claude/web-tools-app-views-m3pkyo`)
 - 🎫 Finish GitHub jump-over coverage across show-repo views (`claude/github-icon-placement-3d06i7`)
