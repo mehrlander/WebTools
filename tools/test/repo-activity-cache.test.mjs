@@ -66,6 +66,32 @@ test('buildCache tracks crawl membership', () => {
   assert.deepEqual(Object.keys(next.repos).sort(), ['o/a', 'o/c']); // b dropped, c added
 });
 
+// The scope argument, and the reason it exists: a crawl that fails on one repo
+// used to DELETE it from the shared cache, and `changedRepos` scored the
+// deletion as a change, so the commit went through and the toast called it a
+// successful refresh. Absence from `fetched` is not evidence about a repo.
+test('buildCache carries an in-scope repo the crawl could not reach', () => {
+  const prev = A.buildCache(null, { 'o/a': { counts: { branches: 1 } },
+                                    'o/b': { counts: { branches: 7 } } }, 't0');
+  const members = ['o/a', 'o/b'];                      // both in scope
+  const next = A.buildCache(prev, { 'o/a': { counts: { branches: 1 } } }, 't1',
+                            A.COMMIT_CAP, members);    // o/b threw mid-crawl
+  assert.deepEqual(Object.keys(next.repos).sort(), ['o/a', 'o/b']);
+  assert.equal(next.repos['o/b'].counts.branches, 7, 'kept its data');
+  assert.deepEqual(next.repos['o/b'], prev.repos['o/b'], 'untouched, not restamped');
+  assert.deepEqual(A.changedRepos(prev, next), [], 'and a failed crawl is not a change');
+});
+
+// The other half: out of scope still means gone, so a repo that leaves the
+// estate is cleaned up rather than lingering forever.
+test('buildCache prunes a repo that is no longer in scope', () => {
+  const prev = A.buildCache(null, { 'o/a': { counts: { branches: 1 } },
+                                    'o/gone': { counts: { branches: 3 } } }, 't0');
+  const next = A.buildCache(prev, { 'o/a': { counts: { branches: 1 } } }, 't1',
+                            A.COMMIT_CAP, ['o/a']);    // o/gone left the estate
+  assert.deepEqual(Object.keys(next.repos), ['o/a']);
+});
+
 test('cacheChanged ignores timestamps, catches hash and membership', () => {
   const a = A.buildCache(null, { 'o/a': { counts: { branches: 1 }, recentCommits: [commit('a', 5)] } }, 't0');
   const same = A.buildCache(a, { 'o/a': { counts: { branches: 1 }, recentCommits: [commit('a', 5)] } }, 't1');

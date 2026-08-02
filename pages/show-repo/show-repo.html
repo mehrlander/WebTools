@@ -201,12 +201,27 @@
            only the lib a page loads and would leave this header, and every
            other line of the shell, at the deployed version.
 
-           Desktop only, matching the rail, and for the same overflow reason.
-           A phone is not left without the fact: the fab's launcher goes
-           warning-tinted off the default branch on every viewport, and its
-           Render tab is the full survey this control is a shortcut past. -->
+           EVERY VIEWPORT, unlike the rail beside it. This shipped desktop-only
+           on the rail's reasoning (a second header cluster competing with a nav
+           that already scrolls), and that reasoning does not survive contact
+           with the header it describes: the nav scrolls, but the drawer toggle
+           to the right of this is pinned and always visible, so the right end
+           of the header is already a place where fixed controls live and one
+           more costs the nav some of its scrolling window, nothing else. The
+           rail's exemption is not the same case and stands: it has a full
+           labeled copy in the sidebar, which is a phone's route to it, while
+           hiding this one left a phone with no route at all except the fab's
+           Render tab, several taps in. So the cost of hiding was an
+           inconsistency between viewports and no saving to show for it.
+
+           What it costs the nav is 2 rem, because below sm the control collapses
+           to a single branch glyph and moves its box, its newest jump and its
+           way home into the panel it opens (see ref-switch.js). A 10 rem box
+           was tried here first and was the wrong trade: it was the widest thing
+           in the header and the least likely to be used, since on a phone this
+           is picked from a list rather than typed into. -->
       <div x-show="rail.length" class="hidden lg:block mx-1.5 h-5 w-px bg-base-300"></div>
-      <div class="hidden lg:flex shrink-0"
+      <div class="flex shrink-0"
            x-data="refSwitch({ repo: 'mehrlander/web-tools',
                                path: 'pages/show-repo/show-repo.html',
                                query: () => window.__shell.deepLinkParams(new URLSearchParams()).toString() })"></div>
@@ -1888,7 +1903,16 @@ function app(){ return {
       const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
       let prev = null;
       try { prev = JSON.parse((await reg.get(window.RepoConfigCache.CACHE_PATH)).text); } catch {}
-      const next = window.RepoConfigCache.buildCache(prev, fetched, new Date().toISOString());
+      // Every repo the cache already knew rides forward, whether or not this
+      // crawl could see it. The enumeration above is this client's view of the
+      // account, not the world's: a narrowly-scoped token, or an account past
+      // the un-paginated 100 repos it asks for, produces a short list that is
+      // not wrong so much as partial, and a partial list must not be written
+      // over a shared file as if it were complete. See buildCache for how a
+      // repo does leave.
+      const carry = Object.keys(prev?.repos || {});
+      const next = window.RepoConfigCache.buildCache(prev, fetched, new Date().toISOString(),
+                                                     window.RepoConfigCache.HISTORY_CAP, carry);
       try { localStorage.setItem(this._cacheCheckKey, String(Date.now())); } catch {}
       // Only commit when substance changed (buildCache always restamps
       // timestamps, so a deep-equal would never skip).
@@ -2011,7 +2035,10 @@ function app(){ return {
 
       let prev = null;
       try { prev = JSON.parse((await reg.get(A.CACHE_PATH)).text); } catch {}
-      const next = A.buildCache(prev, fetched, nowISO);
+      // `members` is the scope, so a repo whose crawl threw (it is in `failed`,
+      // not in `fetched`) keeps its previous entry instead of being deleted by
+      // a pass that never reached it.
+      const next = A.buildCache(prev, fetched, nowISO, A.COMMIT_CAP, members);
       try { localStorage.setItem(this._activityCheckKey, String(Date.now())); } catch {}
       const changed = A.changedRepos(prev, next);
       if (changed.length){
