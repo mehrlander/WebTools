@@ -124,3 +124,21 @@ State of each signal after v4:
 - Response-time use: the JSON index plus a small checker that flags, in a
   draft reply, terms the index marks as split, divergent, or ungrounded.
   Prototyped as `flag_reply.py`.
+
+## 2026-08-02, flag_reply: the response-time checker
+
+`flag_reply.py` reads the termlab JSON and flags a draft reply's terms.
+First run flagged nearly every content word as ambiguous; the fix was the
+same lesson as the report, applied harder: a response-time flag needs
+markedness ≥ 0.03, file share ≤ 0.3, and sense_split ≥ 3.0 before it is
+worth an interruption. After gating, a deliberately jargon-heavy sample
+reply returned board, spine, surface, caption, deck, sweep, chron, dump as
+divergent or ambiguous, "next biennium" as ungrounded, and the planted
+fake term "concept mesh" as novel, with the generic verbs suppressed. On a
+plain paragraph of session prose it flagged "workflow" (GitHub Actions in
+web-tools vs Apple Shortcuts in the chat archive) and "index" (the npm
+pages-index vs budget-wa's SQLite bill index), both genuine cross-corpus
+ambiguities. Two capture artifacts fixed along the way: adverbs riding
+into referential phrases ("the spine now" minting "spine now") and
+noun+verb captures ("tracker shows"), the latter solved with the boundary
+verb truncation idea from the concept-index branch.
