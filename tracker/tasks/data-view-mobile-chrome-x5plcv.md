@@ -1,10 +1,11 @@
 ---
 id: data-view-mobile-chrome-x5plcv
 title: Reclaim the phone viewport in data-view
-status: backlog
+status: done
+closed: 2026-08-02
+session: claude/web-tools-project-tracker-reo5qo
 track: independent
 opened: 2026-07-25
-next: user is reviewing the five options; start with demoting the notes (option 3) and the full-bleed toggle (option 5), which need no cross-frame work
 ---
 # Reclaim the phone viewport in data-view
 
@@ -91,3 +92,4 @@ way, so the before and after are comparable.
   confirmed by reading the scan, not inferred. Nothing built; the user is
   reviewing the options.
 - 2026-08-02: Groom note: option 1 (subject actions reachable in the FAB) has since landed (commit e857f07, task fab-subject-side-actions closed today), so the fab.js blocker paragraph is dated: only the #gz= half of it still holds, and by design. Options 3 and 5 remain the recommended start and are still unbuilt.
+- 2026-08-02: Done on `claude/web-tools-project-tracker-reo5qo` (lands via PR #339), the recommended options 3 and 5. Notes collapse behind an info toggle below sm; a full-bleed toggle gives the viewport to the viewer, exit floating bottom-left clear of the viewer header. Re-measured at 390x844 as the DoD asked: envelope chrome before data 256px -> 144px (viewer header included), bare unchanged at 56px, bleed 0px above the viewer. Option 1 landed separately (fab-subject-side-actions, closed today); option 2 belongs to own-json-tree-retire-vje-i0lcj2; option 4 stays unbuilt per the filing's own recommendation unless something still feels cramped. Bleed state does not ride the hash; that vocabulary stays with data-view-consume-fragment-nxlpbs.

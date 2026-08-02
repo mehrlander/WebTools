@@ -7,9 +7,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Converge the branch page's authored layer on the branch-review surface
 - 🎫 Reach the take-away menu from show-repo's Pages gallery (needs: Find a way to focus attention on one piece of a page's UI)
 - 🎫 Have data-view open at an addressed item via the fragment
-- 🎫 Reclaim the phone viewport in data-view
 - 🎫 A multi-method harness for extracting structure from scanned documents
-- 🎫 Estate cards still carry the retired three-icon cluster
 - 🎫 Capture button on the FAB, serializing what it already collects
 - 🎫 Give the file-review collapsed row more than a name and a count
 - 🎫 Find a way to focus attention on one piece of a page's UI
@@ -49,7 +47,9 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Fold chat-results into the surface schema, or keep it a sibling (`claude/web-tools-project-tracker-reo5qo`)
 - 🎫 Collapse quickLinks into a projection of the repos manifest (`claude/tracker-status-cjogjn`)
 - 🎫 Confirm-gated cross-repo edit proposals via a web-tools-private channel (`claude/tracker-status-cjogjn`)
+- 🎫 Reclaim the phone viewport in data-view (`claude/web-tools-project-tracker-reo5qo`)
 - 🎫 Estate activity signals from a registry activity cache (`claude/branches-view-api-caching-ef4l5d`)
+- 🎫 Estate cards still carry the retired three-icon cluster (`claude/web-tools-project-tracker-reo5qo`)
 - 🎫 Update estate tests to the groupSections layout (`claude/viewer-button-dropdown-0h4u57`)
 - 🎫 Extract drop-zone as a reusable Alpine component (`claude/tracker-summary-nu74te`)
 - 🎫 Generalize FAB embed handling to declared embeds
