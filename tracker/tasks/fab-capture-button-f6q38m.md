@@ -4,6 +4,7 @@ title: Capture button on the FAB, serializing what it already collects
 status: backlog
 project: show-repo
 opened: 2026-07-26
+next: the write path (a default state/captures/ destination in the registry, per the design points); the clipboard cut shipped 2026-08-02
 ---
 # Capture button on the FAB, serializing what it already collects
 
@@ -55,3 +56,4 @@ A capture proves how the page behaved for one viewer, in one browser, on one ope
 
 ## Progress log
 - 2026-07-26 filed from the in-flight session; the idea is the user's, arrived at from the screenshot loop, and the survey of `fab.js` found most of the machinery already built
+- 2026-08-02: The clipboard first cut landed on `claude/web-tools-project-tracker-reo5qo` (PR #339): a Copy-capture button on the Inspect header serializes the drawer's bundle (scripts, components, console, reads as path+size) with the mode naming its fidelity, per the design points. Alongside it the GraphQL operations were named and proto.graphql now logs every rejection into the console buffer before the callers degrade, so a capture definitively answers the live-confirm task. Held by tools/test/fab-capture.test.mjs. Remaining: the write path (state/captures/ in the registry, envelope override second), which is the repo-activity-cache pattern reapplied.
