@@ -1,10 +1,11 @@
 ---
 id: proposals-diff-and-removal-w1y9lk
 title: Two gaps the proposal channel showed on first use
-status: backlog
+status: done
+closed: 2026-08-02
+session: claude/web-tools-project-tracker-reo5qo
 project: show-repo
 opened: 2026-07-28
-next: the removal kind landed; what remains is the put-file diff pane (extract diffLines from stage.js to lib/) and the applied record's commit link
 ---
 # Two gaps the proposal channel showed on first use
 
@@ -74,3 +75,4 @@ bytes. Small, and it belongs with the two above.
   written. Ten unit tests, docs/show-repo.md updated. The six inert `quickLink`
   flags are now expressible; nothing has proposed them yet.
   Still open: the put-file diff pane and the applied record's commit link.
+- 2026-08-02: Done on `claude/web-tools-project-tracker-reo5qo` (lands via that branch's PR). The diffLines extraction had already happened as kits/text-diff.js; the put-file pane now renders line-diff rows through it, with the side-by-side panes as fallback for a new file or a pair past the diff cap. Applied records carry commitUrl beside the sha (commit and branch deliveries), and a commit delivery sets the row's delivered link like PR and branch do.
