@@ -90,3 +90,4 @@ way, so the before and after are comparable.
   taken headless with the repo's screenshot tool; the two fab.js blockers were
   confirmed by reading the scan, not inferred. Nothing built; the user is
   reviewing the options.
+- 2026-08-02: Groom note: option 1 (subject actions reachable in the FAB) has since landed (commit e857f07, task fab-subject-side-actions closed today), so the fab.js blocker paragraph is dated: only the #gz= half of it still holds, and by design. Options 3 and 5 remain the recommended start and are still unbuilt.

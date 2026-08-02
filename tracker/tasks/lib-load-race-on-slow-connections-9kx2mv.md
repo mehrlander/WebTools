@@ -1,10 +1,10 @@
 ---
 id: lib-load-race-on-slow-connections-9kx2mv
 title: Guard every lib-booting page against the Alpine load race
-status: backlog
+status: in-progress
 track: independent
 opened: 2026-07-26
-session: claude/shorter-tool-toss-render-nr7zoc
+session: claude/web-tools-project-tracker-reo5qo
 ---
 # Guard every lib-booting page against the Alpine load race
 
@@ -23,3 +23,4 @@ Options, roughly in increasing order of blast radius:
 - **Fold the guard into the canonical boot block** in `README.md` so new pages get it by construction, whichever of the above is chosen.
 
 Worth deciding whether the FAB's 1500ms timer is the right mechanism at all, given it exists only to mount the FAB on pages that never bring Alpine themselves.
+- 2026-08-02: Claimed on `claude/web-tools-project-tracker-reo5qo`. The shared mechanism landed there: gh-boot awaits a page-published window.__pageBoot before starting its own Alpine, the canonical boot block in README.md publishes it by construction, and tools/test/gh-boot-pageboot.test.mjs pins both. Remaining: adopt the published promise in the existing lib-booting pages (the 24 with inline x-data; longest chains first), and decide whether shorter.html keeps its bespoke __shorterReady gate beside the standard name.
