@@ -43,8 +43,10 @@ const { window, problems } = makeWindow({
 // stager's diffLines requires.
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
-  // The address grammar, ahead of the components: parseItem delegates to it,
-  // and the pre-build boots it in this position for the same reason.
+  // The param read and the address grammar, ahead of the components: read
+  // delegates source choice to one and parseItem the grammar to the other, and
+  // the pre-build boots both in this position for the same reason.
+  'lib/url-params.js',
   'lib/repo-address.js',
   'lib/kits/text-diff.js',
   'lib/alpineComponents/drop-zone.js',
@@ -521,6 +523,25 @@ test('StageLink.read: hash wins, query is the fallback (tossed / deep-link form)
   r = StageLink.read({ hash: '#stage=me/z@main:only.md', search: '?stage=' + spec });
   assert.equal(plain_(r.items).length, 1);
   assert.equal(plain_(r.items)[0].repo, 'me/z');
+});
+
+test('StageLink.read: an empty #stage= falls back to a populated ?stage=', () => {
+  // The 2026-08-02 decision that moved read() onto lib/url-params.js: absent
+  // and empty are both misses, so a truncated link that kept the fragment key
+  // but lost its value takes the query instead of staging nothing. The three
+  // keys still travel together: prompts and mode come from the query source
+  // with the stage, never mixed across sources.
+  const StageLink = window.StageLink;
+  const enc = StageLink.encodePrompts([{ label: 'q', ask: 'from query' }]);
+  const r = StageLink.read({ hash: '#stage=', search: '?stage=me/q@main:b.md&prompts=' + enc + '&mode=diff' });
+  assert.equal(plain_(r.items).length, 1);
+  assert.equal(plain_(r.items)[0].path, 'b.md');
+  assert.equal(r.mode, 'diff');
+  assert.deepEqual(plain_(r.prompts), [{ label: 'q', ask: 'from query' }]);
+  // A fragment stage never picks up stray query prompts: same-source rule.
+  const mixed = StageLink.read({ hash: '#stage=me/z@main:only.md', search: '?prompts=' + enc });
+  assert.equal(plain_(mixed.items).length, 1);
+  assert.deepEqual(plain_(mixed.prompts), [], 'fragment source does not borrow query prompts');
 });
 
 test('decodePrompts drops malformed entries and bad payloads', () => {
