@@ -19,7 +19,6 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Close open table perimeters in the pdf kit's lattice
 - 🎫 A column-splitter page for the pdf kit
 - 🎫 Inline the run-time CDN references a rendering copy still carries
-- 🎫 Repo-level GitHub links in show-repo's shield dialog
 - 🎫 Session-start nudge for unconfigured or legacy-manifest repos (`claude/skills-portable-conventions-8x1lua`)
 - 🎫 Give show-repo the ability to edit a repo's .web-tools.json (`claude/skills-portable-conventions-8x1lua`)
 - 🎫 Assess the orphan docs for skillification, and boil them down
@@ -29,7 +28,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Make the take-away menu work inside a toss
 
 ## In progress
-- 🎫 Guard every lib-booting page against the Alpine load race (`claude/web-tools-project-tracker-reo5qo`)
+- (none)
 
 ## Blocked
 - (none)
@@ -58,11 +57,13 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 Finish GitHub jump-over coverage across show-repo views (`claude/github-icon-placement-3d06i7`)
 - 🎫 Check GraphQL query shape offline against GitHub's published schema (`claude/web-tools-tracker-review-bw48ga`)
 - 🎫 History-safe shim for toss-render address-mode renders
+- 🎫 Guard every lib-booting page against the Alpine load race (`claude/web-tools-project-tracker-reo5qo`)
 - 🎫 One parser for the owner/repo[@ref]:path address (`claude/web-tools-tracker-review-bw48ga`)
 - 🎫 Private-repo landing federation via the home registry
 - 🎫 Two gaps the proposal channel showed on first use (`claude/web-tools-project-tracker-reo5qo`)
 - 🎫 Render files over 1 MB in toss-render and the shell viewers
 - 🎫 Repo-designated inbox and outbox in .web-tools.json (`claude/tracker-status-cjogjn`)
+- 🎫 Repo-level GitHub links in show-repo's shield dialog
 - 🎫 Resolve a branch's session from the commit trailer, not the open PR body (`claude/active-work-branches-sd289p`)
 - 🎫 show-repo - first-class projects, defined by tracker presence (`claude/project-pages-docs-udzi51`)
 - 🎫 Singleton fab with toss-render integration (`claude/fab-render-toss-render-ua6p3p`)

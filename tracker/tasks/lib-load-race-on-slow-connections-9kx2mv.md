@@ -1,7 +1,8 @@
 ---
 id: lib-load-race-on-slow-connections-9kx2mv
 title: Guard every lib-booting page against the Alpine load race
-status: in-progress
+status: done
+closed: 2026-08-02
 track: independent
 opened: 2026-07-26
 session: claude/web-tools-project-tracker-reo5qo
@@ -24,3 +25,4 @@ Options, roughly in increasing order of blast radius:
 
 Worth deciding whether the FAB's 1500ms timer is the right mechanism at all, given it exists only to mount the FAB on pages that never bring Alpine themselves.
 - 2026-08-02: Claimed on `claude/web-tools-project-tracker-reo5qo`. The shared mechanism landed there: gh-boot awaits a page-published window.__pageBoot before starting its own Alpine, the canonical boot block in README.md publishes it by construction, and tools/test/gh-boot-pageboot.test.mjs pins both. Remaining: adopt the published promise in the existing lib-booting pages (the 24 with inline x-data; longest chains first), and decide whether shorter.html keeps its bespoke __shorterReady gate beside the standard name.
+- 2026-08-02: Done on `claude/web-tools-project-tracker-reo5qo` (lands via PR #339), by a pivot the options list did not contain: instead of 24 per-page edits, gh-api.js now keeps an in-flight census of load()s on the GH class, and gh-boot's FAB timer waits (bounded) for a beat of loader silence before starting its own Alpine. Every unedited page is covered with nothing to remember, which was the weakness of the per-page option; window.__pageBoot stays as the explicit lane and the canonical boot block in README.md publishes it. Held by tools/test/gh-boot-pageboot.test.mjs (both layers, ordered) and a gh-api.test.mjs unit test on the census. shorter.html keeps its bespoke __shorterReady template gate, which guards a different failure (its own templates rendering before its own helpers) and coexists.
