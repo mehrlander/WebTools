@@ -277,9 +277,17 @@ The shape of a loaded page in one block:
     await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
   }
 
-  await gh.load('kits/persistence.js');                   // logic kits (resolved under lib/)
-  await gh.load('alpineComponents/viewer.js');            // UI components
-  await gh.load('alpine-bundle.js');                      // boots Alpine
+  // Publish the chain as window.__pageBoot: gh-boot's FAB timer awaits it
+  // before starting its own Alpine, so a chain slower than the timer (a phone
+  // on a slow connection, a #gh= toss routing every load through the API)
+  // cannot have the page's x-data initialized against helpers that have not
+  // loaded yet. A page that skips this line still works until it is slow.
+  window.__pageBoot = (async () => {
+    await gh.load('kits/persistence.js');                 // logic kits (resolved under lib/)
+    await gh.load('alpineComponents/viewer.js');          // UI components
+    await gh.load('alpine-bundle.js');                    // boots Alpine
+  })();
+  await window.__pageBoot;
 </script>
 ```
 

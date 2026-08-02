@@ -11,7 +11,7 @@ import { repoRoot } from './bootstrap.mjs';
 
 const win = { URLSearchParams };
 new Function('window', readFileSync(path.join(repoRoot, 'lib/url-params.js'), 'utf8')).call(win, win);
-const { get, first } = win.UrlParams;
+const { get, first, source } = win.UrlParams;
 
 const loc = (hash, search) => ({ hash: hash || '', search: search || '' });
 
@@ -50,6 +50,16 @@ test('first() takes the earliest key that has a value, in declared order', () =>
   assert.deepEqual(first(['gz', 'src'], loc('#gz=payload', '?src=addr')), ['gz', 'payload']);
   assert.deepEqual(first(['gz', 'src'], loc('', '?src=addr')), ['src', 'addr']);
   assert.deepEqual(first(['gz', 'src'], loc('', '')), [null, null]);
+});
+
+test('source names the half get() would take, under the same rule', () => {
+  // For callers whose several keys must come from one source (StageLink.read),
+  // or whose fragment must be parsed raw rather than URLSearchParams-decoded.
+  assert.equal(source('stage', loc('#stage=frag', '?stage=query')), 'hash');
+  assert.equal(source('stage', loc('', '?stage=query')), 'search');
+  assert.equal(source('stage', loc('#stage=', '?stage=query')), 'search', 'empty fragment value is a miss');
+  assert.equal(source('stage', loc('#stage=', '')), null);
+  assert.equal(source('stage', loc('', '')), null);
 });
 
 test('a malformed half degrades to the other rather than throwing', () => {
