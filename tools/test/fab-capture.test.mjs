@@ -65,11 +65,13 @@ test('captureData serializes the collected state with honest fidelity', () => {
   assert.deepEqual([...(pt.actions || [])], ['Do it']);
 });
 
-test('copyCapture writes the bundle to the clipboard and reports the size', async () => {
+test('the take grid carries Capture and runs it onto the clipboard', async () => {
   let written = '';
   window.navigator.clipboard = { writeText: async t => { written = t; } };
-  await fab.copyCapture();
+  const copy = [...fab.takeGroups].find(g => g.kind === 'Copy');
+  assert.ok([...copy.items].some(i => i.key === 'capture'), 'Capture rides the Copy group, on the default tab');
+  await fab.runTake('capture');
   assert.ok(written.length > 100, 'the JSON landed on the clipboard');
   assert.equal(JSON.parse(written).capture, 'fab/1', 'and parses back');
-  assert.match(fab.capMsg, /^Copied \d+K$/);
+  assert.match(fab.outMsg, /^Copied a \d+K capture$/, 'reported on the shared output line');
 });
