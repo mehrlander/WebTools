@@ -412,3 +412,17 @@ The deferred layers (artifacts/derivations provenance, generated
 inventory, comparison) stay deferred per the ADR; the comparison layer's
 first real customer will be the moment a registry claim and the
 heuristic disagree about a file someone cares about.
+
+## 2026-08-02, the registry ships with the plugin
+
+`registry.py` graduated out of the lab into the portable plugin:
+`.claude/skills/content-registry/` bundles the script beside its
+SKILL.md the way `tasks` bundles its board generator, and the
+marketplace manifest and PORTABLE.md now declare it. A `scaffold`
+subcommand emits draft rows from mechanical observation only (file
+counts, suffixes, dated-path flags) with both controlling fields left
+TODO, keeping the ADR's line: observation states facts, judgment fills
+the classification, row by row with the user. termlab and semsearch now
+import the registry from its plugin home. Estate-wide availability as
+/portable:content-registry follows the next merge to main, since plugin
+consumers track main; in-session the skill is live from the checkout.

@@ -47,6 +47,7 @@ def cmd_build(args):
     Path(args.store).parent.mkdir(parents=True, exist_ok=True)
     model = StaticModel.from_pretrained("minishlab/potion-base-8M")
     texts, meta = [], []
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / ".claude" / "skills" / "content-registry"))
     from registry import Registry
     for spec in args.repos:
         name, _, root = spec.partition("=")

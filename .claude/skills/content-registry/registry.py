@@ -28,8 +28,12 @@ Controlled vocabularies (validated hard; controlling fields):
                  | source-corpus | exclude
 
 CLI:
+  python3 registry.py scaffold <repo-root>          # draft rows, judgment left TODO
   python3 registry.py verify <repo-root>
   python3 registry.py corpus <repo-root> <analysis_use> [--list]
+
+Ships with the portable plugin's content-registry skill; the canonical
+copy lives at .claude/skills/content-registry/ in mehrlander/web-tools.
 """
 from __future__ import annotations
 
@@ -189,9 +193,40 @@ class Registry:
         return out
 
 
+def scaffold(root: Path):
+    """Draft registry rows from mechanical observation only. Facts go in the
+    description; creation_mode and analysis_use stay TODO, because the ADR
+    forbids inferring authorship without evidence: that judgment belongs to
+    the session and the user, row by row."""
+    import re as _re
+    dated = _re.compile(r"20\d\d-\d\d-\d\d")
+    print("locator,creation_mode,analysis_use,description")
+    skip = {".git", ".claude", ".concept-index", ".concept-lab", "node_modules", "dist", "vendor"}
+    for entry in sorted(root.iterdir()):
+        if entry.name in skip or entry.name.startswith("."):
+            continue
+        if entry.is_dir():
+            suffixes = {}
+            n = 0
+            has_dated = False
+            for f in entry.rglob("*"):
+                if f.is_file():
+                    n += 1
+                    suffixes[f.suffix] = suffixes.get(f.suffix, 0) + 1
+                    if dated.search(f.as_posix()):
+                        has_dated = True
+            top = ";".join(f"{k or 'noext'}x{v}" for k, v in sorted(suffixes.items(), key=lambda kv: -kv[1])[:3])
+            facts = f"{n} files ({top})" + ("; contains dated paths" if has_dated else "")
+            print(f"{entry.name}/,TODO,TODO,{facts}")
+        elif entry.suffix.lower() in (".md", ".csv", ".html", ".json"):
+            print(f"{entry.name},TODO,TODO,{entry.stat().st_size} bytes")
+
+
 def main():
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest="cmd", required=True)
+    sc = sub.add_parser("scaffold")
+    sc.add_argument("root")
     v = sub.add_parser("verify")
     v.add_argument("root")
     c = sub.add_parser("corpus")
@@ -200,6 +235,9 @@ def main():
     c.add_argument("--list", action="store_true")
     args = p.parse_args()
 
+    if args.cmd == "scaffold":
+        scaffold(Path(args.root).resolve())
+        return
     reg = Registry.load(Path(args.root))
     if reg is None:
         print("no registry found (data/design/content.csv)")
@@ -221,4 +259,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BrokenPipeError:
+        pass

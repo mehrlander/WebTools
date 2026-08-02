@@ -408,6 +408,8 @@ def build(repos: dict[str, Path], min_mentions: int, mode: str = "related"):
     # file, analysis_use decides living, and only undeclared content falls
     # back to the heuristic. Declaration over observation, per the ADR.
     try:
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / ".claude" / "skills" / "content-registry"))
         from registry import Registry
     except ImportError:
         Registry = None
