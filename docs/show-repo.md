@@ -298,7 +298,7 @@ the header nav the way a repo shows landing/atlas/files/…:
   sub-tabs, each keeping its own deep link: **Open** (`?view=activity`),
   **To-do** (`?view=todo`), **Jots** (`?view=jots`) (all below).
 - **Tools** (`?view=tools`) — a curated gallery of utility pages (below).
-- **Map** (`?view=map`) — the portable set, each repo's scope, and its adoption (below).
+- **Map** (`?view=map`) — the portable set and Transport (below). Per-repo scope and adoption live on the Repos cards.
 - **Proposals** (`?view=proposals`) — pending cross-repo edits awaiting a confirm
   (below). The one conditional entry: shown only while something is pending.
 
@@ -590,38 +590,28 @@ CONVENTIONS.md is one tap from the dashboard. The doctrine kernel rides here as
 a doc, so the theory sits beside the conventions it governs. Public: the hub
 repo is public, so this half needs no token.
 
-*Scope* and *Adoption* share one per-repo card, since they are two facets of one
-object. **Scope** is the repo's own account of what it holds and why, read live
-from its `.web-tools.json` `scope` field (inline prose, or a repo path ending in
-`.md` linked to its blob). The repo owns the story; the Map view only stacks the
-statements, so the cross-repo picture is a view, never an authored central list.
-This is the same shape as estate membership and the surface split: a repo owns
-what tells its own story. **Adoption** is the alignment read. The roster is the
-hub, the registry, and every **estate member** (`estate: true`, read from the
-config cache in each repo's own `order`), so the Map grades the same set the
-Repos dashboard shows rather than keeping a list of its own. Grading stops at
-members deliberately: probing every repo in the cache would make this an
-account-wide survey mostly composed of repos that will never carry the set, at
-three live reads each. The blind spot that buys is that a repo adopting nothing
-is invisible here, since the file that would list it is the first thing adoption
-writes. Each repo
-is probed live (three parallel reads on its default branch) for the environmental
-hooks that carry the set: the plugin-marketplace subscription and enabled plugins
-in `.claude/settings.json`, a conventions-wired `CLAUDE.md`, and a
-`.web-tools.json`. `lib/portable-align.js` grades the signals (pure, tested)
-into a verdict per repo: `aligned` (marketplace, plugins, and wiring all
-present), `partial`, `unaligned`, `optout` (the config's
-`conventions: "optout"`, respected as deliberate), and the role verdicts
-`source` (the hub) and `registry` (the private sister), which hold standing
-parts and are not graded on subscriptions they would never carry. Each card
-shows the scope headline, the verdict, check/x chips per signal, and a gear that
-opens the shell's repo dialog on that repo's Config tab in place (no navigation,
-the same `openDialog(repo, { tab })` call the estate Repos card makes), so a
-repo's `.web-tools.json` is one tap from the Map. Token-gated (it reads private
-repos' settings);
-probes are live per view open with a Refresh, and persisting them as a registry
-crawl cache (`state/alignment.json` beside the config and activity caches) is the
-named follow-up.
+*Scope and adoption moved to the Repos cards on 2026-08-03.* They are facts
+about a repo, and a card is where a repo is described, so a second grid of the
+same repos with different columns was a copy of the roster. It also ended a real
+drift: the Map kept its own roster, and a repo that joined the estate was never
+graded. The cards are the roster now, so there is no second list to disagree.
+
+On a card: the **verdict** badge beside the name, then the four checks as chips
+(marketplace, plugins, conventions, config), failing ones visible rather than
+collapsed into a score, since a failing check is the next step. **Scope** is the
+repo's own account of what it holds and why, read live from its
+`.web-tools.json` `scope` field (inline prose, or a repo path ending in `.md`
+linked to its blob) and **expanded on tap** rather than carried open: it is a
+paragraph worth reading once, and on a card it would push the live rows off the
+bottom. The repo owns the story; the estate only stacks the statements, so the
+cross-repo picture is a view, never an authored central list. The hub and the
+registry carry a role instead of a grade, since grading the hub against its own
+set says nothing. Grading stops at estate members deliberately: probing every
+repo in the cache would make this an account-wide survey mostly composed of
+repos that will never carry the set, at three live reads each. The blind spot
+that buys is that a repo adopting nothing is invisible, since the file that
+would list it is the first thing adoption writes. Graded by
+[`lib/portable-align.js`](../lib/portable-align.js), which is pure and tested.
 
 *Transport* answers how content moves, renders, and gets looked at, from the
 hub's committed [`docs/routes.json`](routes.json). It opens with **Showing**,
