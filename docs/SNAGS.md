@@ -22,6 +22,21 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### word-boundary-before-alternation: a scan reports zero and looks authoritative
+`\b(TOKEN|SECRET|...)` never matches inside `GH_TOKEN` or `AWS_SECRET_ACCESS_KEY`,
+because there is no word boundary between `H` and `T`. A credential scan written
+that way returned zero findings against six real credential-shaped lines, ran
+clean, and printed a number. Anchor with a prefix group instead
+(`[A-Z0-9_]*(?:TOKEN|SECRET|...)[A-Z0-9_]*`). The wider move: a detector whose
+failure is an empty result needs a negative control, meaning a fixture that must
+match, or you cannot tell "found nothing" from "cannot see." Verifying the fix
+also went wrong once here: reintroducing `\b` in front of the new prefix group
+does not reproduce the bug, since the prefix matches zero-width and backtracks.
+*(seen: 2026-08-03)*
+→ [web-tools-private `sessions/tools/test-redact.py`](https://github.com/mehrlander/web-tools-private/blob/main/sessions/tools/test-redact.py)
+
+---
+
 ### https-block-resets-instead-of-403: a blocked host looks like a network flake
 An outbound request dies with `Recv failure: Connection reset by peer` and reads
 as a flake or a TLS problem. Over HTTPS the proxy's CONNECT tunnel succeeds and
