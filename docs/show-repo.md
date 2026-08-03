@@ -298,7 +298,7 @@ the header nav the way a repo shows landing/atlas/files/…:
   sub-tabs, each keeping its own deep link: **Open** (`?view=activity`),
   **To-do** (`?view=todo`), **Jots** (`?view=jots`) (all below).
 - **Tools** (`?view=tools`) — a curated gallery of utility pages (below).
-- **Map** (`?view=map`) — the portable set, each repo's scope, and its adoption (below).
+- **Map** (`?view=map`) — the portable set and Transport (below). Per-repo scope and adoption live on the Repos cards.
 - **Proposals** (`?view=proposals`) — pending cross-repo edits awaiting a confirm
   (below). The one conditional entry: shown only while something is pending.
 
@@ -347,9 +347,14 @@ repo's own config through the viewer's token (candidates come from the header
 picker's account list, minus current members). So both add and edit write the
 **repo**, never a registry list.
 
-**Surfaces** come from two places, stacked in one view: the surfacer's format
-either way (a `manifest` block and an `items` array; see the home repo's
-`projects/surfacer/VISION.md`).
+**Surfaces** come from two places, stacked in one view: the surface format
+either way (a `manifest` block and an `items` array). The contract is
+[`docs/envelopes/surface.md`](envelopes/surface.md); `lib/surface.js` dual-reads
+v1 and v2 and normalizes to v2, so an existing v1 file keeps working untouched
+and is never rewritten by having been read. Each surface offers **Open as
+stage**, the bridge onto the working surface described under
+[The stage](#the-stage-the-working-surface), and a registry one can be edited
+in place or deleted (two-tap).
 
 - **General** (top): `surfaces/*.surface` files in the **registry**. These are
   cross-repo estate content, not a repo describing itself, so they stay there.
@@ -585,41 +590,48 @@ CONVENTIONS.md is one tap from the dashboard. The doctrine kernel rides here as
 a doc, so the theory sits beside the conventions it governs. Public: the hub
 repo is public, so this half needs no token.
 
-*Scope* and *Adoption* share one per-repo card, since they are two facets of one
-object. **Scope** is the repo's own account of what it holds and why, read live
-from its `.web-tools.json` `scope` field (inline prose, or a repo path ending in
-`.md` linked to its blob). The repo owns the story; the Map view only stacks the
-statements, so the cross-repo picture is a view, never an authored central list.
-This is the same shape as estate membership and the surface split: a repo owns
-what tells its own story. **Adoption** is the alignment read. The roster is the
-hub, the registry, and every **estate member** (`estate: true`, read from the
-config cache in each repo's own `order`), so the Map grades the same set the
-Repos dashboard shows rather than keeping a list of its own. Grading stops at
-members deliberately: probing every repo in the cache would make this an
-account-wide survey mostly composed of repos that will never carry the set, at
-three live reads each. The blind spot that buys is that a repo adopting nothing
-is invisible here, since the file that would list it is the first thing adoption
-writes. Each repo
-is probed live (three parallel reads on its default branch) for the environmental
-hooks that carry the set: the plugin-marketplace subscription and enabled plugins
-in `.claude/settings.json`, a conventions-wired `CLAUDE.md`, and a
-`.web-tools.json`. `lib/portable-align.js` grades the signals (pure, tested)
-into a verdict per repo: `aligned` (marketplace, plugins, and wiring all
-present), `partial`, `unaligned`, `optout` (the config's
-`conventions: "optout"`, respected as deliberate), and the role verdicts
-`source` (the hub) and `registry` (the private sister), which hold standing
-parts and are not graded on subscriptions they would never carry. Each card
-shows the scope headline, the verdict, check/x chips per signal, and a gear that
-opens the shell's repo dialog on that repo's Config tab in place (no navigation,
-the same `openDialog(repo, { tab })` call the estate Repos card makes), so a
-repo's `.web-tools.json` is one tap from the Map. Token-gated (it reads private
-repos' settings);
-probes are live per view open with a Refresh, and persisting them as a registry
-crawl cache (`state/alignment.json` beside the config and activity caches) is the
-named follow-up.
+*Scope and adoption moved to the Repos cards on 2026-08-03.* They are facts
+about a repo, and a card is where a repo is described, so a second grid of the
+same repos with different columns was a copy of the roster. It also ended a real
+drift: the Map kept its own roster, and a repo that joined the estate was never
+graded. The cards are the roster now, so there is no second list to disagree.
 
-*Transport* answers how content moves and renders, from the hub's committed
-[`docs/routes.json`](routes.json). Three sections: the **address grammar**
+On a card: the **verdict** badge beside the name, then the four checks as chips
+(marketplace, plugins, conventions, config), failing ones visible rather than
+collapsed into a score, since a failing check is the next step. **Scope** is the
+repo's own account of what it holds and why, read live from its
+`.web-tools.json` `scope` field (inline prose, or a repo path ending in `.md`
+linked to its blob) and **expanded on tap** rather than carried open: it is a
+paragraph worth reading once, and on a card it would push the live rows off the
+bottom. The repo owns the story; the estate only stacks the statements, so the
+cross-repo picture is a view, never an authored central list. The hub and the
+registry carry a role instead of a grade, since grading the hub against its own
+set says nothing. Grading stops at estate members deliberately: probing every
+repo in the cache would make this an account-wide survey mostly composed of
+repos that will never carry the set, at three live reads each. The blind spot
+that buys is that a repo adopting nothing is invisible, since the file that
+would list it is the first thing adoption writes. Graded by [`lib/portable-align.js`](../lib/portable-align.js), which is pure and
+tested.
+
+**The grade is read, not probed.** It rides the config cache
+(`state/configs.json`), computed by the crawl that already reads each repo's
+manifest, so a card costs nothing beyond the cache read the estate was making
+anyway. The first cut fanned out three live reads per member on every estate
+load, which is the bill that comes due when a Map tab becomes a dashboard: a tab
+is opened sometimes, a dashboard is the front door. The trade is that a grade is
+as fresh as the last crawl rather than as fresh as the render, which is right,
+since adoption changes when someone edits a settings file. Refresh views
+re-crawls when the answer matters now. A repo the crawl has not reached shows no
+verdict and no chips: absent means not read, never not aligned.
+
+*Transport* answers how content moves, renders, and gets looked at, from the
+hub's committed [`docs/routes.json`](routes.json). It opens with **Showing**,
+the mechanism table: given a subject at a version and a viewer, which link
+reaches it and, more usefully, what each one cannot show. That table is the
+reason `CLAUDE.md` no longer carries 1,589 words on the subject and
+[`showing.md`](showing.md) carries only the frame and the record; a rule nobody
+could hold in their head is one the app holds instead. Then three sections on
+the machinery: the **address grammar**
 (`owner/repo[@ref]:path`, with a chip per place it is spoken, each opening that
 file in the shell viewer), the **delivery modes** `toss-render.html` accepts
 (each row carrying whether it ships the bytes inline or fetches a reference, and
@@ -671,11 +683,44 @@ cloud-download icon (which seeds it to that repo via the reactive `publicSeed`),
 or `?view=public`. Further jsDelivr endpoints (versions, resolved, stats) are a
 tracker follow-up.
 
-## The stage: a cross-repo fileset
+## The stage: the working surface
 
-The stage is `store.stage`, a list of `{repo, ref, path}` refs (plus transient
-local items from drops). It is an **estate view**, beside Repos and Surfaces:
-one stage above any repo, since every item carries its own origin. Takes from:
+The stage is `store.stage`, a list of `{repo, ref, path}` refs (plus local items
+from drops). One stage sits above any repo, since every item carries its own
+origin.
+
+**There is no Stage view.** A staged fileset *is* a surface
+([`docs/envelopes/surface.md`](envelopes/surface.md), the `stage/1` profile), so
+there is one Surfaces list, and the working set is the first card on it, badged
+`working`. **Display and edit are states of a card, not places to be:** every
+card carries one pencil, and opening it puts that surface on the bench. Only one
+card can be open, because there is one bench.
+
+- The **working card** is the unsaved set. Opening it is the old Stage view.
+- A **saved card** opens by reading its items onto the bench and remembering
+  where they came from, so saving **writes back** to that file rather than
+  leaving a near-duplicate beside it. While a surface is on the bench its card
+  shows what the bench holds, open or closed, so display never disagrees with
+  the set you are holding. Prose items have no file behind them and are
+  reported, not dropped.
+- **Saving a working set appends:** a new v2 `stage/1` file in the registry's
+  `surfaces/`, named from its contents, touching nothing already saved. A saved
+  set goes away by deleting its own file. Either way the dialog previews the
+  exact JSON and names the file, because the serialized form is not guessable
+  from the list on screen.
+
+`?view=stage` is still an address: it opens the shelf with the working card's
+bench open, so every old link and every `#stage=` transport lands. It is no
+longer a pane.
+
+What the envelope will not carry is as deliberate as what it will: a proposed
+`destination` is a claim about the set and rides along, while a transfer in
+flight, the bundle, and the Diff lens's per-side ref override are the tool's
+business. The line is whether a field is still true a year later with no tool
+running. `stage.targets` stays in the repo manifest for the same reason: where
+a repo *accepts* files is a fact about that repo.
+
+Takes from:
 
 1. upload: the drop-zone (a file, or pasted text; pasted ref lines stage as refs),
 2. a repo: the grab picker in the view (a tap-through path selector over the
@@ -707,10 +752,11 @@ Stage-view actions:
   at an override ref, so the same file picked twice with one ref changed is
   the version diff. (The base...head branch compare is not here: it lives
   under the Branches view, with the review it serves.);
-- **Save stage**: write the ref list to a NAMED repo's `.web-tools.json`
-  `stage.files`. The stage belongs to no repo, so saving one means saying
-  where: the registry by default (a general staging), or any repo the field
-  names. Refs outside the target save fully qualified;
+- **Save**: the pin on the Staged header, opening the dialog above.
+  This replaced a write of `stage.files` into a named repo's `.web-tools.json`,
+  which overwrote the previous save, put a cross-repo set in one repo's config,
+  and dropped local files in silence. A manifest's `stage.files` is still
+  *read* as a seed (below); nothing writes it from here;
 - **Persistent link**: mint the `#stage=` URL that reopens this exact stage
   anywhere (ref items only; local files cannot ride a link).
 
@@ -1160,10 +1206,15 @@ repos. All are optional; a repo with no config is simply off the estate.
   surfaced under a per-repo section in the estate's Surfaces view and as a chip
   on this repo's Repos-grid card. Read-only in the estate (edit the file in its
   repo). See "The estate" → Surfaces above.
-- **stage.files**: a durable staged-files list. Entries are **bare paths**
-  (`"lib/foo.js"`, meaning this repo at its default branch) or **qualified refs**
-  (`"owner/repo[@ref]:path"`). Seeded into the stage only when the stage is
-  otherwise empty, so a working set the user built always wins.
+- **stage.files**: a staged-files list a repo declares for itself. Entries are
+  **bare paths** (`"lib/foo.js"`, meaning this repo at its default branch) or
+  **qualified refs** (`"owner/repo[@ref]:path"`). Seeded into the stage only
+  when the stage is otherwise empty, so a working set the user built always
+  wins. **Read-only from show-repo since 2026-08-03:** saving a working set
+  writes a `.surface` to the registry instead (see
+  [The stage](#the-stage-the-working-surface)), because a save here overwrote
+  the previous one and put a cross-repo list in a single repo's config. Hand-
+  authored declarations keep working as seeds.
 - **stage.targets**: default transfer destinations (`"owner/repo:dir"`
   strings), offered in the Copy-to-repo field.
 - **conventions**: not a show-repo field. `"optout"` marks a repo that has

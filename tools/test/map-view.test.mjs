@@ -1,6 +1,8 @@
 // alpineComponents/map.js — the Map view inside show-repo (formerly Portable).
 // Logic-level tests with real Alpine under jsdom (bootstrap.mjs recipe): the set
-// loads from the hub manifest through a stubbed GH, and the scope helpers split
+// loads from the hub manifest through a stubbed GH. (Scope and adoption moved
+// onto the Repos card on 2026-08-03; their tests moved with them, to
+// estate-adoption.test.mjs.) The set
 // an inline scope story from a file-pointer scope. Not covered: the live
 // adoption probe (token-gated; window.PortableAlign + private reads).
 
@@ -64,17 +66,7 @@ test('the set groups into plugin / docs / scripts sections', () => {
   assert.equal(secs[0].items[0].title, 'caption');
 });
 
-test('scope helpers split an inline story from a file pointer', () => {
-  assert.equal(data.scopeIsFile('docs/SCOPE.md'), true);
-  assert.equal(data.scopeIsFile('projects/x/SCOPE.md'), true);
-  assert.equal(data.scopeIsFile('A private orchestration base. Holds content, not conventions.'), false);
-  assert.equal(data.scopeText({ scope: 'A private base.' }), 'A private base.');
-  assert.equal(data.scopeText({ scope: 'docs/SCOPE.md' }), '', 'a file pointer is not inline text');
-  assert.equal(data.scopeFile({ scope: 'docs/SCOPE.md' }), 'docs/SCOPE.md');
-  assert.equal(data.scopeFile({ scope: 'A private base.' }), '');
-  assert.equal(data.scopeFileGh({ repo: 'me/proj', scope: 'docs/SCOPE.md' }),
-    'https://github.com/me/proj/blob/HEAD/docs/SCOPE.md');
-});
+
 
 test('the hub doc link resolves to a GitHub blob', () => {
   assert.equal(data.hubUrl('docs/PORTABLE.md'),

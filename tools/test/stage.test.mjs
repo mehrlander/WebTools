@@ -48,6 +48,7 @@ const Alpine = await startAlpine(window, [
   // the pre-build boots both in this position for the same reason.
   'lib/url-params.js',
   'lib/repo-address.js',
+  'lib/surface.js',
   'lib/kits/text-diff.js',
   'lib/alpineComponents/drop-zone.js',
   'lib/alpineComponents/path-picker.js',
@@ -232,31 +233,79 @@ test('copyLink refuses a link when only local files are staged', () => {
   assert.equal(data.linkCopied, false, 'no link minted from local-only stage');
 });
 
-test('save writes only the ref items, to the NAMED target repo', async () => {
+// ---- Save as surface: the bench-to-shelf bridge ------------------------
+//
+// This replaced a write of stage.files into a NAMED repo's .web-tools.json.
+// That save overwrote (each one destroyed the last), wrote a cross-repo set
+// into one repo's config, and dropped every local file in silence. What is
+// asserted here is that all three are gone: the write lands in the registry's
+// surfaces/ as a new file, it is a v2 stage/1 surface, and what cannot be
+// carried is named. The envelope itself is covered in surface.test.mjs; this
+// is about where the component puts it.
+
+test('save mints a surface in the registry, never a repo manifest', async () => {
   reset();
   calls.length = 0;
   store.repo = 'me/open';
-  data.saveTarget = 'me/open';
+  window.__shell = { REGISTRY_REPO: 'me/registry' };
   store.stage = [
     { repo: 'me/open', ref: '', path: 'lib/a.js' },
     { local: true, id: 96, name: 'd.bin', path: 'd.bin', size: 1, isText: false, bytes: new Uint8Array([1]) },
   ];
-  await data.save();
-  const cfgSave = calls.find(c => c.kind === 'save' && c.path === '.web-tools.json');
-  assert.equal(cfgSave.repo, 'me/open');
-  assert.deepEqual(plain_(cfgSave.value.stage.files), ['lib/a.js']);
+  await data.saveAsSurface();
+  delete window.__shell;
+  const wrote = calls.filter(c => c.kind === 'save');
+  assert.equal(wrote.length, 1);
+  assert.equal(wrote[0].repo, 'me/registry', 'a cross-repo set belongs to no repo, so it lands in the registry');
+  assert.match(wrote[0].path, /^surfaces\/\d{8}-\d{6}-.*\.surface$/, 'dated, so the directory sorts as history');
+  assert.equal(calls.some(c => c.kind === 'save' && c.path === '.web-tools.json'), false,
+    'no repo manifest is touched');
+  const doc = plain_(wrote[0].value);
+  assert.deepEqual(doc.manifest.schema, { name: 'surface', version: 2 });
+  assert.deepEqual(doc.manifest.profile, { name: 'stage', version: 1 });
+  assert.equal(doc.items.length, 1, 'binary bytes cannot ride a JSON string');
+  assert.deepEqual(doc.items[0].target.source, { repository: 'me/open', path: 'lib/a.js' });
 });
 
-test('save to another repo (a general staging) fully qualifies the refs', async () => {
+test('a second save appends rather than replacing the first', async () => {
   reset();
   calls.length = 0;
-  store.repo = 'me/open';
-  data.saveTarget = 'me/registry';
+  window.__shell = { REGISTRY_REPO: 'me/registry' };
   store.stage = [{ repo: 'me/open', ref: '', path: 'lib/a.js' }];
-  await data.save();
-  const cfgSave = calls.find(c => c.kind === 'save' && c.path === '.web-tools.json');
-  assert.equal(cfgSave.repo, 'me/registry');
-  assert.deepEqual(plain_(cfgSave.value.stage.files), ['me/open:lib/a.js']);
+  data.saveName = 'first';
+  await data.saveAsSurface();
+  data.saveName = 'second';
+  await data.saveAsSurface();
+  delete window.__shell;
+  const paths = calls.filter(c => c.kind === 'save').map(c => c.path);
+  assert.equal(paths.length, 2);
+  assert.notEqual(paths[0], paths[1], 'a history that overwrites is not one');
+});
+
+test('the dialog previews exactly what will be written', async () => {
+  reset();
+  window.__shell = { REGISTRY_REPO: 'me/registry' };
+  store.stage = [
+    { repo: 'me/open', ref: '', path: 'lib/a.js' },
+    { local: true, id: 97, name: 'shot.png', path: 'shot.png', size: 1, isText: false, bytes: new Uint8Array([1]) },
+  ];
+  data.saveDest = 'me/other:docs';
+  // The serialized form is not guessable from the list on screen, which is the
+  // whole reason the dialog shows it rather than describing it.
+  const preview = JSON.parse(data.savePreview);
+  assert.deepEqual(preview.context, { destination: 'me/other:docs' });
+  assert.equal(preview.items.length, 1);
+  assert.deepEqual(plain_(data.saveSkipped), ['shot.png'], 'and what it will leave behind');
+  assert.match(data.savePath, /^surfaces\//);
+  delete window.__shell;
+});
+
+test('save does nothing with an empty stage', async () => {
+  reset();
+  calls.length = 0;
+  store.stage = [];
+  await data.saveAsSurface();
+  assert.equal(calls.length, 0);
 });
 
 test('loadRecent merges root repos newest-first, tagging each file with its repo', async () => {
@@ -378,15 +427,6 @@ test('diffHandoff hides when either side is a local file', () => {
 test('whereFrom reads as repo short name, then the folder', () => {
   assert.equal(data.whereFrom({ repo: 'me/open', path: 'lib/alpineComponents/x.js' }), 'open · lib/alpineComponents');
   assert.equal(data.whereFrom({ repo: 'me/open', path: 'README.md' }), 'open');
-});
-
-test('save refuses a malformed target without writing', async () => {
-  reset();
-  calls.length = 0;
-  data.saveTarget = 'not a repo';
-  store.stage = [{ repo: 'me/open', ref: '', path: 'lib/a.js' }];
-  await data.save();
-  assert.equal(calls.length, 0);
 });
 
 // ---- Diff lens: A/B auto-pairing, dump, and the review-prompts copy -----

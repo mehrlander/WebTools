@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/mehrlander/web-tools/main/docs/envelopes/schemas/profiles/stage-v1.schema.json",
+  "title": "stage profile (v1)",
+  "description": "Profile schema for a surface that serializes a staged fileset: a working set of files gathered for an operation, saved so it survives the session. A document claiming this profile must validate against BOTH the core surface v2 schema and this schema. The defining constraint is that every item addresses a file: a stage is a set of things, not a piece of writing about them. Documentation: docs/envelopes/surface.md.",
+  "type": "object",
+  "required": ["manifest", "items"],
+  "properties": {
+    "manifest": {
+      "type": "object",
+      "required": ["profile"],
+      "properties": {
+        "profile": {
+          "type": "object",
+          "required": ["name", "version"],
+          "properties": {
+            "name": { "const": "stage" },
+            "version": { "const": 1 }
+          }
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "destination": {
+          "type": "string",
+          "description": "Where this set is proposed to go, as owner/repo[:dir]. A claim about the set, not a pending transfer: it stays true whether or not anything ever performs it. Distinct from a repo's own stage.targets, which declares where that repo accepts files and belongs in the repo's manifest.",
+          "pattern": "^[^/\\s]+/[^/\\s:]+(:[^\\s]*)?$"
+        },
+        "prompts": {
+          "type": "array",
+          "description": "Authored review asks carried with the set, each a short label and the full prompt text behind it. The richer sibling of branch-review's review_focus, which carries bare focus terms; kept separate at first meeting rather than unified on the assumption they are the same field.",
+          "items": {
+            "type": "object",
+            "required": ["label", "ask"],
+            "properties": {
+              "label": { "type": "string", "minLength": 1 },
+              "ask": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["target"],
+        "properties": {
+          "target": {
+            "type": "object",
+            "required": ["source"],
+            "description": "Required under this profile. A staged item addresses a file, either a repository source (the {repository, ref, path} triple) or a local path-only source, which travels only when the item also carries content.",
+            "properties": {
+              "source": {
+                "type": "object",
+                "anyOf": [
+                  { "required": ["repository"] },
+                  { "required": ["path"] }
+                ]
+              }
+            }
+          },
+          "related": {
+            "type": "array",
+            "description": "Documented relation: compares-to, naming the other side of a diff pair. An item carrying it should also carry view.mode: diff, and so should its counterpart.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "relation": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
