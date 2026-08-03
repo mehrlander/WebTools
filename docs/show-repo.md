@@ -35,14 +35,15 @@ states its `#gh=`-vs-`#gz=` split.
 
 Open a repo with `?repo=owner/repo`, optionally `&ref=<branch|tag|sha>`. Public
 repos browse with no auth; private repos and branches need the viewer's token.
-Deep-link params: `&view=pages|atlas|files|stage|branches|public|surfaces|todo|jots|activity|portable`, `&file=<path>`, `&path=<dir>`.
+Deep-link params: `&view=pages|atlas|files|stage|branches|public|todo|jots|activity|portable`, `&file=<path>`, `&path=<dir>`. `&view=surfaces` is
+accepted as the Stage's alias.
 
 **Two context levels.** The page is either in the **estate** (the global,
 all-repo context) or in a **repo** (a per-repo context with its own views).
 
 The **header carries the app-level nav**: a fixed, app-owned set of the estate's
-own views, **Activity** (Open / To-do / Jots by pill), **Repos**, **Surfaces**,
-**Stage**, **Tools**, and **Map**, as icon buttons (icon + label on desktop,
+own views, **Activity** (Open / To-do / Jots by pill), **Repos**, **Stage**,
+**Tools**, and **Map**, as icon buttons (icon + label on desktop,
 icon-only on mobile), lit on the active view and present on every viewport. The
 `#repo` component sits beside the nav but renders nothing (it is the repo/auth
 controller and hosts the shared dialog), and there is neither an auth shield nor
@@ -293,7 +294,8 @@ open). It is a context with **views of its own**, switched from
 the header nav the way a repo shows landing/atlas/files/…:
 
 - **Repos** (`?view=estate`) — the repo cards.
-- **Surfaces** (`?view=surfaces`) — the curated surfaces.
+- **Stage** (`?view=stage`, alias `?view=surfaces`) — the bench and the shelf of
+  saved surfaces (below).
 - **Activity** — the live layer: one nav stop with three pill-switched
   sub-tabs, each keeping its own deep link: **Open** (`?view=activity`),
   **To-do** (`?view=todo`), **Jots** (`?view=jots`) (all below).
@@ -302,7 +304,7 @@ the header nav the way a repo shows landing/atlas/files/…:
 - **Proposals** (`?view=proposals`) — pending cross-repo edits awaiting a confirm
   (below). The one conditional entry: shown only while something is pending.
 
-The estate component renders Repos / Surfaces / Activity, sharing one lazy mount;
+The estate component renders Repos / Stage / Activity, sharing one lazy mount;
 Tools and Map are their own components on their own lazy mounts.
 
 Behind those, past a hairline rule, the header carries a **second nav group: the
@@ -347,12 +349,13 @@ repo's own config through the viewer's token (candidates come from the header
 picker's account list, minus current members). So both add and edit write the
 **repo**, never a registry list.
 
-**Surfaces** come from two places, stacked in one view: the surface format
+**Saved surfaces** (the Stage's shelf, below the bench) come from two places,
+stacked in one scroll: the surface format
 either way (a `manifest` block and an `items` array). The contract is
 [`docs/envelopes/surface.md`](envelopes/surface.md); `lib/surface.js` dual-reads
 v1 and v2 and normalizes to v2, so an existing v1 file keeps working untouched
-and is never rewritten by having been read. Each surface offers **Open as
-stage**, the bridge onto the working surface described under
+and is never rewritten by having been read. Each surface offers **Load onto the
+stage**, the bridge onto the bench described under
 [The stage](#the-stage-the-working-surface), and a registry one can be edited
 in place or deleted (two-tap).
 
@@ -555,7 +558,7 @@ activity, and no write controls. In that state the Repos view leads with a
 **public banner** that says exactly what is and isn't available and offers the
 two real next steps, a token or Public browse, instead of a vague "set a token"
 aside. Deep links: `?view=estate` (the bare URL is the Repos estate already; the
-param is stamped only when a `repo`/`ref` param is also present), `?view=surfaces`
+param is stamped only when a `repo`/`ref` param is also present), `?view=stage`
 and `?view=activity` (always stamped, so each is shareable on its own).
 
 **The shared dialog is scoped by how it is opened.** With no repo, from the
@@ -689,20 +692,29 @@ The stage is `store.stage`, a list of `{repo, ref, path}` refs (plus local items
 from drops). One stage sits above any repo, since every item carries its own
 origin.
 
-**There is no Stage view.** A staged fileset *is* a surface
+A staged fileset *is* a surface
 ([`docs/envelopes/surface.md`](envelopes/surface.md), the `stage/1` profile), so
-there is one Surfaces list, and the working set is the first card on it, badged
-`working`. **Display and edit are states of a card, not places to be:** every
-card carries one pencil, and opening it puts that surface on the bench. Only one
-card can be open, because there is one bench.
+the **Stage view holds both sides of that coin in one scroll**: the **bench**,
+which works a surface, and below it the **shelf**, which displays the saved
+ones. Naming the view for the display half alone (it was called Surfaces from
+2026-08-03 until 2026-08-04) left the working half with no word in the UI at
+all, reachable only by knowing that a low-contrast pencil opened it.
 
-- The **working card** is the unsaved set. Opening it is the old Stage view.
-- A **saved card** opens by reading its items onto the bench and remembering
-  where they came from, so saving **writes back** to that file rather than
-  leaving a near-duplicate beside it. While a surface is on the bench its card
-  shows what the bench holds, open or closed, so display never disagrees with
-  the set you are holding. Prose items have no file behind them and are
-  reported, not dropped.
+- The **bench** is a fixed block at the top, headed `Stage`, always present and
+  always open. It is not a card on the shelf and no card becomes it: **the bench
+  does not move.** With nothing staged it is the drop target and the adder, so
+  a set can be built from a cold start.
+- A **saved card** offers **Load onto the stage**, which reads its addressable
+  items onto the bench and remembers where they came from, so saving **writes
+  back** to that file rather than leaving a near-duplicate beside it. The bench
+  header then reads `from <name>`, and the card is badged `on the stage`. Prose
+  items have no file behind them and are reported, not dropped.
+- **Detach** (the broken-link button on the bench header) keeps the items and
+  drops the write-back, which is how "start from this one and make a different
+  one" is said. Clearing the stage detaches too, since an origin without its
+  items would aim the next save at a surface the bench no longer holds.
+- While a surface is on the bench, its card renders what the bench holds, so
+  display never disagrees with the set you are holding.
 - **Saving a working set appends:** a new v2 `stage/1` file in the registry's
   `surfaces/`, named from its contents, touching nothing already saved. A saved
   set goes away by deleting its own file. Either way the dialog previews the
@@ -1203,9 +1215,9 @@ repos. All are optional; a repo with no config is simply off the estate.
   repo's scope is stated on its own terms and does not depend on its siblings.
   The state carried by the config cache, so a scope edit versions with the config.
 - **surface**: a path (or a list of paths) to `.surface` file(s) in this repo,
-  surfaced under a per-repo section in the estate's Surfaces view and as a chip
+  surfaced under a per-repo section of the Stage's shelf and as a chip
   on this repo's Repos-grid card. Read-only in the estate (edit the file in its
-  repo). See "The estate" → Surfaces above.
+  repo). See "The estate" → Stage above.
 - **stage.files**: a staged-files list a repo declares for itself. Entries are
   **bare paths** (`"lib/foo.js"`, meaning this repo at its default branch) or
   **qualified refs** (`"owner/repo[@ref]:path"`). Seeded into the stage only

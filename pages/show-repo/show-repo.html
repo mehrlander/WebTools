@@ -118,7 +118,7 @@
 <header class="shrink-0 z-30 bg-base-100 border-b border-base-300">
   <div class="max-w-full px-4">
     <div class="h-14 flex items-center gap-0.5">
-      <!-- App-level views: Open / Repos / Surfaces / To-do / Stage, the
+      <!-- App-level views: Activity / Repos / Stage / Tools / Map, the
            estate's own set, always labeled, inline on one row from the left
            edge, at any phone width. Public browse left the
            header (a signed-out affordance, still on the no-token banner and
@@ -714,7 +714,7 @@
 
   <!-- ── Main area: the selected view for the repo. On touch devices a
        horizontal swipe here pages between the estate's dashboard views
-       (estateNav: Activity / Repos / Surfaces / Stage / Tools / Map; Activity's
+       (estateNav: Activity / Repos / Stage / Tools / Map; Activity's
        Open / To-do / Jots sub-tabs switch by pill, not swipe; the header's
        repo-sponsored group is out of the carousel, being iframes); see
        swipeToView. ─────────────────────────────────────────────────────────── -->
@@ -723,10 +723,10 @@
         @touchend.passive="onSwipeEnd($event)" @touchcancel.passive="onSwipeCancel()">
 
     <!-- Estate: the all-repo context, with two views of its own — the repo grid
-         (Repos) and the curated surfaces (Surfaces). One component renders both
-         and switches on the shell view, so both share this lazy mount. Full
-         width, so the repo grid runs three cards wide like the pages index; the
-         Surfaces view constrains its own column. -->
+         (Repos) and the Stage (the surface shelf, bench on top). One component
+         renders both and switches on the shell view, so both share this lazy
+         mount. Full width, so the repo grid runs three cards wide like the
+         pages index; the Stage constrains its own column. -->
     <div x-show="isEstate" data-pane="estate" class="h-full overflow-y-auto">
       <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 !max-w-none">
         <template x-if="estateSeen">
@@ -737,7 +737,7 @@
 
     <!-- App view: a page promoted to an estate-level entry (appView flag),
          rendered live through toss-render's #gh= address mode, the same way a
-         custom landing embeds. Full-bleed, beside Repos / Surfaces / Stage. -->
+         custom landing embeds. Full-bleed, beside Repos / Stage. -->
     <div x-show="view==='app'" class="h-full">
       <template x-if="appView">
         <iframe :src="appViewUrl" class="w-full h-full border-0 bg-base-100"
@@ -746,7 +746,7 @@
     </div>
 
     <!-- Public browse: the no-token jsDelivr file browser (estate-level, beside
-         Repos / Surfaces / Stage). Lazy-mounted on first visit. -->
+         Repos / Stage). Lazy-mounted on first visit. -->
     <div x-show="view==='public'" class="h-full overflow-y-auto">
       <div class="mx-auto px-6 py-8 !max-w-none">
         <template x-if="publicSeen">
@@ -1175,10 +1175,11 @@
       </div>
     </div>
 
-    <!-- No Stage pane. The bench mounts inside the Surfaces shelf, as the open
-         state of whichever surface is being edited (lib/alpineComponents/
-         estate.js). ?view=stage still resolves: goStage() opens the shelf with
-         the bench open, so every old link and every #stage= transport lands. -->
+    <!-- No separate Stage pane: the Stage IS the estate pane's own view, the
+         shelf of saved surfaces with the bench fixed at the top of it
+         (lib/alpineComponents/estate.js). ?view=stage is the canonical key and
+         ?view=surfaces the alias, so every old link and every #stage=
+         transport lands on the same place under either name. -->
 
     <!-- The Map view: the coordination layer made inspectable — the portable
          to-go bag (docs/portable.json), and a per-repo card carrying the
@@ -1358,7 +1359,7 @@ function app(){ return {
   // `appView:true` flag on a `pages` catalog entry (estate membership, one
   // level up: the target is a rendered page, not a repo). Collected across every
   // repo's config through the same config cache, token-gated: no token, no app
-  // views (like Surfaces). Each is a sidebar entry in the estate switcher,
+  // views (like the Stage). Each is a sidebar entry in the estate switcher,
   // rendered live through toss-render #gh=.
   appViews: [],     // resolved [{repo, path, label, icon, order, key}]
   appView: null,    // the selected app view when view==='app'
@@ -1654,7 +1655,7 @@ function app(){ return {
   //   appViews     — a `pages` entry flagged appView:true in any repo, promoted
   //                  to an estate-level view (viewLabel/icon/order from the flag).
   // Token-gated: without a token there is no cache read, so both stay empty and
-  // no private repo or page is named, matching Surfaces and the private estate.
+  // no private repo or page is named, matching the Stage and the private estate.
   async loadEstateSidebar(){
     if (!this.hasToken()) { this.appViews = []; this.estateRepos = []; this.estateConfigs = {}; return; }
     try {
@@ -3037,13 +3038,12 @@ function app(){ return {
     else if (this.view === 'public') p.set('view', 'public');
     else if (this.view === 'branches') p.set('view', 'branches');
     else if (this.view === 'config') p.set('view', 'config');
-    else if (this.view === 'surfaces') p.set('view', 'surfaces');
     else if (this.view === 'todo') p.set('view', 'todo');
     else if (this.view === 'jots') p.set('view', 'jots');
     else if (this.view === 'activity') p.set('view', 'activity');
     else if (this.view === 'map') p.set('view', 'map');
     else if (this.view === 'tools') p.set('view', 'tools');
-    // App views are estate-level, so the link stands alone (like Surfaces): stamp
+    // App views are estate-level, so the link stands alone (like the Stage): stamp
     // the view plus the promoted page's repo and path, independent of the open repo.
     else if (this.view === 'app' && this.appView) {
       p.set('view', 'app');
@@ -3143,15 +3143,14 @@ function app(){ return {
   },
 
   // The estate is a context above any repo, with three views of its own — the
-  // repo grid ('estate'), the curated surfaces ('surfaces'), and the stage
-  // ('stage', the cross-repo fileset, which belongs to no repo) — mirroring
-  // how a repo has landing/atlas/files/… isEstate gates the estate component
-  // (it renders the grid and surfaces, switching on this.view, sharing the one
-  // lazy mount); estateCtx is the wider context test the sidebar switches on.
-  // 'stage' is in this list because the bench lives on the Surfaces shelf: the
-  // key survives as an address, not as a second pane to swipe to.
+  // repo grid ('estate') and the Stage ('stage', the shelf of surfaces with the
+  // cross-repo working set on top, belonging to no repo) — mirroring how a repo
+  // has landing/atlas/files/… isEstate gates the estate component (it renders
+  // the grid and the Stage, switching on this.view, sharing the one lazy
+  // mount); estateCtx is the wider context test the sidebar switches on.
+  // 'surfaces' is in this list as the Stage's alias, not as a second pane.
   get isEstate(){ return this.view === 'estate' || this.view === 'surfaces' || this.view === 'stage' || this.view === 'todo' || this.view === 'jots' || this.view === 'activity'; },
-  // App views are estate-level (peers of Repos/Surfaces/Stage), so they share
+  // App views are estate-level (peers of Repos/Stage), so they share
   // the estate sidebar context: the per-repo view list stays hidden and the
   // header reads "Repositories".
   get estateCtx(){ return this.isEstate || this.view === 'map' || this.view === 'tools' || this.view === 'app' || this.view === 'public'; },
@@ -3195,14 +3194,15 @@ function app(){ return {
       { view: 'activity', views: ['activity', 'todo', 'jots'],
         icon: 'ph-pulse',    label: 'Activity', go: () => this.goActivity() },
       { view: 'estate',   icon: 'ph-squares-four', label: 'Repos',    go: () => this.goEstate() },
-      // Surfaces is one nav stop over two sub-views, the way Activity is over
-      // three. A staged fileset IS a surface (docs/envelopes/surface.md, the
-      // stage/1 profile), so the Stage is not a sibling of the shelf but its
-      // edit mode: Working is the bench, Saved is the shelf. Both keep their
-      // own ?view key, so every existing ?view=stage and #stage= link still
-      // lands where it did, and the segmented pill inside each pane switches.
-      { view: 'surfaces', views: ['surfaces', 'stage'],
-        icon: 'ph-cards',        label: 'Surfaces', go: () => this.goSurfaces() },
+      // One stop, named Stage, over the two things a surface is for. A staged
+      // fileset IS a surface (docs/envelopes/surface.md, the stage/1 profile),
+      // so the shelf and the bench are two sides of one coin: the shelf shows
+      // saved surfaces, the bench works one. STAGE IS THE CANONICAL KEY and
+      // 'surfaces' the alias, which is the reverse of what the collapse left.
+      // The old label named only the display half, so the working half had no
+      // word in the UI at all and could be found only by knowing the pencil.
+      { view: 'stage', views: ['stage', 'surfaces'],
+        icon: 'ph-stack',        label: 'Stage',    go: () => this.goStage() },
       { view: 'tools',    icon: 'ph-wrench',       label: 'Tools',    go: () => this.goTools() },
       { view: 'map',      icon: 'ph-compass',      label: 'Map',      go: () => this.goMap() },
       // Proposals is the one conditional entry: an empty channel should cost no
@@ -3247,7 +3247,9 @@ function app(){ return {
   // when you say so, by the scrim or the X. The pinned desktop sidebar never
   // closed, so the two behave alike now.
   goEstate(){ this.estateSeen = true; this.view = 'estate'; this.syncUrl(); },
-  goSurfaces(){ this.estateSeen = true; this.view = 'surfaces'; this.syncUrl(); },
+  // The alias. ?view=surfaces was the canonical key while the view was named
+  // for its display half; it now lands on the Stage, which is the same place.
+  goSurfaces(){ this.goStage(); },
   goTodo(){ this.estateSeen = true; this.view = 'todo'; this.syncUrl(); },
   goJots(){ this.estateSeen = true; this.view = 'jots'; this.syncUrl(); },
   // The Map view: the coordination layer made inspectable (the portable set +
@@ -3268,12 +3270,11 @@ function app(){ return {
   goPages(){ this.view = 'pages'; this.syncUrl(); },
   goAtlas(){ this.atlasSeen = true; this.view = 'atlas'; this.syncUrl(); },
   goFiles(){ this.view = 'files'; this.syncUrl(); },
-  // The bench is not a view any more, it is the open state of a surface on the
-  // one shelf. This stays because everything already calls it (the explorer's
-  // "+", a #stage= link, a saved-surface Edit) and because ?view=stage must go
-  // on resolving: it lands on the shelf and asks it to open the bench.
-  goStage(){ this.estateSeen = true; this.view = 'stage'; this.openBench = true; this.syncUrl(); },
-  openBench: false,   // the shelf reads this to open the bench on arrival
+  // The Stage: the shelf of saved surfaces with the working one, the bench,
+  // fixed at the top of it. Every caller already routed here (the explorer's
+  // "+", a #stage= link, a saved surface's Load), and now so does goSurfaces.
+  // No openBench flag any more: the bench does not open, it is always there.
+  goStage(){ this.estateSeen = true; this.view = 'stage'; this.syncUrl(); },
   // Public browse: the estate-level no-token file browser (lazy mount). An
   // optional repo (from an estate card) seeds it via the reactive publicSeed the
   // component watches; the bare sidebar entry passes none and keeps the default.
@@ -3356,7 +3357,7 @@ function app(){ return {
   openSidebar(){ this.drawer = true; },
 
   // ── Swipe paging between dashboard views (touch only) ─────────────────────
-  // The estateNav set (Activity / Repos / Surfaces / Stage / Tools / Map, plus
+  // The estateNav set (Activity / Repos / Stage / Tools / Map, plus
   // Proposals while it is showing) is a closed, ordered carousel. The header's
   // second group (the repo-sponsored views) stays out of it: each renders as an
   // iframe, which owns its own gesture surface, so a swipe could page IN and
@@ -4213,15 +4214,15 @@ function overview(){ return {
   THE STAGE: a cross-repo fileset (store.stage, [{repo, ref, path}]) fed by the
   explorer's "+" buttons, a manifest's stage.files, or a #stage= link, and
   presented as the WORKING SURFACE (stager, lib/alpineComponents/stage.js).
-  There is no Stage view: a staged fileset IS a surface (docs/envelopes/
-  surface.md, the stage/1 profile), so the working set is the first card on the
-  one Surfaces list and the bench is the open state of a card. Display and edit
-  are states of a surface rather than places to be, and only one card opens at
-  a time because there is one bench. Opening a SAVED card reads it onto the
-  bench and remembers the origin, so saving writes back; saving the working set
-  appends a new file. ?view=stage survives as an address (goStage raises
-  openBench, the shelf lowers it), not as a pane. lib/surface.js is the model
-  every reader shares.
+  A staged fileset IS a surface (docs/envelopes/surface.md, the stage/1
+  profile), so the Stage view is one scroll holding both: THE BENCH, a fixed
+  card at the top that is always the working set and always open, and below it
+  the shelf of saved surfaces, each displayed and each offering Load onto the
+  stage. The bench does not move and no card becomes it: Load reads a saved
+  surface's items onto the one bench and remembers the origin, so saving writes
+  back to that file; saving an unattached set appends a new one. ?view=stage is
+  canonical, ?view=surfaces the alias. lib/surface.js is the model every reader
+  shares, though only at the seams: see its header for what is not yet true.
   The link is the transport — refs only, content stays behind the viewer's
   token:
 
