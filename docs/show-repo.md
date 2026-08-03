@@ -682,22 +682,29 @@ The stage is `store.stage`, a list of `{repo, ref, path}` refs (plus local items
 from drops). One stage sits above any repo, since every item carries its own
 origin.
 
-**It is not a peer of Surfaces; it is Surfaces in edit mode.** A staged fileset
-*is* a surface ([`docs/envelopes/surface.md`](envelopes/surface.md), the
-`stage/1` profile), so the two share one nav stop and a segmented pill switches
-between them: **Working** is the bench, **Saved** is the shelf. Both keep their
-own `?view` key (`stage` and `surfaces`), so every existing link still lands.
-`lib/surface.js` is the one model both read through, and the two bridges cross
-between them:
+**There is no Stage view.** A staged fileset *is* a surface
+([`docs/envelopes/surface.md`](envelopes/surface.md), the `stage/1` profile), so
+there is one Surfaces list, and the working set is the first card on it, badged
+`working`. **Display and edit are states of a card, not places to be:** every
+card carries one pencil, and opening it puts that surface on the bench. Only one
+card can be open, because there is one bench.
 
-- **Save as surface** (bench → shelf): mints a new v2 `stage/1` file in the
-  registry's `surfaces/`, named from its contents. It **appends**: a save never
-  touches an earlier one, and a saved set goes away by deleting its own file.
-  The dialog previews the exact JSON, because the serialized form is not
-  guessable from the list on screen.
-- **Open as stage** (shelf → bench): pulls a surface's addressable items onto
-  the working surface, replacing it. Prose items have no file behind them and
-  are reported rather than dropped.
+- The **working card** is the unsaved set. Opening it is the old Stage view.
+- A **saved card** opens by reading its items onto the bench and remembering
+  where they came from, so saving **writes back** to that file rather than
+  leaving a near-duplicate beside it. While a surface is on the bench its card
+  shows what the bench holds, open or closed, so display never disagrees with
+  the set you are holding. Prose items have no file behind them and are
+  reported, not dropped.
+- **Saving a working set appends:** a new v2 `stage/1` file in the registry's
+  `surfaces/`, named from its contents, touching nothing already saved. A saved
+  set goes away by deleting its own file. Either way the dialog previews the
+  exact JSON and names the file, because the serialized form is not guessable
+  from the list on screen.
+
+`?view=stage` is still an address: it opens the shelf with the working card's
+bench open, so every old link and every `#stage=` transport lands. It is no
+longer a pane.
 
 What the envelope will not carry is as deliberate as what it will: a proposed
 `destination` is a claim about the set and rides along, while a transfer in
@@ -738,7 +745,7 @@ Stage-view actions:
   at an override ref, so the same file picked twice with one ref changed is
   the version diff. (The base...head branch compare is not here: it lives
   under the Branches view, with the review it serves.);
-- **Save as surface**: the pin on the Staged header, opening the dialog above.
+- **Save**: the pin on the Staged header, opening the dialog above.
   This replaced a write of `stage.files` into a named repo's `.web-tools.json`,
   which overwrote the previous save, put a cross-repo set in one repo's config,
   and dropped local files in silence. A manifest's `stage.files` is still

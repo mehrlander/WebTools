@@ -1175,15 +1175,10 @@
       </div>
     </div>
 
-    <!-- Stage: the shared cross-repo fileset, grouped by source repo@ref, with
-         send/save/mint actions and the concatenated bundle. Opening a staged
-         file lands in the Files view's shared viewer. Compare lives here too:
-         a ref-diff belongs with the fileset, not under the file viewer. -->
-    <div x-show="view==='stage'" data-pane="stage" class="h-full overflow-y-auto">
-      <div class="px-4 py-6 flex flex-col gap-4 w-full">
-        <div x-data="stager()"></div>
-      </div>
-    </div>
+    <!-- No Stage pane. The bench mounts inside the Surfaces shelf, as the open
+         state of whichever surface is being edited (lib/alpineComponents/
+         estate.js). ?view=stage still resolves: goStage() opens the shelf with
+         the bench open, so every old link and every #stage= transport lands. -->
 
     <!-- The Map view: the coordination layer made inspectable — the portable
          to-go bag (docs/portable.json), and a per-repo card carrying the
@@ -3133,11 +3128,13 @@ function app(){ return {
   // how a repo has landing/atlas/files/… isEstate gates the estate component
   // (it renders the grid and surfaces, switching on this.view, sharing the one
   // lazy mount); estateCtx is the wider context test the sidebar switches on.
-  get isEstate(){ return this.view === 'estate' || this.view === 'surfaces' || this.view === 'todo' || this.view === 'jots' || this.view === 'activity'; },
+  // 'stage' is in this list because the bench lives on the Surfaces shelf: the
+  // key survives as an address, not as a second pane to swipe to.
+  get isEstate(){ return this.view === 'estate' || this.view === 'surfaces' || this.view === 'stage' || this.view === 'todo' || this.view === 'jots' || this.view === 'activity'; },
   // App views are estate-level (peers of Repos/Surfaces/Stage), so they share
   // the estate sidebar context: the per-repo view list stays hidden and the
   // header reads "Repositories".
-  get estateCtx(){ return this.isEstate || this.view === 'stage' || this.view === 'map' || this.view === 'tools' || this.view === 'app' || this.view === 'public'; },
+  get estateCtx(){ return this.isEstate || this.view === 'map' || this.view === 'tools' || this.view === 'app' || this.view === 'public'; },
   // Whether the pinned desktop sidebar has anything to show: always in a repo
   // (its views / pins / recents), and in the estate whenever it has repo-sourced
   // content — the Repos index or the app views (News). Both are token-gated, so
@@ -3251,7 +3248,12 @@ function app(){ return {
   goPages(){ this.view = 'pages'; this.syncUrl(); },
   goAtlas(){ this.atlasSeen = true; this.view = 'atlas'; this.syncUrl(); },
   goFiles(){ this.view = 'files'; this.syncUrl(); },
-  goStage(){ this.view = 'stage'; this.syncUrl(); },
+  // The bench is not a view any more, it is the open state of a surface on the
+  // one shelf. This stays because everything already calls it (the explorer's
+  // "+", a #stage= link, a saved-surface Edit) and because ?view=stage must go
+  // on resolving: it lands on the shelf and asks it to open the bench.
+  goStage(){ this.estateSeen = true; this.view = 'stage'; this.openBench = true; this.syncUrl(); },
+  openBench: false,   // the shelf reads this to open the bench on arrival
   // Public browse: the estate-level no-token file browser (lazy mount). An
   // optional repo (from an estate card) seeds it via the reactive publicSeed the
   // component watches; the bare sidebar entry passes none and keeps the default.
@@ -4191,12 +4193,15 @@ function overview(){ return {
   THE STAGE: a cross-repo fileset (store.stage, [{repo, ref, path}]) fed by the
   explorer's "+" buttons, a manifest's stage.files, or a #stage= link, and
   presented as the WORKING SURFACE (stager, lib/alpineComponents/stage.js).
-  It shares the Surfaces nav stop rather than sitting beside it, because a
-  staged fileset IS a surface (docs/envelopes/surface.md, the stage/1 profile):
-  Working is the bench, Saved the shelf, one pill between them, each keeping
-  its own ?view key so old links land. lib/surface.js is the model both read
-  through and carries the two bridges (save-as-surface appends a v2 file to the
-  registry's surfaces/; open-as-stage pulls one back onto the bench).
+  There is no Stage view: a staged fileset IS a surface (docs/envelopes/
+  surface.md, the stage/1 profile), so the working set is the first card on the
+  one Surfaces list and the bench is the open state of a card. Display and edit
+  are states of a surface rather than places to be, and only one card opens at
+  a time because there is one bench. Opening a SAVED card reads it onto the
+  bench and remembers the origin, so saving writes back; saving the working set
+  appends a new file. ?view=stage survives as an address (goStage raises
+  openBench, the shelf lowers it), not as a pane. lib/surface.js is the model
+  every reader shares.
   The link is the transport — refs only, content stays behind the viewer's
   token:
 
