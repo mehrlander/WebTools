@@ -623,8 +623,14 @@ probes are live per view open with a Refresh, and persisting them as a registry
 crawl cache (`state/alignment.json` beside the config and activity caches) is the
 named follow-up.
 
-*Transport* answers how content moves and renders, from the hub's committed
-[`docs/routes.json`](routes.json). Three sections: the **address grammar**
+*Transport* answers how content moves, renders, and gets looked at, from the
+hub's committed [`docs/routes.json`](routes.json). It opens with **Showing**,
+the mechanism table: given a subject at a version and a viewer, which link
+reaches it and, more usefully, what each one cannot show. That table is the
+reason `CLAUDE.md` no longer carries 1,589 words on the subject and
+[`showing.md`](showing.md) carries only the frame and the record; a rule nobody
+could hold in their head is one the app holds instead. Then three sections on
+the machinery: the **address grammar**
 (`owner/repo[@ref]:path`, with a chip per place it is spoken, each opening that
 file in the shell viewer), the **delivery modes** `toss-render.html` accepts
 (each row carrying whether it ships the bytes inline or fetches a reference, and

@@ -104,3 +104,50 @@ test('the fab knows every delivery mode, so it never reads one as a route key', 
   assert.deepEqual(modes.filter(m => !documented.includes(m)), ['u']);
   assert.match(tossRender, /param\('url'\) \|\| param\('u'\)/, 'the u alias is gone; drop it here too');
 });
+
+// ── The `showing` block ────────────────────────────────────────────────────
+//
+// This block exists because 1,589 words of CLAUDE.md, 63% of the file, failed
+// to stop the session that was reading them from handing over the wrong link.
+// The rule moved into data the app renders (show-repo's Map view, Transport
+// tab), and the doc points there instead of restating it. What the tests below
+// hold is the part that would rot silently: a row missing the field that says
+// what it CANNOT show is worse than no row, since the whole point of the table
+// is the boundaries rather than the recipes.
+test('every showing mechanism declares its three axes and its boundary', () => {
+  const s = manifest.showing;
+  assert.ok(s, 'docs/routes.json has no showing block');
+  assert.ok(s.mechanisms.length >= 5, 'suspiciously few mechanisms');
+  for (const m of s.mechanisms) {
+    for (const k of ['key', 'label', 'subject', 'version', 'viewer', 'use'])
+      assert.ok(m[k], `mechanism ${m.key || '?'} is missing ${k}`);
+    // `misses` is required and `reaches` is not: the one mechanism that reaches
+    // nothing (a shell change aimed at the top-level document) is a real row,
+    // and it is the row a reader most needs.
+    assert.ok(m.misses, `mechanism ${m.key} does not say what it misses`);
+  }
+  const keys = s.mechanisms.map(m => m.key);
+  assert.equal(new Set(keys).size, keys.length, 'duplicate mechanism key');
+});
+
+test('the axes are the three the mechanisms are indexed by', () => {
+  assert.deepEqual(Object.keys(manifest.showing.axes), ['subject', 'version', 'viewer']);
+});
+
+test('the picker only routes to mechanisms that exist', () => {
+  const keys = new Set(manifest.showing.mechanisms.map(m => m.key));
+  for (const r of manifest.showing.picker.rules) {
+    assert.ok(r.when && r.then, 'a picker rule is missing a half');
+    // A rule may name alternatives ("toss-gz or artifact"); each must resolve.
+    for (const k of r.then.split(/\s+or\s+/))
+      assert.ok(keys.has(k), `picker routes to unknown mechanism: ${k}`);
+  }
+});
+
+test('CLAUDE.md delegates rather than restating', () => {
+  const claude = readFileSync(path.join(repoRoot, 'CLAUDE.md'), 'utf8');
+  const words = claude.split(/\s+/).length;
+  assert.ok(words < 1600, `CLAUDE.md is back up to ${words} words; the showing material has crept home`);
+  assert.match(claude, /docs\/routes\.json/, 'CLAUDE.md no longer points at the manifest');
+  assert.match(claude, /docs\/showing\.md/, 'CLAUDE.md no longer points at the doc');
+});
