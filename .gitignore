@@ -11,3 +11,6 @@ _bake_src.html
 _bake_in.css
 _bake_out.css
 .concept-index/
+
+# concept-lab derived stores (semantic vectors, term indexes); rebuild, never commit
+.concept-lab/
