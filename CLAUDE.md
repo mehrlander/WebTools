@@ -93,6 +93,10 @@ Root-level `tracker/` scoped to repo-wide work (conventions, build tooling, docs
 - **Placement:** `tracker/` (single tracker, no registry).
 - **Board generator:** `npm run tracker-board` (wired into the commit hook above).
 
+## Snags
+
+[`docs/SNAGS.md`](docs/SNAGS.md) is this repo's friction log, the store behind the conventions' "where a friction observation goes instead." Append when a session trips over something whose real fix belongs in a durable doc: one line, symptom then corrected move, with a `→` to that doc. The entry is the index and the doc is the fix, so the two cannot drift. Still provisional and hand-appended; the intake shape, the recurrence mechanism, and the projector are open in [the snags spike](tracker/tasks/spike-snags-log-gobdyq.md).
+
 ## Environment & testing
 
 For visual changes, `npm run shot -- <page>` (`--ref` for `?use=`, `--script` for interactions) renders branch pixels headless; send the PNG into chat (conventions: "Show pixels").
