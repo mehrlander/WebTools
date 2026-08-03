@@ -4,10 +4,17 @@
 # Canonical source: mehrlander/web-tools at .claude/skills/tasks/build-board.py
 # (bundled in the portable plugin; /tasks runs it via ${CLAUDE_PLUGIN_ROOT})
 # Usage: python3 build-board.py <tasks_dir> <board_out>
-import pathlib, sys
+import os, pathlib, sys, urllib.parse
 
 tasks_dir = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "tasks")
 out = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else "board.md")
+
+# Where a row's link points, as a path relative to the BOARD's folder rather
+# than to the cwd, so the same href resolves on GitHub (relative to board.md)
+# and in show-repo's board pane (onBoardClick resolves against the board file's
+# folder). Computed rather than hardcoded to `tasks/`, since the generator takes
+# both directories as arguments and a repo may lay them out differently.
+task_href_base = os.path.relpath(tasks_dir, out.parent).replace(os.sep, "/")
 
 def meta(p):
     parts = p.read_text().split("---")
@@ -18,6 +25,9 @@ def meta(p):
         if ":" in line:
             k, v = line.split(":", 1)
             d[k.strip()] = v.strip()
+    # The link targets the file on disk, not `id`, so a file whose `id:` drifted
+    # from its name still links to something that exists.
+    d["_file"] = p.name
     return d
 
 tasks = [meta(p) for p in sorted(tasks_dir.glob("*.md"))]
@@ -49,8 +59,14 @@ def row(m):
     who = f" (`{m['session']}`)" if m.get("session") else ""
     dep = blocker(m)
     # 🎫 marks a tracker task wherever one is surfaced (see CONVENTIONS.md /
-    # TRACKER.md): the ticket says "this is a filed task."
-    return f"- 🎫 {m.get('title', '(untitled)')}{who}{dep}"
+    # TRACKER.md): the ticket says "this is a filed task." The title is the
+    # link, per SURFACING.md's 🎫 form, so the board is a table of contents
+    # rather than a list of strings: one tap reaches the task that holds the
+    # why, the definition of done, and the progress log. Brackets in a title
+    # are escaped, since one unescaped `]` would truncate the link text.
+    label = m.get("title", "(untitled)").replace("[", "\\[").replace("]", "\\]")
+    href = task_href_base + "/" + urllib.parse.quote(m.get("_file", ""))
+    return f"- 🎫 [{label}]({href}){who}{dep}"
 
 lines = ["# Board", "", "_Generated from tasks/. Do not hand-edit._", ""]
 for head, key in [("On deck", "backlog"), ("In progress", "in-progress"),
