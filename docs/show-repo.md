@@ -610,8 +610,19 @@ set says nothing. Grading stops at estate members deliberately: probing every
 repo in the cache would make this an account-wide survey mostly composed of
 repos that will never carry the set, at three live reads each. The blind spot
 that buys is that a repo adopting nothing is invisible, since the file that
-would list it is the first thing adoption writes. Graded by
-[`lib/portable-align.js`](../lib/portable-align.js), which is pure and tested.
+would list it is the first thing adoption writes. Graded by [`lib/portable-align.js`](../lib/portable-align.js), which is pure and
+tested.
+
+**The grade is read, not probed.** It rides the config cache
+(`state/configs.json`), computed by the crawl that already reads each repo's
+manifest, so a card costs nothing beyond the cache read the estate was making
+anyway. The first cut fanned out three live reads per member on every estate
+load, which is the bill that comes due when a Map tab becomes a dashboard: a tab
+is opened sometimes, a dashboard is the front door. The trade is that a grade is
+as fresh as the last crawl rather than as fresh as the render, which is right,
+since adoption changes when someone edits a settings file. Refresh views
+re-crawls when the answer matters now. A repo the crawl has not reached shows no
+verdict and no chips: absent means not read, never not aligned.
 
 *Transport* answers how content moves, renders, and gets looked at, from the
 hub's committed [`docs/routes.json`](routes.json). It opens with **Showing**,

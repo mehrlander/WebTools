@@ -1893,6 +1893,26 @@ function app(){ return {
             if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)){ entry = { config: parsed, configName: name }; break; }
           } catch {}
         }
+        // The alignment grade rides this crawl. Two extra reads while already
+        // standing in front of the repo, against three live reads per member on
+        // every estate load, which is what putting the grade on the Repos cards
+        // would otherwise have cost. The estate reads the cache it already
+        // loads; nothing probes on render.
+        if (window.PortableAlign) {
+          const grab = async (path, parse) => {
+            try { const s = (await g.get(path)).text; return parse ? JSON.parse(s) : s; }
+            catch { return null; }
+          };
+          const [settings, claudeMd] = await Promise.all([
+            grab('.claude/settings.json', true), grab('CLAUDE.md', false),
+          ]);
+          const role = repo === (window.PortableAlign.HUB || 'mehrlander/web-tools') ? 'hub'
+                     : repo === this.REGISTRY_REPO ? 'registry' : null;
+          try {
+            entry.align = window.PortableAlign.assess({ repo, role, settings, claudeMd, config: entry.config });
+            entry.align.scope = (entry.config && typeof entry.config.scope === 'string') ? entry.config.scope : '';
+          } catch {}
+        }
         fetched[repo] = entry;
       }));
       const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
