@@ -1,7 +1,7 @@
 ---
 id: stage-surface-convergence-kgtosz
 title: Converge the stage and surface item schemas
-status: backlog
+status: done
 opened: 2026-07-18
 ---
 # Converge the stage and surface item schemas
@@ -26,3 +26,18 @@ Related smaller lever, take or split: the finder's root repos (Recent/Search) co
   No work done here; noted so extending this convergence outward doesn't
   start from scratch later.
 - 2026-08-02: Cluster ordering decided while clearing the smaller levers (chat-results decision, StageLink.read, the proposal-channel leftovers, all closed today): this task and integrate-stage-surfacer-format-3bvg2v share the one remaining build (estate.js dual-read, then the two bridges with per-item commentary), and stage-partial-file-selection-k8mtou waits behind them so its grammar lands on the converged schema.
+- 2026-08-03: Done. lib/surface.js is the shared model (dual-reads v1/v2,
+  normalizes to v2, carries the item helpers both components now ask); the
+  stage/1 profile schema and its surface.md section define what a saved stage
+  is; estate.js reads every surface through the model, discharging the
+  contract's reader-migration target; and both bridges work. Save-as-surface
+  APPENDS a v2 file to the registry's surfaces/ with a dialog previewing the
+  exact JSON, replacing the old stage.files write that overwrote, put a
+  cross-repo set in one repo's config, and dropped local files silently.
+  Open-as-stage pulls a surface's addressable items back onto the bench.
+  Beyond the task's framing, the two VIEWS collapsed as well: one Surfaces nav
+  stop over Working (bench) and Saved (shelf), both keeping their ?view keys.
+  Local text files now round-trip via item content; binary bytes still cannot
+  and are named rather than dropped. gh-store.js gained del() for removing a
+  saved one. tools/test/surface.test.mjs holds the decisions. PR #341.
+

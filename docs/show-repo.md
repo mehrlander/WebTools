@@ -347,9 +347,14 @@ repo's own config through the viewer's token (candidates come from the header
 picker's account list, minus current members). So both add and edit write the
 **repo**, never a registry list.
 
-**Surfaces** come from two places, stacked in one view: the surfacer's format
-either way (a `manifest` block and an `items` array; see the home repo's
-`projects/surfacer/VISION.md`).
+**Surfaces** come from two places, stacked in one view: the surface format
+either way (a `manifest` block and an `items` array). The contract is
+[`docs/envelopes/surface.md`](envelopes/surface.md); `lib/surface.js` dual-reads
+v1 and v2 and normalizes to v2, so an existing v1 file keeps working untouched
+and is never rewritten by having been read. Each surface offers **Open as
+stage**, the bridge onto the working surface described under
+[The stage](#the-stage-the-working-surface), and a registry one can be edited
+in place or deleted (two-tap).
 
 - **General** (top): `surfaces/*.surface` files in the **registry**. These are
   cross-repo estate content, not a repo describing itself, so they stay there.
@@ -671,11 +676,37 @@ cloud-download icon (which seeds it to that repo via the reactive `publicSeed`),
 or `?view=public`. Further jsDelivr endpoints (versions, resolved, stats) are a
 tracker follow-up.
 
-## The stage: a cross-repo fileset
+## The stage: the working surface
 
-The stage is `store.stage`, a list of `{repo, ref, path}` refs (plus transient
-local items from drops). It is an **estate view**, beside Repos and Surfaces:
-one stage above any repo, since every item carries its own origin. Takes from:
+The stage is `store.stage`, a list of `{repo, ref, path}` refs (plus local items
+from drops). One stage sits above any repo, since every item carries its own
+origin.
+
+**It is not a peer of Surfaces; it is Surfaces in edit mode.** A staged fileset
+*is* a surface ([`docs/envelopes/surface.md`](envelopes/surface.md), the
+`stage/1` profile), so the two share one nav stop and a segmented pill switches
+between them: **Working** is the bench, **Saved** is the shelf. Both keep their
+own `?view` key (`stage` and `surfaces`), so every existing link still lands.
+`lib/surface.js` is the one model both read through, and the two bridges cross
+between them:
+
+- **Save as surface** (bench → shelf): mints a new v2 `stage/1` file in the
+  registry's `surfaces/`, named from its contents. It **appends**: a save never
+  touches an earlier one, and a saved set goes away by deleting its own file.
+  The dialog previews the exact JSON, because the serialized form is not
+  guessable from the list on screen.
+- **Open as stage** (shelf → bench): pulls a surface's addressable items onto
+  the working surface, replacing it. Prose items have no file behind them and
+  are reported rather than dropped.
+
+What the envelope will not carry is as deliberate as what it will: a proposed
+`destination` is a claim about the set and rides along, while a transfer in
+flight, the bundle, and the Diff lens's per-side ref override are the tool's
+business. The line is whether a field is still true a year later with no tool
+running. `stage.targets` stays in the repo manifest for the same reason: where
+a repo *accepts* files is a fact about that repo.
+
+Takes from:
 
 1. upload: the drop-zone (a file, or pasted text; pasted ref lines stage as refs),
 2. a repo: the grab picker in the view (a tap-through path selector over the
@@ -707,10 +738,11 @@ Stage-view actions:
   at an override ref, so the same file picked twice with one ref changed is
   the version diff. (The base...head branch compare is not here: it lives
   under the Branches view, with the review it serves.);
-- **Save stage**: write the ref list to a NAMED repo's `.web-tools.json`
-  `stage.files`. The stage belongs to no repo, so saving one means saying
-  where: the registry by default (a general staging), or any repo the field
-  names. Refs outside the target save fully qualified;
+- **Save as surface**: the pin on the Staged header, opening the dialog above.
+  This replaced a write of `stage.files` into a named repo's `.web-tools.json`,
+  which overwrote the previous save, put a cross-repo set in one repo's config,
+  and dropped local files in silence. A manifest's `stage.files` is still
+  *read* as a seed (below); nothing writes it from here;
 - **Persistent link**: mint the `#stage=` URL that reopens this exact stage
   anywhere (ref items only; local files cannot ride a link).
 
@@ -1160,10 +1192,15 @@ repos. All are optional; a repo with no config is simply off the estate.
   surfaced under a per-repo section in the estate's Surfaces view and as a chip
   on this repo's Repos-grid card. Read-only in the estate (edit the file in its
   repo). See "The estate" → Surfaces above.
-- **stage.files**: a durable staged-files list. Entries are **bare paths**
-  (`"lib/foo.js"`, meaning this repo at its default branch) or **qualified refs**
-  (`"owner/repo[@ref]:path"`). Seeded into the stage only when the stage is
-  otherwise empty, so a working set the user built always wins.
+- **stage.files**: a staged-files list a repo declares for itself. Entries are
+  **bare paths** (`"lib/foo.js"`, meaning this repo at its default branch) or
+  **qualified refs** (`"owner/repo[@ref]:path"`). Seeded into the stage only
+  when the stage is otherwise empty, so a working set the user built always
+  wins. **Read-only from show-repo since 2026-08-03:** saving a working set
+  writes a `.surface` to the registry instead (see
+  [The stage](#the-stage-the-working-surface)), because a save here overwrote
+  the previous one and put a cross-repo list in a single repo's config. Hand-
+  authored declarations keep working as seeds.
 - **stage.targets**: default transfer destinations (`"owner/repo:dir"`
   strings), offered in the Copy-to-repo field.
 - **conventions**: not a show-repo field. `"optout"` marks a repo that has

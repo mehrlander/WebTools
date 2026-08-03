@@ -61,10 +61,15 @@ test('a repo view is not a carousel stop', () => {
 test('no pane is declared that the nav cannot reach', () => {
   const { shell } = makeShell();
   shell.proposalCount = 1;
-  const reachable = new Set(shell.estateNav.map(v => {
-    shell.view = v.view;
+  // A nav entry reaches every view it declares, not just its primary one:
+  // `views` is what navOn() highlights on, so it is what "reachable" means.
+  // Activity has covered three sub-views this way for a while; Surfaces now
+  // covers two (the shelf and the working surface), and the second of those
+  // owns a pane, which is what made the narrower walk here start lying.
+  const reachable = new Set(shell.estateNav.flatMap(v => (v.views || [v.view]).map(view => {
+    shell.view = view;
     return shell._paneKey;
-  }));
+  })));
   for (const key of paneKeys()) {
     assert.ok(reachable.has(key), `data-pane="${key}" is unreachable from estateNav`);
   }

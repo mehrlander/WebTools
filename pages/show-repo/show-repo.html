@@ -3178,8 +3178,14 @@ function app(){ return {
       { view: 'activity', views: ['activity', 'todo', 'jots'],
         icon: 'ph-pulse',    label: 'Activity', go: () => this.goActivity() },
       { view: 'estate',   icon: 'ph-squares-four', label: 'Repos',    go: () => this.goEstate() },
-      { view: 'surfaces', icon: 'ph-cards',        label: 'Surfaces', go: () => this.goSurfaces() },
-      { view: 'stage',    icon: 'ph-stack',        label: 'Stage',    go: () => this.goStage() },
+      // Surfaces is one nav stop over two sub-views, the way Activity is over
+      // three. A staged fileset IS a surface (docs/envelopes/surface.md, the
+      // stage/1 profile), so the Stage is not a sibling of the shelf but its
+      // edit mode: Working is the bench, Saved is the shelf. Both keep their
+      // own ?view key, so every existing ?view=stage and #stage= link still
+      // lands where it did, and the segmented pill inside each pane switches.
+      { view: 'surfaces', views: ['surfaces', 'stage'],
+        icon: 'ph-cards',        label: 'Surfaces', go: () => this.goSurfaces() },
       { view: 'tools',    icon: 'ph-wrench',       label: 'Tools',    go: () => this.goTools() },
       { view: 'map',      icon: 'ph-compass',      label: 'Map',      go: () => this.goMap() },
       // Proposals is the one conditional entry: an empty channel should cost no
@@ -4184,7 +4190,13 @@ function overview(){ return {
 
   THE STAGE: a cross-repo fileset (store.stage, [{repo, ref, path}]) fed by the
   explorer's "+" buttons, a manifest's stage.files, or a #stage= link, and
-  presented as its own main-area view (stager, lib/alpineComponents/stage.js).
+  presented as the WORKING SURFACE (stager, lib/alpineComponents/stage.js).
+  It shares the Surfaces nav stop rather than sitting beside it, because a
+  staged fileset IS a surface (docs/envelopes/surface.md, the stage/1 profile):
+  Working is the bench, Saved the shelf, one pill between them, each keeping
+  its own ?view key so old links land. lib/surface.js is the model both read
+  through and carries the two bridges (save-as-surface appends a v2 file to the
+  registry's surfaces/; open-as-stage pulls one back onto the bench).
   The link is the transport — refs only, content stays behind the viewer's
   token:
 
