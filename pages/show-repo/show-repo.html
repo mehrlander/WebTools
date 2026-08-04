@@ -1077,7 +1077,7 @@
                                  from one that has only been groomed. -->
                             <div x-show="t.status!=='done'" class="mt-0.5 text-xs text-base-content/40">
                               <span x-show="t.lastActivity"
-                                    x-text="boardTaskAge(t) + 'd since last log · ' + t.logEntries + ' entries'"></span>
+                                    x-text="boardTaskAge(t) + 'd since last log · ' + t.logEntries + (t.logEntries === 1 ? ' entry' : ' entries')"></span>
                               <span x-show="!t.lastActivity" class="italic">no progress log</span>
                             </div>
                           </li>
