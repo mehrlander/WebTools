@@ -102,6 +102,49 @@ it takes `5357` as a `CARDINAL` and drops the bill. Treat it as a
 recall aid over a domain gazetteer, not as the extractor. Findings and
 the per-repo resolution rates are in [findings.md](findings.md).
 
+## entityprofile.py
+
+The plain version of the question entitylab talked itself out of: point a
+standard entity recognizer at each repo and see what comes back. spaCy
+`en_core_web_sm` over the full OntoNotes label set, reported and not
+committed.
+
+Four levels are kept distinct in the data, because collapsing them is
+what turns an entity profile into a word list:
+
+| Level | Example | Held as |
+| --- | --- | --- |
+| type | `ORG` | an OntoNotes label |
+| name | `OFM`, `Office of Financial Management` | a surface form, never merged |
+| mention | one occurrence, with file and context | up to 3 sampled per name; counts stay complete |
+| entity | the thing both names denote | **not resolved.** The schema leaves room; alias resolution is its own project |
+
+Two families report separately, since values outnumber names by an order
+of magnitude and would otherwise swamp the profile: **named**
+(`PERSON NORP FAC ORG GPE LOC PRODUCT EVENT WORK_OF_ART LAW LANGUAGE`)
+and **value** (`DATE TIME PERCENT MONEY QUANTITY ORDINAL CARDINAL`).
+
+**Two quality numbers, and they are not the same number.** *Flag rate* is
+mechanical: the share of a label's names tripping a shape test, each test
+named in the output so a reader can disagree with it. *Precision* is
+adjudicated, by reading a stratified sample and marking each name right
+or wrong for its type. A label with no judgments reports "not judged"
+rather than borrowing its flag rate, because the two diverge sharply:
+code-shape tests catch about a fifth of `PERSON` names while by eye more
+than half are wrong, the dominant failure being an ordinary domain noun
+in title case (`Expenditures`, `Provisos`, `Detail`). The `common-word`
+test exists for exactly that gap and uses wordfreq, so `Expenditures`
+(zipf 3.52) flags where a real surname (0.0) does not.
+
+```bash
+python3 tools/concept-lab/entityprofile.py scan wt=... home=... --sample 1500 --out prof.json
+python3 tools/concept-lab/entityprofile.py worksheet prof.json --out judge.json
+# fill in each verdict: correct | wrong | unclear
+python3 tools/concept-lab/entityprofile.py report prof.json --judgments judge.json --out profiles.md
+```
+
+Roughly 4 files per second on 4 cores.
+
 ## The experiment scripts
 
 - `exp_embed.py`: embeddings vs collocates vs lexical clustering on probe

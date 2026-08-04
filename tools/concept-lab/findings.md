@@ -553,3 +553,82 @@ gazetteer built from the tables already in the estate is what filters the
 model's output down to something worth reading. None of that is settled by
 this run; it is one run of one small model, and `en_core_web_trf` or a
 zero-shot extractor like GLiNER was never tried.
+
+## 2026-08-04, entityprofile: the plain NER profile, with precision measured
+
+`entityprofile.py`, spaCy `en_core_web_sm` over the full OntoNotes label set,
+seven repos, reported and not committed. Named classes and value classes report
+separately, since values outnumber names roughly two to one and would otherwise
+swamp the profile. Files over 200 KB are skipped and the count is shown: 123
+estate-wide, all supplied material (enrolled bill text, ACFR extracts, raw
+deep-research transcripts), and the first attempt without that cap spent over
+ten minutes inside home's ten largest files.
+
+### Precision, adjudicated
+
+Two bands per label, 10 names each per repo, judged against the OntoNotes
+definitions by one rater (this session), verdicts recorded by name in the
+worksheet so the mapping is auditable:
+
+| band | label | correct | judged | precision |
+| --- | --- | ---: | ---: | ---: |
+| head (top 10 by mentions) | `ORG` | 16 | 70 | **23%** |
+| head | `PERSON` | 5 | 67 | **7%** |
+| stratified (whole range) | `ORG` | 13 | 68 | **19%** |
+| stratified | `PERSON` | 6 | 69 | **9%** |
+
+**The head is not meaningfully better than the tail.** That is the result that
+matters, and it kills the obvious shortcut of showing the top names and calling
+the rest noise. `wt`'s top ten organizations are HTML, MDL, ref, API, DOM, FAB,
+GitHub, PDF, doc, UI: one correct. `bwa`'s top ten people are Bill No,
+Expenditures, Bill No., Bill, Provisos, Treasurer, Parts XI-XIX, provisos,
+FTS5, Flags: none.
+
+### Flag rate is a weak proxy for precision, not a substitute
+
+Measured across the 14 repo/label pairs with judgments, Pearson r between flag
+rate and measured head precision is **-0.54**. The sign is the expected one, so
+the shape tests are picking up something real, but r² is 0.29: they explain
+under a third of the variation, on n=14. Two pairs make the point directly.
+`bills`/`ORG` has the highest flag rate (65%) and 20% precision; `spend`/`ORG`
+has a middling flag rate (44%) and the best measured precision of any pair
+(50%). Reporting one number as if it were the other would have been wrong in
+both directions, which is why the report prints "not judged" rather than
+borrowing the flag rate.
+
+### What it does find
+
+Real and worth having, though sparse: DRS, OFM, HCA, DSHS, SIB, Amazon,
+GitHub, House, Senate, Medicare, Department of Commerce, L&I, Legislative
+Evaluation and Accountability Program, Catholic Community Services, Milliman.
+And people nothing in the estate indexes: **Mike Woods, Kate Davis, Jane
+Sakson** in fn-data (fiscal-note preparers), **Mark Feldhausen** and **Marcus
+Ehrlander** in home.
+
+### The errors are repo-diagnostic, which rescues the contrast
+
+Precision near 20% would normally sink the cross-repo comparison. It does not,
+because the *failures differ by repo in a way that tracks the repo's subject*.
+web-tools' false organizations are HTML, API, DOM, UI. chat-histories' are
+PowerShell, UTC, JavaScript, CSS, XAML. fn-data's are form furniture:
+"Individual State Agency", "OFM Review", "C - Expenditures II". budget-wa's are
+file formats and citation prefixes. So the profile still discriminates the
+repos sharply, but it does so partly through its noise, which means the
+contrast is evidence about what a repo is made of rather than a clean list of
+what it discusses. Worth stating plainly wherever the contrast is shown.
+
+### Costs and open
+
+- About 4 files per second on 4 cores, roughly 40 minutes for the estate.
+- The profile JSON is **101 MB** with 3 sampled mentions per name. The earlier
+  caution about mention storage was right: this cannot be a committed per-repo
+  artifact in this shape. Counts are cheap; mentions are not.
+- `common-word` (wordfreq, zipf >= 3.0) is the single most productive flag,
+  leading the reason list for nearly every label. It catches the failure the
+  code-shape tests miss, and it is why `PERSON` flag rates rose from about 20%
+  under the code-only tests to about 50%.
+- Not judged: `GPE`, `LAW`, `NORP`, `EVENT`, `PRODUCT`, `FAC`, `LOC`,
+  `WORK_OF_ART`, and every value class. Their flag rates are in the report and
+  say nothing about their quality.
+- One rater, ten names per band. Wide enough to rank the labels, too thin to
+  fit anything.
