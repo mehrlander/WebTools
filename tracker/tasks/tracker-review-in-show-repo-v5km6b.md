@@ -85,3 +85,4 @@ branch page.
 - 2026-08-03: Filed. Grew out of a budget-drs tracker assessment whose findings
   were all downstream of the board being untyped. Depends on `size:` and
   `awaiting:` graduating first, since the view's value is rendering them.
+- 2026-08-03: the generator half landed on this branch (PR #345): `size` and `awaiting` graduated, `board.json` emitted beside `board.md` with `href`, `lastActivity`, and `logEntries` derived, 11 new tests. budget-drs is calibrated on `main` and is the live sample: 99 records, 49 KB. What remains here is the app half, the pane reading the projection and the `tracker` check kind.
