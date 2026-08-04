@@ -1,0 +1,934 @@
+{
+ "tasks": [
+  {
+   "status": "done",
+   "opened": "2026-07-14",
+   "session": "claude/agent-file-retrieval-skill-tv4can",
+   "id": "add-task-tracker-skill-iwr1ay",
+   "track": "independent",
+   "title": "Add a task-tracker skill",
+   "closed": "2026-07-15",
+   "file": "add-task-tracker-skill-iwr1ay.md",
+   "href": "tasks/add-task-tracker-skill-iwr1ay.md",
+   "lastActivity": "2026-07-18",
+   "logEntries": 3
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-14",
+   "session": "claude/agent-file-retrieval-skill-tv4can",
+   "id": "agent-file-retrieval-skill-c5u2jy",
+   "project": "search-skill",
+   "title": "Build an agent-assisted file-retrieval skill",
+   "closed": "2026-07-15",
+   "file": "agent-file-retrieval-skill-c5u2jy.md",
+   "href": "tasks/agent-file-retrieval-skill-c5u2jy.md",
+   "lastActivity": "2026-07-18",
+   "logEntries": 3,
+   "tags": {
+    "next": "build corpus_search.py (find) with a sources config and a file-per-document default, plus read_doc.py (read) and a SKILL.md that fixes the search-and-present flow; dogfood on this repo's content"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-18",
+   "session": "claude/web-tools-app-views-m3pkyo",
+   "id": "app-views-estate-level-btp6m4",
+   "track": "independent",
+   "title": "App views - designate a page as an estate-level view",
+   "closed": "2026-07-19",
+   "file": "app-views-estate-level-btp6m4.md",
+   "href": "tasks/app-views-estate-level-btp6m4.md",
+   "lastActivity": "2026-07-19",
+   "logEntries": 5,
+   "tags": {
+    "next": "landed; News goes live in the estate switcher when home#314 reaches main"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-10",
+   "session": "claude/task-tracker-discussion-wg27xv",
+   "id": "automate-merge-guide-from-pr-bodies-uaect4",
+   "project": "repo",
+   "track": "independent",
+   "title": "Automate the merge guide from PR bodies",
+   "closed": "2026-07-14",
+   "file": "automate-merge-guide-from-pr-bodies-uaect4.md",
+   "href": "tasks/automate-merge-guide-from-pr-bodies-uaect4.md",
+   "lastActivity": "2026-07-18",
+   "logEntries": 3
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-14",
+   "id": "backfill-guide-regions-merge-guide-bkk4xv",
+   "project": "repo",
+   "track": "depends-on:automate-merge-guide-from-pr-bodies-uaect4",
+   "title": "Backfill guide regions into old PR bodies and full-regenerate the merge guide",
+   "file": "backfill-guide-regions-merge-guide-bkk4xv.md",
+   "href": "tasks/backfill-guide-regions-merge-guide-bkk4xv.md",
+   "lastActivity": "2026-07-14",
+   "logEntries": 1
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-26",
+   "id": "branch-authored-layer-surface-0j0zik",
+   "project": "web-tools",
+   "title": "Converge the branch page's authored layer on the branch-review surface",
+   "file": "branch-authored-layer-surface-0j0zik.md",
+   "href": "tasks/branch-authored-layer-surface-0j0zik.md",
+   "lastActivity": "2026-07-26",
+   "logEntries": 1
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-26",
+   "session": "claude/project-pages-docs-udzi51",
+   "id": "branch-page-as-navigation-adi9ha",
+   "project": "show-repo",
+   "title": "Make the branch page a navigation target, swipeable from the lists",
+   "closed": "2026-07-31",
+   "file": "branch-page-as-navigation-adi9ha.md",
+   "href": "tasks/branch-page-as-navigation-adi9ha.md",
+   "lastActivity": "2026-07-31",
+   "logEntries": 3
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-26",
+   "session": "claude/project-pages-docs-udzi51",
+   "id": "branch-review-lifespan-0g4znz",
+   "project": "show-repo",
+   "title": "Show the branch lifespan in the per-repo branch review too",
+   "closed": "2026-07-31",
+   "file": "branch-review-lifespan-0g4znz.md",
+   "href": "tasks/branch-review-lifespan-0g4znz.md",
+   "lastActivity": "2026-07-31",
+   "logEntries": 2
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-16",
+   "session": "claude/web-tools-branch-tracking-n1zawm",
+   "id": "branch-review-view-show-repo-rwwmrj",
+   "project": "show-repo",
+   "track": "independent",
+   "title": "Branch-review view in show-repo",
+   "closed": "2026-07-17",
+   "file": "branch-review-view-show-repo-rwwmrj.md",
+   "href": "tasks/branch-review-view-show-repo-rwwmrj.md",
+   "lastActivity": "2026-07-18",
+   "logEntries": 4,
+   "tags": {
+    "next": "session refreshes (show-repo thumbnail) at wrap-up, then review via PR #236"
+   }
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-26",
+   "id": "brief-from-the-pages-gallery-7d4031",
+   "track": "depends-on:focus-a-ui-component-f0awt7",
+   "title": "Reach the take-away menu from show-repo's Pages gallery",
+   "file": "brief-from-the-pages-gallery-7d4031.md",
+   "href": "tasks/brief-from-the-pages-gallery-7d4031.md",
+   "lastActivity": "2026-07-26",
+   "logEntries": 1,
+   "blockedBy": "needs: Find a way to focus attention on one piece of a page's UI"
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-26",
+   "id": "build-on-commit-hook-silent-bokkl3",
+   "project": "tooling",
+   "title": "The build-on-commit hook did not fire, and nothing said so",
+   "closed": "2026-08-02",
+   "file": "build-on-commit-hook-silent-bokkl3.md",
+   "href": "tasks/build-on-commit-hook-silent-bokkl3.md",
+   "lastActivity": "2026-08-02",
+   "logEntries": 2
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-28",
+   "session": "claude/budget-drs-tracker-review-s64mc6",
+   "id": "caption-guide-region-delimiter-w9dpyv",
+   "track": "independent",
+   "title": "Teach the guide region a delimiter that survives an agent's readback",
+   "closed": "2026-07-28",
+   "file": "caption-guide-region-delimiter-w9dpyv.md",
+   "href": "tasks/caption-guide-region-delimiter-w9dpyv.md",
+   "lastActivity": "2026-07-28",
+   "logEntries": 2
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-22",
+   "session": "claude/web-tools-project-tracker-reo5qo",
+   "id": "chat-results-surface-profile-q4m8ra",
+   "track": "independent",
+   "title": "Fold chat-results into the surface schema, or keep it a sibling",
+   "closed": "2026-08-02",
+   "file": "chat-results-surface-profile-q4m8ra.md",
+   "href": "tasks/chat-results-surface-profile-q4m8ra.md",
+   "lastActivity": "2026-08-02",
+   "logEntries": 2
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-17",
+   "session": "claude/tracker-status-cjogjn",
+   "id": "collapse-quicklinks-projection-80oprp",
+   "project": "show-repo",
+   "title": "Collapse quickLinks into a projection of the repos manifest",
+   "closed": "2026-07-28",
+   "file": "collapse-quicklinks-projection-80oprp.md",
+   "href": "tasks/collapse-quicklinks-projection-80oprp.md",
+   "lastActivity": "2026-07-28",
+   "logEntries": 3,
+   "tags": {
+    "next": "done; landing via web-tools PR #302 and web-tools-private PR #8 (merge #302 first)"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-23",
+   "session": "claude/tracker-status-cjogjn",
+   "id": "cross-repo-edit-proposals-evo1ml",
+   "track": "independent",
+   "title": "Confirm-gated cross-repo edit proposals via a web-tools-private channel",
+   "closed": "2026-07-28",
+   "file": "cross-repo-edit-proposals-evo1ml.md",
+   "href": "tasks/cross-repo-edit-proposals-evo1ml.md",
+   "lastActivity": "2026-07-28",
+   "logEntries": 2,
+   "tags": {
+    "next": "done as a first cut; the four scope drafts are staged as pending proposals for the user to apply"
+   }
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-25",
+   "id": "data-view-consume-fragment-nxlpbs",
+   "track": "depends-on:toss-fragment-passthrough-558xcw",
+   "title": "Have data-view open at an addressed item via the fragment",
+   "file": "data-view-consume-fragment-nxlpbs.md",
+   "href": "tasks/data-view-consume-fragment-nxlpbs.md",
+   "lastActivity": "2026-07-25",
+   "logEntries": 1,
+   "tags": {
+    "next": "decide the fragment vocabulary (item index, item name, or both) before building; the delivery half already works"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-25",
+   "session": "claude/web-tools-project-tracker-reo5qo",
+   "id": "data-view-mobile-chrome-x5plcv",
+   "track": "independent",
+   "title": "Reclaim the phone viewport in data-view",
+   "closed": "2026-08-02",
+   "file": "data-view-mobile-chrome-x5plcv.md",
+   "href": "tasks/data-view-mobile-chrome-x5plcv.md",
+   "lastActivity": "2026-08-02",
+   "logEntries": 3
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-25",
+   "id": "document-structure-harness-4mz7wk",
+   "title": "A multi-method harness for extracting structure from scanned documents",
+   "file": "document-structure-harness-4mz7wk.md",
+   "href": "tasks/document-structure-harness-4mz7wk.md",
+   "lastActivity": "2026-07-25",
+   "logEntries": 2
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-17",
+   "session": "claude/branches-view-api-caching-ef4l5d",
+   "id": "estate-activity-signals-cache-38eze9",
+   "project": "show-repo",
+   "title": "Estate activity signals from a registry activity cache",
+   "closed": "2026-07-26",
+   "file": "estate-activity-signals-cache-38eze9.md",
+   "href": "tasks/estate-activity-signals-cache-38eze9.md",
+   "lastActivity": "2026-07-26",
+   "logEntries": 3
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-26",
+   "session": "claude/web-tools-project-tracker-reo5qo",
+   "id": "estate-cards-icon-cluster-txr3os",
+   "track": "show-repo",
+   "title": "Estate cards still carry the retired three-icon cluster",
+   "closed": "2026-08-02",
+   "file": "estate-cards-icon-cluster-txr3os.md",
+   "href": "tasks/estate-cards-icon-cluster-txr3os.md",
+   "lastActivity": "2026-08-02",
+   "logEntries": 2
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-18",
+   "session": "claude/viewer-button-dropdown-0h4u57",
+   "id": "estate-rows-tests-stale-7r39ry",
+   "title": "Update estate tests to the groupSections layout",
+   "closed": "2026-07-22",
+   "file": "estate-rows-tests-stale-7r39ry.md",
+   "href": "tasks/estate-rows-tests-stale-7r39ry.md",
+   "lastActivity": "2026-07-22",
+   "logEntries": 2
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-14",
+   "session": "claude/tracker-summary-nu74te",
+   "id": "extract-drop-zone-component-ckg7l1",
+   "track": "independent",
+   "title": "Extract drop-zone as a reusable Alpine component",
+   "closed": "2026-07-15",
+   "file": "extract-drop-zone-component-ckg7l1.md",
+   "href": "tasks/extract-drop-zone-component-ckg7l1.md",
+   "lastActivity": "2026-07-18",
+   "logEntries": 3
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-26",
+   "id": "fab-capture-button-f6q38m",
+   "project": "show-repo",
+   "title": "Capture button on the FAB, serializing what it already collects",
+   "file": "fab-capture-button-f6q38m.md",
+   "href": "tasks/fab-capture-button-f6q38m.md",
+   "lastActivity": "2026-08-02",
+   "logEntries": 2,
+   "tags": {
+    "next": "the write path (a default state/captures/ destination in the registry, per the design points); the clipboard cut shipped 2026-08-02"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-22",
+   "id": "fab-declared-embeds-1jtpll",
+   "title": "Generalize FAB embed handling to declared embeds",
+   "closed": "2026-08-02",
+   "file": "fab-declared-embeds-1jtpll.md",
+   "href": "tasks/fab-declared-embeds-1jtpll.md",
+   "lastActivity": "2026-08-02",
+   "logEntries": 2,
+   "tags": {
+    "resolution": "dropped",
+    "priority": "someday",
+    "next": "Build only when a real composite page (multiple interactive embeds) exists; nothing schedules this."
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-27",
+   "id": "fab-subject-side-actions-t7r4nc",
+   "project": "fab",
+   "title": "Let the FAB collect a toss subject's page actions, not just the shell's",
+   "closed": "2026-08-02",
+   "file": "fab-subject-side-actions-t7r4nc.md",
+   "href": "tasks/fab-subject-side-actions-t7r4nc.md",
+   "lastActivity": "2026-08-02",
+   "logEntries": 2
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-26",
+   "id": "file-review-collapsed-density-2rvxfn",
+   "project": "web-tools",
+   "title": "Give the file-review collapsed row more than a name and a count",
+   "file": "file-review-collapsed-density-2rvxfn.md",
+   "href": "tasks/file-review-collapsed-density-2rvxfn.md",
+   "lastActivity": "2026-07-26",
+   "logEntries": 1
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-26",
+   "id": "focus-a-ui-component-f0awt7",
+   "title": "Find a way to focus attention on one piece of a page's UI",
+   "file": "focus-a-ui-component-f0awt7.md",
+   "href": "tasks/focus-a-ui-component-f0awt7.md",
+   "lastActivity": "2026-07-26",
+   "logEntries": 1
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-18",
+   "session": "claude/web-tools-app-views-m3pkyo",
+   "id": "generalize-gallery-pages-catalog-m3b8pa",
+   "track": "independent",
+   "title": "Generalize the gallery to a per-repo pages catalog",
+   "closed": "2026-07-19",
+   "file": "generalize-gallery-pages-catalog-m3b8pa.md",
+   "href": "tasks/generalize-gallery-pages-catalog-m3b8pa.md",
+   "lastActivity": "2026-07-19",
+   "logEntries": 5,
+   "tags": {
+    "next": "landed; live gallery for home needs home#314 on main (config cache reads main)"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-17",
+   "session": "claude/github-icon-placement-3d06i7",
+   "id": "github-jumpover-coverage-7bkgmk",
+   "project": "show-repo",
+   "title": "Finish GitHub jump-over coverage across show-repo views",
+   "closed": "2026-07-30",
+   "file": "github-jumpover-coverage-7bkgmk.md",
+   "href": "tasks/github-jumpover-coverage-7bkgmk.md",
+   "lastActivity": "2026-07-30",
+   "logEntries": 2,
+   "tags": {
+    "next": "none; the named views all carry their jump-over"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-26",
+   "session": "claude/web-tools-tracker-review-bw48ga",
+   "id": "graphql-schema-contract-check-cpuvb5",
+   "project": "show-repo",
+   "title": "Check GraphQL query shape offline against GitHub's published schema",
+   "closed": "2026-07-30",
+   "file": "graphql-schema-contract-check-cpuvb5.md",
+   "href": "tasks/graphql-schema-contract-check-cpuvb5.md",
+   "lastActivity": "2026-07-30",
+   "logEntries": 2,
+   "tags": {
+    "next": "done on claude/web-tools-tracker-review-bw48ga; the live-confirm task is unchanged and still open"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-17",
+   "id": "history-safe-toss-render-shim-hkih5m",
+   "project": "show-repo",
+   "title": "History-safe shim for toss-render address-mode renders",
+   "closed": "2026-07-17",
+   "file": "history-safe-toss-render-shim-hkih5m.md",
+   "href": "tasks/history-safe-toss-render-shim-hkih5m.md",
+   "lastActivity": "2026-07-17",
+   "logEntries": 1,
+   "tags": {
+    "next": "done; hash-routing pages now switch views inside toss #gh= renders"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-14",
+   "id": "integrate-stage-surfacer-format-3bvg2v",
+   "track": "depends-on:stage-links-main-area-explorer-7a6gd7",
+   "title": "Integrate the stage with the surfacer's .surface format",
+   "file": "integrate-stage-surfacer-format-3bvg2v.md",
+   "href": "tasks/integrate-stage-surfacer-format-3bvg2v.md",
+   "lastActivity": "2026-08-03",
+   "logEntries": 5
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-26",
+   "session": "claude/web-tools-project-tracker-reo5qo",
+   "id": "lib-load-race-on-slow-connections-9kx2mv",
+   "track": "independent",
+   "title": "Guard every lib-booting page against the Alpine load race",
+   "closed": "2026-08-02",
+   "file": "lib-load-race-on-slow-connections-9kx2mv.md",
+   "href": "tasks/lib-load-race-on-slow-connections-9kx2mv.md",
+   "lastActivity": "2026-08-02",
+   "logEntries": 2
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-26",
+   "id": "lib-root-kit-migration-dind5t",
+   "project": "web-tools",
+   "title": "Move the kit-shaped files out of lib/ root into kits/",
+   "file": "lib-root-kit-migration-dind5t.md",
+   "href": "tasks/lib-root-kit-migration-dind5t.md",
+   "lastActivity": "2026-07-26",
+   "logEntries": 1
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-26",
+   "id": "live-confirm-graphql-queries-7maacy",
+   "project": "show-repo",
+   "title": "Live-confirm the two GraphQL queries the estate depends on",
+   "file": "live-confirm-graphql-queries-7maacy.md",
+   "href": "tasks/live-confirm-graphql-queries-7maacy.md",
+   "lastActivity": "2026-08-02",
+   "logEntries": 3
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-25",
+   "session": "claude/web-tools-tracker-review-bw48ga",
+   "id": "one-repo-address-parser-5gtv92",
+   "title": "One parser for the owner/repo[@ref]:path address",
+   "closed": "2026-07-30",
+   "file": "one-repo-address-parser-5gtv92.md",
+   "href": "tasks/one-repo-address-parser-5gtv92.md",
+   "lastActivity": "2026-07-30",
+   "logEntries": 3,
+   "tags": {
+    "next": "done on claude/web-tools-tracker-review-bw48ga; stage-link-onto-url-params-u9o7ny, which depended on this, is now unblocked"
+   }
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-25",
+   "id": "own-json-tree-retire-vje-i0lcj2",
+   "track": "independent",
+   "title": "Build our own JSON tree for display, keep vanilla-jsoneditor for editing",
+   "file": "own-json-tree-retire-vje-i0lcj2.md",
+   "href": "tasks/own-json-tree-retire-vje-i0lcj2.md",
+   "lastActivity": "2026-07-25",
+   "logEntries": 1,
+   "tags": {
+    "next": "user was leaning toward replacing it outright; the recommendation is the split below, so confirm the split before building"
+   }
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-26",
+   "id": "pdf-inspect-pinch-zoom-5wz3kt",
+   "title": "Pinch-zoom and pan for pdf-inspect's page view",
+   "file": "pdf-inspect-pinch-zoom-5wz3kt.md",
+   "href": "tasks/pdf-inspect-pinch-zoom-5wz3kt.md",
+   "lastActivity": "2026-07-26",
+   "logEntries": 1
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-25",
+   "id": "pdf-lattice-open-perimeter-h4kx9r",
+   "title": "Close open table perimeters in the pdf kit's lattice",
+   "file": "pdf-lattice-open-perimeter-h4kx9r.md",
+   "href": "tasks/pdf-lattice-open-perimeter-h4kx9r.md",
+   "lastActivity": "2026-07-25",
+   "logEntries": 1
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-25",
+   "id": "pdf-table-splitter-page-q7vm2d",
+   "title": "A column-splitter page for the pdf kit",
+   "file": "pdf-table-splitter-page-q7vm2d.md",
+   "href": "tasks/pdf-table-splitter-page-q7vm2d.md",
+   "lastActivity": "2026-07-26",
+   "logEntries": 3
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-08",
+   "id": "private-repo-landing-federation-u50nns",
+   "track": "independent",
+   "title": "Private-repo landing federation via the home registry",
+   "closed": "2026-07-28",
+   "file": "private-repo-landing-federation-u50nns.md",
+   "href": "tasks/private-repo-landing-federation-u50nns.md",
+   "lastActivity": "2026-07-28",
+   "logEntries": 2,
+   "tags": {
+    "resolution": "superseded",
+    "next": "closed as superseded; the goal shipped per-repo, not federated"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-28",
+   "session": "claude/web-tools-project-tracker-reo5qo",
+   "id": "proposals-diff-and-removal-w1y9lk",
+   "project": "show-repo",
+   "title": "Two gaps the proposal channel showed on first use",
+   "closed": "2026-08-02",
+   "file": "proposals-diff-and-removal-w1y9lk.md",
+   "href": "tasks/proposals-diff-and-removal-w1y9lk.md",
+   "lastActivity": "2026-08-02",
+   "logEntries": 4
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-27",
+   "id": "render-copy-runtime-cdn-refs-p4m2wq",
+   "project": "export",
+   "title": "Inline the run-time CDN references a rendering copy still carries",
+   "file": "render-copy-runtime-cdn-refs-p4m2wq.md",
+   "href": "tasks/render-copy-runtime-cdn-refs-p4m2wq.md",
+   "lastActivity": "2026-07-27",
+   "logEntries": 1
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-17",
+   "id": "render-large-files-toss-render-xm9ex7",
+   "project": "show-repo",
+   "title": "Render files over 1 MB in toss-render and the shell viewers",
+   "closed": "2026-07-17",
+   "file": "render-large-files-toss-render-xm9ex7.md",
+   "href": "tasks/render-large-files-toss-render-xm9ex7.md",
+   "lastActivity": "2026-07-17",
+   "logEntries": 3,
+   "tags": {
+    "next": "done — raw media type with git-blobs fallback landed in toss-render (ghText, showAddress, fetchShim) and gh-api.js get(); A/B headless test confirms the 5.9 MB DRS bundle is delivered where the old path returned blank"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-15",
+   "session": "claude/tracker-status-cjogjn",
+   "id": "repo-inbox-outbox-manifest-0g6c8s",
+   "project": "repo",
+   "track": "independent",
+   "title": "Repo-designated inbox and outbox in .web-tools.json",
+   "closed": "2026-07-28",
+   "file": "repo-inbox-outbox-manifest-0g6c8s.md",
+   "href": "tasks/repo-inbox-outbox-manifest-0g6c8s.md",
+   "lastActivity": "2026-07-28",
+   "logEntries": 3,
+   "tags": {
+    "next": "done as a first cut; folder-vs-branch settled as a per-repo choice, both fields wired"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-14",
+   "id": "repo-level-github-links-shield-9aufgx",
+   "track": "independent",
+   "title": "Repo-level GitHub links in show-repo's shield dialog",
+   "closed": "2026-08-02",
+   "file": "repo-level-github-links-shield-9aufgx.md",
+   "href": "tasks/repo-level-github-links-shield-9aufgx.md",
+   "lastActivity": "2026-08-02",
+   "logEntries": 2,
+   "tags": {
+    "resolution": "superseded",
+    "priority": "low"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-26",
+   "session": "claude/active-work-branches-sd289p",
+   "id": "session-link-from-commit-trailer-7a407c",
+   "project": "show-repo",
+   "title": "Resolve a branch's session from the commit trailer, not the open PR body",
+   "closed": "2026-07-26",
+   "file": "session-link-from-commit-trailer-7a407c.md",
+   "href": "tasks/session-link-from-commit-trailer-7a407c.md",
+   "lastActivity": "2026-07-26",
+   "logEntries": 3
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-15",
+   "session": "claude/skills-portable-conventions-8x1lua",
+   "id": "session-start-nudge-unconfigured-z0g4zn",
+   "project": "conventions",
+   "title": "Session-start nudge for unconfigured or legacy-manifest repos",
+   "file": "session-start-nudge-unconfigured-z0g4zn.md",
+   "href": "tasks/session-start-nudge-unconfigured-z0g4zn.md",
+   "lastActivity": "2026-07-15",
+   "logEntries": 1,
+   "tags": {
+    "next": "write a global SessionStart hook that checks repo state and injects a nudge; wire its install into the Claude Code web account setup script"
+   }
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-15",
+   "session": "claude/skills-portable-conventions-8x1lua",
+   "id": "show-repo-edit-web-tools-json-ygramz",
+   "project": "show-repo",
+   "title": "Give show-repo the ability to edit a repo's .web-tools.json",
+   "file": "show-repo-edit-web-tools-json-ygramz.md",
+   "href": "tasks/show-repo-edit-web-tools-json-ygramz.md",
+   "lastActivity": "2026-07-15",
+   "logEntries": 1,
+   "tags": {
+    "next": "design a minimal config-edit surface in the show-repo shell; first use is a one-tap migrate of a legacy .show-repo.json to .web-tools.json"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-22",
+   "session": "claude/project-pages-docs-udzi51",
+   "id": "show-repo-first-class-projects-7stibm",
+   "title": "show-repo - first-class projects, defined by tracker presence",
+   "closed": "2026-07-31",
+   "file": "show-repo-first-class-projects-7stibm.md",
+   "href": "tasks/show-repo-first-class-projects-7stibm.md",
+   "lastActivity": "2026-07-31",
+   "logEntries": 3
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-08",
+   "session": "claude/fab-render-toss-render-ua6p3p",
+   "id": "singleton-fab-toss-render-gticvb",
+   "track": "independent",
+   "title": "Singleton fab with toss-render integration",
+   "closed": "2026-07-26",
+   "file": "singleton-fab-toss-render-gticvb.md",
+   "href": "tasks/singleton-fab-toss-render-gticvb.md",
+   "lastActivity": "2026-07-26",
+   "logEntries": 5
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-30",
+   "id": "skillify-orphan-docs-izv20p",
+   "title": "Assess the orphan docs for skillification, and boil them down",
+   "file": "skillify-orphan-docs-izv20p.md",
+   "href": "tasks/skillify-orphan-docs-izv20p.md",
+   "lastActivity": "2026-07-30",
+   "logEntries": 1,
+   "tags": {
+    "next": "start with the duplicated MCP material, which is one rule recorded twice"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-13",
+   "session": "claude/speed-up-show-repo-load-3cdvl0",
+   "id": "speed-up-show-repo-cold-load-u3846j",
+   "project": "repo",
+   "track": "independent",
+   "title": "Speed up show-repo's cold load",
+   "closed": "2026-07-13",
+   "file": "speed-up-show-repo-cold-load-u3846j.md",
+   "href": "tasks/speed-up-show-repo-cold-load-u3846j.md",
+   "lastActivity": "2026-07-18",
+   "logEntries": 5
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-15",
+   "session": "claude/pr-219-review-22csrh",
+   "id": "spike-snags-log-gobdyq",
+   "project": "repo",
+   "track": "independent",
+   "title": "Spike the snags log (friction learned the hard way)",
+   "file": "spike-snags-log-gobdyq.md",
+   "href": "tasks/spike-snags-log-gobdyq.md",
+   "lastActivity": "",
+   "logEntries": 0
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-20",
+   "session": "claude/web-tools-diff-review-s0nrq7",
+   "id": "stage-diff-b-select-desync-v554kn",
+   "track": "independent",
+   "title": "Fix the stage Diff lens B-select display desync",
+   "closed": "2026-07-20",
+   "file": "stage-diff-b-select-desync-v554kn.md",
+   "href": "tasks/stage-diff-b-select-desync-v554kn.md",
+   "lastActivity": "2026-07-20",
+   "logEntries": 2
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-21",
+   "session": "claude/stage-link-grammar-docs-jukn37",
+   "id": "stage-link-grammar-portable-docs-jukn37",
+   "track": "independent",
+   "title": "Propagate the stage link's new grammar to the portable docs",
+   "closed": "2026-07-26",
+   "file": "stage-link-grammar-portable-docs-jukn37.md",
+   "href": "tasks/stage-link-grammar-portable-docs-jukn37.md",
+   "lastActivity": "2026-07-26",
+   "logEntries": 3
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-25",
+   "session": "claude/web-tools-project-tracker-reo5qo",
+   "id": "stage-link-onto-url-params-u9o7ny",
+   "track": "depends-on:one-repo-address-parser-5gtv92",
+   "title": "Move StageLink.read onto the shared fragment-first param read",
+   "closed": "2026-08-02",
+   "file": "stage-link-onto-url-params-u9o7ny.md",
+   "href": "tasks/stage-link-onto-url-params-u9o7ny.md",
+   "lastActivity": "2026-08-02",
+   "logEntries": 3
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-14",
+   "session": "claude/task-tracker-discussion-wg27xv",
+   "id": "stage-links-main-area-explorer-7a6gd7",
+   "track": "independent",
+   "title": "Stage links and the main-area explorer in show-repo",
+   "closed": "2026-07-14",
+   "file": "stage-links-main-area-explorer-7a6gd7.md",
+   "href": "tasks/stage-links-main-area-explorer-7a6gd7.md",
+   "lastActivity": "2026-07-18",
+   "logEntries": 2
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-26",
+   "id": "stage-partial-file-selection-k8mtou",
+   "title": "Give the stage a way to carry part of a file",
+   "file": "stage-partial-file-selection-k8mtou.md",
+   "href": "tasks/stage-partial-file-selection-k8mtou.md",
+   "lastActivity": "2026-07-26",
+   "logEntries": 1
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-18",
+   "id": "stage-surface-convergence-kgtosz",
+   "title": "Converge the stage and surface item schemas",
+   "file": "stage-surface-convergence-kgtosz.md",
+   "href": "tasks/stage-surface-convergence-kgtosz.md",
+   "lastActivity": "2026-08-03",
+   "logEntries": 5
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-08",
+   "session": "claude/tracker-concept-assessment-yto1m1",
+   "id": "stand-up-project-tracker-3t7h04",
+   "title": "Stand up the project tracker",
+   "closed": "2026-07-08",
+   "file": "stand-up-project-tracker-3t7h04.md",
+   "href": "tasks/stand-up-project-tracker-3t7h04.md",
+   "lastActivity": "2026-07-08",
+   "logEntries": 2
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-20",
+   "session": "claude/web-tools-diff-review-s0nrq7",
+   "id": "surface-schema-commentary-on-stage-hqz0uu",
+   "track": "independent",
+   "title": "Carry commentary on a stage (prompts= link field, seed of a surface schema)",
+   "closed": "2026-07-20",
+   "file": "surface-schema-commentary-on-stage-hqz0uu.md",
+   "href": "tasks/surface-schema-commentary-on-stage-hqz0uu.md",
+   "lastActivity": "2026-07-20",
+   "logEntries": 2
+  },
+  {
+   "status": "backlog",
+   "opened": "2026-07-26",
+   "id": "take-away-inside-a-toss-k73cjq",
+   "title": "Make the take-away menu work inside a toss",
+   "file": "take-away-inside-a-toss-k73cjq.md",
+   "href": "tasks/take-away-inside-a-toss-k73cjq.md",
+   "lastActivity": "2026-07-26",
+   "logEntries": 1
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-26",
+   "session": "claude/web-tools-tracker-review-m49yxc",
+   "id": "toggle-only-tailwind-classes-gxi5tq",
+   "track": "show-repo",
+   "title": "Toggle-only Tailwind classes do generate, and the spinners do spin",
+   "closed": "2026-07-26",
+   "file": "toggle-only-tailwind-classes-gxi5tq.md",
+   "href": "tasks/toggle-only-tailwind-classes-gxi5tq.md",
+   "lastActivity": "2026-07-26",
+   "logEntries": 2
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-25",
+   "session": "claude/toss-render-data-formats-4t55x7",
+   "id": "toss-fragment-passthrough-558xcw",
+   "project": "show-repo",
+   "track": "independent",
+   "title": "Pass a trailing fragment through toss-render to the rendered page",
+   "closed": "2026-07-25",
+   "file": "toss-fragment-passthrough-558xcw.md",
+   "href": "tasks/toss-fragment-passthrough-558xcw.md",
+   "lastActivity": "2026-07-25",
+   "logEntries": 2,
+   "tags": {
+    "next": "done on claude/toss-render-data-formats-4t55x7; lands via PR #288. Follow-on: have data-view consume the fragment for item selection"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-17",
+   "id": "toss-render-decode-errors-xu3c6d",
+   "project": "show-repo",
+   "title": "Structural response decode + differentiated errors in toss-render",
+   "closed": "2026-07-17",
+   "file": "toss-render-decode-errors-xu3c6d.md",
+   "href": "tasks/toss-render-decode-errors-xu3c6d.md",
+   "lastActivity": "2026-07-17",
+   "logEntries": 1,
+   "tags": {
+    "next": "done; renders survive every media-type labeling and the error panel names the failing stage"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-19",
+   "session": "claude/web-tools-tracker-review-bw48ga",
+   "id": "toss-render-multiparam-query-encoding-n9lbcp",
+   "track": "independent",
+   "title": "toss-render ?query forwarding drops multi-param page queries",
+   "closed": "2026-07-30",
+   "file": "toss-render-multiparam-query-encoding-n9lbcp.md",
+   "href": "tasks/toss-render-multiparam-query-encoding-n9lbcp.md",
+   "lastActivity": "2026-07-30",
+   "logEntries": 2,
+   "tags": {
+    "next": "done on claude/web-tools-tracker-review-bw48ga; both fixes taken, the slice read and the documentation"
+   }
+  },
+  {
+   "status": "done",
+   "opened": "2026-08-03",
+   "session": "claude/budget-drs-tracker-assessment-fwa13q",
+   "id": "tracker-review-in-show-repo-v5km6b",
+   "project": "show-repo",
+   "size": "L",
+   "track": "independent",
+   "title": "Tracker review in show-repo, over a typed board projection",
+   "closed": "2026-08-03",
+   "file": "tracker-review-in-show-repo-v5km6b.md",
+   "href": "tasks/tracker-review-in-show-repo-v5km6b.md",
+   "lastActivity": "2026-08-03",
+   "logEntries": 4
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-20",
+   "session": "claude/loading-behavior-tracker-aqbf4f",
+   "id": "use-blob-import-bundle-dtuqjo",
+   "track": "independent",
+   "title": "Load the ?use= bundle by fetch + blob-import instead of jsDelivr",
+   "closed": "2026-07-20",
+   "file": "use-blob-import-bundle-dtuqjo.md",
+   "href": "tasks/use-blob-import-bundle-dtuqjo.md",
+   "lastActivity": "2026-07-20",
+   "logEntries": 2
+  },
+  {
+   "status": "done",
+   "opened": "2026-07-20",
+   "id": "use-gh-api-chain-blob-import-y2hwqe",
+   "track": "independent",
+   "title": "Extend fetch + blob-import to the gh-api.js-chain ?use= boot",
+   "closed": "2026-08-02",
+   "file": "use-gh-api-chain-blob-import-y2hwqe.md",
+   "href": "tasks/use-gh-api-chain-blob-import-y2hwqe.md",
+   "lastActivity": "2026-08-02",
+   "logEntries": 2
+  }
+ ]
+}

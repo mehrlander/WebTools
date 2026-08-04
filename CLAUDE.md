@@ -39,9 +39,9 @@ Every **deterministic** derived artifact is owned by one commit-time hook (`.cla
 
 - `lib/` changed → `npm run build:lib` → `dist/web-tools.js`
 - `pages/**/*.html` changed → `npm run pages-index` → `pages/README.md` + `pages/index.html`
-- `tracker/tasks/` changed → `npm run tracker-board` → `tracker/board.md`
+- `tracker/tasks/` changed → `npm run tracker-board` → `tracker/board.md` + `tracker/board.json`
 
-Don't hand-edit any of those four files; edit the source and let the hook refresh them. Thumbnails (`pages/thumbs/*.png`) are the deliberate exception: not byte-deterministic, so the hook only *warns* when a page changes without its thumb; the actual refresh happens once per session at wrap-up (see "Per-session refresh" above).
+Don't hand-edit any of those five files; edit the source and let the hook refresh them. Thumbnails (`pages/thumbs/*.png`) are the deliberate exception: not byte-deterministic, so the hook only *warns* when a page changes without its thumb; the actual refresh happens once per session at wrap-up (see "Per-session refresh" above).
 
 **The hook is best-effort, so the lockstep has a second owner.** A hook only runs where the harness registers it, and that turns on the session's project root rather than on anything in this repo: where the root sits above the repo, `.claude/settings.json` is never read and none of its hooks fire, silently (cause and tells: [docs/environment/extending.md](docs/environment/extending.md)). So `npm test` carries [`tools/test/artifacts-lockstep.test.mjs`](tools/test/artifacts-lockstep.test.mjs), which re-runs the two deterministic generators in `--check` mode and fails if a tracked artifact is behind its source. When it fails, run the command it names and commit the result. Regenerating by hand after touching `lib/` or `pages/` is still the fast path; the test is what makes forgetting loud instead of silent.
 

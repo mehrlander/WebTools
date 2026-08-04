@@ -1029,10 +1029,72 @@
                 <div x-show="projectBoardLoading" class="flex justify-center py-16">
                   <span class="loading loading-dots loading-md opacity-30"></span>
                 </div>
-                <article x-show="!projectBoardLoading && projectBoardHtml" @click="onBoardClick($event)"
+
+                <!-- The typed read, when board.json exists on this ref. -->
+                <div x-show="!projectBoardLoading && projectBoardTasks" class="space-y-5">
+                  <!-- The review line: what a grooming pass asks before it
+                       reads any row. Each count states its own subject, so a
+                       zero reads as an answer rather than a missing number. -->
+                  <template x-if="projectBoardTasks">
+                    <div class="flex flex-wrap items-center gap-2 text-sm">
+                      <span class="badge badge-ghost" x-text="projectBoardReview().open + ' open'"></span>
+                      <span class="badge badge-warning badge-outline" x-show="projectBoardReview().awaiting"
+                            x-text="projectBoardReview().awaiting + ' awaiting someone'"></span>
+                      <span class="badge badge-ghost" x-show="projectBoardReview().stale"
+                            x-text="projectBoardReview().stale + ' quiet 3+ weeks'"></span>
+                      <span class="badge badge-ghost" x-show="projectBoardReview().untouched"
+                            x-text="projectBoardReview().untouched + ' never logged'"></span>
+                    </div>
+                  </template>
+
+                  <template x-for="g in projectBoardGroups" :key="g.key">
+                    <section>
+                      <button class="flex w-full items-center gap-2 py-1 text-left"
+                              @click="g.key==='done' && (projectBoardShowDone = !projectBoardShowDone)">
+                        <h3 class="text-sm font-semibold uppercase tracking-wide text-base-content/60"
+                            x-text="g.label"></h3>
+                        <span class="badge badge-sm badge-ghost" x-text="g.tasks.length"></span>
+                        <span x-show="g.key==='done'" class="text-xs text-base-content/40"
+                              x-text="projectBoardShowDone ? 'hide' : 'show'"></span>
+                      </button>
+                      <ul x-show="g.key!=='done' || projectBoardShowDone" class="space-y-1.5">
+                        <template x-for="t in g.tasks" :key="t.file">
+                          <li class="rounded-lg px-3 py-2 hover:bg-base-200/60">
+                            <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                              <a href="#" @click.prevent="openBoardTask(t)"
+                                 class="link link-hover font-medium" x-text="t.title"></a>
+                              <span x-show="t.size" class="badge badge-sm badge-outline font-mono"
+                                    x-text="t.size"></span>
+                              <span x-show="t.session" class="font-mono text-xs text-base-content/50"
+                                    x-text="t.session"></span>
+                            </div>
+                            <div x-show="t.awaiting" class="mt-0.5 text-sm text-warning"
+                                 x-text="'awaiting: ' + t.awaiting"></div>
+                            <div x-show="t.blockedBy" class="mt-0.5 text-sm text-base-content/60"
+                                 x-text="t.blockedBy"></div>
+                            <!-- Last activity is the signal board.md cannot
+                                 carry, and the one that separates a live task
+                                 from one that has only been groomed. -->
+                            <div x-show="t.status!=='done'" class="mt-0.5 text-xs text-base-content/40">
+                              <span x-show="t.lastActivity"
+                                    x-text="boardTaskAge(t) + 'd since last log · ' + t.logEntries + (t.logEntries === 1 ? ' entry' : ' entries')"></span>
+                              <span x-show="!t.lastActivity" class="italic">no progress log</span>
+                            </div>
+                          </li>
+                        </template>
+                      </ul>
+                    </section>
+                  </template>
+                </div>
+
+                <!-- The markdown fallback, for a ref whose generator predates
+                     board.json or that has not regenerated since. -->
+                <article x-show="!projectBoardLoading && !projectBoardTasks && projectBoardHtml"
+                         @click="onBoardClick($event)"
                          class="prose prose-sm !max-w-none prose-pre:bg-base-200 prose-pre:text-base-content"
                          x-html="projectBoardHtml"></article>
-                <p x-show="!projectBoardLoading && !projectBoardHtml" class="text-base-content/40 italic text-base py-8">
+                <p x-show="!projectBoardLoading && !projectBoardTasks && !projectBoardHtml"
+                   class="text-base-content/40 italic text-base py-8">
                   No board file on this ref. Open the workspace's files instead.
                 </p>
               </div>
@@ -2359,6 +2421,8 @@ function app(){ return {
   projectLoading: false,
   _projectKey: '',
   projectBoardHtml: '',
+  projectBoardTasks: null,  // board.json's records; null = no projection on this ref
+  projectBoardShowDone: false,
   projectBoardLoading: false,
   _projectBoardKey: '',
   projectDocs: null,        // grouped listing; null = not loaded (or the tree read failed)
@@ -2453,6 +2517,15 @@ function app(){ return {
     const b = this.project?.board;
     return b && this.pinIsFile(b) ? b : '';
   },
+  // board.json is the TYPED projection, written by the same generator run as
+  // board.md (docs/TRACKER.md). Reading it is what lets this pane answer
+  // questions about a tracker rather than only display it; recovering the same
+  // fields by parsing the rendered markdown would be the display-before-data
+  // inversion. The convention fixes it as a sibling of the board file.
+  get projectBoardJsonFile(){
+    const f = this.projectBoardFile;
+    return f ? f.replace(/\.md$/, '.json') : '';
+  },
   async loadProjectBoard(force){
     const s = Alpine.store('browser');
     const file = this.projectBoardFile;
@@ -2460,7 +2533,24 @@ function app(){ return {
     const key = s.repo + '@' + s.ref + ':' + file;
     if (key === this._projectBoardKey && !force) return;
     this._projectBoardKey = key;
-    this.projectBoardLoading = true; this.projectBoardHtml = '';
+    this.projectBoardLoading = true;
+    this.projectBoardHtml = ''; this.projectBoardTasks = null;
+    // Projection first, markdown second. A repo whose generator predates
+    // board.json, or one that has not regenerated since, has no projection and
+    // must still get its board, so the fallback is not a nicety: it is what
+    // lets this ship before every tracker in the estate has caught up.
+    let tasks = null;
+    try {
+      const j = await s.gh.get(this.projectBoardJsonFile);
+      const parsed = JSON.parse(j.text);
+      if (Array.isArray(parsed?.tasks)) tasks = parsed.tasks;
+    } catch { /* no projection on this ref: fall through to the markdown */ }
+    if (key !== this._projectBoardKey) return;
+    if (tasks){
+      this.projectBoardTasks = tasks;
+      this.projectBoardLoading = false;
+      return;
+    }
     let res = null;
     try { res = await s.gh.get(file); } catch {}
     if (key !== this._projectBoardKey) return;
@@ -2469,6 +2559,49 @@ function app(){ return {
       catch { this.projectBoardHtml = '<pre>' + res.text.replace(/</g, '&lt;') + '</pre>'; }
     }
     this.projectBoardLoading = false;
+  },
+  // ── The review signals ────────────────────────────────────────────────────
+  // Derived here rather than in the generator where they are not mechanical,
+  // and read off the projection where they are. Pure getters, so the shapes
+  // are testable without a browser.
+
+  // The board's four sections, counted, empty ones dropped. Done collapses
+  // because it is the majority of every mature tracker: budget-drs is 86 of
+  // 99 rows, and a list that opens on its own history buries the eight things
+  // anyone can act on.
+  get projectBoardGroups(){
+    const t = this.projectBoardTasks;
+    if (!t) return [];
+    return [['backlog', 'On deck'], ['in-progress', 'In progress'],
+            ['blocked', 'Blocked'], ['done', 'Done']]
+      .map(([key, label]) => ({ key, label, tasks: t.filter(x => x.status === key) }))
+      .filter(g => g.tasks.length);
+  },
+  // Days since a task's newest progress-log entry. null when it has no log at
+  // all, which is a different fact from "old" and is counted separately: a
+  // task nobody has ever written a line about has not aged, it never started.
+  boardTaskAge(t, now = Date.now()){
+    const d = t?.lastActivity ? Date.parse(t.lastActivity + 'T00:00:00Z') : NaN;
+    return Number.isNaN(d) ? null : Math.floor((now - d) / 86400000);
+  },
+  // What a review pass asks first, over the OPEN set only. Counts, not names:
+  // naming the tasks is the row list's job and a summary that repeats it is
+  // noise. The 21-day line is a convention, not a measurement.
+  projectBoardReview(now = Date.now()){
+    const open = (this.projectBoardTasks || []).filter(t => t.status !== 'done');
+    return {
+      open: open.length,
+      awaiting: open.filter(t => t.awaiting).length,
+      untouched: open.filter(t => !t.lastActivity).length,
+      stale: open.filter(t => (this.boardTaskAge(t, now) ?? 0) >= 21).length,
+    };
+  },
+  // A row's task file, resolved the same way onBoardClick resolves a markdown
+  // row's href, so both paths reach the viewer identically.
+  openBoardTask(t){
+    const base = this.projectBoardFile.split('/').slice(0, -1).join('/');
+    const path = this.resolveRepoRelative(base, t?.href || '');
+    if (path) this.openFile(path);
   },
   // What makes the rendered board NAVIGABLE: its relative links (a row's
   // `tasks/<id>.md`, the protocol README) resolve against the board file's

@@ -211,13 +211,28 @@ The per-repo views in the sidebar:
     README at `<path>/README.md`.
   - **Board** renders a **file** board in-pane (a folder `tracker` keeps the
     header Board button and its open-the-folder behavior instead, having no one
-    file to render). What makes it a surface rather than a blob: the rendered
-    board's relative links (a row's task file, the protocol README) resolve
-    against the board's folder and open in the shell's viewer, so a task is one
-    tap without leaving the workspace; absolute links behave normally. Every
-    board tap (estate row, repo sidebar row) routes here, so the board reads
-    the same from every level. This is the "first-class trackers" half of the
-    project layer.
+    file to render). Every board tap (estate row, repo sidebar row) routes
+    here, so the board reads the same from every level. This is the
+    "first-class trackers" half of the project layer.
+
+    It reads **`board.json`**, the typed projection the board generator writes
+    beside `board.md` ([TRACKER.md](TRACKER.md)), and falls back to rendering
+    the markdown when a ref has no projection: a tracker that has not
+    regenerated since the generator learned to emit one still gets its board.
+    The projection is what makes this a **review** surface rather than a
+    renderer, since a board is a display artifact and recovering fields by
+    parsing it would be the display-before-data inversion. What the typed read
+    adds: sections grouped and counted with **Done collapsed** (it is the
+    majority of every mature tracker, and a list that opens on its own history
+    buries the few rows anyone can act on), `size` and `awaiting` per row, and
+    a review line counting the open set, how many await someone, how many have
+    been quiet three weeks or more, and how many carry no progress log at all.
+    That last pair is the signal `board.md` structurally cannot hold, and
+    "never logged" is kept distinct from "old" because a task nobody has
+    written a line about has not aged, it never started. Rows open their task
+    file in the shell's viewer, resolved against the board's folder, which is
+    the same resolution the markdown fallback applies to a row's relative link
+    (the protocol README, a task) while absolute links behave normally.
   - **Pages** is the workspace's slice of the repo's `pages` catalog,
     **derived rather than declared**: entries whose path sits under the
     workspace folder, plus entries claiming it with a `project` key. One
@@ -1141,7 +1156,7 @@ repos. All are optional; a repo with no config is simply off the estate.
   fill the sidebar **Needs attention** block; on the estate cards they are
   badges beside the branch and PR counts. Only what is *not* passing shows on
   either, so a current repo displays nothing at all; badging green states would
-  make the block furniture, and furniture stops being read. Five kinds, each
+  make the block furniture, and furniture stops being read. Six kinds, each
   answerable from the API alone (`lib/repo-checks.js`):
 
   | kind | asks | fields |
@@ -1151,6 +1166,18 @@ repos. All are optional; a repo with no config is simply off the estate.
   | `newer-than` | a generated file fell behind its sources | `path`, `sources[]` |
   | `absent` | a path that should not exist does | `path` (glob; `**` spans separators) |
   | `dir-count` | a folder meant to stay empty is not | `path`, `staleOver`, optional `ignore[]` (defaults to `.gitkeep`) |
+  | `tracker` | a workspace's open tasks are waiting on somebody, or have gone quiet | `path` (a tracker's `board.json`), optional `awaitingOver` (default 0), optional `staleAfterDays` |
+
+  `tracker` is the one **content-typed** kind: the other five ask about a path's
+  shape or age, while this one reads a tracker's typed projection
+  ([TRACKER.md](TRACKER.md)) and counts. It still sits inside the boundary,
+  since a projection is a committed file and the check is one API read. It is
+  what puts *"6 awaiting someone"* on a repo card, the fact a board cannot state
+  from a card and the one a person wants when deciding what to pick up. Quiet is
+  measured from the **oldest open task** and only when `staleAfterDays` is
+  declared, since how long a backlog may sit is a per-workspace judgment; done
+  tasks are excluded from every count, so old history cannot hold a tracker
+  stale.
 
   Every kind carries an optional `label` for the row. **A check that cannot be
   evaluated renders too**, in grey rather than amber: a check whose file was
