@@ -333,147 +333,124 @@ test('toggleFile stages a file and unstages it on the second tap', () => {
   assert.equal(data.refItems.length, 0);
 });
 
-// ── The one Add box ────────────────────────────────────────────────────────
-// Browse / Recent / Search were three controls over one corpus, differing only
-// in what the reader already knew. They are one field and one list now, and
-// what picks the rows is where you are (addScope) crossed with what you typed
-// (addQ). These four tests are that table, one per cell, plus the escalation.
+// ── Add: three panes ───────────────────────────────────────────────────────
+// Browse, Recent, and Search share one corpus and one outcome but are not one
+// question. They were briefly folded into a single query box; that put recent
+// files in the same list as the repos you navigate, which reads as neither a
+// place list nor an event list. Each pane now owns its own state and reads
+// none of the others', and these hold that separation, plus the one thing the
+// one-box build got right: Browse and Search share a tree cache.
 
-test('root, no query: the repos, then recent files under them', async () => {
+test('Browse lists repos, then descends; never a recent file', async () => {
   reset();
   store.repo = 'me/open';
   store.config = null;
   window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
   await data.loadRecent(true);
-  data.addQ = ''; data.addScope = null;
-  // The shell stays up: pickerRoots reads estateRepos on every call, so the
-  // roots ARE the estate, not a snapshot taken when recent loaded.
-  const rows = plain_(data.addRows());
-  assert.deepEqual(rows.filter(r => r.kind === 'repo').map(r => r.repo), ['me/open', 'me/fav'],
-    'containers lead');
-  assert.deepEqual(rows.filter(r => r.kind === 'file').map(r => r.path),
-    ['lib/new.js', 'docs/mid.md', 'old.md'], 'then recent, newest first');
-  delete window.__shell;
-});
-
-test('root, query: matching repos and recent files rank together, container breaks a tie', async () => {
-  reset();
-  store.repo = 'me/open';
-  store.config = null;
-  window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
-  await data.loadRecent(true);
+  data.addTab = 'browse';
   data.addScope = null;
-  data.addQ = 'mid';
-  assert.deepEqual(plain_(data.addRows()).filter(r => r.kind === 'file').map(r => r.path),
-    ['docs/mid.md'], 'a recent file matches on its basename');
-  data.addQ = 'fav';
-  const rows = plain_(data.addRows());
-  assert.equal(rows[0].kind, 'repo');
-  assert.equal(rows[0].repo, 'me/fav', 'the repo name matches and leads');
-  data.addQ = '';
-  delete window.__shell;
-});
 
-test('inside a repo, no query: one level of the tree, folders before files', async () => {
-  reset();
+  const roots = plain_(data.addRows());
+  assert.deepEqual(roots.map(r => r.repo), ['me/open', 'me/fav']);
+  assert.equal(roots.every(r => r.kind === 'repo'), true,
+    'no recent files mixed into the navigation list');
+
   data.trees = { 'me/open': { paths: ['lib/a.js', 'lib/deep/b.js', 'README.md'], truncated: false } };
   await data.enter('me/open', '', '');
-  const rows = plain_(data.addRows());
-  assert.deepEqual(rows.map(r => [r.kind, r.label]), [['dir', 'lib'], ['file', 'README.md']]);
-  // Descending needs no second call: one recursive read answers every level.
+  assert.deepEqual(plain_(data.addRows()).map(r => [r.kind, r.label]),
+    [['dir', 'lib'], ['file', 'README.md']], 'folders before files');
+  // One recursive read answers every level, so descending costs no more calls.
   await data.enter('me/open', '', 'lib');
   assert.deepEqual(plain_(data.addRows()).map(r => [r.kind, r.label]),
     [['dir', 'deep'], ['file', 'a.js']]);
-  data.addScope = null; data.trees = {};
-});
-
-test('inside a repo, query: the whole subtree below where you stand', async () => {
-  reset();
-  data.trees = { 'me/open': { paths: ['lib/a.js', 'lib/deep/alpha.js', 'docs/alpha.md'], truncated: false } };
-  await data.enter('me/open', '', 'lib');
-  data.addQ = 'alpha';
-  assert.deepEqual(plain_(data.addRows()).map(r => r.path), ['lib/deep/alpha.js'],
-    'scoped to the current dir, not the whole repo');
   data.addUp(-1);
-  assert.equal(data.addScope, null, 'the house crumb returns to root');
-  assert.equal(data.addQ, '', 'and clears the query it was aimed at');
-  data.trees = {};
+  assert.equal(data.addScope, null, 'the house crumb returns to the roots');
+
+  data.trees = {}; data.addTab = 'recent';
+  delete window.__shell;
 });
 
-test('a repo is never filtered out, only demoted: navigation always survives typing', async () => {
+test('Recent lists the sweep and nothing else, filtered by its own badges', async () => {
   reset();
   store.repo = 'me/open';
   store.config = null;
   window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
   await data.loadRecent(true);
-  data.addScope = null;
+  data.addTab = 'recent';
+  data.pillSel = '';
 
-  // A query matching no repo name and no recent file. The first cut dropped
-  // every repo here and left "No matching files." with nothing to enter and no
-  // way on but clearing the field.
-  data.addQ = 'zzzzz';
   const rows = plain_(data.addRows());
-  assert.deepEqual(rows.map(r => r.repo), ['me/open', 'me/fav'], 'both repos still reachable');
-  assert.equal(rows.every(r => r.kind === 'repo'), true, 'and nothing pretends to be a match');
-  assert.match(data.addHint, /Pick a repo to browse/, 'the list says why the repos are there');
+  assert.equal(rows.every(r => r.kind === 'file'), true, 'no repos to enter in here');
+  assert.deepEqual(rows.map(r => r.path), ['lib/new.js', 'docs/mid.md', 'old.md']);
 
-  // A matched file outranks an unmatched repo, so typing still leads with hits.
-  data.addQ = 'mid';
-  const ranked = plain_(data.addRows());
-  assert.equal(ranked[0].path, 'docs/mid.md', 'the hit leads');
-  assert.equal(ranked.some(r => r.kind === 'repo'), true, 'the repos follow, still there');
-  assert.equal(data.addHint, '', 'and no hint, since something did match');
+  assert.deepEqual(plain_(data.repoPills()), [{ repo: 'me/open', n: 2 }, { repo: 'me/fav', n: 1 }]);
+  data.togglePill('me/fav');
+  assert.deepEqual(plain_(data.addRows()).map(r => r.repo), ['me/fav'], 'single-select');
+  data.togglePill('me/open');
+  assert.deepEqual(plain_(data.addRows()).map(r => r.repo), ['me/open', 'me/open'], 'switches');
+  data.togglePill('me/open');
+  assert.equal(data.addRows().length, 3, 'tapping the selected badge returns to all');
 
-  data.addQ = '';
   delete window.__shell;
 });
 
-test('a leading @ is eaten, not matched', async () => {
+test('Search matches filename-contains across the trees, basename first', async () => {
   reset();
+  data.addTab = 'search';
+  data.trees = {
+    'me/open': { paths: ['lib/alpha.js', 'docs/notes.md', 'src/x-alpha-y.js'], truncated: false },
+  };
   store.repo = 'me/open';
   store.config = null;
-  window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
-  await data.loadRecent(true);
-  data.addScope = null;
 
-  // '@' is the sigil mention.js needs mid-prose. This field IS the path finder,
-  // so it means nothing here, and matching it literally emptied the list.
-  data.addQ = '@';
-  assert.equal(data.addQuery, '');
-  assert.deepEqual(plain_(data.addRows()).map(r => r.path).filter(Boolean),
-    ['lib/new.js', 'docs/mid.md', 'old.md'], 'same as having typed nothing');
-  data.addQ = '@mid';
-  assert.equal(data.addQuery, 'mid');
-  assert.deepEqual(plain_(data.addRows()).map(r => r.path).filter(Boolean), ['docs/mid.md']);
+  data.addQ = 'x';
+  assert.equal(data.addRows().length, 0, 'under two characters, nothing is attempted');
+  assert.match(data.addEmpty, /two characters/);
 
-  data.addQ = '';
-  delete window.__shell;
-});
-
-test('the deep search is offered, not fired, and the offer shrinks as you browse', async () => {
-  reset();
-  store.repo = 'me/open';
-  store.config = null;
-  window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
-  await data.loadRecent(true);
-
-  data.addScope = null;
-  data.addQ = 'a';
-  assert.equal(data.addOffer, '', 'one character is not a search');
   data.addQ = 'alpha';
-  assert.equal(data.addOffer, 'Search 2 more repos for "alpha"');
-  assert.equal(data.addRows().some(r => r.path === 'lib/alpha.js'), false,
-    'nothing deep until the offer is taken');
+  assert.deepEqual(plain_(data.addRows()).map(r => r.path), ['lib/alpha.js', 'src/x-alpha-y.js'],
+    'the basename-prefix hit outranks the one that merely contains it');
+  assert.equal(data.addRows().every(r => r.kind === 'file'), true, 'files only');
 
-  // Browsing one repo pays for it, so the offer names only what is left.
+  data.addQ = 'zzzzz';
+  assert.equal(data.addEmpty, 'No matching files.');
+
+  data.addQ = ''; data.trees = {}; data.addTab = 'recent';
+});
+
+test('a leading @ is eaten, not matched', () => {
+  reset();
+  data.addTab = 'search';
   data.trees = { 'me/open': { paths: ['lib/alpha.js'], truncated: false } };
-  assert.equal(data.addOffer, 'Search 1 more repo for "alpha"');
+  store.repo = 'me/open';
+  store.config = null;
+  // '@' is the sigil mention.js needs mid-prose; this field is already a path
+  // finder, so matching it literally only ever produced an empty list.
+  data.addQ = '@alpha';
+  assert.equal(data.addQuery, 'alpha');
+  assert.deepEqual(plain_(data.addRows()).map(r => r.path), ['lib/alpha.js']);
+  data.addQ = ''; data.trees = {}; data.addTab = 'recent';
+});
 
+test('Browse and Search share one tree cache, so neither refetches the other\'s', async () => {
+  reset();
+  store.repo = 'me/open';
+  store.config = null;
+  window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
+  data.trees = {};
+
+  // Joined, not deep-equal: the array is built in the jsdom realm, so its
+  // prototype is not this one's and deepStrictEqual fails on identity.
+  assert.equal(data.addUnread().join(','), 'me/open,me/fav', 'nothing read yet');
+  // Browsing one repo pays for it...
+  await data.enter('me/open', '', '');
+  assert.equal(data.addUnread().join(','), 'me/fav', 'and Search now owes only the rest');
+  // ...and tapping Search reads what is left, not what is already in hand.
   await data.loadAllTrees();
+  assert.equal(data.addUnread().join(','), '');
+
+  data.addScope = null; data.trees = {}; data.addTab = 'recent';
   delete window.__shell;
-  assert.equal(data.addOffer, '', 'with every repo read, the gate has nothing left to gate');
-  assert.equal(data.addRows().some(r => r.path === 'lib/alpha.js'), true, 'and the hits are in the list');
-  data.addQ = ''; data.trees = {};
 });
 
 test('diffLines marks adds and dels around a trimmed common middle', () => {

@@ -752,36 +752,37 @@ Takes from:
 
 Stage-view actions:
 
-- **Add**: one field and one list. Browse, Recent, and Search were three
-  controls over one corpus (the estate's root repos) with one outcome (a staged
-  ref), differing only in what you already knew: where the file lives, that it
-  changed lately, or part of its name. They are now a single box, and two bits
-  of state pick every row: **where you are** (root, or descended into a repo
-  folder) crossed with **what you typed**.
+- **Add**: three panes behind the app's segmented pill, over one corpus (the
+  estate's root repos) and one outcome (a staged ref). They share those but are
+  not one question, so each pane owns its own state and shows only its own kind
+  of row:
 
-  |  | no query | query |
+  | Pane | Answers | Rows |
   | --- | --- | --- |
-  | **root** | the repos, then recent files | matching repos and recent files, plus an offer to search the rest |
-  | **inside** | that folder's contents | every path under it in that repo |
+  | **Browse** | where does it live | repos, then folders, then files; crumbs walk back up |
+  | **Recent** | what changed lately | the cross-repo sweep, narrowed by single-select repo badges |
+  | **Search** | what is it called | filename-contains across every root repo |
 
-  Containers sort before leaves at equal score, mirroring the tap-through
-  picker's rule, so descending is never buried under files. **A repo is never
-  filtered out, only demoted:** it needs no query to be the right answer, so it
-  is the one route that always works, and a query matching nothing leaves the
-  repos listed under a line saying so rather than a dead end. A leading `@` is
-  eaten rather than matched, since the sigil `mention` needs mid-prose is
-  redundant in a field that is already a path finder. Each file row is
-  one tap to stage and a second to unstage; the muted line reads `repo ·
-  folder`. Crumbs walk back up, and the house icon returns to the roots.
+  These were briefly folded into a single query box (2026-08-04, same day).
+  That put recent files in the same list as the repos you navigate, and a list
+  that is half places-to-go and half things-that-happened reads as neither. The
+  panes are back; what survives from the one-box build is the part that was
+  about cost rather than layout.
 
-  **The deep search stays a tap, not a keystroke.** Filename-contains across
-  every root repo needs a recursive tree per repo, so firing it on input would
-  spend a call per repo per character. Typing at root instead filters what is
-  already in hand (repo names, the recent sweep) and offers a row naming what
-  is left: *Search 2 more repos for "foo"*. Descent and the deep search fill
-  **one** tree cache, so browsing a repo pays for it in advance: the offer
-  counts down as you go and disappears once every root is read, at which point
-  deep hits simply appear. Recent is the only read the box makes unasked;
+  **Browse and Search share one tree cache.** Entering a repo reads its
+  recursive tree, and tapping Search reads only what is still missing, so
+  browsing pays for searching in advance instead of the two fetching the same
+  thing twice. One recursive read per repo also answers every folder level, so
+  descending never costs another call. The pill tap is the gate on that cost,
+  which is what a tap is for and a keystroke is not.
+
+  Each file row is one tap to stage and a second to unstage; the muted line
+  reads `repo · folder`. Search's input is 16px below `sm` so iOS does not zoom
+  on focus, and a leading `@` is eaten rather than matched, since the sigil
+  `mention` needs mid-prose is redundant in a field that is already a file
+  search. Browse has no text input at all, which is the tap-through picker's
+  own rule and its reason. Local files are the one source that is not a repo
+  file, so they stay a header action (the paperclip) belonging to no pane;
 - **view** a staged file inline (a preview panel in the stage itself, with a
   GitHub jump-over to the file's true home; it never routes through a repo's
   Files view);
