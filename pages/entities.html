@@ -64,7 +64,20 @@
     Alpine.data('entities', () => ({
       REGISTRY: 'mehrlander/web-tools-private',
       PATH: 'state/entities.json',
-      DATA_REF: new URLSearchParams(location.search).get('data') || 'main',
+
+      // Which ref of the registry to read the index from.
+      //
+      // `window.__ref` is what toss-render injects when it serves this page
+      // from a branch, and defaulting to it is the point: a branch preview
+      // should read that branch's data without anyone remembering a
+      // parameter. This is the data-side twin of the `?use=` trap in
+      // CLAUDE.md. `?use=` pins the code a page loads and says nothing about
+      // the data it fetches, so a page previewed from a branch was reading
+      // main's index and 404ing whenever the index had not merged yet.
+      // Explicit `?data=` still wins, for reading one ref's data through
+      // another ref's code.
+      DATA_REF: new URLSearchParams(location.search).get('data')
+                || window.__ref || 'main',
 
       idx: null, loading: true, error: '',
       view: 'confirmed', repo: 'home', label: 'ORG', hideFlagged: false,
