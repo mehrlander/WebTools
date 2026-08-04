@@ -8,6 +8,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Reach the take-away menu from show-repo's Pages gallery](tasks/brief-from-the-pages-gallery-7d4031.md) (needs: Find a way to focus attention on one piece of a page's UI)
 - 🎫 [Name the code layers and account for tools/](tasks/code-layer-taxonomy-q15jp2.md)
 - 🎫 [Have data-view open at an addressed item via the fragment](tasks/data-view-consume-fragment-nxlpbs.md)
+- 🎫 [Read-tracking for docs: which files sessions actually open](tasks/docs-read-tracking-sn9nj8.md)
 - 🎫 [A multi-method harness for extracting structure from scanned documents](tasks/document-structure-harness-4mz7wk.md)
 - 🎫 [Capture button on the FAB, serializing what it already collects](tasks/fab-capture-button-f6q38m.md)
 - 🎫 [Give the file-review collapsed row more than a name and a count](tasks/file-review-collapsed-density-2rvxfn.md)
