@@ -830,3 +830,43 @@ outside budget-wa. `registry.py scaffold` collapses directories into one row
 each with file-type counts, so the pass is roughly 10 to 15 judgments per repo:
 wa-bills' entire corpus is one row (`bills/`, 138,746 files) whose
 classification is not in doubt.
+
+## 2026-08-04, the registry pass: what declaring the corpus changed
+
+Registries authored for all eight repos (130 rows; budget-wa's 20 already
+existed), and `entityprofile` taught to read them. 27m47s for the estate.
+
+`verify` earned its keep immediately: two rows in spend-wa's registry named
+directories that no longer exist, because they were authored from the repo's
+`.web-tools.json` rather than from the scaffold. That manifest turned out to
+carry three stale entries of its own, pointing at pages moved to budget-wa in
+an earlier commit.
+
+**What the split shows.** ORG, leading names, per corpus:
+
+| repo | concept-vocabulary | source-corpus |
+| --- | --- | --- |
+| fn-data | AFN, DRS, PDF, Haiku, OFM (73 names) | Individual State Agency, DRS, FTE, OFM Review (5,414 names) |
+| chat-histories | Claude, JavaScript, Deep Research, DRS, CEM (102) | UTC, PowerShell, UI, JavaScript, HTML (21,508) |
+| wa-bills | RCW, WSL, XML, Washington State (18) | API, LegislationService, House, Senate (418) |
+| budget-wa | OFM, DRS, ACFR, Sec, RCW (60) | sec, OFM, XML, HTM, PDF, FNP (1,071) |
+
+Two vocabularies that the undifferentiated profile pooled into one list. The
+fn-data row is the clearest case: `source-corpus` is OFM's fiscal-note form
+furniture, and the repo's own voice is a short list of domain acronyms.
+
+**A sampling bug the registry exposed.** Sampling ran before classification, so
+a flat cap let the largest corpus crowd out the rest. fn-data at 1,500 files
+would have been 99% supplied text with almost nothing left of its authored
+voice. Sampling is per corpus now, and every small corpus survives whole.
+
+**Coverage is not uniform, and the output says so.** Undeclared files land in
+`(undeclared)` rather than being guessed at: 62 of 176 in budget-wa, 19 in
+home, 18 in web-tools. The gap stays visible instead of silently filled.
+
+**A note on the authoring itself.** `hybrid-authored` is the default used for
+this estate's docs, because the authoring rules forbid inferring human versus
+model authorship from style and the honest answer for most docs here is both.
+`model-authored` was used only where there is evidence (chat-histories' topic
+summaries, fn-data's distill layer), and `human-authored` only for `home/me/`.
+These are one-line fixes if any reading is wrong.
