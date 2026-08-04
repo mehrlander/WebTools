@@ -277,7 +277,7 @@ The one glyph carries four meanings, and two rules keep them apart:
 | --- | --- | --- |
 | Repo **menu** | the sidebar row's github button (`lib/github-links.js`) | icon opens a list |
 | Repo or branch **destination** | an estate card, the atlas header's ref chip | plain icon |
-| The **manifest** behind a whole view | Map's Transport, Tools' curated list | icon **plus a label** ("Curate"), at the header's far edge |
+| The **manifest** behind a whole view | Map's Showing, Tools' curated list | icon **plus a label** ("Curate"), at the header's far edge |
 | An **exact file** | a set row, a route's renderer, a staged item | plain icon **plus a source peek** |
 
 A **source peek** (`lib/source-peek.js`) is a hover card showing the file:
@@ -315,7 +315,7 @@ the header nav the way a repo shows landing/atlas/files/…:
   sub-tabs, each keeping its own deep link: **Open** (`?view=activity`),
   **To-do** (`?view=todo`), **Jots** (`?view=jots`) (all below).
 - **Tools** (`?view=tools`) — a curated gallery of utility pages (below).
-- **Map** (`?view=map`) — the portable set and Transport (below). Per-repo scope and adoption live on the Repos cards.
+- **Map** (`?view=map`) — the portable set, Showing, and the Docs registry (below). Per-repo scope and adoption live on the Repos cards.
 - **Proposals** (`?view=proposals`) — pending cross-repo edits awaiting a confirm
   (below). The one conditional entry: shown only while something is pending.
 
@@ -599,8 +599,9 @@ the coordination layer itself into a first-class object, and is the operational
 face of the constellation doctrine ([`docs/CONSTELLATION.md`](CONSTELLATION.md)
 is the portable kernel, opened from the set header; the full worked instance is
 in the private `home` repo). Three tabs, `lib/alpineComponents/map.js`, each
-answering one question about the layer: what travels, who carries it, and how it
-moves.
+answering one question about the layer: what travels (the set), how content
+moves and shows (Showing), and what the documentation holds and what holds it
+(Docs). Who carries the set is a fact about a repo and lives on the Repos cards.
 
 *The set* renders the to-go bag from the hub's committed manifest,
 [`docs/portable.json`](portable.json), whose prose parent is
@@ -647,7 +648,10 @@ since adoption changes when someone edits a settings file. Refresh views
 re-crawls when the answer matters now. A repo the crawl has not reached shows no
 verdict and no chips: absent means not read, never not aligned.
 
-*Transport* answers how content moves, renders, and gets looked at, from the
+*Showing* (named Transport until 2026-08-04; renamed because
+[`SURFACING.md`](SURFACING.md) already uses "transport" for the stage link, and
+the lead section here was titled Showing all along) answers how content moves,
+renders, and gets looked at, from the
 hub's committed [`docs/routes.json`](routes.json). It opens with **Showing**,
 the mechanism table: given a subject at a version and a viewer, which link
 reaches it and, more usefully, what each one cannot show. That table is the
@@ -674,6 +678,22 @@ manifest owns them instead. The `routes` block is the owner of `toss-render`'s
 fetch, with `tools/test/routes-manifest.test.mjs` failing if the two drift: the
 same builder-plus-drift-check shape as the set's manifest test. Public, like the
 set, and loaded on first open of the tab rather than at mount.
+
+*Docs* renders the documentation registry,
+[`docs/docs.json`](docs.json), in the same lazy shape. Two tables. The
+**documents census**: every `.md`/`.json` under `docs/`, each with its subject,
+its status (**living** claims current truth and is wrong when stale; **record**
+preserves a moment and is wrong when rewritten), and its maintenance (authored
+or generated, with the discipline that keeps it true); complete by construction,
+since `tools/test/docs-registry.test.mjs` holds the folder and the table to
+exactly one row per file. And the **shared claims**: statements that live in
+more than one place, each with its one authoritative carrier and its typed
+repetitions (copy, paraphrase, pointer, live read; a copy says who keeps it, by
+hand or by a named builder), where an absent check renders in the warning tone
+rather than being omitted, because an unchecked copy should look unchecked every
+time the tab opens. The registry is authoritative for the claims it covers and
+owes the repo no inventory of them; the census, by contrast, is complete.
+Public, like the other two tabs.
 
 **Tools** (`?view=tools`) is a curated gallery of the utility pages the owner
 reaches for (the text-diff tool, the transform/compress round-trip, and so on),
