@@ -6,6 +6,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Backfill guide regions into old PR bodies and full-regenerate the merge guide](tasks/backfill-guide-regions-merge-guide-bkk4xv.md)
 - 🎫 [Converge the branch page's authored layer on the branch-review surface](tasks/branch-authored-layer-surface-0j0zik.md)
 - 🎫 [Reach the take-away menu from show-repo's Pages gallery](tasks/brief-from-the-pages-gallery-7d4031.md) (needs: Find a way to focus attention on one piece of a page's UI)
+- 🎫 [Name the code layers and account for tools/](tasks/code-layer-taxonomy-q15jp2.md)
 - 🎫 [Have data-view open at an addressed item via the fragment](tasks/data-view-consume-fragment-nxlpbs.md)
 - 🎫 [A multi-method harness for extracting structure from scanned documents](tasks/document-structure-harness-4mz7wk.md)
 - 🎫 [Capture button on the FAB, serializing what it already collects](tasks/fab-capture-button-f6q38m.md)
