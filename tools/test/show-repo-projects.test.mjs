@@ -205,7 +205,14 @@ test('the Board pill exists for a file board only, and renders the board keyed p
   shell.goProject('projects/a', 'board');
   assert.equal(shell.projectBoardFile, 'projects/a/tracker/board.md');
   await new Promise(r => setTimeout(r));
-  assert.deepEqual(gets, ['projects/a/tracker/board.md']);
+  // The typed projection is tried first (docs/TRACKER.md, board.json). This
+  // stub answers every path with the same markdown, so the JSON parse fails
+  // and the loader falls through to the markdown board, which is exactly the
+  // path a tracker that has not regenerated yet takes. Both fetches are the
+  // correct trace for that case; the projection's own path is covered in
+  // show-repo-board-review.test.mjs.
+  assert.deepEqual(gets, ['projects/a/tracker/board.json', 'projects/a/tracker/board.md']);
+  assert.equal(shell.projectBoardTasks, null, 'nothing parsed as a projection');
   assert.equal(shell.projectBoardLoading, false);
   // marked is unloadable under the harness, so the render falls back to the
   // escaped <pre>; the loader having produced SOMETHING is the contract here.

@@ -211,13 +211,28 @@ The per-repo views in the sidebar:
     README at `<path>/README.md`.
   - **Board** renders a **file** board in-pane (a folder `tracker` keeps the
     header Board button and its open-the-folder behavior instead, having no one
-    file to render). What makes it a surface rather than a blob: the rendered
-    board's relative links (a row's task file, the protocol README) resolve
-    against the board's folder and open in the shell's viewer, so a task is one
-    tap without leaving the workspace; absolute links behave normally. Every
-    board tap (estate row, repo sidebar row) routes here, so the board reads
-    the same from every level. This is the "first-class trackers" half of the
-    project layer.
+    file to render). Every board tap (estate row, repo sidebar row) routes
+    here, so the board reads the same from every level. This is the
+    "first-class trackers" half of the project layer.
+
+    It reads **`board.json`**, the typed projection the board generator writes
+    beside `board.md` ([TRACKER.md](TRACKER.md)), and falls back to rendering
+    the markdown when a ref has no projection: a tracker that has not
+    regenerated since the generator learned to emit one still gets its board.
+    The projection is what makes this a **review** surface rather than a
+    renderer, since a board is a display artifact and recovering fields by
+    parsing it would be the display-before-data inversion. What the typed read
+    adds: sections grouped and counted with **Done collapsed** (it is the
+    majority of every mature tracker, and a list that opens on its own history
+    buries the few rows anyone can act on), `size` and `awaiting` per row, and
+    a review line counting the open set, how many await someone, how many have
+    been quiet three weeks or more, and how many carry no progress log at all.
+    That last pair is the signal `board.md` structurally cannot hold, and
+    "never logged" is kept distinct from "old" because a task nobody has
+    written a line about has not aged, it never started. Rows open their task
+    file in the shell's viewer, resolved against the board's folder, which is
+    the same resolution the markdown fallback applies to a row's relative link
+    (the protocol README, a task) while absolute links behave normally.
   - **Pages** is the workspace's slice of the repo's `pages` catalog,
     **derived rather than declared**: entries whose path sits under the
     workspace folder, plus entries claiming it with a `project` key. One
