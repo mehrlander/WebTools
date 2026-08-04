@@ -14,10 +14,14 @@ preferences to weigh. Each one is here because the same correction kept being is
 by hand. Full statement and reasoning: `docs/HTML-STYLE.md` in `mehrlander/web-tools`.
 
 1. **No stat cards.** A row of tiles, each a label over a big number, is the default
-   output of a model asked to build a dashboard and is nearly always wrong. It spends
-   the top of the page on figures the reader cannot act on. Put a headline figure in
-   the header as one compact line, or behind a control. Treat any `stats`,
-   `stat-value`, or KPI-tile grid as a defect.
+   output of a model asked to build a dashboard and is nearly always wrong. It takes
+   the top of the page and the reader's attention and returns no relationship for it:
+   a tile isolates its number by construction, with no comparison, baseline, or
+   denominator, and meaning in data lives in relationships. That is what makes it an
+   easy button, glossy and shallow in one gesture, the cheapest thing that photographs
+   like rigor. Put a headline figure in the header as one compact line or behind a
+   control, and where figures deserve room give them a form that holds a comparison.
+   Treat any `stats`, `stat-value`, or KPI-tile grid as a defect.
 2. **No explanatory prose on the page.** Caveats and methodology go in the README, the
    PR body, or behind an info control. Where a qualifier is needed, label the thing
    (`brief only` as a column header) rather than writing a sentence about it.

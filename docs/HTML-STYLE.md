@@ -13,12 +13,29 @@ re-litigate per page ([CONVENTIONS.md](CONVENTIONS.md#standing-decisions-write-t
 ## The rules
 
 **No stat cards.** A row of tiles, each a label over a big number, is the default
-output of a model asked to build a dashboard, and it is nearly always wrong here. It
-spends the top of the page, the most valuable space, on figures the reader did not
-ask for and cannot act on. Four tiles reading 62%, 35%, 75%, 0% tell nobody which
-model is better. Put a headline figure in the header as one compact line, or behind
-a control, and give the page to the thing itself. This is the rule most often broken,
-so treat any `stats`, `stat-value`, or KPI-tile grid as a defect.
+output of a model asked to build a dashboard, and it is nearly always wrong here.
+
+The objection is not that the figures are uninteresting. It is that the form takes
+the most valuable space on the page and the most of the reader's attention, and
+returns no relationship for it. A tile isolates its number by construction: no
+comparison, no baseline, no denominator, nothing it moved against. Meaning in data
+lives in relationships, so a layout whose unit is the isolated figure cannot carry
+it, however good the figures are.
+
+That is what makes it an easy button. A tile row looks like analysis and demands to
+be read first, while committing to nothing and comparing nothing. It is glossy and
+shallow in the same gesture, which is why it is the default: it is the cheapest thing
+that photographs like rigor.
+
+The same numbers usually do communicate once arranged to show something. Four tiles
+reading 62%, 35%, 75%, 0% say nothing. The same run's counts in a table with a
+per-label expected against actual, and the gap between them, show a model collapsing
+its categories toward the plurality label. Nothing was added but the relationship.
+
+So: put a headline figure in the header as one compact line, or behind a control, and
+give the page to the thing itself. Where figures deserve the room, give them a form
+that holds a comparison. Treat any `stats`, `stat-value`, or KPI-tile grid as a
+defect. This is the rule most often broken.
 
 **No explanatory prose on the page.** Caveats, methodology, and "how to read this"
 belong in the README, the PR body, or behind an info control. A page that has to
