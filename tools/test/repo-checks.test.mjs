@@ -1,5 +1,5 @@
 // repo-checks.js — the pure declared-check evaluator. Run the IIFE against a
-// window stub and exercise each of the five kinds with a stubbed reader, plus
+// window stub and exercise each of the six kinds with a stubbed reader, plus
 // the three-valued `ok` that keeps an unevaluable check from reading as a pass.
 //
 // The reader is stubbed rather than mocked over fetch on purpose: the module's
@@ -249,4 +249,111 @@ test('verdict on an unprobed or errored entry is null, never a pass', () => {
   assert.equal(C.verdict([{ check: { kind: 'absent', label: 'x' }, error: 'tree unavailable' }], NOW)[0].ok, null);
   assert.equal(C.verdict([null], NOW)[0].ok, null);
   assert.deepEqual(C.verdict(undefined, NOW), []);
+});
+
+// ── tracker ────────────────────────────────────────────────────────────────
+// The one CONTENT-typed kind: it reads a tracker's board.json (the typed
+// projection, docs/TRACKER.md) rather than a path's shape or age. What it makes
+// visible from a card is how many of a workspace's open tasks wait on somebody.
+
+const TRACKER = { kind: 'tracker', path: 'w/tracker/board.json', label: 'budget-drs' };
+const board = (...tasks) => JSON.stringify({ tasks });
+const task = (o = {}) => ({ status: 'backlog', lastActivity: '2026-07-30', ...o });
+
+test('tracker counts the open set and fails when a task awaits somebody', async () => {
+  const r = await only(TRACKER, reader({ files: { 'w/tracker/board.json': board(
+    task(), task({ awaiting: 'your ratification' }), task({ status: 'done', lastActivity: '2020-01-01' }),
+  ) } }));
+  assert.equal(r.ok, false);
+  assert.match(r.detail, /2 open/);
+  assert.match(r.detail, /1 awaiting/);
+  assert.doesNotMatch(r.detail, /never logged/, 'a zero count states nothing');
+});
+
+test('tracker passes when nothing awaits anyone', async () => {
+  const r = await only(TRACKER, reader({ files: { 'w/tracker/board.json': board(task(), task()) } }));
+  assert.equal(r.ok, true);
+  assert.equal(r.detail, '2 open, oldest quiet 1d');
+});
+
+// `awaitingOver` is the opt-out: a repo that expects to carry pending decisions
+// raises the bar rather than dropping the check.
+test('awaitingOver raises the bar without silencing the count', async () => {
+  const check = { ...TRACKER, awaitingOver: 2 };
+  const files = { 'w/tracker/board.json': board(
+    task({ awaiting: 'a' }), task({ awaiting: 'b' })) };
+  const r = await only(check, reader({ files }));
+  assert.equal(r.ok, true, '2 is not over 2');
+  assert.match(r.detail, /2 awaiting/, 'the fact is still reported');
+  const over = await only(check, reader({ files: { 'w/tracker/board.json': board(
+    task({ awaiting: 'a' }), task({ awaiting: 'b' }), task({ awaiting: 'c' })) } }));
+  assert.equal(over.ok, false);
+});
+
+// Quiet is measured from the OLDEST open task, and only when declared: how long
+// a backlog may sit is a per-workspace judgment, not a default.
+test('staleAfterDays fires on the oldest open task, and is off unless declared', async () => {
+  const files = { 'w/tracker/board.json': board(
+    task({ lastActivity: '2026-07-30' }), task({ lastActivity: '2026-06-01' })) };
+  const off = await only(TRACKER, reader({ files }));
+  assert.equal(off.ok, true, 'no staleAfterDays, no staleness verdict');
+  assert.match(off.detail, /oldest quiet 60d/);
+  const on = await only({ ...TRACKER, staleAfterDays: 30 }, reader({ files }));
+  assert.equal(on.ok, false);
+});
+
+// A done task is history and must not hold the tracker stale, which it would if
+// the oldest date were taken across every row.
+test('done tasks are excluded from every count and from oldest', async () => {
+  const r = await only({ ...TRACKER, staleAfterDays: 30 }, reader({ files: {
+    'w/tracker/board.json': board(task(), task({ status: 'done', lastActivity: '2019-01-01' })),
+  } }));
+  assert.equal(r.ok, true);
+  assert.match(r.detail, /1 open, oldest quiet 1d/);
+});
+
+// A never-logged task has no date to be oldest, and is reported as its own
+// fact: it has not aged, it never started.
+test('a never-logged task is counted separately and does not become oldest', async () => {
+  const r = await only(TRACKER, reader({ files: {
+    'w/tracker/board.json': board(task(), task({ lastActivity: '' })),
+  } }));
+  assert.match(r.detail, /1 never logged/);
+  assert.match(r.detail, /oldest quiet 1d/, 'the dated task still supplies oldest');
+});
+
+test('a tracker with no open tasks reports so without an oldest', async () => {
+  const r = await only(TRACKER, reader({ files: {
+    'w/tracker/board.json': board(task({ status: 'done' })),
+  } }));
+  assert.equal(r.ok, true);
+  assert.equal(r.detail, '0 open');
+});
+
+// The three-valued `ok`: a projection that vanished or stopped being one is
+// unevaluable, not passing. Silence there is the failure this file prevents.
+test('a missing, unparseable, or wrong-shaped projection is unevaluable', async () => {
+  const missing = await only(TRACKER, reader({}));
+  assert.equal(missing.ok, null);
+  assert.match(missing.detail, /not found/);
+
+  const bad = await only(TRACKER, reader({ files: { 'w/tracker/board.json': '{ not json' } }));
+  assert.equal(bad.ok, null);
+  assert.match(bad.detail, /not valid JSON/);
+
+  const wrong = await only(TRACKER, reader({ files: { 'w/tracker/board.json': '{"notTasks":[]}' } }));
+  assert.equal(wrong.ok, null);
+  assert.match(wrong.detail, /no tasks array/);
+});
+
+// The two-phase rule: a fact must be time-independent, or the activity cache
+// rehashes every entry every night. This kind stores counts and a DATE, never
+// an age, so the same tracker probes identically at any clock.
+test('the probed fact carries no age, only counts and a date', async () => {
+  const [p] = await C.probe([TRACKER], reader({ files: {
+    'w/tracker/board.json': board(task(), task({ awaiting: 'x' })),
+  } }));
+  assert.deepEqual(p.fact, { open: 2, awaiting: 1, untouched: 0, oldest: '2026-07-30' });
+  const later = C.verdict([p], new Date('2027-01-01T00:00:00Z'))[0];
+  assert.match(later.detail, /oldest quiet 155d/, 'the same fact reads older against a later clock');
 });

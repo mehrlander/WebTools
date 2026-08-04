@@ -17,5 +17,13 @@
     "targets": [
       "mehrlander/home:inbox/web-tools"
     ]
-  }
+  },
+  "checks": [
+    {
+      "kind": "tracker",
+      "path": "tracker/board.json",
+      "staleAfterDays": 45,
+      "label": "tracker"
+    }
+  ]
 }

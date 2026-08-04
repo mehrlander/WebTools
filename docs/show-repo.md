@@ -1094,7 +1094,7 @@ repos. All are optional; a repo with no config is simply off the estate.
   fill the sidebar **Needs attention** block; on the estate cards they are
   badges beside the branch and PR counts. Only what is *not* passing shows on
   either, so a current repo displays nothing at all; badging green states would
-  make the block furniture, and furniture stops being read. Five kinds, each
+  make the block furniture, and furniture stops being read. Six kinds, each
   answerable from the API alone (`lib/repo-checks.js`):
 
   | kind | asks | fields |
@@ -1104,6 +1104,18 @@ repos. All are optional; a repo with no config is simply off the estate.
   | `newer-than` | a generated file fell behind its sources | `path`, `sources[]` |
   | `absent` | a path that should not exist does | `path` (glob; `**` spans separators) |
   | `dir-count` | a folder meant to stay empty is not | `path`, `staleOver`, optional `ignore[]` (defaults to `.gitkeep`) |
+  | `tracker` | a workspace's open tasks are waiting on somebody, or have gone quiet | `path` (a tracker's `board.json`), optional `awaitingOver` (default 0), optional `staleAfterDays` |
+
+  `tracker` is the one **content-typed** kind: the other five ask about a path's
+  shape or age, while this one reads a tracker's typed projection
+  ([TRACKER.md](TRACKER.md)) and counts. It still sits inside the boundary,
+  since a projection is a committed file and the check is one API read. It is
+  what puts *"6 awaiting someone"* on a repo card, the fact a board cannot state
+  from a card and the one a person wants when deciding what to pick up. Quiet is
+  measured from the **oldest open task** and only when `staleAfterDays` is
+  declared, since how long a backlog may sit is a per-workspace judgment; done
+  tasks are excluded from every count, so old history cannot hold a tracker
+  stale.
 
   Every kind carries an optional `label` for the row. **A check that cannot be
   evaluated renders too**, in grey rather than amber: a check whose file was
