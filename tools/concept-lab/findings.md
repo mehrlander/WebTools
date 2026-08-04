@@ -668,3 +668,62 @@ hiding it, which is the argument for showing it: `DRS` (2,582) and `Department
 of Retirement Systems` (30) are two rows, as are `TRS`/`Teachers' Retirement
 System` and three spellings of School Employees' Retirement System. Nothing
 here merges them, by design.
+
+## 2026-08-04, the masking leak: structural markdown reaching the names
+
+A reader spotted `` `Agriculture & `` in wa-bills' confirmed list, which should
+have been impossible twice over. Tracing it found two independent defects, one
+in masking and one in confirmation, and the second is the more serious.
+
+**The source** is `bills/texts/index/format-notes.md`, a passage about XML
+entity escaping that contains an inline code span **wrapping a line**:
+
+```
+`Agriculture &amp;
+  Natural Resources`
+```
+
+`INLINE_CODE` was `` `[^`\n]*` ``, whose class excludes the newline, so it
+silently forbids a construction markdown allows. The span went unmasked, the
+model saw the backtick and the bare `&`, and tagged the fragment `ORG`.
+
+**Then the fold vouched for it.** `fold()` strips every non-alphanumeric so
+that "L&I" and "L & I" meet, and that same strip turned `` `Agriculture & ``
+into `agriculture`, which a real OFM agency row then confirmed. So a masking
+artifact entered the one set advertised as trustworthy.
+
+**Scale, measured on the v1 index:** 162 names carrying the `markup` flag in
+the top-20 lists, and **24 of 582 gazetteer-confirmed names**, among them
+`| Governor's Office`, `> • Office of Financial Management`, and
+`# Military Department`. Most named the right organization, so the type
+judgments in the precision sample stand, but the *names* were unusable and 4%
+of the confirmed set was contaminated.
+
+Both fixed:
+
+- **Masking** now accepts a code span across one line (non-greedy, refusing a
+  blank line, so adjacent spans stay separate and a stray backtick cannot
+  swallow a paragraph), and blanks the leading run of blockquote, heading, and
+  list markers plus table pipes and emphasis asterisks. Underscore is
+  deliberately left alone: it is load-bearing inside the identifiers this
+  corpus is full of. Everything stays length-preserving, so sampled mentions
+  still quote the right span.
+- **Confirmation is its own function now** (`gazetteer.confirm`) with three
+  gates, each earned by a measured failure: reject a name carrying markup,
+  require a case match on short acronym keys, and require the table's class to
+  match what the caller asked for. Folding is lossy by design, so the step that
+  makes a trust claim cannot rely on the fold alone.
+
+The general lesson, which is why this is logged rather than quietly patched: a
+length-preserving mask that misses a construction fails **silently and
+downstream**. Nothing in the extraction complains; the artifact simply appears
+several stages later wearing a confirmation. A negative check on the mask
+(assert no backtick, pipe, or leading `>` survives into any extracted name)
+would have caught it at the source, and is the obvious next guard.
+
+One count in this session was overstated before being corrected, and it is
+worth recording as a method note: a first pass regexed for wrapped code spans
+and reported 32,289 across the estate. That regex also matches the **gap
+between** two adjacent spans (`` `a` and\n`b` ``), so the figure was inflated
+by an unknown amount and was replaced by the leaked-markup count above, which
+measures the thing that actually matters.

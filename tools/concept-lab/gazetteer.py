@@ -98,3 +98,39 @@ if __name__ == "__main__":
     g = build(roots)
     out.write_text(json.dumps(g, indent=1), encoding="utf-8")
     print(f"gazetteer: {g['size']} folded keys -> {out}", file=sys.stderr)
+
+
+# ------------------------------------------------------------------- confirm
+#
+# Applying the gazetteer is its own step with its own rules, because folding is
+# lossy in exactly the direction that matters here. `fold` strips every
+# non-alphanumeric character so that "L&I" and "L & I" meet, and that same
+# strip turns "`Agriculture &" into "agriculture", which a real OFM agency row
+# then vouches for. A confirmation step is a trust claim, so it has to refuse a
+# name the prose never actually contained.
+
+MARKUP = re.compile(r"[`|~>#*\[\]{}\\•]")
+AGENCYISH = {"agency", "agency-acronym", "vendor"}
+
+
+def confirm(name: str, gaz: dict, want=AGENCYISH):
+    """Return the gazetteer classes vouching for `name`, or None.
+
+    Three gates, each one earned by a measured failure:
+      markup     the name carries structural markdown, so it is a masking
+                 artifact rather than a name. 24 of 582 confirmations before
+                 this gate, including "| Governor's Office".
+      case       a short acronym key must match case, or every "doc" becomes
+                 the Department of Corrections.
+      type       the table's class must be one the caller wants, so a fund
+                 cannot confirm an organization.
+    """
+    if MARKUP.search(name):
+        return None
+    f = fold(name)
+    classes = gaz["entries"].get(f)
+    if not classes:
+        return None
+    if f in set(gaz.get("case_strict", ())) and not name.isupper():
+        return None
+    return classes if (want is None or set(classes) & want) else None

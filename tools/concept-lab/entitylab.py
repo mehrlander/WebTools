@@ -199,15 +199,32 @@ def find_tables(root: Path, limit: int = 4000) -> list[dict]:
 # ------------------------------------------------------------ prose harvesting
 
 FENCE = re.compile(r"```.*?```", re.S)
-INLINE_CODE = re.compile(r"`[^`\n]*`")
+# An inline code span may wrap a line: markdown allows it, and a class that
+# excludes \n silently forbids it. Measured cost of the stricter form: 24 of
+# 582 gazetteer-confirmed names carried leaked markup, among them
+# "`Agriculture &" (a wrapped span in wa-bills discussing XML entity escaping),
+# "| Governor's Office", and "> - Office of Financial Management". The span is
+# non-greedy and refuses a blank line, so adjacent spans stay separate and a
+# stray backtick cannot swallow a paragraph.
+INLINE_CODE = re.compile(r"`(?:[^`\n]|\n(?!\s*\n))*?`")
 URL = re.compile(r"https?://\S+|\[[^\]]*\]\([^)]*\)")
 FRONTMATTER = re.compile(r"\A---\n.*?\n---\n", re.S)
+# Structural markdown that is not prose and must not enter a name: the leading
+# run of blockquote, heading, and list markers, table pipes, and emphasis
+# asterisks. Underscore is deliberately left alone, since it is load-bearing
+# inside identifiers this corpus is full of.
+LINE_MARKERS = re.compile(r"^[ \t]*(?:[>#]+[ \t]*|[-*+\u2022][ \t]+)+", re.M)
+CELL_MARKS = re.compile(r"[|*]")
 
 
 def mask(text: str) -> str:
-    """Blank out code, links, and frontmatter, preserving length so spans stay true."""
+    """Blank out code, links, frontmatter, and structural markdown.
+
+    Length-preserving throughout, so character offsets into the result still
+    address the original and a sampled mention quotes the right span.
+    """
     text = FRONTMATTER.sub(lambda m: " " * len(m.group(0)), text)
-    for pat in (FENCE, INLINE_CODE, URL):
+    for pat in (FENCE, INLINE_CODE, URL, LINE_MARKERS, CELL_MARKS):
         text = pat.sub(lambda m: " " * len(m.group(0)), text)
     return text
 
