@@ -765,7 +765,12 @@ Stage-view actions:
   | **inside** | that folder's contents | every path under it in that repo |
 
   Containers sort before leaves at equal score, mirroring the tap-through
-  picker's rule, so descending is never buried under files. Each file row is
+  picker's rule, so descending is never buried under files. **A repo is never
+  filtered out, only demoted:** it needs no query to be the right answer, so it
+  is the one route that always works, and a query matching nothing leaves the
+  repos listed under a line saying so rather than a dead end. A leading `@` is
+  eaten rather than matched, since the sigil `mention` needs mid-prose is
+  redundant in a field that is already a path finder. Each file row is
   one tap to stage and a second to unstage; the muted line reads `repo ·
   folder`. Crumbs walk back up, and the house icon returns to the roots.
 

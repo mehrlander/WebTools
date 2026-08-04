@@ -364,8 +364,8 @@ test('root, query: matching repos and recent files rank together, container brea
   await data.loadRecent(true);
   data.addScope = null;
   data.addQ = 'mid';
-  assert.deepEqual(plain_(data.addRows()).map(r => r.path), ['docs/mid.md'],
-    'a recent file matches on its basename');
+  assert.deepEqual(plain_(data.addRows()).filter(r => r.kind === 'file').map(r => r.path),
+    ['docs/mid.md'], 'a recent file matches on its basename');
   data.addQ = 'fav';
   const rows = plain_(data.addRows());
   assert.equal(rows[0].kind, 'repo');
@@ -398,6 +398,56 @@ test('inside a repo, query: the whole subtree below where you stand', async () =
   assert.equal(data.addScope, null, 'the house crumb returns to root');
   assert.equal(data.addQ, '', 'and clears the query it was aimed at');
   data.trees = {};
+});
+
+test('a repo is never filtered out, only demoted: navigation always survives typing', async () => {
+  reset();
+  store.repo = 'me/open';
+  store.config = null;
+  window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
+  await data.loadRecent(true);
+  data.addScope = null;
+
+  // A query matching no repo name and no recent file. The first cut dropped
+  // every repo here and left "No matching files." with nothing to enter and no
+  // way on but clearing the field.
+  data.addQ = 'zzzzz';
+  const rows = plain_(data.addRows());
+  assert.deepEqual(rows.map(r => r.repo), ['me/open', 'me/fav'], 'both repos still reachable');
+  assert.equal(rows.every(r => r.kind === 'repo'), true, 'and nothing pretends to be a match');
+  assert.match(data.addHint, /Pick a repo to browse/, 'the list says why the repos are there');
+
+  // A matched file outranks an unmatched repo, so typing still leads with hits.
+  data.addQ = 'mid';
+  const ranked = plain_(data.addRows());
+  assert.equal(ranked[0].path, 'docs/mid.md', 'the hit leads');
+  assert.equal(ranked.some(r => r.kind === 'repo'), true, 'the repos follow, still there');
+  assert.equal(data.addHint, '', 'and no hint, since something did match');
+
+  data.addQ = '';
+  delete window.__shell;
+});
+
+test('a leading @ is eaten, not matched', async () => {
+  reset();
+  store.repo = 'me/open';
+  store.config = null;
+  window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
+  await data.loadRecent(true);
+  data.addScope = null;
+
+  // '@' is the sigil mention.js needs mid-prose. This field IS the path finder,
+  // so it means nothing here, and matching it literally emptied the list.
+  data.addQ = '@';
+  assert.equal(data.addQuery, '');
+  assert.deepEqual(plain_(data.addRows()).map(r => r.path).filter(Boolean),
+    ['lib/new.js', 'docs/mid.md', 'old.md'], 'same as having typed nothing');
+  data.addQ = '@mid';
+  assert.equal(data.addQuery, 'mid');
+  assert.deepEqual(plain_(data.addRows()).map(r => r.path).filter(Boolean), ['docs/mid.md']);
+
+  data.addQ = '';
+  delete window.__shell;
 });
 
 test('the deep search is offered, not fired, and the offer shrinks as you browse', async () => {
