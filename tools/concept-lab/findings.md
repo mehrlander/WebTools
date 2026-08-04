@@ -870,3 +870,50 @@ model authorship from style and the honest answer for most docs here is both.
 `model-authored` was used only where there is evidence (chat-histories' topic
 summaries, fn-data's distill layer), and `human-authored` only for `home/me/`.
 These are one-line fixes if any reading is wrong.
+
+## 2026-08-04, the bill-text probe: do not run NER over the corpus
+
+Before spending hours extracting text from wa-bills' 4.6 GB, a bounded probe:
+150 XML bills of 63,880, tags stripped, NER and the citation patterns run over
+the body, results compared against what the source already declares and what
+budget-wa's tables already name. Two minutes.
+
+**The source tags its own entities.** All 150 bills carry `<Sponsors>`
+(legislator names plus "by request of Department of Agriculture"),
+`<Legislature>`, and `<Session>`; 85 carry `<BillNumber>`. Sponsors are the
+population NER would most obviously be run to find, and they are already
+marked up. Parsing beats recognizing here, exactly as `entitylab` concluded
+about the CSV tables one level up.
+
+**NER over the body is mostly noise.** 767 `ORG` names from 150 bills, of
+which 17 (2%) are gazetteer-confirmable. The unconfirmed head is citation
+machinery, not organizations: `RCW` (1,017), `Sec` (486), `SHB` (106),
+`HOUSE` (57), `RRS §`, `EHB`, `3rd sp.s`. Extrapolating the run to the full
+corpus is roughly 14 hours of model time for that.
+
+**The citation patterns are extremely productive on the same text.** From 150
+bills: 3,865 RCW citations, 2,715 session laws, 879 bill references. Scaled to
+63,880 XML bills that is on the order of 1.6M RCW cites, at regex speed. This
+is the cross-repo join the first census argued for, and it needs no model at
+all.
+
+**Conclusion, and it changes the plan.** Step 3 should not be "run NER over
+bill text." It should be "parse the structure the source already provides, and
+run the citation patterns over the body." NER earns its keep on repo prose,
+where nobody has tagged anything; over a corpus whose publisher already
+marked up its entities, it is the expensive way to get a worse answer.
+
+### One cheap fix the probe surfaced
+
+`the department of health` failed to confirm where `Department of Health`
+succeeds, purely on the leading article: statutory and formal prose carries
+one and the tables never do. `confirm()` now tries a de-articled fold as a
+fallback, which cannot create a match the plain fold would not.
+
+Measured on the estate: **confirmations 465 to 775, +67%**, and the gains are
+all genuine, led by `the Department of Retirement Systems` (221 mentions in
+fn-data), `The Office of Financial Management` (169), and `the Health Care
+Authority` (154). It also sharpens the unresolved-entity point: DRS, Department
+of Retirement Systems, the Department of Retirement Systems, and The Department
+of Retirement Systems are now four confirmed names of one entity, still
+deliberately unmerged.
