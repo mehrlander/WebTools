@@ -576,28 +576,58 @@ test('whereFrom reads as repo short name, then the folder', () => {
 
 // ---- Diff lens: A/B auto-pairing, dump, and the review-prompts copy -----
 
-test('a second staged item auto-pairs into B, untouched', async () => {
+// The pair is where you are and what is next to it. min(i, n-2) is what keeps
+// it valid at the end, so a diff is always available with two or more staged
+// and the last position compares the last two rather than offering nothing.
+test('previewPair is the position and its neighbour, valid at both ends', async () => {
   reset();
   store.stage = [{ repo: 'me/a', ref: '', path: 'x.js' }];
   await tick();
-  assert.equal(data.diffA, 0);
-  assert.equal(data.diffB, 0, 'one item: nothing to pair yet');
+  data.preview = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.previewPair(), null, 'one item pairs with nothing');
+
   store.stage = [...store.stage, { repo: 'me/b', ref: '', path: 'y.js' }];
   await tick();
-  assert.equal(data.diffB, 1, 'second item auto-pairs into B');
-});
+  // Exactly two: "the two", from either position. This is the case it is for.
+  data.preview = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '0,1');
+  data.preview = { i: 1, name: 'y.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '0,1');
 
-test('auto-pairing stops once the user has picked A/B by hand', async () => {
-  reset();
-  await tick();
-  store.stage = [{ repo: 'me/a', ref: '', path: 'x.js' }, { repo: 'me/b', ref: '', path: 'y.js' }];
-  await tick();
-  assert.equal(data.diffB, 1);
-  data._diffTouched = true;
-  data.diffB = 0;
   store.stage = [...store.stage, { repo: 'me/c', ref: '', path: 'z.js' }];
   await tick();
-  assert.equal(data.diffB, 0, 'a manual pick is not overridden by a later addition');
+  data.preview = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '0,1');
+  data.preview = { i: 1, name: 'y.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '1,2');
+  data.preview = { i: 2, name: 'z.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '1,2', 'the last position compares the last two');
+  data.preview = null;
+});
+
+test('the preview toggles into a diff over that pair, and back to the file', async () => {
+  reset();
+  store.stage = [
+    { local: true, id: 401, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\ntwo\n' },
+    { local: true, id: 402, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'one\nTWO\n' },
+  ];
+  await tick(3);
+  await data.view(data.items[0]);
+  await tick(3);
+  assert.equal(data.preview.mode, 'file');
+
+  await data.togglePreviewDiff();
+  await tick(3);
+  assert.equal(data.preview.mode, 'diff', 'same modal, different mode');
+  assert.equal(data.diffA, 0);
+  assert.equal(data.diffB, 1, 'the pair came from the position, not a select');
+  assert.ok(data.diffRows, 'and it ran on the way in');
+  assert.match(data.previewPairLabel(), /a\.md .* b\.md/);
+
+  await data.togglePreviewDiff();
+  await tick(3);
+  assert.equal(data.preview.mode, 'file', 'and back');
+  data.preview = null;
 });
 
 test('diffLabel names the item\'s own ref, or "default"', () => {
@@ -606,22 +636,14 @@ test('diffLabel names the item\'s own ref, or "default"', () => {
   assert.equal(data.diffLabel({ local: true, name: 'pasted.txt' }), '(local) pasted.txt');
 });
 
-// The Diff lens's premise: the pair IS what is staged. It used to open on two
-// selects and two "ref" boxes, which read as "type two refs to construct a
-// pair" when in fact the selects only ever chose among staged items and B
-// already auto-paired. The controls announced a premise the code did not have.
-test('the pair is the staged set: two items pair themselves, no ref to type', async () => {
-  reset();
-  store.stage = [{ repo: 'me/a', ref: '', path: 'x.js' }];
-  await tick(3);   // autoPair rides an Alpine watcher, so it lands on the flush
-  assert.equal(data.diffA, 0);
-  assert.equal(data.diffB, 0, 'one item cannot pair with anything');
-
-  store.stage = [...store.stage, { repo: 'me/b', ref: '', path: 'y.js' }];
-  await tick(3);
-  assert.equal(data.diffA, 0);
-  assert.equal(data.diffB, 1, 'staging a second one is the whole gesture');
-  assert.equal('diffARef' in data, false, 'no per-side ref override survives');
+// No control constructs a pair. The Diff lens's selects and "ref" boxes read
+// as "type two refs to build one"; the boxes are gone, the selects are gone,
+// and the two ways a pair arises are the preview's position (above) and a
+// staged address. Nothing types a ref anywhere.
+test('nothing in the stage asks for a ref to be typed', () => {
+  assert.equal('diffARef' in data, false);
+  assert.equal('diffBRef' in data, false);
+  assert.equal('outTab' in data, false, 'and no lens strip picks between them');
 });
 
 test('a version diff is two staged addresses, not a typed ref', () => {
@@ -677,11 +699,11 @@ test('invalidateDiff drops a shown diff so a stale copy can\'t mismatch the sele
   assert.equal(data.diffStat, '', 'stat cleared');
 });
 
-test('removing a staged item clamps a now-out-of-range B and clears the stale diff', async () => {
+test('removing a staged item clamps an out-of-range pair and clears the stale diff', async () => {
   reset();
   store.stage = [{ repo: 'me/a', ref: '', path: 'x.js' }, { repo: 'me/b', ref: '', path: 'y.js' }];
   await tick();
-  assert.equal(data.diffB, 1, 'auto-paired to the second item');
+  data.diffA = 0; data.diffB = 1;
   data.diffRows = [{ t: 'ctx', line: 'z' }];
   store.stage = [{ repo: 'me/a', ref: '', path: 'x.js' }];  // drop the B item
   await tick();
@@ -767,21 +789,23 @@ test('decodePrompts drops malformed entries and bad payloads', () => {
   assert.deepEqual(plain_(StageLink.decodePrompts(enc)), [{ label: 'ok', ask: 'a' }], 'only complete {label,ask} survive');
 });
 
-test('a diff-mode stage opens on the Diff tab and auto-runs the diff once', async () => {
+test('a diff-mode link opens the preview on its diff, once', async () => {
   reset();
-  data.outTab = 'out';
+  data.preview = null;
   data.linkMode = 'diff';
   data._autoDiffed = false;
   store.stage = [
     { local: true, id: 301, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\ntwo\n' },
     { local: true, id: 302, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'one\nTWO\nthree\n' },
   ];
-  await tick();
-  assert.equal(data.outTab, 'diff', 'flips to the Diff tab');
-  await tick();
-  assert.ok(data.diffRows, 'ran the diff without a click');
+  await tick(4);
+  // The link's intent is "look at this comparison", so it puts the reader in
+  // front of one rather than selecting a control on the page.
+  assert.equal(data.preview?.mode, 'diff', 'the preview opens, in diff mode');
+  assert.ok(data.diffRows, 'and it ran without a click');
   assert.equal(data._autoDiffed, true, 'and only arms once');
   data.linkMode = '';
+  data.preview = null;
 });
 
 test('diffPrompts shows link-carried bespoke asks first, then the fixed set', () => {

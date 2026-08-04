@@ -791,32 +791,29 @@ Stage-view actions:
   estate's branch takeover, so a horizontal drag reads alike in both and a
   vertical one still scrolls the file. Every position opens: a binary local
   file and a failed fetch render a note in place of the viewer rather than
-  refusing, so `2 / 3` always means the second of three and a step never skips;
-- **Out / Diff**: the deposit surface, two lenses in the finder's open style.
-  Out covers everything leaving the stage: the concatenated bundle (each file
-  under a `// === owner/repo[@ref]:path ===` header; icon actions to refresh,
-  copy, download, with the size beside the lens) and the send-to-repo (destination is
-  the tap-through selector in folder mode; two-tap Send).
+  refusing, so `2 / 3` always means the second of three and a step never skips.
 
-  **Diff's premise is that the pair IS what is staged.** Stage two things and
-  it compares them, running on arrival rather than behind a button: `diffSide`
-  reads the bundle's content cache, so the diff over an already-built stage
-  costs nothing. Under two staged items there is nothing to compare and the
-  lens says so. At exactly two the pair is stated, not offered. Only past two,
-  where the pair is a genuine choice, are there A/B selects.
-
-  It used to open on two selects and two `ref` boxes at every count, which
-  announced a premise the code did not have: it read as "type two refs to
-  construct a pair", when the selects only ever chose among staged items and B
-  already auto-paired to the second one. The per-side ref override went with
-  them. A **version diff** (one path, two refs) is now said the way the stage
-  already says everything: `owner/repo@main:x` and `owner/repo@dev:x` are two
-  addresses, so both stage and the pair is those two. For an arbitrary pair,
-  **Open in Diff** hands this one to the Diff page, which takes an
-  `owner/repo[@ref]:path` per side with its own browser and adds split view,
-  word-level highlighting, folding, and a real patch. A pasted local file
-  counts as a side here. (The base...head branch compare is not here: it lives
-  under the Branches view, with the review it serves.);
+  **The preview also holds the diff**, because the position already names a
+  pair: what you are on and what is next to it, so nothing is selected and
+  nothing is offered to select. `min(i, n-2)` keeps that valid at the end, so a
+  diff is available whenever two or more are staged, and with exactly two it is
+  simply "the two" from either position. One header button toggles the modal
+  between the file and the comparison, carrying the tagged rows, Copy, the
+  review prompts (link-carried bespoke asks first, then the fixed set), and
+  **Open in Diff** for the Diff page's split view and real patch. Stepping with
+  the diff open re-pairs and re-runs, so walking the set walks its comparisons.
+  A `&mode=diff` link opens the preview on its diff rather than selecting a
+  control on the page;
+- **Out**: the deposit surface, and the only lens on this side now. It covers
+  everything leaving the stage: the concatenated bundle (each file under a
+  `// === owner/repo[@ref]:path ===` header; icon actions to refresh, copy,
+  download, with the size beside it) and the send-to-repo (destination is the
+  tap-through selector in folder mode; two-tap Send). There is no Out/Diff pill:
+  the two were never two views of one thing. Out is where the set **leaves**;
+  Diff was a way to **read** two of its files, and reading belongs in the
+  preview (above), which already walks the staged set and can therefore pair
+  two of it with no second set of controls. (The base...head branch compare is
+  not here either: it lives under the Branches view, with the review it serves.);
 - **Save**: the pin on the Staged header, opening the dialog above.
   This replaced a write of `stage.files` into a named repo's `.web-tools.json`,
   which overwrote the previous save, put a cross-repo set in one repo's config,
@@ -863,9 +860,9 @@ six fixed general prompts, each still one-click-copying both compared texts plus
 the diff plus that ask.
 
 An optional `&mode=diff` is the third part of the object: the intent that this
-stage opens as a diff. A `mode=diff` link opens on the **Diff** tab and runs the
+stage opens as a diff. A `mode=diff` link opens the **preview** on its diff and runs the
 compare on open (no click), so a review link lands the reviewer straight on the
-diff; without it a stage opens on **Out** (a bundle handoff). `StageLink.mint(items,
+diff; without it a stage opens with the preview closed, on the Out surface (a bundle handoff). `StageLink.mint(items,
 base, { prompts, mode })` encodes all of it (a bare prompts array is still
 accepted for the legacy call), and `StageLink.parseLink(hash)` returns `{ items,
 prompts, mode }`; the bare `StageLink.parse(hash)` still returns just the items
