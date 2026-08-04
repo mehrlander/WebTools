@@ -322,45 +322,108 @@ test('loadRecent merges root repos newest-first, tagging each file with its repo
   ]);
 });
 
-test('toggleRecent stages a recent file and unstages it on the second tap', () => {
+test('toggleFile stages a file and unstages it on the second tap', () => {
   reset();
   const it = { repo: 'me/open', path: 'lib/new.js', date: '2026-07-18T10:00:00Z' };
-  assert.equal(data.recentStaged(it), false);
-  data.toggleRecent(it);
+  assert.equal(data.pathStaged(it), false);
+  data.toggleFile(it);
   assert.deepEqual(plain_(data.refItems), [{ repo: 'me/open', ref: '', path: 'lib/new.js' }]);
-  assert.equal(data.recentStaged(it), true);
-  data.toggleRecent(it);
+  assert.equal(data.pathStaged(it), true);
+  data.toggleFile(it);
   assert.equal(data.refItems.length, 0);
 });
 
-test('repo pills are single-select: one repo, switch, back to all', async () => {
+// ── The one Add box ────────────────────────────────────────────────────────
+// Browse / Recent / Search were three controls over one corpus, differing only
+// in what the reader already knew. They are one field and one list now, and
+// what picks the rows is where you are (addScope) crossed with what you typed
+// (addQ). These four tests are that table, one per cell, plus the escalation.
+
+test('root, no query: the repos, then recent files under them', async () => {
   reset();
   store.repo = 'me/open';
   store.config = null;
   window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
   await data.loadRecent(true);
+  data.addQ = ''; data.addScope = null;
+  // The shell stays up: pickerRoots reads estateRepos on every call, so the
+  // roots ARE the estate, not a snapshot taken when recent loaded.
+  const rows = plain_(data.addRows());
+  assert.deepEqual(rows.filter(r => r.kind === 'repo').map(r => r.repo), ['me/open', 'me/fav'],
+    'containers lead');
+  assert.deepEqual(rows.filter(r => r.kind === 'file').map(r => r.path),
+    ['lib/new.js', 'docs/mid.md', 'old.md'], 'then recent, newest first');
   delete window.__shell;
-  assert.deepEqual(plain_(data.repoPills()), [{ repo: 'me/open', n: 2 }, { repo: 'me/fav', n: 1 }]);
-  data.togglePill('me/fav');
-  assert.deepEqual(plain_(data.finderRows().map(r => r.repo)), ['me/fav'], 'single-select shows only that repo');
-  data.togglePill('me/open');
-  assert.deepEqual(plain_(data.finderRows().map(r => r.repo)), ['me/open', 'me/open'], 'selecting another switches');
-  data.togglePill('me/open');
-  assert.equal(data.finderRows().length, 3, 'tapping the selected pill returns to all');
 });
 
-test('search matches filename-contains over the cached trees, capped', () => {
-  data.finderTab = 'search';
-  data._treePaths = { 'me/open': ['lib/alpha.js', 'docs/notes.md'], 'me/fav': ['src/alpha-beta.js'] };
-  data.searchQ = 'alpha';
-  assert.deepEqual(plain_(data.finderRows().map(r => [r.repo, r.path])), [
-    ['me/open', 'lib/alpha.js'],
-    ['me/fav', 'src/alpha-beta.js'],
-  ]);
-  data.searchQ = 'x';
-  assert.equal(data.finderRows().length, 0, 'under 2 chars, no matches attempted');
-  data.finderTab = 'recent';
-  data._treePaths = null;
+test('root, query: matching repos and recent files rank together, container breaks a tie', async () => {
+  reset();
+  store.repo = 'me/open';
+  store.config = null;
+  window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
+  await data.loadRecent(true);
+  data.addScope = null;
+  data.addQ = 'mid';
+  assert.deepEqual(plain_(data.addRows()).map(r => r.path), ['docs/mid.md'],
+    'a recent file matches on its basename');
+  data.addQ = 'fav';
+  const rows = plain_(data.addRows());
+  assert.equal(rows[0].kind, 'repo');
+  assert.equal(rows[0].repo, 'me/fav', 'the repo name matches and leads');
+  data.addQ = '';
+  delete window.__shell;
+});
+
+test('inside a repo, no query: one level of the tree, folders before files', async () => {
+  reset();
+  data.trees = { 'me/open': { paths: ['lib/a.js', 'lib/deep/b.js', 'README.md'], truncated: false } };
+  await data.enter('me/open', '', '');
+  const rows = plain_(data.addRows());
+  assert.deepEqual(rows.map(r => [r.kind, r.label]), [['dir', 'lib'], ['file', 'README.md']]);
+  // Descending needs no second call: one recursive read answers every level.
+  await data.enter('me/open', '', 'lib');
+  assert.deepEqual(plain_(data.addRows()).map(r => [r.kind, r.label]),
+    [['dir', 'deep'], ['file', 'a.js']]);
+  data.addScope = null; data.trees = {};
+});
+
+test('inside a repo, query: the whole subtree below where you stand', async () => {
+  reset();
+  data.trees = { 'me/open': { paths: ['lib/a.js', 'lib/deep/alpha.js', 'docs/alpha.md'], truncated: false } };
+  await data.enter('me/open', '', 'lib');
+  data.addQ = 'alpha';
+  assert.deepEqual(plain_(data.addRows()).map(r => r.path), ['lib/deep/alpha.js'],
+    'scoped to the current dir, not the whole repo');
+  data.addUp(-1);
+  assert.equal(data.addScope, null, 'the house crumb returns to root');
+  assert.equal(data.addQ, '', 'and clears the query it was aimed at');
+  data.trees = {};
+});
+
+test('the deep search is offered, not fired, and the offer shrinks as you browse', async () => {
+  reset();
+  store.repo = 'me/open';
+  store.config = null;
+  window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
+  await data.loadRecent(true);
+
+  data.addScope = null;
+  data.addQ = 'a';
+  assert.equal(data.addOffer, '', 'one character is not a search');
+  data.addQ = 'alpha';
+  assert.equal(data.addOffer, 'Search 2 more repos for "alpha"');
+  assert.equal(data.addRows().some(r => r.path === 'lib/alpha.js'), false,
+    'nothing deep until the offer is taken');
+
+  // Browsing one repo pays for it, so the offer names only what is left.
+  data.trees = { 'me/open': { paths: ['lib/alpha.js'], truncated: false } };
+  assert.equal(data.addOffer, 'Search 1 more repo for "alpha"');
+
+  await data.loadAllTrees();
+  delete window.__shell;
+  assert.equal(data.addOffer, '', 'with every repo read, the gate has nothing left to gate');
+  assert.equal(data.addRows().some(r => r.path === 'lib/alpha.js'), true, 'and the hits are in the list');
+  data.addQ = ''; data.trees = {};
 });
 
 test('diffLines marks adds and dels around a trimmed common middle', () => {

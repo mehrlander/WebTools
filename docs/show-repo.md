@@ -745,22 +745,38 @@ a repo *accepts* files is a fact about that repo.
 Takes from:
 
 1. upload: the drop-zone (a file, or pasted text; pasted ref lines stage as refs),
-2. a repo: the grab picker in the view (a tap-through path selector over the
-   estate's repos; no text input, so no keyboard or iOS focus zoom), or the
-   explorer's `+` buttons while visiting a repo,
+2. a repo: the **Add box** on the bench (below), or the explorer's `+` buttons
+   while visiting a repo,
 3. a repo manifest's `stage.files` (seeds an empty stage when that repo opens),
 4. a `#stage=` link.
 
 Stage-view actions:
 
-- **Recent / Search**: the finder, two tabs. Recent is the latest committed
-  files across the estate's root repos (one `recentFiles()` sweep per repo,
-  loaded when the stage is first shown), filterable by per-repo pills
-  (single-select: tap to show only that repo, tap again for all). Search is
-  filename-contains over the same repos' full trees (one cached
-  recursive-tree call per repo; matching is local per keystroke). Either way
-  each row is one tap to stage, a second to unstage, and the muted line reads
-  `repo · folder`;
+- **Add**: one field and one list. Browse, Recent, and Search were three
+  controls over one corpus (the estate's root repos) with one outcome (a staged
+  ref), differing only in what you already knew: where the file lives, that it
+  changed lately, or part of its name. They are now a single box, and two bits
+  of state pick every row: **where you are** (root, or descended into a repo
+  folder) crossed with **what you typed**.
+
+  |  | no query | query |
+  | --- | --- | --- |
+  | **root** | the repos, then recent files | matching repos and recent files, plus an offer to search the rest |
+  | **inside** | that folder's contents | every path under it in that repo |
+
+  Containers sort before leaves at equal score, mirroring the tap-through
+  picker's rule, so descending is never buried under files. Each file row is
+  one tap to stage and a second to unstage; the muted line reads `repo ·
+  folder`. Crumbs walk back up, and the house icon returns to the roots.
+
+  **The deep search stays a tap, not a keystroke.** Filename-contains across
+  every root repo needs a recursive tree per repo, so firing it on input would
+  spend a call per repo per character. Typing at root instead filters what is
+  already in hand (repo names, the recent sweep) and offers a row naming what
+  is left: *Search 2 more repos for "foo"*. Descent and the deep search fill
+  **one** tree cache, so browsing a repo pays for it in advance: the offer
+  counts down as you go and disappears once every root is read, at which point
+  deep hits simply appear. Recent is the only read the box makes unasked;
 - **view** a staged file inline (a preview panel in the stage itself, with a
   GitHub jump-over to the file's true home; it never routes through a repo's
   Files view);
