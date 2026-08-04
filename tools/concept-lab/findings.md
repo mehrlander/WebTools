@@ -632,3 +632,39 @@ what it discusses. Worth stating plainly wherever the contrast is shown.
   say nothing about their quality.
 - One rater, ten names per band. Wide enough to rank the labels, too thin to
   fit anything.
+
+## 2026-08-04, gazetteer: the tables close the gap, at a cost in recall
+
+`gazetteer.py` builds a lookup from the tables the estate already curates (OFM
+agency and fund registries, spend-wa's vendor crosswalk) plus a 34-entry hand
+acronym bridge, 1,742 folded keys. Applied to the existing profile as pure
+post-processing: no model run, since the profile already carries every name.
+
+**Precision on the confirmed set: 97.5%** (39 of 40 on a random sample; the
+miss is "Sections", a bad row in `agency-names.csv`). Against a 23% baseline
+for raw `ORG`. Confirmation requires both a table hit and type agreement, so
+the 62 names confirmed only as *funds* while the recognizer said `ORG`
+(`General Fund` and kin) are excluded rather than counted as wins.
+
+**The cost is recall, and it is severe:** 520 of 36,400 `ORG` names (1.4%),
+carrying 16,126 of 178,879 mentions (9%). This is a trustworthy core, not an
+index. Per repo the mention share ranges from 0% (web-tools, correctly: it
+names no agencies) to 31% (spend-wa).
+
+Two collisions the first run introduced, both fixed and both worth keeping as
+the general lesson that a gazetteer inherits the estate's polysemy:
+
+- **`doc` matched `DOC`** (Department of Corrections) through case-insensitive
+  folding. That single collision was 73 of web-tools' 89 confirmed mentions.
+  Short acronym keys now require a case match.
+- **`UTC` is now deliberately absent.** It is a real agency acronym (Utilities
+  and Transportation Commission) and in this estate it means Coordinated
+  Universal Time: 3,331 mentions in the chat archive against zero for the
+  commission. A key earns its place on measured usage, not on being a real
+  agency somewhere.
+
+The confirmed list also makes the unresolved-entity problem visible rather than
+hiding it, which is the argument for showing it: `DRS` (2,582) and `Department
+of Retirement Systems` (30) are two rows, as are `TRS`/`Teachers' Retirement
+System` and three spellings of School Employees' Retirement System. Nothing
+here merges them, by design.
