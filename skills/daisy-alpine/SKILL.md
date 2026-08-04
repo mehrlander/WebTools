@@ -7,6 +7,29 @@ description: Building HTML artifacts and web UI components using DaisyUI 5, Tail
 
 Component reference and patterns for building browser-based UI with DaisyUI 5 (Tailwind CSS 4) and Alpine.js.
 
+## House style: read this before laying out a page
+
+This file covers **how to build**. These cover **what to build**, and they are not
+preferences to weigh. Each one is here because the same correction kept being issued
+by hand. Full statement and reasoning: `docs/HTML-STYLE.md` in `mehrlander/web-tools`.
+
+1. **No stat cards.** A row of tiles, each a label over a big number, is the default
+   output of a model asked to build a dashboard and is nearly always wrong. It spends
+   the top of the page on figures the reader cannot act on. Put a headline figure in
+   the header as one compact line, or behind a control. Treat any `stats`,
+   `stat-value`, or KPI-tile grid as a defect.
+2. **No explanatory prose on the page.** Caveats and methodology go in the README, the
+   PR body, or behind an info control. Where a qualifier is needed, label the thing
+   (`brief only` as a column header) rather than writing a sentence about it.
+3. **Browsing is a full-viewport takeover.** A deck, gallery, diff, or result set is
+   `fixed inset-0` with `grid-rows-[auto_1fr_auto]`: thin header, content, thin
+   footer. Not a boxed widget with page furniture around it.
+4. **Type is for reading, not for fitting.** Primary content at `text-xl`+ with
+   `leading-8`. `text-xs` belongs in chrome only. If content shrank to fit, the layout
+   is wrong, not the type.
+5. **One accent, and it means something.** Colour carries information, not decoration.
+   In a comparison, each side keeps a fixed treatment across every view.
+
 ## References
 
 - **DaisyUI 5 components**: See `references/daisyui.md` for complete component syntax, class names, and usage rules
