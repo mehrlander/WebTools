@@ -174,7 +174,8 @@ itself; a page that instantiates `GH` by hand gets only what it loads.
 | `console.history` / `.subscribe` / `.filter`, `consoleKit` | `kits/console.js` | structured console retention over the base wrapper |
 | `html`, the DOM helpers (`ea`, `el`, …), `copy()` | `vanilla-bundle.js` | ambient string/DOM utilities |
 | `proof` | `kits/proof.js` | sandboxed proof documents (srcdoc builders); vanilla-demo and chat-render sit on it |
-| `chatRender` | `chat-render.js` | chat transcript renderer; fenced blocks become live artifacts |
+| `chatRender` | `chat-render.js` | chat transcript renderer; fenced blocks become live artifacts. Loads after `swipe-deck.js` |
+| `swipeDeck` | `swipe-deck.js` | the house swipe format: a snap track of slides, and the fullscreen takeover that frames it. Self-contained, so another repo's page can load it with a plain `<script src>` |
 | Alpine stores `browser`, `toasts`; magics `$clip`, `$paste`, `$toast` | `alpine-bundle.js` | exist only after `alpine:init` |
 | `__builtOffline` | a build (`kits/build.js` output) | present only on baked/offline pages |
 | `window.<kit>` namespaces | each kit | see [kits/README.md](../lib/kits/README.md) |
