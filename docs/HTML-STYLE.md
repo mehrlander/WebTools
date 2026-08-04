@@ -57,6 +57,19 @@ Dot indicators up to about 25 items, a progress bar past that. Keyboard arrows,
 Escape, and the phone back button all work. Filters go in a header dropdown, not a
 row of chips eating a line of the viewport.
 
+**`min-w-0` on the scroll track, or the layout bursts.** A grid or flex item defaults
+to `min-width: auto`, meaning it refuses to shrink below its content's min-content
+width. A track holding 100 slides at `min-w-full` therefore claims 100 viewports,
+pushes the fixed container wider than the screen, and drags the header off the right
+edge with it. This is the horizontal twin of the `min-h-0` that the `1fr` row already
+needs, and it fails the same way: silently, and only on a narrow screen.
+
+**Verify it by measuring, not by looking.** A viewport screenshot crops whatever sits
+past the frame, so horizontal overflow is invisible to the exact check most likely to
+be run. Compare `documentElement.scrollWidth` against `clientWidth` at phone width,
+and when listing offending elements, skip any inside a horizontally scrollable
+ancestor or every carousel slide reports as a fault.
+
 ## Where the numbers went
 
 Removing the stat cards does not mean hiding the analysis. It means the analysis is
