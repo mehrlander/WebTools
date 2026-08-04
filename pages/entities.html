@@ -82,6 +82,7 @@
       idx: null, loading: true, error: '',
       view: 'confirmed', repo: 'home', label: 'ORG', hideFlagged: false,
       cell: 'name',   // contrast matrix cell: leading name, or counts
+      corpus: '',     // '' = every corpus pooled; else one analysis_use value
 
       async init() {
         try {
@@ -127,16 +128,31 @@
       get confirmed() { return this.cur?.confirmed || [] },
       get labelsPresent() { return NAMED.filter(l => this.cur?.labels?.[l]) },
       get valueLabels() { return VALUE.filter(l => this.cur?.labels?.[l]) },
-      get curLabel() { return this.cur?.labels?.[this.label] },
+      // A corpus view reads the per-corpus counts the scan tagged; the empty
+      // corpus reads the pooled label. Same shape either way, so the table
+      // below does not branch.
+      get corpora() {
+        const seen = new Set();
+        for (const r of this.repos) for (const c of Object.keys(this.idx.repos[r].corpora || {})) seen.add(c);
+        return [...seen].sort();
+      },
+      labelFor(repo, lab) {
+        const R = this.idx.repos[repo];
+        if (!this.corpus) return R.labels?.[lab];
+        return R.corpora?.[this.corpus]?.[lab];
+      },
+      get curLabel() { return this.labelFor(this.repo, this.label) },
       get rows() {
         const t = this.curLabel?.top || [];
-        return this.hideFlagged ? t.filter(r => !r.flags.length) : t;
+        // Per-corpus rows carry no flags (the flag pass runs on the pooled
+        // names), so the filter is a no-op there rather than emptying the table.
+        return this.hideFlagged ? t.filter(r => !(r.flags || []).length) : t;
       },
       judged(l) { return JUDGED[l] },
       // Columns are the named labels any repo actually carries, in a fixed
       // order so a column means the same thing in every row.
       get matrixLabels() {
-        return NAMED.filter(l => this.repos.some(r => this.idx.repos[r].labels?.[l]));
+        return NAMED.filter(l => this.repos.some(r => this.labelFor(r, l)));
       },
     }));
   });
@@ -171,6 +187,18 @@
                 :class="repo===r ? 'btn-primary' : 'btn-ghost'"
                 @click="go({repo:r})" x-text="name(r)"></button>
       </template>
+      <!-- Buttons, not a select: x-model on a <select> binds before x-for has
+           rendered its options, so the control showed "all corpora" while the
+           data underneath was correctly filtered. Buttons also match the view
+           and repo controls beside them. -->
+      <div class="join shrink-0" x-show="view!=='confirmed'">
+        <button class="btn btn-xs join-item" :class="!corpus && 'btn-accent'"
+                @click="corpus=''">all corpora</button>
+        <template x-for="c in corpora" :key="c">
+          <button class="btn btn-xs join-item" :class="corpus===c && 'btn-accent'"
+                  @click="corpus=c" x-text="c"></button>
+        </template>
+      </div>
       <select class="select select-xs ml-auto shrink-0 font-mono" x-show="view==='extracted'"
               :value="label" @change="go({label:$event.target.value})">
         <template x-for="l in labelsPresent" :key="l"><option :value="l" x-text="l"></option></template>
@@ -213,13 +241,15 @@
                is the one number qualifying everything below it. -->
           <div class="flex items-baseline gap-4 text-xs tabular mb-3">
             <span class="opacity-60" x-text="`${n(curLabel.names)} names, ${n(curLabel.mentions)} mentions`"></span>
-            <span class="opacity-60" x-text="`${pct(curLabel.flagRate)} flagged by shape`"></span>
+            <span class="opacity-60" x-show="!corpus" x-text="`${pct(curLabel.flagRate)} flagged by shape`"></span>
+            <span class="opacity-60 italic" x-show="corpus">flags and precision are pooled-set measurements</span>
             <!-- A filled badge, not text-warning: winter's warning is a pale
                  amber on a light ground, so colour alone reads as de-emphasis,
                  which is the opposite of what this figure needs. -->
-            <span :class="judged(label)!==undefined ? 'badge badge-warning badge-sm font-medium' : 'opacity-60 italic'"
+            <span x-show="!corpus"
+                  :class="judged(label)!==undefined ? 'badge badge-warning badge-sm font-medium' : 'opacity-60 italic'"
                   x-text="judged(label)!==undefined ? `${pct(judged(label))} precision, adjudicated` : 'precision not judged'"></span>
-            <label class="cursor-pointer flex items-center gap-1 ml-auto opacity-60">
+            <label class="cursor-pointer flex items-center gap-1 ml-auto opacity-60" x-show="!corpus">
               <input type="checkbox" class="checkbox checkbox-xs" x-model="hideFlagged">
               hide flagged
             </label>
@@ -230,8 +260,9 @@
                 <tr class="hover">
                   <td class="text-xl leading-8" :class="r.flags.length && 'opacity-50'" x-text="r.name"></td>
                   <td class="text-xl leading-8 tabular text-right w-24" x-text="n(r.mentions)"></td>
-                  <td class="text-xs opacity-40 tabular text-right w-20" x-text="`${n(r.files)} files`"></td>
-                  <td class="text-xs font-mono opacity-40" x-text="r.flags.join(' ')"></td>
+                  <td class="text-xs opacity-40 tabular text-right w-20"
+                      x-text="r.files === undefined ? '' : `${n(r.files)} files`"></td>
+                  <td class="text-xs font-mono opacity-40" x-text="(r.flags || []).join(' ')"></td>
                 </tr>
               </template>
             </tbody>
@@ -274,19 +305,19 @@
                   </th>
                   <template x-for="l in matrixLabels" :key="l">
                     <td>
-                      <template x-if="idx.repos[r].labels?.[l]">
+                      <template x-if="labelFor(r,l)">
                         <div>
                           <div class="text-xl leading-8" x-show="cell==='name'"
-                               x-text="idx.repos[r].labels[l].top[0]?.name || '—'"></div>
+                               x-text="labelFor(r,l).top[0]?.name || '—'"></div>
                           <div class="text-xl leading-8 tabular" x-show="cell==='count'"
-                               x-text="n(idx.repos[r].labels[l].mentions)"></div>
+                               x-text="n(labelFor(r,l).mentions)"></div>
                           <div class="text-xs opacity-40 tabular whitespace-nowrap"
                                x-text="cell==='name'
-                                 ? n(idx.repos[r].labels[l].top[0]?.mentions)
-                                 : `${n(idx.repos[r].labels[l].names)} names`"></div>
+                                 ? n(labelFor(r,l).top[0]?.mentions)
+                                 : `${n(labelFor(r,l).names)} names`"></div>
                         </div>
                       </template>
-                      <span x-show="!idx.repos[r].labels?.[l]" class="opacity-20">—</span>
+                      <span x-show="!labelFor(r,l)" class="opacity-20">—</span>
                     </td>
                   </template>
                 </tr>
