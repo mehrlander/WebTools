@@ -60,6 +60,18 @@ try:
 except ImportError:
     zipf_frequency = None
 
+# The repo's content registry, the same one termlab and semsearch consult.
+# Declaration beats observation: a row's analysis_use decides which corpus a
+# file's extractions belong to, and `exclude` drops it entirely. Undeclared
+# files fall to "(undeclared)" rather than being guessed at, so the gap between
+# what is declared and what is not stays visible in the output.
+try:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]
+                           / ".claude" / "skills" / "content-registry"))
+    from registry import Registry
+except ImportError:
+    Registry = None
+
 NAMED = ["ORG", "PERSON", "GPE", "LAW", "NORP", "PRODUCT", "EVENT",
          "WORK_OF_ART", "FAC", "LOC", "LANGUAGE"]
 VALUE = ["DATE", "MONEY", "CARDINAL", "PERCENT", "QUANTITY", "ORDINAL", "TIME"]
@@ -130,25 +142,52 @@ def scan_repo(label: str, root: Path, nlp, sample: int | None,
     oversize = [p for p in files if p.stat().st_size > max_bytes]
     files = [p for p in files if p.stat().st_size <= max_bytes]
     total_files = len(files) + len(oversize)
-    sampled = False
-    if sample and len(files) > sample:
-        random.Random(seed).shuffle(files)
-        files = sorted(files[:sample])
-        sampled = True
 
-    texts, rels = [], []
+    # Classify BEFORE sampling, and cap each corpus separately. Sampling first
+    # would let the largest corpus crowd out the rest: fn-data's supplied
+    # extractions are 7,877 of its 7,940 markdown files, so a flat 1,500-file
+    # sample is 99% supplied text and leaves the repo's authored voice with
+    # almost nothing in it. Per-corpus capping keeps every small corpus whole.
+    reg = Registry.load(root) if Registry else None
+    buckets: dict[str, list] = defaultdict(list)
+    excluded = 0
     for path in files:
+        rel = path.relative_to(root).as_posix()
+        row = reg.classify(rel) if reg else None
+        if row is not None and row.analysis_use == "exclude":
+            excluded += 1
+            continue
+        buckets[row.analysis_use if row is not None else "(undeclared)"].append(path)
+
+    sampled = False
+    kept = []
+    for corp, paths in buckets.items():
+        if sample and len(paths) > sample:
+            random.Random(seed).shuffle(paths)
+            paths = paths[:sample]
+            sampled = True
+        kept.extend(sorted(paths))
+
+    texts, rels, corpora = [], [], {}
+    for path in sorted(kept):
+        rel = path.relative_to(root).as_posix()
+        row = reg.classify(rel) if reg else None
         try:
             texts.append(mask(path.read_text(encoding="utf-8", errors="replace")))
         except OSError:
             continue
-        rels.append(str(path.relative_to(root)))
+        rels.append(rel)
+        corpora[rel] = row.analysis_use if row is not None else "(undeclared)"
 
     counts: dict[str, Counter] = defaultdict(Counter)
     mentions: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
     files_with: dict[str, dict[str, set]] = defaultdict(lambda: defaultdict(set))
+    # (label, corpus) -> name -> count. One scan answers "run it per category",
+    # which matters when a scan is half an hour.
+    by_corpus: dict[tuple, Counter] = defaultdict(Counter)
 
     for rel, doc in zip(rels, nlp.pipe(texts, batch_size=16, n_process=3)):
+        corpus = corpora.get(rel, "(undeclared)")
         for ent in doc.ents:
             if ent.label_ not in ALL_LABELS:
                 continue
@@ -158,6 +197,7 @@ def scan_repo(label: str, root: Path, nlp, sample: int | None,
             if not name or not re.search(r"[A-Za-z0-9]", name) or len(name) > 90:
                 continue
             counts[ent.label_][name] += 1
+            by_corpus[(ent.label_, corpus)][name] += 1
             files_with[ent.label_][name].add(rel)
             bucket = mentions[ent.label_][name]
             if len(bucket) < SAMPLES_PER_NAME:
@@ -188,10 +228,20 @@ def scan_repo(label: str, root: Path, nlp, sample: int | None,
             "flag_reasons": Counter(f for e in names for f in e["flags"]).most_common(),
             "entries": names,
         }
+    corpus_files = Counter(corpora.values())
+    corpus_labels: dict[str, dict] = defaultdict(dict)
+    for (lab, corp), c in by_corpus.items():
+        corpus_labels[corp][lab] = {
+            "names": len(c), "mentions": sum(c.values()),
+            "top": [{"name": n, "mentions": m} for n, m in c.most_common(20)],
+        }
     return {
         "repo": label, "root": str(root),
         "files_scanned": len(rels), "files_total": total_files, "sampled": sampled,
         "skipped_oversize": len(oversize), "max_bytes": max_bytes,
+        "registry": bool(reg), "excluded_by_registry": excluded,
+        "corpus_files": dict(corpus_files),
+        "corpora": {k: dict(v) for k, v in corpus_labels.items()},
         "labels": labels,
     }
 
