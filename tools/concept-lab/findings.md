@@ -727,3 +727,46 @@ and reported 32,289 across the estate. That regex also matches the **gap
 between** two adjacent spans (`` `a` and\n`b` ``), so the figure was inflated
 by an unknown amount and was replaced by the leaked-markup count above, which
 measures the thing that actually matters.
+
+### The rescan, measured
+
+30m09s for seven repos (20:10:21 to 20:40:30), against 20m45s for the same
+scan before the masking change. The regex was the obvious suspect and was
+cleared by benchmark: 0.03s versus 0.06s over 120 backtick-heavy chat files,
+twice as slow in relative terms and irrelevant in absolute ones. The extra
+masking passes over the whole corpus are the likelier cost. `chats` is the
+long pole either way, about 16 of the first 22 minutes.
+
+Result of the fix:
+
+| repo | v1 confirmed | v1 with markup | v2 confirmed | v2 with markup |
+| --- | ---: | ---: | ---: | ---: |
+| wt | 6 | 0 | 11 | 0 |
+| home | 91 | 6 | 86 | 0 |
+| chats | 119 | 21 | 104 | 0 |
+| bwa | 133 | 1 | 119 | 0 |
+| spend | 59 | 0 | 47 | 0 |
+| bills | 6 | 1 | 5 | 0 |
+| fn | 106 | 4 | 102 | 0 |
+| **total** | **520** | **33** | **474** | **0** |
+
+wa-bills now confirms exactly Senate, OFM, SENATE, DRS, SBCTC. web-tools
+*rose*, 6 to 11, which is the fix working in the other direction: names that
+previously carried a leading pipe or bullet were a different string and could
+not confirm, and now they can.
+
+**The precision figure was restated, not carried forward.** 97.5% (39 of 40)
+was measured on the contaminated set, and several of those 40 were
+markup-carrying names I had judged correct *on type*. A fresh sample of 24
+from the rebuilt set found 0 type errors, which is recorded as bounding the
+rate loosely rather than as 100%: 24 is thin, and the honest claim is "no
+errors found," not "no errors."
+
+**One defect survives and is now named in the index.** Three of the 24 carry a
+boundary defect in the name string with the type still correct: "Department of
+Social and Health Services (Economic Services Administration" with an
+unbalanced paren, "Verizon Wireless Services'" and "Comcast Cable
+Communications'" with trailing possessives. Masking cannot fix these, since
+nothing structural is leaking; the model's span boundary is simply wrong. That
+is a different problem from the one this section fixed and should not be
+folded into it.
