@@ -27,6 +27,10 @@ globalThis.marked = window.marked = marked;
 // button dismisses it). Point them at the jsdom realm.
 for (const k of ['addEventListener', 'removeEventListener', 'history', 'location'])
   globalThis[k] = typeof window[k] === 'function' ? window[k].bind(window) : window[k];
+// The deck and the takeover moved to swipe-deck.js, which chat-render now
+// delegates to; openTranscript throws without it, on purpose.
+new Function('window', 'document', readFileSync(path.join(repoRoot, 'lib/swipe-deck.js'), 'utf8'))(window, window.document);
+globalThis.swipeDeck = window.swipeDeck;
 new Function('window', 'document', readFileSync(path.join(repoRoot, 'lib/chat-render.js'), 'utf8'))(window, window.document);
 const cr = window.chatRender;
 
