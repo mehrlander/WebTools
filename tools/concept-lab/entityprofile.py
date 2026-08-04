@@ -394,3 +394,37 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+# ---------------------------------------------------------------- index build
+#
+# Appended 2026-08-04. The profile JSON is 101 MB because it carries sampled
+# mentions; that is a working artifact, not something to commit. This projects
+# it down to what a surface actually renders: per-label counts, the top names,
+# and the gazetteer-confirmed core. Mentions are dropped entirely. The result is
+# a few hundred KB and lands in the private registry, because the names in it
+# come from private repos.
+
+def build_index(profiles, confirmed, meta, top_n=20):
+    repos = {}
+    for p in profiles:
+        labels = {}
+        for lab, d in p["labels"].items():
+            labels[lab] = {
+                "family": d["family"], "names": d["names"], "mentions": d["mentions"],
+                "flagRate": d["flag_rate"],
+                "flagReasons": dict(d["flag_reasons"][:5]),
+                "top": [{"name": e["name"], "mentions": e["mentions"],
+                         "files": e["files"], "flags": e["flags"]}
+                        for e in d["entries"][:top_n]],
+            }
+        core = [r for r in confirmed.get(p["repo"], []) if r["type_agrees"]]
+        repos[p["repo"]] = {
+            "filesScanned": p["files_scanned"], "filesTotal": p["files_total"],
+            "skippedOversize": p.get("skipped_oversize", 0),
+            "sampled": p["sampled"],
+            "labels": labels,
+            "confirmed": sorted(core, key=lambda r: -r["mentions"]),
+        }
+    return {"generatedAt": meta["generatedAt"], "method": meta["method"],
+            "precision": meta["precision"], "repos": repos}
