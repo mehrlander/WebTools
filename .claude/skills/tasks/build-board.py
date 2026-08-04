@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
-# Regenerate board.md from tasks/*.md. Frontmatter is flat `key: value` pairs.
+# Regenerate board.md and board.json from tasks/*.md. Frontmatter is flat
+# `key: value` pairs.
 # Portable: python3, stdlib only, zero dependencies.
 # Canonical source: mehrlander/web-tools at .claude/skills/tasks/build-board.py
 # (bundled in the portable plugin; /tasks runs it via ${CLAUDE_PLUGIN_ROOT})
 # Usage: python3 build-board.py <tasks_dir> <board_out>
-import os, pathlib, sys, urllib.parse
+#
+# Two projections from one run, so they cannot drift:
+#   board.md   the human list: GitHub, a diff, a clone, a session reading files
+#   board.json the typed projection: show-repo and anything else machine-side
+# The app must never parse the rendered board to recover fields it could have
+# been handed (data before display).
+import json, os, pathlib, re, sys, urllib.parse
 
 tasks_dir = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "tasks")
 out = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else "board.md")
+out_json = out.with_suffix(".json")
 
 # Where a row's link points, as a path relative to the BOARD's folder rather
 # than to the cwd, so the same href resolves on GitHub (relative to board.md)
@@ -16,8 +24,18 @@ out = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else "board.md")
 # both directories as arguments and a repo may lay them out differently.
 task_href_base = os.path.relpath(tasks_dir, out.parent).replace(os.sep, "/")
 
+# Recognized keys act on the board; everything else is an open tag, preserved
+# and never rendered (TRACKER.md, the two-layer rule). Listed here so board.json
+# can keep the same split rather than flattening it away.
+RECOGNIZED = {"id", "title", "status", "project", "track",
+              "opened", "closed", "session", "size", "awaiting"}
+
+LOG_DATE = re.compile(r"^\s*[-*]\s*\**(\d{4}-\d{2}-\d{2})", re.M)
+
+
 def meta(p):
-    parts = p.read_text().split("---")
+    text = p.read_text()
+    parts = text.split("---")
     if len(parts) < 3:
         return {}
     d = {}
@@ -28,7 +46,14 @@ def meta(p):
     # The link targets the file on disk, not `id`, so a file whose `id:` drifted
     # from its name still links to something that exists.
     d["_file"] = p.name
+    # Derived, for board.json only. A task's real freshness is the newest date
+    # in its progress log, not `opened:`; nothing else surfaces it, and it is
+    # what separates a live task from one that has only been groomed.
+    dates = LOG_DATE.findall(text.split("---", 2)[-1])
+    d["_last_activity"] = max(dates) if dates else ""
+    d["_log_entries"] = len(dates)
     return d
+
 
 tasks = [meta(p) for p in sorted(tasks_dir.glob("*.md"))]
 buckets = {"backlog": [], "in-progress": [], "blocked": [], "done": []}
@@ -36,6 +61,7 @@ for m in tasks:
     buckets.get(m.get("status", "backlog"), buckets["backlog"]).append(m)
 
 by_id = {m["id"]: m for m in tasks if m.get("id")}
+
 
 def blocker(m):
     # `track: depends-on:<id>` names a task this one waits on. Render it only
@@ -55,7 +81,18 @@ def blocker(m):
         return ""
     return f" (needs: {target.get('title', dep)})"
 
+
 def row(m):
+    open_task = m.get("status") != "done"
+    # `size` and `awaiting` answer independent questions and both belong to an
+    # open task only: a finished task's estimate and its old blocker are
+    # history, the same rule that already silences `depends-on:` on Done.
+    # `status` says whether a session can start this; `awaiting` says what is
+    # holding it, which is why it renders on backlog rows too and not only on
+    # blocked ones. A task can be startable in part and still be waiting on
+    # someone for the rest.
+    size = f" · {m['size']}" if open_task and m.get("size") else ""
+    wait = f" (awaiting: {m['awaiting']})" if open_task and m.get("awaiting") else ""
     who = f" (`{m['session']}`)" if m.get("session") else ""
     dep = blocker(m)
     # 🎫 marks a tracker task wherever one is surfaced (see CONVENTIONS.md /
@@ -66,7 +103,9 @@ def row(m):
     # are escaped, since one unescaped `]` would truncate the link text.
     label = m.get("title", "(untitled)").replace("[", "\\[").replace("]", "\\]")
     href = task_href_base + "/" + urllib.parse.quote(m.get("_file", ""))
-    return f"- 🎫 [{label}]({href}){who}{dep}"
+    # Awaiting sits last because it is the only free-text field and the longest.
+    return f"- 🎫 [{label}]({href}){size}{who}{dep}{wait}"
+
 
 lines = ["# Board", "", "_Generated from tasks/. Do not hand-edit._", ""]
 for head, key in [("On deck", "backlog"), ("In progress", "in-progress"),
@@ -75,3 +114,28 @@ for head, key in [("On deck", "backlog"), ("In progress", "in-progress"),
     lines += ([row(m) for m in buckets[key]] or ["- (none)"])
     lines.append("")
 out.write_text("\n".join(lines))
+
+
+def record(m):
+    # Recognized keys at the top level, open tags under `tags`, so the two-layer
+    # split survives into the projection and a consumer cannot mistake an
+    # unpromoted tag for part of the contract.
+    r = {k: m[k] for k in RECOGNIZED if m.get(k)}
+    r["file"] = m.get("_file", "")
+    r["href"] = task_href_base + "/" + urllib.parse.quote(m.get("_file", ""))
+    r["lastActivity"] = m.get("_last_activity", "")
+    r["logEntries"] = m.get("_log_entries", 0)
+    dep = blocker(m)
+    if dep:
+        r["blockedBy"] = dep.strip()[1:-1]      # the rendered phrase, parens off
+    tags = {k: v for k, v in m.items()
+            if not k.startswith("_") and k not in RECOGNIZED}
+    if tags:
+        r["tags"] = tags
+    return r
+
+
+# No timestamp: the artifact must be byte-identical for the same input, or the
+# lockstep checks that re-run the generator would fail on every clean tree.
+out_json.write_text(json.dumps(
+    {"tasks": [record(m) for m in tasks]}, indent=1, ensure_ascii=False) + "\n")
