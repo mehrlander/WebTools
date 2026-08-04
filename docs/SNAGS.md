@@ -87,3 +87,16 @@ elsewhere: a reconnected second server (a per-connection UUID twin) is holding
 the call. Retry on the stable `mcp__github__*` server before re-approving.
 *(seen: 2026-07-15)*
 → [github/mcp-server-routing.md](github/mcp-server-routing.md)
+
+---
+
+### screenshot-hides-overflow: a viewport shot cannot show horizontal overflow
+A full-viewport deck looked correct in every headless screenshot and burst its
+right edge on a phone. A viewport shot crops what sits past the frame, so
+overflow is structurally invisible to it. Measure instead: compare
+`documentElement.scrollWidth` against `clientWidth`, and skip elements inside
+a horizontally scrollable ancestor or every carousel slide reads as a fault.
+The cause here was the usual one, a scroll track as a grid item taking
+`min-width: auto` from its 100 `min-w-full` slides; `min-w-0` is the fix, the
+horizontal twin of the `min-h-0` already applied to the row. *(seen: 2026-08-04)*
+→ [HTML-STYLE.md](HTML-STYLE.md)

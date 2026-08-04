@@ -16,7 +16,12 @@ const calls = [];
 // live on the class. copyTo (refs), save/saveBytes (local bytes), get (reads).
 class FakeGH {
   constructor(conf = {}) { this.token = conf.token || ''; this.repo = conf.repo || ''; this.ref = 'main'; }
-  async get(path) { return { text: 'CONTENT ' + this.repo + ':' + path, sha: 'x' }; }
+  async get(path) {
+    // One repo that always 404s, so a failing read has a fixture: the preview
+    // has to open on it rather than refuse, or its position counter lies.
+    if (this.repo === 'me/missing') throw Object.assign(new Error('404'), { status: 404 });
+    return { text: 'CONTENT ' + this.repo + ':' + path, sha: 'x' };
+  }
   async recentFiles() {
     if (this.repo === 'me/open') return [
       { path: 'lib/new.js', date: '2026-07-18T10:00:00Z', sha: 'a' },
@@ -116,9 +121,12 @@ const previewViewer = () => window.document.getElementById('stage-preview-viewer
 test('view loads a ref into the inline preview, not the shared activeFile', async () => {
   reset();
   store.activeFile = null;
+  // The preview is a position in the stage, so the row it opens from is staged.
+  store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
   await data.view({ repo: 'me/a', ref: '', path: 'lib/x.js' });
   await tick(3);
   assert.equal(data.preview.name, 'lib/x.js');
+  assert.equal(data.preview.i, 0, 'and it knows where it is');
   assert.equal(store.activeFile, null, 'stage preview never routes through Files');
   const vwr = previewViewer();
   assert.equal(vwr.file, 'lib/x.js');
@@ -127,8 +135,56 @@ test('view loads a ref into the inline preview, not the shared activeFile', asyn
     'the origin gives the preview its GitHub link');
 });
 
+// The preview used to be a dead end: one file, and the only way to the next
+// staged one was close, find the row, open again. It carries an index now, so
+// the staged set is walkable. Every position opens, including the ones with
+// nothing to render, which is what keeps the counter honest.
+test('the preview walks the staged set, and every position opens', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'one.js' },
+    { local: true, id: 91, name: 'bin.png', path: 'bin.png', size: 9, isText: false },
+    { repo: 'me/a', ref: '', path: 'three.js' },
+  ];
+  await data.view({ repo: 'me/a', ref: '', path: 'one.js' });
+  await tick(3);
+  assert.equal(data.preview.i, 0);
+  assert.equal(data.preview.note, '', 'a text file renders');
+
+  // A binary local file is a position like any other: it opens with a note
+  // instead of a viewer, so stepping past it never skips or dead-ends.
+  await data.previewStep(1);
+  await tick(3);
+  assert.equal(data.preview.i, 1);
+  assert.match(data.preview.note, /Binary/);
+  assert.equal(data.preview.name, 'bin.png');
+
+  await data.previewStep(1);
+  await tick(3);
+  assert.equal(data.preview.i, 2);
+  assert.equal(data.preview.note, '');
+
+  // The ends hold.
+  await data.previewStep(1);
+  assert.equal(data.preview.i, 2, 'past the last is a no-op');
+  await data.previewStep(-1); await data.previewStep(-1); await data.previewStep(-1);
+  await tick(3);
+  assert.equal(data.preview.i, 0, 'before the first is a no-op');
+});
+
+test('a fetch that fails still opens, as a note rather than a closed modal', async () => {
+  reset();
+  store.stage = [{ repo: 'me/missing', ref: '', path: 'gone.js' }];
+  await data.view({ repo: 'me/missing', ref: '', path: 'gone.js' });
+  await tick(3);
+  assert.ok(data.preview, 'the modal is open');
+  assert.match(data.preview.note, /Could not load it/);
+});
+
 test('view shows a local text item inline', async () => {
-  await data.view({ local: true, id: 90, name: 'n.txt', path: 'n.txt', size: 2, isText: true, text: 'hi' });
+  const loc = { local: true, id: 90, name: 'n.txt', path: 'n.txt', size: 2, isText: true, text: 'hi' };
+  store.stage = [loc];
+  await data.view(loc);
   await tick(3);
   assert.equal(data.preview.name, 'n.txt');
   const vwr = previewViewer();
@@ -322,45 +378,135 @@ test('loadRecent merges root repos newest-first, tagging each file with its repo
   ]);
 });
 
-test('toggleRecent stages a recent file and unstages it on the second tap', () => {
+test('toggleFile stages a file and unstages it on the second tap', () => {
   reset();
   const it = { repo: 'me/open', path: 'lib/new.js', date: '2026-07-18T10:00:00Z' };
-  assert.equal(data.recentStaged(it), false);
-  data.toggleRecent(it);
+  assert.equal(data.pathStaged(it), false);
+  data.toggleFile(it);
   assert.deepEqual(plain_(data.refItems), [{ repo: 'me/open', ref: '', path: 'lib/new.js' }]);
-  assert.equal(data.recentStaged(it), true);
-  data.toggleRecent(it);
+  assert.equal(data.pathStaged(it), true);
+  data.toggleFile(it);
   assert.equal(data.refItems.length, 0);
 });
 
-test('repo pills are single-select: one repo, switch, back to all', async () => {
+// ── Add: three panes ───────────────────────────────────────────────────────
+// Browse, Recent, and Search share one corpus and one outcome but are not one
+// question. They were briefly folded into a single query box; that put recent
+// files in the same list as the repos you navigate, which reads as neither a
+// place list nor an event list. Each pane now owns its own state and reads
+// none of the others', and these hold that separation, plus the one thing the
+// one-box build got right: Browse and Search share a tree cache.
+
+test('Browse lists repos, then descends; never a recent file', async () => {
   reset();
   store.repo = 'me/open';
   store.config = null;
   window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
   await data.loadRecent(true);
+  data.addTab = 'browse';
+  data.addScope = null;
+
+  const roots = plain_(data.addRows());
+  assert.deepEqual(roots.map(r => r.repo), ['me/open', 'me/fav']);
+  assert.equal(roots.every(r => r.kind === 'repo'), true,
+    'no recent files mixed into the navigation list');
+
+  data.trees = { 'me/open': { paths: ['lib/a.js', 'lib/deep/b.js', 'README.md'], truncated: false } };
+  await data.enter('me/open', '', '');
+  assert.deepEqual(plain_(data.addRows()).map(r => [r.kind, r.label]),
+    [['dir', 'lib'], ['file', 'README.md']], 'folders before files');
+  // One recursive read answers every level, so descending costs no more calls.
+  await data.enter('me/open', '', 'lib');
+  assert.deepEqual(plain_(data.addRows()).map(r => [r.kind, r.label]),
+    [['dir', 'deep'], ['file', 'a.js']]);
+  data.addUp(-1);
+  assert.equal(data.addScope, null, 'the house crumb returns to the roots');
+
+  data.trees = {}; data.addTab = 'recent';
   delete window.__shell;
-  assert.deepEqual(plain_(data.repoPills()), [{ repo: 'me/open', n: 2 }, { repo: 'me/fav', n: 1 }]);
-  data.togglePill('me/fav');
-  assert.deepEqual(plain_(data.finderRows().map(r => r.repo)), ['me/fav'], 'single-select shows only that repo');
-  data.togglePill('me/open');
-  assert.deepEqual(plain_(data.finderRows().map(r => r.repo)), ['me/open', 'me/open'], 'selecting another switches');
-  data.togglePill('me/open');
-  assert.equal(data.finderRows().length, 3, 'tapping the selected pill returns to all');
 });
 
-test('search matches filename-contains over the cached trees, capped', () => {
-  data.finderTab = 'search';
-  data._treePaths = { 'me/open': ['lib/alpha.js', 'docs/notes.md'], 'me/fav': ['src/alpha-beta.js'] };
-  data.searchQ = 'alpha';
-  assert.deepEqual(plain_(data.finderRows().map(r => [r.repo, r.path])), [
-    ['me/open', 'lib/alpha.js'],
-    ['me/fav', 'src/alpha-beta.js'],
-  ]);
-  data.searchQ = 'x';
-  assert.equal(data.finderRows().length, 0, 'under 2 chars, no matches attempted');
-  data.finderTab = 'recent';
-  data._treePaths = null;
+test('Recent lists the sweep and nothing else, filtered by its own badges', async () => {
+  reset();
+  store.repo = 'me/open';
+  store.config = null;
+  window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
+  await data.loadRecent(true);
+  data.addTab = 'recent';
+  data.pillSel = '';
+
+  const rows = plain_(data.addRows());
+  assert.equal(rows.every(r => r.kind === 'file'), true, 'no repos to enter in here');
+  assert.deepEqual(rows.map(r => r.path), ['lib/new.js', 'docs/mid.md', 'old.md']);
+
+  assert.deepEqual(plain_(data.repoPills()), [{ repo: 'me/open', n: 2 }, { repo: 'me/fav', n: 1 }]);
+  data.togglePill('me/fav');
+  assert.deepEqual(plain_(data.addRows()).map(r => r.repo), ['me/fav'], 'single-select');
+  data.togglePill('me/open');
+  assert.deepEqual(plain_(data.addRows()).map(r => r.repo), ['me/open', 'me/open'], 'switches');
+  data.togglePill('me/open');
+  assert.equal(data.addRows().length, 3, 'tapping the selected badge returns to all');
+
+  delete window.__shell;
+});
+
+test('Search matches filename-contains across the trees, basename first', async () => {
+  reset();
+  data.addTab = 'search';
+  data.trees = {
+    'me/open': { paths: ['lib/alpha.js', 'docs/notes.md', 'src/x-alpha-y.js'], truncated: false },
+  };
+  store.repo = 'me/open';
+  store.config = null;
+
+  data.addQ = 'x';
+  assert.equal(data.addRows().length, 0, 'under two characters, nothing is attempted');
+  assert.match(data.addEmpty, /two characters/);
+
+  data.addQ = 'alpha';
+  assert.deepEqual(plain_(data.addRows()).map(r => r.path), ['lib/alpha.js', 'src/x-alpha-y.js'],
+    'the basename-prefix hit outranks the one that merely contains it');
+  assert.equal(data.addRows().every(r => r.kind === 'file'), true, 'files only');
+
+  data.addQ = 'zzzzz';
+  assert.equal(data.addEmpty, 'No matching files.');
+
+  data.addQ = ''; data.trees = {}; data.addTab = 'recent';
+});
+
+test('a leading @ is eaten, not matched', () => {
+  reset();
+  data.addTab = 'search';
+  data.trees = { 'me/open': { paths: ['lib/alpha.js'], truncated: false } };
+  store.repo = 'me/open';
+  store.config = null;
+  // '@' is the sigil mention.js needs mid-prose; this field is already a path
+  // finder, so matching it literally only ever produced an empty list.
+  data.addQ = '@alpha';
+  assert.equal(data.addQuery, 'alpha');
+  assert.deepEqual(plain_(data.addRows()).map(r => r.path), ['lib/alpha.js']);
+  data.addQ = ''; data.trees = {}; data.addTab = 'recent';
+});
+
+test('Browse and Search share one tree cache, so neither refetches the other\'s', async () => {
+  reset();
+  store.repo = 'me/open';
+  store.config = null;
+  window.__shell = { estateRepos: [{ repo: 'me/fav' }] };
+  data.trees = {};
+
+  // Joined, not deep-equal: the array is built in the jsdom realm, so its
+  // prototype is not this one's and deepStrictEqual fails on identity.
+  assert.equal(data.addUnread().join(','), 'me/open,me/fav', 'nothing read yet');
+  // Browsing one repo pays for it...
+  await data.enter('me/open', '', '');
+  assert.equal(data.addUnread().join(','), 'me/fav', 'and Search now owes only the rest');
+  // ...and tapping Search reads what is left, not what is already in hand.
+  await data.loadAllTrees();
+  assert.equal(data.addUnread().join(','), '');
+
+  data.addScope = null; data.trees = {}; data.addTab = 'recent';
+  delete window.__shell;
 });
 
 test('diffLines marks adds and dels around a trimmed common middle', () => {
@@ -386,30 +532,29 @@ test('runDiff resolves a local text item against a ref item', async () => {
     { repo: 'me/a', ref: '', path: 'lib/x.js' },
     { local: true, id: 97, name: 'pasted.txt', path: 'pasted.txt', size: 4, isText: true, text: 'CONTENT me/a:lib/x.js\nextra' },
   ];
-  data.diffA = 0; data.diffB = 1; data.diffARef = ''; data.diffBRef = '';
+  data.diffA = 0; data.diffB = 1;
   await data.runDiff();
   assert.ok(data.diffRows, 'diff produced');
   assert.deepEqual(plain_(data.diffRows.filter(r => r.t !== 'ctx')), [{ t: 'add', line: 'extra' }]);
   assert.equal(data.diffStat, '+1 \u22120');
 });
 
-test('diffHandoff builds the Diff page address, honoring ref overrides', () => {
+test('diffHandoff builds the Diff page address from the staged pair', () => {
   reset();
   store.stage = [
     { repo: 'me/a', ref: '', path: 'lib/x.js' },
     { repo: 'me/b', ref: 'feat/y', path: 'docs/z.md' },
   ];
-  data.diffA = 0; data.diffB = 1; data.diffARef = ''; data.diffBRef = '';
+  data.diffA = 0; data.diffB = 1;
   const u = new URL(data.diffHandoff);
   assert.match(u.pathname, /\/diff-tool\.html$/, 'points at the Diff page');
   assert.equal(u.searchParams.get('a'), 'me/a:lib/x.js');
   assert.equal(u.searchParams.get('b'), 'me/b@feat/y:docs/z.md');
 
-  // An override ref is what makes same-file-twice a version diff, so the
-  // handoff has to carry it, not the item's own ref.
-  data.diffARef = 'main';
-  assert.equal(new URL(data.diffHandoff).searchParams.get('a'), 'me/a@main:lib/x.js');
-  data.diffARef = '';
+  // Each side is the staged address, nothing more. The per-side ref override
+  // is gone: the version diff (one path, two refs) belongs on the Diff page,
+  // which takes an owner/repo[@ref]:path per side and browses for it, and this
+  // handoff is how a staged pair gets there.
 });
 
 test('diffHandoff hides when either side is a local file', () => {
@@ -431,36 +576,88 @@ test('whereFrom reads as repo short name, then the folder', () => {
 
 // ---- Diff lens: A/B auto-pairing, dump, and the review-prompts copy -----
 
-test('a second staged item auto-pairs into B, untouched', async () => {
+// The pair is where you are and what is next to it. min(i, n-2) is what keeps
+// it valid at the end, so a diff is always available with two or more staged
+// and the last position compares the last two rather than offering nothing.
+test('previewPair is the position and its neighbour, valid at both ends', async () => {
   reset();
   store.stage = [{ repo: 'me/a', ref: '', path: 'x.js' }];
   await tick();
-  assert.equal(data.diffA, 0);
-  assert.equal(data.diffB, 0, 'one item: nothing to pair yet');
+  data.preview = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.previewPair(), null, 'one item pairs with nothing');
+
   store.stage = [...store.stage, { repo: 'me/b', ref: '', path: 'y.js' }];
   await tick();
-  assert.equal(data.diffB, 1, 'second item auto-pairs into B');
-});
+  // Exactly two: "the two", from either position. This is the case it is for.
+  data.preview = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '0,1');
+  data.preview = { i: 1, name: 'y.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '0,1');
 
-test('auto-pairing stops once the user has picked A/B by hand', async () => {
-  reset();
-  await tick();
-  store.stage = [{ repo: 'me/a', ref: '', path: 'x.js' }, { repo: 'me/b', ref: '', path: 'y.js' }];
-  await tick();
-  assert.equal(data.diffB, 1);
-  data._diffTouched = true;
-  data.diffB = 0;
   store.stage = [...store.stage, { repo: 'me/c', ref: '', path: 'z.js' }];
   await tick();
-  assert.equal(data.diffB, 0, 'a manual pick is not overridden by a later addition');
+  data.preview = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '0,1');
+  data.preview = { i: 1, name: 'y.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '1,2');
+  data.preview = { i: 2, name: 'z.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '1,2', 'the last position compares the last two');
+  data.preview = null;
 });
 
-test('diffLabel names the override ref when given, else the item\'s own ref or "default"', () => {
-  const refItem = { repo: 'me/a', ref: 'dev', path: 'x.js' };
-  assert.equal(data.diffLabel(refItem, ''), 'me/a@dev:x.js');
-  assert.equal(data.diffLabel(refItem, 'main'), 'me/a@main:x.js');
-  assert.equal(data.diffLabel({ repo: 'me/a', ref: '', path: 'x.js' }, ''), 'me/a@default:x.js');
-  assert.equal(data.diffLabel({ local: true, name: 'pasted.txt' }, ''), '(local) pasted.txt');
+test('the preview toggles into a diff over that pair, and back to the file', async () => {
+  reset();
+  store.stage = [
+    { local: true, id: 401, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\ntwo\n' },
+    { local: true, id: 402, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'one\nTWO\n' },
+  ];
+  await tick(3);
+  await data.view(data.items[0]);
+  await tick(3);
+  assert.equal(data.preview.mode, 'file');
+
+  await data.togglePreviewDiff();
+  await tick(3);
+  assert.equal(data.preview.mode, 'diff', 'same modal, different mode');
+  assert.equal(data.diffA, 0);
+  assert.equal(data.diffB, 1, 'the pair came from the position, not a select');
+  assert.ok(data.diffRows, 'and it ran on the way in');
+  assert.match(data.previewPairLabel(), /a\.md .* b\.md/);
+
+  await data.togglePreviewDiff();
+  await tick(3);
+  assert.equal(data.preview.mode, 'file', 'and back');
+  data.preview = null;
+});
+
+test('diffLabel names the item\'s own ref, or "default"', () => {
+  assert.equal(data.diffLabel({ repo: 'me/a', ref: 'dev', path: 'x.js' }), 'me/a@dev:x.js');
+  assert.equal(data.diffLabel({ repo: 'me/a', ref: '', path: 'x.js' }), 'me/a@default:x.js');
+  assert.equal(data.diffLabel({ local: true, name: 'pasted.txt' }), '(local) pasted.txt');
+});
+
+// No control constructs a pair. The Diff lens's selects and "ref" boxes read
+// as "type two refs to build one"; the boxes are gone, the selects are gone,
+// and the two ways a pair arises are the preview's position (above) and a
+// staged address. Nothing types a ref anywhere.
+test('nothing in the stage asks for a ref to be typed', () => {
+  assert.equal('diffARef' in data, false);
+  assert.equal('diffBRef' in data, false);
+  assert.equal('outTab' in data, false, 'and no lens strip picks between them');
+});
+
+test('a version diff is two staged addresses, not a typed ref', () => {
+  reset();
+  // What the ref boxes were for, said the way the stage already says it: the
+  // same path twice at two refs are two different addresses, so both stage.
+  store.stage = [
+    { repo: 'me/a', ref: 'main', path: 'x.js' },
+    { repo: 'me/a', ref: 'dev', path: 'x.js' },
+  ];
+  assert.equal(data.items.length, 2, 'the same path at two refs is two items');
+  data.diffA = 0; data.diffB = 1;
+  assert.equal(new URL(data.diffHandoff).searchParams.get('a'), 'me/a@main:x.js');
+  assert.equal(new URL(data.diffHandoff).searchParams.get('b'), 'me/a@dev:x.js');
 });
 
 test('diffDump renders a labeled header over the tagged rows', () => {
@@ -502,11 +699,11 @@ test('invalidateDiff drops a shown diff so a stale copy can\'t mismatch the sele
   assert.equal(data.diffStat, '', 'stat cleared');
 });
 
-test('removing a staged item clamps a now-out-of-range B and clears the stale diff', async () => {
+test('removing a staged item clamps an out-of-range pair and clears the stale diff', async () => {
   reset();
   store.stage = [{ repo: 'me/a', ref: '', path: 'x.js' }, { repo: 'me/b', ref: '', path: 'y.js' }];
   await tick();
-  assert.equal(data.diffB, 1, 'auto-paired to the second item');
+  data.diffA = 0; data.diffB = 1;
   data.diffRows = [{ t: 'ctx', line: 'z' }];
   store.stage = [{ repo: 'me/a', ref: '', path: 'x.js' }];  // drop the B item
   await tick();
@@ -592,21 +789,23 @@ test('decodePrompts drops malformed entries and bad payloads', () => {
   assert.deepEqual(plain_(StageLink.decodePrompts(enc)), [{ label: 'ok', ask: 'a' }], 'only complete {label,ask} survive');
 });
 
-test('a diff-mode stage opens on the Diff tab and auto-runs the diff once', async () => {
+test('a diff-mode link opens the preview on its diff, once', async () => {
   reset();
-  data.outTab = 'out';
+  data.preview = null;
   data.linkMode = 'diff';
   data._autoDiffed = false;
   store.stage = [
     { local: true, id: 301, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\ntwo\n' },
     { local: true, id: 302, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'one\nTWO\nthree\n' },
   ];
-  await tick();
-  assert.equal(data.outTab, 'diff', 'flips to the Diff tab');
-  await tick();
-  assert.ok(data.diffRows, 'ran the diff without a click');
+  await tick(4);
+  // The link's intent is "look at this comparison", so it puts the reader in
+  // front of one rather than selecting a control on the page.
+  assert.equal(data.preview?.mode, 'diff', 'the preview opens, in diff mode');
+  assert.ok(data.diffRows, 'and it ran without a click');
   assert.equal(data._autoDiffed, true, 'and only arms once');
   data.linkMode = '';
+  data.preview = null;
 });
 
 test('diffPrompts shows link-carried bespoke asks first, then the fixed set', () => {
@@ -639,7 +838,7 @@ test('copyPrompt assembles both texts, the diff, and the specific ask', async ()
     { repo: 'me/a', ref: '', path: 'lib/x.js' },
     { local: true, id: 201, name: 'pasted.txt', path: 'pasted.txt', size: 4, isText: true, text: 'CONTENT me/a:lib/x.js\nextra' },
   ];
-  data.diffA = 0; data.diffB = 1; data.diffARef = ''; data.diffBRef = '';
+  data.diffA = 0; data.diffB = 1;
   await data.runDiff();
   await data.copyPrompt('Make it more succinct.', 0);
   assert.equal(clipWrites.length, 1);

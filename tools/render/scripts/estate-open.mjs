@@ -6,6 +6,10 @@
 //
 //   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scripts/estate-open.mjs
 //
+// Pass TAB=todo or TAB=jots to seed the other two Activity sub-views and switch
+// the pill to one of them. They share the pane with Open at every width (the
+// lg+ right rail went 2026-08-03), so this is how either one gets a shot.
+//
 // Pass MENU=1 in the environment to open one row's branch menu for the shot,
 // REPOCHIP=1 to open a row's repo chip (the repo's whole grouped menu, in the
 // shell's panel), or CHIP=1 to narrow the list to one repo through its filter
@@ -72,6 +76,20 @@ const ENTRIES = [
 ];
 const CONFIGS = { 'me/web-tools': { estate: true, tracker: 'tracker/board.md' } };
 
+// The two list views, seeded the same way and for the same reason: both read a
+// small JSON file out of the private registry, which the sandbox cannot reach.
+const TODO = [
+  { id: 't1', text: 'Purge the jsDelivr cache after the gh-api change', done: false, created_at: iso(30) },
+  { id: 't2', text: 'Re-shoot the page thumbnails that drifted', done: false, created_at: iso(52) },
+  { id: 't3', text: 'Decide whether the snags log gets a projector', done: false, created_at: iso(100) },
+  { id: 't4', text: 'Fold branch-survey into the activity cache', done: true, created_at: iso(300), done_at: iso(120) },
+];
+const JOTS = [
+  { id: 'j1', text: 'A stage link could carry its own review prompts', created_at: iso(4) },
+  { id: 'j2', text: 'The estate cards want a per-repo staleness read', created_at: iso(26) },
+  { id: 'j3', text: 'Try the data route on a CSV big enough to hurt', created_at: iso(75) },
+];
+
 export default async (page) => {
   await page.waitForFunction(() => window.__shell && window.Alpine, null, { timeout: 15000 });
   await page.evaluate((configs) => {
@@ -79,15 +97,27 @@ export default async (page) => {
     window.__shell.estateConfigs = configs;
   }, CONFIGS);
   await page.waitForFunction(() => !!document.querySelector('[x-data^="estate"]'), null, { timeout: 15000 });
-  await page.evaluate(([activity, entries]) => {
+  await page.evaluate(([activity, entries, todo, jots]) => {
     const d = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));
     d.authed = true;
     d.activityLoading = false;
     d.activity = activity;
     d.entries = entries;
     d.activityGeneratedAt = new Date(Date.now() - 3600000).toISOString();
-  }, [ACTIVITY, ENTRIES]);
+    d.todoLoading = false;
+    d.todoItems = todo;
+    d.jotLoading = false;
+    d.jotItems = jots;
+  }, [ACTIVITY, ENTRIES, TODO, JOTS]);
   await page.waitForTimeout(600);
+  // The pill routes through the shell's go* methods, so drive it the way a tap
+  // does rather than assigning `tab`, which is a getter over the shell view.
+  if (process.env.TAB) {
+    await page.evaluate((t) => {
+      window.Alpine.$data(document.querySelector('[x-data^="estate"]')).goSub(t);
+    }, process.env.TAB);
+    await page.waitForTimeout(400);
+  }
   if (process.env.CHIP) {
     await page.locator('button:has-text("home")').first().click();
     await page.waitForTimeout(400);

@@ -52,6 +52,13 @@ fi
 # file read rather than a fetch (see .claude/skills/hooks/inject-conventions.sh).
 # A copy is a derived artifact like any other, so it rides the same commit as
 # its source rather than drifting until someone notices.
+#
+# The copies sit at a different depth than docs/, so every relative link inside
+# them resolves against the wrong directory: link-survey.py reports 11 dead
+# links across the pair, and they are not repairable here. Editing the copies is
+# worse than leaving them, because the cp below silently reverts the edit on the
+# next commit that touches docs/. The files exist to be read as injected context,
+# not browsed. Fix a link in docs/ or not at all.
 if git status --porcelain -- docs/CONVENTIONS.md docs/SURFACING.md | grep -q .; then
   if cp docs/CONVENTIONS.md docs/SURFACING.md .claude/skills/web-tools/ 2>/dev/null; then
     git add .claude/skills/web-tools/CONVENTIONS.md .claude/skills/web-tools/SURFACING.md 2>/dev/null || true

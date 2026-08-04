@@ -35,14 +35,14 @@ states its `#gh=`-vs-`#gz=` split.
 
 Open a repo with `?repo=owner/repo`, optionally `&ref=<branch|tag|sha>`. Public
 repos browse with no auth; private repos and branches need the viewer's token.
-Deep-link params: `&view=pages|atlas|files|stage|branches|public|surfaces|todo|jots|activity|portable`, `&file=<path>`, `&path=<dir>`.
+Deep-link params: `&view=pages|atlas|files|stage|surfaces|branches|public|todo|jots|activity|portable`, `&file=<path>`, `&path=<dir>`.
 
 **Two context levels.** The page is either in the **estate** (the global,
 all-repo context) or in a **repo** (a per-repo context with its own views).
 
 The **header carries the app-level nav**: a fixed, app-owned set of the estate's
-own views, **Activity** (Open / To-do / Jots by pill), **Repos**, **Surfaces**,
-**Stage**, **Tools**, and **Map**, as icon buttons (icon + label on desktop,
+own views, **Activity** (Open / To-do / Jots by pill), **Repos**, **Stage**,
+**Tools**, and **Map**, as icon buttons (icon + label on desktop,
 icon-only on mobile), lit on the active view and present on every viewport. The
 `#repo` component sits beside the nav but renders nothing (it is the repo/auth
 controller and hosts the shared dialog), and there is neither an auth shield nor
@@ -293,7 +293,9 @@ open). It is a context with **views of its own**, switched from
 the header nav the way a repo shows landing/atlas/files/…:
 
 - **Repos** (`?view=estate`) — the repo cards.
-- **Surfaces** (`?view=surfaces`) — the curated surfaces.
+- **Stage** — one nav stop with two pill-switched sub-views, each keeping its
+  own deep link: the **bench** (`?view=stage`) and **Saved** (`?view=surfaces`)
+  (below).
 - **Activity** — the live layer: one nav stop with three pill-switched
   sub-tabs, each keeping its own deep link: **Open** (`?view=activity`),
   **To-do** (`?view=todo`), **Jots** (`?view=jots`) (all below).
@@ -302,7 +304,7 @@ the header nav the way a repo shows landing/atlas/files/…:
 - **Proposals** (`?view=proposals`) — pending cross-repo edits awaiting a confirm
   (below). The one conditional entry: shown only while something is pending.
 
-The estate component renders Repos / Surfaces / Activity, sharing one lazy mount;
+The estate component renders Repos / Stage / Activity, sharing one lazy mount;
 Tools and Map are their own components on their own lazy mounts.
 
 Behind those, past a hairline rule, the header carries a **second nav group: the
@@ -347,12 +349,13 @@ repo's own config through the viewer's token (candidates come from the header
 picker's account list, minus current members). So both add and edit write the
 **repo**, never a registry list.
 
-**Surfaces** come from two places, stacked in one view: the surface format
+**Saved surfaces** (the Stage's Saved pane) come from two places,
+stacked in one scroll: the surface format
 either way (a `manifest` block and an `items` array). The contract is
 [`docs/envelopes/surface.md`](envelopes/surface.md); `lib/surface.js` dual-reads
 v1 and v2 and normalizes to v2, so an existing v1 file keeps working untouched
-and is never rewritten by having been read. Each surface offers **Open as
-stage**, the bridge onto the working surface described under
+and is never rewritten by having been read. Each surface offers **Load onto the
+stage**, the bridge onto the bench described under
 [The stage](#the-stage-the-working-surface), and a registry one can be edited
 in place or deleted (two-tap).
 
@@ -382,14 +385,19 @@ body), `embed` (a renderer page in an iframe via a toss-render route).
 **Activity** gathers the estate's live layer under one header-nav stop: Open,
 To-do, and Jots, a trio that reads as a gradient of commitment (a jot is
 unshaped intent, a to-do is shaped intent, an open branch is intent in
-flight). The layout is responsive: on a wide screen all three render at once,
-Open as the main column and To-do plus Jots as a right rail, each pane with
-its own header and count; on a narrow screen the panes collapse behind a
-segmented pill (the shared internal-tab style), each pill carrying its live
+flight). One pane shows at a time, at every width: a segmented pill (the
+shared internal-tab style) switches among them, each pill carrying its live
 count, with Open's as-of readout and Refresh riding the pill row. Each
-sub-view keeps its own view key either way, so `?view=activity`,
-`?view=todo`, and `?view=jots` all deep-link directly and old links resolve
-unchanged.
+sub-view keeps its own view key, so `?view=activity`, `?view=todo`, and
+`?view=jots` all deep-link directly and old links resolve unchanged.
+
+The layout used to be responsive, the pill on narrow screens only and all
+three panes side by side on `lg+` (Open the main column, To-do and Jots a
+24rem right rail). The rail held its width whether or not either list had
+anything in it, and both lists are read on purpose rather than watched, so it
+was a standing claim on the page's scarce axis for content that did not need
+one. The pill's counts keep an unopened pile from going invisible, which is
+the only thing the rail bought that a tab does not.
 
 **To-do** (`?view=todo`) is a general, personal checklist: not repo-scoped and
 not a surface, so it keeps its own tiny file, `lists/todo.json` in the
@@ -555,7 +563,7 @@ activity, and no write controls. In that state the Repos view leads with a
 **public banner** that says exactly what is and isn't available and offers the
 two real next steps, a token or Public browse, instead of a vague "set a token"
 aside. Deep links: `?view=estate` (the bare URL is the Repos estate already; the
-param is stamped only when a `repo`/`ref` param is also present), `?view=surfaces`
+param is stamped only when a `repo`/`ref` param is also present), `?view=stage`
 and `?view=activity` (always stamped, so each is shareable on its own).
 
 **The shared dialog is scoped by how it is opened.** With no repo, from the
@@ -689,20 +697,34 @@ The stage is `store.stage`, a list of `{repo, ref, path}` refs (plus local items
 from drops). One stage sits above any repo, since every item carries its own
 origin.
 
-**There is no Stage view.** A staged fileset *is* a surface
+A staged fileset *is* a surface
 ([`docs/envelopes/surface.md`](envelopes/surface.md), the `stage/1` profile), so
-there is one Surfaces list, and the working set is the first card on it, badged
-`working`. **Display and edit are states of a card, not places to be:** every
-card carries one pencil, and opening it puts that surface on the bench. Only one
-card can be open, because there is one bench.
+the **Stage view holds both sides of that coin**, as two pill-switched
+sub-views: the **bench**, which works a surface, and **Saved**, the shelf that
+displays the saved ones. Same segmented pill as Activity's three and Map's two,
+at every width, each pill carrying a live count (staged items; saved surfaces),
+which is what keeps a staged set visible while you read the shelf and the saved
+pile visible while you work the bench. Naming the whole view for the display
+half alone (it was called Surfaces from 2026-08-03 until 2026-08-04) left the
+working half with no word in the UI at all, reachable only by knowing that a
+low-contrast pencil opened it.
 
-- The **working card** is the unsaved set. Opening it is the old Stage view.
-- A **saved card** opens by reading its items onto the bench and remembering
-  where they came from, so saving **writes back** to that file rather than
-  leaving a near-duplicate beside it. While a surface is on the bench its card
-  shows what the bench holds, open or closed, so display never disagrees with
-  the set you are holding. Prose items have no file behind them and are
-  reported, not dropped.
+- The **bench** (`?view=stage`) is the working set. It is not a card on the
+  shelf and no card becomes it: **the bench does not move.** With nothing staged
+  it is the drop target and the adder, so a set can be built from a cold start.
+  When it holds a loaded surface the pill row's right side reads `from <name>`
+  and carries **Detach**, where Activity's row puts as-of and Refresh.
+- A **saved card** offers **Load onto the stage**, which reads its addressable
+  items onto the bench, switches to the bench pill so the load is visible, and
+  remembers where they came from, so saving **writes back** to that file rather
+  than leaving a near-duplicate beside it. The card is badged `on the stage`.
+  Prose items have no file behind them and are reported, not dropped.
+- **Detach** keeps the items and drops the write-back, which is how "start from
+  this one and make a different one" is said. Clearing the stage detaches too,
+  since an origin without its items would aim the next save at a surface the
+  bench no longer holds.
+- While a surface is on the bench, its card renders what the bench holds, so
+  display never disagrees with the set you are holding.
 - **Saving a working set appends:** a new v2 `stage/1` file in the registry's
   `surfaces/`, named from its contents, touching nothing already saved. A saved
   set goes away by deleting its own file. Either way the dialog previews the
@@ -723,35 +745,75 @@ a repo *accepts* files is a fact about that repo.
 Takes from:
 
 1. upload: the drop-zone (a file, or pasted text; pasted ref lines stage as refs),
-2. a repo: the grab picker in the view (a tap-through path selector over the
-   estate's repos; no text input, so no keyboard or iOS focus zoom), or the
-   explorer's `+` buttons while visiting a repo,
+2. a repo: the **Add box** on the bench (below), or the explorer's `+` buttons
+   while visiting a repo,
 3. a repo manifest's `stage.files` (seeds an empty stage when that repo opens),
 4. a `#stage=` link.
 
 Stage-view actions:
 
-- **Recent / Search**: the finder, two tabs. Recent is the latest committed
-  files across the estate's root repos (one `recentFiles()` sweep per repo,
-  loaded when the stage is first shown), filterable by per-repo pills
-  (single-select: tap to show only that repo, tap again for all). Search is
-  filename-contains over the same repos' full trees (one cached
-  recursive-tree call per repo; matching is local per keystroke). Either way
-  each row is one tap to stage, a second to unstage, and the muted line reads
-  `repo · folder`;
+- **Add**: three panes behind the app's segmented pill, over one corpus (the
+  estate's root repos) and one outcome (a staged ref). They share those but are
+  not one question, so each pane owns its own state and shows only its own kind
+  of row:
+
+  | Pane | Answers | Rows |
+  | --- | --- | --- |
+  | **Browse** | where does it live | repos, then folders, then files; crumbs walk back up |
+  | **Recent** | what changed lately | the cross-repo sweep, narrowed by single-select repo badges |
+  | **Search** | what is it called | filename-contains across every root repo |
+
+  These were briefly folded into a single query box (2026-08-04, same day).
+  That put recent files in the same list as the repos you navigate, and a list
+  that is half places-to-go and half things-that-happened reads as neither. The
+  panes are back; what survives from the one-box build is the part that was
+  about cost rather than layout.
+
+  **Browse and Search share one tree cache.** Entering a repo reads its
+  recursive tree, and tapping Search reads only what is still missing, so
+  browsing pays for searching in advance instead of the two fetching the same
+  thing twice. One recursive read per repo also answers every folder level, so
+  descending never costs another call. The pill tap is the gate on that cost,
+  which is what a tap is for and a keystroke is not.
+
+  Each file row is one tap to stage and a second to unstage; the muted line
+  reads `repo · folder`. Search's input is 16px below `sm` so iOS does not zoom
+  on focus, and a leading `@` is eaten rather than matched, since the sigil
+  `mention` needs mid-prose is redundant in a field that is already a file
+  search. Browse has no text input at all, which is the tap-through picker's
+  own rule and its reason. Local files are the one source that is not a repo
+  file, so they stay a header action (the paperclip) belonging to no pane;
 - **view** a staged file inline (a preview panel in the stage itself, with a
   GitHub jump-over to the file's true home; it never routes through a repo's
-  Files view);
-- **Out / Diff**: the deposit surface, two lenses in the finder's open style.
-  Out covers everything leaving the stage: the concatenated bundle (each file
-  under a `// === owner/repo[@ref]:path ===` header; icon actions to view,
-  refresh, copy, download — the block renders on demand, since copy and
-  download never needed it on screen) and the send-to-repo (destination is
-  the tap-through selector in folder mode; two-tap Send). Diff is a line diff
-  of two staged items (a pasted local file counts), each side optionally read
-  at an override ref, so the same file picked twice with one ref changed is
-  the version diff. (The base...head branch compare is not here: it lives
-  under the Branches view, with the review it serves.);
+  Files view). **The preview is a position in the stage, not one file:** it
+  carries an index, so the staged set is walkable by swipe on a phone or by the
+  header arrows and the arrow keys anywhere. Same gesture and constants as the
+  estate's branch takeover, so a horizontal drag reads alike in both and a
+  vertical one still scrolls the file. Every position opens: a binary local
+  file and a failed fetch render a note in place of the viewer rather than
+  refusing, so `2 / 3` always means the second of three and a step never skips.
+
+  **The preview also holds the diff**, because the position already names a
+  pair: what you are on and what is next to it, so nothing is selected and
+  nothing is offered to select. `min(i, n-2)` keeps that valid at the end, so a
+  diff is available whenever two or more are staged, and with exactly two it is
+  simply "the two" from either position. One header button toggles the modal
+  between the file and the comparison, carrying the tagged rows, Copy, the
+  review prompts (link-carried bespoke asks first, then the fixed set), and
+  **Open in Diff** for the Diff page's split view and real patch. Stepping with
+  the diff open re-pairs and re-runs, so walking the set walks its comparisons.
+  A `&mode=diff` link opens the preview on its diff rather than selecting a
+  control on the page;
+- **Out**: the deposit surface, and the only lens on this side now. It covers
+  everything leaving the stage: the concatenated bundle (each file under a
+  `// === owner/repo[@ref]:path ===` header; icon actions to refresh, copy,
+  download, with the size beside it) and the send-to-repo (destination is the
+  tap-through selector in folder mode; two-tap Send). There is no Out/Diff pill:
+  the two were never two views of one thing. Out is where the set **leaves**;
+  Diff was a way to **read** two of its files, and reading belongs in the
+  preview (above), which already walks the staged set and can therefore pair
+  two of it with no second set of controls. (The base...head branch compare is
+  not here either: it lives under the Branches view, with the review it serves.);
 - **Save**: the pin on the Staged header, opening the dialog above.
   This replaced a write of `stage.files` into a named repo's `.web-tools.json`,
   which overwrote the previous save, put a cross-repo set in one repo's config,
@@ -798,9 +860,9 @@ six fixed general prompts, each still one-click-copying both compared texts plus
 the diff plus that ask.
 
 An optional `&mode=diff` is the third part of the object: the intent that this
-stage opens as a diff. A `mode=diff` link opens on the **Diff** tab and runs the
+stage opens as a diff. A `mode=diff` link opens the **preview** on its diff and runs the
 compare on open (no click), so a review link lands the reviewer straight on the
-diff; without it a stage opens on **Out** (a bundle handoff). `StageLink.mint(items,
+diff; without it a stage opens with the preview closed, on the Out surface (a bundle handoff). `StageLink.mint(items,
 base, { prompts, mode })` encodes all of it (a bare prompts array is still
 accepted for the legacy call), and `StageLink.parseLink(hash)` returns `{ items,
 prompts, mode }`; the bare `StageLink.parse(hash)` still returns just the items
@@ -1203,9 +1265,9 @@ repos. All are optional; a repo with no config is simply off the estate.
   repo's scope is stated on its own terms and does not depend on its siblings.
   The state carried by the config cache, so a scope edit versions with the config.
 - **surface**: a path (or a list of paths) to `.surface` file(s) in this repo,
-  surfaced under a per-repo section in the estate's Surfaces view and as a chip
+  surfaced under a per-repo section of the Stage's Saved pane and as a chip
   on this repo's Repos-grid card. Read-only in the estate (edit the file in its
-  repo). See "The estate" → Surfaces above.
+  repo). See "The estate" → Stage above.
 - **stage.files**: a staged-files list a repo declares for itself. Entries are
   **bare paths** (`"lib/foo.js"`, meaning this repo at its default branch) or
   **qualified refs** (`"owner/repo[@ref]:path"`). Seeded into the stage only
