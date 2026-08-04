@@ -60,6 +60,43 @@ measured in [findings.md](findings.md):
   the prose itself marks a word as a term, is what pushes "board" and
   "stage" above them.
 
+## entitylab.py
+
+The complement to termlab, and the split between them is the point.
+termlab asks what vocabulary a repo **coins** (terms of art: "stage",
+"proviso", "toss"). entitylab asks what it **names** from the world
+outside it (agencies, funds, vendors, statutes, bills, people). The two
+populations want opposite treatments: a term of art is authoritative only
+in the prose that declares it, so harvesting is the method, while a named
+entity is authoritative in a table somebody already curates, so
+harvesting it is a fallback.
+
+So the tool reports the gap rather than just a list:
+
+| Column | Question it answers | Method |
+| --- | --- | --- |
+| declared | which entity tables the repo already holds | a key/code column beside a name column, in any CSV or JSON; no filename rules |
+| mentioned | which entities its prose names | six citation patterns (RCW, bill id, session law, biennium, fiscal year, USC/CFR) plus acronym and proper-noun shape |
+| resolved | how many mentions a declared table can name | folded string match against names and aliases |
+
+With two or more corpora it also emits the **crosswalk**: entities named
+in more than one repo. That section is the actual product. A per-repo
+entity list is a word cloud; the same bill cited in four repos that
+cannot see each other is a join.
+
+```bash
+python3 tools/concept-lab/entitylab.py bwa=/path/budget-wa --report bwa.md
+python3 tools/concept-lab/entitylab.py wt=... home=... bwa=... fn=... \
+  --report estate.md --json estate.json
+python3 tools/concept-lab/entitylab.py home=/path/home --spacy   # model vs pattern
+```
+
+About 70 seconds for seven repos. `--spacy` adds an `en_core_web_sm` pass
+for comparison on the prose classes; the citation classes never need it,
+and measurably beat it (a general model has no notion of an engrossed
+substitute bill). Findings and the measured resolution rates per repo are
+in [findings.md](findings.md).
+
 ## The experiment scripts
 
 - `exp_embed.py`: embeddings vs collocates vs lexical clustering on probe

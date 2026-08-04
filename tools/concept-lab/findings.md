@@ -426,3 +426,86 @@ the classification, row by row with the user. termlab and semsearch now
 import the registry from its plugin home. Estate-wide availability as
 /portable:content-registry follows the next merge to main, since plugin
 consumers track main; in-session the skill is live from the checkout.
+
+## 2026-08-04, entitylab: entities are a different population from terms
+
+`entitylab.py` is the complement to termlab, built to test one intuition: that
+a per-repo entity list ("just like named entity recognition") would be worth
+having. Run over seven checkouts (web-tools, home, chat-histories, budget-wa,
+spend-wa, wa-bills, fn-data), about 68 seconds, dependency-free.
+
+The premise turned out to be half wrong in a useful way. Terms of art are
+authoritative only in the prose that declares them, so harvesting is the
+method. Named entities are authoritative in a table somebody already curates,
+so harvesting them is a *fallback*, and the estate is already full of those
+tables: OFM's 134-row agency list and 816-row fund reference manual in
+budget-wa, spend-wa's 79-row vendor crosswalk with aliases and SWV numbers,
+wa-bills' 15,451 bill titles and sponsor rosters, home's `me/people.json`.
+Nobody needs a model to discover DSHS.
+
+What the census measured instead:
+
+- **Extraction does not reach the tables.** Resolution of harvested mentions
+  against declared tables: budget-wa 14%, spend-wa 26%, home 2%, wa-bills 0%,
+  fn-data 0%. The failure is not the extractor. The prose says `OFM` (318
+  mentions in budget-wa), `DRS` (3,735 in home), `HCA` (33,145 in fn-data),
+  and the tables carry `Office of Financial Management`. The two halves name
+  the same entities in different surface forms and nothing bridges them.
+  spend-wa is the exception at 26% precisely because its crosswalk is the one
+  table in the estate with an `aliases` column and a documented fold.
+- **The join key is often absent from the table.** wa-bills declares more
+  entity names than any other repo and resolves 0% of its own prose, because
+  its tables key bills by URL and title while every mention in prose is a bill
+  *number*.
+- **Pattern beats model on the classes that matter here.** A general NER model
+  has no notion of an RCW citation or an engrossed substitute bill. Six
+  citation patterns (RCW, bill id, session law, biennium, fiscal year, USC/CFR)
+  carry the high-precision half; spaCy's ORG/PERSON/LAW is the fallback for
+  prose-only classes, consistent with the lab's earlier finding that lexical
+  methods beat embeddings on this corpus.
+- **web-tools has no entity layer and should not grow one.** 1% resolution, and
+  its top "acronyms" are MDL, LCP, WASM, FAB: technical vocabulary, which is
+  termlab's population, not this one. A tooling repo names no entities. This is
+  the negative control the census needed.
+
+### The crosswalk is the product, not the per-repo list
+
+A per-repo entity list is a word cloud. The same entity found in repos that
+cannot see each other is a join, and that is what the census actually found:
+192 RCW citations, 356 bill ids, and 27 session laws each appear in two or more
+repos. The widest cases are real objects with genuinely different views:
+
+- `ESSB 5357`, the 2025 rate-override bill: chat-histories 64 (two Gemini deep
+  research reports and the chronicle), home 34 (the budget-drs reductions
+  register and workshop decisions), fn-data 29 (a dedicated distill file), and
+  budget-wa 7 (the ACFR pension-by-plan read and the 2025-27 anomaly report).
+- `HB 1661`: fn-data 380, home 21, chat-histories 14, spend-wa 1.
+- `RCW 41.50`, the DRS chapter: four repos.
+
+Nothing in the estate can answer "show me everything we hold on ESSB 5357"
+today, and every repo holds part of the answer. Entity navigation is orthogonal
+to the repo/folder/file axis show-repo already has, which is the argument for
+building it rather than a nicer per-repo glossary.
+
+### Table detection is a scaffolder, not an oracle
+
+The entity-table sniffer (a key/code column beside a name column, no filename
+rules) found 52 candidates in budget-wa and 219 in chat-histories, and a good
+share are not entity registries: raw FY20 budget-to-actual dumps and
+`recession_items.csv` have the shape without being a table of entities. That
+is the same line the content registry already draws, so it should be drawn the
+same way: observation proposes rows, judgment declares them. The candidate
+list is a scaffold for a declaration, not a substitute for one.
+
+### Open
+
+- The alias bridge is the one piece worth building before anything renders.
+  Every number above understates resolution because acronym-to-legal-name is
+  unmapped, and it is a small, mostly hand-authored table per class.
+- Precision on `proper` is unmeasured. `State Washington` and `Department
+  Health` in the spend-wa list are fold artifacts, and there is no gold set
+  here the way `exp_gold.py` supplies one for polysemy.
+- Whether a repo's entity index should be committed (the tracker `board.json`
+  pattern) or rebuilt on demand (the concept index's "build it, use it, let it
+  go") is unsettled. The crosswalk argues for committed, since an estate-level
+  join cannot rebuild seven repos on page load.
