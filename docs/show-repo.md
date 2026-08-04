@@ -790,10 +790,26 @@ Stage-view actions:
   Out covers everything leaving the stage: the concatenated bundle (each file
   under a `// === owner/repo[@ref]:path ===` header; icon actions to refresh,
   copy, download, with the size beside the lens) and the send-to-repo (destination is
-  the tap-through selector in folder mode; two-tap Send). Diff is a line diff
-  of two staged items (a pasted local file counts), each side optionally read
-  at an override ref, so the same file picked twice with one ref changed is
-  the version diff. (The base...head branch compare is not here: it lives
+  the tap-through selector in folder mode; two-tap Send).
+
+  **Diff's premise is that the pair IS what is staged.** Stage two things and
+  it compares them, running on arrival rather than behind a button: `diffSide`
+  reads the bundle's content cache, so the diff over an already-built stage
+  costs nothing. Under two staged items there is nothing to compare and the
+  lens says so. At exactly two the pair is stated, not offered. Only past two,
+  where the pair is a genuine choice, are there A/B selects.
+
+  It used to open on two selects and two `ref` boxes at every count, which
+  announced a premise the code did not have: it read as "type two refs to
+  construct a pair", when the selects only ever chose among staged items and B
+  already auto-paired to the second one. The per-side ref override went with
+  them. A **version diff** (one path, two refs) is now said the way the stage
+  already says everything: `owner/repo@main:x` and `owner/repo@dev:x` are two
+  addresses, so both stage and the pair is those two. For an arbitrary pair,
+  **Open in Diff** hands this one to the Diff page, which takes an
+  `owner/repo[@ref]:path` per side with its own browser and adds split view,
+  word-level highlighting, folding, and a real patch. A pasted local file
+  counts as a side here. (The base...head branch compare is not here: it lives
   under the Branches view, with the review it serves.);
 - **Save**: the pin on the Staged header, opening the dialog above.
   This replaced a write of `stage.files` into a named repo's `.web-tools.json`,

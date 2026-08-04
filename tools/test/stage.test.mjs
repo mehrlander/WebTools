@@ -476,30 +476,29 @@ test('runDiff resolves a local text item against a ref item', async () => {
     { repo: 'me/a', ref: '', path: 'lib/x.js' },
     { local: true, id: 97, name: 'pasted.txt', path: 'pasted.txt', size: 4, isText: true, text: 'CONTENT me/a:lib/x.js\nextra' },
   ];
-  data.diffA = 0; data.diffB = 1; data.diffARef = ''; data.diffBRef = '';
+  data.diffA = 0; data.diffB = 1;
   await data.runDiff();
   assert.ok(data.diffRows, 'diff produced');
   assert.deepEqual(plain_(data.diffRows.filter(r => r.t !== 'ctx')), [{ t: 'add', line: 'extra' }]);
   assert.equal(data.diffStat, '+1 \u22120');
 });
 
-test('diffHandoff builds the Diff page address, honoring ref overrides', () => {
+test('diffHandoff builds the Diff page address from the staged pair', () => {
   reset();
   store.stage = [
     { repo: 'me/a', ref: '', path: 'lib/x.js' },
     { repo: 'me/b', ref: 'feat/y', path: 'docs/z.md' },
   ];
-  data.diffA = 0; data.diffB = 1; data.diffARef = ''; data.diffBRef = '';
+  data.diffA = 0; data.diffB = 1;
   const u = new URL(data.diffHandoff);
   assert.match(u.pathname, /\/diff-tool\.html$/, 'points at the Diff page');
   assert.equal(u.searchParams.get('a'), 'me/a:lib/x.js');
   assert.equal(u.searchParams.get('b'), 'me/b@feat/y:docs/z.md');
 
-  // An override ref is what makes same-file-twice a version diff, so the
-  // handoff has to carry it, not the item's own ref.
-  data.diffARef = 'main';
-  assert.equal(new URL(data.diffHandoff).searchParams.get('a'), 'me/a@main:lib/x.js');
-  data.diffARef = '';
+  // Each side is the staged address, nothing more. The per-side ref override
+  // is gone: the version diff (one path, two refs) belongs on the Diff page,
+  // which takes an owner/repo[@ref]:path per side and browses for it, and this
+  // handoff is how a staged pair gets there.
 });
 
 test('diffHandoff hides when either side is a local file', () => {
@@ -545,12 +544,42 @@ test('auto-pairing stops once the user has picked A/B by hand', async () => {
   assert.equal(data.diffB, 0, 'a manual pick is not overridden by a later addition');
 });
 
-test('diffLabel names the override ref when given, else the item\'s own ref or "default"', () => {
-  const refItem = { repo: 'me/a', ref: 'dev', path: 'x.js' };
-  assert.equal(data.diffLabel(refItem, ''), 'me/a@dev:x.js');
-  assert.equal(data.diffLabel(refItem, 'main'), 'me/a@main:x.js');
-  assert.equal(data.diffLabel({ repo: 'me/a', ref: '', path: 'x.js' }, ''), 'me/a@default:x.js');
-  assert.equal(data.diffLabel({ local: true, name: 'pasted.txt' }, ''), '(local) pasted.txt');
+test('diffLabel names the item\'s own ref, or "default"', () => {
+  assert.equal(data.diffLabel({ repo: 'me/a', ref: 'dev', path: 'x.js' }), 'me/a@dev:x.js');
+  assert.equal(data.diffLabel({ repo: 'me/a', ref: '', path: 'x.js' }), 'me/a@default:x.js');
+  assert.equal(data.diffLabel({ local: true, name: 'pasted.txt' }), '(local) pasted.txt');
+});
+
+// The Diff lens's premise: the pair IS what is staged. It used to open on two
+// selects and two "ref" boxes, which read as "type two refs to construct a
+// pair" when in fact the selects only ever chose among staged items and B
+// already auto-paired. The controls announced a premise the code did not have.
+test('the pair is the staged set: two items pair themselves, no ref to type', async () => {
+  reset();
+  store.stage = [{ repo: 'me/a', ref: '', path: 'x.js' }];
+  await tick(3);   // autoPair rides an Alpine watcher, so it lands on the flush
+  assert.equal(data.diffA, 0);
+  assert.equal(data.diffB, 0, 'one item cannot pair with anything');
+
+  store.stage = [...store.stage, { repo: 'me/b', ref: '', path: 'y.js' }];
+  await tick(3);
+  assert.equal(data.diffA, 0);
+  assert.equal(data.diffB, 1, 'staging a second one is the whole gesture');
+  assert.equal('diffARef' in data, false, 'no per-side ref override survives');
+});
+
+test('a version diff is two staged addresses, not a typed ref', () => {
+  reset();
+  // What the ref boxes were for, said the way the stage already says it: the
+  // same path twice at two refs are two different addresses, so both stage.
+  store.stage = [
+    { repo: 'me/a', ref: 'main', path: 'x.js' },
+    { repo: 'me/a', ref: 'dev', path: 'x.js' },
+  ];
+  assert.equal(data.items.length, 2, 'the same path at two refs is two items');
+  data.diffA = 0; data.diffB = 1;
+  assert.equal(new URL(data.diffHandoff).searchParams.get('a'), 'me/a@main:x.js');
+  assert.equal(new URL(data.diffHandoff).searchParams.get('b'), 'me/a@dev:x.js');
 });
 
 test('diffDump renders a labeled header over the tagged rows', () => {
@@ -729,7 +758,7 @@ test('copyPrompt assembles both texts, the diff, and the specific ask', async ()
     { repo: 'me/a', ref: '', path: 'lib/x.js' },
     { local: true, id: 201, name: 'pasted.txt', path: 'pasted.txt', size: 4, isText: true, text: 'CONTENT me/a:lib/x.js\nextra' },
   ];
-  data.diffA = 0; data.diffB = 1; data.diffARef = ''; data.diffBRef = '';
+  data.diffA = 0; data.diffB = 1;
   await data.runDiff();
   await data.copyPrompt('Make it more succinct.', 0);
   assert.equal(clipWrites.length, 1);
