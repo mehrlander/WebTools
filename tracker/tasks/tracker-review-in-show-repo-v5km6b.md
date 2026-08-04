@@ -1,10 +1,11 @@
 ---
 id: tracker-review-in-show-repo-v5km6b
 title: Tracker review in show-repo, over a typed board projection
-status: in-progress
+status: done
 project: show-repo
 track: independent
 opened: 2026-08-03
+closed: 2026-08-03
 session: claude/budget-drs-tracker-assessment-fwa13q
 size: L
 ---
@@ -88,3 +89,4 @@ branch page.
   `awaiting:` graduating first, since the view's value is rendering them.
 - 2026-08-03: the generator half landed on this branch (PR #345): `size` and `awaiting` graduated, `board.json` emitted beside `board.md` with `href`, `lastActivity`, and `logEntries` derived, 11 new tests. budget-drs is calibrated on `main` and is the live sample: 99 records, 49 KB. What remains here is the app half, the pane reading the projection and the `tracker` check kind.
 - 2026-08-03: the pane half landed on the same branch. It reads `board.json` and falls back to rendering `board.md` where a ref has no projection, groups the four sections with counts and Done collapsed, carries `size` and `awaiting` per row, and shows days-since-last-log with its entry count. A review line counts the open set, how many await someone, how many have been quiet three weeks or more, and how many have no log at all. 13 new cases; `tools/render/scripts/project-board-review.mjs` drives it headless from real records. Remaining: the `tracker` check kind on the estate card.
+- 2026-08-03: done on `claude/budget-drs-tracker-assessment-fwa13q`; lands via PR #345. The fourth definition-of-done bullet closed with a `tracker` check kind in `lib/repo-checks.js`, the first content-typed one: it reads a board projection and counts, and its fact stays time-independent (counts plus the oldest last-activity date, never an age) so the activity cache does not rehash nightly. web-tools declares it on its own tracker, so the kind is live rather than merely available. No UI change was needed, since the checks panel and the estate badge already render whatever `notable()` returns. One deviation worth naming: this task file rode the feature branch rather than going straight to `main` as the convention says, because the same commits regenerate the board through a changed generator and splitting it out would have meant conflicting board regenerations. It reaches `main` when the PR does.

@@ -26,7 +26,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Make the take-away menu work inside a toss](tasks/take-away-inside-a-toss-k73cjq.md)
 
 ## In progress
-- 🎫 [Tracker review in show-repo, over a typed board projection](tasks/tracker-review-in-show-repo-v5km6b.md) · L (`claude/budget-drs-tracker-assessment-fwa13q`)
+- (none)
 
 ## Blocked
 - (none)
@@ -78,5 +78,6 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Pass a trailing fragment through toss-render to the rendered page](tasks/toss-fragment-passthrough-558xcw.md) (`claude/toss-render-data-formats-4t55x7`)
 - 🎫 [Structural response decode + differentiated errors in toss-render](tasks/toss-render-decode-errors-xu3c6d.md)
 - 🎫 [toss-render ?query forwarding drops multi-param page queries](tasks/toss-render-multiparam-query-encoding-n9lbcp.md) (`claude/web-tools-tracker-review-bw48ga`)
+- 🎫 [Tracker review in show-repo, over a typed board projection](tasks/tracker-review-in-show-repo-v5km6b.md) (`claude/budget-drs-tracker-assessment-fwa13q`)
 - 🎫 [Load the ?use= bundle by fetch + blob-import instead of jsDelivr](tasks/use-blob-import-bundle-dtuqjo.md) (`claude/loading-behavior-tracker-aqbf4f`)
 - 🎫 [Extend fetch + blob-import to the gh-api.js-chain ?use= boot](tasks/use-gh-api-chain-blob-import-y2hwqe.md)
