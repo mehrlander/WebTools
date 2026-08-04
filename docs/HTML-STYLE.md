@@ -35,10 +35,16 @@ widget with page furniture around it. The content gets the viewport; the chrome 
 the two thin bars. A small embedded deck is readable on a desktop and useless on a
 phone, which is where these get opened.
 
-**Type is for reading, not for fitting.** Primary content runs at `text-xl` or larger
-with `leading-8`, secondary at `text-base`. Reach for `text-xs` only in chrome:
-counters, timestamps, monospace metadata. If content had to shrink to fit, the layout
-is wrong, not the type. On a phone the test is whether it reads at arm's length.
+**Type is for reading, not for fitting.** Content runs at `text-xl` or larger with
+`leading-8`. If content had to shrink to fit, the layout is wrong, not the type. On a
+phone the test is whether it reads at arm's length.
+
+**Content is one size.** There are two tiers on the page, not four: content, and
+chrome. Everything the reader came to read gets the same size, whatever role it plays
+in the layout; `text-xs` and monospace belong to counters, timestamps, and labels.
+Sizing a summary below the text it summarizes ranks them for the reader, and that
+ranking is nearly always an accident of how the layout was assembled rather than a
+judgment anyone made.
 
 **One accent, and it means something.** Pick a semantic colour per role and hold it
 across the page, so colour carries information rather than decoration. Where two
@@ -49,13 +55,18 @@ things are compared, give each a fixed treatment and never swap them between vie
 ```
 fixed inset-0  grid-rows-[auto_1fr_auto]
 ├── header   thin. identity, the compact figure line, controls, a counter pill
-├── content  the thing. large type, vertically centred when short, scrolls when long
+├── content  the thing. large type, top-aligned, scrolls when long
 └── footer   thin. prev, progress, next
 ```
 
 Dot indicators up to about 25 items, a progress bar past that. Keyboard arrows,
 Escape, and the phone back button all work. Filters go in a header dropdown, not a
 row of chips eating a line of the viewport.
+
+**Content starts at the top.** Do not vertically centre a slide because it looks
+balanced when short. Across a deck the content varies in length, so centring moves
+the first line to a different height on every card and the reader re-finds it each
+time. A fixed start position is what makes a deck scannable at speed.
 
 **`min-w-0` on the scroll track, or the layout bursts.** A grid or flex item defaults
 to `min-width: auto`, meaning it refuses to shrink below its content's min-content

@@ -24,10 +24,13 @@ by hand. Full statement and reasoning: `docs/HTML-STYLE.md` in `mehrlander/web-t
 3. **Browsing is a full-viewport takeover.** A deck, gallery, diff, or result set is
    `fixed inset-0` with `grid-rows-[auto_1fr_auto]`: thin header, content, thin
    footer. Not a boxed widget with page furniture around it.
-4. **Type is for reading, not for fitting.** Primary content at `text-xl`+ with
-   `leading-8`. `text-xs` belongs in chrome only. If content shrank to fit, the layout
-   is wrong, not the type.
-5. **One accent, and it means something.** Colour carries information, not decoration.
+4. **Type is for reading, not for fitting.** Content at `text-xl`+ with `leading-8`.
+   Two tiers only, content and chrome: everything the reader came to read gets the
+   same size, and `text-xs` belongs to counters, timestamps, and labels. If content
+   shrank to fit, the layout is wrong, not the type.
+5. **Content starts at the top.** Never vertically centre a slide because it looks
+   balanced when short; across a deck it moves the first line on every card.
+6. **One accent, and it means something.** Colour carries information, not decoration.
    In a comparison, each side keeps a fixed treatment across every view.
 
 ## References
