@@ -35,8 +35,7 @@ states its `#gh=`-vs-`#gz=` split.
 
 Open a repo with `?repo=owner/repo`, optionally `&ref=<branch|tag|sha>`. Public
 repos browse with no auth; private repos and branches need the viewer's token.
-Deep-link params: `&view=pages|atlas|files|stage|branches|public|todo|jots|activity|portable`, `&file=<path>`, `&path=<dir>`. `&view=surfaces` is
-accepted as the Stage's alias.
+Deep-link params: `&view=pages|atlas|files|stage|surfaces|branches|public|todo|jots|activity|portable`, `&file=<path>`, `&path=<dir>`.
 
 **Two context levels.** The page is either in the **estate** (the global,
 all-repo context) or in a **repo** (a per-repo context with its own views).
@@ -294,8 +293,9 @@ open). It is a context with **views of its own**, switched from
 the header nav the way a repo shows landing/atlas/files/…:
 
 - **Repos** (`?view=estate`) — the repo cards.
-- **Stage** (`?view=stage`, alias `?view=surfaces`) — the bench and the shelf of
-  saved surfaces (below).
+- **Stage** — one nav stop with two pill-switched sub-views, each keeping its
+  own deep link: the **bench** (`?view=stage`) and **Saved** (`?view=surfaces`)
+  (below).
 - **Activity** — the live layer: one nav stop with three pill-switched
   sub-tabs, each keeping its own deep link: **Open** (`?view=activity`),
   **To-do** (`?view=todo`), **Jots** (`?view=jots`) (all below).
@@ -349,7 +349,7 @@ repo's own config through the viewer's token (candidates come from the header
 picker's account list, minus current members). So both add and edit write the
 **repo**, never a registry list.
 
-**Saved surfaces** (the Stage's shelf, below the bench) come from two places,
+**Saved surfaces** (the Stage's Saved pane) come from two places,
 stacked in one scroll: the surface format
 either way (a `manifest` block and an `items` array). The contract is
 [`docs/envelopes/surface.md`](envelopes/surface.md); `lib/surface.js` dual-reads
@@ -699,25 +699,30 @@ origin.
 
 A staged fileset *is* a surface
 ([`docs/envelopes/surface.md`](envelopes/surface.md), the `stage/1` profile), so
-the **Stage view holds both sides of that coin in one scroll**: the **bench**,
-which works a surface, and below it the **shelf**, which displays the saved
-ones. Naming the view for the display half alone (it was called Surfaces from
-2026-08-03 until 2026-08-04) left the working half with no word in the UI at
-all, reachable only by knowing that a low-contrast pencil opened it.
+the **Stage view holds both sides of that coin**, as two pill-switched
+sub-views: the **bench**, which works a surface, and **Saved**, the shelf that
+displays the saved ones. Same segmented pill as Activity's three and Map's two,
+at every width, each pill carrying a live count (staged items; saved surfaces),
+which is what keeps a staged set visible while you read the shelf and the saved
+pile visible while you work the bench. Naming the whole view for the display
+half alone (it was called Surfaces from 2026-08-03 until 2026-08-04) left the
+working half with no word in the UI at all, reachable only by knowing that a
+low-contrast pencil opened it.
 
-- The **bench** is a fixed block at the top, headed `Stage`, always present and
-  always open. It is not a card on the shelf and no card becomes it: **the bench
-  does not move.** With nothing staged it is the drop target and the adder, so
-  a set can be built from a cold start.
+- The **bench** (`?view=stage`) is the working set. It is not a card on the
+  shelf and no card becomes it: **the bench does not move.** With nothing staged
+  it is the drop target and the adder, so a set can be built from a cold start.
+  When it holds a loaded surface the pill row's right side reads `from <name>`
+  and carries **Detach**, where Activity's row puts as-of and Refresh.
 - A **saved card** offers **Load onto the stage**, which reads its addressable
-  items onto the bench and remembers where they came from, so saving **writes
-  back** to that file rather than leaving a near-duplicate beside it. The bench
-  header then reads `from <name>`, and the card is badged `on the stage`. Prose
-  items have no file behind them and are reported, not dropped.
-- **Detach** (the broken-link button on the bench header) keeps the items and
-  drops the write-back, which is how "start from this one and make a different
-  one" is said. Clearing the stage detaches too, since an origin without its
-  items would aim the next save at a surface the bench no longer holds.
+  items onto the bench, switches to the bench pill so the load is visible, and
+  remembers where they came from, so saving **writes back** to that file rather
+  than leaving a near-duplicate beside it. The card is badged `on the stage`.
+  Prose items have no file behind them and are reported, not dropped.
+- **Detach** keeps the items and drops the write-back, which is how "start from
+  this one and make a different one" is said. Clearing the stage detaches too,
+  since an origin without its items would aim the next save at a surface the
+  bench no longer holds.
 - While a surface is on the bench, its card renders what the bench holds, so
   display never disagrees with the set you are holding.
 - **Saving a working set appends:** a new v2 `stage/1` file in the registry's
@@ -1220,7 +1225,7 @@ repos. All are optional; a repo with no config is simply off the estate.
   repo's scope is stated on its own terms and does not depend on its siblings.
   The state carried by the config cache, so a scope edit versions with the config.
 - **surface**: a path (or a list of paths) to `.surface` file(s) in this repo,
-  surfaced under a per-repo section of the Stage's shelf and as a chip
+  surfaced under a per-repo section of the Stage's Saved pane and as a chip
   on this repo's Repos-grid card. Read-only in the estate (edit the file in its
   repo). See "The estate" → Stage above.
 - **stage.files**: a staged-files list a repo declares for itself. Entries are

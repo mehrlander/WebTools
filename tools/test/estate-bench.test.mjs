@@ -6,7 +6,13 @@
 // the UI and gave the workspace no fixed address. It is now one block at the
 // top of the view, always present, and a saved surface is LOADED onto it.
 //
+// The two are now pill-switched sub-views of the one Stage stop, the shape
+// Activity uses for its three and Map for its two, and each keeps its own
+// ?view key so the URL is the switch and both deep-link.
+//
 // What that leaves to hold, and what these cover:
+//   - one nav stop, two pills, the shell view picking which is lit,
+//   - a pill tap routes through the shell rather than setting local state,
 //   - the shelf carries saved surfaces ONLY (no synthesized bench card),
 //   - which surface the bench holds is store.stageOrigin and nothing else, so
 //     a save writes back to the right file and there is no second copy to drift,
@@ -63,7 +69,11 @@ window.GH = FakeGH;
 window.__shell = {
   REGISTRY_REPO: REGISTRY, DEFAULT_REPO: 'me/tools', quickLinks: [],
   hasToken: () => true, _authState: 'auth',
-  refreshConfigCache() {}, refreshActivity() {}, goSurfaces() {},
+  refreshConfigCache() {}, refreshActivity() {},
+  // The two Stage pills route through the shell, as Activity's three do, so
+  // the URL stamp is the switch. The stub is the real contract: set the view.
+  goStage() { this.view = 'stage'; },
+  goSurfaces() { this.view = 'surfaces'; },
   view: 'stage',
 };
 
@@ -96,18 +106,44 @@ test('the shelf carries saved surfaces only: no synthesized bench card', () => {
     'the bench is a fixed block above the shelf, not a row on it');
 });
 
-test('the Stage is the estate tab for both ?view=stage and its ?view=surfaces alias', () => {
+test('the Stage is one nav stop over two pill-switched sub-views', () => {
+  // One stop: both keys light the same header tab...
   window.__shell.view = 'stage';
   assert.equal(data.tab, 'stage');
   window.__shell.view = 'surfaces';
   assert.equal(data.tab, 'stage');
   window.__shell.view = 'estate';
   assert.equal(data.tab, 'repos');
+
+  // ...and the key picks the pill, so each sub-view deep-links on its own.
   window.__shell.view = 'stage';
+  assert.equal(data.stageTab, 'bench');
+  window.__shell.view = 'surfaces';
+  assert.equal(data.stageTab, 'saved');
+});
+
+test('a pill tap routes through the shell rather than setting local state', () => {
+  window.__shell.view = 'surfaces';
+  data.goSub('stage');
+  assert.equal(window.__shell.view, 'stage', 'the URL stamp is the switch');
+  assert.equal(data.stageTab, 'bench');
+  data.goSub('surfaces');
+  assert.equal(window.__shell.view, 'surfaces');
+  assert.equal(data.stageTab, 'saved');
+});
+
+test('the pill counts read the live stage and the loaded shelf', () => {
+  store().stage = [];
+  assert.equal(data.stagedCount, 0);
+  store().stage = [{ repo: 'me/app', ref: 'main', path: 'a.md' }];
+  assert.equal(data.stagedCount, 1);
+  assert.equal(data.savedCount, data.surfaces.length + data.repoSurfaces.length);
 });
 
 test('loading a saved surface stages its addressable items and remembers the origin', () => {
+  window.__shell.view = 'surfaces';
   data.loadOntoStage(saved);
+  assert.equal(data.stageTab, 'bench', 'the load shows what it loaded');
   // Joined, not deep-equal: the store's array is built in the jsdom realm, so
   // its prototype is not this one's and deepStrictEqual fails on identity.
   assert.equal(store().stage.map(i => i.path).join(','), 'a.md,b.md');

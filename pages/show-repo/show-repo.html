@@ -1175,11 +1175,10 @@
       </div>
     </div>
 
-    <!-- No separate Stage pane: the Stage IS the estate pane's own view, the
-         shelf of saved surfaces with the bench fixed at the top of it
-         (lib/alpineComponents/estate.js). ?view=stage is the canonical key and
-         ?view=surfaces the alias, so every old link and every #stage=
-         transport lands on the same place under either name. -->
+    <!-- No separate Stage pane: the Stage IS the estate pane's own view, two
+         pill-switched sub-views (Stage, the bench; Saved, the shelf) in
+         lib/alpineComponents/estate.js. ?view=stage and ?view=surfaces are
+         those two, so every old link and every #stage= transport lands. -->
 
     <!-- The Map view: the coordination layer made inspectable — the portable
          to-go bag (docs/portable.json), and a per-repo card carrying the
@@ -3035,6 +3034,7 @@ function app(){ return {
     }
     else if (this.view === 'atlas') p.set('view', 'atlas');
     else if (this.view === 'stage') p.set('view', 'stage');
+    else if (this.view === 'surfaces') p.set('view', 'surfaces');
     else if (this.view === 'public') p.set('view', 'public');
     else if (this.view === 'branches') p.set('view', 'branches');
     else if (this.view === 'config') p.set('view', 'config');
@@ -3194,13 +3194,13 @@ function app(){ return {
       { view: 'activity', views: ['activity', 'todo', 'jots'],
         icon: 'ph-pulse',    label: 'Activity', go: () => this.goActivity() },
       { view: 'estate',   icon: 'ph-squares-four', label: 'Repos',    go: () => this.goEstate() },
-      // One stop, named Stage, over the two things a surface is for. A staged
-      // fileset IS a surface (docs/envelopes/surface.md, the stage/1 profile),
-      // so the shelf and the bench are two sides of one coin: the shelf shows
-      // saved surfaces, the bench works one. STAGE IS THE CANONICAL KEY and
-      // 'surfaces' the alias, which is the reverse of what the collapse left.
-      // The old label named only the display half, so the working half had no
-      // word in the UI at all and could be found only by knowing the pencil.
+      // One stop, named Stage, over the two things a surface is for, switched
+      // by a segmented pill inside the view the way Activity switches its
+      // three and Map its two. A staged fileset IS a surface
+      // (docs/envelopes/surface.md, the stage/1 profile), so the bench works
+      // one and the shelf displays the saved ones. Each sub-view keeps its own
+      // ?view key: 'stage' is the bench, 'surfaces' the shelf, which is what
+      // that key always meant, so old links land where they used to.
       { view: 'stage', views: ['stage', 'surfaces'],
         icon: 'ph-stack',        label: 'Stage',    go: () => this.goStage() },
       { view: 'tools',    icon: 'ph-wrench',       label: 'Tools',    go: () => this.goTools() },
@@ -3247,9 +3247,9 @@ function app(){ return {
   // when you say so, by the scrim or the X. The pinned desktop sidebar never
   // closed, so the two behave alike now.
   goEstate(){ this.estateSeen = true; this.view = 'estate'; this.syncUrl(); },
-  // The alias. ?view=surfaces was the canonical key while the view was named
-  // for its display half; it now lands on the Stage, which is the same place.
-  goSurfaces(){ this.goStage(); },
+  // The Stage's other sub-view: the shelf of saved surfaces. Its own ?view key,
+  // the way each of Activity's three has one, so a pill tap deep-links.
+  goSurfaces(){ this.estateSeen = true; this.view = 'surfaces'; this.syncUrl(); },
   goTodo(){ this.estateSeen = true; this.view = 'todo'; this.syncUrl(); },
   goJots(){ this.estateSeen = true; this.view = 'jots'; this.syncUrl(); },
   // The Map view: the coordination layer made inspectable (the portable set +
@@ -3270,10 +3270,9 @@ function app(){ return {
   goPages(){ this.view = 'pages'; this.syncUrl(); },
   goAtlas(){ this.atlasSeen = true; this.view = 'atlas'; this.syncUrl(); },
   goFiles(){ this.view = 'files'; this.syncUrl(); },
-  // The Stage: the shelf of saved surfaces with the working one, the bench,
-  // fixed at the top of it. Every caller already routed here (the explorer's
-  // "+", a #stage= link, a saved surface's Load), and now so does goSurfaces.
-  // No openBench flag any more: the bench does not open, it is always there.
+  // The Stage's bench sub-view: the working surface. Every caller already
+  // routed here (the explorer's "+", a #stage= link, a saved surface's Load),
+  // and all of them mean "show me what is staged", which is this pill.
   goStage(){ this.estateSeen = true; this.view = 'stage'; this.syncUrl(); },
   // Public browse: the estate-level no-token file browser (lazy mount). An
   // optional repo (from an estate card) seeds it via the reactive publicSeed the
