@@ -100,3 +100,15 @@ The cause here was the usual one, a scroll track as a grid item taking
 `min-width: auto` from its 100 `min-w-full` slides; `min-w-0` is the fix, the
 horizontal twin of the `min-h-0` already applied to the row. *(seen: 2026-08-04)*
 → [HTML-STYLE.md](HTML-STYLE.md)
+
+**Built a page with stat cards, page prose, and small type, against a doc that
+forbids all three.** [HTML-STYLE.md](HTML-STYLE.md) exists precisely because
+these corrections recur, and the `daisy-alpine` skill carries "No stat cards"
+as its first rule and is installed ambient so it fires on artifact work
+unprompted. It did not fire, and the session did not invoke it either, so the
+page was built and shipped before anyone looked at the rule. Availability is
+not invocation, which the estate already knows about `/web-tools`: **load the
+skill before writing a page, do not wait for it to trigger.** The tell is
+cheap, since `stats`, `stat-value`, or a tile grid in a diff is a defect by
+definition. *(seen: 2026-08-04)*
+→ [HTML-STYLE.md](HTML-STYLE.md)

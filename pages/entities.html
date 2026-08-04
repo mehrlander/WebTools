@@ -9,36 +9,30 @@
 <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
 
 <!--
-  entities.html — the estate's entity profile: what named things each repo
-  discusses, from a standard recognizer, with its own error rate on the page.
+  entities.html — what each repo names, from a standard recognizer.
 
-  The organizing decision is that this page shows its method, because the
-  method is most of what there is to see. Precision on raw ORG extraction is
-  23%; a reader shown a clean list of names would draw a conclusion the data
-  does not support. So every view carries the number that qualifies it:
+  Built to docs/HTML-STYLE.md. The three rules that shaped it, since a first
+  draft broke all three:
 
-    Confirmed   names a curated estate table can vouch for (OFM's agency and
-                fund registries, spend-wa's vendor crosswalk, a hand acronym
-                bridge). 97.5% precision on a 40-name sample, but only 1.4% of
-                names and 9% of mentions. A trustworthy core, not an index.
-    Extracted   everything the model returned, ranked. 23% precision for ORG,
-                7% for PERSON. Shown with per-name flags so the failures are
-                legible rather than hidden.
-    Contrast    the same label across repos. Survives the low precision
-                because the ERRORS are repo-diagnostic: web-tools' false
-                organizations are HTML/API/DOM, fn-data's are form furniture.
-                Labelled as such, since that is a weaker claim than "what
-                each repo discusses".
+    No stat cards. The header carries one compact line, and it carries
+    DENOMINATORS and a COMPARISON (520/36,400 names, 97.5% against 23%),
+    because the whole point of the confirmed set is its ratio to the raw
+    extraction. Four tiles reading 520 / 16,126 / 97.5% / 23% would say
+    nothing.
+    No page prose. Method, caveats, and the precision table live in the info
+    dialog. Where a qualifier has to stay attached to what it qualifies, it is
+    a LABEL: the contrast section is headed "errors included" rather than
+    explained in a paragraph, and an unjudged label reads "not judged" in the
+    row itself.
+    Full-viewport takeover. This is a result set the reader moves through, so
+    fixed inset-0, thin header, content, thin footer.
 
-  Four levels are kept apart in the data and in the UI: type (an OntoNotes
-  label), name (a surface form), mention (an occurrence, dropped from the
-  committed index for size), and entity (the thing two names may share, NOT
-  resolved). "OFM" and "Office of Financial Management" appear as two rows on
-  purpose.
+  Accent discipline: `primary` means table-vouched throughout, `warning` means
+  a measured-weak number. Neither is used decoratively.
 
   Data: mehrlander/web-tools-private state/entities.json, private because the
-  names come from private repos. Token-gated like every other private read.
-  ?use=<ref> pins the lib chain; &data=<ref> pins which ref of the registry.
+  names come from private repos. ?use=<ref> pins the lib chain; &data=<ref>
+  pins which ref of the registry.
 -->
 <style>
   [x-cloak]{display:none!important}
@@ -59,21 +53,12 @@
   await gh.load('gh-auth.js');
   await gh.load('gh-store.js');
 
-  const REPO_LABEL = {
-    wt: 'web-tools', home: 'home', chats: 'chat-histories', bwa: 'budget-wa',
-    spend: 'spend-wa', bills: 'wa-bills', fn: 'fn-data',
-  };
-  const REPO_FULL = {
-    wt: 'mehrlander/web-tools', home: 'mehrlander/home',
-    chats: 'mehrlander/chat-histories', bwa: 'mehrlander/budget-wa',
-    spend: 'mehrlander/spend-wa', bills: 'mehrlander/wa-bills',
-    fn: 'mehrlander/fn-data',
-  };
+  const LABEL = { wt:'web-tools', home:'home', chats:'chat-histories', bwa:'budget-wa',
+                  spend:'spend-wa', bills:'wa-bills', fn:'fn-data' };
+  const FULL = Object.fromEntries(Object.entries(LABEL).map(([k,v]) => [k, `mehrlander/${v}`]));
   const NAMED = ['ORG','PERSON','GPE','LAW','NORP','PRODUCT','EVENT','WORK_OF_ART','FAC','LOC','LANGUAGE'];
   const VALUE = ['DATE','MONEY','CARDINAL','PERCENT','QUANTITY','ORDINAL','TIME'];
-  // Only ORG and PERSON have adjudicated precision. Everything else says so
-  // rather than borrowing a flag rate, which measures something different.
-  const JUDGED = { ORG: 0.23, PERSON: 0.07 };
+  const JUDGED = { ORG: 0.23, PERSON: 0.07 };   // adjudicated; everything else is unjudged
 
   document.addEventListener('alpine:init', () => {
     Alpine.data('entities', () => ({
@@ -82,44 +67,47 @@
       DATA_REF: new URLSearchParams(location.search).get('data') || 'main',
 
       idx: null, loading: true, error: '',
-      view: 'confirmed',        // confirmed | extracted | contrast | method
-      repo: 'home',
-      label: 'ORG',
-      hideFlagged: false,
+      view: 'confirmed', repo: 'home', label: 'ORG', hideFlagged: false,
 
       async init() {
         try {
           const reg = new window.GH({ token: window.TOKEN || '', repo: this.REGISTRY, ref: this.DATA_REF });
           this.idx = JSON.parse((await reg.get(this.PATH)).text);
           const h = new URLSearchParams(location.hash.slice(1));
-          if (h.get('view')) this.view = h.get('view');
-          if (h.get('repo')) this.repo = h.get('repo');
-          if (h.get('label')) this.label = h.get('label');
+          for (const k of ['view','repo','label']) if (h.get(k)) this[k] = h.get(k);
         } catch (e) {
           this.error = e.status === 404
-            ? `No index at ${this.REGISTRY}@${this.DATA_REF} ${this.PATH}. Build it with tools/concept-lab/entityprofile.py.`
+            ? `No index at ${this.REGISTRY}@${this.DATA_REF} ${this.PATH}`
             : `${e.message || e} (${this.REGISTRY}@${this.DATA_REF})`;
         } finally { this.loading = false }
       },
 
       get repos() { return this.idx ? Object.keys(this.idx.repos) : [] },
       get cur() { return this.idx?.repos?.[this.repo] },
-      label_(k) { return REPO_LABEL[k] || k },
-      full(k) { return REPO_FULL[k] || k },
-      pct(x) { return x == null ? '—' : `${Math.round(x * 100)}%` },
+      name(k) { return LABEL[k] || k },
+      full(k) { return FULL[k] || k },
+      pct(x) { return x == null ? '—' : `${Math.round(x*100)}%` },
       n(x) { return (x ?? 0).toLocaleString() },
-
-      go(patch) {
-        Object.assign(this, patch);
-        const h = new URLSearchParams({ view: this.view, repo: this.repo, label: this.label });
-        history.replaceState(null, '', `#${h}`);
+      go(p) {
+        Object.assign(this, p);
+        history.replaceState(null, '', `#${new URLSearchParams({view:this.view, repo:this.repo, label:this.label})}`);
       },
 
-      // ── confirmed ────────────────────────────────────────────────────────
-      get confirmed() { return this.cur?.confirmed || [] },
-      get confirmedMentions() { return this.confirmed.reduce((a, r) => a + r.mentions, 0) },
+      // The header line. Every figure carries its denominator or its
+      // counterpart, so the line states a relationship rather than four
+      // isolated numbers.
+      get headline() {
+        if (!this.cur) return '';
+        const org = this.cur.labels?.ORG;
+        const conf = this.cur.confirmed || [];
+        const cm = conf.reduce((a,r) => a + r.mentions, 0);
+        if (!org) return `${this.cur.filesScanned} files · no organizations`;
+        return `confirmed ${this.n(conf.length)}/${this.n(org.names)} names · `
+             + `${this.n(cm)}/${this.n(org.mentions)} mentions · `
+             + `precision 97.5% vs 23% unconfirmed`;
+      },
 
-      // ── extracted ────────────────────────────────────────────────────────
+      get confirmed() { return this.cur?.confirmed || [] },
       get labelsPresent() { return NAMED.filter(l => this.cur?.labels?.[l]) },
       get valueLabels() { return VALUE.filter(l => this.cur?.labels?.[l]) },
       get curLabel() { return this.cur?.labels?.[this.label] },
@@ -128,13 +116,10 @@
         return this.hideFlagged ? t.filter(r => !r.flags.length) : t;
       },
       judged(l) { return JUDGED[l] },
-
-      // ── contrast ─────────────────────────────────────────────────────────
       contrastRows(l) {
-        return this.repos
-          .filter(r => this.idx.repos[r].labels?.[l])
+        return this.repos.filter(r => this.idx.repos[r].labels?.[l])
           .map(r => ({ repo: r, ...this.idx.repos[r].labels[l] }))
-          .sort((a, b) => b.mentions - a.mentions);
+          .sort((a,b) => b.mentions - a.mentions);
       },
     }));
   });
@@ -143,284 +128,217 @@
 </script>
 </head>
 
-<body class="bg-base-200 min-h-screen">
-<div x-data="entities" x-cloak class="max-w-6xl mx-auto p-4 sm:p-6">
+<body>
+<div x-data="entities" x-cloak class="fixed inset-0 grid grid-rows-[auto_1fr_auto] bg-base-200">
 
-  <header class="mb-5">
-    <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      <h1 class="text-2xl font-semibold">Entities</h1>
-      <span class="text-sm opacity-60">what each repo names, and how well the recognizer did</span>
+  <!-- ── header: thin. identity, the one figure line, controls ──────────── -->
+  <header class="min-w-0 px-4 py-2 bg-base-100 border-b border-base-300">
+    <div class="flex items-center gap-3 min-w-0">
+      <h1 class="text-lg font-semibold shrink-0">Entities</h1>
+      <span class="text-xs opacity-60 tabular truncate hidden sm:block" x-text="headline"></span>
+      <button class="btn btn-ghost btn-xs ml-auto shrink-0" @click="$refs.info.showModal()"
+              title="method, measured precision, exclusions">
+        <i class="ph ph-info"></i>
+      </button>
     </div>
-    <p class="text-xs opacity-50 mt-1" x-show="idx">
-      spaCy <code>en_core_web_sm</code>, OntoNotes labels ·
-      generated <span x-text="idx?.generatedAt"></span> ·
-      index in <a class="link" :href="`https://github.com/${REGISTRY}/blob/${DATA_REF}/${PATH}`" x-text="PATH"></a>
-    </p>
-  </header>
 
-  <div x-show="loading" class="flex items-center gap-2 opacity-60 text-sm">
-    <span class="loading loading-spinner loading-sm"></span> loading index…
-  </div>
-  <div x-show="error" class="alert alert-warning text-sm" x-text="error"></div>
-
-  <template x-if="idx">
-  <div>
-    <div role="tablist" class="tabs tabs-boxed bg-base-100 mb-4 w-fit">
-      <template x-for="v in ['confirmed','extracted','contrast','method']" :key="v">
-        <button role="tab" class="tab capitalize" :class="view===v && 'tab-active'"
+    <div class="flex items-center gap-1 mt-2 overflow-x-auto">
+      <template x-for="v in ['confirmed','extracted','contrast']" :key="v">
+        <button class="btn btn-xs capitalize shrink-0"
+                :class="view===v ? 'btn-neutral' : 'btn-ghost'"
                 @click="go({view:v})" x-text="v"></button>
       </template>
-    </div>
-
-    <!-- repo picker, shared by the confirmed and extracted views -->
-    <div class="flex flex-wrap gap-1 mb-4" x-show="view==='confirmed'||view==='extracted'">
+      <span class="opacity-20 px-1 shrink-0" x-show="view!=='contrast'">|</span>
       <template x-for="r in repos" :key="r">
-        <button class="btn btn-xs" :class="repo===r ? 'btn-primary' : 'btn-ghost'"
-                @click="go({repo:r})" x-text="label_(r)"></button>
+        <button class="btn btn-xs shrink-0" x-show="view!=='contrast'"
+                :class="repo===r ? 'btn-primary' : 'btn-ghost'"
+                @click="go({repo:r})" x-text="name(r)"></button>
       </template>
+      <select class="select select-xs ml-auto shrink-0 font-mono" x-show="view==='extracted'"
+              :value="label" @change="go({label:$event.target.value})">
+        <template x-for="l in labelsPresent" :key="l"><option :value="l" x-text="l"></option></template>
+        <template x-for="l in valueLabels" :key="l"><option :value="l" x-text="`${l} (value)`"></option></template>
+      </select>
     </div>
+    <div class="text-xs opacity-60 tabular mt-1 sm:hidden" x-text="headline"></div>
+  </header>
 
-    <!-- ── CONFIRMED ──────────────────────────────────────────────────── -->
-    <section x-show="view==='confirmed'">
-      <div class="alert bg-base-100 border border-base-300 text-sm mb-4 block">
-        <p><strong>Vouched for by a table the estate already curates.</strong>
-        Each name below matched OFM's agency or fund registry, spend-wa's vendor
-        crosswalk, or the hand acronym bridge, <em>and</em> the recognizer's type
-        agreed with the table's.</p>
-        <p class="mt-2 opacity-70">Precision <strong>97.5%</strong> on a 40-name
-        sample, against <strong>23%</strong> for raw <code>ORG</code>. The cost is
-        recall: this is <strong>1.4%</strong> of extracted names and
-        <strong>9%</strong> of mentions. Treat it as a trustworthy core, not an
-        index of everything the repo discusses.</p>
-      </div>
+  <!-- ── content: the thing ─────────────────────────────────────────────── -->
+  <main class="min-h-0 min-w-0 overflow-auto px-4 py-4">
+    <div x-show="loading" class="opacity-60">loading…</div>
+    <div x-show="error" class="alert alert-warning" x-text="error"></div>
 
-      <div class="stats stats-horizontal bg-base-100 shadow-sm mb-4 text-sm">
-        <div class="stat py-3">
-          <div class="stat-title text-xs">confirmed names</div>
-          <div class="stat-value text-2xl tabular" x-text="n(confirmed.length)"></div>
+    <template x-if="idx">
+    <div class="max-w-5xl">
+
+      <!-- CONFIRMED: vouched for by a curated table -->
+      <section x-show="view==='confirmed'">
+        <div x-show="!confirmed.length" class="text-xl leading-8 opacity-60">
+          Nothing table-vouched here. For a tooling repo that is the right answer.
         </div>
-        <div class="stat py-3">
-          <div class="stat-title text-xs">their mentions</div>
-          <div class="stat-value text-2xl tabular" x-text="n(confirmedMentions)"></div>
+        <div class="flex flex-wrap gap-x-5 gap-y-2" x-show="confirmed.length">
+          <template x-for="r in confirmed" :key="r.name">
+            <span class="text-xl leading-8">
+              <span x-text="r.name"></span>
+              <span class="text-xs opacity-40 tabular align-middle" x-text="r.mentions"></span>
+            </span>
+          </template>
         </div>
-        <div class="stat py-3">
-          <div class="stat-title text-xs">files scanned</div>
-          <div class="stat-value text-2xl tabular" x-text="n(cur?.filesScanned)"></div>
-          <div class="stat-desc text-xs" x-show="cur?.sampled">sampled from <span x-text="n(cur?.filesTotal)"></span></div>
-        </div>
-      </div>
+      </section>
 
-      <div x-show="!confirmed.length" class="text-sm opacity-60 italic">
-        Nothing confirmed here. For a tooling repo that is the correct answer:
-        it names no agencies, funds, or vendors.
-      </div>
-
-      <div class="flex flex-wrap gap-2" x-show="confirmed.length">
-        <template x-for="r in confirmed" :key="r.name">
-          <div class="badge badge-lg bg-base-100 border-base-300 gap-2 py-3">
-            <span class="font-medium" x-text="r.name"></span>
-            <span class="opacity-50 tabular text-xs" x-text="r.mentions"></span>
-            <span class="opacity-40 text-[10px] uppercase tracking-wide"
-                  x-text="(r.gaz_class||[]).join(' ')"></span>
+      <!-- EXTRACTED: everything the model returned -->
+      <section x-show="view==='extracted'">
+        <template x-if="curLabel">
+        <div>
+          <!-- Opacity is set per span, never on this row. CSS opacity applies to
+               the whole subtree, so an opacity-60 container would mute the
+               precision figure no matter what class the child carried, and that
+               is the one number qualifying everything below it. -->
+          <div class="flex items-baseline gap-4 text-xs tabular mb-3">
+            <span class="opacity-60" x-text="`${n(curLabel.names)} names, ${n(curLabel.mentions)} mentions`"></span>
+            <span class="opacity-60" x-text="`${pct(curLabel.flagRate)} flagged by shape`"></span>
+            <!-- A filled badge, not text-warning: winter's warning is a pale
+                 amber on a light ground, so colour alone reads as de-emphasis,
+                 which is the opposite of what this figure needs. -->
+            <span :class="judged(label)!==undefined ? 'badge badge-warning badge-sm font-medium' : 'opacity-60 italic'"
+                  x-text="judged(label)!==undefined ? `${pct(judged(label))} precision, adjudicated` : 'precision not judged'"></span>
+            <label class="cursor-pointer flex items-center gap-1 ml-auto opacity-60">
+              <input type="checkbox" class="checkbox checkbox-xs" x-model="hideFlagged">
+              hide flagged
+            </label>
           </div>
-        </template>
-      </div>
-    </section>
-
-    <!-- ── EXTRACTED ──────────────────────────────────────────────────── -->
-    <section x-show="view==='extracted'">
-      <div class="flex flex-wrap items-center gap-1 mb-3">
-        <template x-for="l in labelsPresent" :key="l">
-          <button class="btn btn-xs font-mono" :class="label===l ? 'btn-secondary' : 'btn-ghost'"
-                  @click="go({label:l})" x-text="l"></button>
-        </template>
-        <span class="mx-2 opacity-30">|</span>
-        <template x-for="l in valueLabels" :key="l">
-          <button class="btn btn-xs font-mono opacity-60" :class="label===l ? 'btn-secondary' : 'btn-ghost'"
-                  @click="go({label:l})" x-text="l"></button>
-        </template>
-      </div>
-
-      <template x-if="curLabel">
-      <div>
-        <div class="flex flex-wrap items-center gap-4 text-sm mb-3 p-3 bg-base-100 rounded-lg border border-base-300">
-          <span><span class="opacity-60">names</span> <strong class="tabular" x-text="n(curLabel.names)"></strong></span>
-          <span><span class="opacity-60">mentions</span> <strong class="tabular" x-text="n(curLabel.mentions)"></strong></span>
-          <span><span class="opacity-60">flag rate</span> <strong class="tabular" x-text="pct(curLabel.flagRate)"></strong></span>
-          <span>
-            <span class="opacity-60">precision</span>
-            <template x-if="judged(label) !== undefined">
-              <strong class="tabular text-warning" x-text="pct(judged(label))"></strong>
-            </template>
-            <template x-if="judged(label) === undefined">
-              <em class="opacity-50">not judged</em>
-            </template>
-          </span>
-          <label class="label cursor-pointer gap-2 py-0 ml-auto">
-            <input type="checkbox" class="checkbox checkbox-xs" x-model="hideFlagged">
-            <span class="label-text text-xs">hide flagged</span>
-          </label>
-        </div>
-
-        <p class="text-xs opacity-60 mb-3">
-          Flag rate is mechanical and is <strong>not</strong> precision: across the
-          14 repo/label pairs with judgments, Pearson r between them is
-          <strong>-0.54</strong>, so the shape tests explain under a third of the
-          variation. A label reading "not judged" has no measured quality at all.
-        </p>
-
-        <div class="overflow-x-auto bg-base-100 rounded-lg border border-base-300">
-          <table class="table table-sm">
-            <thead><tr>
-              <th>name</th><th class="text-right">mentions</th>
-              <th class="text-right">files</th><th>flags</th>
-            </tr></thead>
+          <table class="table">
             <tbody>
               <template x-for="r in rows" :key="r.name">
-                <tr :class="r.flags.length && 'opacity-60'">
-                  <td class="font-medium" x-text="r.name"></td>
-                  <td class="text-right tabular" x-text="n(r.mentions)"></td>
-                  <td class="text-right tabular opacity-60" x-text="n(r.files)"></td>
-                  <td>
-                    <div class="flex flex-wrap gap-1">
-                      <template x-for="f in r.flags" :key="f">
-                        <span class="badge badge-xs badge-ghost font-mono" x-text="f"></span>
-                      </template>
-                    </div>
-                  </td>
+                <tr class="hover">
+                  <td class="text-xl leading-8" :class="r.flags.length && 'opacity-50'" x-text="r.name"></td>
+                  <td class="text-xl leading-8 tabular text-right w-24" x-text="n(r.mentions)"></td>
+                  <td class="text-xs opacity-40 tabular text-right w-20" x-text="`${n(r.files)} files`"></td>
+                  <td class="text-xs font-mono opacity-40" x-text="r.flags.join(' ')"></td>
                 </tr>
               </template>
             </tbody>
           </table>
         </div>
-        <p class="text-xs opacity-50 mt-2">
-          Top 20 by mentions. The head is not cleaner than the tail: measured
-          <span class="tabular">23%</span> vs <span class="tabular">19%</span> for
-          <code>ORG</code>, <span class="tabular">7%</span> vs
-          <span class="tabular">9%</span> for <code>PERSON</code>.
-        </p>
-      </div>
-      </template>
-    </section>
+        </template>
+      </section>
 
-    <!-- ── CONTRAST ───────────────────────────────────────────────────── -->
-    <section x-show="view==='contrast'">
-      <div class="alert bg-base-100 border border-base-300 text-sm mb-4 block">
-        <p><strong>The same label across repos, unfiltered.</strong> This
-        discriminates the repos sharply, but read the claim carefully: it works
-        partly <em>through</em> the errors, which are themselves repo-diagnostic.
-        web-tools' false organizations are HTML, API, DOM; chat-histories' are
-        PowerShell, XAML, CSS; fn-data's are form furniture. So this is evidence
-        about what a repo is made of, which is a weaker claim than a list of
-        what it discusses.</p>
-      </div>
-
-      <template x-for="l in ['ORG','PERSON','GPE','LAW','NORP','EVENT']" :key="l">
-        <div class="mb-5" x-show="contrastRows(l).length">
-          <h3 class="font-mono text-sm font-semibold mb-2" x-text="l"></h3>
-          <div class="overflow-x-auto bg-base-100 rounded-lg border border-base-300">
-            <table class="table table-xs">
-              <thead><tr>
-                <th>repo</th><th class="text-right">names</th>
-                <th class="text-right">mentions</th><th class="text-right">flag rate</th>
-                <th>top names</th>
-              </tr></thead>
+      <!-- CONTRAST: same label across repos. The qualifier is the heading. -->
+      <section x-show="view==='contrast'">
+        <template x-for="l in ['ORG','PERSON','GPE','LAW','NORP','EVENT']" :key="l">
+          <div class="mb-8" x-show="contrastRows(l).length">
+            <h2 class="font-mono text-sm opacity-60 mb-2">
+              <span x-text="l"></span>
+              <span class="ml-2 badge badge-xs badge-ghost">errors included</span>
+            </h2>
+            <table class="table table-sm">
               <tbody>
                 <template x-for="row in contrastRows(l)" :key="row.repo">
-                  <tr>
-                    <td class="whitespace-nowrap">
-                      <a class="link link-hover" :href="`https://github.com/${full(row.repo)}`"
-                         x-text="label_(row.repo)"></a>
+                  <tr class="hover align-baseline">
+                    <td class="text-xl leading-8 whitespace-nowrap w-40">
+                      <a class="link link-hover" :href="`https://github.com/${full(row.repo)}`" x-text="name(row.repo)"></a>
                     </td>
-                    <td class="text-right tabular" x-text="n(row.names)"></td>
-                    <td class="text-right tabular" x-text="n(row.mentions)"></td>
-                    <td class="text-right tabular opacity-60" x-text="pct(row.flagRate)"></td>
-                    <td class="text-xs" x-text="row.top.slice(0,7).map(e=>e.name).join(', ')"></td>
+                    <td class="text-xs opacity-40 tabular text-right w-28"
+                        x-text="`${n(row.names)} / ${n(row.mentions)}`"></td>
+                    <td class="text-xl leading-8" x-text="row.top.slice(0,7).map(e=>e.name).join(', ')"></td>
                   </tr>
                 </template>
               </tbody>
             </table>
           </div>
+        </template>
+      </section>
+
+    </div>
+    </template>
+  </main>
+
+  <!-- ── footer: thin ───────────────────────────────────────────────────── -->
+  <footer class="px-4 py-1.5 bg-base-100 border-t border-base-300 flex items-center gap-3 text-xs opacity-50">
+    <span x-show="idx" x-text="`spaCy en_core_web_sm · OntoNotes · ${idx?.generatedAt}`"></span>
+    <a class="link link-hover ml-auto" :href="`https://github.com/${REGISTRY}/blob/${DATA_REF}/${PATH}`">index</a>
+  </footer>
+
+  <!-- ── the method, one tap away rather than on the page ───────────────── -->
+  <dialog x-ref="info" class="modal">
+    <div class="modal-box max-w-2xl">
+      <h3 class="text-lg font-semibold mb-3">Method</h3>
+
+      <template x-if="idx">
+      <div class="space-y-4 text-sm">
+        <div>
+          <p class="font-medium mb-1">Four levels, kept apart</p>
+          <p class="opacity-70">A <strong>type</strong> is an OntoNotes label. A
+          <strong>name</strong> is a surface form. A <strong>mention</strong> is one
+          occurrence, dropped from this index for size. An <strong>entity</strong> is
+          what two names may share, and is <strong>not resolved</strong>: DRS and
+          Department of Retirement Systems are two rows on purpose.</p>
         </div>
+
+        <div>
+          <p class="font-medium mb-1">Measured precision</p>
+          <table class="table table-xs">
+            <tbody>
+              <tr><td>table-confirmed <code>ORG</code></td><td class="text-right tabular font-semibold">97.5%</td><td class="opacity-50 text-right">40 judged</td></tr>
+              <tr><td><code>ORG</code>, top 10 per repo</td><td class="text-right tabular">23%</td><td class="opacity-50 text-right">70 judged</td></tr>
+              <tr><td><code>ORG</code>, stratified</td><td class="text-right tabular">19%</td><td class="opacity-50 text-right">68 judged</td></tr>
+              <tr><td><code>PERSON</code>, top 10 per repo</td><td class="text-right tabular">7%</td><td class="opacity-50 text-right">67 judged</td></tr>
+              <tr><td><code>PERSON</code>, stratified</td><td class="text-right tabular">9%</td><td class="opacity-50 text-right">69 judged</td></tr>
+            </tbody>
+          </table>
+          <p class="opacity-70 mt-1">One rater, against the OntoNotes definitions. The
+          head is not cleaner than the tail. Every other label is unjudged, and reads
+          so. Flag rate is a different measurement: Pearson r between the two is
+          <strong>-0.54</strong> over 14 repo/label pairs, so shape explains under a
+          third of the variation.</p>
+        </div>
+
+        <div>
+          <p class="font-medium mb-1">Confirmation, and what it costs</p>
+          <p class="opacity-70">A name is confirmed when a curated estate table
+          vouches for it (OFM's agency and fund registries, spend-wa's vendor
+          crosswalk, a 34-entry acronym bridge) <em>and</em> the recognizer's type
+          agrees with the table's. 520 of 36,400 names, carrying 9% of mentions: a
+          trustworthy core, not an index.</p>
+        </div>
+
+        <div>
+          <p class="font-medium mb-1">Corpus</p>
+          <table class="table table-xs">
+            <thead><tr><th>repo</th><th class="text-right">scanned</th><th class="text-right">total</th><th class="text-right">skipped &gt;200KB</th></tr></thead>
+            <tbody>
+              <template x-for="r in repos" :key="r">
+                <tr><td x-text="name(r)"></td>
+                  <td class="text-right tabular" x-text="n(idx.repos[r].filesScanned)"></td>
+                  <td class="text-right tabular" x-text="n(idx.repos[r].filesTotal)"></td>
+                  <td class="text-right tabular opacity-50" x-text="n(idx.repos[r].skippedOversize)"></td></tr>
+              </template>
+            </tbody>
+          </table>
+          <p class="opacity-70 mt-1">Skipped files are supplied material: enrolled bill
+          text, ACFR extracts, raw transcripts. fn-data is a 1,500-file sample.</p>
+        </div>
+
+        <div>
+          <p class="font-medium mb-1">Known collisions</p>
+          <ul class="list-disc ml-5 opacity-70 space-y-1">
+            <li><code>UTC</code> is deliberately absent from the acronym bridge: here it
+            is Coordinated Universal Time, 3,331 times, not the Utilities and
+            Transportation Commission, zero.</li>
+            <li>Short acronym keys match case, or folding turns every "doc" into the
+            Department of Corrections: 73 of web-tools' 89 confirmed mentions, before
+            the fix.</li>
+            <li><code>General Fund</code> is a fund the recognizer typed <code>ORG</code>.
+            Type disagreements are excluded rather than counted: 62 of 582.</li>
+          </ul>
+        </div>
+      </div>
       </template>
-    </section>
 
-    <!-- ── METHOD ─────────────────────────────────────────────────────── -->
-    <section x-show="view==='method'" class="space-y-4 text-sm">
-      <div class="bg-base-100 rounded-lg border border-base-300 p-4">
-        <h3 class="font-semibold mb-2">Four levels, kept apart</h3>
-        <dl class="space-y-1">
-          <div><dt class="inline font-mono text-xs">type</dt>
-            <dd class="inline opacity-70"> an OntoNotes label: <code>ORG</code>, <code>PERSON</code>, <code>LAW</code>.</dd></div>
-          <div><dt class="inline font-mono text-xs">name</dt>
-            <dd class="inline opacity-70"> a surface form: "OFM", "Office of Financial Management".</dd></div>
-          <div><dt class="inline font-mono text-xs">mention</dt>
-            <dd class="inline opacity-70"> one occurrence. Dropped from this index for size; the working profile is 101 MB with three sampled per name.</dd></div>
-          <div><dt class="inline font-mono text-xs">entity</dt>
-            <dd class="inline opacity-70"> the thing two names may both denote. <strong>Not resolved.</strong> "OFM" and "Office of Financial Management" are two rows here, on purpose.</dd></div>
-        </dl>
-      </div>
-
-      <div class="bg-base-100 rounded-lg border border-base-300 p-4">
-        <h3 class="font-semibold mb-2">Measured precision</h3>
-        <table class="table table-xs">
-          <thead><tr><th>set</th><th class="text-right">precision</th><th>basis</th></tr></thead>
-          <tbody>
-            <tr><td>gazetteer-confirmed <code>ORG</code></td><td class="text-right tabular font-semibold">97.5%</td><td class="opacity-60">40-name sample</td></tr>
-            <tr><td><code>ORG</code>, top 10 per repo</td><td class="text-right tabular">23%</td><td class="opacity-60">70 judged</td></tr>
-            <tr><td><code>ORG</code>, stratified</td><td class="text-right tabular">19%</td><td class="opacity-60">68 judged</td></tr>
-            <tr><td><code>PERSON</code>, top 10 per repo</td><td class="text-right tabular">7%</td><td class="opacity-60">67 judged</td></tr>
-            <tr><td><code>PERSON</code>, stratified</td><td class="text-right tabular">9%</td><td class="opacity-60">69 judged</td></tr>
-          </tbody>
-        </table>
-        <p class="text-xs opacity-60 mt-2">
-          One rater, ten names per band per repo, judged against the OntoNotes
-          definitions. Wide enough to rank the labels, too thin to fit anything to.
-          Every other label is unjudged.
-        </p>
-      </div>
-
-      <div class="bg-base-100 rounded-lg border border-base-300 p-4">
-        <h3 class="font-semibold mb-2">Corpus and exclusions</h3>
-        <p class="opacity-70" x-text="idx.method.corpus"></p>
-        <p class="opacity-70 mt-2" x-text="idx.method.gazetteer"></p>
-        <table class="table table-xs mt-3">
-          <thead><tr><th>repo</th><th class="text-right">scanned</th><th class="text-right">total</th><th class="text-right">skipped &gt;200KB</th></tr></thead>
-          <tbody>
-            <template x-for="r in repos" :key="r">
-              <tr>
-                <td x-text="label_(r)"></td>
-                <td class="text-right tabular" x-text="n(idx.repos[r].filesScanned)"></td>
-                <td class="text-right tabular" x-text="n(idx.repos[r].filesTotal)"></td>
-                <td class="text-right tabular opacity-60" x-text="n(idx.repos[r].skippedOversize)"></td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-        <p class="text-xs opacity-60 mt-2">
-          Files over 200 KB are supplied material (enrolled bill text, ACFR
-          extracts, raw transcripts), excluded and counted rather than dropped
-          silently. fn-data is a 1,500-file sample of 7,938.
-        </p>
-      </div>
-
-      <div class="bg-base-100 rounded-lg border border-base-300 p-4">
-        <h3 class="font-semibold mb-2">Known collisions</h3>
-        <ul class="list-disc ml-5 opacity-70 space-y-1">
-          <li><code>UTC</code> is deliberately absent from the acronym bridge. Here it
-          is Coordinated Universal Time (3,331 mentions in the chat archive), not the
-          Utilities and Transportation Commission (zero).</li>
-          <li>Short acronym keys match case, or folding turns every "doc" into the
-          Department of Corrections. That one collision accounted for 73 of
-          web-tools' 89 confirmed mentions before the fix.</li>
-          <li><code>General Fund</code> is confirmed as a <em>fund</em> while the
-          recognizer typed it <code>ORG</code>. Type disagreements are excluded from
-          the confirmed set rather than counted as wins: 62 of 582.</li>
-        </ul>
-      </div>
-    </section>
-  </div>
-  </template>
+      <div class="modal-action"><form method="dialog"><button class="btn btn-sm">close</button></form></div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
 </div>
 </body>
 </html>
