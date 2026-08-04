@@ -91,11 +91,16 @@ python3 tools/concept-lab/entitylab.py wt=... home=... bwa=... fn=... \
 python3 tools/concept-lab/entitylab.py home=/path/home --spacy   # model vs pattern
 ```
 
-About 70 seconds for seven repos. `--spacy` adds an `en_core_web_sm` pass
-for comparison on the prose classes; the citation classes never need it,
-and measurably beat it (a general model has no notion of an engrossed
-substitute bill). Findings and the measured resolution rates per repo are
-in [findings.md](findings.md).
+About 70 seconds for seven repos without `--spacy`, and about 7 minutes
+for two with it. `--spacy` adds an `en_core_web_sm` pass over the prose
+classes. Measured on budget-wa and home: it finds real organizations the
+patterns miss, and misfires badly on this corpus's markdown and code
+tokens (`XML`, `HTML`, and `FTE` as `ORG`; `JSON` and
+`fiscal-note-objects.csv` as `PERSON`; `jsDelivr` and `CLAUDE.md` as
+`NORP`). It also cannot see the citation classes at all: on `ESSB 5357`
+it takes `5357` as a `CARDINAL` and drops the bill. Treat it as a
+recall aid over a domain gazetteer, not as the extractor. Findings and
+the per-repo resolution rates are in [findings.md](findings.md).
 
 ## The experiment scripts
 

@@ -457,12 +457,13 @@ What the census measured instead:
   entity names than any other repo and resolves 0% of its own prose, because
   its tables key bills by URL and title while every mention in prose is a bill
   *number*.
-- **Pattern beats model on the classes that matter here.** A general NER model
-  has no notion of an RCW citation or an engrossed substitute bill. Six
-  citation patterns (RCW, bill id, session law, biennium, fiscal year, USC/CFR)
-  carry the high-precision half; spaCy's ORG/PERSON/LAW is the fallback for
-  prose-only classes, consistent with the lab's earlier finding that lexical
-  methods beat embeddings on this corpus.
+- **Pattern and model fail differently, and the model was not run.**
+  *Corrected 2026-08-04, same day:* the first version of this section claimed
+  pattern "beats model outright" on the strength of an a priori argument. The
+  `--spacy` path was written and never executed, because `en_core_web_sm` had
+  failed to install behind a missing `click` (the exact failure this log
+  already recorded on 2026-08-02, and did not check for). The claim was an
+  assertion formatted as a measurement. What the run actually shows is below.
 - **web-tools has no entity layer and should not grow one.** 1% resolution, and
   its top "acronyms" are MDL, LCP, WASM, FAB: technical vocabulary, which is
   termlab's population, not this one. A tooling repo names no entities. This is
@@ -509,3 +510,46 @@ list is a scaffold for a declaration, not a substitute for one.
   pattern) or rebuilt on demand (the concept index's "build it, use it, let it
   go") is unsettled. The crosswalk argues for committed, since an estate-level
   join cannot rebuild seven repos on page load.
+
+## 2026-08-04, the model pass, actually run
+
+`en_core_web_sm` over budget-wa and home prose, about 7 minutes for the two
+(against 68 seconds for all seven without it). What it returns per class, top
+of each list:
+
+| class | budget-wa | home |
+| --- | --- | --- |
+| `ORG` | 1,310 types. OFM, DRS, State, and `sec`, `XML`, `PDF`, `HTM` | 5,388 types. DRS, OFM, CORE, CFL, ACFR, and `FTE`, `HTML` |
+| `PERSON` | 308 types. Treasurer, and `Expenditures`, `Bill No.`, `Provisos` | 2,026 types. Roth, Retirement Specialist, and `JSON`, `Shipped`, `fiscal-note-objects.csv` |
+| `GPE` | 128 types. Washington, US, and `biennia`, `PyMuPDF`, `FY` | 456 types. Washington, Marcus, and `drs-part1.csv`, `HB`, `DP` |
+| `LAW` | 111 types. Section 122, Chapter 11, Plan 1 | 341 types. TRS Plan 1, Plan 2/3, Chapter 5 |
+| `NORP` | 47 types. Congressional, Indian, Veterans | 212 types. and `IndexedDB`, `jsDelivr`, `CLAUDE.md`, `Obsidian` |
+
+Three things are true at once, and the earlier section collapsed them into one
+wrong sentence:
+
+1. **The model finds real entities the patterns cannot.** `Washington`,
+   `Treasurer`, `Congressional`, `Indian`, `Veterans`, `Roth`, and the
+   `LEOFF Plan 2` / `TRS Plan 1` plan names are genuine, and no regex in this
+   tool proposes them. For organizations and people it has real recall.
+2. **Precision on this corpus is poor, and the failure mode is legible.**
+   Markdown and code tokens flood every class: file formats as `ORG`, filenames
+   and library names as `PERSON` and `NORP`, a raw table separator row as
+   `PRODUCT`. The masking in `harvest()` strips fences and inline code, but the
+   model still sees bare technical vocabulary in running prose, which a model
+   trained on news has no reason to handle. This is a fixable preprocessing
+   and gazetteer problem, not a verdict on models.
+3. **It is blind to the citation classes.** On the sentence "The Department of
+   Retirement Systems and OFM reviewed ESSB 5357 with the Health Care
+   Authority" it returns both organizations correctly and takes `5357` as a
+   `CARDINAL`, dropping the bill. Bill ids, RCW cites, and session laws need
+   the patterns. That much of the original claim survives, now measured on a
+   case rather than argued from the label set.
+
+So the shape is a hybrid, and the honest ordering is the reverse of what the
+first pass implied: the model is the recall layer for organizations and
+people, the patterns are the precision layer for citations, and a domain
+gazetteer built from the tables already in the estate is what filters the
+model's output down to something worth reading. None of that is settled by
+this run; it is one run of one small model, and `en_core_web_trf` or a
+zero-shot extractor like GLiNER was never tried.
