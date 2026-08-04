@@ -9,6 +9,15 @@ editable source; do not hand-edit entries below. Regenerate:
 Entries predating the generator were hand-authored and are preserved until
 backfilled (tracker task 0009).
 
+**The links below are historical addresses, and some of them are dead.** An
+entry records what a PR shipped, with each file addressed at `main` as it stood
+that day. Later renames and deletions leave those addresses pointing at nothing:
+a `[main (was SCAFFOLDING.md)]` link was dead the moment it was written, since
+naming the former path is the point. This is a property of a record that links
+to a moving target, not rot to repair, and `scripts/link-survey.py` reports the
+whole file for that reason. Do not repoint them; a `--refresh` would overwrite
+the edit anyway. The current count is 15, all in this file.
+
 ---
 
 ## 2026-07-12 The portable set becomes a plugin marketplace (PR #210)
