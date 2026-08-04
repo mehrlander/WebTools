@@ -24,10 +24,9 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Spike the snags log (friction learned the hard way)](tasks/spike-snags-log-gobdyq.md) (`claude/pr-219-review-22csrh`)
 - 🎫 [Give the stage a way to carry part of a file](tasks/stage-partial-file-selection-k8mtou.md)
 - 🎫 [Make the take-away menu work inside a toss](tasks/take-away-inside-a-toss-k73cjq.md)
-- 🎫 [Tracker review in show-repo, over a typed board projection](tasks/tracker-review-in-show-repo-v5km6b.md) · L
 
 ## In progress
-- (none)
+- 🎫 [Tracker review in show-repo, over a typed board projection](tasks/tracker-review-in-show-repo-v5km6b.md) · L (`claude/budget-drs-tracker-assessment-fwa13q`)
 
 ## Blocked
 - (none)

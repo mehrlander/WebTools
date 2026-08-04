@@ -1,10 +1,11 @@
 ---
 id: tracker-review-in-show-repo-v5km6b
 title: Tracker review in show-repo, over a typed board projection
-status: backlog
+status: in-progress
 project: show-repo
 track: independent
 opened: 2026-08-03
+session: claude/budget-drs-tracker-assessment-fwa13q
 size: L
 ---
 # Tracker review in show-repo, over a typed board projection
@@ -86,3 +87,4 @@ branch page.
   were all downstream of the board being untyped. Depends on `size:` and
   `awaiting:` graduating first, since the view's value is rendering them.
 - 2026-08-03: the generator half landed on this branch (PR #345): `size` and `awaiting` graduated, `board.json` emitted beside `board.md` with `href`, `lastActivity`, and `logEntries` derived, 11 new tests. budget-drs is calibrated on `main` and is the live sample: 99 records, 49 KB. What remains here is the app half, the pane reading the projection and the `tracker` check kind.
+- 2026-08-03: the pane half landed on the same branch. It reads `board.json` and falls back to rendering `board.md` where a ref has no projection, groups the four sections with counts and Done collapsed, carries `size` and `awaiting` per row, and shows days-since-last-log with its entry count. A review line counts the open set, how many await someone, how many have been quiet three weeks or more, and how many have no log at all. 13 new cases; `tools/render/scripts/project-board-review.mjs` drives it headless from real records. Remaining: the `tracker` check kind on the estate card.
