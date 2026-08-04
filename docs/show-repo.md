@@ -785,7 +785,13 @@ Stage-view actions:
   file, so they stay a header action (the paperclip) belonging to no pane;
 - **view** a staged file inline (a preview panel in the stage itself, with a
   GitHub jump-over to the file's true home; it never routes through a repo's
-  Files view);
+  Files view). **The preview is a position in the stage, not one file:** it
+  carries an index, so the staged set is walkable by swipe on a phone or by the
+  header arrows and the arrow keys anywhere. Same gesture and constants as the
+  estate's branch takeover, so a horizontal drag reads alike in both and a
+  vertical one still scrolls the file. Every position opens: a binary local
+  file and a failed fetch render a note in place of the viewer rather than
+  refusing, so `2 / 3` always means the second of three and a step never skips;
 - **Out / Diff**: the deposit surface, two lenses in the finder's open style.
   Out covers everything leaving the stage: the concatenated bundle (each file
   under a `// === owner/repo[@ref]:path ===` header; icon actions to refresh,

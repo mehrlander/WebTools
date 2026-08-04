@@ -16,7 +16,12 @@ const calls = [];
 // live on the class. copyTo (refs), save/saveBytes (local bytes), get (reads).
 class FakeGH {
   constructor(conf = {}) { this.token = conf.token || ''; this.repo = conf.repo || ''; this.ref = 'main'; }
-  async get(path) { return { text: 'CONTENT ' + this.repo + ':' + path, sha: 'x' }; }
+  async get(path) {
+    // One repo that always 404s, so a failing read has a fixture: the preview
+    // has to open on it rather than refuse, or its position counter lies.
+    if (this.repo === 'me/missing') throw Object.assign(new Error('404'), { status: 404 });
+    return { text: 'CONTENT ' + this.repo + ':' + path, sha: 'x' };
+  }
   async recentFiles() {
     if (this.repo === 'me/open') return [
       { path: 'lib/new.js', date: '2026-07-18T10:00:00Z', sha: 'a' },
@@ -116,9 +121,12 @@ const previewViewer = () => window.document.getElementById('stage-preview-viewer
 test('view loads a ref into the inline preview, not the shared activeFile', async () => {
   reset();
   store.activeFile = null;
+  // The preview is a position in the stage, so the row it opens from is staged.
+  store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
   await data.view({ repo: 'me/a', ref: '', path: 'lib/x.js' });
   await tick(3);
   assert.equal(data.preview.name, 'lib/x.js');
+  assert.equal(data.preview.i, 0, 'and it knows where it is');
   assert.equal(store.activeFile, null, 'stage preview never routes through Files');
   const vwr = previewViewer();
   assert.equal(vwr.file, 'lib/x.js');
@@ -127,8 +135,56 @@ test('view loads a ref into the inline preview, not the shared activeFile', asyn
     'the origin gives the preview its GitHub link');
 });
 
+// The preview used to be a dead end: one file, and the only way to the next
+// staged one was close, find the row, open again. It carries an index now, so
+// the staged set is walkable. Every position opens, including the ones with
+// nothing to render, which is what keeps the counter honest.
+test('the preview walks the staged set, and every position opens', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'one.js' },
+    { local: true, id: 91, name: 'bin.png', path: 'bin.png', size: 9, isText: false },
+    { repo: 'me/a', ref: '', path: 'three.js' },
+  ];
+  await data.view({ repo: 'me/a', ref: '', path: 'one.js' });
+  await tick(3);
+  assert.equal(data.preview.i, 0);
+  assert.equal(data.preview.note, '', 'a text file renders');
+
+  // A binary local file is a position like any other: it opens with a note
+  // instead of a viewer, so stepping past it never skips or dead-ends.
+  await data.previewStep(1);
+  await tick(3);
+  assert.equal(data.preview.i, 1);
+  assert.match(data.preview.note, /Binary/);
+  assert.equal(data.preview.name, 'bin.png');
+
+  await data.previewStep(1);
+  await tick(3);
+  assert.equal(data.preview.i, 2);
+  assert.equal(data.preview.note, '');
+
+  // The ends hold.
+  await data.previewStep(1);
+  assert.equal(data.preview.i, 2, 'past the last is a no-op');
+  await data.previewStep(-1); await data.previewStep(-1); await data.previewStep(-1);
+  await tick(3);
+  assert.equal(data.preview.i, 0, 'before the first is a no-op');
+});
+
+test('a fetch that fails still opens, as a note rather than a closed modal', async () => {
+  reset();
+  store.stage = [{ repo: 'me/missing', ref: '', path: 'gone.js' }];
+  await data.view({ repo: 'me/missing', ref: '', path: 'gone.js' });
+  await tick(3);
+  assert.ok(data.preview, 'the modal is open');
+  assert.match(data.preview.note, /Could not load it/);
+});
+
 test('view shows a local text item inline', async () => {
-  await data.view({ local: true, id: 90, name: 'n.txt', path: 'n.txt', size: 2, isText: true, text: 'hi' });
+  const loc = { local: true, id: 90, name: 'n.txt', path: 'n.txt', size: 2, isText: true, text: 'hi' };
+  store.stage = [loc];
+  await data.view(loc);
   await tick(3);
   assert.equal(data.preview.name, 'n.txt');
   const vwr = previewViewer();
