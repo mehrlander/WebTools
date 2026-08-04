@@ -788,9 +788,8 @@ Stage-view actions:
   Files view);
 - **Out / Diff**: the deposit surface, two lenses in the finder's open style.
   Out covers everything leaving the stage: the concatenated bundle (each file
-  under a `// === owner/repo[@ref]:path ===` header; icon actions to view,
-  refresh, copy, download — the block renders on demand, since copy and
-  download never needed it on screen) and the send-to-repo (destination is
+  under a `// === owner/repo[@ref]:path ===` header; icon actions to refresh,
+  copy, download, with the size beside the lens) and the send-to-repo (destination is
   the tap-through selector in folder mode; two-tap Send). Diff is a line diff
   of two staged items (a pasted local file counts), each side optionally read
   at an override ref, so the same file picked twice with one ref changed is
