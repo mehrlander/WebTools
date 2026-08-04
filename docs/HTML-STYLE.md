@@ -64,6 +64,12 @@ pushes the fixed container wider than the screen, and drags the header off the r
 edge with it. This is the horizontal twin of the `min-h-0` that the `1fr` row already
 needs, and it fails the same way: silently, and only on a narrow screen.
 
+**Unescape before you escape.** Text pulled from XML, a scraped source, or a provider
+export often already carries entities (`&apos;`, `&amp;`, `&#39;`). Escaping it again
+turns the ampersand into `&amp;` and renders `teachers&apos;` on the page. Route every
+data-derived string through one helper that unescapes, then escapes, so the rule is
+applied once and in one place rather than remembered per interpolation.
+
 **Verify it by measuring, not by looking.** A viewport screenshot crops whatever sits
 past the frame, so horizontal overflow is invisible to the exact check most likely to
 be run. Compare `documentElement.scrollWidth` against `clientWidth` at phone width,
