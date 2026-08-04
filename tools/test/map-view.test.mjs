@@ -29,17 +29,23 @@ const manifest = {
     { kind: 'script', path: 'scripts/sunset-scan.py', title: 'sunset-scan.py', role: 'sunset markers', use: 'on-demand' },
   ],
 };
-// The Transport tab reads the real docs/routes.json, so the stub serves by
-// path: the set gets the fixture above, Transport gets the committed manifest
-// (routes-manifest.test.mjs is what holds that file to its own shape).
+// The Showing and Docs tabs read the real docs/routes.json and docs/docs.json,
+// so the stub serves by path: the set gets the fixture above, the other two
+// tabs get the committed manifests (routes-manifest.test.mjs and
+// docs-registry.test.mjs are what hold those files to their own shapes).
 const routesJson = readFileSync(path.join(repoRoot, 'docs', 'routes.json'), 'utf8');
+const docsJson = readFileSync(path.join(repoRoot, 'docs', 'docs.json'), 'utf8');
+const surfJson = readFileSync(path.join(repoRoot, 'docs', 'surfacing.json'), 'utf8');
 const asked = [];
 window.TOKEN = 'ignored-in-test';
 window.GH = class {
   constructor(opts) { this.opts = opts; }
   async get(p) {
     asked.push({ ref: this.opts.ref, path: p });
-    return { text: p === 'docs/routes.json' ? routesJson : JSON.stringify(manifest) };
+    if (p === 'docs/routes.json') return { text: routesJson };
+    if (p === 'docs/docs.json') return { text: docsJson };
+    if (p === 'docs/surfacing.json') return { text: surfJson };
+    return { text: JSON.stringify(manifest) };
   }
 };
 // No window.__shell in the test, so hasToken() is falsy and the token-gated
@@ -73,7 +79,7 @@ test('the hub doc link resolves to a GitHub blob', () => {
     'https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md');
 });
 
-test('Transport loads on demand, not at mount', async () => {
+test('Showing loads on demand, not at mount', async () => {
   assert.equal(data.routes, null, 'the manifest is not fetched until the tab is opened');
   await data.loadRoutes();
   assert.equal(data.routesErr, '');
@@ -91,7 +97,37 @@ test('with no ?use=, both manifests are read at main', () => {
   for (const a of asked) assert.equal(a.ref, 'main', a.path);
 });
 
-test('Transport rows resolve their icons and GitHub links', () => {
+test('Surfacing loads on demand and names its authoritative doc', async () => {
+  assert.equal(data.surf, null, 'the index is not fetched until the tab is opened');
+  await data.loadSurf();
+  assert.equal(data.surfErr, '');
+  assert.ok(data.surf.primitives.length > 10);
+  assert.equal(data.SURF_DOC, 'docs/SURFACING.md');
+});
+
+test('Docs loads on demand and carries both tables', async () => {
+  assert.equal(data.docsReg, null, 'the registry is not fetched until the tab is opened');
+  await data.loadDocsReg();
+  assert.equal(data.docsErr, '');
+  assert.ok(data.docsReg.documents.length > 30);
+  assert.ok(data.docsReg.claims.length > 3);
+  const groups = data.docGroups;
+  assert.equal(groups[0].dir, 'docs', 'the root docs group leads');
+  assert.ok(groups.length > 3, 'subfolders group separately');
+});
+
+test('an absent check renders as visibly absent, and only where one is owed', () => {
+  // A copy with no check is the finding; a pointer or live read is fine bare.
+  assert.equal(data.checkText({ relation: 'copy' }), 'unchecked');
+  assert.match(data.checkTone({ relation: 'copy' }), /text-warning/);
+  assert.match(data.checkTone({ relation: 'copy', check: 'none; two hand-kept copies' }), /text-warning/,
+    'a check field explaining that none exists still reads as unchecked');
+  assert.match(data.checkTone({ relation: 'copy', check: 'byte equality' }), /text-base-content/);
+  assert.equal(data.checkText({ relation: 'pointer' }), 'no check needed');
+  assert.match(data.checkTone({ relation: 'live read' }), /text-base-content/);
+});
+
+test('Showing rows resolve their icons and GitHub links', () => {
   assert.equal(data.modeIcon({ trust: 'untrusted' }), 'ph-shield-check');
   assert.equal(data.modeIcon({ trust: 'trusted' }), 'ph-key');
   assert.equal(data.modeIcon({ trust: 'whatever' }), 'ph-arrow-bend-down-right', 'unknown trust falls back');

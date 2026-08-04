@@ -1,51 +1,78 @@
 # docs
 
-Reference docs that don't belong at the repo root. `README.md` (the project
-overview) and `CLAUDE.md` (web-session instructions) stay up top and link in
-here; everything longer-form lives in this folder.
+<!-- GENERATED from docs/docs.json by tools/build/docs-readme.mjs; do not hand-edit. -->
 
-- **[PORTABLE.md](PORTABLE.md)** — the **to-go bag**: which docs and scripts are
-  written to be used from *any* repo (the conventions, the board generator, the
-  headless-vendoring recipe, the sandbox notes) and how to adopt them via the
-  loader skill or the fetch hook. Start here if you came for one piece, not the
-  whole library.
-- **[SHARE.md](SHARE.md)** — a copy-paste message for pointing *another* session
-  at the to-go set: it hands over the raw-fetch command, since a session can't
-  always reach another repo by git or MCP scope but can read a public raw file.
-- **[headless-vendoring.md](headless-vendoring.md)** — portable recipe for
-  building with Tailwind / daisyUI / Alpine / Phosphor and rendering them
-  **headless** in a sandbox that blocks their CDNs: vendor from npm, intercept the
-  CDN requests, serve from `node_modules`. Self-contained.
-- **[loader.md](loader.md)** — the loader contract: the canonical `<head>`
-  block, what each piece contributes, how `gh.load()` works, the timing rules
-  and footguns, and how that same contract lets a page be frozen into an
-  offline **build** (load and build as two readings of one set of rules).
-- **[../tools/README.md](../tools/README.md)** — the Node harness (lives under
-  `tools/`, not here): `render/` (offline jsdom + Chromium rendering, for
-  screenshots and logic checks) and `build/` (the `load → build → bake →
-  export` pipeline + `verify-build`). The operational companion to `loader.md`.
-- **[environment/](environment/)** — what the Claude Code web environment is,
-  can do, and how it's extended: [container](environment/container.md) (what
-  persists across sessions), [capabilities](environment/capabilities.md)
-  (toolchain, network allowlist, headless Chromium), [testing](environment/testing.md)
-  (the sensible way to test HTML/JS, incl. the jsdom + Alpine recipe), and
-  [extending](environment/extending.md) (the Claude Code component model + the
-  `SessionStart` hook this repo runs).
-- **[github/](github/)** — working with GitHub itself: what its renderer turns
-  markdown into ([markdown.md](github/markdown.md) — Mermaid, math, sparklines,
-  alerts), the GitHub-native surfaces for exposing work
-  ([github-surfacing.md](github/github-surfacing.md) — branches, compare views,
-  draft PRs, permalinks, diffs), plus durable notes on how this repo treats git
-  history and branches, behind the workflow rules in `CLAUDE.md`. Starts with
-  [post-merge branch mutation](github/post-merge-branch-mutation.md)
-  (*merged means closed*).
-- **[MERGE-GUIDE.md](MERGE-GUIDE.md)** — a newest-on-top log of what each
-  session shipped, keyed by PR number.
+Reference docs that don't belong at the repo root. This index is generated
+from [`docs.json`](docs.json), the documentation registry, which also renders
+live in [show-repo's Map view, Docs tab](https://mehrlander.github.io/web-tools/pages/show-repo/show-repo.html?view=map)
+alongside the shared-claims table (statements that live in more than one
+place, each with its one authoritative carrier and the check that holds each
+copy, or the honest absence of one). A **record** preserves a moment and is
+corrected by markers, never rewritten; everything else is living and must
+stay correct.
 
-**Possibly expanding this, wiki-style.** We're weighing whether to grow `docs/`
-into something closer to a small wiki — more pages, cross-linked — rather than
-a flat handful of files. Not decided; noting it so the structure here is
-understood as provisional. (GitHub's own repo Wiki is a separate `.wiki.git`
-repo and isn't reachable from a web session — see the "two gates" note in
-[capabilities.md](environment/capabilities.md) — so any wiki-style docs would
-live here, in the repo.)
+## docs/
+
+- [`README.md`](README.md) — the docs folder's front door: the generated index of this registry
+- [`docs.json`](docs.json) — this registry: the documents census and the shared-claims table
+- [`CONVENTIONS.md`](CONVENTIONS.md) — the portable working conventions: the general-behavior hub
+- [`SURFACING.md`](SURFACING.md) — the surfacing system: primitives plus the guide-PR and merge-guide course
+- [`surfacing.json`](surfacing.json) — the machine index of the surfacing primitives
+- [`PORTABLE.md`](PORTABLE.md) — the portable set: what travels, and how to adopt it
+- [`portable.json`](portable.json) — the machine index of the portable set
+- [`MARKETPLACE.md`](MARKETPLACE.md) — the plugin marketplace: how the set is published and subscribed to
+- [`TRACKER.md`](TRACKER.md) — the opt-in cross-session project tracker: schema, ids, board
+- [`CONSTELLATION.md`](CONSTELLATION.md) — the portable kernel of the what-goes-where doctrine
+- [`routes.json`](routes.json) — how content moves, renders, and gets looked at: grammar, modes, routes, and the showing block
+- [`showing.md`](showing.md) — why the showing boundaries sit where they are: the frame and the record behind routes.json
+- [`show-repo.md`](show-repo.md) — the show-repo shell: views, stage, transfer, and the .web-tools.json manifest
+- [`artifacts.md`](artifacts.md) — Claude Code artifacts and the link-choice matrix
+- [`HTML-STYLE.md`](HTML-STYLE.md) — the house style for pages: what to build, as against how
+- [`SNAGS.md`](SNAGS.md) — the friction log: one line per snag, symptom then corrected move
+- [`MERGE-GUIDE.md`](MERGE-GUIDE.md) *(record)* — what each merged PR shipped, newest first
+- [`SHARE.md`](SHARE.md) — the copy-paste prompt that points another session at the portable docs
+- [`loader.md`](loader.md) — the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality
+- [`headless-vendoring.md`](headless-vendoring.md) — building with CDN libraries and rendering headless where the CDNs are blocked
+- [`markdown-in-chat.md`](markdown-in-chat.md) — working visually with markdown in a chat client on a phone
+- [`pdf-structure.md`](pdf-structure.md) — recovering structure from a PDF in the browser: what the kit does and honestly does not
+- [`tools.json`](tools.json) — the curated Tools gallery manifest
+
+## docs/envelopes/
+
+- [`README.md`](envelopes/README.md) — the content-envelope family: members, shared grammar, and the sibling decision
+- [`surface.md`](envelopes/surface.md) — the surface format contract
+- [`chat-results.md`](envelopes/chat-results.md) — the chat-results envelope contract
+- [`data-view.md`](envelopes/data-view.md) — the data-view envelope contract
+- [`shorter.md`](envelopes/shorter.md) — the shorter envelope contract: a document and a shortening to adjudicate
+
+## docs/envelopes/schemas/
+
+- [`surface-v2.schema.json`](envelopes/schemas/surface-v2.schema.json) — the surface v2 JSON Schema
+
+## docs/envelopes/schemas/profiles/
+
+- [`branch-review-v1.schema.json`](envelopes/schemas/profiles/branch-review-v1.schema.json) — the branch-review profile schema
+- [`stage-v1.schema.json`](envelopes/schemas/profiles/stage-v1.schema.json) — the stage profile schema
+
+## docs/environment/
+
+- [`README.md`](environment/README.md) — the environment docs' front door, and their update discipline
+- [`capabilities.md`](environment/capabilities.md) — what the sandbox can run and reach
+- [`container.md`](environment/container.md) — what the box is and what persists across sessions
+- [`testing.md`](environment/testing.md) — how to test HTML and JS in the sandbox
+- [`extending.md`](environment/extending.md) — the Claude Code component model and the hooks this repo runs
+
+## docs/favicons/
+
+- [`README.md`](favicons/README.md) — the favicon archive: active marks and retired ones
+
+## docs/github/
+
+- [`README.md`](github/README.md) — the github folder's front door: renderer, git treatment, MCP routing, surfacing
+- [`markdown.md`](github/markdown.md) — what GitHub's static renderer turns markdown into
+- [`github-surfacing.md`](github/github-surfacing.md) — GitHub-native surfaces for exposing work: branches, compares, drafts, permalinks
+- [`mcp-server-routing.md`](github/mcp-server-routing.md) — two GitHub MCP servers at once: approval prompts as routing artifacts
+- [`post-merge-branch-mutation.md`](github/post-merge-branch-mutation.md) — why a merged branch stops being a live workspace: merged means closed
+
+10 shared claims are registered; the registry note in
+[`docs.json`](docs.json) carries the schema and the admission rule.

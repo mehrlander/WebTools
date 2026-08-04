@@ -1,13 +1,13 @@
-// screenshot.mjs interaction scenario: the Map view's Transport tab, the third
-// facet of the coordination layer (how content moves and renders).
+// screenshot.mjs interaction scenario: the Map view's Showing tab (named
+// Transport until 2026-08-04), how content moves, renders, and gets looked at.
 //
 //   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
-//     --script tools/render/scenarios/map-transport.mjs \
-//     --out tools/.preview/map-transport.png --full
+//     --script tools/render/scenarios/map-showing.mjs \
+//     --out tools/.preview/map-showing.png --full
 //
 // The sandbox blocks api.github.com, so the scenario serves the REAL committed
 // docs/routes.json (fetched relative, same origin) through a stubbed GH.get.
-// No token is set: Transport is public, like the set half, so this also proves
+// No token is set: Showing is public, like the set half, so this also proves
 // the tab renders for a tokenless reader while Scope & adoption stays gated.
 // What the pixels prove: the three-tab strip, the address grammar with its
 // used-by chips, the delivery modes with a trust icon per row, and the toss
@@ -30,7 +30,7 @@ export default async function (page) {
     window.__shell.goMap();
     return true;
   }, routes);
-  if (ok !== true) throw new Error('map-transport scenario: ' + ok);
+  if (ok !== true) throw new Error('map-showing scenario: ' + ok);
 
   const host = () => [...document.querySelectorAll('[x-data]')]
     .find(el => (el.getAttribute('x-data') || '').includes('map('));
@@ -40,7 +40,7 @@ export default async function (page) {
     const el = [...document.querySelectorAll('[x-data]')]
       .find(e => (e.getAttribute('x-data') || '').includes('map('));
     const d = window.Alpine.$data(el);
-    d.mapTab = 'transport';
+    d.mapTab = 'showing';
     d.loadRoutes();
   });
   await page.waitForFunction(() => {
