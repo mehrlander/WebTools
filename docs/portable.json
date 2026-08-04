@@ -34,6 +34,7 @@
     { "kind": "script", "path": ".claude/skills/in-flight/in-flight.py", "title": "in-flight.py", "role": "classify a branch estate into live / merged / unrelated and reconcile tracker claims against it; ships inside the plugin", "use": "plugin" },
     { "kind": "script", "path": "scripts/build-merge-guide.py", "title": "build-merge-guide.py", "role": "generate docs/MERGE-GUIDE.md from merged PR bodies, non-destructively", "use": "on-demand" },
     { "kind": "script", "path": "scripts/sunset-scan.py", "title": "sunset-scan.py", "role": "report SUNSET(date) markers now due for removal", "use": "on-demand" },
+    { "kind": "script", "path": "scripts/link-survey.py", "title": "link-survey.py", "role": "report markdown links that no longer resolve, internal / cross-repo / dead github URL", "use": "on-demand" },
     { "kind": "script", "path": "scripts/build-tree.py", "title": "build-tree.py", "role": "render a repo tree as a linked markdown table for chat", "use": "on-demand" },
     { "kind": "script", "path": "scripts/ocr-pdf.py", "title": "ocr-pdf.py", "role": "OCR a scanned PDF and report per-page confidence; needs tesseract + poppler", "use": "on-demand" }
   ]
