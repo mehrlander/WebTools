@@ -315,7 +315,7 @@ the header nav the way a repo shows landing/atlas/files/…:
   sub-tabs, each keeping its own deep link: **Open** (`?view=activity`),
   **To-do** (`?view=todo`), **Jots** (`?view=jots`) (all below).
 - **Tools** (`?view=tools`) — a curated gallery of utility pages (below).
-- **Map** (`?view=map`) — the portable set, Showing, and the Docs registry (below). Per-repo scope and adoption live on the Repos cards.
+- **Map** (`?view=map`) — the portable set, Surfacing, Showing, and the Docs registry (below). Per-repo scope and adoption live on the Repos cards.
 - **Proposals** (`?view=proposals`) — pending cross-repo edits awaiting a confirm
   (below). The one conditional entry: shown only while something is pending.
 
@@ -598,10 +598,11 @@ link, and a file listing lives in Public browse.
 the coordination layer itself into a first-class object, and is the operational
 face of the constellation doctrine ([`docs/CONSTELLATION.md`](CONSTELLATION.md)
 is the portable kernel, opened from the set header; the full worked instance is
-in the private `home` repo). Three tabs, `lib/alpineComponents/map.js`, each
-answering one question about the layer: what travels (the set), how content
-moves and shows (Showing), and what the documentation holds and what holds it
-(Docs). Who carries the set is a fact about a repo and lives on the Repos cards.
+in the private `home` repo). Four tabs, `lib/alpineComponents/map.js`, each
+answering one question about the layer: what travels (the set), what to hand
+over in chat (Surfacing), how content moves and shows (Showing), and what the
+documentation holds and what holds it (Docs). Who carries the set is a fact
+about a repo and lives on the Repos cards.
 
 *The set* renders the to-go bag from the hub's committed manifest,
 [`docs/portable.json`](portable.json), whose prose parent is
@@ -647,6 +648,15 @@ as fresh as the last crawl rather than as fresh as the render, which is right,
 since adoption changes when someone edits a settings file. Refresh views
 re-crawls when the answer matters now. A repo the crawl has not reached shows no
 verdict and no chips: absent means not read, never not aligned.
+
+*Surfacing* indexes the primitives from [`docs/surfacing.json`](surfacing.json),
+one card each (glyph, use, form, boundary). The ownership runs opposite to
+every other tab, and the header says so: [`SURFACING.md`](SURFACING.md) is the
+authoritative carrier, since it is what sessions load and follow, and the
+manifest is its gated index (membership held two-way to the doc's bullet
+lead-ins by `tools/test/surfacing-manifest.test.mjs`; the card summaries are
+paraphrases and stay unchecked, which the Docs registry's claims table states).
+Surfacing decides what to hand over; Showing is what makes it openable.
 
 *Showing* (named Transport until 2026-08-04; renamed because
 [`SURFACING.md`](SURFACING.md) already uses "transport" for the stage link, and

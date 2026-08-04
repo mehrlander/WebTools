@@ -35,6 +35,7 @@ const manifest = {
 // docs-registry.test.mjs are what hold those files to their own shapes).
 const routesJson = readFileSync(path.join(repoRoot, 'docs', 'routes.json'), 'utf8');
 const docsJson = readFileSync(path.join(repoRoot, 'docs', 'docs.json'), 'utf8');
+const surfJson = readFileSync(path.join(repoRoot, 'docs', 'surfacing.json'), 'utf8');
 const asked = [];
 window.TOKEN = 'ignored-in-test';
 window.GH = class {
@@ -43,6 +44,7 @@ window.GH = class {
     asked.push({ ref: this.opts.ref, path: p });
     if (p === 'docs/routes.json') return { text: routesJson };
     if (p === 'docs/docs.json') return { text: docsJson };
+    if (p === 'docs/surfacing.json') return { text: surfJson };
     return { text: JSON.stringify(manifest) };
   }
 };
@@ -93,6 +95,14 @@ test('with no ?use=, both manifests are read at main', () => {
   // which needs its own window because the ref comes from location.search.
   assert.ok(asked.length >= 2);
   for (const a of asked) assert.equal(a.ref, 'main', a.path);
+});
+
+test('Surfacing loads on demand and names its authoritative doc', async () => {
+  assert.equal(data.surf, null, 'the index is not fetched until the tab is opened');
+  await data.loadSurf();
+  assert.equal(data.surfErr, '');
+  assert.ok(data.surf.primitives.length > 10);
+  assert.equal(data.SURF_DOC, 'docs/SURFACING.md');
 });
 
 test('Docs loads on demand and carries both tables', async () => {

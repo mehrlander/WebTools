@@ -16,6 +16,8 @@ Normally none. In local `CLAUDE.md`, name only a slow or non-deterministic gener
 
 ## Surfacing primitives
 
+This prose is the authoritative statement of the primitives; [`docs/surfacing.json`](surfacing.json) is its gated index (membership held two-way by test), rendered live in show-repo's Map view, Surfacing tab.
+
 * **Reference is a link (explicit markdown).** Use `[caption](url)` for anything tappable; bare paths drop on mobile, in rendered markdown, and when copied. When first naming a repo file, doc, or page the reader may want to open, link it inline: unchanged source to `[main]`, touched source to `[new]`, and a renderable page to its 🥏, ⭐, or 📦 live view. **A proposal links its subject:** an edit, deletion, or rewrite you are recommending names its file as a link before the reasoning, since nobody can weigh a change to a file they have to go find first. This is the case most often skipped, because the file is still unchanged and so reads as context rather than as the thing being decided. Keep the **honesty gate**: only a renderable page gets a render link, and call source a "view," not a preview. The surfacing caption remains the end-of-turn roll-up. Reserve `file:line` for grep and debug references.
 * **Show pixels:** for visual changes, send an inspected headless-browser screenshot inline.
 * **Hand over the artifact:** proactively send a file the user would open, run, or iterate on with `SendUserFile`, rather than only describing it or pasting a path. The resulting **file card** or **file chip** downloads HTML, zip, audio, and similar files; images preview inline. For visual work, show the screenshot and hand over the file. Use `proactive` when unprompted and `normal` when replying.

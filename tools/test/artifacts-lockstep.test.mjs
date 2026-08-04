@@ -35,6 +35,11 @@ test('the page catalogs are in lockstep with pages/', () => {
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'pages-index --check failed');
 });
 
+test('docs/README.md is in lockstep with the documentation registry', () => {
+  const r = check(['tools/build/docs-readme.mjs', '--check']);
+  assert.equal(r.status, 0, (r.stderr || '').trim() || 'docs-readme --check failed');
+});
+
 // The plugin carries its own copies of the two conventions docs so that
 // injecting them is a file read instead of a fetch. A copy is the easiest kind
 // of derived artifact to forget, because nothing about editing docs/ suggests
