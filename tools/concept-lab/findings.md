@@ -770,3 +770,63 @@ Communications'" with trailing possessives. Masking cannot fix these, since
 nothing structural is leaking; the model's span boundary is simply wrong. That
 is a different problem from the one this section fixed and should not be
 folded into it.
+
+## 2026-08-04, what the estate actually holds, by material
+
+Prompted by a reader asking why wa-bills' profile is so short. The answer is
+that `entityprofile` reads `.md` only, and wa-bills holds 33 markdown files
+against 138,725 markup files. The census, seven repos, excluding `.git` and
+`node_modules`:
+
+| repo | prose | markup | structured | code | binary |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| web-tools | 252 | 115 | 35 | 432 | 68 |
+| home | 983 | 92 | 311 | 355 | 254 |
+| chat-histories | 1,317 | 10 | 842 | 57 | 0 |
+| budget-wa | 197 | 314 | 161 | 119 | 4,217 |
+| spend-wa | 59 | 9 | 88 | 47 | 1 |
+| wa-bills | 33 | **138,725** | 98 | 27 | 1 |
+| fn-data | 8,212 | 2 | 175 | 46 | **5,244** |
+| **files** | **11,053** | **139,267** | **1,710** | **1,083** | **9,785** |
+| **MB** | **227** | **4,579** | **2,684** | **16** | **5,928** |
+
+Three findings worth keeping:
+
+**Markup is not a middle ground in this estate, it is the corpus.** The 138,725
+`.htm` and `.xml` files in wa-bills are Washington bill text: natural language
+wrapped in markup, 4.6 GB of it. Treating HTML and XML as a format question
+misses that they hold the largest body of language the estate owns, and it is
+entirely unscanned. The same is true of the 9,461 PDFs in fn-data and
+budget-wa, which are fiscal notes and budget documents.
+
+**Code is negligible by volume and should still stay separate.** 1,083 files
+and 16 MB, against 227 MB of prose. Volume is not the argument for splitting
+it; termlab already measured the reason, when budget-drs's concept list led
+with hex colour codes until the register split landed. Two populations, two
+treatments.
+
+**Structured data is not a corpus here, it is the authority.** The 1,710 CSV
+and JSON files are what the gazetteer is built from, and running NER over them
+would rediscover, badly, what they already state exactly. That is already the
+architecture: `entitylab` reads them as tables, not as text.
+
+So the useful axes are two, and they are orthogonal:
+
+- **extraction**, meaning what must happen to get language out of the bytes:
+  none for markdown, tag-stripping for HTML and XML, a text layer for PDF.
+- **provenance**, meaning whose voice it is: the content registry's
+  `creation_mode`, where supplied bill text and a hand-written chron entry are
+  different material even when both are plain prose.
+
+A run should name a cell or a union of cells on that grid rather than a file
+extension. "All natural language, supplied only" and "all natural language,
+authored only" are the two obvious first corpora, and today's profile is
+neither: it is "markdown regardless of provenance," which is why 61% of what
+it scanned in budget-wa is declared supplied source material.
+
+**Registry coverage, measured:** one repo. `budget-wa/data/design/content.csv`,
+20 rows. Every other repo has none, so the provenance axis does not exist yet
+outside budget-wa. `registry.py scaffold` collapses directories into one row
+each with file-type counts, so the pass is roughly 10 to 15 judgments per repo:
+wa-bills' entire corpus is one row (`bills/`, 138,746 files) whose
+classification is not in doubt.
