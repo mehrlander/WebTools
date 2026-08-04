@@ -42,8 +42,8 @@ https://mehrlander.github.io/web-tools/pages/show-repo/show-repo.html#stage=owne
 ```
 
 The Diff lens auto-pairs the two staged items into A/B (first stage item to
-A, the second to B) the moment they land, and `mode=diff` runs the compare on
-open, so the reviewer sees the diff immediately. Drop `&mode=diff` to open on
+A, the second to B) the moment they land, and `mode=diff` opens the preview on
+that compare, so the reviewer sees the diff immediately. Drop `&mode=diff` to open on
 the Out tab instead (a bundle handoff rather than a review).
 
 **Uncommitted edit.** The "after" text has no ref yet (a draft still being
