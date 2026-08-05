@@ -56,20 +56,25 @@
    "session": "claude/task-tracker-discussion-wg27xv",
    "file": "automate-merge-guide-from-pr-bodies-uaect4.md",
    "href": "tasks/automate-merge-guide-from-pr-bodies-uaect4.md",
-   "lastActivity": "2026-07-18",
-   "logEntries": 3
+   "lastActivity": "2026-08-05",
+   "logEntries": 4
   },
   {
    "id": "backfill-guide-regions-merge-guide-bkk4xv",
    "title": "Backfill guide regions into old PR bodies and full-regenerate the merge guide",
-   "status": "backlog",
+   "status": "done",
    "project": "repo",
    "track": "depends-on:automate-merge-guide-from-pr-bodies-uaect4",
    "opened": "2026-07-14",
+   "closed": "2026-08-05",
+   "session": "claude/merge-guide-web-tools-gjhw8l",
    "file": "backfill-guide-regions-merge-guide-bkk4xv.md",
    "href": "tasks/backfill-guide-regions-merge-guide-bkk4xv.md",
-   "lastActivity": "2026-07-14",
-   "logEntries": 1
+   "lastActivity": "2026-08-05",
+   "logEntries": 2,
+   "tags": {
+    "resolution": "superseded"
+   }
   },
   {
    "id": "branch-authored-layer-surface-0j0zik",
