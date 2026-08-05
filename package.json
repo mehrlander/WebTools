@@ -24,6 +24,7 @@
     "test:word-select": "node tools/test/word-select-touch.mjs",
     "test:render-copy": "node tools/test/render-copy.mjs",
     "test:subject-actions": "node tools/test/subject-actions.mjs",
+    "test:traffic-states": "node tools/test/traffic-states.mjs",
     "test:toss-multiparam": "node tools/test/toss-multiparam.mjs",
     "test:data-view-links": "node tools/test/data-view-links.mjs"
   },

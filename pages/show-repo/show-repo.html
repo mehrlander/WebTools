@@ -3687,6 +3687,21 @@ function gallery(){
       const repo = s.repo || DEFAULT_REPO;
       const isDefault = repo === (window.__shell?.DEFAULT_REPO || DEFAULT_REPO);
       this.isDefault = isDefault;
+      // The watcher above settles once on every mount (config goes null then
+      // set a tick later), and its comment called that redundant settle
+      // harmless. It was not: on web-tools it re-fetched pages.json, 23 KB,
+      // on every boot. Found by the fab's Traffic tab, which listed the file
+      // twice. Keyed on what the catalog actually depends on, and set before
+      // the await so a settle arriving mid-load is folded in too; cleared on
+      // failure so a retry is still possible.
+      // The key states what the catalog actually depends on, which is not the
+      // same on both branches: web-tools reads one fixed pages.json and depends
+      // on nothing else, so folding the ref into its key was what let the
+      // duplicate through (init runs with the ref still empty, the watcher runs
+      // with it settled to main, two different keys for one identical fetch).
+      const key = isDefault ? 'web-tools' : repo + '@' + (s.ref || '') + '#' + (s.config?.pages?.length ?? 'n');
+      if (this._loadKey === key) return;
+      this._loadKey = key;
       // Only repos with the gallery landing reach here (landingKind gates it):
       // web-tools, or a repo declaring a non-empty `pages` catalog. Bail
       // otherwise so a mid-switch to a non-gallery repo leaves the stale catalog
@@ -3710,6 +3725,7 @@ function gallery(){
             })),
           }));
         } catch(e){
+          this._loadKey = null;
           notify('Could not load the pages catalog: ' + (e?.message || e));
         }
       } else {
