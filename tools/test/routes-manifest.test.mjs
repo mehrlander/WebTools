@@ -144,10 +144,7 @@ test('the picker only routes to mechanisms that exist', () => {
   }
 });
 
-test('CLAUDE.md delegates rather than restating', () => {
-  const claude = readFileSync(path.join(repoRoot, 'CLAUDE.md'), 'utf8');
-  const words = claude.split(/\s+/).length;
-  assert.ok(words < 1600, `CLAUDE.md is back up to ${words} words; the showing material has crept home`);
-  assert.match(claude, /docs\/routes\.json/, 'CLAUDE.md no longer points at the manifest');
-  assert.match(claude, /docs\/showing\.md/, 'CLAUDE.md no longer points at the doc');
-});
+// The two CLAUDE.md assertions that used to sit here moved to
+// claude-md.test.mjs on 2026-08-05. They are about the agent instructions
+// rather than about this manifest, and grouping them under one name here meant
+// a size failure arrived wearing a message about the showing material.

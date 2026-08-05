@@ -39,7 +39,8 @@ export function makeShell({ browserStore, search = '', win = {} } = {}) {
   const hist = { pushState: () => {}, replaceState: () => {} };
   const exports = {};
   new Function('window', 'document', 'Alpine', 'location', 'history', '__exports',
-    shellScript(page) + '\n;__exports.app = app;')(
+    shellScript(page) + '\n;__exports.app = app;__exports.gallery = gallery;')(
     win, doc, alpine, loc, hist, exports);
-  return { shell: exports.app(), browserStore: store, win, toasts, history: hist, location: loc };
+  return { shell: exports.app(), gallery: exports.gallery(), browserStore: store,
+           win, toasts, history: hist, location: loc };
 }

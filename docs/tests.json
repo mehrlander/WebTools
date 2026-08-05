@@ -92,6 +92,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/claude-md.test.mjs",
+      "kind": "guard",
+      "protects": "CLAUDE.md still points at the showing manifest and frame, and stays under its 1600-word ceiling. The size half is a policy, not a behavior, which is why it sits here rather than inside the routes manifest test.",
+      "assertions": 2,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/compression.test.mjs",
       "kind": "kit",
       "protects": "Gzip round-trips through the GZ64 prefix protocol without corrupting the payload.",
@@ -617,7 +626,7 @@
       "path": "tools/test/routes-manifest.test.mjs",
       "kind": "gate",
       "protects": "The showing manifest is well-formed and its picker only routes to mechanisms that exist. Also caps CLAUDE.md.",
-      "assertions": 9,
+      "assertions": 8,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -663,6 +672,15 @@
       "kind": "behavior",
       "protects": "The board projection is preferred and the markdown is never fetched for it.",
       "assertions": 13,
+      "method": "pure",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/show-repo-gallery-order.test.mjs",
+      "kind": "behavior",
+      "protects": "The gallery honors pages[].order, and does so without rearranging catalogs that never set it: undeclared reads as 0 and the tiebreak is catalog position rather than label.",
+      "assertions": 5,
       "method": "pure",
       "runner": "suite",
       "boot_smoke": 0
