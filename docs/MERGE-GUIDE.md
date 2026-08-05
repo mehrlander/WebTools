@@ -1,14 +1,13 @@
 # Merge guide
 
 > [!WARNING]
-> **Stale 2026-08-05 (coverage stops at PR #210) → [the backfill task](../tracker/tasks/backfill-guide-regions-merge-guide-bkk4xv.md):**
+> **Stale 2026-08-05 (coverage stops at PR #210):**
 > the newest entry below is PR #210, merged 2026-07-12. Everything merged since
 > is absent, and the count is in the hundreds rather than the dozens. Read this
-> file as a log of the first 210 PRs, not as the delivery record. Regeneration
-> needs `api.github.com`, which the sandbox proxy returns 403 for, so the
-> command below cannot run where most sessions run; that is the blocker, not
-> neglect. Absence here was never proof of non-merge (see below), and right now
-> it is not even weak evidence.
+> file as a log of the first 210 PRs, not as the delivery record. Absence here
+> was never proof of non-merge (see below), and right now it is not even weak
+> evidence. This projection is being replaced by an index on
+> `claude/merge-guide-web-tools-gjhw8l`, so the banner is transitional.
 
 Newest-on-top log of what each session shipped, generated from merged PR
 bodies by `scripts/build-merge-guide.py`. A PR body's guide region is the
