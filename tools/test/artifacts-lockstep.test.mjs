@@ -40,6 +40,34 @@ test('docs/README.md is in lockstep with the documentation registry', () => {
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'docs-readme --check failed');
 });
 
+// The third hook-owned artifact, and it had no owner here until 2026-08-05.
+// That gap hid a real defect rather than a merely theoretical one: board.json's
+// per-task keys were emitted by iterating a set, so Python's per-process string
+// hash randomization reordered them on every run. Same input, different bytes,
+// which is exactly the property the generator's own closing comment claims. It
+// went unnoticed because board.json is read by machines and diffed by nobody,
+// and because the estate had only one board carrying it. It now has ten.
+test('the tracker board is in lockstep with tracker/tasks/', () => {
+  const r = spawnSync('python3',
+    ['.claude/skills/tasks/build-board.py', 'tracker/tasks', 'tracker/board.md', '--check'],
+    { cwd: repoRoot, encoding: 'utf8' });
+  assert.equal(r.status, 0, (r.stderr || '').trim() || 'build-board --check failed');
+});
+
+// Determinism is the property the check above depends on, so assert it directly
+// rather than inferring it from one passing run: two runs over the same input
+// must produce identical bytes. A nondeterministic generator makes the lockstep
+// test flaky rather than false, which is the harder failure to diagnose.
+test('the board generator is byte-deterministic', () => {
+  const run = () => spawnSync('python3',
+    ['.claude/skills/tasks/build-board.py', 'tracker/tasks', 'tracker/board.md'],
+    { cwd: repoRoot, encoding: 'utf8', env: { ...process.env, PYTHONHASHSEED: 'random' } });
+  const read = () => readFileSync(join(repoRoot, 'tracker/board.json'), 'utf8');
+  run(); const first = read();
+  run(); const second = read();
+  assert.equal(second, first, 'build-board.py emitted different bytes for identical input');
+});
+
 // The plugin carries its own copies of the two conventions docs so that
 // injecting them is a file read instead of a fetch. A copy is the easiest kind
 // of derived artifact to forget, because nothing about editing docs/ suggests
