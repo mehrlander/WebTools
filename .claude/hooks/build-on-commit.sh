@@ -88,6 +88,17 @@ if [ -n "$changed_pages" ]; then
   done <<< "$changed_pages"
 fi
 
+# --- leg 3b: docs/docs.json -> docs/README.md ---------------------------------
+# The docs index is a projection of the documentation registry; regenerate it
+# whenever the registry (or the generator) has pending changes.
+if git status --porcelain -- docs/docs.json tools/build/docs-readme.mjs | grep -q .; then
+  if npm run docs-readme --silent >/dev/null 2>&1; then
+    git add docs/README.md 2>/dev/null || true
+  else
+    echo "build hook: 'npm run docs-readme' failed — committing without refreshing docs/README.md" >&2
+  fi
+fi
+
 # --- leg 4: tracker/tasks/ -> tracker/board.md + board.json -------------------
 if git status --porcelain -- tracker/tasks/ | grep -q .; then
   if npm run tracker-board --silent >/dev/null 2>&1; then

@@ -3,7 +3,7 @@
 // The module splits cleanly: a render half that decides what a peek SHOWS for a
 // given path and text (pure, and all of it asserted here) and a DOM half that
 // positions a card (not asserted here; the headless shot in
-// tools/render/scripts/map-transport-peek.mjs is what covers that). Plain-realm:
+// tools/render/scripts/map-showing-peek.mjs is what covers that). Plain-realm:
 // the file only assigns onto window, and its self-install is guarded on
 // `document`, which does not exist here.
 //
