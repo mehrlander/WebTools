@@ -27,8 +27,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
+from collections import Counter
 from datetime import date
 from pathlib import Path
 
@@ -36,6 +38,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from gazetteer import build as build_gazetteer, confirm, trim_span  # noqa: E402
 from entityprofile import build_index  # noqa: E402
+from entitylab import iter_files, mask, TEXT_SUFFIXES, MAX_PROSE_BYTES, PATTERNS  # noqa: E402
 
 # Adjudicated figures. Each carries how many names were judged, because a
 # precision claim without its sample size is not a measurement.
@@ -143,6 +146,28 @@ def main() -> int:
         "caveat": "high precision, low recall: a trustworthy core, not a complete index",
     }
 
+    # RCW citations per repo, harvested by regex over the same prose. This is
+    # the half of the cross-repo join that lives on the reading side: wa-bills
+    # holds which bills cite a chapter, and this holds which repos discuss it.
+    # Neither is useful alone. Cheap enough to do unconditionally (regex over
+    # ~4,000 markdown files), and deliberately not a model's job.
+    rcw_by_repo: dict[str, dict[str, int]] = {}
+    for spec in a.repos:
+        name, path = spec.split("=", 1)
+        counts: Counter = Counter()
+        for f in iter_files(Path(path), TEXT_SUFFIXES, MAX_PROSE_BYTES):
+            try:
+                text = mask(f.read_text(encoding="utf-8", errors="replace"))
+            except OSError:
+                continue
+            for m in PATTERNS["rcw"].finditer(text):
+                chapter = re.search(r"(\d+[A-Z]?\.\d+)", m.group(0))
+                if chapter:
+                    counts["RCW " + chapter.group(1)] += 1
+        rcw_by_repo[name] = dict(counts.most_common())
+    print(f"rcw: {sum(len(v) for v in rcw_by_repo.values())} chapter mentions across "
+          f"{len(rcw_by_repo)} repos", file=sys.stderr)
+
     idx = build_index(profiles, confirmed,
                       {"generatedAt": date.today().isoformat(),
                        "method": METHOD, "precision": precision})
@@ -156,6 +181,7 @@ def main() -> int:
             "corpora": p.get("corpora", {}),
         })
 
+    idx["rcwByRepo"] = rcw_by_repo
     a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.write_text(json.dumps(idx, indent=1), encoding="utf-8")
     kb = a.out.stat().st_size / 1024
