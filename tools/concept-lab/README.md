@@ -145,6 +145,29 @@ python3 tools/concept-lab/entityprofile.py report prof.json --judgments judge.js
 
 Roughly 4 files per second on 4 cores.
 
+## build-entity-index.py
+
+The pipeline, so the committed index is derived rather than authored.
+Chains scan, gazetteer, and confirmation into one command and writes
+`web-tools-private/state/entities.json`. Before it existed the steps
+were all committed but the glue between them was not, which meant the
+index could not be reproduced without re-deriving three ad-hoc scripts
+and a hand-typed metadata block from the findings log.
+
+```bash
+python3 tools/concept-lab/build-entity-index.py \
+  --repos wt=… home=… chats=… bwa=… spend=… bills=… fn=… \
+  --gaz-from bwa=… spend=… \
+  --out ../web-tools-private/state/entities.json
+```
+
+`--profile-cache` reuses an existing scan instead of spending half an
+hour re-running the model, which is what makes iterating on the
+gazetteer or the metadata cheap. The adjudicated precision figures live
+in `PRECISION` as data, each with its sample size, rather than being
+retyped per run: retyping is how a measured figure becomes a remembered
+one.
+
 ## The experiment scripts
 
 - `exp_embed.py`: embeddings vs collocates vs lexical clustering on probe
