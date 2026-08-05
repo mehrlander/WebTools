@@ -6,7 +6,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 720,
+      "words": 736,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -14,7 +14,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2564,
+      "words": 2618,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -24,6 +24,14 @@
       "reach": "project",
       "words": 1547,
       "maintenance": "authored; the structured stage under show-repo.md's former prose field list, held to the estate's real manifests by tools/test/manifest-registry.test.mjs: a key live in a manifest with no row here fails the suite"
+    },
+    {
+      "path": "docs/tests.json",
+      "subject": "the test registry: every check's kind, what it protects, and its derived counts",
+      "status": "living",
+      "reach": "app",
+      "words": 2882,
+      "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {
       "path": "docs/CONVENTIONS.md",
