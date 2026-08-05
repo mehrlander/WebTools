@@ -1103,253 +1103,113 @@ deprecation window. Fields:
 
 Every path in that config is an address, and nothing used to read them: `link-survey.py` enumerates a repo with `git ls-files *.md`, so a declared page could be moved or deleted with no check anywhere noticing. [`scripts/declared-paths.py`](../scripts/declared-paths.py) checks `landing`, `pages[].path` and `stage.files` against the working tree and sibling checkouts, and belongs in the declaring repo's own verify suite: the mover is the only party who can catch a rename at the moment of the rename. That makes declaring a page load-bearing rather than decorative. If it is worth another repo embedding, it is worth declaring here.
 
-The **estate placement** fields let a repo describe how it appears on the
-all-repo estate. Membership is a repo property: there is no registry list of
-repos. All are optional; a repo with no config is simply off the estate.
+The fields themselves are **not listed here.** They live as data in
+[`docs/manifest.json`](manifest.json), one row per field with its type, its
+consumer, and what it does, held to the estate's real manifests by
+`tools/test/manifest-registry.test.mjs`. This section used to carry that list as
+3,000 words of prose, 8% of all documentation in the repo, and prose could not
+be checked against anything: `quickLink` was live in two of the four manifests
+and appeared in no field list, and `pages[].order` was declared by two repos and
+read by no code at all. Both surfaced on the gate's first run.
 
-- **icon**: Phosphor icon class (e.g. `"ph-scales"`) for the repo's estate card
-  and its header quick-link button. The repo owns it.
-- **estate**: `true` to appear on the estate. The estate enumerates the account's
-  repos and includes those whose config sets this.
-- **group**: the estate section this card sits in (e.g. `"core"`, `"data"`).
-- **note**: the card's one-line description; overrides the GitHub description.
-- **order**: arrangement weight. Group order (a group sorts by its lowest
-  member's `order`) and within-group order both derive from it.
-- **inbox**: where an unaddressed deposit lands (`"inbox"`, `"@ref:dir"`, or a
-  full `owner/repo[@ref]:dir`). See "Inbox and outbox" below. Absent means the
-  repo root.
-- **outbox**: where this repo stages material for others to pull. Same shape;
-  adds an "Open outbox" row to the repo menu.
-- **landing**: path to the repo's own landing page, rendered live via
-  toss-render `#gh=` (token-authed, so private repos and branches work; gated by
-  toss-render's OWNERS allowlist). "The repo builds its own page." Takes the
-  front-door slot ahead of `pages` when a repo sets both: the custom page is
-  the landing, and the catalog moves to the standalone **Pages** sidebar view
-  instead of disappearing. A repo with only `pages` (no `landing`) still gets
-  the gallery as its landing, unchanged.
-- **pages**: a hand-declared page catalog: a flat list of `{ path, title, note }`
-  entries (optional `icon`, `thumb`, and the app-view fields below). A repo
-  declaring a non-empty `pages` gets the **gallery**: the same card grid
-  with the screenshot / live / source toggle, chip grouping, and search that
-  web-tools gets from its generated `pages.json`, but fed from this hand-declared
-  catalog as one group. It surfaces as the **landing** when the repo has no
-  `landing` field, or as a standalone **Pages** sidebar entry when the repo
-  also has one (so `landing` and `pages` aren't mutually exclusive: a repo can
-  set both, and both stay reachable). A private repo has no committed
-  thumbnails, so each tile renders **live** through toss-render `#gh=`
-  (token-authed, lazy on scroll); the source toggle reads the file through the
-  viewer's token. This is a sibling to `pins`/`stage.files`, maintained by
-  hand. (web-tools keeps its generated `pages.json` for its own gallery; the
-  component reads whichever catalog a repo offers.)
-  - **path**: the page. A **bare repo-relative path** (`"pages/foo.html"`, this
-    repo at its default branch) or a **qualified cross-repo ref**
-    (`"owner/repo[@ref]:path"`), the same grammar as `stage.files`. The
-    cross-repo form lets a repo promote a page whose file lives elsewhere: home
-    declares the news app view as `"mehrlander/web-tools:pages/news/news.html"`,
-    owning the promotion while the renderer stays in web-tools (the page reads
-    home's data through the viewer's token regardless of where it is hosted).
-  - **title**: the card's heading (defaults to the filename).
-  - **note**: the card's one-line description.
-  - **icon**: Phosphor class, used as the app-view icon when promoted, in the
-    header nav and the sidebar alike.
-  - **project**: the workspace this page belongs to (a `projects` entry's
-    `path`). The project view's **Pages** tab derives its slice of this catalog
-    by path prefix, so a page under the workspace folder needs no claim; this
-    key is the escape for one that lives elsewhere, cross-repo included. There
-    is deliberately no per-project pages list: one catalog, one owner.
-  - **appView**: `true` to promote this page to its own **estate-level view**,
-    a peer of Repos / Surfaces / Stage, shown in the header nav's second group
-    and in the sidebar (estate membership one
-    level up: the target is a rendered page, not a repo). Collected across
-    every repo's config through the config cache, token-gated (no token, no app
-    view, like Surfaces), and rendered live in the estate main area via
-    toss-render `#gh=`. The page still appears in the repo's own gallery too;
-    the flag is additive.
+What stays here is the part a field registry cannot carry: how fields interact,
+and why the mechanisms behind them are shaped the way they are.
 
-    *When to reach for it.* A view whose subject is **the estate** is built into
-    the shell (Activity, Repos, Surfaces, Stage, Map, Proposals, and the To-do
-    and Jots lists, which are operational to the tool). A view whose subject is
-    **content** is an app view over the repo that owns it: the renderer stays
-    public here, the content stays wherever it belongs. News and Links are both
-    that shape, home's data through a web-tools page. Two consequences worth
-    knowing before building one: the page gets the main area minus the sidebar,
-    so it has to survive at two thirds width; and the shell already supplies a
-    header and the sidebar label, so a promoted page should stand its own
-    masthead down when `window.self !== window.top` (`pages/links.html` does,
-    `pages/news/news.html` does not yet). An app view cannot reach the shell's
-    chrome at all, being in an iframe, so anything wanting persistent presence
-    has to be built into the shell instead.
-  - **viewLabel**: the sidebar label for the promoted view (defaults to `title`,
-    then the filename).
-- **pins**: folders/files surfaced in the sidebar Pinned block. A last segment
-  with an extension opens as a file; otherwise it opens the Files view at that
-  folder.
-- **checks**: declared staleness checks, shown on two surfaces. In a repo they
-  fill the sidebar **Needs attention** block; on the estate cards they are
-  badges beside the branch and PR counts. Only what is *not* passing shows on
-  either, so a current repo displays nothing at all; badging green states would
-  make the block furniture, and furniture stops being read. Six kinds, each
-  answerable from the API alone (`lib/repo-checks.js`):
+**Membership is a repo property.** There is no registry list of repos. All
+fields are optional, and a repo with no config is simply off the estate.
 
-  | kind | asks | fields |
-  | --- | --- | --- |
-  | `content-date` | a date written *inside* a file has aged | `path`, `pattern` (one capture group), `staleAfterDays` |
-  | `file-age` | nothing has committed to a path lately | `path`, `staleAfterDays` |
-  | `newer-than` | a generated file fell behind its sources | `path`, `sources[]` |
-  | `absent` | a path that should not exist does | `path` (glob; `**` spans separators) |
-  | `dir-count` | a folder meant to stay empty is not | `path`, `staleOver`, optional `ignore[]` (defaults to `.gitkeep`) |
-  | `tracker` | a workspace's open tasks are waiting on somebody, or have gone quiet | `path` (a tracker's `board.json`), optional `awaitingOver` (default 0), optional `staleAfterDays` |
+**`landing` and `pages` are not mutually exclusive.** A repo setting both gets
+the custom page as its front door and the catalog as a standalone Pages view;
+setting only `pages` gets the gallery as the landing. Neither arrangement hides
+the other.
 
-  `tracker` is the one **content-typed** kind: the other five ask about a path's
-  shape or age, while this one reads a tracker's typed projection
-  ([TRACKER.md](TRACKER.md)) and counts. It still sits inside the boundary,
-  since a projection is a committed file and the check is one API read. It is
-  what puts *"6 awaiting someone"* on a repo card, the fact a board cannot state
-  from a card and the one a person wants when deciding what to pick up. Quiet is
-  measured from the **oldest open task** and only when `staleAfterDays` is
-  declared, since how long a backlog may sit is a per-workspace judgment; done
-  tasks are excluded from every count, so old history cannot hold a tracker
-  stale.
+**When an app view is the right call.** A view whose subject is *the estate* is
+built into the shell (Activity, Repos, Surfaces, Stage, Map, Proposals, and the
+To-do and Jots lists, which are operational to the tool). A view whose subject
+is *content* is an app view over the repo that owns it: the renderer stays
+public here, the content stays wherever it belongs. News and Links are both that
+shape, home's data through a web-tools page. Two consequences before building
+one: the page gets the main area minus the sidebar, so it has to survive at two
+thirds width; and the shell already supplies a header and the sidebar label, so
+a promoted page should stand its own masthead down when `window.self !==
+window.top` (`pages/links.html` does, `pages/news/news.html` does not yet). An
+app view cannot reach the shell's chrome at all, being in an iframe, so anything
+wanting persistent presence has to be built into the shell instead.
 
-  Every kind carries an optional `label` for the row. **A check that cannot be
-  evaluated renders too**, in grey rather than amber: a check whose file was
-  renamed out from under it has been silently invalidated, and silence there is
-  the failure the mechanism exists to prevent.
+**Checks: the boundary, and why the estate can afford them.** A check asks a
+question about *data* and never runs code; anything needing execution stays in a
+test suite. That is what keeps the convention cheap and portable, and why a repo
+declaring no checks pays nothing. Only what is *not* passing renders, on either
+surface: badging green states would make the block furniture, and furniture
+stops being read. A check that cannot be evaluated renders too, in grey rather
+than amber, because a check whose file was renamed out from under it has been
+silently invalidated and silence there is the failure the mechanism exists to
+prevent.
 
-  **The boundary:** checks are questions about *data*, never code that runs.
-  Anything needing execution stays in a test suite. This is what keeps the
-  convention cheap and portable, and it is why a repo declaring no checks pays
-  nothing (evaluation short-circuits before touching the network).
+Two surfaces take two routes to one definition. A repo view evaluates live on
+open: cheap for one repo, always current. The estate grid cannot, since M checks
+across N repos on every load is the per-visit fanout the activity cache exists to
+avoid, so the crawl probes each repo and the cards judge what it stored. That
+works because `lib/repo-checks.js` splits `probe` (gather each check's raw fact)
+from `verdict` (facts plus a clock become pass or fail). A verdict is volatile
+and a fact is not: `13d since 2026-07-18` becomes 14d tomorrow with nothing in
+the repo having changed, while `2026-07-18` changes only when the repo does.
+Caching verdicts would rehash every entry every day and commit on every crawl
+forever, the same trap the activity cache's crawl-timestamp exclusion already
+avoids. Caching facts keeps the hash stable and lets a card opened weeks after a
+crawl render a correct, staler verdict with no network at all. A declaration
+rides the hash beside its fact, so editing a threshold reaches the cards on the
+next crawl; a crawl that ran checks and found none clears them, while one that
+skipped keeps what it had, or a retired check would haunt a card forever.
 
-  **Two surfaces, two routes, one definition.** A repo view evaluates live on
-  open: cheap for one repo, and always current. The estate grid cannot, since M
-  checks across N repos on every load is the per-visit fanout the activity cache
-  exists to avoid, so the crawl probes each repo's checks and the cards judge
-  what it stored.
+**`tracker` is the one content-typed check kind.** The other five ask about a
+path's shape or age; this one reads a tracker's typed projection
+([TRACKER.md](TRACKER.md)) and counts. It still sits inside the boundary, since a
+projection is a committed file and the check is one API read. It is what puts
+*"6 awaiting someone"* on a repo card, the fact a board cannot state from a card
+and the one a person wants when deciding what to pick up. Quiet is measured from
+the *oldest open task* and only when `staleAfterDays` is declared, since how long
+a backlog may sit is a per-workspace judgment; done tasks are excluded from every
+count, so old history cannot hold a tracker stale.
 
-  That works because `repo-checks.js` splits `probe` (gather each check's raw
-  fact) from `verdict` (facts plus a clock become pass/fail). A verdict is
-  volatile and a fact is not: `13d since 2026-07-18` becomes 14d tomorrow with
-  nothing in the repo having changed, while `2026-07-18` changes only when the
-  repo does. Caching verdicts would rehash every cache entry every day and
-  commit on every crawl forever, the same trap `repo-activity-cache`'s
-  crawl-timestamp exclusion already avoids. Caching facts keeps the hash stable
-  and lets a card opened weeks after a crawl render a correct, staler verdict
-  with no network at all.
+**Links: two declarative layers, and the split is what keeps the rail honest.**
+*Which board* is the `links` field, editable through the repo dialog's Config
+tab. *What is on the rail* is the board itself: the `rail` flag, array order, and
+each item's `icon`, `title`, and `doors`. Nothing is re-authored, since the flag
+already drives the board's own masthead band. Placement follows the verb: a rail
+item leaves the app, or opens a repo in it, which is not what a nav item does, so
+it sits at the far end of the header rather than as a third nav group, icon-only.
+That cluster is desktop-only, the one place the two viewports differ, because
+below `lg` the nav already scrolls and a second header cluster would compete for
+the same overflow. The sidebar's Links block is the phone's route to the rail and
+the wide reading of it on desktop. A `snippet` item is skipped in both: a
+`javascript:` URL is something to copy, not somewhere to go.
 
-  A check's declaration rides the cache hash beside its fact, so editing a
-  threshold reaches the cards on the next crawl. A crawl that ran checks and
-  found none clears them; one that skipped keeps what it had, or a retired
-  check would haunt a card forever.
-- **links**: path to the repo's **links board** (`"links/board.json"`, or a
-  qualified `owner/repo[@ref]:path`), the store `pages/links.html` renders. The
-  shell reads it and surfaces the items flagged `rail: true` as **the rail**:
-  the handful of destinations worth a tap from anywhere. Nothing is re-authored,
-  since the flag already drives the board's own masthead band.
+**Projects: the defining convention.** A workspace running a tracker (a
+`tracker/` directory holding `tasks/`, per [TRACKER.md](TRACKER.md)) is a
+project. A tracker at the repo root marks the repo itself and earns no row, so
+"repo or project" needs no separate registry of what counts. That convention is
+also why the task-board button needs no declaration: the same layout puts the
+generated rollup at `<workspace>/tracker/board.md`, so the row derives it.
 
-  Two layers, both declarative, and the split is what keeps the rail honest.
-  **Which board** is this field, in the repo's own config, editable through the
-  repo dialog's Config tab. **What is on the rail** is the board itself: the
-  `rail` flag, array order, each item's `icon`, `title`, and `doors`. The
-  sidebar's Links block carries an icon for each layer's answer: a bookmark that
-  opens the board, and a pencil that opens it in edit mode (`?edit=1` on the
-  toss address, which the params shim delivers to the page).
+The field is declarative rather than discovered live (walking a tree for
+`tracker/` dirs is API-costly), which makes it generatable: home's
+`tools/generate-tracker-registry.py` syncs it from the trackers it finds, so the
+manifest cannot drift from the ground truth. All three lists hang their rows off
+the same 1 px rule, placed on the centre of the glyph above them, which is what
+says "these belong to that" without spending an indent. The estate sidebar reads
+the field from the config cache it already holds, so those rows cost no extra
+fetch; the open repo reads its own live manifest instead, the one `loadConfig`
+fetched at the browsed ref, so inside a repo the list follows the ref and needs
+no cache entry. That split is why a `projects` field existing only on a branch is
+invisible from the estate (the cache is a main-derived artifact) until it merges,
+while the repo's own sidebar shows it as soon as you browse the branch; the
+**branch overlay** above previews the estate side live.
 
-  Placement follows the verb. A rail item leaves the app, or opens a repo in it,
-  which is not what a nav item does, so it sits at the **far end of the header**
-  rather than as a third nav group: icon-only, tooltip carrying the title and
-  note. That cluster is desktop-only, the one place the two viewports differ,
-  because below `lg` the nav already scrolls and a second header cluster would
-  compete for the same overflow. The **sidebar block** is the phone's route to
-  the rail and the wide reading of it on desktop, spelling out each label and
-  wrapping its doors. A `snippet` item is skipped in both: a `javascript:` URL
-  is something to copy, not somewhere to go.
-- **projects**: the repo's workspaces. Entries are bare folder paths
-  (`"projects/budget-wa"`) or `{ path, label, tracker, landing }` objects;
-  `label` defaults to the path's last segment. They render in **three lists, one
-  destination**: nested under the repo's row in the estate sidebar's Repos
-  index, as the **Projects** section of that repo's own sidebar, and on the
-  repo's **card** in the Repos dashboard. Tapping the name in any of them opens
-  the repo's **project view** (above); from the estate the repo switches first.
-  All three hang the rows off the same 1 px rule, placed on the centre of the
-  glyph above them (the repo row's icon, or the section head's), which is what
-  says "these belong to that" without spending an indent. Two trailing buttons carry the project's other two
-  destinations, the repo rows' pattern at project scale: its **task board**,
-  opened here in the file viewer, and its **folder on GitHub**. Both act
-  directly rather than opening a panel, because a workspace has one of each
-  where a repo has seven GitHub destinations to choose among. The estate's rows
-  draw no leading glyph: the field defaulted one, so every row took the same
-  mark and it distinguished nothing; the rule and that empty icon column carry
-  the containment, so the two sidebar lists are otherwise sized identically (the
-  estate's rows were smaller and dimmer until the rule made the argument for
-  shrinking them unnecessary). The card carries names only, its board and folder
-  being one tap further in. An `icon` on an entry is accepted and ignored. The **defining
-  convention**: a workspace running a tracker (a `tracker/` directory holding
-  `tasks/`, per [TRACKER.md](TRACKER.md)) is a project. A tracker at the repo
-  root marks the repo itself and earns no row, so "repo or project" needs no
-  separate registry of what counts. That convention is also what lets the board
-  button need no declaration: the same layout puts the generated rollup at
-  `<workspace>/tracker/board.md`, so the row derives it. An entry names a
-  different one with `tracker` (a repo-root-relative file or folder) and drops
-  the button with `tracker: false`. An entry's **`landing`** (repo-root-relative,
-  like `tracker`) is the repo field one level down: the workspace's own front
-  page, taking the project view's Overview slot ahead of the README the way a
-  repo landing outranks the overview (see the **project** view above; that is
-  the whole of what a project declares, since its Pages and Docs tabs are
-  derived, from the repo catalog and the tree). The field is declarative rather
-  than discovered live (walking a tree for `tracker/` dirs is API-costly), which
-  makes it generatable: home's `tools/generate-tracker-registry.py` syncs it
-  from the trackers it finds, so the manifest cannot drift from the ground
-  truth. The estate sidebar reads the field from the config cache it already
-  holds, so those rows cost no extra fetch; the **open repo** reads its own live
-  manifest instead, the one `loadConfig` fetched at the browsed ref, so inside a
-  repo the list follows the ref and needs no cache entry. That split is also why
-  a `projects` field that exists only on a branch is invisible from the estate
-  (the cache is a main-derived artifact) until it merges, while the repo's own
-  sidebar shows it as soon as you browse the branch; the **branch overlay**
-  above previews the estate side live.
-- **tracker**: where the repo keeps its task board (`"tracker/board.md"`, or a
-  folder). Adds one row, **Task board**, to the repo's **GitHub menu** (the
-  sidebar Repos row's github button, and the Activity view's repo chip). It is
-  the one row in that menu GitHub cannot name for itself: every other row is a
-  fixed GitHub route, while where a repo tracks its work is a repo property. A
-  path with an extension links the blob, a bare path links the tree; declaring
-  none simply drops the row. See [TRACKER.md](TRACKER.md) for the board itself.
-- **scope**: the repo's own account of what it holds and why, surfaced as the
-  headline of its card in the estate's **Map** view. Either **inline prose**
-  (`"scope": "A private orchestration base…"`, a sentence or a few) or a **file
-  pointer** (a repo path ending in `.md`, e.g. `"scope": "docs/SCOPE.md"`, linked
-  to its blob, for a repo with a longer story). The repo owns the story; the Map
-  view stacks the per-repo statements rather than keeping a central list, so a
-  repo's scope is stated on its own terms and does not depend on its siblings.
-  The state carried by the config cache, so a scope edit versions with the config.
-- **surface**: a path (or a list of paths) to `.surface` file(s) in this repo,
-  surfaced under a per-repo section of the Stage's Saved pane and as a chip
-  on this repo's Repos-grid card. Read-only in the estate (edit the file in its
-  repo). See "The estate" → Stage above.
-- **stage.files**: a staged-files list a repo declares for itself. Entries are
-  **bare paths** (`"lib/foo.js"`, meaning this repo at its default branch) or
-  **qualified refs** (`"owner/repo[@ref]:path"`). Seeded into the stage only
-  when the stage is otherwise empty, so a working set the user built always
-  wins. **Read-only from show-repo since 2026-08-03:** saving a working set
-  writes a `.surface` to the registry instead (see
-  [The stage](#the-stage-the-working-surface)), because a save here overwrote
-  the previous one and put a cross-repo list in a single repo's config. Hand-
-  authored declarations keep working as seeds.
-- **stage.targets**: default transfer destinations (`"owner/repo:dir"`
-  strings), offered in the Copy-to-repo field.
-- **conventions**: not a show-repo field. `"optout"` marks a repo that has
-  deliberately not adopted the portable conventions, so a session-start nudge
-  stops asking. Absent means unset. Documented in [PORTABLE.md](PORTABLE.md).
-- **sessions**: not a show-repo field. A path (`"sessions"`) to the directory
-  where this repo keeps its session records, alongside the `tools/` that write
-  them. Declaring it is what makes the repo the store for the portable plugin's
-  `Stop` hook, which records any session that has this repo checked out and does
-  nothing where no checkout declares one. The hook finds the store by reading
-  this field rather than by knowing a repo name, so the recorder stays private
-  while the hook stays public. At most one checkout in a session should declare
-  it; the first found wins. Absent means no recording.
-  See [environment/extending.md](environment/extending.md#stop-the-session-recorder).
+**Two fields are not show-repo's.** `conventions` is read by the portable
+conventions and `sessions` by a plugin hook outside any page. The registry's
+`consumer` column carries that distinction for every field, which is what the
+prose kept losing by noting it in passing on two entries.
 
 ### One membership list
 
