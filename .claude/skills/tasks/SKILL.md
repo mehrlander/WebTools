@@ -192,6 +192,25 @@ Never hand-edit `board.md`. Where a repo's commit hook regenerates it (web-tools
 runs `npm run tracker-board`), the explicit call above is belt-and-suspenders;
 run it anyway when working outside the hook.
 
+## Another repo's tracker
+
+The same recipe, run against that repo's clone, is how you correct a task
+elsewhere; nothing else changes. What differs is when you may.
+
+**Correct, unattended:** a statement that is now false (a path that changed
+repos, a corpus that moved, a dependency closed elsewhere). Same standing
+permission as updating your own task. Note it in your reply.
+
+**File, gated:** a new task in another repo's tracker takes the filing gate,
+because it spends that repo's backlog.
+
+Name the origin in the commit message and add a dated progress-log line saying
+where the correction came from, so the edit is not an unexplained write from a
+session that was working somewhere else. If the repo is not in session scope,
+leave the correction in your reply rather than filing a task at home to
+remember it. [TRACKER.md](https://raw.githubusercontent.com/mehrlander/web-tools/main/docs/TRACKER.md)
+carries the reasoning and the reference-prefix rule that prevents most of these.
+
 ## Boundary with web-tools
 
 This skill owns the tracker: operations, filing rules, and the main-branch

@@ -113,6 +113,30 @@ The collision that is not rare is two sessions **filing** at once. With sequenti
 
 `board.md` is generated. If it conflicts, take either side and regenerate it. A concurrent filing still leaves the board stale (each side regenerated it against a partial set of task files), so rerun the generator after resolving; that is the same benign generated-file case.
 
+## Across repositories
+
+Trackers are scoped to a workspace and sessions are scoped to a repository, so the two do not line up: a session working in one repo routinely learns something that makes a task in another repo's tracker wrong. Nothing about the model prevents that write, since every tracker lives on `main` and `main` is reachable from any session holding the repo. What was missing is the rule for when to.
+
+**References carry their repo.** A task naming material in another repository writes the `owner/repo` prefix, always, even where the reader could infer it: `budget-wa's tools/split-bill.py`, not `tools/split-bill.py`. A bare path reads as in-repo, so a task that is really a cross-repo dependency looks like a local refactor, and it keeps looking like one until someone tries it. This is the whole prevention half, and it costs one prefix.
+
+`track: depends-on:<id>` does not cross a tracker. It resolves against task files in one `tasks/` directory, so a dependency on another repo's task is named in prose, by repo and title, not by id.
+
+**Correcting is maintenance; filing is filing.** Fixing a statement another repo's tracker makes that is now false (a moved corpus, a path that changed repos, a dependency that closed elsewhere) is the same class of act as updating your own task, and carries the same standing permission: do it, and say so in the reply. Creating a *new* task in another repo's tracker is filing, and takes the gate every filing takes, because the cost being managed is that repo's backlog, not the write.
+
+The line is whether the tracker currently says something untrue. It does: correct it. It merely lacks something you noticed: propose it.
+
+**The mechanism is the ordinary one.** Tracker state lives on `main` precisely so this needs no new channel: cut a scratch branch from that repo's `origin/main`, edit the task file, regenerate the rollups, push to `main`, as the [`tasks` skill](../.claude/skills/tasks/SKILL.md) already describes. No PR, no branch left behind. The repository has to be in the session's scope; if it is not, the correction is a line in your reply for the next session that holds it, not a task filed at home to remember it.
+
+**It announces itself in two places, and both matter.** The commit message names the correction and where it came from, so the other repo's history does not show an unexplained edit from a session that was working elsewhere:
+
+```
+tracker: repoint document-structure-harness at budget-wa (corpus moved; found from a home session)
+```
+
+And the task's own progress log takes a dated line naming the originating repo. The commit is how the repo's history stays legible; the log entry is how the next reader of that task learns why a statement changed without the task's own work advancing.
+
+**The estate move owns its repointing.** Both failures this convention was written from came from the same event rather than from neglect: an estate moved between repositories, and the session that moved it updated the trackers in the repos it was working in. A session moving material across a repo boundary owns repointing every tracker that names it, which in practice means grepping the old path and the old repo name across every tracker in scope before the move is called done. That is cheaper than the correction, and it is the only step that scales, since the number of trackers naming an estate is not knowable from inside the repo losing it.
+
 ## One logging axis
 
 The surfacing course logs by PR (a unit of delivery); the tracker logs by task (a unit of intent). Pick one as the primary log. Running both produces two records that drift. For solo, topic-driven work the task is the more natural unit. The tracker is independent of the surfacing primitives and the course; adopt it alone or alongside either.
