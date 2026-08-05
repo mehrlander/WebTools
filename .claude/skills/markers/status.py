@@ -62,11 +62,20 @@ MARKER = re.compile(
     r"\s*[:.]\*\*"                             # close
 )
 
-# Anything that opens like a marker but did not parse. The flavor must be
-# followed by whitespace, which is what separates an attempted marker from
-# ordinary bold prose (`**Frozen**: preserved on purpose`, a definition list in
-# the convention's own worked-examples entry, or `**Stale-branch piggybacking**`).
-NEAR_MISS = re.compile(r"\*\*(" + "|".join(FLAVORS) + r")\s+\S")
+# Anything that opens like a marker but did not parse. Two conditions, and both
+# are load-bearing:
+#
+#   * the flavor is followed by whitespace, which separates an attempted marker
+#     from ordinary bold prose (`**Frozen**: preserved on purpose`, a definition
+#     list in the convention's own worked-examples entry, or
+#     `**Stale-branch piggybacking**`);
+#   * a digit follows, inside the same bold span. A marker's shape mandates a
+#     date, so an attempt at one has a date in it however badly formed
+#     (`**Frozen July 2026:**`), while a bold lead-in that merely opens with the
+#     word has none. Without this the detector fired on `**Stale claims.**` and
+#     `**Wrong references**`, ordinary prose in two skill files, and a check
+#     whose every finding is a false positive is one nobody reads.
+NEAR_MISS = re.compile(r"\*\*(" + "|".join(FLAVORS) + r")\s+[^*]*\d")
 
 # `status: <flavor> YYYY-MM-DD; note` in frontmatter.
 STATUS_LINE = re.compile(
@@ -235,6 +244,7 @@ def scan_markers(root: Path) -> tuple[list[Marker], list[tuple[str, int, str]], 
         except OSError:
             continue
         in_frontmatter = False
+        in_fence = False
         for n, line in enumerate(text.splitlines(), 1):
             if n == 1 and line.strip() == "---":
                 in_frontmatter = True
@@ -246,6 +256,16 @@ def scan_markers(root: Path) -> tuple[list[Marker], list[tuple[str, int, str]], 
                     sm = STATUS_LINE.match(line.strip())
                     if sm:
                         status_lines.append((rel, line.strip()))
+                continue
+            # A marker inside a code fence is an illustration of the shape, not
+            # a claim about this file. The convention docs show a worked example
+            # with a real date and a target that deliberately does not exist
+            # (`→ ../timeline.md`), and it was reported as a broken target in
+            # every repo that carries the docs.
+            if line.lstrip().startswith("```"):
+                in_fence = not in_fence
+                continue
+            if in_fence:
                 continue
             found = list(MARKER.finditer(line))
             for m in found:

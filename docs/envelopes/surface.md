@@ -4,6 +4,16 @@ A **surface** is a JSON file: a curated, annotated set of items presented for a 
 
 **Authoritative artifacts:** the JSON Schemas beside this doc are the validation source of truth; this document carries the concepts, conventions, and worked examples.
 
+> [!WARNING]
+> **Stale 2026-08-05 (nothing validates against them):** "source of truth" states
+> the intent, not the practice. As of this date no code in `lib/`, `pages/`, or
+> the skills loads these schemas, and nothing validates a surface document
+> against them, so a producer that drifts from the schema gets no signal. They
+> are a written contract two readers can agree on, which is worth having; they
+> are not a gate. Found by the docs registry's reach pass, which is what made
+> the gap visible: they are the only files in `docs/` declared authoritative
+> that nothing reads.
+
 - [`schemas/surface-v2.schema.json`](schemas/surface-v2.schema.json): the core schema.
 - [`schemas/profiles/branch-review-v1.schema.json`](schemas/profiles/branch-review-v1.schema.json): the first profile.
 

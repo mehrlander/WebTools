@@ -35,11 +35,22 @@ Any turn that modifies `lib/gh-api.js` must end with the jsDelivr purge link so 
 
 `dist/web-tools.js` is **the pre-build**: the whole `lib/` frozen into one self-booting offline artifact, so a page can adopt the entire library with one import instead of a `gh.load` chain. It's generated (`npm run build:lib`) and it's the one tracked file under the otherwise-gitignored `dist/`. Full story in [`tools/README.md`](tools/README.md#the-pre-build).
 
+The `gh.load` chain it replaces is the repo's default, not a legacy path: 36 page files use it, and [`docs/loader.md`](docs/loader.md) is the only statement of the contract a file must honor to be loadable that way, plus the timing invariants the boot sequence depends on. Read it before adding a file to `lib/` or changing how a page boots. It is also the argument that load and build are two readings of one set of rules, which is why the pre-build works at all.
+
 Every **deterministic** derived artifact is owned by one commit-time hook (`.claude/hooks/build-on-commit.sh`, a `PreToolUse(Bash)` hook wired in `.claude/settings.json`). Before a `git commit` it regenerates and stages, in the same commit, whatever the pending changes touch:
 
 - `lib/` changed → `npm run build:lib` → `dist/web-tools.js`
 - `pages/**/*.html` changed → `npm run pages-index` → `pages/README.md` + `pages/index.html`
+- skills, `lib/`, `pages/`, or `docs/` changed → `npm run docs-reach` → the `reach` field in `docs/docs.json`
+- `docs/docs.json` changed → `npm run docs-readme` → `docs/README.md`
 - `tracker/tasks/` changed → `npm run tracker-board` → `tracker/board.md` + `tracker/board.json`
+
+`reach` is the odd one: a derived field inside an otherwise authored file, so
+`docs/docs.json` is hand-edited everywhere except that key. It answers whether
+anything can get a reader to a doc (injected, by a skill, by the app, orphan),
+and it moves when a skill or a page starts naming a file, an edit nowhere near
+the registry. `tools/test/docs-registry.test.mjs` holds the stored value to the
+derivation and names the restamp command when they part.
 
 Don't hand-edit any of those five files; edit the source and let the hook refresh them. Thumbnails (`pages/thumbs/*.png`) are the deliberate exception: not byte-deterministic, so the hook only *warns* when a page changes without its thumb; the actual refresh happens once per session at wrap-up (see "Per-session refresh" above).
 
