@@ -8,19 +8,27 @@ live in [show-repo's Map view, Docs tab](https://mehrlander.github.io/web-tools/
 alongside the shared-claims table (statements that live in more than one
 place, each with its one authoritative carrier and the check that holds each
 copy, or the honest absence of one). A **record** preserves a moment and is
-corrected by markers, never rewritten; everything else is living and must
-stay correct.
+corrected by markers, never rewritten; a **measured** doc carries dated
+observations and is corrected by re-probing; everything else is living and
+must stay correct.
+
+**Reach**, derived from the repo by `tools/build/docs-reach.mjs` and gated
+against the registry, counts how a reader gets to each file:
+2 arrive in every session's context, 12 are named by a skill,
+6 are named by a page or component, and 22 are marked *(orphan)*
+below. An orphan is not dead: it is reachable from this index, and this
+index is the only thing that reaches it.
 
 ## docs/
 
-- [`README.md`](README.md) — the docs folder's front door: the generated index of this registry
+- [`README.md`](README.md) *(orphan)* — the docs folder's front door: the generated index of this registry
 - [`docs.json`](docs.json) — this registry: the documents census and the shared-claims table
 - [`CONVENTIONS.md`](CONVENTIONS.md) — the portable working conventions: the general-behavior hub
 - [`SURFACING.md`](SURFACING.md) — the surfacing system: primitives plus the guide-PR and merge-guide course
 - [`surfacing.json`](surfacing.json) — the machine index of the surfacing primitives
 - [`PORTABLE.md`](PORTABLE.md) — the portable set: what travels, and how to adopt it
 - [`portable.json`](portable.json) — the machine index of the portable set
-- [`MARKETPLACE.md`](MARKETPLACE.md) — the plugin marketplace: how the set is published and subscribed to
+- [`MARKETPLACE.md`](MARKETPLACE.md) *(orphan)* — the plugin marketplace: how the set is published and subscribed to
 - [`TRACKER.md`](TRACKER.md) — the opt-in cross-session project tracker: schema, ids, board
 - [`CONSTELLATION.md`](CONSTELLATION.md) — the portable kernel of the what-goes-where doctrine
 - [`routes.json`](routes.json) — how content moves, renders, and gets looked at: grammar, modes, routes, and the showing block
@@ -30,49 +38,49 @@ stay correct.
 - [`HTML-STYLE.md`](HTML-STYLE.md) — the house style for pages: what to build, as against how
 - [`SNAGS.md`](SNAGS.md) — the friction log: one line per snag, symptom then corrected move
 - [`MERGE-GUIDE.md`](MERGE-GUIDE.md) *(record)* — what each merged PR shipped, newest first
-- [`SHARE.md`](SHARE.md) — the copy-paste prompt that points another session at the portable docs
-- [`loader.md`](loader.md) — the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality
+- [`SHARE.md`](SHARE.md) *(orphan)* — the copy-paste prompt that points another session at the portable docs
+- [`loader.md`](loader.md) *(orphan)* — the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality
 - [`headless-vendoring.md`](headless-vendoring.md) — building with CDN libraries and rendering headless where the CDNs are blocked
-- [`markdown-in-chat.md`](markdown-in-chat.md) — working visually with markdown in a chat client on a phone
-- [`pdf-structure.md`](pdf-structure.md) — recovering structure from a PDF in the browser: what the kit does and honestly does not
+- [`markdown-in-chat.md`](markdown-in-chat.md) *(measured)* — working visually with markdown in a chat client on a phone
+- [`pdf-structure.md`](pdf-structure.md) *(orphan)* — recovering structure from a PDF in the browser: what the kit does and honestly does not
 - [`tools.json`](tools.json) — the curated Tools gallery manifest
 
 ## docs/envelopes/
 
-- [`README.md`](envelopes/README.md) — the content-envelope family: members, shared grammar, and the sibling decision
-- [`surface.md`](envelopes/surface.md) — the surface format contract
-- [`chat-results.md`](envelopes/chat-results.md) — the chat-results envelope contract
+- [`README.md`](envelopes/README.md) *(orphan)* — the content-envelope family: members, shared grammar, and the sibling decision
+- [`surface.md`](envelopes/surface.md) *(orphan)* — the surface format contract
+- [`chat-results.md`](envelopes/chat-results.md) *(orphan)* — the chat-results envelope contract
 - [`data-view.md`](envelopes/data-view.md) — the data-view envelope contract
-- [`shorter.md`](envelopes/shorter.md) — the shorter envelope contract: a document and a shortening to adjudicate
+- [`shorter.md`](envelopes/shorter.md) *(orphan)* — the shorter envelope contract: a document and a shortening to adjudicate
 
 ## docs/envelopes/schemas/
 
-- [`surface-v2.schema.json`](envelopes/schemas/surface-v2.schema.json) — the surface v2 JSON Schema
+- [`surface-v2.schema.json`](envelopes/schemas/surface-v2.schema.json) *(orphan)* — the surface v2 JSON Schema
 
 ## docs/envelopes/schemas/profiles/
 
-- [`branch-review-v1.schema.json`](envelopes/schemas/profiles/branch-review-v1.schema.json) — the branch-review profile schema
-- [`stage-v1.schema.json`](envelopes/schemas/profiles/stage-v1.schema.json) — the stage profile schema
+- [`branch-review-v1.schema.json`](envelopes/schemas/profiles/branch-review-v1.schema.json) *(orphan)* — the branch-review profile schema
+- [`stage-v1.schema.json`](envelopes/schemas/profiles/stage-v1.schema.json) *(orphan)* — the stage profile schema
 
 ## docs/environment/
 
-- [`README.md`](environment/README.md) — the environment docs' front door, and their update discipline
-- [`capabilities.md`](environment/capabilities.md) — what the sandbox can run and reach
-- [`container.md`](environment/container.md) — what the box is and what persists across sessions
-- [`testing.md`](environment/testing.md) — how to test HTML and JS in the sandbox
-- [`extending.md`](environment/extending.md) — the Claude Code component model and the hooks this repo runs
+- [`README.md`](environment/README.md) *(orphan)* — the environment docs' front door, and their update discipline
+- [`capabilities.md`](environment/capabilities.md) *(measured)* — what the sandbox can run and reach
+- [`container.md`](environment/container.md) *(measured, orphan)* — what the box is and what persists across sessions
+- [`testing.md`](environment/testing.md) *(measured, orphan)* — how to test HTML and JS in the sandbox
+- [`extending.md`](environment/extending.md) *(orphan)* — the Claude Code component model and the hooks this repo runs
 
 ## docs/favicons/
 
-- [`README.md`](favicons/README.md) — the favicon archive: active marks and retired ones
+- [`README.md`](favicons/README.md) *(orphan)* — the favicon archive: active marks and retired ones
 
 ## docs/github/
 
-- [`README.md`](github/README.md) — the github folder's front door: renderer, git treatment, MCP routing, surfacing
-- [`markdown.md`](github/markdown.md) — what GitHub's static renderer turns markdown into
-- [`github-surfacing.md`](github/github-surfacing.md) — GitHub-native surfaces for exposing work: branches, compares, drafts, permalinks
-- [`mcp-server-routing.md`](github/mcp-server-routing.md) — two GitHub MCP servers at once: approval prompts as routing artifacts
-- [`post-merge-branch-mutation.md`](github/post-merge-branch-mutation.md) — why a merged branch stops being a live workspace: merged means closed
+- [`README.md`](github/README.md) *(orphan)* — the github folder's front door: renderer, git treatment, MCP routing, surfacing
+- [`markdown.md`](github/markdown.md) *(orphan)* — what GitHub's static renderer turns markdown into
+- [`github-surfacing.md`](github/github-surfacing.md) *(orphan)* — GitHub-native surfaces for exposing work: branches, compares, drafts, permalinks
+- [`mcp-server-routing.md`](github/mcp-server-routing.md) *(measured, orphan)* — two GitHub MCP servers at once: approval prompts as routing artifacts
+- [`post-merge-branch-mutation.md`](github/post-merge-branch-mutation.md) *(orphan)* — why a merged branch stops being a live workspace: merged means closed
 
 10 shared claims are registered; the registry note in
 [`docs.json`](docs.json) carries the schema and the admission rule.
