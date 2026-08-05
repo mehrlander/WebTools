@@ -4,7 +4,9 @@
 # Portable: python3, stdlib only, zero dependencies.
 # Canonical source: mehrlander/web-tools at .claude/skills/tasks/build-board.py
 # (bundled in the portable plugin; /tasks runs it via ${CLAUDE_PLUGIN_ROOT})
-# Usage: python3 build-board.py <tasks_dir> <board_out>
+# Usage: python3 build-board.py <tasks_dir> <board_out> [--check]
+#   --check writes nothing and exits 1 if either artifact is behind its source,
+#   so a test or CI can own the lockstep where a commit hook may never fire.
 #
 # Two projections from one run, so they cannot drift:
 #   board.md   the human list: GitHub, a diff, a clone, a session reading files
@@ -13,8 +15,10 @@
 # been handed (data before display).
 import json, os, pathlib, re, sys, urllib.parse
 
-tasks_dir = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "tasks")
-out = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else "board.md")
+argv = [a for a in sys.argv[1:] if a != "--check"]
+CHECK = "--check" in sys.argv
+tasks_dir = pathlib.Path(argv[0] if len(argv) > 0 else "tasks")
+out = pathlib.Path(argv[1] if len(argv) > 1 else "board.md")
 out_json = out.with_suffix(".json")
 
 # Where a row's link points, as a path relative to the BOARD's folder rather
@@ -27,8 +31,14 @@ task_href_base = os.path.relpath(tasks_dir, out.parent).replace(os.sep, "/")
 # Recognized keys act on the board; everything else is an open tag, preserved
 # and never rendered (TRACKER.md, the two-layer rule). Listed here so board.json
 # can keep the same split rather than flattening it away.
-RECOGNIZED = {"id", "title", "status", "project", "track",
-              "opened", "closed", "session", "size", "awaiting"}
+# A tuple, not a set, and that is load-bearing rather than stylistic. `record()`
+# below builds board.json's per-task object by iterating this, so set iteration
+# order would leak Python's per-process string hash randomization into the key
+# order of the emitted JSON: same input, different bytes on every run, which is
+# exactly what the no-timestamp rule at the bottom of this file exists to
+# prevent. Membership tests against ten strings cost nothing.
+RECOGNIZED = ("id", "title", "status", "project", "track",
+              "opened", "closed", "session", "size", "awaiting")
 
 LOG_DATE = re.compile(r"^\s*[-*]\s*\**(\d{4}-\d{2}-\d{2})", re.M)
 
@@ -113,7 +123,7 @@ for head, key in [("On deck", "backlog"), ("In progress", "in-progress"),
     lines.append(f"## {head}")
     lines += ([row(m) for m in buckets[key]] or ["- (none)"])
     lines.append("")
-out.write_text("\n".join(lines))
+board_md = "\n".join(lines)
 
 
 def record(m):
@@ -137,5 +147,15 @@ def record(m):
 
 # No timestamp: the artifact must be byte-identical for the same input, or the
 # lockstep checks that re-run the generator would fail on every clean tree.
-out_json.write_text(json.dumps(
-    {"tasks": [record(m) for m in tasks]}, indent=1, ensure_ascii=False) + "\n")
+board_json = json.dumps(
+    {"tasks": [record(m) for m in tasks]}, indent=1, ensure_ascii=False) + "\n"
+
+if CHECK:
+    stale = [str(f) for f, want in ((out, board_md), (out_json, board_json))
+             if not f.exists() or f.read_text() != want]
+    if stale:
+        sys.exit(f"stale: {', '.join(stale)}\n"
+                 f"  run: python3 {sys.argv[0]} {tasks_dir} {out}")
+else:
+    out.write_text(board_md)
+    out_json.write_text(board_json)
