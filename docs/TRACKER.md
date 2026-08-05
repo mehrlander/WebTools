@@ -69,6 +69,38 @@ Bring existing tasks aboard the new form at first opportunity. The generator key
 
 **Where comments go.** Current-state facts (a priority, a size, a one-line flag) are scalar frontmatter tags, overwritten in place, so the file always shows the present value. Narrative is body prose: the description for standing context, the `## Progress log` for the append-only dated thread. Lists and threads stay out of frontmatter, since that is the one thing that would force a real YAML parser, and the body already does it better.
 
+### Two conventional open tags: `runner` and `action`
+
+Both are open tags in the sense above, unrecognized by the generator and carried into `board.json` under `tags`, so a consumer can select on either today without the generator learning anything. They are written down here because they answer two questions the recognized set does not, and because a convention only works if everyone spells it the same way. Promote either when grouping the board by it is worth the code, not before.
+
+**`runner: <machine>` says where the session happens.** A task is parked for a machine when the work needs something only that machine has: data that must not leave it, a local model, a runtime, or simply an hour of unattended time. Absent means anywhere. It is a routing hint and nothing more: a parked task is still claimed, discussed, and closed exactly like any other, by a session that reads it and talks it through. The body carries one line naming which constraint parked it, because the constraints have different lifespans and the tag cannot tell them apart. A task parked for token cost can migrate back the moment tokens are cheap; one parked because the data stays on the machine never can.
+
+**`action: <name>` says the method is already settled.** Its value names a procedure the claiming session executes rather than designs. The discussion when such a task is picked up is about scope and results, not about how.
+
+**The catalog is the skill set.** An `action` resolves the way an invocation of the same name resolves: the repo's own skills first, then the plugin's, with the `namespace:` prefix available to disambiguate. There is no separate registry of standard actions, and there should not be: a second list of procedures would drift from the skills that actually define them. The gate that keeps this honest is that **if the procedure is not a skill yet, writing the skill is part of filing the task.** That is the right direction of pressure. Anything worth queueing repeatedly is worth having its method written down once.
+
+**The two are orthogonal.** `runner` alone is an ordinary task that happens elsewhere. `action` alone is a settled procedure any session can run. Together they are the case a person can compose from a UI and leave for a machine to pick up.
+
+**A task carrying `action` is characteristically thin,** and that is what distinguishes it on sight. It holds no argument and no history, because the reasoning lives in the skill. Three sections carry it:
+
+```markdown
+# <title>
+
+Run `<action>` for <the subject, in one line>.
+
+## Parameters
+- <key>: <value, or the rule that derives it>
+
+## Done when
+<the observable condition>
+```
+
+**Parameters live in the body, not in frontmatter.** The parser contract is scalars only, and a parameter set is routinely a list. Prefer a *derivation* to a literal list where one exists ("every month in X with no file in Y") so the task self-updates as the work lands and does not have to be edited to stay true.
+
+**Prefer a batch whose progress is derivable from the repo.** When the artifact itself shows what is finished, a run that stops halfway is legible to whoever resumes without trusting the log, and the same rule that governs a generated artifact governs job state. Such a batch is also the one honest `XL`: the size warning above is aimed at several outcomes hiding under one title, and one outcome repeated many times is not that.
+
+**What does not belong here.** Work that is fully mechanical and needs no session at all belongs in a commit hook, a test, or CI, which is where a repo already puts its deterministic regeneration. The runnable class is for work that needs a session even when it needs no design.
+
 ## Board format
 
 `board.md` is generated from the task files, four sections in order:
