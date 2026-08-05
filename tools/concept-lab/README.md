@@ -60,6 +60,114 @@ measured in [findings.md](findings.md):
   the prose itself marks a word as a term, is what pushes "board" and
   "stage" above them.
 
+## entitylab.py
+
+The complement to termlab, and the split between them is the point.
+termlab asks what vocabulary a repo **coins** (terms of art: "stage",
+"proviso", "toss"). entitylab asks what it **names** from the world
+outside it (agencies, funds, vendors, statutes, bills, people). The two
+populations want opposite treatments: a term of art is authoritative only
+in the prose that declares it, so harvesting is the method, while a named
+entity is authoritative in a table somebody already curates, so
+harvesting it is a fallback.
+
+So the tool reports the gap rather than just a list:
+
+| Column | Question it answers | Method |
+| --- | --- | --- |
+| declared | which entity tables the repo already holds | a key/code column beside a name column, in any CSV or JSON; no filename rules |
+| mentioned | which entities its prose names | six citation patterns (RCW, bill id, session law, biennium, fiscal year, USC/CFR) plus acronym and proper-noun shape |
+| resolved | how many mentions a declared table can name | folded string match against names and aliases |
+
+With two or more corpora it also emits the **crosswalk**: entities named
+in more than one repo. That section is the actual product. A per-repo
+entity list is a word cloud; the same bill cited in four repos that
+cannot see each other is a join.
+
+```bash
+python3 tools/concept-lab/entitylab.py bwa=/path/budget-wa --report bwa.md
+python3 tools/concept-lab/entitylab.py wt=... home=... bwa=... fn=... \
+  --report estate.md --json estate.json
+python3 tools/concept-lab/entitylab.py home=/path/home --spacy   # model vs pattern
+```
+
+About 70 seconds for seven repos without `--spacy`, and about 7 minutes
+for two with it. `--spacy` adds an `en_core_web_sm` pass over the prose
+classes. Measured on budget-wa and home: it finds real organizations the
+patterns miss, and misfires badly on this corpus's markdown and code
+tokens (`XML`, `HTML`, and `FTE` as `ORG`; `JSON` and
+`fiscal-note-objects.csv` as `PERSON`; `jsDelivr` and `CLAUDE.md` as
+`NORP`). It also cannot see the citation classes at all: on `ESSB 5357`
+it takes `5357` as a `CARDINAL` and drops the bill. Treat it as a
+recall aid over a domain gazetteer, not as the extractor. Findings and
+the per-repo resolution rates are in [findings.md](findings.md).
+
+## entityprofile.py
+
+The plain version of the question entitylab talked itself out of: point a
+standard entity recognizer at each repo and see what comes back. spaCy
+`en_core_web_sm` over the full OntoNotes label set, reported and not
+committed.
+
+Four levels are kept distinct in the data, because collapsing them is
+what turns an entity profile into a word list:
+
+| Level | Example | Held as |
+| --- | --- | --- |
+| type | `ORG` | an OntoNotes label |
+| name | `OFM`, `Office of Financial Management` | a surface form, never merged |
+| mention | one occurrence, with file and context | up to 3 sampled per name; counts stay complete |
+| entity | the thing both names denote | **not resolved.** The schema leaves room; alias resolution is its own project |
+
+Two families report separately, since values outnumber names by an order
+of magnitude and would otherwise swamp the profile: **named**
+(`PERSON NORP FAC ORG GPE LOC PRODUCT EVENT WORK_OF_ART LAW LANGUAGE`)
+and **value** (`DATE TIME PERCENT MONEY QUANTITY ORDINAL CARDINAL`).
+
+**Two quality numbers, and they are not the same number.** *Flag rate* is
+mechanical: the share of a label's names tripping a shape test, each test
+named in the output so a reader can disagree with it. *Precision* is
+adjudicated, by reading a stratified sample and marking each name right
+or wrong for its type. A label with no judgments reports "not judged"
+rather than borrowing its flag rate, because the two diverge sharply:
+code-shape tests catch about a fifth of `PERSON` names while by eye more
+than half are wrong, the dominant failure being an ordinary domain noun
+in title case (`Expenditures`, `Provisos`, `Detail`). The `common-word`
+test exists for exactly that gap and uses wordfreq, so `Expenditures`
+(zipf 3.52) flags where a real surname (0.0) does not.
+
+```bash
+python3 tools/concept-lab/entityprofile.py scan wt=... home=... --sample 1500 --out prof.json
+python3 tools/concept-lab/entityprofile.py worksheet prof.json --out judge.json
+# fill in each verdict: correct | wrong | unclear
+python3 tools/concept-lab/entityprofile.py report prof.json --judgments judge.json --out profiles.md
+```
+
+Roughly 4 files per second on 4 cores.
+
+## build-entity-index.py
+
+The pipeline, so the committed index is derived rather than authored.
+Chains scan, gazetteer, and confirmation into one command and writes
+`web-tools-private/state/entities.json`. Before it existed the steps
+were all committed but the glue between them was not, which meant the
+index could not be reproduced without re-deriving three ad-hoc scripts
+and a hand-typed metadata block from the findings log.
+
+```bash
+python3 tools/concept-lab/build-entity-index.py \
+  --repos wt=… home=… chats=… bwa=… spend=… bills=… fn=… \
+  --gaz-from bwa=… spend=… \
+  --out ../web-tools-private/state/entities.json
+```
+
+`--profile-cache` reuses an existing scan instead of spending half an
+hour re-running the model, which is what makes iterating on the
+gazetteer or the metadata cheap. The adjudicated precision figures live
+in `PRECISION` as data, each with its sample size, rather than being
+retyped per run: retyping is how a measured figure becomes a remembered
+one.
+
 ## The experiment scripts
 
 - `exp_embed.py`: embeddings vs collocates vs lexical clustering on probe

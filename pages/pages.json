@@ -20,6 +20,14 @@
         "code": "https://github.com/mehrlander/web-tools/blob/main/pages/chat-results.html"
       },
       {
+        "href": "citations.html",
+        "label": "citations",
+        "title": "Citations",
+        "note": "",
+        "thumb": "thumbs/citations.png",
+        "code": "https://github.com/mehrlander/web-tools/blob/main/pages/citations.html"
+      },
+      {
         "href": "compression-helper.html",
         "label": "compression-helper",
         "title": "Compression Helper (v5)",
@@ -50,6 +58,14 @@
         "note": "Side-by-side text diff tool.",
         "thumb": "thumbs/diff-tool.png",
         "code": "https://github.com/mehrlander/web-tools/blob/main/pages/diff-tool.html"
+      },
+      {
+        "href": "entities.html",
+        "label": "entities",
+        "title": "Entities",
+        "note": "",
+        "thumb": "thumbs/entities.png",
+        "code": "https://github.com/mehrlander/web-tools/blob/main/pages/entities.html"
       },
       {
         "href": "gist-editor.html",
