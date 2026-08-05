@@ -51,8 +51,9 @@ function render(reg) {
   for (const d of reg.documents) reach[d.reach] = (reach[d.reach] || 0) + 1;
   lines.push('**Reach**, derived from the repo by `tools/build/docs-reach.mjs` and gated');
   lines.push('against the registry, counts how a reader gets to each file:');
-  lines.push(`${reach.injected || 0} arrive in every session's context, ${reach.skill || 0} are named by a skill,`);
-  lines.push(`${reach.app || 0} are named by a page or component, and ${reach.orphan || 0} are marked *(orphan)*`);
+  lines.push(`${reach.injected || 0} arrive in every session's context, ${reach.project || 0} are named by CLAUDE.md,`);
+  lines.push(`${reach.skill || 0} are named by a skill, ${reach.app || 0} are named by a page or component,`);
+  lines.push(`and ${reach.orphan || 0} are marked *(orphan)*`);
   lines.push('below. An orphan is not dead: it is reachable from this index, and this');
   lines.push('index is the only thing that reaches it.');
   lines.push('');

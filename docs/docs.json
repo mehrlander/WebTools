@@ -1,18 +1,18 @@
 {
-  "note": "The documentation registry, in two tables. `documents` describes what each file under docs/ is, on four axes. `subject`: what it covers. `status`: `living` claims current truth and is wrong when stale, `record` preserves a moment and is wrong when rewritten, `measured` carries dated observations and is corrected by re-probing rather than by rewriting (the third value was added 2026-08-05, when five rows were found describing that genre in prose while their status said living). `reach`: how a reader gets to the file, DERIVED from the repo by tools/build/docs-reach.mjs and gated against this declaration, never hand-set. Strongest channel first: `injected` arrives in every session's context unasked, `skill` is named by a skill so invoking it pulls the doc, `app` is named in lib/ or pages/ CODE so a page reads or opens it (a mention in a comment does not count and is stripped), `orphan` means no automated channel puts it in front of anyone not already browsing docs/. `maintenance`: the discipline that keeps it true, and where none exists the row says so plainly rather than saying 'authored' (a bare row is barred by test, since the census gate otherwise invites filling rows instead of thinking about them). `claims` records statements that live in more than one place, since repetition is the only condition under which drift exists: each row names the one authoritative carrier and every repetition, with its relation (`copy` byte-comparable, `paraphrase` restated, `pointer` no content of its own, `live read` fetched at use), who keeps a copy (`kept`: by hand, or by a named builder), and the check that holds it or the reason none does. A row with `applies_to` is a family rule: the repetition policy for a class of claims that drift individually. The registry is authoritative for what it covers and owes the repo no inventory of claims; the documents census, by contrast, is complete by construction (tools/test/docs-registry.test.mjs holds every .md/.json under docs/ to exactly one row). Rendered by show-repo's Map view, Docs tab. Genre precedents: budget-drs DOCS.md (three genres, three rules) and properties.csv (one authoritative carrier, gated copies, unchecked declared honestly).",
+  "note": "The documentation registry, in two tables. `documents` describes what each file under docs/ is, on four axes. `subject`: what it covers. `status`: `living` claims current truth and is wrong when stale, `record` preserves a moment and is wrong when rewritten, `measured` carries dated observations and is corrected by re-probing rather than by rewriting (the third value was added 2026-08-05, when five rows were found describing that genre in prose while their status said living). `reach`: how a reader gets to the file, DERIVED from the repo by tools/build/docs-reach.mjs and gated against this declaration, never hand-set. Strongest channel first: `injected` arrives in every session's context unasked, `project` is named by the repo's own CLAUDE.md so every session is one hop away, `skill` is named by a skill so invoking it pulls the doc, `app` is named in lib/ or pages/ CODE so a page reads or opens it (a mention in a comment does not count and is stripped), `orphan` means no automated channel puts it in front of anyone not already browsing docs/. `maintenance`: the discipline that keeps it true, and where none exists the row says so plainly rather than saying 'authored' (a bare row is barred by test, since the census gate otherwise invites filling rows instead of thinking about them). `claims` records statements that live in more than one place, since repetition is the only condition under which drift exists: each row names the one authoritative carrier and every repetition, with its relation (`copy` byte-comparable, `paraphrase` restated, `pointer` no content of its own, `live read` fetched at use), who keeps a copy (`kept`: by hand, or by a named builder), and the check that holds it or the reason none does. A row with `applies_to` is a family rule: the repetition policy for a class of claims that drift individually. The registry is authoritative for what it covers and owes the repo no inventory of claims; the documents census, by contrast, is complete by construction (tools/test/docs-registry.test.mjs holds every .md/.json under docs/ to exactly one row). Rendered by show-repo's Map view, Docs tab. Genre precedents: budget-drs DOCS.md (three genres, three rules) and properties.csv (one authoritative carrier, gated copies, unchecked declared honestly).",
   "documents": [
     {
       "path": "docs/README.md",
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
-      "reach": "orphan",
+      "reach": "project",
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
       "path": "docs/docs.json",
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
-      "reach": "app",
+      "reach": "project",
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -40,7 +40,7 @@
       "path": "docs/PORTABLE.md",
       "subject": "the portable set: what travels, and how to adopt it",
       "status": "living",
-      "reach": "skill",
+      "reach": "project",
       "maintenance": "authored, edited in place; the roster tables are census-gated against portable.json and disk (portable-manifest.test.mjs)"
     },
     {
@@ -61,7 +61,7 @@
       "path": "docs/TRACKER.md",
       "subject": "the opt-in cross-session project tracker: schema, ids, board",
       "status": "living",
-      "reach": "skill",
+      "reach": "project",
       "maintenance": "authored, edited in place; the schema the tasks skill implements, held to it by review alone"
     },
     {
@@ -75,14 +75,14 @@
       "path": "docs/routes.json",
       "subject": "how content moves, renders, and gets looked at: grammar, modes, routes, and the showing block",
       "status": "living",
-      "reach": "app",
+      "reach": "project",
       "maintenance": "authored; the routes block is held to toss-render's inlined TOSS_ROUTES, and the showing block to its own shape, by routes-manifest.test.mjs"
     },
     {
       "path": "docs/showing.md",
       "subject": "why the showing boundaries sit where they are: the frame and the record behind routes.json",
       "status": "living",
-      "reach": "app",
+      "reach": "project",
       "maintenance": "authored; defers its reference layer to routes.json by design and says so"
     },
     {
@@ -110,7 +110,7 @@
       "path": "docs/SNAGS.md",
       "subject": "the friction log: one line per snag, symptom then corrected move",
       "status": "living",
-      "reach": "skill",
+      "reach": "project",
       "maintenance": "authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
     },
     {
@@ -131,8 +131,8 @@
       "path": "docs/loader.md",
       "subject": "the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality",
       "status": "living",
-      "reach": "orphan",
-      "maintenance": "authored, edited in place; states the runtime contract lib/gh-api.js implements, with nothing holding the two together and nothing naming it"
+      "reach": "project",
+      "maintenance": "authored, edited in place; the only statement of the gh.load contract that 36 page files depend on, and CLAUDE.md now sends a reader here before they touch lib/ or a page's boot"
     },
     {
       "path": "docs/headless-vendoring.md",
@@ -229,28 +229,28 @@
       "path": "docs/environment/capabilities.md",
       "subject": "what the sandbox can run and reach",
       "status": "measured",
-      "reach": "skill",
+      "reach": "project",
       "maintenance": "authored; per-claim verification dates, edited in place and re-dated, probes preferred over assertions"
     },
     {
       "path": "docs/environment/container.md",
       "subject": "what the box is and what persists across sessions",
       "status": "measured",
-      "reach": "orphan",
+      "reach": "project",
       "maintenance": "authored; per-claim verification dates, edited in place"
     },
     {
       "path": "docs/environment/testing.md",
       "subject": "how to test HTML and JS in the sandbox",
       "status": "measured",
-      "reach": "orphan",
+      "reach": "project",
       "maintenance": "authored; per-claim verification dates, edited in place"
     },
     {
       "path": "docs/environment/extending.md",
       "subject": "the Claude Code component model and the hooks this repo runs",
       "status": "living",
-      "reach": "orphan",
+      "reach": "project",
       "maintenance": "authored; mostly stable conceptual knowledge, only the repo-specific inventory is dated"
     },
     {

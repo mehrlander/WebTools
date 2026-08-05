@@ -9,12 +9,19 @@
 // This module makes it a derived field, so it is recomputed on every test run
 // and cannot drift from the estate.
 //
-// Four channels, strongest first. A doc gets the strongest that reaches it:
+// Five channels, strongest first. A doc gets the strongest that reaches it:
 //
 //   injected  arrives in every session's context unasked (the session-start
 //             hook fetches these two, and CLAUDE.md @-imports them). The
 //             strongest channel there is, and the reason these two are the
 //             only docs a session can be assumed to have read.
+//   project   named by the repo's own CLAUDE.md, which every session in this
+//             repo reads. One hop from every session and no invocation
+//             required, so it outranks a skill. Added 2026-08-05, after the
+//             first cut reported as orphan four docs that CLAUDE.md names by
+//             path: the orphan count was pessimistic, and a count that
+//             overstates the problem is corrected for the same reason one that
+//             understates it is.
 //   skill     a skill names the path, so invoking that skill pulls the doc.
 //             One deliberate act away, and the act is one an agent takes.
 //   app       lib/ or pages/ names the path in CODE, so a page reads it at
@@ -43,12 +50,16 @@ import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from '
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const CHANNELS = ['injected', 'skill', 'app', 'orphan'];
+export const CHANNELS = ['injected', 'project', 'skill', 'app', 'orphan'];
 
 // The two the session-start hook fetches. Declared rather than derived: the
 // hook that injects them lives in each consuming repo, not in this one.
 export const INJECTED = ['docs/CONVENTIONS.md', 'docs/SURFACING.md'];
 
+// The repo's own agent instructions. Not a directory: exactly these files, at
+// the root, because a nested CLAUDE.md governs its own subtree rather than the
+// session.
+const PROJECT_FILES = ['CLAUDE.md', 'AGENTS.md'];
 const SKILL_DIRS = ['.claude/skills', 'skills'];
 const APP_DIRS = ['lib', 'pages'];
 const SKILL_EXT = new Set(['.md', '.py', '.json', '.mjs']);
@@ -97,12 +108,18 @@ function readCorpus(repoRoot, dirs, exts, strip = false) {
  * @returns {Map<string, {channel: string, via: string｜null}>}
  */
 export function deriveReach(repoRoot, paths) {
+  const project = PROJECT_FILES
+    .map(name => [name, path.join(repoRoot, name)])
+    .filter(([, abs]) => existsSync(abs))
+    .map(([name, abs]) => [name, readFileSync(abs, 'utf8')]);
   const skills = readCorpus(repoRoot, SKILL_DIRS, SKILL_EXT);
   const app = readCorpus(repoRoot, APP_DIRS, APP_EXT, true);
   const injected = new Set(INJECTED);
   const out = new Map();
   for (const p of paths) {
     if (injected.has(p)) { out.set(p, { channel: 'injected', via: null }); continue; }
+    const byProject = project.find(([, text]) => text.includes(p));
+    if (byProject) { out.set(p, { channel: 'project', via: byProject[0] }); continue; }
     const bySkill = skills.find(([, text]) => text.includes(p));
     if (bySkill) { out.set(p, { channel: 'skill', via: bySkill[0] }); continue; }
     const byApp = app.find(([, text]) => text.includes(p));

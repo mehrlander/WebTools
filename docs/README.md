@@ -14,14 +14,15 @@ must stay correct.
 
 **Reach**, derived from the repo by `tools/build/docs-reach.mjs` and gated
 against the registry, counts how a reader gets to each file:
-2 arrive in every session's context, 12 are named by a skill,
-6 are named by a page or component, and 22 are marked *(orphan)*
+2 arrive in every session's context, 12 are named by CLAUDE.md,
+8 are named by a skill, 3 are named by a page or component,
+and 17 are marked *(orphan)*
 below. An orphan is not dead: it is reachable from this index, and this
 index is the only thing that reaches it.
 
 ## docs/
 
-- [`README.md`](README.md) *(orphan)* — the docs folder's front door: the generated index of this registry
+- [`README.md`](README.md) — the docs folder's front door: the generated index of this registry
 - [`docs.json`](docs.json) — this registry: the documents census and the shared-claims table
 - [`CONVENTIONS.md`](CONVENTIONS.md) — the portable working conventions: the general-behavior hub
 - [`SURFACING.md`](SURFACING.md) — the surfacing system: primitives plus the guide-PR and merge-guide course
@@ -39,7 +40,7 @@ index is the only thing that reaches it.
 - [`SNAGS.md`](SNAGS.md) — the friction log: one line per snag, symptom then corrected move
 - [`MERGE-GUIDE.md`](MERGE-GUIDE.md) *(record)* — what each merged PR shipped, newest first
 - [`SHARE.md`](SHARE.md) *(orphan)* — the copy-paste prompt that points another session at the portable docs
-- [`loader.md`](loader.md) *(orphan)* — the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality
+- [`loader.md`](loader.md) — the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality
 - [`headless-vendoring.md`](headless-vendoring.md) — building with CDN libraries and rendering headless where the CDNs are blocked
 - [`markdown-in-chat.md`](markdown-in-chat.md) *(measured)* — working visually with markdown in a chat client on a phone
 - [`pdf-structure.md`](pdf-structure.md) *(orphan)* — recovering structure from a PDF in the browser: what the kit does and honestly does not
@@ -66,9 +67,9 @@ index is the only thing that reaches it.
 
 - [`README.md`](environment/README.md) *(orphan)* — the environment docs' front door, and their update discipline
 - [`capabilities.md`](environment/capabilities.md) *(measured)* — what the sandbox can run and reach
-- [`container.md`](environment/container.md) *(measured, orphan)* — what the box is and what persists across sessions
-- [`testing.md`](environment/testing.md) *(measured, orphan)* — how to test HTML and JS in the sandbox
-- [`extending.md`](environment/extending.md) *(orphan)* — the Claude Code component model and the hooks this repo runs
+- [`container.md`](environment/container.md) *(measured)* — what the box is and what persists across sessions
+- [`testing.md`](environment/testing.md) *(measured)* — how to test HTML and JS in the sandbox
+- [`extending.md`](environment/extending.md) — the Claude Code component model and the hooks this repo runs
 
 ## docs/favicons/
 
