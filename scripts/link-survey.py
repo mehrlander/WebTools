@@ -5,7 +5,9 @@
   cross-repo  a relative path that escapes the repo root into a sibling
               checkout (../../budget-wa/...). It never resolves on github.com
               and resolves locally only when that checkout happens to be there
-  github      a github.com/OWNER/REPO/blob|tree/main/... URL whose path is gone
+  github      an owner URL at main whose path is gone, in either form:
+              github.com/OWNER/REPO/blob|tree/main/... or
+              raw.githubusercontent.com/OWNER/REPO/main/...
 
 The cross-repo class is the one with no owner on either side. A store can
 reorganize without knowing who reads it, and the reader finds out only if
@@ -57,8 +59,10 @@ from pathlib import Path
 LINK = re.compile(r'(?<!!)\[([^\]]*)\]\(\s*(<[^>]*>|[^)\s]+)')
 FENCE = re.compile(r'^\s*(```|~~~)')
 # Shapes that are documentation of a path, not a path: filename templates and
-# elided middles. Checking them produces noise no reader can act on.
-TEMPLATE = re.compile(r'YYYY|MM/|[<>]|\$\{|\.\.\.')
+# elided middles. Checking them produces noise no reader can act on. A bare `$`
+# counts, not only `${`: the bare-URL scan below reads fenced shell, where a loop
+# variable (`.../docs/$f.md`) is a template with no braces on it.
+TEMPLATE = re.compile(r'YYYY|MM/|[<>]|\$|\.\.\.')
 
 
 def strip_uncheckable(text):
@@ -94,13 +98,41 @@ def sibling_root(root, name):
     return root.parent / name
 
 
+# The two URL forms that address a file in one of the owner's repos at main.
+# Both are checked the same way and reported in the same class, because the
+# failure is the same: a path that moved leaves the URL pointing at nothing.
+#
+# The raw form was uncovered until 2026-08-05, and the gap had a live instance:
+# docs/SHARE.md's copy-paste prompt hard-codes a raw URL for docs/PORTABLE.md,
+# which is exactly the kind of link a rename breaks silently. It is also the
+# form a doc reaches for when the reader is a machine (curl, WebFetch) rather
+# than a browser, so it clusters in the docs most likely to be pasted into
+# another session.
+#
+# Only `main` is checked, in both forms. A URL pinned to a tag or a SHA points
+# at history on purpose, and a checkout cannot speak to it.
+def _repo_url(prefix, middle):
+    return re.compile(prefix + r'/([\w.-]+)/' + middle + r'/(.*)')
+
+
+def build_patterns(owner):
+    o = re.escape(owner)
+    return (
+        _repo_url(rf'https://github\.com/{o}', r'(?:blob|tree)/main'),
+        _repo_url(rf'https://raw\.githubusercontent\.com/{o}', r'(?:refs/heads/)?main'),
+    )
+
+
+GH_URL = RAW_URL = None  # set per run by survey(), which knows the owner
+
+
 def classify(root, owner, src, target):
     """Return (class, verdict, detail), or None when the link is not ours to check."""
     path = target.strip("<>").split("#")[0]
     if not path or path.startswith(("mailto:", "tel:")):
         return None
 
-    m = re.match(rf'https://github\.com/{re.escape(owner)}/([\w.-]+)/(?:blob|tree)/main/(.*)', path)
+    m = GH_URL.match(path) or RAW_URL.match(path)
     if m:
         repo, rel = m.group(1), m.group(2)
         base = root if repo == root.name else sibling_root(root, repo)
@@ -128,6 +160,8 @@ def classify(root, owner, src, target):
 
 
 def survey(root, owner):
+    global GH_URL, RAW_URL
+    GH_URL, RAW_URL = build_patterns(owner)
     files = subprocess.run(["git", "-C", str(root), "ls-files", "*.md"],
                            capture_output=True, text=True).stdout.split()
     findings = []
@@ -145,7 +179,43 @@ def survey(root, owner):
                 continue
             findings.append((got[0], got[1], f, text[:m.start()].count("\n") + 1,
                              m.group(1)[:44], got[2]))
+        findings.extend(bare_urls(root, owner, p))
     return findings
+
+
+# Bare owner URLs, scanned over the ORIGINAL text: fences, inline code, and all.
+# Everything else here reads stripped text, because a fenced link is usually an
+# illustration. An owner URL at main is the exception, and not by preference: it
+# is a fetch target, so a fence is where it is most likely to be load-bearing and
+# least likely to be decorative. docs/SHARE.md is the whole argument. Its one job
+# is a copy-paste `curl` of docs/PORTABLE.md, written bare inside a fence, so
+# every rule this file otherwise applies would skip the only line that matters.
+#
+# Measured 2026-08-05: 4 owner raw URLs written as markdown links (all in shipped
+# skills) plus 5 checkable bare ones. The rest carry ${ref} or <path> templates
+# and are filtered by TEMPLATE, as they should be.
+BARE_URL = re.compile(r'https://(?:raw\.githubusercontent\.com|github\.com)/[^\s)`"\'<>]+')
+
+
+def bare_urls(root, owner, src):
+    try:
+        text = src.read_text(encoding="utf-8")
+    except (UnicodeDecodeError, OSError):
+        return []
+    out = []
+    for m in BARE_URL.finditer(text):
+        url = m.group(0).rstrip('.,;:')
+        # Already counted by the markdown-link pass.
+        if text[max(0, m.start() - 2):m.start()] == "](":
+            continue
+        if TEMPLATE.search(url):
+            continue
+        got = classify(root, owner, src, url)
+        if not got or got[1] == "ok":
+            continue
+        out.append((got[0], got[1], str(src.relative_to(root)),
+                    text[:m.start()].count("\n") + 1, "(bare url)", got[2]))
+    return out
 
 
 def main(argv):

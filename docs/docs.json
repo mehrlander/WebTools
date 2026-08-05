@@ -125,7 +125,7 @@
       "subject": "the copy-paste prompt that points another session at the portable docs",
       "status": "living",
       "reach": "orphan",
-      "maintenance": "authored; the copy-paste prompt hard-codes a raw.githubusercontent URL for PORTABLE.md, a form no link check covers, so an upstream rename breaks it silently"
+      "maintenance": "authored; the copy-paste prompt's raw.githubusercontent URL is now covered by link-survey.py's bare-URL scan, which reads fenced shell for exactly this case"
     },
     {
       "path": "docs/loader.md",
@@ -174,7 +174,7 @@
       "subject": "the surface format contract",
       "status": "living",
       "reach": "orphan",
-      "maintenance": "authored; validation source of truth is the sibling schema"
+      "maintenance": "authored; declares the sibling schemas the validation source of truth and carries a Stale banner saying nothing validates against them, which is the honest state rather than the intended one"
     },
     {
       "path": "docs/envelopes/chat-results.md",
@@ -202,7 +202,7 @@
       "subject": "the surface v2 JSON Schema",
       "status": "living",
       "reach": "orphan",
-      "maintenance": "authored; declared the validation source of truth for surface envelopes, but nothing in lib/, pages/, or the skills loads it, so the declaration is aspirational"
+      "maintenance": "authored; a written contract, not a gate: nothing in lib/, pages/, or the skills loads it, and surface.md now says so where a reader will see it"
     },
     {
       "path": "docs/envelopes/schemas/profiles/branch-review-v1.schema.json",
@@ -276,10 +276,10 @@
     },
     {
       "path": "docs/github/mcp-server-routing.md",
-      "subject": "two GitHub MCP servers at once: approval prompts as routing artifacts",
-      "status": "measured",
+      "subject": "two GitHub MCP servers at once: the 2026-07-15 observation, superseded",
+      "status": "record",
       "reach": "orphan",
-      "maintenance": "authored from one dated observation; its operative rule is restated in environment/capabilities.md, the duplication the skillify task opens with"
+      "maintenance": "preserved as a dated record; its cause paragraph is marked Stale against environment/capabilities.md, which now owns the operative rule. Annotated, not rewritten"
     },
     {
       "path": "docs/github/post-merge-branch-mutation.md",
@@ -442,6 +442,21 @@
           "relation": "copy",
           "kept": "by scripts/build-merge-guide.py",
           "check": "none in CI (generation needs API access); --refresh re-derives covered entries on demand, so a post-merge body edit drifts silently until then"
+        }
+      ]
+    },
+    {
+      "claim": "the GitHub MCP routing rule: on an unexpected approval wall, call the built-in server's equivalent",
+      "authoritative": "docs/environment/capabilities.md, \"MCP: two servers can share a tool name\" (2026-07-29; logs, controls, upstream issues)",
+      "repetitions": [
+        {
+          "where": "docs/github/mcp-server-routing.md (2026-07-15)",
+          "relation": "paraphrase",
+          "check": "none: a superseded record, marked Stale on the paragraph that parted from the owner. Kept because the observation is dated evidence, not because it is current"
+        },
+        {
+          "where": "the sandbox-traps skill",
+          "relation": "pointer"
         }
       ]
     }

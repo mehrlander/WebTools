@@ -405,9 +405,28 @@ name (`tool_name=mcp__mehrlander__update_pull_request`). One grep, and it is
 worth making the first triage step rather than the last.
 
 **The rules.** On `-32003`, call the built-in equivalent rather than whatever
-discovery returned first. A capability that exists *only* on a connector has no
-in-session workaround, which for `add_repo` means attaching repositories when
-the session is created.
+discovery returned first: reload it explicitly with ToolSearch
+(`select:mcp__github__<tool>`) instead of reissuing whatever is already in hand,
+since discovery is what routed you wrong in the first place. Do not re-approve
+on the failing server; approving does not clear the already-errored call, which
+is what makes the approval flow itself look broken. A capability that exists
+*only* on a connector has no in-session workaround, which for `add_repo` means
+attaching repositories when the session is created.
+
+**Generalize it past GitHub.** Whenever a provider has more than one server
+connected, a permission surprise on one of them is more often a routing problem
+than a permission wall. Check for a sibling server exposing the same tool before
+treating the wall as real. This is the durable rule; the specific reshuffle that
+spawns a UUID-named twin is incidental and will look different next time.
+
+**Allowlisting is not the fix, and the reason matters.** Permission entries key
+on the exact server name, and a connector wears a per-connection UUID, so next
+session's name differs and nothing can be pinned. That is separate from the
+upstream finding below, which is that allowlisting fails even when you can name
+the server. Two independent reasons, same conclusion. This section supersedes
+[github/mcp-server-routing.md](../github/mcp-server-routing.md), a 2026-07-15
+observation kept as a record: it reached the same operative move from a
+different and less well-evidenced account of the cause.
 
 Upstream reports the same failure for Gmail, Calendar, and Microsoft 365
 connectors in scheduled runs, and calls it a regression:

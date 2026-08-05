@@ -79,8 +79,8 @@ index is the only thing that reaches it.
 - [`README.md`](github/README.md) *(orphan)* — the github folder's front door: renderer, git treatment, MCP routing, surfacing
 - [`markdown.md`](github/markdown.md) *(orphan)* — what GitHub's static renderer turns markdown into
 - [`github-surfacing.md`](github/github-surfacing.md) *(orphan)* — GitHub-native surfaces for exposing work: branches, compares, drafts, permalinks
-- [`mcp-server-routing.md`](github/mcp-server-routing.md) *(measured, orphan)* — two GitHub MCP servers at once: approval prompts as routing artifacts
+- [`mcp-server-routing.md`](github/mcp-server-routing.md) *(record, orphan)* — two GitHub MCP servers at once: the 2026-07-15 observation, superseded
 - [`post-merge-branch-mutation.md`](github/post-merge-branch-mutation.md) *(orphan)* — why a merged branch stops being a live workspace: merged means closed
 
-10 shared claims are registered; the registry note in
+11 shared claims are registered; the registry note in
 [`docs.json`](docs.json) carries the schema and the admission rule.
