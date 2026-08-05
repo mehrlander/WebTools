@@ -960,3 +960,41 @@ hook, and the hook is missing on purpose: no commit should trigger a half-hour
 model run. If it later deserves a real automatic owner the candidate is a cron
 workflow, and the open question is credentials, since six of the seven
 checkouts are private.
+
+## 2026-08-05, the extraction step, as the probe rescoped it
+
+Built in wa-bills as `tools/extract-citations.py`, and the numbers are the
+probe's prediction landing: **63,880 bills in 6m22s, 1,663,223 RCW citations,
+1,429,867 session laws, 340,005 bill references, 2,822 chapters.** No model
+involved. The probe forecast "on the order of 1.6M RCW cites", which is what
+came out.
+
+**The join works, measured rather than assumed.** 430 of the 470 RCW chapters
+cited in the prose of home, fn-data, and budget-wa are found in the bill
+corpus, **91%**. So a chapter those repos discuss traces to the bills that
+touch it:
+
+| chapter | bills citing | home | fn-data | budget-wa |
+| --- | ---: | ---: | ---: | ---: |
+| RCW 41.05 (health care authority) | 2,602 | 2 | 984 | 0 |
+| RCW 41.26 (LEOFF) | 1,299 | 48 | 561 | 0 |
+| RCW 41.45 (actuarial funding) | 814 | 43 | 201 | 0 |
+| RCW 41.50 (DRS) | 703 | 109 | 125 | 1 |
+| RCW 41.40 (PERS) | 1,110 | 28 | 172 | 0 |
+
+That is the cross-repo entity join the first census argued for, and it arrived
+through parsing and regex rather than through the model that started this.
+
+**Two things the corpus taught about its own shape.** The heaviest-cited
+chapter is RCW 34.05, the Administrative Procedure Act, at 7,403 bills, which
+is procedural furniture rather than subject matter and would dominate any
+naive ranking. And `<BillNumber>` is present on most but not all bills, so the
+bill key falls back to the filename stem and is qualified by biennium and
+chamber, since House 1000 exists in every biennium.
+
+**Size discipline, applied.** The full chapter-to-every-bill mapping is 15.8 MB
+and the per-bill shards are 46 MB. Neither is committable, so the builder is
+committed, the shards are gitignored and rebuild in six minutes, and the
+committed aggregate is distilled to 1.1 MB: per chapter, its bill count,
+citation count, and ten heaviest citers. That answers the question the estate
+actually asks without carrying the bulk.
