@@ -318,10 +318,10 @@ unaffected throughout.
 
 The markdown link-label form `[//]: # (guide)` survives the round trip and also
 renders as nothing, so it is now what gets written. Recognition accepts both, in
-`SURFACING.md`, the `caption` skill, and
-[`scripts/build-merge-guide.py`](../../scripts/build-merge-guide.py), because
-every body written before 2026-07-28 carries the HTML pair and would otherwise
-orphan its region. The constraint the new form brings: a link label is a
+`SURFACING.md` and the `caption` skill, because every body written before
+2026-07-28 carries the HTML pair and would otherwise orphan its region.
+(A third reader, `scripts/build-merge-guide.py`, was retired with the merge
+guide on 2026-08-05.) The constraint the new form brings: a link label is a
 reference definition, so it must start a line and sit between blank lines, and
 inside a list item or a blockquote it can render literally.
 
@@ -350,7 +350,7 @@ Controls, all in the same body or an adjacent one:
 | `github.com/…/blob/<ref>/<path>` | link survives |
 | `github.com/…/compare/main...<branch>` | link survives |
 | `github.com/…/blob/main/<path>#<heading-anchor>` | link survives |
-| `mehrlander.github.io/…/toss-render.html#gz=<base64url>` | link survives (bodies merged through 2026-07-12, preserved in [MERGE-GUIDE.md](../MERGE-GUIDE.md)) |
+| `mehrlander.github.io/…/toss-render.html#gz=<base64url>` | link survives (measured against PR bodies merged through 2026-07-12) |
 | `mehrlander.github.io/…/toss-render.html#gh=owner/repo@ref:path` | **URL wrapped in double backticks** |
 | the same, percent-encoded as `%40` and `%3A` | **still wrapped** |
 | `github.com/…/blob/main/<path>#<long-hyphenated-anchor>` | **wrapped** *(2026-07-29)* |

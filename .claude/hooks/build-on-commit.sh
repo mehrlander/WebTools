@@ -88,6 +88,19 @@ if [ -n "$changed_pages" ]; then
   done <<< "$changed_pages"
 fi
 
+# --- leg 2b: tools/test/ -> the test registry's derived fields ----------------
+# Must precede leg 3a, not follow it. This writes docs/tests.json, and
+# docs/tests.json is a row in docs/docs.json, so a restamp here invalidates any
+# word count 3a had already taken. Running it after 3a leaves the suite failing
+# on exactly one row, which is how the ordering was found.
+if git status --porcelain -- tools/test package.json tools/build/tests-index.mjs | grep -q .; then
+  if npm run tests-index --silent >/dev/null 2>&1; then
+    git add docs/tests.json 2>/dev/null || true
+  else
+    echo "build hook: 'npm run tests-index' failed — docs/tests.json may be stale" >&2
+  fi
+fi
+
 # --- leg 3a: skills/pages/lib -> the registry's derived fields ----------------
 # `reach` and `words` are the derived fields inside an otherwise authored file:
 # pointing a skill or a page at a doc changes the first, and editing any doc's

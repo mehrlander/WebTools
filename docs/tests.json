@@ -74,15 +74,6 @@
       "boot_smoke": 0
     },
     {
-      "path": "tools/test/build-merge-guide.test.mjs",
-      "kind": "tool",
-      "protects": "The merge-guide generator finds its guide region and bounds it at the link-label delimiters.",
-      "assertions": 5,
-      "method": "spawn",
-      "runner": "suite",
-      "boot_smoke": 0
-    },
-    {
       "path": "tools/test/chat-render-exchanges.test.mjs",
       "kind": "behavior",
       "protects": "A leading header in a chat export parses as a meta note, not as a user turn.",

@@ -35,7 +35,7 @@ start): add the `extraKnownMarketplaces` and `enabledPlugins` block to
 
 | Piece | What it gives you |
 |---|---|
-| `/portable:web-tools` | loads the working conventions live (surfacing primitives + the guide-PR/merge-guide course) |
+| `/portable:web-tools` | loads the working conventions live (surfacing primitives + the guide-PR course) |
 | `/portable:caption` | the surfacing caption, and the guide-PR body sync |
 | `/portable:load-skill` | fetch any skill from the [library](../skills/) on demand |
 | `/portable:show-repo` | browse any repo and move files across repos |
@@ -393,7 +393,7 @@ machinery; most of `docs/` is portable. The tables below list what travels.
 |---|---|---|
 | [`.claude/skills/web-tools/SKILL.md`](../.claude/skills/web-tools/SKILL.md) | the loader: pulls the conventions into any session, and links here for the rest | **install** (copy in, once) |
 | [`docs/CONVENTIONS.md`](CONVENTIONS.md) | the general-behavior **hub**: prose style, standing decisions, leave-it-nicer, make-work, and the session / repository / workstream scope vocabulary. Behavior that applies regardless of whether anything is being surfaced | fetched live by the skill |
-| [`docs/SURFACING.md`](SURFACING.md) | the **surfacing system**, split out of CONVENTIONS.md: the universal **surfacing primitives** (the **surfacing caption**'s `[new]/[main]/[diff]` file links plus a 🥏 render line, reference-is-a-link, show-pixels, branch anchor, 🧭 guide pointer, session diff) plus the **surfacing course** (guide-PR/merge-guide lifecycle, wrap-up, handoff), which stays idle until you open a PR. Loaded with CONVENTIONS.md as one set | fetched live by the skill |
+| [`docs/SURFACING.md`](SURFACING.md) | the **surfacing system**, split out of CONVENTIONS.md: the universal **surfacing primitives** (the **surfacing caption**'s `[new]/[main]/[diff]` file links plus a 🥏 render line, reference-is-a-link, show-pixels, branch anchor, 🧭 guide pointer, session diff) plus the **surfacing course** (guide-PR lifecycle, wrap-up, handoff), which stays idle until you open a PR. Loaded with CONVENTIONS.md as one set | fetched live by the skill |
 | [`.claude/skills/caption/SKILL.md`](../.claude/skills/caption/SKILL.md) | `/caption`: emit the surfacing caption (full, turn, bare, or recap size; recap wraps the full caption in a fixed-form session re-entry) for the current branch; also the sync engine for a guide PR body's managed region | install or hook-fetch |
 | [`.claude/skills/load-skill/SKILL.md`](../.claude/skills/load-skill/SKILL.md) | `/load-skill`: fetch a named skill from the library at [`skills/`](../skills/) (or another declared source) and apply it in the current session; discovery via `skills/manifest.json`. Explicit signal only, never opportunistic | install or hook-fetch |
 | [`.claude/skills/show-repo/SKILL.md`](../.claude/skills/show-repo/SKILL.md) | `/show-repo`: use the hosted show-repo shell to browse any repo, mint a 🗂️ `#stage=` fileset link, run a cross-repo transfer, or author a repo's `.web-tools.json`; loads [`docs/show-repo.md`](show-repo.md) | install or hook-fetch |
@@ -432,7 +432,6 @@ parameterized by argv so one fetched copy serves many callers.
 |---|---|---|
 | [`.claude/skills/tasks/build-board.py`](../.claude/skills/tasks/build-board.py) | regenerate a tracker's `board.md` from `tasks/*.md` frontmatter; bundled in the `portable` plugin, so `/tasks` runs it via `${CLAUDE_PLUGIN_ROOT}` | `python3 build-board.py <tasks_dir> <board_out>` |
 | [`.claude/skills/in-flight/in-flight.py`](../.claude/skills/in-flight/in-flight.py) | sort a branch estate into live / merged / unrelated by ahead-count, then reconcile every `in-progress` tracker claim against the branch it names; bundled in the `portable` plugin, so `/in-flight` runs it via `${CLAUDE_PLUGIN_ROOT}` | `python3 in-flight.py <repo…> [--paths P…] [--prs F] [--fetch] [--json]` |
-| [`scripts/build-merge-guide.py`](../scripts/build-merge-guide.py) | generate `docs/MERGE-GUIDE.md` from merged PR bodies (the guide region); non-destructive, `--refresh` to regenerate covered PRs | `python3 build-merge-guide.py [owner/repo] --out <file>` |
 | [`scripts/declared-paths.py`](../scripts/declared-paths.py) | check the addresses a repo publishes about itself in `.web-tools.json` (`landing`, `pages[].path`, `stage.files`), which no link survey can see because they are not markdown. Local paths and `owner/repo[@ref]:path` both resolve, the second against a sibling checkout, and an absent checkout reports as *unverifiable*. `stage.targets` is deliberately unchecked, being a deposit destination rather than an artifact. The point is that it belongs to the **mover**: a repo fails its own suite when it moves something it told the world about, which a consumer can only discover afterwards | `python3 declared-paths.py [ROOT] [--check] [--quiet]` |
 | [`scripts/link-survey.py`](../scripts/link-survey.py) | report markdown links that no longer resolve, in three classes: internal, cross-repo (a relative path escaping the repo root into a sibling checkout, which never resolves on github.com), and dead owner URLs at main in either the `github.com/OWNER/REPO/blob` or the `raw.githubusercontent.com/OWNER/REPO/main` form. Owner URLs are also scanned BARE, inside fences and inline code, since a `curl` of a raw URL is a fetch target rather than an illustration and is where a rename does its quietest damage. A link into an absent checkout reports as *unverifiable*, never dead. `--check` gates the cross-repo classes for a verify suite; the internal class is never gated, since a target may have been retired on purpose | `python3 link-survey.py [ROOT] [--owner N] [--cross-repo] [--check]` |
 | [`scripts/sunset-scan.py`](../scripts/sunset-scan.py) | report `SUNSET(YYYY-MM-DD)` markers now due for removal (see Sunset markers below); quiet unless something is due, `--all` lists upcoming, `--strict` exits non-zero when due | `python3 sunset-scan.py [--all] [--strict] [root]` |
@@ -468,9 +467,6 @@ characters wide.
 ### Not portable
 
 Web-tools-specific machinery: `docs/loader.md`, `tools/**`, `CLAUDE.md`, `dist/`.
-And `docs/MERGE-GUIDE.md` travels only as a *format example*: it belongs to
-CONVENTIONS.md's opt-in surfacing course, so a repo keeps one of its own only if
-it adopts that layer.
 
 ## Pointing a session here
 

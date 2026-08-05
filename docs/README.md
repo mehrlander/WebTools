@@ -13,7 +13,7 @@ observations and is corrected by re-probing; everything else is living and
 must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
-2 arrive in every session's context, 18 are named by CLAUDE.md,
+2 arrive in every session's context, 17 are named by CLAUDE.md,
 3 by a skill, 4 by a page or component. The remaining 17 are
 marked *(orphan)* below: nothing points at them except this index.
 
@@ -24,7 +24,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`manifest.json`](manifest.json) — the field registry for root .web-tools.json: every field's type, consumer, and effect
 - [`tests.json`](tests.json) — the test registry: every check's kind, what it protects, and its derived counts
 - [`CONVENTIONS.md`](CONVENTIONS.md) — the portable working conventions: the general-behavior hub
-- [`SURFACING.md`](SURFACING.md) — the surfacing system: primitives plus the guide-PR and merge-guide course
+- [`SURFACING.md`](SURFACING.md) — the surfacing system: primitives plus the guide-PR course
 - [`surfacing.json`](surfacing.json) — the machine index of the surfacing primitives
 - [`PORTABLE.md`](PORTABLE.md) — the portable set: what travels, and how to adopt it
 - [`portable.json`](portable.json) — the machine index of the portable set
@@ -37,7 +37,6 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`artifacts.md`](artifacts.md) — Claude Code artifacts and the link-choice matrix
 - [`HTML-STYLE.md`](HTML-STYLE.md) — the house style for pages: what to build, as against how
 - [`SNAGS.md`](SNAGS.md) — the friction log: one line per snag, symptom then corrected move
-- [`MERGE-GUIDE.md`](MERGE-GUIDE.md) *(record)* — what each merged PR shipped, newest first
 - [`SHARE.md`](SHARE.md) *(orphan)* — the copy-paste prompt that points another session at the portable docs
 - [`loader.md`](loader.md) — the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality
 - [`headless-vendoring.md`](headless-vendoring.md) — building with CDN libraries and rendering headless where the CDNs are blocked
@@ -82,5 +81,5 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`mcp-server-routing.md`](github/mcp-server-routing.md) *(record, orphan)* — two GitHub MCP servers at once: the 2026-07-15 observation, superseded
 - [`post-merge-branch-mutation.md`](github/post-merge-branch-mutation.md) *(orphan)* — why a merged branch stops being a live workspace: merged means closed
 
-11 shared claims are registered; the registry note in
+10 shared claims are registered; the registry note in
 [`docs.json`](docs.json) carries the schema and the admission rule.
