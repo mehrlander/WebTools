@@ -648,9 +648,10 @@ The third derived cache, and the odd one: its source is not another repo's
 config but the registry's own **captured** layer, the per-session records the
 Stop hook publishes (`web-tools-private/sessions/README.md`). It exists because
 that layer cannot be read directly. The store is 4.6 MB across 40 records and
-grows about six a day, and one record runs to half a megabyte; a summary row is
-~350 bytes, so the whole cache is smaller than a single record, and a full record
-is fetched only when a row is opened.
+grows about six a day, and one record runs to half a megabyte. Measured on the
+first live crawl (2026-08-05, 42 records) the whole cache is 135 KB, about 1 KB a
+row: smaller than the largest single record, 34x smaller than the store, and a
+full record is fetched only when a row is opened.
 
 The crawl is genuinely incremental where the other two are not. A published
 record is addressed by a git blob sha, so one recursive trees call names every
