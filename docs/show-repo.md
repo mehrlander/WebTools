@@ -41,8 +41,8 @@ Deep-link params: `&view=pages|atlas|files|stage|surfaces|branches|public|todo|j
 all-repo context) or in a **repo** (a per-repo context with its own views).
 
 The **header carries the app-level nav**: a fixed, app-owned set of the estate's
-own views, **Activity** (Open / To-do / Jots by pill), **Repos**, **Stage**,
-**Tools**, and **Map**, as icon buttons (icon + label on desktop,
+own views, **Activity** (Branches / Sessions by pill), **Lists**, **Repos**,
+**Stage**, **Tools**, and **Map**, as icon buttons (icon + label on desktop,
 icon-only on mobile), lit on the active view and present on every viewport. The
 `#repo` component sits beside the nav but renders nothing (it is the repo/auth
 controller and hosts the shared dialog), and there is neither an auth shield nor
@@ -311,15 +311,17 @@ the header nav the way a repo shows landing/atlas/files/…:
 - **Stage** — one nav stop with two pill-switched sub-views, each keeping its
   own deep link: the **bench** (`?view=stage`) and **Saved** (`?view=surfaces`)
   (below).
-- **Activity** — the live layer: one nav stop with three pill-switched
-  sub-tabs, each keeping its own deep link: **Open** (`?view=activity`),
-  **To-do** (`?view=todo`), **Jots** (`?view=jots`) (all below).
+- **Activity** — the estate's own motion: one nav stop with two pill-switched
+  sub-tabs, each keeping its own deep link: **Branches** (`?view=activity`) and
+  **Sessions** (`?view=sessions`) (both below).
+- **Lists** — the two personal piles, To-do over Jot, in one pane rather than
+  two tabs. Both `?view=todo` and `?view=jots` resolve here (below).
 - **Tools** (`?view=tools`) — a curated gallery of utility pages (below).
 - **Map** (`?view=map`) — the portable set, Surfacing, Showing, and the Docs registry (below). Per-repo scope and adoption live on the Repos cards.
 - **Proposals** (`?view=proposals`) — pending cross-repo edits awaiting a confirm
   (below). The one conditional entry: shown only while something is pending.
 
-The estate component renders Repos / Stage / Activity, sharing one lazy mount;
+The estate component renders Repos / Stage / Activity / Sessions / Lists, sharing one lazy mount;
 Tools and Map are their own components on their own lazy mounts.
 
 Behind those, past a hairline rule, the header carries a **second nav group: the
@@ -397,46 +399,74 @@ card, deep-linking straight to its section. Rendered item kinds (both sources):
 path}` or a github.com URL), `url` (external link), `note` / `story` (inline
 body), `embed` (a renderer page in an iframe via a toss-render route).
 
-**Activity** gathers the estate's live layer under one header-nav stop: Open,
-To-do, and Jots, a trio that reads as a gradient of commitment (a jot is
-unshaped intent, a to-do is shaped intent, an open branch is intent in
-flight). One pane shows at a time, at every width: a segmented pill (the
-shared internal-tab style) switches among them, each pill carrying its live
-count, with Open's as-of readout and Refresh riding the pill row. Each
-sub-view keeps its own view key, so `?view=activity`, `?view=todo`, and
-`?view=jots` all deep-link directly and old links resolve unchanged.
+**Activity** gathers the estate's own motion under one header-nav stop, in the
+two readings it has: **Branches**, what is in flight, and **Sessions**, the work
+that made it. A branch is the artifact and a session is the act; each row in one
+pane cross-references the other. A segmented pill (the shared internal-tab
+style) switches between them at every width, each pill carrying its live count,
+and each pane's own as-of readout and Refresh ride the pill row, since the two
+read different caches on different throttles. Both keep their own view key, so
+`?view=activity` and `?view=sessions` deep-link directly.
 
-The layout used to be responsive, the pill on narrow screens only and all
-three panes side by side on `lg+` (Open the main column, To-do and Jots a
+**The stop used to hold four panes**, adding To-do and Jots on the reasoning
+that the four read as a gradient of commitment: a jot is unshaped intent, a
+to-do is shaped intent, an open branch is intent in flight. That reads well and
+was still wrong. A personal checklist is not the estate's activity, it is
+something you keep; and holding the two lists here cost the full content column
+to the two panes that genuinely are activity. They are their own nav stop now,
+**Lists** below.
+
+The layout was responsive before that, the pill on narrow screens only and every
+pane side by side on `lg+` (the branch list as the main column, the two lists a
 24rem right rail). The rail held its width whether or not either list had
-anything in it, and both lists are read on purpose rather than watched, so it
-was a standing claim on the page's scarce axis for content that did not need
-one. The pill's counts keep an unopened pile from going invisible, which is
-the only thing the rail bought that a tab does not.
+anything in it, so it was a standing claim on the page's scarce axis for content
+read on purpose rather than watched. One pane at full width, at any size, is the
+same trade the phone was already making, and the pill's counts keep an unopened
+pile from going invisible, which is the only thing the rail bought that a tab
+does not.
 
-**To-do** (`?view=todo`) is a general, personal checklist: not repo-scoped and
-not a surface, so it keeps its own tiny file, `lists/todo.json` in the
-registry (`{items: [{id, text, done, created_at, done_at}]}`), rather than
-reusing the surfaces schema. Add a line, check it off, or delete it; a
-checked item moves into a collapsed "done" pile instead of disappearing, so
-delete is the only way an item actually goes away. Every mutation writes the
-whole file straight through the viewer's token (`gh-store.js`'s `save`), the
-same as a surface edit, so it is durable across browsers and devices, not a
-per-browser `localStorage` list. Token-gated like Surfaces: no token, no list.
+### Lists
 
-**Jots** (`?view=jots`) is the capture sibling of To-do: quick ideas, one flat
-item list in the registry's `lists/jots.json` (`{items: [{id, text,
-created_at}]}`), same whole-file write mechanics. The lifecycles differ: a
-to-do tracks work and completes; a jot has no done state. It sits in the pile,
-newest first with its age showing, until it is promoted somewhere with a real
-home (a chron entry, a tracker task, a to-do) or deleted. Two hooks anticipate
-the maintenance cycle around that promotion without building it yet: the add
-commit carries the jot's text, so the file's git history is itself a capture
-log, and the registry sits in agent-session scope, so an agent session can
-read the pile and drain it (promote, then delete) the way `chron/dump/` is
-drained. The two lists live under `lists/` because they are authored content
-with the registry as their source of truth; `state/` stays derived caches
-only.
+**Lists** is To-do over Jot, both on screen at once. Merging them is what made
+the tab unnecessary rather than merely fewer: the reason to switch tabs was to
+see the other one. Both old keys still resolve here, `?view=todo` and
+`?view=jots`, so a saved link lands somewhere real.
+
+The split is fixed halves, each scrolling **inside itself**, so adding to one
+never pushes the other off screen. That needs a definite height, which the shell
+hands down: for this view only (`listsFill`), the estate pane and its column
+become `flex` + `overflow-hidden` instead of the ordinary scrolling column, and
+the component root joins the chain. Nothing in the pane adds a card, a border
+box, or a second layer of padding: two sections, one hairline between them, and
+the scroll on the list rather than the page. Each half keeps its heading and add
+form pinned while its list scrolls, since the add form is the reason you came;
+the heading row wraps at narrow widths so the input never squeezes, with no
+breakpoint to disagree at any size.
+
+**To-do** is a general, personal checklist: not repo-scoped and not a surface,
+so it keeps its own tiny file, `lists/todo.json` in the registry (`{items: [{id,
+text, done, created_at, done_at}]}`), rather than reusing the surfaces schema.
+Add a line, check it off, or delete it; a checked item moves into a collapsed
+"done" pile instead of disappearing, so delete is the only way an item actually
+goes away. Every mutation writes the whole file straight through the viewer's
+token (`gh-store.js`'s `save`), the same as a surface edit, so it is durable
+across browsers and devices, not a per-browser `localStorage` list. Token-gated
+like Surfaces: no token, no list.
+
+**Jot** is the capture sibling: quick ideas, one flat item list in the
+registry's `lists/jots.json` (`{items: [{id, text, created_at}]}`), same
+whole-file write mechanics. Singular, because you jot one thing; the file keeps
+its plural name, since renaming a data file to match a label is a migration that
+buys nothing. The lifecycles differ: a to-do tracks work and completes; a jot has
+no done state. It sits in the pile, newest first with its age showing, until it
+is promoted somewhere with a real home (a chron entry, a tracker task, a to-do)
+or deleted. Two hooks anticipate the maintenance cycle around that promotion
+without building it yet: the add commit carries the jot's text, so the file's git
+history is itself a capture log, and the registry sits in agent-session scope, so
+an agent session can read the pile and drain it (promote, then delete) the way
+`chron/dump/` is drained. Both lists live under `lists/` because they are
+authored content with the registry as their source of truth; `state/` stays
+derived caches only.
 
 **Branches** (`?view=activity`, called Open until the scope chips arrived) is
 **every** branch of the estate in one cross-repo list, freshest first, narrowed
@@ -573,13 +603,81 @@ either way (`lib/branch-survey.js` `surveyBranchLive`, shared by the view and th
 crawl). Source-of-truth rule as ever: the cache is derived and may be briefly
 stale; Refresh re-surveys live.
 
+### Sessions
+
+**Sessions** (`?view=sessions`) is every recorded Claude Code session, newest
+first. Branches answers what is in flight; this answers what a stretch of work
+was about, how long it ran, what it fought, and which files it opened. Each row
+carries the day and the record's short id (its own filename, so what is on screen
+is what you type at `search.py --show`), the branches it was sitting on, the
+opening ask, and a count row: user turns, tool calls, failures, distinct files,
+and output tokens. The rail goes amber where the session hit failures and stays
+muted otherwise, deliberately not green-for-clean, since a clean session is the
+normal case and a page of green rails says nothing.
+
+Two axes, the same shape as Branches. **Scope** is time (`Week`, `Month`, `All`)
+plus **Snagged**, which is not a time window at all: it is every session that hit
+a failing tool call, however old, and it is the cross-session recurrence question
+a corpus can count and a person cannot. **Repo** chips narrow it further, off the
+scoped list, and lapse back to All when the scope stops holding that repo.
+
+Tapping a row opens the full record inline (a takeover would need its own swipe
+deck and back stack for rows read one at a time): the asks in order, the files
+with their read/edit/write breakdown, and the failing calls with their bodies. A
+footnote names what the record could not have captured, since a schema-2 record
+has no files and a schema-1 record no calls at all, and an empty section would
+otherwise read as "this session did nothing" rather than "this was not captured
+then". Tapping a branch name jumps to Branches filtered to that repo, at scope
+All rather than Open, because the session outlives the branch and a merged branch
+must still be findable from the work that made it.
+
+Below the list, **File attention** is the cross-session rollup: per path, how
+many **distinct** sessions opened it. Distinct sessions is the number that
+resists one session's habits, since one session editing a file forty times says
+the session was busy while ten sessions opening it says the file is load-bearing.
+It carries its own honesty note, and that note is load-bearing too: the counts
+come from four file tools (`Read`, `Edit`, `Write`, `NotebookEdit`) and nothing
+else, so a file read through a shell command leaves no trace, subagent traffic is
+excluded upstream, and a doc injected at session start reads **zero** while being
+among the most-read files in the estate. Without that stated, the ranking says
+the opposite of the truth on exactly the docs that matter most.
+
+### Sessions cache (`state/sessions.json`)
+
+The third derived cache, and the odd one: its source is not another repo's
+config but the registry's own **captured** layer, the per-session records the
+Stop hook publishes (`web-tools-private/sessions/README.md`). It exists because
+that layer cannot be read directly. The store is 4.6 MB across 40 records and
+grows about six a day, and one record runs to half a megabyte. Measured on the
+first live crawl (2026-08-05, 42 records) the whole cache is 135 KB, about 1 KB a
+row: smaller than the largest single record, 34x smaller than the store, and a
+full record is fetched only when a row is opened.
+
+The crawl is genuinely incremental where the other two are not. A published
+record is addressed by a git blob sha, so one recursive trees call names every
+record and its sha, and `stalePaths` re-reads only those whose sha moved. In
+steady state that is the day's handful plus the live session's own record, which
+is republished on every Stop and so is always stale by design, with no special
+case for "the current one". `refreshSessionsCache` runs it on a ~3h per-browser
+throttle (lighter than the activity crawl, being a tree read and a few blobs, so
+a shorter interval) and commits only when the folded rows materially changed.
+
+The fold's scope is the **full** listing, never the batch it read: a record the
+per-crawl cap deferred keeps its row, and only a record genuinely gone from the
+store loses one. That is the same distinction `buildCache` draws in the activity
+cache, for the same reason, and it matters more here because the source is
+unregenerable. The cache also carries the `attention` rollup, computed once so
+the pane and anything later (the Docs registry's readership column, web-tools
+task `docs-read-tracking-sn9nj8`) read one derivation rather than two.
+
 Token gating: no token means the public default card only, no surfaces, no
-activity, and no write controls. In that state the Repos view leads with a
+activity, no sessions, and no write controls. In that state the Repos view leads with a
 **public banner** that says exactly what is and isn't available and offers the
 two real next steps, a token or Public browse, instead of a vague "set a token"
 aside. Deep links: `?view=estate` (the bare URL is the Repos estate already; the
 param is stamped only when a `repo`/`ref` param is also present), `?view=stage`
-and `?view=activity` (always stamped, so each is shareable on its own).
+`?view=activity`, and `?view=sessions` (always stamped, so each is shareable on
+its own).
 
 **The shared dialog is scoped by how it is opened.** With no repo, from the
 **account row** at the top right of the Repos view, it is an **account panel**:
@@ -1020,8 +1118,9 @@ data half. After the shell change merges, the deployed form
 `show-repo.html?overlay=<branch>` does the same for data-only branches.
 
 The honest limits, stated rather than implied: the overlay re-derives only
-the per-repo **manifests**; other main-derived artifacts (the activity cache,
-tracker boards, generated catalogs) are not overlaid and read main. And an
+the per-repo **manifests**; other main-derived artifacts (the activity and
+sessions caches, tracker boards, generated catalogs) are not overlaid and read
+main. And an
 overlay link is only as durable as the branch it names: once the branch
 merges and is deleted, every probe misses and the link degrades to a plain
 main view, which is the correct end state for a preview.
@@ -1167,8 +1266,8 @@ repos. All are optional; a repo with no config is simply off the estate.
     the flag is additive.
 
     *When to reach for it.* A view whose subject is **the estate** is built into
-    the shell (Activity, Repos, Surfaces, Stage, Map, Proposals, and the To-do
-    and Jots lists, which are operational to the tool). A view whose subject is
+    the shell (Activity, Sessions, Repos, Surfaces, Stage, Map, Proposals, and
+    the Lists pane, which is operational to the tool). A view whose subject is
     **content** is an app view over the repo that owns it: the renderer stays
     public here, the content stays wherever it belongs. News and Links are both
     that shape, home's data through a web-tools page. Two consequences worth
