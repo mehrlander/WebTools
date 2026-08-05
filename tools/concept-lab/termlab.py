@@ -75,7 +75,7 @@ URLISH = re.compile(r"https?://\S+|[\w./-]+\.(?:md|html|js|py|json|sh|png|css|ym
 DATED = re.compile(r"(?:^|/)20\d\d-\d\d-\d\d")
 RECORD_HINTS = tuple(re.compile(p) for p in (
     r"^chron/", r"^news/", r"^annotations/", r"^results/",
-    r"^(analysis|source|normalized|index|schema)/", r"^docs/MERGE-GUIDE",
+    r"^(analysis|source|normalized|index|schema)/",
     r"^pages/drop/", r"^(chronicle|work-history|drs-research|drs-budget|cfl-process|cem|web-tools)\.md$",
 ))
 

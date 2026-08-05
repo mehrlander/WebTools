@@ -4,12 +4,12 @@ description: >-
   Load the portable working conventions from mehrlander/web-tools
   (docs/CONVENTIONS.md plus docs/SURFACING.md) into the current session:
   the general-behavior hub plus the surfacing system (universal primitives
-  and the guide-PR/merge-guide course they engage once you open a PR). Use
+  and the guide-PR course they engage once you open a PR). Use
   in any repo when the user mentions
   "my conventions", "house rules", surfacing/per-file link format, "file
   card"/"file chip"/"send the file", show-pixels/screenshot-it, "hand over
   the artifact"/SendUserFile, "lead with the live view", branch anchor,
-  merge-guide entries, wrap-up, or PR body shape, or when invoked explicitly
+  wrap-up, or PR body shape, or when invoked explicitly
   as /web-tools.
 ---
 
@@ -24,7 +24,7 @@ files in the public repo `mehrlander/web-tools`, loaded together as one set:
 - `docs/SURFACING.md` — the **surfacing system**: the primitives (explicit-markdown
   links, reference-is-a-link, the per-file `[new]/[main]/[diff]` list, show-pixels,
   the render forms, branch anchor, the caption) and the surfacing course (guide PR
-  body → merge-guide entry, wrap-up, post-merge handoff).
+  body as the durable account, wrap-up, post-merge handoff).
 
 This skill fetches both fresh so any session in any repo follows the same
 conventions without keeping a stale copy.
@@ -101,7 +101,7 @@ not project settings, so they are present either way.
 Apply the two files as one set, substituting the current repo into the URL
 templates. `CONVENTIONS.md` is the general-behavior hub. `SURFACING.md` holds
 the **surfacing primitives** (universal, no setup) and the **surfacing course**
-(the guide-PR/merge-guide lifecycle, wrap-up, and handoff), which does nothing
+(the guide-PR lifecycle, wrap-up, and handoff), which does nothing
 until the repo opens a PR. Pages render one way, the 🥏 toss, so there is no
 preview mechanism to configure. The one per-repo setting is per-session
 refreshes, normally none (`SURFACING.md` explains it). Where the current repo's
@@ -134,9 +134,6 @@ Highlights it lists, fetchable directly by raw URL when relevant:
 - `docs/environment/*.md` — dated notes on the Claude Code web sandbox (network
   allowlist, persistence, testing recipes). Sandbox-level, so they apply in any
   repo.
-- `docs/MERGE-GUIDE.md` — web-tools' own merge-guide log, a worked example of the
-  `--index` projection: one line per merged PR, with the PR body left on GitHub
-  as the account. Each repo keeps its own, or none.
 
 ## Installing this skill into another repo
 

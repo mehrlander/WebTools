@@ -4,7 +4,7 @@ Remote-sandbox conventions for Claude Code web sessions; output is strictly via 
 
 This hub holds behavior that applies regardless of whether anything is being surfaced. Two companions carry the rest, and load as one set with this file:
 
-- **[SURFACING.md](SURFACING.md)** — the surfacing system: the primitives that make session work visible in chat (no setup), plus the surfacing course (the guide-PR and merge-guide lifecycle, idle until you open a PR). This was the bulk of this file; it now lives on its own.
+- **[SURFACING.md](SURFACING.md)** — the surfacing system: the primitives that make session work visible in chat (no setup), plus the surfacing course (the guide-PR lifecycle, idle until you open a PR). This was the bulk of this file; it now lives on its own.
 - **[PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md)** — installation, the plugin, and the full catalog of what travels from the hub to any repo.
 
 **Prose style:** zero em dashes. Use colons, commas, semicolons, parentheses, or new sentences.
