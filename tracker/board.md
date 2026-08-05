@@ -3,29 +3,29 @@
 _Generated from tasks/. Do not hand-edit._
 
 ## On deck
-- 🎫 Backfill guide regions into old PR bodies and full-regenerate the merge guide
-- 🎫 Converge the branch page's authored layer on the branch-review surface
-- 🎫 Reach the take-away menu from show-repo's Pages gallery (needs: Find a way to focus attention on one piece of a page's UI)
-- 🎫 Name the code layers and account for tools/
-- 🎫 Have data-view open at an addressed item via the fragment next: decide the fragment vocabulary (item index, item name, or both) before building; the delivery half already works
-- 🎫 Read-tracking for docs: which files sessions actually open
-- 🎫 A multi-method harness for extracting structure from scanned documents
-- 🎫 Capture button on the FAB, serializing what it already collects next: the write path (a default state/captures/ destination in the registry, per the design points); the clipboard cut shipped 2026-08-02
-- 🎫 Give the file-review collapsed row more than a name and a count
-- 🎫 Find a way to focus attention on one piece of a page's UI
-- 🎫 Move the kit-shaped files out of lib/ root into kits/
-- 🎫 Live-confirm the two GraphQL queries the estate depends on
-- 🎫 Build our own JSON tree for display, keep vanilla-jsoneditor for editing next: user was leaning toward replacing it outright; the recommendation is the split below, so confirm the split before building
-- 🎫 Pinch-zoom and pan for pdf-inspect's page view
-- 🎫 Close open table perimeters in the pdf kit's lattice
-- 🎫 A column-splitter page for the pdf kit
-- 🎫 Inline the run-time CDN references a rendering copy still carries
-- 🎫 Session-start nudge for unconfigured or legacy-manifest repos (`claude/skills-portable-conventions-8x1lua`) next: write a global SessionStart hook that checks repo state and injects a nudge; wire its install into the Claude Code web account setup script
-- 🎫 Give show-repo the ability to edit a repo's .web-tools.json (`claude/skills-portable-conventions-8x1lua`) next: design a minimal config-edit surface in the show-repo shell; first use is a one-tap migrate of a legacy .show-repo.json to .web-tools.json
-- 🎫 Assess the orphan docs for skillification, and boil them down next: split the 17 orphans by cause before converting anything; only 2 or 3 are the condition this task was filed about
-- 🎫 Spike the snags log (friction learned the hard way) (`claude/pr-219-review-22csrh`)
-- 🎫 Give the stage a way to carry part of a file
-- 🎫 Make the take-away menu work inside a toss
+- 🎫 [Backfill guide regions into old PR bodies and full-regenerate the merge guide](tasks/backfill-guide-regions-merge-guide-bkk4xv.md)
+- 🎫 [Converge the branch page's authored layer on the branch-review surface](tasks/branch-authored-layer-surface-0j0zik.md)
+- 🎫 [Reach the take-away menu from show-repo's Pages gallery](tasks/brief-from-the-pages-gallery-7d4031.md) (needs: Find a way to focus attention on one piece of a page's UI)
+- 🎫 [Name the code layers and account for tools/](tasks/code-layer-taxonomy-q15jp2.md)
+- 🎫 [Have data-view open at an addressed item via the fragment](tasks/data-view-consume-fragment-nxlpbs.md)
+- 🎫 [Read-tracking for docs: which files sessions actually open](tasks/docs-read-tracking-sn9nj8.md)
+- 🎫 [A multi-method harness for extracting structure from scanned documents](tasks/document-structure-harness-4mz7wk.md)
+- 🎫 [Capture button on the FAB, serializing what it already collects](tasks/fab-capture-button-f6q38m.md)
+- 🎫 [Give the file-review collapsed row more than a name and a count](tasks/file-review-collapsed-density-2rvxfn.md)
+- 🎫 [Find a way to focus attention on one piece of a page's UI](tasks/focus-a-ui-component-f0awt7.md)
+- 🎫 [Move the kit-shaped files out of lib/ root into kits/](tasks/lib-root-kit-migration-dind5t.md)
+- 🎫 [Live-confirm the two GraphQL queries the estate depends on](tasks/live-confirm-graphql-queries-7maacy.md)
+- 🎫 [Build our own JSON tree for display, keep vanilla-jsoneditor for editing](tasks/own-json-tree-retire-vje-i0lcj2.md)
+- 🎫 [Pinch-zoom and pan for pdf-inspect's page view](tasks/pdf-inspect-pinch-zoom-5wz3kt.md)
+- 🎫 [Close open table perimeters in the pdf kit's lattice](tasks/pdf-lattice-open-perimeter-h4kx9r.md)
+- 🎫 [A column-splitter page for the pdf kit](tasks/pdf-table-splitter-page-q7vm2d.md)
+- 🎫 [Inline the run-time CDN references a rendering copy still carries](tasks/render-copy-runtime-cdn-refs-p4m2wq.md)
+- 🎫 [Session-start nudge for unconfigured or legacy-manifest repos](tasks/session-start-nudge-unconfigured-z0g4zn.md) (`claude/skills-portable-conventions-8x1lua`)
+- 🎫 [Give show-repo the ability to edit a repo's .web-tools.json](tasks/show-repo-edit-web-tools-json-ygramz.md) (`claude/skills-portable-conventions-8x1lua`)
+- 🎫 [Assess the orphan docs for skillification, and boil them down](tasks/skillify-orphan-docs-izv20p.md)
+- 🎫 [Spike the snags log (friction learned the hard way)](tasks/spike-snags-log-gobdyq.md) (`claude/pr-219-review-22csrh`)
+- 🎫 [Give the stage a way to carry part of a file](tasks/stage-partial-file-selection-k8mtou.md)
+- 🎫 [Make the take-away menu work inside a toss](tasks/take-away-inside-a-toss-k73cjq.md)
 
 ## In progress
 - (none)
@@ -34,52 +34,52 @@ _Generated from tasks/. Do not hand-edit._
 - (none)
 
 ## Done
-- 🎫 Add a task-tracker skill (`claude/agent-file-retrieval-skill-tv4can`)
-- 🎫 Build an agent-assisted file-retrieval skill (`claude/agent-file-retrieval-skill-tv4can`) next: build corpus_search.py (find) with a sources config and a file-per-document default, plus read_doc.py (read) and a SKILL.md that fixes the search-and-present flow; dogfood on this repo's content
-- 🎫 App views - designate a page as an estate-level view (`claude/web-tools-app-views-m3pkyo`) next: landed; News goes live in the estate switcher when home#314 reaches main
-- 🎫 Automate the merge guide from PR bodies (`claude/task-tracker-discussion-wg27xv`)
-- 🎫 Make the branch page a navigation target, swipeable from the lists (`claude/project-pages-docs-udzi51`)
-- 🎫 Show the branch lifespan in the per-repo branch review too (`claude/project-pages-docs-udzi51`)
-- 🎫 Branch-review view in show-repo (`claude/web-tools-branch-tracking-n1zawm`) next: session refreshes (show-repo thumbnail) at wrap-up, then review via PR #236
-- 🎫 The build-on-commit hook did not fire, and nothing said so
-- 🎫 Teach the guide region a delimiter that survives an agent's readback (`claude/budget-drs-tracker-review-s64mc6`)
-- 🎫 Fold chat-results into the surface schema, or keep it a sibling (`claude/web-tools-project-tracker-reo5qo`)
-- 🎫 Collapse quickLinks into a projection of the repos manifest (`claude/tracker-status-cjogjn`) next: done; landing via web-tools PR #302 and web-tools-private PR #8 (merge #302 first)
-- 🎫 Confirm-gated cross-repo edit proposals via a web-tools-private channel (`claude/tracker-status-cjogjn`) next: done as a first cut; the four scope drafts are staged as pending proposals for the user to apply
-- 🎫 Reclaim the phone viewport in data-view (`claude/web-tools-project-tracker-reo5qo`)
-- 🎫 Estate activity signals from a registry activity cache (`claude/branches-view-api-caching-ef4l5d`)
-- 🎫 Estate cards still carry the retired three-icon cluster (`claude/web-tools-project-tracker-reo5qo`)
-- 🎫 Update estate tests to the groupSections layout (`claude/viewer-button-dropdown-0h4u57`)
-- 🎫 Extract drop-zone as a reusable Alpine component (`claude/tracker-summary-nu74te`)
-- 🎫 Generalize FAB embed handling to declared embeds next: Build only when a real composite page (multiple interactive embeds) exists; nothing schedules this.
-- 🎫 Let the FAB collect a toss subject's page actions, not just the shell's
-- 🎫 Generalize the gallery to a per-repo pages catalog (`claude/web-tools-app-views-m3pkyo`) next: landed; live gallery for home needs home#314 on main (config cache reads main)
-- 🎫 Finish GitHub jump-over coverage across show-repo views (`claude/github-icon-placement-3d06i7`) next: none; the named views all carry their jump-over
-- 🎫 Check GraphQL query shape offline against GitHub's published schema (`claude/web-tools-tracker-review-bw48ga`) next: done on claude/web-tools-tracker-review-bw48ga; the live-confirm task is unchanged and still open
-- 🎫 History-safe shim for toss-render address-mode renders next: done; hash-routing pages now switch views inside toss #gh= renders
-- 🎫 Integrate the stage with the surfacer's .surface format
-- 🎫 Guard every lib-booting page against the Alpine load race (`claude/web-tools-project-tracker-reo5qo`)
-- 🎫 One parser for the owner/repo[@ref]:path address (`claude/web-tools-tracker-review-bw48ga`) next: done on claude/web-tools-tracker-review-bw48ga; stage-link-onto-url-params-u9o7ny, which depended on this, is now unblocked
-- 🎫 Private-repo landing federation via the home registry next: closed as superseded; the goal shipped per-repo, not federated
-- 🎫 Two gaps the proposal channel showed on first use (`claude/web-tools-project-tracker-reo5qo`)
-- 🎫 Render files over 1 MB in toss-render and the shell viewers next: done — raw media type with git-blobs fallback landed in toss-render (ghText, showAddress, fetchShim) and gh-api.js get(); A/B headless test confirms the 5.9 MB DRS bundle is delivered where the old path returned blank
-- 🎫 Repo-designated inbox and outbox in .web-tools.json (`claude/tracker-status-cjogjn`) next: done as a first cut; folder-vs-branch settled as a per-repo choice, both fields wired
-- 🎫 Repo-level GitHub links in show-repo's shield dialog
-- 🎫 Resolve a branch's session from the commit trailer, not the open PR body (`claude/active-work-branches-sd289p`)
-- 🎫 show-repo - first-class projects, defined by tracker presence (`claude/project-pages-docs-udzi51`)
-- 🎫 Singleton fab with toss-render integration (`claude/fab-render-toss-render-ua6p3p`)
-- 🎫 Speed up show-repo's cold load (`claude/speed-up-show-repo-load-3cdvl0`)
-- 🎫 Fix the stage Diff lens B-select display desync (`claude/web-tools-diff-review-s0nrq7`)
-- 🎫 Propagate the stage link's new grammar to the portable docs (`claude/stage-link-grammar-docs-jukn37`)
-- 🎫 Move StageLink.read onto the shared fragment-first param read (`claude/web-tools-project-tracker-reo5qo`)
-- 🎫 Stage links and the main-area explorer in show-repo (`claude/task-tracker-discussion-wg27xv`)
-- 🎫 Converge the stage and surface item schemas
-- 🎫 Stand up the project tracker (`claude/tracker-concept-assessment-yto1m1`)
-- 🎫 Carry commentary on a stage (prompts= link field, seed of a surface schema) (`claude/web-tools-diff-review-s0nrq7`)
-- 🎫 Toggle-only Tailwind classes do generate, and the spinners do spin (`claude/web-tools-tracker-review-m49yxc`)
-- 🎫 Pass a trailing fragment through toss-render to the rendered page (`claude/toss-render-data-formats-4t55x7`) next: done on claude/toss-render-data-formats-4t55x7; lands via PR #288. Follow-on: have data-view consume the fragment for item selection
-- 🎫 Structural response decode + differentiated errors in toss-render next: done; renders survive every media-type labeling and the error panel names the failing stage
-- 🎫 toss-render ?query forwarding drops multi-param page queries (`claude/web-tools-tracker-review-bw48ga`) next: done on claude/web-tools-tracker-review-bw48ga; both fixes taken, the slice read and the documentation
-- 🎫 Tracker review in show-repo, over a typed board projection (`claude/budget-drs-tracker-assessment-fwa13q`)
-- 🎫 Load the ?use= bundle by fetch + blob-import instead of jsDelivr (`claude/loading-behavior-tracker-aqbf4f`)
-- 🎫 Extend fetch + blob-import to the gh-api.js-chain ?use= boot
+- 🎫 [Add a task-tracker skill](tasks/add-task-tracker-skill-iwr1ay.md) (`claude/agent-file-retrieval-skill-tv4can`)
+- 🎫 [Build an agent-assisted file-retrieval skill](tasks/agent-file-retrieval-skill-c5u2jy.md) (`claude/agent-file-retrieval-skill-tv4can`)
+- 🎫 [App views - designate a page as an estate-level view](tasks/app-views-estate-level-btp6m4.md) (`claude/web-tools-app-views-m3pkyo`)
+- 🎫 [Automate the merge guide from PR bodies](tasks/automate-merge-guide-from-pr-bodies-uaect4.md) (`claude/task-tracker-discussion-wg27xv`)
+- 🎫 [Make the branch page a navigation target, swipeable from the lists](tasks/branch-page-as-navigation-adi9ha.md) (`claude/project-pages-docs-udzi51`)
+- 🎫 [Show the branch lifespan in the per-repo branch review too](tasks/branch-review-lifespan-0g4znz.md) (`claude/project-pages-docs-udzi51`)
+- 🎫 [Branch-review view in show-repo](tasks/branch-review-view-show-repo-rwwmrj.md) (`claude/web-tools-branch-tracking-n1zawm`)
+- 🎫 [The build-on-commit hook did not fire, and nothing said so](tasks/build-on-commit-hook-silent-bokkl3.md)
+- 🎫 [Teach the guide region a delimiter that survives an agent's readback](tasks/caption-guide-region-delimiter-w9dpyv.md) (`claude/budget-drs-tracker-review-s64mc6`)
+- 🎫 [Fold chat-results into the surface schema, or keep it a sibling](tasks/chat-results-surface-profile-q4m8ra.md) (`claude/web-tools-project-tracker-reo5qo`)
+- 🎫 [Collapse quickLinks into a projection of the repos manifest](tasks/collapse-quicklinks-projection-80oprp.md) (`claude/tracker-status-cjogjn`)
+- 🎫 [Confirm-gated cross-repo edit proposals via a web-tools-private channel](tasks/cross-repo-edit-proposals-evo1ml.md) (`claude/tracker-status-cjogjn`)
+- 🎫 [Reclaim the phone viewport in data-view](tasks/data-view-mobile-chrome-x5plcv.md) (`claude/web-tools-project-tracker-reo5qo`)
+- 🎫 [Estate activity signals from a registry activity cache](tasks/estate-activity-signals-cache-38eze9.md) (`claude/branches-view-api-caching-ef4l5d`)
+- 🎫 [Estate cards still carry the retired three-icon cluster](tasks/estate-cards-icon-cluster-txr3os.md) (`claude/web-tools-project-tracker-reo5qo`)
+- 🎫 [Update estate tests to the groupSections layout](tasks/estate-rows-tests-stale-7r39ry.md) (`claude/viewer-button-dropdown-0h4u57`)
+- 🎫 [Extract drop-zone as a reusable Alpine component](tasks/extract-drop-zone-component-ckg7l1.md) (`claude/tracker-summary-nu74te`)
+- 🎫 [Generalize FAB embed handling to declared embeds](tasks/fab-declared-embeds-1jtpll.md)
+- 🎫 [Let the FAB collect a toss subject's page actions, not just the shell's](tasks/fab-subject-side-actions-t7r4nc.md)
+- 🎫 [Generalize the gallery to a per-repo pages catalog](tasks/generalize-gallery-pages-catalog-m3b8pa.md) (`claude/web-tools-app-views-m3pkyo`)
+- 🎫 [Finish GitHub jump-over coverage across show-repo views](tasks/github-jumpover-coverage-7bkgmk.md) (`claude/github-icon-placement-3d06i7`)
+- 🎫 [Check GraphQL query shape offline against GitHub's published schema](tasks/graphql-schema-contract-check-cpuvb5.md) (`claude/web-tools-tracker-review-bw48ga`)
+- 🎫 [History-safe shim for toss-render address-mode renders](tasks/history-safe-toss-render-shim-hkih5m.md)
+- 🎫 [Integrate the stage with the surfacer's .surface format](tasks/integrate-stage-surfacer-format-3bvg2v.md)
+- 🎫 [Guard every lib-booting page against the Alpine load race](tasks/lib-load-race-on-slow-connections-9kx2mv.md) (`claude/web-tools-project-tracker-reo5qo`)
+- 🎫 [One parser for the owner/repo\[@ref\]:path address](tasks/one-repo-address-parser-5gtv92.md) (`claude/web-tools-tracker-review-bw48ga`)
+- 🎫 [Private-repo landing federation via the home registry](tasks/private-repo-landing-federation-u50nns.md)
+- 🎫 [Two gaps the proposal channel showed on first use](tasks/proposals-diff-and-removal-w1y9lk.md) (`claude/web-tools-project-tracker-reo5qo`)
+- 🎫 [Render files over 1 MB in toss-render and the shell viewers](tasks/render-large-files-toss-render-xm9ex7.md)
+- 🎫 [Repo-designated inbox and outbox in .web-tools.json](tasks/repo-inbox-outbox-manifest-0g6c8s.md) (`claude/tracker-status-cjogjn`)
+- 🎫 [Repo-level GitHub links in show-repo's shield dialog](tasks/repo-level-github-links-shield-9aufgx.md)
+- 🎫 [Resolve a branch's session from the commit trailer, not the open PR body](tasks/session-link-from-commit-trailer-7a407c.md) (`claude/active-work-branches-sd289p`)
+- 🎫 [show-repo - first-class projects, defined by tracker presence](tasks/show-repo-first-class-projects-7stibm.md) (`claude/project-pages-docs-udzi51`)
+- 🎫 [Singleton fab with toss-render integration](tasks/singleton-fab-toss-render-gticvb.md) (`claude/fab-render-toss-render-ua6p3p`)
+- 🎫 [Speed up show-repo's cold load](tasks/speed-up-show-repo-cold-load-u3846j.md) (`claude/speed-up-show-repo-load-3cdvl0`)
+- 🎫 [Fix the stage Diff lens B-select display desync](tasks/stage-diff-b-select-desync-v554kn.md) (`claude/web-tools-diff-review-s0nrq7`)
+- 🎫 [Propagate the stage link's new grammar to the portable docs](tasks/stage-link-grammar-portable-docs-jukn37.md) (`claude/stage-link-grammar-docs-jukn37`)
+- 🎫 [Move StageLink.read onto the shared fragment-first param read](tasks/stage-link-onto-url-params-u9o7ny.md) (`claude/web-tools-project-tracker-reo5qo`)
+- 🎫 [Stage links and the main-area explorer in show-repo](tasks/stage-links-main-area-explorer-7a6gd7.md) (`claude/task-tracker-discussion-wg27xv`)
+- 🎫 [Converge the stage and surface item schemas](tasks/stage-surface-convergence-kgtosz.md)
+- 🎫 [Stand up the project tracker](tasks/stand-up-project-tracker-3t7h04.md) (`claude/tracker-concept-assessment-yto1m1`)
+- 🎫 [Carry commentary on a stage (prompts= link field, seed of a surface schema)](tasks/surface-schema-commentary-on-stage-hqz0uu.md) (`claude/web-tools-diff-review-s0nrq7`)
+- 🎫 [Toggle-only Tailwind classes do generate, and the spinners do spin](tasks/toggle-only-tailwind-classes-gxi5tq.md) (`claude/web-tools-tracker-review-m49yxc`)
+- 🎫 [Pass a trailing fragment through toss-render to the rendered page](tasks/toss-fragment-passthrough-558xcw.md) (`claude/toss-render-data-formats-4t55x7`)
+- 🎫 [Structural response decode + differentiated errors in toss-render](tasks/toss-render-decode-errors-xu3c6d.md)
+- 🎫 [toss-render ?query forwarding drops multi-param page queries](tasks/toss-render-multiparam-query-encoding-n9lbcp.md) (`claude/web-tools-tracker-review-bw48ga`)
+- 🎫 [Tracker review in show-repo, over a typed board projection](tasks/tracker-review-in-show-repo-v5km6b.md) (`claude/budget-drs-tracker-assessment-fwa13q`)
+- 🎫 [Load the ?use= bundle by fetch + blob-import instead of jsDelivr](tasks/use-blob-import-bundle-dtuqjo.md) (`claude/loading-behavior-tracker-aqbf4f`)
+- 🎫 [Extend fetch + blob-import to the gh-api.js-chain ?use= boot](tasks/use-gh-api-chain-blob-import-y2hwqe.md)

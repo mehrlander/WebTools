@@ -13,8 +13,8 @@ observations and is corrected by re-probing; everything else is living and
 must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
-2 arrive in every session's context, 12 are named by CLAUDE.md,
-8 by a skill, 3 by a page or component. The remaining 17 are
+2 arrive in every session's context, 17 are named by CLAUDE.md,
+3 by a skill, 3 by a page or component. The remaining 17 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/

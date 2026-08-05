@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
-import { deriveReach, CHANNELS } from '../build/docs-reach.mjs';
+import { deriveReach, deriveWords, CHANNELS } from '../build/docs-reach.mjs';
 
 const registry = JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'docs.json'), 'utf8'));
 
@@ -46,13 +46,15 @@ test('every docs/ file is claimed by exactly one document row, and every row exi
   for (const p of rowSet) assert.ok(onDisk.has(p), 'in the registry but not on disk: ' + p);
 });
 
-test('every document row is typed: subject, status, reach, maintenance', () => {
+test('every document row is typed: subject, status, reach, words, maintenance', () => {
   for (const d of registry.documents) {
     assert.ok(d.subject && d.subject.length > 5, d.path + ': subject');
     assert.ok(STATUSES.has(d.status),
       d.path + ': status must be one of ' + [...STATUSES] + ', got ' + d.status);
     assert.ok(CHANNELS.includes(d.reach),
       d.path + ': reach must be one of ' + CHANNELS + ', got ' + d.reach);
+    assert.ok(Number.isInteger(d.words) && d.words >= 0,
+      d.path + ': words must be a non-negative integer, got ' + d.words);
     assert.ok(d.maintenance && d.maintenance.length > 5, d.path + ': maintenance');
   }
 });
@@ -69,6 +71,25 @@ test('the declared reach of every document matches the derivation', () => {
     assert.equal(d.reach, channel,
       `${d.path}: declared reach "${d.reach}" but derivation says "${channel}"` +
       (via ? ` (named by ${via})` : '') + '; restamp with: npm run docs-reach');
+  }
+});
+
+// Words is the second derived field and is held the same way. It matters more
+// than it looks: reach counts files and words weighs them, and on this folder
+// the two disagree sharply. The 17 orphans are 40% of the files and 17% of the
+// words, so a registry carrying only the count points at the tail while the
+// mass sits in a handful of reachable documents.
+//
+// This assertion also pins the fixpoint. docs.json is itself a row, so its
+// stored size is only correct if the stamp re-ran until the file stopped
+// changing; a builder that settled for one pass would fail here on its own row
+// and nowhere else.
+test('the declared words of every document matches the derivation', () => {
+  const derived = deriveWords(repoRoot, registry.documents.map(d => d.path));
+  for (const d of registry.documents) {
+    assert.equal(d.words, derived.get(d.path),
+      `${d.path}: declared ${d.words} words but the file has ${derived.get(d.path)}` +
+      '; restamp with: npm run docs-reach');
   }
 });
 

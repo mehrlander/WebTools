@@ -1,5 +1,12 @@
-// Reach: how a reader gets to a document, derived from disk rather than
-// declared by hand.
+// The derived fields of docs/docs.json: `reach` (who can get to a document)
+// and `words` (how much of the folder it is). Both are computed from disk
+// rather than declared by hand, both are restamped by `npm run docs-reach`,
+// and both are gated by docs-registry.test.mjs.
+//
+// One module and one npm script for two fields, because both write the same
+// file: two writers would race on key order and on each other's output. The
+// script name predates `words` and is kept, since renaming it would ripple
+// through the commit hook, package.json, and CLAUDE.md for no gain.
 //
 // The documents census in docs/docs.json says what each doc IS and how it is
 // kept true. Neither answers the question that decides whether a doc does any
@@ -15,13 +22,22 @@
 //             hook fetches these two, and CLAUDE.md @-imports them). The
 //             strongest channel there is, and the reason these two are the
 //             only docs a session can be assumed to have read.
-//   project   named by the repo's own CLAUDE.md, which every session in this
-//             repo reads. One hop from every session and no invocation
-//             required, so it outranks a skill. Added 2026-08-05, after the
-//             first cut reported as orphan four docs that CLAUDE.md names by
-//             path: the orphan count was pessimistic, and a count that
-//             overstates the problem is corrected for the same reason one that
-//             understates it is.
+//   project   named by a document that is ALREADY in every session's context:
+//             the repo's own CLAUDE.md, or either of the injected two. One hop
+//             from every session with no invocation required, so it outranks a
+//             skill. Added 2026-08-05, after the first cut reported as orphan
+//             four docs that CLAUDE.md names by path: the orphan count was
+//             pessimistic, and a count that overstates the problem is corrected
+//             for the same reason one that understates it is.
+//
+//             Widened later the same day to include the injected pair, which
+//             the first cut had as sources of nothing. That was incoherent: a
+//             link from SURFACING.md is read by every session in every repo
+//             that installs the set, which is a wider audience than CLAUDE.md
+//             reaches, yet it counted for less than a skill mention. The key
+//             stays `project` rather than becoming `context`; the value is
+//             stamped into a registry other files quote, and the rename buys
+//             accuracy in one word at the cost of churn in several.
 //   skill     a skill names the path, so invoking that skill pulls the doc.
 //             One deliberate act away, and the act is one an agent takes.
 //   app       lib/ or pages/ names the path in CODE, so a page reads it at
@@ -41,10 +57,34 @@
 // The corpora are deliberately narrow. tools/ is excluded: a doc named only by
 // a build script or a test is exercised, not read, and counting that would
 // report the schemas below as reached when nothing loads them.
+//
+// ── words ───────────────────────────────────────────────────────────────────
+//
+// Reach counts files; `words` weighs them, and the two disagree. Measured
+// 2026-08-05: the 17 orphans are 40% of the folder's files but 16.7% of its
+// words, while docs/show-repo.md alone is 22%. A tab that could filter to the
+// orphans in one tap and could not show that split was answering the smaller
+// question loudly. Bloat and unreachability are different failures, and a
+// registry that carries only one of them will keep pointing at the tail.
+//
+// Whitespace-delimited tokens of the file as it sits on disk, markdown and
+// JSON alike. Crude on purpose: a prose-aware count would need a parser per
+// format, and the field only has to support "which of these is large," which
+// survives the crudeness. Frontmatter, code fences, and JSON punctuation are
+// all counted, so a schema's number is not comparable to an essay's.
+//
+// The registry describes itself, so stamping the field changes the file being
+// measured: writing 42 `"words": N` lines adds 84 tokens to docs.json, and its
+// own row would be stale the moment it was written. The stamp therefore runs
+// to a fixpoint. It converges in two passes, because the digits of a value do
+// not change the token count, and it asserts convergence rather than assuming
+// it: a derivation that silently failed to settle would produce a file that
+// fails its own test on every other run.
 
 // Run it directly (`npm run docs-reach`) to restamp docs/docs.json after adding
-// a doc or pointing a skill or page at one. The field is a cached copy of the
-// derivation, held to it by docs-registry.test.mjs.
+// a doc, pointing a skill or page at one, or editing any doc's length. Both
+// fields are cached copies of the derivation, held to it by
+// docs-registry.test.mjs.
 
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import path from 'node:path';
@@ -56,10 +96,12 @@ export const CHANNELS = ['injected', 'project', 'skill', 'app', 'orphan'];
 // hook that injects them lives in each consuming repo, not in this one.
 export const INJECTED = ['docs/CONVENTIONS.md', 'docs/SURFACING.md'];
 
-// The repo's own agent instructions. Not a directory: exactly these files, at
-// the root, because a nested CLAUDE.md governs its own subtree rather than the
-// session.
-const PROJECT_FILES = ['CLAUDE.md', 'AGENTS.md'];
+// Documents that are already in a session's context, and so are sources of the
+// `project` channel rather than merely targets of it. The root agent
+// instructions (not a directory: a nested CLAUDE.md governs its own subtree
+// rather than the session) plus the injected pair, which every session reads
+// in every repo that installs the set.
+const PROJECT_FILES = ['CLAUDE.md', 'AGENTS.md', ...INJECTED];
 const SKILL_DIRS = ['.claude/skills', 'skills'];
 const APP_DIRS = ['lib', 'pages'];
 const SKILL_EXT = new Set(['.md', '.py', '.json', '.mjs']);
@@ -129,27 +171,78 @@ export function deriveReach(repoRoot, paths) {
   return out;
 }
 
+/**
+ * Whitespace-delimited token count for each given document path.
+ * Reads the file as it currently sits on disk, which is what makes the
+ * registry's own row need a fixpoint (see the header).
+ * @param {string} repoRoot
+ * @param {string[]} paths repo-relative document paths
+ * @returns {Map<string, number>}
+ */
+export function deriveWords(repoRoot, paths) {
+  const out = new Map();
+  for (const p of paths) {
+    let n = 0;
+    try { n = readFileSync(path.join(repoRoot, p), 'utf8').split(/\s+/).filter(Boolean).length; }
+    catch { /* an unreadable file counts as nothing; the census test owns its absence */ }
+    out.set(p, n);
+  }
+  return out;
+}
+
 // ── CLI: restamp docs/docs.json ─────────────────────────────────────────────
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
   const file = path.join(repoRoot, 'docs', 'docs.json');
   const registry = JSON.parse(readFileSync(file, 'utf8'));
-  const derived = deriveReach(repoRoot, registry.documents.map(d => d.path));
-  const moved = [];
-  for (const d of registry.documents) {
-    const next = derived.get(d.path).channel;
-    if (d.reach !== next) moved.push(`${d.path}: ${d.reach ?? '(unset)'} -> ${next}`);
-    d.reach = next;
-    // Fixed key order, so a restamp never reshuffles the file.
-    const ordered = { path: d.path, subject: d.subject, status: d.status,
-                      reach: d.reach, maintenance: d.maintenance };
-    for (const k of Object.keys(d)) delete d[k];
-    Object.assign(d, ordered);
+  const paths = registry.documents.map(d => d.path);
+  const before = new Map(registry.documents.map(d => [d.path, d.reach]));
+
+  // Stamp to a fixpoint: writing `words` changes the size of docs.json, which
+  // is itself a row. Two passes settle it, five is a generous ceiling, and
+  // failing loudly beats emitting a file that fails its own test.
+  const MAX_PASSES = 5;
+  let passes = 0;
+  for (;;) {
+    const reach = deriveReach(repoRoot, paths);
+    const words = deriveWords(repoRoot, paths);
+    let changed = false;
+    for (const d of registry.documents) {
+      const nextReach = reach.get(d.path).channel;
+      const nextWords = words.get(d.path);
+      if (d.reach !== nextReach || d.words !== nextWords) changed = true;
+      d.reach = nextReach;
+      d.words = nextWords;
+      // Fixed key order, so a restamp never reshuffles the file.
+      const ordered = { path: d.path, subject: d.subject, status: d.status,
+                        reach: d.reach, words: d.words, maintenance: d.maintenance };
+      for (const k of Object.keys(d)) delete d[k];
+      Object.assign(d, ordered);
+    }
+    writeFileSync(file, JSON.stringify(registry, null, 2) + '\n');
+    passes++;
+    if (!changed) break;
+    if (passes >= MAX_PASSES) {
+      console.error(`docs-reach: derivation did not settle in ${MAX_PASSES} passes`);
+      process.exit(1);
+    }
   }
-  writeFileSync(file, JSON.stringify(registry, null, 2) + '\n');
+
   const counts = {};
-  for (const d of registry.documents) counts[d.reach] = (counts[d.reach] || 0) + 1;
-  console.log('docs-reach: ' + CHANNELS.map(c => `${counts[c] || 0} ${c}`).join(', '));
-  for (const m of moved) console.log('  moved  ' + m);
+  const mass = {};
+  let total = 0;
+  for (const d of registry.documents) {
+    counts[d.reach] = (counts[d.reach] || 0) + 1;
+    mass[d.reach] = (mass[d.reach] || 0) + d.words;
+    total += d.words;
+  }
+  console.log('docs-reach: ' + CHANNELS
+    .map(c => `${counts[c] || 0} ${c} (${Math.round((mass[c] || 0) / total * 100)}%)`)
+    .join(', ') + `; ${total.toLocaleString('en-US')} words in ${passes} pass(es)`);
+  for (const d of registry.documents) {
+    if (before.get(d.path) !== d.reach) {
+      console.log(`  moved  ${d.path}: ${before.get(d.path) ?? '(unset)'} -> ${d.reach}`);
+    }
+  }
 }
