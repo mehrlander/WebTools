@@ -9,10 +9,15 @@
 //
 // STATE=bands    the three bands, resource list collapsed        (the default)
 // STATE=rows     the per-resource list expanded
+// STATE=repo     the API ledger cut by target repo instead of endpoint
 // STATE=quiet    no API calls yet, which is what a cold page shows
 // STATE=scripts  the Inspect tab, for the size chips on the script rows
 
 const CRAWL = [
+  // Two code loads: same contents/ endpoint as a plain file read, separated
+  // only by the via marker gh-boot's get() wrapper sets.
+  ['https://api.github.com/repos/mehrlander/web-tools/contents/lib/surface.js?ref=main', 9200, 70, 'GET', 'surface.js'],
+  ['https://api.github.com/repos/mehrlander/web-tools/contents/lib/kits/console.js?ref=main', 6100, 64, 'GET', 'kits/console.js'],
   ['https://api.github.com/repos/mehrlander/web-tools/commits?sha=main&per_page=16', 4213, 180],
   ['https://api.github.com/repos/mehrlander/web-tools/commits/9f3a1c2', 12844, 140],
   ['https://api.github.com/repos/mehrlander/web-tools/commits/2da60c3', 9331, 132],
@@ -44,8 +49,8 @@ export default async (page) => {
       // totals included: the tab reads the totals rather than the rows, since
       // the rows trim and the totals do not.
       const now = Date.now();
-      window.__traffic = crawl.map(([url, wire, ms, method], i) => ({
-        url, wire, ms, method: method || 'GET', status: 200, error: null, t: now - (crawl.length - i) * 400,
+      window.__traffic = crawl.map(([url, wire, ms, method, via], i) => ({
+        url, wire, ms, method: method || 'GET', via: via || null, status: 200, error: null, t: now - (crawl.length - i) * 400,
       }));
       window.__trafficTotals = {
         calls: crawl.length,
@@ -65,6 +70,7 @@ export default async (page) => {
     if (state === 'scripts') d.detect();
     else d.refreshTraffic();
     d.trafRowsOpen = state === 'rows';
+    if (state === 'repo') d.trafCut = 'repo';
   }, [CRAWL, STATE]);
 
   await page.waitForTimeout(600);

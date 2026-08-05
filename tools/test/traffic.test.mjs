@@ -180,6 +180,55 @@ test('a write is counted apart from a read, at both levels', () => {
   assert.equal(T.isWrite({}), false, 'no method at all defaults to GET, which is what fetch does');
 });
 
+test('repoOf reads the target repo out of every address form we use', () => {
+  assert.equal(T.repoOf('https://api.github.com/repos/mehrlander/home/contents/x?ref=main'), 'mehrlander/home');
+  assert.equal(T.repoOf('https://api.github.com/repos/o/r/commits/abc'), 'o/r');
+  assert.equal(T.repoOf('https://raw.githubusercontent.com/o/r/main/f.js'), 'o/r');
+  assert.equal(T.repoOf('https://cdn.jsdelivr.net/gh/o/r@main/lib/x.js'), 'o/r');
+  assert.equal(T.repoOf('https://data.jsdelivr.com/v1/packages/gh/o/r@main?structure=flat'), 'o/r');
+  // A GraphQL POST names its repo in the body, and the ledger does not read
+  // bodies. Null, not a guess.
+  assert.equal(T.repoOf('https://api.github.com/graphql'), null);
+  assert.equal(T.repoOf('https://example.com/x'), null);
+});
+
+test('the repo cut separates a crawl from browsing, and still adds up', () => {
+  const entries = [
+    // A config crawl: one call each across four repos.
+    ...['home', 'budget-wa', 'spend-wa', 'fn-data'].map(r =>
+      ({ url: `https://api.github.com/repos/mehrlander/${r}/contents/.web-tools.json`, ms: 90, status: 200, wire: 2000 })),
+    // Browsing one repo.
+    { url: 'https://api.github.com/repos/mehrlander/web-tools/commits', ms: 100, status: 200, wire: 4000 },
+    { url: 'https://api.github.com/repos/mehrlander/web-tools/branches', ms: 100, status: 200, wire: 5000 },
+    // A write to the private registry.
+    { url: 'https://api.github.com/repos/mehrlander/web-tools-private/contents/state/activity.json', method: 'PUT', ms: 200, status: 200, wire: 800 },
+    // And one the URL cannot attribute.
+    { url: 'https://api.github.com/graphql', ms: 300, status: 200, wire: 9000 },
+  ];
+  const rows = T.repoGroups(entries);
+  assert.equal(rows.reduce((n, r) => n + r.calls, 0), entries.length, 'every call lands somewhere');
+  const by = Object.fromEntries(rows.map(r => [r.repo, r]));
+  assert.equal(by['mehrlander/web-tools'].calls, 2);
+  assert.equal(by['mehrlander/home'].calls, 1);
+  assert.equal(by['mehrlander/web-tools-private'].writes, 1);
+  // Four repos at one call each is the crawl's signature, and no endpoint
+  // grouping shows it: all four are the same `contents` shape.
+  assert.equal(rows.filter(r => r.named && r.calls === 1 && !r.writes).length, 4);
+  // The unattributable bucket sorts last, since it is a caveat not a finding.
+  assert.equal(rows[rows.length - 1].named, false);
+  assert.equal(rows[rows.length - 1].calls, 1);
+});
+
+test('a call carrying `via` is a code load, whatever endpoint it used', () => {
+  const load = { url: 'https://api.github.com/repos/o/r/contents/lib/x.js?ref=main', via: 'lib/x.js', ms: 40, status: 200, wire: 900 };
+  const read = { url: 'https://api.github.com/repos/o/r/contents/data.js?ref=main', ms: 40, status: 200, wire: 900 };
+  assert.equal(T.classify(load.url, load).group, 'load');
+  assert.equal(T.classify(read.url, read).group, 'contents', 'the identical endpoint, without via, stays a plain file read');
+  const g = Object.fromEntries(T.apiGroups([load, read]).map(x => [x.group, x]));
+  assert.equal(g.load.calls, 1);
+  assert.equal(g.contents.calls, 1);
+});
+
 test('the readout line carries three facts, and omits what it does not know', () => {
   const b = T.boot([netRow('https://x/a.js', 680000, 3000000)], null);
   assert.equal(T.summary({ boot: b, api: { calls: 12 }, rate: 4952 }), '664 KB · 12 calls · 5k left');
@@ -284,6 +333,46 @@ test('the ledger is capped but its totals are not', async () => {
   assert.equal(win.__trafficTotals.calls, 450, 'the count is not');
   assert.equal(win.__trafficTotals.wire, 4500, 'and neither is the byte figure');
   assert.ok(win.__trafficTotals.trimmed > 0, 'and the tab can say rows were dropped');
+});
+
+test('the via marker attributes the right fetch, even with gets interleaved', async () => {
+  // The claim the whole mechanism rests on: between entering get() and the
+  // fetch() call there is no await, so a synchronous marker cannot be captured
+  // by a concurrent get. Reasoning like that stops holding the moment someone
+  // adds an await, so it is executed here rather than trusted.
+  //
+  // The stub reproduces gh-api's shape exactly: get calls req synchronously,
+  // req runs synchronously as far as fetch(url), and only then awaits.
+  const boot = readFileSync(path.join(repoRoot, 'lib/gh-boot.js'), 'utf8');
+  const resolvers = [];
+  const win = {
+    fetch: () => new Promise(res => resolvers.push(() => res({ status: 200, headers: { get: () => null } }))),
+    addEventListener() {}, dispatchEvent() {},
+  };
+  class StubGH {
+    async req(p) { return win.fetch('https://api.github.com/repos/o/r/' + p).then(() => ({ content: '', sha: 'x', size: 0 })); }
+    async get(p) { const d = await this.req('contents/' + p); return { text: '', sha: d.sha, size: 0 }; }
+    async load() {} async read() {}
+  }
+  win.gh = new StubGH();
+  win.gh.load = async () => {};
+  const fn = new Function('gh', 'window', 'CustomEvent', 'performance', 'setTimeout', 'clearTimeout', 'document', 'console', boot);
+  await fn(win.gh, win, CustomEvent, performance, setTimeout, clearTimeout, undefined, console);
+
+  // Three gets fired without awaiting between them: maximal interleaving.
+  const all = Promise.all([win.gh.get('a.js'), win.gh.get('b.js'), win.gh.get('c.js')]);
+  assert.equal(win.__traffic.length, 3, 'all three requests are in flight at once');
+  assert.deepEqual(win.__traffic.map(e => e.via), ['a.js', 'b.js', 'c.js'],
+    'each call kept its own path; none captured a neighbour');
+  assert.equal(win.__ghGetPath, null, 'and the marker does not leak past the synchronous window');
+  // A bare fetch alongside them carries no via at all. Asserted before the
+  // resolvers run, since the ledger row is pushed synchronously and the
+  // responses are what this stub holds open.
+  const bare = win.fetch('https://api.github.com/repos/o/r/commits');
+  assert.equal(win.__traffic[3].via, null);
+
+  resolvers.forEach(r => r());
+  await Promise.all([all, bare]);
 });
 
 test('the get wrapper tells an inlined module from a fetched one', async () => {
