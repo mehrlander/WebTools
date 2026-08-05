@@ -135,7 +135,8 @@ Highlights it lists, fetchable directly by raw URL when relevant:
   allowlist, persistence, testing recipes). Sandbox-level, so they apply in any
   repo.
 - `docs/MERGE-GUIDE.md` — web-tools' own merge-guide log, a worked example of the
-  entry format (each repo keeps its own).
+  `--index` projection: one line per merged PR, with the PR body left on GitHub
+  as the account. Each repo keeps its own, or none.
 
 ## Installing this skill into another repo
 

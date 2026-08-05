@@ -123,3 +123,16 @@ capability table is a measurement, not a standing fact, so **re-probe before
 resting an argument on a row, and probe both clients**, since curl and Chromium
 answer differently here. *(seen: 2026-08-05)*
 → [environment/capabilities.md](environment/capabilities.md)
+
+**Read "needs API access" as "cannot be done here," for three weeks and 147
+PRs.** The merge guide went unregenerated because every note on it said
+regeneration needs `api.github.com`, which the sandbox proxy 403s. Both halves
+of that were true and the conclusion was still wrong: `scripts/build-merge-guide.py`
+takes `--from-json` precisely so it can run against MCP-fetched data, and the
+GitHub MCP's `list_pull_requests` returns objects of exactly that shape. **When
+a doc names a blocked transport, check whether the tool already accepts another
+one before recording it as blocked**, since the workaround is usually written
+into the tool by whoever anticipated the block. The tell is a `--from-*` flag or
+a documented offline mode in the same file that names the dependency.
+*(seen: 2026-08-05)*
+→ [SURFACING.md](SURFACING.md)

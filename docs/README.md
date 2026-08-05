@@ -35,7 +35,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`artifacts.md`](artifacts.md) — Claude Code artifacts and the link-choice matrix
 - [`HTML-STYLE.md`](HTML-STYLE.md) — the house style for pages: what to build, as against how
 - [`SNAGS.md`](SNAGS.md) — the friction log: one line per snag, symptom then corrected move
-- [`MERGE-GUIDE.md`](MERGE-GUIDE.md) *(record)* — what each merged PR shipped, newest first
+- [`MERGE-GUIDE.md`](MERGE-GUIDE.md) *(record)* — the index of merged pull requests, newest first: date, number, title, and a link to the PR that carries the account
 - [`SHARE.md`](SHARE.md) *(orphan)* — the copy-paste prompt that points another session at the portable docs
 - [`loader.md`](loader.md) — the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality
 - [`headless-vendoring.md`](headless-vendoring.md) — building with CDN libraries and rendering headless where the CDNs are blocked
