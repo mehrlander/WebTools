@@ -11,7 +11,7 @@ keeps recurring graduates to a [tracker](../tracker/) task that removes the
 cause. The log triages, the tracker does the work.
 
 Distinct from the other logs by what it keys on: the tracker keys on a **task**
-(intent), the [merge guide](MERGE-GUIDE.md) on a **PR** (delivery), this on a
+(intent), a merge guide on a **PR** (delivery), this on a
 **snag** (a recurring friction), atomic and cross-PR. Entries stay an index (a
 one-liner plus a `→`), so they cannot drift from the docs that hold the fix.
 
@@ -123,3 +123,29 @@ capability table is a measurement, not a standing fact, so **re-probe before
 resting an argument on a row, and probe both clients**, since curl and Chromium
 answer differently here. *(seen: 2026-08-05)*
 → [environment/capabilities.md](environment/capabilities.md)
+
+**Read "needs API access" as "cannot be done here," for three weeks and 147
+PRs.** The merge guide went unregenerated because every note on it said
+regeneration needs `api.github.com`, which the sandbox proxy 403s. Both halves
+of that were true and the conclusion was still wrong: the generator took a
+`--from-json` flag precisely so it could run against MCP-fetched data, and the
+GitHub MCP's `list_pull_requests` returns objects of exactly that shape. **When
+a doc names a blocked transport, check whether the tool already accepts another
+one before recording it as blocked**, since the workaround is usually written
+into the tool by whoever anticipated the block. The tell is a `--from-*` flag or
+a documented offline mode in the same file that names the dependency. (The
+generator has since been retired with the merge guide; the lesson is about the
+reading, not the script.) *(seen: 2026-08-05)*
+→ [SURFACING.md](SURFACING.md)
+
+**Shrank a redundant artifact instead of asking whether it should exist.** Told
+to settle whether the merge guide should exist before backfilling it, the
+session established that a copy of each PR body was the wrong shape and replaced
+it with an index of date, number, title, and link. Those are the four fields the
+pulls endpoint returns, so the index was still a committed cache of a live read,
+just a cheaper one. The user made the actual call: retire it. **When an artifact
+turns out to duplicate a source, check whether the remainder has a job before
+optimizing it**, because a smaller copy still carries a refresh obligation and
+can still be out of date. The general rule now sits in the doc: do not commit
+what a live read already answers. *(seen: 2026-08-05)*
+→ [SURFACING.md](SURFACING.md)

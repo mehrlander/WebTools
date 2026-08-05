@@ -38,9 +38,9 @@ then by path. Real run:
 
 ```
 $ python3 .claude/skills/file-retrieval/corpus_search.py "toss-render" --max 6
-[docs] docs/MERGE-GUIDE.md  Merge guide  (18 matches)
-    L128: ...Singleton fab integration with toss-render is tracked as task 0003...
-    ... 15 more
+[docs] docs/showing.md  Showing: which link shows what  (12 matches)
+    L44: ...the toss-render address mode reaches a branch page that github.io cannot...
+    ... 9 more
 [tracker] tracker/tasks/0003.md  Singleton fab with toss-render integration  (8 matches)
     L3: --- id: 0003 title: Singleton fab with toss-render integration status...
     ... 5 more
