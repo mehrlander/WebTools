@@ -2,7 +2,7 @@
 
 Making a session's work visible, reviewable, and durable when chat is the only output channel. The canonical source is `mehrlander/web-tools` at `docs/SURFACING.md`, loaded with [CONVENTIONS.md](CONVENTIONS.md) by `@`-import or the `web-tools` skill. Local `CLAUDE.md` rules override these defaults. Apply repo- and branch-scoped rules per workstream, and substitute the current repo into URL templates.
 
-The installed set includes the universal **surfacing primitives** and the **surfacing course**, the guide-PR and merge-guide lifecycle that begins when a PR opens. See [PORTABLE.md](PORTABLE.md).
+The installed set includes the universal **surfacing primitives** and the **surfacing course**, the guide-PR and merge-guide lifecycle that begins when a PR opens. See [PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md).
 
 ## One render path
 
@@ -16,7 +16,7 @@ Normally none. In local `CLAUDE.md`, name only a slow or non-deterministic gener
 
 ## Surfacing primitives
 
-This prose is the authoritative statement of the primitives; [`docs/surfacing.json`](surfacing.json) is its gated index (membership held two-way by test), rendered live in show-repo's Map view, Surfacing tab.
+This prose is the authoritative statement of the primitives; [`docs/surfacing.json`](https://github.com/mehrlander/web-tools/blob/main/docs/surfacing.json) is its gated index (membership held two-way by test), rendered live in show-repo's Map view, Surfacing tab.
 
 * **Reference is a link (explicit markdown).** Use `[caption](url)` for anything tappable; bare paths drop on mobile, in rendered markdown, and when copied. When first naming a repo file, doc, or page the reader may want to open, link it inline: unchanged source to `[main]`, touched source to `[new]`, and a renderable page to its 🥏, ⭐, or 📦 live view. **A proposal links its subject:** an edit, deletion, or rewrite you are recommending names its file as a link before the reasoning, since nobody can weigh a change to a file they have to go find first. This is the case most often skipped, because the file is still unchanged and so reads as context rather than as the thing being decided. Keep the **honesty gate**: only a renderable page gets a render link, and call source a "view," not a preview. The surfacing caption remains the end-of-turn roll-up. Reserve `file:line` for grep and debug references.
 * **Show pixels:** for visual changes, send an inspected headless-browser screenshot inline.
@@ -43,8 +43,8 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
   `…/show-repo/show-repo.html#stage=owner/repo[@ref]:path1,path2;owner2/repo2:path3`
 
   Groups are `;`-separated, paths `,`-separated, and `@ref` is optional. Add `&prompts=<base64url>` for `{label, ask}` review prompts or `&mode=diff` to open the preview on that comparison. `StageLink.read` also accepts these keys in the query when a context strips fragments. Stage links are token-gated with the same in-app-browser caveat as `#gh=`; for a tokenless reader, download the bundle and **Hand over the artifact**. A stage is an inline handoff, not a surfacing-caption row. See `docs/show-repo.md` and `.web-tools.json`.
-* **Carry content in an envelope:** use a **content envelope** when a curated, annotated set of files, chats, diffs, or search hits should travel and render together. The carriers are **stage**, **surface** (the cross-repo shelf rendered by show-repo's estate view and the Surfacer app), **chat-results envelope** (`pages/chat-results.html`), and **data view** (`pages/data-view.html`). They share the `owner/repo[@ref]:path` item grammar, the `#gz=`/`?src=` delivery split, and live-code rendering. Prefer an envelope to an ad-hoc format. Contracts and schemas: [`docs/envelopes/`](envelopes/).
-* **Toss data, not just a page 📊:** to hand over a CSV, a JSON array, or a log as something readable rather than a raw blob, address it through the data route: `…/toss-render.html#data=owner/repo[@ref]:path`. It opens in the shared multi-mode viewer (table, tree, preview, code, raw), picking by content and leaving every other mode one tap away. Bare bytes need no wrapper; an `items` envelope adds several files, a default view each, and notes. Same token gate as `#gh=`; use `#gz=` on the page itself for a token-less reader. Contract: [`docs/envelopes/data-view.md`](envelopes/data-view.md).
+* **Carry content in an envelope:** use a **content envelope** when a curated, annotated set of files, chats, diffs, or search hits should travel and render together. The carriers are **stage**, **surface** (the cross-repo shelf rendered by show-repo's estate view and the Surfacer app), **chat-results envelope** (`pages/chat-results.html`), and **data view** (`pages/data-view.html`). They share the `owner/repo[@ref]:path` item grammar, the `#gz=`/`?src=` delivery split, and live-code rendering. Prefer an envelope to an ad-hoc format. Contracts and schemas: [`docs/envelopes/`](https://github.com/mehrlander/web-tools/tree/main/docs/envelopes).
+* **Toss data, not just a page 📊:** to hand over a CSV, a JSON array, or a log as something readable rather than a raw blob, address it through the data route: `…/toss-render.html#data=owner/repo[@ref]:path`. It opens in the shared multi-mode viewer (table, tree, preview, code, raw), picking by content and leaving every other mode one tap away. Bare bytes need no wrapper; an `items` envelope adds several files, a default view each, and notes. Same token gate as `#gh=`; use `#gz=` on the page itself for a token-less reader. Contract: [`docs/envelopes/data-view.md`](https://github.com/mehrlander/web-tools/blob/main/docs/envelopes/data-view.md).
 * **Branch anchor:** the first file-modifying reply leads with `Working branch: [branch-name](url)`.
 * **Open the branch 🌿:** for work in flight, link the branch page beside the guide PR:
 
@@ -56,7 +56,7 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   🌿 and 🧭 answer different questions and both belong on a working branch: 🌿 is where you *read* the branch, 🧭 is where you *merge* it.
 * **Guide pointer 🧭:** mark the branch's guide PR, or a legacy branch-guide file, with 🧭. A reply may close with `🧭 [PR #N](…) (body synced)`. The parenthetical is a claim about this reply, not about the PR: write `(body synced)` only when this turn rewrote the guide region, and `(body not synced)` otherwise. It exists so a reader can tell, without opening the PR, whether its body describes the current tip. Never carry `(body synced)` forward from an earlier reply.
-* **Task marker 🎫:** where the repo uses [TRACKER.md](TRACKER.md), surface a task as `🎫 [title](<task blob url>)`. Do not show the filename id; 🎫 plus title is the reader's handle.
+* **Task marker 🎫:** where the repo uses [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md), surface a task as `🎫 [title](<task blob url>)`. Do not show the filename id; 🎫 plus title is the reader's handle.
 * **Surfacing caption:** end a file-modifying turn with a uniform bulleted file list. Filenames stay plain and link words are tappable:
 
   | File state | Links |
@@ -137,13 +137,13 @@ Keep the body under one screen. **Next steps / open threads** is its heart and m
 <session-link footer>
 ```
 
-**The region markers are markdown link labels, not HTML comments.** Both render as nothing on GitHub, but reading a PR body back through the GitHub MCP strips HTML comments and tags, so a sync could not find the region it was meant to rewrite, and a sync that cannot find its region appends a second one or overwrites hand-written prose. Write the link-label form. Recognition still accepts the older `<!-- guide -->` pair, since bodies written before 2026-07-28 carry it and would otherwise orphan. The one constraint the new form brings: a link label is a reference definition, so it must start a line and sit between blank lines, and inside a list item or a blockquote it can render literally. Measured, with the probe and the controls, in [environment/capabilities.md](environment/capabilities.md).
+**The region markers are markdown link labels, not HTML comments.** Both render as nothing on GitHub, but reading a PR body back through the GitHub MCP strips HTML comments and tags, so a sync could not find the region it was meant to rewrite, and a sync that cannot find its region appends a second one or overwrites hand-written prose. Write the link-label form. Recognition still accepts the older `<!-- guide -->` pair, since bodies written before 2026-07-28 carry it and would otherwise orphan. The one constraint the new form brings: a link label is a reference definition, so it must start a line and sit between blank lines, and inside a list item or a blockquote it can render literally. Measured, with the probe and the controls, in [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
 
 ### Merge guide
 
-`docs/MERGE-GUIDE.md` is a durable newest-first log generated from merged PR guide regions by a repo-owned script; web-tools supplies [`scripts/build-merge-guide.py`](../scripts/build-merge-guide.py). There is no hand-written merge-guide step. Generation is non-destructive and keyed by PR number: add uncovered PRs, preserve existing entries, and use `--refresh` to regenerate covered ones. Run where API access exists and commit the output.
+`docs/MERGE-GUIDE.md` is a durable newest-first log generated from merged PR guide regions by a repo-owned script; web-tools supplies [`scripts/build-merge-guide.py`](https://github.com/mehrlander/web-tools/blob/main/scripts/build-merge-guide.py). There is no hand-written merge-guide step. Generation is non-destructive and keyed by PR number: add uncovered PRs, preserve existing entries, and use `--refresh` to regenerate covered ones. Run where API access exists and commit the output.
 
-The merge guide keys on the **PR**, a unit of delivery; [TRACKER.md](TRACKER.md) keys on the **task**, a unit of intent. Choose one primary historical axis to avoid competing logs.
+The merge guide keys on the **PR**, a unit of delivery; [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md) keys on the **task**, a unit of intent. Choose one primary historical axis to avoid competing logs.
 
 An entry mirrors the guide region, puts the result and primary file first, preserves `renders on:`, rewrites branch URLs to main, and drops branch-only next steps. Main can show that a represented PR is included, but absence is not proof of non-merge; git and GitHub remain authoritative.
 
@@ -186,7 +186,7 @@ Post-merge edits require a new PR, even on the same branch. The next push opens,
 
 Merge terminates the session branch.
 
-Where the repo uses [TRACKER.md](TRACKER.md), a follow-up worth keeping goes through `/tasks`, which carries the bar and the gate, and the handoff prompt can then collapse to "check the tracker and assess how to proceed." A one-off issue not worth a task keeps the full diagnostic handoff below. Otherwise:
+Where the repo uses [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md), a follow-up worth keeping goes through `/tasks`, which carries the bar and the gate, and the handoff prompt can then collapse to "check the tracker and assess how to proceed." A one-off issue not worth a task keeps the full diagnostic handoff below. Otherwise:
 
 * **Option 1 (default):** issue a diagnostic handoff prompt (HP) and wind down.
 * **Option 2:** continue edits only on explicit instruction; a new PR is required.

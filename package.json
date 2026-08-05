@@ -14,6 +14,7 @@
     "pages-shots": "node tools/build/pages-shots.mjs",
     "pages-index": "node tools/build/pages-index.mjs",
     "docs-readme": "node tools/build/docs-readme.mjs",
+    "docs-reach": "node tools/build/docs-reach.mjs",
     "pages": "npm run pages-shots && npm run pages-index",
     "wsl-fetch": "node pages/wsl-sync/fetch-data.mjs",
     "tracker-board": "python3 .claude/skills/tasks/build-board.py tracker/tasks tracker/board.md",
@@ -23,6 +24,7 @@
     "test:word-select": "node tools/test/word-select-touch.mjs",
     "test:render-copy": "node tools/test/render-copy.mjs",
     "test:subject-actions": "node tools/test/subject-actions.mjs",
+    "test:traffic-states": "node tools/test/traffic-states.mjs",
     "test:toss-multiparam": "node tools/test/toss-multiparam.mjs",
     "test:data-view-links": "node tools/test/data-view-links.mjs"
   },

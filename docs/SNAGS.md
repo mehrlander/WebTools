@@ -112,3 +112,14 @@ skill before writing a page, do not wait for it to trigger.** The tell is
 cheap, since `stats`, `stat-value`, or a tile grid in a diff is a defect by
 definition. *(seen: 2026-08-04)*
 → [HTML-STYLE.md](HTML-STYLE.md)
+
+**Trusted the network allowlist table instead of re-probing it.** The
+capabilities doc's ❌ rows (the JS CDNs, the open web) were taken as current
+while writing a claim that depended on them, and they had gone stale: the shell
+now reaches every host tested, with no `x-deny-reason` on any of them. The
+inverse also went unnoticed, and it is the half that matters for rendering: the
+headless browser reaches *nothing*, including hosts the table marks ✅. A dated
+capability table is a measurement, not a standing fact, so **re-probe before
+resting an argument on a row, and probe both clients**, since curl and Chromium
+answer differently here. *(seen: 2026-08-05)*
+→ [environment/capabilities.md](environment/capabilities.md)

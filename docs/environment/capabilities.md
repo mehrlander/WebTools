@@ -98,7 +98,33 @@ Heavier stacks (torch, sentence-transformers) untested.
 
 ## Network access: a curated allowlist, not open egress
 
-*(verified 2026-05-30)*
+*(verified 2026-05-30; **the allowlist half is superseded, see the 2026-08-05
+re-measurement immediately below**)*
+
+> [!WARNING]
+> **Stale 2026-08-05 (the host allowlist, not the two-gates structure):** the
+> general proxy no longer denies the hosts marked ❌ in the table below. Ten
+> hosts were re-probed with `curl -D -`, including every ❌ row: all answered
+> with the origin's own status and **none** carried `x-deny-reason`.
+> `cdn.jsdelivr.net`, `unpkg.com`, `esm.sh`, `cdnjs.cloudflare.com`,
+> `example.com`, `developer.mozilla.org`, `en.wikipedia.org` and
+> `docs.anthropic.com` are all reachable from the shell now. Treat the ❌
+> column as a record of 2026-05-30, not as current.
+>
+> **The headless browser is the opposite case, and it is the one that governs
+> rendering.** Chromium reaches **no** external host, including the ✅ ones:
+> `raw.githubusercontent.com`, `api.github.com` and `cdn.jsdelivr.net` all fail
+> with `net::ERR_CONNECTION_RESET`, whether the proxy is passed through
+> Playwright's `proxy:` option or `--proxy-server`, with `ignoreHTTPSErrors`
+> and `--ignore-certificate-errors` set. The cause was not chased.
+>
+> So the practical rule below is **unchanged but load-bearing for a new
+> reason**: a repo page still cannot be booted as-is in the headless browser,
+> and not because a CDN is denied. The browser has no egress at all, so
+> [tools/render/cdn.mjs](../../tools/render/cdn.mjs)'s interception is what
+> every render depends on, for every host, not only the CDN ones. What *did*
+> change is the shell: a session can now `curl` an arbitrary URL, which this
+> section previously said it could not.
 
 Outbound traffic goes through a TLS-inspecting proxy that enforces a host
 allowlist. **The tell for a true denial is the `x-deny-reason: host_not_allowed`
@@ -405,9 +431,28 @@ name (`tool_name=mcp__mehrlander__update_pull_request`). One grep, and it is
 worth making the first triage step rather than the last.
 
 **The rules.** On `-32003`, call the built-in equivalent rather than whatever
-discovery returned first. A capability that exists *only* on a connector has no
-in-session workaround, which for `add_repo` means attaching repositories when
-the session is created.
+discovery returned first: reload it explicitly with ToolSearch
+(`select:mcp__github__<tool>`) instead of reissuing whatever is already in hand,
+since discovery is what routed you wrong in the first place. Do not re-approve
+on the failing server; approving does not clear the already-errored call, which
+is what makes the approval flow itself look broken. A capability that exists
+*only* on a connector has no in-session workaround, which for `add_repo` means
+attaching repositories when the session is created.
+
+**Generalize it past GitHub.** Whenever a provider has more than one server
+connected, a permission surprise on one of them is more often a routing problem
+than a permission wall. Check for a sibling server exposing the same tool before
+treating the wall as real. This is the durable rule; the specific reshuffle that
+spawns a UUID-named twin is incidental and will look different next time.
+
+**Allowlisting is not the fix, and the reason matters.** Permission entries key
+on the exact server name, and a connector wears a per-connection UUID, so next
+session's name differs and nothing can be pinned. That is separate from the
+upstream finding below, which is that allowlisting fails even when you can name
+the server. Two independent reasons, same conclusion. This section supersedes
+[github/mcp-server-routing.md](../github/mcp-server-routing.md), a 2026-07-15
+observation kept as a record: it reached the same operative move from a
+different and less well-evidenced account of the cause.
 
 Upstream reports the same failure for Gmail, Calendar, and Microsoft 365
 connectors in scheduled runs, and calls it a regression:

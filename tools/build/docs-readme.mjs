@@ -43,8 +43,16 @@ function render(reg) {
   lines.push('alongside the shared-claims table (statements that live in more than one');
   lines.push('place, each with its one authoritative carrier and the check that holds each');
   lines.push('copy, or the honest absence of one). A **record** preserves a moment and is');
-  lines.push('corrected by markers, never rewritten; everything else is living and must');
-  lines.push('stay correct.');
+  lines.push('corrected by markers, never rewritten; a **measured** doc carries dated');
+  lines.push('observations and is corrected by re-probing; everything else is living and');
+  lines.push('must stay correct.');
+  lines.push('');
+  const reach = {};
+  for (const d of reg.documents) reach[d.reach] = (reach[d.reach] || 0) + 1;
+  lines.push('**Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):');
+  lines.push(`${reach.injected || 0} arrive in every session's context, ${reach.project || 0} are named by CLAUDE.md,`);
+  lines.push(`${reach.skill || 0} by a skill, ${reach.app || 0} by a page or component. The remaining ${reach.orphan || 0} are`);
+  lines.push('marked *(orphan)* below: nothing points at them except this index.');
   lines.push('');
   for (const [dir, docs] of groups(reg.documents)) {
     lines.push(dir === '.' ? '## docs/' : `## docs/${dir}/`);
@@ -52,7 +60,10 @@ function render(reg) {
     for (const d of docs) {
       const rel = d.path.replace(/^docs\//, '');
       const name = rel.slice(rel.lastIndexOf('/') + 1);
-      const tag = d.status === 'record' ? ' *(record)*' : '';
+      const marks = [];
+      if (d.status !== 'living') marks.push(d.status);
+      if (d.reach === 'orphan') marks.push('orphan');
+      const tag = marks.length ? ` *(${marks.join(', ')})*` : '';
       lines.push(`- [\`${name}\`](${rel})${tag} — ${d.subject}`);
     }
     lines.push('');
