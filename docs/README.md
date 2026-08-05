@@ -12,13 +12,10 @@ corrected by markers, never rewritten; a **measured** doc carries dated
 observations and is corrected by re-probing; everything else is living and
 must stay correct.
 
-**Reach**, derived from the repo by `tools/build/docs-reach.mjs` and gated
-against the registry, counts how a reader gets to each file:
+**Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
 2 arrive in every session's context, 12 are named by CLAUDE.md,
-8 are named by a skill, 3 are named by a page or component,
-and 17 are marked *(orphan)*
-below. An orphan is not dead: it is reachable from this index, and this
-index is the only thing that reaches it.
+8 by a skill, 3 by a page or component. The remaining 17 are
+marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
 
