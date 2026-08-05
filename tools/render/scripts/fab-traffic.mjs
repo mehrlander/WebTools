@@ -25,6 +25,8 @@ const CRAWL = [
   ['https://api.github.com/repos/mehrlander/web-tools/branches?per_page=100', 18422, 260],
   ['https://api.github.com/repos/mehrlander/web-tools/pulls?state=open', 26105, 310],
   ['https://api.github.com/graphql', 41288, 420],
+  // A write, so the shot shows the column that exists to make one visible.
+  ['https://api.github.com/repos/mehrlander/web-tools-private/contents/state/activity.json', 812, 240, 'PUT'],
 ];
 
 const STATE = process.env.STATE || 'bands';
@@ -42,14 +44,15 @@ export default async (page) => {
       // totals included: the tab reads the totals rather than the rows, since
       // the rows trim and the totals do not.
       const now = Date.now();
-      window.__traffic = crawl.map(([url, wire, ms], i) => ({
-        url, wire, ms, status: 200, error: null, t: now - (crawl.length - i) * 400,
+      window.__traffic = crawl.map(([url, wire, ms, method], i) => ({
+        url, wire, ms, method: method || 'GET', status: 200, error: null, t: now - (crawl.length - i) * 400,
       }));
       window.__trafficTotals = {
         calls: crawl.length,
         wire: crawl.reduce((s, c) => s + (c[1] || 0), 0),
         unknown: crawl.filter(c => c[1] === null).length,
         errors: 0,
+        writes: crawl.filter(c => c[3] && c[3] !== 'GET').length,
         ms: crawl.reduce((s, c) => s + c[2], 0),
         trimmed: 0,
       };

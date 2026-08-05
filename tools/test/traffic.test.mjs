@@ -156,6 +156,30 @@ test('API groups roll by shape, and a missing content-length stays unknown', () 
   assert.equal(tot.slowest, 300);
 });
 
+test('a write is counted apart from a read, at both levels', () => {
+  const entries = [
+    { url: 'https://api.github.com/repos/o/r/contents/a.js', method: 'GET', ms: 10, status: 200, wire: 100 },
+    { url: 'https://api.github.com/repos/o/r/contents/a.js', method: 'PUT', ms: 40, status: 200, wire: 300 },
+    { url: 'https://api.github.com/repos/o/r/contents/b.js', method: 'DELETE', ms: 30, status: 200, wire: 90 },
+    { url: 'https://api.github.com/repos/o/r/commits', method: 'GET', ms: 10, status: 200, wire: 100 },
+  ];
+  assert.equal(T.apiTotals(entries).writes, 2);
+  const g = Object.fromEntries(T.apiGroups(entries).map(x => [x.group, x]));
+  // The point of the whole column: the write and the read share an endpoint
+  // shape, so nothing but the method separates them.
+  assert.equal(g.contents.calls, 3);
+  assert.equal(g.contents.writes, 2);
+  assert.equal(g.commits.writes, 0);
+
+  // Case is not the caller's problem, and an absent method reads as a write:
+  // the ledger reports what it saw, and unknown is nearer to "look at this"
+  // than to "routine read".
+  assert.equal(T.isWrite({ method: 'put' }), true);
+  assert.equal(T.isWrite({ method: 'get' }), false);
+  assert.equal(T.isWrite({ method: 'HEAD' }), false);
+  assert.equal(T.isWrite({}), false, 'no method at all defaults to GET, which is what fetch does');
+});
+
 test('the readout line carries three facts, and omits what it does not know', () => {
   const b = T.boot([netRow('https://x/a.js', 680000, 3000000)], null);
   assert.equal(T.summary({ boot: b, api: { calls: 12 }, rate: 4952 }), '664 KB · 12 calls · 5k left');
@@ -226,6 +250,16 @@ test('the fetch wrapper records a call without touching the body', async () => {
   assert.equal(win.__trafficTotals.calls, 1);
   assert.equal(win.__trafficTotals.wire, 4096);
   assert.equal(win.__trafficRate, 4952, 'the rate limit is picked up in passing');
+});
+
+test('the wrapper records the method, from init or from a Request', async () => {
+  const { win } = await bootWithStub({ fetchImpl: async () => ({ status: 200, headers: { get: () => null } }) });
+  await win.fetch('https://api.github.com/repos/o/r/contents/a.js');
+  await win.fetch('https://api.github.com/repos/o/r/contents/a.js', { method: 'put' });
+  await win.fetch({ url: 'https://api.github.com/repos/o/r/contents/b.js', method: 'DELETE' });
+  assert.deepEqual(win.__traffic.map(e => e.method), ['GET', 'PUT', 'DELETE']);
+  assert.equal(win.__trafficTotals.writes, 2, 'reads are not writes and the count says so');
+  assert.equal(win.__trafficTotals.calls, 3);
 });
 
 test('a response with no content-length is unknown, not zero', async () => {
