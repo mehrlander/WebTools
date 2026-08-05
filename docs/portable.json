@@ -140,7 +140,7 @@
       "kind": "doc",
       "path": "docs/SURFACING.md",
       "title": "Surfacing",
-      "role": "the surfacing system: primitives (chat-handoff mechanics) plus the guide-PR / merge-guide course; loaded with CONVENTIONS.md as one set",
+      "role": "the surfacing system: primitives (chat-handoff mechanics) plus the guide-PR course; loaded with CONVENTIONS.md as one set",
       "use": "live"
     },
     {
@@ -175,7 +175,7 @@
       "kind": "doc",
       "path": "docs/artifacts.md",
       "title": "Artifacts",
-      "role": "the bake-and-publish pipeline and the \ud83d\udce6 marker's place in the link-choice matrix",
+      "role": "the bake-and-publish pipeline and the 📦 marker's place in the link-choice matrix",
       "use": "on-demand"
     },
     {
@@ -247,13 +247,6 @@
       "title": "in-flight.py",
       "role": "classify a branch estate into live / merged / unrelated and reconcile tracker claims against it; ships inside the plugin",
       "use": "plugin"
-    },
-    {
-      "kind": "script",
-      "path": "scripts/build-merge-guide.py",
-      "title": "build-merge-guide.py",
-      "role": "generate docs/MERGE-GUIDE.md from merged PR bodies, non-destructively",
-      "use": "on-demand"
     },
     {
       "kind": "script",

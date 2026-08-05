@@ -88,3 +88,22 @@ the v1 deliverable. Keep it non-destructive (preserve hand-added entries), like
 **Deliverable:** a short spike report answering the above, plus either a
 formalized `SNAGS.md` + PR-body `Snags:` section + the generator extended to emit
 both files, or a decision to drop it.
+
+- 2026-08-05: **Correction, from the merge-guide retirement (PR #358).** The plan
+  above builds the snags projector *into* `scripts/build-merge-guide.py`, reusing
+  its `fetch_prs`/`merged`/`extract` front end and adding a second back end. That
+  script no longer exists: the merge guide and its generator were retired, because
+  a committed projection of merged PRs duplicates what the pulls endpoint already
+  answers live. Nothing else in the spike is invalidated, and one part of it gets
+  simpler. The "one front end, two back ends" framing existed to justify sharing a
+  walk with the merge guide; with no merge-guide back end, a snags projector is
+  just its own script, and the three divergences the plan carefully reconciled
+  (key, trigger, name) stop being tensions to resolve. The cross-link half of the
+  argument goes too, since there are no merge-guide entries to link a snag to.
+
+  Worth weighing before building it at all: the reason the merge guide was retired
+  applies here in part. A projector that only restates PR bodies would be the same
+  mistake. What would justify it is the part `SNAGS.md` holds that no API does,
+  which is the accumulation across PRs, the recurrence count, and the `→` to the
+  doc carrying the fix. That is authored judgment, not a live read, and it is the
+  test any design here should have to pass.

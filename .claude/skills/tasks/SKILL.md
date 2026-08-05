@@ -137,6 +137,49 @@ Status is one of `backlog | in-progress | blocked | done`. Any other scalar
 (`priority: high`, `size: L`) is an open tag: preserved, shown, not acted on.
 Full schema in `TRACKER.md`.
 
+## File a runnable task
+
+A task whose method is already settled carries `action: <skill-name>` and is
+written thin: no argument, no history, because the reasoning lives in the skill.
+Add `runner: <machine>` when the session has to happen somewhere particular.
+
+```markdown
+---
+id: <minted id>
+title: <short imperative>
+status: backlog
+opened: <YYYY-MM-DD>
+action: <skill-name>
+runner: <machine, when it is pinned>
+---
+# <title>
+
+Run `<action>` for <the subject, in one line>.
+
+## Parameters
+- <key>: <value, or the rule that derives it>
+
+## Done when
+<the observable condition>
+```
+
+Two rules decide whether this shape applies at all. **If the procedure is not a
+skill yet, writing the skill is part of filing the task**: the catalog is the
+skill set and nothing else, so an `action` naming a procedure that exists only
+in prose points at nothing. And **work needing no session belongs in a hook, a
+test, or CI**, not here. Prefer a parameter that derives ("every month in X with
+no file in Y") over a literal list, so the task stays true as the work lands.
+Shape and reasoning in `TRACKER.md`.
+
+**Finding them.** A machine picking up its queue holds the clones and greps:
+
+```
+grep -rl 'runner: <machine>' */tracker/tasks/ */*/tracker/tasks/
+```
+
+Both tags ride into `board.json` under `tags`, so anything machine-side can
+select on them without the generator changing.
+
 ## Claim, update, close
 
 **Claim:** set `status: in-progress`, add `session: <your working branch>`, and

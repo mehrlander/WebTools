@@ -36,3 +36,12 @@ stated where the numbers show. Origin: the docs-registry session (PR #350).
 
 ## Progress log
 - 2026-08-04: Filed at the user's request from the docs-registry session; prior art found (Mintlify agent analytics) and the recorder-transcript mechanism confirmed already installed.
+- 2026-08-05: Steps 1 and 3 landed as a side effect of the Sessions tab (`claude/activity-sessions-tab-3j05zm`). What remains is step 2, the Docs tab column.
+
+  **The miner is not a script over transcripts.** It moved into the recorder itself: session records now carry a `files` field (schema 3, `<checkout>/<repo-relative>` → `{read, edit, write}`), read from each tool call's input, and `state/sessions.json` folds it across sessions into `attention: [{path, count, sessions, last}]`. So the aggregate this task wanted already exists, is committed, and refreshes on show-repo's ~3h sessions crawl rather than needing a run. Read it from the registry; do not write a second miner.
+
+  **Count `sessions`, not `count`.** One session editing a file forty times says the session was busy; ten sessions opening it says the file is load-bearing.
+
+  **The caveats are stated, and there are three, not one.** The Sessions pane carries them and the Docs column must too: injected docs read zero (the caveat this task anticipated, and it inverts the ranking on exactly `CONVENTIONS.md` and `SURFACING.md`); a file read through a shell command (`sed`, `cat`, `grep`) leaves no trace, which is a large share of real reading in this estate; and subagent traffic is excluded upstream. Full statement in web-tools-private `sessions/README.md`, "File attention".
+
+  **Coverage starts now.** Only schema-3 records have `files`, so the column reads zero for everything before 2026-08-05 and the display has to distinguish "not captured" from "not read", the way the Sessions pane's per-row files badge does.

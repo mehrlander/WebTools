@@ -60,3 +60,8 @@ Worked example of the alternative in place: PR #303's body.
   Worth keeping: the filing failed the tracker's own test, "never file for work
   the current session could simply do." The tell was there at filing time, since
   the scope section already named all three files.
+
+- 2026-08-05: "The merge-guide builder harvests regions of both forms" no longer
+  holds; that builder was deleted on PR #358. Both delimiter forms are still
+  recognized, by `SURFACING.md` and the `caption` skill, which is what the task
+  was actually about.

@@ -2,7 +2,7 @@
 
 Making a session's work visible, reviewable, and durable when chat is the only output channel. The canonical source is `mehrlander/web-tools` at `docs/SURFACING.md`, loaded with [CONVENTIONS.md](CONVENTIONS.md) by `@`-import or the `web-tools` skill. Local `CLAUDE.md` rules override these defaults. Apply repo- and branch-scoped rules per workstream, and substitute the current repo into URL templates.
 
-The installed set includes the universal **surfacing primitives** and the **surfacing course**, the guide-PR and merge-guide lifecycle that begins when a PR opens. See [PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md).
+The installed set includes the universal **surfacing primitives** and the **surfacing course**, the guide-PR lifecycle that begins when a PR opens. See [PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md).
 
 ## One render path
 
@@ -87,22 +87,14 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
 ## The surfacing course
 
-Once a PR opens, each branch gets a **guide PR** and, after delivery, a generated `docs/MERGE-GUIDE.md` entry. These are two **surfacing moments**, one statement in two places: the guide body is the live authored source; the merge-guide entry is generated from it.
+Once a PR opens, the branch gets a **guide PR**. Its body is the one **surfacing moment**: the live answer to "where did I leave things" while the branch is open, the reviewer's summary at review, and the permanent account of what shipped after merge. One statement, in one place, for the whole life of the work.
 
-Both lead with:
+It leads with:
 
 1. **Outcome + why:** one sentence, no preamble.
 2. **The thing to open:** ⭐ hosted URL, else 🥏 branch toss, else an honest `[new]` source view.
 
-Both then carry the `[new]/[main]/[diff]` file list, `renders on:` lines for shared components, only non-obvious notes, and a diff or compare link.
-
-|  | Guide PR body | Merge guide |
-| --- | --- | --- |
-| **Moment** | Live session through review | At/after merge |
-| **Audience** | Resuming reader, then reviewer | Reader |
-| **Primary target** | Branch | Main |
-| **Unique fields** | Next steps / open threads; Notes / Risk | PR#, date, durable notes |
-| **Location** | GitHub PR | `docs/MERGE-GUIDE.md` |
+It then carries the `[new]/[main]/[diff]` file list, `renders on:` lines for shared components, only non-obvious notes, and a diff or compare link.
 
 ### The guide PR
 
@@ -139,29 +131,20 @@ Keep the body under one screen. **Next steps / open threads** is its heart and m
 
 **The region markers are markdown link labels, not HTML comments.** Both render as nothing on GitHub, but reading a PR body back through the GitHub MCP strips HTML comments and tags, so a sync could not find the region it was meant to rewrite, and a sync that cannot find its region appends a second one or overwrites hand-written prose. Write the link-label form. Recognition still accepts the older `<!-- guide -->` pair, since bodies written before 2026-07-28 carry it and would otherwise orphan. The one constraint the new form brings: a link label is a reference definition, so it must start a line and sit between blank lines, and inside a list item or a blockquote it can render literally. Measured, with the probe and the controls, in [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
 
-### Merge guide
+### Shipped history
 
-`docs/MERGE-GUIDE.md` is a durable newest-first log generated from merged PR guide regions by a repo-owned script; web-tools supplies [`scripts/build-merge-guide.py`](https://github.com/mehrlander/web-tools/blob/main/scripts/build-merge-guide.py). There is no hand-written merge-guide step. Generation is non-destructive and keyed by PR number: add uncovered PRs, preserve existing entries, and use `--refresh` to regenerate covered ones. Run where API access exists and commit the output.
+**Delivery history is the repository's merged pull requests, read where they live. Do not commit a projection of them.**
 
-The merge guide keys on the **PR**, a unit of delivery; [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md) keys on the **task**, a unit of intent. Choose one primary historical axis to avoid competing logs.
+The guide PR body is already the durable account: it survives the branch, it is addressable, and GitHub renders it beside the diff it describes. A repo therefore owes shipped history no artifact of its own. Where a live reader helps, build one that reads the pulls endpoint; a browser or an agent session can, and the answer is current by construction.
 
-An entry mirrors the guide region, puts the result and primary file first, preserves `renders on:`, rewrites branch URLs to main, and drops branch-only next steps. Main can show that a represented PR is included, but absence is not proof of non-merge; git and GitHub remain authoritative.
+web-tools kept a `docs/MERGE-GUIDE.md` from 2026-05-29 to 2026-08-05, generated by a script that copied each merged PR's guide region into the repo so the account would survive offline. Both the file and the generator are retired. The reasoning generalizes, which is why it is recorded here rather than in one repo's notes:
 
-```markdown
-## <date> <one-line title> (PR #<n>)
+* **The premise expired.** A local copy earned its cost when the repo was on disk and GitHub was far away. Once a repo can read the API live, through a browser or the MCP, the copy caches something already at hand. The premise was removed by the estate's own later work, and nobody went back to re-ask the question.
+* **A copy of curated prose could not be complete.** Extraction yields nothing for a terse body, so that PR is dropped without a trace. Completeness would have meant rewriting old PR bodies.
+* **An index of the API is not worth committing either.** Date, number, title, and link are exactly what the pulls endpoint returns, so a committed index adds nothing but a refresh obligation and a way to be out of date.
+* **It competed with the tracker.** A merge guide keys on the **PR**, a unit of delivery; [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md) keys on the **task**, a unit of intent. Running both is two histories to keep. Pick one primary axis, and the tracker is the one that holds something the API does not: why the work was undertaken.
 
-<One sentence: the primary outcome.>
-
-⭐ **Result:** [<primary artifact>](<canonical main URL; branch preview while unmerged>)
-
-**Changed:**
-- <path> ([new](…), [main](…)/[diff](…))
-  renders on: [<consumer>](…)   (shared component only)
-
-**Notes:** <only the non-obvious: why, what's unfinished, follow-ups>
-
-[Session diff](<compare link>)
-```
+The general rule this is a case of: **do not commit what a live read already answers.** It applies past shipped history, to branch state, CI status, and review state alike.
 
 ### Wrap-up & marking ready
 
@@ -169,7 +152,7 @@ Offer: *"want me to wrap up (per-session refreshes, then mark the PR ready)?"* A
 
 1. **Preflight:** run `git fetch origin main && git merge-tree --write-tree origin/main HEAD` to test-merge without touching the tree. Resolve any conflicts and report the result.
 2. Execute per-session refreshes.
-3. Finalize the guide: make Notes / Risk reviewer-current, and settle the next steps. A next step the branch will not reach either rides forward in the guide body or becomes a task, which goes through `/tasks` and its filing rules rather than being written straight to `tracker/`. Do not hand-write a merge-guide entry.
+3. Finalize the guide: make Notes / Risk reviewer-current, and settle the next steps. A next step the branch will not reach either rides forward in the guide body or becomes a task, which goes through `/tasks` and its filing rules rather than being written straight to `tracker/`. The body is the shipped account, so leave it fit to read after merge.
 4. Mark the PR ready.
 
 **Last look before the container goes.** Preserve any **precious work product** that would cost real tokens to reproduce and exists only in session context, such as a fan-out's findings, a spike's conclusion, or an uncommitted diagnosis. Route it to the guide or a PR comment, both of which are durable and neither of which adds a backlog item; a tracker task is for work that remains, not for a place to park findings (see `/tasks`). Let cheaply reconstructable context go. Then check that new files landed where they belong and name any placement that sits uneasily.
