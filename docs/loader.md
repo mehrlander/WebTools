@@ -170,6 +170,10 @@ itself; a page that instantiates `GH` by hand gets only what it loads.
 | `__consoleLogs` (+ `consolelog` event) | `gh-api.js` | flattened console capture; the fallback renderers use when `kits/console.js` is absent |
 | `__loadedScripts` (+ `loadedscripts` event) | `gh-boot.js` | the load registry: path, timing, status, `by:` attribution; the FAB's Scripts tab reads it |
 | `__reads` (+ `reads` event) | `gh-boot.js` | newest `read()` value per path; the export kit's input |
+| `__traffic`, `__trafficTotals` (+ `traffic` event, coalesced to 250ms) | `gh-boot.js` | the request ledger: one row per `fetch`, with `wire` from `content-length` (`null` when the response declared none). The rows are capped at 400 and the totals are not, so a long crawl trims its history without deflating its count |
+| `__trafficRate`, `__trafficRateAt`, `__trafficRateReset` | `gh-boot.js` | newest `x-ratelimit-remaining` seen on any response, when it was seen, and when the window resets |
+| `__ghFiles` (+ `ghfiles` event) | `gh-boot.js` | per-path `{ bytes, inlined, sha }` from a `get()` wrapper. `inlined` is true when the pre-build served the file from its cache (sha `build:<ref>`), which is how the FAB's Scripts rows tell a load that cost nothing from one that cost a fetch |
+| `Traffic` | `traffic.js` | the pure read over the two above plus Resource Timing: classification, roll-ups, formatting, and the three-state size vocabulary (network / cached / undisclosed) |
 | `ghAuth` | `gh-auth.js` | `resolve` / `save` / `clear` / `prompt` / `bootDone` |
 | `console.history` / `.subscribe` / `.filter`, `consoleKit` | `kits/console.js` | structured console retention over the base wrapper |
 | `html`, the DOM helpers (`ea`, `el`, …), `copy()` | `vanilla-bundle.js` | ambient string/DOM utilities |
@@ -182,6 +186,29 @@ itself; a page that instantiates `GH` by hand gets only what it loads.
 
 A new global with no row here is a doc bug; add the row in the same
 change that adds the global.
+
+#### The one thing the chain patches: `window.fetch`
+
+`gh-boot.js` replaces `window.fetch` with a wrapper that records the URL,
+the status, the elapsed time, and `content-length`. It is worth stating
+plainly because a global patch is the kind of thing that should never be
+a surprise, and because the boundaries are what make it safe to keep:
+
+- **It never touches the body.** No `clone()`, no `text()`. The same
+  `Response` object comes back, with its stream unread, so nothing
+  downstream can be starved by the instrument. The cost is that only the
+  compressed length is known, which is the figure the tab wants anyway.
+- **It never swallows an error.** A rejected fetch is recorded and
+  rethrown unchanged.
+- **It installs once**, guarded by `__trafficWrapped`, so a re-boot or a
+  second bundle on the page does not stack wrappers.
+- **It sees only what comes after it.** The document, the CDN tags and
+  `gh-api.js` itself are already in flight when the wrapper installs;
+  those are Resource Timing's job, which is why the FAB's Traffic tab
+  reads both and keeps them in separate bands rather than one total.
+
+A page that wraps `fetch` itself should do so before the bundle import or
+accept that its wrapper sits outside this one.
 
 ## The load mechanism
 
