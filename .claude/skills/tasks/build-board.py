@@ -27,8 +27,15 @@ task_href_base = os.path.relpath(tasks_dir, out.parent).replace(os.sep, "/")
 # Recognized keys act on the board; everything else is an open tag, preserved
 # and never rendered (TRACKER.md, the two-layer rule). Listed here so board.json
 # can keep the same split rather than flattening it away.
-RECOGNIZED = {"id", "title", "status", "project", "track",
-              "opened", "closed", "session", "size", "awaiting"}
+# A TUPLE, not a set, and the order is the contract's order. `record()` builds
+# each JSON row by iterating this, and set iteration order for strings depends
+# on PYTHONHASHSEED, which Python randomizes per process. As a set it made
+# board.json's key order vary run to run on identical input, so every session
+# that regenerated a board committed pure reordering churn and the
+# byte-identical invariant below was false. Membership tests still read the
+# same; only the ordering is now fixed.
+RECOGNIZED = ("id", "title", "status", "project", "track",
+              "opened", "closed", "session", "size", "awaiting")
 
 LOG_DATE = re.compile(r"^\s*[-*]\s*\**(\d{4}-\d{2}-\d{2})", re.M)
 
