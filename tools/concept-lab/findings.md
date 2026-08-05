@@ -635,6 +635,13 @@ what it discusses. Worth stating plainly wherever the contrast is shown.
 
 ## 2026-08-04, gazetteer: the tables close the gap, at a cost in recall
 
+> [!WARNING]
+> **Wrong 2026-08-05 → the 2026-08-05 entry at the end of this file:** this
+> section's central claim is not merely aged, it is unsound. "Precision on the
+> confirmed set" measures nothing, and the framing of confirmation as the
+> tables closing the recognizer's gap is backwards. Kept as written, because a
+> dated record of what was believed is the point of this log.
+
 `gazetteer.py` builds a lookup from the tables the estate already curates (OFM
 agency and fund registries, spend-wa's vendor crosswalk) plus a 34-entry hand
 acronym bridge, 1,742 folded keys. Applied to the existing profile as pure
@@ -998,3 +1005,38 @@ committed, the shards are gitignored and rebuild in six minutes, and the
 committed aggregate is distilled to 1.1 MB: per chapter, its bill count,
 citation count, and ten heaviest citers. That answers the question the estate
 actually asks without carrying the bulk.
+
+## 2026-08-05, the confirmed set was never a confirmation
+
+Retracting the gazetteer result above, and removing the page view built on it.
+
+**The argument, and it is short.** A name entered the confirmed set when the
+recognizer tagged it `ORG` and a curated table also held it. Every member is
+therefore a table key that appears in the prose. Scanning the text for table
+keys with no model involved would return all of them, and more besides. The
+recognizer's only effect on that set is to remove table matches it happened to
+miss or mistype. The confirmed set is a strict subset of a plain lookup.
+
+So it was never the tables grading the model. It was a dictionary lookup with
+a handicap attached, presented in the vocabulary of a quality tier.
+
+**The number was circular in the same way.** Both figures the set carried, the
+97.5% above and the later "0 type errors in 24 judged", sampled from a set
+constructed by matching an agency table and then asked whether the members were
+agencies. They could not have come out otherwise. They are withdrawn, not
+restated with a caveat, and `build-entity-index.py` now emits the retraction in
+place of the figure so a reader of an older index meets it.
+
+**What that leaves.** The extraction stands on its own: `ORG` at 19%
+stratified, the head no cleaner than the tail, five labels unjudged and saying
+so. That is a negative result and it is the honest one. Nothing replaces the
+removed view. The lookup may still be worth building; it would run over the
+prose directly, have higher recall than this set did, and be a different
+question rather than a better answer to the same one.
+
+**The general lesson, which is the reason to keep this entry.** The estate
+consistently knew more than the model did, and every real gain this line of
+work produced came from consulting something already curated: the OFM tables,
+spend-wa's alias column, the bill XML's own markup, the content registry, the
+house style doc. The error was not in reaching for the curated thing. It was
+in reporting the curated thing as though the model had earned it.
