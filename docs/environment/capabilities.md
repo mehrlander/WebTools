@@ -98,7 +98,33 @@ Heavier stacks (torch, sentence-transformers) untested.
 
 ## Network access: a curated allowlist, not open egress
 
-*(verified 2026-05-30)*
+*(verified 2026-05-30; **the allowlist half is superseded, see the 2026-08-05
+re-measurement immediately below**)*
+
+> [!WARNING]
+> **Stale 2026-08-05 (the host allowlist, not the two-gates structure):** the
+> general proxy no longer denies the hosts marked ❌ in the table below. Ten
+> hosts were re-probed with `curl -D -`, including every ❌ row: all answered
+> with the origin's own status and **none** carried `x-deny-reason`.
+> `cdn.jsdelivr.net`, `unpkg.com`, `esm.sh`, `cdnjs.cloudflare.com`,
+> `example.com`, `developer.mozilla.org`, `en.wikipedia.org` and
+> `docs.anthropic.com` are all reachable from the shell now. Treat the ❌
+> column as a record of 2026-05-30, not as current.
+>
+> **The headless browser is the opposite case, and it is the one that governs
+> rendering.** Chromium reaches **no** external host, including the ✅ ones:
+> `raw.githubusercontent.com`, `api.github.com` and `cdn.jsdelivr.net` all fail
+> with `net::ERR_CONNECTION_RESET`, whether the proxy is passed through
+> Playwright's `proxy:` option or `--proxy-server`, with `ignoreHTTPSErrors`
+> and `--ignore-certificate-errors` set. The cause was not chased.
+>
+> So the practical rule below is **unchanged but load-bearing for a new
+> reason**: a repo page still cannot be booted as-is in the headless browser,
+> and not because a CDN is denied. The browser has no egress at all, so
+> [tools/render/cdn.mjs](../../tools/render/cdn.mjs)'s interception is what
+> every render depends on, for every host, not only the CDN ones. What *did*
+> change is the shell: a session can now `curl` an arbitrary URL, which this
+> section previously said it could not.
 
 Outbound traffic goes through a TLS-inspecting proxy that enforces a host
 allowlist. **The tell for a true denial is the `x-deny-reason: host_not_allowed`

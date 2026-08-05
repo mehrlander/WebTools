@@ -162,6 +162,13 @@ test('the readout line carries three facts, and omits what it does not know', ()
   assert.equal(T.summary({ boot: b, api: { calls: 1 }, rate: null }), '664 KB · 1 call',
     'no rate header seen yet means no rate claim');
   assert.equal(T.summary({ boot: b, api: { calls: 0 }, rate: null }), '664 KB');
+
+  // Every row withheld its size: there is no weight to report, and "0 B" would
+  // be the most confident wrong number the strip could print.
+  const blind = T.boot([opaqueRow('https://a/x.js'), opaqueRow('https://b/y.js')], null);
+  assert.equal(blind.wire, 0);
+  assert.equal(blind.undisclosed, blind.count);
+  assert.equal(T.summary({ boot: blind, api: { calls: 3 }, rate: null }), 'size undisclosed · 3 calls');
 });
 
 test('storageRows counts UTF-16 bytes for keys and values, biggest first', () => {
