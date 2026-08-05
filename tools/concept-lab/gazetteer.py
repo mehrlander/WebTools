@@ -111,6 +111,33 @@ if __name__ == "__main__":
 
 MARKUP = re.compile(r"[`|~>#*\[\]{}\\•]")
 ARTICLE = re.compile(r"^(?:the|a|an) ")
+
+# The model's span boundary is wrong often enough to matter: 34 of 775
+# confirmed names carried a trailing possessive ("Verizon Wireless'"), a
+# dangling conjunction ("TRS &"), or an unbalanced paren ("Department of
+# Social and Health Services (Economic Services Administration"). Masking
+# cannot help, since nothing structural is leaking; the recognizer simply
+# stopped in the wrong place.
+TRAIL = re.compile(r"(?:['’]s?|[,;:&/+\-\u2013\u2014])\s*$")
+
+
+def trim_span(name: str) -> str:
+    """Trim a wrong span boundary back to the name, or return it unchanged.
+
+    Conservative on purpose: it drops trailing punctuation and refuses a name
+    whose brackets do not balance, but it never reaches inside the string. An
+    unbalanced name returns empty, which `confirm` reads as no match, because
+    a truncated organisation is not a name the prose contained.
+    """
+    n = name.strip()
+    for _ in range(3):                       # "Verizon Wireless's," needs two
+        trimmed = TRAIL.sub("", n).strip()
+        if trimmed == n:
+            break
+        n = trimmed
+    if n.count("(") != n.count(")") or n.count("[") != n.count("]"):
+        return ""
+    return n
 AGENCYISH = {"agency", "agency-acronym", "vendor"}
 
 
@@ -127,6 +154,9 @@ def confirm(name: str, gaz: dict, want=AGENCYISH):
                  cannot confirm an organization.
     """
     if MARKUP.search(name):
+        return None
+    name = trim_span(name)
+    if not name:
         return None
     # Statutory prose names agencies with a leading article and in lower case
     # ("the department of health"), which the tables never carry. Trying the

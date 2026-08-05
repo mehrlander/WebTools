@@ -917,3 +917,46 @@ Authority` (154). It also sharpens the unresolved-entity point: DRS, Department
 of Retirement Systems, the Department of Retirement Systems, and The Department
 of Retirement Systems are now four confirmed names of one entity, still
 deliberately unmerged.
+
+## 2026-08-05, closing the loose threads
+
+Three of the four open items from the previous section, plus a correction to
+something I proposed in it.
+
+**Span boundaries: fixed and measured.** 34 of 775 confirmed names carried a
+wrong span: a trailing possessive (`Verizon Wireless'`), a dangling conjunction
+(`TRS &`), or an unbalanced paren (`Department of Social and Health Services
+(Economic Services Administration`). `trim_span()` drops trailing punctuation
+and rejects unbalanced brackets, and never reaches inside the string.
+Confirmations rose **775 to 825**, since 50 names that previously failed to
+fold now match. 84 trimmed names keep their raw span in `rawSpan`: a trailing
+possessive is a span error rather than a form the prose used, so the correction
+is recorded rather than applied silently.
+
+**Two more labels adjudicated.** `GPE` **21%** (13 of 63), `LAW` **37%** (21 of
+57), both stratified across the full frequency range. `LAW` is the best non-ORG
+label measured so far, and for a reason: statutory prose genuinely names its
+instruments, so `Title 51 RCW`, `the Climate Commitment Act`, `chapter 265
+Laws of 2017`, and `the Public Records Act` are all real. Its failures are
+software version strings (`daisyUI 5`, `Windows 11`) and document headings.
+`GPE` finds real places (Seattle, Spokane, Okanogan County, Karnataka) under a
+flood of library and format names (JSON, React, Roboto, Meriyah), and
+organizations are routinely mistyped into it (UW, WSU, Bloomberg, NRA). Five
+labels remain unjudged and say so.
+
+**Staleness: detection has an owner, regeneration does not, and I said
+otherwise.** The previous section proposed the activity crawl as the natural
+owner of index regeneration. That is wrong and worth correcting rather than
+quietly dropping: the builder needs spaCy over roughly 4,000 files in seven
+checkouts, about half an hour, which no page load can do and which the checks
+boundary forbids anyway, since checks are questions about data and never code
+that runs.
+
+What the crawl *can* own is detection, so `web-tools-private` now declares a
+`file-age` check on `state/entities.json` at 30 days. It badges the repo card
+and the Needs attention block for one API read. Regeneration stays with a
+session running the builder. That is web-tools' three-owner shape minus the
+hook, and the hook is missing on purpose: no commit should trigger a half-hour
+model run. If it later deserves a real automatic owner the candidate is a cron
+workflow, and the open question is credentials, since six of the seven
+checkouts are private.

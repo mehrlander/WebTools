@@ -34,7 +34,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from gazetteer import build as build_gazetteer, confirm  # noqa: E402
+from gazetteer import build as build_gazetteer, confirm, trim_span  # noqa: E402
 from entityprofile import build_index  # noqa: E402
 
 # Adjudicated figures. Each carries how many names were judged, because a
@@ -45,6 +45,8 @@ PRECISION = {
             "was -0.54 over 14 repo/label pairs.",
     "ORG_head": 0.23, "ORG_stratified": 0.19,
     "PERSON_head": 0.07, "PERSON_stratified": 0.09,
+    "GPE_stratified": 0.21, "GPE_judged": 63,
+    "LAW_stratified": 0.37, "LAW_judged": 57,
     "ORG_confirmed": {
         "typeErrors": 0, "judged": 24,
         "note": "0 type errors in 24 sampled, which bounds the rate loosely rather "
@@ -53,8 +55,18 @@ PRECISION = {
                 "predates the current set. Three of the 24 carry a span-boundary "
                 "defect with the type still correct.",
     },
-    "unjudged": ["GPE", "LAW", "NORP", "EVENT", "PRODUCT", "FAC", "LOC",
-                 "WORK_OF_ART", "all value classes"],
+    "unjudged": ["NORP", "EVENT", "PRODUCT", "FAC", "LOC", "WORK_OF_ART",
+                 "LANGUAGE", "all value classes"],
+    "labelNotes": {
+        "LAW": "The best non-ORG label at 37%, because statutory prose genuinely "
+               "names sections and acts: Title 51 RCW, the Climate Commitment Act, "
+               "chapter 265 Laws of 2017, the Public Records Act. Its failures are "
+               "software version strings (daisyUI 5, Windows 11) and headings.",
+        "GPE": "21%. Real places are there (Seattle, Spokane, Okanogan County, "
+               "Karnataka, Washington State) under a flood of library and format "
+               "names (JSON, React, Roboto, Meriyah). Organizations are routinely "
+               "mistyped into it (UW, WSU, Bloomberg, NRA).",
+    },
 }
 
 METHOD = {
@@ -64,10 +76,13 @@ METHOD = {
               ">200KB skipped; the repo's data/design/content.csv decides membership, "
               "`exclude` drops a file and analysis_use tags every extraction with its "
               "corpus; sampling is per corpus so a large corpus cannot crowd out a small one",
-    "confirmation": "gazetteer.confirm(): no markup in the name, case match on short "
-                    "acronym keys, table class must be agency/acronym/vendor, and a "
-                    "de-articled fold as fallback since statutory prose says 'the "
-                    "department of health' where the tables say 'Department of Health'",
+    "confirmation": "gazetteer.confirm(): span trimmed of trailing possessives and "
+                    "dangling punctuation and rejected if brackets do not balance, no "
+                    "markup in the name, case match on short acronym keys, table class "
+                    "must be agency/acronym/vendor, and a de-articled fold as fallback "
+                    "since statutory prose says 'the department of health' where the "
+                    "tables say 'Department of Health'. A trimmed name keeps its raw "
+                    "span in rawSpan, so the correction is recorded not applied silently",
     "notResolved": "names are never merged; OFM and Office of Financial Management "
                    "stay separate names of a possibly-shared entity",
     "mentionsDropped": "counts only; the working profile carries 3 sampled mentions per name",
@@ -104,8 +119,17 @@ def main() -> int:
         for e in (p["labels"].get("ORG") or {}).get("entries", []):
             cls = confirm(e["name"], gaz)
             if cls:
-                rows.append({"name": e["name"], "mentions": e["mentions"],
-                             "files": e["files"], "gaz_class": cls, "type_agrees": True})
+                # Store the trimmed name, and keep the raw span beside it where
+                # they differ. The four-level model says a name is a surface
+                # form and is never merged, but a trailing possessive is a span
+                # error rather than a form the prose used, so the correction is
+                # recorded rather than applied silently.
+                name = trim_span(e["name"])
+                row = {"name": name, "mentions": e["mentions"],
+                       "files": e["files"], "gaz_class": cls, "type_agrees": True}
+                if name != e["name"]:
+                    row["rawSpan"] = e["name"]
+                rows.append(row)
         confirmed[p["repo"]] = rows
         names += len(rows)
         mentions += sum(r["mentions"] for r in rows)
