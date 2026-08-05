@@ -50,13 +50,13 @@ PRECISION = {
     "PERSON_head": 0.07, "PERSON_stratified": 0.09,
     "GPE_stratified": 0.21, "GPE_judged": 63,
     "LAW_stratified": 0.37, "LAW_judged": 57,
-    "ORG_confirmed": {
-        "typeErrors": 0, "judged": 24,
-        "note": "0 type errors in 24 sampled, which bounds the rate loosely rather "
-                "than establishing 100%. Measured after the masking fix but before "
-                "the de-articled fold, which added 310 confirmations, so the sample "
-                "predates the current set. Three of the 24 carry a span-boundary "
-                "defect with the type still correct.",
+    "ORG_confirmed_WITHDRAWN": {
+        "note": "Withdrawn 2026-08-05, not superseded. This carried '0 type errors in "
+                "24 judged' for the gazetteer-matched ORG names. The measurement was "
+                "circular: the sample was drawn from a set built by matching an agency "
+                "table, then judged on whether its members were agencies. It could not "
+                "have come out otherwise. The key is kept, empty, so a reader of an "
+                "older index meets the retraction rather than the figure.",
     },
     "unjudged": ["NORP", "EVENT", "PRODUCT", "FAC", "LOC", "WORK_OF_ART",
                  "LANGUAGE", "all value classes"],
@@ -143,7 +143,12 @@ def main() -> int:
     precision["coverage"] = {
         "names": names, "ofNames": total_names,
         "mentions": mentions, "ofMentions": total_ment,
-        "caveat": "high precision, low recall: a trustworthy core, not a complete index",
+        "caveat": "Not a precision statistic. This counts the ORG names the recognizer "
+                  "returned that a curated table also holds, which is a lookup, and a "
+                  "lossy one: every member is a table key present in the prose, so a "
+                  "direct scan for table keys would find these and more. The recognizer "
+                  "only subtracts here. Read it as coverage of the tables, not as a "
+                  "quality tier over the extraction.",
     }
 
     # RCW citations per repo, harvested by regex over the same prose. This is
