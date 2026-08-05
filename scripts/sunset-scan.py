@@ -24,6 +24,19 @@ import sys
 
 MARKER = re.compile(r"SUNSET\((\d{4}-\d{2}-\d{2})\)")
 SKIP_DIRS = {".git", "node_modules", "dist", ".venv", "__pycache__"}
+# A report line carries file:line; the snippet is orientation, not the source.
+# One long line should not be able to flood the report.
+SNIPPET_MAX = 120
+
+
+def _snippet(line):
+    s = line.strip()
+    return s if len(s) <= SNIPPET_MAX else s[:SNIPPET_MAX - 1] + "…"
+
+
+def _skipped(rel):
+    """True for a path inside a SKIP_DIRS directory at any depth."""
+    return any(part in SKIP_DIRS for part in rel.replace(os.sep, "/").split("/"))
 
 
 def tracked_files(root):
@@ -33,7 +46,13 @@ def tracked_files(root):
             ["git", "-C", root, "ls-files"],
             capture_output=True, text=True, check=True,
         ).stdout
-        return [os.path.join(root, p) for p in out.splitlines() if p]
+        # SKIP_DIRS applies here too, not only to the walk below. A build
+        # artifact can be tracked (web-tools commits dist/web-tools.js), and
+        # then every marker in its source is reported a second time, from a
+        # bundled line thousands of characters wide. A marker in generated
+        # output is a copy: acting on it means editing the source anyway.
+        return [os.path.join(root, p) for p in out.splitlines()
+                if p and not _skipped(p)]
     except Exception:
         files = []
         for dirpath, dirnames, filenames in os.walk(root):
@@ -56,7 +75,7 @@ def scan(root):
                     except ValueError:
                         continue
                     rel = os.path.relpath(path, root)
-                    yield when, rel, lineno, line.strip()
+                    yield when, rel, lineno, _snippet(line)
         except (OSError, UnicodeError):
             continue
 

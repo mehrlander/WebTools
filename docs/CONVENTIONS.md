@@ -5,7 +5,7 @@ Remote-sandbox conventions for Claude Code web sessions; output is strictly via 
 This hub holds behavior that applies regardless of whether anything is being surfaced. Two companions carry the rest, and load as one set with this file:
 
 - **[SURFACING.md](SURFACING.md)** — the surfacing system: the primitives that make session work visible in chat (no setup), plus the surfacing course (the guide-PR and merge-guide lifecycle, idle until you open a PR). This was the bulk of this file; it now lives on its own.
-- **[PORTABLE.md](PORTABLE.md)** — installation, the plugin, and the full catalog of what travels from the hub to any repo.
+- **[PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md)** — installation, the plugin, and the full catalog of what travels from the hub to any repo.
 
 **Prose style:** zero em dashes. Use colons, commas, semicolons, parentheses, or new sentences.
 
@@ -21,7 +21,7 @@ Local `CLAUDE.md` wins wherever it conflicts with these defaults. Beyond that, n
 
 **A consistency ask is not a fork.** When a treatment is approved in one place and the instruction is to apply it elsewhere ("do the same on X so it's consistent"), apply it to every surface it plausibly covers, show the pixels, and name what was assumed. Do not ask which surface was meant: doing one place too many costs a revert, while asking costs a round trip on work already decided.
 
-A recurring fork (commit this class of file to main without asking, skip the watch offer, take the smaller of two options) becomes a standing decision the moment a doc states it as a default: name it in `CLAUDE.md` or the relevant portable doc (this file, [SURFACING.md](SURFACING.md), [TRACKER.md](TRACKER.md)), and a session that hits it takes the default and notes the assumption rather than raising it fresh. Writing it down is the only lever that works: a `permissions.deny` on the question tool does not help, since asking is a model choice, not a gated call. A repo fielding the same question has a missing standing decision, not a tool to disable.
+A recurring fork (commit this class of file to main without asking, skip the watch offer, take the smaller of two options) becomes a standing decision the moment a doc states it as a default: name it in `CLAUDE.md` or the relevant portable doc (this file, [SURFACING.md](SURFACING.md), [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md)), and a session that hits it takes the default and notes the assumption rather than raising it fresh. Writing it down is the only lever that works: a `permissions.deny` on the question tool does not help, since asking is a model choice, not a gated call. A repo fielding the same question has a missing standing decision, not a tool to disable.
 
 ## Status: frozen, stale, wrong
 
@@ -70,9 +70,9 @@ Adding to a doc is a pass over it, not just an append. New material has to match
 
 When asked to look for improvements, be wary of ideas that address a hypothetical problem. A simple, clear fix is worth making, especially when it is as easy to fix as to bring up. The trap is speculative work that draws attention and goes off course.
 
-**Its most common form is filing.** Turning an observation into a tracker task feels like diligence and costs nothing in the moment, which is how a backlog fills with items nobody will claim and the real work gets buried among them. Where a repo runs a tracker ([TRACKER.md](TRACKER.md)), the filing rules have one owner, the `tasks` skill: file only what a later session would have to rebuild context to rediscover, propose a new task rather than filing it unprompted, and keep one outcome in one task. Load `/tasks` before writing a task file, whatever pass you are in the middle of. A review that ends in a written report has already made its findings durable; it does not also owe the tracker a row per finding.
+**Its most common form is filing.** Turning an observation into a tracker task feels like diligence and costs nothing in the moment, which is how a backlog fills with items nobody will claim and the real work gets buried among them. Where a repo runs a tracker ([TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md)), the filing rules have one owner, the `tasks` skill: file only what a later session would have to rebuild context to rediscover, propose a new task rather than filing it unprompted, and keep one outcome in one task. Load `/tasks` before writing a task file, whatever pass you are in the middle of. A review that ends in a written report has already made its findings durable; it does not also owe the tracker a row per finding.
 
-**Where a friction observation goes instead.** Not the tracker. A small thing you tripped over ("the documented probe does not detect this failure") is an insight, not an outcome anyone will claim, so filing it buries the work that is. Where a repo keeps a snags log (web-tools: [`SNAGS.md`](SNAGS.md)), it goes there: one line naming the symptom and the corrected move, plus a `→` to the doc carrying the full fix. Recurrence is the promotion rule, since one trip is noise and the third earns a task to remove the cause.
+**Where a friction observation goes instead.** Not the tracker. A small thing you tripped over ("the documented probe does not detect this failure") is an insight, not an outcome anyone will claim, so filing it buries the work that is. Where a repo keeps a snags log (web-tools: [`SNAGS.md`](https://github.com/mehrlander/web-tools/blob/main/docs/SNAGS.md)), it goes there: one line naming the symptom and the corrected move, plus a `→` to the doc carrying the full fix. Recurrence is the promotion rule, since one trip is noise and the third earns a task to remove the cause.
 
 ## Adding your own, without clobbering
 

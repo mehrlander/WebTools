@@ -459,6 +459,10 @@ probably be removed. `scripts/sunset-scan.py` finds them: quiet until a marker's
 date passes, then it names the file and line. Wire it warn-only into the commit
 hook (as web-tools does) so a due marker resurfaces at commit time; run
 `npm run sunset` (or `sunset-scan.py --all`) any time to list upcoming ones.
+Generated output is skipped even when it is tracked (`dist/` and the rest of
+`SKIP_DIRS`), since a marker in a build artifact is a copy of the one in its
+source and reporting both doubles the count against a bundled line thousands of
+characters wide.
 
 ### Not portable
 
