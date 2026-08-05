@@ -62,3 +62,11 @@ body.
   been completed even in principle: `extract()` yields nothing for a terse body
   and drops that PR silently, so a `--refresh` run reproduces the file faithfully
   only for PRs whose bodies were written to the convention.
+
+- 2026-08-05: The note above says the file is now the `--index` projection. That
+  held for part of a day. On review the index was itself judged redundant, since
+  date, number, title, and link are the four fields `list_pull_requests` returns,
+  so a committed index is a cache of a live read carrying a refresh obligation.
+  `docs/MERGE-GUIDE.md` and `scripts/build-merge-guide.py` are both deleted on
+  PR #358. The close stands and the reason is now simply that the artifact is
+  gone; see `docs/SURFACING.md`, "Shipped history".

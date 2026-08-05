@@ -57,7 +57,7 @@
    "file": "automate-merge-guide-from-pr-bodies-uaect4.md",
    "href": "tasks/automate-merge-guide-from-pr-bodies-uaect4.md",
    "lastActivity": "2026-08-05",
-   "logEntries": 4
+   "logEntries": 5
   },
   {
    "id": "backfill-guide-regions-merge-guide-bkk4xv",
@@ -71,7 +71,7 @@
    "file": "backfill-guide-regions-merge-guide-bkk4xv.md",
    "href": "tasks/backfill-guide-regions-merge-guide-bkk4xv.md",
    "lastActivity": "2026-08-05",
-   "logEntries": 2,
+   "logEntries": 3,
    "tags": {
     "resolution": "superseded"
    }
@@ -124,8 +124,8 @@
    "session": "claude/web-tools-branch-tracking-n1zawm",
    "file": "branch-review-view-show-repo-rwwmrj.md",
    "href": "tasks/branch-review-view-show-repo-rwwmrj.md",
-   "lastActivity": "2026-07-18",
-   "logEntries": 4,
+   "lastActivity": "2026-08-05",
+   "logEntries": 5,
    "tags": {
     "next": "session refreshes (show-repo thumbnail) at wrap-up, then review via PR #236"
    }
@@ -164,8 +164,8 @@
    "session": "claude/budget-drs-tracker-review-s64mc6",
    "file": "caption-guide-region-delimiter-w9dpyv.md",
    "href": "tasks/caption-guide-region-delimiter-w9dpyv.md",
-   "lastActivity": "2026-07-28",
-   "logEntries": 2
+   "lastActivity": "2026-08-05",
+   "logEntries": 3
   },
   {
    "id": "chat-results-surface-profile-q4m8ra",
@@ -744,8 +744,8 @@
    "session": "claude/pr-219-review-22csrh",
    "file": "spike-snags-log-gobdyq.md",
    "href": "tasks/spike-snags-log-gobdyq.md",
-   "lastActivity": "",
-   "logEntries": 0
+   "lastActivity": "2026-08-05",
+   "logEntries": 1
   },
   {
    "id": "stage-diff-b-select-desync-v554kn",

@@ -54,3 +54,8 @@ to task 0009.
 - 2026-07-18: Closed. Delivered via PR #216 (merged 2026-07-14); status was left in-progress after the merge and is flipped now in a tracker sweep.
 - 2026-08-05: Correction to the line above, which said the live corpus run was "blocked in-sandbox (proxy 403 to api.github.com)". The 403 is real; the block was not. `--from-json` exists precisely so the generator can run against MCP-fetched data, and the GitHub MCP's `list_pull_requests` returns objects of that shape. The claim was carried forward unchallenged for three weeks and 147 PRs, which is what let the file stand still. Logged in `docs/SNAGS.md`. The projection has since changed to `--index`, so the copy this task built is no longer what the file holds; see `backfill-guide-regions-merge-guide-bkk4xv`.
 
+- 2026-08-05: The generator this task delivered was retired on PR #358, along with
+  `docs/MERGE-GUIDE.md`. Not a defect in the build: the premise was that shipped
+  history needs an in-repo copy to be durable, and that stopped being true once the
+  estate could read the pulls endpoint live. Recorded as a closed task rather than
+  reopened, since the work was completed as specified.

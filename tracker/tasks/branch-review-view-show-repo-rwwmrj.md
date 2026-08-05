@@ -118,3 +118,9 @@ renders the rollup, slotting in beside Landing and Atlas via the same
   git rename detection credits moved-and-evolved content (conservative
   direction), API-shaped input drift 0. Flips to done on merge.
 - 2026-07-18: Closed. Delivered via PR #236 (merged 2026-07-17); status was left in-progress after the merge and is flipped now in a tracker sweep.
+
+- 2026-08-05: The open question under "Connection to other work", whether the
+  branch-review view and the merge-guide generator were two faces of one
+  "read the estate from the API" engine, is answered: the generator was retired on
+  PR #358 and the reading side is the survivor. Any future merged-PR view belongs
+  in show-repo beside this one, reading the pulls endpoint, with nothing committed.
