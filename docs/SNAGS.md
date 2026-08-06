@@ -22,6 +22,18 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### fragment-goto-does-not-reload: a render scenario asserts against stale state
+A `--script` scenario re-loaded the page under test at a series of fragments with
+`page.goto(url + '#item=1')`, then read the page's state after each. A goto that
+changes only the fragment is a **same-document** navigation, so nothing
+re-fetched, the page's boot code never re-ran, and every read returned the
+previous case. Three of eight assertions passed against state the scenario had
+not actually produced. The navigation succeeds, so there is no failure to notice.
+Add `page.reload()` after the goto whenever the point is what the page does *on
+load* at that fragment. Generalizes past this harness: any assertion about
+initialization behind a URL that differs only after the `#`. *(seen: 2026-08-06)*
+→ [environment/testing.md](environment/testing.md)
+
 ### word-boundary-before-alternation: a scan reports zero and looks authoritative
 `\b(TOKEN|SECRET|...)` never matches inside `GH_TOKEN` or `AWS_SECRET_ACCESS_KEY`,
 because there is no word boundary between `H` and `T`. A credential scan written
