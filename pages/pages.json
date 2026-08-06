@@ -28,6 +28,14 @@
         "code": "https://github.com/mehrlander/web-tools/blob/main/pages/citations.html"
       },
       {
+        "href": "code-layers-plan.html",
+        "label": "code-layers-plan",
+        "title": "Code layers: current state and migration plan",
+        "note": "",
+        "thumb": "thumbs/code-layers-plan.png",
+        "code": "https://github.com/mehrlander/web-tools/blob/main/pages/code-layers-plan.html"
+      },
+      {
         "href": "compression-helper.html",
         "label": "compression-helper",
         "title": "Compression Helper (v5)",

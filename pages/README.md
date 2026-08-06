@@ -16,6 +16,7 @@ the link-dense text twin of the visual index above.
 | `branch` | Branch | [view](https://mehrlander.github.io/web-tools/pages/branch.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/branch.html) |
 | `chat-results` | Chat Search Results | [view](https://mehrlander.github.io/web-tools/pages/chat-results.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/chat-results.html) |
 | `citations` | Citations | [view](https://mehrlander.github.io/web-tools/pages/citations.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/citations.html) |
+| `code-layers-plan` | Code layers: current state and migration plan | [view](https://mehrlander.github.io/web-tools/pages/code-layers-plan.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/code-layers-plan.html) |
 | `compression-helper` | Compression Helper (v5) | [view](https://mehrlander.github.io/web-tools/pages/compression-helper.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/compression-helper.html) |
 | `console-playground` | Console Suite Guide | [view](https://mehrlander.github.io/web-tools/pages/console-playground.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/console-playground.html) |
 | `data-view` | Data View | [view](https://mehrlander.github.io/web-tools/pages/data-view.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/data-view.html) |
