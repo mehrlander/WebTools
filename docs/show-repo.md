@@ -1734,10 +1734,18 @@ token.
   whole screen on a phone: `lg:grid-cols-6` would put six columns in a 360px
   column. Every control carries `w-full`, since daisyUI's `.input` and
   `.textarea` default to `width: 20rem` and otherwise stop short of their label.
-  The pane is capped at `max-w-6xl` and gives the form three fifths to the JSON
-  pane's two, the JSON being a mirror of the form rather than the thing people
-  came to use. Both rules generalize and are in
-  [HTML-STYLE.md](HTML-STYLE.md).
+  The pane's cap is high enough that on a 1440 screen its own width is what
+  binds, and it gives the form three fifths to the JSON pane's two, the JSON
+  being a mirror of the form rather than the thing people came to use. Both
+  rules generalize and are in [HTML-STYLE.md](HTML-STYLE.md).
+
+  **Two things follow from the form being several screens long** once a repo
+  declares projects and pages. The JSON pane **sticks** on desktop and fills the
+  viewport (`lg:sticky` plus a `100dvh`-based height), because a pane that
+  scrolled away after 600px left a tall dead column beside the rest of the form
+  and stopped mirroring exactly when there was something to mirror. And the save
+  bar sticks to the bottom of the scrolling pane at every width, since a button
+  at the far end of three screens is a scroll each time you use it.
 - **Auto-migration**: a save always writes `.web-tools.json`. A repo still on the
   legacy `.show-repo.json` is edited the same way; the save lands the new name,
   which readers already prefer, so the legacy file goes inert. No delete step
