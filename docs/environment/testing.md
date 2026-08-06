@@ -57,6 +57,17 @@ page into a state first. `--build` renders through `dist/<page>.js` instead of
 the live chain; see [`tools/README.md`](../../tools/README.md) for the build /
 verify-build companions.
 
+**A scenario that re-loads the page at a new fragment has to reload.** Inside a
+`--script`, `page.goto(url + '#other')` is a same-document navigation when only
+the fragment differs: nothing re-fetches, no boot code re-runs, and the page
+keeps the state it already had. So every assertion afterwards reads the
+*previous* case and passes or fails for the wrong reason, silently, since the
+navigation itself succeeded. Follow the goto with `page.reload()` when the point
+is what the page does *on load* at that fragment. Measured 2026-08-06 while
+covering data-view's `#item=` addressing, where three of eight assertions passed
+against stale state before the reload was added
+([`tools/render/scenarios/data-view-item.mjs`](../../tools/render/scenarios/data-view-item.mjs)).
+
 ### What renders: three page categories
 
 | Category | First paint needs | Headless result |

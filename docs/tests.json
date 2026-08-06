@@ -149,7 +149,7 @@
       "path": "tools/test/data-payload.test.mjs",
       "kind": "behavior",
       "protects": "A JSON object with item-shaped entries is recognized as an envelope rather than raw data.",
-      "assertions": 13,
+      "assertions": 21,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -860,7 +860,7 @@
       "path": "tools/test/url-params.test.mjs",
       "kind": "behavior",
       "protects": "The fragment wins over the query for the same key, which every toss address depends on.",
-      "assertions": 10,
+      "assertions": 15,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0

@@ -22,6 +22,31 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### ci-run-silently-not-started: a commit sat in an open PR with no checks
+A push to a PR branch produced no `synchronize` workflow run. Not a failure, not
+a cancellation, no run at all, so the PR's head commit carried zero checks and
+the only signal was a `get_check_runs` that returned an empty list. The next push
+to the same PR ran normally, so nothing is broken; what correlated was pushing
+the branch and then its base branch within the same minute, which moves the merge
+ref the `pull_request` event is computed against. The cause stays unconfirmed and
+the corrected move does not depend on it: **after a push you care about, confirm
+a run exists for the new head sha** instead of assuming the trigger fired. The
+general form is the one worth carrying: a green check and an absent check look
+the same from a distance, and only the first is evidence. *(seen: 2026-08-06)*
+→ [.github/workflows/test.yml](../.github/workflows/test.yml)
+
+### fragment-goto-does-not-reload: a render scenario asserts against stale state
+A `--script` scenario re-loaded the page under test at a series of fragments with
+`page.goto(url + '#item=1')`, then read the page's state after each. A goto that
+changes only the fragment is a **same-document** navigation, so nothing
+re-fetched, the page's boot code never re-ran, and every read returned the
+previous case. Three of eight assertions passed against state the scenario had
+not actually produced. The navigation succeeds, so there is no failure to notice.
+Add `page.reload()` after the goto whenever the point is what the page does *on
+load* at that fragment. Generalizes past this harness: any assertion about
+initialization behind a URL that differs only after the `#`. *(seen: 2026-08-06)*
+→ [environment/testing.md](environment/testing.md)
+
 ### word-boundary-before-alternation: a scan reports zero and looks authoritative
 `\b(TOKEN|SECRET|...)` never matches inside `GH_TOKEN` or `AWS_SECRET_ACCESS_KEY`,
 because there is no word boundary between `H` and `T`. A credential scan written
