@@ -1,8 +1,8 @@
-// Scrolls the layers plan to its argument section, so the options, the target
+// Scrolls the code-layers memo to its argument section, so the options, the target
 // concept, and the migration steps are inspectable rather than assumed from a
 // shot of the header.
 //
-//   npm run shot -- pages/code-layers-plan.html --script tools/render/scenarios/code-layers-plan-lower.mjs --height 1500
+//   npm run shot -- pages/memos/code-layers.html --script tools/render/scenarios/code-layers-memo-lower.mjs --height 1500
 //
 // AT=options|concept|migration picks the section (default options).
 export default async (page) => {
