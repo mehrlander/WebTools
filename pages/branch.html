@@ -189,7 +189,9 @@
         }
         const authored = await this.readAuthored();
         this.input = repo + '@' + ref;
-        this.target = { repo, branch: ref, base, authored, pr: t.pr || '' };
+        // `framed` rides through: an embedder supplies its own header, and the
+        // view drops the identity it would otherwise repeat.
+        this.target = { repo, branch: ref, base, authored, pr: t.pr || '', framed: this.framed };
         window.__branchTarget = this.target;
         this.$nextTick(() => {
           // A fresh element each time: Alpine cannot re-initialise a tree it

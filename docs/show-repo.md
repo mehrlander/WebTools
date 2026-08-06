@@ -1185,6 +1185,21 @@ strips, arrow keys, or the chevrons move through it, clamped at the ends;
 Escape or the X closes. Staging a branch's changed files, the name's old tap
 action, moved into the branch menu as **Stage changed files**.
 
+**The embedded page defers to this header.** It renders framed (`window.self
+!== window.top`), and in that state it drops the branch name, the repo, and the
+PR link, because the header above carries all three; what it keeps is the state
+chip and the base ref, the one identity fact the header lacks. Unframed it shows
+the lot. That split was measured rather than assumed: on a phone the duplicate
+identity spent the first screen, and a session branch name (`claude/<slug>`) wrapped
+to two lines doing it.
+
+**Its three sections are panes, not a scroll.** Guide, Files and Commits switch
+on a segmented control under the facts strip, with the counts on the labels, so
+the changed files are one tap from the top instead of below a screen of guide.
+Guide leads when the branch has one; Files leads when it does not. On a narrow
+viewport the file rows also start collapsed, since four open cards is most of a
+phone screen and the dense row list is what is worth seeing first there.
+
 Since 2026-08-06 the embedded page carries the branch's **guide** as well: the
 PR body, rendered through `kits/guide-render.js`, the renderer the FAB drawer
 has used since PR #295. The takeover therefore shows the whole picture in one
