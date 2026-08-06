@@ -281,6 +281,15 @@
       "boot_smoke": 1
     },
     {
+      "path": "tools/test/estate-sessions.test.mjs",
+      "kind": "component",
+      "protects": "The Sessions pane and the Lists merge behind it: both filters lapse rather than stranding the pane on an empty list, the pill routes through the shell so the URL keeps stamping, and a missing cache reads as empty rather than as an error.",
+      "assertions": 13,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/fab-capture.test.mjs",
       "kind": "component",
       "protects": "Capture serializes the state the fab has collected with honest fidelity.",
@@ -610,6 +619,15 @@
       "protects": "The proposal channel: pending versus applied, the mailbox shape, diffing, and removal.",
       "assertions": 49,
       "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/repo-sessions-cache.test.mjs",
+      "kind": "behavior",
+      "protects": "The sessions aggregate, whose source is a captured and therefore unregenerable layer: summarize keeps the scan fields and drops the bulk, branches dedupe and drop main since they join the Open view, and an older record with no agent id summarizes without one rather than with a wrong one.",
+      "assertions": 11,
+      "method": "read",
       "runner": "suite",
       "boot_smoke": 0
     },

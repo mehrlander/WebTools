@@ -148,4 +148,18 @@ turns out to duplicate a source, check whether the remainder has a job before
 optimizing it**, because a smaller copy still carries a refresh obligation and
 can still be out of date. The general rule now sits in the doc: do not commit
 what a live read already answers. *(seen: 2026-08-05)*
+
+**Read a PR body back through the GitHub MCP and believed the escaping.** A
+`?use=…#gh=…` toss link in a PR body came back wrapped in double backticks, so
+the session concluded the links it had just shipped were dead code spans and
+spent three round trips isolating the trigger (`@`? `%40`? a fragment?). None of
+it was real: fetching the rendered page showed the body's links clickable and
+correct. The MCP escapes fragment-bearing URLs **on read**, which the guide-region
+note already knew in its own way, having been rewritten once because the same
+read path strips HTML comments. Two rules follow, and the second is the general
+one: **the MCP read-back is not the rendered artifact**, so confirm a rendering
+claim against the page itself; and a probe that reads through the layer under
+suspicion cannot clear it. The escaping *is* real for `add_issue_comment`, where
+a fragment URL renders as literal text, so a comment carrying a toss link needs
+the address checked after posting. *(seen: 2026-08-05)*
 → [SURFACING.md](SURFACING.md)
