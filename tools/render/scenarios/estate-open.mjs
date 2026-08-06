@@ -4,7 +4,7 @@
 // `activity` directly (openBranches, openRepos and the row helpers are pure
 // getters over it), so what the shot proves is the rendering, not the load.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scripts/estate-open.mjs
+//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/estate-open.mjs
 //
 // Pass TAB=todo or TAB=jots to seed the other two Activity sub-views and switch
 // the pill to one of them. They share the pane with Open at every width (the

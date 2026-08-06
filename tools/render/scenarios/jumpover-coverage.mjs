@@ -3,7 +3,7 @@
 // the stage is cross-repo, a compare is two refs), so the rows are seeded
 // directly and what the shot proves is the rendering, not the load.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scripts/jumpover-coverage.mjs
+//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/jumpover-coverage.mjs
 //
 // WHERE picks the view:
 //   recent   the sidebar's Recent entries, with one row's icon hovered (default)

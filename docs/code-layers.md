@@ -2,10 +2,15 @@
 
 Where a new code file goes, and the rule that decides. One statement for the
 whole repo, because the alternative is what happened: two layers were named
-(kits, components), a third formed in `lib/` root with no name, and `tools/`
-grew to seventy-seven non-test files of which forty-four are named nowhere. New logic then lands by
-gravity, next to whatever it most resembles, which is how a folder acquires a
-purpose nobody stated and cannot defend.
+(kits, components), a third accumulated in `lib/` root with no name, and
+`tools/` grew to seventy-seven non-test files of which forty-four are named
+nowhere. New logic then lands by gravity, next to whatever it most resembles,
+which is how a folder acquires a purpose nobody stated and cannot defend.
+
+Naming a layer is not the same as justifying it. Where a split turns out to have
+no rule behind it, this document says so rather than inventing one, and points
+at the task that owns the decision. Two of the boundaries below are in that
+state.
 
 Measured with [`scripts/unclaimed-code-survey.py`](../scripts/unclaimed-code-survey.py)
 (`npm run code-survey`), which reports per-layer counts of files, files any
@@ -18,58 +23,59 @@ column of them is a category nobody has stated.
 | Layer | Admission rule | Attaches to |
 | --- | --- | --- |
 | `lib/` **scaffolding** | extends `GH.prototype`, or boots the chain | `GH.prototype`, or nothing (a bundle) |
-| `lib/` **estate module** | owns logic that knows *this estate's* domain: repo addresses, refs, branch state, the manifest | `window.<Name>` |
-| `lib/kits/` **kit** | a capability that would be true in any repo: a file format, a codec, an editor, a transport | `window.<name>` |
+| `lib/` and `lib/kits/` **logic module** | pure logic, no Alpine, no DOM opinions of its own. **The split between the two folders is unsettled: see below** | `window.<Name>` |
 | `lib/alpineComponents/` **component** | renders and holds reactive state | `Alpine.data(name, fn)` |
 | `scripts/` **standalone** | argv-driven, runs from any repo root, no repo of its own | a shell invocation |
 | `tools/` **harness** | exercises or builds this repo, in Node, never shipped to a page | a `node`/`npm` invocation |
 
-### Kit or estate module: the distinction that was missing
+### `lib/` root or `lib/kits/`: open, and the obvious answer is refuted
 
-Both register a `window` namespace, both are Alpine-free, both are pure logic.
-Mechanically they are the same file. The question that separates them is **what
-the module knows**, and it is worth asking because the answer decides whether
-someone else can take the file:
+> [!WARNING]
+> **Wrong 2026-08-06 (superseded within a day) → this section:** the first
+> version of this document ruled that a **kit** is "a capability that would be
+> true in any repo" and a **estate module** is the same file shape carrying this
+> estate's domain, and it applied that rule to a sibling task's file list. The
+> rule reads well and the shelf does not follow it. Measured rather than
+> reasoned, below. The term "estate module" is retired with it.
 
-- [`lib/kits/pdf.js`](../lib/kits/pdf.js) knows about PDFs. Drop it in an
-  unrelated repo and it still works.
-- [`lib/branch-survey.js`](../lib/branch-survey.js) knows that a branch has a
-  merge-base, that a squash makes ref-level merge status meaningless, and that
-  this estate calls the result "stranded." Drop it elsewhere and it carries this
-  estate's model with it.
+Both folders hold files of one shape: a `window` namespace, Alpine-free, pure
+logic. The tempting rule is portability, and it fails on measurement. Counting
+only a **runtime** dependency on the hub's own chain (`window.gh`, `gh.load`,
+`gh.get`, `__loadedScripts`), which is the strongest available test of "this
+file cannot travel":
 
-So: **a kit is a capability, an estate module is a domain.** A file that would
-have to be explained before it could be reused is an estate module, whatever
-shape it has.
+- **7 of the 21 files in `lib/kits/` have one**: `branch-brief.js`, `brief.js`,
+  `build.js`, `export.js`, `wring.js`, `wsl-core.js`, `wsl.js`.
+- **6 files in `lib/` root have none**: `data-payload.js`, `github-links.js`,
+  `portable-align.js`, `shorter-payload.js`, `url-params.js`, `vanilla-demo.js`.
 
-The hard case is a file that reads one of this estate's own envelope formats:
-[`lib/data-payload.js`](../lib/data-payload.js) and
-[`lib/shorter-payload.js`](../lib/shorter-payload.js) are pure, generic-looking
-functions over text, and a consumer would still need the envelope contract
-before either was any use. Naming the boundary is what this rule is for; where
-those two land is [`lib-root-kit-migration-dind5t`](../tracker/tasks/lib-root-kit-migration-dind5t.md)'s
-call to make, and it sets the precedent for every payload reader after them.
+So a third of the kit shelf is less portable than six files that are not on it.
+The folders do not sort on portability, and never have. What actually decided
+each file's folder was when it was written and whether anyone thought about it.
 
-The consequence is that "registers a `window` namespace" is a *necessary*
-condition for `lib/kits/`, not a sufficient one, and the earlier per-file audit
-in [`lib-root-kit-migration-dind5t`](../tracker/tasks/lib-root-kit-migration-dind5t.md)
-sorted on the mechanical half alone. Its list needs re-reading against this
-column before anything moves; that is that task's business, not this document's.
+**What is clean, and worth keeping:** `lib/` root scaffolding. Extending
+`GH.prototype` or being a boot bundle is a mechanical, checkable property, it is
+the strongest commitment a `lib/` file can make (a change to the shared object
+every page holds), and every file that has it belongs there. Where a file does
+both, scaffolding wins: [`lib/gh-auth.js`](../lib/gh-auth.js) and
+[`lib/traffic.js`](../lib/traffic.js) extend the prototype *and* register a
+namespace, and a reader needs to see the prototype extension first.
 
-### Where a file that fits two rules goes
+**What is open:** whether `lib/` root and `lib/kits/` should be two categories
+at all. The measurement above is an argument that they are one, and that the
+honest form is a single shelf with `lib/` root reduced to the boot chain. That
+is a decision, not a finding, and it belongs to
+[`lib-root-kit-migration-dind5t`](../tracker/tasks/lib-root-kit-migration-dind5t.md),
+which carries the options and the file counts. Until it is made, **a new logic
+module goes in `lib/kits/`**, since that is where the majority already sits and
+a wrong guess costs one `git mv`.
 
-Two files extend `GH.prototype` *and* register a namespace
-([`lib/gh-auth.js`](../lib/gh-auth.js), [`lib/traffic.js`](../lib/traffic.js)).
-Scaffolding wins: a prototype extension is a change to the shared object every
-page holds, which is the stronger commitment and the one a reader needs to see
-first.
-
-A kit that wants Alpine reactivity does not become a component; it gets a
-component wrapper. [`lib/alpineComponents/cm-editor.js`](../lib/alpineComponents/cm-editor.js)
-over [`lib/kits/cm6.js`](../lib/kits/cm6.js) is the reference pair. The shape
-rules a `lib/` file must honor to load at all are in
-[`docs/loader.md`](loader.md); [`lib/kits/README.md`](../lib/kits/README.md)
-carries the kit shelf's per-kit table.
+The related rule that is not in doubt: a kit that wants Alpine reactivity does
+not become a component, it gets a component wrapper.
+[`lib/alpineComponents/cm-editor.js`](../lib/alpineComponents/cm-editor.js) over
+[`lib/kits/cm6.js`](../lib/kits/cm6.js) is the reference pair. The shape rules a
+`lib/` file must honor to load at all are in [`docs/loader.md`](loader.md), and
+[`lib/kits/README.md`](../lib/kits/README.md) carries the per-kit table.
 
 ## tools/, which is the weak layer
 
@@ -79,22 +85,25 @@ contract between them. Below that line most files are named nowhere, and the
 survey shows the gap is not spread evenly: it is concentrated in the two folders
 of `--script` interaction drivers.
 
-**`tools/render/scenarios/` and `tools/render/scripts/` are one category in two
-folders.** Both hold files of the same shape, a default-exported
-`async (page, ctx) => {}` handed to `screenshot.mjs --script`. Neither name
-means anything the other does not, and both were created on the same day in
-2026-07. Asserting is not the line either, though it looks like one at first:
-three of twenty scenarios print `ASSERT` and none of twenty-nine scripts do, so
-the split it describes is three files against forty-six, not one folder against
-the other. The README names `scenarios/` and has never mentioned `scripts/`, so
-half the category has been invisible since it appeared.
+**`tools/render/scenarios/` was one category in two folders, and is now one.**
+Until 2026-08-06 a sibling `tools/render/scripts/` held twenty-nine more files
+of the same shape, a default-exported `async (page, ctx) => {}` handed to
+`screenshot.mjs --script`. Neither name meant anything the other did not, and
+both folders were created on the same day in 2026-07. Asserting looked like the
+line and was not: three of the twenty scenarios printed `ASSERT` and none of the
+twenty-nine scripts did, so that split was three files against forty-six rather
+than one folder against the other. `tools/README.md` named `scenarios/` and had
+never mentioned `scripts/`, so half the category was invisible from the moment
+it appeared.
 
-This document does not merge them. Forty-nine files, each with an invocation
-line in its own head comment, is a mechanical change wide enough to deserve its
-own pass and its own diff, the same argument that keeps the `lib/` root
-migration separate. What it does is stop the split being accidental: until they
-are merged, **`scenarios/` is the name and `scripts/` is the accident**, so a
-new driver goes in `scenarios/`.
+The merge cost one rename: both folders held a `sidebar-projects.mjs`, written
+independently against the same UI, which is the clearest evidence the split was
+doing harm rather than nothing. The incoming one carries the branch-overlay
+posture the other lacks, so it landed as `sidebar-projects-overlay.mjs`. Their
+default paths still overlap; nothing was merged beyond the filename, since
+deduplicating two drivers is a judgment call and this was a rename pass.
+
+A new driver goes in `tools/render/scenarios/`. There is nowhere else.
 
 `tools/concept-lab/` is a fourth thing and says so in its own
 [README](../tools/concept-lab/README.md): experimental ground, read-only,
