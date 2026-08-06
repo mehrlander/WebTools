@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PreToolUse(Bash) hook — keep every *deterministic* derived artifact in lockstep
+# git pre-commit hook — keep every *deterministic* derived artifact in lockstep
 # with its source, in the same commit that changes the source:
 #
 #   lib/ changed            -> npm run build:lib     -> stage dist/web-tools.js
@@ -12,20 +12,31 @@
 # slow and not byte-deterministic, so auto-regen would write binary churn on
 # every commit. Instead the hook *warns* when a page's HTML changes without its
 # thumbnail, and the refresh happens once per session at wrap-up
-# (see CLAUDE.md "Wrapping up"). Non-blocking: failures warn but never stop the
-# commit.
+# (see CLAUDE.md "Per-session refresh"). Non-blocking: failures warn but never
+# stop the commit.
+#
+# THIS WAS A CLAUDE CODE PreToolUse(Bash) HOOK UNTIL 2026-08-06, and the move to
+# git is the whole point. A Claude hook is declared in .claude/settings.json,
+# which the harness reads only when the session's project root IS this repo. In
+# a multi-repo session the root sits above the checkouts, so the declaration was
+# never read and this never ran, silently: measured in a session rooted at
+# /home/user, where a lib/ change committed without its dist/ rebuild and the
+# gap was noticed by hand. Git resolves its hooks from the repository being
+# committed to and has no notion of a project root, so it fires from anywhere.
+# The one thing git will not do is find a committed hooks folder by itself, and
+# .claude/hooks/session-githooks.sh supplies that single line of config.
+#
+# Two things came off in the move, both of them scaffolding for the old event:
+# the JSON stdin parse that recovered the Bash command, and the `git commit`
+# gate. Git only calls this on a commit, so both were answering a question that
+# no longer gets asked.
 set -euo pipefail
 
-root="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || true)}"
+# Git runs a hook from the repository top-level, and CLAUDE_PROJECT_DIR is
+# exactly the value that is wrong here (it can name a directory ABOVE this
+# repo), so ask git rather than the environment.
+root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [ -n "$root" ] || exit 0
-
-# The Bash tool's command arrives as JSON on stdin: { tool_input: { command } }.
-cmd="$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{process.stdout.write((JSON.parse(s).tool_input||{}).command||"")}catch{process.stdout.write("")}})' 2>/dev/null || true)"
-
-case "$cmd" in
-  *"git commit"*) ;;
-  *) exit 0 ;;
-esac
 
 cd "$root" || exit 0
 
