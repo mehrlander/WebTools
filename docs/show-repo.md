@@ -1732,9 +1732,35 @@ token.
   which readers already prefer, so the legacy file goes inert. No delete step
   (the gh layer has no delete helper), and the section flags the migration when
   it loaded from the legacy name.
-- **Scope**: this is a raw-JSON editor, the thin first slice of the config-edit
-  surface (tracker task 0013). Per-field controls (an icon picker, a pins list)
-  are the larger goal, not built here.
+- **Projects** (Config view only): the workspace list, `projects`, as its own
+  section under the repo-level fields. It reconciles two facts that are easy to
+  let drift apart. A project is **declared** by an entry in that array, which is
+  what the sidebar, the Repos card, and the project view all read. A project is
+  **detected** by the defining convention, a folder carrying `tracker/tasks/`,
+  which is what **Scan** reads out of a recursive tree fetch (a button, not a
+  load-time read: it is a whole-tree request and the form is useful without it).
+  The section shows one list of both, so the two disagreements are visible where
+  the fix is: a workspace running a tracker that nothing declares comes with a
+  **Declare** button, and a declaration the scan cannot corroborate carries a
+  quiet `no tracker` badge rather than an error, since declaring a workspace
+  without a tracker is allowed. The repo-root tracker marks the repo itself and
+  is never offered, matching home's `tools/generate-tracker-registry.py`, which
+  performs the same walk to sync the same field. Detection keys on `tasks/`
+  rather than `board.md` because the board is generated and a fresh tracker may
+  not have one yet.
+
+  Per entry the form edits `label`, `landing`, and `tracker` (with a **No board**
+  checkbox for `tracker: false`). Two rules keep a save from restructuring a
+  file nobody opened the form to restructure: an entry keeps the shape it was
+  authored in, so a bare path string stays a string until a field is set on it
+  and drops back to one when the last field is cleared; and an empty field
+  clears its key rather than storing `""`, the same minimality the repo-level
+  fields already follow. Adding a project is `projects` only. Creating the
+  workspace, its tracker, and its README is repo work that happens in the repo.
+
+- **Scope**: the Settings form covers the repo-level fields plus Projects;
+  `stage`, `pages`, and `scope` are preserved on save but edited in the JSON
+  pane. An icon picker is still the open piece.
 
 ## Transfer: moving files to another repo
 

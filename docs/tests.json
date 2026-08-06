@@ -119,6 +119,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/config-projects.test.mjs",
+      "kind": "behavior",
+      "protects": "A config-form edit rewrites one project entry without restructuring the file: entries keep their authored shape, empty fields clear rather than storing \"\", and unshown manifest keys survive. Also that detection (a folder carrying tracker/tasks/) stays separate from declaration, so the two disagreements both surface.",
+      "assertions": 12,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
       "path": "tools/test/console-scan.test.mjs",
       "kind": "component",
       "protects": "The console scanner persists fresh records and dedups by key across passes.",
@@ -418,7 +427,7 @@
     {
       "path": "tools/test/map-view.test.mjs",
       "kind": "component",
-      "protects": "The Map view mounts, loads the public set, and reports adoption without startup warnings.",
+      "protects": "The Map view mounts, loads the public set, and reports adoption without startup warnings, and its open tab stays addressable: the shell validates ?tab= and stamps every tab but the default, and the component renders and loads whichever tab it is handed, by URL or by tap.",
       "assertions": 16,
       "method": "alpine",
       "runner": "suite",
