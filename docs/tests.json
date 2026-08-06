@@ -119,10 +119,10 @@
       "boot_smoke": 0
     },
     {
-      "path": "tools/test/config-projects.test.mjs",
+      "path": "tools/test/config-form.test.mjs",
       "kind": "behavior",
-      "protects": "A config-form edit rewrites one project entry without restructuring the file: entries keep their authored shape, empty fields clear rather than storing \"\", and unshown manifest keys survive. Also that detection (a folder carrying tracker/tasks/) stays separate from declaration, so the two disagreements both surface.",
-      "assertions": 12,
+      "protects": "The config form edits one manifest entry without restructuring the file: entries keep their authored shape, empty values clear their key rather than storing \"\", and a field the form does not render (a page's icon or thumb) survives an edit to one it does. Also that a project's declaration and its detection stay separate facts, so the two disagreements both surface.",
+      "assertions": 18,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1

@@ -1769,9 +1769,21 @@ token.
   fields already follow. Adding a project is `projects` only. Creating the
   workspace, its tracker, and its README is repo work that happens in the repo.
 
-- **Scope**: the Settings form covers the repo-level fields plus Projects;
-  `stage`, `pages`, and `scope` are preserved on save but edited in the JSON
-  pane. An icon picker is still the open piece.
+- **Pages and Stage** (Config view only): the last two fields that were
+  JSON-pane-only. **Pages** lists the catalog, one card per entry, with the path,
+  title, note, and the app-view toggle editable and an add-by-path box; a
+  qualified `owner/repo[@ref]:path` entry carries a `cross-repo` badge, since
+  that file is not in this repo. A page's `icon`, `thumb`, `project`, and
+  `viewLabel` are not rendered and are carried through untouched, which is the
+  case `config-form.test.mjs` holds: a form that silently dropped the keys it
+  does not show would be worse than no form. **Stage** is the two path lists as
+  line-per-entry text, the same shape as Pins. **Scope** sits in General beside
+  Note, since it is prose about the repo; it renders monospaced when its value
+  is a `.md` path, which is the one hint that the field takes both forms.
+- **Scope of the form**: every manifest field now has a control except a page's
+  `icon`, `thumb`, `project`, and `viewLabel`, and the `links` board path. Those
+  are preserved on save and edited in the JSON pane. An icon picker is still the
+  open piece.
 
 ## Transfer: moving files to another repo
 

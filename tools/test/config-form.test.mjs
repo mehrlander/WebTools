@@ -1,16 +1,19 @@
-// alpineComponents/config.js — the PROJECTS section of the per-repo
-// .web-tools.json editor.
+// alpineComponents/config.js — the per-repo .web-tools.json editor's FORM.
 //
-// A project is declared (an entry in the manifest's `projects` array) and
-// detected (a folder carrying tracker/tasks/, the defining convention). Those
-// are two different facts and the form shows both, so what this holds is mostly
-// the seam between them: the merged row list, the disagreement flags, and the
-// write path that edits one entry without disturbing the shape of the rest.
+// The form now covers every field the manifest has a control for: General,
+// Projects, Pages, and Stage. What this holds is the write path, because that
+// is where a silent data loss would live: every field edit rewrites an entry in
+// a file the user did not open the form to restructure. Three rules run through
+// all of it, and each is asserted per field rather than once in principle:
+// an entry keeps the shape it was authored in, an empty value deletes its key
+// rather than storing "", and a field the form does not render survives an edit
+// to one it does.
 //
-// The write path is where a silent data loss would live, since every field
-// edit rewrites an entry in a file the user did not open the form to
-// restructure. Real Alpine under jsdom (bootstrap.mjs recipe), with GH stubbed.
-
+// Projects carries one more thing nothing else does: a project is DECLARED (an
+// entry in the manifest) and DETECTED (a folder carrying tracker/tasks/, the
+// defining convention), two different facts the form reconciles in one list.
+//
+// Real Alpine under jsdom (bootstrap.mjs recipe), with GH stubbed.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -197,4 +200,99 @@ test('a scan failure reports rather than emptying the list', async () => {
   window.GH = real;
   assert.match(data.scanErr, /403 blocked/);
   assert.deepEqual([...data.found], ['kept'], 'the previous answer is not discarded by a failure');
+});
+
+// ── The other three list fields ──────────────────────────────────────────────
+// stage, pages, and scope used to be JSON-pane-only, with the form promising it
+// preserved them. They are on the form now, so the promise is a mechanism: the
+// same two rules as a project entry (keep the authored shape, an empty value
+// deletes rather than storing "") plus one more that only Pages has, that the
+// fields the form does NOT render must survive an edit to the ones it does.
+
+test('pages rows read the catalog and flag a cross-repo entry', async () => {
+  data.obj = { pages: [
+    { path: 'pages/a.html', title: 'A', note: 'first', icon: 'ph-star', thumb: 'thumbs/a.png' },
+    { path: 'mehrlander/web-tools@main:pages/b.html', appView: true },
+    'pages/c.html',
+  ] };
+  await tick(2);
+  const rows = data.pageRows;
+  assert.deepEqual([...rows.map(r => r.path)],
+    ['pages/a.html', 'mehrlander/web-tools@main:pages/b.html', 'pages/c.html']);
+  assert.equal(rows[0].crossRepo, false);
+  assert.equal(rows[1].crossRepo, true, 'a qualified path says the file is not here');
+  assert.equal(rows[1].appView, true);
+  assert.equal(rows[2].defaultTitle, 'c.html', 'the placeholder shows what absent means');
+});
+
+test('editing a page keeps the fields the form never shows', async () => {
+  data.setPageField(0, 'note', 'rewritten');
+  await tick(2);
+  const p = draft().pages[0];
+  assert.equal(p.note, 'rewritten');
+  assert.equal(p.icon, 'ph-star', 'icon is not rendered by the form and must survive it');
+  assert.equal(p.thumb, 'thumbs/a.png');
+
+  data.setPageField(2, 'title', 'C');
+  await tick(2);
+  assert.deepEqual(draft().pages[2], { path: 'pages/c.html', title: 'C' },
+    'a bare string entry becomes an object only when it has to');
+  data.setPageField(2, 'title', '');
+  await tick(2);
+  assert.equal(draft().pages[2], 'pages/c.html', 'and drops back when the last field clears');
+});
+
+test('the app-view toggle writes true and deletes on the way back', async () => {
+  data.setPageField(0, 'appView', true);
+  await tick(2);
+  assert.equal(draft().pages[0].appView, true);
+  data.setPageField(0, 'appView', false);
+  await tick(2);
+  assert.equal('appView' in draft().pages[0], false, 'false is the default, so it is absent');
+});
+
+test('adding and removing a page, and the key going away when empty', async () => {
+  data.obj = {};
+  data.newPage = '  pages/new.html  ';
+  data.addPage();
+  await tick(2);
+  assert.deepEqual([...draft().pages], ['pages/new.html'], 'trimmed, and a bare string');
+  assert.equal(data.newPage, '', 'the box clears so the next add is not a duplicate');
+  data.addPage();
+  assert.equal(draft().pages.length, 1, 'an empty box adds nothing');
+  data.removePage(0);
+  await tick(2);
+  assert.equal('pages' in draft(), false, 'an empty catalog is not a key worth writing');
+});
+
+test('the two stage lists round-trip as line-per-path text', async () => {
+  data.obj = {};
+  data.stageFilesText = 'docs/CONVENTIONS.md\n\n  owner/repo:x.md  ';
+  await tick(2);
+  assert.deepEqual([...draft().stage.files], ['docs/CONVENTIONS.md', 'owner/repo:x.md'],
+    'blank lines dropped, entries trimmed');
+  assert.equal('targets' in draft().stage, false, 'the untouched half is not invented');
+
+  data.stageTargetsText = 'owner/repo:docs';
+  await tick(2);
+  assert.deepEqual([...draft().stage.targets], ['owner/repo:docs']);
+  assert.equal(data.stageFilesText, 'docs/CONVENTIONS.md\nowner/repo:x.md', 'the getter reads back');
+
+  data.stageFilesText = '';
+  data.stageTargetsText = '';
+  await tick(2);
+  assert.equal('stage' in draft(), false, 'both halves empty drops the object, not just the keys');
+});
+
+test('scope takes prose or a path, and the path form is the monospaced one', async () => {
+  data.obj = { scope: '  docs/SCOPE.md  ' };
+  await tick(2);
+  assert.equal(draft().scope, 'docs/SCOPE.md', 'trimmed like every other string field');
+  assert.equal(data.scopeIsPath, true);
+  data.obj = { scope: 'The public hub: browser tools and kits.' };
+  await tick(2);
+  assert.equal(data.scopeIsPath, false, 'prose is prose, whatever it mentions');
+  data.obj = { scope: '   ' };
+  data.formEdited();
+  assert.equal('scope' in draft(), false);
 });
