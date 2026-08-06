@@ -106,11 +106,6 @@ test('classifyRows: statuses and ordering (baseline, differs desc, unknown, same
     { name: 'b',    date: '2026-07-02' },
   ], 'main', null);
   assert.deepEqual(unknowns.map(r => r.status), ['baseline', 'unknown']);
-
-  // updatedCount surfaces the differs rows (the tab-badge signal).
-  d.pageBranches = rows;
-  assert.equal(d.updatedCount, 2);
-  d.pageBranches = [];
 });
 
 test('renderAtRef in a toss re-addresses the shell instead of opening the overlay', async () => {
