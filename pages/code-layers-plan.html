@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code layers: current state and migration plan</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🗂️</text></svg>">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+
+<!--
+  code-layers-plan.html — the decision document behind the lib/ reorganisation.
+
+  Written because the migration task had a file list and a recommendation but no
+  statement of what the categories ARE, and the one rule that had been written
+  down was refuted by measurement a day later. A plan that cannot say what it is
+  sorting on is a plan to move files and re-ask the question later.
+
+  Three sections, in the order the argument has to run: what the folders are
+  today (measured, not remembered), what the options are, and what the migration
+  costs under the recommended one.
+
+  DATA IS BAKED IN, on purpose. Every number and every row comes from
+  scripts/code-shape-survey.py, run at the date stamped in the header, and the
+  payload is inlined rather than fetched so the page renders identically through
+  a #gh= toss, a #gz= toss, or a local file open. A migration plan describes a
+  specific state of the tree; a live re-read would silently restate the question
+  against a tree that had already moved. Re-run the survey to refresh it.
+-->
+<style>
+  .prose-tight p { margin: 0.5rem 0; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .sticky-head th { position: sticky; top: 0; z-index: 10; }
+</style>
+</head>
+<body class="bg-base-200 min-h-screen">
+<div x-data="plan()" class="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
+
+  <!-- ── header ─────────────────────────────────────────────────────── -->
+  <header class="space-y-2">
+    <div class="flex items-baseline gap-3 flex-wrap">
+      <h1 class="text-2xl sm:text-3xl font-bold">Code layers</h1>
+      <span class="text-base-content/60">current state, the concept, and the migration</span>
+    </div>
+    <p class="text-sm text-base-content/70">
+      Measured <span class="mono" x-text="meta.date"></span> by
+      <span class="mono">scripts/code-shape-survey.py</span> against
+      <span class="mono" x-text="meta.ref"></span>.
+      <span x-text="rows.length"></span> browser files under <span class="mono">lib/</span>.
+      Advisory and heuristic: it reads bytes, strips comments, and matches patterns.
+      Every claim below is checkable by re-running it.
+    </p>
+  </header>
+
+  <!-- ── the finding ────────────────────────────────────────────────── -->
+  <section class="card bg-base-100 shadow-sm">
+    <div class="card-body prose-tight">
+      <h2 class="card-title text-lg">
+        <i class="ph-bold ph-magnifying-glass text-primary"></i>
+        The finding: one folder tree is answering two different questions
+      </h2>
+      <p class="text-sm">
+        The migration task assumed the open question was <em>where the boundary between
+        <span class="mono">lib/</span> root and <span class="mono">lib/kits/</span> falls</em>.
+        Measuring every file's observable properties says the problem is one level up. Two
+        independent questions are being asked of one directory structure, and it can only
+        answer one:
+      </p>
+      <div class="grid sm:grid-cols-2 gap-3 mt-2">
+        <div class="border border-base-300 rounded-lg p-3">
+          <div class="font-semibold text-sm flex items-center gap-2">
+            <i class="ph-bold ph-plug"></i> What does it attach to?
+          </div>
+          <p class="text-xs mt-1 text-base-content/80">
+            <span class="mono">GH.prototype</span>, a <span class="mono">window</span>
+            namespace, or <span class="mono">Alpine.data</span>. Structural, mechanical,
+            one grep each. The folders <em>do</em> encode this, and once measured properly
+            they encode it almost perfectly.
+          </p>
+          <div class="badge badge-success badge-sm mt-2">answerable by folder</div>
+        </div>
+        <div class="border border-base-300 rounded-lg p-3">
+          <div class="font-semibold text-sm flex items-center gap-2">
+            <i class="ph-bold ph-lightning"></i> When does it load?
+          </div>
+          <p class="text-xs mt-1 text-base-content/80">
+            The boot chain loads <span x-text="bootCount"></span> files unconditionally, so
+            every loader page pays for them. That set spans all three folders and is written
+            down nowhere. It is a real cost and a real category, and it is
+            <em>orthogonal</em> to attachment.
+          </p>
+          <div class="badge badge-warning badge-sm mt-2">not answerable by folder</div>
+        </div>
+      </div>
+      <p class="text-sm mt-3">
+        This is why every attempt at a single rule has failed. "Portable capability" failed
+        because it was unmeasurable. A boundary drawn on boot would break the one clean
+        category there is. The way out is to let attachment decide the folder and give boot
+        a name of its own.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── current state ──────────────────────────────────────────────── -->
+  <section class="card bg-base-100 shadow-sm">
+    <div class="card-body">
+      <h2 class="card-title text-lg">
+        <i class="ph-bold ph-folders text-primary"></i> Current state, measured
+      </h2>
+
+      <div class="grid sm:grid-cols-3 gap-3 mt-1">
+        <template x-for="f in folders" :key="f.name">
+          <div class="border border-base-300 rounded-lg p-3">
+            <div class="mono text-sm font-semibold" x-text="f.name"></div>
+            <div class="text-3xl font-bold" x-text="f.n"></div>
+            <div class="text-xs text-base-content/70 mt-1" x-text="f.verdict"></div>
+          </div>
+        </template>
+      </div>
+
+      <div class="alert alert-info mt-4 text-sm">
+        <i class="ph-bold ph-info text-lg"></i>
+        <div>
+          <div class="font-semibold">The boundary is cleaner than the task thought, once the
+            detector is right.</div>
+          <div class="text-xs mt-1">
+            Two corrections fell out of measuring rather than grepping.
+            <span class="mono">traffic.js</span> is listed in the task as scaffolding that
+            extends <span class="mono">GH.prototype</span>; it does not, it wraps
+            <span class="mono">window.fetch</span>, and only a comment says otherwise.
+            <span class="mono">kits/build.js</span> does extend it, from the kit shelf, which
+            the kit README says a kit cannot do. Counting comments as code also made every
+            kit look Alpine-coupled when none is.
+          </div>
+        </div>
+      </div>
+
+      <!-- filters -->
+      <div class="flex flex-wrap gap-2 items-center mt-4">
+        <div class="join">
+          <template x-for="f in ['all','lib','lib/kits','lib/alpineComponents']" :key="f">
+            <button class="btn btn-xs join-item"
+                    :class="folderFilter === f ? 'btn-primary' : 'btn-ghost border border-base-300'"
+                    @click="folderFilter = f" x-text="f"></button>
+          </template>
+        </div>
+        <label class="label cursor-pointer gap-2 py-0">
+          <input type="checkbox" class="checkbox checkbox-xs" x-model="onlyMoving">
+          <span class="label-text text-xs">only what changes</span>
+        </label>
+        <label class="label cursor-pointer gap-2 py-0">
+          <input type="checkbox" class="checkbox checkbox-xs" x-model="onlyBoot">
+          <span class="label-text text-xs">only boot-loaded</span>
+        </label>
+        <span class="text-xs text-base-content/60 ml-auto"
+              x-text="`${visible.length} of ${rows.length}`"></span>
+      </div>
+
+      <div class="overflow-x-auto mt-2 max-h-[28rem] overflow-y-auto border border-base-300 rounded-lg">
+        <table class="table table-xs table-pin-rows">
+          <thead class="sticky-head">
+            <tr class="bg-base-200">
+              <th>file</th><th>attaches to</th>
+              <th class="text-center">boot</th><th class="text-center">hub dep</th>
+              <th class="text-center">DOM</th><th>→ destination</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="r in visible" :key="r.path">
+              <tr :class="r.moves ? 'bg-warning/10' : ''">
+                <td class="mono whitespace-nowrap">
+                  <span class="text-base-content/40" x-text="r.layer + '/'"></span><span
+                    x-text="r.path.split('/').pop()"></span>
+                  <span x-show="r.nul" class="badge badge-error badge-xs ml-1"
+                        title="contains a NUL byte; invisible to grep">NUL</span>
+                </td>
+                <td class="mono text-xs" x-text="r.attaches.join(', ') || '—'"></td>
+                <td class="text-center"><span x-show="r.boot"
+                  class="badge badge-xs badge-secondary">boot</span></td>
+                <td class="text-center text-xs" x-text="r.hub ? 'yes' : '—'"></td>
+                <td class="text-center text-xs"
+                    :class="r.dom === 'places' ? 'text-warning font-semibold' : ''"
+                    x-text="r.dom"></td>
+                <td class="text-xs">
+                  <span x-show="!r.moves" class="text-base-content/40">stays</span>
+                  <span x-show="r.moves && r.dest !== 'delete'"
+                        class="mono text-success font-semibold" x-text="r.dest"></span>
+                  <span x-show="r.dest === 'delete'"
+                        class="mono text-error font-semibold">delete</span>
+                  <div class="text-base-content/50" x-text="r.why"></div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── options ────────────────────────────────────────────────────── -->
+  <section class="card bg-base-100 shadow-sm">
+    <div class="card-body">
+      <h2 class="card-title text-lg">
+        <i class="ph-bold ph-git-branch text-primary"></i> The options
+      </h2>
+      <p class="text-sm text-base-content/80">
+        Four, including dissolving kits entirely. The measurement rules one out and leaves
+        the rest as genuine choices.
+      </p>
+      <div class="space-y-3 mt-2">
+        <template x-for="o in options" :key="o.id">
+          <div class="border rounded-lg p-3"
+               :class="o.recommended ? 'border-primary border-2 bg-primary/5' : 'border-base-300'">
+            <div class="flex items-start gap-2 flex-wrap">
+              <span class="badge badge-sm"
+                    :class="o.recommended ? 'badge-primary' : 'badge-ghost'" x-text="o.id"></span>
+              <span class="font-semibold text-sm" x-text="o.title"></span>
+              <span x-show="o.recommended" class="badge badge-primary badge-sm">recommended</span>
+              <span x-show="o.refuted" class="badge badge-error badge-sm">refuted by measurement</span>
+            </div>
+            <p class="text-sm mt-2" x-text="o.body"></p>
+            <div class="grid sm:grid-cols-2 gap-2 mt-2 text-xs">
+              <div class="bg-success/10 rounded p-2">
+                <span class="font-semibold">Buys:</span> <span x-text="o.buys"></span>
+              </div>
+              <div class="bg-error/10 rounded p-2">
+                <span class="font-semibold">Costs:</span> <span x-text="o.costs"></span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── the concept ────────────────────────────────────────────────── -->
+  <section class="card bg-base-100 shadow-sm">
+    <div class="card-body">
+      <h2 class="card-title text-lg">
+        <i class="ph-bold ph-target text-primary"></i> The proposed concept
+      </h2>
+      <p class="text-sm">
+        Three categories on the browser side, each admitted by one grep, plus one declared
+        list that is not a folder. A file's folder answers <em>what it attaches to</em>. The
+        manifest answers <em>when it loads</em>. Neither question is asked to carry the other.
+      </p>
+
+      <div class="overflow-x-auto mt-3">
+        <table class="table table-sm">
+          <thead>
+            <tr class="bg-base-200">
+              <th>Category</th><th>Admission rule (one grep)</th><th>Holds</th><th class="text-right">n</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="c in concept" :key="c.name">
+              <tr>
+                <td class="mono text-sm font-semibold" x-text="c.name"></td>
+                <td class="text-xs mono" x-text="c.rule"></td>
+                <td class="text-xs" x-text="c.holds"></td>
+                <td class="text-right font-semibold" x-text="c.n"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert mt-3 text-sm bg-base-200">
+        <i class="ph-bold ph-list-checks text-lg"></i>
+        <div>
+          <div class="font-semibold">The fourth thing: a boot manifest, not a folder.</div>
+          <div class="text-xs mt-1">
+            The <span x-text="bootCount"></span> boot-loaded files stay wherever their
+            attachment puts them, and the boot chain's contents become an explicit declared
+            list rather than a set of <span class="mono">gh.load</span> calls buried in
+            <span class="mono">gh-boot.js</span>. That makes the one number nobody can
+            currently see (what every page pays for) visible and testable, and it is what
+            lets the folders stop trying to encode it.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── migration ──────────────────────────────────────────────────── -->
+  <section class="card bg-base-100 shadow-sm">
+    <div class="card-body">
+      <h2 class="card-title text-lg">
+        <i class="ph-bold ph-path text-primary"></i> The migration
+      </h2>
+      <div class="stats stats-vertical sm:stats-horizontal shadow-sm bg-base-200 mt-1">
+        <div class="stat py-3">
+          <div class="stat-title text-xs">files moving</div>
+          <div class="stat-value text-2xl" x-text="movers.length"></div>
+          <div class="stat-desc text-xs">of <span x-text="rows.length"></span></div>
+        </div>
+        <div class="stat py-3">
+          <div class="stat-title text-xs">call sites to edit</div>
+          <div class="stat-value text-2xl">~59</div>
+          <div class="stat-desc text-xs">27 runtime, 32 test</div>
+        </div>
+        <div class="stat py-3">
+          <div class="stat-title text-xs">prose references</div>
+          <div class="stat-value text-2xl">23</div>
+          <div class="stat-desc text-xs">docs and tracker</div>
+        </div>
+      </div>
+
+      <ol class="steps steps-vertical mt-4">
+        <template x-for="(p, i) in phases" :key="i">
+          <li class="step" :class="p.gate ? 'step-primary' : 'step-neutral'">
+            <div class="text-left ml-2 pb-3">
+              <div class="font-semibold text-sm" x-text="p.title"></div>
+              <div class="text-xs text-base-content/70" x-text="p.body"></div>
+              <div x-show="p.gate" class="text-xs mt-1 text-primary font-semibold">
+                <i class="ph-bold ph-shield-check"></i> <span x-text="p.gate"></span>
+              </div>
+            </div>
+          </li>
+        </template>
+      </ol>
+
+      <h3 class="font-semibold text-sm mt-4 flex items-center gap-2">
+        <i class="ph-bold ph-question text-warning"></i>
+        Needs your ruling: the rule does not decide these
+      </h3>
+      <div class="space-y-2 mt-2">
+        <template x-for="r in rulings" :key="r.path">
+          <div class="border-l-4 border-warning bg-warning/5 pl-3 py-2 rounded-r">
+            <div class="mono text-sm font-semibold" x-text="r.path"></div>
+            <div class="text-xs mt-1" x-text="r.note"></div>
+          </div>
+        </template>
+      </div>
+
+      <h3 class="font-semibold text-sm mt-5 flex items-center gap-2">
+        <i class="ph-bold ph-book-open text-info"></i>
+        Read individually, reasoning recorded
+      </h3>
+      <p class="text-xs text-base-content/70 mt-1">
+        The kit shelf allows a kit to touch the DOM but not to decide where it lives, so these
+        could not be sorted by grep. Each was read; the reason is recorded rather than only the
+        verdict, so a later session can disagree with the reasoning instead of re-deriving it.
+      </p>
+      <div class="space-y-2 mt-2">
+        <template x-for="r in reads" :key="r.path">
+          <div class="border-l-4 border-info bg-info/5 pl-3 py-2 rounded-r">
+            <div class="mono text-sm font-semibold" x-text="r.path"></div>
+            <div class="text-xs mt-1" x-text="r.note"></div>
+          </div>
+        </template>
+      </div>
+
+      <h3 class="font-semibold text-sm mt-5 flex items-center gap-2">
+        <i class="ph-bold ph-bug text-error"></i> Found on the way, unrelated to the split
+      </h3>
+      <p class="text-xs mt-1">
+        <span class="mono">lib/repo-config-cache.js</span> and
+        <span class="mono">lib/alpineComponents/estate.js</span> each carry a literal NUL byte,
+        used deliberately as a string delimiter. Both behave correctly and the pre-build escapes
+        them, so nothing is broken at runtime. But grep classifies both files as binary and skips
+        them silently, which means they are invisible to <span class="mono">npm run code-survey</span>,
+        the link survey, and every <span class="mono">grep -r</span> in the repo. That matters
+        here specifically, because the migration rule <em>is</em> a grep: two of the files being
+        sorted cannot be seen by the thing sorting them. One character each fixes it
+        (<span class="mono">\0</span> as an escape rather than the raw byte), with no change to
+        behaviour.
+      </p>
+    </div>
+  </section>
+
+  <footer class="text-xs text-base-content/50 pb-6">
+    Generated from <span class="mono">scripts/code-shape-survey.py</span>; data inlined at
+    <span class="mono" x-text="meta.date"></span>. Re-run the survey to refresh.
+    Nothing in the repo has been moved.
+  </footer>
+</div>
+
+<script>
+function plan() {
+  return {
+    meta: { date: '2026-08-06', ref: 'main @ 936bdb6' },
+    rows: [{"path":"lib/alpine-bundle.js","layer":"lib","lines":328,"attaches":[],"boot":true,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/","why":"boot bundle","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/branch-brief.js","layer":"lib/alpineComponents","lines":258,"attaches":["Alpine.data:branchBrief"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/branches.js","layer":"lib/alpineComponents","lines":418,"attaches":["Alpine.data:branches"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/cm-editor.js","layer":"lib/alpineComponents","lines":75,"attaches":["Alpine.data:cmEditor"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/compare.js","layer":"lib/alpineComponents","lines":323,"attaches":["Alpine.data:compare"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/compress-input-cm.js","layer":"lib/alpineComponents","lines":222,"attaches":["Alpine.data:compressInputCm"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/compress-output.js","layer":"lib/alpineComponents","lines":177,"attaches":["Alpine.data:compressOutput"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/config.js","layer":"lib/alpineComponents","lines":314,"attaches":["Alpine.data:config"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/console.js","layer":"lib/alpineComponents","lines":260,"attaches":["Alpine.data:debugConsole"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/counter.js","layer":"lib/alpineComponents","lines":14,"attaches":["Alpine.data:counter"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/crumb-bar.js","layer":"lib/alpineComponents","lines":122,"attaches":["Alpine.data:crumbBar"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/drop-zone.js","layer":"lib/alpineComponents","lines":154,"attaches":["Alpine.data:dropZone"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/estate.js","layer":"lib/alpineComponents","lines":3209,"attaches":["Alpine.data:estate"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":true,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/explorer.js","layer":"lib/alpineComponents","lines":251,"attaches":["Alpine.data:explorer"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/fab.js","layer":"lib/alpineComponents","lines":3058,"attaches":["Alpine.data:fab"],"boot":true,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/file-review.js","layer":"lib/alpineComponents","lines":294,"attaches":["Alpine.data:fileReview"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/idb-importer.js","layer":"lib/alpineComponents","lines":304,"attaches":["Alpine.data:idbImporter"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/idb-tree.js","layer":"lib/alpineComponents","lines":125,"attaches":["Alpine.data:idbTree"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/map.js","layer":"lib/alpineComponents","lines":975,"attaches":["Alpine.data:map"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/mention.js","layer":"lib/alpineComponents","lines":451,"attaches":["Alpine.data:mention"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/navigator.js","layer":"lib/alpineComponents","lines":296,"attaches":["Alpine.data:navigator"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/pages.js","layer":"lib/alpineComponents","lines":193,"attaches":["Alpine.data:pages"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/path-picker.js","layer":"lib/alpineComponents","lines":396,"attaches":["Alpine.data:pathPicker"],"boot":true,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/proposals.js","layer":"lib/alpineComponents","lines":423,"attaches":["Alpine.data:proposals"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/public-browse.js","layer":"lib/alpineComponents","lines":222,"attaches":["Alpine.data:publicBrowse"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/ref-switch.js","layer":"lib/alpineComponents","lines":651,"attaches":["window.RefSwitch","Alpine.data:refSwitch"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/repo-menu.js","layer":"lib/alpineComponents","lines":108,"attaches":["Alpine.data:repoMenu"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/repo.js","layer":"lib/alpineComponents","lines":661,"attaches":["Alpine.data:repo"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/sheet-modal.js","layer":"lib/alpineComponents","lines":197,"attaches":["Alpine.data:sheetModal"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/stage.js","layer":"lib/alpineComponents","lines":1822,"attaches":["window.StageLink","Alpine.data:stager"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/tools.js","layer":"lib/alpineComponents","lines":157,"attaches":["Alpine.data:tools"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/viewer.js","layer":"lib/alpineComponents","lines":433,"attaches":["window.ViewRegistry","Alpine.data:viewer"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/branch-survey.js","layer":"lib","lines":279,"attaches":["window.BranchSurvey"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/chat-render.js","layer":"lib","lines":719,"attaches":["window.chatRender"],"boot":false,"hub":true,"dom":"handed","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"Returns elements for the caller to place. Its one body append is the transient copy-textarea, the same idiom kits/io.js already uses.","kind":"read"},{"path":"lib/data-payload.js","layer":"lib","lines":190,"attaches":["window.DataPayload"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/diagnostic-vanilla-bundle.js","layer":"lib","lines":80,"attaches":[],"boot":false,"hub":true,"dom":"none","alpine":false,"nul":false,"dest":"delete","why":"zero consumers","moves":true,"note":"Delete. Zero consumers, and it is not a bundle at all: it is a console-paste diagnostic snippet. The migration task miscategorises it as one.","kind":"read"},{"path":"lib/gh-api.js","layer":"lib","lines":266,"attaches":["window.GH","window.gh"],"boot":true,"hub":true,"dom":"handed","alpine":false,"nul":false,"dest":"lib/","why":"the loader and its boot orchestrator","moves":false,"note":"","kind":""},{"path":"lib/gh-auth.js","layer":"lib","lines":144,"attaches":["GH.prototype","window.ghAuth"],"boot":true,"hub":false,"dom":"handed","alpine":false,"nul":false,"dest":"lib/","why":"extends GH.prototype","moves":false,"note":"","kind":""},{"path":"lib/gh-boot.js","layer":"lib","lines":403,"attaches":["window.fetch"],"boot":true,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/","why":"the loader and its boot orchestrator","moves":false,"note":"","kind":""},{"path":"lib/gh-fetch.js","layer":"lib","lines":358,"attaches":["GH.prototype"],"boot":true,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/","why":"extends GH.prototype","moves":false,"note":"","kind":""},{"path":"lib/gh-store.js","layer":"lib","lines":77,"attaches":["GH.prototype"],"boot":false,"hub":true,"dom":"none","alpine":false,"nul":false,"dest":"lib/","why":"extends GH.prototype","moves":false,"note":"","kind":""},{"path":"lib/gh-transfer.js","layer":"lib","lines":143,"attaches":["GH.prototype"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/","why":"extends GH.prototype","moves":false,"note":"","kind":""},{"path":"lib/github-links.js","layer":"lib","lines":98,"attaches":["window.GithubLinks"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/kits/branch-brief.js","layer":"lib/kits","lines":169,"attaches":["window.BranchBrief"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/brief.js","layer":"lib/kits","lines":225,"attaches":["window.brief"],"boot":false,"hub":true,"dom":"handed","alpine":true,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/build.js","layer":"lib/kits","lines":195,"attaches":["GH.prototype","window.GH","window.buildKit","window.gh"],"boot":false,"hub":true,"dom":"handed","alpine":false,"nul":false,"dest":"lib/","why":"extends GH.prototype","moves":true,"note":"The one file the rule does not place cleanly. It extends GH.prototype, but only to redirect the loader's reads into a cache while a build runs; it is not part of the runtime chain. Either it moves to lib/ root on the letter of the rule, or the rule gains a clause for a temporary patch. Worth deciding explicitly rather than by default.","kind":"ruling"},{"path":"lib/kits/cm6-merge.js","layer":"lib/kits","lines":162,"attaches":["window.cm6Merge"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/cm6.js","layer":"lib/kits","lines":226,"attaches":["window.cm6"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/compression.js","layer":"lib/kits","lines":365,"attaches":["window.compression"],"boot":false,"hub":false,"dom":"handed","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/console.js","layer":"lib/kits","lines":115,"attaches":["window.consoleKit"],"boot":true,"hub":true,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/data-shelf.js","layer":"lib/kits","lines":62,"attaches":["window.dataShelf"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/export.js","layer":"lib/kits","lines":187,"attaches":["window.exporter"],"boot":false,"hub":true,"dom":"handed","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/io.js","layer":"lib/kits","lines":157,"attaches":["window.io"],"boot":false,"hub":false,"dom":"places","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/messaging.js","layer":"lib/kits","lines":68,"attaches":["window.messaging"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/pdf.js","layer":"lib/kits","lines":1141,"attaches":["window.pdf"],"boot":false,"hub":false,"dom":"handed","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/persistence.js","layer":"lib/kits","lines":343,"attaches":["window.persistence"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/proof.js","layer":"lib/kits","lines":83,"attaches":["window.proof"],"boot":false,"hub":false,"dom":"places","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/review-target.js","layer":"lib/kits","lines":133,"attaches":["window.reviewTarget"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/text-diff.js","layer":"lib/kits","lines":219,"attaches":["window.textDiff"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/treemap.js","layer":"lib/kits","lines":154,"attaches":["window.treemap"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/wring.js","layer":"lib/kits","lines":1504,"attaches":["window.wring"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/wsl-core.js","layer":"lib/kits","lines":351,"attaches":[],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"no attachment found; read before moving","moves":false,"note":"","kind":""},{"path":"lib/kits/wsl.js","layer":"lib/kits","lines":299,"attaches":["window.wsl"],"boot":false,"hub":true,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/xlsx.js","layer":"lib/kits","lines":367,"attaches":["window.xlsxKit"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/portable-align.js","layer":"lib","lines":68,"attaches":["window.PortableAlign"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/repo-activity-cache.js","layer":"lib","lines":179,"attaches":["window.RepoActivityCache"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/repo-address.js","layer":"lib","lines":98,"attaches":["window.RepoAddress"],"boot":true,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/repo-checks.js","layer":"lib","lines":316,"attaches":["window.RepoChecks"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/repo-config-cache.js","layer":"lib","lines":109,"attaches":["window.RepoConfigCache"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":true,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/repo-mailbox.js","layer":"lib","lines":74,"attaches":["window.RepoMailbox"],"boot":false,"hub":true,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/repo-proposals.js","layer":"lib","lines":470,"attaches":["window.RepoProposals"],"boot":false,"hub":true,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/repo-sessions-cache.js","layer":"lib","lines":214,"attaches":["window.RepoSessionsCache"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/shorter-payload.js","layer":"lib","lines":76,"attaches":["window.ShorterPayload"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/source-peek.js","layer":"lib","lines":386,"attaches":["window.SourcePeek"],"boot":true,"hub":true,"dom":"places","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"Self-installs on load and owns four delegated document listeners, so it decides where it lives and fails the kit shelf's stated DOM line. install() is already exported, so the tidy fix is for the boot chain to call it. Flagged, not assumed.","kind":"ruling"},{"path":"lib/surface.js","layer":"lib","lines":308,"attaches":["window.Surface"],"boot":true,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/swipe-deck.js","layer":"lib","lines":195,"attaches":["window.swipeDeck"],"boot":false,"hub":false,"dom":"places","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"core() hands back a track for the caller to place; open() appends a fullscreen overlay, which an overlay must. Requested takeover, not ambient behaviour.","kind":"read"},{"path":"lib/traffic.js","layer":"lib","lines":394,"attaches":["window.Traffic"],"boot":true,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"Does NOT extend GH.prototype: it wraps window.fetch. The migration task lists it as scaffolding on the strength of a comment. By attachment it is a kit; it is boot-loaded, which is a separate fact the boot manifest now carries.","kind":"read"},{"path":"lib/url-params.js","layer":"lib","lines":107,"attaches":["window.UrlParams"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/vanilla-bundle.js","layer":"lib","lines":192,"attaches":["window.attr","window.cls","window.copy","window.data","window.ea","window.el","window.fill","window.grab","window.html","window.ids","window.listen","window.on","window.route","window.tpl","window.ui"],"boot":true,"hub":false,"dom":"handed","alpine":false,"nul":false,"dest":"lib/","why":"boot bundle","moves":false,"note":"","kind":""},{"path":"lib/vanilla-demo.js","layer":"lib","lines":487,"attaches":["window.demo"],"boot":false,"hub":false,"dom":"places","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"mount() is handed every host element by name. Its body appends are a <dialog> and a sandboxed run-frame, both of which have nowhere else to attach.","kind":"read"}],
+    folderFilter: 'all',
+    onlyMoving: false,
+    onlyBoot: false,
+
+    get visible() {
+      return this.rows.filter(r =>
+        (this.folderFilter === 'all' || r.layer === this.folderFilter) &&
+        (!this.onlyMoving || r.moves) &&
+        (!this.onlyBoot || r.boot));
+    },
+    get movers()    { return this.rows.filter(r => r.moves); },
+    get rulings()   { return this.rows.filter(r => r.kind === 'ruling'); },
+    get reads()     { return this.rows.filter(r => r.kind === 'read'); },
+    get bootCount() { return this.rows.filter(r => r.boot).length; },
+
+    get folders() {
+      const mk = (name, verdict) => ({
+        name, verdict, n: this.rows.filter(r => r.layer === name).length,
+      });
+      return [
+        mk('lib', 'Mixed. Four extend GH.prototype, two are the loader and its boot orchestrator, two are bundles, and nineteen are plain namespace modules indistinguishable from kits.'),
+        mk('lib/kits', 'Almost uniform: twenty register a window namespace. One (build.js) extends GH.prototype, which the shelf\'s own README says a kit cannot do.'),
+        mk('lib/alpineComponents', 'Clean. Every file registers Alpine.data and renders. This boundary works and is not in question.'),
+      ];
+    },
+
+    get concept() {
+      const n = (fn) => this.rows.filter(fn).length;
+      return [
+        { name: 'lib/', rule: 'extends GH.prototype, defines GH, or is a boot bundle',
+          holds: 'the loader and the chain that boots it',
+          n: n(r => r.dest === 'lib/') },
+        { name: 'lib/kits/', rule: 'registers window.<Name>, no Alpine.data',
+          holds: 'every logic module, portable or not',
+          n: n(r => r.dest === 'lib/kits/') },
+        { name: 'lib/alpineComponents/', rule: 'registers Alpine.data',
+          holds: 'everything that renders and holds reactive state',
+          n: n(r => r.dest === 'lib/alpineComponents/') },
+      ];
+    },
+
+    options: [
+      { id: 'A', title: 'One logic shelf; lib/ root reduces to the loader',
+        recommended: true,
+        body: 'Attachment decides the folder. Every window-namespace module is a kit, whatever it knows about; lib/ root holds only the loader, the files extending its prototype, and the bundles. Boot membership becomes a declared manifest instead of an implied property of a folder.',
+        buys: 'Every boundary becomes one grep and can be held by a test. Ends the question rather than relocating it, and names the boot cost for the first time.',
+        costs: '19 files move, ~59 call sites and 23 prose references follow. One file (kits/build.js) still needs an explicit ruling.' },
+      { id: 'B', title: 'Dissolve kits; flatten to lib/ plus alpineComponents',
+        body: 'Accept that nothing distinguishes the two shelves and stop maintaining the distinction. One boundary survives: does it register Alpine.data. The kits README, its demos folder, and the kit register test fold into lib/.',
+        buys: 'The simplest rule available, and the honest answer if "kit" turns out to name nothing. Fewest concepts to teach a future session.',
+        costs: '21 files move instead of 19, and lib/ root becomes a flat 49-file directory. Loses a working shelf and a useful word to gain one fewer folder.' },
+      { id: 'C', title: 'Two shelves sorted on boot membership',
+        body: 'Keep two folders but sort on when a file loads rather than what it attaches to: the boot chain in one, on-demand code in the other.',
+        buys: 'Mechanical and checkable, and it surfaces the cost signal directly in the tree.',
+        costs: 'Breaks the one clean category there is: two Alpine components are boot-loaded and would have to leave alpineComponents/. Boot is a real axis but a bad folder.' },
+        { id: 'D', title: 'Portability: a kit is a capability true in any repo',
+        refuted: true,
+        body: 'The rule written down on 2026-08-06 and retracted the same day. Counting runtime dependencies on the hub\'s own chain, kits are not more portable than lib/ root files.',
+        buys: 'Reads well, and matches the intuition the word "kit" invites.',
+        costs: 'False. Five of twenty-one kits carry a hub runtime dependency and most lib/ root modules carry none, so the shelf contradicts the rule.' },
+    ],
+
+    phases: [
+      { title: '1. Rebase onto PR #366',
+        body: 'It is open and edits docs/code-layers.md, lib/kits/README.md, and tools/README.md, all of which this work rewrites. Rebase rather than restate its retraction.' },
+      { title: '2. Fix the two NUL bytes',
+        body: 'One character each. Do it first, because the rule that sorts the files is a grep and these two files are currently invisible to it.',
+        gate: 'npm test stays green (1147 passing at baseline)' },
+      { title: '3. Delete diagnostic-vanilla-bundle.js',
+        body: 'Zero consumers, confirmed. Not a bundle: a console-paste diagnostic snippet.' },
+      { title: '4. Move the 19, and rule on build.js',
+        body: 'git mv, no edits to file contents. The four DOM-touching files were read individually; their reasoning is recorded below rather than just a verdict.' },
+      { title: '5. Follow the call sites',
+        body: 'gh-boot.js loads three of the movers by path and already reaches into kits/ for console.js, so the precedent exists. build-lib.mjs walks lib/ recursively and needs no glob change, but hardcodes url-params.js and repo-address.js in its boot list.',
+        gate: 'npm run build:lib, then prove dist/web-tools.js still boots' },
+      { title: '6. State the rule where it is read',
+        body: 'docs/code-layers.md and lib/kits/README.md carry the three categories; the boot manifest gets written down for the first time.' },
+      { title: '7. Hold it with a test',
+        body: 'Assert that every lib/*.js extends GH.prototype or is a bundle, and that the boot manifest matches what gh-boot.js actually loads. A prose rule with no test is what produced this task.',
+        gate: 'the boundary stops depending on anyone remembering it' },
+    ],
+  };
+}
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>
