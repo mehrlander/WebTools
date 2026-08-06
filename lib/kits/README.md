@@ -5,31 +5,28 @@ Themed logic libraries loaded via `gh.load`. Each kit is a plain script
 
 ## Concept
 
-A **kit** is the third category of file in this repo, alongside:
+The repo's code layers and the rule that sorts a new file into one of them
+are stated once, in [`docs/code-layers.md`](../../docs/code-layers.md). This
+section used to carry a three-category version of that list; it was the
+incomplete copy the wider statement was written to replace, and what remains
+here is the kit shelf's own admission rule.
 
-- **Scaffolding in `lib/`** — `lib/gh-api.js`, `lib/gh-boot.js`,
-  `lib/gh-auth.js`, `lib/gh-fetch.js`, `lib/gh-store.js`,
-  `lib/alpine-bundle.js`, `lib/vanilla-bundle.js`. The boot chain.
-  `alpine-bundle.js` also owns the
-  Alpine-coupled `x-define` directive (custom-element registration from a
-  `<template>`), so kits can stay Alpine-free. `vanilla-bundle.js` is the
-  no-framework alternative.
-- **`lib/alpineComponents/*.js`** — UI components that register with
-  `Alpine.data(name, fn)` inside `alpine:init`.
-- **`kits/*.js`** — logic libraries that register a namespace on
-  `window`. No Alpine coupling. (The daisyUI/Tailwind string helpers that
-  used to live here as `fills.js` now hang off `window.html` in
-  `vanilla-bundle.js`.)
+A **kit** is a logic library that registers a namespace on `window`, with no
+Alpine coupling. (The daisyUI/Tailwind string helpers that used to live here as
+`fills.js` now hang off `window.html` in `vanilla-bundle.js`.) Registering a
+namespace is necessary and not sufficient: a kit is a **capability that would
+be true in any repo**, which is what separates it from an estate module of the
+same shape sitting in `lib/` root. `docs/code-layers.md` carries that
+distinction and the worked pair.
 
-  The line is **no Alpine and no DOM opinions of its own**, not "no DOM."
-  This entry used to say "no DOM rendering," and the shelf has outgrown
-  it: `cm6.js` mounts a live editor into a host element you hand it,
-  `io.js` drives file inputs and the clipboard, `pdf.js` renders pages and
-  projects geometry into screen space. What a kit must not do is decide
-  where it lives, own reactive state, or assume a framework. It takes the
-  host it is given and returns a handle. A kit that wants Alpine
-  reactivity gets a component wrapper: `cm-editor.js` over `cm6.js` is the
-  reference pair.
+The line is **no Alpine and no DOM opinions of its own**, not "no DOM." This
+entry used to say "no DOM rendering," and the shelf has outgrown it: `cm6.js`
+mounts a live editor into a host element you hand it, `io.js` drives file inputs
+and the clipboard, `pdf.js` renders pages and projects geometry into screen
+space. What a kit must not do is decide where it lives, own reactive state, or
+assume a framework. It takes the host it is given and returns a handle. A kit
+that wants Alpine reactivity gets a component wrapper: `cm-editor.js` over
+`cm6.js` is the reference pair.
 
 The shape rules (so the file works through `gh.load`):
 

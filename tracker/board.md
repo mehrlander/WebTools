@@ -5,7 +5,6 @@ _Generated from tasks/. Do not hand-edit._
 ## On deck
 - 🎫 [Converge the branch page's authored layer on the branch-review surface](tasks/branch-authored-layer-surface-0j0zik.md)
 - 🎫 [Reach the take-away menu from show-repo's Pages gallery](tasks/brief-from-the-pages-gallery-7d4031.md) (needs: Find a way to focus attention on one piece of a page's UI)
-- 🎫 [Name the code layers and account for tools/](tasks/code-layer-taxonomy-q15jp2.md)
 - 🎫 [Read-tracking for docs: which files sessions actually open](tasks/docs-read-tracking-sn9nj8.md)
 - 🎫 [A multi-method harness for extracting structure from scanned documents](tasks/document-structure-harness-4mz7wk.md)
 - 🎫 [Capture button on the FAB, serializing what it already collects](tasks/fab-capture-button-f6q38m.md)
@@ -43,6 +42,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [The build-on-commit hook did not fire, and nothing said so](tasks/build-on-commit-hook-silent-bokkl3.md)
 - 🎫 [Teach the guide region a delimiter that survives an agent's readback](tasks/caption-guide-region-delimiter-w9dpyv.md) (`claude/budget-drs-tracker-review-s64mc6`)
 - 🎫 [Fold chat-results into the surface schema, or keep it a sibling](tasks/chat-results-surface-profile-q4m8ra.md) (`claude/web-tools-project-tracker-reo5qo`)
+- 🎫 [Name the code layers and account for tools/](tasks/code-layer-taxonomy-q15jp2.md) (`claude/web-tools-tracker-review-ij4pjj`)
 - 🎫 [Collapse quickLinks into a projection of the repos manifest](tasks/collapse-quicklinks-projection-80oprp.md) (`claude/tracker-status-cjogjn`)
 - 🎫 [Confirm-gated cross-repo edit proposals via a web-tools-private channel](tasks/cross-repo-edit-proposals-evo1ml.md) (`claude/tracker-status-cjogjn`)
 - 🎫 [Have data-view open at an addressed item via the fragment](tasks/data-view-consume-fragment-nxlpbs.md) (`claude/web-tools-tracker-review-ij4pjj`)
