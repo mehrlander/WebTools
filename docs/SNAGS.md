@@ -177,3 +177,17 @@ a thing the estate already renders somewhere, read how the existing renderer
 does it.** The classes now live once, in `kits/guide-render.js`, at two sizes.
 *(seen: 2026-08-06)*
 → [show-repo.md](show-repo.md)
+
+**A 🌿 closer is a hosted link, so it runs main's page.** This session added the
+`&pr=<n>` address to `pages/branch.html`, then handed over
+`…/pages/branch.html#gh=owner/repo&pr=364` in chat. github.io serves the page
+file from the default branch, so the link ran **main's** copy, which has no
+`pr` handling, read the address as a repo with no branch, and showed its empty
+form. Nothing errored, and the failure looked like a broken feature rather than
+a link pointing at the wrong build. The same turn had used the correct toss form
+in the PR body, which is the tell: the rule was known and applied in one place
+and not the other. **A page-shell change is not shown by any hosted link,
+including the caption's own 🌿 and 🧭 closers**, so toss it until it merges, and
+put the page's params in the address's `?query` position where the shim hands
+them over whole. *(seen: 2026-08-06)*
+→ [showing.md](showing.md)
