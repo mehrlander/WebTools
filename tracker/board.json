@@ -252,12 +252,14 @@
   {
    "id": "docs-read-tracking-sn9nj8",
    "title": "Read-tracking for docs: which files sessions actually open",
-   "status": "backlog",
+   "status": "done",
    "opened": "2026-08-04",
+   "closed": "2026-08-06",
+   "session": "claude/show-repo-progress-b8l63x",
    "file": "docs-read-tracking-sn9nj8.md",
    "href": "tasks/docs-read-tracking-sn9nj8.md",
-   "lastActivity": "2026-08-05",
-   "logEntries": 2
+   "lastActivity": "2026-08-06",
+   "logEntries": 3
   },
   {
    "id": "document-structure-harness-4mz7wk",
