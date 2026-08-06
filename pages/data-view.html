@@ -158,7 +158,7 @@
       // gets its address written back, so a plain #gz= toss is never rewritten
       // on load just for arriving.
       const asked = UrlParams.get('item');
-      this.$nextTick(() => this.open(this.resolveItem(asked) ?? 0, asked != null));
+      this.$nextTick(() => this.open(DataPayload.resolveItem(this.items, asked) ?? 0, asked != null));
     },
 
     get items() { return this.payload?.items || []; },
@@ -170,37 +170,10 @@
     },
     label: it => it.name.split('/').pop(),
 
-    // The #item= vocabulary, both directions. An all-digits value is an INDEX,
-    // anything else is a NAME: unambiguous where the envelope is stable, and
-    // survivable where it is edited. A name matches the item's full name
-    // first, then its basename, which is what the strip shows and therefore
-    // what a link author will have copied. Duplicates resolve to the first
-    // match. A miss is null, not an error; the caller opens item 0.
-    resolveItem(spec) {
-      if (spec == null || spec === '') return null;
-      if (/^\d+$/.test(spec)) {
-        const n = Number(spec);
-        return n < this.items.length ? n : null;
-      }
-      const byName = this.items.findIndex(it => it.name === spec);
-      if (byName >= 0) return byName;
-      const byLabel = this.items.findIndex(it => this.label(it) === spec);
-      return byLabel >= 0 ? byLabel : null;
-    },
-
-    // The shortest form that reads back as i: basename, then full name, then
-    // the index. Round-tripping through resolveItem rather than testing
-    // uniqueness by hand means the address written is one this page has
-    // verified, not one it assumed. The digit test keeps a file honestly named
-    // `2` from being minted as an index.
-    addressFor(i) {
-      const it = this.items[i];
-      if (!it) return String(i);
-      for (const form of [this.label(it), it.name]) {
-        if (form && !/^\d+$/.test(form) && this.resolveItem(form) === i) return form;
-      }
-      return String(i);
-    },
+    // The #item= vocabulary is the ENVELOPE's, not this page's, so both
+    // directions live in lib/data-payload.js beside the rest of what an item
+    // means (DataPayload.resolveItem / .addressItem, held by npm test). What
+    // stays here is the half that touches a URL.
 
     // Write the selection back, so the address bar tracks the view and a
     // reader can copy the address of what they are looking at. replaceState
@@ -212,7 +185,8 @@
     // edits the one key and leaves the payload beside it alone; the '#' seeds
     // an empty fragment so the result comes back in fragment form.
     addressItem(i) {
-      const frag = UrlParams.withKey(location.hash || '#', 'item', this.addressFor(i));
+      const frag = UrlParams.withKey(location.hash || '#', 'item',
+                                     DataPayload.addressItem(this.items, i));
       if (frag === location.hash) return;
       try { history.replaceState(null, '', location.href.split('#')[0] + frag); }
       catch (e) { location.hash = frag; }

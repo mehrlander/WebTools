@@ -149,7 +149,7 @@
       "path": "tools/test/data-payload.test.mjs",
       "kind": "behavior",
       "protects": "A JSON object with item-shaped entries is recognized as an envelope rather than raw data.",
-      "assertions": 13,
+      "assertions": 21,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0

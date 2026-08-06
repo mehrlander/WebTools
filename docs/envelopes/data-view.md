@@ -35,7 +35,9 @@ Through the toss route it is the trailing fragment, which belongs to the rendere
 
 Selecting an item **writes the address back**, so the URL always names what is on screen and a reader can copy the address of the item they are looking at rather than of the envelope. The write is surgical: it edits the one key and leaves the rest of the fragment byte for byte, which is what lets a `#gz=` payload sit beside it (`UrlParams.withKey`, [`lib/url-params.js`](../../lib/url-params.js)). Two things it deliberately does not do: it adds no history entry, so the back button still leaves the page rather than walking the item strip; and it does not write on load unless the URL already named an item, so arriving at a plain `#gz=` toss never rewrites the payload.
 
-Only the position is written when a name would be ambiguous, and only a name when it reads back as that item, so the address is one the page has verified rather than one it assumed. Held by [`tools/render/scenarios/data-view-item.mjs`](../../tools/render/scenarios/data-view-item.mjs) directly and [`data-view-item-tossed.mjs`](../../tools/render/scenarios/data-view-item-tossed.mjs) through a toss.
+Only the position is written when a name would be ambiguous, and only a name when it reads back as that item, so the address is one the page has verified rather than one it assumed.
+
+The vocabulary belongs to the **envelope**, not to the page, so both directions live in [`lib/data-payload.js`](../../lib/data-payload.js) (`DataPayload.resolveItem`, `.addressItem`) beside the rest of what an item means, and `npm test` holds them. The page owns only the location read and write, which needs a browser: that half is held by [`tools/render/scenarios/data-view-item.mjs`](../../tools/render/scenarios/data-view-item.mjs) directly and [`data-view-item-tossed.mjs`](../../tools/render/scenarios/data-view-item-tossed.mjs) through a toss.
 
 The viewport toggles are not part of this vocabulary. `bleed` is a preference about the reader's screen, not about what is being read, and would ride along on every copied link.
 
