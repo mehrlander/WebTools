@@ -46,7 +46,7 @@
       "subject": "the surfacing system: primitives plus the guide-PR course",
       "status": "living",
       "reach": "injected",
-      "words": 3064,
+      "words": 3075,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -222,7 +222,7 @@
       "subject": "the data-view envelope contract",
       "status": "living",
       "reach": "project",
-      "words": 837,
+      "words": 1181,
       "maintenance": "authored; prose contract for the data route, named by the surfacing primitives; no schema beside it"
     },
     {
