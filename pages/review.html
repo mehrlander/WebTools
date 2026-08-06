@@ -198,10 +198,15 @@
     </div>
   </div>
 
-  <!-- ── The file cards (both modes) ─────────────────────────────────────── -->
-  <template x-for="f in files" :key="f.path">
-    <div x-data="fileReview(f)"></div>
-  </template>
+  <!-- ── The file rows (both modes) ──────────────────────────────────────
+       One bordered list with hairline separators, matching the branch page:
+       a card each, with a gap between, spent vertical space on borders that
+       carried nothing and made a long changeset harder to scan, not easier. -->
+  <div x-show="files.length" class="border border-base-300 rounded-lg overflow-hidden">
+    <template x-for="f in files" :key="f.path">
+      <div x-data="fileReview(f)"></div>
+    </template>
+  </div>
 
 </main>
 

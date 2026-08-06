@@ -30,7 +30,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 3135,
+      "words": 3202,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {

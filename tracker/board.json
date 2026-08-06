@@ -369,13 +369,15 @@
   {
    "id": "file-review-collapsed-density-2rvxfn",
    "title": "Give the file-review collapsed row more than a name and a count",
-   "status": "backlog",
+   "status": "done",
    "project": "web-tools",
    "opened": "2026-07-26",
+   "closed": "2026-08-06",
+   "session": "claude/show-repo-progress-b8l63x",
    "file": "file-review-collapsed-density-2rvxfn.md",
    "href": "tasks/file-review-collapsed-density-2rvxfn.md",
-   "lastActivity": "2026-07-26",
-   "logEntries": 1
+   "lastActivity": "2026-08-06",
+   "logEntries": 2
   },
   {
    "id": "focus-a-ui-component-f0awt7",

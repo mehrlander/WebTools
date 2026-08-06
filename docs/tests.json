@@ -32,7 +32,7 @@
       "path": "tools/test/branch-brief-cards.test.mjs",
       "kind": "component",
       "protects": "The branch brief renders a card per changed file.",
-      "assertions": 5,
+      "assertions": 6,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
@@ -324,6 +324,15 @@
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/file-review-card.test.mjs",
+      "kind": "component",
+      "protects": "What opening a changed-file row costs: a card handed a patch shows it without fetching, and only a tab that needs the bytes triggers a contents call. Plus the collapsed row's formatting, including the path elision that replaced a CSS rtl trick bidi reordering turned into a path that does not exist.",
+      "assertions": 8,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
     },
     {
       "path": "tools/test/gh-api.test.mjs",
