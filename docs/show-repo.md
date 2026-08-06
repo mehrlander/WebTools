@@ -35,7 +35,7 @@ states its `#gh=`-vs-`#gz=` split.
 
 Open a repo with `?repo=owner/repo`, optionally `&ref=<branch|tag|sha>`. Public
 repos browse with no auth; private repos and branches need the viewer's token.
-Deep-link params: `&view=pages|atlas|files|stage|surfaces|branches|public|todo|jots|activity|portable`, `&file=<path>`, `&path=<dir>`.
+Deep-link params: `&view=pages|atlas|files|stage|surfaces|branches|public|todo|jots|activity|map`, `&file=<path>`, `&path=<dir>`, and `&tab=<tab>` for the two views that carry tabs (the **project** view's pill row, the **Map** view's tabs). A tabbed view keeps its default tab out of the URL, so an existing tab-less link still opens where it always did.
 
 **Two context levels.** The page is either in the **estate** (the global,
 all-repo context) or in a **repo** (a per-repo context with its own views).
@@ -317,7 +317,7 @@ the header nav the way a repo shows landing/atlas/files/…:
 - **Lists** — the two personal piles, To-do over Jot, in one pane rather than
   two tabs. Both `?view=todo` and `?view=jots` resolve here (below).
 - **Tools** (`?view=tools`) — a curated gallery of utility pages (below).
-- **Map** (`?view=map`) — the portable set, Surfacing, Showing, and the Docs registry (below). Per-repo scope and adoption live on the Repos cards.
+- **Map** (`?view=map`, `&tab=` deep-links a tab) — the portable set, Surfacing, Showing, the Docs registry, and Tests (below). Per-repo scope and adoption live on the Repos cards.
 - **Proposals** (`?view=proposals`) — pending cross-repo edits awaiting a confirm
   (below). The one conditional entry: shown only while something is pending.
 
@@ -696,11 +696,22 @@ link, and a file listing lives in Public browse.
 the coordination layer itself into a first-class object, and is the operational
 face of the constellation doctrine ([`docs/CONSTELLATION.md`](CONSTELLATION.md)
 is the portable kernel, opened from the set header; the full worked instance is
-in the private `home` repo). Four tabs, `lib/alpineComponents/map.js`, each
+in the private `home` repo). Five tabs, `lib/alpineComponents/map.js`, each
 answering one question about the layer: what travels (the set), what to hand
-over in chat (Surfacing), how content moves and shows (Showing), and what the
-documentation holds and what holds it (Docs). Who carries the set is a fact
-about a repo and lives on the Repos cards.
+over in chat (Surfacing), how content moves and shows (Showing), what the
+documentation holds and what holds it (Docs), and what the suite checks
+(Tests). Who carries the set is a fact about a repo and lives on the Repos
+cards.
+
+**The open tab is addressable:** `?view=map&tab=surfacing|showing|docs|tests`,
+on the same `tab` key the project view's pills use, with the default (`set`)
+left out of the URL so a plain `?view=map` link is unchanged. The tab is held
+by the shell rather than by `map()`, because the URL is the shell's to own and
+the component mounts lazily; the component renders whichever tab is set, watches
+the shell for a back-button change, and fetches that tab's manifest on arrival
+by whatever route. That last part is the failure this replaced: the four
+non-default tabs used to fetch from the click handler alone, so a tab nobody
+tapped had nothing to render.
 
 *The set* renders the to-go bag from the hub's committed manifest,
 [`docs/portable.json`](portable.json), whose prose parent is

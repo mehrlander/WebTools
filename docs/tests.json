@@ -419,7 +419,7 @@
       "path": "tools/test/map-view.test.mjs",
       "kind": "component",
       "protects": "The Map view mounts, loads the public set, and reports adoption without startup warnings.",
-      "assertions": 11,
+      "assertions": 16,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1
