@@ -1185,6 +1185,18 @@ strips, arrow keys, or the chevrons move through it, clamped at the ends;
 Escape or the X closes. Staging a branch's changed files, the name's old tap
 action, moved into the branch menu as **Stage changed files**.
 
+Since 2026-08-06 the embedded page carries the branch's **guide** as well: the
+PR body, rendered through `kits/guide-render.js`, the renderer the FAB drawer
+has used since PR #295. The takeover therefore shows the whole picture in one
+place, judgment and mechanics both, and the two are sourced differently on
+purpose: the guide is READ from where it is written, and the file list is
+DERIVED from the compare. Neither is a copy of the other, which is what keeps
+this from being a second account of the branch to maintain (the reasoning is
+the merge guide's, one level down: do not restate what a live read answers).
+Arrows step through every PR the branch has had, since a merge ends a PR and
+not the branch, and `#gh=owner/repo&pr=<n>` addresses a PR directly, resolving
+to its own head and base rather than to today's default branch.
+
 This settles the host question in the branch-page-as-navigation task: the
 sequence lives in the shell, which already holds the list, and the standalone
 `branch.html` survives as both the shareable single-branch form and the

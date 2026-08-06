@@ -79,13 +79,15 @@
   {
    "id": "branch-authored-layer-surface-0j0zik",
    "title": "Converge the branch page's authored layer on the branch-review surface",
-   "status": "backlog",
+   "status": "done",
    "project": "web-tools",
    "opened": "2026-07-26",
+   "closed": "2026-08-06",
+   "session": "claude/show-repo-progress-b8l63x",
    "file": "branch-authored-layer-surface-0j0zik.md",
    "href": "tasks/branch-authored-layer-surface-0j0zik.md",
-   "lastActivity": "2026-07-26",
-   "logEntries": 1
+   "lastActivity": "2026-08-06",
+   "logEntries": 2
   },
   {
    "id": "branch-page-as-navigation-adi9ha",

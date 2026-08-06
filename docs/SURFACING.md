@@ -49,8 +49,11 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 * **Open the branch 🌿:** for work in flight, link the branch page beside the guide PR:
 
   `…/pages/branch.html#gh=owner/repo@branch[&base=ref]`
+  `…/pages/branch.html#gh=owner/repo&pr=<n>` (a PR: its own head and base)
 
-  Its facts are read from the API on every load (state, ahead/behind, lifespan, the authoring sessions, the PR, commits, changed files), so **the link is current whenever it is opened** and makes no freshness claim: there is nothing authored in it to go stale. That is what the guide PR body, being hand-maintained markdown, cannot offer. Add `&src=<spec>` or `&gz=<payload>` to lay an authored envelope over it (intent, what is open, what was left out, a note per file); the page is complete without one. Token-gated like every `#gh=` address, and subject to the same in-app-browser caveat.
+  Its facts are read from the API on every load (state, ahead/behind, lifespan, the authoring sessions, the PRs, commits, changed files), so **the link is current whenever it is opened** and makes no freshness claim: there is nothing authored in it to go stale. That is what the guide PR body, being hand-maintained markdown, cannot offer.
+
+  **It renders the guide PR body too**, so one link is the whole picture: the judgment on top, the mechanical file list under it, each file as a diff card. The body's file links are re-aimed at what can show each file and lifted into a chip strip, and arrows step through every PR the branch has had, since a merge ends a PR but not the branch. Nothing about that is a second copy of anything: the body is read where it is written, and the file list is derived from the compare. Add `&src=<spec>` or `&gz=<payload>` to lay an authored envelope over a branch with no PR to carry the judgment; the page is complete without one. Token-gated like every `#gh=` address, and subject to the same in-app-browser caveat.
 
   The page is deployed on the hub's main, and it reads any `owner/repo@branch` through the viewer's token, so the address above is canonical for every repo's branches; the tossed fallback this entry used to carry described the window before it merged and is retired. For browsing rather than linking, show-repo's Activity view (`…/show-repo/show-repo.html?view=activity`) opens the same renderer as a full-viewport takeover, swipeable through the open list; 🌿 remains the shareable single-branch address.
 

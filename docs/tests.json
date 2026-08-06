@@ -41,7 +41,7 @@
       "path": "tools/test/branch-brief.test.mjs",
       "kind": "behavior",
       "protects": "Branch state classification: ahead, behind, merged, and stranded.",
-      "assertions": 21,
+      "assertions": 26,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -375,6 +375,15 @@
       "kind": "behavior",
       "protects": "Every named query document the estate depends on is exposed and parses.",
       "assertions": 7,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/guide-render.test.mjs",
+      "kind": "kit",
+      "protects": "The guide renderer shared by the FAB drawer and the branch page: the slashed-ref split that keeps a claude/<slug> address from 404ing, the file routing table, and the chip strip's dedupe by file rather than by address.",
+      "assertions": 9,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0

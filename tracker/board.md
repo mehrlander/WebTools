@@ -3,7 +3,6 @@
 _Generated from tasks/. Do not hand-edit._
 
 ## On deck
-- 🎫 [Converge the branch page's authored layer on the branch-review surface](tasks/branch-authored-layer-surface-0j0zik.md)
 - 🎫 [Reach the take-away menu from show-repo's Pages gallery](tasks/brief-from-the-pages-gallery-7d4031.md) (needs: Find a way to focus attention on one piece of a page's UI)
 - 🎫 [Name the code layers and account for tools/](tasks/code-layer-taxonomy-q15jp2.md)
 - 🎫 [Have data-view open at an addressed item via the fragment](tasks/data-view-consume-fragment-nxlpbs.md)
@@ -37,6 +36,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [App views - designate a page as an estate-level view](tasks/app-views-estate-level-btp6m4.md) (`claude/web-tools-app-views-m3pkyo`)
 - 🎫 [Automate the merge guide from PR bodies](tasks/automate-merge-guide-from-pr-bodies-uaect4.md) (`claude/task-tracker-discussion-wg27xv`)
 - 🎫 [Backfill guide regions into old PR bodies and full-regenerate the merge guide](tasks/backfill-guide-regions-merge-guide-bkk4xv.md) (`claude/merge-guide-web-tools-gjhw8l`)
+- 🎫 [Converge the branch page's authored layer on the branch-review surface](tasks/branch-authored-layer-surface-0j0zik.md) (`claude/show-repo-progress-b8l63x`)
 - 🎫 [Make the branch page a navigation target, swipeable from the lists](tasks/branch-page-as-navigation-adi9ha.md) (`claude/project-pages-docs-udzi51`)
 - 🎫 [Show the branch lifespan in the per-repo branch review too](tasks/branch-review-lifespan-0g4znz.md) (`claude/project-pages-docs-udzi51`)
 - 🎫 [Branch-review view in show-repo](tasks/branch-review-view-show-repo-rwwmrj.md) (`claude/web-tools-branch-tracking-n1zawm`)

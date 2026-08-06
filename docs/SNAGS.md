@@ -163,3 +163,17 @@ suspicion cannot clear it. The escaping *is* real for `add_issue_comment`, where
 a fragment URL renders as literal text, so a comment carrying a toss link needs
 the address checked after posting. *(seen: 2026-08-05)*
 → [SURFACING.md](SURFACING.md)
+
+**`prose` is not available on most pages, and it fails silently.** A guide body
+rendered on `pages/branch.html` with `prose prose-sm` came out with no bullets
+and no link color. Adding `@tailwindcss/typography` to the page's jsDelivr
+combine did not fix it: the stylesheet loaded, and its rules still did not match,
+so two rounds went into a plugin that was never the answer. The FAB had already
+settled this and said so in a comment beside its own guide body: it mounts on
+every page that boots lib, the plugin is a separate CDN entry not all of them
+carry, and it styles markdown with explicit descendant utilities instead. The
+rule is the general one and it is about search order, not CSS: **before styling
+a thing the estate already renders somewhere, read how the existing renderer
+does it.** The classes now live once, in `kits/guide-render.js`, at two sizes.
+*(seen: 2026-08-06)*
+→ [show-repo.md](show-repo.md)
