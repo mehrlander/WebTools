@@ -150,6 +150,8 @@ The general rule this is a case of: **do not commit what a live read already ans
 
 Offer: *"want me to wrap up (per-session refreshes, then mark the PR ready)?"* Accepting authorizes the sequence below, including marking ready. The guide body should already be current; when all preparation is complete, ask only whether to mark ready. **"Wrap up"** means finish and go green, not merge.
 
+**"Merge" means merge.** It authorizes the wrap-up sequence *and* the merge that follows, so run the sequence, mark ready, and merge, without asking a second time. Two things it does not authorize, and neither is a question to ask: merging **red**, since a PR with a reporting CI check waits for it and a failure is a fact to report and fix; and merging by any route other than the pull request, since a fast-forward or a push to `main` from a checkout lands a change on `main` with no body describing it. Added 2026-08-06, after a session read an explicit "merge" as a request to begin the wrap-up and asked again at the end, which is one decision charged twice.
+
 1. **Preflight:** run `git fetch origin main && git merge-tree --write-tree origin/main HEAD` to test-merge without touching the tree. Resolve any conflicts and report the result.
 2. Execute per-session refreshes.
 3. Finalize the guide: make Notes / Risk reviewer-current, and settle the next steps. A next step the branch will not reach either rides forward in the guide body or becomes a task, which goes through `/tasks` and its filing rules rather than being written straight to `tracker/`. The body is the shipped account, so leave it fit to read after merge.
