@@ -24,6 +24,14 @@
   because a query string is capped at roughly 8KB by the Pages edge, and the
   address arrives as ?src= from a routed toss's params shim.
 
+  One more key selects WITHIN a payload, and is written back as the reader
+  moves, so the address bar always names what is on screen:
+    #item=<name|index>   all digits is an index, anything else is a name
+                         (full name first, then basename). A miss opens item 0
+                         rather than erroring.
+  Through a routed toss it is the trailing fragment of the route:
+    …/toss-render.html#data=<owner>/<repo>:<bundle.json>#item=raw.csv
+
   Two payload shapes, told apart by lib/data-payload.js and handled the same
   way from here on:
     BARE      a CSV, a JSON array, any bytes. One item; the viewer's module
@@ -108,9 +116,11 @@
     // The two viewport levers (task data-view-mobile-chrome): on a phone the
     // notes are the cost, not the controls (measured 2026-07-25: 132px of the
     // 280 was prose), so below sm they collapse behind the info toggle. bleed
-    // hands the whole viewport to the viewer; deliberately NOT written to the
-    // hash, since the fragment vocabulary is reserved by the
-    // data-view-consume-fragment task and a toggle should not preempt it.
+    // hands the whole viewport to the viewer; still NOT written to the hash,
+    // now for a settled reason rather than a reserved one: the fragment
+    // vocabulary is `item`, and it addresses WHAT is being read. A viewport
+    // preference is not part of that address and would ride along on every
+    // copied link.
     notesOpen: false,
     bleed: false,
     get hasNotes() {
@@ -143,7 +153,12 @@
       } catch (e) { this.error = e.message || String(e); return; }
 
       document.title = this.title;
-      this.$nextTick(() => this.open(0));
+      // #item=<name|index> addresses one item of an envelope. A miss opens
+      // item 0 rather than erroring, and only a URL that already named an item
+      // gets its address written back, so a plain #gz= toss is never rewritten
+      // on load just for arriving.
+      const asked = UrlParams.get('item');
+      this.$nextTick(() => this.open(this.resolveItem(asked) ?? 0, asked != null));
     },
 
     get items() { return this.payload?.items || []; },
@@ -155,14 +170,66 @@
     },
     label: it => it.name.split('/').pop(),
 
+    // The #item= vocabulary, both directions. An all-digits value is an INDEX,
+    // anything else is a NAME: unambiguous where the envelope is stable, and
+    // survivable where it is edited. A name matches the item's full name
+    // first, then its basename, which is what the strip shows and therefore
+    // what a link author will have copied. Duplicates resolve to the first
+    // match. A miss is null, not an error; the caller opens item 0.
+    resolveItem(spec) {
+      if (spec == null || spec === '') return null;
+      if (/^\d+$/.test(spec)) {
+        const n = Number(spec);
+        return n < this.items.length ? n : null;
+      }
+      const byName = this.items.findIndex(it => it.name === spec);
+      if (byName >= 0) return byName;
+      const byLabel = this.items.findIndex(it => this.label(it) === spec);
+      return byLabel >= 0 ? byLabel : null;
+    },
+
+    // The shortest form that reads back as i: basename, then full name, then
+    // the index. Round-tripping through resolveItem rather than testing
+    // uniqueness by hand means the address written is one this page has
+    // verified, not one it assumed. The digit test keeps a file honestly named
+    // `2` from being minted as an index.
+    addressFor(i) {
+      const it = this.items[i];
+      if (!it) return String(i);
+      for (const form of [this.label(it), it.name]) {
+        if (form && !/^\d+$/.test(form) && this.resolveItem(form) === i) return form;
+      }
+      return String(i);
+    },
+
+    // Write the selection back, so the address bar tracks the view and a
+    // reader can copy the address of what they are looking at. replaceState
+    // keeps item clicks out of the back stack, and it must take an ABSOLUTE
+    // URL: inside a toss a relative one resolves against the stamped <base>
+    // and throws (task history-safe-toss-render-shim). In a #gz= toss the
+    // frame is opaque-origin, where replaceState throws outright, so the plain
+    // assignment is the fallback rather than the exception. UrlParams.withKey
+    // edits the one key and leaves the payload beside it alone; the '#' seeds
+    // an empty fragment so the result comes back in fragment form.
+    addressItem(i) {
+      const frag = UrlParams.withKey(location.hash || '#', 'item', this.addressFor(i));
+      if (frag === location.hash) return;
+      try { history.replaceState(null, '', location.href.split('#')[0] + frag); }
+      catch (e) { location.hash = frag; }
+    },
+
     // Show item i, fetching its src on first open. The viewer is driven
     // imperatively through the handle it stashes on its own root, the same
-    // way the stage's preview modal drives it.
-    async open(i) {
+    // way the stage's preview modal drives it. `address` is false only on the
+    // load path, where the URL is the reader's, not ours to normalize.
+    async open(i, address = true) {
       const it = this.items[i];
       if (!it) return;
       this.sel = i;
       this.error = '';
+      // A one-item payload has nothing to address; a bare CSV should not grow
+      // a fragment for being looked at.
+      if (address && this.items.length > 1) this.addressItem(i);
       if (it.content == null && it.src) {
         try { it.content = await fetchText(it.src); }
         catch (e) { this.error = `Could not read ${it.src}: ${e.message || e}`; return; }
