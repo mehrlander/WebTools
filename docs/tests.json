@@ -1,0 +1,914 @@
+{
+  "note": "The test registry: one row per file under tools/test/, saying what genre of check it is and what breaks if it is deleted. The suite reports a pass count, and a pass count is the weakest thing it knows: it cannot distinguish a boot smoke check from an adversarial gate, and it says nothing about whether any assertion would catch a real break. `kind` and `protects` are authored because no derivation supplies them; `assertions`, `method`, `runner`, and `boot_smoke` are stamped by tools/build/tests-index.mjs and gated by tools/test/tests-registry.test.mjs. A blank `protects` is a ledger entry, not a violation: it marks a test nobody has yet examined, the same way the documents census counts bare maintenance rows.",
+  "kinds": {
+    "behavior": "calls the subject's own functions and asserts what comes back",
+    "component": "boots an Alpine component in jsdom and drives it",
+    "kit": "loads a lib/kits file through the bootstrap and exercises its surface",
+    "tool": "runs a CLI script as a process and asserts its output",
+    "gate": "holds committed data to the repo, so documentation cannot drift from what it describes",
+    "lockstep": "holds a generated artifact to its source",
+    "guard": "asserts a convention or policy rather than a behavior"
+  },
+  "tests": [
+    {
+      "path": "tools/test/artifacts-lockstep.test.mjs",
+      "kind": "lockstep",
+      "protects": "Every deterministic generator is re-run in check mode, so a committed artifact cannot sit behind its source.",
+      "assertions": 6,
+      "method": "spawn",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/bake-injection.test.mjs",
+      "kind": "behavior",
+      "protects": "Every injection into a baked page uses a function replacer, so $& in content cannot corrupt the output.",
+      "assertions": 3,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/branch-brief-cards.test.mjs",
+      "kind": "component",
+      "protects": "The branch brief renders a card per changed file.",
+      "assertions": 5,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/branch-brief.test.mjs",
+      "kind": "behavior",
+      "protects": "Branch state classification: ahead, behind, merged, and stranded.",
+      "assertions": 21,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/branch-survey.test.mjs",
+      "kind": "behavior",
+      "protects": "Landed-versus-stranded is judged on blob content, since squashes make ref-level merge status meaningless.",
+      "assertions": 20,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/branches-view.test.mjs",
+      "kind": "component",
+      "protects": "The branches view mounts clean.",
+      "assertions": 5,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/build-board.test.mjs",
+      "kind": "tool",
+      "protects": "The tracker board generator: dependency reporting, the schema it accepts, and byte-determinism.",
+      "assertions": 23,
+      "method": "spawn",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/chat-render-exchanges.test.mjs",
+      "kind": "behavior",
+      "protects": "A leading header in a chat export parses as a meta note, not as a user turn.",
+      "assertions": 7,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/chat-render-raw-turns.test.mjs",
+      "kind": "component",
+      "protects": "A user turn renders as text rather than markdown, so pasted content cannot inject formatting.",
+      "assertions": 9,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/claude-md.test.mjs",
+      "kind": "guard",
+      "protects": "CLAUDE.md still points at the showing manifest and frame, and stays under its 1600-word ceiling. The size half is a policy, not a behavior, which is why it sits here rather than inside the routes manifest test.",
+      "assertions": 2,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/compression.test.mjs",
+      "kind": "kit",
+      "protects": "Gzip round-trips through the GZ64 prefix protocol without corrupting the payload.",
+      "assertions": 19,
+      "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/concept-index.test.mjs",
+      "kind": "gate",
+      "protects": "A term declared canonical in a hub doc is not silently redefined elsewhere.",
+      "assertions": 6,
+      "method": "spawn",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/console-scan.test.mjs",
+      "kind": "component",
+      "protects": "The console scanner persists fresh records and dedups by key across passes.",
+      "assertions": 9,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/console-suite.test.mjs",
+      "kind": "component",
+      "protects": "The console query language: chained scopes, staged selection, and the operators it documents.",
+      "assertions": 42,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/counter.test.mjs",
+      "kind": "component",
+      "protects": "The counter component mounts clean.",
+      "assertions": 4,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/data-payload.test.mjs",
+      "kind": "behavior",
+      "protects": "A JSON object with item-shaped entries is recognized as an envelope rather than raw data.",
+      "assertions": 13,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/data-view-links.mjs",
+      "kind": "behavior",
+      "protects": "Every link the data view renders resolves, driven in a real browser.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:data-view-links",
+      "boot_smoke": null
+    },
+    {
+      "path": "tools/test/diff-tool-engine.test.mjs",
+      "kind": "behavior",
+      "protects": "The diff engine: identical input yields only equalities, and every edit type round-trips.",
+      "assertions": 33,
+      "method": "pure",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/docs-registry.test.mjs",
+      "kind": "gate",
+      "protects": "Every docs/ file has exactly one census row, and reach and words match the derivation.",
+      "assertions": 7,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/drop-zone.test.mjs",
+      "kind": "component",
+      "protects": "The reusable drop zone mounts clean.",
+      "assertions": 9,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/estate-activity-progress.test.mjs",
+      "kind": "component",
+      "protects": "The activity progress indicator reports idle, running, and finished states honestly.",
+      "assertions": 5,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/estate-adoption.test.mjs",
+      "kind": "component",
+      "protects": "A repo scope is either inline prose or a pointer, never silently both.",
+      "assertions": 6,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/estate-bench.test.mjs",
+      "kind": "component",
+      "protects": "The estate bench mounts clean.",
+      "assertions": 10,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/estate-branch-sessions.test.mjs",
+      "kind": "behavior",
+      "protects": "The session trailer is pulled out of a commit or PR body rather than guessed from the branch name.",
+      "assertions": 24,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/estate-branch-swipe.test.mjs",
+      "kind": "component",
+      "protects": "A horizontal drag moves the branch surface and owns the axis, so vertical scroll is not stolen.",
+      "assertions": 8,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/estate-embed.test.mjs",
+      "kind": "component",
+      "protects": "The estate embed mounts clean.",
+      "assertions": 5,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/estate-jots.test.mjs",
+      "kind": "component",
+      "protects": "The jots list mounts clean.",
+      "assertions": 8,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/estate-open-branches.test.mjs",
+      "kind": "component",
+      "protects": "The open-branches list shows open PRs and stranded branches only, freshest first.",
+      "assertions": 19,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/estate-repo-surfaces.test.mjs",
+      "kind": "component",
+      "protects": "The per-repo surfaces block mounts clean.",
+      "assertions": 6,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/estate-rows.test.mjs",
+      "kind": "component",
+      "protects": "The estate rows layout mounts clean.",
+      "assertions": 7,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/estate-sessions.test.mjs",
+      "kind": "component",
+      "protects": "The Sessions pane and the Lists merge behind it: both filters lapse rather than stranding the pane on an empty list, the pill routes through the shell so the URL keeps stamping, and a missing cache reads as empty rather than as an error.",
+      "assertions": 13,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/fab-capture.test.mjs",
+      "kind": "component",
+      "protects": "Capture serializes the state the fab has collected with honest fidelity.",
+      "assertions": 2,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/fab-guide.test.mjs",
+      "kind": "component",
+      "protects": "The fab re-aims what it can render and leaves everything else alone.",
+      "assertions": 12,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/fab-subject-actions.test.mjs",
+      "kind": "component",
+      "protects": "Inside a toss, the fab collects the subject page actions as well as the shell.",
+      "assertions": 10,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/fab-toss.test.mjs",
+      "kind": "component",
+      "protects": "The fab keeps shell identity when mounted inside a toss.",
+      "assertions": 8,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/gh-api.test.mjs",
+      "kind": "behavior",
+      "protects": "Commit collection returns distinct paths newest-first with per-commit dates.",
+      "assertions": 6,
+      "method": "pure",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/gh-boot-pageboot.test.mjs",
+      "kind": "behavior",
+      "protects": "gh-boot awaits window.__pageBoot before its Alpine fallback, which is the whole boot-order contract.",
+      "assertions": 3,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/gh-graphql-partial.test.mjs",
+      "kind": "component",
+      "protects": "A partial GraphQL response is surfaced as partial rather than presented as complete.",
+      "assertions": 3,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/gh-store.test.mjs",
+      "kind": "behavior",
+      "protects": "saveBytes writes byte-exact content, so a binary round-trip cannot be silently re-encoded.",
+      "assertions": 5,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/github-links.test.mjs",
+      "kind": "behavior",
+      "protects": "The GitHub menu builds the right route list for a repo you are and are not browsing.",
+      "assertions": 8,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/graphql-schema.test.mjs",
+      "kind": "behavior",
+      "protects": "Every named query document the estate depends on is exposed and parses.",
+      "assertions": 7,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/in-flight.test.mjs",
+      "kind": "tool",
+      "protects": "Branch classification: merged, live, unrelated, squash-shadowed, and every branch exactly once.",
+      "assertions": 31,
+      "method": "spawn",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/kits-register.test.mjs",
+      "kind": "kit",
+      "protects": "A kit loaded through the async gh.load shape registers its global exactly once.",
+      "assertions": 2,
+      "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/manifest-registry.test.mjs",
+      "kind": "gate",
+      "protects": "Every .web-tools.json key live in the estate has a field-registry row of the right type.",
+      "assertions": 5,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/map-view-use-ref.test.mjs",
+      "kind": "component",
+      "protects": "Map manifests are fetched at the ?use= ref rather than main, so a preview shows the branch.",
+      "assertions": 4,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/map-view.test.mjs",
+      "kind": "component",
+      "protects": "The Map view mounts, loads the public set, and reports adoption without startup warnings.",
+      "assertions": 11,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/markers-status.test.mjs",
+      "kind": "tool",
+      "protects": "The status-marker probe reports malformed markers instead of skipping them.",
+      "assertions": 11,
+      "method": "spawn",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/mention.test.mjs",
+      "kind": "component",
+      "protects": "The mention component mounts clean.",
+      "assertions": 8,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/messaging.test.mjs",
+      "kind": "kit",
+      "protects": "Publish delivers occasion, data, and path to every subscriber.",
+      "assertions": 7,
+      "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/pages.test.mjs",
+      "kind": "component",
+      "protects": "The pages gallery mounts closed and opens without warnings.",
+      "assertions": 7,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/path-picker.test.mjs",
+      "kind": "component",
+      "protects": "Path ranking: exact, prefix, substring, then no match, with containers ordered first.",
+      "assertions": 18,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/pdf-ink-alignment.mjs",
+      "kind": "behavior",
+      "protects": "Extracted table cells line up with the ink on the page, which jsdom cannot see.",
+      "assertions": null,
+      "method": "read",
+      "runner": "npm run test:pdf",
+      "boot_smoke": null
+    },
+    {
+      "path": "tools/test/pdf-kit-browser.mjs",
+      "kind": "behavior",
+      "protects": "The pdf kit against real pdf.js in Chromium, where the worker and fonts actually load.",
+      "assertions": null,
+      "method": "read",
+      "runner": "npm run test:pdf",
+      "boot_smoke": null
+    },
+    {
+      "path": "tools/test/pdf-kit.test.mjs",
+      "kind": "kit",
+      "protects": "Table recovery from a PDF: clustering, lattice detection, tolerances, and the government-document failure modes.",
+      "assertions": 61,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/pdf-version-probe.mjs",
+      "kind": "behavior",
+      "protects": "The kit still works against the pdf.js versions the estate pins.",
+      "assertions": null,
+      "method": "spawn",
+      "runner": "npm run test:pdf-versions",
+      "boot_smoke": null
+    },
+    {
+      "path": "tools/test/persistence.test.mjs",
+      "kind": "kit",
+      "protects": "Path parsing splits store from key tail the documented way.",
+      "assertions": 10,
+      "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/playground-pass.mjs",
+      "kind": "behavior",
+      "protects": "What jsdom cannot see in the console playground: visibility, real layout geometry, virtualized harvest, and lasso via synthetic pointer events.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:playground",
+      "boot_smoke": null
+    },
+    {
+      "path": "tools/test/portable-align.test.mjs",
+      "kind": "behavior",
+      "protects": "Marketplace subscription is read from both the nested source.repo shape and the string shape.",
+      "assertions": 8,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/portable-manifest.test.mjs",
+      "kind": "gate",
+      "protects": "The portable catalogs list what the plugin actually ships, both directions, and vendored copies stay byte-identical.",
+      "assertions": 7,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/proposals-view.test.mjs",
+      "kind": "component",
+      "protects": "The proposals view lists only what is still pending.",
+      "assertions": 13,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/ref-switch.test.mjs",
+      "kind": "component",
+      "protects": "The ref switch pins the ref on both halves and carries the page query across.",
+      "assertions": 10,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/render-copy.mjs",
+      "kind": "behavior",
+      "protects": "A rendering copy carries no run-time CDN reference it cannot resolve offline.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:render-copy",
+      "boot_smoke": null
+    },
+    {
+      "path": "tools/test/repo-activity-cache.test.mjs",
+      "kind": "behavior",
+      "protects": "The cache hash ignores timestamps and tracks material fields, so a crawl does not commit on every run.",
+      "assertions": 15,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/repo-address.test.mjs",
+      "kind": "behavior",
+      "protects": "The owner/repo[@ref]:path address parses into its three parts.",
+      "assertions": 13,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/repo-checks.test.mjs",
+      "kind": "behavior",
+      "protects": "All six staleness check kinds pass inside their window and fail outside it.",
+      "assertions": 27,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/repo-config-cache.test.mjs",
+      "kind": "behavior",
+      "protects": "The config hash is stable, order-preserving, and separates null from absent.",
+      "assertions": 11,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/repo-mailbox.test.mjs",
+      "kind": "behavior",
+      "protects": "Pending returns request files with no matching result, which is the whole mailbox protocol.",
+      "assertions": 6,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/repo-proposals.test.mjs",
+      "kind": "component",
+      "protects": "The proposal channel: pending versus applied, the mailbox shape, diffing, and removal.",
+      "assertions": 49,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/repo-sessions-cache.test.mjs",
+      "kind": "behavior",
+      "protects": "The sessions aggregate, whose source is a captured and therefore unregenerable layer: summarize keeps the scan fields and drops the bulk, branches dedupe and drop main since they join the Open view, and an older record with no agent id summarizes without one rather than with a wrong one.",
+      "assertions": 11,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/review-target.test.mjs",
+      "kind": "kit",
+      "protects": "Every documented spec form for a review target parses.",
+      "assertions": 7,
+      "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/routes-manifest.test.mjs",
+      "kind": "gate",
+      "protects": "The showing manifest is well-formed and its picker only routes to mechanisms that exist. Also caps CLAUDE.md.",
+      "assertions": 8,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/session-dispatch.test.mjs",
+      "kind": "tool",
+      "protects": "The session hook dispatcher runs session-*.sh in every checkout and ignores everything else.",
+      "assertions": 11,
+      "method": "spawn",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/session-record-hook.test.mjs",
+      "kind": "tool",
+      "protects": "The session recorder finds its declared store even when the project root sits above the checkouts.",
+      "assertions": 13,
+      "method": "spawn",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/sheet-modal.test.mjs",
+      "kind": "component",
+      "protects": "The sheet modal mounts clean despite its eager slot bindings.",
+      "assertions": 13,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/shorter-payload.test.mjs",
+      "kind": "behavior",
+      "protects": "Plain prose is carried bare and verbatim, with the shortening column left empty.",
+      "assertions": 14,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/show-repo-board-review.test.mjs",
+      "kind": "behavior",
+      "protects": "The board projection is preferred and the markdown is never fetched for it.",
+      "assertions": 13,
+      "method": "pure",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/show-repo-gallery-order.test.mjs",
+      "kind": "behavior",
+      "protects": "The gallery honors pages[].order, and does so without rearranging catalogs that never set it: undeclared reads as 0 and the tiebreak is catalog position rather than label.",
+      "assertions": 5,
+      "method": "pure",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/show-repo-overlay.test.mjs",
+      "kind": "behavior",
+      "protects": "With no overlay the cache is served as-is and no per-repo reads happen.",
+      "assertions": 9,
+      "method": "pure",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/show-repo-panes.test.mjs",
+      "kind": "behavior",
+      "protects": "Every estate nav stop resolves to a pane that exists in the markup.",
+      "assertions": 4,
+      "method": "pure",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/show-repo-projects.test.mjs",
+      "kind": "component",
+      "protects": "Project rows render from the manifest and degrade quietly when the field is absent or malformed.",
+      "assertions": 28,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/source-peek.test.mjs",
+      "kind": "behavior",
+      "protects": "The rendition is chosen by extension, and code is the default rather than a guess.",
+      "assertions": 14,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/stage.test.mjs",
+      "kind": "component",
+      "protects": "The stage: membership, grouping, the diff lens, saving, and the cross-repo address grammar.",
+      "assertions": 52,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/subject-actions.mjs",
+      "kind": "behavior",
+      "protects": "Inside a toss, the fab reaches the subject page actions across the frame boundary.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:subject-actions",
+      "boot_smoke": null
+    },
+    {
+      "path": "tools/test/surface.test.mjs",
+      "kind": "component",
+      "protects": "A v1 surface document reads as v2 and says which version it was.",
+      "assertions": 14,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/surfacing-manifest.test.mjs",
+      "kind": "gate",
+      "protects": "SURFACING.md prose and surfacing.json stay in step on which primitives exist.",
+      "assertions": 3,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/tests-registry.test.mjs",
+      "kind": "gate",
+      "protects": "Every test file has a row saying what it protects, the derived fields match disk, and no browser check is left with nothing to run it.",
+      "assertions": 8,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/tools-view.test.mjs",
+      "kind": "component",
+      "protects": "The Tools view mounts and loads its curated manifest.",
+      "assertions": 4,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/toss-fragment.test.mjs",
+      "kind": "behavior",
+      "protects": "An address, its page query, and a trailing fragment survive the toss intact.",
+      "assertions": 10,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/toss-inline-deps.test.mjs",
+      "kind": "component",
+      "protects": "A relative script src inside a tossed page is fetched at the same ref and inlined.",
+      "assertions": 5,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/toss-multiparam.mjs",
+      "kind": "behavior",
+      "protects": "A toss address carrying both a query and a fragment delivers both to the rendered page.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:toss-multiparam",
+      "boot_smoke": null
+    },
+    {
+      "path": "tools/test/toss-routed-subject.test.mjs",
+      "kind": "behavior",
+      "protects": "An envelope address comes apart into repo, ref, and path.",
+      "assertions": 10,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/traffic-states.mjs",
+      "kind": "behavior",
+      "protects": "The three size states against a controlled server: disclosed, undisclosed, and cached.",
+      "assertions": null,
+      "method": "read",
+      "runner": "npm run test:traffic-states",
+      "boot_smoke": null
+    },
+    {
+      "path": "tools/test/traffic.test.mjs",
+      "kind": "behavior",
+      "protects": "Size accounting: a cache hit is not free, an undisclosed figure is not zero, and no total absorbs what it could not measure.",
+      "assertions": 23,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/treemap.test.mjs",
+      "kind": "kit",
+      "protects": "The treemap kit exposes its documented surface.",
+      "assertions": 9,
+      "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/url-params.test.mjs",
+      "kind": "behavior",
+      "protects": "The fragment wins over the query for the same key, which every toss address depends on.",
+      "assertions": 10,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/viewer.test.mjs",
+      "kind": "component",
+      "protects": "The file viewer mounts clean and plumbs the map option onto its default mode.",
+      "assertions": 17,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/word-select-touch.mjs",
+      "kind": "behavior",
+      "protects": "Word selection survives touch input, which no jsdom event can reproduce.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:word-select",
+      "boot_smoke": null
+    },
+    {
+      "path": "tools/test/wring.test.mjs",
+      "kind": "kit",
+      "protects": "The wring kit exposes every documented export.",
+      "assertions": 9,
+      "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/wsl-core.test.mjs",
+      "kind": "kit",
+      "protects": "Sanitization coerces booleans, dates, and sentinels to the shapes the sheet expects.",
+      "assertions": 13,
+      "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/xlsx.test.mjs",
+      "kind": "kit",
+      "protects": "The xlsx kit exposes its documented surface.",
+      "assertions": 13,
+      "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    }
+  ]
+}

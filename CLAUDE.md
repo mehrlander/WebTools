@@ -41,22 +41,28 @@ Every **deterministic** derived artifact is owned by one commit-time hook (`.cla
 
 - `lib/` changed → `npm run build:lib` → `dist/web-tools.js`
 - `pages/**/*.html` changed → `npm run pages-index` → `pages/README.md` + `pages/index.html`
-- skills, `lib/`, `pages/`, or `docs/` changed → `npm run docs-reach` → the `reach` field in `docs/docs.json`
-- `docs/docs.json` changed → `npm run docs-readme` → `docs/README.md`
+- skills, `lib/`, `pages/`, or `docs/` changed → `npm run docs-reach` → the `reach` and `words` fields in `docs/docs.json`
+- `docs/docs.json` changed → `npm run docs-readme` → `docs/README.md`, then `npm run docs-reach` again (leg 3c)
 - `tracker/tasks/` changed → `npm run tracker-board` → `tracker/board.md` + `tracker/board.json`
 
-`reach` is the odd one: a derived field inside an otherwise authored file, so
-`docs/docs.json` is hand-edited everywhere except that key. It answers whether
-anything can get a reader to a doc (injected, by a skill, by the app, orphan),
-and it moves when a skill or a page starts naming a file, an edit nowhere near
-the registry. `tools/test/docs-registry.test.mjs` holds the stored value to the
-derivation and names the restamp command when they part.
+`reach` and `words` are the odd ones: derived fields in an otherwise authored
+file, so `docs/docs.json` is hand-edited everywhere except those two keys.
+`reach` says who can get to a doc and moves when a skill or page names a file,
+an edit nowhere near the registry; `words` says how much of the folder it is.
+The two disagree, which is why the Docs tab shows both: the orphans are the
+larger count and the smaller mass. `tools/test/docs-registry.test.mjs` holds
+both to the derivation and names the restamp command when they part.
+
+Leg 3c exists because 3a and 3b are a cycle: `docs/README.md` is generated *from*
+the registry and is also a row *in* it. One more stamp settles it. The stamp
+itself runs to a fixpoint for the same reason one level down, and asserts
+convergence rather than assuming it.
 
 Don't hand-edit any of those five files; edit the source and let the hook refresh them. Thumbnails (`pages/thumbs/*.png`) are the deliberate exception: not byte-deterministic, so the hook only *warns* when a page changes without its thumb; the actual refresh happens once per session at wrap-up (see "Per-session refresh" above).
 
 **The hook is best-effort, so the lockstep has a second owner.** A hook only runs where the harness registers it, and that turns on the session's project root rather than on anything in this repo: where the root sits above the repo, `.claude/settings.json` is never read and none of its hooks fire, silently (cause and tells: [docs/environment/extending.md](docs/environment/extending.md)). So `npm test` carries [`tools/test/artifacts-lockstep.test.mjs`](tools/test/artifacts-lockstep.test.mjs), which re-runs each deterministic generator in `--check` mode and fails if a tracked artifact is behind its source. When it fails, run the command it names and commit the result.
 
-The tracker board was the last of the three to get an owner there, on 2026-08-05, and the gap was not theoretical: `board.json` was emitting its per-task keys by iterating a set, so string hash randomization reordered them on every run. Same input, different bytes, in an artifact whose own closing comment promises the opposite. Nobody noticed because `board.json` is read by machines and diffed by no one. The suite now asserts determinism directly rather than inferring it from one passing run, since a nondeterministic generator makes a lockstep test flaky rather than false, and flaky is the harder failure to read. Regenerating by hand after touching `lib/` or `pages/` is still the fast path; the test is what makes forgetting loud instead of silent.
+The tracker board was the last of the three to get an owner there, on 2026-08-05, and the gap was not theoretical: `board.json` emitted its per-task keys by iterating a set, so hash randomization reordered them on every run. Same input, different bytes, in an artifact whose own closing comment promises the opposite, unnoticed because it is read by machines and diffed by no one. The suite now asserts determinism directly rather than inferring it from one passing run, since a nondeterministic generator makes a lockstep test flaky rather than false. Regenerating by hand after touching `lib/` or `pages/` is still the fast path; the test makes forgetting loud instead of silent.
 
 **And a third owner, which does not depend on anyone remembering.** The test only speaks when the suite is run, so [`.github/workflows/test.yml`](.github/workflows/test.yml) runs `npm test` on every pull request and reports it as a check on the PR. That is the whole reason it exists: a hook that may not fire, guarded by a test that may not be run, was a chain with no link the platform enforced. It is the repo's only workflow triggered by a commit under review, so it is the only one whose result appears as a check rather than only in the Actions tab; `wsl-fetch.yml` is an errand on a cron. The suite is browser-free by construction (`node --test` globs `tools/test/**/*.test.mjs`, and every Playwright-driven check is named without `.test.`), so keep it that way or the runner grows a browser install. One caveat worth knowing: `package-lock.json` is gitignored, so CI resolves dependency ranges fresh on each run and a green check is not a claim about a pinned tree.
 
@@ -66,6 +72,13 @@ Root-level `tracker/` scoped to repo-wide work (conventions, build tooling, docs
 
 - **Placement:** `tracker/` (single tracker, no registry).
 - **Board generator:** `npm run tracker-board` (wired into the commit hook above).
+
+## The repo manifest
+
+Root `.web-tools.json`'s fields are data in [`docs/manifest.json`](docs/manifest.json)
+(type, `consumer`, effect), gated against every manifest in the estate by
+[`manifest-registry.test.mjs`](tools/test/manifest-registry.test.mjs): a key in
+use with no row fails. Both files carry the rest.
 
 ## Snags
 

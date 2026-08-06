@@ -40,6 +40,8 @@
   await gh.load('branch-survey.js');
   // Activity-aggregate builders for the private cache (state/activity.json).
   await gh.load('repo-activity-cache.js');
+  // Sessions-aggregate builders for the private cache (state/sessions.json).
+  await gh.load('repo-sessions-cache.js');
   // The private request/response mailbox (mailbox/requests -> results).
   await gh.load('repo-mailbox.js');
   // The write-side channel: proposed cross-repo edits, applied only on confirm.
@@ -727,10 +729,12 @@
          renders both and switches on the shell view, so both share this lazy
          mount. Full width, so the repo grid runs three cards wide like the
          pages index; the Stage constrains its own column. -->
-    <div x-show="isEstate" data-pane="estate" class="h-full overflow-y-auto">
-      <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 !max-w-none">
+    <div x-show="isEstate" data-pane="estate" class="h-full"
+         :class="listsFill ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'">
+      <div class="mx-auto px-4 lg:px-6 pt-4 !max-w-none"
+           :class="listsFill ? 'flex-1 min-h-0 flex flex-col pb-4 lg:pt-6' : 'pb-8 lg:pt-6'">
         <template x-if="estateSeen">
-          <div x-data="estate()"></div>
+          <div x-data="estate()" :class="listsFill && 'flex-1 min-h-0 flex flex-col'"></div>
         </template>
       </div>
     </div>
@@ -1400,7 +1404,7 @@ function app(){ return {
               desc: 'Leave the embed and open the framed page full-viewport.',
               run: () => ({ nav: href }) }];
   },
-  view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'map' | 'tools' | 'landing' | 'pages' | 'atlas' | 'files' | 'stage' | 'branches' | 'config' | 'app' | 'public'
+  view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'landing' | 'pages' | 'atlas' | 'files' | 'stage' | 'branches' | 'config' | 'app' | 'public'
   drawer: false,          // mobile sidebar (pinned on desktop, ignores this)
   atlasSeen: false,       // mount the atlas iframe lazily, on first visit
   estateSeen: false,      // mount the estate component lazily, on first visit
@@ -1549,6 +1553,7 @@ function app(){ return {
     else if (url && url.view === 'todo') this.goTodo();
     else if (url && url.view === 'jots') this.goJots();
     else if (url && url.view === 'activity') this.goActivity();
+    else if (url && url.view === 'sessions') this.goSessions();
     else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap();
     else if (url && url.view === 'tools') this.goTools();
     else if (url && url.view === 'proposals') this.goProposals();
@@ -2126,6 +2131,107 @@ function app(){ return {
       console.warn('activity cache refresh:', e?.message || e);
       return { total: members.length, changed: [], failed, error: e?.message || String(e) };
     }
+  },
+
+  // ── Sessions aggregate: fold the registry's captured session records into a
+  // third derived cache (state/sessions.json). The third sibling of the config
+  // and activity crawls, and the cheapest of the three, because it crawls ONE
+  // repo (the registry itself, which is the store) and because a published
+  // record is addressed by a blob sha, so a pass re-reads only what moved.
+  //
+  // Cost, measured against the store as of 2026-08-05: one trees call, then one
+  // blob read per stale record. Cold that is ~40 reads; warm it is the day's
+  // handful plus the live session's own record, which is republished on every
+  // Stop and so is always stale by design.
+  //
+  // Throttled shorter than the activity crawl (that one runs a per-repo branch
+  // survey; this one is a tree read and a few blobs) and longer than nothing,
+  // since sessions accrue while you are not looking. See
+  // web-tools-private/DESIGN.md and its sessions/README.md.
+  SESSIONS_CACHE_INTERVAL_MS: 3 * 3600 * 1000,
+  SESSIONS_FETCH_POOL: 6,        // record blobs read at once
+  SESSIONS_MAX_FETCH: 120,       // records read per crawl; the rest wait for the next
+  _sessionsCheckKey: 'wt:sessionsCacheCheckedAt',
+  async refreshSessionsCache(force){
+    if (!this.hasToken() || !window.RepoSessionsCache) return { skipped: true };
+    const S = window.RepoSessionsCache;
+    if (!force){
+      try {
+        const last = +localStorage.getItem(this._sessionsCheckKey) || 0;
+        if (Date.now() - last < this.SESSIONS_CACHE_INTERVAL_MS) return { skipped: true };
+      } catch {}
+    }
+    const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
+    try {
+      const nowISO = new Date().toISOString();
+      // One recursive tree read gives every record's path AND blob sha, which
+      // is the whole basis of the incremental crawl: no per-file HEAD, no
+      // guessing from dates.
+      const tree = await reg.req('git/trees/main?recursive=1');
+      const listing = (tree?.tree || [])
+        .filter(e => e.type === 'blob' && S.isRecordPath(e.path))
+        .map(e => ({ path: e.path, sha: e.sha }));
+      if (!listing.length) return { skipped: true, reason: 'no session records in the registry' };
+
+      let prev = null;
+      try { prev = JSON.parse((await reg.get(S.CACHE_PATH)).text); } catch {}
+
+      // Newest first, so a capped pass reads the records a reader is most
+      // likely to want and the older tail catches up on later crawls.
+      const stale = S.stalePaths(prev, listing).sort().reverse();
+      const take = stale.slice(0, this.SESSIONS_MAX_FETCH);
+      const shaByPath = new Map(listing.map(e => [e.path, e.sha]));
+
+      const fetched = {};
+      let i = 0;
+      const readOne = async () => {
+        while (i < take.length){
+          const path = take[i++];
+          try {
+            // By blob sha, not by path: the sha is already in hand from the
+            // tree, and a blob read cannot race a push that moves the path.
+            const blob = await reg.req('git/blobs/' + shaByPath.get(path));
+            fetched[path] = { record: JSON.parse(reg.decode(blob.content)), sha: shaByPath.get(path) };
+          } catch(e){ console.warn('sessions crawl', path, e?.message || e); }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(this.SESSIONS_FETCH_POOL, take.length) }, readOne));
+
+      // The scope is the FULL listing, never `take`: a record the cap deferred
+      // must keep its row, and only a record genuinely gone from the store
+      // loses one.
+      const next = S.buildCache(prev, fetched, listing.map(e => e.path), nowISO);
+      try { localStorage.setItem(this._sessionsCheckKey, String(Date.now())); } catch {}
+      const changed = S.cacheChanged(prev, next);
+      if (changed){
+        await reg.save(S.CACHE_PATH, next, 'Update sessions cache (state/sessions.json) via show-repo');
+      }
+      return { total: listing.length, read: Object.keys(fetched).length,
+               deferred: Math.max(0, stale.length - take.length), committed: changed };
+    } catch(e){
+      console.warn('sessions cache refresh:', e?.message || e);
+      return { error: e?.message || String(e) };
+    }
+  },
+  // Force the sessions crawl (the Sessions pill's Refresh) and tell the estate
+  // to re-read. Lighter than refreshActivity, so it carries a spinner rather
+  // than the determinate per-repo progress bar that crawl needs.
+  sessionsRefreshing: false,
+  async refreshSessions(){
+    if (this.sessionsRefreshing || !this.hasToken()) return;
+    this.sessionsRefreshing = true;
+    try {
+      const r = await this.refreshSessionsCache(true);
+      document.dispatchEvent(new CustomEvent('web-tools:sessions-refreshed'));
+      const toast = Alpine.store('toast');
+      if (!toast || !r) return;
+      const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+      const tail = r.deferred ? ' · ' + plural(r.deferred, 'record') + ' deferred to the next pass' : '';
+      if (r.error) toast('warning', 'Sessions refresh failed: ' + r.error, 'alert-error', 6000);
+      else if (r.skipped) { if (r.reason) toast('warning', 'Sessions refresh skipped: ' + r.reason, 'alert-warning', 4000); }
+      else if (r.committed) toast('arrows-clockwise', 'Sessions refreshed · ' + plural(r.read, 'record') + ' read' + tail, 'alert-success', 4000);
+      else toast('check', 'No new sessions · ' + plural(r.total, 'record') + ' on file' + tail, 'alert-info', 3000);
+    } finally { this.sessionsRefreshing = false; }
   },
 
   // Publish crawl progress for the Activity header. A no-op unless the run was
@@ -3174,6 +3280,7 @@ function app(){ return {
     else if (this.view === 'todo') p.set('view', 'todo');
     else if (this.view === 'jots') p.set('view', 'jots');
     else if (this.view === 'activity') p.set('view', 'activity');
+    else if (this.view === 'sessions') p.set('view', 'sessions');
     else if (this.view === 'map') p.set('view', 'map');
     else if (this.view === 'tools') p.set('view', 'tools');
     // App views are estate-level, so the link stands alone (like the Stage): stamp
@@ -3220,6 +3327,7 @@ function app(){ return {
       else if (url && url.view === 'todo') this.goTodo();
       else if (url && url.view === 'jots') this.goJots();
       else if (url && url.view === 'activity') this.goActivity();
+    else if (url && url.view === 'sessions') this.goSessions();
       else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap();
       else if (url && url.view === 'tools') this.goTools();
     else if (url && url.view === 'proposals') this.goProposals();
@@ -3282,7 +3390,14 @@ function app(){ return {
   // the grid and the Stage, switching on this.view, sharing the one lazy
   // mount); estateCtx is the wider context test the sidebar switches on.
   // 'surfaces' is in this list as the Stage's alias, not as a second pane.
-  get isEstate(){ return this.view === 'estate' || this.view === 'surfaces' || this.view === 'stage' || this.view === 'todo' || this.view === 'jots' || this.view === 'activity'; },
+  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions'].includes(this.view); },
+  // The Lists view is the one estate pane that FILLS rather than flows: its two
+  // halves scroll inside themselves, so the page must not scroll and the chain
+  // from the pane down to the component root has to carry a definite height.
+  // Every other view keeps the ordinary overflow-y-auto column. Held here
+  // rather than inside the component because the two ancestors that need the
+  // classes are the shell's markup, not the component's.
+  get listsFill(){ return this.view === 'todo' || this.view === 'jots'; },
   // App views are estate-level (peers of Repos/Stage), so they share
   // the estate sidebar context: the per-repo view list stays hidden and the
   // header reads "Repositories".
@@ -3317,15 +3432,26 @@ function app(){ return {
   // carry only this set, on the reasoning that the header is fixed and repos do
   // not write it; what that bought was a header with unused room beside it and a
   // published view reachable only after opening a drawer. Each item maps to the
-  // same go* method and `view` string the router already uses. Activity is one
-  // nav stop covering three sub-views (`views`): Open (internal key
-  // 'activity', kept so existing ?view=activity links resolve), To-do, and
-  // Jots; the estate component's segmented pill switches among them, and the
-  // URL still stamps the specific key, so each sub-view deep-links on its own.
+  // same go* method and `view` string the router already uses.
+  //
+  // Activity is one nav stop over the two readings of the estate's own motion:
+  // Open (internal key 'activity', kept so existing ?view=activity links
+  // resolve), the branches in flight, and Sessions, the work that made them.
+  // The estate component's segmented pill switches between them and the URL
+  // stamps the specific key, so each deep-links on its own.
+  //
+  // To-do and Jot used to be Activity's other two pills and are now their own
+  // stop, Lists. They were never activity: a personal checklist and an idea
+  // pile are not the estate moving, they sat there because the pill row
+  // existed. Splitting them also gives each of the two remaining panes the
+  // full column, which a cross-repo branch row and a session row both want.
+  // Both old keys still route (?view=todo and ?view=jots land on Lists).
   get estateNav(){
     return [
-      { view: 'activity', views: ['activity', 'todo', 'jots'],
+      { view: 'activity', views: ['activity', 'sessions'],
         icon: 'ph-pulse',    label: 'Activity', go: () => this.goActivity() },
+      { view: 'todo', views: ['todo', 'jots'],
+        icon: 'ph-list-checks', label: 'Lists',  go: () => this.goTodo() },
       { view: 'estate',   icon: 'ph-squares-four', label: 'Repos',    go: () => this.goEstate() },
       // One stop, named Stage, over the two things a surface is for, switched
       // by a segmented pill inside the view the way Activity switches its
@@ -3383,6 +3509,9 @@ function app(){ return {
   // The Stage's other sub-view: the shelf of saved surfaces. Its own ?view key,
   // the way each of Activity's three has one, so a pill tap deep-links.
   goSurfaces(){ this.estateSeen = true; this.view = 'surfaces'; this.syncUrl(); },
+  // Lists: To-do over Jot, one pane. Both keys route here and each still
+  // stamps its own, so an old ?view=jots link lands on the pane rather than
+  // 404ing into Repos; the pane no longer switches on which one arrived.
   goTodo(){ this.estateSeen = true; this.view = 'todo'; this.syncUrl(); },
   goJots(){ this.estateSeen = true; this.view = 'jots'; this.syncUrl(); },
   // The Map view: the coordination layer made inspectable (the portable set +
@@ -3399,6 +3528,10 @@ function app(){ return {
   // kicks the throttled activity crawl (like Repos kicks the config crawl) so
   // the cache is warm and self-healing.
   goActivity(){ this.estateSeen = true; this.view = 'activity'; this.refreshActivityCache?.(); this.syncUrl(); },
+  // Activity's other pill: the sessions that made the branches. Kicks its own
+  // throttled crawl on visit, the way Open kicks the activity crawl, so the
+  // cache warms itself and a cold one is one tap from being warm.
+  goSessions(){ this.estateSeen = true; this.view = 'sessions'; this.refreshSessionsCache?.(); this.syncUrl(); },
   goLanding(){ this.view = 'landing'; this.syncUrl(); },
   goPages(){ this.view = 'pages'; this.syncUrl(); },
   goAtlas(){ this.atlasSeen = true; this.view = 'atlas'; this.syncUrl(); },
@@ -3737,8 +3870,26 @@ function gallery(){
         // it scrolls into view. A catalog entry may name a cross-repo page
         // (owner/repo[@ref]:path), so resolve the render target rather than
         // assuming the declaring repo.
+        // `order` on a catalog entry, honored here the way it has always been
+        // honored for app views (loadEstateSidebar): undeclared reads as 0, so
+        // an entry with no opinion sorts ahead of one asking to be later.
+        //
+        // The tiebreak is the entry's position in the catalog, NOT its label,
+        // and that difference from the app-view sort is deliberate. App views
+        // are collected across every repo, where array order means nothing and
+        // a label sort is the only stable answer. A gallery is one repo's own
+        // hand-written list, so its array order is already an editorial
+        // statement; sorting undeclared entries alphabetically would scramble
+        // every existing catalog to implement a field almost none of them set.
         const declRef = s.ref && s.ref !== s.defaultRef ? s.ref : '';
-        const items = (s.config.pages || []).filter(p => p && p.path).map(p => {
+        const declared = (s.config.pages || []).filter(p => p && p.path)
+          .map((p, idx) => ({ p, idx }))
+          .sort((a, b) => (
+            (Number.isFinite(a.p.order) ? a.p.order : 0) -
+            (Number.isFinite(b.p.order) ? b.p.order : 0)
+          ) || (a.idx - b.idx))
+          .map(x => x.p);
+        const items = declared.map(p => {
           const t = resolveCatalogPath(p.path, repo, declRef);
           const refSuffix = t.ref ? '@' + t.ref : '';
           const url = tossUrl(t.repo, refSuffix, t.path);
