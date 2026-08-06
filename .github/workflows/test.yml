@@ -19,6 +19,17 @@ name: Tests
 # every Playwright-driven check (subject-actions, render-copy, the pdf probes) is
 # deliberately named without `.test.` and stays a manual run. That is what lets
 # the install below skip the browser download.
+#
+# The one thing this cannot promise: that it ran. Observed 2026-08-06 on PR #362,
+# a push to the branch produced NO synchronize run at all, so that commit sat in
+# an open PR with zero checks and nothing said so. The next push to the same PR
+# ran normally, so the trigger is not broken; what correlated was pushing the
+# branch and then its base branch inside the same minute, which moves the merge
+# ref the pull_request event is computed against. Unconfirmed as a cause. The
+# move that does not depend on the cause: after a push you care about, look for a
+# run on the new head sha rather than assuming the trigger fired. A workflow that
+# exists so the platform catches what memory does not is worth exactly nothing on
+# the commit where it silently did not start.
 
 on:
   pull_request:
