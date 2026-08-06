@@ -1,6 +1,6 @@
 ---
 id: lib-root-kit-migration-dind5t
-title: Move the kit-shaped files out of lib/ root into kits/
+title: Settle whether lib/ root and lib/kits/ are one category, then move what the rule says
 status: backlog
 project: web-tools
 opened: 2026-07-26
@@ -53,32 +53,62 @@ Dead: `diagnostic-vanilla-bundle.js` has zero consumers anywhere in `pages/`, `l
 Mechanical but wide: the move itself is trivial and the risk is entirely in the `gh.load` chains and the bundle build. Do it as its own PR, not folded into feature work.
 
 ## Progress log
-- 2026-08-06: **The sorting rule this task uses is one axis short, so re-sort the
-  eight-file list before moving anything.** `code-layer-taxonomy-q15jp2` landed
-  the repo-wide taxonomy ([`docs/code-layers.md`](../../docs/code-layers.md)),
-  which adds the axis the audit above did not have: registering a `window`
-  namespace is *necessary* for `lib/kits/`, not sufficient. A kit is a
-  **capability** that would be true in any repo; an **estate module** is the same
-  file shape carrying this estate's domain (repo addresses, refs, branch state,
-  the manifest), and it stays in `lib/` root. The test that separates them: would
-  the file have to be explained before someone else could use it.
+- 2026-08-06 (second entry, replacing the first): **the axis this task's audit
+  used is not wrong, it is the only one there is, and the folders do not follow
+  it either.** Earlier today `code-layer-taxonomy-q15jp2` landed a rule saying a
+  kit is a capability true in any repo and a `lib/` root module is the same shape
+  carrying this estate's domain, and an entry here re-sorted the eight-file list
+  against it. Both are retracted. The rule was measured against the shelf the
+  same day and is false.
 
-  Read that way the eight do not move as a block. Clearly estate modules, swept in
-  by the mechanical test alone: `branch-survey.js` (knows squashes make ref-level
-  merge status meaningless, and what this estate calls "stranded"),
-  `portable-align.js` (scores a repo against the web-tools coordination surface),
-  `repo-activity-cache.js`, `repo-config-cache.js`, `repo-mailbox.js` (the
-  registry-repo request/response channel). Clearly a kit: `url-params.js`, which
-  is a general precedence rule with an estate-specific rationale.
+  **The measurement.** Counting only a RUNTIME dependency on the hub's own chain
+  (`window.gh`, `gh.load`, `gh.get`, `__loadedScripts`), the strongest available
+  test of "this file cannot travel":
 
-  The genuinely arguable pair is `data-payload.js` and `shorter-payload.js`. Both
-  read an estate-defined envelope (`data-view/1`, the shorter payload), so they
-  look generic and are not: a consumer would need the envelope contract first.
-  That call belongs to this task, not to the taxonomy, and it is the one worth
-  making deliberately since it sets the precedent for every future payload reader.
+  - 7 of the 21 files in `lib/kits/` have one: `branch-brief.js`, `brief.js`,
+    `build.js`, `export.js`, `wring.js`, `wsl-core.js`, `wsl.js`.
+  - 6 files in `lib/` root have none: `data-payload.js`, `github-links.js`,
+    `portable-align.js`, `shorter-payload.js`, `url-params.js`,
+    `vanilla-demo.js`.
 
-  The `diagnostic-vanilla-bundle.js` deletion and the `lib/kits/README.md`
-  scaffolding-list fix are unaffected; the latter is partly done, since that
-  README's Concept section was reduced to the kit rule plus a pointer.
+  A third of the kit shelf is less portable than six files that are not on it.
+  Both folders hold one shape: a `window` namespace, Alpine-free, pure logic.
+  Nothing sorts them. What decided each file's folder was when it was written.
+
+  **So this task is no longer a move, it is a decision, and the move follows.**
+  Three options, with what each costs:
+
+  - **A. One shelf.** `lib/kits/` holds every namespace-registering logic module;
+    `lib/` root reduces to the boot chain (extends `GH.prototype`, or is a
+    bundle), which is the one boundary that is mechanical and checkable, and a
+    test can enforce it. Moves ~12 files. Ends the question rather than
+    relocating it. This is the option the measurement argues for, and it is the
+    completion of the older "anything used across the estate is a kit" theory.
+  - **B. Two shelves on a mechanical property.** Keep the split but sort on
+    something checkable rather than on a judgment about portability: a demo page,
+    or presence in the pre-build's public surface. Needs the property picked and
+    measured first; nobody has shown one that cuts the shelf usefully.
+  - **C. Status quo, stated.** Say in `docs/code-layers.md` that placement is
+    historical and either folder is acceptable. Cheapest, and it leaves the next
+    file's author with no answer, which is the condition this task exists to end.
+
+  Recommendation: **A**. It is the only option whose rule the code already
+  satisfies, so adoption is a `git mv` and a test rather than a re-argument per
+  file. Awaiting the user's call; nothing moves until then.
+
+  **Two smaller items in this task are unaffected by the decision** and can go in
+  the same pass: deleting `diagnostic-vanilla-bundle.js` (still zero consumers),
+  and `lib/kits/README.md`'s scaffolding list, which was a partial account of
+  `lib/` root. That README's Concept section was already reduced to the kit rule
+  plus a pointer, and now also carries the measurement.
+
+  Vocabulary note, since it is the reason the wrong rule sounded right:
+  **"estate" is doing three jobs in this repo.** The multi-repo constellation
+  (prose, everywhere), show-repo's all-repo dashboard
+  (`lib/alpineComponents/estate.js`, a concrete UI surface), and, for one day,
+  "the hub's own domain" in the coinage "estate module." The third is retired.
+  The first two are both load-bearing and are not going to merge, so a reader
+  has to take the sense from context. Not a task; recorded here because the
+  ambiguity is what let a plausible rule get written down unchallenged.
 
 - 2026-07-26 filed after the lib/ audit prompted by the session-links work; the drift was noticed while deciding where compare-derived logic belongs
