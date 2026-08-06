@@ -88,12 +88,25 @@ if [ -n "$changed_pages" ]; then
   done <<< "$changed_pages"
 fi
 
-# --- leg 3a: skills/pages/lib -> the registry's derived reach field -----------
-# `reach` is the one derived field inside an otherwise authored file: pointing a
-# skill or a page at a doc changes it, and those edits are nowhere near
-# docs/docs.json. Restamp before leg 3b so the README projects the new value in
-# the same commit. docs-registry.test.mjs is the backstop where the hook does
-# not run.
+# --- leg 2b: tools/test/ -> the test registry's derived fields ----------------
+# Must precede leg 3a, not follow it. This writes docs/tests.json, and
+# docs/tests.json is a row in docs/docs.json, so a restamp here invalidates any
+# word count 3a had already taken. Running it after 3a leaves the suite failing
+# on exactly one row, which is how the ordering was found.
+if git status --porcelain -- tools/test package.json tools/build/tests-index.mjs | grep -q .; then
+  if npm run tests-index --silent >/dev/null 2>&1; then
+    git add docs/tests.json 2>/dev/null || true
+  else
+    echo "build hook: 'npm run tests-index' failed — docs/tests.json may be stale" >&2
+  fi
+fi
+
+# --- leg 3a: skills/pages/lib -> the registry's derived fields ----------------
+# `reach` and `words` are the derived fields inside an otherwise authored file:
+# pointing a skill or a page at a doc changes the first, and editing any doc's
+# length changes the second, and both edits are nowhere near docs/docs.json.
+# Restamp before leg 3b so the README projects the new value in the same commit.
+# docs-registry.test.mjs is the backstop where the hook does not run.
 if git status --porcelain -- .claude/skills skills lib pages docs tools/build/docs-reach.mjs | grep -q .; then
   if npm run docs-reach --silent >/dev/null 2>&1; then
     git add docs/docs.json 2>/dev/null || true
@@ -110,6 +123,18 @@ if git status --porcelain -- docs/docs.json tools/build/docs-readme.mjs | grep -
     git add docs/README.md 2>/dev/null || true
   else
     echo "build hook: 'npm run docs-readme' failed — committing without refreshing docs/README.md" >&2
+  fi
+
+  # --- leg 3c: docs/README.md -> the registry's word count -------------------
+  # 3a and 3b are a cycle, and adding `words` is what closed it. docs/README.md
+  # is generated FROM the registry and is also a row IN it, so leg 3b changes a
+  # file whose size leg 3a measured a moment earlier. One more stamp settles it,
+  # and it terminates: the README renders path, subject, status, and reach, none
+  # of which this pass touches, so nothing sends control back to 3b.
+  if npm run docs-reach --silent >/dev/null 2>&1; then
+    git add docs/docs.json 2>/dev/null || true
+  else
+    echo "build hook: 'npm run docs-reach' re-stamp failed — docs/docs.json words may be stale" >&2
   fi
 fi
 

@@ -3870,8 +3870,26 @@ function gallery(){
         // it scrolls into view. A catalog entry may name a cross-repo page
         // (owner/repo[@ref]:path), so resolve the render target rather than
         // assuming the declaring repo.
+        // `order` on a catalog entry, honored here the way it has always been
+        // honored for app views (loadEstateSidebar): undeclared reads as 0, so
+        // an entry with no opinion sorts ahead of one asking to be later.
+        //
+        // The tiebreak is the entry's position in the catalog, NOT its label,
+        // and that difference from the app-view sort is deliberate. App views
+        // are collected across every repo, where array order means nothing and
+        // a label sort is the only stable answer. A gallery is one repo's own
+        // hand-written list, so its array order is already an editorial
+        // statement; sorting undeclared entries alphabetically would scramble
+        // every existing catalog to implement a field almost none of them set.
         const declRef = s.ref && s.ref !== s.defaultRef ? s.ref : '';
-        const items = (s.config.pages || []).filter(p => p && p.path).map(p => {
+        const declared = (s.config.pages || []).filter(p => p && p.path)
+          .map((p, idx) => ({ p, idx }))
+          .sort((a, b) => (
+            (Number.isFinite(a.p.order) ? a.p.order : 0) -
+            (Number.isFinite(b.p.order) ? b.p.order : 0)
+          ) || (a.idx - b.idx))
+          .map(x => x.p);
+        const items = declared.map(p => {
           const t = resolveCatalogPath(p.path, repo, declRef);
           const refSuffix = t.ref ? '@' + t.ref : '';
           const url = tossUrl(t.repo, refSuffix, t.path);
