@@ -81,9 +81,32 @@ Mechanical but wide: the move itself is trivial and the risk is entirely in the 
   - **A. One shelf.** `lib/kits/` holds every namespace-registering logic module;
     `lib/` root reduces to the boot chain (extends `GH.prototype`, or is a
     bundle), which is the one boundary that is mechanical and checkable, and a
-    test can enforce it. Moves ~12 files. Ends the question rather than
-    relocating it. This is the option the measurement argues for, and it is the
-    completion of the older "anything used across the estate is a kit" theory.
+    test can enforce it. Ends the question rather than relocating it. This is the
+    option the measurement argues for, and it is the completion of the older
+    "anything used across the estate is a kit" theory.
+
+    **The full split under A, so a session need not re-derive it.** The rule is
+    one grep: does the file extend `GH.prototype` or boot the chain. 24 of the 28
+    files in `lib/` root are decided by it with no judgment; 4 need a read.
+
+    | Verdict | n | Files |
+    | --- | --- | --- |
+    | stays, scaffolding | 6 | `gh-auth.js`, `gh-boot.js`, `gh-fetch.js`, `gh-store.js`, `gh-transfer.js`, `traffic.js` |
+    | stays, defines GH | 1 | `gh-api.js` |
+    | stays, bundle | 3 | `alpine-bundle.js`, `vanilla-bundle.js`, `diagnostic-vanilla-bundle.js` (delete this one, zero consumers) |
+    | **moves to `lib/kits/`** | **14** | `branch-survey.js`, `data-payload.js`, `github-links.js`, `portable-align.js`, `repo-activity-cache.js`, `repo-address.js`, `repo-checks.js`, `repo-config-cache.js`, `repo-mailbox.js`, `repo-proposals.js`, `repo-sessions-cache.js`, `shorter-payload.js`, `surface.js`, `url-params.js` |
+    | read first | 4 | `chat-render.js`, `source-peek.js`, `swipe-deck.js`, `vanilla-demo.js`, all DOM-touching |
+
+    The four are not blocked, only unautomated. `lib/kits/README.md` already
+    allows a kit to touch the DOM ("no DOM opinions of its own, not no DOM";
+    `cm6.js`, `io.js`, `pdf.js` all do), so the question per file is whether it
+    decides where it lives or takes a host it is handed. Answer it by reading,
+    and record the answer rather than the verdict.
+
+    Cost is in the `gh.load` chains, not the moves: `branch-survey.js` alone has
+    8 consumers. `npm run build:lib` enumerates `lib/`, so check the build
+    script's globs before moving anything, and `dist/web-tools.js` has to come
+    out working.
   - **B. Two shelves on a mechanical property.** Keep the split but sort on
     something checkable rather than on a judgment about portability: a demo page,
     or presence in the pre-build's public surface. Needs the property picked and
