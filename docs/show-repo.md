@@ -1727,6 +1727,17 @@ token.
   repo view, so it sits with the views rather than behind an icon; the sidebar's
   top-bar gear was retired as a duplicate of that row. Another repo's config
   stays a dialog, so opening it does not move you off the repo you are in.
+- **Layout**: the Settings pane is two sections built the same way, **General**
+  and **Projects**, each a header line over a bordered card. Field widths are
+  **container** queries (`@container` on the column, `@md:`/`@xl:` on the grids),
+  not viewport breakpoints, because that column is half a pane on desktop and a
+  whole screen on a phone: `lg:grid-cols-6` would put six columns in a 360px
+  column. Every control carries `w-full`, since daisyUI's `.input` and
+  `.textarea` default to `width: 20rem` and otherwise stop short of their label.
+  The pane is capped at `max-w-6xl` and gives the form three fifths to the JSON
+  pane's two, the JSON being a mirror of the form rather than the thing people
+  came to use. Both rules generalize and are in
+  [HTML-STYLE.md](HTML-STYLE.md).
 - **Auto-migration**: a save always writes `.web-tools.json`. A repo still on the
   legacy `.show-repo.json` is edited the same way; the save lands the new name,
   which readers already prefer, so the legacy file goes inert. No delete step

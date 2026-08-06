@@ -1234,7 +1234,10 @@
          bar's gear was retired as a duplicate of this row.
          Mounted lazily on first visit. -->
     <div x-show="view==='config'" class="h-full overflow-y-auto">
-      <div class="mx-auto px-6 py-8 max-w-3xl">
+      <!-- max-w-6xl, not 3xl: the form and the JSON pane sit side by side on
+           desktop, so a 3xl cap gave each about 360px and put the whole editor
+           in a narrow ribbon down the middle of a wide screen. -->
+      <div class="mx-auto px-6 py-8 max-w-6xl">
         <template x-if="configSeen">
           <div x-data="config()"></div>
         </template>
