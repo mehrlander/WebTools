@@ -346,8 +346,8 @@
     {
       "path": "tools/test/gh-graphql-partial.test.mjs",
       "kind": "component",
-      "protects": "A partial GraphQL response is surfaced as partial rather than presented as complete.",
-      "assertions": 3,
+      "protects": "A partial GraphQL response is surfaced as partial rather than presented as complete, and a field error the caller declared normal is not surfaced at all.",
+      "assertions": 6,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
