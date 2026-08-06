@@ -1,8 +1,10 @@
 ---
 id: docs-read-tracking-sn9nj8
 title: Read-tracking for docs: which files sessions actually open
-status: backlog
+status: done
 opened: 2026-08-04
+closed: 2026-08-06
+session: claude/show-repo-progress-b8l63x
 ---
 # Read-tracking for docs: which files sessions actually open
 
@@ -45,3 +47,10 @@ stated where the numbers show. Origin: the docs-registry session (PR #350).
   **The caveats are stated, and there are three, not one.** The Sessions pane carries them and the Docs column must too: injected docs read zero (the caveat this task anticipated, and it inverts the ranking on exactly `CONVENTIONS.md` and `SURFACING.md`); a file read through a shell command (`sed`, `cat`, `grep`) leaves no trace, which is a large share of real reading in this estate; and subagent traffic is excluded upstream. Full statement in web-tools-private `sessions/README.md`, "File attention".
 
   **Coverage starts now.** Only schema-3 records have `files`, so the column reads zero for everything before 2026-08-05 and the display has to distinguish "not captured" from "not read", the way the Sessions pane's per-row files badge does.
+- 2026-08-06: Step 2 landed; the column renders in the Map view's Docs tab, token-gated, absent rather than blank without a token. Three findings from building it, none anticipated above.
+
+  **The aggregate this task was told to read would have been wrong, quietly.** `attention` folds each row's `files`, which is that session's busiest **eight** files (`FILES_KEPT`). A doc opened once in a session that touched forty files is exactly the reading a readership column counts and exactly what that cap drops, and the registry row would have said zero with nothing on screen to suggest a truncation. So the row now also carries `docFiles`, its complete `docs/` slice, and the cache carries a second rollup, `docAttention`, folded by the same `fileAttention` with a different field. Uncapped is affordable because the set is closed and small.
+
+  **A published record is frozen, so a new field would never have reached the back catalogue.** The crawl refetches on a moved blob sha, and a record's sha never moves again after it is written, so every existing row would have kept an empty `docFiles` forever. Rows now carry the summarizer's version (`ROW_V`) and `stalePaths` treats a stale version like a moved sha, which heals the cache on one pass and makes the next summarizer change free.
+
+  **The injected caveat got a better answer than a footnote.** The column reads `reach` and prints `injected` for those two rows instead of a number, so the unmeasurable case is visibly different from the measured zero. The other two caveats sit in the strip above the column.

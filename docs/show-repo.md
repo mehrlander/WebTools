@@ -666,9 +666,26 @@ The fold's scope is the **full** listing, never the batch it read: a record the
 per-crawl cap deferred keeps its row, and only a record genuinely gone from the
 store loses one. That is the same distinction `buildCache` draws in the activity
 cache, for the same reason, and it matters more here because the source is
-unregenerable. The cache also carries the `attention` rollup, computed once so
-the pane and anything later (the Docs registry's readership column, web-tools
-task `docs-read-tracking-sn9nj8`) read one derivation rather than two.
+unregenerable.
+
+A sha is not the only way a row goes stale, and the second way has no natural
+tell. A published record is frozen, so a row built by an older summarizer would
+keep its blob sha forever and never be re-read: add a field and it stays empty
+for the whole back catalogue. Each row therefore carries the summarizer's
+version (`v`, `ROW_V` in the lib), and `stalePaths` treats a version behind as
+stale exactly like a sha that moved. One pass after a summarizer change re-reads
+the store and heals it.
+
+**Two rollups ride the cache, and the split is not tidiness.** `attention` folds
+each row's `files`, which is that session's busiest eight, and answers "what is
+the estate working on." `docAttention` folds `docFiles`, the row's **complete**
+`docs/` slice, and answers "who opened this document," which the first cannot:
+a doc opened once in a session that touched forty files is exactly the reading
+being counted and exactly what a top-eight discards, and a registry row would
+have said zero with nothing on screen to suggest otherwise. Uncapped is
+affordable because the set is closed and small (43 files in this repo's `docs/`,
+a handful per session). `fileAttention(rows, cap, field)` computes both, so the
+two numbers cannot come to mean different things.
 
 Token gating: no token means the public default card only, no surfaces, no
 activity, no sessions, and no write controls. In that state the Repos view leads with a
@@ -696,11 +713,11 @@ link, and a file listing lives in Public browse.
 the coordination layer itself into a first-class object, and is the operational
 face of the constellation doctrine ([`docs/CONSTELLATION.md`](CONSTELLATION.md)
 is the portable kernel, opened from the set header; the full worked instance is
-in the private `home` repo). Four tabs, `lib/alpineComponents/map.js`, each
+in the private `home` repo). Five tabs, `lib/alpineComponents/map.js`, each
 answering one question about the layer: what travels (the set), what to hand
-over in chat (Surfacing), how content moves and shows (Showing), and what the
-documentation holds and what holds it (Docs). Who carries the set is a fact
-about a repo and lives on the Repos cards.
+over in chat (Surfacing), how content moves and shows (Showing), what the
+documentation holds and what holds it (Docs), and what the suite checks (Tests).
+Who carries the set is a fact about a repo and lives on the Repos cards.
 
 *The set* renders the to-go bag from the hub's committed manifest,
 [`docs/portable.json`](portable.json), whose prose parent is
@@ -791,17 +808,48 @@ set, and loaded on first open of the tab rather than at mount.
 [`docs/docs.json`](docs.json), in the same lazy shape. Two tables. The
 **documents census**: every `.md`/`.json` under `docs/`, each with its subject,
 its status (**living** claims current truth and is wrong when stale; **record**
-preserves a moment and is wrong when rewritten), and its maintenance (authored
-or generated, with the discipline that keeps it true); complete by construction,
-since `tools/test/docs-registry.test.mjs` holds the folder and the table to
-exactly one row per file. And the **shared claims**: statements that live in
+preserves a moment and is wrong when rewritten; **measured** carries dated
+observations and is corrected by re-probing), its **reach** and **words** (both
+derived, see below), and its maintenance (authored or generated, with the
+discipline that keeps it true); complete by construction, since
+`tools/test/docs-registry.test.mjs` holds the folder and the table to exactly one
+row per file. And the **shared claims**: statements that live in
 more than one place, each with its one authoritative carrier and its typed
 repetitions (copy, paraphrase, pointer, live read; a copy says who keeps it, by
 hand or by a named builder), where an absent check renders in the warning tone
 rather than being omitted, because an unchecked copy should look unchecked every
 time the tab opens. The registry is authoritative for the claims it covers and
 owes the repo no inventory of them; the census, by contrast, is complete.
-Public, like the other two tabs.
+The census half is public, like the other two tabs.
+
+Three numbers sit on a row, and they answer three different questions. **Reach**
+(derived by `tools/build/docs-reach.mjs`, gated against the registry) says who
+*can* get to a file, strongest channel first: injected, project, skill, app,
+orphan. **Words** says how much of the folder it is. **Readership**, the eye
+column, says who actually opened it: distinct sessions, read from the private
+registry's `docAttention` rollup. Reach and readership are the pair worth reading
+together, since an orphan nobody opens and an orphan opened in nine sessions are
+different problems.
+
+Readership is the one token-gated thing on the tab. Without a token the column
+is **absent** rather than blank, because a blank one reads as "nobody opened
+it." Its caveats sit in the strip above it and are load-bearing: only sessions
+the recorder captured are covered, only the four file tools count (a file read
+through a shell command or by a subagent leaves no trace), and an **injected**
+doc says `injected` rather than reporting the zero it is guaranteed to score.
+That last case is the reason the caveats are on screen instead of in this file:
+`CONVENTIONS.md` and `SURFACING.md` are among the most-read documents in the
+estate and are precisely the two no file tool can see, so a bare count would rank
+them last.
+
+*Tests* is the same census one axis over, from [`docs/tests.json`](tests.json):
+every file in the suite with its kind (gate, lockstep, tool, kit, behavior,
+component, guard) and what breaks if it is deleted, its assertions, method,
+runner and boot-smoke count all derived from the files and gated against the
+registry. The strip cuts the total by kind rather than reporting it, since a
+pass count cannot tell a boot check from an adversarial gate, and a browser
+check reports **no** assertion count rather than zero, because `test()` is not
+its unit. Public.
 
 **Tools** (`?view=tools`) is a curated gallery of the utility pages the owner
 reaches for (the text-diff tool, the transform/compress round-trip, and so on),

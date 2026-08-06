@@ -183,6 +183,70 @@ test('attention counts distinct sessions, not just accesses', () => {
   assert.equal(hammered.count, 40);
 });
 
+// ── The docs slice ──────────────────────────────────────────────────────────
+// The registry's readership column reads docAttention, and the reason it is not
+// a filter over `attention` is that `attention` folds `files`, which is the
+// busiest FILES_KEPT of a session. A doc opened once in a busy session is
+// exactly the reading being counted and exactly what that cap discards, so the
+// assertions below pin the uncapped path.
+
+test('docFiles keeps every docs/ path, past where the busiest-files cap stops', () => {
+  const files = { 'web-tools/docs/quiet.md': { read: 1 } };
+  for (let i = 0; i < S.FILES_KEPT + 4; i++) files['web-tools/lib/busy' + i + '.js'] = { edit: 50 + i };
+  const row = S.summarize(record({ files, files_total: Object.keys(files).length }), 'x');
+
+  assert.equal(row.files.length, S.FILES_KEPT);
+  assert.ok(!row.files.some(([p]) => p.startsWith('web-tools/docs/')),
+    'the quiet doc is exactly what the busiest-files cap drops');
+  assert.deepEqual(row.docFiles, [['web-tools/docs/quiet.md', 1]],
+    'and exactly what the docs slice must keep');
+});
+
+test('docFiles matches a docs/ directory at any depth, and nothing merely named docs', () => {
+  const row = S.summarize(record({
+    files: {
+      'web-tools/docs/a.md': { read: 1 },
+      'home/projects/x/docs/b.md': { read: 2 },
+      'web-tools/docs.json': { read: 3 },          // a file, not the folder
+      'web-tools/lib/docsearch.js': { edit: 4 },   // a prefix, not a segment
+    },
+  }), 'x');
+  assert.deepEqual(row.docFiles.map(([p]) => p),
+    ['home/projects/x/docs/b.md', 'web-tools/docs/a.md']);
+});
+
+test('docAttention counts distinct sessions per doc and stays uncapped', () => {
+  const mk = (short, day, files) => record({ short, day, started: `${day}T09:00:00Z`, files });
+  const many = {};
+  for (let i = 0; i < 60; i++) many['web-tools/docs/many' + i + '.md'] = { read: 1 };
+  const cache = S.buildCache(null, {
+    'sessions/2026/08/2026-08-01-aaaaaaaa.json': { record: mk('aaaaaaaa', '2026-08-01', { 'web-tools/docs/hot.md': { read: 2 } }), sha: 'a' },
+    'sessions/2026/08/2026-08-02-bbbbbbbb.json': { record: mk('bbbbbbbb', '2026-08-02', { 'web-tools/docs/hot.md': { read: 1 }, 'web-tools/lib/x.js': { edit: 9 } }), sha: 'b' },
+    'sessions/2026/08/2026-08-03-cccccccc.json': { record: mk('cccccccc', '2026-08-03', many), sha: 'c' },
+  }, null, '2026-08-05T18:00:00Z');
+
+  const hot = cache.docAttention.find(a => a.path === 'web-tools/docs/hot.md');
+  assert.equal(hot.sessions, 2);
+  assert.equal(hot.count, 3);
+  assert.equal(hot.last, '2026-08-02T09:00:00Z');
+  assert.ok(!cache.docAttention.some(a => a.path === 'web-tools/lib/x.js'), 'docs only');
+  assert.equal(cache.docAttention.length, 61, 'no cap: 60 docs plus the hot one');
+});
+
+test('a row built by an older summarizer is stale even when its sha never moves', () => {
+  const p = 'sessions/2026/08/2026-08-05-b8fae678.json';
+  const cache = S.buildCache(null, { [p]: { record: record(), sha: 'sha1' } }, null, '2026-08-05T18:00:00Z');
+  const listing = [{ path: p, sha: 'sha1' }];
+  assert.deepEqual(S.stalePaths(cache, listing), [], 'current rows stay put');
+
+  // What the store looked like before ROW_V existed: same bytes, older fold.
+  const older = JSON.parse(JSON.stringify(cache));
+  delete older.byPath[p].v;
+  delete older.byPath[p].docFiles;
+  assert.deepEqual(S.stalePaths(older, listing), [p],
+    'a published record is frozen, so the version is the only thing that can say its row is behind');
+});
+
 test('cacheChanged ignores the crawl stamp and the blob sha', () => {
   const p = 'sessions/2026/08/2026-08-05-b8fae678.json';
   const a = S.buildCache(null, { [p]: { record: record(), sha: 'sha1' } }, null, '2026-08-05T18:00:00Z');
