@@ -179,6 +179,7 @@ itself; a page that instantiates `GH` by hand gets only what it loads.
 | `html`, the DOM helpers (`ea`, `el`, …), `copy()` | `vanilla-bundle.js` | ambient string/DOM utilities |
 | `proof` | `kits/proof.js` | sandboxed proof documents (srcdoc builders); vanilla-demo and chat-render sit on it |
 | `chatRender` | `chat-render.js` | chat transcript renderer; fenced blocks become live artifacts. Loads after `swipe-deck.js` |
+| `sessionRender` | `session-render.js` | a session record (web-tools-private `sessions/**.json`) as a paged conversation: merges the record's three parallel turn lists on `at`, groups a card per ask and per prose turn, and names what the record could not capture. Loads after `chat-render.js` |
 | `swipeDeck` | `swipe-deck.js` | the house swipe format: a snap track of slides, and the fullscreen takeover that frames it. Self-contained, so another repo's page can load it with a plain `<script src>` |
 | Alpine stores `browser`, `toasts`; magics `$clip`, `$paste`, `$toast` | `alpine-bundle.js` | exist only after `alpine:init` |
 | `__builtOffline` | a build (`kits/build.js` output) | present only on baked/offline pages |
