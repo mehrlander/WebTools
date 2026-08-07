@@ -581,7 +581,7 @@
       "path": "tools/test/repo-activity-cache.test.mjs",
       "kind": "behavior",
       "protects": "The cache hash ignores timestamps and tracks material fields, so a crawl does not commit on every run.",
-      "assertions": 15,
+      "assertions": 18,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0

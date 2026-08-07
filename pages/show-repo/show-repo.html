@@ -1545,6 +1545,7 @@ function app(){ return {
     // (&path with files). A #stage= fragment (a set of refs; see stage.js) preloads the
     // stage and wins the initial view: it is the point of such a link.
     const url = this.parseUrl();
+    if (url && url.window) this.branchWindow = url.window;
     await this.ensureBrowser(url?.repo, url?.ref);
     if (url && url.file) await this.openFile(url.file);
     else if (url && url.view === 'app' && url.appRepo && url.appPath) this.goAppView(this.appViewFromUrl(url));
@@ -2064,7 +2065,11 @@ function app(){ return {
   // failed, committed}, or {skipped, reason} when there was nothing to do. The
   // background (unforced) caller ignores it; refreshActivity turns it into the
   // closing toast.
-  async refreshActivityCache(force){
+  // deep=false is the arrival path: current commits, PRs, branch dates and
+  // sessions, no content survey. Complete for the recent window by
+  // construction, since anything inside it is classified on date alone and
+  // is never surveyed even on a deep pass.
+  async refreshActivityCache(force, { deep = true } = {}){
     if (!this.hasToken() || !window.RepoActivityCache || !window.BranchSurvey) return { skipped: true };
     const A = window.RepoActivityCache, B = window.BranchSurvey;
     if (!force){
@@ -2108,7 +2113,7 @@ function app(){ return {
           const repo = members[mi++];
           active.push(repo);
           this.tickActivityProgress(done, members.length, active);
-          try { fetched[repo] = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo)); }
+          try { fetched[repo] = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep); }
           catch(e){ failed.push(repo); console.warn('activity crawl', repo, e?.message || e); }
           active.splice(active.indexOf(repo), 1);
           this.tickActivityProgress(++done, members.length, active);
@@ -2247,7 +2252,13 @@ function app(){ return {
   // open PRs) plus the capped branch survey. Returns the <fetched> shape
   // repo-activity-cache.mergeRepo folds. Failures on a sub-read degrade to an
   // empty piece rather than dropping the whole repo.
-  async crawlRepoActivity(repo, meta, now, A, B, cfg){
+  // `deep` decides whether the content survey runs. It is the whole cost
+  // difference: the survey is one tree read per branch, up to 30, against
+  // roughly a dozen requests for everything else. A quick pass omits the
+  // `survey` key entirely rather than sending an empty one, because
+  // RepoActivityCache.mergeRepo keeps the prior survey when the field is
+  // undefined and clears it when present. That affordance already existed.
+  async crawlRepoActivity(repo, meta, now, A, B, cfg, deep = true){
     const def = meta?.default_branch || 'main';
     const g = new window.GH({ token: window.TOKEN, repo, ref: def });
     // Probe the repo's declared checks in the same pass. Cheap when declared
@@ -2300,7 +2311,9 @@ function app(){ return {
         .map(b => ({ ...b, daysAgo: b.date ? B.daysAgo(b.date, now) : Infinity }));
       const recent = dated.filter(b => b.daysAgo <= B.RECENT_DAYS).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       const older = dated.filter(b => b.daysAgo > B.RECENT_DAYS).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-      const surveyed = await B.surveyOlder(g, { defaultRef: def, older, cap: this.ACTIVITY_SURVEY_CAP, pool: 3, now });
+      const surveyed = deep
+        ? await B.surveyOlder(g, { defaultRef: def, older, cap: this.ACTIVITY_SURVEY_CAP, pool: 3, now })
+        : { truncated: false, rows: [] };
       truncated = surveyed.truncated;
       const prSessions = Object.fromEntries(openPRs.filter(p => p.head && p.sessions?.length).map(p => [p.head, p.sessions]));
       const sessionsFor = b => {
@@ -2333,8 +2346,14 @@ function app(){ return {
       recentCommits,
       openPRs,
       counts,
-      survey: { surveyedAt: new Date(now).toISOString(), cap: this.ACTIVITY_SURVEY_CAP,
-                surveyed: counts.surveyed, older: counts.older, truncated, branches },
+      // Read by mergeRepo and dropped there: it describes THIS PASS, not the
+      // repo, so it must never reach the stored entry or the hash.
+      ...(deep ? {} : { partial: true }),
+      // Omitted on a quick pass, so mergeRepo carries the prior survey
+      // forward. Sending { branches: [] } here would silently delete every
+      // content verdict the estate has, which is the trap this guards.
+      ...(deep ? { survey: { surveyedAt: new Date(now).toISOString(), cap: this.ACTIVITY_SURVEY_CAP,
+                             surveyed: counts.surveyed, older: counts.older, truncated, branches } } : {}),
       // Declared checks, PROBED not judged: the stored fact is time-independent
       // so the cache hash stays stable across crawls, and the card computes the
       // verdict against its own clock at render. Always an array, never
@@ -3236,7 +3255,8 @@ function app(){ return {
              file: p.get('file'), view: p.get('view'), path: p.get('path') || '',
              project: p.get('project') || '', tab: p.get('tab') || '',
              appRepo: p.get('appRepo') || '', appPath: p.get('appPath') || '', appRef: p.get('appRef') || '',
-             appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '' };
+             appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '',
+             window: +p.get('window') || 0 };
   },
 
   // The shell's state as URL parameters, built onto whatever base is handed in.
@@ -3282,6 +3302,7 @@ function app(){ return {
     else if (this.view === 'jots') p.set('view', 'jots');
     else if (this.view === 'activity') p.set('view', 'activity');
     else if (this.view === 'sessions') p.set('view', 'sessions');
+    else if (this.view === 'guides') p.set('view', 'guides');
     else if (this.view === 'map') p.set('view', 'map');
     else if (this.view === 'tools') p.set('view', 'tools');
     // App views are estate-level, so the link stands alone (like the Stage): stamp
@@ -3298,6 +3319,12 @@ function app(){ return {
       if (this.appView.icon) p.set('appIcon', this.appView.icon);
     }
     else if (this.view === 'estate' && (p.has('repo') || p.has('ref'))) p.set('view', 'estate');
+    // The Branches window is a reading parameter, so it travels with the
+    // link: without it a shared ?view=activity silently lands the reader on
+    // a different slice than the one that was being discussed.
+    const w = this.branchWindow;
+    if (this.view === 'activity' && w && w !== this.BRANCH_WINDOW_DEFAULT) p.set('window', String(w));
+    else p.delete('window');
     return p;
   },
 
@@ -3320,6 +3347,7 @@ function app(){ return {
     this._restoring = true;
     try {
       const url = this.parseUrl();
+    if (url && url.window) this.branchWindow = url.window;
       await this.ensureBrowser(url?.repo, url?.ref);
       if (url && url.file) await this.openFile(url.file);
       else if (url && url.view === 'app' && url.appRepo && url.appPath) this.goAppView(this.appViewFromUrl(url));
@@ -3529,7 +3557,10 @@ function app(){ return {
   // renders it by reading the shell view (internal key 'activity'). A visit
   // kicks the throttled activity crawl (like Repos kicks the config crawl) so
   // the cache is warm and self-healing.
-  goActivity(){ this.estateSeen = true; this.view = 'activity'; this.refreshActivityCache?.(); this.syncUrl(); },
+  BRANCH_WINDOW_DEFAULT: 7,   // days; 14 was the crawl's classifier line, not a reading choice
+  branchWindow: 7,
+  setBranchWindow(d){ this.branchWindow = +d || this.BRANCH_WINDOW_DEFAULT; this.syncUrl(); },
+  goActivity(){ this.estateSeen = true; this.view = 'activity'; this.refreshActivityCache?.(false, { deep: false }); this.syncUrl(); },
   // Activity's other pill: the sessions that made the branches. Kicks its own
   // throttled crawl on visit, the way Open kicks the activity crawl, so the
   // cache warms itself and a cold one is one tap from being warm.
@@ -3538,7 +3569,7 @@ function app(){ return {
   // scans come off the ACTIVITY cache, so this warms the same one goActivity
   // does. Landing straight on ?view=guides without it is how the pane came up
   // empty: nothing to scan, and nothing to say so.
-  goGuides(){ this.estateSeen = true; this.view = 'guides'; this.refreshActivityCache?.(); this.syncUrl(); },
+  goGuides(){ this.estateSeen = true; this.view = 'guides'; this.refreshActivityCache?.(false, { deep: false }); this.syncUrl(); },
   goLanding(){ this.view = 'landing'; this.syncUrl(); },
   goPages(){ this.view = 'pages'; this.syncUrl(); },
   goAtlas(){ this.atlasSeen = true; this.view = 'atlas'; this.syncUrl(); },
