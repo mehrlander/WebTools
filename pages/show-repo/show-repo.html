@@ -3255,7 +3255,7 @@ function app(){ return {
     if (this.view === 'files' && s.ref && s.ref !== s.defaultRef) p.set('ref', s.ref); else p.delete('ref');
     p.delete('file'); p.delete('view'); p.delete('path'); p.delete('project'); p.delete('tab');
     p.delete('appRepo'); p.delete('appPath'); p.delete('appRef');
-    p.delete('appLabel'); p.delete('appIcon');
+    p.delete('appLabel'); p.delete('appIcon'); p.delete('detail');
     if (this.view === 'files') {
       // A cross-repo staged file (activeFile.origin from another repo) has no
       // honest ?file= deep link against the open repo, so it gets none.
@@ -3279,7 +3279,14 @@ function app(){ return {
     else if (this.view === 'config') p.set('view', 'config');
     else if (this.view === 'todo') p.set('view', 'todo');
     else if (this.view === 'jots') p.set('view', 'jots');
-    else if (this.view === 'activity') p.set('view', 'activity');
+    else if (this.view === 'activity') {
+      p.set('view', 'activity');
+      // The branch open in the takeover, when one is. Being inside the swiper
+      // is a state worth linking to and was the one state here without an
+      // address: the list had ?view=activity, the branch had its standalone
+      // page, and the reader in between could only be reached by tapping.
+      if (this.detailSpec) p.set('detail', this.detailSpec);
+    }
     else if (this.view === 'sessions') p.set('view', 'sessions');
     else if (this.view === 'map') p.set('view', 'map');
     else if (this.view === 'tools') p.set('view', 'tools');
@@ -3298,6 +3305,16 @@ function app(){ return {
     }
     else if (this.view === 'estate' && (p.has('repo') || p.has('ref'))) p.set('view', 'estate');
     return p;
+  },
+
+  // The estate's branch takeover reports what it has open, so the address can
+  // follow a swipe. Empty when it closes, which is what makes Back leave the
+  // takeover rather than the view.
+  detailSpec: '',
+  setDetail(spec){
+    if (this.detailSpec === spec) return;
+    this.detailSpec = spec || '';
+    this.syncUrl();
   },
 
   syncUrl(){

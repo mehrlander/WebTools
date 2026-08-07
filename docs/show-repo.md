@@ -1185,13 +1185,22 @@ strips, arrow keys, or the chevrons move through it, clamped at the ends;
 Escape or the X closes. Staging a branch's changed files, the name's old tap
 action, moved into the branch menu as **Stage changed files**.
 
-**The embedded page defers to this header.** It renders framed (`window.self
-!== window.top`), and in that state it drops the branch name, the repo, and the
-PR link, because the header above carries all three; what it keeps is the state
-chip and the base ref, the one identity fact the header lacks. Unframed it shows
-the lot. That split was measured rather than assumed: on a phone the duplicate
-identity spent the first screen, and a session branch name (`claude/<slug>`) wrapped
-to two lines doing it.
+**The header and the embedded page split the identity, and neither repeats the
+other.** The header keeps what it alone can say: which repo, which PR, and where
+you are in the list. The **branch name lives in the page**, on its own line with
+the full width. Both carried it for a day and at phone width both truncated, so
+one screen showed two stubs of one name; the header gave it up because it has
+less room and more to say. The page drops the repo and the PR link when framed
+(`window.self !== window.top`) and shows them standalone.
+
+**The takeover has its own address:** `?view=activity&detail=owner/repo@branch`,
+stamped while it is open, following each swipe, and cleared on close, so Back
+leaves the takeover rather than the view. The header's link button copies it.
+This was the one state in the view with no address: the list had `?view=activity`
+and the branch had its standalone page, and the reader in between could be
+reached only by tapping. A link naming a branch the current list no longer holds
+(a filter hides it, or it landed) still opens, as a list of one, since a link
+that resolves to nothing is worse than one with nowhere to swipe.
 
 **Its three sections are panes, not a scroll.** Guide, Files and Commits switch
 on a segmented control under the facts strip, with the counts on the labels, so

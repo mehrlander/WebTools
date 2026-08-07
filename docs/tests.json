@@ -236,6 +236,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/estate-detail-address.test.mjs",
+      "kind": "component",
+      "protects": "The branch takeover's address: opening stamps &detail=owner/repo@branch, a swipe moves it, closing clears it, and a link to a branch the current list no longer holds still opens rather than resolving to nothing.",
+      "assertions": 6,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/estate-embed.test.mjs",
       "kind": "component",
       "protects": "The estate embed mounts clean.",
