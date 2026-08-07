@@ -56,8 +56,11 @@ const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
   'lib/surface.js',
   // openPin and pinGroups speak the estate's one addressing grammar through
-  // the shared parser, so the suite loads it the way the pre-build does.
+  // the shared parser, so the suite loads it the way the pre-build does; the
+  // add form's tap route mounts the shared path-picker lazily, so this suite
+  // loads it too (the other estate suites never toggle it and stay clean).
   'lib/repo-address.js',
+  'lib/alpineComponents/path-picker.js',
   'lib/alpineComponents/estate.js',
 ]);
 
@@ -150,6 +153,24 @@ test('openPin routes like the sidebar Pinned block: extension opens a file, no e
     ['ensureBrowser', 'me/home', ''],
     ['openFolder', 'projects/budget/'],
   ]);
+});
+
+test('a pick fills the draft with the formatted address and never saves on its own', async () => {
+  SAVES = [];
+  data.pinDraft = ''; data.pinErr = 'stale error';
+  data.pinPicked({ repo: 'me/home', ref: 'work', path: 'docs/a.md' });
+  assert.equal(data.pinDraft, 'me/home@work:docs/a.md');
+  assert.equal(data.pinErr, '');            // a pick clears a stale gate error
+  assert.equal(SAVES.length, 0);            // commit stays with the + button
+});
+
+test('the picker panel mounts lazily on first toggle and opens', async () => {
+  assert.equal(data.pinPickerWanted, false);
+  assert.equal(data.pinPickerOpen, false);
+  data.togglePinPicker();
+  assert.equal(data.pinPickerWanted, true);
+  await new Promise(r => setTimeout(r, 50));
+  assert.equal(data.pinPickerOpen, true);
 });
 
 test('deletePin removes the item and saves with an Unpin message', async () => {

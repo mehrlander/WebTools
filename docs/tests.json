@@ -283,8 +283,8 @@
     {
       "path": "tools/test/estate-pins.test.mjs",
       "kind": "component",
-      "protects": "The estate Pin list stores at lists/pins.json, gates adds on the address grammar, and opens targets by the sidebar's file-or-folder rule.",
-      "assertions": 9,
+      "protects": "The estate Pin list stores at lists/pins.json, gates adds on the address grammar, opens targets by the sidebar's file-or-folder rule, and takes picks from the lazily mounted path-picker without saving on its own.",
+      "assertions": 11,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1
