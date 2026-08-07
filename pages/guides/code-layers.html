@@ -66,6 +66,90 @@
     </template>
   </div>
 
+  <!-- ══ FACTS ══════════════════════════════════════════════════════ -->
+  <!--
+    The record, in the register of a court's statement of facts: third person,
+    past tense, no advocacy. It never argues, and the closing paragraph declines
+    to decide, which is what lets the rest read as fact rather than as a brief.
+    The recommendation lives in Options, where a reader can weigh it as one.
+
+    Numerals describing the CURRENT tree are bound to the data, so re-running the
+    survey cannot leave the prose asserting a count the table contradicts.
+    Numerals describing the RECORD are hardcoded on purpose: "seven of twenty-one"
+    is a fact about what the 2026-08-06 retraction found, not about the tree, and
+    binding it to live data would silently rewrite history to match the present.
+  -->
+  <div x-show="tab === 'facts'">
+    <div class="bg-base-100 rounded-lg px-6 sm:px-10 py-8 max-w-3xl mx-auto
+                text-[15px] leading-7 text-base-content/90 space-y-4">
+      <h2 class="text-xs font-bold tracking-[0.2em] uppercase text-base-content/50 mb-6">
+        Statement of facts
+      </h2>
+
+      <p>This guide concerns the placement of source files within <span class="mono">lib/</span>,
+      and the rule by which placement is decided.</p>
+
+      <p>The repository loads most of its browser code at runtime through
+      <span class="mono">gh.load</span>. Three directories hold that code.
+      <span class="mono">lib/alpineComponents/</span> holds <span x-text="w(nComponents)"></span>
+      files, each registering an Alpine component. <span class="mono">lib/kits/</span> was
+      established for themed logic libraries, each registering a single namespace on
+      <span class="mono">window</span>, and holds <span x-text="w(nKits)"></span>.
+      <span class="mono">lib/</span> root holds the loader and the chain that boots it, and,
+      accumulated alongside them, <span x-text="w(nStrays)"></span> further files that register
+      a <span class="mono">window</span> namespace and are in that respect indistinguishable
+      from the contents of <span class="mono">lib/kits/</span>.</p>
+
+      <p>On 2026-07-26 a task was opened to move the misfiled files. It identified eight, on the
+      rule then understood: a kit registers a namespace, and scaffolding extends
+      <span class="mono">GH.prototype</span>.</p>
+
+      <p>On 2026-08-06 PR #362 landed <span class="mono">docs/code-layers.md</span>, supplying a
+      further rule: a kit is a capability that would hold in any repository, while a module of
+      the same shape carrying this repository's own domain belongs in
+      <span class="mono">lib/</span> root. The rule was applied to the task's file list that
+      day.</p>
+
+      <p>It was measured that day also. Counting runtime dependencies on the loader, seven of
+      the twenty-one files in <span class="mono">lib/kits/</span> were found unable to travel to
+      another repository, and six files in <span class="mono">lib/</span> root were found to
+      carry no such dependency. The rule was retracted. PR #366, open at this writing, carries
+      the retraction. The task's progress log records that placement is thereafter undecided,
+      and that nothing moves until it is decided.</p>
+
+      <p>No measurement had been offered of what the two folders do sort on. This guide supplies
+      one, and three findings of it correct the record.</p>
+
+      <p><span class="font-semibold">First</span>, <span class="mono">traffic.js</span> does not
+      extend <span class="mono">GH.prototype</span>. It wraps
+      <span class="mono">window.fetch</span>. The claim that it does appears in a comment within
+      the file, and the task adopted it.</p>
+
+      <p><span class="font-semibold">Second</span>, <span class="mono">kits/build.js</span> does
+      extend <span class="mono">GH.prototype</span>, which
+      <span class="mono">lib/kits/README.md</span> states a kit cannot do.</p>
+
+      <p><span class="font-semibold">Third</span>, the earlier counts were taken over the files'
+      comments as well as their code, and a file's header commonly describes a dependency the
+      file does not have. Measured over code alone,
+      <span x-text="w(nKitsHub)"></span> of the <span x-text="w(nKits)"></span> files in
+      <span class="mono">lib/kits/</span> carry a loader dependency, not seven, and
+      <span x-text="w(nRootNoHub)"></span> files in <span class="mono">lib/</span> root carry
+      none, not six. The correction runs in the retraction's favour: the disparity it found is
+      wider than it recorded.</p>
+
+      <p>Two matters are not in dispute. Every file in
+      <span class="mono">lib/alpineComponents/</span> registers
+      <span class="mono">Alpine.data</span>, and that boundary holds without exception. Both
+      remaining folders hold files of one shape: a <span class="mono">window</span> namespace,
+      Alpine-free, pure logic.</p>
+
+      <p>What remains open is whether those two folders are one category, and if so which files
+      move. That question is not resolved here. It is presented, with the measurement, the
+      options, and the cost of each.</p>
+    </div>
+  </div>
+
   <!-- ══ NOW ════════════════════════════════════════════════════════ -->
   <div x-show="tab === 'now'" class="space-y-5">
 
@@ -378,8 +462,30 @@ function guide() {
       this.$watch('tab', v => history.replaceState(null, '', '#tab=' + v));
     },
 
+    // Spelled out, because the statement of facts is prose and "31 files" reads
+    // as a table cell dropped into a sentence. Falls back to the digits above
+    // the range it knows, which is the honest failure: a wrong word would be
+    // worse than a bare numeral.
+    w(n) {
+      const ones = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',
+        'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen',
+        'nineteen'];
+      const tens = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+      if (n < 20) return ones[n];
+      if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? '-' + ones[n % 10] : '');
+      return String(n);
+    },
+
+    // Bound to the data: these describe the tree as measured.
+    get nKits()       { return this.rows.filter(r => r.layer === 'lib/kits').length; },
+    get nComponents() { return this.rows.filter(r => r.layer === 'lib/alpineComponents').length; },
+    get nStrays()     { return this.rows.filter(r => r.layer === 'lib' && r.moves && r.dest === 'lib/kits/').length; },
+    get nKitsHub()    { return this.rows.filter(r => r.layer === 'lib/kits' && r.hub).length; },
+    get nRootNoHub()  { return this.rows.filter(r => r.layer === 'lib' && !r.hub).length; },
+
     get tabs() {
       return [
+        { id: 'facts',     label: 'Facts',     icon: 'ph-scales',     count: 0 },
         { id: 'now',       label: 'Now',       icon: 'ph-folders',    count: this.rows.length },
         { id: 'options',   label: 'Options',   icon: 'ph-git-branch', count: this.options.length },
         { id: 'target',    label: 'Target',    icon: 'ph-target',     count: 0 },
