@@ -621,15 +621,34 @@ a failing tool call, however old, and it is the cross-session recurrence questio
 a corpus can count and a person cannot. **Repo** chips narrow it further, off the
 scoped list, and lapse back to All when the scope stops holding that repo.
 
-Tapping a row opens the full record inline (a takeover would need its own swipe
-deck and back stack for rows read one at a time): the asks in order, the files
-with their read/edit/write breakdown, and the failing calls with their bodies. A
-footnote names what the record could not have captured, since a schema-2 record
-has no files and a schema-1 record no calls at all, and an empty section would
-otherwise read as "this session did nothing" rather than "this was not captured
-then". Tapping a branch name jumps to Branches filtered to that repo, at scope
-All rather than Open, because the session outlives the branch and a merged branch
-must still be findable from the work that made it.
+Tapping a row, on either the ask or the short id, opens the session as a
+**conversation**: the record is fetched and handed to the swipe deck
+(`lib/session-render.js`), one card per ask and per assistant prose turn, with
+the tool calls attaching to the turn that issued them. Both halves are there,
+the calls carry their arguments and whatever body the record kept, and fenced
+blocks get chat-render's live views. The record is cached per id, and the
+renderer chain loads on first use, so a visit that never opens a session pays
+nothing for it.
+
+The deck's first card names what the record could not hold, and its last is the
+closing summary: the files with their read/edit/write breakdown, the tool
+histogram, and the tokens. Those two cards are the whole of what an inline
+expansion used to show below the row. That expansion is gone, and its going is
+the point: it put a summary between the reader and the conversation, so reaching
+the thing worth reading took two taps through a pane answering a question nobody
+had asked, and it made one record two surfaces to keep honest.
+
+A branch chip opens **that branch**, at [`pages/branch.html`](../pages/branch.html)
+(🌿), the estate's canonical single-branch address. It used to switch panes and
+filter Branches by repo, which answers "show me this branch" by leaving the
+reader somewhere else with the branch still to find and the session they were
+reading lost. A session's branch is frequently merged and so absent from that
+list altogether, which the old filter could not express.
+
+The same deck has a page of its own at [`pages/session.html`](../pages/session.html),
+addressed `#id=<short>`, `#gh=owner/repo:path`, or `#gz=` for a reader with no
+token. It opens the conversation on arrival; its facts card is the after-close
+state, not a waiting room.
 
 Below the list, **File attention** is the cross-session rollup: per path, how
 many **distinct** sessions opened it. Distinct sessions is the number that

@@ -680,7 +680,7 @@
       "path": "tools/test/session-render.test.mjs",
       "kind": "behavior",
       "protects": "A session record merges into one ordered conversation, and groups into cards small enough to page.",
-      "assertions": 14,
+      "assertions": 17,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0

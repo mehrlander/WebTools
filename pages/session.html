@@ -90,8 +90,9 @@
     <span class="loading loading-spinner loading-lg text-primary"></span>
   </div>
 
-  <!-- The record's own facts, standing behind the deck. The deck is a takeover,
-       so closing it lands back here rather than on an empty page. -->
+  <!-- The record's facts, standing BEHIND the deck rather than in front of it.
+       The deck opens on arrival, so this is the after-close state: what you see
+       when you dismiss the conversation, with the button to reopen it. -->
   <template x-if="record && !busy">
     <div class="max-w-2xl mx-auto p-4 flex flex-col gap-4">
       <div>
@@ -100,7 +101,7 @@
       </div>
       <button @click="openDeck()" class="btn btn-primary gap-2">
         <i class="ph ph-cards-three text-lg"></i>
-        <span x-text="'Read the conversation (' + cards + ' cards)'"></span>
+        <span x-text="'Reopen the conversation (' + cards + ' cards)'"></span>
       </button>
       <div class="flex flex-wrap gap-x-5 gap-y-1.5 text-sm rounded-lg border border-base-300 bg-base-100 px-3 py-2">
         <template x-for="f in facts" :key="f.k">
@@ -150,6 +151,12 @@
         if (!t) return;
         this.input = t.label || '';
         await this.load(t);
+        // Arriving at an address that names a session opens the CONVERSATION,
+        // not a card describing it. The facts below are what you land on when
+        // you close the deck, and what the address field opens onto; they are
+        // not a waiting room. A link that already names the session should not
+        // then ask you to confirm that you meant it.
+        if (this.record) await this.openDeck();
       },
 
       // The address, from wherever this page is running. Read THROUGH
@@ -226,6 +233,7 @@
           : { kind: 'id', id: v, label: v };
         try { history.replaceState(null, '', '#' + (t.kind === 'id' ? 'id=' : 'gh=') + v); } catch {}
         await this.load(t);
+        if (this.record) await this.openDeck();
       },
     }));
   });

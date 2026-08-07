@@ -160,6 +160,38 @@ test('describe carries the facts the deck header needs', () => {
   assert.match(d.subtitle, /2 asks/);
 });
 
+test('the closing summary is its own card, last, carrying what the pane used to', () => {
+  // This content is why removing the Sessions pane's inline expansion loses
+  // nothing: the file list moved here rather than being dropped.
+  const g = groups(turns({ ...REC, files_total: 1, files: { 'web-tools/a.js': { edit: 5 } } }));
+  const last = g[g.length - 1];
+  assert.equal(last.length, 1, 'the summary must not read as the tail of the last exchange');
+  assert.equal(last[0].role, 'meta');
+  assert.match(last[0].label, /What this session touched/);
+});
+
+test('the summary spells out the per-kind file breakdown and keeps its caveat', () => {
+  const t = turns({
+    ...REC,
+    files_total: 2,
+    files: { 'web-tools/a.js': { read: 1, edit: 5 }, 'home/b.md': { read: 2 } },
+    tools: { Bash: 40, Read: 3 },
+  });
+  const s = t[t.length - 1];
+  assert.match(s.md, /`web-tools\/a\.js` — 5 edit, 1 read/,
+    'how a file was touched, not just how often');
+  const aIdx = s.md.indexOf('web-tools/a.js'), bIdx = s.md.indexOf('home/b.md');
+  assert.ok(aIdx < bIdx, 'busiest first');
+  assert.match(s.md, /`Bash` — 40/);
+  assert.match(s.md, /injected at session start/,
+    'the counts say the opposite of the truth without their caveat');
+});
+
+test('a record with nothing to summarise gets no closing card', () => {
+  const g = groups(turns({ schema: 4, prompts: [{ at: at(0), text: 'hi' }], exchanges: 1, prompts_stored: 1 }));
+  assert.equal(g.length, 1, 'an empty summary card would be a blank slide at the end');
+});
+
 test('an empty schema-4 record renders nothing rather than throwing', () => {
   assert.deepEqual(turns({ schema: 4 }), []);
   assert.deepEqual(groups([]), []);
