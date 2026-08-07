@@ -281,9 +281,10 @@ The one glyph carries four meanings, and two rules keep them apart:
 | An **exact file** | a set row, a route's renderer, a staged item | plain icon **plus a source peek** |
 
 A **source peek** (`lib/source-peek.js`) is a hover card showing the file:
-markdown rendered, JSON pretty-printed with its top-level shape named,
-everything else as source, always the first 20 lines with a footer saying what
-was left behind. A call site adds one attribute,
+markdown rendered, JSON pretty-printed, everything else as source, a 28-line
+excerpt in small type with no footer (the measuring line, "first 28 of 79
+lines," was dropped 2026-08-07 along with the JSON shape headline it carried: a
+cut excerpt visibly ends mid-document, and the tap carries the full read). A call site adds one attribute,
 `:data-peek="owner/repo[@ref]:path"`, and a delegated listener does the rest; a
 view holding the bytes already (the Map's two manifests) passes them with
 `SourcePeek.seed` so the peek costs no fetch. `lib/gh-boot.js` loads it, the way
@@ -823,7 +824,9 @@ more than one place, each with its one authoritative carrier and its typed
 repetitions (copy, paraphrase, pointer, live read; a copy says who keeps it, by
 hand or by a named builder), where an absent check renders in the warning tone
 rather than being omitted, because an unchecked copy should look unchecked every
-time the tab opens. The registry is authoritative for the claims it covers and
+time the tab opens. The claims table sits collapsed behind its count
+(2026-08-07): it keys on claims rather than files, so trailing the census open
+it read as an appendix; a fuller incorporation is an open thread. The registry is authoritative for the claims it covers and
 owes the repo no inventory of them; the census, by contrast, is complete.
 Public, like the other two tabs.
 
