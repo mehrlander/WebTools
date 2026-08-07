@@ -37,6 +37,17 @@ const routesJson = readFileSync(path.join(repoRoot, 'docs', 'routes.json'), 'utf
 const docsJson = readFileSync(path.join(repoRoot, 'docs', 'docs.json'), 'utf8');
 const surfJson = readFileSync(path.join(repoRoot, 'docs', 'surfacing.json'), 'utf8');
 const testsJson = readFileSync(path.join(repoRoot, 'docs', 'tests.json'), 'utf8');
+// The private registry's sessions cache, trimmed to the rollup the Docs tab
+// reads. Paths are repo-qualified there and hub-relative in the registry, which
+// is the join the readership column has to get right.
+const sessions = {
+  generatedAt: '2026-08-06T12:00:00Z',
+  count: 42,
+  docAttention: [
+    { path: 'web-tools/docs/show-repo.md', sessions: 9, count: 31, last: '2026-08-05T20:00:00Z' },
+    { path: 'home/docs/elsewhere.md', sessions: 7, count: 7, last: '2026-08-04T20:00:00Z' },
+  ],
+};
 const asked = [];
 window.TOKEN = 'ignored-in-test';
 window.GH = class {
@@ -47,6 +58,7 @@ window.GH = class {
     if (p === 'docs/docs.json') return { text: docsJson };
     if (p === 'docs/surfacing.json') return { text: surfJson };
     if (p === 'docs/tests.json') return { text: testsJson };
+    if (p === 'state/sessions.json') return { text: JSON.stringify(sessions) };
     return { text: JSON.stringify(manifest) };
   }
 };
@@ -116,6 +128,40 @@ test('Docs loads on demand and carries both tables', async () => {
   const groups = data.docGroups;
   assert.equal(groups[0].dir, 'docs', 'the root docs group leads');
   assert.ok(groups.length > 3, 'subfolders group separately');
+});
+
+// ── Readership ──────────────────────────────────────────────────────────────
+// The column is token-gated and its empty states carry meaning, so both halves
+// are asserted: absent without a token, and never a bare zero on an injected
+// doc, which is the case where the number would be exactly backwards.
+
+test('without a token the census renders and the readership column does not', () => {
+  assert.equal(data.hasToken(), false);
+  assert.equal(data.docReads, null, 'no token, no column, no error');
+  assert.equal(data.docsErr, '', 'the census is public and must not fail with it');
+});
+
+test('readership joins the repo-qualified cache path to the hub-relative registry row', async () => {
+  window.__shell = { hasToken: () => true, REGISTRY_REPO: 'mehrlander/web-tools-private' };
+  await data.loadDocReads();
+
+  assert.equal(data.registry(), 'mehrlander/web-tools-private');
+  assert.equal(data.docReadKey('docs/show-repo.md'), 'web-tools/docs/show-repo.md');
+  assert.equal(data.docReadsSessions, 42);
+  assert.equal(data.docReadLabel({ path: 'docs/show-repo.md', reach: 'project' }), '9 ×');
+  assert.match(data.docReadHint({ path: 'docs/show-repo.md', reach: 'project' }), /9 of 42/);
+  // Another repo's docs/ file is in the same rollup and must not be read as this one's.
+  assert.equal(data.docReadLabel({ path: 'docs/elsewhere.md', reach: 'orphan' }), '—');
+});
+
+test('an injected doc says so instead of reporting the zero no file tool can avoid', () => {
+  const injected = { path: 'docs/CONVENTIONS.md', reach: 'injected' };
+  assert.equal(data.docReadLabel(injected), 'injected');
+  assert.match(data.docReadHint(injected), /not zero/);
+  // Unread is distinguishable from unmeasurable, since one is a finding and the
+  // other is a limit of the instrument.
+  assert.equal(data.docReadLabel({ path: 'docs/nobody-opens-this.md', reach: 'orphan' }), '—');
+  assert.match(data.docReadHint({ path: 'docs/nobody-opens-this.md', reach: 'orphan' }), /No recorded session/);
 });
 
 test('an absent check renders as visibly absent, and only where one is owed', () => {
