@@ -1,10 +1,11 @@
 // alpineComponents/quick-find.js — logic tests for the sidebar finder's lane
-// dispatcher: the #digits PR lane (open-repo hits first), the address lanes
-// (full owner/repo[@ref]:path via RepoAddress, short-repo expansion, repo@frag
-// branch matching with the open-anyway floor, estate-wide @frag), the plain
-// lane (repos, views, branches, PR titles), the token-gated Jot floor, the
-// branch hit's open-branch-detail event, and the jot write's fresh-read
-// append. Driven over a fake GH and a stubbed shell; no network, no pixels.
+// dispatcher: the #digits PR lane (open-repo hits first), the @ repo-then-file
+// walk (repo choice, folder completion, dir filtering, whole-tree fuzzy),
+// pasted addresses resolving exactly with no suggestions, the plain lane
+// (repos, views, cached file names with the estate-wide gate, PR titles), the
+// +prefix and floor jot lanes, the branch hit's open-branch-detail event, and
+// the jot write's fresh-read append. Driven over a fake GH and a stubbed
+// shell; no network, no pixels.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,11 +15,17 @@ const REGISTRY = 'me/registry';
 
 let FILES = {};    // "<path>" -> parsed JSON served from the registry
 let SAVES = [];    // every save call: { repo, path, value, message }
+let TREES = {};    // "<repo>" -> [blob paths] served from git/trees
 
 class FakeGH {
   constructor(conf = {}) { this.repo = conf.repo || ''; this.ref = conf.ref || 'main'; }
   async get(name) {
     if (this.repo === REGISTRY && FILES[name]) return { text: JSON.stringify(FILES[name]) };
+    throw Object.assign(new Error('404'), { status: 404 });
+  }
+  async req(path) {
+    if (String(path).startsWith('git/trees/') && TREES[this.repo])
+      return { tree: TREES[this.repo].map(p => ({ type: 'blob', path: p })), truncated: false };
     throw Object.assign(new Error('404'), { status: 404 });
   }
   async save(path, value, message) { SAVES.push({ repo: this.repo, path, value, message }); return {}; }
@@ -29,13 +36,10 @@ const ACTIVITY = {
     'me/tools': {
       defaultBranch: 'main',
       openPRs: [{ number: 12, title: 'Fix the header', draft: true, head: 'claude/header-fix' }],
-      survey: { branches: [{ name: 'claude/header-fix' }, { name: 'main' }] },
     },
     'me/home': {
       defaultBranch: 'main',
       openPRs: [{ number: 120, title: 'Drain the pile', draft: false, head: 'claude/drain' }],
-      // A PR head absent from the survey (a fresh push) still becomes a row.
-      survey: { branches: [{ name: 'spike/idea' }] },
     },
   },
 };
@@ -69,21 +73,15 @@ const data = Alpine.$data(window.document.getElementById('qf'));
 // prototype check against node-realm literals; round-trip before comparing.
 const j = (x) => JSON.parse(JSON.stringify(x));
 
-// Every lane below reads the activity projections, so seed the cache once the
-// way ensureActivity would.
 FILES = { 'state/activity.json': ACTIVITY };
+TREES = {
+  'me/tools': ['README.md', 'lib/gh-api.js', 'lib/kits/console.js', 'pages/index.html'],
+  'me/home':  ['README.md', 'chron/index.md'],
+};
 await data.ensureActivity();
 
 test('mounts with no startup warnings or errors', () => {
   assert.deepEqual(problems, []);
-});
-
-test('activity projections: PR rows carry their head; a survey-less PR head still rows', () => {
-  assert.deepEqual(j(data.prRows.map(p => p.number).sort((a, b) => a - b)), [12, 120]);
-  const names = data.branchRows.map(b => b.repo + '@' + b.name).sort();
-  assert.deepEqual(j(names), ['me/home@claude/drain', 'me/home@spike/idea', 'me/tools@claude/header-fix']);
-  // The default branch never rows.
-  assert.ok(!names.some(n => n.endsWith('@main')));
 });
 
 test('#digits finds PRs by number prefix; bare digits work; # alone lists all', () => {
@@ -99,44 +97,83 @@ test('#digits finds PRs by number prefix; bare digits work; # alone lists all', 
   assert.equal(data.rows.filter(r => r.kind === 'branch').length, 2);
 });
 
-test('a full address parses to an open-file row; a short repo head expands', () => {
+test('@ lists repos; @frag filters them; picking completes to @repo/', () => {
+  data.q = '@';
+  let reps = data.rows.filter(r => r.kind === 'complete');
+  assert.deepEqual(j(reps.map(r => r.to)), ['@tools/', '@home/']);
+  data.q = '@ho';
+  reps = data.rows.filter(r => r.kind === 'complete');
+  assert.deepEqual(j(reps.map(r => r.to)), ['@home/']);
+});
+
+test('@repo/ walks the tree: folders first and completing, files opening, remainder filtering', async () => {
+  await data.ensureTree('me/tools');
+  data.q = '@tools/';
+  let rows = data.rows.filter(r => r.kind === 'complete' || r.kind === 'file');
+  // Folders lead (lib/, pages/), then root files.
+  assert.deepEqual(j(rows.map(r => r.label)), ['lib/', 'pages/', 'README.md']);
+  assert.equal(rows[0].to, '@tools/lib/');
+  data.q = '@tools/lib/';
+  rows = data.rows.filter(r => r.kind === 'complete' || r.kind === 'file');
+  assert.deepEqual(j(rows.map(r => r.label)), ['kits/', 'gh-api.js']);
+  assert.equal(rows[1].path, 'lib/gh-api.js');
+  data.q = '@tools/lib/gh';
+  rows = data.rows.filter(r => r.kind === 'file');
+  assert.deepEqual(j(rows.map(r => r.path)), ['lib/gh-api.js']);
+});
+
+test('@repo/frag fuzzy-matches the whole tree without a walk', async () => {
+  await data.ensureTree('me/tools');
+  data.q = '@tools/console';
+  const rows = data.rows.filter(r => r.kind === 'file');
+  assert.deepEqual(j(rows.map(r => r.path)), ['lib/kits/console.js']);
+});
+
+test('a pasted address resolves exactly and suggests nothing', () => {
   data.q = 'me/tools@dev:lib/gh-api.js';
-  let addr = data.rows.find(r => r.kind === 'addr');
-  assert.equal(addr.label, 'me/tools@dev:lib/gh-api.js');
-  assert.deepEqual(j(addr.addr), { repo: 'me/tools', ref: 'dev', path: 'lib/gh-api.js' });
-  // "tools:…" names exactly one estate repo, so it expands; the missing ref
-  // stays unspecified (RepoAddress's rule: parse honestly, resolve late).
+  let hit = data.rows.find(r => r.kind === 'addr');
+  assert.deepEqual(j(hit.addr), { repo: 'me/tools', ref: 'dev', path: 'lib/gh-api.js' });
+  // Short-repo expansion applies before the colon; the missing ref stays
+  // unspecified (RepoAddress's rule: parse honestly, resolve late).
   data.q = 'tools:lib/gh-api.js';
-  addr = data.rows.find(r => r.kind === 'addr');
-  assert.deepEqual(j(addr.addr), { repo: 'me/tools', ref: '', path: 'lib/gh-api.js' });
+  hit = data.rows.find(r => r.kind === 'addr');
+  assert.deepEqual(j(hit.addr), { repo: 'me/tools', ref: '', path: 'lib/gh-api.js' });
+  // repo@branch is one exact row, the takeover; no suggestion list rides it.
+  data.q = 'home@claude/drain';
+  const rows = data.rows.filter(r => r.kind === 'branch');
+  assert.equal(rows.length, 1);
+  assert.deepEqual(j([rows[0].repo, rows[0].name]), ['me/home', 'claude/drain']);
 });
 
-test('repo@frag matches that repo\'s branches; an unmatched name still opens', () => {
-  data.q = 'home@drain';
-  let hits = data.rows.filter(r => r.kind === 'branch');
-  assert.deepEqual(j(hits.map(h => h.name)), ['claude/drain']);
-  data.q = 'home@not-crawled-yet';
-  hits = data.rows.filter(r => r.kind === 'branch');
-  assert.equal(hits.length, 1);
-  assert.equal(hits[0].sub, 'open anyway');
-  assert.equal(hits[0].name, 'not-crawled-yet');
-});
-
-test('@frag searches branch names estate-wide', () => {
-  data.q = '@claude';
-  const hits = data.rows.filter(r => r.kind === 'branch');
-  assert.deepEqual(j(hits.map(h => h.name).sort()), ['claude/drain', 'claude/header-fix']);
-});
-
-test('plain text matches repos, views, branches, and PR titles; the Jot floor rides every query', () => {
+test('plain text matches repos, views, cached file names, and PR titles', async () => {
   data.q = 'home';
   const kinds = data.rows.map(r => r.kind);
   assert.ok(kinds.includes('repo'));
   assert.ok(kinds.includes('jot'));
   data.q = 'map';
   assert.equal(data.rows.find(r => r.kind === 'view').label, 'Map');
+  await data.ensureTree('me/tools');
+  data.q = 'gh-api';
+  const files = data.rows.filter(r => r.kind === 'file');
+  assert.deepEqual(j(files.map(f => f.path)), ['lib/gh-api.js']);
   data.q = 'drain the';
   assert.equal(data.rows.find(r => r.kind === 'branch').repo, 'me/home');
+});
+
+test('the estate-wide gate: offered while trees are missing, gone once loaded', async () => {
+  data.q = 'index';
+  assert.ok(data.rows.some(r => r.kind === 'deep'));
+  await data.loadAllTrees();
+  assert.ok(!data.rows.some(r => r.kind === 'deep'));
+  // The pass now sees every repo's tree.
+  const repos = data.rows.filter(r => r.kind === 'file').map(f => f.repo);
+  assert.ok(repos.includes('me/home'));
+});
+
+test('+idea is the explicit jot lane: one row, nothing else', () => {
+  data.q = '+try the thing';
+  assert.deepEqual(j(data.rows.map(r => r.kind)), ['jot']);
+  assert.equal(data.rows[0].text, 'try the thing');
   // The floor is token-gated: signed out, nothing offers to write.
   shell.hasToken = () => false;
   data.q = 'anything';
@@ -154,10 +191,10 @@ test('acting on a branch hit dispatches web-tools:open-branch-detail and clears 
   assert.equal(data.open, false);
 });
 
-test('acting on a view hit runs its go()', () => {
-  data.q = 'map';
-  data.act(data.rows.find(r => r.kind === 'view'));
-  assert.deepEqual(j(shell._went), ['map']);
+test('acting on a completion rewrites the input instead of acting', () => {
+  data.q = '@';
+  data.act(data.rows[0]);
+  assert.equal(data.q, '@tools/');
 });
 
 test('jotThis appends to a fresh read of lists/jots.json with the estate\'s commit-message shape', async () => {

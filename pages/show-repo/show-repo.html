@@ -297,15 +297,17 @@
          Directly under the crumb bar, above the scroll area so its results
          panel (the crumb menu's anchored idiom) overlays the lists rather
          than pushing them. The query's shape picks the lane: #123 finds an
-         open PR estate-wide and opens the branch-detail takeover; @branch
-         and repo@branch find branches (short repo names expand when they
-         name exactly one estate repo); owner/repo[@ref]:path, the estate's
-         one address grammar, opens the file; plain text matches repos, the
-         nav, branch names, and PR titles. The last row is always "Jot this",
-         so a query that found nothing is kept rather than lost. Sits in the
-         SIDEBAR, not the header: pinned and ready on desktop, one drawer tap
-         on a phone, where the header's nav already scrolls and its right end
-         is already spoken for. Full lane doc in quick-find.js. -->
+         open PR estate-wide and opens the branch-detail takeover; @ is
+         repo-then-file NAVIGATION (pick a repo, walk or fuzzy-match its
+         tree, open the file); a pasted owner/repo[@ref]:path or repo@branch
+         address resolves exactly, with no suggestions; +idea jots
+         explicitly; plain text matches repos, the nav, file names from
+         cached trees, and PR titles, with a tap-gated estate-wide file-name
+         pass. The last row is always "Jot this", so a query that found
+         nothing is kept rather than lost. Sits in the SIDEBAR, not the
+         header: pinned and ready on desktop, one drawer tap on a phone,
+         where the header's nav already scrolls and its right end is already
+         spoken for. Full lane doc in quick-find.js. -->
     <div class="px-3 pt-2 shrink-0" x-data="quickFind()"></div>
 
     <div class="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-3">
@@ -4167,11 +4169,15 @@ function overview(){ return {
   reach the header through their published VIEWS, not through a list of
   themselves. Under the sidebar's crumb bar sits THE FINDER (quickFind,
   lib/alpineComponents/quick-find.js): one always-ready input whose query
-  shape picks a lane — #123 opens an open PR's branch takeover estate-wide,
-  @branch and repo@branch find branches, owner/repo[@ref]:path opens the file,
-  plain text matches repos, the nav, branch names, and PR titles — with a
-  token-gated "Jot this" floor so an unmatched query lands in the pile instead
-  of nowhere. `/` focuses it; branch hits travel the
+  shape picks a lane — #123 opens an open PR's branch takeover estate-wide;
+  @ is repo-then-file navigation (the mention picker's reading of the
+  trigger: pick a repo, walk or fuzzy-match its cached tree, open the file);
+  a pasted owner/repo[@ref]:path or repo@branch address resolves exactly
+  with no suggestions; +idea jots explicitly; plain text matches repos, the
+  nav, file names from cached trees (a tap-gated row extends the pass
+  estate-wide, the stage's loadAllTrees economy), and PR titles — with a
+  token-gated "Jot this" floor so an unmatched query lands in the pile
+  instead of nowhere. `/` focuses it; branch hits travel the
   web-tools:open-branch-detail event, consumed in estate.js beside the
   &detail= deep link it mirrors. The SIDEBAR holds
   only what is contextual: in a repo its views + pins + recents; in the estate a

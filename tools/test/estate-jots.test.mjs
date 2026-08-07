@@ -121,6 +121,9 @@ test('jotPile orders newest first regardless of stored order', () => {
 
 test('deleteJot removes the item and saves the remainder', async () => {
   SAVES = [];
+  // The file is the source of truth now (mutateJots re-reads before saving),
+  // so the fixture seeds it to match the pane's local copy.
+  FILES = { 'lists/jots.json': { items: [...data.jotItems] } };
   const [a, , b] = data.jotItems;   // delete the middle one ('c', text "new")
   await data.deleteJot(data.jotItems[1]);
   assert.deepEqual([...data.jotItems.map(i => i.id)], [a.id, b.id]);
@@ -132,4 +135,24 @@ test('the to-do list also lives under lists/ (moved out of state/)', async () =>
   SAVES = [];
   await data.saveTodos('probe');
   assert.equal(SAVES[0].path, 'lists/todo.json');
+});
+
+test('a write merges against a FRESH read, so a jot added elsewhere survives (the spine regression)', async () => {
+  SAVES = [];
+  // The pane loaded when only A existed…
+  FILES = { 'lists/jots.json': { items: [{ id: 'jA', text: 'A', created_at: '2026-01-01T00:00:00Z' }] } };
+  await data.loadJots(reg());
+  // …then something else (the sidebar finder, a second tab) wrote B.
+  FILES['lists/jots.json'].items = [
+    { id: 'jA', text: 'A', created_at: '2026-01-01T00:00:00Z' },
+    { id: 'jB', text: 'B', created_at: '2026-01-02T00:00:00Z' },
+  ];
+  data.jotDraft = 'C';
+  await data.addJot();
+  // The save carries all three: B was not clobbered by the pane's stale copy.
+  assert.deepEqual([...SAVES.at(-1).value.items.map(i => i.text)], ['A', 'B', 'C']);
+  // Deletion goes through the same fresh read.
+  FILES['lists/jots.json'] = SAVES.at(-1).value;
+  await data.deleteJot({ id: 'jB', text: 'B' });
+  assert.deepEqual([...SAVES.at(-1).value.items.map(i => i.text)], ['A', 'C']);
 });

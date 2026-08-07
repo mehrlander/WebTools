@@ -266,7 +266,7 @@
       "path": "tools/test/estate-jots.test.mjs",
       "kind": "component",
       "protects": "The jots list mounts clean.",
-      "assertions": 8,
+      "assertions": 9,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1
@@ -598,8 +598,8 @@
     {
       "path": "tools/test/quick-find.test.mjs",
       "kind": "component",
-      "protects": "The sidebar finder's lanes resolve as documented: #digits to open PRs, the address grammar to branches and files with short-repo expansion, plain text to repos and views, and the token-gated Jot floor writes to the pile.",
-      "assertions": 10,
+      "protects": "The sidebar finder's lanes resolve as documented: #digits to open PRs, @ to the repo-then-file walk with fuzzy tree matching, pasted addresses exactly, plain text to repos, views, and cached file names, and the jot lanes write to the pile.",
+      "assertions": 12,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1
