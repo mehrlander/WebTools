@@ -4182,20 +4182,14 @@ function overview(){ return {
       resolves here, and the default tab stays out of the URL): the coordination layer
       made inspectable, and the operational face of the constellation doctrine
       (home's created/2026-06-27-constellation-architecture.md, kernel at the
-      hub's docs/CONSTELLATION.md, linked from the set header). Three parts.
-      The set: the portable docs, plugin skills, and scripts, read from the
-      hub's committed manifest (docs/portable.json, prose parent
-      docs/PORTABLE.md), each row opening in the shell's own viewer; the
-      doctrine kernel rides here as a doc. Scope and Adoption share one per-repo
-      card: Scope is the repo's own account of what it holds and why, read live
-      from its .web-tools.json `scope` field (the repo owns the story; the
-      estate only stacks the statements); Adoption is how far the repo carries
-      the set (.claude/settings.json marketplace subscription and plugins, a
-      conventions-wired CLAUDE.md, a .web-tools.json), graded by
-      lib/portable-align.js into source / registry / aligned / partial /
-      optout / unaligned. The set is public; the per-repo half is token-gated.
-      Probes are live per open (in-memory cache + Refresh); a persisted registry
-      crawl cache (state/alignment.json) is a named follow-up.
+      hub's docs/CONSTELLATION.md, linked from the Portable header). Five tabs,
+      all public, each a projection of one committed hub manifest: Portable
+      (docs/portable.json; labelled The set until 2026-08-07, and the ?tab=set
+      URL key is unchanged), Surfacing (docs/surfacing.json), Showing
+      (docs/routes.json), Docs (docs/docs.json, a folder rail beside the
+      selected folder's files), and Tests (docs/tests.json). Per-repo scope and
+      adoption moved onto the Repos cards on 2026-08-03; the alignment grading
+      (lib/portable-align.js) rides there now.
     Tools (?view=tools): a curated gallery of the owner's utility pages (the
       text-diff tool and the like), fed from the hub's hand-curated
       docs/tools.json (lib/alpineComponents/tools.js). Reuses the pages-catalog

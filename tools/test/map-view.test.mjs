@@ -113,9 +113,32 @@ test('Docs loads on demand and carries both tables', async () => {
   assert.equal(data.docsErr, '');
   assert.ok(data.docsReg.documents.length > 30);
   assert.ok(data.docsReg.claims.length > 3);
-  const groups = data.docGroups;
-  assert.equal(groups[0].dir, 'docs', 'the root docs group leads');
-  assert.ok(groups.length > 3, 'subfolders group separately');
+});
+
+test('the Docs folder rail rolls up, nests, and prunes by reach without changing shape', () => {
+  const folders = data.docFolders;
+  assert.equal(folders[0].dir, 'docs', 'the root folder leads the rail');
+  assert.ok(folders.length > 3, 'subfolders get their own rows');
+  for (const f of folders) assert.equal(f.depth, f.dir.split('/').length - 1, f.dir);
+  assert.equal(folders[0].n, data.docsReg.documents.length, 'the root rolls up the whole census');
+  assert.equal(folders[0].words, data.docWordTotal, 'and the whole mass');
+
+  assert.equal(data.docDir, 'docs', 'the root folder opens selected');
+  assert.ok(data.docDirFiles.length > 0, 'the selected folder lists files');
+  assert.ok(data.docDirFiles.every(d => d.path.slice('docs/'.length).indexOf('/') === -1),
+    'direct files only; subfolder contents stay behind their rail rows');
+  assert.ok(data.docDirGloss.length > 0, 'the folder gloss reads from its README row');
+
+  data.docReach = 'orphan';
+  const filtered = data.docFolders;
+  assert.equal(filtered.length, folders.length, 'a filter moves counts, not the tree shape');
+  assert.ok(filtered[0].n < folders[0].n, 'the rollup honors the filter');
+  assert.ok(data.docDirFiles.every(d => d.reach === 'orphan'), 'the file list honors it too');
+  data.docReach = '';
+
+  assert.equal(data.folderGh('docs/envelopes'),
+    'https://github.com/mehrlander/web-tools/tree/main/docs/envelopes',
+    'a folder links to its GitHub tree at the read ref');
 });
 
 test('an absent check renders as visibly absent, and only where one is owed', () => {

@@ -713,7 +713,8 @@ by whatever route. That last part is the failure this replaced: the four
 non-default tabs used to fetch from the click handler alone, so a tab nobody
 tapped had nothing to render.
 
-*The set* renders the to-go bag from the hub's committed manifest,
+*Portable* (labelled The set until 2026-08-07; the `?tab=set` URL key is
+unchanged) renders the to-go bag from the hub's committed manifest,
 [`docs/portable.json`](portable.json), whose prose parent is
 [`docs/PORTABLE.md`](PORTABLE.md) (a test,
 `tools/test/portable-manifest.test.mjs`, holds the two consistent, so the UI
@@ -805,7 +806,11 @@ its status (**living** claims current truth and is wrong when stale; **record**
 preserves a moment and is wrong when rewritten), and its maintenance (authored
 or generated, with the discipline that keeps it true); complete by construction,
 since `tools/test/docs-registry.test.mjs` holds the folder and the table to
-exactly one row per file. And the **shared claims**: statements that live in
+exactly one row per file. The census is navigated from a folder rail
+(2026-08-07): each directory is a row with rolled-up file count and word mass
+and its own GitHub link, the selected folder shows its direct files beside it
+with that folder's README subject as the gloss, and a reach filter moves the
+counts without changing the tree's shape. And the **shared claims**: statements that live in
 more than one place, each with its one authoritative carrier and its typed
 repetitions (copy, paraphrase, pointer, live read; a copy says who keeps it, by
 hand or by a named builder), where an absent check renders in the warning tone
