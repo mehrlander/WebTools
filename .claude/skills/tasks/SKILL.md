@@ -2,16 +2,17 @@
 name: tasks
 description: >-
   Operate a repo's project tracker: propose and file a task, claim one, update
-  or close it, groom the backlog, and regenerate the board, following the
-  docs/TRACKER.md schema and the rule that task files and board.md commit
-  straight to main (not a feature branch). Carries the filing rules: the bar
-  for what deserves a task, the gate that a new task is proposed rather than
-  filed unprompted, and the rule against fragmenting one outcome into several
-  tasks. Invoking this skill bare (no further ask) surfaces a caption of the
-  current board. Use when the user says "add a task", "file a task", "make a
-  tracker task", "claim a task", "check the tracker", "what's on the board",
-  "regenerate the board", "close task X", "groom the tracker", "clean up the
-  backlog", "audit the tasks", or "prune stale tasks", or when a follow-up
+  or close it, assess the tracker as a whole, refine the backlog, and
+  regenerate the board, following the docs/TRACKER.md schema and the rule that
+  task files and board.md commit straight to main (not a feature branch).
+  Carries the filing rules: the bar for what deserves a task, the gate that a
+  new task is proposed rather than filed unprompted, and the rule against
+  fragmenting one outcome into several tasks. Invoking this skill bare (no
+  further ask) surfaces a caption of the current board. Use when the user says
+  "add a task", "file a task", "make a tracker task", "claim a task", "check
+  the tracker", "what's on the board", "regenerate the board", "close task X",
+  "assess the tracker", "refine the tracker", "groom the tracker", "clean up
+  the backlog", "audit the tasks", or "prune stale tasks", or when a follow-up
   needs to survive across sessions. Owns the tracker's operations and filing
   rules; the web-tools skill owns PR bodies, surfacing links, and the merge
   guide, so route those there.
@@ -54,8 +55,10 @@ because the backlog is the scarce thing and a task nobody will claim costs more
 than it saves. So the question is "is this worth carrying", not "may I commit".
 Ask it once, take the answer, and move on.
 
-Only *creating* a task is gated. Claiming, updating, closing, groom-closing,
-regenerating the board, and pushing to `main` are unattended: they describe work
+Only *creating* a task is gated. Claiming, updating, closing (a refinement
+close included, once its findings are confirmed), writing an assessment record
+the user asked for, regenerating the board, and pushing to `main` are
+unattended: they describe work
 that already exists, and gating them would grow the backlog. This is a standing
 decision, so take the gate without asking whether to ask.
 
@@ -194,15 +197,47 @@ close deferred to merge never happens. Close each task as it finishes even when
 others remain in progress on the same branch. Report the close and its branch in
 your reply.
 
-## Groom the tracker
+## Assess the tracker
 
-Read every task file's body and progress log, not just `board.md`. Flag each
-`backlog`/`blocked` task that is superseded, stale, a duplicate, or oversized
-(wants splitting), and any `in-progress` task whose `session:` branch is merged
-or gone. Propose findings; get confirmation before closing or splitting.
+Assessment interprets the tracker as a whole; it recommends and never mutates.
+Read every task file's body and progress log plus the repo's recent motion
+(the newest commits, merged PRs), then report in chat: the workstreams the
+open tasks form, framing that lags the implementation, decisions hiding inside
+tasks, differences in scale and readiness, bundles that would travel together,
+and good next-session candidates. Dispatch briefs, a ready-to-launch prompt
+per bundle, are among the most useful outputs: converting backlog into
+launchable work is much of an assessment's point.
 
-There is no status for a groomed close, since a real `done` means the work was
-completed. Use open tags: `status: done`, `closed: <date>`, `resolution:
+The chat report is the deliverable. Offer to keep it as a durable record,
+`tracker/assessments/YYYY-MM-DD.json` (schema `tracker-assessment/1`; contract
+and required keys in TRACKER.md), rather than writing one unprompted: a record
+earns its commit when the judgment would otherwise have to be rebuilt. Anchor
+it to the commit of `main` you actually read, cite task ids rather than
+copying what the task files already say, and push it to `main` by the same
+scratch-branch recipe as any tracker state. Never edit a past assessment: it
+is a dated record, aged rather than wrong when the tracker moves on; supersede
+it with a new one.
+
+Mutating anything the assessment recommends is refinement, below. The
+boundary between the two is permission, not sequencing: an assessment-only
+ask does not imply consent to refine, but when the user asks for both, or
+confirms the findings in the same conversation, one pass assesses and then
+applies the agreed refinement without a second round trip.
+
+## Refine the tracker
+
+Refinement restores scope truth by mutating task files. It is the operation
+earlier material called grooming; "groom the tracker" still invokes it. Read
+every task file's body and progress log, not just `board.md`. Flag each
+`backlog`/`blocked` task that is superseded, stale, a duplicate, framed for
+work that has since landed or shifted (wants reframing or narrowing to the
+true residual), or oversized (wants splitting), and any `in-progress` task
+whose `session:` branch is merged or gone. A recent assessment's `hygiene`
+findings are a natural worklist. Propose findings; get confirmation before
+closing, reframing, or splitting.
+
+There is no status for a refinement close, since a real `done` means the work
+was completed. Use open tags: `status: done`, `closed: <date>`, `resolution:
 superseded | stale | duplicate | dropped`, and name the cause in a progress-log
 line.
 

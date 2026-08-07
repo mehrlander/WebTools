@@ -902,6 +902,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/tracker-assessments.test.mjs",
+      "kind": "gate",
+      "protects": "Every tracker/assessments/ record keeps the dated filename and the four tracker-assessment/1 required keys.",
+      "assertions": 3,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/traffic-states.mjs",
       "kind": "behavior",
       "protects": "The three size states against a controlled server: disclosed, undisclosed, and cached.",
