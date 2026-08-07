@@ -187,7 +187,7 @@
       "key": "projects",
       "type": "array",
       "consumer": "show-repo",
-      "summary": "The repo's workspaces, as bare folder paths or { path, label, tracker, landing } objects. Rendered in three lists with one destination: the estate sidebar's Repos index, the repo's own sidebar, and the repo's Repos-grid card. The defining convention is that a workspace running a tracker is a project, so no separate registry says what counts.",
+      "summary": "The repo's workspaces, as bare folder paths or { path, label, tracker, landing } objects. Rendered in three lists with one destination: the estate sidebar's Repos index, the repo's own sidebar, and the repo's Repos-grid card. The defining convention is that a workspace running a tracker is a project, so no separate registry says what counts. Edited in the Config view's Projects section, whose Scan reads the tree for that same convention (a folder carrying tracker/tasks/) and offers whatever this field does not yet declare.",
       "subfields": [
         {
           "key": "path",

@@ -35,7 +35,7 @@ states its `#gh=`-vs-`#gz=` split.
 
 Open a repo with `?repo=owner/repo`, optionally `&ref=<branch|tag|sha>`. Public
 repos browse with no auth; private repos and branches need the viewer's token.
-Deep-link params: `&view=pages|atlas|files|stage|surfaces|branches|public|todo|jots|activity|portable`, `&file=<path>`, `&path=<dir>`.
+Deep-link params: `&view=pages|atlas|files|stage|surfaces|branches|public|todo|jots|activity|map`, `&file=<path>`, `&path=<dir>`, and `&tab=<tab>` for the two views that carry tabs (the **project** view's pill row, the **Map** view's tabs). A tabbed view keeps its default tab out of the URL, so an existing tab-less link still opens where it always did.
 
 **Two context levels.** The page is either in the **estate** (the global,
 all-repo context) or in a **repo** (a per-repo context with its own views).
@@ -317,7 +317,7 @@ the header nav the way a repo shows landing/atlas/files/…:
 - **Lists** — the two personal piles, To-do over Jot, in one pane rather than
   two tabs. Both `?view=todo` and `?view=jots` resolve here (below).
 - **Tools** (`?view=tools`) — a curated gallery of utility pages (below).
-- **Map** (`?view=map`) — the portable set, Surfacing, Showing, and the Docs registry (below). Per-repo scope and adoption live on the Repos cards.
+- **Map** (`?view=map`, `&tab=` deep-links a tab) — the portable set, Surfacing, Showing, the Docs registry, and Tests (below). Per-repo scope and adoption live on the Repos cards.
 - **Proposals** (`?view=proposals`) — pending cross-repo edits awaiting a confirm
   (below). The one conditional entry: shown only while something is pending.
 
@@ -696,11 +696,22 @@ link, and a file listing lives in Public browse.
 the coordination layer itself into a first-class object, and is the operational
 face of the constellation doctrine ([`docs/CONSTELLATION.md`](CONSTELLATION.md)
 is the portable kernel, opened from the set header; the full worked instance is
-in the private `home` repo). Four tabs, `lib/alpineComponents/map.js`, each
+in the private `home` repo). Five tabs, `lib/alpineComponents/map.js`, each
 answering one question about the layer: what travels (the set), what to hand
-over in chat (Surfacing), how content moves and shows (Showing), and what the
-documentation holds and what holds it (Docs). Who carries the set is a fact
-about a repo and lives on the Repos cards.
+over in chat (Surfacing), how content moves and shows (Showing), what the
+documentation holds and what holds it (Docs), and what the suite checks
+(Tests). Who carries the set is a fact about a repo and lives on the Repos
+cards.
+
+**The open tab is addressable:** `?view=map&tab=surfacing|showing|docs|tests`,
+on the same `tab` key the project view's pills use, with the default (`set`)
+left out of the URL so a plain `?view=map` link is unchanged. The tab is held
+by the shell rather than by `map()`, because the URL is the shell's to own and
+the component mounts lazily; the component renders whichever tab is set, watches
+the shell for a back-button change, and fetches that tab's manifest on arrival
+by whatever route. That last part is the failure this replaced: the four
+non-default tabs used to fetch from the click handler alone, so a tab nobody
+tapped had nothing to render.
 
 *The set* renders the to-go bag from the hub's committed manifest,
 [`docs/portable.json`](portable.json), whose prose parent is
@@ -1716,14 +1727,71 @@ token.
   repo view, so it sits with the views rather than behind an icon; the sidebar's
   top-bar gear was retired as a duplicate of that row. Another repo's config
   stays a dialog, so opening it does not move you off the repo you are in.
+- **Layout**: the Settings pane is two sections built the same way, **General**
+  and **Projects**, each a header line over a bordered card. Field widths are
+  **container** queries (`@container` on the column, `@md:`/`@xl:` on the grids),
+  not viewport breakpoints, because that column is half a pane on desktop and a
+  whole screen on a phone: `lg:grid-cols-6` would put six columns in a 360px
+  column. Every control carries `w-full`, since daisyUI's `.input` and
+  `.textarea` default to `width: 20rem` and otherwise stop short of their label.
+  The pane's cap is high enough that on a 1440 screen its own width is what
+  binds, and it gives the form three fifths to the JSON pane's two, the JSON
+  being a mirror of the form rather than the thing people came to use. Both
+  rules generalize and are in [HTML-STYLE.md](HTML-STYLE.md).
+
+  **Two things follow from the form being several screens long** once a repo
+  declares projects and pages. The JSON pane **sticks** on desktop and fills the
+  viewport (`lg:sticky` plus a `100dvh`-based height), because a pane that
+  scrolled away after 600px left a tall dead column beside the rest of the form
+  and stopped mirroring exactly when there was something to mirror. And the save
+  bar sticks to the bottom of the scrolling pane at every width, since a button
+  at the far end of three screens is a scroll each time you use it.
 - **Auto-migration**: a save always writes `.web-tools.json`. A repo still on the
   legacy `.show-repo.json` is edited the same way; the save lands the new name,
   which readers already prefer, so the legacy file goes inert. No delete step
   (the gh layer has no delete helper), and the section flags the migration when
   it loaded from the legacy name.
-- **Scope**: this is a raw-JSON editor, the thin first slice of the config-edit
-  surface (tracker task 0013). Per-field controls (an icon picker, a pins list)
-  are the larger goal, not built here.
+- **Projects** (Config view only): the workspace list, `projects`, as its own
+  section under the repo-level fields. It reconciles two facts that are easy to
+  let drift apart. A project is **declared** by an entry in that array, which is
+  what the sidebar, the Repos card, and the project view all read. A project is
+  **detected** by the defining convention, a folder carrying `tracker/tasks/`,
+  which is what **Scan** reads out of a recursive tree fetch (a button, not a
+  load-time read: it is a whole-tree request and the form is useful without it).
+  The section shows one list of both, so the two disagreements are visible where
+  the fix is: a workspace running a tracker that nothing declares comes with a
+  **Declare** button, and a declaration the scan cannot corroborate carries a
+  quiet `no tracker` badge rather than an error, since declaring a workspace
+  without a tracker is allowed. The repo-root tracker marks the repo itself and
+  is never offered, matching home's `tools/generate-tracker-registry.py`, which
+  performs the same walk to sync the same field. Detection keys on `tasks/`
+  rather than `board.md` because the board is generated and a fresh tracker may
+  not have one yet.
+
+  Per entry the form edits `label`, `landing`, and `tracker` (with a **No board**
+  checkbox for `tracker: false`). Two rules keep a save from restructuring a
+  file nobody opened the form to restructure: an entry keeps the shape it was
+  authored in, so a bare path string stays a string until a field is set on it
+  and drops back to one when the last field is cleared; and an empty field
+  clears its key rather than storing `""`, the same minimality the repo-level
+  fields already follow. Adding a project is `projects` only. Creating the
+  workspace, its tracker, and its README is repo work that happens in the repo.
+
+- **Pages and Stage** (Config view only): the last two fields that were
+  JSON-pane-only. **Pages** lists the catalog, one card per entry, with the path,
+  title, note, and the app-view toggle editable and an add-by-path box; a
+  qualified `owner/repo[@ref]:path` entry carries a `cross-repo` badge, since
+  that file is not in this repo. A page's `icon`, `thumb`, `project`, and
+  `viewLabel` are not rendered and are carried through untouched, which is the
+  case `config-form.test.mjs` holds: a form that silently dropped the keys it
+  does not show would be worse than no form. **Stage** is the two path lists as
+  line-per-entry text, the same shape as Pins. **Scope** sits in General beside
+  Note, since it is prose about the repo; it renders monospaced when its value
+  is a `.md` path, which is the one hint that the field takes both forms.
+- **Scope of the form**: every manifest field now has a control except a page's
+  `icon`, `thumb`, `project`, and `viewLabel`, and the `links` board path. Those
+  are preserved on save and edited in the JSON pane. An icon picker is still the
+  open piece.
 
 ## Transfer: moving files to another repo
 

@@ -36,6 +36,7 @@ const manifest = {
 const routesJson = readFileSync(path.join(repoRoot, 'docs', 'routes.json'), 'utf8');
 const docsJson = readFileSync(path.join(repoRoot, 'docs', 'docs.json'), 'utf8');
 const surfJson = readFileSync(path.join(repoRoot, 'docs', 'surfacing.json'), 'utf8');
+const testsJson = readFileSync(path.join(repoRoot, 'docs', 'tests.json'), 'utf8');
 const asked = [];
 window.TOKEN = 'ignored-in-test';
 window.GH = class {
@@ -45,6 +46,7 @@ window.GH = class {
     if (p === 'docs/routes.json') return { text: routesJson };
     if (p === 'docs/docs.json') return { text: docsJson };
     if (p === 'docs/surfacing.json') return { text: surfJson };
+    if (p === 'docs/tests.json') return { text: testsJson };
     return { text: JSON.stringify(manifest) };
   }
 };
@@ -157,4 +159,105 @@ test('openConfig opens the repo dialog on the Config tab without throwing', () =
   // No #repo element is mounted in this harness, so the call must no-op safely
   // (optional chaining) rather than throw; the real wiring is the shell dialog.
   assert.doesNotThrow(() => data.openConfig('me/proj'));
+});
+
+// ── The tab in the URL ───────────────────────────────────────────────────────
+// The Map's open tab is addressable (?view=map&tab=docs) on the same `tab` key
+// the project view uses, and the feature spans two files: the shell owns the
+// URL and validates the param, map() renders whichever tab is set and fetches
+// its manifest. Both halves are asserted here, since a passing half is exactly
+// the failure mode (a stamped URL nothing reads, or a rendered tab with no
+// address). The shell's app() lives inline in show-repo.html, hence the
+// show-repo-shell.mjs harness.
+const { page, makeShell } = await import('./show-repo-shell.mjs');
+
+test('a tab tap renders, loads, and hands the tab to the shell', async () => {
+  const taps = [];
+  window.__shell = { mapTab: 'set', goMapTab: (t) => taps.push(t) };
+  const el2 = window.document.createElement('div');
+  el2.setAttribute('x-data', 'map()');
+  window.document.body.appendChild(el2);
+  Alpine.initTree(el2);
+  await tick(2);
+  const d2 = Alpine.$data(el2);
+  assert.equal(d2.mapTab, 'set', 'the shell says set, so the set renders');
+
+  d2.setTab('docs');
+  await tick(2);
+  assert.equal(d2.mapTab, 'docs');
+  assert.deepEqual([...taps], ['docs'], 'the shell is told, so the URL gets stamped');
+  assert.ok(d2.docsReg, 'the tab fetched its own manifest');
+
+  d2.setTab('docs');
+  assert.deepEqual([...taps], ['docs'], 're-tapping the open tab is not a navigation');
+  window.__shell = undefined;
+});
+
+test('a deep-linked tab opens on that tab and fetches its manifest', async () => {
+  // The click handler is what used to fetch, and it does not run when the URL
+  // picked the tab, so mount has to cover it or the pane renders empty.
+  window.__shell = { mapTab: 'tests', goMapTab: () => {} };
+  const el3 = window.document.createElement('div');
+  el3.setAttribute('x-data', 'map()');
+  window.document.body.appendChild(el3);
+  Alpine.initTree(el3);
+  await tick(3);
+  const d3 = Alpine.$data(el3);
+  assert.equal(d3.mapTab, 'tests');
+  assert.ok(d3.testsReg, 'the deep-linked tab loaded without a tap');
+  window.__shell = undefined;
+});
+
+test('the shell stamps ?tab= for every tab but the default', () => {
+  const { shell, history } = makeShell();
+  const stamped = [];
+  history.pushState = (a, b, url) => stamped.push(url);
+  history.replaceState = (a, b, url) => stamped.push(url);
+
+  shell.goMap();
+  assert.equal(shell.mapTab, 'set');
+  assert.doesNotMatch(stamped.at(-1), /tab=/, 'the default stays out of the URL');
+  assert.match(stamped.at(-1), /view=map/);
+
+  shell.goMapTab('docs');
+  assert.match(stamped.at(-1), /view=map&tab=docs|tab=docs/);
+
+  // The nav button calls goMap() with nothing and must KEEP the open tab;
+  // only a route call (which always passes url.tab) is authoritative.
+  shell.goMap();
+  assert.equal(shell.mapTab, 'docs', 'returning to Map does not reset the tab');
+  shell.goMap('');
+  assert.equal(shell.mapTab, 'set', 'an absent param means the default');
+
+  shell.goMap('bogus');
+  assert.equal(shell.mapTab, 'set', 'an unknown tab falls back rather than hiding every section');
+
+  // Leaving the view drops the key rather than stranding it on the next URL.
+  shell.mapTab = 'docs';
+  shell.view = 'landing';
+  shell.syncUrl();
+  assert.doesNotMatch(stamped.at(-1), /tab=/);
+});
+
+test('the shell reads the tab back off a deep link, on both boot paths', () => {
+  const { shell } = makeShell({ search: '?view=map&tab=docs' });
+  const url = shell.parseUrl();
+  assert.equal(url.view, 'map');
+  assert.equal(url.tab, 'docs');
+  assert.equal([...page.matchAll(/this\.goMap\(url\.tab\)/g)].length, 2,
+    'init and popstate no longer route the tab');
+});
+
+test('the shell and the component agree on the tab set', () => {
+  const m = page.match(/const MAP_TABS = \[([^\]]+)\]/);
+  assert.ok(m, 'MAP_TABS is not where the shell can validate against it');
+  const tabs = m[1].split(',').map(s => s.trim().replace(/'/g, ''));
+  const src = readFileSync(path.join(repoRoot, 'lib/alpineComponents/map.js'), 'utf8');
+  for (const t of tabs) {
+    assert.ok(src.includes(`setTab('${t}')`), `no tab button renders ${t}`);
+    assert.ok(src.includes(`mapTab==='${t}'`), `no section renders ${t}`);
+  }
+  const buttons = [...src.matchAll(/setTab\('(\w+)'\)/g)].map(x => x[1]);
+  assert.deepEqual([...new Set(buttons)].sort(), [...tabs].sort(),
+    'a tab the shell will not validate is a tab the URL cannot carry');
 });
