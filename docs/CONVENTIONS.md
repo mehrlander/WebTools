@@ -44,7 +44,7 @@ Two carriers, split by subject, and the split is the point:
 
 Shape: `**Flavor YYYY[-MM[-DD]] [(note)] [→ target]:**`. Flavor, date, and target hold fixed positions so the set is auditable rather than merely greppable. The target is optional and may be a path, a markdown link, or prose; only path-shaped targets are existence-checked. A `status: frozen 2026-07-06; note` frontmatter line is the optional metadata layer. **Annotate, do not rewrite:** a dated file stays put as a record, so when one of its claims ages, mark the claim rather than editing the record into agreement with the present.
 
-**A marker is for a record. A living document gets fixed.** The rule above turns entirely on which kind of file you are in, and the two want opposite treatment: a record is evidence of a moment and editing it destroys what it was for, while a living document exists to be currently true, so a `Stale` or `Wrong` banner on one is a note saying "this file contains something false" left in place of removing the false thing. Correct it, and let git carry what it used to say. The symptom that you are on the wrong side of this: a banner that describes text no longer in the file.
+**Only a record gets a marker.** Fix a living document instead. The tell: a banner describing text no longer in the file.
 
 **Declaration.** `.paths.json`, which may sit at a repo root **or any workspace root**, with entries relative to its own directory and the nearest declaration winning. That cascade is what lets one repo hold several workspaces with different regimes, and workspace-relative entries survive a restructure that root-relative ones would not.
 
