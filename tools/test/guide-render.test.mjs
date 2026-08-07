@@ -33,6 +33,31 @@ const render = (md, opts) => G.render(md, { marked, DOMParser: dom.window.DOMPar
 
 const BLOB = (ref, p) => 'https://github.com/mehrlander/web-tools/blob/' + ref + '/' + p;
 
+// ── the body's styling ──────────────────────────────────────────────────────
+// Real CSS, not utility classes, and the reason is a silent failure worth a
+// test: `[&_a]:text-primary` never generated, because daisyUI ships its color
+// utilities prebuilt and the Tailwind browser build cannot see its theme
+// tokens. Core utilities in the same string did generate, so guides rendered
+// with bullets and underlines and never once with a colored link, in two
+// components, with nothing in any console.
+
+test('the body carries a link color, from the theme variable rather than a utility', () => {
+  assert.match(G.CSS, /\.guide-body a\{[^}]*color:var\(--color-primary\)/,
+    'the rule that was missing for as long as the kit existed');
+  assert.match(G.CSS, /\.guide-body ul\{[^}]*list-style:disc/);
+  assert.ok(!/\[&_/.test(G.CSS), 'no arbitrary variants: this is a stylesheet, not a class list');
+});
+
+test('bodyClass names the shared base and the drawer modifier', () => {
+  assert.equal(G.bodyClass('page'), 'guide-body');
+  assert.equal(G.bodyClass('drawer'), 'guide-body guide-body-sm');
+  assert.equal(G.bodyClass(), 'guide-body', 'page is the default');
+  // Only the type scale and spacing differ; whatever decides legibility is in
+  // the base and cannot drift between the two surfaces.
+  assert.ok(!/\.guide-body-sm a\{/.test(G.CSS));
+  assert.ok(!/\.guide-body-sm ul\{[^}]*list-style/.test(G.CSS));
+});
+
 // ── splitting a ref from a path ─────────────────────────────────────────────
 
 test('a slashed branch splits on the known ref, not on the first slash', () => {
