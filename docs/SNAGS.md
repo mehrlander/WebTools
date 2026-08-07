@@ -188,3 +188,17 @@ suspicion cannot clear it. The escaping *is* real for `add_issue_comment`, where
 a fragment URL renders as literal text, so a comment carrying a toss link needs
 the address checked after posting. *(seen: 2026-08-05)*
 → [SURFACING.md](SURFACING.md)
+
+**Built a form whose fields stopped short of their labels on a phone, and
+whose desktop layout was a ribbon down the middle of a 1440px screen.** Two
+separate causes, both invisible without measuring. daisyUI's `.input` and
+`.textarea` default to `width: 20rem` capped at 100%, so a field in a 342px
+column rendered 320px wide and every row had a ragged right edge; `w-full` on
+each control is the fix. And the pane was capped at `max-w-3xl` while splitting
+into two side-by-side columns, so each got about 360px on any screen. **A form
+in a split pane is sized by its container, not the viewport:** viewport
+variants (`sm:`, `lg:`) answer the wrong question there, and Tailwind's
+`@container` plus `@md:`/`@xl:` answer the right one, degrading to one column
+where unsupported. Both rules now sit with the other composition rules.
+*(seen: 2026-08-06)*
+→ [HTML-STYLE.md](HTML-STYLE.md)

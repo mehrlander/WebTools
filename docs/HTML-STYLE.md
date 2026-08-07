@@ -92,6 +92,23 @@ pushes the fixed container wider than the screen, and drags the header off the r
 edge with it. This is the horizontal twin of the `min-h-0` that the `1fr` row already
 needs, and it fails the same way: silently, and only on a narrow screen.
 
+**A daisyUI control does not fill its parent, and a phone is where you find
+out.** `.input` and `.textarea` carry a default `width: 20rem` capped at 100%,
+so in a column narrower than 20rem they look correct and in a wider one they
+stop short while their label runs on. Measured at a 390px viewport: the label
+342px, the field 320px, a ragged right edge down the whole form. Put `w-full`
+on every input, textarea, and select rather than relying on the flex parent to
+stretch it, since `align-self: stretch` does not apply to an item with an
+explicit width.
+
+**Size a form by its container, not by the viewport.** A pane that is half a
+screen on desktop and the whole screen on a phone cannot be laid out with
+`sm:`/`lg:`, which ask how wide the *window* is: the same `lg:grid-cols-6` that
+reads well full-width puts six columns in a 360px column when the pane is split.
+Put `@container` on the column and use `@md:`/`@xl:`, which ask how wide the
+*column* is. The variants degrade to one column where they are unsupported,
+which is the safe direction.
+
 **Unescape before you escape.** Text pulled from XML, a scraped source, or a provider
 export often already carries entities (`&apos;`, `&amp;`, `&#39;`). Escaping it again
 turns the ampersand into `&amp;` and renders `teachers&apos;` on the page. Route every

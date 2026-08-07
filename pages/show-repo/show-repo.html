@@ -1234,7 +1234,12 @@
          bar's gear was retired as a duplicate of this row.
          Mounted lazily on first visit. -->
     <div x-show="view==='config'" class="h-full overflow-y-auto">
-      <div class="mx-auto px-6 py-8 max-w-3xl">
+      <!-- Wide, not 3xl: the form and the JSON pane sit side by side on
+           desktop, so a 3xl cap gave each about 360px and put the whole editor
+           in a narrow ribbon down the middle of a wide screen. The cap is high
+           enough that on a 1440 screen the pane's own width is what binds, and
+           a wider screen keeps using it. -->
+      <div class="mx-auto px-6 py-8 max-w-[92rem]">
         <template x-if="configSeen">
           <div x-data="config()"></div>
         </template>
@@ -1354,6 +1359,11 @@ function resolveCatalogPath(rawPath, declRepo, declRef){
 // rather than offering a button that cannot be followed.
 const RAIL_KIND = { link: 'ph-arrow-up-right', action: 'ph-lightning', repo: 'ph-folder-simple' };
 
+// The Map view's tabs, in render order, first = default. Named HERE rather than
+// in map() because the shell validates the ?tab= param before the component
+// mounts; map() renders whichever of these is set.
+const MAP_TABS = ['set', 'surfacing', 'showing', 'docs', 'tests'];
+
 // marked, loaded once on demand for the overview README render.
 let _markedP = null;
 function loadMarked(){
@@ -1411,6 +1421,7 @@ function app(){ return {
   branchesSeen: false,    // mount the branches component lazily, on first visit
   configSeen: false,      // mount the config-view component lazily, on first visit
   mapSeen: false,         // mount the map component lazily, on first visit
+  mapTab: 'set',          // the Map view's open tab, held HERE and not in map() because the URL is the shell's to own (see goMap)
   toolsSeen: false,       // mount the tools component lazily, on first visit
   publicSeen: false,      // mount the public-browse component lazily, on first visit
   publicSeed: '',         // repo the public browser should open; a card sets it, the component watches it
@@ -1554,7 +1565,7 @@ function app(){ return {
     else if (url && url.view === 'jots') this.goJots();
     else if (url && url.view === 'activity') this.goActivity();
     else if (url && url.view === 'sessions') this.goSessions();
-    else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap();
+    else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap(url.tab);
     else if (url && url.view === 'tools') this.goTools();
     else if (url && url.view === 'proposals') this.goProposals();
     else if (url && url.view === 'atlas') this.goAtlas();
@@ -3281,7 +3292,12 @@ function app(){ return {
     else if (this.view === 'jots') p.set('view', 'jots');
     else if (this.view === 'activity') p.set('view', 'activity');
     else if (this.view === 'sessions') p.set('view', 'sessions');
-    else if (this.view === 'map') p.set('view', 'map');
+    else if (this.view === 'map') {
+      p.set('view', 'map');
+      // Same `tab` key the project view stamps, and the same rule: the default
+      // stays out of the URL so a plain ?view=map link keeps working.
+      if (this.mapTab && this.mapTab !== 'set') p.set('tab', this.mapTab);
+    }
     else if (this.view === 'tools') p.set('view', 'tools');
     // App views are estate-level, so the link stands alone (like the Stage): stamp
     // the view plus the promoted page's repo and path, independent of the open repo.
@@ -3328,7 +3344,7 @@ function app(){ return {
       else if (url && url.view === 'jots') this.goJots();
       else if (url && url.view === 'activity') this.goActivity();
     else if (url && url.view === 'sessions') this.goSessions();
-      else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap();
+      else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap(url.tab);
       else if (url && url.view === 'tools') this.goTools();
     else if (url && url.view === 'proposals') this.goProposals();
       else if (url && url.view === 'pages') this.goPages();
@@ -3517,7 +3533,23 @@ function app(){ return {
   // The Map view: the coordination layer made inspectable (the portable set +
   // per-repo scope + adoption). Renamed from "Portable"; goPortable stays as a
   // thin alias so any caller or old ?view=portable link still resolves.
-  goMap(){ this.mapSeen = true; this.view = 'map'; this.syncUrl(); },
+  //
+  // The tab is addressable (?view=map&tab=docs), on the same `tab` key the
+  // project view uses. Two callers, two meanings, which is why the argument is
+  // optional rather than defaulted: the nav button calls goMap() with nothing
+  // and KEEPS the open tab, while a route call passes url.tab and the URL is
+  // authoritative, so an absent one means the default. Anything unrecognized
+  // falls back rather than rendering five hidden sections.
+  goMap(tab){
+    if (tab !== undefined) this.mapTab = MAP_TABS.includes(tab) ? tab : 'set';
+    this.mapSeen = true; this.view = 'map'; this.syncUrl();
+  },
+  // A tab tap from inside map(): stamp the URL so back and forward walk the
+  // tabs. The component holds its own copy for rendering and watches this one.
+  goMapTab(tab){
+    if (!MAP_TABS.includes(tab) || tab === this.mapTab) return;
+    this.mapTab = tab; this.syncUrl();
+  },
   goPortable(){ this.goMap(); },
   // The Tools view: the curated utility-page gallery (docs/tools.json), public.
   goTools(){ this.toolsSeen = true; this.view = 'tools'; this.syncUrl(); },
@@ -4146,7 +4178,8 @@ function overview(){ return {
       itself a capture log, and the registry is in agent-session scope, so an
       agent can drain the pile. ?view=jots is always stamped, so a Jots link
       is shareable without a repo param.
-    Map (?view=map; ?view=portable still resolves here): the coordination layer
+    Map (?view=map&tab=set|surfacing|showing|docs|tests; ?view=portable still
+      resolves here, and the default tab stays out of the URL): the coordination layer
       made inspectable, and the operational face of the constellation doctrine
       (home's created/2026-06-27-constellation-architecture.md, kernel at the
       hub's docs/CONSTELLATION.md, linked from the set header). Three parts.
