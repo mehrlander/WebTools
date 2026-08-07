@@ -204,20 +204,21 @@ test('readership joins the repo-qualified cache path to the hub-relative registr
   assert.equal(data.registry(), 'mehrlander/web-tools-private');
   assert.equal(data.docReadKey('docs/show-repo.md'), 'web-tools/docs/show-repo.md');
   assert.equal(data.docReadsSessions, 42);
-  assert.equal(data.docReadLabel({ path: 'docs/show-repo.md', reach: 'project' }), '9 ×');
+  assert.equal(data.docReadLabel({ path: 'docs/show-repo.md', reach: 'project' }), '9 reads');
   assert.match(data.docReadHint({ path: 'docs/show-repo.md', reach: 'project' }), /9 of 42/);
+  assert.match(data.docReadHint({ path: 'docs/show-repo.md', reach: 'project' }), /file tools only/,
+    'the counting caveat moved from the retired standing paragraph into the title');
   // Another repo's docs/ file is in the same rollup and must not be read as this one's.
-  assert.equal(data.docReadLabel({ path: 'docs/elsewhere.md', reach: 'orphan' }), '—');
+  assert.equal(data.docReadLabel({ path: 'docs/elsewhere.md', reach: 'orphan' }), '');
 });
 
 test('an injected doc says so instead of reporting the zero no file tool can avoid', () => {
   const injected = { path: 'docs/CONVENTIONS.md', reach: 'injected' };
   assert.equal(data.docReadLabel(injected), 'injected');
   assert.match(data.docReadHint(injected), /not zero/);
-  // Unread is distinguishable from unmeasurable, since one is a finding and the
-  // other is a limit of the instrument.
-  assert.equal(data.docReadLabel({ path: 'docs/nobody-opens-this.md', reach: 'orphan' }), '—');
-  assert.match(data.docReadHint({ path: 'docs/nobody-opens-this.md', reach: 'orphan' }), /No recorded session/);
+  // Unmeasurable stays distinguishable from unread: injected carries a word,
+  // a never-opened doc shows nothing at all (the tail hides on empty).
+  assert.equal(data.docReadLabel({ path: 'docs/nobody-opens-this.md', reach: 'orphan' }), '');
 });
 
 test('an absent check renders as visibly absent, and only where one is owed', () => {
