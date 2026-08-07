@@ -38,7 +38,7 @@
       "subject": "the portable working conventions: the general-behavior hub",
       "status": "living",
       "reach": "injected",
-      "words": 1301,
+      "words": 1122,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -206,7 +206,7 @@
       "subject": "the content-envelope family: members, shared grammar, and the sibling decision",
       "status": "living",
       "reach": "orphan",
-      "words": 937,
+      "words": 941,
       "maintenance": "authored; carries its dated decisions inline with their reversal triggers"
     },
     {

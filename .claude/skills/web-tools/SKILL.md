@@ -19,7 +19,7 @@ The user's cross-repo working conventions live in two canonical, repo-agnostic
 files in the public repo `mehrlander/web-tools`, loaded together as one set:
 
 - `docs/CONVENTIONS.md` — the **hub**: general behavior and scope (prose style,
-  standing decisions, leave-it-nicer, make-work, the session/repository/workstream
+  standing decisions, leave-it-nicer, keep-focus, the session/repository/workstream
   vocabulary).
 - `docs/SURFACING.md` — the **surfacing system**: the primitives (explicit-markdown
   links, reference-is-a-link, the per-file `[new]/[main]/[diff]` list, show-pixels,

@@ -41,8 +41,8 @@ session could simply do. Filing what you could finish now converts an hour of
 work into a standing item someone must re-read, re-prioritize, and reconstruct.
 Do the work; let the diff and the reply be the record. A finding already written
 into a report, a chron entry, or a PR body is durable, so it does not also need
-a task. This is [Beware make-work](https://raw.githubusercontent.com/mehrlander/web-tools/main/docs/CONVENTIONS.md)
-at the filing step.
+a task. This is the conventions' [Keep focus](https://raw.githubusercontent.com/mehrlander/web-tools/main/docs/CONVENTIONS.md)
+rule at the filing step.
 
 **2. The gate.** Filing a *new* task needs the user's assent. Propose in your
 reply, one line each, and file the ones they name. Batch the proposal at the end
