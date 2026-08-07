@@ -35,7 +35,7 @@ Any turn that modifies `lib/gh-api.js` must end with the jsDelivr purge link so 
 
 `dist/web-tools.js` is **the pre-build**: the whole `lib/` frozen into one self-booting offline artifact, so a page can adopt the entire library with one import instead of a `gh.load` chain. It's generated (`npm run build:lib`) and it's the one tracked file under the otherwise-gitignored `dist/`. Full story in [`tools/README.md`](tools/README.md#the-pre-build).
 
-The `gh.load` chain it replaces is the repo's default, not a legacy path: 36 page files use it, and [`docs/loader.md`](docs/loader.md) is the only statement of the contract a file must honor to be loadable that way, plus the timing invariants the boot sequence depends on. Read it before adding a file to `lib/` or changing how a page boots. It is also the argument that load and build are two readings of one set of rules, which is why the pre-build works at all.
+The `gh.load` chain it replaces is the repo's default, not a legacy path: 36 page files use it, and [`docs/loader.md`](docs/loader.md) is the only statement of the contract a file must honor to be loadable that way, plus the timing invariants the boot sequence depends on. Read it before adding a file to `lib/` or changing how a page boots. Which folder the file belongs in at all is the prior question, answered once in [`docs/code-layers.md`](docs/code-layers.md) and measured by `npm run code-survey`. It is also the argument that load and build are two readings of one set of rules, which is why the pre-build works at all.
 
 Every **deterministic** derived artifact is owned by one commit-time hook, [`.githooks/pre-commit`](.githooks/pre-commit). Before a `git commit` it regenerates and stages, in the same commit, whatever the pending changes touch:
 
@@ -84,7 +84,7 @@ use with no row fails. Both files carry the rest.
 
 ## Snags
 
-[`docs/SNAGS.md`](docs/SNAGS.md) is this repo's friction log, the store behind the conventions' "where a friction observation goes instead." Append when a session trips over something whose real fix belongs in a durable doc: one line, symptom then corrected move, with a `→` to that doc. The entry is the index and the doc is the fix, so the two cannot drift. Still provisional and hand-appended; the intake shape, the recurrence mechanism, and the projector are open in [the snags spike](tracker/tasks/spike-snags-log-gobdyq.md).
+[`docs/SNAGS.md`](docs/SNAGS.md) is this repo's friction log, the store behind the conventions' "where a friction observation goes instead." Append when a session trips over something whose real fix belongs in a durable doc. Its own header carries the intake shape, the recurrence rule, and what is still provisional; this section used to restate all three and was the copy.
 
 ## Environment & testing
 

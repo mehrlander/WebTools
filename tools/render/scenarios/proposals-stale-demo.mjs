@@ -1,9 +1,9 @@
-// Shoot the two delivery buttons beside the staleness guard: one put-file whose target
+// Shoot the staleness guard and the signature line: one put-file whose target
 // moved after it was written (so the card warns and the button reads Apply
 // anyway), one ordinary set-json-field beside it. Stubbed registry, since the
 // real channel needs the viewer's token.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scripts/proposals-deliver-demo.mjs
+//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/proposals-stale-demo.mjs
 export default async (page) => {
   await page.evaluate(() => {
     const REG = 'mehrlander/web-tools-private';
@@ -12,13 +12,13 @@ export default async (page) => {
         'proposals/pending/note-put.json': JSON.stringify({
           id: 'note-put', kind: 'put-file', repo: 'mehrlander/wa-bills', path: 'docs/NOTES.md',
           content: '# Notes\n\nRewritten by the proposing session.\n',
-          expectSha: 'sha-at-authoring-time', deliver: 'pr',
+          expectSha: 'sha-at-authoring-time',
           by: 'claude-code', authored: '2026-07-26',
           session: 'https://claude.ai/code/session_01XjvMeMaNZ3SZ6kTrLbJd49',
           why: 'WHAT: replaces docs/NOTES.md in wa-bills with a rewritten version. WHY: the file had drifted out of date. APPLYING: overwrites the whole file.' }),
         'proposals/pending/scope-fn.json': JSON.stringify({
           id: 'scope-fn', kind: 'set-json-field', repo: 'mehrlander/fn-data', path: '.web-tools.json',
-          field: 'scope', value: 'Fiscal-note data: OFM pulls kept as a standalone source.', deliver: 'commit',
+          field: 'scope', value: 'Fiscal-note data: OFM pulls kept as a standalone source.',
           by: 'claude-code', authored: '2026-07-23',
           session: 'https://claude.ai/code/session_01XjvMeMaNZ3SZ6kTrLbJd49',
           why: 'WHAT: adds a scope line to this repo. WHERE IT SHOWS: the Map view puts each repo scope on its card.' }),

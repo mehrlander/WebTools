@@ -102,6 +102,64 @@ test('an open PR attaches; its absence is not an error', () => {
   assert.equal(BB.assemble({ repo: 'acme/w', branch: 'f', base: 'main', compare: compare() }).pr, null);
 });
 
+// ── every PR the branch has had ─────────────────────────────────────────────
+// A merge ends a PR and not the branch, so post-merge work opens a second one.
+// Reading only the newest showed one of them with no way to reach the other,
+// which is the case these cover.
+
+test('prs carries them newest-first, and a merged PR says merged', () => {
+  const b = BB.assemble({
+    repo: 'acme/w', branch: 'f', base: 'main', compare: compare(),
+    pull: { number: 12, title: 'Second', state: 'open', draft: true },
+    pulls: [
+      { number: 12, title: 'Second', state: 'open', draft: true },
+      { number: 7, title: 'First', state: 'closed', merged_at: '2026-08-01T00:00:00Z' },
+    ],
+  });
+  assert.deepEqual(b.prs.map(p => p.number), [12, 7]);
+  assert.equal(b.prs[0].state, 'open');
+  // closed and merged are one state to the API and opposite facts to a reader.
+  assert.equal(b.prs[1].state, 'merged');
+  assert.equal(b.pr.number, 12, 'pr stays the one on display');
+});
+
+test('prs falls back to the single pull, so an old caller still renders', () => {
+  const b = BB.assemble({ repo: 'acme/w', branch: 'f', base: 'main', compare: compare(),
+                          pull: { number: 7, title: 'T', state: 'open' } });
+  assert.deepEqual(b.prs.map(p => p.number), [7]);
+  assert.deepEqual(BB.assemble({ repo: 'acme/w', branch: 'f', base: 'main', compare: compare() }).prs, []);
+});
+
+test('fetchBrief sorts the PR list by number, not by whatever the API returned', async () => {
+  const gh = {
+    compare: async () => compare(),
+    req: async () => [{ number: 7 }, { number: 12 }, { number: 9 }],
+  };
+  const r = await BB.fetchBrief(gh, { repo: 'acme/w', branch: 'f', base: 'main' });
+  assert.deepEqual(r.pulls.map(p => p.number), [12, 9, 7]);
+  assert.equal(r.pull.number, 12, 'the newest leads');
+});
+
+test('fetchPullTarget resolves a PR to the branch and the base it was opened against', async () => {
+  const asked = [];
+  const gh = { req: async (p) => {
+    asked.push(p);
+    return { number: 364, head: { ref: 'claude/x-1', repo: { full_name: 'acme/w' } },
+             base: { ref: 'release-2', repo: { full_name: 'acme/w' } } };
+  } };
+  const t = await BB.fetchPullTarget(gh, 364);
+  assert.deepEqual(asked, ['pulls/364']);
+  assert.equal(t.branch, 'claude/x-1');
+  // The base is the PR's own, not today's default branch: a PR merged long ago
+  // compares against what it was actually opened against.
+  assert.equal(t.base, 'release-2');
+});
+
+test('fetchPullTarget on a PR with no head returns null rather than half a target', async () => {
+  const gh = { req: async () => ({ number: 1 }) };
+  assert.equal(await BB.fetchPullTarget(gh, 1), null);
+});
+
 // ── the authored layer ──────────────────────────────────────────────────────
 
 test('readAuthored takes the tagged envelope', () => {

@@ -6,7 +6,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 723,
+      "words": 742,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -14,7 +14,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2513,
+      "words": 2658,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -22,7 +22,7 @@
       "subject": "the field registry for root .web-tools.json: every field's type, consumer, and effect",
       "status": "living",
       "reach": "project",
-      "words": 1548,
+      "words": 1577,
       "maintenance": "authored; the structured stage under show-repo.md's former prose field list, held to the estate's real manifests by tools/test/manifest-registry.test.mjs: a key live in a manifest with no row here fails the suite"
     },
     {
@@ -30,7 +30,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 3083,
+      "words": 3561,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {
@@ -38,7 +38,7 @@
       "subject": "the portable working conventions: the general-behavior hub",
       "status": "living",
       "reach": "injected",
-      "words": 1279,
+      "words": 1301,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -46,7 +46,7 @@
       "subject": "the surfacing system: primitives plus the guide-PR course",
       "status": "living",
       "reach": "injected",
-      "words": 3064,
+      "words": 3219,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -62,7 +62,7 @@
       "subject": "the portable set: what travels, and how to adopt it",
       "status": "living",
       "reach": "project",
-      "words": 5344,
+      "words": 5441,
       "maintenance": "authored, edited in place; the roster tables are census-gated against portable.json and disk (portable-manifest.test.mjs)"
     },
     {
@@ -70,7 +70,7 @@
       "subject": "the machine index of the portable set",
       "status": "living",
       "reach": "app",
-      "words": 1041,
+      "words": 1064,
       "maintenance": "authored; held to PORTABLE.md and to the skill directories on disk by portable-manifest.test.mjs"
     },
     {
@@ -118,7 +118,7 @@
       "subject": "the show-repo shell: views, stage, transfer, and the .web-tools.json manifest",
       "status": "living",
       "reach": "project",
-      "words": 18535,
+      "words": 20500,
       "maintenance": "authored, edited in place; the corpus's largest document, and the buried home of the stage contract"
     },
     {
@@ -134,7 +134,7 @@
       "subject": "the house style for pages: what to build, as against how",
       "status": "living",
       "reach": "skill",
-      "words": 1131,
+      "words": 1319,
       "maintenance": "authored, edited in place; paired with the daisy-alpine skill, which carries the mechanics and points here for composition; the split is convention, unchecked"
     },
     {
@@ -142,7 +142,7 @@
       "subject": "the friction log: one line per snag, symptom then corrected move",
       "status": "living",
       "reach": "project",
-      "words": 1461,
+      "words": 3231,
       "maintenance": "authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
     },
     {
@@ -158,8 +158,16 @@
       "subject": "the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality",
       "status": "living",
       "reach": "project",
-      "words": 4382,
+      "words": 4650,
       "maintenance": "authored, edited in place; the only statement of the gh.load contract that 36 page files depend on, and CLAUDE.md now sends a reader here before they touch lib/ or a page's boot"
+    },
+    {
+      "path": "docs/code-layers.md",
+      "subject": "the code layers and the admission rule that sorts a new file into one of them",
+      "status": "living",
+      "reach": "project",
+      "words": 895,
+      "maintenance": "authored; the layer counts behind it are re-derived by scripts/unclaimed-code-survey.py rather than restated here, and lib/kits/README.md's former three-category list was reduced to the kit rule plus a pointer when this landed"
     },
     {
       "path": "docs/headless-vendoring.md",
@@ -222,7 +230,7 @@
       "subject": "the data-view envelope contract",
       "status": "living",
       "reach": "project",
-      "words": 837,
+      "words": 1228,
       "maintenance": "authored; prose contract for the data route, named by the surfacing primitives; no schema beside it"
     },
     {
@@ -286,7 +294,7 @@
       "subject": "how to test HTML and JS in the sandbox",
       "status": "measured",
       "reach": "project",
-      "words": 2173,
+      "words": 2278,
       "maintenance": "authored; per-claim verification dates, edited in place"
     },
     {
@@ -494,6 +502,22 @@
         {
           "where": "the sandbox-traps skill",
           "relation": "pointer"
+        }
+      ]
+    },
+    {
+      "claim": "the code layers and their admission rules",
+      "authoritative": "docs/code-layers.md",
+      "repetitions": [
+        {
+          "where": "lib/kits/README.md Concept section",
+          "relation": "pointer",
+          "check": "none needed; the section was reduced to the kit's own admission rule and a link when the wider statement landed 2026-08-06, so it no longer restates the list it used to carry incompletely"
+        },
+        {
+          "where": "tools/README.md Layout section",
+          "relation": "paraphrase",
+          "check": "none; it owns the tools/ folder split in detail and code-layers.md names it as the owner rather than repeating it"
         }
       ]
     }

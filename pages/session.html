@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>💬</text></svg>">
+<!-- Typography rides along, as it does on chat-results.html: chat-render's
+     prose runs are markdown, and Tailwind's preflight strips list markers, so
+     without it a bulleted reply renders as unmarked lines that read as
+     separate paragraphs. -->
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5,npm/@tailwindcss/typography/dist/typography.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+
+<!--
+  session.html — one recorded session as a readable conversation.
+
+  The sibling of branch.html, and the same argument: every session surface was
+  a LIST (show-repo's Sessions pane, search.py's rows), and each ended in a
+  summary because there was nowhere of ours to go. 🌿 is where you read a
+  branch; this is where you read the session that made it.
+
+  Address grammar, fragment preferred and query accepted:
+
+    #gh=owner/repo[@ref]:sessions/2026/08/2026-08-07-abc12345.json
+    #id=abc12345                     the short id, resolved against the store
+    #gz=<base64url>                  a gzipped record, for a reader with no token
+
+  The record is web-tools-private/sessions/**.json (its README is the schema).
+  The store is private, so #gh= and #id= read through the viewer's stored token
+  and a tokenless browser gets nothing; #gz= is the fallback that needs none.
+
+  What the page is NOT: a transcript. A record is a bounded capture, and the
+  bounds are real (prompts at 400 characters, prose at 8 KB a turn, result
+  bodies at 1 to 2 KB, receipts and Reads dropped by policy). session-render.js
+  states each gap in the deck's first card rather than letting an absence read
+  as a quiet session. Nothing here reconstructs what was never captured.
+
+  ?use=<branch|tag|sha> pins this page's own lib chain to a ref, fetched from
+  raw.githubusercontent with `cache: 'no-store'`. Both halves are needed: the
+  blob import defeats the MODULE cache, and no-store defeats the HTTP one. A
+  branch ref MOVES, so a plain fetch happily served a bundle from an earlier
+  push and the preview showed old code with no way to tell (2026-08-07).
+-->
+<!--
+  The ready gate: importing the pre-build boots Alpine as part of the import, so
+  this page's own gh.load calls below have not run by the time a component's
+  init() does. The promise is created here, above the module, because a
+  component that starts during the import would otherwise find it undefined.
+  Full account in pages/branch.html, where the failure was first measured.
+-->
+<script>
+  window.__depsReady = new Promise(r => { window.__depsDone = r; });
+</script>
+<script type="module">
+  const ref = new URLSearchParams(location.search).get('use');
+  if (ref) {
+    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`, { cache: 'no-store' });
+    if (!src.ok) throw new Error(`?use=${ref}: could not fetch the bundle (HTTP ${src.status})`);
+    const url = URL.createObjectURL(new Blob([await src.text()], { type: 'text/javascript' }));
+    try { await import(url); } finally { URL.revokeObjectURL(url); }
+  } else {
+    await import('../dist/web-tools.js');
+  }
+  // proof.js backs chat-render's sandboxed Render frames; swipe-deck owns the
+  // track and the takeover; chat-render renders a turn. session-render sits on
+  // all three and must load last.
+  try {
+    await gh.load('kits/proof.js');
+    await gh.load('swipe-deck.js');
+    await gh.load('chat-render.js');
+    await gh.load('session-render.js');
+  } finally { window.__depsDone(); }
+</script>
+<style>
+  [x-cloak]{display:none!important}
+</style>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content" x-data="sessionPage()" x-cloak>
+
+  <!-- Stands down inside a frame, the courtesy branch.html and links.html pay
+       their embedder: show-repo supplies its own chrome. -->
+  <div x-show="!framed" class="border-b border-base-300 bg-base-100">
+    <div class="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
+      <span class="text-lg">💬</span>
+      <input x-model="input" @keydown.enter="go()" placeholder="short id, or owner/repo:path"
+             class="input input-sm input-bordered font-mono flex-1 min-w-0">
+      <button @click="go()" class="btn btn-sm btn-primary" :disabled="busy">
+        <span x-show="!busy">Open</span>
+        <span x-show="busy" class="loading loading-spinner loading-xs"></span>
+      </button>
+    </div>
+  </div>
+
+  <div x-show="err" class="max-w-4xl mx-auto mt-4 px-4">
+    <div class="alert alert-warning" x-text="err"></div>
+  </div>
+
+  <div x-show="!record && !busy && !err" class="max-w-4xl mx-auto p-8 text-center opacity-60 text-sm">
+    Name a session above, or link straight to one:
+    <code class="text-xs">#id=abc12345</code>
+  </div>
+
+  <div x-show="busy" class="flex justify-center py-16">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+
+  <!-- The record's facts, standing BEHIND the deck rather than in front of it.
+       The deck opens on arrival, so this is the after-close state: what you see
+       when you dismiss the conversation, with the button to reopen it. -->
+  <template x-if="record && !busy">
+    <div class="max-w-2xl mx-auto p-4 flex flex-col gap-4">
+      <div>
+        <div class="text-lg font-medium" x-text="head.title"></div>
+        <div class="text-sm opacity-60 font-mono mt-1" x-text="head.subtitle"></div>
+      </div>
+      <button @click="openDeck()" class="btn btn-primary gap-2">
+        <i class="ph ph-cards-three text-lg"></i>
+        <span x-text="'Reopen the conversation (' + cards + ' cards)'"></span>
+      </button>
+      <div class="flex flex-wrap gap-x-5 gap-y-1.5 text-sm rounded-lg border border-base-300 bg-base-100 px-3 py-2">
+        <template x-for="f in facts" :key="f.k">
+          <span class="whitespace-nowrap">
+            <span class="opacity-55" x-text="f.k"></span>
+            <span class="font-mono font-medium ml-1" x-text="f.v"></span>
+          </span>
+        </template>
+      </div>
+      <a x-show="record.agent_session" :href="record.agent_session" target="_blank"
+         class="btn btn-sm btn-ghost gap-2 self-start">
+        <i class="ph ph-arrow-square-out"></i>Open this session in Claude Code</a>
+    </div>
+  </template>
+
+<script>
+  // The store, which is where every record lives. Overridable by an explicit
+  // #gh= address so this page is not welded to one repo.
+  const STORE = 'mehrlander/web-tools-private';
+
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('sessionPage', () => ({
+      input: '', record: null, busy: false, err: '',
+      framed: (() => { try { return window.self !== window.top; } catch { return true; } })(),
+
+      get head(){ return this.record ? window.sessionRender.describe(this.record) : {}; },
+      get cards(){
+        if (!this.record) return 0;
+        const sr = window.sessionRender;
+        return sr.groups(sr.turns(this.record)).length;
+      },
+      // The counts worth seeing before opening the deck, each one a fact about
+      // capture rather than about the work: how much of the session is here.
+      get facts(){
+        const r = this.record || {};
+        const f = [
+          ['asks', r.exchanges], ['replies', r.replies_total], ['calls', r.calls_total],
+          ['failures', r.failures], ['files', r.files_total],
+        ];
+        if (r.tokens?.output) f.push(['output tokens', r.tokens.output.toLocaleString()]);
+        f.push(['schema', r.schema || 1]);
+        return f.filter(([, v]) => v || v === 0).map(([k, v]) => ({ k, v }));
+      },
+
+      async init(){
+        // Before anything reads window.sessionRender: Alpine booted inside the
+        // pre-build's import, so this page's own chain has not run yet.
+        await window.__depsReady;
+        const t = this.resolve();
+        if (!t) return;
+        this.input = t.label || '';
+        await this.load(t);
+        // Arriving at an address that names a session opens the CONVERSATION,
+        // not a card describing it. The facts below are what you land on when
+        // you close the deck, and what the address field opens onto; they are
+        // not a waiting room. A link that already names the session should not
+        // then ask you to confirm that you meant it.
+        if (this.record) await this.openDeck();
+      },
+
+      // The address, from wherever this page is running. Read THROUGH
+      // URLSearchParams: inside a toss, toss-render's shim patches
+      // URLSearchParams.get and leaves location.search empty, so reading the
+      // raw string finds nothing and the page comes up blank with a clean
+      // console. Same trap branch.html documents.
+      resolve(){
+        const q = new URLSearchParams(location.search);
+        const hash = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+        const pick = k => hash.get(k) || q.get(k);
+        const gz = pick('gz');
+        if (gz) return { kind: 'gz', gz };
+        const id = pick('id');
+        if (id) return { kind: 'id', id, label: id };
+        const gh = pick('gh');
+        if (gh) return { kind: 'path', spec: gh, label: gh };
+        return null;
+      },
+
+      async load(t){
+        this.busy = true; this.err = ''; this.record = null;
+        try {
+          if (t.kind === 'gz') this.record = await this.readGz(t.gz);
+          else if (t.kind === 'id') this.record = await this.readId(t.id);
+          else this.record = await this.readPath(t.spec);
+        } catch (e) {
+          this.err = e?.message || String(e);
+        } finally { this.busy = false; }
+      },
+
+      async readPath(spec){
+        const s = window.DataPayload?.parseSpec?.(spec) || {};
+        const repo = s.repo || STORE;
+        const path = s.path || spec;
+        const g = new window.GH({ token: window.TOKEN, repo, ref: s.ref || 'main' });
+        const f = await g.get(path);
+        return JSON.parse(f.text);
+      },
+
+      // A short id is what a reader actually has: it is the record's own
+      // filename stem, and it is what search.py --show and the Sessions pane
+      // both print. One recursive tree read names every record and its path, so
+      // resolving is a suffix match rather than a guess at the day.
+      async readId(id){
+        const g = new window.GH({ token: window.TOKEN, repo: STORE, ref: 'main' });
+        const tree = await g.req('git/trees/main?recursive=1');
+        const hit = (tree.tree || []).find(n =>
+          n.type === 'blob' && /^sessions\/\d{4}\/\d{2}\//.test(n.path) && n.path.endsWith(`-${id}.json`));
+        if (!hit) throw new Error(`No record for ${id} in ${STORE}. Ids are the filename stem, like 2bf8fcae.`);
+        const f = await g.get(hit.path);
+        return JSON.parse(f.text);
+      },
+
+      async readGz(gz){
+        const bin = Uint8Array.from(atob(gz.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+        const ds = new DecompressionStream('gzip');
+        return JSON.parse(await new Response(new Blob([bin]).stream().pipeThrough(ds)).text());
+      },
+
+      async openDeck(){
+        try { await window.sessionRender.open(this.record); }
+        catch (e) { this.err = e?.message || String(e); }
+      },
+
+      // Deliberately not a reload: inside a toss the frame has no address of
+      // its own, so reloading drops the shimmed address and lands on the empty
+      // form. The hash is updated where there is one, for sharing.
+      async go(){
+        const v = (this.input || '').trim();
+        if (!v) return;
+        const t = v.includes('/') || v.includes(':')
+          ? { kind: 'path', spec: v, label: v }
+          : { kind: 'id', id: v, label: v };
+        try { history.replaceState(null, '', '#' + (t.kind === 'id' ? 'id=' : 'gh=') + v); } catch {}
+        await this.load(t);
+        if (this.record) await this.openDeck();
+      },
+    }));
+  });
+</script>
+</body>
+</html>

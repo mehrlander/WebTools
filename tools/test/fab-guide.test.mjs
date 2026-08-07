@@ -34,7 +34,12 @@ function spy(obj, name) {
 const { window } = makeWindow({
   html: '<!doctype html><html><body></body></html>',
 });
-const Alpine = await startAlpine(window, ['lib/alpineComponents/path-picker.js', 'lib/alpineComponents/fab.js']);
+// kits/guide-render.js carries the link routing and the body render; the FAB
+// binds to it and supplies what only it knows (its branch list, its viewing
+// ref). It loads first here the way the page's gh.load chain arranges it.
+const Alpine = await startAlpine(window, [
+  'lib/kits/guide-render.js', 'lib/alpineComponents/path-picker.js', 'lib/alpineComponents/fab.js',
+]);
 const doc = window.document;
 
 async function mountFab(attrs = 'data-repo="mehrlander/web-tools" data-path="pages/show-repo/show-repo.html"') {

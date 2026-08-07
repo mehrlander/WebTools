@@ -32,7 +32,7 @@
       "path": "tools/test/branch-brief-cards.test.mjs",
       "kind": "component",
       "protects": "The branch brief renders a card per changed file.",
-      "assertions": 5,
+      "assertions": 6,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
@@ -41,7 +41,7 @@
       "path": "tools/test/branch-brief.test.mjs",
       "kind": "behavior",
       "protects": "Branch state classification: ahead, behind, merged, and stranded.",
-      "assertions": 21,
+      "assertions": 26,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -119,6 +119,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/config-form.test.mjs",
+      "kind": "behavior",
+      "protects": "The config form edits one manifest entry without restructuring the file: entries keep their authored shape, empty values clear their key rather than storing \"\", and a field the form does not render (a page's icon or thumb) survives an edit to one it does. Also that a project's declaration and its detection stay separate facts, so the two disagreements both surface.",
+      "assertions": 18,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
       "path": "tools/test/console-scan.test.mjs",
       "kind": "component",
       "protects": "The console scanner persists fresh records and dedups by key across passes.",
@@ -149,7 +158,7 @@
       "path": "tools/test/data-payload.test.mjs",
       "kind": "behavior",
       "protects": "A JSON object with item-shaped entries is recognized as an envelope rather than raw data.",
-      "assertions": 13,
+      "assertions": 21,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -236,6 +245,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/estate-detail-address.test.mjs",
+      "kind": "component",
+      "protects": "The branch takeover's address: opening stamps &detail=owner/repo@branch, a swipe moves it, closing clears it, and a link to a branch the current list no longer holds still opens rather than resolving to nothing.",
+      "assertions": 7,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/estate-embed.test.mjs",
       "kind": "component",
       "protects": "The estate embed mounts clean.",
@@ -283,8 +301,8 @@
     {
       "path": "tools/test/estate-sessions.test.mjs",
       "kind": "component",
-      "protects": "The Sessions pane and the Lists merge behind it: both filters lapse rather than stranding the pane on an empty list, the pill routes through the shell so the URL keeps stamping, and a missing cache reads as empty rather than as an error.",
-      "assertions": 13,
+      "protects": "The Sessions pane and the Lists merge behind it: both filters lapse rather than stranding the pane on an empty list, the pill routes through the shell so the URL keeps stamping, and a missing cache reads as empty rather than as an error. A record that names no harness session keeps an empty `agent` beside a readable `schema`, which is what lets the session-link cell say WHY it has no link instead of rendering nothing.",
+      "assertions": 14,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
@@ -324,6 +342,15 @@
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1
+    },
+    {
+      "path": "tools/test/file-review-card.test.mjs",
+      "kind": "component",
+      "protects": "What opening a changed-file row costs: a card handed a patch shows it without fetching, and only a tab that needs the bytes triggers a contents call. Plus the collapsed row's formatting, including the path elision that replaced a CSS rtl trick bidi reordering turned into a path that does not exist.",
+      "assertions": 8,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
     },
     {
       "path": "tools/test/gh-api.test.mjs",
@@ -380,6 +407,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/guide-render.test.mjs",
+      "kind": "kit",
+      "protects": "The guide renderer shared by the FAB drawer and the branch page: the slashed-ref split that keeps a claude/<slug> address from 404ing, the file routing table, and the chip strip's dedupe by file rather than by address.",
+      "assertions": 11,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/in-flight.test.mjs",
       "kind": "tool",
       "protects": "Branch classification: merged, live, unrelated, squash-shadowed, and every branch exactly once.",
@@ -418,8 +454,8 @@
     {
       "path": "tools/test/map-view.test.mjs",
       "kind": "component",
-      "protects": "The Map view mounts, loads the public set, and reports adoption without startup warnings.",
-      "assertions": 11,
+      "protects": "The Map view mounts, loads the public set, and reports adoption without startup warnings, and its open tab stays addressable: the shell validates ?tab= and stamps every tab but the default, and the component renders and loads whichever tab it is handed, by URL or by tap.",
+      "assertions": 19,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1
@@ -448,6 +484,15 @@
       "protects": "Publish delivers occasion, data, and path to every subscriber.",
       "assertions": 7,
       "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/page-deps-gate.test.mjs",
+      "kind": "behavior",
+      "protects": "A page that imports the pre-build waits for its own gh.load chain, since importing it boots Alpine before that chain runs.",
+      "assertions": 4,
+      "method": "read",
       "runner": "suite",
       "boot_smoke": 0
     },
@@ -626,7 +671,7 @@
       "path": "tools/test/repo-sessions-cache.test.mjs",
       "kind": "behavior",
       "protects": "The sessions aggregate, whose source is a captured and therefore unregenerable layer: summarize keeps the scan fields and drops the bulk, branches dedupe and drop main since they join the Open view, and an older record with no agent id summarizes without one rather than with a wrong one.",
-      "assertions": 11,
+      "assertions": 15,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -664,6 +709,15 @@
       "protects": "The session recorder finds its declared store even when the project root sits above the checkouts.",
       "assertions": 13,
       "method": "spawn",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/session-render.test.mjs",
+      "kind": "behavior",
+      "protects": "A session record merges into one ordered conversation, and groups into cards small enough to page.",
+      "assertions": 17,
+      "method": "read",
       "runner": "suite",
       "boot_smoke": 0
     },
@@ -776,6 +830,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/swipe-deck-width.test.mjs",
+      "kind": "behavior",
+      "protects": "A deck slide stays exactly one track wide, so cards are not cut off and the pager lands on the card it names.",
+      "assertions": 4,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/tests-registry.test.mjs",
       "kind": "gate",
       "protects": "Every test file has a row saying what it protects, the derived fields match disk, and no browser check is left with nothing to run it.",
@@ -860,7 +923,16 @@
       "path": "tools/test/url-params.test.mjs",
       "kind": "behavior",
       "protects": "The fragment wins over the query for the same key, which every toss address depends on.",
-      "assertions": 10,
+      "assertions": 15,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/use-ref-no-store.test.mjs",
+      "kind": "guard",
+      "protects": "Every ?use= loader fetches with cache: no-store. A ?use= ref is usually a branch, which moves, and the HTTP cache is keyed by URL alone, so without this a preview link serves a bundle from an earlier push and shows old code with nothing on screen to say so.",
+      "assertions": 2,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0

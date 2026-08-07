@@ -4,7 +4,7 @@
 //
 //   npm run shot -- pages/toss-render.html \
 //     --hash 'gh=mehrlander/web-tools:pages/show-repo/show-repo.html' \
-//     --script tools/render/scripts/pick-md.mjs
+//     --script tools/render/scenarios/pick-md.mjs
 //
 // SHELL_MODE=branch  the working tree's toss-render, which has __tossRoute (default)
 // SHELL_MODE=main    __tossRoute deleted, which is what the DEPLOYED shell looks

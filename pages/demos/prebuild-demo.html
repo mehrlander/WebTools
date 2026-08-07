@@ -10,10 +10,11 @@
   // The pre-build: ONE import brings in the whole lib/ and boots Alpine — no
   // per-file gh.load chain. ?use=<ref> re-pins to that ref for review, loaded by
   // fetch + blob-import from raw.githubusercontent (not jsDelivr's /gh/ CDN,
-  // whose branch-tip listing lags a fresh push ~12h), so a branch is cache-safe.
+  // whose branch-tip listing lags a fresh push ~12h), with cache: 'no-store' so a
+  // moving branch ref is not served from the HTTP cache.
   const ref = new URLSearchParams(location.search).get('use');
   if (ref) {
-    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`);
+    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`, { cache: 'no-store' });
     if (!src.ok) throw new Error(`?use=${ref}: could not fetch the bundle (HTTP ${src.status})`);
     const url = URL.createObjectURL(new Blob([await src.text()], { type: 'text/javascript' }));
     try { await import(url); } finally { URL.revokeObjectURL(url); }

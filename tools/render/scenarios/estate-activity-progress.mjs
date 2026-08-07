@@ -4,7 +4,7 @@
 // needs the private registry and a token, neither of which the sandbox has, and
 // what the shot is judging is the header's rendering, not the fanout.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scripts/estate-activity-progress.mjs
+//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/estate-activity-progress.mjs
 //
 // DONE / TOTAL override the counts (default 4 of 11). START=1 shows the state
 // before the member list resolves (no denominator). TOAST=<changed|none|fail>

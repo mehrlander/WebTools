@@ -3,7 +3,7 @@
 //
 //   npm run shot -- pages/toss-render.html \
 //     --hash 'data=mehrlander/web-tools:docs/show-repo.md' \
-//     --script tools/render/scripts/routed-subject.mjs
+//     --script tools/render/scenarios/routed-subject.mjs
 //
 // SHELL_MODE=branch  the working tree's toss-render, which re-stamps (default)
 // SHELL_MODE=main    the re-stamp undone, which is what the DEPLOYED shell does:
