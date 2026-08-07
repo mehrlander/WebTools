@@ -125,9 +125,65 @@ test('Docs loads on demand and carries both tables', async () => {
   assert.equal(data.docsErr, '');
   assert.ok(data.docsReg.documents.length > 30);
   assert.ok(data.docsReg.claims.length > 3);
-  const groups = data.docGroups;
-  assert.equal(groups[0].dir, 'docs', 'the root docs group leads');
-  assert.ok(groups.length > 3, 'subfolders group separately');
+});
+
+test('the Docs folder rail rolls up, nests, and prunes by reach without changing shape', () => {
+  const folders = data.docFolders;
+  assert.equal(folders[0].dir, 'docs', 'the root folder leads the rail');
+  assert.ok(folders.length > 3, 'subfolders get their own rows');
+  for (const f of folders) assert.equal(f.depth, f.dir.split('/').length - 1, f.dir);
+  assert.equal(folders[0].n, data.docsReg.documents.length, 'the root rolls up the whole census');
+  assert.equal(folders[0].words, data.docWordTotal, 'and the whole mass');
+
+  assert.equal(data.docDir, 'docs', 'the root folder opens selected');
+  assert.ok(data.docDirFiles.length > 0, 'the selected folder lists files');
+  assert.ok(data.docDirFiles.every(d => d.path.slice('docs/'.length).indexOf('/') === -1),
+    'direct files only; subfolder contents stay behind their rail rows');
+  assert.ok(data.docDirGloss.length > 0, 'the folder gloss reads from its README row');
+
+  data.docReach = 'orphan';
+  const filtered = data.docFolders;
+  assert.equal(filtered.length, folders.length, 'a filter moves counts, not the tree shape');
+  assert.ok(filtered[0].n < folders[0].n, 'the rollup honors the filter');
+  assert.ok(data.docDirFiles.every(d => d.reach === 'orphan'), 'the file list honors it too');
+  data.docReach = '';
+
+  assert.equal(data.folderGh('docs/envelopes'),
+    'https://github.com/mehrlander/web-tools/tree/main/docs/envelopes',
+    'a folder links to its GitHub tree at the read ref');
+});
+
+test('a row title opens the doc deck: full folder, tapped row first, rendered by kind, cached', async () => {
+  // marked stubbed so the markdown path is deterministic and offline; the
+  // component only lazily loads the CDN copy when window.marked is absent.
+  window.marked = { parse: (t) => '<h1>md</h1><!-- ' + t.length + ' chars -->' };
+
+  const fetchesBefore = asked.length;
+  assert.match(await data.docDeckRead('docs/CONVENTIONS.md'), /prose/, 'markdown renders as prose');
+  assert.ok((await data.docDeckRead('docs/docs.json')).startsWith('<pre'),
+    'a JSON doc renders as source, not prose');
+  const fetchesAfter = asked.length;
+  await data.docDeckRead('docs/CONVENTIONS.md');
+  assert.equal(asked.length, fetchesAfter, 're-reading hits the cache, not the network');
+  assert.ok(fetchesAfter > fetchesBefore, 'first reads did fetch');
+
+  const opened = [];
+  window.swipeDeck = { open(o){ opened.push(o); return { close(){}, setSubtitle(){}, deck: {}, el: {} }; } };
+  const files = data.docDirFiles;
+  await data.openDocDeck(files[2]);
+  const o = opened[0];
+  assert.equal(o.count, files.length, 'the deck pages the whole selected folder');
+  assert.equal(o.start, 2, 'and opens on the tapped row');
+  assert.equal(o.title, 'docs/');
+
+  const slide = window.document.createElement('div');
+  o.render(2, slide);
+  await tick(3);
+  assert.ok(slide.textContent.includes(files[2].path), 'a slide leads with its path');
+  assert.ok(/prose|<pre/.test(slide.querySelector('[data-deck-content]').innerHTML),
+    'and carries the rendered document');
+  delete window.marked;
+  delete window.swipeDeck;
 });
 
 // ── Readership ──────────────────────────────────────────────────────────────
@@ -148,20 +204,21 @@ test('readership joins the repo-qualified cache path to the hub-relative registr
   assert.equal(data.registry(), 'mehrlander/web-tools-private');
   assert.equal(data.docReadKey('docs/show-repo.md'), 'web-tools/docs/show-repo.md');
   assert.equal(data.docReadsSessions, 42);
-  assert.equal(data.docReadLabel({ path: 'docs/show-repo.md', reach: 'project' }), '9 ×');
+  assert.equal(data.docReadLabel({ path: 'docs/show-repo.md', reach: 'project' }), '9 reads');
   assert.match(data.docReadHint({ path: 'docs/show-repo.md', reach: 'project' }), /9 of 42/);
+  assert.match(data.docReadHint({ path: 'docs/show-repo.md', reach: 'project' }), /file tools only/,
+    'the counting caveat moved from the retired standing paragraph into the title');
   // Another repo's docs/ file is in the same rollup and must not be read as this one's.
-  assert.equal(data.docReadLabel({ path: 'docs/elsewhere.md', reach: 'orphan' }), '—');
+  assert.equal(data.docReadLabel({ path: 'docs/elsewhere.md', reach: 'orphan' }), '');
 });
 
 test('an injected doc says so instead of reporting the zero no file tool can avoid', () => {
   const injected = { path: 'docs/CONVENTIONS.md', reach: 'injected' };
   assert.equal(data.docReadLabel(injected), 'injected');
   assert.match(data.docReadHint(injected), /not zero/);
-  // Unread is distinguishable from unmeasurable, since one is a finding and the
-  // other is a limit of the instrument.
-  assert.equal(data.docReadLabel({ path: 'docs/nobody-opens-this.md', reach: 'orphan' }), '—');
-  assert.match(data.docReadHint({ path: 'docs/nobody-opens-this.md', reach: 'orphan' }), /No recorded session/);
+  // Unmeasurable stays distinguishable from unread: injected carries a word,
+  // a never-opened doc shows nothing at all (the tail hides on empty).
+  assert.equal(data.docReadLabel({ path: 'docs/nobody-opens-this.md', reach: 'orphan' }), '');
 });
 
 test('an absent check renders as visibly absent, and only where one is owed', () => {

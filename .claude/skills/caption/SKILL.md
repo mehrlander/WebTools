@@ -187,6 +187,38 @@ token (possibly absent in the Claude app's in-app browser). It supplements
 the rows, never replaces them: the plain GitHub links stay the portable
 fallback.
 
+## The branch line (🌿) and its authored layer
+
+The full caption's judgment can ride the branch page instead of being re-typed
+per turn: `build-branch-review.mjs` (bundled beside this file) serializes it as
+a **branch-review/1 surface**, the authored envelope `pages/branch.html`
+renders over its live derived layer. This is the decided format: `/caption`
+emits branch-review/1, and the plain branch-brief shape stays accepted by the
+page's reader only as a hand-authoring convenience.
+
+Write the judgment (the part no API can derive) to a notes file, then:
+
+```
+node .claude/skills/caption/build-branch-review.mjs --notes notes.json --link
+```
+
+notes.json: `{ "intent": "...", "open": ["..."], "omitted": ["..."],
+"files": { "<path>": "one-line why" }, "notes": "..." }`. The script derives
+the rest from git (repo, branch, revisions, changed files with statuses),
+validates against both schemas (core surface v2 plus the profile; an invalid
+surface is an error, not an artifact), and `--link` prints the 🌿 address with
+the surface gzipped into the fragment:
+
+```
+🌿 [<repo>@<branch>](…/pages/branch.html#gh=<repo>@<branch>&base=main&gz=<payload>)
+```
+
+Emit it at guide-PR sync or wrap-up, and record the link in the PR (body or a
+comment): the fragment never reaches a server, so the link itself is the
+instance's only carrier. The derived layer stays live either way; the envelope
+only ever adds. Gated by `tools/test/branch-review-emit.test.mjs` (schema
+validity, the page reader's projection, the gz round-trip).
+
 ## Tail
 
 When the branch has a guide PR, close with **both** pointers, 🌿 first:
