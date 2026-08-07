@@ -47,6 +47,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/branch-review-emit.test.mjs",
+      "kind": "gate",
+      "protects": "the /caption emitter's contract: an emitted branch-review/1 surface validates against both schemas, projects through the page reader onto the four authored fields, and round-trips the gz link",
+      "assertions": 4,
+      "method": "spawn",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/branch-survey.test.mjs",
       "kind": "behavior",
       "protects": "Landed-versus-stranded is judged on blob content, since squashes make ref-level merge status meaningless.",
