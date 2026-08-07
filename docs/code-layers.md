@@ -9,8 +9,7 @@ which is how a folder acquires a purpose nobody stated and cannot defend.
 
 Naming a layer is not the same as justifying it. Where a split turns out to have
 no rule behind it, this document says so rather than inventing one, and points
-at the task that owns the decision. Two of the boundaries below are in that
-state.
+at the task that owns the decision. One boundary below is in that state.
 
 Measured with [`scripts/unclaimed-code-survey.py`](../scripts/unclaimed-code-survey.py)
 (`npm run code-survey`), which reports per-layer counts of files, files any
@@ -28,21 +27,13 @@ column of them is a category nobody has stated.
 | `scripts/` **standalone** | argv-driven, runs from any repo root, no repo of its own | a shell invocation |
 | `tools/` **harness** | exercises or builds this repo, in Node, never shipped to a page | a `node`/`npm` invocation |
 
-### `lib/` root or `lib/kits/`: open, and the obvious answer is refuted
-
-> [!WARNING]
-> **Wrong 2026-08-06 (superseded within a day) → this section:** the first
-> version of this document ruled that a **kit** is "a capability that would be
-> true in any repo" and a **estate module** is the same file shape carrying this
-> estate's domain, and it applied that rule to a sibling task's file list. The
-> rule reads well and the shelf does not follow it. Measured rather than
-> reasoned, below. The term "estate module" is retired with it.
+### `lib/` root or `lib/kits/`: open
 
 Both folders hold files of one shape: a `window` namespace, Alpine-free, pure
-logic. The tempting rule is portability, and it fails on measurement. Counting
-only a **runtime** dependency on the hub's own chain (`window.gh`, `gh.load`,
-`gh.get`, `__loadedScripts`), which is the strongest available test of "this
-file cannot travel":
+logic. **Nothing sorts them,** and the tempting rule, that a kit is a capability
+portable to any repo, is false. Counting only a **runtime** dependency on the
+hub's own chain (`window.gh`, `gh.load`, `gh.get`, `__loadedScripts`), the
+strongest available test of "this file cannot travel":
 
 - **7 of the 21 files in `lib/kits/` have one**: `branch-brief.js`, `brief.js`,
   `build.js`, `export.js`, `wring.js`, `wsl-core.js`, `wsl.js`.
@@ -85,25 +76,14 @@ contract between them. Below that line most files are named nowhere, and the
 survey shows the gap is not spread evenly: it is concentrated in the two folders
 of `--script` interaction drivers.
 
-**`tools/render/scenarios/` was one category in two folders, and is now one.**
-Until 2026-08-06 a sibling `tools/render/scripts/` held twenty-nine more files
-of the same shape, a default-exported `async (page, ctx) => {}` handed to
-`screenshot.mjs --script`. Neither name meant anything the other did not, and
-both folders were created on the same day in 2026-07. Asserting looked like the
-line and was not: three of the twenty scenarios printed `ASSERT` and none of the
-twenty-nine scripts did, so that split was three files against forty-six rather
-than one folder against the other. `tools/README.md` named `scenarios/` and had
-never mentioned `scripts/`, so half the category was invisible from the moment
-it appeared.
-
-The merge cost one rename: both folders held a `sidebar-projects.mjs`, written
-independently against the same UI, which is the clearest evidence the split was
-doing harm rather than nothing. The incoming one carries the branch-overlay
-posture the other lacks, so it landed as `sidebar-projects-overlay.mjs`. Their
-default paths still overlap; nothing was merged beyond the filename, since
-deduplicating two drivers is a judgment call and this was a rename pass.
-
-A new driver goes in `tools/render/scenarios/`. There is nowhere else.
+**Every `--script` driver lives in [`tools/render/scenarios/`](../tools/render/scenarios/).**
+There is nowhere else, and that is worth stating because there briefly was: a
+sibling `render/scripts/` accumulated twenty-nine files of the same shape that
+`tools/README.md` never mentioned, and the two folders each grew their own
+`sidebar-projects.mjs` against the same UI before being folded together. The
+survivors are `sidebar-projects.mjs` and `sidebar-projects-overlay.mjs`, which
+still overlap on their default path; only the overlay posture distinguishes
+them.
 
 `tools/concept-lab/` is a fourth thing and says so in its own
 [README](../tools/concept-lab/README.md): experimental ground, read-only,

@@ -22,6 +22,13 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### marker-on-a-living-doc: annotated a doc instead of fixing it
+Marked a section `Wrong` after measuring its rule false, leaving a banner that
+described text already replaced, in a doc `CLAUDE.md` points every session at.
+"Annotate, do not rewrite" governs records; a living document gets fixed. The
+convention was loaded the whole time and did not say so. *(seen: 2026-08-06)*
+→ [CONVENTIONS.md](CONVENTIONS.md)
+
 ### ci-run-silently-not-started: a commit sat in an open PR with no checks
 A push to a PR branch produced no `synchronize` workflow run. Not a failure, not
 a cancellation, no run at all, so the PR's head commit carried zero checks and
