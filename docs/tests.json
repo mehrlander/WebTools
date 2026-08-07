@@ -383,7 +383,7 @@
       "path": "tools/test/guide-index.test.mjs",
       "kind": "kit",
       "protects": "The Guides pane's fold: what counts as a guide by path, and that a guide on main and on a PR stays ONE row, so the shelf cannot report one document as two. Also that a PR's sessions are read from both the list and the older bare field, so a pre-2026-08 row is not reported sessionless.",
-      "assertions": 10,
+      "assertions": 11,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0

@@ -38,6 +38,15 @@ test('titleOf reads the filename, hyphens and underscores as spaces', () => {
   assert.equal(G.titleOf(''), '');
 });
 
+test('thumbPath mirrors the pages tree under pages/thumbs, extension swapped', () => {
+  assert.equal(G.thumbPath(GUIDE), 'pages/thumbs/guides/code-layers.png');
+  assert.equal(G.thumbPath('pages/branch.html'), 'pages/thumbs/branch.png');
+  // Derived, not looked up: a guide on a branch resolves its own branch's shot,
+  // which pages.json cannot answer because it is generated from main.
+  assert.equal(G.thumbPath('docs/thing.html'), '');
+  assert.equal(G.thumbPath(''), '');
+});
+
 test('a guide on main and on a PR is ONE row, not two', () => {
   const rows = G.build({
     main: [{ repo: REPO, path: GUIDE, ref: 'main' }],
