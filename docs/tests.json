@@ -488,6 +488,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/page-deps-gate.test.mjs",
+      "kind": "behavior",
+      "protects": "A page that imports the pre-build waits for its own gh.load chain, since importing it boots Alpine before that chain runs.",
+      "assertions": 4,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/pages.test.mjs",
       "kind": "component",
       "protects": "The pages gallery mounts closed and opens without warnings.",
@@ -704,6 +713,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/session-render.test.mjs",
+      "kind": "behavior",
+      "protects": "A session record merges into one ordered conversation, and groups into cards small enough to page.",
+      "assertions": 17,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/sheet-modal.test.mjs",
       "kind": "component",
       "protects": "The sheet modal mounts clean despite its eager slot bindings.",
@@ -807,6 +825,15 @@
       "kind": "gate",
       "protects": "SURFACING.md prose and surfacing.json stay in step on which primitives exist.",
       "assertions": 3,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/swipe-deck-width.test.mjs",
+      "kind": "behavior",
+      "protects": "A deck slide stays exactly one track wide, so cards are not cut off and the pager lands on the card it names.",
+      "assertions": 4,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0

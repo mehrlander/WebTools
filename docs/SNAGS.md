@@ -22,6 +22,37 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### pre-build-boots-alpine-early: a page's own gh.load chain runs after its components init
+`branch.html` died with `Cannot read properties of undefined (reading 'fetchBrief')`.
+Nothing was wrong with the kit: importing `dist/web-tools.js` boots Alpine as part
+of the import (`alpine-bundle.js` is last in its auto-boot chain), so the
+`gh.load` calls written underneath run after Alpine has walked the DOM and called
+`init()`. Every kit the page loads for itself is undefined at that moment, and
+**which one you notice is arbitrary**, being whichever `init()` touches first: the
+same bug read as `reviewTarget.parse` on one path and `fetchBrief` one `await`
+later on another. That is why it looked like two unrelated faults. The build
+already fixes its own two instances by forcing `url-params.js` and
+`repo-address.js` into the auto-boot chain, which is the tell that the hazard is
+structural rather than a slip. **A page that imports the pre-build and then loads
+anything of its own needs a ready gate**, declared above the module script.
+Reproduce it by putting a `setTimeout` in front of the chain; a race that wins on
+a fast local harness is not fixed, only hidden. *(seen: 2026-08-07)*
+→ [docs/loader.md](loader.md) (timing invariant 8)
+
+### regex-backtracking-in-a-hook: a test that "hung" was the redactor going quadratic
+A new fixture made the session recorder's test run past 120s. The fixture was not
+the bug: the credential redactor's `[A-Z0-9_]*` runs were unbounded, so the engine
+retried the greedy run at every offset, quadratic in the length of any unbroken
+`[A-Za-z0-9_]` stretch (0.014s at 500 characters, 0.86s at 4,000). It runs on the
+**full** tool result before any cap applies, and inside a `Stop` hook, so the real
+symptom is not a slow test: it is a turn held open with nothing on stderr, in a
+file whose docstring promises it can never stop a turn. This estate feeds it
+`#gz=` base64url payloads routinely, which is exactly the shape that triggers it.
+**Bound every quantifier that can span attacker- or data-controlled text**, and
+prefer a cost assertion to a correctness one where the failure mode is a hang.
+*(seen: 2026-08-07)*
+→ [sessions/tools/record.py](https://github.com/mehrlander/web-tools-private/blob/main/sessions/tools/record.py)
+
 ### marker-on-a-living-doc: annotated a doc instead of fixing it
 Marked a section `Wrong` after measuring its rule false, leaving a banner that
 described text already replaced, in a doc `CLAUDE.md` points every session at.

@@ -53,6 +53,16 @@
   lags a fresh push ~12h. The fetch sets `cache: 'no-store'`, since a branch
   ref moves and the HTTP cache is keyed by URL alone (2026-08-07).
 -->
+<!--
+  The ready gate: importing the pre-build boots Alpine as part of the import, so
+  this page's own gh.load calls below have not run by the time a component's
+  init() does. The promise is created here, above the module, because a
+  component that starts during the import would otherwise find it undefined.
+  Full account in pages/branch.html, where the failure was first measured.
+-->
+<script>
+  window.__depsReady = new Promise(r => { window.__depsDone = r; });
+</script>
 <script type="module">
   const ref = new URLSearchParams(location.search).get('use');
   if (ref) {
@@ -63,9 +73,11 @@
   } else {
     await import('../dist/web-tools.js');
   }
-  await gh.load('kits/review-target.js');
-  await gh.load('kits/cm6-merge.js');
-  await gh.load('alpineComponents/file-review.js');
+  try {
+    await gh.load('kits/review-target.js');
+    await gh.load('kits/cm6-merge.js');
+    await gh.load('alpineComponents/file-review.js');
+  } finally { window.__depsDone(); }
 </script>
 <style>
   [x-cloak]{display:none!important}
@@ -241,6 +253,10 @@ function reviewApp() { return {
   ],
 
   async init() {
+    // Before boot(), which reads window.reviewTarget: Alpine booted inside the
+    // pre-build's import, so this page's own gh.load chain has not run yet.
+    // See the gate above the module script.
+    await window.__depsReady;
     window.addEventListener('hashchange', () => this.boot());
     await this.boot();
   },
