@@ -53,9 +53,6 @@ window.GH = class {
 // No window.__shell in the test, so hasToken() is falsy and the token-gated
 // adoption probe never runs; only the public set half loads.
 
-// The doc sheet nests a sheetModal in the Docs template; the page gets it from
-// the pre-build's auto-boot, so the harness evaluates the real component too.
-new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/sheet-modal.js'), 'utf8'))();
 new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/map.js'), 'utf8'))();
 Alpine.start();
 await tick(3);
@@ -144,33 +141,37 @@ test('the Docs folder rail rolls up, nests, and prunes by reach without changing
     'a folder links to its GitHub tree at the read ref');
 });
 
-test('a row title opens the doc sheet: fetched full, rendered by kind, cached', async () => {
+test('a row title opens the doc deck: full folder, tapped row first, rendered by kind, cached', async () => {
   // marked stubbed so the markdown path is deterministic and offline; the
   // component only lazily loads the CDN copy when window.marked is absent.
   window.marked = { parse: (t) => '<h1>md</h1><!-- ' + t.length + ' chars -->' };
 
   const fetchesBefore = asked.length;
-  await data.openDocSheet({ path: 'docs/CONVENTIONS.md' });
-  assert.equal(data.docSheet.err, '');
-  assert.equal(data.docSheet.loading, false);
-  assert.equal(data.docSheet.name, 'CONVENTIONS.md', 'the sheet header carries the filename');
-  assert.match(data.docSheet.html, /prose/, 'markdown renders as prose');
-  // The DOM is painted imperatively (the sheet's slot cannot hold live
-  // bindings; see the template note in map.js), so assert the pixels' side
-  // of the contract too, not only the state.
-  const mapEl = window.document.getElementById('map');
-  assert.ok(mapEl.querySelector('[data-doc-sheet-content]').innerHTML.includes('prose'),
-    'the sheet body is painted from the state');
-  assert.equal(mapEl.querySelector('[data-doc-sheet-path]').textContent, 'docs/CONVENTIONS.md');
-
-  await data.openDocSheet({ path: 'docs/docs.json' });
-  assert.ok(data.docSheet.html.startsWith('<pre'), 'a JSON doc renders as source, not prose');
-
+  assert.match(await data.docRead('docs/CONVENTIONS.md'), /prose/, 'markdown renders as prose');
+  assert.ok((await data.docRead('docs/docs.json')).startsWith('<pre'),
+    'a JSON doc renders as source, not prose');
   const fetchesAfter = asked.length;
-  await data.openDocSheet({ path: 'docs/CONVENTIONS.md' });
-  assert.equal(asked.length, fetchesAfter, 're-opening a row reads the cache, not the network');
-  assert.ok(fetchesAfter > fetchesBefore, 'first opens did fetch');
+  await data.docRead('docs/CONVENTIONS.md');
+  assert.equal(asked.length, fetchesAfter, 're-reading hits the cache, not the network');
+  assert.ok(fetchesAfter > fetchesBefore, 'first reads did fetch');
+
+  const opened = [];
+  window.swipeDeck = { open(o){ opened.push(o); return { close(){}, setSubtitle(){}, deck: {}, el: {} }; } };
+  const files = data.docDirFiles;
+  await data.openDocDeck(files[2]);
+  const o = opened[0];
+  assert.equal(o.count, files.length, 'the deck pages the whole selected folder');
+  assert.equal(o.start, 2, 'and opens on the tapped row');
+  assert.equal(o.title, 'docs/');
+
+  const slide = window.document.createElement('div');
+  o.render(2, slide);
+  await tick(3);
+  assert.ok(slide.textContent.includes(files[2].path), 'a slide leads with its path');
+  assert.ok(/prose|<pre/.test(slide.querySelector('[data-deck-content]').innerHTML),
+    'and carries the rendered document');
   delete window.marked;
+  delete window.swipeDeck;
 });
 
 test('an absent check renders as visibly absent, and only where one is owed', () => {

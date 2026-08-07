@@ -39,9 +39,6 @@ window.GH = class {
   }
 };
 
-// The Docs template nests a sheetModal (auto-booted by the pre-build on the
-// real page), so the harness evaluates it too.
-new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/sheet-modal.js'), 'utf8'))();
 new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/map.js'), 'utf8'))();
 Alpine.start();
 await tick(3);

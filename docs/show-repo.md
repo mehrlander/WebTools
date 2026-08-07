@@ -811,10 +811,14 @@ exactly one row per file. The census is navigated from a folder rail
 and its own GitHub link, the selected folder shows its direct files beside it
 with that folder's README subject as the gloss, and a reach filter moves the
 counts without changing the tree's shape. A row is read in place: its title
-opens the document rendered in a sheet-modal over the Map (full length, the
-peek's own rendition helpers, so sheet and peek cannot drift), its
-always-visible GitHub icon carries the source peek for the desktop glance, and
-the files view stays the route for working on a file rather than reading it. And the **shared claims**: statements that live in
+opens the document in the house swipe deck (`lib/swipe-deck.js`, loaded on
+demand), full length with the peek's own rendition helpers so deck and peek
+cannot drift, paging through the selected folder's files as filtered, opened
+on the tapped row; its GitHub icon, inline with the badges and always visible,
+carries the source peek for the desktop glance, one details toggle on the
+reach strip shows every row's maintenance at once, and the files view stays
+the route for working on a file rather than reading it. The file list runs two
+columns above `xl` so a wide screen is used rather than left as a gutter. And the **shared claims**: statements that live in
 more than one place, each with its one authoritative carrier and its typed
 repetitions (copy, paraphrase, pointer, live read; a copy says who keeps it, by
 hand or by a named builder), where an absent check renders in the warning tone
