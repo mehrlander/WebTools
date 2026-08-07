@@ -129,6 +129,18 @@ test('the copyable link names the view and the branch', () => {
   assert.match(url, /detail=me%2Ftools%40claude%2Ffeat-a/);
 });
 
+test('a deep link opens even when the branch list could not be read at all', async () => {
+  // The registry is unreachable here (FakeGH throws on get), which is the state
+  // a viewer hits on a rate limit or a bad token. The link still has to land.
+  data.closeDetail();
+  data._detailFromUrl = false;
+  window.history.replaceState(null, '', '/?view=activity&detail=me/tools@claude/feat-b');
+  await data.loadActivity(new FakeGH({ repo: 'me/private' }));
+  await tick(4);
+  assert.ok(data.detail, 'the takeover opened');
+  assert.equal(data.detailRow.name, 'claude/feat-b');
+});
+
 test('mounting is quiet', () => {
   assert.deepEqual(problems, []);
 });

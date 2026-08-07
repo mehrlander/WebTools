@@ -3310,7 +3310,13 @@ function app(){ return {
   // The estate's branch takeover reports what it has open, so the address can
   // follow a swipe. Empty when it closes, which is what makes Back leave the
   // takeover rather than the view.
-  detailSpec: '',
+  //
+  // SEEDED FROM THE URL, and that is load-bearing rather than tidy.
+  // deepLinkParams rebuilds the query from a whitelist, so it deletes `detail`
+  // and re-stamps it from this field. Left empty at boot, the first syncUrl
+  // therefore erased an incoming `&detail=` before the estate ever read it, and
+  // the link opened the plain Activity list with nothing to say why.
+  detailSpec: new URLSearchParams(location.search).get('detail') || '',
   setDetail(spec){
     if (this.detailSpec === spec) return;
     this.detailSpec = spec || '';
