@@ -21,32 +21,42 @@
 
     #gh=owner/repo@branch            the branch, against the repo's default
     ...&base=main                    an explicit base
+    #gh=owner/repo&pr=364            a PR: its own head and base, opened on it
     #gh=owner/repo                   opens the form prefilled
 
-  Two layers, and the split is the point:
+  A pasted https://github.com/owner/repo/pull/<n> URL resolves the same way, so
+  the address bar takes a PR link straight from GitHub.
+
+  Three layers, and the split is the point:
 
     DERIVED   read from the API on every load: state, ahead/behind, lifespan,
-              authoring sessions, the PR, commits, the changed files. Because
+              authoring sessions, the PRs, commits, the changed files. Because
               nothing here is authored, nothing here can be stale, and the page
               needs no sync step. A link to it is current whenever it is opened,
               which a hand-maintained markdown body can never promise.
 
-    AUTHORED  an optional envelope carrying what the API cannot know: why the
-              branch exists, what is still open, what was left out, and a note
-              per file. Delivered the way the rest of the envelope family is
-              (docs/envelopes/):
+    GUIDE     the PR body, rendered here rather than linked away to. That body
+              is where the judgment has always been written, so this page reads
+              it rather than asking for the same judgment a second time in a
+              second format. Rendered by kits/guide-render.js, the renderer the
+              FAB drawer uses, which re-aims each file link at what can show the
+              file and lifts them into a chip strip. Arrows step through every
+              PR the branch has had, since a merge ends a PR but not a branch.
+
+    AUTHORED  an optional envelope carrying what the API cannot know, for a
+              branch with no PR to carry it: intent, what is open, what was left
+              out, a note per file. Delivered the way the rest of the envelope
+              family is (docs/envelopes/):
 
                 ?src=<owner/repo[@ref]:path>   fetched through the contents API
                 #gz=<base64url>                gzipped into the fragment
 
               Discriminated bare-vs-envelope by BranchBrief.readAuthored rather
               than by asking, mirroring lib/data-payload.js. A `branch-review/1`
-              surface is accepted as well as the plain form, so that profile can
-              become the format later without this page changing.
+              surface is accepted as well as the plain form.
 
-  The layers are independent: a branch with no envelope renders completely, and
-  the envelope only ever adds. That is what lets this ship before any authoring
-  convention exists for it.
+  The layers are independent: a branch with neither a PR nor an envelope renders
+  completely, and each of the other two only ever adds.
 
   Per-file cards are alpineComponents/file-review.js, the same dossier
   pages/review.html mounts, so a file reads identically in both places.
@@ -56,7 +66,10 @@
   anonymously.
 
   ?use=<branch|tag|sha> pins this page's own lib chain to a ref, fetched from
-  raw.githubusercontent and blob-imported so a branch name is cache-safe.
+  raw.githubusercontent with `cache: 'no-store'`. Both halves are needed: the
+  blob import defeats the MODULE cache, and no-store defeats the HTTP one. A
+  branch ref MOVES, so a plain fetch happily served a bundle from an earlier
+  push and the preview showed old code with no way to tell (2026-08-07).
 -->
 <!--
   The ready gate, and why it is a plain script ABOVE the module.
@@ -86,7 +99,7 @@
 <script type="module">
   const ref = new URLSearchParams(location.search).get('use');
   if (ref) {
-    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`);
+    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`, { cache: 'no-store' });
     if (!src.ok) throw new Error(`?use=${ref}: could not fetch the bundle (HTTP ${src.status})`);
     const url = URL.createObjectURL(new Blob([await src.text()], { type: 'text/javascript' }));
     try { await import(url); } finally { URL.revokeObjectURL(url); }
@@ -97,6 +110,7 @@
     await gh.load('kits/review-target.js');
     // branch-brief reads compareFields from BranchSurvey, so it loads first.
     await gh.load('branch-survey.js');
+    await gh.load('kits/guide-render.js');
     await gh.load('kits/branch-brief.js');
     await gh.load('kits/cm6-merge.js');
     await gh.load('alpineComponents/file-review.js');
@@ -119,7 +133,7 @@
   <div x-show="!framed" class="border-b border-base-300 bg-base-100">
     <div class="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
       <span class="text-lg">🌿</span>
-      <input x-model="input" @keydown.enter="go()" placeholder="owner/repo@branch"
+      <input x-model="input" @keydown.enter="go()" placeholder="owner/repo@branch, or a PR URL"
              class="input input-sm input-bordered font-mono flex-1 min-w-0">
       <button @click="go()" class="btn btn-sm btn-primary">Open</button>
     </div>
@@ -127,7 +141,8 @@
 
   <div x-show="!target" class="max-w-4xl mx-auto p-8 text-center opacity-60 text-sm">
     Address a branch above, or link straight to one:
-    <code class="text-xs">#gh=owner/repo@branch</code>
+    <code class="text-xs">#gh=owner/repo@branch</code>,
+    <code class="text-xs">#gh=owner/repo&amp;pr=364</code>
   </div>
 
   <div x-show="target" id="mount"></div>
@@ -146,7 +161,7 @@
         const t = this.resolve();
         if (!t) return;
         this.input = t.repo + (t.ref ? '@' + t.ref : '');
-        if (t.ref) await this.open(t);
+        if (t.ref || t.pr) await this.open(t);
       },
 
       // The address, from wherever this page is being run.
@@ -163,33 +178,58 @@
       // wins rather than the first that merely parses.
       resolve() {
         const q = new URLSearchParams(location.search);   // shim-aware
+        const hash = new URLSearchParams((location.hash || '').replace(/^#/, ''));
         const gh = q.get('gh');
         const base = q.get('base');
+        // A PR number, from either carrier. It is read here rather than folded
+        // into the address grammar because it is not part of an address: it
+        // names a thing that RESOLVES to one, and the resolution is a call.
+        const pr = q.get('pr') || hash.get('pr') || '';
         const sources = [];
         if (gh) sources.push('gh=' + gh + (base ? '&base=' + base : ''));
         sources.push(location.hash, location.search);
         for (const s of sources) {
           const t = window.reviewTarget.parse(s);
-          if (t && t.kind === 'ref' && t.repo && t.ref) return t;
+          if (t && t.kind === 'ref' && t.repo && t.ref) return { ...t, pr };
+        }
+        // A pasted github.com/owner/repo/pull/<n> URL: the grammar already
+        // recognises it and hands back the number for the caller to resolve.
+        for (const s of sources) {
+          const t = window.reviewTarget.parse(s);
+          if (t && t.kind === 'pull' && t.repo) return { ...t, pr: String(t.number) };
         }
         for (const s of sources) {          // repo only: prefill the form
           const t = window.reviewTarget.parse(s);
-          if (t && t.repo) return t;
+          if (t && t.repo) return { ...t, pr };
         }
         return null;
       },
 
       async open(t) {
-        // The base: an explicit &base= wins, else the repo's own default.
-        let base = t.base;
+        let repo = t.repo, ref = t.ref, base = t.base;
+        // A PR names its own head and base, so a link to one needs neither. It
+        // also fixes the comparison the PR was actually opened against, which
+        // for a merged PR is not today's default branch.
+        if (t.pr && (!ref || !base)) {
+          try {
+            const g = new window.GH({ token: window.TOKEN, repo });
+            const p = await window.BranchBrief.fetchPullTarget(g, t.pr);
+            if (p) { ref = ref || p.branch; base = base || p.base; }
+          } catch (e) { console.warn('pr resolve:', e?.message || e); }
+        }
+        if (!ref) return;
+        // The base: an explicit &base= wins, then the PR's, else the repo's own default.
         if (!base) {
           try {
-            const meta = await new window.GH({ token: window.TOKEN, repo: t.repo }).req('');
+            const meta = await new window.GH({ token: window.TOKEN, repo }).req('');
             base = meta?.default_branch || 'main';
           } catch { base = 'main'; }
         }
         const authored = await this.readAuthored();
-        this.target = { repo: t.repo, branch: t.ref, base, authored };
+        this.input = repo + '@' + ref;
+        // `framed` rides through: an embedder supplies its own header, and the
+        // view drops the identity it would otherwise repeat.
+        this.target = { repo, branch: ref, base, authored, pr: t.pr || '', framed: this.framed };
         window.__branchTarget = this.target;
         this.$nextTick(() => {
           // A fresh element each time: Alpine cannot re-initialise a tree it
@@ -237,9 +277,16 @@
       async go() {
         const v = (this.input || '').trim();
         if (!v) return;
-        const t = window.reviewTarget.parse('gh=' + v);
-        if (!t || !t.repo || !t.ref) return;
-        try { history.replaceState(null, '', '#gh=' + v); } catch {}
+        // A pasted PR URL parses on its own; anything else is the gh= grammar.
+        const t = window.reviewTarget.parse(v) || window.reviewTarget.parse('gh=' + v);
+        if (!t || !t.repo) return;
+        if (t.kind === 'pull') t.pr = String(t.number);
+        if (!t.ref && !t.pr) return;
+        try {
+          history.replaceState(null, '', t.pr && !t.ref
+            ? '#gh=' + t.repo + '&pr=' + t.pr
+            : '#gh=' + t.repo + '@' + t.ref);
+        } catch {}
         this.target = null;
         await this.open(t);
       },

@@ -230,6 +230,26 @@ test('a record that will not read reports it rather than opening an empty deck',
   assert.equal(OPENED.length, 0, 'a failed read must not open a deck on nothing');
 });
 
+// The row carries both facts the session-link cell branches on: the URL when
+// the record names one, and the schema when it does not. The view shows a
+// dimmed icon rather than nothing in the empty case, and the two causes get
+// different tooltips, so an absent `agent` must stay distinguishable by schema
+// rather than collapsing into one blank.
+test('a record naming no harness session leaves agent empty, with schema still readable', () => {
+  seed([
+    rec({ short: 'named' }),
+    rec({ short: 'nocommit', agent_session: '' }),
+    rec({ short: 'old', schema: 1, agent_session: undefined }),
+  ]);
+  const by = Object.fromEntries(data.sessionRows.map(r => [r.id, r]));
+  assert.equal(by.named.agent, 'https://claude.ai/code/session_01SX');
+  assert.equal(by.nocommit.agent, '', 'a schema-3 record that named no session must not invent one');
+  assert.equal(by.nocommit.schema, 3, 'schema must survive so the empty case can say WHY it is empty');
+  assert.equal(by.old.agent, '');
+  assert.equal(by.old.schema, 1, 'a pre-schema-3 record is the other reason the link is absent');
+});
+
+
 // ── The join to a branch ────────────────────────────────────────────────────
 
 test('a branch chip addresses that branch at branch.html, not a filtered list', () => {
