@@ -284,3 +284,18 @@ test('the token headline is output, not the cache reads that dwarf it', () => {
   assert.equal(data.tokenShort(row), '338k');
   assert.match(data.tokenLabel(row), /cache read 92466018/);
 });
+
+test('the finder\'s open-session event switches panes and opens the record\'s reader', async () => {
+  const shellStub = window.__shell;
+  shellStub.goSessions = () => { shellStub._wentSessions = true; };
+  seed([rec()]);
+  FILES = { 'sessions/2026/08/2026-08-05-b8fae678.json': rec() };
+  OPENED = [];
+  window.document.dispatchEvent(new window.CustomEvent('web-tools:open-session',
+    { detail: { id: 'b8fae678', day: '2026-08-05' } }));
+  // The handler awaits the fetch; give the microtask queue a beat.
+  await new Promise(r => setTimeout(r, 20));
+  assert.equal(shellStub._wentSessions, true);
+  assert.equal(data.openSessionId, 'b8fae678');
+  assert.equal(OPENED.length, 1);
+});

@@ -16,6 +16,7 @@ const REGISTRY = 'me/registry';
 let FILES = {};    // "<path>" -> parsed JSON served from the registry
 let SAVES = [];    // every save call: { repo, path, value, message }
 let TREES = {};    // "<repo>" -> [blob paths] served from git/trees
+let SEARCH = null; // response served for /search/code
 
 class FakeGH {
   constructor(conf = {}) { this.repo = conf.repo || ''; this.ref = conf.ref || 'main'; }
@@ -26,6 +27,7 @@ class FakeGH {
   async req(path) {
     if (String(path).startsWith('git/trees/') && TREES[this.repo])
       return { tree: TREES[this.repo].map(p => ({ type: 'blob', path: p })), truncated: false };
+    if (String(path).startsWith('/search/code') && SEARCH) return SEARCH;
     throw Object.assign(new Error('404'), { status: 404 });
   }
   async save(path, value, message) { SAVES.push({ repo: this.repo, path, value, message }); return {}; }
@@ -64,6 +66,7 @@ window.__shell = shell;
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
   'lib/repo-address.js',
+  'lib/repo-sessions-cache.js',
   'lib/alpineComponents/quick-find.js',
 ]);
 
@@ -207,4 +210,55 @@ test('jotThis appends to a fresh read of lists/jots.json with the estate\'s comm
   assert.equal(SAVES[0].value.items[0].text, 'earlier');
   assert.equal(SAVES[0].value.items[1].text, 'quick idea');
   assert.match(SAVES[0].message, /^Jot "quick idea" via show-repo$/);
+});
+
+test('the content and session gates appear on plain queries of three characters or more', () => {
+  data.q = 'gz';
+  assert.ok(!data.rows.some(r => r.kind === 'code-gate'));
+  data.q = 'gzip';
+  assert.ok(data.rows.some(r => r.kind === 'code-gate'));
+  assert.ok(data.rows.some(r => r.kind === 'sess-gate'));
+});
+
+test('searchCode: hits with snippets replace the lanes for that query; editing reverts', async () => {
+  SEARCH = { items: [{
+    path: 'lib/gh-store.js',
+    repository: { full_name: 'me/tools' },
+    text_matches: [{ fragment: 'the gzip path packs the payload before the save' }],
+  }] };
+  data.q = 'gzip';
+  await data.searchCode('gzip');
+  const hits = data.rows.filter(r => r.kind === 'file');
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].path, 'lib/gh-store.js');
+  assert.match(hits[0].note, /gzip path packs/);
+  // No gates in results mode; editing the query falls back to the lanes.
+  assert.ok(!data.rows.some(r => r.kind === 'code-gate'));
+  data.q = 'gzip2';
+  assert.ok(data.rows.some(r => r.kind === 'code-gate'));
+});
+
+test('searchSessions greps the captured records and hits open via web-tools:open-session', async () => {
+  FILES['state/sessions.json'] = { rows: [
+    { id: 'aaaa1111', day: '2026-08-02', ask: 'wayback urls' },
+    { id: 'bbbb2222', day: '2026-08-05', ask: 'other work' },
+  ] };
+  FILES['sessions/2026/08/2026-08-02-aaaa1111.json'] = {
+    day: '2026-08-02', opening_ask: 'Can you use this api for the wayback urls?',
+    prompts: [{ at: 't', text: 'the archive prefix query' }], last_message: 'done',
+  };
+  FILES['sessions/2026/08/2026-08-05-bbbb2222.json'] = {
+    day: '2026-08-05', opening_ask: 'other work', prompts: [], last_message: 'nothing here',
+  };
+  data.q = 'archive prefix';
+  await data.searchSessions('archive prefix');
+  const hits = data.rows.filter(r => r.kind === 'session');
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].id, 'aaaa1111');
+  assert.match(hits[0].note, /archive prefix/);
+  const seen = [];
+  window.document.addEventListener('web-tools:open-session', e => seen.push(e.detail));
+  data.act(hits[0]);
+  assert.deepEqual(j(seen), [{ id: 'aaaa1111', day: '2026-08-02' }]);
+  assert.equal(data.q, '');
 });

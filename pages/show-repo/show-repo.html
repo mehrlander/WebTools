@@ -302,8 +302,10 @@
          tree, open the file); a pasted owner/repo[@ref]:path or repo@branch
          address resolves exactly, with no suggestions; +idea jots
          explicitly; plain text matches repos, the nav, file names from
-         cached trees, and PR titles, with a tap-gated estate-wide file-name
-         pass. The last row is always "Jot this", so a query that found
+         cached trees, and PR titles, with tap-gated deeper passes: an
+         estate-wide file-name pass, file CONTENTS via the code-search API,
+         and a client-side grep of the captured session records. The last
+         row is always "Jot this", so a query that found
          nothing is kept rather than lost. Sits in the SIDEBAR, not the
          header: pinned and ready on desktop, one drawer tap on a phone,
          where the header's nav already scrolls and its right end is already
@@ -4177,9 +4179,14 @@ function overview(){ return {
   nav, file names from cached trees (a tap-gated row extends the pass
   estate-wide, the stage's loadAllTrees economy), and PR titles — with a
   token-gated "Jot this" floor so an unmatched query lands in the pile
-  instead of nowhere. `/` focuses it; branch hits travel the
-  web-tools:open-branch-detail event, consumed in estate.js beside the
-  &detail= deep link it mirrors. The SIDEBAR holds
+  instead of nowhere. Two deeper passes sit behind their own tap gates:
+  "Search file contents" calls the code-search API (snippets via
+  text-match; default branches only), and "Search sessions" greps the
+  captured records in web-tools-private client-side, hits opening the
+  Sessions pane's paged reader. `/` focuses it; branch and session hits
+  travel the web-tools:open-branch-detail and web-tools:open-session
+  events, consumed in estate.js beside the &detail= deep link they
+  mirror. The SIDEBAR holds
   only what is contextual: in a repo its views + pins + recents; in the estate a
   compact Repos index (the estate members, grouped like the grid; its header icon
   opens the full grid) and the same app views the header's second group carries,

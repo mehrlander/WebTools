@@ -302,7 +302,7 @@
       "path": "tools/test/estate-sessions.test.mjs",
       "kind": "component",
       "protects": "The Sessions pane and the Lists merge behind it: both filters lapse rather than stranding the pane on an empty list, the pill routes through the shell so the URL keeps stamping, and a missing cache reads as empty rather than as an error. A record that names no harness session keeps an empty `agent` beside a readable `schema`, which is what lets the session-link cell say WHY it has no link instead of rendering nothing.",
-      "assertions": 14,
+      "assertions": 15,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
@@ -598,8 +598,8 @@
     {
       "path": "tools/test/quick-find.test.mjs",
       "kind": "component",
-      "protects": "The sidebar finder's lanes resolve as documented: #digits to open PRs, @ to the repo-then-file walk with fuzzy tree matching, pasted addresses exactly, plain text to repos, views, and cached file names, and the jot lanes write to the pile.",
-      "assertions": 12,
+      "protects": "The sidebar finder's lanes resolve as documented: #digits to open PRs, @ to the repo-then-file walk with fuzzy tree matching, pasted addresses exactly, plain text to repos, views, and cached file names, the tap-gated content and session searches to snippet rows, and the jot lanes write to the pile.",
+      "assertions": 15,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1
