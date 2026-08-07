@@ -38,7 +38,7 @@
       "subject": "the portable working conventions: the general-behavior hub",
       "status": "living",
       "reach": "injected",
-      "words": 1279,
+      "words": 1390,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -142,7 +142,7 @@
       "subject": "the friction log: one line per snag, symptom then corrected move",
       "status": "living",
       "reach": "project",
-      "words": 1740,
+      "words": 1876,
       "maintenance": "authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
     },
     {
@@ -166,7 +166,7 @@
       "subject": "the code layers and the admission rule that sorts a new file into one of them",
       "status": "living",
       "reach": "project",
-      "words": 1101,
+      "words": 895,
       "maintenance": "authored; the layer counts behind it are re-derived by scripts/unclaimed-code-survey.py rather than restated here, and lib/kits/README.md's former three-category list was reduced to the kit rule plus a pointer when this landed"
     },
     {

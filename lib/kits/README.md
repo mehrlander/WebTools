@@ -5,22 +5,19 @@ Themed logic libraries loaded via `gh.load`. Each kit is a plain script
 
 ## Concept
 
-The repo's code layers and the rule that sorts a new file into one of them
-are stated once, in [`docs/code-layers.md`](../../docs/code-layers.md). This
-section used to carry a three-category version of that list; it was the
-incomplete copy the wider statement was written to replace, and what remains
-here is the kit shelf's own admission rule.
+The repo's code layers, and which folder a new file belongs in, are stated once
+in [`docs/code-layers.md`](../../docs/code-layers.md). What follows is the kit
+shelf's own admission rule.
 
 A **kit** is a logic library that registers a namespace on `window`, with no
 Alpine coupling. (The daisyUI/Tailwind string helpers that used to live here as
 `fills.js` now hang off `window.html` in `vanilla-bundle.js`.)
 
 **That is the whole rule, and it does not distinguish this folder from `lib/`
-root.** A "kit is a portable capability" reading was written down on 2026-08-06
-and measured false the same day: 7 of the 21 files here have a runtime
-dependency on the hub's own chain, while 6 files in `lib/` root have none, so a
-third of this shelf is less portable than files that are not on it. Whether the
-two folders should be one is open in
+root.** A kit is not a "portable capability": 7 of the 21 files here have a
+runtime dependency on the hub's own chain, while 6 files in `lib/` root have
+none, so a third of this shelf is less portable than files that are not on it.
+Whether the two folders should be one is open in
 [`lib-root-kit-migration-dind5t`](../../tracker/tasks/lib-root-kit-migration-dind5t.md).
 Until it is settled a new logic module comes here, because most of them already
 are here and a wrong guess costs one `git mv`.

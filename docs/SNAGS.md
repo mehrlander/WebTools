@@ -22,6 +22,19 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### marker-on-a-living-doc: annotated a doc instead of fixing it
+Shipped a rule in `docs/code-layers.md`, measured it false the next day, and
+marked the section `Wrong` rather than correcting it. The banner then described
+text that had already been replaced, in a living document one day old that
+`CLAUDE.md` points every session at. The status convention was in context the
+whole time and still read as "mark it," because "annotate, do not rewrite" does
+not say which files it governs. It governs **records**. A living document exists
+to be currently true, so a marker on one is a note saying "this file contains
+something false" left in place of removing the false thing. Fix it; git carries
+what it used to say. The tell: a banner describing text no longer in the file.
+*(seen: 2026-08-06)*
+→ [CONVENTIONS.md](CONVENTIONS.md)
+
 ### ci-run-silently-not-started: a commit sat in an open PR with no checks
 A push to a PR branch produced no `synchronize` workflow run. Not a failure, not
 a cancellation, no run at all, so the PR's head commit carried zero checks and
