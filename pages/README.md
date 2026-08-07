@@ -91,6 +91,12 @@ the link-dense text twin of the visual index above.
 | `aic-kimi` | Art Institute Collection — fill | [view](https://mehrlander.github.io/web-tools/pages/drop/fills-concepts/3-reactive-surface/aic-kimi.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/drop/fills-concepts/3-reactive-surface/aic-kimi.html) |
 | `collection-browser` | The Art Institute of Chicago · Collection Browser | [view](https://mehrlander.github.io/web-tools/pages/drop/fills-concepts/3-reactive-surface/collection-browser.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/drop/fills-concepts/3-reactive-surface/collection-browser.html) |
 
+## pages/guides/
+
+| Page | Title | Links |
+|---|---|---|
+| `code-layers` | Code layers: current state and migration plan | [view](https://mehrlander.github.io/web-tools/pages/guides/code-layers.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/guides/code-layers.html) |
+
 ## lib/kits/demos/
 
 | Page | Title | Links |
@@ -101,12 +107,6 @@ the link-dense text twin of the visual index above.
 | `messaging` | messaging — living demo | [view](https://mehrlander.github.io/web-tools/lib/kits/demos/messaging.html) · [code](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/messaging.html) |
 | `persistence` | persistence — living demo | [view](https://mehrlander.github.io/web-tools/lib/kits/demos/persistence.html) · [code](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/persistence.html) |
 | `xlsx` | xlsx — living demo | [view](https://mehrlander.github.io/web-tools/lib/kits/demos/xlsx.html) · [code](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/xlsx.html) |
-
-## pages/memos/
-
-| Page | Title | Links |
-|---|---|---|
-| `code-layers` | Code layers: current state and migration plan | [view](https://mehrlander.github.io/web-tools/pages/memos/code-layers.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/memos/code-layers.html) |
 
 ## pages/news/
 

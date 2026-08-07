@@ -410,6 +410,20 @@
     ]
   },
   {
+    "label": "pages/guides/",
+    "top": "guides",
+    "items": [
+      {
+        "href": "guides/code-layers.html",
+        "label": "code-layers",
+        "title": "Code layers: current state and migration plan",
+        "note": "",
+        "thumb": "thumbs/guides/code-layers.png",
+        "code": "https://github.com/mehrlander/web-tools/blob/main/pages/guides/code-layers.html"
+      }
+    ]
+  },
+  {
     "label": "lib/kits/demos/",
     "top": "kit-demos",
     "items": [
@@ -460,20 +474,6 @@
         "note": "",
         "thumb": "thumbs/kit-demos/xlsx.png",
         "code": "https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/xlsx.html"
-      }
-    ]
-  },
-  {
-    "label": "pages/memos/",
-    "top": "memos",
-    "items": [
-      {
-        "href": "memos/code-layers.html",
-        "label": "code-layers",
-        "title": "Code layers: current state and migration plan",
-        "note": "",
-        "thumb": "thumbs/memos/code-layers.png",
-        "code": "https://github.com/mehrlander/web-tools/blob/main/pages/memos/code-layers.html"
       }
     ]
   },
