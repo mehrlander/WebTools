@@ -306,3 +306,19 @@ test('a row carries the survey evidence, and an unsurveyed one carries zeros', (
   const fresh = data.allBranchRows.find(r => r.name === 'fresh');
   assert.deepEqual(plain_([fresh.nUnique, fresh.nLanded, fresh.nMissing, fresh.noBase]), [0, 0, 0, false]);
 });
+
+test('the finder\'s open-branch-detail event opens the takeover like a deep link', () => {
+  window.__shell.goActivity = () => { window.__shell._activated = true; };
+  // A row the list carries opens seated in the full sequence…
+  window.document.dispatchEvent(new window.CustomEvent('web-tools:open-branch-detail',
+    { detail: { repo: 'me/home', name: 'fresh' } }));
+  assert.equal(window.__shell._activated, true);
+  assert.equal(data.detailRow?.name, 'fresh');
+  assert.ok(data.detail.rows.length > 1);
+  // …and one the cache does not know still opens, as a list of one.
+  window.document.dispatchEvent(new window.CustomEvent('web-tools:open-branch-detail',
+    { detail: { repo: 'me/tools', name: 'just-pushed' } }));
+  assert.equal(data.detailRow?.name, 'just-pushed');
+  assert.equal(data.detail.rows.length, 1);
+  data.closeDetail();
+});

@@ -275,7 +275,7 @@
       "path": "tools/test/estate-open-branches.test.mjs",
       "kind": "component",
       "protects": "The open-branches list shows open PRs and stranded branches only, freshest first.",
-      "assertions": 19,
+      "assertions": 20,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
@@ -594,6 +594,15 @@
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/quick-find.test.mjs",
+      "kind": "component",
+      "protects": "The sidebar finder's lanes resolve as documented: #digits to open PRs, the address grammar to branches and files with short-repo expansion, plain text to repos and views, and the token-gated Jot floor writes to the pile.",
+      "assertions": 10,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
     },
     {
       "path": "tools/test/ref-switch.test.mjs",
