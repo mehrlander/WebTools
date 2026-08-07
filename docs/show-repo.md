@@ -622,15 +622,34 @@ a failing tool call, however old, and it is the cross-session recurrence questio
 a corpus can count and a person cannot. **Repo** chips narrow it further, off the
 scoped list, and lapse back to All when the scope stops holding that repo.
 
-Tapping a row opens the full record inline (a takeover would need its own swipe
-deck and back stack for rows read one at a time): the asks in order, the files
-with their read/edit/write breakdown, and the failing calls with their bodies. A
-footnote names what the record could not have captured, since a schema-2 record
-has no files and a schema-1 record no calls at all, and an empty section would
-otherwise read as "this session did nothing" rather than "this was not captured
-then". Tapping a branch name jumps to Branches filtered to that repo, at scope
-All rather than Open, because the session outlives the branch and a merged branch
-must still be findable from the work that made it.
+Tapping a row, on either the ask or the short id, opens the session as a
+**conversation**: the record is fetched and handed to the swipe deck
+(`lib/session-render.js`), one card per ask and per assistant prose turn, with
+the tool calls attaching to the turn that issued them. Both halves are there,
+the calls carry their arguments and whatever body the record kept, and fenced
+blocks get chat-render's live views. The record is cached per id, and the
+renderer chain loads on first use, so a visit that never opens a session pays
+nothing for it.
+
+The deck's first card names what the record could not hold, and its last is the
+closing summary: the files with their read/edit/write breakdown, the tool
+histogram, and the tokens. Those two cards are the whole of what an inline
+expansion used to show below the row. That expansion is gone, and its going is
+the point: it put a summary between the reader and the conversation, so reaching
+the thing worth reading took two taps through a pane answering a question nobody
+had asked, and it made one record two surfaces to keep honest.
+
+A branch chip opens **that branch**, at [`pages/branch.html`](../pages/branch.html)
+(🌿), the estate's canonical single-branch address. It used to switch panes and
+filter Branches by repo, which answers "show me this branch" by leaving the
+reader somewhere else with the branch still to find and the session they were
+reading lost. A session's branch is frequently merged and so absent from that
+list altogether, which the old filter could not express.
+
+The same deck has a page of its own at [`pages/session.html`](../pages/session.html),
+addressed `#id=<short>`, `#gh=owner/repo:path`, or `#gz=` for a reader with no
+token. It opens the conversation on arrival; its facts card is the after-close
+state, not a waiting room.
 
 Below the list, **File attention** is the cross-session rollup: per path, how
 many **distinct** sessions opened it. Distinct sessions is the number that
@@ -667,9 +686,26 @@ The fold's scope is the **full** listing, never the batch it read: a record the
 per-crawl cap deferred keeps its row, and only a record genuinely gone from the
 store loses one. That is the same distinction `buildCache` draws in the activity
 cache, for the same reason, and it matters more here because the source is
-unregenerable. The cache also carries the `attention` rollup, computed once so
-the pane and anything later (the Docs registry's readership column, web-tools
-task `docs-read-tracking-sn9nj8`) read one derivation rather than two.
+unregenerable.
+
+A sha is not the only way a row goes stale, and the second way has no natural
+tell. A published record is frozen, so a row built by an older summarizer would
+keep its blob sha forever and never be re-read: add a field and it stays empty
+for the whole back catalogue. Each row therefore carries the summarizer's
+version (`v`, `ROW_V` in the lib), and `stalePaths` treats a version behind as
+stale exactly like a sha that moved. One pass after a summarizer change re-reads
+the store and heals it.
+
+**Two rollups ride the cache, and the split is not tidiness.** `attention` folds
+each row's `files`, which is that session's busiest eight, and answers "what is
+the estate working on." `docAttention` folds `docFiles`, the row's **complete**
+`docs/` slice, and answers "who opened this document," which the first cannot:
+a doc opened once in a session that touched forty files is exactly the reading
+being counted and exactly what a top-eight discards, and a registry row would
+have said zero with nothing on screen to suggest otherwise. Uncapped is
+affordable because the set is closed and small (43 files in this repo's `docs/`,
+a handful per session). `fileAttention(rows, cap, field)` computes both, so the
+two numbers cannot come to mean different things.
 
 Token gating: no token means the public default card only, no surfaces, no
 activity, no sessions, and no write controls. In that state the Repos view leads with a
@@ -804,10 +840,12 @@ set, and loaded on first open of the tab rather than at mount.
 [`docs/docs.json`](docs.json), in the same lazy shape. Two tables. The
 **documents census**: every `.md`/`.json` under `docs/`, each with its subject,
 its status (**living** claims current truth and is wrong when stale; **record**
-preserves a moment and is wrong when rewritten), and its maintenance (authored
-or generated, with the discipline that keeps it true); complete by construction,
-since `tools/test/docs-registry.test.mjs` holds the folder and the table to
-exactly one row per file. The census is navigated from a folder rail
+preserves a moment and is wrong when rewritten; **measured** carries dated
+observations and is corrected by re-probing), its **reach** and **words** (both
+derived, see below), and its maintenance (authored or generated, with the
+discipline that keeps it true); complete by construction, since
+`tools/test/docs-registry.test.mjs` holds the folder and the table to exactly one
+row per file. The census is navigated from a folder rail
 (2026-08-07): each directory is a row with rolled-up file count and word mass
 and its own GitHub link, the selected folder shows its direct files beside it
 with that folder's README subject as the gloss, and a reach filter moves the
@@ -829,7 +867,36 @@ time the tab opens. The claims table renders on its own **Claims** tab
 read as an appendix, first open, then folded behind a count; a tab keeps the
 census on one viewport and gives the table its own. The registry is authoritative for the claims it covers and
 owes the repo no inventory of them; the census, by contrast, is complete.
-Public, like the other two tabs.
+The census half is public, like the other two tabs.
+
+Three numbers sit on a row, and they answer three different questions. **Reach**
+(derived by `tools/build/docs-reach.mjs`, gated against the registry) says who
+*can* get to a file, strongest channel first: injected, project, skill, app,
+orphan. **Words** says how much of the folder it is. **Readership**, the eye
+column, says who actually opened it: distinct sessions, read from the private
+registry's `docAttention` rollup. Reach and readership are the pair worth reading
+together, since an orphan nobody opens and an orphan opened in nine sessions are
+different problems.
+
+Readership is the one token-gated thing on the tab. Without a token the column
+is **absent** rather than blank, because a blank one reads as "nobody opened
+it." Its caveats sit in the strip above it and are load-bearing: only sessions
+the recorder captured are covered, only the four file tools count (a file read
+through a shell command or by a subagent leaves no trace), and an **injected**
+doc says `injected` rather than reporting the zero it is guaranteed to score.
+That last case is the reason the caveats are on screen instead of in this file:
+`CONVENTIONS.md` and `SURFACING.md` are among the most-read documents in the
+estate and are precisely the two no file tool can see, so a bare count would rank
+them last.
+
+*Tests* is the same census one axis over, from [`docs/tests.json`](tests.json):
+every file in the suite with its kind (gate, lockstep, tool, kit, behavior,
+component, guard) and what breaks if it is deleted, its assertions, method,
+runner and boot-smoke count all derived from the files and gated against the
+registry. The strip cuts the total by kind rather than reporting it, since a
+pass count cannot tell a boot check from an adversarial gate, and a browser
+check reports **no** assertion count rather than zero, because `test()` is not
+its unit. Public.
 
 **Tools** (`?view=tools`) is a curated gallery of the utility pages the owner
 reaches for (the text-diff tool, the transform/compress round-trip, and so on),
@@ -1164,6 +1231,42 @@ the tap so a cache refresh cannot yank it; swipe on the header or the edge
 strips, arrow keys, or the chevrons move through it, clamped at the ends;
 Escape or the X closes. Staging a branch's changed files, the name's old tap
 action, moved into the branch menu as **Stage changed files**.
+
+**The header and the embedded page split the identity, and neither repeats the
+other.** The header keeps what it alone can say: which repo, which PR, and where
+you are in the list. The **branch name lives in the page**, on its own line with
+the full width. Both carried it for a day and at phone width both truncated, so
+one screen showed two stubs of one name; the header gave it up because it has
+less room and more to say. The page drops the repo and the PR link when framed
+(`window.self !== window.top`) and shows them standalone.
+
+**The takeover has its own address:** `?view=activity&detail=owner/repo@branch`,
+stamped while it is open, following each swipe, and cleared on close, so Back
+leaves the takeover rather than the view. The header's link button copies it.
+This was the one state in the view with no address: the list had `?view=activity`
+and the branch had its standalone page, and the reader in between could be
+reached only by tapping. A link naming a branch the current list no longer holds
+(a filter hides it, or it landed) still opens, as a list of one, since a link
+that resolves to nothing is worse than one with nowhere to swipe.
+
+**Its three sections are panes, not a scroll.** Guide, Files and Commits switch
+on a segmented control under the facts strip, with the counts on the labels, so
+the changed files are one tap from the top instead of below a screen of guide.
+Guide leads when the branch has one; Files leads when it does not. On a narrow
+viewport the file rows also start collapsed, since four open cards is most of a
+phone screen and the dense row list is what is worth seeing first there.
+
+Since 2026-08-06 the embedded page carries the branch's **guide** as well: the
+PR body, rendered through `kits/guide-render.js`, the renderer the FAB drawer
+has used since PR #295. The takeover therefore shows the whole picture in one
+place, judgment and mechanics both, and the two are sourced differently on
+purpose: the guide is READ from where it is written, and the file list is
+DERIVED from the compare. Neither is a copy of the other, which is what keeps
+this from being a second account of the branch to maintain (the reasoning is
+the merge guide's, one level down: do not restate what a live read answers).
+Arrows step through every PR the branch has had, since a merge ends a PR and
+not the branch, and `#gh=owner/repo&pr=<n>` addresses a PR directly, resolving
+to its own head and base rather than to today's default branch.
 
 This settles the host question in the branch-page-as-navigation task: the
 sequence lives in the shell, which already holds the list, and the standalone

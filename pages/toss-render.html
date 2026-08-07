@@ -1103,7 +1103,7 @@ window.fetch=function(input,init){try{
     if (ref) {
       // ?use=<ref>: fresh branch lib via raw + blob-import (no jsDelivr branch-tip lag).
       window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
-      const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`);
+      const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`, { cache: 'no-store' });
       if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
       const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
       try { await import(u); } finally { URL.revokeObjectURL(u); }

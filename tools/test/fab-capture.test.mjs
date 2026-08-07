@@ -24,7 +24,7 @@ window.__consoleLogs = [
 window.__loadedScripts = [{ path: 'kits/io.js', status: 'ok', auto: false }];
 window.__reads = [{ path: 'data/big.json', value: { rows: [1, 2, 3] } }];
 
-const Alpine = await startAlpine(window, ['lib/alpineComponents/path-picker.js', 'lib/alpineComponents/fab.js']);
+const Alpine = await startAlpine(window, ['lib/kits/guide-render.js', 'lib/alpineComponents/path-picker.js', 'lib/alpineComponents/fab.js']);
 const doc = window.document;
 
 Alpine.data('pageThing', () => ({

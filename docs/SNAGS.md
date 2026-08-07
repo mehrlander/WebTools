@@ -30,6 +30,39 @@ so `cdn.mjs` has nothing to resolve and markdown renders unstyled in every
 harness while the deployed page styles it fine. Read the documented limits
 before debugging shot pixels. *(seen: 2026-08-07)*
 → [environment/testing.md](environment/testing.md)
+
+### pre-build-boots-alpine-early: a page's own gh.load chain runs after its components init
+`branch.html` died with `Cannot read properties of undefined (reading 'fetchBrief')`.
+Nothing was wrong with the kit: importing `dist/web-tools.js` boots Alpine as part
+of the import (`alpine-bundle.js` is last in its auto-boot chain), so the
+`gh.load` calls written underneath run after Alpine has walked the DOM and called
+`init()`. Every kit the page loads for itself is undefined at that moment, and
+**which one you notice is arbitrary**, being whichever `init()` touches first: the
+same bug read as `reviewTarget.parse` on one path and `fetchBrief` one `await`
+later on another. That is why it looked like two unrelated faults. The build
+already fixes its own two instances by forcing `url-params.js` and
+`repo-address.js` into the auto-boot chain, which is the tell that the hazard is
+structural rather than a slip. **A page that imports the pre-build and then loads
+anything of its own needs a ready gate**, declared above the module script.
+Reproduce it by putting a `setTimeout` in front of the chain; a race that wins on
+a fast local harness is not fixed, only hidden. *(seen: 2026-08-07)*
+→ [docs/loader.md](loader.md) (timing invariant 8)
+
+### regex-backtracking-in-a-hook: a test that "hung" was the redactor going quadratic
+A new fixture made the session recorder's test run past 120s. The fixture was not
+the bug: the credential redactor's `[A-Z0-9_]*` runs were unbounded, so the engine
+retried the greedy run at every offset, quadratic in the length of any unbroken
+`[A-Za-z0-9_]` stretch (0.014s at 500 characters, 0.86s at 4,000). It runs on the
+**full** tool result before any cap applies, and inside a `Stop` hook, so the real
+symptom is not a slow test: it is a turn held open with nothing on stderr, in a
+file whose docstring promises it can never stop a turn. This estate feeds it
+`#gz=` base64url payloads routinely, which is exactly the shape that triggers it.
+**Bound every quantifier that can span attacker- or data-controlled text**, and
+prefer a cost assertion to a correctness one where the failure mode is a hang.
+*(seen: 2026-08-07)*
+→ [sessions/tools/record.py](https://github.com/mehrlander/web-tools-private/blob/main/sessions/tools/record.py)
+
+### marker-on-a-living-doc: annotated a doc instead of fixing it
 Marked a section `Wrong` after measuring its rule false, leaving a banner that
 described text already replaced, in a doc `CLAUDE.md` points every session at.
 "Annotate, do not rewrite" governs records; a living document gets fixed. The
@@ -203,6 +236,91 @@ a fragment URL renders as literal text, so a comment carrying a toss link needs
 the address checked after posting. *(seen: 2026-08-05)*
 → [SURFACING.md](SURFACING.md)
 
+**Corrected 2026-08-07: the escaping happens on WRITE too, and it corrupts the
+stored body.** The entry above reads the damage as a read-back artifact. It is
+not. A guide body written through `update_pull_request` comes back from GitHub
+with its `&` HTML-escaped and, past a threshold, the whole markdown link wrapped
+in a code span, so the Look line renders as literal text on github.com and in
+every reader of the body. Measured with seven variants written and read back: a
+bare URL, a fragment (`#gh=…`), an at-sign in a query value, and TWO query
+parameters all survive; THREE parameters get wrapped. The `&amp;` alone is
+harmless, since it is the correct escape and renders as `&`; the code span is
+the damage. So a body link keeps to two parameters and names any third in prose,
+and a body carrying a live link is read back after writing. Twice before
+measuring this I attributed the corruption to a typo in someone else's PR body,
+which is what an unverified guess about another author looks like.
+*(seen: 2026-08-07)*
+→ [SURFACING.md](SURFACING.md)
+
+**`prose` is not available on most pages, and it fails silently.** A guide body
+rendered on `pages/branch.html` with `prose prose-sm` came out with no bullets
+and no link color. Adding `@tailwindcss/typography` to the page's jsDelivr
+combine did not fix it: the stylesheet loaded, and its rules still did not match,
+so two rounds went into a plugin that was never the answer. The FAB had already
+settled this and said so in a comment beside its own guide body: it mounts on
+every page that boots lib, the plugin is a separate CDN entry not all of them
+carry, and it styles markdown with explicit descendant utilities instead. The
+rule is the general one and it is about search order, not CSS: **before styling
+a thing the estate already renders somewhere, read how the existing renderer
+does it.** The classes now live once, in `kits/guide-render.js`, at two sizes.
+*(seen: 2026-08-06)*
+→ [show-repo.md](show-repo.md)
+
+**A 🌿 closer is a hosted link, so it runs main's page.** This session added the
+`&pr=<n>` address to `pages/branch.html`, then handed over
+`…/pages/branch.html#gh=owner/repo&pr=364` in chat. github.io serves the page
+file from the default branch, so the link ran **main's** copy, which has no
+`pr` handling, read the address as a repo with no branch, and showed its empty
+form. Nothing errored, and the failure looked like a broken feature rather than
+a link pointing at the wrong build. The same turn had used the correct toss form
+in the PR body, which is the tell: the rule was known and applied in one place
+and not the other. **A page-shell change is not shown by any hosted link,
+including the caption's own 🌿 and 🧭 closers**, so toss it until it merges, and
+put the page's params in the address's `?query` position where the shim hands
+them over whole. *(seen: 2026-08-06)*
+→ [showing.md](showing.md)
+
+**A daisyUI color inside an arbitrary variant generates nothing, silently.**
+Guide bodies were styled with `[&_a]:text-primary [&_ul]:list-disc …`, and the
+links were never blue, in the FAB since PR #295 and on the branch page since the
+kit was extracted. The cause is a split nobody would guess from the class list:
+daisyUI ships its color utilities PREBUILT in its own stylesheet, so a bare
+`text-primary` works, while the arbitrary-variant form has to be generated by
+the Tailwind browser build, which never sees daisyUI's theme tokens and emits no
+rule. Core utilities in the same string (`underline`, `list-disc`) generated
+fine, which is what made it invisible: the body looked styled. **A component
+that must style content it did not author should ship a stylesheet, not a class
+list**, since the class list depends on a generation step it cannot verify.
+`kits/guide-render.js` injects one, and a test asserts the link rule exists.
+*(seen: 2026-08-07)*
+→ [show-repo.md](show-repo.md)
+
+**`?use=` served a stale bundle, and a comment said it could not.** A fix was
+pushed, the preview link still showed the old behavior, and three rounds went
+into the wrong readings: a broken fix, a stale CDN, the viewer's browser. The
+loaders fetch the pinned ref's bundle from raw.githubusercontent and blob-import
+it, and two page comments claimed the blob import made "a branch name
+cache-safe." It defeats the MODULE cache, keyed by URL; nothing was defeating
+the HTTP cache, keyed by the same URL, and a branch ref MOVES. So a preview
+could serve an earlier push with nothing on screen to say so, which is invisible
+by construction rather than merely easy to miss. All 33 loaders now pass
+`cache: 'no-store'`, and `tools/test/use-ref-no-store.test.mjs` holds them
+there, since the bug is a missing argument in files nobody edits together. The
+general shape: **a comment asserting an absence of a problem is where to look
+first when the problem is present**, and one that names a mechanism ("the module
+cache") while implying a category ("caching") is the most convincing kind of
+wrong.
+
+**Until the fix is on main, and as the safer form afterwards: pin a COMMIT SHA,
+not a branch name.** `?use=<sha>` is an immutable URL, so no cache can serve
+something older; a new commit is a new address. The loader that does the
+fetching lives in the DEPLOYED page, served from the default branch, so a fix
+to it on a feature branch cannot help a link handed over before that branch
+merges, and neither can opening the page standalone rather than through the
+takeover. The guide-PR template in SURFACING.md has said "branch preview w/
+commit SHA" all along; this session handed over branch names for a day and paid
+for it four times. *(seen: 2026-08-07)*
+→ [showing.md](showing.md)
 **Built a form whose fields stopped short of their labels on a phone, and
 whose desktop layout was a ribbon down the middle of a 1440px screen.** Two
 separate causes, both invisible without measuring. daisyUI's `.input` and

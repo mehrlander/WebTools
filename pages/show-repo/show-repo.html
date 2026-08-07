@@ -19,11 +19,13 @@
   // to preview stale). raw serves public files anonymously with permissive
   // CORS, and a blob: URL imports despite raw's text/plain type because the
   // blob sets its own JS type; the bundle is one self-contained module (no
-  // internal imports), so blob-import is clean and a branch name is cache-safe
+  // internal imports), so blob-import is clean. The fetch sets cache: 'no-store',
+  // since a branch ref MOVES and the HTTP cache is keyed by URL alone: blob
+  // import defeats the module cache and nothing was defeating the other one
   // (no SHA needed). The no-?use path stays the fastest same-origin import.
   const ref = new URLSearchParams(location.search).get('use');
   if (ref) {
-    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`);
+    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`, { cache: 'no-store' });
     if (!src.ok) throw new Error(`?use=${ref}: could not fetch the bundle (HTTP ${src.status})`);
     const url = URL.createObjectURL(new Blob([await src.text()], { type: 'text/javascript' }));
     try { await import(url); } finally { URL.revokeObjectURL(url); }
@@ -3266,7 +3268,7 @@ function app(){ return {
     if (this.view === 'files' && s.ref && s.ref !== s.defaultRef) p.set('ref', s.ref); else p.delete('ref');
     p.delete('file'); p.delete('view'); p.delete('path'); p.delete('project'); p.delete('tab');
     p.delete('appRepo'); p.delete('appPath'); p.delete('appRef');
-    p.delete('appLabel'); p.delete('appIcon');
+    p.delete('appLabel'); p.delete('appIcon'); p.delete('detail');
     if (this.view === 'files') {
       // A cross-repo staged file (activeFile.origin from another repo) has no
       // honest ?file= deep link against the open repo, so it gets none.
@@ -3290,7 +3292,14 @@ function app(){ return {
     else if (this.view === 'config') p.set('view', 'config');
     else if (this.view === 'todo') p.set('view', 'todo');
     else if (this.view === 'jots') p.set('view', 'jots');
-    else if (this.view === 'activity') p.set('view', 'activity');
+    else if (this.view === 'activity') {
+      p.set('view', 'activity');
+      // The branch open in the takeover, when one is. Being inside the swiper
+      // is a state worth linking to and was the one state here without an
+      // address: the list had ?view=activity, the branch had its standalone
+      // page, and the reader in between could only be reached by tapping.
+      if (this.detailSpec) p.set('detail', this.detailSpec);
+    }
     else if (this.view === 'sessions') p.set('view', 'sessions');
     else if (this.view === 'map') {
       p.set('view', 'map');
@@ -3314,6 +3323,22 @@ function app(){ return {
     }
     else if (this.view === 'estate' && (p.has('repo') || p.has('ref'))) p.set('view', 'estate');
     return p;
+  },
+
+  // The estate's branch takeover reports what it has open, so the address can
+  // follow a swipe. Empty when it closes, which is what makes Back leave the
+  // takeover rather than the view.
+  //
+  // SEEDED FROM THE URL, and that is load-bearing rather than tidy.
+  // deepLinkParams rebuilds the query from a whitelist, so it deletes `detail`
+  // and re-stamps it from this field. Left empty at boot, the first syncUrl
+  // therefore erased an incoming `&detail=` before the estate ever read it, and
+  // the link opened the plain Activity list with nothing to say why.
+  detailSpec: new URLSearchParams(location.search).get('detail') || '',
+  setDetail(spec){
+    if (this.detailSpec === spec) return;
+    this.detailSpec = spec || '';
+    this.syncUrl();
   },
 
   syncUrl(){

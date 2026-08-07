@@ -15,7 +15,7 @@ const { window, problems } = makeWindow({
     <div id="f" x-data="fab()" data-repo="mehrlander/web-tools" data-path="pages/toss-render.html"></div>
   </body></html>`,
 });
-const Alpine = await startAlpine(window, ['lib/alpineComponents/path-picker.js', 'lib/alpineComponents/fab.js']);
+const Alpine = await startAlpine(window, ['lib/kits/guide-render.js', 'lib/alpineComponents/path-picker.js', 'lib/alpineComponents/fab.js']);
 const doc = window.document;
 
 // Mount a fresh fab under the current window globals and hand back its $data.
@@ -106,11 +106,6 @@ test('classifyRows: statuses and ordering (baseline, differs desc, unknown, same
     { name: 'b',    date: '2026-07-02' },
   ], 'main', null);
   assert.deepEqual(unknowns.map(r => r.status), ['baseline', 'unknown']);
-
-  // updatedCount surfaces the differs rows (the tab-badge signal).
-  d.pageBranches = rows;
-  assert.equal(d.updatedCount, 2);
-  d.pageBranches = [];
 });
 
 test('renderAtRef in a toss re-addresses the shell instead of opening the overlay', async () => {

@@ -221,8 +221,25 @@ validity, the page reader's projection, the gz round-trip).
 
 ## Tail
 
-When the branch has a guide PR (or a branch-guide file), close with the
-pointer: `🧭 [PR #N](<url>)`.
+When the branch has a guide PR, close with **both** pointers, 🌿 first:
+
+```
+🌿 [branch](https://mehrlander.github.io/web-tools/pages/branch.html#gh=<owner>/<repo>&pr=<n>) · 🧭 [PR #N](<url>)
+```
+
+They name the same PR and are not redundant, because they open different
+readings of it:
+
+- **🌿 the branch page** renders the guide body *and* the derived file list as
+  diff cards, with the body's file links re-aimed at what can show each file.
+  One tap, the whole picture, current at open time. Token-gated like every
+  `#gh=` address, so it may fail in an in-app browser.
+- **🧭 GitHub** is where the PR is *operated*: the Files tab, comments, checks,
+  the merge button. It is also the tokenless fallback when 🌿 will not resolve.
+
+With no PR, 🌿 still works on the branch alone
+(`#gh=<owner>/<repo>@<branch>`) and 🧭 is omitted. Drop 🌿 in a repo whose
+branches the viewer's token cannot read.
 
 ## The recap form
 

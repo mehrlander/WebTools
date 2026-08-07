@@ -90,8 +90,19 @@ test('the ref pair reaches the cards too', () => {
   assert.equal(d.baseName, 'main');
 });
 
-test('a card addresses the real repo when it fetches', () => {
-  assert.ok(fetched.length, 'the open cards fetched their content');
+test('the cards mount without fetching, since the compare handed them their patches', () => {
+  assert.deepEqual(fetched, [],
+    'a card holding its patch has nothing to fetch until a tab needs the bytes');
+});
+
+test('a card addresses the real repo when it does fetch', async () => {
+  // The trap this file exists for: `this.repo` inside an x-data expression can
+  // resolve to the `repo` DATA PROVIDER, and every contents call then addresses
+  // a function. The fetch is now deliberate rather than automatic, so provoke
+  // it the way a reader would, by asking for the diff.
+  Alpine.$data(cards()[0]).setTab('diff');
+  await tick(4);
+  assert.ok(fetched.length, 'choosing Diff fetches both sides');
   for (const spec of fetched) assert.ok(spec.startsWith(REPO + '@'), spec);
 });
 
