@@ -145,7 +145,7 @@ Two operations read the whole tracker rather than one task, and they are distinc
 - **Assessment interprets.** It reads the tracker as a whole and renders judgment: the workstreams the open tasks form, framing that has fallen behind the work, decisions hiding inside tasks, differences in scale and readiness, bundles that would travel together, and good next-session candidates. It recommends and does not mutate.
 - **Refinement mutates.** It restores scope truth in the task files: closing stale or superseded tasks, reframing inaccurate ones, narrowing residual work, splitting or consolidating where justified. Refinement is the canonical name for the operation earlier material called grooming; the older phrase still invokes it.
 
-The cycle they form: tracker state → assessment → refinement → dispatch and execution → changed tracker state → later assessment. Neither obligates the other. A refinement pass does not owe an assessment record, and an assessment does not commit anyone to acting on it. The [`tasks` skill](../.claude/skills/tasks/SKILL.md) carries the operating rules for both; what belongs here is the record.
+The cycle they form: tracker state → assessment → refinement → dispatch and execution → changed tracker state → later assessment. Neither obligates the other. A refinement pass does not owe an assessment record, and an assessment does not commit anyone to acting on it. The split is one of permission and record, not sequencing: asking for an assessment alone does not authorize refinement, and one session may do both in a single pass once the refinement is agreed. The [`tasks` skill](../.claude/skills/tasks/SKILL.md) carries the operating rules for both; what belongs here is the record.
 
 ### The assessment record
 

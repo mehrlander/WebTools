@@ -218,8 +218,11 @@ scratch-branch recipe as any tracker state. Never edit a past assessment: it
 is a dated record, aged rather than wrong when the tracker moves on; supersede
 it with a new one.
 
-Acting on what an assessment recommends is refinement, below, and takes its
-own confirmation.
+Mutating anything the assessment recommends is refinement, below. The
+boundary between the two is permission, not sequencing: an assessment-only
+ask does not imply consent to refine, but when the user asks for both, or
+confirms the findings in the same conversation, one pass assesses and then
+applies the agreed refinement without a second round trip.
 
 ## Refine the tracker
 
