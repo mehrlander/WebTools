@@ -19,11 +19,13 @@
   // to preview stale). raw serves public files anonymously with permissive
   // CORS, and a blob: URL imports despite raw's text/plain type because the
   // blob sets its own JS type; the bundle is one self-contained module (no
-  // internal imports), so blob-import is clean and a branch name is cache-safe
+  // internal imports), so blob-import is clean. The fetch sets cache: 'no-store',
+  // since a branch ref MOVES and the HTTP cache is keyed by URL alone: blob
+  // import defeats the module cache and nothing was defeating the other one
   // (no SHA needed). The no-?use path stays the fastest same-origin import.
   const ref = new URLSearchParams(location.search).get('use');
   if (ref) {
-    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`);
+    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`, { cache: 'no-store' });
     if (!src.ok) throw new Error(`?use=${ref}: could not fetch the bundle (HTTP ${src.status})`);
     const url = URL.createObjectURL(new Blob([await src.text()], { type: 'text/javascript' }));
     try { await import(url); } finally { URL.revokeObjectURL(url); }

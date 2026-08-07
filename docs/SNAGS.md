@@ -222,3 +222,20 @@ list**, since the class list depends on a generation step it cannot verify.
 `kits/guide-render.js` injects one, and a test asserts the link rule exists.
 *(seen: 2026-08-07)*
 → [show-repo.md](show-repo.md)
+
+**`?use=` served a stale bundle, and a comment said it could not.** A fix was
+pushed, the preview link still showed the old behavior, and three rounds went
+into the wrong readings: a broken fix, a stale CDN, the viewer's browser. The
+loaders fetch the pinned ref's bundle from raw.githubusercontent and blob-import
+it, and two page comments claimed the blob import made "a branch name
+cache-safe." It defeats the MODULE cache, keyed by URL; nothing was defeating
+the HTTP cache, keyed by the same URL, and a branch ref MOVES. So a preview
+could serve an earlier push with nothing on screen to say so, which is invisible
+by construction rather than merely easy to miss. All 33 loaders now pass
+`cache: 'no-store'`, and `tools/test/use-ref-no-store.test.mjs` holds them
+there, since the bug is a missing argument in files nobody edits together. The
+general shape: **a comment asserting an absence of a problem is where to look
+first when the problem is present**, and one that names a mechanism ("the module
+cache") while implying a category ("caching") is the most convincing kind of
+wrong. *(seen: 2026-08-07)*
+→ [showing.md](showing.md)

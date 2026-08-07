@@ -893,6 +893,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/use-ref-no-store.test.mjs",
+      "kind": "guard",
+      "protects": "Every ?use= loader fetches with cache: no-store. A ?use= ref is usually a branch, which moves, and the HTTP cache is keyed by URL alone, so without this a preview link serves a bundle from an earlier push and shows old code with nothing on screen to say so.",
+      "assertions": 2,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/viewer.test.mjs",
       "kind": "component",
       "protects": "The file viewer mounts clean and plumbs the map option onto its default mode.",
