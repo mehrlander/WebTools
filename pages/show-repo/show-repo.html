@@ -50,6 +50,9 @@
   await gh.load('repo-proposals.js');
   // The owner/repo[@ref]:path grammar, and the inbox/outbox boxes built on it.
   await gh.load('repo-address.js');
+  // The estate's search calls (trees, code-search API, session grep) with one
+  // shared cache, behind the sidebar finder and the Search view.
+  await gh.load('estate-search.js');
   // Pure alignment assessment behind the Portable view (window.PortableAlign).
   await gh.load('portable-align.js');
   // Declared staleness checks, evaluated on sight from a repo's own config.
@@ -1308,6 +1311,22 @@
       </div>
     </div>
 
+    <!-- The Search view: the parameterized search surface (file names at any
+         ref, contents through the code-search API, the captured session
+         records), over the same shared core the sidebar finder uses
+         (lib/estate-search.js). The finder is for jumping; this is for
+         investigating, and it is where each mode's caveats are stated in
+         full. Estate-level, token-gated in effect, its own component and
+         lazy mount; the finder's "File contents" gate routes here with the
+         query carried over (goSearch → searchSeed). -->
+    <div x-show="view==='search'" data-pane="search" class="h-full overflow-y-auto">
+      <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 max-w-4xl">
+        <template x-if="searchSeen">
+          <div x-data="searchView()"></div>
+        </template>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -1435,7 +1454,7 @@ function app(){ return {
               desc: 'Leave the embed and open the framed page full-viewport.',
               run: () => ({ nav: href }) }];
   },
-  view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'landing' | 'pages' | 'atlas' | 'files' | 'stage' | 'branches' | 'config' | 'app' | 'public'
+  view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'files' | 'stage' | 'branches' | 'config' | 'app' | 'public'
   drawer: false,          // mobile sidebar (pinned on desktop, ignores this)
   atlasSeen: false,       // mount the atlas iframe lazily, on first visit
   estateSeen: false,      // mount the estate component lazily, on first visit
@@ -1444,6 +1463,11 @@ function app(){ return {
   mapSeen: false,         // mount the map component lazily, on first visit
   mapTab: 'set',          // the Map view's open tab, held HERE and not in map() because the URL is the shell's to own (see goMap)
   toolsSeen: false,       // mount the tools component lazily, on first visit
+  searchSeen: false,      // mount the search view lazily, on first visit
+  // What the Search view is showing, parked by goSearch (the finder's gate, a
+  // deep link's ?sq= family) and restamped by the view on each run so a search
+  // is an address. Null when nothing is parked.
+  searchSeed: null,
   publicSeen: false,      // mount the public-browse component lazily, on first visit
   publicSeed: '',         // repo the public browser should open; a card sets it, the component watches it
   _restoring: false,      // true while restoring state from a popstate (see syncUrl)
@@ -1588,6 +1612,7 @@ function app(){ return {
     else if (url && url.view === 'sessions') this.goSessions();
     else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap(url.tab);
     else if (url && url.view === 'tools') this.goTools();
+    else if (url && url.view === 'search') this.goSearch({ q: url.sq, mode: url.smode, repo: url.srepo, ref: url.sref });
     else if (url && url.view === 'proposals') this.goProposals();
     else if (url && url.view === 'atlas') this.goAtlas();
     else if (url && url.view === 'stage') this.goStage();
@@ -3267,7 +3292,8 @@ function app(){ return {
              file: p.get('file'), view: p.get('view'), path: p.get('path') || '',
              project: p.get('project') || '', tab: p.get('tab') || '',
              appRepo: p.get('appRepo') || '', appPath: p.get('appPath') || '', appRef: p.get('appRef') || '',
-             appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '' };
+             appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '',
+             sq: p.get('sq') || '', smode: p.get('smode') || '', srepo: p.get('srepo') || '', sref: p.get('sref') || '' };
   },
 
   // The shell's state as URL parameters, built onto whatever base is handed in.
@@ -3288,6 +3314,7 @@ function app(){ return {
     p.delete('file'); p.delete('view'); p.delete('path'); p.delete('project'); p.delete('tab');
     p.delete('appRepo'); p.delete('appPath'); p.delete('appRef');
     p.delete('appLabel'); p.delete('appIcon'); p.delete('detail');
+    p.delete('sq'); p.delete('smode'); p.delete('srepo'); p.delete('sref');
     if (this.view === 'files') {
       // A cross-repo staged file (activeFile.origin from another repo) has no
       // honest ?file= deep link against the open repo, so it gets none.
@@ -3327,6 +3354,19 @@ function app(){ return {
       if (this.mapTab && this.mapTab !== 'set') p.set('tab', this.mapTab);
     }
     else if (this.view === 'tools') p.set('view', 'tools');
+    // The Search view's address carries the ran search (sq + friends, stamped
+    // from searchSeed, which the view updates on each run), so a search can be
+    // shared like any other screen. A bare ?view=search opens it empty.
+    else if (this.view === 'search') {
+      p.set('view', 'search');
+      const sd = this.searchSeed;
+      if (sd?.q) {
+        p.set('sq', sd.q);
+        if (sd.mode && sd.mode !== 'names') p.set('smode', sd.mode);
+        if (sd.repo) p.set('srepo', sd.repo);
+        if (sd.ref) p.set('sref', sd.ref);
+      }
+    }
     // App views are estate-level, so the link stands alone (like the Stage): stamp
     // the view plus the promoted page's repo and path, independent of the open repo.
     else if (this.view === 'app' && this.appView) {
@@ -3390,6 +3430,7 @@ function app(){ return {
     else if (url && url.view === 'sessions') this.goSessions();
       else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap(url.tab);
       else if (url && url.view === 'tools') this.goTools();
+    else if (url && url.view === 'search') this.goSearch({ q: url.sq, mode: url.smode, repo: url.srepo, ref: url.sref });
     else if (url && url.view === 'proposals') this.goProposals();
       else if (url && url.view === 'pages') this.goPages();
       else if (url && url.view === 'atlas') this.goAtlas();
@@ -3461,7 +3502,7 @@ function app(){ return {
   // App views are estate-level (peers of Repos/Stage), so they share
   // the estate sidebar context: the per-repo view list stays hidden and the
   // header reads "Repositories".
-  get estateCtx(){ return this.isEstate || this.view === 'map' || this.view === 'tools' || this.view === 'app' || this.view === 'public'; },
+  get estateCtx(){ return this.isEstate || this.view === 'map' || this.view === 'tools' || this.view === 'search' || this.view === 'app' || this.view === 'public'; },
   // Whether the pinned desktop sidebar has anything to show: always in a repo
   // (its views / pins / recents), and in the estate whenever it has repo-sourced
   // content — the Repos index or the app views (News). Both are token-gated, so
@@ -3523,6 +3564,7 @@ function app(){ return {
       { view: 'stage', views: ['stage', 'surfaces'],
         icon: 'ph-stack',        label: 'Stage',    go: () => this.goStage() },
       { view: 'tools',    icon: 'ph-wrench',       label: 'Tools',    go: () => this.goTools() },
+      { view: 'search',   icon: 'ph-magnifying-glass', label: 'Search', go: () => this.goSearch() },
       { view: 'map',      icon: 'ph-compass',      label: 'Map',      go: () => this.goMap() },
       // Proposals is the one conditional entry: an empty channel should cost no
       // attention, so it appears only while something is pending (or while the
@@ -3597,6 +3639,16 @@ function app(){ return {
   goPortable(){ this.goMap(); },
   // The Tools view: the curated utility-page gallery (docs/tools.json), public.
   goTools(){ this.toolsSeen = true; this.view = 'tools'; this.syncUrl(); },
+  // Open the Search view, optionally seeded ({ q, mode, repo, ref }). A seed
+  // reaches a mounted view by event (the component mounts once and persists
+  // behind x-show); a first mount reads shell.searchSeed in its init instead.
+  goSearch(opts){
+    if (opts && opts.q != null) {
+      this.searchSeed = { q: opts.q || '', mode: opts.mode || '', repo: opts.repo || '', ref: opts.ref || '' };
+      if (this.searchSeen) document.dispatchEvent(new CustomEvent('web-tools:search-seed', { detail: this.searchSeed }));
+    }
+    this.searchSeen = true; this.view = 'search'; this.syncUrl();
+  },
   // The Proposals view: pending cross-repo edits awaiting the user's confirm.
   goProposals(){ this.proposalsSeen = true; this.view = 'proposals'; this.syncUrl(); },
   // Open is the estate's cross-repo live-branch view; the one estate component

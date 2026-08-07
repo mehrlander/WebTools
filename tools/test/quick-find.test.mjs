@@ -60,6 +60,8 @@ const shell = {
   estateNav: [{ view: 'map', label: 'Map', icon: 'ph-compass', go: () => shell._went.push('map') }],
   appNav: [],
   _went: [],
+  _searched: [],
+  goSearch(opts) { shell._searched.push(opts); },
 };
 window.__shell = shell;
 
@@ -67,6 +69,7 @@ const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
   'lib/repo-address.js',
   'lib/repo-sessions-cache.js',
+  'lib/estate-search.js',
   'lib/alpineComponents/quick-find.js',
 ]);
 
@@ -220,22 +223,12 @@ test('the content and session gates appear on plain queries of three characters 
   assert.ok(data.rows.some(r => r.kind === 'sess-gate'));
 });
 
-test('searchCode: hits with snippets replace the lanes for that query; editing reverts', async () => {
-  SEARCH = { items: [{
-    path: 'lib/gh-store.js',
-    repository: { full_name: 'me/tools' },
-    text_matches: [{ fragment: 'the gzip path packs the payload before the save' }],
-  }] };
+test('the contents gate routes to the Search view with the query carried over', () => {
   data.q = 'gzip';
-  await data.searchCode('gzip');
-  const hits = data.rows.filter(r => r.kind === 'file');
-  assert.equal(hits.length, 1);
-  assert.equal(hits[0].path, 'lib/gh-store.js');
-  assert.match(hits[0].note, /gzip path packs/);
-  // No gates in results mode; editing the query falls back to the lanes.
-  assert.ok(!data.rows.some(r => r.kind === 'code-gate'));
-  data.q = 'gzip2';
-  assert.ok(data.rows.some(r => r.kind === 'code-gate'));
+  const gate = data.rows.find(r => r.kind === 'code-gate');
+  data.act(gate);
+  assert.deepEqual(j(shell._searched), [{ q: 'gzip', mode: 'contents' }]);
+  assert.equal(data.q, '');
 });
 
 test('searchSessions greps the captured records and hits open via web-tools:open-session', async () => {
@@ -256,9 +249,17 @@ test('searchSessions greps the captured records and hits open via web-tools:open
   assert.equal(hits.length, 1);
   assert.equal(hits[0].id, 'aaaa1111');
   assert.match(hits[0].note, /archive prefix/);
+  // The clear row heads the results and dismisses them without touching q,
+  // so retyping the query cannot resurrect stale hits unasked.
+  const head = data.rows.find(r => r.kind === 'clear');
+  assert.match(head.label, /1 session hit/);
   const seen = [];
   window.document.addEventListener('web-tools:open-session', e => seen.push(e.detail));
   data.act(hits[0]);
   assert.deepEqual(j(seen), [{ id: 'aaaa1111', day: '2026-08-02' }]);
   assert.equal(data.q, '');
+  data.q = 'archive prefix';
+  data.act(data.rows.find(r => r.kind === 'clear'));
+  assert.equal(data.sess_, null);
+  assert.ok(data.rows.some(r => r.kind === 'sess-gate'));
 });
