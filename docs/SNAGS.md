@@ -22,7 +22,14 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
-### marker-on-a-living-doc: annotated a doc instead of fixing it
+### headless-shot-prose-flat: typography CSS misses in screenshots
+Chased flat prose headings in a shot as though the page were broken, including
+a pointless `npm i -D @tailwindcss/typography`; the limit was already
+documented, dated 2026-08-01: the typography npm tarball ships no built CSS,
+so `cdn.mjs` has nothing to resolve and markdown renders unstyled in every
+harness while the deployed page styles it fine. Read the documented limits
+before debugging shot pixels. *(seen: 2026-08-07)*
+→ [environment/testing.md](environment/testing.md)
 Marked a section `Wrong` after measuring its rule false, leaving a banner that
 described text already replaced, in a doc `CLAUDE.md` points every session at.
 "Annotate, do not rewrite" governs records; a living document gets fixed. The

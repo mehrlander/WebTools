@@ -428,7 +428,7 @@
       "path": "tools/test/map-view.test.mjs",
       "kind": "component",
       "protects": "The Map view mounts, loads the public set, and reports adoption without startup warnings, and its open tab stays addressable: the shell validates ?tab= and stamps every tab but the default, and the component renders and loads whichever tab it is handed, by URL or by tap.",
-      "assertions": 17,
+      "assertions": 18,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1

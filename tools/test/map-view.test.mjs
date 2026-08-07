@@ -53,6 +53,9 @@ window.GH = class {
 // No window.__shell in the test, so hasToken() is falsy and the token-gated
 // adoption probe never runs; only the public set half loads.
 
+// The doc sheet nests a sheetModal in the Docs template; the page gets it from
+// the pre-build's auto-boot, so the harness evaluates the real component too.
+new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/sheet-modal.js'), 'utf8'))();
 new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/map.js'), 'utf8'))();
 Alpine.start();
 await tick(3);
@@ -139,6 +142,35 @@ test('the Docs folder rail rolls up, nests, and prunes by reach without changing
   assert.equal(data.folderGh('docs/envelopes'),
     'https://github.com/mehrlander/web-tools/tree/main/docs/envelopes',
     'a folder links to its GitHub tree at the read ref');
+});
+
+test('a row title opens the doc sheet: fetched full, rendered by kind, cached', async () => {
+  // marked stubbed so the markdown path is deterministic and offline; the
+  // component only lazily loads the CDN copy when window.marked is absent.
+  window.marked = { parse: (t) => '<h1>md</h1><!-- ' + t.length + ' chars -->' };
+
+  const fetchesBefore = asked.length;
+  await data.openDocSheet({ path: 'docs/CONVENTIONS.md' });
+  assert.equal(data.docSheet.err, '');
+  assert.equal(data.docSheet.loading, false);
+  assert.equal(data.docSheet.name, 'CONVENTIONS.md', 'the sheet header carries the filename');
+  assert.match(data.docSheet.html, /prose/, 'markdown renders as prose');
+  // The DOM is painted imperatively (the sheet's slot cannot hold live
+  // bindings; see the template note in map.js), so assert the pixels' side
+  // of the contract too, not only the state.
+  const mapEl = window.document.getElementById('map');
+  assert.ok(mapEl.querySelector('[data-doc-sheet-content]').innerHTML.includes('prose'),
+    'the sheet body is painted from the state');
+  assert.equal(mapEl.querySelector('[data-doc-sheet-path]').textContent, 'docs/CONVENTIONS.md');
+
+  await data.openDocSheet({ path: 'docs/docs.json' });
+  assert.ok(data.docSheet.html.startsWith('<pre'), 'a JSON doc renders as source, not prose');
+
+  const fetchesAfter = asked.length;
+  await data.openDocSheet({ path: 'docs/CONVENTIONS.md' });
+  assert.equal(asked.length, fetchesAfter, 're-opening a row reads the cache, not the network');
+  assert.ok(fetchesAfter > fetchesBefore, 'first opens did fetch');
+  delete window.marked;
 });
 
 test('an absent check renders as visibly absent, and only where one is owed', () => {
