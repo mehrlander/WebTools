@@ -301,8 +301,8 @@
     {
       "path": "tools/test/estate-sessions.test.mjs",
       "kind": "component",
-      "protects": "The Sessions pane and the Lists merge behind it: both filters lapse rather than stranding the pane on an empty list, the pill routes through the shell so the URL keeps stamping, and a missing cache reads as empty rather than as an error.",
-      "assertions": 13,
+      "protects": "The Sessions pane and the Lists merge behind it: both filters lapse rather than stranding the pane on an empty list, the pill routes through the shell so the URL keeps stamping, and a missing cache reads as empty rather than as an error. A record that names no harness session keeps an empty `agent` beside a readable `schema`, which is what lets the session-link cell say WHY it has no link instead of rendering nothing.",
+      "assertions": 14,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
