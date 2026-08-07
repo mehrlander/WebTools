@@ -5,7 +5,7 @@
 // from the working tree, which is also what makes a branch's routes.json the
 // one under test.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scripts/map-showing-peek.mjs
+//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/map-showing-peek.mjs
 //
 // PEEK picks which icon is hovered:
 //   curate   the header's manifest link, docs/routes.json      (default)

@@ -5,31 +5,31 @@ Themed logic libraries loaded via `gh.load`. Each kit is a plain script
 
 ## Concept
 
-A **kit** is the third category of file in this repo, alongside:
+The repo's code layers, and which folder a new file belongs in, are stated once
+in [`docs/code-layers.md`](../../docs/code-layers.md). What follows is the kit
+shelf's own admission rule.
 
-- **Scaffolding in `lib/`** — `lib/gh-api.js`, `lib/gh-boot.js`,
-  `lib/gh-auth.js`, `lib/gh-fetch.js`, `lib/gh-store.js`,
-  `lib/alpine-bundle.js`, `lib/vanilla-bundle.js`. The boot chain.
-  `alpine-bundle.js` also owns the
-  Alpine-coupled `x-define` directive (custom-element registration from a
-  `<template>`), so kits can stay Alpine-free. `vanilla-bundle.js` is the
-  no-framework alternative.
-- **`lib/alpineComponents/*.js`** — UI components that register with
-  `Alpine.data(name, fn)` inside `alpine:init`.
-- **`kits/*.js`** — logic libraries that register a namespace on
-  `window`. No Alpine coupling. (The daisyUI/Tailwind string helpers that
-  used to live here as `fills.js` now hang off `window.html` in
-  `vanilla-bundle.js`.)
+A **kit** is a logic library that registers a namespace on `window`, with no
+Alpine coupling. (The daisyUI/Tailwind string helpers that used to live here as
+`fills.js` now hang off `window.html` in `vanilla-bundle.js`.)
 
-  The line is **no Alpine and no DOM opinions of its own**, not "no DOM."
-  This entry used to say "no DOM rendering," and the shelf has outgrown
-  it: `cm6.js` mounts a live editor into a host element you hand it,
-  `io.js` drives file inputs and the clipboard, `pdf.js` renders pages and
-  projects geometry into screen space. What a kit must not do is decide
-  where it lives, own reactive state, or assume a framework. It takes the
-  host it is given and returns a handle. A kit that wants Alpine
-  reactivity gets a component wrapper: `cm-editor.js` over `cm6.js` is the
-  reference pair.
+**That is the whole rule, and it does not distinguish this folder from `lib/`
+root.** A kit is not a "portable capability": 7 of the 21 files here have a
+runtime dependency on the hub's own chain, while 6 files in `lib/` root have
+none, so a third of this shelf is less portable than files that are not on it.
+Whether the two folders should be one is open in
+[`lib-root-kit-migration-dind5t`](../../tracker/tasks/lib-root-kit-migration-dind5t.md).
+Until it is settled a new logic module comes here, because most of them already
+are here and a wrong guess costs one `git mv`.
+
+The line is **no Alpine and no DOM opinions of its own**, not "no DOM." This
+entry used to say "no DOM rendering," and the shelf has outgrown it: `cm6.js`
+mounts a live editor into a host element you hand it, `io.js` drives file inputs
+and the clipboard, `pdf.js` renders pages and projects geometry into screen
+space. What a kit must not do is decide where it lives, own reactive state, or
+assume a framework. It takes the host it is given and returns a handle. A kit
+that wants Alpine reactivity gets a component wrapper: `cm-editor.js` over
+`cm6.js` is the reference pair.
 
 The shape rules (so the file works through `gh.load`):
 

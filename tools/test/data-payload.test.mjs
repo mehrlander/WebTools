@@ -126,3 +126,78 @@ test('view rides through verbatim, including an unknown id', () => {
   // so this module never needs to track the mode list.
   assert.equal(out.items[1].view, 'nonsense');
 });
+
+// ── addressing one item (#item=) ──
+//
+// The vocabulary is a one-way door: links carrying these strings outlive any
+// decision to change them. It lives in this module rather than in
+// pages/data-view.html so the suite can hold it; the page keeps only the
+// location read and write, which needs a browser and is covered by
+// tools/render/scenarios/data-view-item.mjs.
+
+const ITEMS = DP.read(JSON.stringify({
+  items: [
+    { name: 'raw.csv', content: 'a,b' },
+    { name: 'deep/stored.json', content: '{}' },
+    { name: 'notes.md', content: '# x' },
+  ],
+})).items;
+
+test('an all-digits address is an index, and out of range is a miss', () => {
+  assert.equal(DP.resolveItem(ITEMS, '0'), 0);
+  assert.equal(DP.resolveItem(ITEMS, '2'), 2);
+  assert.equal(DP.resolveItem(ITEMS, '3'), null);
+});
+
+test('anything else is a name, full path before basename', () => {
+  assert.equal(DP.resolveItem(ITEMS, 'deep/stored.json'), 1);
+  assert.equal(DP.resolveItem(ITEMS, 'stored.json'), 1, 'the basename resolves too');
+  assert.equal(DP.resolveItem(ITEMS, 'notes.md'), 2);
+});
+
+test('a miss is null rather than a throw, so the page can open item 0', () => {
+  assert.equal(DP.resolveItem(ITEMS, 'nope.txt'), null);
+  assert.equal(DP.resolveItem(ITEMS, ''), null);
+  assert.equal(DP.resolveItem(ITEMS, null), null);
+  assert.equal(DP.resolveItem([], 'raw.csv'), null);
+});
+
+test('a duplicate basename resolves to the first, and the full name still picks either', () => {
+  const dup = DP.read(JSON.stringify({
+    items: [{ name: 'a/rows.csv', content: '1' }, { name: 'b/rows.csv', content: '2' }],
+  })).items;
+  assert.equal(DP.resolveItem(dup, 'rows.csv'), 0);
+  assert.equal(DP.resolveItem(dup, 'b/rows.csv'), 1);
+});
+
+test('addressItem returns the shortest form that reads back as that item', () => {
+  assert.equal(DP.addressItem(ITEMS, 0), 'raw.csv');
+  assert.equal(DP.addressItem(ITEMS, 1), 'stored.json', 'basename wins when it is unambiguous');
+  for (let i = 0; i < ITEMS.length; i++) {
+    assert.equal(DP.resolveItem(ITEMS, DP.addressItem(ITEMS, i)), i, 'round-trips at ' + i);
+  }
+});
+
+test('an ambiguous basename falls through to the full name, then the index', () => {
+  const dup = DP.read(JSON.stringify({
+    items: [{ name: 'a/rows.csv', content: '1' }, { name: 'b/rows.csv', content: '2' }],
+  })).items;
+  assert.equal(DP.addressItem(dup, 0), 'rows.csv', 'the first still owns the short form');
+  assert.equal(DP.addressItem(dup, 1), 'b/rows.csv', 'the second cannot, so it says more');
+  for (let i = 0; i < dup.length; i++) assert.equal(DP.resolveItem(dup, DP.addressItem(dup, i)), i);
+});
+
+test('a file honestly named with digits is never minted as an index', () => {
+  // The trap: item 1 is called "2". Writing "2" would address item 2 instead.
+  const digits = DP.read(JSON.stringify({
+    items: [{ name: 'a.csv', content: '1' }, { name: '2', content: '2' }, { name: 'c.csv', content: '3' }],
+  })).items;
+  assert.equal(DP.resolveItem(digits, '2'), 2, 'reading "2" is the index, by the rule');
+  assert.equal(DP.addressItem(digits, 1), '1', 'so writing item 1 falls back to its position');
+  for (let i = 0; i < digits.length; i++) assert.equal(DP.resolveItem(digits, DP.addressItem(digits, i)), i);
+});
+
+test('an out-of-range index addresses as itself rather than throwing', () => {
+  assert.equal(DP.addressItem(ITEMS, 9), '9');
+  assert.equal(DP.addressItem([], 0), '0');
+});

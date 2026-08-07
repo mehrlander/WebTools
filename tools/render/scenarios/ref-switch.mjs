@@ -4,7 +4,7 @@
 // window.GH so load() resolves against a fixed list. What the shot proves is
 // the rendering and the states, not the fetch.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scripts/ref-switch.mjs
+//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/ref-switch.mjs
 //
 // STATE=closed  the box alone in the header, nothing open
 // STATE=open    the box plus the branch list panel            (the default)
@@ -17,7 +17,7 @@
 // evaluated.
 //
 //   npm run shot -- pages/show-repo/show-repo.html --ref claude/some-branch \
-//     --script tools/render/scripts/ref-switch.mjs
+//     --script tools/render/scenarios/ref-switch.mjs
 
 const BRANCHES = [
   { name: 'claude/show-repo-branch-nav-xzttnt', date: '2026-08-01T14:00:00Z', ago: '2h', subject: 'The header ref switch', fileOid: 'x1' },

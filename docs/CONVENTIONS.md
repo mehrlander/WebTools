@@ -44,6 +44,8 @@ Two carriers, split by subject, and the split is the point:
 
 Shape: `**Flavor YYYY[-MM[-DD]] [(note)] [→ target]:**`. Flavor, date, and target hold fixed positions so the set is auditable rather than merely greppable. The target is optional and may be a path, a markdown link, or prose; only path-shaped targets are existence-checked. A `status: frozen 2026-07-06; note` frontmatter line is the optional metadata layer. **Annotate, do not rewrite:** a dated file stays put as a record, so when one of its claims ages, mark the claim rather than editing the record into agreement with the present.
 
+**Only a record gets a marker.** Fix a living document instead. The tell: a banner describing text no longer in the file.
+
 **Declaration.** `.paths.json`, which may sit at a repo root **or any workspace root**, with entries relative to its own directory and the nearest declaration winning. That cascade is what lets one repo hold several workspaces with different regimes, and workspace-relative entries survive a restructure that root-relative ones would not.
 
 ```json

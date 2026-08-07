@@ -22,6 +22,38 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### marker-on-a-living-doc: annotated a doc instead of fixing it
+Marked a section `Wrong` after measuring its rule false, leaving a banner that
+described text already replaced, in a doc `CLAUDE.md` points every session at.
+"Annotate, do not rewrite" governs records; a living document gets fixed. The
+convention was loaded the whole time and did not say so. *(seen: 2026-08-06)*
+→ [CONVENTIONS.md](CONVENTIONS.md)
+
+### ci-run-silently-not-started: a commit sat in an open PR with no checks
+A push to a PR branch produced no `synchronize` workflow run. Not a failure, not
+a cancellation, no run at all, so the PR's head commit carried zero checks and
+the only signal was a `get_check_runs` that returned an empty list. The next push
+to the same PR ran normally, so nothing is broken; what correlated was pushing
+the branch and then its base branch within the same minute, which moves the merge
+ref the `pull_request` event is computed against. The cause stays unconfirmed and
+the corrected move does not depend on it: **after a push you care about, confirm
+a run exists for the new head sha** instead of assuming the trigger fired. The
+general form is the one worth carrying: a green check and an absent check look
+the same from a distance, and only the first is evidence. *(seen: 2026-08-06)*
+→ [.github/workflows/test.yml](../.github/workflows/test.yml)
+
+### fragment-goto-does-not-reload: a render scenario asserts against stale state
+A `--script` scenario re-loaded the page under test at a series of fragments with
+`page.goto(url + '#item=1')`, then read the page's state after each. A goto that
+changes only the fragment is a **same-document** navigation, so nothing
+re-fetched, the page's boot code never re-ran, and every read returned the
+previous case. Three of eight assertions passed against state the scenario had
+not actually produced. The navigation succeeds, so there is no failure to notice.
+Add `page.reload()` after the goto whenever the point is what the page does *on
+load* at that fragment. Generalizes past this harness: any assertion about
+initialization behind a URL that differs only after the `#`. *(seen: 2026-08-06)*
+→ [environment/testing.md](environment/testing.md)
+
 ### word-boundary-before-alternation: a scan reports zero and looks authoritative
 `\b(TOKEN|SECRET|...)` never matches inside `GH_TOKEN` or `AWS_SECRET_ACCESS_KEY`,
 because there is no word boundary between `H` and `T`. A credential scan written
@@ -249,3 +281,16 @@ takeover. The guide-PR template in SURFACING.md has said "branch preview w/
 commit SHA" all along; this session handed over branch names for a day and paid
 for it four times. *(seen: 2026-08-07)*
 → [showing.md](showing.md)
+**Built a form whose fields stopped short of their labels on a phone, and
+whose desktop layout was a ribbon down the middle of a 1440px screen.** Two
+separate causes, both invisible without measuring. daisyUI's `.input` and
+`.textarea` default to `width: 20rem` capped at 100%, so a field in a 342px
+column rendered 320px wide and every row had a ragged right edge; `w-full` on
+each control is the fix. And the pane was capped at `max-w-3xl` while splitting
+into two side-by-side columns, so each got about 360px on any screen. **A form
+in a split pane is sized by its container, not the viewport:** viewport
+variants (`sm:`, `lg:`) answer the wrong question there, and Tailwind's
+`@container` plus `@md:`/`@xl:` answer the right one, degrading to one column
+where unsupported. Both rules now sit with the other composition rules.
+*(seen: 2026-08-06)*
+→ [HTML-STYLE.md](HTML-STYLE.md)

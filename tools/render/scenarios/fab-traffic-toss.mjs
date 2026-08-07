@@ -3,7 +3,7 @@
 // PAGE, not the toss-render shell around it, and the shell's cost is named
 // separately rather than folded in.
 //
-//   npm run shot -- pages/toss-render.html --script tools/render/scripts/fab-traffic-toss.mjs
+//   npm run shot -- pages/toss-render.html --script tools/render/scenarios/fab-traffic-toss.mjs
 //
 // It also fails loudly rather than screenshotting a lie: if the subject's own
 // resources are missing from the band, or the numbers come back identical to

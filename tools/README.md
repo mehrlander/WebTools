@@ -76,7 +76,13 @@ can capture a *state* — a drawer open, a toggle ticked, a breakpoint — not j
 landing view. The file default-exports `async (page, ctx) => {}` and gets the
 Playwright `page` (`ctx.repoRoot` too). Scenarios live in
 [`tools/render/scenarios/`](render/scenarios/); the PNG/log pick up the scenario
-name in their suffix. Example — the FAB's Export controls, opened to the Render
+name in their suffix.
+
+Every driver lives there and there is nowhere else to put one. Two of them,
+`sidebar-projects.mjs` and `sidebar-projects-overlay.mjs`, still overlap on
+their default path; only the overlay posture distinguishes them.
+
+Example — the FAB's Export controls, opened to the Render
 tab with "Fully offline" ticked:
 
 ```

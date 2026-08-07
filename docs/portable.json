@@ -175,7 +175,7 @@
       "kind": "doc",
       "path": "docs/artifacts.md",
       "title": "Artifacts",
-      "role": "the bake-and-publish pipeline and the 📦 marker's place in the link-choice matrix",
+      "role": "the bake-and-publish pipeline and the \ud83d\udce6 marker's place in the link-choice matrix",
       "use": "on-demand"
     },
     {
@@ -253,6 +253,13 @@
       "path": "scripts/sunset-scan.py",
       "title": "sunset-scan.py",
       "role": "report SUNSET(date) markers now due for removal",
+      "use": "on-demand"
+    },
+    {
+      "kind": "script",
+      "path": "scripts/unclaimed-code-survey.py",
+      "title": "unclaimed-code-survey.py",
+      "role": "report code files no doc, README, registry, or CLAUDE.md names, per directory",
       "use": "on-demand"
     },
     {

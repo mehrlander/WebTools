@@ -8,7 +8,7 @@
 // the scroll containers are the page's, only the data is ours.
 //
 //   npm run shot -- pages/show-repo/show-repo.html --query view=sessions \
-//     --script tools/render/scripts/estate-sessions.mjs --height 900
+//     --script tools/render/scenarios/estate-sessions.mjs --height 900
 
 const SESSIONS = [
   {
