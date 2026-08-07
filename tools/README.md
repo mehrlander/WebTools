@@ -76,7 +76,16 @@ can capture a *state* — a drawer open, a toggle ticked, a breakpoint — not j
 landing view. The file default-exports `async (page, ctx) => {}` and gets the
 Playwright `page` (`ctx.repoRoot` too). Scenarios live in
 [`tools/render/scenarios/`](render/scenarios/); the PNG/log pick up the scenario
-name in their suffix. Example — the FAB's Export controls, opened to the Render
+name in their suffix.
+
+Every driver lives there and there is nowhere else to put one. A sibling
+`render/scripts/` held twenty-nine more files of exactly this shape until
+2026-08-06: same export, same invocation, created the same day, and this README
+had never mentioned it. It was folded in. Why the split was worth removing
+rather than documenting is in [`docs/code-layers.md`](../docs/code-layers.md),
+which owns the layer rules.
+
+Example — the FAB's Export controls, opened to the Render
 tab with "Fully offline" ticked:
 
 ```

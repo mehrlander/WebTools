@@ -5,7 +5,7 @@
 // page in a preview by adopting a toss subject, which is how a real preview
 // reaches the drawer.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scripts/fab-guide.mjs
+//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/fab-guide.mjs
 //
 // STATE=guide  the guide pane, PR body rendered            (the default)
 // STATE=menu   the ref bar's dropdown, open over the guide

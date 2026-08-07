@@ -7,7 +7,7 @@
 // home's real manifest, which its tracker-registry generator syncs from the
 // trackers it finds.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scripts/sidebar-projects.mjs
+//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/sidebar-projects-overlay.mjs
 //
 // OVERLAY=1 additionally seeds the branch-overlay state (?overlay=), so the
 // shot shows the preview posture: the chip on the Repos header and the glyph

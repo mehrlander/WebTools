@@ -5,7 +5,7 @@
 // index straight into the component instead of stubbing the transport, which
 // keeps the shot honest about the views and silent about the fetch.
 //
-//   npm run shot -- pages/entities.html --script tools/render/scripts/entities-stub.mjs
+//   npm run shot -- pages/entities.html --script tools/render/scenarios/entities-stub.mjs
 //
 // Point INDEX at a sibling checkout of web-tools-private; skips with a clear
 // message when it is absent, since a shot is not worth failing a suite over.

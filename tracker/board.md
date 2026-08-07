@@ -10,7 +10,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Capture button on the FAB, serializing what it already collects](tasks/fab-capture-button-f6q38m.md)
 - 🎫 [Give the file-review collapsed row more than a name and a count](tasks/file-review-collapsed-density-2rvxfn.md)
 - 🎫 [Find a way to focus attention on one piece of a page's UI](tasks/focus-a-ui-component-f0awt7.md)
-- 🎫 [Move the kit-shaped files out of lib/ root into kits/](tasks/lib-root-kit-migration-dind5t.md)
+- 🎫 [Settle whether lib/ root and lib/kits/ are one category, then move what the rule says](tasks/lib-root-kit-migration-dind5t.md)
 - 🎫 [Live-confirm the two GraphQL queries the estate depends on](tasks/live-confirm-graphql-queries-7maacy.md)
 - 🎫 [Build our own JSON tree for display, keep vanilla-jsoneditor for editing](tasks/own-json-tree-retire-vje-i0lcj2.md)
 - 🎫 [Pinch-zoom and pan for pdf-inspect's page view](tasks/pdf-inspect-pinch-zoom-5wz3kt.md)

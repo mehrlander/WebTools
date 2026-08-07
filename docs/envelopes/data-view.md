@@ -17,6 +17,30 @@ First match wins:
 
 Resolving that way makes this page the document toss-render mounted, which is not the same as the thing addressed. The shell says so: it stamps the **envelope** as the toss subject and carries this page as `via`, so the drawer around the frame names the file being read rather than the reader. Only the take actions follow `via`, since they operate on this page's DOM. See [`docs/show-repo.md`](../show-repo.md) under the render tab.
 
+## Addressing an item
+
+A multi-item envelope opens on the item the link names, not always the first:
+
+| form | means |
+| --- | --- |
+| `#item=raw.csv` | the item whose `name` is `raw.csv`, or whose basename is |
+| `#item=2` | the third item, by position |
+| absent, or a miss | the first item, with no error |
+
+All digits is an index; anything else is a name, matched against the full `name` first and then its basename (the basename is what the item strip shows, so it is what a reader will have copied). Duplicates resolve to the first match. The key is read fragment first and query second like every other input here, so `?item=` works where a context eats the `#`.
+
+Through the toss route it is the trailing fragment, which belongs to the renderer rather than to the envelope address:
+
+    …/toss-render.html#data=<owner>/<repo>:<bundle.json>#item=raw.csv
+
+Selecting an item **writes the address back**, so the URL always names what is on screen and a reader can copy the address of the item they are looking at rather than of the envelope. The write is surgical: it edits the one key and leaves the rest of the fragment byte for byte, which is what lets a `#gz=` payload sit beside it (`UrlParams.withKey`, [`lib/url-params.js`](../../lib/url-params.js)). Two things it deliberately does not do: it adds no history entry, so the back button still leaves the page rather than walking the item strip; and it does not write on load unless the URL already named an item, so arriving at a plain `#gz=` toss never rewrites the payload.
+
+Only the position is written when a name would be ambiguous, and only a name when it reads back as that item, so the address is one the page has verified rather than one it assumed.
+
+The vocabulary belongs to the **envelope**, not to the page, so both directions live in [`lib/data-payload.js`](../../lib/data-payload.js) (`DataPayload.resolveItem`, `.addressItem`) beside the rest of what an item means, and `npm test` holds them. The page owns only the location read and write, which needs a browser: that half is held by [`tools/render/scenarios/data-view-item.mjs`](../../tools/render/scenarios/data-view-item.mjs) directly and [`data-view-item-tossed.mjs`](../../tools/render/scenarios/data-view-item-tossed.mjs) through a toss.
+
+The viewport toggles are not part of this vocabulary. `bleed` is a preference about the reader's screen, not about what is being read, and would ride along on every copied link.
+
 ## Two shapes, no declaration
 
 A payload is read by [`lib/data-payload.js`](../../lib/data-payload.js), which decides what it is rather than asking:

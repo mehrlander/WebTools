@@ -2,7 +2,7 @@
 // directory, and that repo's manifest declaring an inbox. The armed button is
 // the point, since a redirect the reader cannot see is a surprise.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scripts/inbox-demo.mjs
+//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/inbox-demo.mjs
 export default async (page) => {
   await page.evaluate(async () => {
     window.TOKEN = 'stub-token-for-the-shot';

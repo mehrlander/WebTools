@@ -22,7 +22,7 @@
 //
 //   npm run shot -- pages/toss-render.html \
 //     --hash 'gh=mehrlander/web-tools@main:pages/toss-render.html#gh=mehrlander/web-tools@main:pages/word-select.html' \
-//     --script tools/render/scripts/subject-action-probe.mjs
+//     --script tools/render/scenarios/subject-action-probe.mjs
 export default async function (page) {
   await page.waitForTimeout(4000);
 
