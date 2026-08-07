@@ -26,7 +26,7 @@ const { window } = makeWindow({
 // A toss the fab can adopt, stamped before the mount the way toss-render does.
 window.__tossSubject = { repo: 'mehrlander/web-tools', ref: 'some-branch', path: 'pages/subject.html' };
 
-const Alpine = await startAlpine(window, ['lib/alpineComponents/path-picker.js', 'lib/alpineComponents/fab.js']);
+const Alpine = await startAlpine(window, ['lib/kits/guide-render.js', 'lib/alpineComponents/path-picker.js', 'lib/alpineComponents/fab.js']);
 const doc = window.document;
 
 // Two contributors with the SAME bare label, which is the case attribution
