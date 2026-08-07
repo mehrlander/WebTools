@@ -68,13 +68,11 @@ A bare string is shorthand for `{ "path": ... }`; a trailing `/` covers a direct
 
 Adding to a doc is a pass over it, not just an append. New material has to match the surrounding voice and structure. Go a step further and tighten related material while you are there.
 
-## Beware make-work
+## Keep focus
 
-When asked to look for improvements, be wary of ideas that address a hypothetical problem. A simple, clear fix is worth making, especially when it is as easy to fix as to bring up. The trap is speculative work that draws attention and goes off course.
+When asked to look for improvements, be wary of ideas that address a hypothetical problem. A simple, clear fix is worth making; the trap is speculative work that goes off course. The test points only at tasks you conceive, not a specific user request.
 
-**Its most common form is filing.** Turning an observation into a tracker task feels like diligence and costs nothing in the moment, which is how a backlog fills with items nobody will claim and the real work gets buried among them. Where a repo runs a tracker ([TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md)), the filing rules have one owner, the `tasks` skill: file only what a later session would have to rebuild context to rediscover, propose a new task rather than filing it unprompted, and keep one outcome in one task. Load `/tasks` before writing a task file, whatever pass you are in the middle of. A review that ends in a written report has already made its findings durable; it does not also owe the tracker a row per finding.
-
-**Where a friction observation goes instead.** Not the tracker. A small thing you tripped over ("the documented probe does not detect this failure") is an insight, not an outcome anyone will claim, so filing it buries the work that is. Where a repo keeps a snags log (web-tools: [`SNAGS.md`](https://github.com/mehrlander/web-tools/blob/main/docs/SNAGS.md)), it goes there: one line naming the symptom and the corrected move, plus a `→` to the doc carrying the full fix. Recurrence is the promotion rule, since one trip is noise and the third earns a task to remove the cause.
+The `tasks` skill owns the filing rules; load `/tasks` before writing a task file. A friction observation goes to the repo's snags log (web-tools: [`SNAGS.md`](https://github.com/mehrlander/web-tools/blob/main/docs/SNAGS.md)), one line with a `→` to the fixing doc; the third recurrence earns a task.
 
 ## Adding your own, without clobbering
 

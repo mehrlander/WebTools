@@ -47,6 +47,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/branch-review-emit.test.mjs",
+      "kind": "gate",
+      "protects": "the /caption emitter's contract: an emitted branch-review/1 surface validates against both schemas, projects through the page reader onto the four authored fields, and round-trips the gz link",
+      "assertions": 4,
+      "method": "spawn",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/branch-survey.test.mjs",
       "kind": "behavior",
       "protects": "Landed-versus-stranded is judged on blob content, since squashes make ref-level merge status meaningless.",
@@ -464,7 +473,7 @@
       "path": "tools/test/map-view.test.mjs",
       "kind": "component",
       "protects": "The Map view mounts, loads the public set, and reports adoption without startup warnings, and its open tab stays addressable: the shell validates ?tab= and stamps every tab but the default, and the component renders and loads whichever tab it is handed, by URL or by tap.",
-      "assertions": 19,
+      "assertions": 21,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1
@@ -897,6 +906,15 @@
       "kind": "behavior",
       "protects": "An envelope address comes apart into repo, ref, and path.",
       "assertions": 10,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/tracker-assessments.test.mjs",
+      "kind": "gate",
+      "protects": "Every tracker/assessments/ record keeps the dated filename and the four tracker-assessment/1 required keys.",
+      "assertions": 3,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0

@@ -38,3 +38,16 @@ Reading a v2 profile in the estate is gated on the v1→v2 reader migration; thi
   **Two things fell out of the same pass.** The page took `pulls[0]` and had no way to reach an earlier PR, which is wrong on exactly the post-merge case the conventions document; it now steps through all of them. And `#gh=owner/repo&pr=<n>` addresses a PR directly, resolving to the head and base the PR was actually opened against.
 
   **What the profile is still for.** The materialized bundle its own doc describes: a review package resolved and inlined for a token-less reader. That is a different job from this page, and its zero instance count is not evidence of a gap in it. The `?src=`/`#gz=` envelope stays on the page for a branch with no PR to carry the judgment.
+- 2026-08-07: Closed on `claude/make-work-conventions-b74b4t` (PR #371). The
+  decision: branch-review/1 is THE format /caption emits; the plain
+  branch-brief shape stays accepted by the page reader as a hand-authoring
+  convenience only. The emitter is `.claude/skills/caption/build-branch-review.mjs`
+  (git-derived compare and changes, both-schema validation before emitting,
+  --link gzips the surface into the 🌿 fragment), documented in the caption
+  skill. The first real instance is recorded on PR #371 (comment of
+  2026-08-07); zero instances is no longer true. Gated by
+  tools/test/branch-review-emit.test.mjs: schema validity, projection through
+  BranchBrief.readAuthored onto the four authored fields, invalid-means-error,
+  and the gz round-trip. Full-page render verification is by the live link;
+  the sandbox cannot serve the compare endpoints the derived layer needs.
+

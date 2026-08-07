@@ -58,7 +58,7 @@ def meta(p):
     d["_file"] = p.name
     # Derived, for board.json only. A task's real freshness is the newest date
     # in its progress log, not `opened:`; nothing else surfaces it, and it is
-    # what separates a live task from one that has only been groomed.
+    # what separates a live task from one that has only been refined.
     dates = LOG_DATE.findall(text.split("---", 2)[-1])
     d["_last_activity"] = max(dates) if dates else ""
     d["_log_entries"] = len(dates)

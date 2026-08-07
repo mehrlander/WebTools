@@ -30,7 +30,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 3609,
+      "words": 3679,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {
@@ -38,7 +38,7 @@
       "subject": "the portable working conventions: the general-behavior hub",
       "status": "living",
       "reach": "injected",
-      "words": 1326,
+      "words": 1147,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -46,7 +46,7 @@
       "subject": "the surfacing system: primitives plus the guide-PR course",
       "status": "living",
       "reach": "injected",
-      "words": 3219,
+      "words": 3387,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -54,7 +54,7 @@
       "subject": "the machine index of the surfacing primitives",
       "status": "living",
       "reach": "project",
-      "words": 830,
+      "words": 904,
       "maintenance": "authored; membership held two-way to SURFACING.md's primitive bullets by surfacing-manifest.test.mjs; the summaries are paraphrases and the doc stays authoritative"
     },
     {
@@ -62,7 +62,7 @@
       "subject": "the portable set: what travels, and how to adopt it",
       "status": "living",
       "reach": "project",
-      "words": 5441,
+      "words": 5455,
       "maintenance": "authored, edited in place; the roster tables are census-gated against portable.json and disk (portable-manifest.test.mjs)"
     },
     {
@@ -86,7 +86,7 @@
       "subject": "the opt-in cross-session project tracker: schema, ids, board",
       "status": "living",
       "reach": "project",
-      "words": 3692,
+      "words": 4337,
       "maintenance": "authored, edited in place; the schema the tasks skill implements, held to it by review alone"
     },
     {
@@ -118,7 +118,7 @@
       "subject": "the show-repo shell: views, stage, transfer, and the .web-tools.json manifest",
       "status": "living",
       "reach": "project",
-      "words": 20500,
+      "words": 20749,
       "maintenance": "authored, edited in place; the corpus's largest document, and the buried home of the stage contract"
     },
     {
@@ -142,7 +142,7 @@
       "subject": "the friction log: one line per snag, symptom then corrected move",
       "status": "living",
       "reach": "project",
-      "words": 3231,
+      "words": 3305,
       "maintenance": "authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
     },
     {
@@ -206,7 +206,7 @@
       "subject": "the content-envelope family: members, shared grammar, and the sibling decision",
       "status": "living",
       "reach": "orphan",
-      "words": 937,
+      "words": 941,
       "maintenance": "authored; carries its dated decisions inline with their reversal triggers"
     },
     {
