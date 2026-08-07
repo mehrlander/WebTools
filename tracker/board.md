@@ -5,18 +5,18 @@ _Generated from tasks/. Do not hand-edit._
 ## On deck
 - 🎫 [Reach the take-away menu from show-repo's Pages gallery](tasks/brief-from-the-pages-gallery-7d4031.md) (needs: Find a way to focus attention on one piece of a page's UI)
 - 🎫 [A multi-method harness for extracting structure from scanned documents](tasks/document-structure-harness-4mz7wk.md)
-- 🎫 [Capture button on the FAB, serializing what it already collects](tasks/fab-capture-button-f6q38m.md)
+- 🎫 [Persist FAB captures, the write path to state/captures/](tasks/fab-capture-button-f6q38m.md) · S
 - 🎫 [Find a way to focus attention on one piece of a page's UI](tasks/focus-a-ui-component-f0awt7.md)
 - 🎫 [Settle whether lib/ root and lib/kits/ are one category, then move what the rule says](tasks/lib-root-kit-migration-dind5t.md)
-- 🎫 [Live-confirm the two GraphQL queries the estate depends on](tasks/live-confirm-graphql-queries-7maacy.md)
+- 🎫 [Live-confirm the BranchSessions query](tasks/live-confirm-graphql-queries-7maacy.md) · XS
 - 🎫 [Build our own JSON tree for display, keep vanilla-jsoneditor for editing](tasks/own-json-tree-retire-vje-i0lcj2.md)
 - 🎫 [Pinch-zoom and pan for pdf-inspect's page view](tasks/pdf-inspect-pinch-zoom-5wz3kt.md)
 - 🎫 [Close open table perimeters in the pdf kit's lattice](tasks/pdf-lattice-open-perimeter-h4kx9r.md)
-- 🎫 [A column-splitter page for the pdf kit](tasks/pdf-table-splitter-page-q7vm2d.md)
+- 🎫 [Draggable column boundaries with live reassignment, in pdf-inspect](tasks/pdf-table-splitter-page-q7vm2d.md) · S
 - 🎫 [Inline the run-time CDN references a rendering copy still carries](tasks/render-copy-runtime-cdn-refs-p4m2wq.md)
 - 🎫 [Session-start nudge for unconfigured or legacy-manifest repos](tasks/session-start-nudge-unconfigured-z0g4zn.md) (`claude/skills-portable-conventions-8x1lua`)
-- 🎫 [Give show-repo the ability to edit a repo's .web-tools.json](tasks/show-repo-edit-web-tools-json-ygramz.md) (`claude/skills-portable-conventions-8x1lua`)
-- 🎫 [Assess the orphan docs for skillification, and boil them down](tasks/skillify-orphan-docs-izv20p.md)
+- 🎫 [Retire .show-repo.json, delete the legacy file on migrate, drop the read fallback](tasks/show-repo-edit-web-tools-json-ygramz.md) · S
+- 🎫 [Route the orphan docs by cause, per the 2026-08-05 classification](tasks/skillify-orphan-docs-izv20p.md) · S
 - 🎫 [Spike the snags log (friction learned the hard way)](tasks/spike-snags-log-gobdyq.md) (`claude/pr-219-review-22csrh`)
 - 🎫 [Give the stage a way to carry part of a file](tasks/stage-partial-file-selection-k8mtou.md)
 - 🎫 [Make the take-away menu work inside a toss](tasks/take-away-inside-a-toss-k73cjq.md)
