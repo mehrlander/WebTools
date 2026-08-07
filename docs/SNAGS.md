@@ -237,5 +237,15 @@ there, since the bug is a missing argument in files nobody edits together. The
 general shape: **a comment asserting an absence of a problem is where to look
 first when the problem is present**, and one that names a mechanism ("the module
 cache") while implying a category ("caching") is the most convincing kind of
-wrong. *(seen: 2026-08-07)*
+wrong.
+
+**Until the fix is on main, and as the safer form afterwards: pin a COMMIT SHA,
+not a branch name.** `?use=<sha>` is an immutable URL, so no cache can serve
+something older; a new commit is a new address. The loader that does the
+fetching lives in the DEPLOYED page, served from the default branch, so a fix
+to it on a feature branch cannot help a link handed over before that branch
+merges, and neither can opening the page standalone rather than through the
+takeover. The guide-PR template in SURFACING.md has said "branch preview w/
+commit SHA" all along; this session handed over branch names for a day and paid
+for it four times. *(seen: 2026-08-07)*
 → [showing.md](showing.md)
