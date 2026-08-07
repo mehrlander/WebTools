@@ -30,15 +30,10 @@ live**. A live re-read would silently restate the argument against a tree that
 had already changed, which is the one failure a decision document cannot afford,
 and it also keeps the page rendering identically through either toss form.
 
-**On the name.** "Guide" already carries a specific meaning in this repo's
-surfacing vocabulary: the **guide PR**, its **guide body**, and the fenced
-**guide region** that `/caption` syncs. Those are one artifact, a pull request
-body, and they have nothing to do with this folder. The overlap is a known cost,
-accepted because these pages genuinely guide a reader and no better word was
-free: "brief" is taken by [`lib/kits/brief.js`](../../lib/kits/brief.js) for a
-page assembled with its modules for a reviewer, and "presentation" implies slides
-that none of these have. Say "guide PR" when that is what is meant, and the two
-stay apart.
+**On the name.** The other live sense of "guide" here is the **guide PR** and its
+body: a pull request, not a page. Say "guide PR" when that is what is meant and
+the two stay apart. `MERGE-GUIDE.md` and `BRANCH-GUIDE.md` were two further
+senses and both are retired, so the word is less crowded than it looks.
 
 | Page | What it covers |
 |---|---|
