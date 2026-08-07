@@ -1554,6 +1554,7 @@ function app(){ return {
     else if (url && url.view === 'jots') this.goJots();
     else if (url && url.view === 'activity') this.goActivity();
     else if (url && url.view === 'sessions') this.goSessions();
+    else if (url && url.view === 'guides') this.goGuides();
     else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap();
     else if (url && url.view === 'tools') this.goTools();
     else if (url && url.view === 'proposals') this.goProposals();
@@ -3328,6 +3329,7 @@ function app(){ return {
       else if (url && url.view === 'jots') this.goJots();
       else if (url && url.view === 'activity') this.goActivity();
     else if (url && url.view === 'sessions') this.goSessions();
+    else if (url && url.view === 'guides') this.goGuides();
       else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap();
       else if (url && url.view === 'tools') this.goTools();
     else if (url && url.view === 'proposals') this.goProposals();
@@ -3390,7 +3392,7 @@ function app(){ return {
   // the grid and the Stage, switching on this.view, sharing the one lazy
   // mount); estateCtx is the wider context test the sidebar switches on.
   // 'surfaces' is in this list as the Stage's alias, not as a second pane.
-  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions'].includes(this.view); },
+  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions', 'guides'].includes(this.view); },
   // The Lists view is the one estate pane that FILLS rather than flows: its two
   // halves scroll inside themselves, so the page must not scroll and the chain
   // from the pane down to the component root has to carry a definite height.
@@ -3448,7 +3450,7 @@ function app(){ return {
   // Both old keys still route (?view=todo and ?view=jots land on Lists).
   get estateNav(){
     return [
-      { view: 'activity', views: ['activity', 'sessions'],
+      { view: 'activity', views: ['activity', 'sessions', 'guides'],
         icon: 'ph-pulse',    label: 'Activity', go: () => this.goActivity() },
       { view: 'todo', views: ['todo', 'jots'],
         icon: 'ph-list-checks', label: 'Lists',  go: () => this.goTodo() },
@@ -3532,6 +3534,10 @@ function app(){ return {
   // throttled crawl on visit, the way Open kicks the activity crawl, so the
   // cache warms itself and a cold one is one tap from being warm.
   goSessions(){ this.estateSeen = true; this.view = 'sessions'; this.refreshSessionsCache?.(); this.syncUrl(); },
+  // Guides reads on demand rather than from a crawl cache: the read is a
+  // directory listing per repo plus one per open PR, and the pane's own
+  // component owns it, so there is no cache for the shell to warm here.
+  goGuides(){ this.estateSeen = true; this.view = 'guides'; this.syncUrl(); },
   goLanding(){ this.view = 'landing'; this.syncUrl(); },
   goPages(){ this.view = 'pages'; this.syncUrl(); },
   goAtlas(){ this.atlasSeen = true; this.view = 'atlas'; this.syncUrl(); },
