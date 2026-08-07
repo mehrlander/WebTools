@@ -37,10 +37,12 @@ export default async function (page) {
     const ACTIVITY = { generatedAt: '2026-08-07T03:00:00Z', repos: {
       'mehrlander/web-tools': {
         defaultBranch: 'main', counts: { openPRs: 1 }, recentCommits: [], survey: { branches: [] },
-        openPRs: [{ number: 367, head: 'claude/lib-kits-consolidation-pdhf41', draft: true,
-                    title: 'Measure the code layers before moving anything',
-                    updatedAt: '2026-08-07T02:00:00Z',
-                    sessions: ['https://claude.ai/code/session_01ADXgdUAYGTAAydrjrXjYWS'] }],
+        // STALE ON PURPOSE: the crawl ran before #367 opened, which is the
+        // exact state that made the pane report no guides while one was in
+        // flight. The pane must find it anyway, from the live pulls() read.
+        openPRs: [{ number: 364, head: 'claude/show-repo-progress-b8l63x', draft: true,
+                    title: 'An older PR the crawl did catch', updatedAt: '2026-08-06T14:52:27Z',
+                    sessions: ['https://claude.ai/code/session_01XG5'] }],
       },
       'mehrlander/home': {
         defaultBranch: 'main', counts: {}, recentCommits: [], survey: { branches: [] }, openPRs: [],
@@ -68,6 +70,15 @@ export default async function (page) {
       if (typeof path === 'string' && path.startsWith('/repos/')) {
         return { default_branch: 'main', description: '', private: false,
                  pushed_at: '2026-08-07T02:00:00Z' };
+      }
+      // The LIVE open-PR read, which is what sees #367 at all. It carries the
+      // session in the PR body footer, the way the real endpoint does.
+      if (typeof path === 'string' && path.startsWith('pulls?state=open')) {
+        if (this.repo !== 'mehrlander/web-tools') return [];
+        return [{ number: 367, title: 'Measure the code layers before moving anything',
+                  draft: true, updated_at: '2026-08-07T02:00:00Z',
+                  head: { ref: 'claude/lib-kits-consolidation-pdhf41' },
+                  body: 'Session: https://claude.ai/code/session_01ADXgdUAYGTAAydrjrXjYWS' }];
       }
       return origReq.call(this, path);
     };

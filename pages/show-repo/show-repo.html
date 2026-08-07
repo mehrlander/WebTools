@@ -3534,10 +3534,11 @@ function app(){ return {
   // throttled crawl on visit, the way Open kicks the activity crawl, so the
   // cache warms itself and a cold one is one tap from being warm.
   goSessions(){ this.estateSeen = true; this.view = 'sessions'; this.refreshSessionsCache?.(); this.syncUrl(); },
-  // Guides reads on demand rather than from a crawl cache: the read is a
-  // directory listing per repo plus one per open PR, and the pane's own
-  // component owns it, so there is no cache for the shell to warm here.
-  goGuides(){ this.estateSeen = true; this.view = 'guides'; this.syncUrl(); },
+  // Guides does its own directory reads, but the repo list and the open PRs it
+  // scans come off the ACTIVITY cache, so this warms the same one goActivity
+  // does. Landing straight on ?view=guides without it is how the pane came up
+  // empty: nothing to scan, and nothing to say so.
+  goGuides(){ this.estateSeen = true; this.view = 'guides'; this.refreshActivityCache?.(); this.syncUrl(); },
   goLanding(){ this.view = 'landing'; this.syncUrl(); },
   goPages(){ this.view = 'pages'; this.syncUrl(); },
   goAtlas(){ this.atlasSeen = true; this.view = 'atlas'; this.syncUrl(); },
