@@ -78,8 +78,14 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   Saying **"caption"** requests one of three sizes: **full** (everything since main; `/caption` default and guide-PR sync source), **turn** (this turn's files; default file-modifying closer), or **bare** (only the 🧭 guide link when nothing changed).
 
-  Keep the reply and the guide body in sync. A bare reply implies nothing is viewable yet. If there is no render link, say why (the renderer itself is what changed, the page's data is an untracked build artifact).
+  Keep the reply and the guide body in sync. A bare reply implies nothing is viewable yet. The render line is part of the caption at **every size**, turn-size refinement closers included: the smaller a diff feels, the more the reader wants to look, so if there is no render link, say why (the renderer itself is what changed, the page's data is an untracked build artifact), never omit it silently.
 * **Session diff:** summarize substantial work with `Session diff: [main...branch](url)`.
+* **Closing state:** every reply that finishes work or proposes more ends with exactly one of four labeled states, so the cheapest useful answer is one word. The bold label carries the meaning; the color makes it scannable:
+
+  - 🟢 **Ready to continue:** named work available on "go", listed as bullets, one line each. "Go" authorizes only what the list names, and "go 1, 3" takes a subset. Work the session conceives belongs here as a proposal (Keep focus), never done unprompted.
+  - 🟡 **Decision needed:** continuation depends on the user's call, and the state names the decision.
+  - ⚪ **Natural stopping point:** no further work proposed; the wrap-up offer lives here.
+  - 🟠 **Attention:** something concrete needs addressing before proceeding. Reserved for an actual problem or risk, not routine uncertainty; there is deliberately no red.
 * **External proxies:** prohibited. Third-party GitHub renderers such as `htmlpreview.github.io`, `raw.githack.com`, and `gitcdn.link` fetch server-side, fail on private repos, and route content through another host. Use `[new]` for canonical source and 🥏 for a private or un-deployed render.
 * **Skip the watch offer:** never offer to watch CI or monitor a PR.
 

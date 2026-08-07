@@ -1362,7 +1362,7 @@ const RAIL_KIND = { link: 'ph-arrow-up-right', action: 'ph-lightning', repo: 'ph
 // The Map view's tabs, in render order, first = default. Named HERE rather than
 // in map() because the shell validates the ?tab= param before the component
 // mounts; map() renders whichever of these is set.
-const MAP_TABS = ['set', 'surfacing', 'showing', 'docs', 'tests'];
+const MAP_TABS = ['set', 'surfacing', 'showing', 'docs', 'claims', 'tests'];
 
 // marked, loaded once on demand for the overview README render.
 let _markedP = null;
@@ -4178,16 +4178,17 @@ function overview(){ return {
       itself a capture log, and the registry is in agent-session scope, so an
       agent can drain the pile. ?view=jots is always stamped, so a Jots link
       is shareable without a repo param.
-    Map (?view=map&tab=set|surfacing|showing|docs|tests; ?view=portable still
-      resolves here, and the default tab stays out of the URL): the coordination layer
+    Map (?view=map&tab=set|surfacing|showing|docs|claims|tests; ?view=portable
+      still resolves here, and the default tab stays out of the URL): the coordination layer
       made inspectable, and the operational face of the constellation doctrine
       (home's created/2026-06-27-constellation-architecture.md, kernel at the
-      hub's docs/CONSTELLATION.md, linked from the Portable header). Five tabs,
+      hub's docs/CONSTELLATION.md, linked from the Portable header). Six tabs,
       all public, each a projection of one committed hub manifest: Portable
       (docs/portable.json; labelled The set until 2026-08-07, and the ?tab=set
       URL key is unchanged), Surfacing (docs/surfacing.json), Showing
       (docs/routes.json), Docs (docs/docs.json, a folder rail beside the
-      selected folder's files), and Tests (docs/tests.json). Per-repo scope and
+      selected folder's files), Claims (the same registry's shared-claims
+      table), and Tests (docs/tests.json). Per-repo scope and
       adoption moved onto the Repos cards on 2026-08-03; the alignment grading
       (lib/portable-align.js) rides there now.
     Tools (?view=tools): a curated gallery of the owner's utility pages (the

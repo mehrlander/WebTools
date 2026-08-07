@@ -704,7 +704,7 @@ documentation holds and what holds it (Docs), and what the suite checks
 (Tests). Who carries the set is a fact about a repo and lives on the Repos
 cards.
 
-**The open tab is addressable:** `?view=map&tab=surfacing|showing|docs|tests`,
+**The open tab is addressable:** `?view=map&tab=surfacing|showing|docs|claims|tests`,
 on the same `tab` key the project view's pills use, with the default (`set`)
 left out of the URL so a plain `?view=map` link is unchanged. The tab is held
 by the shell rather than by `map()`, because the URL is the shell's to own and
@@ -824,9 +824,10 @@ more than one place, each with its one authoritative carrier and its typed
 repetitions (copy, paraphrase, pointer, live read; a copy says who keeps it, by
 hand or by a named builder), where an absent check renders in the warning tone
 rather than being omitted, because an unchecked copy should look unchecked every
-time the tab opens. The claims table sits collapsed behind its count
-(2026-08-07): it keys on claims rather than files, so trailing the census open
-it read as an appendix; a fuller incorporation is an open thread. The registry is authoritative for the claims it covers and
+time the tab opens. The claims table renders on its own **Claims** tab
+(2026-08-07): it keys on claims rather than files, so trailing the census it
+read as an appendix, first open, then folded behind a count; a tab keeps the
+census on one viewport and gives the table its own. The registry is authoritative for the claims it covers and
 owes the repo no inventory of them; the census, by contrast, is complete.
 Public, like the other two tabs.
 
