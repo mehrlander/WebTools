@@ -70,10 +70,11 @@
       <button role="tab" class="tab gap-2"
               :class="tab === t.id ? 'tab-active font-semibold' : ''"
               @click="tab = t.id">
-        <i class="ph-bold" :class="t.icon"></i>
+        <!-- Icons drop below sm so five tabs fit one row on a phone. The label
+             is the thing being read; the icon was what pushed Migration onto a
+             second line. -->
+        <i class="ph-bold hidden sm:inline" :class="t.icon"></i>
         <span x-text="t.label"></span>
-        <span class="badge badge-xs" :class="tab === t.id ? 'badge-primary' : 'badge-ghost'"
-              x-show="t.count" x-text="t.count"></span>
       </button>
     </template>
   </div>
@@ -92,12 +93,11 @@
     binding it to live data would silently rewrite history to match the present.
   -->
   <div x-show="tab === 'facts'">
+    <!-- No heading. The tab already says Facts, and the opening sentence names
+         the subject, so a "Statement of facts" banner said the same thing a
+         third time before the reader reached a single fact. -->
     <div class="bg-base-100 rounded-lg px-6 sm:px-10 py-8 max-w-3xl mx-auto
                 text-[15px] leading-7 text-base-content/90 space-y-4">
-      <h2 class="text-xs font-bold tracking-[0.2em] uppercase text-base-content/50 mb-6">
-        Statement of facts
-      </h2>
-
       <p>This guide concerns the placement of source files within <span class="mono">lib/</span>,
       and the rule by which placement is decided.</p>
 
@@ -516,13 +516,18 @@ function guide() {
     get nKitsHub()    { return this.rows.filter(r => r.layer === 'lib/kits' && r.hub).length; },
     get nRootNoHub()  { return this.rows.filter(r => r.layer === 'lib' && !r.hub).length; },
 
+    // No counts on the tabs. Every number they carried is stated where it is
+    // used (the header carries the file and change totals, Now counts its own
+    // filtered rows, Migration opens on its three figures), so the badges were
+    // a second copy competing with the labels and wrapping the row onto two
+    // lines on a phone.
     get tabs() {
       return [
-        { id: 'facts',     label: 'Facts',     icon: 'ph-scales',     count: 0 },
-        { id: 'now',       label: 'Now',       icon: 'ph-folders',    count: this.rows.length },
-        { id: 'options',   label: 'Options',   icon: 'ph-git-branch', count: this.options.length },
-        { id: 'target',    label: 'Target',    icon: 'ph-target',     count: 0 },
-        { id: 'migration', label: 'Migration', icon: 'ph-path',       count: this.movers.length },
+        { id: 'facts',     label: 'Facts',     icon: 'ph-scales' },
+        { id: 'now',       label: 'Now',       icon: 'ph-folders' },
+        { id: 'options',   label: 'Options',   icon: 'ph-git-branch' },
+        { id: 'target',    label: 'Target',    icon: 'ph-target' },
+        { id: 'migration', label: 'Migration', icon: 'ph-path' },
       ];
     },
 
