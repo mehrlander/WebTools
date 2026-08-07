@@ -257,7 +257,7 @@
       "path": "tools/test/estate-open-branches.test.mjs",
       "kind": "component",
       "protects": "The open-branches list shows open PRs and stranded branches only, freshest first.",
-      "assertions": 19,
+      "assertions": 21,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0

@@ -95,6 +95,15 @@ seed();
 const plain_ = (v) => JSON.parse(JSON.stringify(v));
 const names = (rows) => plain_(rows.map(r => r.repo + '/' + r.name));
 
+// The component's own default, captured before the baseline below overrides it.
+// Recorded rather than assumed: these tests share one `data`, so a test that
+// inherits a default is really asserting the previous test's leftovers.
+const DEFAULT_SCOPE = data.branchScope;
+// Most of this file was written against Open and reads its semantics, so the
+// baseline is stated once here instead of riding on whatever the default
+// happens to be. Tests that need another scope set it and restore it.
+data.branchScope = 'open';
+
 test('openBranches: open PRs and stranded branches only, freshest first', () => {
   assert.deepEqual(names(data.openBranches),
     ['me/tools/feat/a', 'me/tools/feat/b', 'me/home/fresh']);
@@ -265,9 +274,26 @@ test('allBranchRows: everything the cache knows, landed included', () => {
      'me/tools/old/landed', 'me/quiet/done']);
 });
 
-test('the default scope is open, and it is the old list exactly', () => {
-  assert.equal(data.branchScope, 'open');
+test('the default scope is Recent and it leads the row', () => {
+  // Recent leads and opens because the pane's question is "what am I working
+  // on", and it is the only scope the window control acts on: landing on any
+  // other scope opened the pane with its one parameter invisible.
+  assert.equal(DEFAULT_SCOPE, 'active');
+  assert.equal(data.BRANCH_SCOPES[0].key, 'active');
+});
+
+test('Open still selects the old list exactly, at any age', () => {
+  data.branchScope = 'open';
   assert.deepEqual(names(data.openBranches), names(data.allBranchRows.filter(r => r.pr || r.group === 'stranded')));
+});
+
+test('the window is disjoint from stranded and landed, so it cannot narrow them', () => {
+  // Both require daysAgo > 14 at classify time and the window tops out at 14,
+  // which is why the control renders under Recent alone: applied to either of
+  // these it would empty the list at every setting rather than narrow it.
+  for (const r of data.allBranchRows.filter(r => r.group === 'stranded' || r.group === 'landed')) {
+    assert.ok(!data.inScope(r, 'active'), r.name + ' must not be reachable as Recent');
+  }
 });
 
 test('each scope shows its own group', () => {

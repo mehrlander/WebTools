@@ -40,7 +40,6 @@ export default async function (page) {
     if (!host) return 'no estate host';
     const d = window.Alpine.$data(host);
     d.load();
-    d.branchScope = 'active';
     return true;
   }, want);
   if (ok !== true) throw new Error('branches-window: ' + ok);
