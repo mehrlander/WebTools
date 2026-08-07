@@ -179,6 +179,7 @@ itself; a page that instantiates `GH` by hand gets only what it loads.
 | `html`, the DOM helpers (`ea`, `el`, …), `copy()` | `vanilla-bundle.js` | ambient string/DOM utilities |
 | `proof` | `kits/proof.js` | sandboxed proof documents (srcdoc builders); vanilla-demo and chat-render sit on it |
 | `chatRender` | `chat-render.js` | chat transcript renderer; fenced blocks become live artifacts. Loads after `swipe-deck.js` |
+| `sessionRender` | `session-render.js` | a session record (web-tools-private `sessions/**.json`) as a paged conversation: merges the record's three parallel turn lists on `at`, groups a card per ask and per prose turn, and names what the record could not capture. Loads after `chat-render.js` |
 | `swipeDeck` | `swipe-deck.js` | the house swipe format: a snap track of slides, and the fullscreen takeover that frames it. Self-contained, so another repo's page can load it with a plain `<script src>` |
 | Alpine stores `browser`, `toasts`; magics `$clip`, `$paste`, `$toast` | `alpine-bundle.js` | exist only after `alpine:init` |
 | `__builtOffline` | a build (`kits/build.js` output) | present only on baked/offline pages |
@@ -306,6 +307,30 @@ anything we add:
    awaits resolve — should either convert to `<script type="module">` or
    call `window.ghAuth.bootDone()` at the end of their chain to opt into
    "boot is over, stop showing boot UI" semantics.
+8. **A pre-build page boots Alpine inside its import, so its own `gh.load`
+   chain always runs late.** This is invariant 4 in its sharpest form. A page
+   that does `await import('../dist/web-tools.js')` gets the whole auto-boot
+   chain, ending in `alpine-bundle.js`, before the import resolves; the
+   `gh.load(...)` calls it writes underneath therefore run *after* Alpine has
+   walked the DOM and called `init()`. Every kit such a page loads for itself
+   is undefined at component-init time. Which one you notice is arbitrary: it
+   is whichever the component touches first, so the same bug surfaced as
+   `reviewTarget.parse` on one path and `BranchBrief.fetchBrief` one `await`
+   later on another (2026-08-07, `branch.html`, in a real browser).
+
+   The build fixes its own two instances of this by forcing `url-params.js`
+   and `repo-address.js` into the auto-boot chain, and
+   [`tools/build/build-lib.mjs`](../tools/build/build-lib.mjs) says why in
+   those words. That does not extend to a kit only one page wants, so such a
+   page declares a **ready gate**: a plain `<script>` *above* the module
+   creating `window.__depsReady`, the module resolving `window.__depsDone()`
+   in a `finally`, and the component opening `init()` with
+   `await window.__depsReady`. The promise has to be created above the module
+   because a component that starts during the import would otherwise find the
+   promise itself undefined. Held by
+   [`tools/test/page-deps-gate.test.mjs`](../tools/test/page-deps-gate.test.mjs),
+   which is static: the failure is a race, so a passing run proves nothing and
+   only the shape can be pinned.
 
 ## What breaks the pattern
 

@@ -22,6 +22,12 @@ const REGISTRY = 'me/registry';
 
 let FILES = {};
 let GETS = [];
+// The deck, stubbed. openSession's job here is to fetch the right record and
+// hand it over; what the deck DOES with it is session-render.js's own test.
+// gh.load is stubbed to a no-op so the lazy renderer chain does not need the
+// network: the component only ever calls it when window.sessionRender is
+// absent, and here it never is.
+let OPENED = [];
 
 function rec(over = {}) {
   return {
@@ -60,6 +66,8 @@ const { window } = makeWindow({
 });
 window.TOKEN = 'tkn';
 window.GH = FakeGH;
+window.sessionRender = { open: async (r) => { OPENED.push(r); return { close(){} }; } };
+window.gh = { load: async () => {} };
 const shell = {
   REGISTRY_REPO: REGISTRY,
   DEFAULT_REPO: 'me/tools',
@@ -183,68 +191,82 @@ test('repo chips come off the scoped list, busiest first, with no zero rows', ()
 
 // ── The record, opened ──────────────────────────────────────────────────────
 
-test('opening a row fetches its record by the store path; a second tap closes it', async () => {
+test('opening a row fetches its record by the store path and hands it to the deck', async () => {
   seed([rec()]);
   const row = data.sessionRows[0];
   FILES = { 'sessions/2026/08/2026-08-05-b8fae678.json': rec() };
   GETS = [];
+  OPENED = [];
 
   await data.openSession(row);
   assert.equal(data.openSessionId, 'b8fae678');
   assert.ok(GETS.includes('sessions/2026/08/2026-08-05-b8fae678.json'),
             'the record is addressed by the path its own fields imply');
   assert.equal(data.sessionDetail.short, 'b8fae678');
-
-  await data.openSession(row);
-  assert.equal(data.openSessionId, '');
-  assert.equal(data.sessionDetail, null);
+  assert.equal(OPENED.length, 1, 'one tap must reach the conversation, not an intermediate pane');
+  assert.equal(OPENED[0].short, 'b8fae678', 'the deck is handed the record that was just read');
 });
 
-test('a record that will not read reports it rather than showing an empty session', async () => {
+test('re-opening a session does not re-fetch its record', async () => {
   seed([rec()]);
-  FILES = {};
-  await data.openSession(data.sessionRows[0]);
-  assert.match(data.sessionDetailErr, /Could not read the record/);
-  assert.equal(data.sessionDetailLoading, false);
-});
-
-test('detailFiles spells out the kind breakdown, busiest first', async () => {
-  seed([rec()]);
-  // The previous test left the row open on its error, and openSession is a
-  // toggle; start from closed so this opens rather than closing.
-  data.openSessionId = '';
   FILES = { 'sessions/2026/08/2026-08-05-b8fae678.json': rec() };
   await data.openSession(data.sessionRows[0]);
-  const f = data.detailFiles;
-  assert.equal(f[0].path, 'web-tools/a.js');
-  assert.equal(f[0].label, '5 edit, 1 read', 'how a file was touched, not just how often');
-  assert.equal(f[1].path, 'home/b.md');
-});
-
-test('the footnote names what an older record could not have captured', async () => {
-  seed([rec()]);
-  data.openSessionId = '';
-  FILES = { 'sessions/2026/08/2026-08-05-b8fae678.json': rec({ schema: 1, exchanges: 300, prompts_stored: 200 }) };
+  GETS = []; OPENED = [];
   await data.openSession(data.sessionRows[0]);
-  assert.match(data.detailFootnote, /predates file capture/);
-  assert.match(data.detailFootnote, /predates tool-call capture/);
-  assert.match(data.detailFootnote, /200 of 300 asks stored/);
+  assert.deepEqual(GETS, [], 'the record is cached per id; a second read is wasted');
+  assert.equal(OPENED.length, 1, 'and it still opens');
 });
 
-// ── The join back to Branches ───────────────────────────────────────────────
+test('a record that will not read reports it rather than opening an empty deck', async () => {
+  seed([rec()]);
+  FILES = {};
+  OPENED = [];
+  // The cache above is per-id and outlives a seed(), so this would otherwise
+  // be served from the previous test's read and never reach the store at all.
+  data._records = {};
+  await data.openSession(data.sessionRows[0]);
+  assert.match(data.sessionDetailErr, /Could not open b8fae678/);
+  assert.equal(data.sessionDetailLoading, false);
+  assert.equal(OPENED.length, 0, 'a failed read must not open a deck on nothing');
+});
 
-test('tapping a branch filters Branches to its repo and switches panes', () => {
+// The row carries both facts the session-link cell branches on: the URL when
+// the record names one, and the schema when it does not. The view shows a
+// dimmed icon rather than nothing in the empty case, and the two causes get
+// different tooltips, so an absent `agent` must stay distinguishable by schema
+// rather than collapsing into one blank.
+test('a record naming no harness session leaves agent empty, with schema still readable', () => {
+  seed([
+    rec({ short: 'named' }),
+    rec({ short: 'nocommit', agent_session: '' }),
+    rec({ short: 'old', schema: 1, agent_session: undefined }),
+  ]);
+  const by = Object.fromEntries(data.sessionRows.map(r => [r.id, r]));
+  assert.equal(by.named.agent, 'https://claude.ai/code/session_01SX');
+  assert.equal(by.nocommit.agent, '', 'a schema-3 record that named no session must not invent one');
+  assert.equal(by.nocommit.schema, 3, 'schema must survive so the empty case can say WHY it is empty');
+  assert.equal(by.old.agent, '');
+  assert.equal(by.old.schema, 1, 'a pre-schema-3 record is the other reason the link is absent');
+});
+
+
+// ── The join to a branch ────────────────────────────────────────────────────
+
+test('a branch chip addresses that branch at branch.html, not a filtered list', () => {
   seed([rec()]);
   data.entries = [{ repo: 'mehrlander/web-tools' }, { repo: 'mehrlander/home' }];
-  shell.view = 'sessions';
-  const row = data.sessionRows[0];
+  const url = data.branchPageUrl(data.sessionRows[0], 'claude/a-1');
+  // The whole point: the reader asked for a branch and gets that branch. The
+  // old behaviour switched panes and filtered by REPO, leaving the branch still
+  // to find and the session they were reading lost.
+  assert.equal(url, '../branch.html#gh=mehrlander/web-tools@claude/a-1');
+});
 
-  data.showBranch(row, 'claude/a-1');
-  assert.equal(shell.view, 'activity');
-  assert.equal(data.openRepoFilter, 'mehrlander/web-tools');
-  // Scope goes to All, not Open: the session outlives the branch, so a merged
-  // branch must still be findable from the session that made it.
-  assert.equal(data.branchScope, 'all');
+test('an unresolvable repo still yields the page, without a broken address', () => {
+  seed([rec()]);
+  data.entries = [];
+  const url = data.branchPageUrl(data.sessionRows[0], 'claude/a-1');
+  assert.equal(url, '../branch.html', 'better the page\'s own address field than a link to nowhere');
 });
 
 // ── Labels ──────────────────────────────────────────────────────────────────

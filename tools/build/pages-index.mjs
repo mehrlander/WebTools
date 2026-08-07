@@ -215,7 +215,7 @@ function buildHtml() {
   const ref = new URLSearchParams(location.search).get('use');
   if (ref) {
     window.__ghBlobBoot = { repo: '${REPO}', ref };
-    const r = await fetch(\`https://raw.githubusercontent.com/${REPO}/\${ref}/lib/gh-api.js\`);
+    const r = await fetch(\`https://raw.githubusercontent.com/${REPO}/\${ref}/lib/gh-api.js\`, { cache: 'no-store' });
     if (!r.ok) throw new Error(\`?use=\${ref}: could not fetch gh-api.js (HTTP \${r.status})\`);
     const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
     try { await import(u); } finally { URL.revokeObjectURL(u); }

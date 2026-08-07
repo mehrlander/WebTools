@@ -3,23 +3,20 @@
 _Generated from tasks/. Do not hand-edit._
 
 ## On deck
-- 🎫 [Converge the branch page's authored layer on the branch-review surface](tasks/branch-authored-layer-surface-0j0zik.md)
 - 🎫 [Reach the take-away menu from show-repo's Pages gallery](tasks/brief-from-the-pages-gallery-7d4031.md) (needs: Find a way to focus attention on one piece of a page's UI)
-- 🎫 [Read-tracking for docs: which files sessions actually open](tasks/docs-read-tracking-sn9nj8.md)
 - 🎫 [A multi-method harness for extracting structure from scanned documents](tasks/document-structure-harness-4mz7wk.md)
-- 🎫 [Capture button on the FAB, serializing what it already collects](tasks/fab-capture-button-f6q38m.md)
-- 🎫 [Give the file-review collapsed row more than a name and a count](tasks/file-review-collapsed-density-2rvxfn.md)
+- 🎫 [Persist FAB captures, the write path to state/captures/](tasks/fab-capture-button-f6q38m.md) · S
 - 🎫 [Find a way to focus attention on one piece of a page's UI](tasks/focus-a-ui-component-f0awt7.md)
 - 🎫 [Settle whether lib/ root and lib/kits/ are one category, then move what the rule says](tasks/lib-root-kit-migration-dind5t.md)
-- 🎫 [Live-confirm the two GraphQL queries the estate depends on](tasks/live-confirm-graphql-queries-7maacy.md)
+- 🎫 [Live-confirm the BranchSessions query](tasks/live-confirm-graphql-queries-7maacy.md) · XS
 - 🎫 [Build our own JSON tree for display, keep vanilla-jsoneditor for editing](tasks/own-json-tree-retire-vje-i0lcj2.md)
 - 🎫 [Pinch-zoom and pan for pdf-inspect's page view](tasks/pdf-inspect-pinch-zoom-5wz3kt.md)
 - 🎫 [Close open table perimeters in the pdf kit's lattice](tasks/pdf-lattice-open-perimeter-h4kx9r.md)
-- 🎫 [A column-splitter page for the pdf kit](tasks/pdf-table-splitter-page-q7vm2d.md)
+- 🎫 [Draggable column boundaries with live reassignment, in pdf-inspect](tasks/pdf-table-splitter-page-q7vm2d.md) · S
 - 🎫 [Inline the run-time CDN references a rendering copy still carries](tasks/render-copy-runtime-cdn-refs-p4m2wq.md)
 - 🎫 [Session-start nudge for unconfigured or legacy-manifest repos](tasks/session-start-nudge-unconfigured-z0g4zn.md) (`claude/skills-portable-conventions-8x1lua`)
-- 🎫 [Give show-repo the ability to edit a repo's .web-tools.json](tasks/show-repo-edit-web-tools-json-ygramz.md) (`claude/skills-portable-conventions-8x1lua`)
-- 🎫 [Assess the orphan docs for skillification, and boil them down](tasks/skillify-orphan-docs-izv20p.md)
+- 🎫 [Retire .show-repo.json, delete the legacy file on migrate, drop the read fallback](tasks/show-repo-edit-web-tools-json-ygramz.md) · S
+- 🎫 [Route the orphan docs by cause, per the 2026-08-05 classification](tasks/skillify-orphan-docs-izv20p.md) · S
 - 🎫 [Spike the snags log (friction learned the hard way)](tasks/spike-snags-log-gobdyq.md) (`claude/pr-219-review-22csrh`)
 - 🎫 [Give the stage a way to carry part of a file](tasks/stage-partial-file-selection-k8mtou.md)
 - 🎫 [Make the take-away menu work inside a toss](tasks/take-away-inside-a-toss-k73cjq.md)
@@ -36,6 +33,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [App views - designate a page as an estate-level view](tasks/app-views-estate-level-btp6m4.md) (`claude/web-tools-app-views-m3pkyo`)
 - 🎫 [Automate the merge guide from PR bodies](tasks/automate-merge-guide-from-pr-bodies-uaect4.md) (`claude/task-tracker-discussion-wg27xv`)
 - 🎫 [Backfill guide regions into old PR bodies and full-regenerate the merge guide](tasks/backfill-guide-regions-merge-guide-bkk4xv.md) (`claude/merge-guide-web-tools-gjhw8l`)
+- 🎫 [Converge the branch page's authored layer on the branch-review surface](tasks/branch-authored-layer-surface-0j0zik.md) (`claude/show-repo-progress-b8l63x`)
 - 🎫 [Make the branch page a navigation target, swipeable from the lists](tasks/branch-page-as-navigation-adi9ha.md) (`claude/project-pages-docs-udzi51`)
 - 🎫 [Show the branch lifespan in the per-repo branch review too](tasks/branch-review-lifespan-0g4znz.md) (`claude/project-pages-docs-udzi51`)
 - 🎫 [Branch-review view in show-repo](tasks/branch-review-view-show-repo-rwwmrj.md) (`claude/web-tools-branch-tracking-n1zawm`)
@@ -47,12 +45,14 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Confirm-gated cross-repo edit proposals via a web-tools-private channel](tasks/cross-repo-edit-proposals-evo1ml.md) (`claude/tracker-status-cjogjn`)
 - 🎫 [Have data-view open at an addressed item via the fragment](tasks/data-view-consume-fragment-nxlpbs.md) (`claude/web-tools-tracker-review-ij4pjj`)
 - 🎫 [Reclaim the phone viewport in data-view](tasks/data-view-mobile-chrome-x5plcv.md) (`claude/web-tools-project-tracker-reo5qo`)
+- 🎫 [Read-tracking for docs: which files sessions actually open](tasks/docs-read-tracking-sn9nj8.md) (`claude/show-repo-progress-b8l63x`)
 - 🎫 [Estate activity signals from a registry activity cache](tasks/estate-activity-signals-cache-38eze9.md) (`claude/branches-view-api-caching-ef4l5d`)
 - 🎫 [Estate cards still carry the retired three-icon cluster](tasks/estate-cards-icon-cluster-txr3os.md) (`claude/web-tools-project-tracker-reo5qo`)
 - 🎫 [Update estate tests to the groupSections layout](tasks/estate-rows-tests-stale-7r39ry.md) (`claude/viewer-button-dropdown-0h4u57`)
 - 🎫 [Extract drop-zone as a reusable Alpine component](tasks/extract-drop-zone-component-ckg7l1.md) (`claude/tracker-summary-nu74te`)
 - 🎫 [Generalize FAB embed handling to declared embeds](tasks/fab-declared-embeds-1jtpll.md)
 - 🎫 [Let the FAB collect a toss subject's page actions, not just the shell's](tasks/fab-subject-side-actions-t7r4nc.md)
+- 🎫 [Give the file-review collapsed row more than a name and a count](tasks/file-review-collapsed-density-2rvxfn.md) (`claude/show-repo-progress-b8l63x`)
 - 🎫 [Generalize the gallery to a per-repo pages catalog](tasks/generalize-gallery-pages-catalog-m3b8pa.md) (`claude/web-tools-app-views-m3pkyo`)
 - 🎫 [Finish GitHub jump-over coverage across show-repo views](tasks/github-jumpover-coverage-7bkgmk.md) (`claude/github-icon-placement-3d06i7`)
 - 🎫 [Check GraphQL query shape offline against GitHub's published schema](tasks/graphql-schema-contract-check-cpuvb5.md) (`claude/web-tools-tracker-review-bw48ga`)
