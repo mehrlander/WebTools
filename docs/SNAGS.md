@@ -164,6 +164,22 @@ a fragment URL renders as literal text, so a comment carrying a toss link needs
 the address checked after posting. *(seen: 2026-08-05)*
 → [SURFACING.md](SURFACING.md)
 
+**Corrected 2026-08-07: the escaping happens on WRITE too, and it corrupts the
+stored body.** The entry above reads the damage as a read-back artifact. It is
+not. A guide body written through `update_pull_request` comes back from GitHub
+with its `&` HTML-escaped and, past a threshold, the whole markdown link wrapped
+in a code span, so the Look line renders as literal text on github.com and in
+every reader of the body. Measured with seven variants written and read back: a
+bare URL, a fragment (`#gh=…`), an at-sign in a query value, and TWO query
+parameters all survive; THREE parameters get wrapped. The `&amp;` alone is
+harmless, since it is the correct escape and renders as `&`; the code span is
+the damage. So a body link keeps to two parameters and names any third in prose,
+and a body carrying a live link is read back after writing. Twice before
+measuring this I attributed the corruption to a typo in someone else's PR body,
+which is what an unverified guess about another author looks like.
+*(seen: 2026-08-07)*
+→ [SURFACING.md](SURFACING.md)
+
 **`prose` is not available on most pages, and it fails silently.** A guide body
 rendered on `pages/branch.html` with `prose prose-sm` came out with no bullets
 and no link color. Adding `@tailwindcss/typography` to the page's jsDelivr
