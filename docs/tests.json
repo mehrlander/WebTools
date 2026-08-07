@@ -281,6 +281,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/estate-pins.test.mjs",
+      "kind": "component",
+      "protects": "The estate Pin list stores at lists/pins.json, gates adds on the address grammar, and opens targets by the sidebar's file-or-folder rule.",
+      "assertions": 9,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
       "path": "tools/test/estate-repo-surfaces.test.mjs",
       "kind": "component",
       "protects": "The per-repo surfaces block mounts clean.",

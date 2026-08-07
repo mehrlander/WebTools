@@ -4203,6 +4203,14 @@ function overview(){ return {
       itself a capture log, and the registry is in agent-session scope, so an
       agent can drain the pile. ?view=jots is always stamped, so a Jots link
       is shareable without a repo param.
+    Pins (no ?view key of its own; it renders atop the Lists pane the two
+      views above share): internal links kept at hand, one flat item list
+      ({id, target, title, note, group, created_at}) in the registry's
+      lists/pins.json, target in the owner/repo[@ref]:path grammar. The
+      estate-wide personal sibling of the per-repo `pins` manifest field
+      (the sidebar's Pinned block): same keep-at-hand meaning, same open
+      rule (extension = file, else the Files view at that folder). Unpinning
+      removes only the pointer; the target stays where it lives.
     Map (?view=map&tab=set|surfacing|showing|docs|tests; ?view=portable still
       resolves here, and the default tab stays out of the URL): the coordination layer
       made inspectable, and the operational face of the constellation doctrine
