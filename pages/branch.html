@@ -58,6 +58,31 @@
   ?use=<branch|tag|sha> pins this page's own lib chain to a ref, fetched from
   raw.githubusercontent and blob-imported so a branch name is cache-safe.
 -->
+<!--
+  The ready gate, and why it is a plain script ABOVE the module.
+
+  Importing the pre-build boots Alpine as part of the import: alpine-bundle.js
+  is the last entry in its auto-boot chain. So by the time the module below
+  resumes to run its own gh.load calls, Alpine has already started, walked the
+  DOM, and run this page's `init()`. Any kit the page loads for itself is
+  therefore undefined at component-init time, and which one you notice depends
+  only on how far init gets before it touches one: `reviewTarget.parse` in
+  resolve(), or `BranchBrief.fetchBrief` one await later. Both were live, and
+  the second was reported from a real browser on 2026-08-07.
+
+  The build already solved this once, for itself: url-params.js and
+  repo-address.js are forced into the auto-boot chain precisely because "a
+  page's own gh.load chain runs AFTER this import" (tools/build/build-lib.mjs).
+  That fix does not extend to a kit only one page wants, so the page has to
+  state its own readiness.
+
+  The promise is created HERE, before the module, because a component that
+  starts during the import would otherwise find the promise itself undefined
+  and sail straight past the gate.
+-->
+<script>
+  window.__depsReady = new Promise(r => { window.__depsDone = r; });
+</script>
 <script type="module">
   const ref = new URLSearchParams(location.search).get('use');
   if (ref) {
@@ -68,13 +93,19 @@
   } else {
     await import('../dist/web-tools.js');
   }
-  await gh.load('kits/review-target.js');
-  // branch-brief reads compareFields from BranchSurvey, so it loads first.
-  await gh.load('branch-survey.js');
-  await gh.load('kits/branch-brief.js');
-  await gh.load('kits/cm6-merge.js');
-  await gh.load('alpineComponents/file-review.js');
-  await gh.load('alpineComponents/branch-brief.js');
+  try {
+    await gh.load('kits/review-target.js');
+    // branch-brief reads compareFields from BranchSurvey, so it loads first.
+    await gh.load('branch-survey.js');
+    await gh.load('kits/branch-brief.js');
+    await gh.load('kits/cm6-merge.js');
+    await gh.load('alpineComponents/file-review.js');
+    await gh.load('alpineComponents/branch-brief.js');
+  } finally {
+    // Released in `finally`: a page that failed one load should render its own
+    // error, not hang behind a gate that never opens.
+    window.__depsDone();
+  }
 </script>
 <style>
   [x-cloak]{display:none!important}
@@ -108,6 +139,10 @@
       framed: (() => { try { return window.self !== window.top; } catch { return true; } })(),
 
       async init() {
+        // Before resolve(), which reads window.reviewTarget: Alpine booted
+        // inside the pre-build's import, so nothing this page loaded for
+        // itself exists yet. See the gate above the module script.
+        await window.__depsReady;
         const t = this.resolve();
         if (!t) return;
         this.input = t.repo + (t.ref ? '@' + t.ref : '');

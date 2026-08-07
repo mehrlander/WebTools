@@ -39,6 +39,16 @@
   ?use=<branch|tag|sha> pins this page's own lib chain to a ref, fetched from
   raw.githubusercontent and blob-imported so a branch name is cache-safe.
 -->
+<!--
+  The ready gate: importing the pre-build boots Alpine as part of the import, so
+  this page's own gh.load calls below have not run by the time a component's
+  init() does. The promise is created here, above the module, because a
+  component that starts during the import would otherwise find it undefined.
+  Full account in pages/branch.html, where the failure was first measured.
+-->
+<script>
+  window.__depsReady = new Promise(r => { window.__depsDone = r; });
+</script>
 <script type="module">
   const ref = new URLSearchParams(location.search).get('use');
   if (ref) {
@@ -52,10 +62,12 @@
   // proof.js backs chat-render's sandboxed Render frames; swipe-deck owns the
   // track and the takeover; chat-render renders a turn. session-render sits on
   // all three and must load last.
-  await gh.load('kits/proof.js');
-  await gh.load('swipe-deck.js');
-  await gh.load('chat-render.js');
-  await gh.load('session-render.js');
+  try {
+    await gh.load('kits/proof.js');
+    await gh.load('swipe-deck.js');
+    await gh.load('chat-render.js');
+    await gh.load('session-render.js');
+  } finally { window.__depsDone(); }
 </script>
 <style>
   [x-cloak]{display:none!important}
@@ -147,6 +159,9 @@
       },
 
       async init(){
+        // Before anything reads window.sessionRender: Alpine booted inside the
+        // pre-build's import, so this page's own chain has not run yet.
+        await window.__depsReady;
         const t = this.resolve();
         if (!t) return;
         this.input = t.label || '';

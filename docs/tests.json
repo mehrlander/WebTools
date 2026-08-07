@@ -461,6 +461,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/page-deps-gate.test.mjs",
+      "kind": "behavior",
+      "protects": "A page that imports the pre-build waits for its own gh.load chain, since importing it boots Alpine before that chain runs.",
+      "assertions": 4,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/pages.test.mjs",
       "kind": "component",
       "protects": "The pages gallery mounts closed and opens without warnings.",
