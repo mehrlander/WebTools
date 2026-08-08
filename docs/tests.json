@@ -293,7 +293,7 @@
       "path": "tools/test/estate-jots.test.mjs",
       "kind": "component",
       "protects": "The jots list mounts clean.",
-      "assertions": 8,
+      "assertions": 9,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1
@@ -302,7 +302,7 @@
       "path": "tools/test/estate-open-branches.test.mjs",
       "kind": "component",
       "protects": "The open-branches list shows open PRs and stranded branches only, freshest first.",
-      "assertions": 19,
+      "assertions": 20,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
@@ -335,10 +335,19 @@
       "boot_smoke": 1
     },
     {
+      "path": "tools/test/estate-search.test.mjs",
+      "kind": "behavior",
+      "protects": "The shared search core: a failed tree fetch is never cached as an empty tree, names search reaches any ref and reports unreadable trees, code search carries its scope and fragments, the session grep matches what a record quotes, and reset forgets it all.",
+      "assertions": 6,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/estate-sessions.test.mjs",
       "kind": "component",
       "protects": "The Sessions pane and the Lists merge behind it: both filters lapse rather than stranding the pane on an empty list, the pill routes through the shell so the URL keeps stamping, and a missing cache reads as empty rather than as an error. A record that names no harness session keeps an empty `agent` beside a readable `schema`, which is what lets the session-link cell say WHY it has no link instead of rendering nothing.",
-      "assertions": 14,
+      "assertions": 15,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
@@ -446,7 +455,7 @@
       "path": "tools/test/guide-render.test.mjs",
       "kind": "kit",
       "protects": "The guide renderer shared by the FAB drawer and the branch page: the slashed-ref split that keeps a claude/<slug> address from 404ing, the file routing table, and the chip strip's dedupe by file rather than by address.",
-      "assertions": 11,
+      "assertions": 12,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -632,6 +641,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/quick-find.test.mjs",
+      "kind": "component",
+      "protects": "The sidebar finder's lanes resolve as documented: #digits to open PRs, @ to the repo-then-file walk with fuzzy tree matching, pasted addresses exactly, plain text to repos, views, and cached file names, the contents gate routing to the Search view, the in-panel session search with its clear row, and the jot lanes writing to the pile.",
+      "assertions": 15,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 1
+    },
+    {
       "path": "tools/test/ref-switch.test.mjs",
       "kind": "component",
       "protects": "The ref switch pins the ref on both halves and carries the page query across.",
@@ -727,6 +745,15 @@
       "protects": "The showing manifest is well-formed and its picker only routes to mechanisms that exist. Also caps CLAUDE.md.",
       "assertions": 8,
       "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/search-view.test.mjs",
+      "kind": "component",
+      "protects": "The Search view: a carried seed auto-runs, names mode passes the ref through to opening, contents mode builds its scope qualifier, errors surface whole, session hits dispatch the open event, and each run restamps the address.",
+      "assertions": 7,
+      "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
     },

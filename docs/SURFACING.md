@@ -70,6 +70,8 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   `[new]` is the branch tip; `[main]` is the baseline. `[main]/[diff]` is the net change against main; `[new]/[diff]` is on-branch history. Add `#L120` or `#L120-L145` for line anchors. Keep rows uniform and do not repeat a file's links within a turn.
 
+  **In a PR body, drop the slash and the per-file diff anchor.** The GitHub MCP's write path defangs what it distrusts by wrapping it in backticks, and two of this format's habits trigger it (measured 2026-08-08, web-tools PR #372, by writing probe lines and reading them back): a `](url)/[` pair joined by a bare slash, even with clean URLs, and a compare URL carrying a `#diff-<hex>` anchor. Both arrive backtick-wrapped and render as literal text, on GitHub and in every downstream reader of the body. A third trigger, same measurement: the toss form carrying both `?use=` and `#gh=` was wrapped, while the `#gh=`-only form passed, and under `#gh` a page's relative dependencies already load from the addressed ref, so nothing is lost. So any body or comment written through the MCP separates a file's links with `, ` (`[main](…), [diff](…)`), points diffs at the plain compare URL, and writes its 🥏 toss without `?use=`. Chat replies keep the slash form, the anchors, and the full toss, which travel untouched.
+
   When a renderable HTML page changed, put its 🥏 or 📦 render after the list, not in a row. The list carries source; the render line carries the running page. Apply the same honesty gate as ⭐.
 
   ```
@@ -103,14 +105,14 @@ It leads with:
 1. **Outcome + why:** one sentence, no preamble.
 2. **The thing to open:** ⭐ hosted URL, else 🥏 branch toss, else an honest `[new]` source view.
 
-It then carries the `[new]/[main]/[diff]` file list, `renders on:` lines for shared components, only non-obvious notes, and a diff or compare link.
+**The body does not enumerate files.** Two derived surfaces already do, current by construction: GitHub's Files tab and the branch page's Files pane, which groups the changed files through the repo's content registry where one is declared (authored work leading, mechanical collapsed; the `content-registry` skill owns that convention). A body row can only restate what those list, go stale against them, and feed the MCP sanitizer link shapes it mangles. What the body carries instead is what no derived list can produce: a change-set paragraph in prose, naming only the files with something non-obvious to say (paths plain; the branch page styles them), `renders on:` consumers for a shared component, and only non-obvious notes. The full `[new]/[main]/[diff]` caption stays the CHAT format, where no Files tab exists. Decided 2026-08-08, retiring the Changed list the template carried since the format's start; bodies written before then keep theirs.
 
 ### The guide PR
 
 Open the branch's PR as a draft at first push, automatically where configured or through the API otherwise. Its body is the live answer to "where did I leave things" and matures into the reviewer's summary. Keep `Follow-up to #N` when continuing an earlier PR and end with the harness's session-link footer.
 
 * **Ready is the user's decision.** Mark the PR ready only on explicit instruction, including an accepted wrap-up offer.
-* **Keep the body synchronized.** It is current state, not a per-file or per-push changelog; update it after a meaningful change in state. `/caption` refreshes the fenced guide region without touching hand-written text. The Files tab holds the cumulative diff; the Changed list adds the curated layer: preview links, `renders on:` lines, and one-line whys.
+* **Keep the body synchronized.** It is current state, not a per-file or per-push changelog; update it after a meaningful change in state. `/caption` refreshes the fenced guide region without touching hand-written text. The Files tab and the branch page hold the file list; the body holds the judgment layer: the change-set paragraph, `renders on:` lines, and the whys.
 * **Put narrative in dated PR comments.** Comments are the append-only progress log; the body is current state.
 * **Abandon by closing the draft** with a final comment saying why.
 * **Keep branch guidance out of main.** Delete any obsolete `BRANCH-GUIDE.md` found there.
@@ -124,9 +126,10 @@ Keep the body under one screen. **Next steps / open threads** is its heart and m
 
 ⭐ **Look:** [<the thing to open>](<branch preview w/ commit SHA, else [new] blob>)
 
-**Changed:**
-- <path> ([new](…), [main](…)/[diff](…))
-  renders on: [<consumer>](…)     (shared component only)
+<The change set as a short prose paragraph: only the files with something
+non-obvious to say, paths plain, no link triplets. `renders on:` lines for
+shared components. Omit entirely when the one-sentence opener already covers
+it; the Files tab and the branch page enumerate.>
 
 **Next steps / open threads:**
 - <current and honest; revise on every sync>
