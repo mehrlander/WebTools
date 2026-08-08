@@ -13,6 +13,8 @@ bookmarklets/,hybrid-authored,exclude,Single-purpose JavaScript
 console/,hybrid-authored,exclude,Console snippets
 pages/,hybrid-authored,exclude,"Browser pages and their thumbnails; the prose lives in HTML comments, not extractable as text"
 data/,mechanical,exclude,Generated data
+data/design/content.csv,hybrid-authored,exclude,This registry; curated rows over generated data
+dist/,mechanical,exclude,The pre-build; lib/ frozen into one artifact by build:lib
 archive/,mixed,exclude,Retired code and docs kept as a record
 package.json,mechanical,exclude,Dependency manifest
 package-lock.json,mechanical,exclude,Generated lockfile

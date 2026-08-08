@@ -53,6 +53,62 @@ Dead: `diagnostic-vanilla-bundle.js` has zero consumers anywhere in `pages/`, `l
 Mechanical but wide: the move itself is trivial and the risk is entirely in the `gh.load` chains and the bundle build. Do it as its own PR, not folded into feature work.
 
 ## Progress log
+- 2026-08-07: **the shelf is now measured by a committed instrument, and the
+  decision is stated as a document rather than as a paragraph in this file.**
+  Delivered on `claude/lib-kits-consolidation-pdhf41`, PR #367. Nothing under
+  `lib/` moved.
+
+  - `scripts/code-shape-survey.py` (`npm run code-shape`) emits per-file
+    observable properties: what a file attaches to, whether it is boot-loaded,
+    whether it touches the hub chain, the DOM, or Alpine. Re-runnable, so the
+    next session argues from a current reading rather than from this log.
+  - `pages/guides/code-layers.html` carries the argument in five tabs: the
+    facts, the shelf as measured, the options, the target, the migration.
+
+  **Three corrections to the 2026-08-06 entry below. Read them before using its
+  table, which is otherwise still good.**
+
+  - **`traffic.js` is misfiled in that table.** It sits under "stays,
+    scaffolding", but it does not extend `GH.prototype`; it wraps
+    `window.fetch` and registers `window.Traffic`. Only its comment says
+    otherwise, and the entry sorted it on the prose. Under option A it **moves**,
+    making 15 movers rather than 14.
+  - **`kits/build.js` extends `GH.prototype`** (it overrides `.read` and
+    `.get`), from the shelf whose README says a kit cannot. It is the one file
+    no version of the rule places cleanly and it needs an explicit ruling.
+  - **The prototype boundary has two spellings**, direct and via an alias
+    (`const proto = window.GH.prototype`). A detector reading only the direct
+    form reports 2 extenders where there are 5, which is how the first two
+    errors survived.
+
+  **A third candidate rule was raised and measured: "a kit is general
+  cross-app logic."** It fails the same way portability did. Counting distinct
+  non-test files that reference each module's namespace:
+
+  | | median reach | range | 
+  | --- | --- | --- |
+  | `lib/kits/` (22) | 5.5 | 1 (`xlsx.js`, `guide-index.js`) to 29 (`io.js`) |
+  | `lib/` root logic (20) | 4.0 | 2 (`repo-mailbox.js`) to 31 (`vanilla-demo.js`) |
+
+  The ranges overlap almost entirely, the single most-referenced logic module in
+  the repo is in root, and the two least-referenced are kits. As a *description*
+  the rule is false. As a *target* it has a worse problem: reach is a number that
+  moves when an unrelated page is added or deleted, so no test can hold it
+  without churning files between folders. Recorded here so it is not proposed a
+  fourth time.
+
+  **Two options the guide does not yet carry**, both raised 2026-08-07:
+
+  - **E. No shared logic layer.** Fold each logic module into the component or
+    page that uses it; `lib/` keeps only the loader and `alpineComponents/`.
+    The reach numbers above are the argument against it: median 4 to 5.5
+    consumers per module means folding in means duplicating.
+  - **F. Kits organized by topic, as sub-shelves.** Orthogonal to A through D:
+    it is about arrangement *within* a shelf, not about which shelf. Cheap and
+    compatible with A, but note `guide-index.js`'s own test asserts a flat
+    `pages/guides/` for the same reason it would matter here: one flat shelf
+    keeps "what is a kit" answerable by path alone.
+
 - 2026-08-06 (second entry, replacing the first): **the axis this task's audit
   used is not wrong, it is the only one there is, and the folders do not follow
   it either.** Earlier today `code-layer-taxonomy-q15jp2` landed a rule saying a
