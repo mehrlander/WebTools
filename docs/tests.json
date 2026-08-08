@@ -878,7 +878,7 @@
       "path": "tools/test/stage.test.mjs",
       "kind": "component",
       "protects": "The stage: membership, grouping, the diff lens, saving, and the cross-repo address grammar.",
-      "assertions": 56,
+      "assertions": 57,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1

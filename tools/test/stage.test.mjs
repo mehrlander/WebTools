@@ -897,3 +897,18 @@ test('a dest= key aims the stage, from the fragment or the query', () => {
   // Absent is empty, never undefined: the caller assigns it to a text field.
   assert.equal(SL.parseLink('#stage=me/a:x.js').dest, '');
 });
+
+test('the destination trigger splits repo from its scope, and the folder never truncates away', () => {
+  // The picker is shared, so its label has to survive three shapes: a full
+  // deposit address, a plain path (file mode), and a deep path that is not an
+  // address at all. Only the first splits.
+  const pk = [...window.document.querySelectorAll('[x-data^="pathPicker"]')]
+    .map(e => window.Alpine.$data(e)).find(Boolean);
+  pk.label = 'mehrlander/web-tools@claude/long-branch-name:dump';
+  assert.deepEqual(plain_(pk.labelParts),
+    { main: 'mehrlander/web-tools', ref: '@claude/long-branch-name', dir: ':dump' });
+  pk.label = 'pages/foo.html';
+  assert.deepEqual(plain_(pk.labelParts), { main: 'pages/foo.html', ref: '', dir: '' });
+  pk.label = 'lib/alpineComponents/fab.js';
+  assert.deepEqual(plain_(pk.labelParts), { main: 'lib/alpineComponents/fab.js', ref: '', dir: '' });
+});
