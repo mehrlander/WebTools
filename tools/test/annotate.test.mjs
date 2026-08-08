@@ -226,3 +226,32 @@ test('dictation: a paragraph mark breaks the line and spacing never doubles', ()
   d.stop();
   A.disable();
 });
+
+test('dictation: the delete button drops one word, or the mark clinging to it', () => {
+  window.SpeechRecognition = FakeSR;
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const d = A._state.dict;
+  d.text = '';
+  d.start();
+  FakeSR.last.say([{ t: 'the quick brown fox', final: true }]);
+  d.backWord();
+  assert.equal(d.text, 'the quick brown', 'one word, not the whole utterance');
+
+  // A trailing mark goes first, so two taps undo "word." rather than one tap
+  // eating both: the mark was its own deliberate act.
+  d.punct('.');
+  assert.match(d.text, /brown\. $/);
+  d.backWord();
+  assert.equal(d.text, 'the quick brown');
+  d.backWord();
+  assert.equal(d.text, 'the quick', 'no trailing space is left behind: append re-spaces');
+
+  // Deleting back past a comma restores the continuation state, so the next
+  // utterance is not lowercased on the strength of punctuation that is gone.
+  d.text = 'first,';
+  d.backWord();
+  FakeSR.last.say([{ t: 'Then more', final: true }]);
+  assert.match(d.text, /Then more$/, 'the capital stands once the comma is gone');
+  d.stop();
+  A.disable();
+});
