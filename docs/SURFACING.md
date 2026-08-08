@@ -70,6 +70,8 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   `[new]` is the branch tip; `[main]` is the baseline. `[main]/[diff]` is the net change against main; `[new]/[diff]` is on-branch history. Add `#L120` or `#L120-L145` for line anchors. Keep rows uniform and do not repeat a file's links within a turn.
 
+  **In a PR body, drop the slash and the per-file diff anchor.** The GitHub MCP's write path defangs what it distrusts by wrapping it in backticks, and two of this format's habits trigger it (measured 2026-08-08, web-tools PR #372, by writing probe lines and reading them back): a `](url)/[` pair joined by a bare slash, even with clean URLs, and a compare URL carrying a `#diff-<hex>` anchor. Both arrive backtick-wrapped and render as literal text, on GitHub and in every downstream reader of the body. So any body or comment written through the MCP separates a file's links with `, ` (`[main](…), [diff](…)`) and points diffs at the plain compare URL. Chat replies keep the slash form and the anchors, which travel untouched.
+
   When a renderable HTML page changed, put its 🥏 or 📦 render after the list, not in a row. The list carries source; the render line carries the running page. Apply the same honesty gate as ⭐.
 
   ```
