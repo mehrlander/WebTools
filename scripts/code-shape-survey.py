@@ -132,8 +132,21 @@ def is_test(rel):
 # tests `window.GH.prototype.saveRaw !== 'function'` to decide whether to load a
 # file; that is a consumer checking for a method, not a file installing one.
 # Extending the shared object every page holds is a commitment; reading it is not.
+# The prototype boundary has THREE spellings, and each was found by a file the
+# previous detector misfiled:
+#
+#   GH.prototype.get = ...                        direct
+#   const p = window.GH.prototype; p.get = ...    aliased through the class
+#   const p = window.gh.constructor.prototype     aliased through an INSTANCE
+#
+# The third is gh-boot.js, which wraps .load that way. A detector reading only
+# the first two calls the repo's own boot file a kit, which is the file the rule
+# most obviously has to keep. So the alias pattern ends at `.prototype` and does
+# not care what precedes it, and a read (`const orig = p.load`) is excluded by
+# requiring an assignment TO a member.
 RE_PROTO_DIRECT = re.compile(r"GH\.prototype\.[\w$]+\s*=(?!=)")
-RE_PROTO_ALIAS = re.compile(r"(?:const|let|var)\s+([\w$]+)\s*=\s*(?:window\.)?GH\.prototype\b")
+RE_PROTO_ALIAS = re.compile(
+    r"(?:const|let|var)\s+([\w$]+)\s*=\s*[\w$.]*\.prototype\b")
 
 
 def extends_prototype(src):
