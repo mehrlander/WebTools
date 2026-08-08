@@ -437,7 +437,7 @@
       "path": "tools/test/guide-render.test.mjs",
       "kind": "kit",
       "protects": "The guide renderer shared by the FAB drawer and the branch page: the slashed-ref split that keeps a claude/<slug> address from 404ing, the file routing table, and the chip strip's dedupe by file rather than by address.",
-      "assertions": 11,
+      "assertions": 12,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
