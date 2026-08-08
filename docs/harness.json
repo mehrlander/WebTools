@@ -221,7 +221,7 @@
     },
     {
       "path": "tools/build/tools-index.mjs",
-      "role": "",
+      "role": "restamp the derived half of this census",
       "layer": "tools/build",
       "lines": 166,
       "invocation": "npm:tools-index",
@@ -261,7 +261,7 @@
     },
     {
       "path": "tools/concept-lab/entityprofile.py",
-      "role": "",
+      "role": "entity profile: what named things a repo discusses, and of what kinds",
       "layer": "tools/concept-lab",
       "lines": 481,
       "invocation": "argv",
@@ -271,7 +271,7 @@
     },
     {
       "path": "tools/concept-lab/exp_embed.py",
-      "role": "",
+      "role": "experiment: do tiny static embeddings separate a term's senses better than lexical context clustering",
       "layer": "tools/concept-lab",
       "lines": 112,
       "invocation": "argv",
@@ -281,7 +281,7 @@
     },
     {
       "path": "tools/concept-lab/exp_gold.py",
-      "role": "",
+      "role": "score a termlab index against the gold polysemy set",
       "layer": "tools/concept-lab",
       "lines": 57,
       "invocation": "argv",
@@ -291,7 +291,7 @@
     },
     {
       "path": "tools/concept-lab/exp_pos.py",
-      "role": "",
+      "role": "experiment: spaCy noun chunks as the term-candidate source",
       "layer": "tools/concept-lab",
       "lines": 66,
       "invocation": "argv",
@@ -301,7 +301,7 @@
     },
     {
       "path": "tools/concept-lab/flag_reply.py",
-      "role": "",
+      "role": "flag risky vocabulary in a draft reply, using a termlab index",
       "layer": "tools/concept-lab",
       "lines": 232,
       "invocation": "argv",
@@ -311,7 +311,7 @@
     },
     {
       "path": "tools/concept-lab/gazetteer.py",
-      "role": "",
+      "role": "build an entity gazetteer from the tables the estate already curates",
       "layer": "tools/concept-lab",
       "lines": 179,
       "invocation": "argv",
@@ -361,7 +361,7 @@
     },
     {
       "path": "tools/render/scenarios/activity-fake.mjs",
-      "role": "",
+      "role": "seed fake activity data so the token-gated Open view renders for a shot",
       "layer": "tools/render/scenarios",
       "lines": 83,
       "invocation": "driver",
@@ -371,7 +371,7 @@
     },
     {
       "path": "tools/render/scenarios/branch-brief-errors.mjs",
-      "role": "",
+      "role": "the branch page's failure states, driven through the real load() path",
       "layer": "tools/render/scenarios",
       "lines": 59,
       "invocation": "driver",
@@ -381,7 +381,7 @@
     },
     {
       "path": "tools/render/scenarios/branch-guide.mjs",
-      "role": "",
+      "role": "the branch page showing a branch with its guide PR body rendered in place",
       "layer": "tools/render/scenarios",
       "lines": 88,
       "invocation": "driver",
@@ -391,7 +391,7 @@
     },
     {
       "path": "tools/render/scenarios/branch-takeover.mjs",
-      "role": "",
+      "role": "show-repo's branch-detail takeover with the embedded branch page fully rendered",
       "layer": "tools/render/scenarios",
       "lines": 86,
       "invocation": "driver",
@@ -401,7 +401,7 @@
     },
     {
       "path": "tools/render/scenarios/branches-survey.mjs",
-      "role": "",
+      "role": "show-repo's Branches view with a populated survey",
       "layer": "tools/render/scenarios",
       "lines": 111,
       "invocation": "driver",
@@ -411,7 +411,7 @@
     },
     {
       "path": "tools/render/scenarios/branches-window.mjs",
-      "role": "",
+      "role": "the Branches window pill: the reader's time slice over the Recent scope",
       "layer": "tools/render/scenarios",
       "lines": 61,
       "invocation": "driver",
@@ -431,7 +431,7 @@
     },
     {
       "path": "tools/render/scenarios/data-view-item-tossed.mjs",
-      "role": "",
+      "role": "the #item= addressing end to end through a toss, proving the two halves meet",
       "layer": "tools/render/scenarios",
       "lines": 61,
       "invocation": "driver",
@@ -441,7 +441,7 @@
     },
     {
       "path": "tools/render/scenarios/data-view-item.mjs",
-      "role": "",
+      "role": "data-view's #item= addressing, read and written",
       "layer": "tools/render/scenarios",
       "lines": 89,
       "invocation": "driver",
@@ -451,7 +451,7 @@
     },
     {
       "path": "tools/render/scenarios/data-view-items.mjs",
-      "role": "",
+      "role": "the data-view demo through its envelope's three items, each declared view winning",
       "layer": "tools/render/scenarios",
       "lines": 13,
       "invocation": "driver",
@@ -461,7 +461,7 @@
     },
     {
       "path": "tools/render/scenarios/diff-tool-at.mjs",
-      "role": "",
+      "role": "the diff tool's address field driving the browse panel over captured API fixtures",
       "layer": "tools/render/scenarios",
       "lines": 187,
       "invocation": "driver",
@@ -471,7 +471,7 @@
     },
     {
       "path": "tools/render/scenarios/diff-tool-grab.mjs",
-      "role": "",
+      "role": "the Sources tab with both slots in GitHub mode, the @-grab row on screen",
       "layer": "tools/render/scenarios",
       "lines": 15,
       "invocation": "driver",
@@ -481,7 +481,7 @@
     },
     {
       "path": "tools/render/scenarios/diff-tool-loaded.mjs",
-      "role": "",
+      "role": "diff-tool in its loaded state: two versions diffed on the Diff tab",
       "layer": "tools/render/scenarios",
       "lines": 65,
       "invocation": "driver",
@@ -491,7 +491,7 @@
     },
     {
       "path": "tools/render/scenarios/diff-tool-roots.mjs",
-      "role": "",
+      "role": "the browse panel's root list over a stubbed repo listing",
       "layer": "tools/render/scenarios",
       "lines": 42,
       "invocation": "driver",
@@ -501,7 +501,7 @@
     },
     {
       "path": "tools/render/scenarios/diff-tool-sources.mjs",
-      "role": "",
+      "role": "the Sources tab with the normalization strip open and two prose drafts loaded",
       "layer": "tools/render/scenarios",
       "lines": 25,
       "invocation": "driver",
@@ -511,7 +511,7 @@
     },
     {
       "path": "tools/render/scenarios/entities-stub.mjs",
-      "role": "",
+      "role": "pages/entities.html against the committed index, token-free",
       "layer": "tools/render/scenarios",
       "lines": 35,
       "invocation": "driver",
@@ -521,7 +521,7 @@
     },
     {
       "path": "tools/render/scenarios/estate-activity-progress.mjs",
-      "role": "",
+      "role": "the Activity header in its mid-crawl state",
       "layer": "tools/render/scenarios",
       "lines": 35,
       "invocation": "driver",
@@ -531,7 +531,7 @@
     },
     {
       "path": "tools/render/scenarios/estate-guides.mjs",
-      "role": "",
+      "role": "the estate's Guides pane, Activity's third sub-view",
       "layer": "tools/render/scenarios",
       "lines": 134,
       "invocation": "driver",
@@ -541,7 +541,7 @@
     },
     {
       "path": "tools/render/scenarios/estate-jots.mjs",
-      "role": "",
+      "role": "the estate's Jots view with a populated pile",
       "layer": "tools/render/scenarios",
       "lines": 74,
       "invocation": "driver",
@@ -551,7 +551,7 @@
     },
     {
       "path": "tools/render/scenarios/estate-open.mjs",
-      "role": "",
+      "role": "Activity's Open view seeded token-free so the list renders headlessly",
       "layer": "tools/render/scenarios",
       "lines": 146,
       "invocation": "driver",
@@ -561,7 +561,7 @@
     },
     {
       "path": "tools/render/scenarios/estate-pins.mjs",
-      "role": "",
+      "role": "the Lists pane with the Pin block populated above To-do and Jot",
       "layer": "tools/render/scenarios",
       "lines": 86,
       "invocation": "driver",
@@ -571,7 +571,7 @@
     },
     {
       "path": "tools/render/scenarios/estate-rows.mjs",
-      "role": "",
+      "role": "the grouped-grid Repos view with a nested companion card",
       "layer": "tools/render/scenarios",
       "lines": 88,
       "invocation": "driver",
@@ -581,7 +581,7 @@
     },
     {
       "path": "tools/render/scenarios/estate-sessions.mjs",
-      "role": "",
+      "role": "the Sessions and Lists panes on fixture data, token-free",
       "layer": "tools/render/scenarios",
       "lines": 101,
       "invocation": "driver",
@@ -591,7 +591,7 @@
     },
     {
       "path": "tools/render/scenarios/estate-surfaces-embed.mjs",
-      "role": "",
+      "role": "the Surfaces view rendering a kind:embed item, collapsed",
       "layer": "tools/render/scenarios",
       "lines": 81,
       "invocation": "driver",
@@ -601,7 +601,7 @@
     },
     {
       "path": "tools/render/scenarios/fab-export.mjs",
-      "role": "",
+      "role": "the FAB's Export controls",
       "layer": "tools/render/scenarios",
       "lines": 31,
       "invocation": "driver",
@@ -611,7 +611,7 @@
     },
     {
       "path": "tools/render/scenarios/fab-guide.mjs",
-      "role": "",
+      "role": "the fab's Render tab seeded token-free so the guide pane renders",
       "layer": "tools/render/scenarios",
       "lines": 144,
       "invocation": "driver",
@@ -621,7 +621,7 @@
     },
     {
       "path": "tools/render/scenarios/fab-toss.mjs",
-      "role": "",
+      "role": "toss-render address mode with the fab's toss integration and singleton guard",
       "layer": "tools/render/scenarios",
       "lines": 49,
       "invocation": "driver",
@@ -631,7 +631,7 @@
     },
     {
       "path": "tools/render/scenarios/fab-traffic-toss.mjs",
-      "role": "",
+      "role": "the Traffic tab inside a toss: the bands describe the tossed page, not the shell",
       "layer": "tools/render/scenarios",
       "lines": 56,
       "invocation": "driver",
@@ -641,7 +641,7 @@
     },
     {
       "path": "tools/render/scenarios/fab-traffic.mjs",
-      "role": "",
+      "role": "the fab's Traffic tab with a real BOOT band from the loopback render",
       "layer": "tools/render/scenarios",
       "lines": 78,
       "invocation": "driver",
@@ -651,7 +651,7 @@
     },
     {
       "path": "tools/render/scenarios/inbox-demo.mjs",
-      "role": "",
+      "role": "the inbox resolution with the armed redirect button on screen",
       "layer": "tools/render/scenarios",
       "lines": 36,
       "invocation": "driver",
@@ -661,7 +661,7 @@
     },
     {
       "path": "tools/render/scenarios/jumpover-coverage.mjs",
-      "role": "",
+      "role": "the exact-file jump-overs rendered headlessly with seeded rows",
       "layer": "tools/render/scenarios",
       "lines": 90,
       "invocation": "driver",
@@ -671,7 +671,7 @@
     },
     {
       "path": "tools/render/scenarios/map-docs-reads.mjs",
-      "role": "",
+      "role": "the Map's Docs tab with the readership column",
       "layer": "tools/render/scenarios",
       "lines": 69,
       "invocation": "driver",
@@ -681,7 +681,7 @@
     },
     {
       "path": "tools/render/scenarios/map-docs.mjs",
-      "role": "",
+      "role": "the Map's Docs tab, the documentation registry rendered live",
       "layer": "tools/render/scenarios",
       "lines": 52,
       "invocation": "driver",
@@ -701,7 +701,7 @@
     },
     {
       "path": "tools/render/scenarios/map-set-adoption.mjs",
-      "role": "",
+      "role": "the Map's first two tabs, both halves populated",
       "layer": "tools/render/scenarios",
       "lines": 72,
       "invocation": "driver",
@@ -711,7 +711,7 @@
     },
     {
       "path": "tools/render/scenarios/map-showing-peek.mjs",
-      "role": "",
+      "role": "the Showing tab with a pointer held over an exact-file jump-over so the peek renders",
       "layer": "tools/render/scenarios",
       "lines": 50,
       "invocation": "driver",
@@ -721,7 +721,7 @@
     },
     {
       "path": "tools/render/scenarios/map-showing.mjs",
-      "role": "",
+      "role": "the Map's Showing tab: how content moves, renders, and gets looked at",
       "layer": "tools/render/scenarios",
       "lines": 54,
       "invocation": "driver",
@@ -731,7 +731,7 @@
     },
     {
       "path": "tools/render/scenarios/nest-probe.mjs",
-      "role": "",
+      "role": "probe: a nested self-toss's address bar, and the FAB's actions at depth two",
       "layer": "tools/render/scenarios",
       "lines": 44,
       "invocation": "driver",
@@ -741,7 +741,7 @@
     },
     {
       "path": "tools/render/scenarios/open-drawer.mjs",
-      "role": "",
+      "role": "the FAB drawer open with the take grid scrolled into view",
       "layer": "tools/render/scenarios",
       "lines": 20,
       "invocation": "driver",
@@ -751,7 +751,7 @@
     },
     {
       "path": "tools/render/scenarios/pick-md.mjs",
-      "role": "",
+      "role": "end-to-end reproduction of pick-a-file-in-the-fab, reporting what the frame did",
       "layer": "tools/render/scenarios",
       "lines": 76,
       "invocation": "driver",
@@ -761,7 +761,7 @@
     },
     {
       "path": "tools/render/scenarios/project-board-review.mjs",
-      "role": "",
+      "role": "the project Board pane's typed read, seeded token-free",
       "layer": "tools/render/scenarios",
       "lines": 198,
       "invocation": "driver",
@@ -771,7 +771,7 @@
     },
     {
       "path": "tools/render/scenarios/project-board.mjs",
-      "role": "",
+      "role": "the project view's Board pill with task links resolved into the shell viewer",
       "layer": "tools/render/scenarios",
       "lines": 72,
       "invocation": "driver",
@@ -781,7 +781,7 @@
     },
     {
       "path": "tools/render/scenarios/project-docs.mjs",
-      "role": "",
+      "role": "the project view's Docs pill: the workspace's markdown from one tree read",
       "layer": "tools/render/scenarios",
       "lines": 77,
       "invocation": "driver",
@@ -791,7 +791,7 @@
     },
     {
       "path": "tools/render/scenarios/project-pages.mjs",
-      "role": "",
+      "role": "the project view's Pages pill: the workspace's slice of the repo catalog",
       "layer": "tools/render/scenarios",
       "lines": 63,
       "invocation": "driver",
@@ -801,7 +801,7 @@
     },
     {
       "path": "tools/render/scenarios/project-view.mjs",
-      "role": "",
+      "role": "the project view with a workspace selected and its README rendered",
       "layer": "tools/render/scenarios",
       "lines": 74,
       "invocation": "driver",
@@ -811,7 +811,7 @@
     },
     {
       "path": "tools/render/scenarios/proposals-deliver-demo.mjs",
-      "role": "",
+      "role": "the two delivery buttons beside the staleness guard, stubbed registry",
       "layer": "tools/render/scenarios",
       "lines": 51,
       "invocation": "driver",
@@ -821,7 +821,7 @@
     },
     {
       "path": "tools/render/scenarios/proposals-demo.mjs",
-      "role": "",
+      "role": "the Proposals view over a stubbed registry",
       "layer": "tools/render/scenarios",
       "lines": 54,
       "invocation": "driver",
@@ -831,7 +831,7 @@
     },
     {
       "path": "tools/render/scenarios/proposals-phone-demo.mjs",
-      "role": "",
+      "role": "the Proposals list at phone width with the real four records",
       "layer": "tools/render/scenarios",
       "lines": 55,
       "invocation": "driver",
@@ -841,7 +841,7 @@
     },
     {
       "path": "tools/render/scenarios/proposals-stale-demo.mjs",
-      "role": "",
+      "role": "the staleness guard and signature line on a moved target",
       "layer": "tools/render/scenarios",
       "lines": 51,
       "invocation": "driver",
@@ -851,7 +851,7 @@
     },
     {
       "path": "tools/render/scenarios/ref-switch.mjs",
-      "role": "",
+      "role": "the header ref switch seeded token-free",
       "layer": "tools/render/scenarios",
       "lines": 57,
       "invocation": "driver",
@@ -861,7 +861,7 @@
     },
     {
       "path": "tools/render/scenarios/routed-subject.mjs",
-      "role": "",
+      "role": "the drawer over a routed subject, the file as the reported identity",
       "layer": "tools/render/scenarios",
       "lines": 54,
       "invocation": "driver",
@@ -891,7 +891,7 @@
     },
     {
       "path": "tools/render/scenarios/sidebar-repo-menus.mjs",
-      "role": "",
+      "role": "the sidebar Repos index with one row's two menus open",
       "layer": "tools/render/scenarios",
       "lines": 61,
       "invocation": "driver",
@@ -901,7 +901,7 @@
     },
     {
       "path": "tools/render/scenarios/stage-diff-longrefs.mjs",
-      "role": "",
+      "role": "the Diff tab's A/B selects clipping long repo@ref:path labels",
       "layer": "tools/render/scenarios",
       "lines": 18,
       "invocation": "driver",
@@ -911,7 +911,7 @@
     },
     {
       "path": "tools/render/scenarios/stage-diff-review.mjs",
-      "role": "",
+      "role": "the Stage's Diff lens run on two local items, with the review-prompts panel",
       "layer": "tools/render/scenarios",
       "lines": 29,
       "invocation": "driver",
@@ -921,7 +921,7 @@
     },
     {
       "path": "tools/render/scenarios/subject-action-probe.mjs",
-      "role": "",
+      "role": "probe: can the shell invoke a toss subject's action closure, or only reach it",
       "layer": "tools/render/scenarios",
       "lines": 124,
       "invocation": "driver",
@@ -931,7 +931,7 @@
     },
     {
       "path": "tools/render/scenarios/toss-fragment.mjs",
-      "role": "",
+      "role": "prove toss-render hands a trailing #frag to the rendered page in both trust postures",
       "layer": "tools/render/scenarios",
       "lines": 73,
       "invocation": "driver",
