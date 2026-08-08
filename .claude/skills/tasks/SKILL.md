@@ -136,9 +136,23 @@ project: <optional workspace>
 - <YYYY-MM-DD>: <what happened, and the intended next step>
 ```
 
-Status is one of `backlog | in-progress | blocked | done`. Any other scalar
-(`priority: high`, `size: L`) is an open tag: preserved, shown, not acted on.
-Full schema in `TRACKER.md`.
+Status is one of `backlog | in-progress | blocked | done`. Two optional keys
+answer what `status` cannot, and both are recognized: the board renders them on
+open rows.
+
+- `size: XS | S | M | L | XL | ?` calibrated to the session, the real unit of
+  execution. **XS** folds into another task's pass, **S** is one session with
+  room to spare, **M** is one full session, **L** is several, **XL** is a
+  project and is a smell rather than a value. **`?`** means it needs a design
+  pass before it can be sized, which is worth saying rather than guessing.
+- `awaiting: <free text>` names what is holding a task. It is free text and
+  cleared by hand, and it renders on a `backlog` row as readily as a `blocked`
+  one, because a task can be startable in part and still be waiting on someone
+  for the rest. It is not `depends-on:`: nothing mechanically knows when a
+  person has decided.
+
+Any scalar beyond the recognized set (`priority: high`, `owner: marcus`) is an
+open tag: preserved, shown, not acted on. Full schema in `TRACKER.md`.
 
 ## File a runnable task
 
@@ -236,10 +250,17 @@ whose `session:` branch is merged or gone. A recent assessment's `hygiene`
 findings are a natural worklist. Propose findings; get confirmation before
 closing, reframing, or splitting.
 
+Check the status itself, not only the prose. A `blocked` task waiting on an
+external event wants `awaiting:` and a `backlog` status; one waiting on a
+particular machine wants `runner:` and the same, since both are startable and
+`blocked` reads as "do not try." Leave `blocked` to what genuinely depends on
+other work. A `done` task missing `closed:`, or a `backlog` task carrying a
+`session:`, is the same class of finding.
+
 There is no status for a refinement close, since a real `done` means the work
-was completed. Use open tags: `status: done`, `closed: <date>`, `resolution:
-superseded | stale | duplicate | dropped`, and name the cause in a progress-log
-line.
+was completed. Set `status: done` and `closed: <date>` as usual, add the open
+tag `resolution: superseded | stale | duplicate | dropped`, and name the cause
+in a progress-log line.
 
 ## Commit tracker state to main
 
