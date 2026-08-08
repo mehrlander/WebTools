@@ -31,8 +31,8 @@ class FakeGH {
     return [];
   }
   async copyTo(dest, paths) { calls.push({ kind: 'copyTo', from: this.repo, dest, paths }); return paths.map(p => ({ path: p, status: 'ok' })); }
-  async save(path, value, msg) { calls.push({ kind: 'save', repo: this.repo, path, value, msg }); return { content: { sha: 'x' } }; }
-  async saveBytes(path, bytes, msg) { calls.push({ kind: 'saveBytes', repo: this.repo, path, bytes, msg }); return { content: { sha: 'x' } }; }
+  async save(path, value, msg) { calls.push({ kind: 'save', repo: this.repo, ref: this.ref, path, value, msg }); return { content: { sha: 'x' } }; }
+  async saveBytes(path, bytes, msg) { calls.push({ kind: 'saveBytes', repo: this.repo, ref: this.ref, path, bytes, msg }); return { content: { sha: 'x' } }; }
 }
 
 const { window, problems } = makeWindow({
@@ -224,7 +224,7 @@ test('pasted prose is held as a local text item', () => {
   assert.equal(data.localItems.length, 1);
   assert.equal(data.localItems[0].isText, true);
   assert.equal(data.localItems[0].text, 'just some notes, not a ref');
-  assert.equal(data.localItems[0].name, 'pasted.txt');
+  assert.match(data.localItems[0].name, /^\d{4}-\d{2}-\d{2}-paste\.txt$/);
 });
 
 test('groups covers only refs; local items render on their own', () => {
@@ -848,4 +848,52 @@ test('copyPrompt assembles both texts, the diff, and the specific ask', async ()
   assert.match(t, /DIFF:\n--- A:/);
   assert.match(t, /REVIEW REQUEST: Make it more succinct\.$/);
   assert.equal(data.promptCopiedIdx, 0);
+});
+
+test('pasted text is named by what it is, so the extension is not a lie', () => {
+  reset();
+  const nameOf = (text) => {
+    reset();
+    data.onDropped({ text, size: text.length, type: 'text/plain' });
+    return data.localItems[0].name;
+  };
+  assert.match(nameOf('<!doctype html><html><body>hi</body></html>'), /-paste\.html$/);
+  assert.match(nameOf('{"a":1}'), /-paste\.json$/);
+  assert.match(nameOf('# Title\n\nbody'), /-paste\.md$/);
+  assert.match(nameOf('just prose'), /-paste\.txt$/);
+});
+
+test('a dest-carrying send lands local files ON the named branch', async () => {
+  reset();
+  calls.length = 0;
+  store.stage = [{ local: true, id: 95, name: 'drop.html', path: 'drop.html', size: 2, isText: true, text: '<p>x' }];
+  // The shape the branch page's add-file plus mints: repo@branch:dir.
+  data.destSpec = 'me/dest@claude/some-branch:dump';
+  await data.send();               // arm
+  await data.send();               // deposit
+  const txt = calls.find(c => c.kind === 'save');
+  assert.equal(txt.repo, 'me/dest');
+  assert.equal(txt.ref, 'claude/some-branch', 'the writer is pointed at the branch, not the default');
+  assert.equal(txt.path, 'dump/drop.html');
+});
+
+test('parseDest reads a slashed branch out of owner/repo@ref:dir', () => {
+  const d = data.parseDest('mehrlander/web-tools@claude/show-repo-scripts-staged-files-yhwb4b:dump');
+  assert.deepEqual(plain_(d), { repo: 'mehrlander/web-tools', ref: 'claude/show-repo-scripts-staged-files-yhwb4b', dir: 'dump' });
+});
+
+test('a dest= key aims the stage, from the fragment or the query', () => {
+  const SL = window.StageLink;
+  const dest = 'mehrlander/web-tools@claude/some-branch:dump';
+  // Fragment form, beside a staged set.
+  const fromHash = SL.parseLink('#stage=me/a:x.js&dest=' + encodeURIComponent(dest));
+  assert.equal(fromHash.dest, dest);
+  assert.equal(fromHash.items.length, 1, 'dest does not disturb the item list');
+  // Query-only form: what the branch page's add-file plus mints
+  // (?view=stage&dest=…), which carries no staged set at all.
+  const fromQuery = SL.read({ hash: '', search: '?view=stage&dest=' + encodeURIComponent(dest) });
+  assert.equal(fromQuery.dest, dest);
+  assert.equal(fromQuery.items.length, 0);
+  // Absent is empty, never undefined: the caller assigns it to a text field.
+  assert.equal(SL.parseLink('#stage=me/a:x.js').dest, '');
 });

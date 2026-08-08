@@ -50,7 +50,7 @@
       "path": "tools/test/branch-brief-groups.test.mjs",
       "kind": "component",
       "protects": "The branch review's Files pane groups by creation mode where a content registry is declared, mounts no cards inside a collapsed group, and stays the flat unlabeled list where no registry exists.",
-      "assertions": 3,
+      "assertions": 4,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
@@ -437,7 +437,7 @@
       "path": "tools/test/gh-store.test.mjs",
       "kind": "behavior",
       "protects": "saveBytes writes byte-exact content, so a binary round-trip cannot be silently re-encoded.",
-      "assertions": 5,
+      "assertions": 6,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -878,7 +878,7 @@
       "path": "tools/test/stage.test.mjs",
       "kind": "component",
       "protects": "The stage: membership, grouping, the diff lens, saving, and the cross-repo address grammar.",
-      "assertions": 52,
+      "assertions": 56,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1
