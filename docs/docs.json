@@ -6,7 +6,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 759,
+      "words": 801,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -14,7 +14,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2710,
+      "words": 2791,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -34,11 +34,27 @@
       "maintenance": "authored; the structured stage under show-repo.md's former prose field list, held to the estate's real manifests by tools/test/manifest-registry.test.mjs: a key live in a manifest with no row here fails the suite"
     },
     {
+      "path": "docs/properties.json",
+      "subject": "the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement",
+      "status": "living",
+      "reach": "orphan",
+      "words": 939,
+      "maintenance": "authored by hand; held both ways to the carriers it governs by tools/test/properties-registry.test.mjs"
+    },
+    {
+      "path": "docs/registries.md",
+      "subject": "the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction",
+      "status": "living",
+      "reach": "orphan",
+      "words": 991,
+      "maintenance": "the doctrine behind properties.json; written to travel, origin budget-drs properties.csv"
+    },
+    {
       "path": "docs/tests.json",
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 4081,
+      "words": 4128,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {

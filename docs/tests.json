@@ -650,6 +650,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/properties-registry.test.mjs",
+      "kind": "gate",
+      "protects": "The declaration table of docs/registries.md: every governed carrier holds exactly its key plus declared properties, computed declarations name real derivers, and no target x property pair has two owners within a registry.",
+      "assertions": 3,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/proposals-view.test.mjs",
       "kind": "component",
       "protects": "The proposals view lists only what is still pending.",
