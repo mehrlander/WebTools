@@ -92,6 +92,12 @@ the link-dense text twin of the visual index above.
 | `aic-kimi` | Art Institute Collection — fill | [view](https://mehrlander.github.io/web-tools/pages/drop/fills-concepts/3-reactive-surface/aic-kimi.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/drop/fills-concepts/3-reactive-surface/aic-kimi.html) |
 | `collection-browser` | The Art Institute of Chicago · Collection Browser | [view](https://mehrlander.github.io/web-tools/pages/drop/fills-concepts/3-reactive-surface/collection-browser.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/drop/fills-concepts/3-reactive-surface/collection-browser.html) |
 
+## pages/guides/
+
+| Page | Title | Links |
+|---|---|---|
+| `code-layers` | Code layers: current state and migration plan | [view](https://mehrlander.github.io/web-tools/pages/guides/code-layers.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/guides/code-layers.html) |
+
 ## lib/kits/demos/
 
 | Page | Title | Links |

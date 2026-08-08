@@ -192,3 +192,47 @@ test('a crawl that ran checks and found none CLEARS them; one that skipped keeps
   const kept = A.mergeRepo(prior, { counts: {} }, 'T');
   assert.equal(kept.checks.length, 1);
 });
+
+test('a quick pass keeps the survey AND the counts that describe it', () => {
+  const prev = { pushedAt: 'p0', defaultBranch: 'main',
+                 counts: { branches: 100, active: 10, openPRs: 2, landed: 30, stranded: 4, surveyed: 30 },
+                 recentCommits: [], openPRs: [],
+                 survey: { branches: [{ name: 'x', sha: 'S', group: 'stranded' }] } };
+  // A quick crawl: no `survey` key at all, and counts that honestly report zero
+  // for what it did not measure.
+  const quick = { pushedAt: 'p1', defaultBranch: 'main', partial: true,
+                  counts: { branches: 101, active: 12, openPRs: 3, landed: 0, stranded: 0, surveyed: 0 },
+                  recentCommits: [], openPRs: [] };
+  const merged = A.mergeRepo(prev, quick, '2026-08-07T00:00:00Z');
+  assert.deepEqual(merged.survey, prev.survey);        // the survey carries forward
+  assert.equal(merged.counts.branches, 101);           // freshly measured wins
+  assert.equal(merged.counts.active, 12);
+  assert.equal(merged.counts.openPRs, 3);
+  assert.equal(merged.counts.stranded, 4);             // survey-derived carries with the survey
+  assert.equal(merged.counts.landed, 30);
+  assert.equal(merged.counts.surveyed, 30);
+});
+
+test('an entry that simply has no survey is NOT treated as partial', () => {
+  // The distinction the `partial` flag exists to draw: absent survey means
+  // "keep the old one", it does not mean "these counts are provisional".
+  const prev = { counts: { landed: 30, stranded: 4, surveyed: 30 }, recentCommits: [],
+                 survey: { branches: [] } };
+  const fetched = { counts: { branches: 5, active: 1, openPRs: 0, landed: 0, stranded: 0, surveyed: 0 },
+                    recentCommits: [], openPRs: [] };
+  const merged = A.mergeRepo(prev, fetched, '2026-08-07T00:00:00Z');
+  assert.equal(merged.counts.stranded, 0);   // taken at face value
+  assert.deepEqual(merged.survey, prev.survey);
+});
+
+test('a deep pass replaces the survey and its counts together', () => {
+  const prev = { counts: { landed: 30, stranded: 4, surveyed: 30 }, recentCommits: [],
+                 survey: { branches: [{ name: 'x', sha: 'S', group: 'stranded' }] } };
+  const deep = { counts: { branches: 101, active: 12, openPRs: 3, landed: 40, stranded: 0, surveyed: 40 },
+                 recentCommits: [], openPRs: [],
+                 survey: { branches: [{ name: 'x', sha: 'S2', group: 'landed' }] } };
+  const merged = A.mergeRepo(prev, deep, '2026-08-07T00:00:00Z');
+  assert.equal(merged.counts.stranded, 0);   // a real zero from a real survey stands
+  assert.equal(merged.counts.landed, 40);
+  assert.deepEqual(merged.survey, deep.survey);
+});

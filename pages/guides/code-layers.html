@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code layers: current state and migration plan</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🗂️</text></svg>">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+
+<!--
+  guides/code-layers.html — the decision document behind the lib/ reorganisation.
+  Written because the migration task had a file list and a recommendation but no
+  statement of what the categories ARE, and the one rule that had been written
+  down was refuted by measurement a day later.
+
+  FOUR TABS, one question each: what the tree looks like now, what could be done
+  about it, what is proposed, and what the move costs. The tabs are the structure
+  rather than a convenience: the four are read at different moments and by
+  different people, and stacking them into one scroll was what made the first
+  version open on a wall of prose instead of on the measurement.
+
+  Table columns are held to four and every cell wraps, because a horizontal
+  scrollbar hides the column that decides each row. vanilla-bundle.js alone
+  registers sixteen globals, so the attaches cell summarises past the first two
+  rather than setting the table's width from its worst row.
+
+  DATA IS BAKED IN, on purpose. Every number comes from
+  scripts/code-shape-survey.py (npm run code-shape), run at the date in the
+  header, inlined rather than fetched so the page renders identically through a
+  #gh= toss, a #gz= toss, or a local file open. A guide resting on measurement
+  describes a specific state of the tree; a live re-read would silently restate
+  the argument against a tree that had already moved.
+-->
+<style>
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  td, th { vertical-align: top; }
+
+  /* Links are underlined and inherit their colour; they are never blue.
+     Colour on this page already means STATUS: green where the folders encode
+     something, amber where nothing does, red for a deletion or a NUL byte.
+     A blue link would add a fifth colour meaning "clickable" to a palette where
+     colour means something else, and would pull the eye to the citations rather
+     than to the findings. Underline is the channel nothing else is using, it
+     survives a colour-blind reader, and it leaves the statement of facts calm. */
+  a { text-decoration: underline; text-underline-offset: 2px;
+      text-decoration-thickness: 1px; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); }
+  a:hover { text-decoration-color: currentColor; }
+</style>
+</head>
+<body class="bg-base-200 min-h-screen">
+<div x-data="guide()" class="max-w-7xl mx-auto px-4 sm:px-6 py-5">
+
+  <!-- ── header: facts only ─────────────────────────────────────────── -->
+  <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-1">
+    <h1 class="text-2xl font-bold">Code layers</h1>
+    <span class="text-sm text-base-content/60">
+      <span x-text="rows.length"></span> files under <span class="mono">lib/</span> ·
+      <span x-text="movers.length"></span> change ·
+      measured <span class="mono" x-text="meta.date"></span> at
+      <span class="mono" x-text="meta.ref"></span> by
+      <a class="mono" :href="tool('scripts/code-shape-survey.py')"
+         target="_blank" rel="noopener">npm run code-shape</a>
+    </span>
+  </div>
+
+  <!-- ── tabs ───────────────────────────────────────────────────────── -->
+  <div role="tablist" class="tabs tabs-border mb-4">
+    <template x-for="t in tabs" :key="t.id">
+      <button role="tab" class="tab gap-2"
+              :class="tab === t.id ? 'tab-active font-semibold' : ''"
+              @click="tab = t.id">
+        <!-- Icons drop below sm so five tabs fit one row on a phone. The label
+             is the thing being read; the icon was what pushed Migration onto a
+             second line. -->
+        <i class="ph-bold hidden sm:inline" :class="t.icon"></i>
+        <span x-text="t.label"></span>
+      </button>
+    </template>
+  </div>
+
+  <!-- ══ FACTS ══════════════════════════════════════════════════════ -->
+  <!--
+    The record, in the register of a court's statement of facts: third person,
+    past tense, no advocacy. It never argues, and the closing paragraph declines
+    to decide, which is what lets the rest read as fact rather than as a brief.
+    The recommendation lives in Options, where a reader can weigh it as one.
+
+    Numerals describing the CURRENT tree are bound to the data, so re-running the
+    survey cannot leave the prose asserting a count the table contradicts.
+    Numerals describing the RECORD are hardcoded on purpose: "seven of twenty-one"
+    is a fact about what the 2026-08-06 retraction found, not about the tree, and
+    binding it to live data would silently rewrite history to match the present.
+  -->
+  <div x-show="tab === 'facts'">
+    <!-- No heading. The tab already says Facts, and the opening sentence names
+         the subject, so a "Statement of facts" banner said the same thing a
+         third time before the reader reached a single fact. -->
+    <div class="bg-base-100 rounded-lg px-6 sm:px-10 py-8 max-w-3xl mx-auto
+                text-[15px] leading-7 text-base-content/90 space-y-4">
+      <p>This guide concerns the placement of source files within <span class="mono">lib/</span>,
+      and the rule by which placement is decided.</p>
+
+      <p>The repository loads most of its browser code at runtime through
+      <span class="mono">gh.load</span>. Three directories hold that code.
+      <span class="mono">lib/alpineComponents/</span> holds <span x-text="w(nComponents)"></span>
+      files, each registering an Alpine component. <span class="mono">lib/kits/</span> was
+      established for themed logic libraries, each registering a single namespace on
+      <span class="mono">window</span>, and holds <span x-text="w(nKits)"></span>.
+      <span class="mono">lib/</span> root holds the loader and the chain that boots it, and,
+      accumulated alongside them, <span x-text="w(nStrays)"></span> further files that register
+      a <span class="mono">window</span> namespace and are in that respect indistinguishable
+      from the contents of <span class="mono">lib/kits/</span>.</p>
+
+      <p>On 2026-07-26 a task was opened to move the misfiled files. It identified eight, on the
+      rule then understood: a kit registers a namespace, and scaffolding extends
+      <span class="mono">GH.prototype</span>.</p>
+
+      <p>On 2026-08-06 <a :href="pr(362)" target="_blank" rel="noopener">PR #362</a> landed
+      <a class="mono" :href="blob('docs/code-layers.md')" target="_blank" rel="noopener">docs/code-layers.md</a>, supplying a
+      further rule: a kit is a capability that would hold in any repository, while a module of
+      the same shape carrying this repository's own domain belongs in
+      <span class="mono">lib/</span> root. The rule was applied to the task's file list that
+      day.</p>
+
+      <p>It was measured that day also. Counting runtime dependencies on the loader, seven of
+      the twenty-one files in <span class="mono">lib/kits/</span> were found unable to travel to
+      another repository, and six files in <span class="mono">lib/</span> root were found to
+      carry no such dependency. The rule was retracted. <a :href="pr(366)" target="_blank" rel="noopener">PR #366</a>,
+      open at this writing, carries the retraction. The <a :href="blob('tracker/tasks/lib-root-kit-migration-dind5t.md')" target="_blank"
+      rel="noopener">task's progress log</a> records that placement is thereafter undecided,
+      and that nothing moves until it is decided.</p>
+
+      <p>No measurement had been offered of what the two folders do sort on. This guide supplies
+      one, and three findings of it correct the record.</p>
+
+      <p><span class="font-semibold">First</span>, <span class="mono">traffic.js</span> does not
+      extend <span class="mono">GH.prototype</span>. It wraps
+      <span class="mono">window.fetch</span>. (<a class="mono" :href="blob('lib/traffic.js')"
+      target="_blank" rel="noopener">lib/traffic.js</a>) The claim that it does appears in a comment within
+      the file, and the task adopted it.</p>
+
+      <p><span class="font-semibold">Second</span>, <a class="mono" :href="blob('lib/kits/build.js')" target="_blank"
+      rel="noopener">kits/build.js</a> does extend <span class="mono">GH.prototype</span>, which
+      <a class="mono" :href="blob('lib/kits/README.md')" target="_blank"
+      rel="noopener">lib/kits/README.md</a> states a kit cannot do.</p>
+
+      <p><span class="font-semibold">Third</span>, the earlier counts were taken over the files'
+      comments as well as their code, and a file's header commonly describes a dependency the
+      file does not have. Measured over code alone,
+      <span x-text="w(nKitsHub)"></span> of the <span x-text="w(nKits)"></span> files in
+      <span class="mono">lib/kits/</span> carry a loader dependency, not seven, and
+      <span x-text="w(nRootNoHub)"></span> files in <span class="mono">lib/</span> root carry
+      none, not six. The correction runs in the retraction's favour: the disparity it found is
+      wider than it recorded.</p>
+
+      <p>Two matters are not in dispute. Every file in
+      <span class="mono">lib/alpineComponents/</span> registers
+      <span class="mono">Alpine.data</span>, and that boundary holds without exception. Both
+      remaining folders hold files of one shape: a <span class="mono">window</span> namespace,
+      Alpine-free, pure logic.</p>
+
+      <p><span class="font-semibold">Fourth</span>, and found on 2026-08-07 while the split was
+      being derived: the boundary is written three ways, not two. Beside
+      <span class="mono">GH.prototype.x =</span> and an alias off the class, there is an alias
+      off an <span class="italic">instance</span>,
+      <span class="mono">window.gh.constructor.prototype</span>, which is how
+      <a class="mono" :href="blob('lib/gh-boot.js')" target="_blank"
+      rel="noopener">lib/gh-boot.js</a> wraps <span class="mono">.load</span>. A detector
+      reading only the first two forms classifies the repository's own boot file as a kit. This
+      guide had held that file in <span class="mono">lib/</span> root by a reason written by
+      hand. The survey was corrected, and the file is now placed by the same rule as every
+      other.</p>
+
+      <p>A third candidate rule was proposed on 2026-08-07: that a kit is logic used across more
+      than one page. It was measured the same day, by counting the distinct non-test files that
+      reference each module's namespace. The two folders returned medians of 5.5 and 4.0 over
+      ranges of one to twenty-nine and two to thirty-one; the most-referenced logic module in
+      the repository sits in <span class="mono">lib/</span> root, and the two least-referenced
+      are kits. The rule was not adopted. A second objection was recorded: reach changes when an
+      unrelated page is added or removed, so a file would change folders without itself
+      changing, and no test could hold the boundary without churn.</p>
+
+      <p class="font-semibold">On 2026-08-07 the question was decided. The two folders are one
+      category. Every file registering a <span class="mono">window</span> namespace is a kit;
+      <span class="mono">lib/</span> root retains the loader, the files extending its prototype,
+      and the boot bundles. Boot membership, which is a cost rather than a structure, passes to
+      a declared manifest. Twenty files move, one moves the other way, and one is deleted. The
+      alternatives are preserved under Options, and the sequence under Migration.</p>
+
+      <p>The rule states where a file belongs. It does not describe where the files are: the
+      migration has not run, and until it does the tree and the rule disagree by twenty-two
+      files.</p>
+    </div>
+  </div>
+
+  <!-- ══ NOW ════════════════════════════════════════════════════════ -->
+  <div x-show="tab === 'now'" class="space-y-5">
+
+    <!-- the finding, as two claims side by side -->
+    <div class="grid md:grid-cols-2 gap-3">
+      <div class="bg-base-100 rounded-lg p-4 border-l-4 border-success">
+        <div class="font-semibold text-sm flex items-center gap-2 mb-1">
+          <i class="ph-bold ph-plug"></i> What a file attaches to
+          <span class="badge badge-success badge-sm ml-auto">the folders encode this</span>
+        </div>
+        <p class="text-sm text-base-content/80">
+          <span class="mono">GH.prototype</span>, a <span class="mono">window</span> namespace,
+          or <span class="mono">Alpine.data</span>. One grep each, and once the detector is
+          right the folders sort on it almost perfectly.
+        </p>
+      </div>
+      <div class="bg-base-100 rounded-lg p-4 border-l-4 border-warning">
+        <div class="font-semibold text-sm flex items-center gap-2 mb-1">
+          <i class="ph-bold ph-lightning"></i> When a file loads
+          <span class="badge badge-warning badge-sm ml-auto">nothing encodes this</span>
+        </div>
+        <p class="text-sm text-base-content/80">
+          The boot chain loads <span x-text="bootCount"></span> files unconditionally, so every
+          loader page pays for them. That set spans all three folders and is written down
+          nowhere. Orthogonal to attachment, which is why one tree cannot carry both.
+        </p>
+      </div>
+    </div>
+
+    <!-- folders -->
+    <div class="grid md:grid-cols-3 gap-3">
+      <template x-for="f in folders" :key="f.name">
+        <div class="bg-base-100 rounded-lg p-4">
+          <div class="flex items-baseline justify-between">
+            <span class="mono text-sm font-semibold" x-text="f.name"></span>
+            <span class="text-2xl font-bold" x-text="f.n"></span>
+          </div>
+          <p class="text-xs text-base-content/70 mt-1" x-text="f.verdict"></p>
+        </div>
+      </template>
+    </div>
+
+    <div class="bg-base-100 rounded-lg p-4 text-sm">
+      <span class="font-semibold">Two corrections from measuring rather than grepping.</span>
+      <span class="mono">traffic.js</span> does not extend <span class="mono">GH.prototype</span>;
+      it wraps <span class="mono">window.fetch</span>, and only a comment says otherwise, so the
+      task lists it as scaffolding on the strength of prose about the code.
+      <span class="mono">kits/build.js</span> does extend it, from the shelf whose README says a
+      kit cannot. Counting comments as code also made every kit look Alpine-coupled when none is.
+    </div>
+
+    <!-- filters -->
+    <div class="flex flex-wrap gap-2 items-center">
+      <div class="join">
+        <template x-for="f in ['all','lib','lib/kits','lib/alpineComponents']" :key="f">
+          <button class="btn btn-xs join-item"
+                  :class="folderFilter === f ? 'btn-primary' : 'btn-ghost border border-base-300'"
+                  @click="folderFilter = f" x-text="f === 'all' ? 'all' : f.replace('lib/','')"></button>
+        </template>
+      </div>
+      <button class="btn btn-xs" :class="onlyMoving ? 'btn-warning' : 'btn-ghost border border-base-300'"
+              @click="onlyMoving = !onlyMoving">changes only</button>
+      <button class="btn btn-xs" :class="onlyBoot ? 'btn-secondary' : 'btn-ghost border border-base-300'"
+              @click="onlyBoot = !onlyBoot">boot only</button>
+      <span class="text-xs text-base-content/60 ml-auto"
+            x-text="`${visible.length} of ${rows.length}`"></span>
+    </div>
+
+    <!-- the table: four columns, every cell wraps, no horizontal scroll -->
+    <div class="bg-base-100 rounded-lg overflow-hidden">
+      <table class="table table-sm w-full">
+        <thead>
+          <tr class="bg-base-200 text-xs">
+            <th class="w-[30%]">file</th>
+            <th class="w-[30%]">attaches to</th>
+            <th class="w-[15%]">flags</th>
+            <th class="w-[25%]">destination</th>
+          </tr>
+        </thead>
+        <template x-for="g in grouped" :key="g.folder">
+          <tbody>
+            <tr>
+              <td colspan="4" class="bg-base-200/60 mono text-xs font-semibold py-1">
+                <span x-text="g.folder"></span>
+                <span class="text-base-content/50 font-normal"
+                      x-text="`· ${g.rows.length}`"></span>
+              </td>
+            </tr>
+            <template x-for="r in g.rows" :key="r.path">
+              <tr :class="r.moves ? 'bg-warning/5' : ''">
+                <td class="mono text-xs break-all">
+                  <a :href="blob(r.path)" target="_blank" rel="noopener" x-text="r.base"></a>
+                  <span x-show="r.nul" class="badge badge-error badge-xs ml-1"
+                        title="contains a NUL byte; invisible to grep">NUL</span>
+                </td>
+                <td class="mono text-xs break-all text-base-content/80" x-text="r.attachShort"></td>
+                <td class="text-xs">
+                  <div class="flex flex-wrap gap-1">
+                    <span x-show="r.boot" class="badge badge-secondary badge-xs">boot</span>
+                    <span x-show="r.hub" class="badge badge-ghost badge-xs">hub</span>
+                    <span x-show="r.dom !== 'none'" class="badge badge-xs"
+                          :class="r.dom === 'places' ? 'badge-warning' : 'badge-ghost'"
+                          x-text="r.dom"></span>
+                  </div>
+                </td>
+                <td class="text-xs">
+                  <span x-show="!r.moves" class="text-base-content/40">stays</span>
+                  <span x-show="r.moves && r.dest !== 'delete'"
+                        class="mono text-success font-semibold" x-text="'→ ' + r.dest"></span>
+                  <span x-show="r.dest === 'delete'"
+                        class="mono text-error font-semibold">delete</span>
+                  <div class="text-base-content/50 leading-tight" x-text="r.why"></div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </template>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ OPTIONS ════════════════════════════════════════════════════ -->
+  <div x-show="tab === 'options'" class="space-y-3">
+    <template x-for="o in options" :key="o.id">
+      <div class="bg-base-100 rounded-lg p-4"
+           :class="o.decided ? 'ring-2 ring-primary' : ''">
+        <div class="flex items-start gap-2 flex-wrap mb-2">
+          <span class="badge" :class="o.decided ? 'badge-primary' : 'badge-ghost'"
+                x-text="o.id"></span>
+          <span class="font-semibold" x-text="o.title"></span>
+          <span x-show="o.decided" class="badge badge-primary badge-sm"
+                x-text="'decided ' + o.decided"></span>
+          <span x-show="o.refuted" class="badge badge-error badge-sm">refuted by measurement</span>
+          <span x-show="o.considered" class="badge badge-ghost badge-sm">considered, not taken</span>
+        </div>
+        <p class="text-sm" x-text="o.body"></p>
+        <div class="grid md:grid-cols-2 gap-2 mt-3 text-xs">
+          <div class="bg-success/10 rounded p-2">
+            <span class="font-semibold">Buys:</span> <span x-text="o.buys"></span>
+          </div>
+          <div class="bg-error/10 rounded p-2">
+            <span class="font-semibold">Costs:</span> <span x-text="o.costs"></span>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- ══ TARGET ═════════════════════════════════════════════════════ -->
+  <div x-show="tab === 'target'" class="space-y-4">
+    <div class="bg-base-100 rounded-lg overflow-hidden">
+      <table class="table table-sm w-full">
+        <thead>
+          <tr class="bg-base-200 text-xs">
+            <th class="w-[22%]">category</th>
+            <th class="w-[33%]">admission rule (one grep)</th>
+            <th class="w-[35%]">holds</th>
+            <th class="w-[10%] text-right">n</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="c in concept" :key="c.name">
+            <tr>
+              <td class="mono text-sm font-semibold break-all" x-text="c.name"></td>
+              <td class="mono text-xs" x-text="c.rule"></td>
+              <td class="text-xs" x-text="c.holds"></td>
+              <td class="text-right font-bold" x-text="c.n"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-3">
+      <div class="bg-base-100 rounded-lg p-4">
+        <div class="font-semibold text-sm mb-1 flex items-center gap-2">
+          <i class="ph-bold ph-list-checks"></i> The fourth thing: a boot manifest
+        </div>
+        <p class="text-sm text-base-content/80">
+          The <span x-text="bootCount"></span> boot-loaded files stay wherever attachment puts
+          them, and the boot chain's contents become an explicit declared list rather than
+          <span class="mono">gh.load</span> calls buried in <span class="mono">gh-boot.js</span>.
+          That makes the one number nobody can currently see, what every page pays for, visible
+          and testable. It is what lets the folders stop trying to encode it.
+        </p>
+      </div>
+      <div class="bg-base-100 rounded-lg p-4">
+        <div class="font-semibold text-sm mb-1 flex items-center gap-2">
+          <i class="ph-bold ph-shield-check"></i> Why it holds this time
+        </div>
+        <p class="text-sm text-base-content/80">
+          Each rule above is a grep, so a test can assert it and the boundary stops depending on
+          anyone remembering. The retracted rule failed precisely because it sorted on something
+          no test could check.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MIGRATION ══════════════════════════════════════════════════ -->
+  <div x-show="tab === 'migration'" class="space-y-5">
+
+    <div class="grid grid-cols-3 gap-3">
+      <div class="bg-base-100 rounded-lg p-4">
+        <div class="text-2xl font-bold" x-text="movers.length"></div>
+        <div class="text-xs text-base-content/70">files moving, of <span x-text="rows.length"></span></div>
+      </div>
+      <div class="bg-base-100 rounded-lg p-4">
+        <div class="text-2xl font-bold">~59</div>
+        <div class="text-xs text-base-content/70">call sites: 27 runtime, 32 test</div>
+      </div>
+      <div class="bg-base-100 rounded-lg p-4">
+        <div class="text-2xl font-bold">23</div>
+        <div class="text-xs text-base-content/70">prose refs in docs and tracker</div>
+      </div>
+    </div>
+
+    <div class="bg-base-100 rounded-lg divide-y divide-base-200">
+      <template x-for="(p, i) in phases" :key="i">
+        <div class="flex gap-3 p-3">
+          <div class="badge badge-neutral badge-sm shrink-0 mt-0.5" x-text="i + 1"></div>
+          <div class="min-w-0">
+            <div class="font-semibold text-sm" x-text="p.title"></div>
+            <div class="text-xs text-base-content/70" x-text="p.body"></div>
+            <div x-show="p.gate" class="text-xs mt-1 text-primary font-semibold">
+              <i class="ph-bold ph-shield-check"></i> <span x-text="p.gate"></span>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-3">
+      <div>
+        <h3 class="font-semibold text-sm flex items-center gap-2 mb-2">
+          <i class="ph-bold ph-question text-warning"></i> Needs a ruling: the rule does not decide these
+        </h3>
+        <div class="space-y-2">
+          <template x-for="r in rulings" :key="r.path">
+            <div class="bg-base-100 rounded-lg p-3 border-l-4 border-warning">
+              <div class="mono text-sm font-semibold break-all" x-text="r.path"></div>
+              <div class="text-xs mt-1" x-text="r.note"></div>
+            </div>
+          </template>
+        </div>
+      </div>
+      <div>
+        <h3 class="font-semibold text-sm flex items-center gap-2 mb-2">
+          <i class="ph-bold ph-book-open text-info"></i> Read individually, reasoning recorded
+        </h3>
+        <div class="space-y-2">
+          <template x-for="r in reads" :key="r.path">
+            <div class="bg-base-100 rounded-lg p-3 border-l-4 border-info">
+              <div class="mono text-sm font-semibold break-all" x-text="r.path"></div>
+              <div class="text-xs mt-1" x-text="r.note"></div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-base-100 rounded-lg p-4 border-l-4 border-error">
+      <div class="font-semibold text-sm flex items-center gap-2 mb-1">
+        <i class="ph-bold ph-bug text-error"></i> Found on the way, unrelated to the split
+      </div>
+      <p class="text-sm text-base-content/80">
+        <span class="mono">lib/repo-config-cache.js</span> and
+        <span class="mono">lib/alpineComponents/estate.js</span> each carry a literal NUL byte,
+        used deliberately as a string delimiter. Both behave correctly and the pre-build escapes
+        them, so nothing is broken at runtime. But grep classifies both as binary and skips them
+        silently, so they are invisible to <span class="mono">npm run code-survey</span>, the link
+        survey, and every <span class="mono">grep -r</span>. That matters here specifically,
+        because the migration rule <em>is</em> a grep: two of the files being sorted cannot be
+        seen by the thing sorting them. One character each fixes it
+        (<span class="mono">\0</span> as an escape rather than the raw byte), with no change to
+        behaviour.
+      </p>
+    </div>
+  </div>
+
+  <footer class="text-xs text-base-content/50 mt-6">
+    Data inlined from <a class="mono" :href="tool('scripts/code-shape-survey.py')"
+    target="_blank" rel="noopener">scripts/code-shape-survey.py</a>; re-run
+    <span class="mono">npm run code-shape</span> to refresh. Nothing under
+    <span class="mono">lib/</span> has been moved.
+  </footer>
+</div>
+
+<script>
+function guide() {
+  return {
+    meta: { date: '2026-08-06', ref: 'main @ 936bdb6',
+            repo: 'mehrlander/web-tools', sha: '936bdb6',
+            branch: 'claude/lib-kits-consolidation-pdhf41' },
+    rows: [{"path":"lib/alpine-bundle.js","layer":"lib","lines":328,"attaches":[],"boot":true,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/","why":"boot bundle","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/branch-brief.js","layer":"lib/alpineComponents","lines":258,"attaches":["Alpine.data:branchBrief"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/branches.js","layer":"lib/alpineComponents","lines":418,"attaches":["Alpine.data:branches"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/cm-editor.js","layer":"lib/alpineComponents","lines":75,"attaches":["Alpine.data:cmEditor"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/compare.js","layer":"lib/alpineComponents","lines":323,"attaches":["Alpine.data:compare"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/compress-input-cm.js","layer":"lib/alpineComponents","lines":222,"attaches":["Alpine.data:compressInputCm"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/compress-output.js","layer":"lib/alpineComponents","lines":177,"attaches":["Alpine.data:compressOutput"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/config.js","layer":"lib/alpineComponents","lines":314,"attaches":["Alpine.data:config"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/console.js","layer":"lib/alpineComponents","lines":260,"attaches":["Alpine.data:debugConsole"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/counter.js","layer":"lib/alpineComponents","lines":14,"attaches":["Alpine.data:counter"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/crumb-bar.js","layer":"lib/alpineComponents","lines":122,"attaches":["Alpine.data:crumbBar"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/drop-zone.js","layer":"lib/alpineComponents","lines":154,"attaches":["Alpine.data:dropZone"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/estate.js","layer":"lib/alpineComponents","lines":3209,"attaches":["Alpine.data:estate"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":true,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/explorer.js","layer":"lib/alpineComponents","lines":251,"attaches":["Alpine.data:explorer"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/fab.js","layer":"lib/alpineComponents","lines":3058,"attaches":["Alpine.data:fab"],"boot":true,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/file-review.js","layer":"lib/alpineComponents","lines":294,"attaches":["Alpine.data:fileReview"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/idb-importer.js","layer":"lib/alpineComponents","lines":304,"attaches":["Alpine.data:idbImporter"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/idb-tree.js","layer":"lib/alpineComponents","lines":125,"attaches":["Alpine.data:idbTree"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/map.js","layer":"lib/alpineComponents","lines":975,"attaches":["Alpine.data:map"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/mention.js","layer":"lib/alpineComponents","lines":451,"attaches":["Alpine.data:mention"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/navigator.js","layer":"lib/alpineComponents","lines":296,"attaches":["Alpine.data:navigator"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/pages.js","layer":"lib/alpineComponents","lines":193,"attaches":["Alpine.data:pages"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/path-picker.js","layer":"lib/alpineComponents","lines":396,"attaches":["Alpine.data:pathPicker"],"boot":true,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/proposals.js","layer":"lib/alpineComponents","lines":423,"attaches":["Alpine.data:proposals"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/public-browse.js","layer":"lib/alpineComponents","lines":222,"attaches":["Alpine.data:publicBrowse"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/ref-switch.js","layer":"lib/alpineComponents","lines":651,"attaches":["window.RefSwitch","Alpine.data:refSwitch"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/repo-menu.js","layer":"lib/alpineComponents","lines":108,"attaches":["Alpine.data:repoMenu"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/repo.js","layer":"lib/alpineComponents","lines":661,"attaches":["Alpine.data:repo"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/sheet-modal.js","layer":"lib/alpineComponents","lines":197,"attaches":["Alpine.data:sheetModal"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/stage.js","layer":"lib/alpineComponents","lines":1822,"attaches":["window.StageLink","Alpine.data:stager"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/tools.js","layer":"lib/alpineComponents","lines":157,"attaches":["Alpine.data:tools"],"boot":false,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/alpineComponents/viewer.js","layer":"lib/alpineComponents","lines":433,"attaches":["window.ViewRegistry","Alpine.data:viewer"],"boot":false,"hub":false,"dom":"places","alpine":true,"nul":false,"dest":"lib/alpineComponents/","why":"registers Alpine.data","moves":false,"note":"","kind":""},{"path":"lib/branch-survey.js","layer":"lib","lines":279,"attaches":["window.BranchSurvey"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/chat-render.js","layer":"lib","lines":719,"attaches":["window.chatRender"],"boot":false,"hub":true,"dom":"handed","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"Returns elements for the caller to place. Its one body append is the transient copy-textarea, the same idiom kits/io.js already uses.","kind":"read"},{"path":"lib/data-payload.js","layer":"lib","lines":190,"attaches":["window.DataPayload"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/diagnostic-vanilla-bundle.js","layer":"lib","lines":80,"attaches":[],"boot":false,"hub":true,"dom":"none","alpine":false,"nul":false,"dest":"delete","why":"zero consumers","moves":true,"note":"Delete. Zero consumers, and it is not a bundle at all: it is a console-paste diagnostic snippet. The migration task miscategorises it as one.","kind":"read"},{"path":"lib/gh-api.js","layer":"lib","lines":266,"attaches":["window.GH","window.gh"],"boot":true,"hub":true,"dom":"handed","alpine":false,"nul":false,"dest":"lib/","why":"the loader and its boot orchestrator","moves":false,"note":"","kind":""},{"path":"lib/gh-auth.js","layer":"lib","lines":144,"attaches":["GH.prototype","window.ghAuth"],"boot":true,"hub":false,"dom":"handed","alpine":false,"nul":false,"dest":"lib/","why":"extends GH.prototype","moves":false,"note":"","kind":""},{"path":"lib/gh-boot.js","layer":"lib","lines":403,"attaches":["GH.prototype","window.fetch"],"boot":true,"hub":true,"dom":"places","alpine":true,"nul":false,"dest":"lib/","why":"extends GH.prototype","moves":false,"note":"Wraps .load through a THIRD spelling of the boundary, window.gh.constructor.prototype, aliased off an instance rather than the class. Until the survey learned that form this file was the one the rule could not place, and it had to be held in lib/ by a hand-written reason. It is now decided by the same grep as everything else, which is what makes the rule one grep rather than one grep plus an exception.","kind":"read"},{"path":"lib/gh-fetch.js","layer":"lib","lines":358,"attaches":["GH.prototype"],"boot":true,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/","why":"extends GH.prototype","moves":false,"note":"","kind":""},{"path":"lib/gh-store.js","layer":"lib","lines":77,"attaches":["GH.prototype"],"boot":false,"hub":true,"dom":"none","alpine":false,"nul":false,"dest":"lib/","why":"extends GH.prototype","moves":false,"note":"","kind":""},{"path":"lib/gh-transfer.js","layer":"lib","lines":143,"attaches":["GH.prototype"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/","why":"extends GH.prototype","moves":false,"note":"","kind":""},{"path":"lib/github-links.js","layer":"lib","lines":98,"attaches":["window.GithubLinks"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/kits/branch-brief.js","layer":"lib/kits","lines":169,"attaches":["window.BranchBrief"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/brief.js","layer":"lib/kits","lines":225,"attaches":["window.brief"],"boot":false,"hub":true,"dom":"handed","alpine":true,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/build.js","layer":"lib/kits","lines":195,"attaches":["GH.prototype","window.GH","window.buildKit","window.gh"],"boot":false,"hub":true,"dom":"handed","alpine":false,"nul":false,"dest":"lib/","why":"extends GH.prototype","moves":true,"note":"The one file the rule does not place cleanly. It extends GH.prototype, but only to redirect the loader's reads into a cache while a build runs; it is not part of the runtime chain. Either it moves to lib/ root on the letter of the rule, or the rule gains a clause for a temporary patch. Worth deciding explicitly rather than by default.","kind":"ruling"},{"path":"lib/kits/cm6-merge.js","layer":"lib/kits","lines":162,"attaches":["window.cm6Merge"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/cm6.js","layer":"lib/kits","lines":226,"attaches":["window.cm6"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/compression.js","layer":"lib/kits","lines":365,"attaches":["window.compression"],"boot":false,"hub":false,"dom":"handed","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/console.js","layer":"lib/kits","lines":115,"attaches":["window.consoleKit"],"boot":true,"hub":true,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/data-shelf.js","layer":"lib/kits","lines":62,"attaches":["window.dataShelf"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/export.js","layer":"lib/kits","lines":187,"attaches":["window.exporter"],"boot":false,"hub":true,"dom":"handed","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/io.js","layer":"lib/kits","lines":157,"attaches":["window.io"],"boot":false,"hub":false,"dom":"places","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/messaging.js","layer":"lib/kits","lines":68,"attaches":["window.messaging"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/pdf.js","layer":"lib/kits","lines":1141,"attaches":["window.pdf"],"boot":false,"hub":false,"dom":"handed","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/persistence.js","layer":"lib/kits","lines":343,"attaches":["window.persistence"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/proof.js","layer":"lib/kits","lines":83,"attaches":["window.proof"],"boot":false,"hub":false,"dom":"places","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/review-target.js","layer":"lib/kits","lines":133,"attaches":["window.reviewTarget"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/text-diff.js","layer":"lib/kits","lines":219,"attaches":["window.textDiff"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/treemap.js","layer":"lib/kits","lines":154,"attaches":["window.treemap"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/wring.js","layer":"lib/kits","lines":1504,"attaches":["window.wring"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/wsl-core.js","layer":"lib/kits","lines":351,"attaches":[],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"no attachment found; read before moving","moves":false,"note":"","kind":""},{"path":"lib/kits/wsl.js","layer":"lib/kits","lines":299,"attaches":["window.wsl"],"boot":false,"hub":true,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/kits/xlsx.js","layer":"lib/kits","lines":367,"attaches":["window.xlsxKit"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":false,"note":"","kind":""},{"path":"lib/portable-align.js","layer":"lib","lines":68,"attaches":["window.PortableAlign"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/repo-activity-cache.js","layer":"lib","lines":179,"attaches":["window.RepoActivityCache"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/repo-address.js","layer":"lib","lines":98,"attaches":["window.RepoAddress"],"boot":true,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/repo-checks.js","layer":"lib","lines":316,"attaches":["window.RepoChecks"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/repo-config-cache.js","layer":"lib","lines":109,"attaches":["window.RepoConfigCache"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":true,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/repo-mailbox.js","layer":"lib","lines":74,"attaches":["window.RepoMailbox"],"boot":false,"hub":true,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/repo-proposals.js","layer":"lib","lines":470,"attaches":["window.RepoProposals"],"boot":false,"hub":true,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/repo-sessions-cache.js","layer":"lib","lines":214,"attaches":["window.RepoSessionsCache"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/shorter-payload.js","layer":"lib","lines":76,"attaches":["window.ShorterPayload"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/source-peek.js","layer":"lib","lines":386,"attaches":["window.SourcePeek"],"boot":true,"hub":true,"dom":"places","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"Self-installs on load and owns four delegated document listeners, so it decides where it lives and fails the kit shelf's stated DOM line. install() is already exported, so the tidy fix is for the boot chain to call it. Flagged, not assumed.","kind":"ruling"},{"path":"lib/surface.js","layer":"lib","lines":308,"attaches":["window.Surface"],"boot":true,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/swipe-deck.js","layer":"lib","lines":195,"attaches":["window.swipeDeck"],"boot":false,"hub":false,"dom":"places","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"core() hands back a track for the caller to place; open() appends a fullscreen overlay, which an overlay must. Requested takeover, not ambient behaviour.","kind":"read"},{"path":"lib/traffic.js","layer":"lib","lines":394,"attaches":["window.Traffic"],"boot":true,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"Does NOT extend GH.prototype: it wraps window.fetch. The migration task lists it as scaffolding on the strength of a comment. By attachment it is a kit; it is boot-loaded, which is a separate fact the boot manifest now carries.","kind":"read"},{"path":"lib/url-params.js","layer":"lib","lines":107,"attaches":["window.UrlParams"],"boot":false,"hub":false,"dom":"none","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"","kind":""},{"path":"lib/vanilla-bundle.js","layer":"lib","lines":192,"attaches":["window.attr","window.cls","window.copy","window.data","window.ea","window.el","window.fill","window.grab","window.html","window.ids","window.listen","window.on","window.route","window.tpl","window.ui"],"boot":true,"hub":false,"dom":"handed","alpine":false,"nul":false,"dest":"lib/","why":"boot bundle","moves":false,"note":"","kind":""},{"path":"lib/vanilla-demo.js","layer":"lib","lines":487,"attaches":["window.demo"],"boot":false,"hub":false,"dom":"places","alpine":false,"nul":false,"dest":"lib/kits/","why":"registers a window namespace","moves":true,"note":"mount() is handed every host element by name. Its body appends are a <dialog> and a sandboxed run-frame, both of which have nowhere else to attach.","kind":"read"}],
+    tab: 'now',
+    folderFilter: 'all',
+    onlyMoving: false,
+    onlyBoot: false,
+
+    init() {
+      // Precompute the two derived display fields once, rather than in the
+      // x-for. attachShort is the reason the table needs no horizontal scroll:
+      // vanilla-bundle.js registers sixteen globals, and letting one row set
+      // the column width costs every other row its legibility.
+      for (const r of this.rows) {
+        r.base = r.path.split('/').pop();
+        const a = r.attaches;
+        r.attachShort = !a.length ? '—'
+          : a.length <= 2 ? a.join(', ')
+          : `${a[0]}, ${a[1]} +${a.length - 2}`;
+      }
+      const h = new URLSearchParams(location.hash.slice(1)).get('tab');
+      if (h && this.tabs.some(t => t.id === h)) this.tab = h;
+      this.$watch('tab', v => history.replaceState(null, '', '#tab=' + v));
+    },
+
+    // Blob links point at the SHA the survey was RUN against, not at main. The
+    // page reports a specific state of the tree, so a link that followed main
+    // would eventually open a file that no longer matches the row describing it,
+    // and it would do so silently. Pinning costs nothing and cannot drift.
+    blob(path) { return `https://github.com/${this.meta.repo}/blob/${this.meta.sha}/${path}`; },
+    pr(n)      { return `https://github.com/${this.meta.repo}/pull/${n}`; },
+
+    // The survey script is not a subject of the measurement, it is the
+    // instrument, and it does not exist at the measured SHA because this branch
+    // introduces it. Pinning it there gives a 404, which a link check caught and
+    // an eye would not have. It rides the branch until this merges; repoint it
+    // at main then, or drop the helper and use blob() once the two agree.
+    tool(path) { return `https://github.com/${this.meta.repo}/blob/${this.meta.branch}/${path}`; },
+
+    // Spelled out, because the statement of facts is prose and "31 files" reads
+    // as a table cell dropped into a sentence. Falls back to the digits above
+    // the range it knows, which is the honest failure: a wrong word would be
+    // worse than a bare numeral.
+    w(n) {
+      const ones = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',
+        'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen',
+        'nineteen'];
+      const tens = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+      if (n < 20) return ones[n];
+      if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? '-' + ones[n % 10] : '');
+      return String(n);
+    },
+
+    // Bound to the data: these describe the tree as measured.
+    get nKits()       { return this.rows.filter(r => r.layer === 'lib/kits').length; },
+    get nComponents() { return this.rows.filter(r => r.layer === 'lib/alpineComponents').length; },
+    get nStrays()     { return this.rows.filter(r => r.layer === 'lib' && r.moves && r.dest === 'lib/kits/').length; },
+    get nKitsHub()    { return this.rows.filter(r => r.layer === 'lib/kits' && r.hub).length; },
+    get nRootNoHub()  { return this.rows.filter(r => r.layer === 'lib' && !r.hub).length; },
+
+    // No counts on the tabs. Every number they carried is stated where it is
+    // used (the header carries the file and change totals, Now counts its own
+    // filtered rows, Migration opens on its three figures), so the badges were
+    // a second copy competing with the labels and wrapping the row onto two
+    // lines on a phone.
+    get tabs() {
+      return [
+        { id: 'facts',     label: 'Facts',     icon: 'ph-scales' },
+        { id: 'now',       label: 'Now',       icon: 'ph-folders' },
+        { id: 'options',   label: 'Options',   icon: 'ph-git-branch' },
+        { id: 'target',    label: 'Target',    icon: 'ph-target' },
+        { id: 'migration', label: 'Migration', icon: 'ph-path' },
+      ];
+    },
+
+    get visible() {
+      return this.rows.filter(r =>
+        (this.folderFilter === 'all' || r.layer === this.folderFilter) &&
+        (!this.onlyMoving || r.moves) &&
+        (!this.onlyBoot || r.boot));
+    },
+    get grouped() {
+      const out = [];
+      for (const f of ['lib', 'lib/kits', 'lib/alpineComponents']) {
+        const rows = this.visible.filter(r => r.layer === f);
+        if (rows.length) out.push({ folder: f + '/', rows });
+      }
+      return out;
+    },
+    get movers()    { return this.rows.filter(r => r.moves); },
+    get rulings()   { return this.rows.filter(r => r.kind === 'ruling'); },
+    get reads()     { return this.rows.filter(r => r.kind === 'read'); },
+    get bootCount() { return this.rows.filter(r => r.boot).length; },
+
+    get folders() {
+      const mk = (name, verdict) => ({
+        name, verdict, n: this.rows.filter(r => r.layer === name).length,
+      });
+      return [
+        mk('lib', 'Mixed. Four extend GH.prototype, two are the loader and its boot orchestrator, two are bundles, and nineteen are plain namespace modules indistinguishable from kits.'),
+        mk('lib/kits', 'Almost uniform: twenty register a window namespace. One (build.js) extends GH.prototype, which the shelf\'s own README says a kit cannot do.'),
+        mk('lib/alpineComponents', 'Clean. Every file registers Alpine.data and renders. This boundary works and is not in question.'),
+      ];
+    },
+
+    get concept() {
+      const n = (fn) => this.rows.filter(fn).length;
+      return [
+        { name: 'lib/', rule: 'extends GH.prototype, defines GH, or is a boot bundle',
+          holds: 'the loader and the chain that boots it',
+          n: n(r => r.dest === 'lib/') },
+        { name: 'lib/kits/', rule: 'registers window.<Name>, no Alpine.data',
+          holds: 'every logic module, portable or not',
+          n: n(r => r.dest === 'lib/kits/') },
+        { name: 'lib/alpineComponents/', rule: 'registers Alpine.data',
+          holds: 'everything that renders and holds reactive state',
+          n: n(r => r.dest === 'lib/alpineComponents/') },
+      ];
+    },
+
+    options: [
+      { id: 'A', title: 'One logic shelf; lib/ root reduces to the loader',
+        decided: '2026-08-07',
+        body: 'Attachment decides the folder. Every window-namespace module is a kit, whatever it knows about; lib/ root holds only the loader, the files extending its prototype, and the bundles. Boot membership becomes a declared manifest instead of an implied property of a folder.',
+        buys: 'Every boundary becomes one grep and can be held by a test. Ends the question rather than relocating it, and names the boot cost for the first time.',
+        costs: 'lib/ root goes from 29 files to 8 and lib/kits/ from 22 to 41. 31 files carry a runtime gh.load of a mover and break if missed; 84 mention a lib/<mover> path, of which 44 are tests and build scripts that fail loudly and 23 are prose that goes quietly wrong.' },
+      { id: 'B', title: 'Dissolve kits; flatten to lib/ plus alpineComponents',
+        considered: true,
+        body: 'Accept that nothing distinguishes the two shelves and stop maintaining the distinction. One boundary survives: does it register Alpine.data. The kits README, its demos folder, and the kit register test fold into lib/.',
+        buys: 'The simplest rule available, and the honest answer if "kit" turns out to name nothing. Fewest concepts to teach a future session.',
+        costs: '21 files move instead of 19, and lib/ root becomes a flat 49-file directory. Loses a working shelf and a useful word to gain one fewer folder.' },
+      { id: 'C', title: 'Two shelves sorted on boot membership',
+        considered: true,
+        body: 'Keep two folders but sort on when a file loads rather than what it attaches to: the boot chain in one, on-demand code in the other.',
+        buys: 'Mechanical and checkable, and it surfaces the cost signal directly in the tree.',
+        costs: 'Breaks the one clean category there is: two Alpine components are boot-loaded and would have to leave alpineComponents/. Boot is a real axis but a bad folder.' },
+      { id: 'D', title: 'Portability: a kit is a capability true in any repo',
+        refuted: true,
+        body: 'The rule written down on 2026-08-06 and retracted the same day. Counting runtime dependencies on the hub\'s own chain, kits are not more portable than lib/ root files.',
+        buys: 'Reads well, and matches the intuition the word "kit" invites.',
+        costs: 'False. Five of twenty-one kits carry a hub runtime dependency and most lib/ root modules carry none, so the shelf contradicts the rule.' },
+      { id: 'E', title: 'Cross-app reach: a kit is logic more than one page uses',
+        refuted: true,
+        body: 'Raised 2026-08-07, and measured the same day by counting the distinct non-test files that reference each module\'s namespace.',
+        buys: 'Closer to the intuition than portability was, and it is at least a number rather than a judgment.',
+        costs: 'False as a description: medians 5.5 (kits) against 4.0 (root) over ranges of 1-29 and 2-31, the most-referenced logic module is in root, the two least-referenced are kits. Worse as a target: reach changes when an unrelated page is added or deleted, so a file would change folders without changing.' },
+      { id: 'F', title: 'Kits arranged by topic, in sub-shelves',
+        considered: true,
+        body: 'Group the kit shelf into topic folders rather than leaving it flat. Orthogonal to A through E: it is about arrangement WITHIN a shelf, not which shelf a file belongs to.',
+        buys: 'The one thing A does not give you. A alone leaves lib/kits/ a flat 41-file directory, and if the felt disorder is volume in one place, this is what answers it.',
+        costs: 'Costs nothing now and can follow A without redeciding anything, which is also why it should not be bundled into the migration. A flat shelf keeps "what is a kit" answerable by path alone; nesting trades that for browsability.' },
+    ],
+
+    phases: [
+      { title: 'Rebase onto PR #366',
+        body: 'It is open and edits docs/code-layers.md, lib/kits/README.md, and tools/README.md, all of which this work rewrites. Rebase rather than restate its retraction.' },
+      { title: 'Fix the two NUL bytes',
+        body: 'One character each. Do it first, because the rule that sorts the files is a grep and these two files are currently invisible to it.',
+        gate: 'npm test stays green (1147 passing at baseline)' },
+      { title: 'Delete diagnostic-vanilla-bundle.js',
+        body: 'Zero consumers, confirmed. Not a bundle: a console-paste diagnostic snippet.' },
+      { title: 'Move the 19, and rule on build.js',
+        body: 'git mv, no edits to file contents. The four DOM-touching files were read individually; their reasoning is recorded rather than just a verdict.' },
+      { title: 'Follow the call sites',
+        body: 'gh-boot.js loads three of the movers by path and already reaches into kits/ for console.js, so the precedent exists. build-lib.mjs walks lib/ recursively and needs no glob change, but hardcodes url-params.js and repo-address.js in its boot list.',
+        gate: 'npm run build:lib, then prove dist/web-tools.js still boots' },
+      { title: 'State the rule where it is read',
+        body: 'docs/code-layers.md and lib/kits/README.md carry the three categories; the boot manifest gets written down for the first time.' },
+      { title: 'Hold it with a test',
+        body: 'Assert that every lib/*.js extends GH.prototype or is a bundle, and that the boot manifest matches what gh-boot.js actually loads. A prose rule with no test is what produced this task.',
+        gate: 'the boundary stops depending on anyone remembering it' },
+    ],
+  };
+}
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>

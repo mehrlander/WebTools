@@ -20,6 +20,7 @@
     "tracker-board": "python3 .claude/skills/tasks/build-board.py tracker/tasks tracker/board.md",
     "sunset": "python3 scripts/sunset-scan.py --all",
     "code-survey": "python3 scripts/unclaimed-code-survey.py lib scripts tools",
+    "code-shape": "python3 scripts/code-shape-survey.py lib",
     "test:pdf": "node tools/test/pdf-kit-browser.mjs && node tools/test/pdf-ink-alignment.mjs",
     "test:pdf-versions": "node tools/test/pdf-version-probe.mjs",
     "test:word-select": "node tools/test/word-select-touch.mjs",

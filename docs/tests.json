@@ -302,7 +302,7 @@
       "path": "tools/test/estate-open-branches.test.mjs",
       "kind": "component",
       "protects": "The open-branches list shows open PRs and stranded branches only, freshest first.",
-      "assertions": 20,
+      "assertions": 22,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
@@ -447,6 +447,15 @@
       "kind": "behavior",
       "protects": "Every named query document the estate depends on is exposed and parses.",
       "assertions": 7,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/guide-index.test.mjs",
+      "kind": "kit",
+      "protects": "The Guides pane's fold: what path counts as a guide, and that one document found on both main and an open PR stays ONE row rather than two. Also the session collection across the older bare `session` field, which a row written before 2026-08 still carries.",
+      "assertions": 11,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -671,7 +680,7 @@
       "path": "tools/test/repo-activity-cache.test.mjs",
       "kind": "behavior",
       "protects": "The cache hash ignores timestamps and tracks material fields, so a crawl does not commit on every run.",
-      "assertions": 15,
+      "assertions": 18,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0

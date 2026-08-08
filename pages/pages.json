@@ -418,6 +418,20 @@
     ]
   },
   {
+    "label": "pages/guides/",
+    "top": "guides",
+    "items": [
+      {
+        "href": "guides/code-layers.html",
+        "label": "code-layers",
+        "title": "Code layers: current state and migration plan",
+        "note": "",
+        "thumb": "thumbs/guides/code-layers.png",
+        "code": "https://github.com/mehrlander/web-tools/blob/main/pages/guides/code-layers.html"
+      }
+    ]
+  },
+  {
     "label": "lib/kits/demos/",
     "top": "kit-demos",
     "items": [

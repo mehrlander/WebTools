@@ -135,7 +135,11 @@ const data = Alpine.$data(window.document.getElementById('es'));
 const activity = ({ branches = [], openPRs = [] }) => ({
   'acme/widget': { defaultBranch: 'main', openPRs, survey: { branches } },
 });
-const rowFor = (name) => data.openBranches.find(r => r.name === name);
+// These rows are read through the Open scope, which is what the session
+// icon's bug lived in. Stated rather than inherited: the component's
+// default is Recent, and a stranded row is unreachable from there by
+// construction (stranded is always older than the window's ceiling).
+const rowFor = (name) => { data.branchScope = 'open'; return data.openBranches.find(r => r.name === name); };
 
 test('a stranded branch with no PR still gets its session link', () => {
   // The whole bug: this row is the common case in the Open list, and it was
