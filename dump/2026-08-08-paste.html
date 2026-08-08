@@ -1,0 +1,227 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script defer src="https://unpkg.com/alpinejs"></script>
+<div x-data="speech()" class="min-h-screen bg-zinc-50 p-5 text-zinc-900">
+  <main class="mx-auto max-w-lg pt-8">
+    <div class="relative">
+      <div x-ref="editor"
+        :contenteditable="editing"
+        @keyup="save"
+        @mouseup="save(); selection()"
+        @touchend="setTimeout(()=>selection(),50)"
+        @dblclick.prevent="edit(true)"
+        spellcheck="true"
+        class="min-h-64 whitespace-pre-wrap rounded-3xl bg-white p-5 text-[18px]
+               leading-8 shadow-sm ring-1 ring-zinc-200 outline-none focus:ring-zinc-300"
+      ></div>
+      <button x-show="selected && !on && !editing" x-cloak
+        class="absolute -bottom-3 left-1/2 -translate-x-1/2 rounded-full
+               bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white shadow-lg">
+        ✦ Refine
+      </button>
+    </div>
+    <div class="mt-7 flex flex-col items-center gap-4">
+      <div x-show="on" x-cloak class="flex gap-2">
+        <template x-for="p in [',',';','.','?','!','¶']">
+          <button @pointerdown.prevent="punct(p)"
+            class="grid size-10 place-items-center rounded-full bg-white text-lg
+                   shadow-sm ring-1 ring-zinc-200 active:scale-90"
+            x-text="p">
+          </button>
+        </template>
+      </div>
+      <div class="flex items-center gap-2">
+        <button @pointerdown.prevent="toggle"
+          :class="on
+            ? 'bg-rose-500 text-white shadow-lg shadow-rose-200'
+            : 'bg-white ring-1 ring-zinc-200'"
+          class="grid size-14 place-items-center rounded-full text-xl transition active:scale-95">
+          <span x-text="on ? '■' : '🎙️'"></span>
+        </button>
+        <button @pointerdown.prevent="edit(false)"
+          :class="editing ? 'bg-zinc-900' : 'bg-white ring-1 ring-zinc-200'"
+          class="grid size-14 place-items-center rounded-full text-xl transition active:scale-95">
+          ✏️
+        </button>
+        <span class="ml-2 text-sm text-zinc-500" x-text="status"></span>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+function speech(){
+  return {
+    on:false, editing:false, selected:false,
+    r:null, range:null, live:null, pending:null,
+    continuation:false, editAfterStop:false, status:"Tap to speak",
+    init(){
+      const SR=window.SpeechRecognition||window.webkitSpeechRecognition
+      this.r=new SR()
+      Object.assign(this.r,{continuous:true,interimResults:true,lang:"en-US"})
+      this.r.onstart=()=>{
+        this.on=true
+        this.editing=false
+        this.selected=false
+        this.status="Listening…"
+        this.$refs.editor.blur()
+        this.showLive("")
+      }
+      this.r.onresult=e=>{
+        let interim=""
+        for(let i=e.resultIndex;i<e.results.length;i++){
+          const t=this.normalize(e.results[i][0].transcript)
+          e.results[i].isFinal
+            ? (this.commit(t),this.continuation=false)
+            : interim+=t
+        }
+        this.showLive(interim)
+      }
+      this.r.onend=()=>{
+        this.on=false
+        this.removeLive()
+        if(this.pending){
+          const p=this.pending
+          this.pending=null
+          this.boundary(p)
+          setTimeout(()=>this.start(false),0)
+        }else if(this.editAfterStop!==false){
+          const end=this.editAfterStop
+          this.editAfterStop=false
+          this.openEditor(end)
+        }else this.status="Tap to speak"
+      }
+    },
+    normalize(t){
+      const m={".":" period",",":" comma","?":" question mark",
+               "!":" exclamation point",":":" colon",";":" semicolon"}
+      t=t.replace(/[.,?!:;]/g,x=>m[x]).replace(/\s+/g," ").trim()
+      if(this.continuation&&/^[A-Z][a-z]/.test(t))
+        t=t[0].toLowerCase()+t.slice(1)
+      return t
+    },
+    save(){
+      const s=getSelection()
+      if(s.rangeCount&&this.$refs.editor.contains(s.anchorNode))
+        this.range=s.getRangeAt(0).cloneRange()
+    },
+    selection(){
+      const s=getSelection()
+      this.selected=!!s.rangeCount&&!s.isCollapsed&&this.$refs.editor.contains(s.anchorNode)
+    },
+    end(){
+      this.range=document.createRange()
+      this.range.selectNodeContents(this.$refs.editor)
+      this.range.collapse(false)
+    },
+    ensure(){
+      if(!this.range||!this.$refs.editor.contains(this.range.startContainer))this.end()
+    },
+    before(){
+      this.ensure()
+      const r=this.range.cloneRange()
+      r.selectNodeContents(this.$refs.editor)
+      r.setEnd(this.range.startContainer,this.range.startOffset)
+      return r.toString().slice(-1)
+    },
+    insert(text){
+      this.ensure()
+      const n=document.createTextNode(text)
+      this.range.insertNode(n)
+      this.range.setStartAfter(n)
+      this.range.collapse(true)
+      this.range=this.range.cloneRange()
+    },
+    commit(text){
+      this.removeLive()
+      if(!text)return
+      this.insert((this.before()&&!/\s/.test(this.before())?" ":"")+text)
+    },
+    boundary(p){
+      if(p==="¶"){
+        this.insert("\n\n")
+        this.continuation=false
+      }else{
+        this.insert(p+" ")
+        this.continuation=/[,;:]/.test(p)
+      }
+    },
+    showLive(text){
+      if(this.live){
+        this.live.firstChild.textContent=text
+        return
+      }
+      this.ensure()
+      const wrap=document.createElement("span")
+      wrap.contentEditable="false"
+      wrap.innerHTML=`<span class="text-zinc-400 italic"></span><span
+        class="ml-1 inline-block h-[1.2em] w-[3px] translate-y-1
+               rounded-full bg-rose-500 align-baseline animate-pulse"></span>`
+      wrap.firstChild.textContent=text
+      this.range.insertNode(wrap)
+      this.live=wrap
+      this.range.setStartAfter(wrap)
+      this.range.collapse(true)
+      this.range=this.range.cloneRange()
+    },
+    removeLive(){
+      if(!this.live)return
+      const r=document.createRange()
+      r.setStartBefore(this.live)
+      r.collapse(true)
+      this.live.remove()
+      this.live=null
+      this.range=r
+    },
+    start(capture=true){
+      if(capture)this.save()
+      this.ensure()
+      this.editing=false
+      this.selected=false
+      this.$refs.editor.blur()
+      this.r.start()
+    },
+    toggle(){
+      this.on ? this.r.stop() : (this.exitEditor(),this.start())
+    },
+    punct(p){
+      if(this.on){
+        this.pending=p
+        this.r.stop()
+      }
+    },
+    edit(atEnd=false){
+      if(this.on){
+        this.editAfterStop=atEnd
+        this.r.stop()
+      }else if(this.editing){
+        this.exitEditor()
+      }else{
+        this.openEditor(atEnd)
+      }
+    },
+    openEditor(atEnd=false){
+      this.editing=true
+      this.selected=false
+      this.status="Editing"
+      this.$nextTick(()=>{
+        if(atEnd)this.end()
+        else this.ensure()
+        this.$refs.editor.focus()
+        const s=getSelection()
+        s.removeAllRanges()
+        s.addRange(this.range)
+      })
+    },
+    exitEditor(){
+      if(!this.editing)return
+      this.save()
+      this.editing=false
+      this.selected=false
+      this.$refs.editor.blur()
+      getSelection().removeAllRanges()
+      this.status="Tap to speak"
+    }
+  }
+}
+</script>
