@@ -483,14 +483,14 @@
   },
   {
    "id": "lib-root-kit-migration-dind5t",
-   "title": "Settle whether lib/ root and lib/kits/ are one category, then move what the rule says",
+   "title": "One logic shelf: move every window-namespace module into lib/kits/",
    "status": "backlog",
    "project": "web-tools",
    "opened": "2026-07-26",
    "file": "lib-root-kit-migration-dind5t.md",
    "href": "tasks/lib-root-kit-migration-dind5t.md",
    "lastActivity": "2026-08-07",
-   "logEntries": 3
+   "logEntries": 4
   },
   {
    "id": "live-confirm-graphql-queries-7maacy",
