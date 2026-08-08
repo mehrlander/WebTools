@@ -77,7 +77,7 @@
       "path": "tools/test/branch-survey.test.mjs",
       "kind": "behavior",
       "protects": "Landed-versus-stranded is judged on blob content, since squashes make ref-level merge status meaningless.",
-      "assertions": 20,
+      "assertions": 21,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
