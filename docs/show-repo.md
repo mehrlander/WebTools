@@ -281,9 +281,10 @@ The one glyph carries four meanings, and two rules keep them apart:
 | An **exact file** | a set row, a route's renderer, a staged item | plain icon **plus a source peek** |
 
 A **source peek** (`lib/source-peek.js`) is a hover card showing the file:
-markdown rendered, JSON pretty-printed with its top-level shape named,
-everything else as source, always the first 20 lines with a footer saying what
-was left behind. A call site adds one attribute,
+markdown rendered, JSON pretty-printed, everything else as source, a 28-line
+excerpt in small type with no footer (the measuring line, "first 28 of 79
+lines," was dropped 2026-08-07 along with the JSON shape headline it carried: a
+cut excerpt visibly ends mid-document, and the tap carries the full read). A call site adds one attribute,
 `:data-peek="owner/repo[@ref]:path"`, and a delegated listener does the rest; a
 view holding the bytes already (the Map's two manifests) passes them with
 `SourcePeek.seed` so the peek costs no fetch. `lib/gh-boot.js` loads it, the way
@@ -739,7 +740,7 @@ documentation holds and what holds it (Docs), and what the suite checks
 (Tests). Who carries the set is a fact about a repo and lives on the Repos
 cards.
 
-**The open tab is addressable:** `?view=map&tab=surfacing|showing|docs|tests`,
+**The open tab is addressable:** `?view=map&tab=surfacing|showing|docs|claims|tests`,
 on the same `tab` key the project view's pills use, with the default (`set`)
 left out of the URL so a plain `?view=map` link is unchanged. The tab is held
 by the shell rather than by `map()`, because the URL is the shell's to own and
@@ -749,7 +750,8 @@ by whatever route. That last part is the failure this replaced: the four
 non-default tabs used to fetch from the click handler alone, so a tab nobody
 tapped had nothing to render.
 
-*The set* renders the to-go bag from the hub's committed manifest,
+*Portable* (labelled The set until 2026-08-07; the `?tab=set` URL key is
+unchanged) renders the to-go bag from the hub's committed manifest,
 [`docs/portable.json`](portable.json), whose prose parent is
 [`docs/PORTABLE.md`](PORTABLE.md) (a test,
 `tools/test/portable-manifest.test.mjs`, holds the two consistent, so the UI
@@ -843,12 +845,27 @@ observations and is corrected by re-probing), its **reach** and **words** (both
 derived, see below), and its maintenance (authored or generated, with the
 discipline that keeps it true); complete by construction, since
 `tools/test/docs-registry.test.mjs` holds the folder and the table to exactly one
-row per file. And the **shared claims**: statements that live in
+row per file. The census is navigated from a folder rail
+(2026-08-07): each directory is a row with rolled-up file count and word mass
+and its own GitHub link, the selected folder shows its direct files beside it
+with that folder's README subject as the gloss, and a reach filter moves the
+counts without changing the tree's shape. A row is read in place: its title
+opens the document in the house swipe deck (`lib/swipe-deck.js`, loaded on
+demand), full length with the peek's own rendition helpers so deck and peek
+cannot drift, paging through the selected folder's files as filtered, opened
+on the tapped row; its GitHub icon, inline with the badges and always visible,
+carries the source peek for the desktop glance, one details toggle on the
+reach strip shows every row's maintenance at once, and the files view stays
+the route for working on a file rather than reading it. The file list runs two
+columns above `xl` so a wide screen is used rather than left as a gutter. And the **shared claims**: statements that live in
 more than one place, each with its one authoritative carrier and its typed
 repetitions (copy, paraphrase, pointer, live read; a copy says who keeps it, by
 hand or by a named builder), where an absent check renders in the warning tone
 rather than being omitted, because an unchecked copy should look unchecked every
-time the tab opens. The registry is authoritative for the claims it covers and
+time the tab opens. The claims table renders on its own **Claims** tab
+(2026-08-07): it keys on claims rather than files, so trailing the census it
+read as an appendix, first open, then folded behind a count; a tab keeps the
+census on one viewport and gives the table its own. The registry is authoritative for the claims it covers and
 owes the repo no inventory of them; the census, by contrast, is complete.
 The census half is public, like the other two tabs.
 

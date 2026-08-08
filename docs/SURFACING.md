@@ -70,7 +70,7 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   `[new]` is the branch tip; `[main]` is the baseline. `[main]/[diff]` is the net change against main; `[new]/[diff]` is on-branch history. Add `#L120` or `#L120-L145` for line anchors. Keep rows uniform and do not repeat a file's links within a turn.
 
-  **In a PR body, drop the slash and the per-file diff anchor.** The GitHub MCP's write path defangs what it distrusts by wrapping it in backticks, and two of this format's habits trigger it (measured 2026-08-08, web-tools PR #372, by writing probe lines and reading them back): a `](url)/[` pair joined by a bare slash, even with clean URLs, and a compare URL carrying a `#diff-<hex>` anchor. Both arrive backtick-wrapped and render as literal text, on GitHub and in every downstream reader of the body. So any body or comment written through the MCP separates a file's links with `, ` (`[main](…), [diff](…)`) and points diffs at the plain compare URL. Chat replies keep the slash form and the anchors, which travel untouched.
+  **In a PR body, drop the slash and the per-file diff anchor.** The GitHub MCP's write path defangs what it distrusts by wrapping it in backticks, and two of this format's habits trigger it (measured 2026-08-08, web-tools PR #372, by writing probe lines and reading them back): a `](url)/[` pair joined by a bare slash, even with clean URLs, and a compare URL carrying a `#diff-<hex>` anchor. Both arrive backtick-wrapped and render as literal text, on GitHub and in every downstream reader of the body. A third trigger, same measurement: the toss form carrying both `?use=` and `#gh=` was wrapped, while the `#gh=`-only form passed, and under `#gh` a page's relative dependencies already load from the addressed ref, so nothing is lost. So any body or comment written through the MCP separates a file's links with `, ` (`[main](…), [diff](…)`), points diffs at the plain compare URL, and writes its 🥏 toss without `?use=`. Chat replies keep the slash form, the anchors, and the full toss, which travel untouched.
 
   When a renderable HTML page changed, put its 🥏 or 📦 render after the list, not in a row. The list carries source; the render line carries the running page. Apply the same honesty gate as ⭐.
 
@@ -83,8 +83,14 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   Saying **"caption"** requests one of three sizes: **full** (everything since main; `/caption` default and guide-PR sync source), **turn** (this turn's files; default file-modifying closer), or **bare** (only the 🧭 guide link when nothing changed).
 
-  Keep the reply and the guide body in sync. A bare reply implies nothing is viewable yet. If there is no render link, say why (the renderer itself is what changed, the page's data is an untracked build artifact).
+  Keep the reply and the guide body in sync. A bare reply implies nothing is viewable yet. The render line is part of the caption at **every size**, turn-size refinement closers included: the smaller a diff feels, the more the reader wants to look, so if there is no render link, say why (the renderer itself is what changed, the page's data is an untracked build artifact), never omit it silently.
 * **Session diff:** summarize substantial work with `Session diff: [main...branch](url)`.
+* **Closing state:** every reply that finishes work or proposes more ends with exactly one of four labeled states, so the cheapest useful answer is one word. The bold label carries the meaning; the color makes it scannable:
+
+  - 🟢 **Ready to continue:** named work available on "go", listed as bullets, one line each. "Go" authorizes only what the list names, and "go 1, 3" takes a subset. Work the session conceives belongs here as a proposal (Keep focus), never done unprompted.
+  - 🟡 **Decision needed:** continuation depends on the user's call, and the state names the decision.
+  - ⚪ **Natural stopping point:** no further work proposed; the wrap-up offer lives here.
+  - 🟠 **Attention:** something concrete needs addressing before proceeding. Reserved for an actual problem or risk, not routine uncertainty; there is deliberately no red.
 * **External proxies:** prohibited. Third-party GitHub renderers such as `htmlpreview.github.io`, `raw.githack.com`, and `gitcdn.link` fetch server-side, fail on private repos, and route content through another host. Use `[new]` for canonical source and 🥏 for a private or un-deployed render.
 * **Skip the watch offer:** never offer to watch CI or monitor a PR.
 

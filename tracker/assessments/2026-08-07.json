@@ -1,0 +1,170 @@
+{
+  "schema": "tracker-assessment/1",
+  "assessedAt": "2026-08-07T12:44:00-07:00",
+  "basis": {
+    "repository": "mehrlander/web-tools",
+    "commit": "f5801fca036d70a1f7b0edb1f8aefeff1c8070c5",
+    "onDeck": 17,
+    "inProgress": 0,
+    "blocked": 0
+  },
+  "summary": "The open tracker has consolidated around five coherent workstreams. Several recent tasks closed by simplifying the model rather than adding another artifact. The main tracker hygiene issue is now scope truth: a few open task descriptions lag the implementation or the latest investigation. The most useful next move is not a global reorganization, but a small dispatch queue drawn from the assessment.",
+  "workstreams": [
+    {
+      "id": "focus-handoff",
+      "title": "Focus and hand-off",
+      "tasks": [
+        "focus-a-ui-component-f0awt7",
+        "take-away-inside-a-toss-k73cjq",
+        "brief-from-the-pages-gallery-7d4031",
+        "stage-partial-file-selection-k8mtou"
+      ],
+      "assessment": "The durable problem is selecting a meaningful piece of running UI and carrying that scope into later work. Whole-page take-away is already useful and should not wait for arbitrary region-to-source mapping. Partial-file staging is the source-side version of the same precision problem and can remain later work.",
+      "next": "Finish the whole-page take-away path through toss-render and the Pages gallery. Keep arbitrary region focus as the larger design problem rather than making it a prerequisite."
+    },
+    {
+      "id": "pdf",
+      "title": "PDF inspection and structure",
+      "tasks": [
+        "pdf-inspect-pinch-zoom-5wz3kt",
+        "pdf-table-splitter-page-q7vm2d",
+        "pdf-lattice-open-perimeter-h4kx9r",
+        "document-structure-harness-4mz7wk"
+      ],
+      "assessment": "These are four layers, not one project: viewer ergonomics, manual geometry correction, automatic geometry inference, and a general scanned-document extraction architecture. The harness is materially larger than the other three and should not absorb finishable pdf-inspect work.",
+      "next": "Treat pinch/pan and interactive column boundaries as one manual inspection surface. Keep lattice inference and the extraction harness separately scoped."
+    },
+    {
+      "id": "browser-confirmation",
+      "title": "Browser confirmation and capture",
+      "tasks": [
+        "fab-capture-button-f6q38m",
+        "live-confirm-graphql-queries-7maacy"
+      ],
+      "assessment": "Both tasks are now narrow residuals of work whose larger shape already exists: persistent storage for FAB captures and the remaining live GraphQL confirmation. They are good filler work, but they are no longer architectural undertakings.",
+      "next": "Reframe each task to its remaining slice when next touched, and bundle either into an adjacent browser-validation session rather than giving it a large standalone design pass."
+    },
+    {
+      "id": "repo-governance",
+      "title": "Repo orientation and governance",
+      "tasks": [
+        "session-start-nudge-unconfigured-z0g4zn",
+        "show-repo-edit-web-tools-json-ygramz",
+        "skillify-orphan-docs-izv20p",
+        "spike-snags-log-gobdyq"
+      ],
+      "assessment": "This cluster contains the clearest tracker drift. The config editor appears substantially implemented while its task still describes the capability as future work. The orphan-doc investigation largely disproved its original framing. SNAGS is already useful as a manual friction index, while the unproven part is recurrence machinery and projection.",
+      "next": "Clean the stale task framing before adding governance machinery. Keep the session-start nudge as a discrete feature. Let SNAGS accumulate evidence before automating recurrence."
+    },
+    {
+      "id": "architecture-portability",
+      "title": "Architecture and portability",
+      "tasks": [
+        "lib-root-kit-migration-dind5t",
+        "own-json-tree-retire-vje-i0lcj2",
+        "render-copy-runtime-cdn-refs-p4m2wq"
+      ],
+      "assessment": "These are strategic cleanup tasks with compounding effects. The lib/kits investigation has become an explicit architecture decision after the earlier portability distinction was measured and retracted. The JSON viewer and rendering-copy tasks both push toward runtime behavior that the repo actually owns rather than merely packages.",
+      "next": "Resolve the lib/kits boundary first because it is now decision-ready and mechanically finishable once ruled. Keep the JSON tree and runtime dependency work independent."
+    }
+  ],
+  "hygiene": [
+    {
+      "task": "show-repo-edit-web-tools-json-ygramz",
+      "action": "close-or-reframe",
+      "reason": "The task says general .web-tools.json editing is future work, but show-repo now has migration and a substantial structured config form covering Projects, Pages, Stage, Scope, and most manifest fields. Determine the true residual rather than leaving the original title on deck."
+    },
+    {
+      "task": "skillify-orphan-docs-izv20p",
+      "action": "reframe",
+      "reason": "The investigation found several different reach conditions and only a small amount of genuinely unreached operating knowledge. The original job, skillify the orphan docs, no longer describes the remaining work."
+    },
+    {
+      "task": "pdf-table-splitter-page-q7vm2d",
+      "action": "rename-or-reframe",
+      "reason": "pdf-inspect now supplies the page, rendering, overlay, hit testing, selection, and readings. The remaining work is interactive column boundaries with live reassignment, not a new splitter page."
+    },
+    {
+      "task": "live-confirm-graphql-queries-7maacy",
+      "action": "narrow",
+      "reason": "One of the two live queries has already been confirmed. The open task should describe the remaining BranchSessions confirmation when next touched."
+    },
+    {
+      "task": "fab-capture-button-f6q38m",
+      "action": "narrow",
+      "reason": "Clipboard capture already landed. The remaining product slice is persistent capture storage rather than creating the capture mechanism."
+    }
+  ],
+  "decisions": [
+    {
+      "subject": "lib root versus lib/kits",
+      "task": "lib-root-kit-migration-dind5t",
+      "status": "needs-ruling",
+      "recommendation": "one-shelf",
+      "reason": "The current split does not sort on portability. A single mechanically enforceable boundary, lib root for GH/bootstrap machinery and lib/kits for namespace-style logic, is clearer than inventing another semantic distinction to preserve historical placement."
+    },
+    {
+      "subject": "arbitrary UI region focus",
+      "task": "focus-a-ui-component-f0awt7",
+      "status": "design-needed",
+      "recommendation": "support-stable-authored-regions-before-arbitrary-source-provenance",
+      "reason": "Pointing at rendered DOM is easy compared with reliably identifying the source responsible for an arbitrary subtree. A useful first contract can support declared regions or known components without pretending every DOM selection has durable source identity."
+    },
+    {
+      "subject": "SNAGS automation",
+      "task": "spike-snags-log-gobdyq",
+      "status": "hold",
+      "recommendation": "manual-until-recurrence-earns-machinery",
+      "reason": "The log already captures and routes friction. Automatic projection or recurrence counting becomes valuable only when repeated slugs are common enough that a person can no longer see the pattern."
+    }
+  ],
+  "dispatch": [
+    {
+      "id": "take-away-routing",
+      "title": "Finish take-away routing",
+      "tasks": [
+        "take-away-inside-a-toss-k73cjq",
+        "brief-from-the-pages-gallery-7d4031"
+      ],
+      "why": "Two contained tasks form one user path and can likely retire together without solving arbitrary region focus.",
+      "prompt": "Finish the take-away routing path across toss-render and the Pages gallery. Start with tracker/tasks/take-away-inside-a-toss-k73cjq.md and tracker/tasks/brief-from-the-pages-gallery-7d4031.md. Read focus-a-ui-component-f0awt7 only to preserve the future region-focus constraint; do not solve arbitrary-region focus here. Make take-away assemble against the tossed subject window/ref rather than the shell ref, reusing existing cross-frame subject machinery. Then let a Pages gallery card enter the real page with the existing take-away UI already open rather than reconstructing the runtime closure from the card. Treat future focus as an optional scope field, not a prerequisite. Test ref correctness and drawer entry, update the task records, and close whichever definitions are fully satisfied."
+    },
+    {
+      "id": "lib-kits-boundary",
+      "title": "Resolve the lib/kits boundary",
+      "tasks": [
+        "lib-root-kit-migration-dind5t"
+      ],
+      "why": "The investigation is mature enough to turn into a decision plus a mechanical migration rather than another taxonomy pass.",
+      "prompt": "Resolve and, if the evidence still supports it, finish tracker/tasks/lib-root-kit-migration-dind5t.md. Treat its latest progress entry as the current question. Before acting, read chat-render.js, source-peek.js, swipe-deck.js, and vanilla-demo.js and test Option A against the current repo. Look for a concrete counterexample rather than a new philosophical distinction. If Option A survives, implement the complete migration: move everything the rule says, update load paths and build enumeration, delete the unused diagnostic bundle if still unused, add a mechanical boundary check, update living docs to state the resulting current rule, run the suite/build, and close the task. If a concrete counterexample refutes A, do not move files; record the counterexample and the smallest rule that survives it."
+    },
+    {
+      "id": "pdf-inspect-interaction",
+      "title": "Finish the manual pdf-inspect surface",
+      "tasks": [
+        "pdf-inspect-pinch-zoom-5wz3kt",
+        "pdf-table-splitter-page-q7vm2d"
+      ],
+      "why": "These are both direct-manipulation features on the existing inspector and are more coherent together than either is with the extraction-engine work.",
+      "prompt": "Finish pdf-inspect as an interactive document inspection surface, limited to tracker/tasks/pdf-inspect-pinch-zoom-5wz3kt.md and tracker/tasks/pdf-table-splitter-page-q7vm2d.md. Do not absorb pdf-lattice-open-perimeter or the document-structure harness. Integrate pinch/pan and draggable column boundaries into the existing coordinate model so canvas, overlays, hit testing, selection, and splitters remain aligned. Preserve one-pointer selection while supporting two-pointer pinch/pan. Reuse pdf.stream.split() for column reassignment rather than creating new assignment logic, and reproduce the historical header-lumping disagreement before claiming it fixed. Test the geometry and update or close the two task records according to what actually lands."
+    }
+  ],
+  "watch": [
+    {
+      "task": "stage-partial-file-selection-k8mtou",
+      "note": "Useful precision work, but whole-file staging is currently adequate and the task should follow rather than lead the region-focus design."
+    },
+    {
+      "task": "document-structure-harness-4mz7wk",
+      "note": "This remains project-sized. Its center of gravity has shifted toward orientation, segmentation, geometry, provenance, and arithmetic validation rather than recognizer comparison."
+    },
+    {
+      "task": "own-json-tree-retire-vje-i0lcj2",
+      "note": "Strategically sound split: own the read-only viewer while retaining the mature editor for writes. Worth doing, but not currently the sharpest dependency for other work."
+    },
+    {
+      "task": "render-copy-runtime-cdn-refs-p4m2wq",
+      "note": "The real design question is a shared dependency-rewrite stage for all self-contained exports, not one special-case script-src rewrite."
+    }
+  ]
+}

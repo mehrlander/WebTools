@@ -279,7 +279,7 @@ test('recognized keys sit at the top level, open tags under tags', () => {
 
 // The signal nothing surfaced before: a task's real freshness is the newest
 // date in its progress log, not `opened:`. It is what separates a live task
-// from one that has only been groomed.
+// from one that has only been refined.
 test('lastActivity is the newest progress-log date, with an entry count', () => {
   const { json } = both(
     { 'a-000001': { title: 'T', status: 'backlog', opened: '2026-06-01' } },

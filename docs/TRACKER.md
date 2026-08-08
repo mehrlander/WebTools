@@ -12,12 +12,13 @@ Short-lived branches and sessions cannot see each other. Without a durable list 
 
 ## The model
 
-Two kinds of file, both on `main`:
+Three kinds of file, all on `main`:
 
 - `tasks/<id>.md`: one file per task, the source of truth.
 - `board.md`, and `board.json` beside it: rollups generated from the task files, never hand-edited.
+- `assessments/YYYY-MM-DD.json`: optional dated assessment records, authored judgment about the tracker as a whole (see Assessment and refinement below).
 
-Feature work rides its branch as usual. Tracker changes do not: task files and the generated rollups are committed directly to `main`, which is what makes the tracker shared. Where a session carries a blanket instruction to keep its commits on its feature branch (some environments inject one), these two paths are the standing exception, not a violation. Nothing else about a repo's branch or PR flow changes. The skill carries the push recipe and the scope of the permission.
+Feature work rides its branch as usual. Tracker changes do not: task files, assessment records, and the generated rollups are committed directly to `main`, which is what makes the tracker shared. Where a session carries a blanket instruction to keep its commits on its feature branch (some environments inject one), these two paths are the standing exception, not a violation. Nothing else about a repo's branch or PR flow changes. The skill carries the push recipe and the scope of the permission.
 
 Scope a tracker to a workspace, a bounded area you keep coherent across sessions. A repo may have several (nested or sibling), each in its own directory; a repo whose work is coherent uses one.
 
@@ -130,12 +131,44 @@ The same run writes **`board.json`** beside `board.md`. Two projections of one s
 Each record carries the recognized keys at the top level and open tags under `tags`, so the two-layer split survives and a consumer cannot mistake an unpromoted tag for part of the contract. It adds three derived values the task file does not state:
 
 - **`href`**, the same board-relative link the markdown row uses.
-- **`lastActivity`**, the newest date in the progress log. A task's real freshness, and the one signal that separates a live task from one that has only been groomed; `opened:` cannot say it and neither can `board.md`. Empty when a task has no log rather than falling back to `opened:`, since a guess here reads as a fact.
+- **`lastActivity`**, the newest date in the progress log. A task's real freshness, and the one signal that separates a live task from one that has only been refined; `opened:` cannot say it and neither can `board.md`. Empty when a task has no log rather than falling back to `opened:`, since a guess here reads as a fact.
 - **`logEntries`**, the count beside it. A task drawing progress-log entries that never become work is telling you review will not move it. The count is mechanical; classifying an entry as work or maintenance is judgment and stays out.
 
 The artifact carries no timestamp, so the same input produces the same bytes and the lockstep checks that re-run the generator against a clean tree do not fail on every run.
 
 The generator ships with the `portable` plugin as `tasks/build-board.py` (python3, stdlib only, zero dependencies). It is one canonical implementation, so every tracker's board comes out the same shape and a repo does not write its own. A repo running without the plugin fetches that same script by raw URL into a gitignored path (see [PORTABLE.md](PORTABLE.md)); it is the same file reached by a different transport, not a reimplementation. The skill carries the invocation.
+
+## Assessment and refinement
+
+Two operations read the whole tracker rather than one task, and they are distinct on purpose:
+
+- **Assessment interprets.** It reads the tracker as a whole and renders judgment: the workstreams the open tasks form, framing that has fallen behind the work, decisions hiding inside tasks, differences in scale and readiness, bundles that would travel together, and good next-session candidates. It recommends and does not mutate.
+- **Refinement mutates.** It restores scope truth in the task files: closing stale or superseded tasks, reframing inaccurate ones, narrowing residual work, splitting or consolidating where justified. Refinement is the canonical name for the operation earlier material called grooming; the older phrase still invokes it.
+
+The cycle they form: tracker state → assessment → refinement → dispatch and execution → changed tracker state → later assessment. Neither obligates the other. A refinement pass does not owe an assessment record, and an assessment does not commit anyone to acting on it. The split is one of permission and record, not sequencing: asking for an assessment alone does not authorize refinement, and one session may do both in a single pass once the refinement is agreed. The [`tasks` skill](../.claude/skills/tasks/SKILL.md) carries the operating rules for both; what belongs here is the record.
+
+### The assessment record
+
+An assessment worth keeping is written to `assessments/YYYY-MM-DD.json` beside `tasks/`, committed to `main` like all tracker state. Add a `-slug` suffix only when a second record lands the same day. Assessments are deliberate and rare, and one session writes one at a time, so the date is the handle and needs no random suffix the way a task id does; the true anchor is `basis.commit`, not the filename.
+
+The record is **authored judgment anchored to a repository state, and it is a historical record**: not task truth, not a generated projection, never regenerated. The anchor is what keeps it honest later. Task ids it names may close, rename, or change meaning after it is written, and that is aging, not error: read a past assessment against `basis.commit`, and supersede it with a newer assessment rather than editing it.
+
+**The `tracker-assessment/1` contract** is small, and stays small the way the task schema does: by graduation, not anticipation. Four keys are required:
+
+```json
+{
+  "schema": "tracker-assessment/1",
+  "assessedAt": "<ISO 8601 timestamp>",
+  "basis": { "repository": "<owner/repo>", "commit": "<sha of main as read>" },
+  "summary": "<the assessment in one paragraph>"
+}
+```
+
+Everything else is an open, authored section, the record-level analogue of an open tag. The sections in use so far: `workstreams` (task groupings, each with an assessment and a next move), `hygiene` (per-task scope-truth findings, each naming an action and a reason; refinement's natural worklist), `decisions` (rulings tasks are waiting on), `dispatch` (ready-to-launch session briefs, each with a why and a full prompt; converting backlog into launchable work is much of an assessment's point), and `watch` (tasks noted without action). These are conventions, not contract: a reader tolerates their absence and their variation, and a key hardens into the contract only when a consumer earns it. Judgment stays prose inside whatever structure a section needs; do not add fields because JSON permits them.
+
+**Do not copy what the task files and `board.json` already carry.** Titles, statuses, sizes, and logs live in the tasks; the record cites ids and states judgment about them. `basis` may carry the open counts as read (`onDeck`, `inProgress`, `blocked`) to fix the scale of what was assessed; that is an anchor, not data for a consumer.
+
+The board generator does not read `assessments/`, the board does not render them, and no lockstep check owns them: an authored record has no source to be in lockstep with. What is checked is only the identity and the four required keys (web-tools: `tools/test/tracker-assessments.test.mjs`).
 
 ## Conflicts
 

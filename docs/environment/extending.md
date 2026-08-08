@@ -14,6 +14,10 @@ The cause is **where the session's project root sits**, which is not something t
 
 Two consequences worth carrying. Any repo whose hooks matter has to treat them as best-effort, not as a guarantee. And a silent guarantee needs a backstop that does not depend on the harness: `tools/test/artifacts-lockstep.test.mjs` re-runs the generators in `--check` mode inside `npm test`, so a stale artifact fails the suite wherever it is run. Regenerating by hand (`npm run build:lib`, `npm run pages-index`) after touching a source is still the fast path; the test is what makes forgetting loud.
 
+**Resolved 2026-08-06 by leaving the harness.** The two paragraphs above stand as the diagnosis, and the fix follows from them: a hook that must not depend on the project root should not be a Claude Code hook. Git resolves its hooks from the repository being committed to and has no notion of a root, so the script moved verbatim to `.githooks/pre-commit` and the `PreToolUse` block came out of `.claude/settings.json`. The stdin JSON parse and the `git commit` gate came off with it, both being scaffolding for the event it no longer listens to. The one thing git will not do is find a *committed* hooks folder, since `.git/hooks/` is local and absent on clone, so `core.hooksPath` has to be set once per clone; `.claude/hooks/session-githooks.sh` does it, and is itself discovered by filename by the dispatcher below, from any root. Confirmed the same day in a session rooted at `/home/user`: a commit touching `lib/` staged `dist/web-tools.js` on its own, which is the case that failed before. Home has run the identical pair since 2026-07-31.
+
+The remaining gap is smaller and worth naming: a clone whose `core.hooksPath` was never set runs nothing, so the lockstep test keeps its job. `git commit --no-verify` is the deliberate bypass. And the generalization does not follow: a `PreToolUse` hook that is *not* about committing has no git event to move to, and would need a dispatcher of its own, with sequential execution, a small budget, and an any-deny-wins rule.
+
 ## Components
 
 ### Skills
@@ -42,7 +46,7 @@ MCP tool definitions consume context. Claude Code can defer loading them through
 
 #### SessionStart dependency install
 
-`.claude/hooks/session-start.sh` runs at session start. Nothing registers it: the `portable` plugin's dispatcher discovers it by its `session-*.sh` filename, from whatever project root the session has. This repo's `.claude/settings.json` declared it as a `SessionStart` hook until 2026-07-31 and no longer does, because the two together ran it twice whenever web-tools was the root. `build-on-commit.sh` stays in `settings.json`, correctly: it is a `PreToolUse` hook, and the dispatcher's glob ignores it.
+`.claude/hooks/session-start.sh` runs at session start. Nothing registers it: the `portable` plugin's dispatcher discovers it by its `session-*.sh` filename, from whatever project root the session has. This repo's `.claude/settings.json` declared it as a `SessionStart` hook until 2026-07-31 and no longer does, because the two together ran it twice whenever web-tools was the root. `session-githooks.sh` rides the same discovery, and since 2026-08-06 they are the only two, so `settings.json` declares no hooks at all.
 
 The script:
 
@@ -146,7 +150,7 @@ Plugin skills are namespaced and do not conflict with project or user skills. Or
 
 This setup uses:
 
-- [`.claude/settings.json`](../../.claude/settings.json): denies `AskUserQuestion` and registers the two hooks above.
+- [`.claude/settings.json`](../../.claude/settings.json): denies `AskUserQuestion`, and registers no hooks. Both of this repo's are `session-*.sh` files the dispatcher finds by name, which is what makes them fire from any project root. *(as of 2026-08-06)*
 - `~/.claude/settings.json`: registers the `web-tools` marketplace and enables `portable@web-tools`. *(verified 2026-07-20)*
 
 The Local scope (`.claude/settings.local.json`) is per-user and meant to stay uncommitted, so the repository carries only the project file above.

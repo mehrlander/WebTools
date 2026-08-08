@@ -86,8 +86,8 @@
    "session": "claude/show-repo-progress-b8l63x",
    "file": "branch-authored-layer-surface-0j0zik.md",
    "href": "tasks/branch-authored-layer-surface-0j0zik.md",
-   "lastActivity": "2026-08-06",
-   "logEntries": 2
+   "lastActivity": "2026-08-07",
+   "logEntries": 3
   },
   {
    "id": "branch-page-as-navigation-adi9ha",
@@ -333,17 +333,15 @@
   },
   {
    "id": "fab-capture-button-f6q38m",
-   "title": "Capture button on the FAB, serializing what it already collects",
+   "title": "Persist FAB captures, the write path to state/captures/",
    "status": "backlog",
    "project": "show-repo",
    "opened": "2026-07-26",
+   "size": "S",
    "file": "fab-capture-button-f6q38m.md",
    "href": "tasks/fab-capture-button-f6q38m.md",
-   "lastActivity": "2026-08-02",
-   "logEntries": 2,
-   "tags": {
-    "next": "the write path (a default state/captures/ destination in the registry, per the design points); the clipboard cut shipped 2026-08-02"
-   }
+   "lastActivity": "2026-08-07",
+   "logEntries": 3
   },
   {
    "id": "fab-declared-embeds-1jtpll",
@@ -496,14 +494,15 @@
   },
   {
    "id": "live-confirm-graphql-queries-7maacy",
-   "title": "Live-confirm the two GraphQL queries the estate depends on",
+   "title": "Live-confirm the BranchSessions query",
    "status": "backlog",
    "project": "show-repo",
    "opened": "2026-07-26",
+   "size": "XS",
    "file": "live-confirm-graphql-queries-7maacy.md",
    "href": "tasks/live-confirm-graphql-queries-7maacy.md",
-   "lastActivity": "2026-08-06",
-   "logEntries": 4
+   "lastActivity": "2026-08-07",
+   "logEntries": 5
   },
   {
    "id": "one-repo-address-parser-5gtv92",
@@ -556,13 +555,14 @@
   },
   {
    "id": "pdf-table-splitter-page-q7vm2d",
-   "title": "A column-splitter page for the pdf kit",
+   "title": "Draggable column boundaries with live reassignment, in pdf-inspect",
    "status": "backlog",
    "opened": "2026-07-25",
+   "size": "S",
    "file": "pdf-table-splitter-page-q7vm2d.md",
    "href": "tasks/pdf-table-splitter-page-q7vm2d.md",
-   "lastActivity": "2026-07-26",
-   "logEntries": 3
+   "lastActivity": "2026-08-07",
+   "logEntries": 4
   },
   {
    "id": "private-repo-landing-federation-u50nns",
@@ -682,18 +682,15 @@
   },
   {
    "id": "show-repo-edit-web-tools-json-ygramz",
-   "title": "Give show-repo the ability to edit a repo's .web-tools.json",
+   "title": "Retire .show-repo.json, delete the legacy file on migrate, drop the read fallback",
    "status": "backlog",
    "project": "show-repo",
    "opened": "2026-07-15",
-   "session": "claude/skills-portable-conventions-8x1lua",
+   "size": "S",
    "file": "show-repo-edit-web-tools-json-ygramz.md",
    "href": "tasks/show-repo-edit-web-tools-json-ygramz.md",
-   "lastActivity": "2026-07-15",
-   "logEntries": 1,
-   "tags": {
-    "next": "design a minimal config-edit surface in the show-repo shell; first use is a one-tap migrate of a legacy .show-repo.json to .web-tools.json"
-   }
+   "lastActivity": "2026-08-07",
+   "logEntries": 2
   },
   {
    "id": "show-repo-first-class-projects-7stibm",
@@ -722,16 +719,14 @@
   },
   {
    "id": "skillify-orphan-docs-izv20p",
-   "title": "Assess the orphan docs for skillification, and boil them down",
+   "title": "Route the orphan docs by cause, per the 2026-08-05 classification",
    "status": "backlog",
    "opened": "2026-07-30",
+   "size": "S",
    "file": "skillify-orphan-docs-izv20p.md",
    "href": "tasks/skillify-orphan-docs-izv20p.md",
-   "lastActivity": "2026-08-05",
-   "logEntries": 3,
-   "tags": {
-    "next": "split the 17 orphans by cause before converting anything; only 2 or 3 are the condition this task was filed about"
-   }
+   "lastActivity": "2026-08-07",
+   "logEntries": 4
   },
   {
    "id": "speed-up-show-repo-cold-load-u3846j",
