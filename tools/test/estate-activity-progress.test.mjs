@@ -73,6 +73,13 @@ test('mid-crawl: finished repos over total, every in-flight repo named', () => {
   assert.equal(data.activityProgressPct, 36); // 4/11, rounded — no in-flight fraction
 });
 
+test('the survey phase of a split refresh names itself', () => {
+  // The quick pass and the true-up behind it report through one bar; the
+  // phase tag is what keeps the second reading from claiming to be the first.
+  shell.activityProgress = { done: 1, total: 3, active: ['me/a'], phase: 'survey' };
+  assert.equal(data.activityProgressLabel, 'Surveying branches · 1 of 3 repos');
+});
+
 test('the bar counts finished repos only, never the ones in flight', () => {
   shell.activityProgress = { done: 0, total: 4, active: ['me/a', 'me/b'] };
   assert.equal(data.activityProgressPct, 0);  // two running is not progress yet
