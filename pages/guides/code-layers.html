@@ -160,9 +160,37 @@
       remaining folders hold files of one shape: a <span class="mono">window</span> namespace,
       Alpine-free, pure logic.</p>
 
-      <p>What remains open is whether those two folders are one category, and if so which files
-      move. That question is not resolved here. It is presented, with the measurement, the
-      options, and the cost of each.</p>
+      <p><span class="font-semibold">Fourth</span>, and found on 2026-08-07 while the split was
+      being derived: the boundary is written three ways, not two. Beside
+      <span class="mono">GH.prototype.x =</span> and an alias off the class, there is an alias
+      off an <span class="italic">instance</span>,
+      <span class="mono">window.gh.constructor.prototype</span>, which is how
+      <a class="mono" :href="blob('lib/gh-boot.js')" target="_blank"
+      rel="noopener">lib/gh-boot.js</a> wraps <span class="mono">.load</span>. A detector
+      reading only the first two forms classifies the repository's own boot file as a kit. This
+      guide had held that file in <span class="mono">lib/</span> root by a reason written by
+      hand. The survey was corrected, and the file is now placed by the same rule as every
+      other.</p>
+
+      <p>A third candidate rule was proposed on 2026-08-07: that a kit is logic used across more
+      than one page. It was measured the same day, by counting the distinct non-test files that
+      reference each module's namespace. The two folders returned medians of 5.5 and 4.0 over
+      ranges of one to twenty-nine and two to thirty-one; the most-referenced logic module in
+      the repository sits in <span class="mono">lib/</span> root, and the two least-referenced
+      are kits. The rule was not adopted. A second objection was recorded: reach changes when an
+      unrelated page is added or removed, so a file would change folders without itself
+      changing, and no test could hold the boundary without churn.</p>
+
+      <p class="font-semibold">On 2026-08-07 the question was decided. The two folders are one
+      category. Every file registering a <span class="mono">window</span> namespace is a kit;
+      <span class="mono">lib/</span> root retains the loader, the files extending its prototype,
+      and the boot bundles. Boot membership, which is a cost rather than a structure, passes to
+      a declared manifest. Twenty files move, one moves the other way, and one is deleted. The
+      alternatives are preserved under Options, and the sequence under Migration.</p>
+
+      <p>The rule states where a file belongs. It does not describe where the files are: the
+      migration has not run, and until it does the tree and the rule disagree by twenty-two
+      files.</p>
     </div>
   </div>
 
@@ -291,13 +319,15 @@
   <div x-show="tab === 'options'" class="space-y-3">
     <template x-for="o in options" :key="o.id">
       <div class="bg-base-100 rounded-lg p-4"
-           :class="o.recommended ? 'ring-2 ring-primary' : ''">
+           :class="o.decided ? 'ring-2 ring-primary' : ''">
         <div class="flex items-start gap-2 flex-wrap mb-2">
-          <span class="badge" :class="o.recommended ? 'badge-primary' : 'badge-ghost'"
+          <span class="badge" :class="o.decided ? 'badge-primary' : 'badge-ghost'"
                 x-text="o.id"></span>
           <span class="font-semibold" x-text="o.title"></span>
-          <span x-show="o.recommended" class="badge badge-primary badge-sm">recommended</span>
+          <span x-show="o.decided" class="badge badge-primary badge-sm"
+                x-text="'decided ' + o.decided"></span>
           <span x-show="o.refuted" class="badge badge-error badge-sm">refuted by measurement</span>
+          <span x-show="o.considered" class="badge badge-ghost badge-sm">considered, not taken</span>
         </div>
         <p class="text-sm" x-text="o.body"></p>
         <div class="grid md:grid-cols-2 gap-2 mt-3 text-xs">
@@ -578,15 +608,17 @@ function guide() {
 
     options: [
       { id: 'A', title: 'One logic shelf; lib/ root reduces to the loader',
-        recommended: true,
+        decided: '2026-08-07',
         body: 'Attachment decides the folder. Every window-namespace module is a kit, whatever it knows about; lib/ root holds only the loader, the files extending its prototype, and the bundles. Boot membership becomes a declared manifest instead of an implied property of a folder.',
         buys: 'Every boundary becomes one grep and can be held by a test. Ends the question rather than relocating it, and names the boot cost for the first time.',
-        costs: '19 files move, ~59 call sites and 23 prose references follow. One file (kits/build.js) still needs an explicit ruling.' },
+        costs: 'lib/ root goes from 29 files to 8 and lib/kits/ from 22 to 41. 31 files carry a runtime gh.load of a mover and break if missed; 84 mention a lib/<mover> path, of which 44 are tests and build scripts that fail loudly and 23 are prose that goes quietly wrong.' },
       { id: 'B', title: 'Dissolve kits; flatten to lib/ plus alpineComponents',
+        considered: true,
         body: 'Accept that nothing distinguishes the two shelves and stop maintaining the distinction. One boundary survives: does it register Alpine.data. The kits README, its demos folder, and the kit register test fold into lib/.',
         buys: 'The simplest rule available, and the honest answer if "kit" turns out to name nothing. Fewest concepts to teach a future session.',
         costs: '21 files move instead of 19, and lib/ root becomes a flat 49-file directory. Loses a working shelf and a useful word to gain one fewer folder.' },
       { id: 'C', title: 'Two shelves sorted on boot membership',
+        considered: true,
         body: 'Keep two folders but sort on when a file loads rather than what it attaches to: the boot chain in one, on-demand code in the other.',
         buys: 'Mechanical and checkable, and it surfaces the cost signal directly in the tree.',
         costs: 'Breaks the one clean category there is: two Alpine components are boot-loaded and would have to leave alpineComponents/. Boot is a real axis but a bad folder.' },
@@ -595,6 +627,16 @@ function guide() {
         body: 'The rule written down on 2026-08-06 and retracted the same day. Counting runtime dependencies on the hub\'s own chain, kits are not more portable than lib/ root files.',
         buys: 'Reads well, and matches the intuition the word "kit" invites.',
         costs: 'False. Five of twenty-one kits carry a hub runtime dependency and most lib/ root modules carry none, so the shelf contradicts the rule.' },
+      { id: 'E', title: 'Cross-app reach: a kit is logic more than one page uses',
+        refuted: true,
+        body: 'Raised 2026-08-07, and measured the same day by counting the distinct non-test files that reference each module\'s namespace.',
+        buys: 'Closer to the intuition than portability was, and it is at least a number rather than a judgment.',
+        costs: 'False as a description: medians 5.5 (kits) against 4.0 (root) over ranges of 1-29 and 2-31, the most-referenced logic module is in root, the two least-referenced are kits. Worse as a target: reach changes when an unrelated page is added or deleted, so a file would change folders without changing.' },
+      { id: 'F', title: 'Kits arranged by topic, in sub-shelves',
+        considered: true,
+        body: 'Group the kit shelf into topic folders rather than leaving it flat. Orthogonal to A through E: it is about arrangement WITHIN a shelf, not which shelf a file belongs to.',
+        buys: 'The one thing A does not give you. A alone leaves lib/kits/ a flat 41-file directory, and if the felt disorder is volume in one place, this is what answers it.',
+        costs: 'Costs nothing now and can follow A without redeciding anything, which is also why it should not be bundled into the migration. A flat shelf keeps "what is a kit" answerable by path alone; nesting trades that for browsability.' },
     ],
 
     phases: [

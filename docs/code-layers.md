@@ -9,7 +9,9 @@ which is how a folder acquires a purpose nobody stated and cannot defend.
 
 Naming a layer is not the same as justifying it. Where a split turns out to have
 no rule behind it, this document says so rather than inventing one, and points
-at the task that owns the decision. One boundary below is in that state.
+at the task that owns the decision. The `lib/` root versus `lib/kits/` boundary
+was in that state from 2026-07-26 and was settled on 2026-08-07; the section
+below states the rule, and flags that the tree has not caught up to it yet.
 
 Measured with [`scripts/unclaimed-code-survey.py`](../scripts/unclaimed-code-survey.py)
 (`npm run code-survey`), which reports per-layer counts of files, files any
@@ -21,45 +23,69 @@ column of them is a category nobody has stated.
 
 | Layer | Admission rule | Attaches to |
 | --- | --- | --- |
-| `lib/` **scaffolding** | extends `GH.prototype`, or boots the chain | `GH.prototype`, or nothing (a bundle) |
-| `lib/` and `lib/kits/` **logic module** | pure logic, no Alpine, no DOM opinions of its own. **The split between the two folders is unsettled: see below** | `window.<Name>` |
+| `lib/` **scaffolding** | extends `GH.prototype`, or is a boot bundle | `GH.prototype`, or nothing (a bundle) |
+| `lib/kits/` **kit** | everything else that registers a `window` namespace | `window.<Name>` |
 | `lib/alpineComponents/` **component** | renders and holds reactive state | `Alpine.data(name, fn)` |
 | `scripts/` **standalone** | argv-driven, runs from any repo root, no repo of its own | a shell invocation |
 | `tools/` **harness** | exercises or builds this repo, in Node, never shipped to a page | a `node`/`npm` invocation |
 
-### `lib/` root or `lib/kits/`: open
+### `lib/` root or `lib/kits/`: settled 2026-08-07
 
-Both folders hold files of one shape: a `window` namespace, Alpine-free, pure
-logic. **Nothing sorts them,** and the tempting rule, that a kit is a capability
-portable to any repo, is false. Counting only a **runtime** dependency on the
-hub's own chain (`window.gh`, `gh.load`, `gh.get`, `__loadedScripts`), the
-strongest available test of "this file cannot travel":
+**One logic shelf.** Every file that registers a `window` namespace is a kit.
+`lib/` root holds the loader, the files extending its prototype, and the boot
+bundles, and nothing else. Decided by the user on 2026-08-07 against three
+alternatives, all of which are recorded in
+[`pages/guides/code-layers.html`](../pages/guides/code-layers.html); the
+migration is owned by
+[`lib-root-kit-migration-dind5t`](../tracker/tasks/lib-root-kit-migration-dind5t.md).
 
-- **7 of the 21 files in `lib/kits/` have one**: `branch-brief.js`, `brief.js`,
-  `build.js`, `export.js`, `wring.js`, `wsl-core.js`, `wsl.js`.
-- **6 files in `lib/` root have none**: `data-payload.js`, `github-links.js`,
-  `portable-align.js`, `shorter-payload.js`, `url-params.js`, `vanilla-demo.js`.
+> [!NOTE]
+> **The tree does not match the rule yet.** 20 files under `lib/` root are kits
+> by this rule and have not moved; `lib/kits/build.js` is scaffolding by it and
+> has not moved either. Until the migration lands, read the rule as where a file
+> *belongs*, and put a **new** logic module in `lib/kits/`, which is what the
+> rule says anyway.
 
-So a third of the kit shelf is less portable than six files that are not on it.
-The folders do not sort on portability, and never have. What actually decided
-each file's folder was when it was written and whether anyone thought about it.
+**Why this rule and not a better-sounding one.** Two rules were written down
+before it and both were retracted within a day, because both sorted on a
+property nothing could check:
 
-**What is clean, and worth keeping:** `lib/` root scaffolding. Extending
-`GH.prototype` or being a boot bundle is a mechanical, checkable property, it is
-the strongest commitment a `lib/` file can make (a change to the shared object
-every page holds), and every file that has it belongs there. Where a file does
-both, scaffolding wins: [`lib/gh-auth.js`](../lib/gh-auth.js) and
-[`lib/traffic.js`](../lib/traffic.js) extend the prototype *and* register a
-namespace, and a reader needs to see the prototype extension first.
+- *A kit is a capability portable to any repo.* False on the shelf. Counting a
+  runtime dependency on the hub's own chain (`window.gh`, `gh.load`, `gh.get`,
+  `__loadedScripts`), 7 of 21 kits had one while 6 root files had none, so a
+  third of the kit shelf was less portable than files that were not on it.
+- *A kit is general cross-app logic.* Also false, and worse as a target.
+  Counting the distinct non-test files that reference each namespace, the two
+  shelves had medians of 5.5 and 4.0 over ranges of 1 to 29 and 2 to 31: the
+  most-referenced logic module was in root and the two least-referenced were
+  kits. Reach is also a number that moves when an unrelated page is added, so a
+  file would change folders without changing.
 
-**What is open:** whether `lib/` root and `lib/kits/` should be two categories
-at all. The measurement above is an argument that they are one, and that the
-honest form is a single shelf with `lib/` root reduced to the boot chain. That
-is a decision, not a finding, and it belongs to
-[`lib-root-kit-migration-dind5t`](../tracker/tasks/lib-root-kit-migration-dind5t.md),
-which carries the options and the file counts. Until it is made, **a new logic
-module goes in `lib/kits/`**, since that is where the majority already sits and
-a wrong guess costs one `git mv`.
+Attachment is the only property that is mechanical, stable under unrelated
+change, and already satisfied by the code. [`npm run code-shape`](../scripts/code-shape-survey.py)
+reads it, so the boundary can be held by a test rather than by anyone
+remembering.
+
+**Watch the third spelling.** Extending the prototype is written three ways:
+`GH.prototype.x = `, an alias off the class (`const p = window.GH.prototype`),
+and an alias off an **instance** (`const p = window.gh.constructor.prototype`,
+which is what [`lib/gh-boot.js`](../lib/gh-boot.js) does). A detector reading
+only the first two calls the repo's own boot file a kit, and reading only the
+first reports 2 extenders where there are 5.
+
+**Where a file does both, scaffolding wins,** since a change to the shared
+object every page holds is the stronger commitment and a reader needs to see it
+first. [`lib/gh-auth.js`](../lib/gh-auth.js) is the case: it extends the
+prototype *and* registers `window.ghAuth`. [`lib/traffic.js`](../lib/traffic.js)
+is **not**, despite a comment that reads like it: it wraps `window.fetch` and
+registers `window.Traffic`, so it is a kit. It is also boot-loaded, which the
+boot manifest records and the folder no longer tries to.
+
+**Boot membership is not a folder.** It is the second question about a `lib/`
+file, it is a cost rather than a structure, and encoding it in the tree is what
+every failed rule was really attempting. The boot chain becomes a declared
+manifest: today it is 11 `gh.load` calls inside `gh-boot.js`, so what a page
+pays to start cannot be read without reading that function.
 
 The related rule that is not in doubt: a kit that wants Alpine reactivity does
 not become a component, it gets a component wrapper.

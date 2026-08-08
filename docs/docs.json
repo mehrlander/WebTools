@@ -166,7 +166,7 @@
       "subject": "the code layers and the admission rule that sorts a new file into one of them",
       "status": "living",
       "reach": "project",
-      "words": 895,
+      "words": 1141,
       "maintenance": "authored; the layer counts behind it are re-derived by scripts/unclaimed-code-survey.py rather than restated here, and lib/kits/README.md's former three-category list was reduced to the kit rule plus a pointer when this landed"
     },
     {

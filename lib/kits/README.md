@@ -13,14 +13,19 @@ A **kit** is a logic library that registers a namespace on `window`, with no
 Alpine coupling. (The daisyUI/Tailwind string helpers that used to live here as
 `fills.js` now hang off `window.html` in `vanilla-bundle.js`.)
 
-**That is the whole rule, and it does not distinguish this folder from `lib/`
-root.** A kit is not a "portable capability": 7 of the 21 files here have a
-runtime dependency on the hub's own chain, while 6 files in `lib/` root have
-none, so a third of this shelf is less portable than files that are not on it.
-Whether the two folders should be one is open in
-[`lib-root-kit-migration-dind5t`](../../tracker/tasks/lib-root-kit-migration-dind5t.md).
-Until it is settled a new logic module comes here, because most of them already
-are here and a wrong guess costs one `git mv`.
+**That is the whole rule, and as of 2026-08-07 it is also the whole boundary.**
+This shelf holds every logic module; `lib/` root keeps only the loader, the
+files extending its prototype, and the boot bundles. A kit is emphatically not a
+"portable capability" and not "cross-app logic": both rules were written down,
+measured against this shelf, and found false, which is why the surviving rule
+sorts on attachment alone. The reasoning is in
+[`docs/code-layers.md`](../../docs/code-layers.md).
+
+The tree has not caught up: 20 files in `lib/` root are kits by this rule and
+have not moved, and [`build.js`](build.js) is on this shelf while extending
+`GH.prototype`, which the rule makes scaffolding. Both are the migration's job
+([`lib-root-kit-migration-dind5t`](../../tracker/tasks/lib-root-kit-migration-dind5t.md)).
+A **new** logic module comes here regardless.
 
 The line is **no Alpine and no DOM opinions of its own**, not "no DOM." This
 entry used to say "no DOM rendering," and the shelf has outgrown it: `cm6.js`
