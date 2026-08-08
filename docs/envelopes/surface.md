@@ -17,7 +17,7 @@ A **surface** is a JSON file: a curated, annotated set of items presented for a 
 - [`schemas/surface-v2.schema.json`](schemas/surface-v2.schema.json): the core schema.
 - [`schemas/profiles/branch-review-v1.schema.json`](schemas/profiles/branch-review-v1.schema.json): the first profile.
 
-**Status (2026-08-03):** this contract defines **v2**, and a v2 reader now exists. [`lib/surface.js`](../../lib/surface.js) dual-reads v1 and v2, normalizing to v2 in memory; show-repo's Surfaces shelf and its Stage both read through it, and new surfaces are authored as v2 under the [`stage/1`](#stage1) profile. The Surfacer C# app still reads v1 and its migration target stands at the end of this file. **v1 files are never rewritten in place:** reading normalizes for display only, so a v1 file stays v1 until someone deliberately saves it as v2.
+**Status (2026-08-03):** this contract defines **v2**, and a v2 reader now exists. [`lib/kits/surface.js`](../../lib/kits/surface.js) dual-reads v1 and v2, normalizing to v2 in memory; show-repo's Surfaces shelf and its Stage both read through it, and new surfaces are authored as v2 under the [`stage/1`](#stage1) profile. The Surfacer C# app still reads v1 and its migration target stands at the end of this file. **v1 files are never rewritten in place:** reading normalizes for display only, so a v1 file stays v1 until someone deliberately saves it as v2.
 
 ## Shape
 
@@ -340,13 +340,13 @@ Worked example:
       "type": "file",
       "target": { "source": { "repository": "mehrlander/web-tools", "path": "lib/alpineComponents/stage.js" } },
       "view": { "mode": "diff" },
-      "related": [ { "item": "mehrlander/web-tools:lib/surface.js", "relation": "compares-to" } ]
+      "related": [ { "item": "mehrlander/web-tools:lib/kits/surface.js", "relation": "compares-to" } ]
     },
     {
-      "id": "mehrlander/web-tools:lib/surface.js",
-      "title": "lib/surface.js",
+      "id": "mehrlander/web-tools:lib/kits/surface.js",
+      "title": "lib/kits/surface.js",
       "type": "file",
-      "target": { "source": { "repository": "mehrlander/web-tools", "path": "lib/surface.js" } },
+      "target": { "source": { "repository": "mehrlander/web-tools", "path": "lib/kits/surface.js" } },
       "view": { "mode": "diff" }
     }
   ]
@@ -375,4 +375,4 @@ v1 is the shape the Surfacer app shipped with (`schema_version: 1` in the manife
 Deliberately out of scope for the pass that lands this contract; change the implementations only after the contract has been reviewed.
 
 - **Surfacer C# app + `surfacer.html`** (home `projects/surfacer/app/`): reads v1. Target: dispatch on `manifest.schema`; keep reading v1 files indefinitely (personal surfaces are not migrated in place), author new surfaces as v2.
-- **`lib/alpineComponents/estate.js`** (show-repo's Surfaces shelf): **migrated 2026-08-03.** It reads every surface through `lib/surface.js`, which dual-reads and normalizes to v2, and the editor seeds v2. The stage convergence it was waiting on landed in the same pass: the Stage is now the working surface, saving mints a v2 `stage/1` file, and the two views share one nav stop.
+- **`lib/alpineComponents/estate.js`** (show-repo's Surfaces shelf): **migrated 2026-08-03.** It reads every surface through `lib/kits/surface.js`, which dual-reads and normalizes to v2, and the editor seeds v2. The stage convergence it was waiting on landed in the same pass: the Stage is now the working surface, saving mints a v2 `stage/1` file, and the two views share one nav stop.

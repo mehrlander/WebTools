@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // check-branch-survey.mjs — the stated agreement check for the branches view:
-// does the browser port (lib/branch-survey.js) classify a repo's branches the
+// does the browser port (lib/kits/branch-survey.js) classify a repo's branches the
 // same way home's CLI instrument (tools/branch-survey.sh) does?
 //
 //   node scripts/check-branch-survey.mjs <path-to-clone> [--script <sh>] [--limit N]
@@ -48,7 +48,7 @@ const script = opt('--script') || path.join(clone, 'tools/branch-survey.sh');
 const limit = +(opt('--limit') || 0);
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const src = readFileSync(path.join(repoRoot, 'lib/branch-survey.js'), 'utf8');
+const src = readFileSync(path.join(repoRoot, 'lib/kits/branch-survey.js'), 'utf8');
 const window = {};
 new Function('window', src)(window);
 const B = window.BranchSurvey;

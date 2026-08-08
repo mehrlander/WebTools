@@ -240,9 +240,9 @@ test('resolveRepoRelative folds board links onto repo-root paths', () => {
 
 test('projectGithubUrl points at the folder, at the ref a row tap would browse', () => {
   // The real link builder, so the encoding contract is exercised rather than
-  // restated: lib/github-links.js only assigns onto window.
+  // restated: lib/kits/github-links.js only assigns onto window.
   const win = {};
-  new Function('window', readFileSync(path.join(repoRoot, 'lib/github-links.js'), 'utf8'))(win);
+  new Function('window', readFileSync(path.join(repoRoot, 'lib/kits/github-links.js'), 'utf8'))(win);
   const { shell, browserStore } = makeShell({
     win, browserStore: { repo: 'mehrlander/web-tools', ref: 'main', defaultRef: 'main' },
   });

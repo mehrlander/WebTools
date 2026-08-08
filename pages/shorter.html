@@ -22,10 +22,10 @@
     } else {
       await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
     }
-    await gh.load('url-params.js');
+    await gh.load('kits/url-params.js');
     // The owner/repo[@ref]:path grammar, which shorter-payload.js delegates to.
-    await gh.load('repo-address.js');
-    await gh.load('shorter-payload.js');
+    await gh.load('kits/repo-address.js');
+    await gh.load('kits/shorter-payload.js');
     // Alpine last, so the component's init() finds both helpers defined. Same
     // boot order as the other renderer pages.
     await gh.load('alpine-bundle.js');
@@ -53,7 +53,7 @@
       #gz=<base64url>   gzipped text or envelope in the fragment
       ?src=<spec>       owner/repo[@ref]:path, via the contents API
       (neither)         the empty form
-    Each key is read fragment first, query as fallback (lib/url-params.js).
+    Each key is read fragment first, query as fallback (lib/kits/url-params.js).
     Prose is unbounded, so it belongs in '#'; ?src= is how the #shorter= toss
     route hands an address to this page through toss-render's params shim.
     A payload carrying both sides opens in review, already diffed.
@@ -294,7 +294,7 @@ function shorter() {
     },
 
     // Input by URL. Fragment first, query as fallback, per key
-    // (lib/url-params.js): the text wants '#' because a query string is
+    // (lib/kits/url-params.js): the text wants '#' because a query string is
     // capped at roughly 8KB by the Pages edge, while ?src= is how a routed
     // toss delivers an address through toss-render's params shim.
     //

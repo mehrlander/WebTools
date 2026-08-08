@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
-const src = readFileSync(path.join(repoRoot, 'lib/traffic.js'), 'utf8');
+const src = readFileSync(path.join(repoRoot, 'lib/kits/traffic.js'), 'utf8');
 const window = {};
 new Function('window', src)(window);
 const T = window.Traffic;
@@ -391,10 +391,10 @@ test('the get wrapper tells an inlined module from a fetched one', async () => {
 
 test('gh-boot loads traffic.js in the chain, so the readout is never waiting on it', () => {
   const boot = readFileSync(path.join(repoRoot, 'lib/gh-boot.js'), 'utf8');
-  assert.match(boot, /await gh\.load\('traffic\.js'\)/);
+  assert.match(boot, /\{ path: 'kits\/traffic\.js' \}/, 'the BOOT manifest carries the traffic kit');
   // The wrappers must be installed before the chain pulls anything, or the
   // ledger opens with its own dependencies already missing from it.
   const wrap = boot.indexOf('__trafficWrapped');
-  const chain = boot.indexOf("await gh.load('gh-auth.js')");
+  const chain = boot.indexOf('for (const step of BOOT)');
   assert.ok(wrap !== -1 && chain !== -1 && wrap < chain, 'collection is installed before the chain runs');
 });

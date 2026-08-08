@@ -3,7 +3,7 @@
 //
 //   node tools/build/build.mjs <page-path>            -> dist/<page>.js
 //
-// The emit format lives in lib/kits/build.js (window.buildKit.emit), shared with
+// The emit format lives in lib/build.js (window.buildKit.emit), shared with
 // the in-browser baker (kits/bundle.js) so the two can't drift. This Node entry
 // supplies a statically-walked cache (tools/build/graph.mjs) and writes dist/.
 //
@@ -44,7 +44,7 @@ try {
   process.exit(1);
 }
 
-const { buildKit } = loadKit(repoRoot, 'lib/kits/build.js');
+const { buildKit } = loadKit(repoRoot, 'lib/build.js');
 const ghApiSrc = await readFile(path.join(repoRoot, 'lib/gh-api.js'), 'utf8');
 
 // graph.files -> the { 'lib/<path>': source } cache buildKit.emit expects.

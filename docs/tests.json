@@ -14,7 +14,7 @@
       "path": "tools/test/artifacts-lockstep.test.mjs",
       "kind": "lockstep",
       "protects": "Every deterministic generator is re-run in check mode, so a committed artifact cannot sit behind its source.",
-      "assertions": 6,
+      "assertions": 7,
       "method": "spawn",
       "runner": "suite",
       "boot_smoke": 0
@@ -115,6 +115,15 @@
       "protects": "CLAUDE.md still points at the showing manifest and frame, and stays under its 1600-word ceiling. The size half is a policy, not a behavior, which is why it sits here rather than inside the routes manifest test.",
       "assertions": 2,
       "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/code-layers.test.mjs",
+      "kind": "gate",
+      "protects": "The lib/ boundary of docs/code-layers.md, in all three directions: no kit extends GH.prototype, lib/ root holds only the loader, prototype extenders, and boot bundles, and every alpineComponents/ file registers Alpine.data. Read off the code-shape survey so the test and the rule share one instrument.",
+      "assertions": 3,
+      "method": "spawn",
       "runner": "suite",
       "boot_smoke": 0
     },
@@ -636,6 +645,15 @@
       "kind": "gate",
       "protects": "The portable catalogs list what the plugin actually ships, both directions, and vendored copies stay byte-identical.",
       "assertions": 7,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/properties-registry.test.mjs",
+      "kind": "gate",
+      "protects": "The declaration table of docs/registries.md: every governed carrier holds exactly its key plus declared properties, computed declarations name real derivers, and no target x property pair has two owners within a registry.",
+      "assertions": 3,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0

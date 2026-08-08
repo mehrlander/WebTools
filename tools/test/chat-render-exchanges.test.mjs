@@ -1,4 +1,4 @@
-// lib/chat-render.js — role normalization and the exchange grouping the swipe
+// lib/kits/chat-render.js — role normalization and the exchange grouping the swipe
 // deck pages on. Loads the real IIFE against a stub window, so these assert the
 // shipped code rather than a transcription of it.
 //
@@ -18,7 +18,7 @@ import { repoRoot } from './bootstrap.mjs';
 // chat-render.js hangs itself on `window` and touches the DOM only inside the
 // render functions, so a stub window reaches parse() and exchanges() without
 // jsdom. ensureDeckStyle is the one DOM call on this path (document.head).
-const src = readFileSync(path.join(repoRoot, 'lib/chat-render.js'), 'utf8');
+const src = readFileSync(path.join(repoRoot, 'lib/kits/chat-render.js'), 'utf8');
 const window = { addEventListener() {} };
 const document = { head: { append() {} }, createElement: () => ({ style: {}, append() {}, setAttribute() {} }) };
 new Function('window', 'document', src)(window, document);

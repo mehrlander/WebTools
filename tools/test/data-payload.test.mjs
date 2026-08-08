@@ -1,4 +1,4 @@
-// lib/data-payload.js — logic tests for the one rule that decides whether a
+// lib/kits/data-payload.js — logic tests for the one rule that decides whether a
 // data toss is an envelope or bare bytes, plus the name sniff, the spec parse,
 // and item normalization. The discrimination cases are the point: a payload
 // that merely uses the key `items` must stay data, and an explicit kind must
@@ -12,9 +12,9 @@ import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
 const window = {};
-// The address grammar first: parseSpec delegates to it (lib/repo-address.js),
+// The address grammar first: parseSpec delegates to it (lib/kits/repo-address.js),
 // and this is the same load order every consuming page keeps.
-for (const f of ['lib/repo-address.js', 'lib/data-payload.js']) {
+for (const f of ['lib/kits/repo-address.js', 'lib/kits/data-payload.js']) {
   new Function('window', readFileSync(path.join(repoRoot, f), 'utf8'))(window);
 }
 const DP = window.DataPayload;
@@ -101,7 +101,7 @@ test('an item with only src is named from its path', () => {
 
 // ── spec parsing ──
 
-// A missing @ref reads as '' since the delegation to lib/repo-address.js: this
+// A missing @ref reads as '' since the delegation to lib/kits/repo-address.js: this
 // module used to fill in 'main', which was a guess about a repo's default
 // branch name rather than a reading of the address. Fetching wants '' (the
 // contents API resolves the default), and the ref a LINK needs is supplied at

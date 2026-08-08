@@ -39,7 +39,7 @@ share no module imports — render and build touch only via subprocess and the
   other generated outputs, because the test needs it offline.
 
 The build/bake
-*format* itself lives outside `tools/`, in [`../lib/kits/build.js`](../lib/kits/build.js)
+*format* itself lives outside `tools/`, in [`../lib/build.js`](../lib/build.js)
 (`window.buildKit`) — one emitter shared by `build/`'s Node tools (static cache)
 and `kits/export.js` (browser, runtime cache) so the two can't drift. The
 contract that makes all of this possible is in [`../docs/loader.md`](../docs/loader.md).
@@ -165,7 +165,7 @@ So "bundle" now means only the hand-authored grab-bags (`vanilla-bundle.js`,
 `npm run build` snapshots *one page's* reachable graph. **The pre-build**
 (`npm run build:lib` → [`build-lib.mjs`](build/build-lib.mjs)) snapshots the
 *whole* `lib/`: every `lib/*.js` inlined into one self-resolving artifact at
-`dist/web-tools.js`. It's the same emitter (`lib/kits/build.js`), just seeded
+`dist/web-tools.js`. It's the same emitter (`lib/build.js`), just seeded
 with all of `lib/` instead of a page's boot block — so the format can't drift
 from the per-page build, and `verify-build` still holds for pages.
 

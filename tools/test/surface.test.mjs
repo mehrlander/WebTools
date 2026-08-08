@@ -1,4 +1,4 @@
-// lib/surface.js — the surface envelope, and the two bridges the stage and the
+// lib/kits/surface.js — the surface envelope, and the two bridges the stage and the
 // shelf collapse across.
 //
 // What is under test is the set of decisions, not the field copying:
@@ -26,7 +26,7 @@ import path from 'node:path';
 import { makeWindow, repoRoot } from './bootstrap.mjs';
 
 const { window } = makeWindow({ html: '<!doctype html><html><body></body></html>' });
-new window.Function(readFileSync(path.join(repoRoot, 'lib/surface.js'), 'utf8'))();
+new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/surface.js'), 'utf8'))();
 const S = window.Surface;
 
 const V1 = {

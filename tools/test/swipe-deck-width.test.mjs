@@ -1,4 +1,4 @@
-// lib/swipe-deck.js — the width contract that keeps a slide one track wide.
+// lib/kits/swipe-deck.js — the width contract that keeps a slide one track wide.
 //
 // Regression origin, measured 2026-08-07 at a 430px viewport with a session
 // record in the deck: the track rendered 867px inside a 430px panel, so every
@@ -31,7 +31,7 @@ import path from 'node:path';
 import { JSDOM } from 'jsdom';
 import { repoRoot } from './bootstrap.mjs';
 
-const src = readFileSync(path.join(repoRoot, 'lib/swipe-deck.js'), 'utf8');
+const src = readFileSync(path.join(repoRoot, 'lib/kits/swipe-deck.js'), 'utf8');
 
 // Evaluated with the jsdom window as its GLOBAL scope, not injected as
 // parameters. swipe-deck.js reaches bare globals (`requestAnimationFrame`,

@@ -134,7 +134,7 @@ you are on. The fab's Render tab reads the ref you landed on, in this order:
   grid**, which reaches into the frame's DOM for real, so zipping a markdown
   read gets you `data-view.html` and says so.
   Beside it the github mark is a **menu** rather than a link to one blob: this
-  file, its commits, then the repo rows `lib/github-links.js` gives the sidebar
+  file, its commits, then the repo rows `lib/kits/github-links.js` gives the sidebar
   (repository, pull requests, issues, branches, commits at this ref, actions).
 - **the ref bar**, which is the picker. One tap on a row renders there.
 - **the guide**: the branch's PR body, rendered, with the blob links inside it
@@ -275,12 +275,12 @@ The one glyph carries four meanings, and two rules keep them apart:
 
 | Meaning | Example | Treatment |
 | --- | --- | --- |
-| Repo **menu** | the sidebar row's github button (`lib/github-links.js`) | icon opens a list |
+| Repo **menu** | the sidebar row's github button (`lib/kits/github-links.js`) | icon opens a list |
 | Repo or branch **destination** | an estate card, the atlas header's ref chip | plain icon |
 | The **manifest** behind a whole view | Map's Showing, Tools' curated list | icon **plus a label** ("Curate"), at the header's far edge |
 | An **exact file** | a set row, a route's renderer, a staged item | plain icon **plus a source peek** |
 
-A **source peek** (`lib/source-peek.js`) is a hover card showing the file:
+A **source peek** (`lib/kits/source-peek.js`) is a hover card showing the file:
 markdown rendered, JSON pretty-printed, everything else as source, a 28-line
 excerpt in small type with no footer (the measuring line, "first 28 of 79
 lines," was dropped 2026-08-07 along with the JSON shape headline it carried: a
@@ -370,7 +370,7 @@ picker's account list, minus current members). So both add and edit write the
 **Saved surfaces** (the Stage's Saved pane) come from two places,
 stacked in one scroll: the surface format
 either way (a `manifest` block and an `items` array). The contract is
-[`docs/envelopes/surface.md`](envelopes/surface.md); `lib/surface.js` dual-reads
+[`docs/envelopes/surface.md`](envelopes/surface.md); `lib/kits/surface.js` dual-reads
 v1 and v2 and normalizes to v2, so an existing v1 file keeps working untouched
 and is never rewritten by having been read. Each surface offers **Load onto the
 stage**, the bridge onto the bench described under
@@ -600,7 +600,7 @@ estate cards, and this view all render from the stored result. The per-repo
 branch review is **cache-first** too: with a token it renders Landed / Stranded
 from `state/activity.json` and marks the header `cached`, running the live fanout
 only on an explicit Refresh or where the cache has no coverage. Same survey math
-either way (`lib/branch-survey.js` `surveyBranchLive`, shared by the view and the
+either way (`lib/kits/branch-survey.js` `surveyBranchLive`, shared by the view and the
 crawl). Source-of-truth rule as ever: the cache is derived and may be briefly
 stale; Refresh re-surveys live.
 
@@ -624,7 +624,7 @@ scoped list, and lapse back to All when the scope stops holding that repo.
 
 Tapping a row, on either the ask or the short id, opens the session as a
 **conversation**: the record is fetched and handed to the swipe deck
-(`lib/session-render.js`), one card per ask and per assistant prose turn, with
+(`lib/kits/session-render.js`), one card per ask and per assistant prose turn, with
 the tool calls attaching to the turn that issued them. Both halves are there,
 the calls carry their arguments and whatever body the record kept, and fenced
 blocks get chat-render's live views. The record is cached per id, and the
@@ -782,7 +782,7 @@ set says nothing. Grading stops at estate members deliberately: probing every
 repo in the cache would make this an account-wide survey mostly composed of
 repos that will never carry the set, at three live reads each. The blind spot
 that buys is that a repo adopting nothing is invisible, since the file that
-would list it is the first thing adoption writes. Graded by [`lib/portable-align.js`](../lib/portable-align.js), which is pure and
+would list it is the first thing adoption writes. Graded by [`lib/kits/portable-align.js`](../lib/kits/portable-align.js), which is pure and
 tested.
 
 **The grade is read, not probed.** It rides the config cache
@@ -825,7 +825,7 @@ which is why only the second is allowlisted), and the **toss routes** resolving
 a content type to its renderer page. The modes section leads with the read
 order, since it is one rule everywhere: fragment first, query as fallback, in
 `toss-render` for its own params and in the renderer pages through
-[`lib/url-params.js`](../lib/url-params.js). A payload belongs in the fragment,
+[`lib/kits/url-params.js`](../lib/kits/url-params.js). A payload belongs in the fragment,
 which never reaches a server and so escapes the roughly 8KB cap the Pages edge
 enforces with a 414; an address is short, and a routed toss hands `?src=` to
 the page through the params shim rather than over the wire. Those facts previously existed only as
@@ -850,7 +850,7 @@ row per file. The census is navigated from a folder rail
 and its own GitHub link, the selected folder shows its direct files beside it
 with that folder's README subject as the gloss, and a reach filter moves the
 counts without changing the tree's shape. A row is read in place: its title
-opens the document in the house swipe deck (`lib/swipe-deck.js`, loaded on
+opens the document in the house swipe deck (`lib/kits/swipe-deck.js`, loaded on
 demand), full length with the peek's own rendition helpers so deck and peek
 cannot drift, paging through the selected folder's files as filtered, opened
 on the tapped row; its GitHub icon, inline with the badges and always visible,
@@ -1134,7 +1134,7 @@ count on a rewrite-orphaned branch spans its whole line, marked `*`) unreliable;
 the content columns are the ones to read.
 
 The math is the browser port of home's `tools/branch-survey.sh` (the CLI
-reference instrument), lives in `lib/branch-survey.js` as pure unit-tested
+reference instrument), lives in `lib/kits/branch-survey.js` as pure unit-tested
 functions, and is held in agreement with the CLI by
 `scripts/check-branch-survey.mjs` (on home's 56-branch estate: 52 exact, 4
 divergent only where the CLI's git rename detection credits moved-and-evolved
@@ -1380,7 +1380,7 @@ Two surfaces take two routes to one definition. A repo view evaluates live on
 open: cheap for one repo, always current. The estate grid cannot, since M checks
 across N repos on every load is the per-visit fanout the activity cache exists to
 avoid, so the crawl probes each repo and the cards judge what it stored. That
-works because `lib/repo-checks.js` splits `probe` (gather each check's raw fact)
+works because `lib/kits/repo-checks.js` splits `probe` (gather each check's raw fact)
 from `verdict` (facts plus a clock become pass or fail). A verdict is volatile
 and a fact is not: `13d since 2026-07-18` becomes 14d tomorrow with nothing in
 the repo having changed, while `2026-07-18` changes only when the repo does.
@@ -1466,7 +1466,7 @@ in `order` on the membership, not in a second flag.
 ### Config cache (`state/configs.json`)
 
 With a token, show-repo keeps a **derived** cache of the account's repo configs
-in the registry repo, built by `lib/repo-config-cache.js`. `refreshConfigCache`
+in the registry repo, built by `lib/kits/repo-config-cache.js`. `refreshConfigCache`
 enumerates the account's repos (`gh.repos()`) and folds each one's
 `.web-tools.json` into `web-tools-private/state/configs.json`, appending a
 bounded on-change version history per repo. A per-browser throttle
@@ -1487,7 +1487,7 @@ stage. Design and future ideas: `web-tools-private/DESIGN.md`.
 ### Mailbox (`mailbox/requests` → `mailbox/results`)
 
 An async request/response channel between an agent session (limited repo scope)
-and show-repo (the user's full-access token), built by `lib/repo-mailbox.js`.
+and show-repo (the user's full-access token), built by `lib/kits/repo-mailbox.js`.
 The agent drops a request file in the registry repo; show-repo, on load with a
 token, fulfills every pending request and writes the result back; the agent
 reads it on a later turn. This lets the agent see files and answers from repos it
@@ -1506,7 +1506,7 @@ schema: `web-tools-private/mailbox/README.md`.
 Two optional manifest fields naming where material lands and where it is
 staged. `inbox` is the **receiver's** declared landing spot for a deposit that
 names no directory; `outbox` is a **sender's** shelf of material it is making
-available to be pulled. Both are read by `lib/repo-address.js`
+available to be pulled. Both are read by `lib/kits/repo-address.js`
 (`RepoAddress.box(config, 'inbox'|'outbox', repo)`).
 
 **A box is a folder by default, and can name a branch.** That was an open
@@ -1546,7 +1546,7 @@ for on the private side.
 
 ### Proposals (`proposals/pending` → `proposals/applied`)
 
-The write-side counterpart to the mailbox, built by `lib/repo-proposals.js` and
+The write-side counterpart to the mailbox, built by `lib/kits/repo-proposals.js` and
 reviewed in the **Proposals** view (`?view=proposals`,
 `lib/alpineComponents/proposals.js`). A session that cannot reach a repo drops a
 proposed edit into the registry; show-repo shows it and commits it to the target
@@ -1735,7 +1735,7 @@ Nothing expands, so nothing carries a chevron.
 **GitHub**, off the github-logo button beside it, is where that repo lives:
 **Repository**, **Pull requests**, **Issues**, its **Task board** (the
 `tracker` field), **Branches**, **Commits**, **Actions**, each with an
-out-arrow. The list is `lib/github-links.js`, a pure string builder with no
+out-arrow. The list is `lib/kits/github-links.js`, a pure string builder with no
 fetches, so the Activity view's repo chip fills the same panel from the same
 rows. This was a single **Open on GitHub** row inside the actions list, pointing
 at the repo root: the one destination a reader could have guessed, while the

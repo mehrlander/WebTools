@@ -182,7 +182,7 @@ itself; a page that instantiates `GH` by hand gets only what it loads.
 | `sessionRender` | `session-render.js` | a session record (web-tools-private `sessions/**.json`) as a paged conversation: merges the record's three parallel turn lists on `at`, groups a card per ask and per prose turn, and names what the record could not capture. Loads after `chat-render.js` |
 | `swipeDeck` | `swipe-deck.js` | the house swipe format: a snap track of slides, and the fullscreen takeover that frames it. Self-contained, so another repo's page can load it with a plain `<script src>` |
 | Alpine stores `browser`, `toasts`; magics `$clip`, `$paste`, `$toast` | `alpine-bundle.js` | exist only after `alpine:init` |
-| `__builtOffline` | a build (`kits/build.js` output) | present only on baked/offline pages |
+| `__builtOffline` | a build (`build.js` output) | present only on baked/offline pages |
 | `window.<kit>` namespaces | each kit | see [kits/README.md](../lib/kits/README.md) |
 
 A new global with no row here is a doc bug; add the row in the same
@@ -229,7 +229,7 @@ stripped `export` / `export default` out of the source and auto-`return`ed
 the first top-level `class`/`function` it found. Both are gone. The strip was
 removed (commit `451f963`) because rewriting every file silently corrupted
 any that merely *carried* the word `export` in a string or comment —
-`kits/build.js`, which emits an `export default` in its output template, was
+`build.js`, which emits an `export default` in its output template, was
 the file that exposed it.
 
 The framing the strip obscured, and the one to keep: **we don't author

@@ -51,9 +51,9 @@ const Alpine = await startAlpine(window, [
   // The param read and the address grammar, ahead of the components: read
   // delegates source choice to one and parseItem the grammar to the other, and
   // the pre-build boots both in this position for the same reason.
-  'lib/url-params.js',
-  'lib/repo-address.js',
-  'lib/surface.js',
+  'lib/kits/url-params.js',
+  'lib/kits/repo-address.js',
+  'lib/kits/surface.js',
   'lib/kits/text-diff.js',
   'lib/alpineComponents/drop-zone.js',
   'lib/alpineComponents/path-picker.js',
@@ -763,7 +763,7 @@ test('StageLink.read: hash wins, query is the fallback (tossed / deep-link form)
 });
 
 test('StageLink.read: an empty #stage= falls back to a populated ?stage=', () => {
-  // The 2026-08-02 decision that moved read() onto lib/url-params.js: absent
+  // The 2026-08-02 decision that moved read() onto lib/kits/url-params.js: absent
   // and empty are both misses, so a truncated link that kept the fragment key
   // but lost its value takes the query instead of staging nothing. The three
   // keys still travel together: prompts and mode come from the query source

@@ -52,7 +52,7 @@
                 #gz=<base64url>                gzipped into the fragment
 
               Discriminated bare-vs-envelope by BranchBrief.readAuthored rather
-              than by asking, mirroring lib/data-payload.js. A `branch-review/1`
+              than by asking, mirroring lib/kits/data-payload.js. A `branch-review/1`
               surface is accepted as well as the plain form.
 
   The layers are independent: a branch with neither a PR nor an envelope renders
@@ -109,11 +109,11 @@
   try {
     await gh.load('kits/review-target.js');
     // branch-brief reads compareFields from BranchSurvey, so it loads first.
-    await gh.load('branch-survey.js');
+    await gh.load('kits/branch-survey.js');
     await gh.load('kits/guide-render.js');
     // The content-registry reader: the Files pane groups changed files by
     // creation mode where the repo declares data/design/content.csv.
-    await gh.load('content-registry.js');
+    await gh.load('kits/content-registry.js');
     await gh.load('kits/branch-brief.js');
     await gh.load('kits/cm6-merge.js');
     await gh.load('alpineComponents/file-review.js');

@@ -11,7 +11,7 @@
 //   compare  the compare panel's per-file rows
 
 const RECENT = [
-  { path: 'lib/source-peek.js', age: '2h' },
+  { path: 'lib/kits/source-peek.js', age: '2h' },
   { path: 'docs/show-repo.md', age: '2h' },
   { path: 'lib/alpineComponents/map.js', age: '3h' },
   { path: 'tracker/board.md', age: '1d' },
@@ -19,7 +19,7 @@ const RECENT = [
 
 const STAGE = [
   { repo: 'mehrlander/web-tools', ref: 'main', path: 'docs/routes.json' },
-  { repo: 'mehrlander/web-tools', ref: 'main', path: 'lib/source-peek.js' },
+  { repo: 'mehrlander/web-tools', ref: 'main', path: 'lib/kits/source-peek.js' },
   { repo: 'mehrlander/home', ref: '', path: 'docs/CONSTELLATION.md' },
 ];
 
@@ -27,7 +27,7 @@ const COMPARE = {
   status: 'ahead', ahead_by: 3, behind_by: 0,
   commits: [{ sha: 'a'.repeat(40), commit: { message: 'Give the icon one meaning', author: { date: new Date(0).toISOString() } } }],
   files: [
-    { filename: 'lib/source-peek.js', status: 'added', additions: 260, deletions: 0 },
+    { filename: 'lib/kits/source-peek.js', status: 'added', additions: 260, deletions: 0 },
     { filename: 'lib/alpineComponents/map.js', status: 'modified', additions: 41, deletions: 12 },
     { filename: 'docs/old-notes.md', status: 'removed', additions: 0, deletions: 88 },
   ],
@@ -69,7 +69,7 @@ export default async (page) => {
       d.base = 'main'; d.head = 'claude/github-icon-placement'; d.data = data;
     }, COMPARE);
     await page.waitForTimeout(600);
-    const icon = page.locator('#compare a[data-peek$="source-peek.js"]').first();
+    const icon = page.locator('#compare a[data-peek$="kits/source-peek.js"]').first();
     await icon.scrollIntoViewIfNeeded();
     await icon.hover();
     await page.waitForTimeout(1600);

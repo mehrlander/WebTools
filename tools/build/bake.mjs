@@ -4,7 +4,7 @@
 //   node tools/build/bake.mjs <page-path>             -> dist/<page>.html
 //
 // The Node twin of the FAB's "Fully offline" mode: same shared emit + bake
-// (lib/kits/build.js), fed by the static graph instead of runtime __loadedScripts.
+// (lib/build.js), fed by the static graph instead of runtime __loadedScripts.
 // This is code-only — it inlines the gh.load chain so the page boots with no
 // network. The browser path (kits/bundle.js) additionally zips the read() data
 // beside it; bake here assumes the page carries no page-relative data, or that the
@@ -33,7 +33,7 @@ try {
   process.exit(1);
 }
 
-const { buildKit } = loadKit(repoRoot, 'lib/kits/build.js');
+const { buildKit } = loadKit(repoRoot, 'lib/build.js');
 const ghApiSrc = await readFile(path.join(repoRoot, 'lib/gh-api.js'), 'utf8');
 const cache = Object.fromEntries(graph.files.map(f => [f.key, f.src]));
 const buildJs = buildKit.emit({ ghApiSrc, cache, repo: REPO, defaultRef: graph.defaultRef });

@@ -1,0 +1,963 @@
+{
+  "note": "The harness census: one row per code file under tools/ (tools/test/ excluded, docs/tests.json is that folder's census) and scripts/, saying what each file is FOR. `role` is authored because no derivation supplies it; layer, lines, invocation, emits, named, and tested are stamped by tools/build/tools-index.mjs, whose --check mode runs in the lockstep suite. A blank role is a ledger entry, not a violation: it marks a file nobody has yet accounted for, the same discipline docs/tests.json applies to protects. Filed after the 2026-08-08 lib-kits migration showed what an unaccounted shelf costs; docs/code-layers.md names tools/ as the weak layer and this census is its accounting. (docs/tools.json is a different thing: the curated Tools gallery manifest.)",
+  "layers": {
+    "scripts": "standalone and portable: argv-driven, runs from any repo root, travels via the hub",
+    "tools": "repo-root harness files that fit no folder below",
+    "tools/build": "generators: snapshot a page or the lib into an offline artifact, or restamp a committed registry",
+    "tools/concept-lab": "experimental ground, read-only prototypes that have not earned a place (its README states the admission rule)",
+    "tools/render": "exercise a page headlessly: the jsdom logic render, the Chromium pixel render, and their shared CDN resolver",
+    "tools/render/scenarios": "interaction drivers for npm run shot --script: each steers one page into one state before the pixels are taken"
+  },
+  "tools": [
+    {
+      "path": "scripts/build-tree.py",
+      "role": "render a repository file tree as a linked markdown table for chat",
+      "layer": "scripts",
+      "lines": 252,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "scripts/check-branch-survey.mjs",
+      "role": "the stated agreement check for the branches view against home's branch-survey.sh",
+      "layer": "scripts",
+      "lines": 145,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "scripts/code-shape-survey.py",
+      "role": "per-file observable properties of lib/: what a file attaches to, boot, hub, DOM, Alpine; the instrument behind docs/code-layers.md and the code-layers gate",
+      "layer": "scripts",
+      "lines": 374,
+      "invocation": "npm:code-shape",
+      "emits": true,
+      "named": true,
+      "tested": true
+    },
+    {
+      "path": "scripts/declared-paths.py",
+      "role": "check every page a .web-tools.json declares still exists; runs in consumer repos' verify suites",
+      "layer": "scripts",
+      "lines": 137,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "scripts/link-survey.py",
+      "role": "report markdown links that no longer resolve, in three classes (internal, cross-repo, github)",
+      "layer": "scripts",
+      "lines": 256,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": true
+    },
+    {
+      "path": "scripts/ocr-pdf.py",
+      "role": "OCR a scanned PDF into text, and say how much to trust the result",
+      "layer": "scripts",
+      "lines": 187,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "scripts/sunset-scan.py",
+      "role": "scan a repo for SUNSET(YYYY-MM-DD) markers and report the ones now due",
+      "layer": "scripts",
+      "lines": 111,
+      "invocation": "npm:sunset",
+      "emits": false,
+      "named": true,
+      "tested": true
+    },
+    {
+      "path": "scripts/unclaimed-code-survey.py",
+      "role": "per-layer counts of files, files prose names, and files a test exercises; the code-survey behind code-layers.md",
+      "layer": "scripts",
+      "lines": 187,
+      "invocation": "npm:code-survey",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/build/bake.mjs",
+      "role": "emit dist/<page>.html: the page's chain inlined into a standalone file",
+      "layer": "tools/build",
+      "lines": 53,
+      "invocation": "npm:bake",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/build/build-lib.mjs",
+      "role": "emit dist/web-tools.js, the pre-build: the whole lib/ as one self-booting offline artifact",
+      "layer": "tools/build",
+      "lines": 108,
+      "invocation": "npm:build:lib",
+      "emits": true,
+      "named": true,
+      "tested": true
+    },
+    {
+      "path": "tools/build/build.mjs",
+      "role": "emit dist/<page>.js: a page's gh.load chain frozen offline, through lib/build.js's emitter",
+      "layer": "tools/build",
+      "lines": 77,
+      "invocation": "npm:build",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/build/console-suite.mjs",
+      "role": "assemble console/suite.js from base.js plus the layered console modules",
+      "layer": "tools/build",
+      "lines": 51,
+      "invocation": "npm:build:console",
+      "emits": true,
+      "named": true,
+      "tested": true
+    },
+    {
+      "path": "tools/build/docs-reach.mjs",
+      "role": "restamp the derived reach and words fields of docs/docs.json",
+      "layer": "tools/build",
+      "lines": 249,
+      "invocation": "npm:docs-reach",
+      "emits": true,
+      "named": true,
+      "tested": true
+    },
+    {
+      "path": "tools/build/docs-readme.mjs",
+      "role": "regenerate docs/README.md from docs/docs.json",
+      "layer": "tools/build",
+      "lines": 90,
+      "invocation": "npm:docs-readme",
+      "emits": false,
+      "named": true,
+      "tested": true
+    },
+    {
+      "path": "tools/build/graph.mjs",
+      "role": "the static resolver for a page's gh.load chain; feeds build.mjs its cache",
+      "layer": "tools/build",
+      "lines": 86,
+      "invocation": "imported",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/build/graphql-schema.mjs",
+      "role": "regenerate the pruned GitHub GraphQL schema the suite typechecks queries against",
+      "layer": "tools/build",
+      "lines": 230,
+      "invocation": "npm:graphql-schema",
+      "emits": true,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/build/kit-shim.mjs",
+      "role": "run a browser-shaped gh.load kit inside Node; the bridge build.mjs and the suite share",
+      "layer": "tools/build",
+      "lines": 19,
+      "invocation": "imported",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/build/pages-index.mjs",
+      "role": "regenerate both page catalogs: pages/README.md and pages/index.html",
+      "layer": "tools/build",
+      "lines": 443,
+      "invocation": "npm:pages-index",
+      "emits": false,
+      "named": true,
+      "tested": true
+    },
+    {
+      "path": "tools/build/pages-shots.mjs",
+      "role": "regenerate pages/thumbs/*.png, one screenshot per page for the visual index",
+      "layer": "tools/build",
+      "lines": 85,
+      "invocation": "npm:pages-shots",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/build/repo-pages-shots.mjs",
+      "role": "regenerate pages-gallery thumbnails for another repo's pages catalog",
+      "layer": "tools/build",
+      "lines": 167,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/build/tests-index.mjs",
+      "role": "restamp the derived half of docs/tests.json, the test registry",
+      "layer": "tools/build",
+      "lines": 156,
+      "invocation": "npm:tests-index",
+      "emits": true,
+      "named": false,
+      "tested": true
+    },
+    {
+      "path": "tools/build/tools-index.mjs",
+      "role": "restamp the derived half of this census",
+      "layer": "tools/build",
+      "lines": 166,
+      "invocation": "npm:tools-index",
+      "emits": true,
+      "named": true,
+      "tested": true
+    },
+    {
+      "path": "tools/build/verify-build.mjs",
+      "role": "prove a page's dist build renders byte-identical to its live gh.load chain",
+      "layer": "tools/build",
+      "lines": 86,
+      "invocation": "npm:verify-build",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/concept-lab/build-entity-index.py",
+      "role": "build the committed entity index end to end in one command",
+      "layer": "tools/concept-lab",
+      "lines": 200,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/concept-lab/entitylab.py",
+      "role": "entity lab: where a repo's entity layer exists and where it is only implied",
+      "layer": "tools/concept-lab",
+      "lines": 572,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/concept-lab/entityprofile.py",
+      "role": "entity profile: what named things a repo discusses, and of what kinds",
+      "layer": "tools/concept-lab",
+      "lines": 481,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/concept-lab/exp_embed.py",
+      "role": "experiment: do tiny static embeddings separate a term's senses better than lexical context clustering",
+      "layer": "tools/concept-lab",
+      "lines": 112,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/concept-lab/exp_gold.py",
+      "role": "score a termlab index against the gold polysemy set",
+      "layer": "tools/concept-lab",
+      "lines": 57,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/concept-lab/exp_pos.py",
+      "role": "experiment: spaCy noun chunks as the term-candidate source",
+      "layer": "tools/concept-lab",
+      "lines": 66,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/concept-lab/flag_reply.py",
+      "role": "flag risky vocabulary in a draft reply, using a termlab index",
+      "layer": "tools/concept-lab",
+      "lines": 232,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/concept-lab/gazetteer.py",
+      "role": "build an entity gazetteer from the tables the estate already curates",
+      "layer": "tools/concept-lab",
+      "lines": 179,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/concept-lab/termlab.py",
+      "role": "term lab: experimental multi-corpus term and ambiguity analysis",
+      "layer": "tools/concept-lab",
+      "lines": 875,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/render/cdn.mjs",
+      "role": "the CDN URL to local-file resolver both renderers share",
+      "layer": "tools/render",
+      "lines": 322,
+      "invocation": "imported",
+      "emits": false,
+      "named": true,
+      "tested": true
+    },
+    {
+      "path": "tools/render/estate-card-demo.mjs",
+      "role": "screenshot driver: render the estate's Repos grid with seeded entries",
+      "layer": "tools/render",
+      "lines": 72,
+      "invocation": "none found",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/preview.mjs",
+      "role": "the jsdom logic render: run the full gh.load chain, mount Alpine, report state; no pixels",
+      "layer": "tools/render",
+      "lines": 370,
+      "invocation": "npm:preview",
+      "emits": false,
+      "named": true,
+      "tested": true
+    },
+    {
+      "path": "tools/render/scenarios/activity-fake.mjs",
+      "role": "seed fake activity data so the token-gated Open view renders for a shot",
+      "layer": "tools/render/scenarios",
+      "lines": 83,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/branch-brief-errors.mjs",
+      "role": "the branch page's failure states, driven through the real load() path",
+      "layer": "tools/render/scenarios",
+      "lines": 59,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/branch-guide.mjs",
+      "role": "the branch page showing a branch with its guide PR body rendered in place",
+      "layer": "tools/render/scenarios",
+      "lines": 88,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/branch-takeover.mjs",
+      "role": "show-repo's branch-detail takeover with the embedded branch page fully rendered",
+      "layer": "tools/render/scenarios",
+      "lines": 86,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/branches-survey.mjs",
+      "role": "show-repo's Branches view with a populated survey",
+      "layer": "tools/render/scenarios",
+      "lines": 111,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/branches-window.mjs",
+      "role": "the Branches window pill: the reader's time slice over the Recent scope",
+      "layer": "tools/render/scenarios",
+      "lines": 61,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/code-layers-guide-lower.mjs",
+      "role": "scroll the code-layers guide to its lower tabs for the pixel check",
+      "layer": "tools/render/scenarios",
+      "lines": 14,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/data-view-item-tossed.mjs",
+      "role": "the #item= addressing end to end through a toss, proving the two halves meet",
+      "layer": "tools/render/scenarios",
+      "lines": 61,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/data-view-item.mjs",
+      "role": "data-view's #item= addressing, read and written",
+      "layer": "tools/render/scenarios",
+      "lines": 89,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
+      "tested": true
+    },
+    {
+      "path": "tools/render/scenarios/data-view-items.mjs",
+      "role": "the data-view demo through its envelope's three items, each declared view winning",
+      "layer": "tools/render/scenarios",
+      "lines": 13,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/diff-tool-at.mjs",
+      "role": "the diff tool's address field driving the browse panel over captured API fixtures",
+      "layer": "tools/render/scenarios",
+      "lines": 187,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/diff-tool-grab.mjs",
+      "role": "the Sources tab with both slots in GitHub mode, the @-grab row on screen",
+      "layer": "tools/render/scenarios",
+      "lines": 15,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/diff-tool-loaded.mjs",
+      "role": "diff-tool in its loaded state: two versions diffed on the Diff tab",
+      "layer": "tools/render/scenarios",
+      "lines": 65,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/diff-tool-roots.mjs",
+      "role": "the browse panel's root list over a stubbed repo listing",
+      "layer": "tools/render/scenarios",
+      "lines": 42,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/diff-tool-sources.mjs",
+      "role": "the Sources tab with the normalization strip open and two prose drafts loaded",
+      "layer": "tools/render/scenarios",
+      "lines": 25,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/entities-stub.mjs",
+      "role": "pages/entities.html against the committed index, token-free",
+      "layer": "tools/render/scenarios",
+      "lines": 35,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/estate-activity-progress.mjs",
+      "role": "the Activity header in its mid-crawl state",
+      "layer": "tools/render/scenarios",
+      "lines": 35,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/estate-guides.mjs",
+      "role": "the estate's Guides pane, Activity's third sub-view",
+      "layer": "tools/render/scenarios",
+      "lines": 134,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/estate-jots.mjs",
+      "role": "the estate's Jots view with a populated pile",
+      "layer": "tools/render/scenarios",
+      "lines": 74,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/estate-open.mjs",
+      "role": "Activity's Open view seeded token-free so the list renders headlessly",
+      "layer": "tools/render/scenarios",
+      "lines": 146,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/estate-pins.mjs",
+      "role": "the Lists pane with the Pin block populated above To-do and Jot",
+      "layer": "tools/render/scenarios",
+      "lines": 86,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/estate-rows.mjs",
+      "role": "the grouped-grid Repos view with a nested companion card",
+      "layer": "tools/render/scenarios",
+      "lines": 88,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/estate-sessions.mjs",
+      "role": "the Sessions and Lists panes on fixture data, token-free",
+      "layer": "tools/render/scenarios",
+      "lines": 101,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/estate-surfaces-embed.mjs",
+      "role": "the Surfaces view rendering a kind:embed item, collapsed",
+      "layer": "tools/render/scenarios",
+      "lines": 81,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/fab-export.mjs",
+      "role": "the FAB's Export controls",
+      "layer": "tools/render/scenarios",
+      "lines": 31,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/fab-guide.mjs",
+      "role": "the fab's Render tab seeded token-free so the guide pane renders",
+      "layer": "tools/render/scenarios",
+      "lines": 144,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/fab-toss.mjs",
+      "role": "toss-render address mode with the fab's toss integration and singleton guard",
+      "layer": "tools/render/scenarios",
+      "lines": 49,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/fab-traffic-toss.mjs",
+      "role": "the Traffic tab inside a toss: the bands describe the tossed page, not the shell",
+      "layer": "tools/render/scenarios",
+      "lines": 56,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/fab-traffic.mjs",
+      "role": "the fab's Traffic tab with a real BOOT band from the loopback render",
+      "layer": "tools/render/scenarios",
+      "lines": 78,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/inbox-demo.mjs",
+      "role": "the inbox resolution with the armed redirect button on screen",
+      "layer": "tools/render/scenarios",
+      "lines": 36,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/jumpover-coverage.mjs",
+      "role": "the exact-file jump-overs rendered headlessly with seeded rows",
+      "layer": "tools/render/scenarios",
+      "lines": 90,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/map-docs-reads.mjs",
+      "role": "the Map's Docs tab with the readership column",
+      "layer": "tools/render/scenarios",
+      "lines": 69,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/map-docs.mjs",
+      "role": "the Map's Docs tab, the documentation registry rendered live",
+      "layer": "tools/render/scenarios",
+      "lines": 52,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/map-harness.mjs",
+      "role": "drive show-repo's Map view onto the Harness tab with the committed census served through GH.get",
+      "layer": "tools/render/scenarios",
+      "lines": 52,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/map-set-adoption.mjs",
+      "role": "the Map's first two tabs, both halves populated",
+      "layer": "tools/render/scenarios",
+      "lines": 72,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/map-showing-peek.mjs",
+      "role": "the Showing tab with a pointer held over an exact-file jump-over so the peek renders",
+      "layer": "tools/render/scenarios",
+      "lines": 50,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": true
+    },
+    {
+      "path": "tools/render/scenarios/map-showing.mjs",
+      "role": "the Map's Showing tab: how content moves, renders, and gets looked at",
+      "layer": "tools/render/scenarios",
+      "lines": 54,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/nest-probe.mjs",
+      "role": "probe: a nested self-toss's address bar, and the FAB's actions at depth two",
+      "layer": "tools/render/scenarios",
+      "lines": 44,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/open-drawer.mjs",
+      "role": "the FAB drawer open with the take grid scrolled into view",
+      "layer": "tools/render/scenarios",
+      "lines": 20,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/pick-md.mjs",
+      "role": "end-to-end reproduction of pick-a-file-in-the-fab, reporting what the frame did",
+      "layer": "tools/render/scenarios",
+      "lines": 76,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/project-board-review.mjs",
+      "role": "the project Board pane's typed read, seeded token-free",
+      "layer": "tools/render/scenarios",
+      "lines": 198,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/project-board.mjs",
+      "role": "the project view's Board pill with task links resolved into the shell viewer",
+      "layer": "tools/render/scenarios",
+      "lines": 72,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/project-docs.mjs",
+      "role": "the project view's Docs pill: the workspace's markdown from one tree read",
+      "layer": "tools/render/scenarios",
+      "lines": 77,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/project-pages.mjs",
+      "role": "the project view's Pages pill: the workspace's slice of the repo catalog",
+      "layer": "tools/render/scenarios",
+      "lines": 63,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/project-view.mjs",
+      "role": "the project view with a workspace selected and its README rendered",
+      "layer": "tools/render/scenarios",
+      "lines": 74,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/proposals-deliver-demo.mjs",
+      "role": "the two delivery buttons beside the staleness guard, stubbed registry",
+      "layer": "tools/render/scenarios",
+      "lines": 51,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/proposals-demo.mjs",
+      "role": "the Proposals view over a stubbed registry",
+      "layer": "tools/render/scenarios",
+      "lines": 54,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/proposals-phone-demo.mjs",
+      "role": "the Proposals list at phone width with the real four records",
+      "layer": "tools/render/scenarios",
+      "lines": 55,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/proposals-stale-demo.mjs",
+      "role": "the staleness guard and signature line on a moved target",
+      "layer": "tools/render/scenarios",
+      "lines": 51,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/ref-switch.mjs",
+      "role": "the header ref switch seeded token-free",
+      "layer": "tools/render/scenarios",
+      "lines": 57,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/routed-subject.mjs",
+      "role": "the drawer over a routed subject, the file as the reported identity",
+      "layer": "tools/render/scenarios",
+      "lines": 54,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/sidebar-projects-overlay.mjs",
+      "role": "the same sidebar state in overlay posture; only the posture distinguishes the pair",
+      "layer": "tools/render/scenarios",
+      "lines": 51,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/sidebar-projects.mjs",
+      "role": "drive show-repo's sidebar into the nested-projects state",
+      "layer": "tools/render/scenarios",
+      "lines": 66,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/sidebar-repo-menus.mjs",
+      "role": "the sidebar Repos index with one row's two menus open",
+      "layer": "tools/render/scenarios",
+      "lines": 61,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/stage-diff-longrefs.mjs",
+      "role": "the Diff tab's A/B selects clipping long repo@ref:path labels",
+      "layer": "tools/render/scenarios",
+      "lines": 18,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/stage-diff-review.mjs",
+      "role": "the Stage's Diff lens run on two local items, with the review-prompts panel",
+      "layer": "tools/render/scenarios",
+      "lines": 29,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/subject-action-probe.mjs",
+      "role": "probe: can the shell invoke a toss subject's action closure, or only reach it",
+      "layer": "tools/render/scenarios",
+      "lines": 124,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/toss-fragment.mjs",
+      "role": "prove toss-render hands a trailing #frag to the rendered page in both trust postures",
+      "layer": "tools/render/scenarios",
+      "lines": 73,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/screenshot.mjs",
+      "role": "the Chromium pixel render behind npm run shot; --script drives a scenario first",
+      "layer": "tools/render",
+      "lines": 195,
+      "invocation": "npm:shot",
+      "emits": false,
+      "named": true,
+      "tested": true
+    },
+    {
+      "path": "tools/semsearch.py",
+      "role": "semantic search over the estate's prose, paragraph by paragraph",
+      "layer": "tools",
+      "lines": 117,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    }
+  ]
+}

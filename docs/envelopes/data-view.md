@@ -33,17 +33,17 @@ Through the toss route it is the trailing fragment, which belongs to the rendere
 
     …/toss-render.html#data=<owner>/<repo>:<bundle.json>#item=raw.csv
 
-Selecting an item **writes the address back**, so the URL always names what is on screen and a reader can copy the address of the item they are looking at rather than of the envelope. The write is surgical: it edits the one key and leaves the rest of the fragment byte for byte, which is what lets a `#gz=` payload sit beside it (`UrlParams.withKey`, [`lib/url-params.js`](../../lib/url-params.js)). Two things it deliberately does not do: it adds no history entry, so the back button still leaves the page rather than walking the item strip; and it does not write on load unless the URL already named an item, so arriving at a plain `#gz=` toss never rewrites the payload.
+Selecting an item **writes the address back**, so the URL always names what is on screen and a reader can copy the address of the item they are looking at rather than of the envelope. The write is surgical: it edits the one key and leaves the rest of the fragment byte for byte, which is what lets a `#gz=` payload sit beside it (`UrlParams.withKey`, [`lib/kits/url-params.js`](../../lib/kits/url-params.js)). Two things it deliberately does not do: it adds no history entry, so the back button still leaves the page rather than walking the item strip; and it does not write on load unless the URL already named an item, so arriving at a plain `#gz=` toss never rewrites the payload.
 
 Only the position is written when a name would be ambiguous, and only a name when it reads back as that item, so the address is one the page has verified rather than one it assumed.
 
-The vocabulary belongs to the **envelope**, not to the page, so both directions live in [`lib/data-payload.js`](../../lib/data-payload.js) (`DataPayload.resolveItem`, `.addressItem`) beside the rest of what an item means, and `npm test` holds them. The page owns only the location read and write, which needs a browser: that half is held by [`tools/render/scenarios/data-view-item.mjs`](../../tools/render/scenarios/data-view-item.mjs) directly and [`data-view-item-tossed.mjs`](../../tools/render/scenarios/data-view-item-tossed.mjs) through a toss.
+The vocabulary belongs to the **envelope**, not to the page, so both directions live in [`lib/kits/data-payload.js`](../../lib/kits/data-payload.js) (`DataPayload.resolveItem`, `.addressItem`) beside the rest of what an item means, and `npm test` holds them. The page owns only the location read and write, which needs a browser: that half is held by [`tools/render/scenarios/data-view-item.mjs`](../../tools/render/scenarios/data-view-item.mjs) directly and [`data-view-item-tossed.mjs`](../../tools/render/scenarios/data-view-item-tossed.mjs) through a toss.
 
 The viewport toggles are not part of this vocabulary. `bleed` is a preference about the reader's screen, not about what is being read, and would ride along on every copied link.
 
 ## Two shapes, no declaration
 
-A payload is read by [`lib/data-payload.js`](../../lib/data-payload.js), which decides what it is rather than asking:
+A payload is read by [`lib/kits/data-payload.js`](../../lib/kits/data-payload.js), which decides what it is rather than asking:
 
 **Bare** is any bytes at all: a CSV, a JSON array, a log, a markdown file. One item. The viewer's own module tests decide how to show it, so `rows.csv` opens as a table and `shape.json` opens as a tree with nothing said. An addressed payload keeps its repo path, so its extension is real and its GitHub/Raw/CDN links resolve; an inline one is named by sniffing its bytes.
 

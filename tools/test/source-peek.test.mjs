@@ -1,4 +1,4 @@
-// lib/source-peek.js — the source peek behind an exact-file GitHub jump-over.
+// lib/kits/source-peek.js — the source peek behind an exact-file GitHub jump-over.
 //
 // The module splits cleanly: a render half that decides what a peek SHOWS for a
 // given path and text (pure, and all of it asserted here) and a DOM half that
@@ -20,8 +20,8 @@ import { repoRoot } from './bootstrap.mjs';
 
 const window = {};
 const run = rel => new Function('window', readFileSync(path.join(repoRoot, rel), 'utf8'))(window);
-run('lib/repo-address.js');   // the address grammar source-peek reads with
-run('lib/source-peek.js');
+run('lib/kits/repo-address.js');   // the address grammar source-peek reads with
+run('lib/kits/source-peek.js');
 const SP = window.SourcePeek;
 
 test('the rendition is chosen by extension, and code is the default', () => {

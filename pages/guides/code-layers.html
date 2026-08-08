@@ -136,12 +136,12 @@
 
       <p><span class="font-semibold">First</span>, <span class="mono">traffic.js</span> does not
       extend <span class="mono">GH.prototype</span>. It wraps
-      <span class="mono">window.fetch</span>. (<a class="mono" :href="blob('lib/traffic.js')"
-      target="_blank" rel="noopener">lib/traffic.js</a>) The claim that it does appears in a comment within
+      <span class="mono">window.fetch</span>. (<a class="mono" :href="blob('lib/kits/traffic.js')"
+      target="_blank" rel="noopener">lib/traffic.js</a>, now under kits/) The claim that it does appears in a comment within
       the file, and the task adopted it.</p>
 
-      <p><span class="font-semibold">Second</span>, <a class="mono" :href="blob('lib/kits/build.js')" target="_blank"
-      rel="noopener">kits/build.js</a> does extend <span class="mono">GH.prototype</span>, which
+      <p><span class="font-semibold">Second</span>, <a class="mono" :href="blob('lib/build.js')" target="_blank"
+      rel="noopener">kits/build.js</a> (now at lib/ root) does extend <span class="mono">GH.prototype</span>, which
       <a class="mono" :href="blob('lib/kits/README.md')" target="_blank"
       rel="noopener">lib/kits/README.md</a> states a kit cannot do.</p>
 
@@ -188,9 +188,14 @@
       a declared manifest. Twenty files move, one moves the other way, and one is deleted. The
       alternatives are preserved under Options, and the sequence under Migration.</p>
 
-      <p>The rule states where a file belongs. It does not describe where the files are: the
-      migration has not run, and until it does the tree and the rule disagree by twenty-two
-      files.</p>
+      <p>The rule states where a file belongs. When this guide was written the migration had
+      not run and the tree and the rule disagreed by twenty-two files. The migration ran on
+      2026-08-08: twenty-two kits moved (the settled twenty plus content-registry.js and
+      estate-search.js, added while the decision was being made and kits by the rule before it
+      landed), build.js moved to lib/ root, the dead diagnostic file was deleted, and
+      tools/test/code-layers.test.mjs now holds the boundary. The snapshot rows behind the Shelf
+      and Migration tabs are the 2026-08-07 derivation, kept as the record the decision was made
+      from; npm run code-shape reads the current tree.</p>
     </div>
   </div>
 

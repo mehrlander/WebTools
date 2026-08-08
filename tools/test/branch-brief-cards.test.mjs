@@ -39,7 +39,7 @@ const { window, problems } = makeWindow({
 
 // The kit the view reads (window.BranchBrief), loaded the way the page's
 // gh.load chain arranges it.
-for (const f of ['lib/branch-survey.js', 'lib/kits/branch-brief.js']) {
+for (const f of ['lib/kits/branch-survey.js', 'lib/kits/branch-brief.js']) {
   new window.Function('window', readFileSync(path.join(repoRoot, f), 'utf8'))(window);
 }
 

@@ -14,14 +14,17 @@ must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
 2 arrive in every session's context, 18 are named by CLAUDE.md,
-3 by a skill, 4 by a page or component. The remaining 17 are
+3 by a skill, 5 by a page or component. The remaining 19 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
 
 - [`README.md`](README.md) — the docs folder's front door: the generated index of this registry
 - [`docs.json`](docs.json) — this registry: the documents census and the shared-claims table
+- [`harness.json`](harness.json) — the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting
 - [`manifest.json`](manifest.json) — the field registry for root .web-tools.json: every field's type, consumer, and effect
+- [`properties.json`](properties.json) *(orphan)* — the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement
+- [`registries.md`](registries.md) *(orphan)* — the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction
 - [`tests.json`](tests.json) — the test registry: every check's kind, what it protects, and its derived counts
 - [`CONVENTIONS.md`](CONVENTIONS.md) — the portable working conventions: the general-behavior hub
 - [`SURFACING.md`](SURFACING.md) — the surfacing system: primitives plus the guide-PR course

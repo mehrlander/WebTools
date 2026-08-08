@@ -21,11 +21,12 @@ measured against this shelf, and found false, which is why the surviving rule
 sorts on attachment alone. The reasoning is in
 [`docs/code-layers.md`](../../docs/code-layers.md).
 
-The tree has not caught up: 20 files in `lib/` root are kits by this rule and
-have not moved, and [`build.js`](build.js) is on this shelf while extending
-`GH.prototype`, which the rule makes scaffolding. Both are the migration's job
-([`lib-root-kit-migration-dind5t`](../../tracker/tasks/lib-root-kit-migration-dind5t.md)).
-A **new** logic module comes here regardless.
+The tree matches the rule as of 2026-08-08
+([`lib-root-kit-migration-dind5t`](../../tracker/tasks/lib-root-kit-migration-dind5t.md)):
+22 kits moved in from `lib/` root, `build.js` moved out to `lib/` root (it
+extends `GH.prototype`, which the rule makes scaffolding), and
+`tools/test/code-layers.test.mjs` holds the boundary in all three directions,
+so a misfiled arrival fails the suite rather than waiting to be noticed.
 
 The line is **no Alpine and no DOM opinions of its own**, not "no DOM." This
 entry used to say "no DOM rendering," and the shelf has outgrown it: `cm6.js`
@@ -53,6 +54,38 @@ The shape rules (so the file works through `gh.load`):
 See [`docs/loader.md`](../../docs/loader.md) for the full loader contract.
 
 ## Current kits
+
+The long-form sections below predate the 2026-08-08 migration and cover the
+original shelf. The 22 kits that moved in from `lib/` root that day are listed
+here with their namespace and role; each carries its full story in its own
+header comment, which is the authoritative doc for this group. **(boot)** marks
+membership in gh-boot.js's declared BOOT manifest, a fact about cost that the
+folder deliberately no longer encodes.
+
+| Kit | Namespace | Role |
+|---|---|---|
+| `branch-survey.js` | `BranchSurvey` | branch-estate survey math: the content-level landed/stranded signal |
+| `chat-render.js` | `chatRender` | chat transcript renderer; fenced code promoted to live artifacts |
+| `content-registry.js` | `ContentRegistry` | the epistemic content registry (`data/design/content.csv`), read in the browser |
+| `data-payload.js` | `DataPayload` | reading a data toss: one rule for what a payload is |
+| `estate-search.js` | `EstateSearch` | the estate's search calls (tree, names, code, sessions), one cache |
+| `github-links.js` | `GithubLinks` | the GitHub destinations for one repo, as menu rows |
+| `portable-align.js` | `PortableAlign` | pure assessment of a repo's alignment with the portable set |
+| `repo-activity-cache.js` | `RepoActivityCache` | per-repo activity snapshots folded into one cache |
+| `repo-address.js` | `RepoAddress` | the `owner/repo[@ref]:path` address grammar **(boot)** |
+| `repo-checks.js` | `RepoChecks` | declared staleness checks for a repo, evaluated on sight |
+| `repo-config-cache.js` | `RepoConfigCache` | `.web-tools.json` aggregate, history, and alignment grade |
+| `repo-mailbox.js` | `RepoMailbox` | the private git-backed request/response channel |
+| `repo-proposals.js` | `RepoProposals` | cross-repo edit proposals, the mailbox's write side |
+| `repo-sessions-cache.js` | `RepoSessionsCache` | session-record aggregate over the private registry |
+| `session-render.js` | `sessionRender` | a session record as a readable, paged conversation |
+| `shorter-payload.js` | `ShorterPayload` | reading a shorter toss |
+| `source-peek.js` | `SourcePeek` | the hover card behind an exact-file GitHub jump-over **(boot;** the manifest calls `install()`, the kit no longer self-installs**)** |
+| `surface.js` | `Surface` | the surface envelope, in one place **(boot)** |
+| `swipe-deck.js` | `swipeDeck` | the house swipe format and its fullscreen takeover |
+| `traffic.js` | `Traffic` | the pure read over the traffic ledger gh-boot collects **(boot)** |
+| `url-params.js` | `UrlParams` | a page's own input params, fragment first, query fallback |
+| `vanilla-demo.js` | `demo` | the living-documentation demo format |
 
 ### compression.js
 
@@ -358,7 +391,13 @@ window.treemap.fmtBytes(6672908)          // '6.4 MB'
 degenerate input: zero/empty weights and extreme skew emit zero-size
 rects rather than negative extents.
 
-### build.js
+### build.js (moved to `lib/` root, 2026-08-08)
+
+Lives at [`lib/build.js`](../build.js) now: it extends `GH.prototype`
+(overriding `.read` and `.get` while a build runs), which the admission rule
+makes scaffolding, and an exception written into a rule on day one is how the
+previous two rules died. Its API doc stays here beside its consumers until it
+finds a better home.
 
 The single emitter for "the build": a page's `gh.load` chain frozen into
 one self-resolving offline artifact. Two consumers share the one emitter
@@ -410,7 +449,7 @@ Export the current page as a portable zip: the page's pristine source
 plus the data it `read()`s, laid out so `read()`'s local-first resolution
 finds the frozen copies on `file://`. gh-boot's `__reads` registry is the
 default manifest, so a page declares its data simply by reading it. With
-`{ offline: true }` the page's code is baked in too (via `kits/build.js`)
+`{ offline: true }` the page's code is baked in too (via `build.js`)
 and unzip-and-open needs no network for own code; third-party CDN
 libraries still load from the CDN. This is the "export" leg of the
 vocabulary: load → build → bake → export → brief. The FAB's take-away
@@ -452,7 +491,7 @@ the frame and the globals belong to the shell around it.
 
 The page path comes from `opts.path` or the FAB's `[data-path]` stamp;
 the page source is fetched pristine from the repo at the booted ref, not
-scraped from the post-Alpine DOM. `kits/io.js` and `kits/build.js` load
+scraped from the post-Alpine DOM. `kits/io.js` and `build.js` load
 on demand if absent.
 
 ### brief.js
@@ -681,7 +720,7 @@ examples.
 | `brief.js` | the FAB's "Take this page" menu | page + its own modules as one pasteable markdown brief |
 | `wring.js` | `pages/demos/wring-text.html` / `pages/demos/wring-dom.html` | template induction; generated from `archive/wring/` |
 | `treemap.js` | `pages/repo-atlas.html` | squarified treemap kernels + file taxonomy |
-| `build.js` | `tools/build/` + the FAB export | one emitter, two consumers |
+| `../build.js` | `tools/build/` + the FAB export | one emitter, two consumers; `lib/` root since 2026-08-08 (extends `GH.prototype`) |
 | `export.js` | the FAB's export control | page + `read()` data as a zip |
 | `wsl-core.js` | `pages/wsl-sync/` + Node fetch | dependency-free; libs injected |
 | `wsl.js` | `pages/wsl-sync/` | browser wrapper; lazy XML libs |

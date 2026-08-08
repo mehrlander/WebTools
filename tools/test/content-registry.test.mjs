@@ -1,4 +1,4 @@
-// lib/content-registry.js — the browser-side registry reader: the CSV parse
+// lib/kits/content-registry.js — the browser-side registry reader: the CSV parse
 // (quoted fields, header-driven columns, fragment locators dropped), locator
 // resolution (exact file beats any subtree, longest prefix wins among
 // subtrees, null when nothing covers), and the display grouping (authored
@@ -13,7 +13,7 @@ import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
 const w = {};
-new Function('window', readFileSync(path.join(repoRoot, 'lib/content-registry.js'), 'utf8'))(w);
+new Function('window', readFileSync(path.join(repoRoot, 'lib/kits/content-registry.js'), 'utf8'))(w);
 const CR = w.ContentRegistry;
 
 const CSV = `locator,creation_mode,analysis_use,description

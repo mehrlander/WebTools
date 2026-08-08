@@ -3,7 +3,7 @@
 // fallback when it throws), the one default-branch tree read, the per-branch
 // compare, the no-merge-base 404 fallback (commits list, then compare from
 // the oldest commit's parent), and the resulting grouping through the pure
-// lib/branch-survey.js math. No network, no pixels.
+// lib/kits/branch-survey.js math. No network, no pixels.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -86,7 +86,7 @@ const { window, problems } = makeWindow({
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
-  'lib/branch-survey.js',
+  'lib/kits/branch-survey.js',
   'lib/alpineComponents/branches.js',
 ]);
 

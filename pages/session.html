@@ -67,9 +67,9 @@
   // all three and must load last.
   try {
     await gh.load('kits/proof.js');
-    await gh.load('swipe-deck.js');
-    await gh.load('chat-render.js');
-    await gh.load('session-render.js');
+    await gh.load('kits/swipe-deck.js');
+    await gh.load('kits/chat-render.js');
+    await gh.load('kits/session-render.js');
   } finally { window.__depsDone(); }
 </script>
 <style>
