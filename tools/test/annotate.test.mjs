@@ -84,7 +84,7 @@ test('enable + add + serialize: markdown and JSON carry the set', () => {
   assert.ok(md.includes('https://example.test/sample'));
   assert.ok(md.includes('2 notes'));
   assert.ok(md.includes('> quick brown fox'));
-  assert.ok(md.includes('tighten this'));
+  assert.ok(md.includes('**Note:** tighten this'), 'the reader’s own words are labeled as such');
   assert.ok(md.includes('Context: Doc title › Section two'));
   assert.ok(md.includes('promote to heading'));
 

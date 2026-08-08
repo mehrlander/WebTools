@@ -20,13 +20,14 @@
 
   ?use=<ref> pins the lib chain to a branch/tag/sha for previewing edits.
 -->
-<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5,npm/@tailwindcss/typography/dist/typography.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
 <style>
   [x-cloak]{display:none}
-  /* Fallback shape for rendered markdown: the typography plugin CSS rides the
-     CDN combine, but a context that misses it (the headless harness resolves
-     it as a MISS; see tools/render/cdn.mjs) should still read as a document. */
+  /* The page owns its markdown styles outright. The typography plugin CSS was
+     dropped from the combine after a field test showed double bullet markers:
+     the version jsDelivr serves draws its own li::before dot on top of the
+     native list marker. One stylesheet, one bullet. */
   #doc h1{font-size:1.6rem;font-weight:700;margin:1.2rem 0 .6rem}
   #doc h2{font-size:1.3rem;font-weight:700;margin:1.1rem 0 .5rem}
   #doc h3{font-size:1.1rem;font-weight:600;margin:1rem 0 .4rem}
@@ -123,7 +124,7 @@
       const isMd = /\.(md|markdown)$/i.test(name) || name === 'pasted text' && /^#{1,6}\s/m.test(text);
       if (isMd) {
         el.innerHTML = marked.parse(text);
-        el.className = 'prose prose-sm sm:prose-base max-w-none';
+        el.className = 'max-w-none leading-relaxed';
       } else {
         el.textContent = '';
         const pre = document.createElement('pre');
