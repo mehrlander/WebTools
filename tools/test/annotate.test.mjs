@@ -114,9 +114,40 @@ test('saveJot appends one jot through fresh-read → mutate → save', async () 
   assert.ok(jot.id.startsWith('j'));
 });
 
+test('a two-bullet selection serializes clean: edges trimmed, markers restored', () => {
+  // Reproduces the first field test (2026-08-08): selecting across two <li>s
+  // from the whitespace before the first one produced a quote opening with
+  // blank "> " lines and no bullet markers.
+  doc.body.insertAdjacentHTML('beforeend', `
+    <ul id="pair">
+      <li><b>First.md</b> — the first thing, described.</li>
+      <li><b>Second.md</b> — the second thing, described.</li>
+    </ul>`);
+  const ul = doc.getElementById('pair');
+  const r = doc.createRange();
+  r.setStart(ul, 0);                                  // before the first li: pure whitespace
+  r.setEnd(ul.lastElementChild.lastChild, ul.lastElementChild.lastChild.data.length);
+
+  const q = A._quoteFor(doc.body, r);
+  assert.ok(q.exact.startsWith('First.md'), 'leading inter-element whitespace trimmed from the anchor');
+  assert.ok(q.exact.endsWith('described.'));
+
+  const display = A._displayFor(r);
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'text', quote: q, display, label: '' }, 'double bullets');
+  const md = A.toMarkdown();
+  assert.ok(md.includes('> - First.md — the first thing, described.'), md);
+  assert.ok(md.includes('> - Second.md — the second thing, described.'));
+  assert.ok(!/^>\s*$/m.test(md.split('## 1.')[1].split('double bullets')[0].trim().split('\n')[0]),
+    'the quote does not open with a blank quoted line');
+  A.clear();
+});
+
 test('remove and clear keep the list and paint state consistent', () => {
-  const before = A.items.length;
-  assert.equal(before, 2);
+  A.add({ type: 'text', quote: { exact: 'one', prefix: '', suffix: '' } }, 'n1');
+  A.add({ type: 'text', quote: { exact: 'two', prefix: '', suffix: '' } }, 'n2');
+  assert.equal(A.items.length, 2);
   A.remove(A.items[0].id);
   assert.equal(A.items.length, 1);
   A.clear();

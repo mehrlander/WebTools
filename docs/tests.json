@@ -14,7 +14,7 @@
       "path": "tools/test/annotate.test.mjs",
       "kind": "behavior",
       "protects": "A note's quote anchor survives the range round trip and disambiguates duplicates on context, and the jot save goes through fresh-read → mutate → save rather than clobbering the list.",
-      "assertions": 6,
+      "assertions": 7,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": 0
