@@ -230,7 +230,7 @@
       "path": "tools/test/estate-activity-progress.test.mjs",
       "kind": "component",
       "protects": "The activity progress indicator reports idle, running, and finished states honestly.",
-      "assertions": 5,
+      "assertions": 6,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
@@ -428,7 +428,7 @@
       "path": "tools/test/gh-store.test.mjs",
       "kind": "behavior",
       "protects": "saveBytes writes byte-exact content, so a binary round-trip cannot be silently re-encoded.",
-      "assertions": 5,
+      "assertions": 7,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
