@@ -17,7 +17,7 @@ half of the original design: committing a capture instead of only copying it.
 - **Destination: default first, override second.** A fixed path in
   web-tools-private (`state/captures/`), overridable from the envelope. If the
   destination must be specified per link it will be forgotten.
-- **The pattern is proven, not new.** `lib/repo-activity-cache.js` already
+- **The pattern is proven, not new.** `lib/kits/repo-activity-cache.js` already
   describes a page, running in the user's browser with their token, committing
   derived state to web-tools-private. This is a second instance.
 - **Render before write** stays the rule: the drawer shows the bundle whether
