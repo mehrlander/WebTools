@@ -21,7 +21,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Make the take-away menu work inside a toss](tasks/take-away-inside-a-toss-k73cjq.md)
 
 ## In progress
-- 🎫 [One logic shelf: move every window-namespace module into lib/kits/](tasks/lib-root-kit-migration-dind5t.md) (`claude/lib-kits-migration-review-ouipa1`)
+- (none)
 
 ## Blocked
 - (none)
@@ -58,6 +58,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [History-safe shim for toss-render address-mode renders](tasks/history-safe-toss-render-shim-hkih5m.md)
 - 🎫 [Integrate the stage with the surfacer's .surface format](tasks/integrate-stage-surfacer-format-3bvg2v.md)
 - 🎫 [Guard every lib-booting page against the Alpine load race](tasks/lib-load-race-on-slow-connections-9kx2mv.md) (`claude/web-tools-project-tracker-reo5qo`)
+- 🎫 [One logic shelf: move every window-namespace module into lib/kits/](tasks/lib-root-kit-migration-dind5t.md) (`claude/lib-kits-migration-review-ouipa1`)
 - 🎫 [One parser for the owner/repo\[@ref\]:path address](tasks/one-repo-address-parser-5gtv92.md) (`claude/web-tools-tracker-review-bw48ga`)
 - 🎫 [Private-repo landing federation via the home registry](tasks/private-repo-landing-federation-u50nns.md)
 - 🎫 [Two gaps the proposal channel showed on first use](tasks/proposals-diff-and-removal-w1y9lk.md) (`claude/web-tools-project-tracker-reo5qo`)

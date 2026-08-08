@@ -2067,14 +2067,26 @@ function app(){ return {
   // Refresh button and the estate refresh flow route here). Separate from the
   // config refresh because the activity crawl is much heavier (a capped branch
   // survey per repo), so it is not folded into every config refresh.
+  // Two passes, quick then deep, so the reader stops paying the survey's price
+  // up front. The quick pass (commits, PRs, recent branch dates) is complete
+  // for the recent window by construction and lands in seconds; the view
+  // re-reads on its event, so the list is current almost immediately. The
+  // survey true-up runs behind it, and the pushed-at gate inside the crawl
+  // keeps it to repos that actually took a push since their last survey, which
+  // most days is a small fraction of the estate.
   async refreshActivity(){
     if (this.activityRefreshing || !this.hasToken()) return;
     this.activityRefreshing = true;
     this.activityProgress = { done: 0, total: 0, active: [] };
     try {
-      const result = await this.refreshActivityCache(true);
+      const quick = await this.refreshActivityCache(true, { deep: false });
       document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
-      this.reportActivityRefresh(result);
+      this.reportActivityRefresh(quick);
+      if (quick?.skipped || quick?.error) return;
+      this.activityProgress = { done: 0, total: 0, active: [], phase: 'survey' };
+      const deep = await this.refreshActivityCache(true, { deep: true });
+      document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
+      this.reportActivityRefresh(deep, ' (survey)');
     } finally { this.activityRefreshing = false; this.activityProgress = null; }
   },
 
@@ -2084,7 +2096,9 @@ function app(){ return {
   // productive refresh and a no-op refresh used to end identically, with the
   // spinner stopping and nothing saying which happened). Per-repo failures are
   // surfaced here too; they were previously a console.warn and nothing else.
-  reportActivityRefresh(r){
+  // `label` distinguishes the two passes of the split refresh in the toast
+  // (' (survey)' on the true-up), since they report seconds apart.
+  reportActivityRefresh(r, label = ''){
     if (!r) return;
     const toast = Alpine.store('toast');
     if (!toast) return;
@@ -2097,10 +2111,10 @@ function app(){ return {
     const fail = r.failed.length;
     const tail = fail ? ' · ' + plural(fail, 'repo') + ' failed, see console' : '';
     if (r.changed.length)
-      toast('arrows-clockwise', 'Activity refreshed · ' + plural(r.changed.length, 'repo') + ' changed' + tail,
+      toast('arrows-clockwise', 'Activity refreshed' + label + ' · ' + plural(r.changed.length, 'repo') + ' changed' + tail,
             fail ? 'alert-warning' : 'alert-success', 4000);
     else
-      toast('check', 'No activity changes · ' + plural(r.total, 'repo') + ' checked' + tail,
+      toast('check', 'No activity changes' + label + ' · ' + plural(r.total, 'repo') + ' checked' + tail,
             fail ? 'alert-warning' : 'alert-info', 3000);
   },
 
@@ -2128,13 +2142,22 @@ function app(){ return {
   // is never surveyed even on a deep pass.
   async refreshActivityCache(force, { deep = true } = {}){
     if (!this.hasToken() || !window.RepoActivityCache || !window.BranchSurvey) return { skipped: true };
-    const A = window.RepoActivityCache, B = window.BranchSurvey;
+    // Single-flight: the tab-arrival kick and the Refresh button could run two
+    // crawls at once, and the loser of that race saved a cache built on a
+    // pre-commit read. A call that finds a crawl in flight joins it and gets
+    // that crawl's result.
+    if (this._activityCrawl) return this._activityCrawl;
     if (!force){
       try {
         const last = +localStorage.getItem(this._activityCheckKey) || 0;
         if (Date.now() - last < this.ACTIVITY_CACHE_INTERVAL_MS) return { skipped: true };
       } catch {}
     }
+    this._activityCrawl = this._crawlActivity(deep);
+    try { return await this._activityCrawl; } finally { this._activityCrawl = null; }
+  },
+  async _crawlActivity(deep){
+    const A = window.RepoActivityCache, B = window.BranchSurvey;
     // Estate membership from the config cache (estate:true). The activity crawl
     // is estate-scoped, not account-wide: only repos on the dashboard need the
     // survey. No cache yet means nothing to crawl (the config crawl seeds it).
@@ -2155,6 +2178,27 @@ function app(){ return {
     let metaByName = new Map();
     try { metaByName = new Map((await new window.GH({ token: window.TOKEN }).repos()).map(r => [r.full_name, r])); } catch {}
 
+    // The prior cache, read up front for the survey gate below.
+    let prev = null;
+    try { prev = JSON.parse((await reg.get(A.CACHE_PATH)).text); } catch {}
+
+    // The survey gate: a repo not pushed since its last survey cannot have
+    // changed any branch verdict (landed/stranded read git state alone, and a
+    // branch delete counts as a push), so its stored rows carry forward
+    // through mergeRepo and the tree reads go where something actually moved.
+    // This is what makes the deep pass affordable enough to run routinely:
+    // measured 2026-08-08, the estate held 167 surveyed branches at two API
+    // calls each, nearly all of them re-verifying repos that had not moved.
+    // The margin absorbs clock skew between GitHub's pushed-at and the client
+    // clock that stamped surveyedAt; anything unmeasurable surveys.
+    const SURVEY_SKEW_MS = 10 * 60 * 1000;
+    const needsSurvey = (repo) => {
+      const pushed = Date.parse(metaByName.get(repo)?.pushed_at || '');
+      const seen = Date.parse(prev?.repos?.[repo]?.survey?.surveyedAt || '');
+      if (!Number.isFinite(pushed) || !Number.isFinite(seen)) return true;
+      return pushed >= seen - SURVEY_SKEW_MS;
+    };
+
     const failed = [];
     try {
       const now = Date.now(), nowISO = new Date().toISOString();
@@ -2170,7 +2214,7 @@ function app(){ return {
           const repo = members[mi++];
           active.push(repo);
           this.tickActivityProgress(done, members.length, active);
-          try { fetched[repo] = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep); }
+          try { fetched[repo] = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep && needsSurvey(repo)); }
           catch(e){ failed.push(repo); console.warn('activity crawl', repo, e?.message || e); }
           active.splice(active.indexOf(repo), 1);
           this.tickActivityProgress(++done, members.length, active);
@@ -2178,7 +2222,9 @@ function app(){ return {
       };
       await Promise.all(Array.from({ length: Math.min(this.ACTIVITY_REPO_POOL, members.length) }, crawlOne));
 
-      let prev = null;
+      // Re-read the cache just before folding: the crawl can run for a while,
+      // and folding over the copy read before it would silently revert
+      // whatever another writer committed in between.
       try { prev = JSON.parse((await reg.get(A.CACHE_PATH)).text); } catch {}
       // `members` is the scope, so a repo whose crawl threw (it is in `failed`,
       // not in `fetched`) keeps its previous entry instead of being deleted by
@@ -2217,13 +2263,22 @@ function app(){ return {
   _sessionsCheckKey: 'wt:sessionsCacheCheckedAt',
   async refreshSessionsCache(force){
     if (!this.hasToken() || !window.RepoSessionsCache) return { skipped: true };
-    const S = window.RepoSessionsCache;
+    // Single-flight: opening the Sessions tab kicks the throttled crawl, and a
+    // Refresh tap while it runs used to start a second one; two crawls saving
+    // the same cache race each other into a 409 on the registry branch. A
+    // second call joins the crawl in flight instead.
+    if (this._sessionsCrawl) return this._sessionsCrawl;
     if (!force){
       try {
         const last = +localStorage.getItem(this._sessionsCheckKey) || 0;
         if (Date.now() - last < this.SESSIONS_CACHE_INTERVAL_MS) return { skipped: true };
       } catch {}
     }
+    this._sessionsCrawl = this._crawlSessions();
+    try { return await this._sessionsCrawl; } finally { this._sessionsCrawl = null; }
+  },
+  async _crawlSessions(){
+    const S = window.RepoSessionsCache;
     const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
     try {
       const nowISO = new Date().toISOString();
@@ -2302,7 +2357,8 @@ function app(){ return {
   // activityProgress, and has no header to report into. Reassigns rather than
   // mutating so the whole shape lands on the view in one reactive step.
   tickActivityProgress(done, total, active){
-    if (this.activityProgress) this.activityProgress = { done, total, active: [...active] };
+    // Spread first so the phase tag a split refresh set survives the tick.
+    if (this.activityProgress) this.activityProgress = { ...this.activityProgress, done, total, active: [...active] };
   },
 
   // Crawl one repo's activity: the cheap summary (pushed-at, recent commits,
@@ -3314,7 +3370,7 @@ function app(){ return {
              appRepo: p.get('appRepo') || '', appPath: p.get('appPath') || '', appRef: p.get('appRef') || '',
              appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '',
              sq: p.get('sq') || '', smode: p.get('smode') || '', srepo: p.get('srepo') || '', sref: p.get('sref') || '',
-             window: +p.get('window') || 0 };
+             window: this.parseWindowParam(p.get('window')) };
   },
 
   // The shell's state as URL parameters, built onto whatever base is handed in.
@@ -3407,7 +3463,7 @@ function app(){ return {
     // link: without it a shared ?view=activity silently lands the reader on
     // a different slice than the one that was being discussed.
     const w = this.branchWindow;
-    if (this.view === 'activity' && w && w !== this.BRANCH_WINDOW_DEFAULT) p.set('window', String(w));
+    if (this.view === 'activity' && w && w !== this.BRANCH_WINDOW_DEFAULT) p.set('window', this.windowParam(w));
     else p.delete('window');
     return p;
   },
@@ -3685,10 +3741,32 @@ function app(){ return {
   // renders it by reading the shell view (internal key 'activity'). A visit
   // kicks the throttled activity crawl (like Repos kicks the config crawl) so
   // the cache is warm and self-healing.
-  BRANCH_WINDOW_DEFAULT: 7,   // days; 14 was the crawl's classifier line, not a reading choice
-  branchWindow: 7,
+  BRANCH_WINDOW_DEFAULT: 1,   // days; the pane's question is "what am I working on", which is usually today (was 7 until 2026-08-08)
+  branchWindow: 1,
   setBranchWindow(d){ this.branchWindow = +d || this.BRANCH_WINDOW_DEFAULT; this.syncUrl(); },
-  goActivity(){ this.estateSeen = true; this.view = 'activity'; this.refreshActivityCache?.(false, { deep: false }); this.syncUrl(); },
+  // The window travels in the URL as whole days ('3') or hours ('1h'), so a
+  // sub-day window never rides as a float. Bare numbers keep old links valid.
+  windowParam(w){ return w < 1 ? Math.round(w * 24) + 'h' : String(w); },
+  parseWindowParam(s){
+    const m = /^(\d+(?:\.\d+)?)(h?)$/i.exec(s || '');
+    return m ? +m[1] / (m[2] ? 24 : 1) : 0;
+  },
+  goActivity(){ this.estateSeen = true; this.view = 'activity'; this.arrivalActivityRefresh?.(); this.syncUrl(); },
+  // Arrival kick: the throttled quick pass and, when it actually ran, the
+  // survey true-up behind it. Un-awaited by design; there is no progress UI on
+  // this path, and the view re-reads on the events. The true-up here is what
+  // keeps the branch verdicts current without anyone pressing Refresh: the
+  // pushed-at gate inside the crawl reduces it to the repos that took a push,
+  // so it can afford to ride every unthrottled arrival.
+  async arrivalActivityRefresh(){
+    try {
+      const quick = await this.refreshActivityCache(false, { deep: false });
+      if (!quick || quick.skipped || quick.error) return;
+      if (quick.committed) document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
+      const deep = await this.refreshActivityCache(true, { deep: true });
+      if (deep?.committed) document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
+    } catch(e){ console.warn('arrival activity refresh:', e?.message || e); }
+  },
   // Activity's other pill: the sessions that made the branches. Kicks its own
   // throttled crawl on visit, the way Open kicks the activity crawl, so the
   // cache warms itself and a cold one is one tap from being warm.

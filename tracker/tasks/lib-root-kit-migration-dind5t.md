@@ -1,7 +1,8 @@
 ---
 id: lib-root-kit-migration-dind5t
 title: One logic shelf: move every window-namespace module into lib/kits/
-status: in-progress
+status: done
+closed: 2026-08-08
 session: claude/lib-kits-migration-review-ouipa1
 project: web-tools
 opened: 2026-07-26
@@ -54,6 +55,7 @@ Dead: `diagnostic-vanilla-bundle.js` has zero consumers anywhere in `pages/`, `l
 Mechanical but wide: the move itself is trivial and the risk is entirely in the `gh.load` chains and the bundle build. Do it as its own PR, not folded into feature work.
 
 ## Progress log
+- 2026-08-08 (second entry): done on `claude/lib-kits-migration-review-ouipa1`; lands via PR #376. 22 kits moved (the settled 20 plus the two post-derivation arrivals), build.js to root, the dead diagnostic deleted, all runtime call sites rewritten, gh-boot's loads now the declared BOOT manifest (which owns SourcePeek.install()), the survey's boot detection reads the manifest form, and tools/test/code-layers.test.mjs gates the boundary three ways. Suite green at 1321. Cross-repo: chat-histories' life-journal.html jsDelivr load of swipe-deck.js gets a merge-order-safe fix in that repo; web-tools-private's mailbox README line likewise. Stale lib-root paths in open task bodies corrected in this commit (progress logs left as records).
 - 2026-08-08: claimed on `claude/lib-kits-migration-review-ouipa1` after a fresh-eyes review of the decision. The review re-derived the split: two files added since the 2026-08-07 derivation (`content-registry.js`, PR #375; `estate-search.js`, PR #372) are kits by the rule, so the move is 22 files, not 20. It also found one runtime consumer outside this repo the cost measurement could not see: chat-histories `pages/life-journal.html` loads `lib/swipe-deck.js` from jsDelivr at `@main`; fixed in that repo alongside this migration.
 - 2026-08-07 (second entry): **decided. Option A.** One logic shelf: every file
   registering a `window` namespace is a kit; `lib/` root keeps the loader, the
