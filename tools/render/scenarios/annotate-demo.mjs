@@ -30,7 +30,7 @@ export default async (page) => {
     await page.waitForSelector('[data-annotate-ui]:has-text("+ note")', { timeout: 5000 });
     await page.click('button[data-annotate-ui]:has-text("+ note")');
     await page.fill('textarea[data-annotate-ui]', note);
-    await page.click('button[data-annotate-ui]:has-text("Save note")');
+    await page.click('button[data-annotate-ui][title^="Save note"]');
     await page.waitForTimeout(150);
   };
 

@@ -149,8 +149,10 @@
   <div class="max-w-3xl mx-auto px-4 py-4">
     <div class="flex flex-wrap items-center gap-2 mb-4">
       <span class="font-bold text-lg">✎ Annotate</span>
+      <!-- text-[16px]: anything smaller makes iOS Safari zoom the page when
+           the field is focused, same rule the note bubble honors. -->
       <input x-model="spec" @keydown.enter="load()" spellcheck="false"
-             class="input input-bordered input-sm flex-1 min-w-48 font-mono text-xs"
+             class="input input-bordered input-sm flex-1 min-w-48 font-mono text-[16px]"
              placeholder="path, or owner/repo[@ref]:path">
       <button @click="load()" class="btn btn-sm btn-primary" :disabled="loading"
               x-text="loading ? 'Loading…' : 'Load'"></button>
