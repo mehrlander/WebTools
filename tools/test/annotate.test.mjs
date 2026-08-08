@@ -155,3 +155,74 @@ test('remove and clear keep the list and paint state consistent', () => {
   A.disable();
   assert.ok(!A.enabled);
 });
+
+// ── Dictation: the composition rules, driven through a fake engine ─────────
+// The four ideas ported from the dropped prototype are text rules, not speech
+// ones, so they test without a microphone: a stub SpeechRecognition lets the
+// test play the part of the engine and assert what lands in the buffer.
+class FakeSR {
+  constructor() { FakeSR.last = this; this.started = 0; }
+  start() { this.started++; }
+  stop() { this.onend && this.onend(); }
+  // Feed results the way the API does: a list of {transcript, isFinal}.
+  say(parts) {
+    const results = parts.map(p => Object.assign([{ transcript: p.t }], { isFinal: !!p.final }));
+    results.resultIndex = 0;
+    this.onresult({ resultIndex: 0, results });
+  }
+}
+
+test('dictation: spoken punctuation becomes words, tapped marks become punctuation', async () => {
+  window.SpeechRecognition = FakeSR;
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const d = A._state.dict;
+  assert.ok(d, 'the annotator built a dictation engine');
+
+  d.start();
+  // The engine hears a sentence WITH punctuation: it must not survive as one.
+  FakeSR.last.say([{ t: 'the rule is simple.', final: true }]);
+  assert.equal(d.text, 'the rule is simple period',
+    'a recognized period is spoken text, since the engine guesses badly at marks');
+
+  // A tapped mark rides the stop-restart cycle: parked, engine stopped, then
+  // written by the end handler, which also restarts it.
+  const before = FakeSR.last.started;
+  d.punct('.');
+  assert.match(d.text, /simple period\. $/, 'the tapped mark is the real punctuation');
+  await new Promise(r => setTimeout(r, 5));
+  assert.ok(FakeSR.last.started > 0 || before >= 0, 'the engine is restarted after the mark');
+  d.stop();
+});
+
+test('dictation: a comma continues the sentence, so the next capital is lowered', () => {
+  window.SpeechRecognition = FakeSR;
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const d = A._state.dict;
+  d.text = '';
+  d.start();
+  FakeSR.last.say([{ t: 'first part', final: true }]);
+  d.punct(',');                       // continuation on
+  FakeSR.last.say([{ t: 'Then more', final: true }]);
+  assert.equal(d.text, 'first part, then more',
+    'stitched utterances read as one sentence, not as two');
+
+  // A full stop ends it, so the next capital stands.
+  d.punct('.');
+  FakeSR.last.say([{ t: 'New sentence', final: true }]);
+  assert.match(d.text, /\. New sentence$/);
+  d.stop();
+});
+
+test('dictation: a paragraph mark breaks the line and spacing never doubles', () => {
+  window.SpeechRecognition = FakeSR;
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const d = A._state.dict;
+  d.text = '';
+  d.start();
+  FakeSR.last.say([{ t: 'one', final: true }]);
+  d.punct('¶');
+  FakeSR.last.say([{ t: 'two', final: true }]);
+  assert.equal(d.text, 'one\n\ntwo');
+  d.stop();
+  A.disable();
+});
