@@ -145,8 +145,8 @@ test('byAddr indexes every re-aimed link, so a host can resolve an intercepted t
 });
 
 test('prose file paths are styled as guide-path code; links, code, and non-paths are not', () => {
-  const out = render('- lib/estate-search.js hosts it, [new](https://github.com/m/w/blob/b/lib/x.js) stays a link, e.g. v2.1 does not\n\nsee `docs/inline.md` in code', {});
-  assert.match(out.html, /<code class="guide-path">lib\/estate-search\.js<\/code>/);
+  const out = render('- lib/kits/estate-search.js hosts it, [new](https://github.com/m/w/blob/b/lib/x.js) stays a link, e.g. v2.1 does not\n\nsee `docs/inline.md` in code', {});
+  assert.match(out.html, /<code class="guide-path">lib\/kits\/estate-search\.js<\/code>/);
   // The link's own label is untouched (an anchor is already styled by being one).
   assert.match(out.html, /<a[^>]*>new<\/a>/);
   assert.ok(!out.html.includes('guide-path">v2.1'), 'a version number is not a path');

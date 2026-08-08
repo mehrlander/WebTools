@@ -1,4 +1,4 @@
-// lib/portable-align.js — logic tests for the pure alignment assessment: the
+// lib/kits/portable-align.js — logic tests for the pure alignment assessment: the
 // marketplace-subscription read (object and string source shapes), the
 // enabled-plugin filter, the CLAUDE.md wiring heuristic, and the verdict
 // ladder (source / registry / optout / aligned / partial / unaligned).
@@ -11,7 +11,7 @@ import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
 const window = {};
-new Function('window', readFileSync(path.join(repoRoot, 'lib', 'portable-align.js'), 'utf8'))(window);
+new Function('window', readFileSync(path.join(repoRoot, 'lib', 'kits/portable-align.js'), 'utf8'))(window);
 const PA = window.PortableAlign;
 
 const HUB = 'mehrlander/web-tools';

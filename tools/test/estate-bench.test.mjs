@@ -79,7 +79,7 @@ window.__shell = {
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
-  'lib/surface.js',
+  'lib/kits/surface.js',
   // The bench mounts the stager on this tab. These assertions are about the
   // estate's own logic, so the stager stands in inert rather than dragging in
   // the path picker and the viewer behind it.

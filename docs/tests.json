@@ -119,6 +119,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/code-layers.test.mjs",
+      "kind": "gate",
+      "protects": "The lib/ boundary of docs/code-layers.md, in all three directions: no kit extends GH.prototype, lib/ root holds only the loader, prototype extenders, and boot bundles, and every alpineComponents/ file registers Alpine.data. Read off the code-shape survey so the test and the rule share one instrument.",
+      "assertions": 3,
+      "method": "spawn",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/compression.test.mjs",
       "kind": "kit",
       "protects": "Gzip round-trips through the GZ64 prefix protocol without corrupting the payload.",

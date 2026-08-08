@@ -16,7 +16,7 @@
 const CRAWL = [
   // Two code loads: same contents/ endpoint as a plain file read, separated
   // only by the via marker gh-boot's get() wrapper sets.
-  ['https://api.github.com/repos/mehrlander/web-tools/contents/lib/surface.js?ref=main', 9200, 70, 'GET', 'surface.js'],
+  ['https://api.github.com/repos/mehrlander/web-tools/contents/lib/kits/surface.js?ref=main', 9200, 70, 'GET', 'kits/surface.js'],
   ['https://api.github.com/repos/mehrlander/web-tools/contents/lib/kits/console.js?ref=main', 6100, 64, 'GET', 'kits/console.js'],
   ['https://api.github.com/repos/mehrlander/web-tools/commits?sha=main&per_page=16', 4213, 180],
   ['https://api.github.com/repos/mehrlander/web-tools/commits/9f3a1c2', 12844, 140],

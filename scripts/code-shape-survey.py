@@ -222,13 +222,24 @@ def browser_shape(rel, raw, boot_set):
 
 
 def boot_loaded(root):
-    """Files the chain loads unconditionally: gh-boot.js's gh.load calls plus
-    the bundles, expressed as paths relative to lib/."""
+    """Files the boot chain names, expressed as paths relative to lib/.
+
+    gh-boot.js declares its loads as data (the BOOT manifest's `path:` entries
+    and the FAB_BOOT values), so read those; keep the literal gh.load() form
+    too, for gh-api.js and for any stray literal a later edit adds. Conditional
+    equipment (the FAB set) counts as boot: the question this axis answers is
+    "does the chain name it", not "does every page pay it"."""
     boot = set()
     for carrier in ("lib/gh-boot.js", "lib/gh-api.js"):
         src = read(root, carrier)
         for m in re.finditer(r"gh\.load\(\s*['\"]([^'\"]+)['\"]", src):
             boot.add("lib/" + m.group(1))
+        for m in re.finditer(r"path:\s*['\"]([^'\"]+\.js)['\"]", src):
+            boot.add("lib/" + m.group(1))
+        fab = re.search(r"const FAB_BOOT = \{(.*?)\};", src, re.S)
+        if fab:
+            for m in re.finditer(r"['\"]([^'\"]+\.js)['\"]", fab.group(1)):
+                boot.add("lib/" + m.group(1))
     # The loader itself and the boot carriers are boot by definition.
     boot |= {"lib/gh-api.js", "lib/gh-boot.js"}
     return boot

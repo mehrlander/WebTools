@@ -1,4 +1,4 @@
-// lib/chat-render.js — the user/assistant render split. A user turn is not a
+// lib/kits/chat-render.js — the user/assistant render split. A user turn is not a
 // markdown document (it is whatever someone typed or pasted into a chat box),
 // so it renders as text; an assistant turn is markdown and still does.
 //
@@ -29,9 +29,9 @@ for (const k of ['addEventListener', 'removeEventListener', 'history', 'location
   globalThis[k] = typeof window[k] === 'function' ? window[k].bind(window) : window[k];
 // The deck and the takeover moved to swipe-deck.js, which chat-render now
 // delegates to; openTranscript throws without it, on purpose.
-new Function('window', 'document', readFileSync(path.join(repoRoot, 'lib/swipe-deck.js'), 'utf8'))(window, window.document);
+new Function('window', 'document', readFileSync(path.join(repoRoot, 'lib/kits/swipe-deck.js'), 'utf8'))(window, window.document);
 globalThis.swipeDeck = window.swipeDeck;
-new Function('window', 'document', readFileSync(path.join(repoRoot, 'lib/chat-render.js'), 'utf8'))(window, window.document);
+new Function('window', 'document', readFileSync(path.join(repoRoot, 'lib/kits/chat-render.js'), 'utf8'))(window, window.document);
 const cr = window.chatRender;
 
 const PASTE = ['// COA', 'let', ...Array.from({ length: 400 }, (_, i) => `    Step${i} = Table.SelectRows(Source, each [n] = ${i}),`)].join('\n');

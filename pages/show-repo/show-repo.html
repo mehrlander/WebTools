@@ -36,30 +36,30 @@
   // from the inlined cache (no network) so GH.prototype.save exists as before.
   await gh.load('gh-store.js');
   // Config-aggregate builders for the private cache (state/configs.json).
-  await gh.load('repo-config-cache.js');
+  await gh.load('kits/repo-config-cache.js');
   // The pure survey math + shared fetch orchestrators behind the branches view
   // and the activity crawl (window.BranchSurvey).
-  await gh.load('branch-survey.js');
+  await gh.load('kits/branch-survey.js');
   // Activity-aggregate builders for the private cache (state/activity.json).
-  await gh.load('repo-activity-cache.js');
+  await gh.load('kits/repo-activity-cache.js');
   // Sessions-aggregate builders for the private cache (state/sessions.json).
-  await gh.load('repo-sessions-cache.js');
+  await gh.load('kits/repo-sessions-cache.js');
   // The private request/response mailbox (mailbox/requests -> results).
-  await gh.load('repo-mailbox.js');
+  await gh.load('kits/repo-mailbox.js');
   // The write-side channel: proposed cross-repo edits, applied only on confirm.
-  await gh.load('repo-proposals.js');
+  await gh.load('kits/repo-proposals.js');
   // The owner/repo[@ref]:path grammar, and the inbox/outbox boxes built on it.
-  await gh.load('repo-address.js');
+  await gh.load('kits/repo-address.js');
   // The estate's search calls (trees, code-search API, session grep) with one
   // shared cache, behind the sidebar finder and the Search view.
-  await gh.load('estate-search.js');
+  await gh.load('kits/estate-search.js');
   // Pure alignment assessment behind the Portable view (window.PortableAlign).
-  await gh.load('portable-align.js');
+  await gh.load('kits/portable-align.js');
   // Declared staleness checks, evaluated on sight from a repo's own config.
-  await gh.load('repo-checks.js');
+  await gh.load('kits/repo-checks.js');
   // The GitHub destinations for one repo, shared by the sidebar's github menu
   // and the Activity view's repo chip (window.GithubLinks).
-  await gh.load('github-links.js');
+  await gh.load('kits/github-links.js');
   // The line/word differ behind the stage's Diff lens, shared with
   // pages/diff-tool.html (window.textDiff).
   await gh.load('kits/text-diff.js');
@@ -1232,7 +1232,7 @@
     </div>
 
     <!-- Branches: the branch-review rollup — every branch with the
-         content-level landed/stranded signal (lib/branch-survey.js, the
+         content-level landed/stranded signal (lib/kits/branch-survey.js, the
          browser port of home's branch-survey.sh). Advisory only; rows link
          out to GitHub's tree/compare and the header to its branches UI.
          Mounted lazily on first visit, like the estate. -->
@@ -1314,7 +1314,7 @@
     <!-- The Search view: the parameterized search surface (file names at any
          ref, contents through the code-search API, the captured session
          records), over the same shared core the sidebar finder uses
-         (lib/estate-search.js). The finder is for jumping; this is for
+         (lib/kits/estate-search.js). The finder is for jumping; this is for
          investigating, and it is where each mode's caveats are stated in
          full. Estate-level, token-gated in effect, its own component and
          lazy mount; the finder's "File contents" gate routes here with the
@@ -1673,7 +1673,7 @@ function app(){ return {
     if (!s.repo || !path) return '';
     return 'https://github.com/' + s.repo + '/blob/' + (s.ref || s.defaultRef || 'HEAD') + '/' + path;
   },
-  // Its source peek (lib/source-peek.js): an exact-file jump-over, so it gets
+  // Its source peek (lib/kits/source-peek.js): an exact-file jump-over, so it gets
   // one. The ref is passed as browsed, unresolved, since '' reads the default.
   filePeek(path){
     const s = Alpine.store('browser');
@@ -1712,7 +1712,7 @@ function app(){ return {
     if (this._configKey === key) { s.config = cfg; s.configName = name; this.runChecks(key); }
   },
 
-  // ── Declared staleness checks (lib/repo-checks.js) ────────────────────────
+  // ── Declared staleness checks (lib/kits/repo-checks.js) ────────────────────────
   // Evaluated when a repo is opened and thrown away when you leave. No cache,
   // no crawl, no session hook: the answer is only wanted at the moment someone
   // is looking at the repo, so computing it then is both cheapest and most
@@ -2109,7 +2109,7 @@ function app(){ return {
   // cache (state/activity.json) in the registry. This is the sibling of the
   // config crawl above, but heavier: besides cheap summary signals (pushed-at,
   // recent commits, open PRs, counts) it runs the capped landed/stranded branch
-  // survey (lib/branch-survey.js) once and stores it, so the branches view and
+  // survey (lib/kits/branch-survey.js) once and stores it, so the branches view and
   // the cross-repo Activity view render from the cache instead of a per-visit
   // fanout. A longer per-browser throttle and the same material-change gate keep
   // it occasional and commits sparse. See web-tools-private/DESIGN.md.
@@ -2426,7 +2426,7 @@ function app(){ return {
   // agent-authored instructions. Polled once per page load (a pending request
   // wants prompt service and listing is cheap); a dropped request is picked up
   // on the next load. Results are keyed by the request filename so nothing
-  // re-runs. See lib/repo-mailbox.js and web-tools-private/mailbox/README.md.
+  // re-runs. See lib/kits/repo-mailbox.js and web-tools-private/mailbox/README.md.
   // How many proposals are waiting. One cheap pair of directory reads at boot,
   // token-gated like everything that touches the registry; the count is what
   // gates the nav entry, so an empty channel is invisible rather than a stop
@@ -2929,7 +2929,7 @@ function app(){ return {
     if (this.pinIsFile(p.board)) this.goProject(p.path, 'board');
     else await this.openFolder(p.board);
   },
-  // The project's folder on GitHub (lib/github-links.js does the encoding, so
+  // The project's folder on GitHub (lib/kits/github-links.js does the encoding, so
   // a branch with slashes in its name survives). The ref follows what a tap on
   // the row itself would browse: the overlay branch where one is in force, the
   // browsed ref for the open repo, the default branch otherwise.
@@ -3092,7 +3092,7 @@ function app(){ return {
       { key: 'copy', label: 'Copy browse link', icon: 'ph-link' },
     ].filter(Boolean);
   },
-  // Where the menu's repo lives on GitHub (lib/github-links.js). The ref rides
+  // Where the menu's repo lives on GitHub (lib/kits/github-links.js). The ref rides
   // along only for the OPEN repo, since a ref is meaningless for one you are
   // not browsing; the task-board row appears only for a repo whose config
   // declares where its board is.
@@ -4349,7 +4349,7 @@ function overview(){ return {
       selected folder's files), Claims (the same registry's shared-claims
       table), and Tests (docs/tests.json). Per-repo scope and
       adoption moved onto the Repos cards on 2026-08-03; the alignment grading
-      (lib/portable-align.js) rides there now.
+      (lib/kits/portable-align.js) rides there now.
     Tools (?view=tools): a curated gallery of the owner's utility pages (the
       text-diff tool and the like), fed from the hub's hand-curated
       docs/tools.json (lib/alpineComponents/tools.js). Reuses the pages-catalog
@@ -4359,7 +4359,7 @@ function overview(){ return {
       renders through toss-render #gh= the same way the pages catalog does.
     Branches (?view=activity): EVERY branch of the estate in one cross-repo
       list, read off the registry's activity cache (state/activity.json,
-      lib/repo-activity-cache.js) in one GET, freshest first, highlighted by PR
+      lib/kits/repo-activity-cache.js) in one GET, freshest first, highlighted by PR
       state (ready / draft / no-PR) and carrying a caption-style link cluster
       (browse here, the branch's GitHub menu, the guide PR, the authoring Claude
       Code session lifted from the PR body) plus the survey's content verdict
@@ -4382,7 +4382,7 @@ function overview(){ return {
       view borrows the same cache for a freshness rollup on each card. The
       cache is refreshActivityCache's output: a ~12h-throttled crawl that runs
       the capped branch survey (shared with the branches view via
-      lib/branch-survey.js surveyBranchLive/surveyOlder) once and stores it, so
+      lib/kits/branch-survey.js surveyBranchLive/surveyOlder) once and stores it, so
       neither this view nor the branch review fans out per visit. The branch
       review renders cache-first, live only on Refresh. See docs/show-repo.md
       "The estate" and web-tools-private/DESIGN.md.
@@ -4436,7 +4436,7 @@ function overview(){ return {
     public parent), not this one. A menu offering a jump to a row three lines
     down is answering a question the list has already answered. Nothing expands,
     so nothing carries a chevron.
-    GITHUB (the github-logo button beside it, lib/github-links.js): Repository /
+    GITHUB (the github-logo button beside it, lib/kits/github-links.js): Repository /
     Pull requests / Issues / the declared task board / Branches / Commits /
     Actions, each with the out-arrow. This was one row inside the actions list,
     "Open on GitHub", pointing at the repo root: the single destination a reader
@@ -4534,7 +4534,7 @@ function overview(){ return {
   staged item and finder row links its own repo@ref (stage.js itemGh), each
   compare row links its blob at head, and every estate card and surface item
   carries its github-logo link. A jump-over for a REPO or a BRANCH is a small
-  set, which is what earns a menu: the repo's is lib/github-links.js, off the
+  set, which is what earns a menu: the repo's is lib/kits/github-links.js, off the
   sidebar row's github button and the Activity view's repo chip, and the
   branch's is estate.js's branchMenuItems, off each Open row (tree, compare,
   commits, the PR's files and checks, new PR). When adding a view, add its
@@ -4549,7 +4549,7 @@ function overview(){ return {
     Tools view already did — and pushed to the header's far edge, away from any
     filename; what the header names on the left carries its own jump. And an
     exact-file link carries a SOURCE PEEK.
-    THE PEEK (lib/source-peek.js) is a hover card showing the file: markdown
+    THE PEEK (lib/kits/source-peek.js) is a hover card showing the file: markdown
     rendered, JSON pretty-printed with its top-level shape named, everything
     else as source, always the first 20 lines with a footer saying what was left
     behind. One attribute at the call site (:data-peek="owner/repo[@ref]:path"),
@@ -4675,7 +4675,7 @@ function overview(){ return {
   THE CONFIG CACHE: state/configs.json in the registry is a periodic crawl of
   every account repo's .web-tools.json (refreshConfigCache, throttled ~6h,
   forced after a config save), keeping bounded per-repo history
-  (lib/repo-config-cache.js). It is the read path for estate membership and the
+  (lib/kits/repo-config-cache.js). It is the read path for estate membership and the
   quick-link row, so a normal load is two GETs (the cache + the account list),
   not an N-repo scan. Each repo's own file stays the source of truth; the cache
   is derived. Cold cache falls back to a live per-repo scan, then rebuilds.
@@ -4707,7 +4707,7 @@ function overview(){ return {
   stage. The bench does not move and no card becomes it: Load reads a saved
   surface's items onto the one bench and remembers the origin, so saving writes
   back to that file; saving an unattached set appends a new one. ?view=stage is
-  canonical, ?view=surfaces the alias. lib/surface.js is the model every reader
+  canonical, ?view=surfaces the alias. lib/kits/surface.js is the model every reader
   shares, though only at the seams: see its header for what is not yet true.
   The link is the transport — refs only, content stays behind the viewer's
   token:
@@ -4725,7 +4725,7 @@ function overview(){ return {
 
   THE BRANCH REVIEW: a per-repo view (lib/alpineComponents/branches.js) that
   rolls every branch up into recently-active / likely-landed / likely-stranded
-  on the content-level signal from lib/branch-survey.js — the browser port of
+  on the content-level signal from lib/kits/branch-survey.js — the browser port of
   home's tools/branch-survey.sh, whose math is unit-tested and held in
   agreement with the CLI by scripts/check-branch-survey.mjs. Advisory and
   read-only: rows jump to GitHub's tree/compare (and the in-shell compare),

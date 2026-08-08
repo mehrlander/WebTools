@@ -66,7 +66,7 @@ window.GH = class {
 };
 window.__shell = { REGISTRY_REPO: REG, hasToken: () => true, loadProposalCount: () => { window.__shell._counted = true; } };
 
-new window.Function(readFileSync(path.join(repoRoot, 'lib/repo-proposals.js'), 'utf8'))();
+new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/repo-proposals.js'), 'utf8'))();
 // The put-file pane diffs through the shared kit when it is present, which it
 // is wherever the view really runs (show-repo loads it in its own chain).
 new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/text-diff.js'), 'utf8'))();

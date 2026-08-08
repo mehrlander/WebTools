@@ -53,10 +53,10 @@ window.__shell = {
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
-  'lib/branch-survey.js',
+  'lib/kits/branch-survey.js',
   // The shelf reads every surface through the shared envelope model, which
   // gh-boot loads ahead of the components for exactly this reason.
-  'lib/surface.js',
+  'lib/kits/surface.js',
   'lib/alpineComponents/estate.js',
 ]);
 const data = Alpine.$data(window.document.getElementById('es'));

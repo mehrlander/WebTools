@@ -1,4 +1,4 @@
-// lib/session-render.js — the record-to-conversation mapping: the merge that
+// lib/kits/session-render.js — the record-to-conversation mapping: the merge that
 // interleaves three parallel lists, and the grouping the swipe deck pages on.
 //
 // Loads the real IIFE against a stub window, so these assert the shipped code
@@ -26,7 +26,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
-const src = readFileSync(path.join(repoRoot, 'lib/session-render.js'), 'utf8');
+const src = readFileSync(path.join(repoRoot, 'lib/kits/session-render.js'), 'utf8');
 const window = {};
 const document = { createElement: () => ({ style: {}, append() {}, setAttribute() {} }) };
 new Function('window', 'document', src)(window, document);

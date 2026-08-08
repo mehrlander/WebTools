@@ -144,7 +144,7 @@ for (const c of CASES) {
     check(`${c.page}: no chain, so no gh to run the kit`, /did not boot gh/.test(out.error), out.error);
     // Prove the equivalent through the kit's own logic instead.
     const w = {};
-    new Function('window', await readFile(path.join(root, 'lib/kits/build.js'), 'utf8'))(w);
+    new Function('window', await readFile(path.join(root, 'lib/build.js'), 'utf8'))(w);
     check(`${c.page}: bakeable() correctly reports nothing to inline`, w.buildKit.bakeable(src) === false);
     await live.ctx.close();
     continue;

@@ -30,7 +30,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 4022,
+      "words": 4081,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {
@@ -166,7 +166,7 @@
       "subject": "the code layers and the admission rule that sorts a new file into one of them",
       "status": "living",
       "reach": "project",
-      "words": 1141,
+      "words": 1184,
       "maintenance": "authored; the layer counts behind it are re-derived by scripts/unclaimed-code-survey.py rather than restated here, and lib/kits/README.md's former three-category list was reduced to the kit rule plus a pointer when this landed"
     },
     {

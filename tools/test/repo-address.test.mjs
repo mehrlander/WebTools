@@ -1,4 +1,4 @@
-// lib/repo-address.js — the one owner/repo[@ref]:path grammar, plus the
+// lib/kits/repo-address.js — the one owner/repo[@ref]:path grammar, plus the
 // inbox/outbox box specs built on it.
 //
 // Two decisions are under test, both of them answers to open questions rather
@@ -27,7 +27,7 @@ import path from 'node:path';
 import { makeWindow, repoRoot } from './bootstrap.mjs';
 
 const { window } = makeWindow({ html: '<!doctype html><html><body></body></html>' });
-new window.Function(readFileSync(path.join(repoRoot, 'lib/repo-address.js'), 'utf8'))();
+new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/repo-address.js'), 'utf8'))();
 const RA = window.RepoAddress;
 
 test('an address parses into repo, ref, and path', () => {
@@ -90,7 +90,7 @@ const CASES = ['me/proj:a.md', 'me/proj@feat/x:a/b.md', 'me.dash/a.b-c:x/y.json'
                'a/b@feat/x:p', 'bare/path.md', 'README.md', ''];
 
 test('the three entry points return this module\'s answer, not their own', () => {
-  for (const f of ['lib/shorter-payload.js', 'lib/data-payload.js', 'lib/alpineComponents/stage.js']) {
+  for (const f of ['lib/kits/shorter-payload.js', 'lib/kits/data-payload.js', 'lib/alpineComponents/stage.js']) {
     new window.Function(readFileSync(path.join(repoRoot, f), 'utf8'))();
   }
   const readers = {
@@ -131,12 +131,12 @@ test('a stage group still splits its comma list, through the shared parser', () 
 // with the module. A page that loads a delegating module without this one gets
 // a thrown error at first parse, so the order is checked rather than trusted.
 test('every page loading a delegating module loads repo-address.js first', () => {
-  const DELEGATES = ['data-payload.js', 'shorter-payload.js', 'alpineComponents/stage.js'];
+  const DELEGATES = ['kits/data-payload.js', 'kits/shorter-payload.js', 'alpineComponents/stage.js'];
   const pages = ['pages/data-view.html', 'pages/shorter.html', 'pages/show-repo/show-repo.html'];
   for (const rel of pages) {
     const src = readFileSync(path.join(repoRoot, rel), 'utf8');
     const at = needle => src.indexOf(`gh.load('${needle}')`);
-    const grammar = at('repo-address.js');
+    const grammar = at('kits/repo-address.js');
     for (const d of DELEGATES) {
       const use = at(d);
       if (use === -1) continue;
@@ -152,12 +152,12 @@ test('the pre-build boots url-params.js and repo-address.js before the component
   // carry the grammar and the param read in its boot list, not just in its
   // source cache: stage.js reads a stage link during init through both.
   const boot = readFileSync(path.join(repoRoot, 'tools/build/build-lib.mjs'), 'utf8');
-  assert.match(boot, /extraBoot\s*=\s*\['url-params\.js',\s*'repo-address\.js',\s*\.\.\.components/);
+  assert.match(boot, /extraBoot\s*=\s*\['kits\/url-params\.js',\s*'kits\/repo-address\.js',\s*\.\.\.components/);
   // The boot list, not the source cache: the cache is alphabetical and says
   // nothing about order of execution.
   const dist = readFileSync(path.join(repoRoot, 'dist/web-tools.js'), 'utf8');
   const at = p => dist.indexOf(`await window.gh.load("${p}")`);
-  const params = at('url-params.js'), grammar = at('repo-address.js'), stage = at('alpineComponents/stage.js');
+  const params = at('kits/url-params.js'), grammar = at('kits/repo-address.js'), stage = at('alpineComponents/stage.js');
   assert.ok(params !== -1, 'the built bundle never boots url-params.js');
   assert.ok(grammar !== -1, 'the built bundle never boots repo-address.js');
   assert.ok(stage !== -1 && grammar < stage, 'the built bundle boots the grammar before stage.js');

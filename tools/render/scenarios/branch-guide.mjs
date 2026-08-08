@@ -18,7 +18,7 @@ import { execFileSync } from 'node:child_process';
 const BODY = `Each row in the Map view's Docs tab now says how many distinct sessions opened that file. Reach says who *can* get to a doc; this says who did.
 
 **Changed:**
-- [lib/repo-sessions-cache.js](https://github.com/mehrlander/web-tools/blob/claude/show-repo-progress-b8l63x/lib/repo-sessions-cache.js) ([main](https://github.com/mehrlander/web-tools/blob/main/lib/repo-sessions-cache.js))
+- [lib/kits/repo-sessions-cache.js](https://github.com/mehrlander/web-tools/blob/claude/show-repo-progress-b8l63x/lib/kits/repo-sessions-cache.js) ([main](https://github.com/mehrlander/web-tools/blob/main/lib/kits/repo-sessions-cache.js))
 - [pages/branch.html](https://github.com/mehrlander/web-tools/blob/claude/show-repo-progress-b8l63x/pages/branch.html) ([main](https://github.com/mehrlander/web-tools/blob/main/pages/branch.html))
 - [docs/show-repo.md](https://github.com/mehrlander/web-tools/blob/claude/show-repo-progress-b8l63x/docs/show-repo.md)
 

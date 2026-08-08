@@ -9,7 +9,7 @@
   search over the chat-histories repo emits it (see docs/envelopes/chat-results.md for
   the schema), this page presents it — narrative, facet chips, excerpt cards,
   and full transcripts whose fenced code blocks are live artifacts
-  (lib/chat-render.js). A search bar filters within the loaded set.
+  (lib/kits/chat-render.js). A search bar filters within the loaded set.
 
   Data sources, first match wins:
     #gz=<base64url>   gzipped envelope JSON in the fragment (toss-style,
@@ -17,7 +17,7 @@
     ?src=<path>       envelope JSON fetched via the GitHub contents API;
                       plain path = this repo, or owner/repo@ref:path
     (neither)         a small built-in demo envelope
-  Each key is read fragment first, query as fallback (lib/url-params.js), so
+  Each key is read fragment first, query as fallback (lib/kits/url-params.js), so
   ?gz= and #src= work too. Prefer the forms above: the payload wants '#'
   because a query string is capped at roughly 8KB by the Pages edge, and the
   address arrives as ?src= from a routed toss's params shim.
@@ -63,10 +63,10 @@
     } else {
       await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
     }
-    await gh.load('url-params.js');
+    await gh.load('kits/url-params.js');
     await gh.load('kits/proof.js');
-    await gh.load('swipe-deck.js');
-    await gh.load('chat-render.js');
+    await gh.load('kits/swipe-deck.js');
+    await gh.load('kits/chat-render.js');
   } catch (e) {
     // Any failure here aborts this module before window.app is defined, so the
     // page went blank and the console filled with "Can't find variable: app"
@@ -108,7 +108,7 @@
       while (!window.chatRender) await new Promise(r => setTimeout(r, 50));
       await chatRender.ready();
       try {
-        // Fragment first, query as fallback, per key (lib/url-params.js): the
+        // Fragment first, query as fallback, per key (lib/kits/url-params.js): the
         // payload wants '#' for size and privacy, while ?src= is how a routed
         // toss delivers an address through toss-render's params shim.
         const gz = UrlParams.get('gz');

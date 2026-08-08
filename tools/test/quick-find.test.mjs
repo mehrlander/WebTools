@@ -67,9 +67,9 @@ window.__shell = shell;
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
-  'lib/repo-address.js',
-  'lib/repo-sessions-cache.js',
-  'lib/estate-search.js',
+  'lib/kits/repo-address.js',
+  'lib/kits/repo-sessions-cache.js',
+  'lib/kits/estate-search.js',
   'lib/alpineComponents/quick-find.js',
 ]);
 
