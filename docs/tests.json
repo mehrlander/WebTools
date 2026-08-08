@@ -14,7 +14,7 @@
       "path": "tools/test/artifacts-lockstep.test.mjs",
       "kind": "lockstep",
       "protects": "Every deterministic generator is re-run in check mode, so a committed artifact cannot sit behind its source.",
-      "assertions": 6,
+      "assertions": 7,
       "method": "spawn",
       "runner": "suite",
       "boot_smoke": 0

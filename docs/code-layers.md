@@ -102,6 +102,16 @@ not become a component, it gets a component wrapper.
 
 ## tools/, which is the weak layer
 
+Since 2026-08-08 the accounting below has a carrier:
+[`docs/harness.json`](harness.json), the harness census, one row per code file
+under `tools/` and `scripts/` (`tools/test/` stays with the test registry).
+`role` is authored and a blank role is counted rather than hidden;
+invocation, named, and tested are stamped by
+[`tools/build/tools-index.mjs`](../tools/build/tools-index.mjs) and held in
+lockstep by the suite. It renders in show-repo's Map view, Tools tab. The
+census does not change the judgment below; it makes the gap it describes
+visible per file rather than per column.
+
 [`tools/README.md`](../tools/README.md) states the folder split
 (`render/`, `build/`, `test/`, `graphql/`) and names the files that carry the
 contract between them. Below that line most files are named nowhere, and the

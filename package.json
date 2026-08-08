@@ -30,7 +30,8 @@
     "test:toss-multiparam": "node tools/test/toss-multiparam.mjs",
     "test:data-view-links": "node tools/test/data-view-links.mjs",
     "tests-index": "node tools/build/tests-index.mjs",
-    "test:playground": "node tools/test/playground-pass.mjs"
+    "test:playground": "node tools/test/playground-pass.mjs",
+    "tools-index": "node tools/build/tools-index.mjs"
   },
   "devDependencies": {
     "@alpinejs/collapse": "^3.15.12",

@@ -6,7 +6,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 742,
+      "words": 759,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -14,8 +14,16 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2658,
+      "words": 2710,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
+    },
+    {
+      "path": "docs/harness.json",
+      "subject": "the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting",
+      "status": "living",
+      "reach": "app",
+      "words": 2282,
+      "maintenance": "authored role and layer glossary; layer, lines, invocation, emits, named and tested stamped by tools/build/tools-index.mjs, held in lockstep by artifacts-lockstep.test.mjs; blank roles are counted, not hidden"
     },
     {
       "path": "docs/manifest.json",
@@ -166,7 +174,7 @@
       "subject": "the code layers and the admission rule that sorts a new file into one of them",
       "status": "living",
       "reach": "project",
-      "words": 1184,
+      "words": 1267,
       "maintenance": "authored; the layer counts behind it are re-derived by scripts/unclaimed-code-survey.py rather than restated here, and lib/kits/README.md's former three-category list was reduced to the kit rule plus a pointer when this landed"
     },
     {

@@ -112,6 +112,19 @@ if git status --porcelain -- tools/test package.json tools/build/tests-index.mjs
   fi
 fi
 
+# --- leg 2c: tools/ or scripts/ -> the harness census's derived fields --------
+# docs/harness.json is authored only in `role` and the layer glossary; layer,
+# lines, invocation, emits, named, and tested are stamped from the tree, and a
+# rename or a new npm script moves them without touching the registry.
+# artifacts-lockstep runs the generator's --check as the backstop.
+if git status --porcelain -- tools scripts package.json tools/build/tools-index.mjs docs/harness.json | grep -q .; then
+  if npm run tools-index --silent >/dev/null 2>&1; then
+    git add docs/harness.json 2>/dev/null || true
+  else
+    echo "build hook: 'npm run tools-index' failed — docs/harness.json may be stale" >&2
+  fi
+fi
+
 # --- leg 3a: skills/pages/lib -> the registry's derived fields ----------------
 # `reach` and `words` are the derived fields inside an otherwise authored file:
 # pointing a skill or a page at a doc changes the first, and editing any doc's
