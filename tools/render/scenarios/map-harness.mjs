@@ -1,9 +1,9 @@
-// screenshot.mjs interaction scenario: the Map view's Tools tab, the harness
+// screenshot.mjs interaction scenario: the Map view's Harness tab, the harness
 // census (docs/harness.json) rendered live.
 //
 //   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
-//     --script tools/render/scenarios/map-tools.mjs \
-//     --out tools/.preview/map-tools.png --full
+//     --script tools/render/scenarios/map-harness.mjs \
+//     --out tools/.preview/map-harness.png --full
 //
 // Same stub shape as map-docs.mjs: the sandbox blocks api.github.com, so the
 // scenario serves the REAL committed docs/harness.json through GH.get, with no
@@ -28,7 +28,7 @@ export default async function (page) {
     window.__shell.goMap();
     return true;
   }, reg);
-  if (ok !== true) throw new Error('map-tools scenario: ' + ok);
+  if (ok !== true) throw new Error('map-harness scenario: ' + ok);
 
   const host = () => [...document.querySelectorAll('[x-data]')]
     .find(el => (el.getAttribute('x-data') || '').includes('map('));
@@ -38,7 +38,7 @@ export default async function (page) {
     const el = [...document.querySelectorAll('[x-data]')]
       .find(e => (e.getAttribute('x-data') || '').includes('map('));
     const d = window.Alpine.$data(el);
-    d.mapTab = 'tools';
+    d.mapTab = 'harness';
     d.loadToolsReg();
   });
   await page.waitForFunction(() => {

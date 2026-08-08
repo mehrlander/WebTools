@@ -690,6 +690,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/map-harness.mjs",
+      "role": "drive show-repo's Map view onto the Harness tab with the committed census served through GH.get",
+      "layer": "tools/render/scenarios",
+      "lines": 52,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/map-set-adoption.mjs",
       "role": "",
       "layer": "tools/render/scenarios",
@@ -714,16 +724,6 @@
       "role": "",
       "layer": "tools/render/scenarios",
       "lines": 54,
-      "invocation": "driver",
-      "emits": false,
-      "named": false,
-      "tested": false
-    },
-    {
-      "path": "tools/render/scenarios/map-tools.mjs",
-      "role": "drive show-repo's Map view onto the Tools tab with the committed census served through GH.get",
-      "layer": "tools/render/scenarios",
-      "lines": 52,
       "invocation": "driver",
       "emits": false,
       "named": false,
