@@ -111,6 +111,9 @@
     // branch-brief reads compareFields from BranchSurvey, so it loads first.
     await gh.load('branch-survey.js');
     await gh.load('kits/guide-render.js');
+    // The content-registry reader: the Files pane groups changed files by
+    // creation mode where the repo declares data/design/content.csv.
+    await gh.load('content-registry.js');
     await gh.load('kits/branch-brief.js');
     await gh.load('kits/cm6-merge.js');
     await gh.load('alpineComponents/file-review.js');

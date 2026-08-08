@@ -91,8 +91,13 @@ test('the ref pair reaches the cards too', () => {
 });
 
 test('the cards mount without fetching, since the compare handed them their patches', () => {
-  assert.deepEqual(fetched, [],
-    'a card holding its patch has nothing to fetch until a tab needs the bytes');
+  // The PANE makes exactly one read at mount, the content-registry probe
+  // (data/design/content.csv, for the Files pane's grouping); the CARDS make
+  // none, a card holding its patch having nothing to fetch until a tab needs
+  // the bytes.
+  assert.deepEqual(fetched.filter(f => !f.endsWith(':data/design/content.csv')), [],
+    'no card fetched at mount');
+  assert.equal(fetched.length, 1, 'one pane-level fetch: the registry probe');
 });
 
 test('a card addresses the real repo when it does fetch', async () => {
