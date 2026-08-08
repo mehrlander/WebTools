@@ -281,12 +281,62 @@ test('an empty dir deposits local files at the repo root', async () => {
   assert.equal(txt.path, 'top.txt', 'no dir prefix at root');
 });
 
-test('copyLink refuses a link when only local files are staged', () => {
+test('a local-only stage still mints: the text rides the fragment, gzipped', async () => {
   reset();
-  store.stage = [{ local: true, id: 95, name: 'x', path: 'x', size: 1, isText: true, text: '' }];
+  clipWrites.length = 0;
+  store.stage = [{ local: true, id: 95, name: 'draft.html', path: 'draft.html',
+                   size: 20, isText: true, text: '<!doctype html><p>hi' }];
   data.linkCopied = false;
-  data.copyLink();
-  assert.equal(data.linkCopied, false, 'no link minted from local-only stage');
+  await data.copyLink();
+  assert.equal(data.linkCopied, true, 'a paste is shareable, not a dead end');
+  const url = clipWrites[0];
+  assert.match(url, /#gz=/, 'no empty #stage= key when there are no refs');
+  const back = await window.StageLink.decodeLocals(window.StageLink.parseLink(url).gz);
+  assert.deepEqual(plain_(back), [{ name: 'draft.html', text: '<!doctype html><p>hi' }]);
+});
+
+test('a local BINARY still cannot ride, and the refusal says which', async () => {
+  reset();
+  store.stage = [{ local: true, id: 96, name: 'a.bin', path: 'a.bin', size: 2,
+                   isText: false, bytes: new Uint8Array([1, 2]) }];
+  data.linkCopied = false;
+  await data.copyLink();
+  assert.equal(data.linkCopied, false);
+});
+
+test('refs and pasted text ride one link together', async () => {
+  reset();
+  clipWrites.length = 0;
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'lib/x.js' },
+    { local: true, id: 97, name: 'note.md', path: 'note.md', size: 5, isText: true, text: '# hi' },
+  ];
+  await data.copyLink();
+  const link = window.StageLink.parseLink(clipWrites[0]);
+  assert.deepEqual(plain_(link.items), [{ repo: 'me/a', ref: '', path: 'lib/x.js' }]);
+  const back = await window.StageLink.decodeLocals(link.gz);
+  assert.deepEqual(plain_(back), [{ name: 'note.md', text: '# hi' }]);
+});
+
+test('a paste past the link budget reports the overflow instead of minting', async () => {
+  // Incompressible by construction: a seeded LCG over a wide alphabet, so the
+  // test measures the BUDGET rather than gzip's appetite for repetition. (A
+  // first cut used i % 97, which gzip crushed to well under the cap.)
+  // Park-Miller, because the obvious LCG is a trap in JS: seed * 1103515245
+  // exceeds 2^53, so the sequence degenerates and gzip found 10:1 on it. This
+  // multiplier keeps every product inside safe-integer range, and the result
+  // actually resists compression, which is what the budget assertion needs.
+  let seed = 12345;
+  const noise = Array.from({ length: 40000 }, () => {
+    seed = (seed * 48271) % 2147483647;
+    return String.fromCharCode(33 + (seed % 94));
+  }).join('');
+  const big = [{ local: true, isText: true, name: 'big.txt', text: noise }];
+  await assert.rejects(() => window.StageLink.encodeLocals(big), (e) => {
+    assert.equal(e.overflow, true);
+    assert.match(e.message, /over the \d+K a link can carry/);
+    return true;
+  });
 });
 
 // ---- Save as surface: the bench-to-shelf bridge ------------------------
@@ -819,12 +869,12 @@ test('diffPrompts shows link-carried bespoke asks first, then the fixed set', ()
   data.linkPrompts = [];
 });
 
-test('copyLink carries the bespoke prompts back into the minted link', () => {
+test('copyLink carries the bespoke prompts back into the minted link', async () => {
   reset();
   clipWrites.length = 0;
   store.stage = [{ repo: 'me/a', ref: '', path: 'x.md' }];
   data.linkPrompts = [{ label: 'Tone', ask: 'Did the tone drift?' }];
-  data.copyLink();
+  await data.copyLink();
   assert.equal(clipWrites.length, 1);
   assert.match(clipWrites[0], /&prompts=/);
   assert.deepEqual(plain_(window.StageLink.parseLink(clipWrites[0]).prompts), plain_(data.linkPrompts));

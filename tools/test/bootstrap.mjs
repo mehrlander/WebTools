@@ -106,6 +106,21 @@ export function makeWindow({ html = '<!doctype html><html><body></body></html>',
   global.window = window;
   global.document = window.document;
 
+  // The streams/fetch surface, which jsdom ships none of: no CompressionStream,
+  // no ReadableStream, no Response, and a Blob whose .stream() is missing. Every
+  // real browser has all four, so a component that compresses (the stage's
+  // gz link payload) would be untestable here for a reason that has nothing to
+  // do with the component. Node's own implementations are copied in, together,
+  // so they stay in ONE realm: mixing jsdom's Blob with Node's CompressionStream
+  // is what fails first. Same rationale as the matchMedia polyfill below.
+  for (const name of ['ReadableStream', 'WritableStream', 'TransformStream',
+                      'CompressionStream', 'DecompressionStream', 'Response']) {
+    if (!window[name] && globalThis[name]) window[name] = globalThis[name];
+  }
+  try {
+    if (typeof new window.Blob(['x']).stream !== 'function') window.Blob = globalThis.Blob;
+  } catch { window.Blob = globalThis.Blob; }
+
   // matchMedia polyfill with settable matches + change events.
   const mqls = [];
   window.matchMedia = (query) => {
