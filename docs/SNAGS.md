@@ -22,6 +22,15 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### headless-shot-prose-flat: typography CSS misses in screenshots
+Chased flat prose headings in a shot as though the page were broken, including
+a pointless `npm i -D @tailwindcss/typography`; the limit was already
+documented, dated 2026-08-01: the typography npm tarball ships no built CSS,
+so `cdn.mjs` has nothing to resolve and markdown renders unstyled in every
+harness while the deployed page styles it fine. Read the documented limits
+before debugging shot pixels. *(seen: 2026-08-07)*
+→ [environment/testing.md](environment/testing.md)
+
 ### pre-build-boots-alpine-early: a page's own gh.load chain runs after its components init
 `branch.html` died with `Cannot read properties of undefined (reading 'fetchBrief')`.
 Nothing was wrong with the kit: importing `dist/web-tools.js` boots Alpine as part
