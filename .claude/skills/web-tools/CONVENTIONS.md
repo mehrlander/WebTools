@@ -32,7 +32,7 @@ Two carriers, split by subject, and the split is the point:
 | | Subject | Says | Covers |
 | --- | --- | --- | --- |
 | **Marker** | a claim, in prose | this passage is preserved, aged, or wrong | markdown only |
-| **Declaration** | a file path | this artifact is pinned: do not edit or rebuild it | any file type |
+| **Declaration** | a file path | this artifact is frozen: do not edit or rebuild it | any file type |
 
 `Stale` and `Wrong` have no path analogue, since a paragraph can be wrong while its file is perfectly live. Only `Frozen` overlaps.
 
@@ -60,7 +60,7 @@ Shape: `**Flavor YYYY[-MM[-DD]] [(note)] [→ target]:**`. Flavor, date, and tar
 
 A bare string is shorthand for `{ "path": ... }`; a trailing `/` covers a directory; `except` is `fnmatch` against the path below the entry. `except` is not a nicety: frozen folders routinely contain live inputs, and a whole-directory rule without it fires on exactly the files the estate depends on.
 
-**A marker cannot do the declaration's job,** and not by preference. A GFM alert renders in markdown and nowhere else, so `.html`, `.js`, and `.csv` artifacts can never carry one. That gap is why pinned pages stay illegible until something outside the prose declares them.
+**A marker cannot do the declaration's job,** and not by preference. A GFM alert renders in markdown and nowhere else, so `.html`, `.js`, and `.csv` artifacts can never carry one. That gap is why frozen pages stay illegible until something outside the prose declares them. ("Pinned" is not this vocabulary's word: in the estate it means kept at hand, the `pins` manifest field and the estate Pin list, never immutability.)
 
 **The one cross-check, and it runs one way:** a markdown file declared frozen should carry a `Frozen` banner, because the JSON is invisible to someone opening the file. The reverse does not hold, since a `Frozen` marker inside a living document annotates one claim and implies nothing about the file.
 
