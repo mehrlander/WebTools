@@ -182,6 +182,7 @@ itself; a page that instantiates `GH` by hand gets only what it loads.
 | `sessionRender` | `session-render.js` | a session record (web-tools-private `sessions/**.json`) as a paged conversation: merges the record's three parallel turn lists on `at`, groups a card per ask and per prose turn, and names what the record could not capture. Loads after `chat-render.js` |
 | `swipeDeck` | `swipe-deck.js` | the house swipe format: a snap track of slides, and the fullscreen takeover that frames it. Self-contained, so another repo's page can load it with a plain `<script src>` |
 | Alpine stores `browser`, `toasts`; magics `$clip`, `$paste`, `$toast` | `alpine-bundle.js` | exist only after `alpine:init` |
+| `Annotate` | `kits/annotate.js` | notes pinned to selections/elements/regions of a target document; serializes to markdown/JSON, saves jots. FAB take "Annotate" and `pages/annotate.html` drive it |
 | `__builtOffline` | a build (`kits/build.js` output) | present only on baked/offline pages |
 | `window.<kit>` namespaces | each kit | see [kits/README.md](../lib/kits/README.md) |
 

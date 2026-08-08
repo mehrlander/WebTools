@@ -495,6 +495,42 @@ specializes in choosing among them. It mints the single-group case of
 `StageLink`'s grammar directly, since `stage.js` is a full Alpine component
 and is not loaded on an ordinary page.
 
+### annotate.js
+
+Notes pinned to pieces of a page: select text (or pick an element, or drag a
+rectangle), write a note, and carry the set out as markdown for a chat model,
+as JSON (`annotate/1`), or as one jot in the estate registry. The unit is the
+**annotation set**, not the single note: several small notes against one
+document, shipped together, which is what neither a screenshot nor a copied
+quote does.
+
+Text selections anchor as **text quotes** (exact + prefix/suffix context, the
+W3C Web Annotation idea) rather than node offsets, so an anchor survives
+re-render and can be re-found in another copy of the document; an agent
+session holding the same file re-finds it by grep. Highlights paint through
+the CSS Custom Highlight API where the target window has it, so the
+document's DOM is never rewritten and a reactive page has nothing to trip
+over; without the API the notes still collect and serialize. Element picks
+anchor by css path plus excerpt; regions by document-coordinate rectangle
+plus the text of the blocks they cover.
+
+```js
+window.Annotate.enable({ doc?, subject? })  // mount on a target document
+                                            // (defaults to this one); subject
+                                            // = {title, url} for serialization
+window.Annotate.add(target, note)           // programmatic add
+window.Annotate.toMarkdown() / .toJSON()    // the set, serialized
+await window.Annotate.copy('md' | 'json')   // serialize + clipboard
+await window.Annotate.saveJot()             // one jot (fresh-read → mutate → save)
+window.Annotate.disable()
+```
+
+The FAB's take grid carries it as **Annotate** (the one take that operates on
+the view rather than carrying it away), aiming at the subject frame's
+document inside a readable `#gh=` toss; a `#gz=` sandbox is opaque and gets
+the shell, which the take's caveat says. `pages/annotate.html` is the page
+half: load any `owner/repo[@ref]:path` document and annotate it.
+
 ### wsl-core.js
 
 Dependency-free core for Washington State Legislature data: URL builders

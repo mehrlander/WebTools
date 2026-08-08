@@ -11,6 +11,15 @@
   },
   "tests": [
     {
+      "path": "tools/test/annotate.test.mjs",
+      "kind": "behavior",
+      "protects": "A note's quote anchor survives the range round trip and disambiguates duplicates on context, and the jot save goes through fresh-read → mutate → save rather than clobbering the list.",
+      "assertions": 6,
+      "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/artifacts-lockstep.test.mjs",
       "kind": "lockstep",
       "protects": "Every deterministic generator is re-run in check mode, so a committed artifact cannot sit behind its source.",

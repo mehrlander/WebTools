@@ -30,7 +30,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 4022,
+      "words": 4067,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {
@@ -158,7 +158,7 @@
       "subject": "the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality",
       "status": "living",
       "reach": "project",
-      "words": 4650,
+      "words": 4676,
       "maintenance": "authored, edited in place; the only statement of the gh.load contract that 36 page files depend on, and CLAUDE.md now sends a reader here before they touch lib/ or a page's boot"
     },
     {
