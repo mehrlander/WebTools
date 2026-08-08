@@ -484,13 +484,14 @@
   {
    "id": "lib-root-kit-migration-dind5t",
    "title": "One logic shelf: move every window-namespace module into lib/kits/",
-   "status": "backlog",
+   "status": "in-progress",
    "project": "web-tools",
    "opened": "2026-07-26",
+   "session": "claude/lib-kits-migration-review-ouipa1",
    "file": "lib-root-kit-migration-dind5t.md",
    "href": "tasks/lib-root-kit-migration-dind5t.md",
-   "lastActivity": "2026-08-07",
-   "logEntries": 4
+   "lastActivity": "2026-08-08",
+   "logEntries": 5
   },
   {
    "id": "live-confirm-graphql-queries-7maacy",
