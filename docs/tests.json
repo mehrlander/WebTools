@@ -38,6 +38,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/branch-brief-groups.test.mjs",
+      "kind": "component",
+      "protects": "The branch review's Files pane groups by creation mode where a content registry is declared, mounts no cards inside a collapsed group, and stays the flat unlabeled list where no registry exists.",
+      "assertions": 3,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/branch-brief.test.mjs",
       "kind": "behavior",
       "protects": "Branch state classification: ahead, behind, merged, and stranded.",
@@ -151,6 +160,15 @@
       "protects": "The console query language: chained scopes, staged selection, and the operators it documents.",
       "assertions": 42,
       "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/content-registry.test.mjs",
+      "kind": "behavior",
+      "protects": "The browser-side registry reader: quoted CSV parses header-driven, an exact file row beats any subtree and the longest prefix wins, and grouping leads with authored work, collapses mechanical, and carries a description only when one locator covers the group.",
+      "assertions": 4,
+      "method": "read",
       "runner": "suite",
       "boot_smoke": 0
     },
