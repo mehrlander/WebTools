@@ -147,3 +147,12 @@ which maps each symptom to its cause and fix.
 - `references/action-format.md`: binding model, full device pipeline, gotcha
   catalog, action-discovery method, serializer type coverage.
 - `assets/builder.js`: the device-side serializer JS (reference copy).
+
+## Outside this skill
+
+[`mehrlander/shortcut-tools`](https://github.com/mehrlander/shortcut-tools) is
+the action dictionary (810 names to identifiers, searchable by CLI) and the
+plist layer beneath this skill: how blocks pair, how variables bind, what the
+`.shortcut` file itself looks like. This skill composes actions and delivers
+them as a link; that repo is where an identifier or a format question is
+answered. See `references/action-format.md` for when to reach for which.
