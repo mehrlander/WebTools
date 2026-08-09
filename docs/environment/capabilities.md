@@ -359,9 +359,43 @@ Controls, all in the same body or an adjacent one:
 
 So it is neither the host, nor the fragment, nor a fragment-bearing link in
 general, and it is not the `@` or the `:` as literal characters, since encoding
-them changes nothing. The trigger was not isolated further; two candidates
-remain, a slash-bearing fragment and a repo-reference shape, and separating them
-would cost a write per probe for no gain in what to do about it.
+them changes nothing. **Superseded 2026-08-09 by the subsection below:** the
+sentence that stood here said the trigger was not isolated further and that
+separating the two remaining candidates would cost a write per probe for no gain
+in what to do about it. Eight probes across two writes separated them, and there
+was a gain: the workaround is one character of the address, not a different link.
+
+### Isolated: a slash in the ref, plus a `:path`
+
+*(measured 2026-08-09, PR #388, two writes of eight probe links, each read back
+through the MCP)*
+
+| Address | Result |
+| --- | --- |
+| `toss-render.html#gh=o/r@claude/some-branch:pages/p.html` | **wrapped** |
+| the same plus `?view=map&tab=claims` | **wrapped** |
+| the same plus a second `#view=map` fragment | **wrapped** |
+| `toss-render.html#gh=o/r@claude/some-branch` (ref, no `:path`) | survives |
+| `toss-render.html#gh=o/r:pages/p.html` (`:path`, no ref) | survives |
+| `toss-render.html#gh=o/r@848d92e:pages/p.html` (slash-free ref, `:path`) | survives |
+| `branch.html#gh=o/r@main:pages/p.html` | survives |
+| `branch.html#gh=o/r@claude/some-branch` | survives |
+
+The trigger is **a ref containing a slash together with a `:path`**, and neither
+half alone. `owner/repo@claude/a-branch:pages/p.html` is the scp-style
+`user@host:path` remote that git itself accepts, so a sanitizer treating it as a
+URL with a non-web scheme is behaving sensibly on a string that genuinely is
+ambiguous. Nothing about the query, a second fragment, or the page being
+addressed matters; the earlier table's `#gh=owner/repo@ref:path` row happened to
+use a slash-bearing ref and read as though the whole form was doomed.
+
+It hits nearly every guide PR, because Claude Code names every branch
+`claude/<something>`. Two workarounds, and the first is what
+[SURFACING.md](../SURFACING.md) already asks for: **address the commit SHA**
+rather than the branch, which is slash-free and is also what the guide template
+means by "branch preview w/ commit SHA". Or link the branch page, which carries
+no `:path` at all. A chat reply is unaffected; this is a write-path fault in one
+API.
 
 **The store is at fault, not only the readback.** The section above could not
 observe the stored body, because the REST API is proxy-blocked, and it named a

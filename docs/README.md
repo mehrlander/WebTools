@@ -13,8 +13,8 @@ observations and is corrected by re-probing; everything else is living and
 must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
-2 arrive in every session's context, 19 are named by CLAUDE.md,
-3 by a skill, 5 by a page or component. The remaining 19 are
+2 arrive in every session's context, 21 are named by CLAUDE.md,
+3 by a skill, 6 by a page or component. The remaining 17 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -37,10 +37,11 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`loader.md`](loader.md) — the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality
 - [`manifest.json`](manifest.json) — the field registry for root .web-tools.json: every field's type, consumer, and effect
 - [`markdown-in-chat.md`](markdown-in-chat.md) *(measured)* — working visually with markdown in a chat client on a phone
+- [`owners.json`](owners.json) — the owners registry: for a statement the coordination layer repeats, its one authoritative carrier and every typed repetition
 - [`pdf-structure.md`](pdf-structure.md) *(orphan)* — recovering structure from a PDF in the browser: what the kit does and honestly does not
 - [`portable.json`](portable.json) — the machine index of the portable set
-- [`properties.json`](properties.json) *(orphan)* — the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement
-- [`registries.md`](registries.md) *(orphan)* — the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction
+- [`properties.json`](properties.json) — the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement
+- [`registries.md`](registries.md) — the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction
 - [`routes.json`](routes.json) — how content moves, renders, and gets looked at: grammar, modes, routes, and the showing block
 - [`show-repo.md`](show-repo.md) — the show-repo shell: views, stage, transfer, and the .web-tools.json manifest
 - [`showing.md`](showing.md) — why the showing boundaries sit where they are: the frame and the record behind routes.json
@@ -86,5 +87,5 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`mcp-server-routing.md`](github/mcp-server-routing.md) *(record, orphan)* — two GitHub MCP servers at once: the 2026-07-15 observation, superseded
 - [`post-merge-branch-mutation.md`](github/post-merge-branch-mutation.md) *(orphan)* — why a merged branch stops being a live workspace: merged means closed
 
-11 shared claims are registered; the registry note in
-[`docs.json`](docs.json) carries the schema and the admission rule.
+11 shared statements are registered in
+[`owners.json`](owners.json), which carries its own scope and schema.

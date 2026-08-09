@@ -36,6 +36,7 @@ const manifest = {
 const routesJson = readFileSync(path.join(repoRoot, 'docs', 'routes.json'), 'utf8');
 const docsJson = readFileSync(path.join(repoRoot, 'docs', 'docs.json'), 'utf8');
 const surfJson = readFileSync(path.join(repoRoot, 'docs', 'surfacing.json'), 'utf8');
+const ownersJson = readFileSync(path.join(repoRoot, 'docs', 'owners.json'), 'utf8');
 const testsJson = readFileSync(path.join(repoRoot, 'docs', 'tests.json'), 'utf8');
 // The private registry's sessions cache, trimmed to the rollup the Docs tab
 // reads. Paths are repo-qualified there and hub-relative in the registry, which
@@ -57,6 +58,7 @@ window.GH = class {
     if (p === 'docs/routes.json') return { text: routesJson };
     if (p === 'docs/docs.json') return { text: docsJson };
     if (p === 'docs/surfacing.json') return { text: surfJson };
+    if (p === 'docs/owners.json') return { text: ownersJson };
     if (p === 'docs/tests.json') return { text: testsJson };
     if (p === 'state/sessions.json') return { text: JSON.stringify(sessions) };
     return { text: JSON.stringify(manifest) };
@@ -119,12 +121,23 @@ test('Surfacing loads on demand and names its authoritative doc', async () => {
   assert.equal(data.SURF_DOC, 'docs/SURFACING.md');
 });
 
-test('Docs loads on demand and carries both tables', async () => {
+test('Docs loads on demand and carries the census', async () => {
   assert.equal(data.docsReg, null, 'the registry is not fetched until the tab is opened');
   await data.loadDocsReg();
   assert.equal(data.docsErr, '');
   assert.ok(data.docsReg.documents.length > 30);
-  assert.ok(data.docsReg.claims.length > 3);
+});
+
+// The two tabs shared a fetch while the owners table was a second block inside
+// docs.json. Since 2026-08-09 each loads its own carrier, and the point of the
+// split is that opening Docs does not pull owners and the reverse.
+test('Owners loads its own carrier, separately from Docs', async () => {
+  assert.equal(data.ownersReg, null, 'the registry is not fetched until the tab is opened');
+  await data.loadOwnersReg();
+  assert.equal(data.ownersErr, '');
+  assert.ok(data.ownersReg.owners.length > 3);
+  assert.ok(data.ownersReg.scope, 'the tab reads the scope from the carrier, not from its own prose');
+  assert.equal(data.OWNERS_MANIFEST, 'docs/owners.json');
 });
 
 test('the Docs folder rail rolls up, nests, and prunes by reach without changing shape', () => {

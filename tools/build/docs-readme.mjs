@@ -15,6 +15,10 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const REG_PATH = path.join(repoRoot, 'docs', 'docs.json');
+// The owners table moved out of docs.json on 2026-08-09 into its own carrier.
+// The closing line of this index still counts it, because a reader of the docs
+// folder wants to know the table exists; it is read from where it now lives.
+const OWNERS_PATH = path.join(repoRoot, 'docs', 'owners.json');
 const OUT_PATH = path.join(repoRoot, 'docs', 'README.md');
 
 // Group order: the root first, then subfolders alphabetically; within a group
@@ -31,7 +35,7 @@ function groups(documents) {
     .sort(([a], [b]) => a === '.' ? -1 : b === '.' ? 1 : a.localeCompare(b));
 }
 
-function render(reg) {
+function render(reg, owners) {
   const lines = [];
   lines.push('# docs');
   lines.push('');
@@ -68,14 +72,15 @@ function render(reg) {
     }
     lines.push('');
   }
-  lines.push(`${reg.claims.length} shared claims are registered; the registry note in`);
-  lines.push('[`docs.json`](docs.json) carries the schema and the admission rule.');
+  lines.push(`${owners.owners.length} shared statements are registered in`);
+  lines.push('[`owners.json`](owners.json), which carries its own scope and schema.');
   lines.push('');
   return lines.join('\n');
 }
 
 const reg = JSON.parse(await readFile(REG_PATH, 'utf8'));
-const want = render(reg);
+const owners = JSON.parse(await readFile(OWNERS_PATH, 'utf8'));
+const want = render(reg, owners);
 
 if (process.argv.includes('--check')) {
   const have = await readFile(OUT_PATH, 'utf8').catch(() => '');

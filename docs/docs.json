@@ -1,5 +1,5 @@
 {
-  "note": "The documentation registry, in two tables. `documents` describes what each file under docs/ is, on four axes. `subject`: what it covers. `status`: `living` claims current truth and is wrong when stale, `record` preserves a moment and is wrong when rewritten, `measured` carries dated observations and is corrected by re-probing rather than by rewriting (the third value was added 2026-08-05, when five rows were found describing that genre in prose while their status said living). `reach`: how a reader gets to the file, DERIVED from the repo by tools/build/docs-reach.mjs and gated against this declaration, never hand-set. Strongest channel first: `injected` arrives in every session's context unasked, `project` is named by the repo's own CLAUDE.md so every session is one hop away, `skill` is named by a skill so invoking it pulls the doc, `app` is named in lib/ or pages/ CODE so a page reads or opens it (a mention in a comment does not count and is stripped), `orphan` means no automated channel puts it in front of anyone not already browsing docs/. `maintenance`: the discipline that keeps it true, and where none exists the row says so plainly rather than saying 'authored' (a bare row is barred by test, since the census gate otherwise invites filling rows instead of thinking about them). `claims` records statements that live in more than one place, since repetition is the only condition under which drift exists: each row names the one authoritative carrier and every repetition, with its relation (`copy` byte-comparable, `paraphrase` restated, `pointer` no content of its own, `live read` fetched at use), who keeps a copy (`kept`: by hand, or by a named builder), and the check that holds it or the reason none does. A row with `applies_to` is a family rule: the repetition policy for a class of claims that drift individually. The registry is authoritative for what it covers and owes the repo no inventory of claims; the documents census, by contrast, is complete by construction (tools/test/docs-registry.test.mjs holds every .md/.json under docs/ to exactly one row). Rendered by show-repo's Map view, Docs tab. Genre precedents: budget-drs DOCS.md (three genres, three rules) and properties.csv (one authoritative carrier, gated copies, unchecked declared honestly).",
+  "note": "The documentation registry, in two tables. `documents` describes what each file under docs/ is, on four axes. `subject`: what it covers. `status`: `living` claims current truth and is wrong when stale, `record` preserves a moment and is wrong when rewritten, `measured` carries dated observations and is corrected by re-probing rather than by rewriting (the third value was added 2026-08-05, when five rows were found describing that genre in prose while their status said living). `reach`: how a reader gets to the file, DERIVED from the repo by tools/build/docs-reach.mjs and gated against this declaration, never hand-set. Strongest channel first: `injected` arrives in every session's context unasked, `project` is named by the repo's own CLAUDE.md so every session is one hop away, `skill` is named by a skill so invoking it pulls the doc, `app` is named in lib/ or pages/ CODE so a page reads or opens it (a mention in a comment does not count and is stripped), `orphan` means no automated channel puts it in front of anyone not already browsing docs/. `maintenance`: the discipline that keeps it true, and where none exists the row says so plainly rather than saying 'authored' (a bare row is barred by test, since the census gate otherwise invites filling rows instead of thinking about them). The census is complete by construction: tools/test/docs-registry.test.mjs holds every .md/.json under docs/ to exactly one row, so a file cannot sit in the folder unaccounted for. The shared-ownership table that lived here as a second `claims` block moved to docs/owners.json on 2026-08-09: a registry does not live inside another registry's carrier, and the reconciliation against docs/registries.md is where that showed. Rendered by show-repo's Map view, Docs tab. Genre precedents: budget-drs DOCS.md (three genres, three rules) and properties.csv (one authoritative carrier, gated copies, unchecked declared honestly).",
   "documents": [
     {
       "path": "docs/CONSTELLATION.md",
@@ -46,7 +46,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 824,
+      "words": 840,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -70,7 +70,7 @@
       "subject": "the surfacing system: primitives plus the guide-PR course",
       "status": "living",
       "reach": "injected",
-      "words": 3763,
+      "words": 3861,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -102,7 +102,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2856,
+      "words": 2203,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -182,7 +182,7 @@
       "subject": "what the sandbox can run and reach",
       "status": "measured",
       "reach": "project",
-      "words": 3984,
+      "words": 4262,
       "maintenance": "authored; per-claim verification dates, edited in place and re-dated, probes preferred over assertions"
     },
     {
@@ -298,6 +298,14 @@
       "maintenance": "authored; findings established empirically, re-probe on a new client"
     },
     {
+      "path": "docs/owners.json",
+      "subject": "the owners registry: for a statement the coordination layer repeats, its one authoritative carrier and every typed repetition",
+      "status": "living",
+      "reach": "app",
+      "words": 848,
+      "maintenance": "tools/test/owners-registry.test.mjs holds shape, subject uniqueness, and locator resolution; coverage is curated against the written scope, not gated"
+    },
+    {
       "path": "docs/pdf-structure.md",
       "subject": "recovering structure from a PDF in the browser: what the kit does and honestly does not",
       "status": "living",
@@ -317,16 +325,16 @@
       "path": "docs/properties.json",
       "subject": "the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement",
       "status": "living",
-      "reach": "orphan",
-      "words": 939,
+      "reach": "project",
+      "words": 1644,
       "maintenance": "authored by hand; held both ways to the carriers it governs by tools/test/properties-registry.test.mjs"
     },
     {
       "path": "docs/registries.md",
       "subject": "the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction",
       "status": "living",
-      "reach": "orphan",
-      "words": 991,
+      "reach": "project",
+      "words": 1684,
       "maintenance": "the doctrine behind properties.json; written to travel, origin budget-drs properties.csv"
     },
     {
@@ -366,7 +374,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 4382,
+      "words": 4510,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {
@@ -384,174 +392,6 @@
       "reach": "project",
       "words": 701,
       "maintenance": "dated observations about products that move; re-probe the attended column rather than rewriting from memory, and carry the date. CONVENTIONS.md names it in an always-loaded paragraph, which is what gives it reach at all"
-    }
-  ],
-  "claims": [
-    {
-      "claim": "the skill roster",
-      "authoritative": ".claude/skills/ on disk (the plugin's source boundary ships whatever is there)",
-      "repetitions": [
-        {
-          "where": "docs/portable.json skill items",
-          "relation": "copy",
-          "kept": "by hand",
-          "check": "census, both directions (portable-manifest.test.mjs)"
-        },
-        {
-          "where": "docs/PORTABLE.md Docs table",
-          "relation": "copy",
-          "kept": "by hand",
-          "check": "two-way table test (portable-manifest.test.mjs)"
-        },
-        {
-          "where": "docs/PORTABLE.md bag table",
-          "relation": "paraphrase",
-          "check": "membership held via path mentions only; the prose is unchecked"
-        },
-        {
-          "where": "docs/MARKETPLACE.md; .claude-plugin/marketplace.json description",
-          "relation": "pointer"
-        }
-      ]
-    },
-    {
-      "claim": "the doc and script membership of the portable set",
-      "authoritative": "docs/portable.json (curation decides; docs/ holds non-portable files too)",
-      "repetitions": [
-        {
-          "where": "docs/PORTABLE.md Docs and Scripts tables",
-          "relation": "copy",
-          "kept": "by hand",
-          "check": "two-way table test (portable-manifest.test.mjs)"
-        }
-      ]
-    },
-    {
-      "family": "what each skill does",
-      "applies_to": "every skill in the set",
-      "authoritative": "the skill's own SKILL.md description (it is what triggers invocation)",
-      "repetitions": [
-        {
-          "where": "docs/portable.json role; docs/PORTABLE.md table cells",
-          "relation": "paraphrase",
-          "check": "none; deliberately shorter per surface, honest while the owner is named"
-        }
-      ]
-    },
-    {
-      "claim": "the surfacing primitives",
-      "authoritative": "docs/SURFACING.md (sessions load and follow the prose; the ownership runs opposite to routes.json)",
-      "repetitions": [
-        {
-          "where": "docs/surfacing.json",
-          "relation": "paraphrase",
-          "check": "membership two-way on the bullet lead-ins (surfacing-manifest.test.mjs); the summaries themselves unchecked, honest while the doc is named authoritative"
-        },
-        {
-          "where": "other repos' CLAUDE.md restatements (home, chat-histories adaptations)",
-          "relation": "paraphrase",
-          "check": "none; each declares itself an adaptation and names this doc as source"
-        }
-      ]
-    },
-    {
-      "claim": "the working conventions text",
-      "authoritative": "docs/CONVENTIONS.md and docs/SURFACING.md",
-      "repetitions": [
-        {
-          "where": ".claude/skills/web-tools/CONVENTIONS.md and SURFACING.md",
-          "relation": "copy",
-          "kept": "by hand",
-          "check": "byte equality (portable-manifest.test.mjs)"
-        },
-        {
-          "where": "the web-tools skill's runtime fetch",
-          "relation": "live read",
-          "check": "none needed; reads main at use"
-        }
-      ]
-    },
-    {
-      "claim": "the adoption commands",
-      "authoritative": "docs/MARKETPLACE.md (PORTABLE.md names it the how to its what)",
-      "repetitions": [
-        {
-          "where": "docs/PORTABLE.md, How to adopt",
-          "relation": "copy",
-          "kept": "by hand",
-          "check": "none; two hand-kept copies of the same commands"
-        }
-      ]
-    },
-    {
-      "claim": "the toss routes (content type to renderer)",
-      "authoritative": "docs/routes.json routes block",
-      "repetitions": [
-        {
-          "where": "pages/toss-render.html TOSS_ROUTES literal (inlined so the critical render path takes no fetch)",
-          "relation": "copy",
-          "kept": "by hand",
-          "check": "lockstep (routes-manifest.test.mjs)"
-        }
-      ]
-    },
-    {
-      "claim": "the showing mechanisms: which link reaches which change, and what each misses",
-      "authoritative": "docs/routes.json showing block",
-      "repetitions": [
-        {
-          "where": "CLAUDE.md, the one-trap quote",
-          "relation": "paraphrase",
-          "check": "word cap plus required pointer at showing.md (routes-manifest.test.mjs), guarding against the prose creeping home"
-        },
-        {
-          "where": "docs/showing.md, How it works in detail",
-          "relation": "paraphrase",
-          "check": "none; the doc itself declares the manifest authoritative"
-        }
-      ]
-    },
-    {
-      "claim": "the MCP readback strips HTML from PR bodies",
-      "authoritative": "docs/environment/capabilities.md (measured, dated)",
-      "repetitions": [
-        {
-          "where": "docs/SURFACING.md, region-markers rationale",
-          "relation": "paraphrase",
-          "check": "none; cites the measurement"
-        }
-      ]
-    },
-    {
-      "claim": "the GitHub MCP routing rule: on an unexpected approval wall, call the built-in server's equivalent",
-      "authoritative": "docs/environment/capabilities.md, \"MCP: two servers can share a tool name\" (2026-07-29; logs, controls, upstream issues)",
-      "repetitions": [
-        {
-          "where": "docs/github/mcp-server-routing.md (2026-07-15)",
-          "relation": "paraphrase",
-          "check": "none: a superseded record, marked Stale on the paragraph that parted from the owner. Kept because the observation is dated evidence, not because it is current"
-        },
-        {
-          "where": "the sandbox-traps skill",
-          "relation": "pointer"
-        }
-      ]
-    },
-    {
-      "claim": "the code layers and their admission rules",
-      "authoritative": "docs/code-layers.md",
-      "repetitions": [
-        {
-          "where": "lib/kits/README.md Concept section",
-          "relation": "pointer",
-          "check": "none needed; the section was reduced to the kit's own admission rule and a link when the wider statement landed 2026-08-06, so it no longer restates the list it used to carry incompletely"
-        },
-        {
-          "where": "tools/README.md Layout section",
-          "relation": "paraphrase",
-          "check": "none; it owns the tools/ folder split in detail and code-layers.md names it as the owner rather than repeating it"
-        }
-      ]
     }
   ]
 }
