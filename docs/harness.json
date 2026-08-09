@@ -410,6 +410,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/annotate-select-text.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 85,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/annotate-select.mjs",
       "role": "a note selected by clicking its highlight in the document rather than its row",
       "layer": "tools/render/scenarios",
