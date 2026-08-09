@@ -510,6 +510,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/chats-probe.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 22,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/code-layers-guide-lower.mjs",
       "role": "scroll the code-layers guide to its lower tabs for the pixel check",
       "layer": "tools/render/scenarios",

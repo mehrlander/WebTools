@@ -299,6 +299,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/estate-chats-retry.test.mjs",
+      "kind": "behavior",
+      "protects": "The Chats pane's loader attempts ONCE per failure. It is driven by an x-effect that reads state the loader writes, so guarding on success rather than on the attempt makes a failed load relaunch itself forever: the kit's backoff then rejects without touching the network, so the retry is free, the main thread pegs, and the pane looks frozen with no traffic to explain it. That shipped and froze a phone against chat-histories@main before the frontier landed there. The assertion is a read COUNT across re-entries rather than a state, plus the explicit Retry clearing both the guard and the backoff. A regression starves the runner rather than failing it, so the fake caps reads and throws instead.",
+      "assertions": 5,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/estate-detail-address.test.mjs",
       "kind": "component",
       "protects": "The branch takeover's address: opening stamps &detail=owner/repo@branch, a swipe moves it, closing clears it, and a link to a branch the current list no longer holds still opens rather than resolving to nothing.",
