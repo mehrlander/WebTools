@@ -962,3 +962,98 @@ test('the destination trigger splits repo from its scope, and the folder never t
   pk.label = 'lib/alpineComponents/fab.js';
   assert.deepEqual(plain_(pk.labelParts), { main: 'lib/alpineComponents/fab.js', ref: '', dir: '' });
 });
+
+// ── Dictation: the stage's third intake ────────────────────────────────────
+// The composition rules belong to kits/dictate.js and are tested there. What
+// is here is what the stager owes the kit: it holds no buffer of its own, the
+// keyboard and the microphone are one toggle over one text, and whichever mode
+// is open when Stage is tapped is the one that reaches the file.
+class FakeSR {
+  constructor() { FakeSR.last = this; }
+  start() {}
+  stop() { this.onend && this.onend(); }
+  say(t, final) {
+    this.onresult({ resultIndex: 0,
+      results: [Object.assign([{ transcript: t }], { isFinal: !!final })] });
+  }
+}
+
+test('dictation stages a file that exists nowhere, breaks and all', async () => {
+  reset();
+  window.SpeechRecognition = FakeSR;
+  // The kit is normally fetched on the first tap; hand it over directly, since
+  // the point here is the component's use of it and not the load.
+  const { loadKit } = await import('./bootstrap.mjs');
+  loadKit('dictate.js', { window });
+  assert.equal(data.dictAvail, true, 'the button is offered once a recognizer exists');
+
+  await data.dictStart();
+  assert.equal(data.dictOpen, true);
+  FakeSR.last.say('a file that exists nowhere yet', true);
+  await tick();
+  assert.equal(data.dictText, 'a file that exists nowhere yet.',
+    'the component mirrors the kit rather than keeping its own buffer');
+
+  data.dictStage();
+  assert.equal(data.dictOpen, false, 'staging closes the bar');
+  assert.equal(store.stage.length, 1);
+  assert.equal(store.stage[0].local, true);
+  assert.equal(store.stage[0].text, 'a file that exists nowhere yet.');
+  assert.match(store.stage[0].name, /\.(txt|md)$/, 'and it is named for what it is');
+});
+
+test('the pencil is a mode switch over one text, and the typed version wins', async () => {
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('spoken first', true);
+  FakeSR.last.say('and still being heard', false);
+  await tick();
+
+  // Opening stops the engine, since dictating into a focused textarea is two
+  // writers on one buffer, and takes the hypothesis with it: it is part of
+  // what is being edited.
+  data.dictEditOpen();
+  assert.equal(data.dictEdit, true);
+  assert.equal(data.dictOn, false, 'the engine is stopped, not left running behind the keyboard');
+  assert.equal(data.dictDraft, 'spoken first and still being heard.',
+    'the draft opens on everything that was on screen, interim included');
+
+  // The Breaks toggle goes inert once typing has replaced the pause record,
+  // and says so rather than silently doing nothing.
+  data.dictDraft = 'typed over the top';
+  data.dictEditClose();
+  await tick();
+  assert.equal(data.dictEdit, false);
+  assert.equal(data.dictText, 'typed over the top', 'no period is added to what was typed');
+  assert.equal(data.dictBreakable, false, 'and the pause record is gone with it');
+
+  data.dictStage();
+  assert.equal(store.stage[0].text, 'typed over the top');
+});
+
+test('staging from inside the keyboard takes the textarea, not the stale buffer', async () => {
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('the dictated version', true);
+  await tick();
+  data.dictEditOpen();
+  data.dictDraft = 'the corrected version';
+  data.dictStage();                    // straight from edit mode, no close first
+  assert.equal(store.stage[0].text, 'the corrected version');
+  assert.equal(data.dictEdit, false, 'and the bar resets, keyboard mode included');
+  assert.equal(data.dictDraft, '');
+});
+
+test('cancel discards, since the buffer is one utterance and staging is one tap', async () => {
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('never mind', true);
+  await tick();
+  data.dictCancel();
+  assert.equal(data.dictOpen, false);
+  assert.equal(data.dictText, '');
+  assert.equal(store.stage.length, 0, 'nothing reached the stage');
+});

@@ -403,3 +403,24 @@ test('without the dictate kit the annotator still works, minus the microphone', 
   assert.match(B.toMarkdown(), /typed/, 'the set still serializes');
   B.disable();
 });
+
+test('the pencil opens on the phrase that was on screen, not the one before it', () => {
+  // stop() runs the engine's end handler, which clears the interim, so the
+  // flush has to come first. The other order lost the sentence the reader was
+  // looking at when they reached for the pencil. Found in the stage's copy of
+  // the same toggle (tools/test/stage.test.mjs) and fixed in both.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const d = A._state.dict;
+  d.text = '';
+  d.start();
+  FakeSR.last.say([{ t: 'the settled part', final: true }]);
+  FakeSR.last.say([{ t: 'and the part still being heard', final: false }]);
+
+  A._state.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A._state.editing, true);
+  assert.equal(A._state.compTa.value, 'the settled part and the part still being heard.',
+    'the interim rode into the textarea rather than being dropped by the stop');
+  A.disable();
+});
