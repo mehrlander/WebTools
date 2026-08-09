@@ -410,6 +410,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/annotate-tossed-notes.mjs",
+      "role": "annotate.html inside a toss: the kit runs in the subject frame, and Review has to reach the shell's drawer (asserts, not just shoots)",
+      "layer": "tools/render/scenarios",
+      "lines": 53,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/annotate-units-demo.mjs",
       "role": "the two unit modes, element pick and region drag, driven through real pointer events",
       "layer": "tools/render/scenarios",

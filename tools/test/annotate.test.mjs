@@ -258,6 +258,50 @@ test('the set announces its changes, and Review is a request rather than a surfa
   A.clear();
 });
 
+test('announcements climb to the top window, since the drawer is usually up there', () => {
+  // A toss runs the annotated page in an iframe whose own drawer declines to
+  // mount, so the listener is in the TOP window while the kit is in the frame.
+  // An announcement that only reached its own window was shouted into the frame
+  // nobody watches: measured 2026-08-09, Review reporting "no drawer" with the
+  // launcher visible in the same screenshot.
+  //
+  // jsdom's window.top is non-configurable, so the framed kit gets its own
+  // stub window. That is honest to the case anyway: a second kit instance in a
+  // second window is exactly what a toss produces.
+  const seen = { self: [], top: [] };
+  const topWin = { claim: false,
+    dispatchEvent(e) { seen.top.push(e.type); return !topWin.claim; } };
+  const frameWin = { dispatchEvent(e) { seen.self.push(e.type); return true; } };
+  frameWin.top = topWin;
+  loadKit('annotate.js', { window: frameWin });
+  const F = frameWin.Annotate;
+
+  assert.equal(F._announce('annotate:change'), false, 'nobody claimed it');
+  assert.deepEqual(seen.self, ['annotate:change']);
+  assert.deepEqual(seen.top, ['annotate:change'], 'and it reached the shell one frame up');
+
+  topWin.claim = true;
+  assert.equal(F._announce('annotate:review', true), true,
+    'a drawer one frame up counts as a drawer');
+
+  // Unframed, top IS the window, and one dispatch must not become two: a
+  // doubled change event is a doubled re-read of the whole set.
+  seen.self.length = seen.top.length = 0;
+  const plain = { dispatchEvent(e) { seen.self.push(e.type); return true; } };
+  plain.top = plain;
+  loadKit('annotate.js', { window: plain });
+  plain.Annotate._announce('annotate:change');
+  assert.deepEqual(seen.self, ['annotate:change'], 'announced once, not twice');
+
+  // A cross-origin top throws on access; the local dispatch still stands.
+  seen.self.length = 0;
+  const walled = { dispatchEvent(e) { seen.self.push(e.type); return true; },
+                   get top() { throw new Error('cross-origin'); } };
+  loadKit('annotate.js', { window: walled });
+  assert.doesNotThrow(() => walled.Annotate._announce('annotate:change'));
+  assert.deepEqual(seen.self, ['annotate:change']);
+});
+
 test('remove and clear keep the list and paint state consistent', () => {
   A.add({ type: 'text', quote: { exact: 'one', prefix: '', suffix: '' } }, 'n1');
   A.add({ type: 'text', quote: { exact: 'two', prefix: '', suffix: '' } }, 'n2');

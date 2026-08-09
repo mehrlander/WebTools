@@ -156,6 +156,46 @@ test('opening the tab is not enabling the annotator, and turning it off keeps th
   A.clear();
 });
 
+// The frame case is the NORMAL case for a page under review, not an edge: a
+// toss runs the page in an iframe stamped __fabHosted, so the page's own drawer
+// declines and the shell's is the one on screen, while the kit loads with the
+// framed page. Measured 2026-08-09 on a phone: Review reported "no drawer" with
+// the launcher visible in the same screenshot.
+test('the drawer adopts an annotator living in the subject frame', async () => {
+  const d = await mountFab();
+  window.Annotate.disable();
+
+  // A second kit, standing in for the one a tossed page loads for itself. Its
+  // window is not this component's, which is the whole difficulty.
+  const frameWin = { addEventListener() {}, removeEventListener() {}, dispatchEvent: () => true };
+  loadKit('annotate.js', { window: frameWin });
+  const frameDoc = doc;                       // same document is enough for the seam
+  frameWin.Annotate.enable({ doc: frameDoc, subject: { title: 'pages/annotate.html', url: '' } });
+  frameWin.Annotate.clear();
+  frameWin.Annotate.add(quote('fox'), 'taken inside the frame');
+
+  window.__tossFrame = { contentWindow: frameWin };
+  d.viaToss = true;
+  d.annSync();
+
+  assert.equal(d.annOn, true, 'an enabled kit wins wherever it lives');
+  assert.equal(d.annItems.length, 1);
+  assert.equal(d.annSubject, 'pages/annotate.html', 'and the head names the framed page');
+
+  // Edits reach the frame's kit, not the shell's empty one.
+  d.annEdit(d.annItems[0].id, 'edited from the shell');
+  assert.equal(frameWin.Annotate.items[0].note, 'edited from the shell');
+  assert.equal(window.Annotate.items.length, 0, 'the shell instance stays untouched');
+
+  // Start adopts rather than enabling a second annotator over the same page.
+  await d.annStart();
+  assert.equal(window.Annotate.enabled, false, 'no second card, no second set of highlights');
+
+  delete window.__tossFrame;
+  d.viaToss = false;
+  frameWin.Annotate.disable();
+});
+
 test('the kit’s Review request opens this tab, and claims it', async () => {
   const d = await mountFab();
   A.enable({ doc, subject: { title: 'x', url: '' } });
