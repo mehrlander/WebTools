@@ -385,6 +385,31 @@ test('dictation: a paragraph mark breaks the line and spacing never doubles', ()
   A.disable();
 });
 
+test('dictation: saving takes the interim with it', () => {
+  // The engine finalizes at a pause, so a reader who taps save mid-phrase has
+  // words on screen that the buffer does not hold. Dropping them was the field
+  // report (2026-08-09): the last sentence spoken vanished on save.
+  window.SpeechRecognition = FakeSR;
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const d = A._state.dict;
+  d.text = '';
+  d.start();
+  FakeSR.last.say([{ t: 'the settled part', final: true }]);
+  FakeSR.last.say([{ t: 'and the part still being heard', final: false }]);
+  assert.equal(d.text, 'the settled part', 'the buffer holds only what was finalized');
+
+  assert.equal(d.flush(), 'the settled part and the part still being heard',
+    'flush commits the guess the reader can see');
+  assert.equal(d.flush(), 'the settled part and the part still being heard',
+    'and is idempotent: a second flush has nothing left to commit');
+
+  // A finalization arriving after the flush is the engine's own copy of the
+  // same words; the buffer has moved on, so nothing here re-reads it.
+  d.stop();
+  A.disable();
+});
+
 test('dictation: the delete button drops one word, or the mark clinging to it', () => {
   window.SpeechRecognition = FakeSR;
   A.enable({ doc, subject: { title: 'x', url: '' } });
