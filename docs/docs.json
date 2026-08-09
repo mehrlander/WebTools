@@ -70,7 +70,7 @@
       "subject": "the surfacing system: primitives plus the guide-PR course",
       "status": "living",
       "reach": "injected",
-      "words": 3763,
+      "words": 3861,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -182,7 +182,7 @@
       "subject": "what the sandbox can run and reach",
       "status": "measured",
       "reach": "project",
-      "words": 3984,
+      "words": 4262,
       "maintenance": "authored; per-claim verification dates, edited in place and re-dated, probes preferred over assertions"
     },
     {
