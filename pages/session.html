@@ -130,9 +130,18 @@
           <i class="ph ph-cards-three text-base"></i>
           <span x-text="'Read as cards (' + cards + ')'"></span>
         </button>
+        <!-- The estate's standard way to link a session: the Claude logomark in
+             brand colour, no label, exactly as the branch and session rows in
+             show-repo's Activity draw it. A generic open-in-new arrow said
+             "a link"; this says which link. The markup is a sixth copy of the
+             same 11-ray path (estate.js twice, fab.js, branch-brief.js), which
+             is a duplication worth owning rather than a sixth improvisation:
+             see the snag filed alongside this. -->
         <a x-show="record.agent_session" :href="record.agent_session" target="_blank"
-           class="btn btn-sm btn-ghost gap-1.5">
-          <i class="ph ph-arrow-square-out"></i>In Claude Code</a>
+           title="Open this session in Claude Code"
+           class="btn btn-sm btn-ghost btn-circle hover:opacity-75 transition-opacity">
+          <svg viewBox="0 0 24 24" class="w-6 h-6 shrink-0" style="stroke:#d97757" stroke-width="2.2"
+               stroke-linecap="round" fill="none" aria-hidden="true"><path d="M12,12 L12.0,1.6 M12,12 L17.62,3.25 M12,12 L21.46,7.68 M12,12 L22.29,13.48 M12,12 L19.86,18.81 M12,12 L14.93,21.98 M12,12 L9.07,21.98 M12,12 L4.14,18.81 M12,12 L1.71,13.48 M12,12 L2.54,7.68 M12,12 L6.38,3.25"/></svg></a>
         <div class="grow"></div>
         <button @click="showFacts = !showFacts" class="btn btn-sm btn-ghost btn-circle"
                 :aria-label="showFacts ? 'Hide capture facts' : 'Show capture facts'">
