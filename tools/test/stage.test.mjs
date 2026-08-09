@@ -1016,6 +1016,9 @@ test('the pencil is a mode switch over one text, and the typed version wins', as
   data.dictEditOpen();
   assert.equal(data.dictEdit, true);
   assert.equal(data.dictOn, false, 'the engine is stopped, not left running behind the keyboard');
+  assert.equal(data.dictBreakable, false,
+    'and Breaks goes inert as the keyboard opens, not once it closes: staging from '
+    + 'here writes through the setter that clears the record either way');
   assert.equal(data.dictDraft, 'spoken first and still being heard.',
     'the draft opens on everything that was on screen, interim included');
 
