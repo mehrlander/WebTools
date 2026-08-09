@@ -86,8 +86,14 @@ STATUS_LINE = re.compile(
 MD_LINK = re.compile(r"^\[[^\]]*\]\(([^)]+)\)$")
 
 # Generated aggregations inline the bodies of their sources, so a marker in a
-# source entry would otherwise be counted twice.
-SKIP_NAMES = {"index.md"}
+# source entry would otherwise be counted twice. Handled by deduplication in
+# scan_markers, not by skipping filenames: an `index.md` is as often a
+# hand-authored entry point as a generated roll-up, and skipping the name
+# silently dropped real markers written correctly by any reasonable reading
+# (chat-histories `annotations/code/powershell/index.md`, home `repos/index.md`).
+# A dropped marker is worse than a double-counted one, because the audit is the
+# only thing that makes the set auditable rather than merely greppable.
+SKIP_NAMES: set[str] = set()
 SKIP_DIRS = {".git", "node_modules", "dist", "__pycache__", ".venv"}
 
 
@@ -269,12 +275,34 @@ def scan_markers(root: Path) -> tuple[list[Marker], list[tuple[str, int, str]], 
                 continue
             found = list(MARKER.finditer(line))
             for m in found:
-                markers.append(Marker(rel, n, m.group(1), m.group(2), m.group(3), m.group(4)))
+                mk = Marker(rel, n, m.group(1), m.group(2), m.group(3), m.group(4))
+                # The line verbatim, for identity in dedupe_inlined. An inlined
+                # copy is byte-identical to its source; two markers that merely
+                # share a flavor and date are not the same marker.
+                mk.text = line.strip()
+                markers.append(mk)
             if not found and NEAR_MISS.search(line):
                 # Placeholders in the convention docs themselves use YYYY-MM-DD.
                 if "YYYY" not in line:
                     malformed.append((rel, n, line.strip()[:110]))
     return markers, malformed, status_lines
+
+
+def duplicate_lines(markers: list["Marker"]) -> list[tuple[str, list["Marker"]]]:
+    """Markers whose source line is byte-identical, grouped.
+
+    Reported rather than dropped. A generated roll-up that inlines its sources
+    (home's `chron/blog/index.md`) produces one such pair, and so do two frozen
+    workspaces carrying the same banner and one file marking two claims the same
+    way. Only the first is a double-count, and nothing in the text distinguishes
+    them, so collapsing on content silently deletes real markers. An explained
+    duplicate costs a line of output; a dropped marker costs the audit.
+    """
+    groups: dict[str, list[Marker]] = {}
+    for m in markers:
+        groups.setdefault(getattr(m, "text", ""), []).append(m)
+    return sorted(((t, g) for t, g in groups.items() if len(g) > 1),
+                  key=lambda kv: kv[1][0].rel)
 
 
 def has_banner(root: Path, rel: str) -> bool:
@@ -347,6 +375,16 @@ def cmd_inventory(root, args):
             for m in sorted(markers, key=lambda m: (m.flavor, m.date, m.rel))]
     print(fmt_table(rows, ("FLAVOR", "DATE", "SEE-TARGET", "LOCATION")))
     print()
+
+    dups = duplicate_lines(markers)
+    if dups:
+        print("DUPLICATE LINES (counted once each; a roll-up that inlines a source")
+        print("produces these, and so do two files marking a claim the same way)")
+        for text, group in dups:
+            print(f"  {len(group)}x  {text[:88]}")
+            for m in group:
+                print(f"       {m.rel}:{m.line}")
+        print()
 
     print("DECLARED FROZEN")
     rows = [(d.path, d.since or "-", (d.why or "-")[:44], d.source)
