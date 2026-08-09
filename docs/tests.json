@@ -13,7 +13,7 @@
     {
       "path": "tools/test/annotate.test.mjs",
       "kind": "behavior",
-      "protects": "A note's quote anchor survives the range round trip and disambiguates duplicates on context, and the jot save goes through fresh-read → mutate → save rather than clobbering the list.",
+      "protects": "A note's quote anchor survives the range round trip and disambiguates duplicates on context, the dictation rules compose spoken punctuation and a back-delete correctly, and the jot save goes through fresh-read → mutate → save rather than clobbering the list.",
       "assertions": 11,
       "method": "kit",
       "runner": "suite",
@@ -23,7 +23,7 @@
       "path": "tools/test/artifacts-lockstep.test.mjs",
       "kind": "lockstep",
       "protects": "Every deterministic generator is re-run in check mode, so a committed artifact cannot sit behind its source.",
-      "assertions": 6,
+      "assertions": 7,
       "method": "spawn",
       "runner": "suite",
       "boot_smoke": 0
@@ -124,6 +124,15 @@
       "protects": "CLAUDE.md still points at the showing manifest and frame, and stays under its 1600-word ceiling. The size half is a policy, not a behavior, which is why it sits here rather than inside the routes manifest test.",
       "assertions": 2,
       "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/code-layers.test.mjs",
+      "kind": "gate",
+      "protects": "The lib/ boundary of docs/code-layers.md, in all three directions: no kit extends GH.prototype, lib/ root holds only the loader, prototype extenders, and boot bundles, and every alpineComponents/ file registers Alpine.data. Read off the code-shape survey so the test and the rule share one instrument.",
+      "assertions": 3,
+      "method": "spawn",
       "runner": "suite",
       "boot_smoke": 0
     },
@@ -239,7 +248,7 @@
       "path": "tools/test/estate-activity-progress.test.mjs",
       "kind": "component",
       "protects": "The activity progress indicator reports idle, running, and finished states honestly.",
-      "assertions": 5,
+      "assertions": 6,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
@@ -437,7 +446,7 @@
       "path": "tools/test/gh-store.test.mjs",
       "kind": "behavior",
       "protects": "saveBytes writes byte-exact content, so a binary round-trip cannot be silently re-encoded.",
-      "assertions": 6,
+      "assertions": 8,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -645,6 +654,15 @@
       "kind": "gate",
       "protects": "The portable catalogs list what the plugin actually ships, both directions, and vendored copies stay byte-identical.",
       "assertions": 7,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/properties-registry.test.mjs",
+      "kind": "gate",
+      "protects": "The declaration table of docs/registries.md: every governed carrier holds exactly its key plus declared properties, computed declarations name real derivers, and no target x property pair has two owners within a registry.",
+      "assertions": 3,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0

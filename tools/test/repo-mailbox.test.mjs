@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
-const src = readFileSync(path.join(repoRoot, 'lib/repo-mailbox.js'), 'utf8');
+const src = readFileSync(path.join(repoRoot, 'lib/kits/repo-mailbox.js'), 'utf8');
 const window = {};
 new Function('window', src)(window);
 const M = window.RepoMailbox;

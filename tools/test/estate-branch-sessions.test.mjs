@@ -123,10 +123,10 @@ window.__shell = { REGISTRY_REPO: 'me/registry', DEFAULT_REPO: 'me/tools',
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
-  'lib/branch-survey.js',
+  'lib/kits/branch-survey.js',
   // The shelf reads every surface through the shared envelope model, which
   // gh-boot loads ahead of the components for exactly this reason.
-  'lib/surface.js',
+  'lib/kits/surface.js',
   'lib/alpineComponents/estate.js',
 ]);
 const data = Alpine.$data(window.document.getElementById('es'));
@@ -189,7 +189,7 @@ test('no session anywhere leaves the row falsy, so the icon stays hidden', () =>
 // from an ancestor walk scores 55% precision at depth 8 and 19% at depth 40;
 // off the compare it is 100% by construction.
 
-const surveySrc = readFileSync(path.join(repoRoot, 'lib/branch-survey.js'), 'utf8');
+const surveySrc = readFileSync(path.join(repoRoot, 'lib/kits/branch-survey.js'), 'utf8');
 const BS = (() => { const w = {}; new Function('window', surveySrc)(w); return w.BranchSurvey; })();
 const commit = (msg) => ({ commit: { message: msg } });
 

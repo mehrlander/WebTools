@@ -37,7 +37,7 @@ const { window } = makeWindow({
            x-data="branchBrief({ repo: '${REPO}', branch: 'feat/x', base: 'main' })"></div></body></html>`,
 });
 
-for (const f of ['lib/branch-survey.js', 'lib/kits/branch-brief.js', 'lib/content-registry.js']) {
+for (const f of ['lib/kits/branch-survey.js', 'lib/kits/branch-brief.js', 'lib/kits/content-registry.js']) {
   new window.Function('window', readFileSync(path.join(repoRoot, f), 'utf8'))(window);
 }
 

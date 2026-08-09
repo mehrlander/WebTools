@@ -48,10 +48,10 @@ window.__shell = {
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
-  'lib/branch-survey.js',      // the lifespan display rules live here, shared
+  'lib/kits/branch-survey.js',      // the lifespan display rules live here, shared
   // The shelf reads every surface through the shared envelope model, which
   // gh-boot loads ahead of the components for exactly this reason.
-  'lib/surface.js',
+  'lib/kits/surface.js',
   'lib/alpineComponents/estate.js',
 ]);
 const data = Alpine.$data(window.document.getElementById('es'));
@@ -288,7 +288,7 @@ test('Open still selects the old list exactly, at any age', () => {
 });
 
 test('the window is disjoint from stranded and landed, so it cannot narrow them', () => {
-  // Both require daysAgo > 14 at classify time and the window tops out at 14,
+  // Both require daysAgo > 14 at classify time and the window tops out at 7,
   // which is why the control renders under Recent alone: applied to either of
   // these it would empty the list at every setting rather than narrow it.
   for (const r of data.allBranchRows.filter(r => r.group === 'stranded' || r.group === 'landed')) {

@@ -19,7 +19,7 @@
     ?src=<spec>       payload fetched via the contents API; a plain path is
                       this repo, or owner/repo[@ref]:path
     (neither)         a built-in demo envelope
-  Each key is read fragment first, query as fallback (lib/url-params.js), so
+  Each key is read fragment first, query as fallback (lib/kits/url-params.js), so
   ?gz= and #src= work too. Prefer the forms above: the payload wants '#'
   because a query string is capped at roughly 8KB by the Pages edge, and the
   address arrives as ?src= from a routed toss's params shim.
@@ -32,7 +32,7 @@
   Through a routed toss it is the trailing fragment of the route:
     …/toss-render.html#data=<owner>/<repo>:<bundle.json>#item=raw.csv
 
-  Two payload shapes, told apart by lib/data-payload.js and handled the same
+  Two payload shapes, told apart by lib/kits/data-payload.js and handled the same
   way from here on:
     BARE      a CSV, a JSON array, any bytes. One item; the viewer's module
               tests decide how to show it. An addressed payload keeps its
@@ -67,10 +67,10 @@
   } else {
     await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
   }
-  await gh.load('url-params.js');
+  await gh.load('kits/url-params.js');
   // The owner/repo[@ref]:path grammar, which data-payload.js delegates to.
-  await gh.load('repo-address.js');
-  await gh.load('data-payload.js');
+  await gh.load('kits/repo-address.js');
+  await gh.load('kits/data-payload.js');
   await gh.load('alpineComponents/viewer.js');
 
   const gunzipB64url = async s => {
@@ -129,7 +129,7 @@
 
     async init() {
       try {
-        // Fragment first, query as fallback, per key (lib/url-params.js): the
+        // Fragment first, query as fallback, per key (lib/kits/url-params.js): the
         // payload wants '#' for size and privacy, while ?src= is how a routed
         // toss delivers an address through toss-render's params shim.
         const gz = UrlParams.get('gz');
@@ -171,7 +171,7 @@
     label: it => it.name.split('/').pop(),
 
     // The #item= vocabulary is the ENVELOPE's, not this page's, so both
-    // directions live in lib/data-payload.js beside the rest of what an item
+    // directions live in lib/kits/data-payload.js beside the rest of what an item
     // means (DataPayload.resolveItem / .addressItem, held by npm test). What
     // stays here is the half that touches a URL.
 

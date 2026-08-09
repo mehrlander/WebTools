@@ -27,8 +27,8 @@
   } else {
     await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
   }
-  await gh.load('url-params.js');
-  await gh.load('repo-address.js');
+  await gh.load('kits/url-params.js');
+  await gh.load('kits/repo-address.js');
   await gh.load('kits/text-diff.js');
   // The grab row's component. Caught, because an uncaught gh.load rejection
   // aborts this module and Alpine then never starts: a missing file browser
@@ -81,7 +81,7 @@
   that allocated n*m int32s and could not survive two long documents. The why,
   the trade, and the caps are documented in the kit.
 
-  Input by URL, fragment first, query as fallback (lib/url-params.js):
+  Input by URL, fragment first, query as fallback (lib/kits/url-params.js):
     #d=<base64url>        gzipped full state, what "Copy share link" writes
     ?a=<spec>&b=<spec>    two owner/repo[@ref]:path addresses, fetched on load
 
@@ -1308,7 +1308,7 @@ function diffApp() {
     },
 
     // #d= payload first, then a pair of ?a= / ?b= addresses; fragment before
-    // query on both, per lib/url-params.js.
+    // query on both, per lib/kits/url-params.js.
     async loadFromUrl() {
       const P = window.UrlParams;
       if (!P) return;

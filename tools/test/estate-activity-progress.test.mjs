@@ -43,7 +43,7 @@ const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
   // The shelf reads every surface through the shared envelope model, which
   // gh-boot loads ahead of the components for exactly this reason.
-  'lib/surface.js',
+  'lib/kits/surface.js',
   'lib/alpineComponents/estate.js',
 ]);
 const data = Alpine.$data(window.document.getElementById('es'));
@@ -71,6 +71,13 @@ test('mid-crawl: finished repos over total, every in-flight repo named', () => {
   // would describe the crawl wrongly.
   assert.equal(data.activityProgressActive, 'chat-histories, home');
   assert.equal(data.activityProgressPct, 36); // 4/11, rounded — no in-flight fraction
+});
+
+test('the survey phase of a split refresh names itself', () => {
+  // The quick pass and the true-up behind it report through one bar; the
+  // phase tag is what keeps the second reading from claiming to be the first.
+  shell.activityProgress = { done: 1, total: 3, active: ['me/a'], phase: 'survey' };
+  assert.equal(data.activityProgressLabel, 'Surveying branches · 1 of 3 repos');
 });
 
 test('the bar counts finished repos only, never the ones in flight', () => {

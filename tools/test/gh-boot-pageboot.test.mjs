@@ -17,7 +17,7 @@ const readme = readFileSync(path.join(repoRoot, 'README.md'), 'utf8');
 
 test('gh-boot awaits window.__pageBoot before its Alpine fallback', () => {
   const guard = boot.indexOf('await window.__pageBoot');
-  const fallback = boot.indexOf("gh.load('alpine-bundle.js')");
+  const fallback = boot.indexOf('gh.load(FAB_BOOT.alpine)');
   assert.ok(guard !== -1, 'the guard exists');
   assert.ok(fallback !== -1, 'the Alpine fallback exists');
   assert.ok(guard < fallback, 'the guard runs before gh-boot can start its own Alpine');
@@ -38,7 +38,7 @@ test('gh-boot also waits for loader quiescence, so unguarded pages are covered',
   // The wait must sit between the __pageBoot await and the Alpine fallback.
   const guard = boot.indexOf('await window.__pageBoot');
   const census = boot.indexOf('_loadQuietAt');
-  const fallback = boot.indexOf("gh.load('alpine-bundle.js')");
+  const fallback = boot.indexOf('gh.load(FAB_BOOT.alpine)');
   assert.ok(census !== -1, 'the quiescence wait exists');
   assert.ok(guard < census && census < fallback, 'ordered: __pageBoot, quiescence, fallback');
   assert.match(boot, /_loading > 0/, 'reads the in-flight count');

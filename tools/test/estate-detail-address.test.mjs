@@ -41,8 +41,8 @@ window.__shell = {
 // branch-survey.js first: the takeover's header reads lifespanTitle from it,
 // unguarded, the way the shell's own load chain guarantees it.
 const Alpine = await startAlpine(window, [
-  'lib/branch-survey.js',
-  'lib/repo-config-cache.js', 'lib/repo-activity-cache.js', 'lib/repo-sessions-cache.js',
+  'lib/kits/branch-survey.js',
+  'lib/kits/repo-config-cache.js', 'lib/kits/repo-activity-cache.js', 'lib/kits/repo-sessions-cache.js',
   'lib/alpineComponents/estate.js',
 ]);
 const data = Alpine.$data(window.document.getElementById('es'));

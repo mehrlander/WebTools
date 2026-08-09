@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
-const src = readFileSync(path.join(repoRoot, 'lib/branch-survey.js'), 'utf8');
+const src = readFileSync(path.join(repoRoot, 'lib/kits/branch-survey.js'), 'utf8');
 const window = {};
 new Function('window', src)(window);
 const B = window.BranchSurvey;

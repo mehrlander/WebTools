@@ -1,4 +1,4 @@
-// lib/estate-search.js — the shared search core: the per-(repo, ref) tree
+// lib/kits/estate-search.js — the shared search core: the per-(repo, ref) tree
 // cache with its failure backoff (a failed fetch is remembered briefly, never
 // cached as an empty tree), file-name search across repos with per-repo error
 // reporting, the code-search call's shape (scope qualifier, text-match
@@ -41,8 +41,8 @@ window.TOKEN = 'tkn';
 window.GH = FakeGH;
 await startAlpine(window, [
   'lib/alpine-bundle.js',
-  'lib/repo-sessions-cache.js',
-  'lib/estate-search.js',
+  'lib/kits/repo-sessions-cache.js',
+  'lib/kits/estate-search.js',
 ]);
 const ES = window.EstateSearch;
 

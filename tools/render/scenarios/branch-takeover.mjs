@@ -26,7 +26,7 @@ import openList from './../scripts/estate-open.mjs';
 const BODY = `Each row in the Map view's Docs tab now says how many distinct sessions opened that file.
 
 **Changed:**
-- [lib/repo-sessions-cache.js](https://github.com/me/web-tools/blob/claude/show-repo-activity-filters/lib/repo-sessions-cache.js)
+- [lib/kits/repo-sessions-cache.js](https://github.com/me/web-tools/blob/claude/show-repo-activity-filters/lib/kits/repo-sessions-cache.js)
 - [pages/branch.html](https://github.com/me/web-tools/blob/claude/show-repo-activity-filters/pages/branch.html)
 
 **Notes / Risk:** Suite green with the pre-build rebuilt.`;
@@ -43,7 +43,7 @@ export default async function (page, ctx) {
         { sha: 'e5f6a7b8', commit: { message: 'Lifespan on the row', committer: { date: '2026-08-06T09:00:00Z' } } },
       ],
       files: [
-        { filename: 'lib/repo-sessions-cache.js', status: 'modified', additions: 56, deletions: 7, patch: '@@ -1 +1 @@' },
+        { filename: 'lib/kits/repo-sessions-cache.js', status: 'modified', additions: 56, deletions: 7, patch: '@@ -1 +1 @@' },
         { filename: 'pages/branch.html', status: 'modified', additions: 65, deletions: 23, patch: '@@ -1 +1 @@' },
         { filename: 'docs/show-repo.md', status: 'modified', additions: 72, deletions: 12, patch: '@@ -1 +1 @@' },
         { filename: 'tools/test/guide-render.test.mjs', status: 'added', additions: 120, deletions: 0, patch: '@@ -0,0 +1 @@' },

@@ -183,7 +183,7 @@ itself; a page that instantiates `GH` by hand gets only what it loads.
 | `swipeDeck` | `swipe-deck.js` | the house swipe format: a snap track of slides, and the fullscreen takeover that frames it. Self-contained, so another repo's page can load it with a plain `<script src>` |
 | Alpine stores `browser`, `toasts`; magics `$clip`, `$paste`, `$toast` | `alpine-bundle.js` | exist only after `alpine:init` |
 | `Annotate` | `kits/annotate.js` | notes pinned to selections/elements/regions of a target document; serializes to markdown/JSON, saves jots. FAB take "Annotate" and `pages/annotate.html` drive it |
-| `__builtOffline` | a build (`kits/build.js` output) | present only on baked/offline pages |
+| `__builtOffline` | a build (`build.js` output) | present only on baked/offline pages |
 | `window.<kit>` namespaces | each kit | see [kits/README.md](../lib/kits/README.md) |
 
 A new global with no row here is a doc bug; add the row in the same
@@ -230,7 +230,7 @@ stripped `export` / `export default` out of the source and auto-`return`ed
 the first top-level `class`/`function` it found. Both are gone. The strip was
 removed (commit `451f963`) because rewriting every file silently corrupted
 any that merely *carried* the word `export` in a string or comment —
-`kits/build.js`, which emits an `export default` in its output template, was
+`build.js`, which emits an `export default` in its output template, was
 the file that exposed it.
 
 The framing the strip obscured, and the one to keep: **we don't author

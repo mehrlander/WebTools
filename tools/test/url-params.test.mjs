@@ -1,4 +1,4 @@
-// lib/url-params.js: fragment-first, query-fallback reads of a page's own
+// lib/kits/url-params.js: fragment-first, query-fallback reads of a page's own
 // input params. The precedence is the contract two renderer pages now depend
 // on (chat-results and data-view read gz and src through it), so it is pinned
 // here rather than left to each page's inline URLSearchParams call.
@@ -10,7 +10,7 @@ import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
 const win = { URLSearchParams };
-new Function('window', readFileSync(path.join(repoRoot, 'lib/url-params.js'), 'utf8')).call(win, win);
+new Function('window', readFileSync(path.join(repoRoot, 'lib/kits/url-params.js'), 'utf8')).call(win, win);
 const { get, first, source, withKey } = win.UrlParams;
 
 const loc = (hash, search) => ({ hash: hash || '', search: search || '' });
@@ -108,7 +108,7 @@ test('withKey round-trips a value through get(), escaping included', () => {
 test('both renderer pages read their inputs through the helper', () => {
   for (const p of ['pages/chat-results.html', 'pages/data-view.html']) {
     const src = readFileSync(path.join(repoRoot, p), 'utf8');
-    assert.match(src, /gh\.load\('url-params\.js'\)/, p + ': loads the helper');
+    assert.match(src, /gh\.load\('kits\/url-params\.js'\)/, p + ': loads the helper');
     assert.match(src, /UrlParams\.get\('gz'\)/, p + ': reads gz through it');
     assert.match(src, /UrlParams\.get\('src'\)/, p + ': reads src through it');
     assert.doesNotMatch(src, /new URLSearchParams\(location\.(hash|search)\)[^)]*\.get\('(gz|src)'\)/,

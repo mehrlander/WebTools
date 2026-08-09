@@ -22,6 +22,16 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### cross-repo-lib-consumer-invisible: in-repo greps cannot see an external runtime consumer of a lib file
+The lib-kits migration measured its cost as 31 runtime call sites and 84 path
+mentions, all in-repo; the one runtime consumer that would actually have broken
+silently was outside it (chat-histories' life-journal.html, loading
+swipe-deck.js from jsDelivr at `@main`), found only by hand-grepping the
+sibling checkouts. Fixed with a fallback loader in chat-histories PR #71. The
+systematic fix, if it recurs, is a consumers declaration for lib files the way
+budget-wa declares embedded pages (`declared-paths`): if it is worth another
+repo loading, it is worth declaring here. → web-tools PR #376.
+
 ### headless-shot-prose-flat: typography CSS misses in screenshots
 Chased flat prose headings in a shot as though the page were broken, including
 a pointless `npm i -D @tailwindcss/typography`; the limit was already

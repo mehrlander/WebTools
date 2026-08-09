@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// lib/traffic.js's three size states, and gh-boot's fetch wrapper, proved in a
+// lib/kits/traffic.js's three size states, and gh-boot's fetch wrapper, proved in a
 // real browser rather than against a reading of the spec.
 //
 //   node tools/test/traffic-states.mjs
@@ -75,7 +75,7 @@ const url = s => 'http://127.0.0.1:' + s.address().port;
 const browser = await chromium.launch();
 const page = await (await browser.newContext()).newPage();
 await page.goto(url(host) + '/');
-await page.addScriptTag({ content: readFileSync(path.join(root, 'lib/traffic.js'), 'utf8') });
+await page.addScriptTag({ content: readFileSync(path.join(root, 'lib/kits/traffic.js'), 'utf8') });
 
 const out = await page.evaluate(async ([tao, notao, own]) => {
   const r = { wrapper: {} };

@@ -54,12 +54,12 @@ window.__shell = {
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
-  'lib/surface.js',
+  'lib/kits/surface.js',
   // openPin and pinGroups speak the estate's one addressing grammar through
   // the shared parser, so the suite loads it the way the pre-build does; the
   // add form's tap route mounts the shared path-picker lazily, so this suite
   // loads it too (the other estate suites never toggle it and stay clean).
-  'lib/repo-address.js',
+  'lib/kits/repo-address.js',
   'lib/alpineComponents/path-picker.js',
   'lib/alpineComponents/estate.js',
 ]);

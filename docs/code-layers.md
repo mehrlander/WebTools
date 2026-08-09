@@ -10,8 +10,8 @@ which is how a folder acquires a purpose nobody stated and cannot defend.
 Naming a layer is not the same as justifying it. Where a split turns out to have
 no rule behind it, this document says so rather than inventing one, and points
 at the task that owns the decision. The `lib/` root versus `lib/kits/` boundary
-was in that state from 2026-07-26 and was settled on 2026-08-07; the section
-below states the rule, and flags that the tree has not caught up to it yet.
+was in that state from 2026-07-26, was settled on 2026-08-07, and the tree was
+migrated onto the rule on 2026-08-08; the section below states the rule.
 
 Measured with [`scripts/unclaimed-code-survey.py`](../scripts/unclaimed-code-survey.py)
 (`npm run code-survey`), which reports per-layer counts of files, files any
@@ -39,12 +39,15 @@ alternatives, all of which are recorded in
 migration is owned by
 [`lib-root-kit-migration-dind5t`](../tracker/tasks/lib-root-kit-migration-dind5t.md).
 
-> [!NOTE]
-> **The tree does not match the rule yet.** 20 files under `lib/` root are kits
-> by this rule and have not moved; `lib/kits/build.js` is scaffolding by it and
-> has not moved either. Until the migration lands, read the rule as where a file
-> *belongs*, and put a **new** logic module in `lib/kits/`, which is what the
-> rule says anyway.
+The tree matches the rule since 2026-08-08: 22 kits moved in from `lib/` root
+(the settled split said 20, and two files added while the decision was being
+made, `content-registry.js` and `estate-search.js`, were kits by the rule
+before it landed, which is the rule demonstrating its own necessity),
+`build.js` moved out of `lib/kits/` to `lib/` root, and
+`diagnostic-vanilla-bundle.js` was deleted with zero consumers.
+[`tools/test/code-layers.test.mjs`](../tools/test/code-layers.test.mjs) holds
+the boundary in all three directions, off the same survey, so the next misfiled
+file fails the suite instead of accumulating.
 
 **Why this rule and not a better-sounding one.** Two rules were written down
 before it and both were retracted within a day, because both sorted on a
@@ -76,16 +79,19 @@ first reports 2 extenders where there are 5.
 **Where a file does both, scaffolding wins,** since a change to the shared
 object every page holds is the stronger commitment and a reader needs to see it
 first. [`lib/gh-auth.js`](../lib/gh-auth.js) is the case: it extends the
-prototype *and* registers `window.ghAuth`. [`lib/traffic.js`](../lib/traffic.js)
+prototype *and* registers `window.ghAuth`. [`lib/kits/traffic.js`](../lib/kits/traffic.js)
 is **not**, despite a comment that reads like it: it wraps `window.fetch` and
 registers `window.Traffic`, so it is a kit. It is also boot-loaded, which the
 boot manifest records and the folder no longer tries to.
 
 **Boot membership is not a folder.** It is the second question about a `lib/`
 file, it is a cost rather than a structure, and encoding it in the tree is what
-every failed rule was really attempting. The boot chain becomes a declared
-manifest: today it is 11 `gh.load` calls inside `gh-boot.js`, so what a page
-pays to start cannot be read without reading that function.
+every failed rule was really attempting. Since 2026-08-08 the boot chain is a
+declared manifest: the `BOOT` array at the top of
+[`lib/gh-boot.js`](../lib/gh-boot.js), data rather than calls, with the FAB's
+conditional equipment declared beside it as `FAB_BOOT`, so what a page pays to
+start is one read. The manifest also owns `SourcePeek.install()`, which used to
+be a self-install inside the kit.
 
 The related rule that is not in doubt: a kit that wants Alpine reactivity does
 not become a component, it gets a component wrapper.
@@ -95,6 +101,16 @@ not become a component, it gets a component wrapper.
 [`lib/kits/README.md`](../lib/kits/README.md) carries the per-kit table.
 
 ## tools/, which is the weak layer
+
+Since 2026-08-08 the accounting below has a carrier:
+[`docs/harness.json`](harness.json), the harness census, one row per code file
+under `tools/` and `scripts/` (`tools/test/` stays with the test registry).
+`role` is authored and a blank role is counted rather than hidden;
+invocation, named, and tested are stamped by
+[`tools/build/tools-index.mjs`](../tools/build/tools-index.mjs) and held in
+lockstep by the suite. It renders in show-repo's Map view, Harness tab. The
+census does not change the judgment below; it makes the gap it describes
+visible per file rather than per column.
 
 [`tools/README.md`](../tools/README.md) states the folder split
 (`render/`, `build/`, `test/`, `graphql/`) and names the files that carry the

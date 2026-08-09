@@ -40,6 +40,11 @@ test('docs/README.md is in lockstep with the documentation registry', () => {
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'docs-readme --check failed');
 });
 
+test('the harness census is in lockstep with tools/ and scripts/', () => {
+  const r = check(['tools/build/tools-index.mjs', '--check']);
+  assert.equal(r.status, 0, (r.stderr || '').trim() || 'tools-index --check failed');
+});
+
 // The third hook-owned artifact, and it had no owner here until 2026-08-05.
 // That gap hid a real defect rather than a merely theoretical one: board.json's
 // per-task keys were emitted by iterating a set, so Python's per-process string

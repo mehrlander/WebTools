@@ -7,7 +7,6 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [A multi-method harness for extracting structure from scanned documents](tasks/document-structure-harness-4mz7wk.md)
 - 🎫 [Persist FAB captures, the write path to state/captures/](tasks/fab-capture-button-f6q38m.md) · S
 - 🎫 [Find a way to focus attention on one piece of a page's UI](tasks/focus-a-ui-component-f0awt7.md)
-- 🎫 [One logic shelf: move every window-namespace module into lib/kits/](tasks/lib-root-kit-migration-dind5t.md)
 - 🎫 [Live-confirm the BranchSessions query](tasks/live-confirm-graphql-queries-7maacy.md) · XS
 - 🎫 [Build our own JSON tree for display, keep vanilla-jsoneditor for editing](tasks/own-json-tree-retire-vje-i0lcj2.md)
 - 🎫 [Pinch-zoom and pan for pdf-inspect's page view](tasks/pdf-inspect-pinch-zoom-5wz3kt.md)
@@ -59,6 +58,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [History-safe shim for toss-render address-mode renders](tasks/history-safe-toss-render-shim-hkih5m.md)
 - 🎫 [Integrate the stage with the surfacer's .surface format](tasks/integrate-stage-surfacer-format-3bvg2v.md)
 - 🎫 [Guard every lib-booting page against the Alpine load race](tasks/lib-load-race-on-slow-connections-9kx2mv.md) (`claude/web-tools-project-tracker-reo5qo`)
+- 🎫 [One logic shelf: move every window-namespace module into lib/kits/](tasks/lib-root-kit-migration-dind5t.md) (`claude/lib-kits-migration-review-ouipa1`)
 - 🎫 [One parser for the owner/repo\[@ref\]:path address](tasks/one-repo-address-parser-5gtv92.md) (`claude/web-tools-tracker-review-bw48ga`)
 - 🎫 [Private-repo landing federation via the home registry](tasks/private-repo-landing-federation-u50nns.md)
 - 🎫 [Two gaps the proposal channel showed on first use](tasks/proposals-diff-and-removal-w1y9lk.md) (`claude/web-tools-project-tracker-reo5qo`)

@@ -1,4 +1,4 @@
-// lib/repo-proposals.js — the write-side agent-to-app channel. The pure halves
+// lib/kits/repo-proposals.js — the write-side agent-to-app channel. The pure halves
 // (pending, validate, applyField, toBase64) are the interesting ones: they
 // decide what is reviewable and what the target file becomes. resolve/apply run
 // against a stub GH, since the point of the channel is that the real write
@@ -15,7 +15,7 @@ import path from 'node:path';
 import { makeWindow, repoRoot } from './bootstrap.mjs';
 
 const { window } = makeWindow({ html: '<!doctype html><html><body></body></html>' });
-new window.Function(readFileSync(path.join(repoRoot, 'lib/repo-proposals.js'), 'utf8'))();
+new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/repo-proposals.js'), 'utf8'))();
 const P = window.RepoProposals;
 
 const proposal = (over = {}) => ({

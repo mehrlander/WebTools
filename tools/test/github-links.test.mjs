@@ -1,4 +1,4 @@
-// lib/github-links.js — the GitHub destinations for one repo. Pure string
+// lib/kits/github-links.js — the GitHub destinations for one repo. Pure string
 // building, so the whole contract is testable: which rows a repo gets, whether
 // a ref reaches the rows where a ref means something, and the encoding.
 //
@@ -14,7 +14,7 @@ import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
 const window = {};
-new Function('window', readFileSync(path.join(repoRoot, 'lib', 'github-links.js'), 'utf8'))(window);
+new Function('window', readFileSync(path.join(repoRoot, 'lib', 'kits/github-links.js'), 'utf8'))(window);
 const GL = window.GithubLinks;
 
 const keys = rows => rows.map(r => r.key);
