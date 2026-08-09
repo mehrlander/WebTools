@@ -1,5 +1,5 @@
 {
-  "note": "The properties registry: the declaration table of docs/registries.md, binding scope x property to its one authoritative registry. Registries name their carrier, key field (structural identity, exempt from declaration), target grain, scope, gate, and whether their per-row fields are `governed` (held to the declarations below) or `ungoverned` (declared and counted, with a written `why` naming what about the carrier the field check cannot reach). Declarations carry mode (recorded or computed, with the deriver for computed), required (what the gates enforce today: value, counted, or none), and the value domain where one is closed. Governed carriers are held both ways by tools/test/properties-registry.test.mjs: an undeclared row field fails, a declared property missing from the carrier fails, a computed declaration whose deriver does not exist fails, and the ungoverned count is asserted so it can only move deliberately. Expanded 2026-08-09 from six registries to thirteen by the reconciliation recorded in docs/registries.md, which walked the estate against the model rather than the model against itself. Origin: budget-drs data/design/properties.csv in mehrlander/home.",
+  "note": "The properties registry: the declaration table of docs/registries.md, binding scope x property to its one authoritative registry. Registries name their carrier, key field (structural identity, exempt from declaration), target grain, scope, gate, and whether their per-row fields are `governed` (held to the declarations below) or `ungoverned` (declared and counted, with a written `why` naming what about the carrier the field check cannot reach). Declarations carry mode (recorded or computed, with the deriver for computed), required (what the gates enforce today: value, counted, or none), and the value domain where one is closed. Governed carriers are held both ways by tools/test/properties-registry.test.mjs: an undeclared row field fails, a declared property missing from the carrier fails, a computed declaration whose deriver does not exist fails, and the ungoverned count is asserted so it can only move deliberately. Expanded 2026-08-09 from six registries to thirteen by the reconciliation recorded in docs/registries.md, which walked the estate against the model rather than the model against itself. Nine are field-governed and four are not; the pages catalog moved from the second group to the first the same day, by teaching the field check a group walk rather than by reshaping a carrier other repos read. Origin: budget-drs data/design/properties.csv in mehrlander/home.",
   "registries": [
     {
       "id": "docs-census",
@@ -100,12 +100,12 @@
       "id": "pages-catalog",
       "carrier": "pages/pages.json",
       "format": "json",
-      "key": "label",
+      "rows": "[].items",
+      "key": "href",
       "kind": "catalog",
-      "target": "a page, grouped",
-      "scope": "every .html page under pages/, arranged into groups",
-      "fields": "ungoverned",
-      "why": "the carrier is a bare array of GROUPS, each holding its own items, so there is no single row array to read fields from; the field check reads one named array per carrier",
+      "target": "a page",
+      "scope": "every .html page under pages/, arranged into groups; the group wrapper (label, top) is structure rather than assertions about a page, the same standing as a carrier note block",
+      "fields": "governed",
       "gate": "tools/test/artifacts-lockstep.test.mjs"
     },
     {
@@ -478,6 +478,51 @@
       "required": "value",
       "values": null,
       "gloss": "the skill's trigger description. A COPY: the authoritative carrier is the skill's own SKILL.md, per the family rule in docs/owners.json"
+    },
+    {
+      "property": "label",
+      "registry": "pages-catalog",
+      "mode": "computed",
+      "deriver": "tools/build/pages-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "the short name the catalog card and the picker show"
+    },
+    {
+      "property": "title",
+      "registry": "pages-catalog",
+      "mode": "computed",
+      "deriver": "tools/build/pages-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "the page's own <title>, read from the file"
+    },
+    {
+      "property": "note",
+      "registry": "pages-catalog",
+      "mode": "computed",
+      "deriver": "tools/build/pages-index.mjs",
+      "required": "counted",
+      "values": null,
+      "gloss": "the one-line blurb. Authored in the NOTES map inside the deriver, not here, and blank on 42 of 69 pages: a counted figure, the honest measure of how much of the gallery is unexplained"
+    },
+    {
+      "property": "thumb",
+      "registry": "pages-catalog",
+      "mode": "computed",
+      "deriver": "tools/build/pages-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "the committed screenshot path; refreshed once per session, never by the commit hook"
+    },
+    {
+      "property": "code",
+      "registry": "pages-catalog",
+      "mode": "computed",
+      "deriver": "tools/build/pages-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "the GitHub blob URL for the page source"
     }
   ]
 }

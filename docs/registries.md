@@ -113,14 +113,26 @@ wrong. It was that a declaration table with no population had nothing to be
 wrong about, so seven mechanisms with a committed carrier and, in most cases, a
 gate had never been asked to say what they govern.
 
-Two of the seven turned out to be field-governable and are now declared and
-checked: the owners table (below) and the skills census, whose coverage was
-exact and whose only guarantee had been that whoever last added a skill
-remembered to add a row. Five could not be, and the reasons are facts about
-their carriers rather than neglect, so each is declared `fields: ungoverned`
-with a written `why` and the count is asserted. Counting them is the point:
-omitted, they read as absent; declared, they read as five carriers whose shape
-the field check cannot yet reach.
+Three of the seven turned out to be field-governable and are now declared and
+checked: the owners table (below), the skills census, whose coverage was exact
+and whose only guarantee had been that whoever last added a skill remembered to
+add a row, and the pages catalog. Four could not be, and the reasons are facts
+about their carriers rather than neglect, so each is declared
+`fields: ungoverned` with a written `why` and the count is asserted. Counting
+them is the point: omitted, they read as absent; declared, they read as four
+carriers whose shape the field check cannot yet reach.
+
+**The count is a ledger, and it has already moved down once.** The pages catalog
+was in the ungoverned four for a matter of hours, on the stated reason that its
+top level is a bare array of groups with no single row array to read. The fix
+was not to reshape the carrier, whose layout show-repo reads for this repo and
+for every other repo's pages catalog, but to teach the field check a group walk
+(`rows: "[].items"`). The general lesson is worth more than the one row: an
+`ungoverned` reason names a limitation, and the limitation is as often in the
+gate as in the carrier. Read the four remaining as a worklist, not a taxonomy.
+The group wrapper's own fields (`label`, `top`) stay undeclared on purpose:
+they are structure, not assertions about a page, and take the same standing as a
+carrier's note block.
 
 **Three limits of the model surfaced, and none had been visible from inside
 it.**
