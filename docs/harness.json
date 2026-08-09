@@ -391,9 +391,9 @@
     },
     {
       "path": "tools/render/scenarios/annotate-dictate-demo.mjs",
-      "role": "the voice-first compose surface with SpeechRecognition stubbed: committed text, a live interim, and the punctuation bar",
+      "role": "the voice-first compose surface with SpeechRecognition stubbed: committed text, a live interim, the punctuation bar, and a resume across a pause, which is the case that shows the period and the capital coming back off together",
       "layer": "tools/render/scenarios",
-      "lines": 59,
+      "lines": 67,
       "invocation": "driver",
       "emits": false,
       "named": false,
