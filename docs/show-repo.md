@@ -939,8 +939,10 @@ own URL while a view is a stop inside this shell, and one chip cannot honestly
 mean both. Each row's crawl cost rides its Refresh button's tooltip, where it is
 actionable, rather than a line of its own.
 
-**The JSON is read in the app, not on GitHub.** Every registry row carries a
-`{}` toggle that fetches the file and hands it to the shared multi-mode viewer
+**The JSON is read in the app, not on GitHub.** Every registry row carries an
+**Expand** control, a captioned caret rather than a glyph: expanding a row to
+see its detail is the gesture people arrive with, where `{}` said "JSON" only to
+someone who already knew. It fetches the file and hands it to the shared multi-mode viewer
 (`alpineComponents/viewer.js`, the same component behind the Files view and the
 stage preview), so tree, table, code, and raw all come along and there is no
 second JSON renderer here. One row is open at a time: these run 68 KB to 818 KB,
@@ -948,7 +950,19 @@ so mounting four is a cost with no reader. The fetch is not cached, since the
 row's whole promise is that what you are looking at is what is committed now.
 The path beside each label is a plain label, not a link: it used to be an anchor
 to GitHub, which is the one destination a tap on this page should not have, and
-the github mark beside `{}` is the deliberate way out. The guides row has
+the github mark beside Expand is the deliberate way out. The panel is separated
+by a hairline and bleeds to the card's edges rather than sitting in a bordered,
+tinted, indented box of its own: that box, inside the card, around a viewer that
+draws its own frame, was four nested edges squeezing an editor that then
+truncated its own filename. The viewer is handed the file's basename for the
+same reason, since the row two lines up already names the path in full and
+`origin` still carries the real one for its links. Height is a share of the
+viewport, not a fixed 26rem that was cramped on a phone and stingy on a desktop.
+
+The card's icon rides its title line rather than a gutter to the left. Hanging
+it cost about 28px of width on every row, narrowed the description into three
+wrapped lines on a phone, and left every line beneath it choosing between a
+matching indent and a ragged edge. The guides row has
 neither control, because the shelf is assembled in memory and there is nothing
 committed to look at.
 
