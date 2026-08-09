@@ -437,7 +437,22 @@ test('speaking into a selection replaces it, and the caret follows the words in'
   d.start();
   FakeSR.last.say([{ t: 'slow', final: true }]);
   assert.equal(d.text, 'the slow brown fox', 'the selection is what the words landed on');
-  assert.deepEqual(d.range, { start: 8, end: 8 }, 'collapsed after them, ready to carry on');
+  // The replacement KEEPS the selection, over the new words. It shows what
+  // just happened in a paragraph that shifted, and it makes the repair a
+  // loop: say it again and the second attempt replaces the first.
+  assert.deepEqual(d.range, { start: 4, end: 8 }, 'the new words are what is selected now');
+  assert.equal(d.text.slice(4, 8), 'slow');
+
+  FakeSR.last.say([{ t: 'lazy', final: true }]);
+  assert.equal(d.text, 'the lazy brown fox', 'so a second attempt replaces the first, not the fox');
+  assert.deepEqual(d.range, { start: 4, end: 8 });
+
+  // And a CARET insert still collapses after the words: there was no selection
+  // to inherit, and carrying on is the only sensible next move.
+  d.caretAt(3);
+  FakeSR.last.say([{ t: 'very', final: true }]);
+  assert.equal(d.text, 'the very lazy brown fox');
+  assert.deepEqual(d.range, { start: 8, end: 8 });
 
   // And no period: the reader is repairing the middle of a sentence, so a
   // full stop bolted to a far end they are not looking at would be noise.
@@ -522,9 +537,13 @@ test('the painter renders text, caret and selection as marked parts', () => {
   D.paint(h, { text: 'the quick fox', range: { start: 4, end: 4 } });
   assert.deepEqual(parts(h), [['text', 'the '], ['caret', ''], ['text', 'quick fox']]);
 
+  // The handles come LAST and out of the flow: inline they were part of the
+  // line, so arriving at a selection shoved the text sideways.
   D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 } });
   assert.deepEqual(parts(h),
-    [['text', 'the '], ['handle-start', ''], ['sel', 'quick'], ['handle-end', ''], ['text', ' fox']]);
+    [['text', 'the '], ['sel', 'quick'], ['text', ' fox'], ['handle-start', ''], ['handle-end', '']]);
+  const hs = h.querySelector('[data-edge="start"]');
+  assert.match(hs.getAttribute('style'), /position:absolute/, 'so the text never moves for them');
 });
 
 test('handles and the caret carry no text, so they never shift an offset', () => {
@@ -545,16 +564,22 @@ test('the interim paints last and is marked, so a tap in it cannot place a caret
 test('offsetAt counts the parts before the one that was hit', () => {
   const h = host();
   D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 } });
-  const [t0, hs, sel, he, t1] = h.childNodes;
+  const [t0, sel, t1, hs, he] = h.childNodes;
   assert.equal(D.offsetAt(h, t0.firstChild, 2), 2, 'inside the head');
   assert.equal(D.offsetAt(h, sel.firstChild, 3), 7, 'inside the selection, past the head');
   assert.equal(D.offsetAt(h, t1.firstChild, 1), 10, 'inside the tail, past both');
-  // A handle is a target for arming, not a place: it reports its own edge.
+  // A handle is a target for arming, not a place: it reports its own edge,
+  // and it is answered BEFORE the walk, since out of the flow it now sits
+  // after the interim's early return.
   assert.equal(D.offsetAt(h, hs, 0), 4);
   assert.equal(D.offsetAt(h, he, 0), 9);
   // A node nested inside a part still resolves, since the walk climbs to the
   // part first: that is what a browser hands back on a wrapped render.
   assert.equal(D.offsetAt(h, sel, 0), 4);
+
+  D.paint(h, { text: 'the quick fox', interim: 'and more', range: { start: 4, end: 9 } });
+  assert.equal(D.offsetAt(h, h.querySelector('[data-edge="end"]'), 0), 9,
+    'still its own edge with a hypothesis painted between it and the text');
 });
 
 test('the suppression CSS is handed out rather than written down twice', () => {

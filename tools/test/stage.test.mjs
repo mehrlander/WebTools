@@ -1095,7 +1095,7 @@ test('the stage paints through the kit and its pad turns into casing keys', asyn
   data._dict.selectWordAt(6);            // "quick"
   data.dictPaint();
   assert.deepEqual([...body.childNodes].map(n => n.getAttribute('data-d')),
-    ['text', 'handle-start', 'sel', 'handle-end', 'text']);
+    ['text', 'sel', 'text', 'handle-start', 'handle-end']);
   assert.equal(data.dictSel, true);
   assert.deepEqual(plain_(data.dictMarks), ['AB', 'ab', 'Ab'], 'the pad is casing now');
 

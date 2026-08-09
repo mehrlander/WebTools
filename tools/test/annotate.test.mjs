@@ -443,7 +443,8 @@ test('the composer paints through the kit and swaps its pad for a selection', ()
   d.selectWordAt(6);                       // "quick"
   A._paintDraft();
   assert.deepEqual([...body.childNodes].map(n => n.getAttribute('data-d')),
-    ['text', 'handle-start', 'sel', 'handle-end', 'text'], 'handles at both edges');
+    ['text', 'sel', 'text', 'handle-start', 'handle-end'],
+    'handles last and out of the flow, so arriving at a selection moves no text');
   assert.equal(body.querySelector('[data-d="sel"]').textContent, 'quick');
 
   // The pad is now casing, and its fourth key is the way out of the mode.
