@@ -70,6 +70,17 @@ test('a 409 recovers by refetching the SHA and retrying', async () => {
   assert.equal(puts[1].body.sha, 'cursha', 'retry carries the refetched SHA');
 });
 
+test('the instance ref rides the PUT as branch; empty ref stays default', async () => {
+  const { gh, puts } = makeGH();
+  gh.ref = 'claude/feature-x';
+  await gh.save('dump/drop.md', 'hi', 'drop');
+  assert.equal(puts[0].body.branch, 'claude/feature-x',
+    'a GH pointed at a branch writes to that branch, matching what it reads');
+  const { gh: gh2, puts: puts2 } = makeGH();
+  await gh2.save('dump/drop.md', 'hi');
+  assert.equal(puts2[0].body.branch, undefined, 'no ref, no branch param');
+});
+
 test('repeated conflicts keep retrying, backing off, until one lands', async () => {
   // The registry branch takes a commit on every session Stop, so losing the
   // race twice in a row is a normal afternoon, not an error worth surfacing.

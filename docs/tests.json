@@ -11,6 +11,15 @@
   },
   "tests": [
     {
+      "path": "tools/test/annotate.test.mjs",
+      "kind": "behavior",
+      "protects": "A note's quote anchor survives the range round trip and disambiguates duplicates on context, its DOM address separates two identical phrases the quote alone cannot, selection is state rather than a flash and an edit changes the note without moving the anchor, every change is announced so a reader elsewhere stays current, the dictation rules compose spoken punctuation and a back-delete correctly, and the jot save goes through fresh-read → mutate → save rather than clobbering the list.",
+      "assertions": 18,
+      "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/artifacts-lockstep.test.mjs",
       "kind": "lockstep",
       "protects": "Every deterministic generator is re-run in check mode, so a committed artifact cannot sit behind its source.",
@@ -41,7 +50,7 @@
       "path": "tools/test/branch-brief-groups.test.mjs",
       "kind": "component",
       "protects": "The branch review's Files pane groups by creation mode where a content registry is declared, mounts no cards inside a collapsed group, and stays the flat unlabeled list where no registry exists.",
-      "assertions": 3,
+      "assertions": 4,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
@@ -68,7 +77,7 @@
       "path": "tools/test/branch-survey.test.mjs",
       "kind": "behavior",
       "protects": "Landed-versus-stranded is judged on blob content, since squashes make ref-level merge status meaningless.",
-      "assertions": 20,
+      "assertions": 21,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -380,6 +389,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/fab-notes.test.mjs",
+      "kind": "behavior",
+      "protects": "The drawer's Notes tab stays a VIEW of kits/annotate.js rather than a second store: it holds the kit's own item objects, re-reads on the kit's change announcement rather than by polling, writes every edit and selection back through the kit, serializes exactly what Copy hands over, and never enables the annotator merely by being opened.",
+      "assertions": 7,
+      "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/fab-subject-actions.test.mjs",
       "kind": "component",
       "protects": "Inside a toss, the fab collects the subject page actions as well as the shell.",
@@ -437,7 +455,7 @@
       "path": "tools/test/gh-store.test.mjs",
       "kind": "behavior",
       "protects": "saveBytes writes byte-exact content, so a binary round-trip cannot be silently re-encoded.",
-      "assertions": 7,
+      "assertions": 8,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -887,7 +905,7 @@
       "path": "tools/test/stage.test.mjs",
       "kind": "component",
       "protects": "The stage: membership, grouping, the diff lens, saving, and the cross-repo address grammar.",
-      "assertions": 52,
+      "assertions": 60,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1

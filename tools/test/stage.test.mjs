@@ -31,8 +31,8 @@ class FakeGH {
     return [];
   }
   async copyTo(dest, paths) { calls.push({ kind: 'copyTo', from: this.repo, dest, paths }); return paths.map(p => ({ path: p, status: 'ok' })); }
-  async save(path, value, msg) { calls.push({ kind: 'save', repo: this.repo, path, value, msg }); return { content: { sha: 'x' } }; }
-  async saveBytes(path, bytes, msg) { calls.push({ kind: 'saveBytes', repo: this.repo, path, bytes, msg }); return { content: { sha: 'x' } }; }
+  async save(path, value, msg) { calls.push({ kind: 'save', repo: this.repo, ref: this.ref, path, value, msg }); return { content: { sha: 'x' } }; }
+  async saveBytes(path, bytes, msg) { calls.push({ kind: 'saveBytes', repo: this.repo, ref: this.ref, path, bytes, msg }); return { content: { sha: 'x' } }; }
 }
 
 const { window, problems } = makeWindow({
@@ -224,7 +224,7 @@ test('pasted prose is held as a local text item', () => {
   assert.equal(data.localItems.length, 1);
   assert.equal(data.localItems[0].isText, true);
   assert.equal(data.localItems[0].text, 'just some notes, not a ref');
-  assert.equal(data.localItems[0].name, 'pasted.txt');
+  assert.match(data.localItems[0].name, /^\d{4}-\d{2}-\d{2}-paste\.txt$/);
 });
 
 test('groups covers only refs; local items render on their own', () => {
@@ -281,12 +281,62 @@ test('an empty dir deposits local files at the repo root', async () => {
   assert.equal(txt.path, 'top.txt', 'no dir prefix at root');
 });
 
-test('copyLink refuses a link when only local files are staged', () => {
+test('a local-only stage still mints: the text rides the fragment, gzipped', async () => {
   reset();
-  store.stage = [{ local: true, id: 95, name: 'x', path: 'x', size: 1, isText: true, text: '' }];
+  clipWrites.length = 0;
+  store.stage = [{ local: true, id: 95, name: 'draft.html', path: 'draft.html',
+                   size: 20, isText: true, text: '<!doctype html><p>hi' }];
   data.linkCopied = false;
-  data.copyLink();
-  assert.equal(data.linkCopied, false, 'no link minted from local-only stage');
+  await data.copyLink();
+  assert.equal(data.linkCopied, true, 'a paste is shareable, not a dead end');
+  const url = clipWrites[0];
+  assert.match(url, /#gz=/, 'no empty #stage= key when there are no refs');
+  const back = await window.StageLink.decodeLocals(window.StageLink.parseLink(url).gz);
+  assert.deepEqual(plain_(back), [{ name: 'draft.html', text: '<!doctype html><p>hi' }]);
+});
+
+test('a local BINARY still cannot ride, and the refusal says which', async () => {
+  reset();
+  store.stage = [{ local: true, id: 96, name: 'a.bin', path: 'a.bin', size: 2,
+                   isText: false, bytes: new Uint8Array([1, 2]) }];
+  data.linkCopied = false;
+  await data.copyLink();
+  assert.equal(data.linkCopied, false);
+});
+
+test('refs and pasted text ride one link together', async () => {
+  reset();
+  clipWrites.length = 0;
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'lib/x.js' },
+    { local: true, id: 97, name: 'note.md', path: 'note.md', size: 5, isText: true, text: '# hi' },
+  ];
+  await data.copyLink();
+  const link = window.StageLink.parseLink(clipWrites[0]);
+  assert.deepEqual(plain_(link.items), [{ repo: 'me/a', ref: '', path: 'lib/x.js' }]);
+  const back = await window.StageLink.decodeLocals(link.gz);
+  assert.deepEqual(plain_(back), [{ name: 'note.md', text: '# hi' }]);
+});
+
+test('a paste past the link budget reports the overflow instead of minting', async () => {
+  // Incompressible by construction: a seeded LCG over a wide alphabet, so the
+  // test measures the BUDGET rather than gzip's appetite for repetition. (A
+  // first cut used i % 97, which gzip crushed to well under the cap.)
+  // Park-Miller, because the obvious LCG is a trap in JS: seed * 1103515245
+  // exceeds 2^53, so the sequence degenerates and gzip found 10:1 on it. This
+  // multiplier keeps every product inside safe-integer range, and the result
+  // actually resists compression, which is what the budget assertion needs.
+  let seed = 12345;
+  const noise = Array.from({ length: 40000 }, () => {
+    seed = (seed * 48271) % 2147483647;
+    return String.fromCharCode(33 + (seed % 94));
+  }).join('');
+  const big = [{ local: true, isText: true, name: 'big.txt', text: noise }];
+  await assert.rejects(() => window.StageLink.encodeLocals(big), (e) => {
+    assert.equal(e.overflow, true);
+    assert.match(e.message, /over the \d+K a link can carry/);
+    return true;
+  });
 });
 
 // ---- Save as surface: the bench-to-shelf bridge ------------------------
@@ -819,12 +869,12 @@ test('diffPrompts shows link-carried bespoke asks first, then the fixed set', ()
   data.linkPrompts = [];
 });
 
-test('copyLink carries the bespoke prompts back into the minted link', () => {
+test('copyLink carries the bespoke prompts back into the minted link', async () => {
   reset();
   clipWrites.length = 0;
   store.stage = [{ repo: 'me/a', ref: '', path: 'x.md' }];
   data.linkPrompts = [{ label: 'Tone', ask: 'Did the tone drift?' }];
-  data.copyLink();
+  await data.copyLink();
   assert.equal(clipWrites.length, 1);
   assert.match(clipWrites[0], /&prompts=/);
   assert.deepEqual(plain_(window.StageLink.parseLink(clipWrites[0]).prompts), plain_(data.linkPrompts));
@@ -848,4 +898,67 @@ test('copyPrompt assembles both texts, the diff, and the specific ask', async ()
   assert.match(t, /DIFF:\n--- A:/);
   assert.match(t, /REVIEW REQUEST: Make it more succinct\.$/);
   assert.equal(data.promptCopiedIdx, 0);
+});
+
+test('pasted text is named by what it is, so the extension is not a lie', () => {
+  reset();
+  const nameOf = (text) => {
+    reset();
+    data.onDropped({ text, size: text.length, type: 'text/plain' });
+    return data.localItems[0].name;
+  };
+  assert.match(nameOf('<!doctype html><html><body>hi</body></html>'), /-paste\.html$/);
+  assert.match(nameOf('{"a":1}'), /-paste\.json$/);
+  assert.match(nameOf('# Title\n\nbody'), /-paste\.md$/);
+  assert.match(nameOf('just prose'), /-paste\.txt$/);
+});
+
+test('a dest-carrying send lands local files ON the named branch', async () => {
+  reset();
+  calls.length = 0;
+  store.stage = [{ local: true, id: 95, name: 'drop.html', path: 'drop.html', size: 2, isText: true, text: '<p>x' }];
+  // The shape the branch page's add-file plus mints: repo@branch:dir.
+  data.destSpec = 'me/dest@claude/some-branch:dump';
+  await data.send();               // arm
+  await data.send();               // deposit
+  const txt = calls.find(c => c.kind === 'save');
+  assert.equal(txt.repo, 'me/dest');
+  assert.equal(txt.ref, 'claude/some-branch', 'the writer is pointed at the branch, not the default');
+  assert.equal(txt.path, 'dump/drop.html');
+});
+
+test('parseDest reads a slashed branch out of owner/repo@ref:dir', () => {
+  const d = data.parseDest('mehrlander/web-tools@claude/show-repo-scripts-staged-files-yhwb4b:dump');
+  assert.deepEqual(plain_(d), { repo: 'mehrlander/web-tools', ref: 'claude/show-repo-scripts-staged-files-yhwb4b', dir: 'dump' });
+});
+
+test('a dest= key aims the stage, from the fragment or the query', () => {
+  const SL = window.StageLink;
+  const dest = 'mehrlander/web-tools@claude/some-branch:dump';
+  // Fragment form, beside a staged set.
+  const fromHash = SL.parseLink('#stage=me/a:x.js&dest=' + encodeURIComponent(dest));
+  assert.equal(fromHash.dest, dest);
+  assert.equal(fromHash.items.length, 1, 'dest does not disturb the item list');
+  // Query-only form: what the branch page's add-file plus mints
+  // (?view=stage&dest=…), which carries no staged set at all.
+  const fromQuery = SL.read({ hash: '', search: '?view=stage&dest=' + encodeURIComponent(dest) });
+  assert.equal(fromQuery.dest, dest);
+  assert.equal(fromQuery.items.length, 0);
+  // Absent is empty, never undefined: the caller assigns it to a text field.
+  assert.equal(SL.parseLink('#stage=me/a:x.js').dest, '');
+});
+
+test('the destination trigger splits repo from its scope, and the folder never truncates away', () => {
+  // The picker is shared, so its label has to survive three shapes: a full
+  // deposit address, a plain path (file mode), and a deep path that is not an
+  // address at all. Only the first splits.
+  const pk = [...window.document.querySelectorAll('[x-data^="pathPicker"]')]
+    .map(e => window.Alpine.$data(e)).find(Boolean);
+  pk.label = 'mehrlander/web-tools@claude/long-branch-name:dump';
+  assert.deepEqual(plain_(pk.labelParts),
+    { main: 'mehrlander/web-tools', ref: '@claude/long-branch-name', dir: ':dump' });
+  pk.label = 'pages/foo.html';
+  assert.deepEqual(plain_(pk.labelParts), { main: 'pages/foo.html', ref: '', dir: '' });
+  pk.label = 'lib/alpineComponents/fab.js';
+  assert.deepEqual(plain_(pk.labelParts), { main: 'lib/alpineComponents/fab.js', ref: '', dir: '' });
 });

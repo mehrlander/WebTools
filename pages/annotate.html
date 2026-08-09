@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Annotate</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>✎</text></svg>">
+<!--
+  annotate.html — read a document and pin notes to pieces of it.
+
+  The page half of kits/annotate.js: it fetches one file (markdown rendered,
+  anything else as text), turns the annotator on, and gets out of the way.
+  Select text and tap “+ note”; or use the panel's element / region pickers.
+  The set copies out as markdown (for pasting to a model), as JSON
+  (annotate/1), or saves as one jot in the estate registry.
+
+  Address a document with ?doc=<spec> (fragment #doc= works too):
+    a plain path        this repo, e.g. ?doc=docs/CONVENTIONS.md (the default)
+    owner/repo[@ref]:path   any repo the viewer's token reaches
+
+  ?use=<ref> pins the lib chain to a branch/tag/sha for previewing edits.
+-->
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<style>
+  [x-cloak]{display:none}
+  /* The page owns its markdown styles outright. The typography plugin CSS was
+     dropped from the combine after a field test showed double bullet markers:
+     the version jsDelivr serves draws its own li::before dot on top of the
+     native list marker. One stylesheet, one bullet. */
+  #doc h1{font-size:1.6rem;font-weight:700;margin:1.2rem 0 .6rem}
+  #doc h2{font-size:1.3rem;font-weight:700;margin:1.1rem 0 .5rem}
+  #doc h3{font-size:1.1rem;font-weight:600;margin:1rem 0 .4rem}
+  #doc p,#doc ul,#doc ol,#doc blockquote,#doc pre,#doc table{margin:.5rem 0}
+  #doc ul{list-style:disc;padding-left:1.4rem}
+  #doc ol{list-style:decimal;padding-left:1.4rem}
+  #doc blockquote{border-left:3px solid #d4d4d8;padding-left:.8rem;color:#52525b}
+  #doc pre{background:#f4f4f5;border-radius:8px;padding:.6rem .8rem;overflow-x:auto;font-size:.85em}
+  #doc table{border-collapse:collapse}
+  #doc th,#doc td{border:1px solid #e4e4e7;padding:.25rem .5rem;font-size:.9em}
+</style>
+<script type="module">
+  // ?use=<branch|tag|sha> picks which ref the lib chain loads from; defaults
+  // to main. gh-api.js auto-boots window.gh from its import URL or window.__ghBlobBoot.
+  const ref = new URLSearchParams(location.search).get('use');
+  if (ref) {
+    window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
+    const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
+    const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+    try { await import(u); } finally { URL.revokeObjectURL(u); }
+  } else {
+    await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
+  }
+  await gh.load('kits/annotate.js');
+  const { marked } = await import('https://cdn.jsdelivr.net/npm/marked@12/+esm');
+
+  const DEFAULT_DOC = 'docs/CONVENTIONS.md';
+
+  // owner/repo[@ref]:path, or a plain path in this repo.
+  const parseSpec = (s) => {
+    const m = /^([\w.-]+\/[\w.-]+)(?:@([^:]+))?:(.+)$/.exec(s || '');
+    return m ? { repo: m[1], ref: m[2] || '', path: m[3] } : { repo: '', ref: '', path: s || '' };
+  };
+
+  const fetchText = async (spec) => {
+    const s = parseSpec(spec);
+    if (!s.repo) return (await gh.get(s.path)).text;
+    const at = s.ref ? `?ref=${encodeURIComponent(s.ref)}` : '';
+    const data = await gh.req(`/repos/${s.repo}/contents/${s.path}${at}`);
+    if (Array.isArray(data)) throw new Error('that path is a directory, not a file');
+    const content = data.content || (await gh.req(`/repos/${s.repo}/git/blobs/${data.sha}`)).content;
+    return gh.decode(content);
+  };
+
+  const blobUrl = (spec) => {
+    const s = parseSpec(spec);
+    const repo = s.repo || 'mehrlander/web-tools';
+    return `https://github.com/${repo}/blob/${s.ref || 'main'}/${s.path}`;
+  };
+
+  window.annotatePage = () => ({
+    spec: '',
+    err: '',
+    loading: false,
+    pasted: false,
+
+    async init() {
+      const h = new URLSearchParams(location.hash.slice(1));
+      const q = new URLSearchParams(location.search);
+      this.spec = h.get('doc') || q.get('doc') || DEFAULT_DOC;
+      await this.load();
+    },
+
+    async load() {
+      this.err = '';
+      this.loading = true;
+      this.pasted = false;
+      try {
+        const text = await fetchText(this.spec.trim());
+        this.render(text, this.spec.trim());
+      } catch (e) {
+        this.err = e && e.message || String(e);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // Paste mode: annotate text that lives nowhere, straight from the clipboard.
+    async paste() {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (!text) { this.err = 'clipboard is empty'; return; }
+        this.err = '';
+        this.pasted = true;
+        this.render(text, 'pasted text');
+      } catch (e) {
+        this.err = 'clipboard read failed: ' + (e && e.message || e);
+      }
+    },
+
+    render(text, name) {
+      const el = document.getElementById('doc');
+      const isMd = /\.(md|markdown)$/i.test(name) || name === 'pasted text' && /^#{1,6}\s/m.test(text);
+      if (isMd) {
+        el.innerHTML = marked.parse(text);
+        el.className = 'max-w-none leading-relaxed';
+      } else {
+        el.textContent = '';
+        const pre = document.createElement('pre');
+        pre.className = 'whitespace-pre-wrap text-sm font-mono';
+        pre.textContent = text;
+        el.className = 'max-w-none';
+        el.appendChild(pre);
+      }
+      document.title = 'Annotate — ' + name;
+      window.Annotate.enable({
+        subject: this.pasted
+          ? { title: name, url: '' }
+          : { title: name, url: blobUrl(name) },
+      });
+    },
+  });
+
+  await gh.load('alpine-bundle.js');
+</script>
+</head>
+<body class="bg-base-100 min-h-screen" x-data="annotatePage()" x-init="init()">
+  <div class="max-w-3xl mx-auto px-4 py-4">
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+      <span class="font-bold text-lg">✎ Annotate</span>
+      <!-- text-[16px]: anything smaller makes iOS Safari zoom the page when
+           the field is focused, same rule the note bubble honors. -->
+      <input x-model="spec" @keydown.enter="load()" spellcheck="false"
+             class="input input-bordered input-sm flex-1 min-w-48 font-mono text-[16px]"
+             placeholder="path, or owner/repo[@ref]:path">
+      <button @click="load()" class="btn btn-sm btn-primary" :disabled="loading"
+              x-text="loading ? 'Loading…' : 'Load'"></button>
+      <button @click="paste()" class="btn btn-sm" title="Annotate text from the clipboard instead">Paste</button>
+    </div>
+    <div x-show="err" x-cloak class="alert alert-warning text-sm mb-4"><span x-text="err"></span></div>
+    <div id="doc"></div>
+  </div>
+</body>
+</html>

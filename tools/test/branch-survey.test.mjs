@@ -201,3 +201,19 @@ test('lifespan display rules: the start collapses when unknowable or same-label'
   // A same-day branch rounds both halves to one label: "2h → 2h" is noise.
   assert.equal(B.lifespanStart('2026-07-09T08:00:00Z', tip, agoShort), '');
 });
+
+test('dropFileUrl: inbox dir when plain, dump/ against cross-repo specs, stamped name', () => {
+  const now = new Date('2026-08-08T14:05:00');
+  const br = 'claude/some-branch';
+  // A plain same-repo inbox dir is used as-is (trailing slash trimmed).
+  assert.equal(
+    B.dropFileUrl('o/r', br, 'inbox/', now),
+    'https://github.com/o/r/new/claude/some-branch?filename=' + encodeURIComponent('inbox/2026-08-08-1405-drop.md'));
+  // A cross-repo spec must never become a filename: web-tools' own inbox is
+  // 'mehrlander/home:inbox/web-tools', which minted a nonsense path until
+  // 2026-08-08. Spec-shaped (':' or '@') falls back to dump/.
+  for (const inbox of ['mehrlander/home:inbox/web-tools', '@main:drops', undefined, '']) {
+    assert.ok(B.dropFileUrl('o/r', br, inbox, now).includes(encodeURIComponent('dump/2026-08-08-1405-drop.md')),
+      String(inbox));
+  }
+});

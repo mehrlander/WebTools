@@ -93,3 +93,27 @@ test('without a registry the pane is the flat unlabeled list it always was', asy
   assert.equal(data.fileGroups[0].labeled, false);
   assert.equal(data.fileGroups[0].files.length, 3);
 });
+
+test('the GitHub exits are labeled menu rows, and the plus aims the stage at this branch', async () => {
+  SERVE_CSV = true;
+  await data.load();
+  await tick(3);
+
+  // Every exit carries words, which is the whole point of the menu: a row of
+  // bare glyphs read as cryptic in the field (2026-08-08).
+  const rows = j(data.ghRows);
+  assert.ok(rows.every(r => r.label && r.url), 'every row is labeled and addressed');
+  const labels = rows.map(r => r.label);
+  assert.ok(labels.includes('Browse tree'));
+  assert.ok(labels.includes('Compare vs main'));
+  assert.ok(labels.includes('New file here'), 'GitHub’s own editor stays reachable for a binary');
+  assert.ok(rows.find(r => r.label === 'Browse tree').url.endsWith('/tree/feat/x'));
+
+  // The plus opens the STAGE, aimed: dest = repo@branch:dir, so the stage is
+  // pre-scoped and the user supplies only the content.
+  const u = new URL(data.stageDepositUrl);
+  assert.equal(u.searchParams.get('view'), 'stage');
+  assert.equal(u.searchParams.get('dest'), REPO + '@feat/x:dump',
+    'no declared inbox means dump/, the convention default');
+  assert.ok(u.pathname.endsWith('/show-repo/show-repo.html'));
+});
