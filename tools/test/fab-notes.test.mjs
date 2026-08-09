@@ -196,6 +196,38 @@ test('the drawer adopts an annotator living in the subject frame', async () => {
   frameWin.Annotate.disable();
 });
 
+test('a dismissed card leaves its notes findable, in a frame or not', async () => {
+  const d = await mountFab();
+  window.Annotate.enable({ doc, subject: { title: 'x', url: '' } });
+  window.Annotate.clear();
+  window.Annotate.add(quote('dog'), 'still here');
+  await tick();
+
+  // The card's × disables rather than hiding, since the launcher pill is gone.
+  // The tab has to keep showing the set, or dismissing would read as deleting.
+  window.Annotate.disable();
+  d.annSync();
+  assert.equal(d.annOn, false);
+  assert.equal(d.annItems.length, 1, 'a disabled kit holding notes is still the one to read');
+
+  // Same in a toss, where the shell's instance is empty and the frame's holds
+  // the set: preferring the shell there would report zero over a page with one.
+  const frameWin = { addEventListener() {}, removeEventListener() {}, dispatchEvent: () => true };
+  loadKit('annotate.js', { window: frameWin });
+  frameWin.Annotate.enable({ doc, subject: { title: 'framed', url: '' } });
+  frameWin.Annotate.clear();
+  frameWin.Annotate.add(quote('fox'), 'in the frame');
+  frameWin.Annotate.disable();
+  window.__tossFrame = { contentWindow: frameWin };
+  window.Annotate.clear();
+  d.annSync();
+  assert.equal(d.annItems.length, 1);
+  assert.equal(d.annItems[0].note, 'in the frame', 'the frame’s set, not the shell’s empty one');
+
+  delete window.__tossFrame;
+  frameWin.Annotate.clear();
+});
+
 test('the kit’s Review request opens this tab, and claims it', async () => {
   const d = await mountFab();
   A.enable({ doc, subject: { title: 'x', url: '' } });

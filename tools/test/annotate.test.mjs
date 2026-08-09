@@ -302,6 +302,41 @@ test('announcements climb to the top window, since the drawer is usually up ther
   assert.deepEqual(seen.self, ['annotate:change']);
 });
 
+test('a capture mode leaves its own way out, and dismissing keeps the notes', () => {
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'text', quote: { exact: 'one', prefix: '', suffix: '' } }, 'kept');
+
+  // The card stays up through a capture mode. Hiding it also hid the chip that
+  // exits, which left Region with a single exit: finish a note. There is no Esc
+  // key on a phone, so a reader who opened it by mistake was stuck.
+  A.startRegion();
+  assert.equal(A._state.mode, 'region');
+  assert.equal(A._state.panel.style.display, 'flex', 'the card is still on screen');
+  const cover = [...doc.querySelectorAll('div')].find(d => d.style.cursor === 'crosshair');
+  assert.ok(cover, 'the drag cover exists');
+  assert.ok(+cover.style.zIndex < +A._state.ui.style.zIndex,
+    'and sits UNDER the card, so the chip stays tappable');
+
+  // Tapping the active chip is the way out, and it is reachable now.
+  A._state.modeChips.region.dispatchEvent(new window.Event('click'));
+  assert.equal(A._state.mode, null, 'the chip toggles the mode off');
+
+  A.startPick();
+  assert.equal(A._state.panel.style.display, 'flex', 'element mode keeps it too');
+  A._state.modeChips.pick.dispatchEvent(new window.Event('click'));
+  assert.equal(A._state.mode, null);
+
+  // Dismissing is "put it away", not "throw it out": there is no launcher pill
+  // to bring it back, so the notes have to survive for the drawer to show them.
+  A.disable();
+  assert.equal(A.enabled, false);
+  assert.equal(A.items.length, 1, 'the set outlives the card');
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  assert.equal(A.items.length, 1, 'and comes back with it');
+  A.clear();
+});
+
 test('remove and clear keep the list and paint state consistent', () => {
   A.add({ type: 'text', quote: { exact: 'one', prefix: '', suffix: '' } }, 'n1');
   A.add({ type: 'text', quote: { exact: 'two', prefix: '', suffix: '' } }, 'n2');
