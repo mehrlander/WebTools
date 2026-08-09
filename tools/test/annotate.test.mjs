@@ -349,15 +349,16 @@ test('remove and clear keep the list and paint state consistent', () => {
   assert.ok(!A.enabled);
 });
 
-// ── Dictation: the composition rules, driven through a fake engine ─────────
-// The four ideas ported from the dropped prototype are text rules, not speech
-// ones, so they test without a microphone: a stub SpeechRecognition lets the
-// test play the part of the engine and assert what lands in the buffer.
+// ── Dictation: the seam, not the engine ───────────────────────────────────
+// The composition rules moved to tools/test/dictate.test.mjs with the engine
+// on 2026-08-09. What stays here is what the annotator owes the pair: it
+// builds an engine from the kit when one is loaded, and it degrades to a
+// composer with no microphone when one is not, rather than throwing on a
+// window that never chained kits/dictate.js.
 class FakeSR {
   constructor() { FakeSR.last = this; this.started = 0; }
   start() { this.started++; }
   stop() { this.onend && this.onend(); }
-  // Feed results the way the API does: a list of {transcript, isFinal}.
   say(parts) {
     const results = parts.map(p => Object.assign([{ transcript: p.t }], { isFinal: !!p.final }));
     results.resultIndex = 0;
@@ -365,111 +366,39 @@ class FakeSR {
   }
 }
 
-test('dictation: spoken punctuation becomes words, tapped marks become punctuation', async () => {
+test('the annotator builds its engine from kits/dictate.js and paints what it hears', () => {
   window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
   A.enable({ doc, subject: { title: 'x', url: '' } });
   const d = A._state.dict;
   assert.ok(d, 'the annotator built a dictation engine');
 
-  d.start();
-  // The engine hears a sentence WITH punctuation: it must not survive as one.
-  FakeSR.last.say([{ t: 'the rule is simple.', final: true }]);
-  assert.equal(d.text, 'the rule is simple period',
-    'a recognized period is spoken text, since the engine guesses badly at marks');
-
-  // A tapped mark rides the stop-restart cycle: parked, engine stopped, then
-  // written by the end handler, which also restarts it.
-  const before = FakeSR.last.started;
-  d.punct('.');
-  assert.match(d.text, /simple period\. $/, 'the tapped mark is the real punctuation');
-  await new Promise(r => setTimeout(r, 5));
-  assert.ok(FakeSR.last.started > 0 || before >= 0, 'the engine is restarted after the mark');
-  d.stop();
-});
-
-test('dictation: a comma continues the sentence, so the next capital is lowered', () => {
-  window.SpeechRecognition = FakeSR;
-  A.enable({ doc, subject: { title: 'x', url: '' } });
-  const d = A._state.dict;
+  // The wiring is the claim: text spoken into the engine reaches the buffer
+  // the composer reads, through the callbacks enable() passed in.
   d.text = '';
   d.start();
-  FakeSR.last.say([{ t: 'first part', final: true }]);
-  d.punct(',');                       // continuation on
-  FakeSR.last.say([{ t: 'Then more', final: true }]);
-  assert.equal(d.text, 'first part, then more',
-    'stitched utterances read as one sentence, not as two');
-
-  // A full stop ends it, so the next capital stands.
-  d.punct('.');
-  FakeSR.last.say([{ t: 'New sentence', final: true }]);
-  assert.match(d.text, /\. New sentence$/);
-  d.stop();
-});
-
-test('dictation: a paragraph mark breaks the line and spacing never doubles', () => {
-  window.SpeechRecognition = FakeSR;
-  A.enable({ doc, subject: { title: 'x', url: '' } });
-  const d = A._state.dict;
-  d.text = '';
-  d.start();
-  FakeSR.last.say([{ t: 'one', final: true }]);
-  d.punct('¶');
-  FakeSR.last.say([{ t: 'two', final: true }]);
-  assert.equal(d.text, 'one\n\ntwo');
+  FakeSR.last.say([{ t: 'a note by voice', final: true }]);
+  assert.equal(d.text, 'a note by voice');
   d.stop();
   A.disable();
 });
 
-test('dictation: saving takes the interim with it', () => {
-  // The engine finalizes at a pause, so a reader who taps save mid-phrase has
-  // words on screen that the buffer does not hold. Dropping them was the field
-  // report (2026-08-09): the last sentence spoken vanished on save.
-  window.SpeechRecognition = FakeSR;
-  A.enable({ doc, subject: { title: 'x', url: '' } });
-  A.clear();
-  const d = A._state.dict;
-  d.text = '';
-  d.start();
-  FakeSR.last.say([{ t: 'the settled part', final: true }]);
-  FakeSR.last.say([{ t: 'and the part still being heard', final: false }]);
-  assert.equal(d.text, 'the settled part', 'the buffer holds only what was finalized');
+test('without the dictate kit the annotator still works, minus the microphone', () => {
+  // A page may chain annotate.js alone. The composer must open, take a typed
+  // note, and serialize; only the voice affordance is missing. Anything else
+  // makes the kit pair a hard dependency, which it is deliberately not.
+  const { window: bare } = makeWindow({
+    html: `<!doctype html><html><body><p id="t">Some text to annotate here.</p></body></html>`,
+  });
+  bare.SpeechRecognition = FakeSR;      // a recognizer exists; the KIT does not
+  loadKit('annotate.js', { window: bare });
+  const B = bare.Annotate;
+  B.enable({ doc: bare.document, subject: { title: 'bare', url: '' } });
+  assert.equal(B.enabled, true, 'enable() survives a missing Dictate');
+  assert.equal(bare.Annotate._state.dict, null, 'and leaves no engine behind');
 
-  assert.equal(d.flush(), 'the settled part and the part still being heard',
-    'flush commits the guess the reader can see');
-  assert.equal(d.flush(), 'the settled part and the part still being heard',
-    'and is idempotent: a second flush has nothing left to commit');
-
-  // A finalization arriving after the flush is the engine's own copy of the
-  // same words; the buffer has moved on, so nothing here re-reads it.
-  d.stop();
-  A.disable();
-});
-
-test('dictation: the delete button drops one word, or the mark clinging to it', () => {
-  window.SpeechRecognition = FakeSR;
-  A.enable({ doc, subject: { title: 'x', url: '' } });
-  const d = A._state.dict;
-  d.text = '';
-  d.start();
-  FakeSR.last.say([{ t: 'the quick brown fox', final: true }]);
-  d.backWord();
-  assert.equal(d.text, 'the quick brown', 'one word, not the whole utterance');
-
-  // A trailing mark goes first, so two taps undo "word." rather than one tap
-  // eating both: the mark was its own deliberate act.
-  d.punct('.');
-  assert.match(d.text, /brown\. $/);
-  d.backWord();
-  assert.equal(d.text, 'the quick brown');
-  d.backWord();
-  assert.equal(d.text, 'the quick', 'no trailing space is left behind: append re-spaces');
-
-  // Deleting back past a comma restores the continuation state, so the next
-  // utterance is not lowercased on the strength of punctuation that is gone.
-  d.text = 'first,';
-  d.backWord();
-  FakeSR.last.say([{ t: 'Then more', final: true }]);
-  assert.match(d.text, /Then more$/, 'the capital stands once the comma is gone');
-  d.stop();
-  A.disable();
+  B.add({ type: 'text', quote: { exact: 'Some text', prefix: '', suffix: '' } }, 'typed');
+  assert.equal(B.items.length, 1);
+  assert.match(B.toMarkdown(), /typed/, 'the set still serializes');
+  B.disable();
 });
