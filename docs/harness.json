@@ -980,6 +980,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/stage-dictate.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 33,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/stage-diff-longrefs.mjs",
       "role": "the Diff tab's A/B selects clipping long repo@ref:path labels",
       "layer": "tools/render/scenarios",

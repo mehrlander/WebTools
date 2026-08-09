@@ -378,7 +378,8 @@ test('the annotator builds its engine from kits/dictate.js and paints what it he
   d.text = '';
   d.start();
   FakeSR.last.say([{ t: 'a note by voice', final: true }]);
-  assert.equal(d.text, 'a note by voice');
+  assert.equal(d.text, 'a note by voice.',
+    'including the period the pause earned, which is the kit\'s rule and not the annotator\'s');
   d.stop();
   A.disable();
 });
