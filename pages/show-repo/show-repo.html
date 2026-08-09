@@ -1537,6 +1537,7 @@ function app(){ return {
   // can read; this one has no file, so the shell holds the only copy outside
   // the component that produced it.
   guidesLoadedAt: '',
+  guidesBusy: false,   // mirrored the same way, so the State row can spin
   configRefreshing: false,  // the estate refresh button is mid-crawl
   activityRefreshing: false, // the activity crawl (heavier: per-repo survey) is running
   // Live progress for the Activity header while that crawl runs, or null when

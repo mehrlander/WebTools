@@ -8,6 +8,10 @@
 export default async (page) => {
   await page.evaluate(() => {
     window.TOKEN = 'FAKE';
+    // The controls are gated on the shell's own auth verdict, not on TOKEN
+    // alone, so without this every Refresh renders disabled and the colour
+    // treatment cannot be seen.
+    window.__shell.hasToken = () => true;
     const now = Date.now();
     const iso = (h) => new Date(now - h * 3600e3).toISOString();
 
