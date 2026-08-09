@@ -123,12 +123,29 @@ test('the format tabs render exactly what Copy puts on the clipboard', async () 
 
   assert.equal(d.annOut, '', 'nothing is serialized while the Notes tab is showing');
 
+  // Both serializations stamp the moment they were produced, so the pane's copy
+  // and a fresh one are equal in everything except that stamp. Comparing the
+  // raw strings therefore asserts that two calls landed in the same
+  // millisecond, which is a property of the machine, not of the code: it held
+  // on four local runs and broke on the first CI runner (2026-08-09, PR #377,
+  // 04:30:33.392 against .393). What is actually claimed here is that the pane
+  // shows the set Copy would hand over, so compare everything but the stamp.
+  const undated = (s) => s.replace(/\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?/g, '<when>');
+
   d.annSetTab('md');
-  assert.equal(d.annOut, A.toMarkdown(), 'the same string copy() would hand over');
+  assert.equal(undated(d.annOut), undated(A.toMarkdown()),
+    'the same string copy() would hand over');
   assert.ok(d.annOut.includes('Path: `#p1 [4-9]`'));
 
   d.annSetTab('json');
-  assert.equal(d.annOut, JSON.stringify(A.toJSON(), null, 2));
+  const shown = JSON.parse(d.annOut);
+  const fresh = A.toJSON();
+  assert.equal(shown.format, 'annotate/1');
+  assert.equal(shown.title, fresh.title);
+  assert.equal(shown.url, fresh.url);
+  // A note's own `at` is fixed when the note is made, so these compare exactly;
+  // only the envelope's serialization stamp is call-time.
+  assert.deepEqual(shown.notes, fresh.notes);
 
   // An edit made while a format tab is open refreshes it, so the pane never
   // shows a serialization of a set that has moved on.
