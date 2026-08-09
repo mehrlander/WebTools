@@ -175,7 +175,7 @@
       "kind": "doc",
       "path": "docs/artifacts.md",
       "title": "Artifacts",
-      "role": "the bake-and-publish pipeline and the \ud83d\udce6 marker's place in the link-choice matrix",
+      "role": "the bake-and-publish pipeline and the 📦 marker's place in the link-choice matrix",
       "use": "on-demand"
     },
     {
@@ -288,6 +288,13 @@
       "path": "scripts/ocr-pdf.py",
       "title": "ocr-pdf.py",
       "role": "OCR a scanned PDF and report per-page confidence; needs tesseract + poppler",
+      "use": "on-demand"
+    },
+    {
+      "kind": "script",
+      "path": "scripts/page-strips.py",
+      "title": "page-strips.py",
+      "role": "render a PDF page as overlapping strips a vision model can read; PyMuPDF only",
       "use": "on-demand"
     }
   ]
