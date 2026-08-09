@@ -78,11 +78,11 @@
   [x-cloak]{display:none!important}
 </style>
 </head>
-<body class="min-h-screen bg-base-200 text-base-content" x-data="sessionPage()" x-cloak>
+<body class="h-[100dvh] flex flex-col overflow-hidden bg-base-200 text-base-content" x-data="sessionPage()" x-cloak>
 
   <!-- Stands down inside a frame, the courtesy branch.html and links.html pay
        their embedder: show-repo supplies its own chrome. -->
-  <div x-show="!framed" class="border-b border-base-300 bg-base-100">
+  <div x-show="!framed" class="shrink-0 border-b border-base-300 bg-base-100">
     <div class="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
       <span class="text-lg">💬</span>
       <input x-model="input" @keydown.enter="go()" placeholder="short id, or owner/repo:path"
@@ -107,26 +107,43 @@
     <span class="loading loading-spinner loading-lg text-primary"></span>
   </div>
 
-  <!-- The record's facts, standing BEHIND the deck rather than in front of it.
-       The deck opens on arrival, so this is the after-close state: what you see
-       when you dismiss the conversation, with the button to reopen it. -->
+  <!-- The OUTLINE, which is the page. It used to be the record's facts standing
+       behind the deck: the deck opened on arrival, so this was the after-close
+       state and the only way to reach it was to dismiss the conversation. A
+       page you can only get to by closing something else is not a destination,
+       and the facts it carried answered a question nobody had asked.
+
+       Now the page lands here. The outline is one row per card, titled
+       mechanically, and the same rows are where turns are picked for export:
+       both jobs are "read the shape of this session as a list," and running
+       them apart meant choosing turns from untitled previews while the titles
+       existed nowhere. Tapping a title opens the deck at that card, so the
+       reading view is one tap away rather than in front of it. -->
   <template x-if="record && !busy">
-    <div class="max-w-2xl mx-auto p-4 flex flex-col gap-4">
-      <div>
-        <div class="text-lg font-medium" x-text="head.title"></div>
-        <div class="text-sm opacity-60 font-mono mt-1" x-text="head.subtitle"></div>
+    <div class="max-w-2xl mx-auto w-full min-h-0 grow flex flex-col gap-3 p-4">
+      <div class="shrink-0">
+        <div class="text-lg font-medium leading-snug" x-text="head.title"></div>
+        <div class="text-xs opacity-55 font-mono mt-1" x-text="head.subtitle"></div>
       </div>
-      <button @click="openDeck()" class="btn btn-primary gap-2">
-        <i class="ph ph-cards-three text-lg"></i>
-        <span x-text="'Reopen the conversation (' + cards + ' cards)'"></span>
-      </button>
-      <!-- The second way in. Inside the deck the Export button carries the card
-           on screen; from here there is no card, so the picker opens with
-           nothing ticked and the quick-select chips do the work. -->
-      <button @click="openExport()" class="btn btn-ghost gap-2 self-start">
-        <i class="ph ph-export text-lg"></i>Select turns and copy them out
-      </button>
-      <div class="flex flex-wrap gap-x-5 gap-y-1.5 text-sm rounded-lg border border-base-300 bg-base-100 px-3 py-2">
+      <div class="flex flex-wrap items-center gap-2 shrink-0">
+        <button @click="openDeck()" class="btn btn-sm btn-primary gap-2">
+          <i class="ph ph-cards-three text-base"></i>
+          <span x-text="'Read as cards (' + cards + ')'"></span>
+        </button>
+        <a x-show="record.agent_session" :href="record.agent_session" target="_blank"
+           class="btn btn-sm btn-ghost gap-1.5">
+          <i class="ph ph-arrow-square-out"></i>In Claude Code</a>
+        <div class="grow"></div>
+        <button @click="showFacts = !showFacts" class="btn btn-sm btn-ghost btn-circle"
+                :aria-label="showFacts ? 'Hide capture facts' : 'Show capture facts'">
+          <i class="ph text-base" :class="showFacts ? 'ph-info-fill' : 'ph-info'"></i>
+        </button>
+      </div>
+      <!-- The capture facts, now behind a toggle. They are worth having and are
+           not worth the top of the page: each is a fact about how much of the
+           session survived, which matters once you doubt the outline. -->
+      <div x-show="showFacts" x-cloak
+           class="flex flex-wrap gap-x-5 gap-y-1.5 text-xs rounded-lg border border-base-300 bg-base-100 px-3 py-2 shrink-0">
         <template x-for="f in facts" :key="f.k">
           <span class="whitespace-nowrap">
             <span class="opacity-55" x-text="f.k"></span>
@@ -134,9 +151,7 @@
           </span>
         </template>
       </div>
-      <a x-show="record.agent_session" :href="record.agent_session" target="_blank"
-         class="btn btn-sm btn-ghost gap-2 self-start">
-        <i class="ph ph-arrow-square-out"></i>Open this session in Claude Code</a>
+      <div x-ref="outline" class="min-h-0 grow flex flex-col rounded-lg border border-base-300 bg-base-100"></div>
     </div>
   </template>
 
@@ -147,7 +162,7 @@
 
   document.addEventListener('alpine:init', () => {
     Alpine.data('sessionPage', () => ({
-      input: '', record: null, busy: false, err: '',
+      input: '', record: null, busy: false, err: '', showFacts: false,
       framed: (() => { try { return window.self !== window.top; } catch { return true; } })(),
 
       get head(){ return this.record ? window.sessionRender.describe(this.record) : {}; },
@@ -177,12 +192,15 @@
         if (!t) return;
         this.input = t.label || '';
         await this.load(t);
-        // Arriving at an address that names a session opens the CONVERSATION,
-        // not a card describing it. The facts below are what you land on when
-        // you close the deck, and what the address field opens onto; they are
-        // not a waiting room. A link that already names the session should not
-        // then ask you to confirm that you meant it.
-        if (this.record) await this.openDeck();
+        // Arriving at an address that names a session lands on the OUTLINE.
+        // It used to open the deck immediately, on the reasoning that a link
+        // naming a session should not ask you to confirm you meant it. True,
+        // and it made the deck the only thing here: the page behind it was
+        // reachable only by dismissing the conversation, so the session had a
+        // reading view and no overview at all. The outline answers "what
+        // happened here" in one screen and puts the deck one tap away, which
+        // is the right order for arriving somewhere.
+        if (this.record) this.$nextTick(() => this.mountOutline());
       },
 
       // The address, from wherever this page is running. Read THROUGH
@@ -243,14 +261,24 @@
         return JSON.parse(await new Response(new Blob([bin]).stream().pipeThrough(ds)).text());
       },
 
-      async openDeck(){
-        try { await window.sessionRender.open(this.record); }
+      // The deck, optionally opening on a given card: tapping an outline row
+      // is the join between the two views, and landing on slide 0 after
+      // choosing row 12 would throw away the choice.
+      async openDeck(at){
+        try { await window.sessionRender.open(this.record, Number.isInteger(at) ? { start: at } : {}); }
         catch (e) { this.err = e?.message || String(e); }
       },
 
-      openExport(){
-        try { window.sessionExport.open(this.record); }
-        catch (e) { this.err = e?.message || String(e); }
+      // Mounted imperatively rather than rendered by Alpine: the outline is a
+      // framework-free kit that owns its own selection state, and re-rendering
+      // it through a reactive template would discard that state on any tick.
+      mountOutline(){
+        const box = this.$refs.outline;
+        if (!box || !this.record) return;
+        try {
+          box.replaceChildren(
+            window.sessionExport.index(this.record, { onOpen: i => this.openDeck(i) }).el);
+        } catch (e) { this.err = e?.message || String(e); }
       },
 
       // Deliberately not a reload: inside a toss the frame has no address of
@@ -264,7 +292,7 @@
           : { kind: 'id', id: v, label: v };
         try { history.replaceState(null, '', '#' + (t.kind === 'id' ? 'id=' : 'gh=') + v); } catch {}
         await this.load(t);
-        if (this.record) await this.openDeck();
+        if (this.record) this.$nextTick(() => this.mountOutline());
       },
     }));
   });
