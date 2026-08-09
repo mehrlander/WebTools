@@ -942,10 +942,17 @@ actionable, rather than a line of its own.
 **The JSON is read in the app, not on GitHub.** Every registry row carries an
 **Expand** control, a captioned caret rather than a glyph: expanding a row to
 see its detail is the gesture people arrive with, where `{}` said "JSON" only to
-someone who already knew. It fetches the file and hands it to the shared multi-mode viewer
-(`alpineComponents/viewer.js`, the same component behind the Files view and the
-stage preview), so tree, table, code, and raw all come along and there is no
-second JSON renderer here. One row is open at a time: these run 68 KB to 818 KB,
+someone who already knew. It fetches the file and shows the bytes, verbatim,
+in a scrolling `pre` with a line count and a Copy button and nothing else. It
+ran through the shared multi-mode viewer first, which brought a mode switcher, a
+filter, a sort, a search, an undo pair, a tree toggle, an open-out, and a
+GitHub/Raw/CDN menu, all stacked above the data on a phone. That is an editor's
+chrome, and nothing here is edited: the crawl owns these files, so every control
+but copy answered a question the row does not raise. The full multi-mode reading
+stays one tap away at the github mark and at the data route
+(`toss-render.html#data=`), where a reader who wants to pivot a table should go.
+Nothing is re-serialized, since the crawls already write a 2-space indent and the
+row's promise is that this is what is committed. One row is open at a time: these run 68 KB to 818 KB,
 so mounting four is a cost with no reader. The fetch is not cached, since the
 row's whole promise is that what you are looking at is what is committed now.
 The path beside each label is a plain label, not a link: it used to be an anchor
