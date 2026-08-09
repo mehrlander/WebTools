@@ -923,6 +923,17 @@ keeps derived, each piece with its age, what builds it, what the build costs,
 and a Refresh where one is possible. It is the address the age pills open, and
 the reason the four estate Refresh buttons could go.
 
+**An age pill aims at its row.** `?view=state&item=<key>` names one entry
+(`configs`, `activity`, `sessions`, `entities`, `guides`, `search`, `page`), in
+the same idiom `&detail=` uses to open one branch inside the Activity takeover:
+the estate addresses one entry in a rendered set by naming it in the URL, not by
+scrolling on a callback. Rows carry `id="state-<key>"`, so the anchor is a real
+element. The named row is tinted and scrolled to on arrival, and the tint fades
+after a few seconds rather than latching, since it answers "which one did I come
+here for" and stops meaning anything once that is read; the `?item=` persists, so
+the link stays shareable and a reload lands the same way. A bare `?view=state`,
+which is what the nav opens, singles out nothing.
+
 The view exists because "refresh" was one icon over two unrelated verbs. A
 **crawl** commits a file to the registry and can be hours stale; a **local
 recompute** (the search caches, the stage bundle, an Inspect rescan) is instant,
@@ -953,6 +964,12 @@ like the other three and cannot be rebuilt from a page: it needs spaCy over
 ~4,000 files across seven checkouts, about half an hour. It gets a full row
 anyway, naming its builder and why the control is missing. A freshness surface
 that lists only what it can fix repeats the omission it was built to end.
+
+**A deep link mounts the view before auth resolves**, so its first read finds no
+token and it would otherwise hold its signed-out state for the life of the page.
+The shell announces `web-tools:auth-state` from the same watch that reloads the
+estate, and the view re-reads on it. Signed out is a note, not an error: nothing
+has gone wrong, the registry rows simply have no ages yet.
 
 Reaching the two rows the shell does not own: the guides shelf keeps its stamp
 in the estate component (it is the one derived thing with no file to read a date

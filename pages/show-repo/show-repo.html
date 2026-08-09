@@ -1526,6 +1526,12 @@ function app(){ return {
   proposalCount: 0, // pending cross-repo edit proposals; gates the nav entry
   proposalsSeen: false,
   stateSeen: false, // mount the State view lazily, on first visit
+  // Which State row a link is aiming at. A query key the view consumes on
+  // arrival, in the idiom `detail` already uses to open one branch inside the
+  // Activity takeover: the estate addresses one entry in a rendered set by
+  // naming it in the URL, not by scrolling on a callback. Blank when the nav
+  // opened the view, since arriving with nothing named singles out nothing.
+  stateItem: new URLSearchParams(location.search).get('item') || '',
   // The guides shelf's read stamp, mirrored here by the estate component as it
   // lands. Every other derived thing carries its age in a file the State view
   // can read; this one has no file, so the shell holds the only copy outside
@@ -1592,6 +1598,11 @@ function app(){ return {
     // can change membership, so that path rebuilds the cache and reloads.
     this.$watch(() => this._authState, (s) => {
       if (s === 'auth') { this.loadEstateSidebar().then(() => this.refreshConfigCache()).then(() => this.refreshActivityCache()); this.processMailbox(); this.loadProposalCount(); }
+      // Announced for views that mount before auth resolves and would otherwise
+      // sit on their signed-out state forever. A deep link is exactly that case:
+      // ?view=state mounts the view during boot, its first read finds no token,
+      // and nothing afterwards told it the token had arrived.
+      document.dispatchEvent(new CustomEvent('web-tools:auth-state', { detail: s }));
     });
     document.addEventListener('web-tools:config-saved', async () => {
       // Rebuild the cache, THEN fan out the reload. refreshConfigs awaits the
@@ -1637,7 +1648,7 @@ function app(){ return {
     else if (url && url.view === 'tools') this.goTools();
     else if (url && url.view === 'search') this.goSearch({ q: url.sq, mode: url.smode, repo: url.srepo, ref: url.sref });
     else if (url && url.view === 'proposals') this.goProposals();
-    else if (url && url.view === 'state') this.goState();
+    else if (url && url.view === 'state') this.goState(url.item);
     else if (url && url.view === 'atlas') this.goAtlas();
     else if (url && url.view === 'stage') this.goStage();
     else if (url && url.view === 'public') this.goPublicBrowse();
@@ -3392,6 +3403,7 @@ function app(){ return {
              appRepo: p.get('appRepo') || '', appPath: p.get('appPath') || '', appRef: p.get('appRef') || '',
              appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '',
              sq: p.get('sq') || '', smode: p.get('smode') || '', srepo: p.get('srepo') || '', sref: p.get('sref') || '',
+             item: p.get('item') || '',
              window: this.parseWindowParam(p.get('window')) };
   },
 
@@ -3412,7 +3424,7 @@ function app(){ return {
     if (this.view === 'files' && s.ref && s.ref !== s.defaultRef) p.set('ref', s.ref); else p.delete('ref');
     p.delete('file'); p.delete('view'); p.delete('path'); p.delete('project'); p.delete('tab');
     p.delete('appRepo'); p.delete('appPath'); p.delete('appRef');
-    p.delete('appLabel'); p.delete('appIcon'); p.delete('detail');
+    p.delete('appLabel'); p.delete('appIcon'); p.delete('detail'); p.delete('item');
     p.delete('sq'); p.delete('smode'); p.delete('srepo'); p.delete('sref');
     if (this.view === 'files') {
       // A cross-repo staged file (activeFile.origin from another repo) has no
@@ -3454,7 +3466,10 @@ function app(){ return {
       if (this.mapTab && this.mapTab !== 'set') p.set('tab', this.mapTab);
     }
     else if (this.view === 'tools') p.set('view', 'tools');
-    else if (this.view === 'state') p.set('view', 'state');
+    else if (this.view === 'state') {
+      p.set('view', 'state');
+      if (this.stateItem) p.set('item', this.stateItem);
+    }
     // The Search view's address carries the ran search (sq + friends, stamped
     // from searchSeed, which the view updates on each run), so a search can be
     // shared like any other screen. A bare ?view=search opens it empty.
@@ -3541,7 +3556,7 @@ function app(){ return {
       else if (url && url.view === 'tools') this.goTools();
       else if (url && url.view === 'search') this.goSearch({ q: url.sq, mode: url.smode, repo: url.srepo, ref: url.sref });
       else if (url && url.view === 'proposals') this.goProposals();
-      else if (url && url.view === 'state') this.goState();
+      else if (url && url.view === 'state') this.goState(url.item);
       else if (url && url.view === 'pages') this.goPages();
       else if (url && url.view === 'atlas') this.goAtlas();
       else if (url && url.view === 'stage') this.goStage();
@@ -3770,7 +3785,15 @@ function app(){ return {
   // State kicks nothing. Every other view warms the cache it reads on arrival;
   // this one reports ages, and a view that ran a crawl to show you how old
   // things were would answer its own question before you read it.
-  goState(){ this.stateSeen = true; this.view = 'state'; this.syncUrl(); },
+  goState(item){
+    this.stateItem = item || '';
+    this.stateSeen = true; this.view = 'state';
+    // Announced even when the view is already mounted: arriving from a second
+    // age pill has to move the highlight, and re-setting `view` to the value it
+    // already holds is not something Alpine reacts to.
+    document.dispatchEvent(new CustomEvent('web-tools:state-item', { detail: this.stateItem }));
+    this.syncUrl();
+  },
   // Open is the estate's cross-repo live-branch view; the one estate component
   // renders it by reading the shell view (internal key 'activity'). A visit
   // kicks the throttled activity crawl (like Repos kicks the config crawl) so

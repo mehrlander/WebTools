@@ -40,7 +40,14 @@ export default async (page) => {
     const realStats = window.EstateSearch.stats;
     window.EstateSearch.stats = () => ({ ...realStats(), trees: 11, records: 42 });
 
-    window.__shell.goState();
+    // Honor an `?item=` on the address so the scenario can shoot an aimed link
+    // (what an age pill opens) as well as the bare view.
+    window.__shell.goState(new URLSearchParams(location.search).get('item') || '');
+    // A `?view=state` address mounts the view during boot, so its first read ran
+    // before these stubs and found no token. Announcing auth is exactly what the
+    // shell does when a real token resolves, and it is what makes the deep-link
+    // case work rather than sitting on its signed-out state.
+    document.dispatchEvent(new CustomEvent('web-tools:auth-state', { detail: 'auth' }));
   });
   await page.waitForTimeout(1200);
 };
