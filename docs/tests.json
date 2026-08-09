@@ -832,8 +832,8 @@
     {
       "path": "tools/test/session-render.test.mjs",
       "kind": "behavior",
-      "protects": "A session record merges into one ordered conversation, groups into cards small enough to page, and each card gets a mechanical title: chrome leads are skipped, a lead too short falls through, and a card the session never narrated is titled by what it ran and marked as derived.",
-      "assertions": 24,
+      "protects": "A session record merges into one ordered conversation, groups into cards small enough to page, each card gets a mechanical title (chrome leads skipped, short leads fall through, an unnarrated card named by what it ran and marked derived), and each card is classified ask / answer / work / note, which is what the outline's guideline is drawn from and the one distinction a reader cannot make by eye.",
+      "assertions": 26,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0

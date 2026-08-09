@@ -275,3 +275,33 @@ test('one outline row per deck card, in the same order', () => {
   assert.equal(o.length, groups(turns(REC)).length);
   assert.deepEqual(o.map(c => c.i), o.map((_, i) => i));
 });
+
+// `kind` is what the outline's guideline is drawn from, and it is the one
+// classification a reader cannot make by eye: a coding session alternates
+// between saying something and doing something, and both are assistant cards.
+// Measured across the store on 2026-08-09: 13.5% ask, 13.0% answer, 72.2%
+// work, 1.2% note. The near 1:1 of ask to answer is the pattern the test
+// pins; if `calls` ever stops being the discriminator, every answer in the
+// list silently becomes work and the spine disappears.
+
+test('an assistant card with tool calls is work; without them it is the answer', () => {
+  const kinds = outline(REC).map(c => c.kind);
+  assert.deepEqual(kinds, ['ask', 'work', 'work', 'ask']);
+
+  // REC's two replies both carry calls. Give the second none and it flips.
+  const rec = { ...REC, calls: REC.calls.filter(c => c.at === at(5)) };
+  assert.deepEqual(outline(rec).map(c => c.kind), ['ask', 'work', 'answer', 'ask']);
+});
+
+test('a meta card is a note, never an answer', () => {
+  // The closing summary and the capture note are assistant-shaped in neither
+  // role nor content, and styling them as replies would put a rule beside a
+  // renderer's own footnote.
+  // The closing summary is the standalone meta card; a leading capture note
+  // folds into card 0 and the ask there still leads it, which is why the
+  // fixture supplies `tools` rather than a gap.
+  const o = outline({ schema: 4, tools: { Bash: 2 },
+    prompts: [{ at: at(0), text: 'Anything?' }], replies: [], calls: [] });
+  assert.ok(o.every(c => c.kind !== 'answer'));
+  assert.ok(o.some(c => c.kind === 'note'));
+});
