@@ -344,3 +344,19 @@ variants (`sm:`, `lg:`) answer the wrong question there, and Tailwind's
 where unsupported. Both rules now sit with the other composition rules.
 *(seen: 2026-08-06)*
 → [HTML-STYLE.md](HTML-STYLE.md)
+
+**The status audit silently dropped every marker in a file named
+`index.md`.** `status.py` carried `SKIP_NAMES = {"index.md"}`, added because a
+generated roll-up inlines its sources and would double-count their markers. But
+an `index.md` is as often a hand-authored entry point, so two `Wrong` markers
+written correctly against the chat-histories PowerShell index were invisible to
+`check`, which reported clean. The skill's own closing note already said this
+convention had twice dropped markers people wrote correctly and that both fixes
+belonged in the pattern; this is the third. The first attempted fix, collapsing
+duplicates by content, was worse: measured across home, only one of three
+identical-line pairs was an inlined copy, the other two being two frozen
+workspaces sharing a banner and one file marking two claims the same way. Nothing
+in the text distinguishes them, so **duplicates are now reported, not dropped.**
+An explained double-count costs a line of output; a dropped marker costs the
+audit its only claim to being auditable. *(seen: 2026-08-09)*
+→ [markers/status.py](../.claude/skills/markers/status.py)
