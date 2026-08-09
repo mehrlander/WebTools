@@ -70,6 +70,16 @@
       "tested": false
     },
     {
+      "path": "scripts/page-strips.py",
+      "role": "render a PDF page as overlapping horizontal strips a vision model can read, since the binding constraint is the display cap rather than scan resolution",
+      "layer": "scripts",
+      "lines": 97,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
       "path": "scripts/sunset-scan.py",
       "role": "scan a repo for SUNSET(YYYY-MM-DD) markers and report the ones now due",
       "layer": "scripts",

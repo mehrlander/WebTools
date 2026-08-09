@@ -153,7 +153,24 @@ the true identity; the `name=` in a link must match the *current* app name.
 
 ## Discovering action identifiers and parameter shapes
 
-You will not memorize every action's parameters. The reliable method:
+**Check the local dictionary first.** [`mehrlander/shortcut-tools`](https://github.com/mehrlander/shortcut-tools)
+holds `actions.json`, 810 action names mapped to their
+`WFWorkflowActionIdentifier`, covering 321 Apple built-ins and 43 bundle
+prefixes including `com.sindresorhus.Actions` (138 entries) and
+`co.zottmann.ActionsForObsidian` (47). `npx shortcut-tools` searches it. That
+answers the `id` for most actions without touching a device.
+
+It does **not** answer `p`. The dictionary's only parameter templates are its 38
+control-flow entries, so the other 772 are a bare identifier and the method
+below is still how you get a parameter shape. Two of its own conventions are
+worth knowing before reading the file: one value, `choosefrommenu`, holds three
+newline-separated JSON objects rather than one, so split on `\n` before parsing;
+and no entry carries a `GroupingIdentifier`, so nothing in it can pair a control
+flow block on its own. That repo's [`docs/shortcuts-format-notes.md`](https://github.com/mehrlander/shortcut-tools/blob/main/docs/shortcuts-format-notes.md)
+covers the plist layer under this skill: block pairing, variable binding by
+producing UUID, and the derived `WFCondition` table.
+
+For everything the dictionary does not cover, the reliable method:
 
 1. In the Shortcuts editor, build the single action you want, configured exactly.
 2. Export or read it back as plist/JSON (the user has tooling for this; the
