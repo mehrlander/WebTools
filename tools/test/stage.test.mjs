@@ -1106,3 +1106,27 @@ test('the stage paints through the kit and its pad turns into casing keys', asyn
   assert.deepEqual(plain_(data.dictMarks), ['.', ',', '?'], 'and the marks came back');
   data.dictCancel();
 });
+
+test('an armed pin puts arrows where Stage was, and they walk that edge', async () => {
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('the quick brown fox', true);
+  await tick();
+  data._dict.selectWordAt(6);            // "quick"
+  data.dictPaint();
+  assert.equal(data.dictArmed, null, 'a selection alone arms nothing');
+
+  data.dictArmed = 'end';
+  data.dictNudge(1);
+  assert.deepEqual(plain_(data._dict.range), { start: 4, end: 10 });
+  data.dictNudge(-1);
+  assert.deepEqual(plain_(data._dict.range), { start: 4, end: 9 });
+
+  // Nothing armed, nothing to move: the arrows are the armed state's controls
+  // and a pair that needs a prior tap to mean anything is worse than none.
+  data.dictArmed = null;
+  data.dictNudge(1);
+  assert.deepEqual(plain_(data._dict.range), { start: 4, end: 9 }, 'unchanged');
+  data.dictCancel();
+});

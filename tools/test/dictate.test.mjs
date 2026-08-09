@@ -587,3 +587,48 @@ test('the suppression CSS is handed out rather than written down twice', () => {
   assert.match(D.SUPPRESS, /-webkit-touch-callout:\s*none/,
     'the iOS callout is the whole reason this exists');
 });
+
+test('the arrows step the armed edge and never let it cross the other', () => {
+  const d = withText('the quick brown fox');
+  d.select(4, 9);                        // "quick"
+  d.nudge('end', 1);
+  assert.deepEqual(d.range, { start: 4, end: 10 });
+  d.nudge('start', -1);
+  assert.deepEqual(d.range, { start: 3, end: 10 });
+
+  // Run the head at the tail: it stops one character short rather than
+  // crossing. Crossing would have setRange sort the result, and then "start"
+  // would name the RIGHT edge and the next arrow would run backwards.
+  for (let i = 0; i < 20; i++) d.nudge('start', 1);
+  assert.deepEqual(d.range, { start: 9, end: 10 }, 'one character wide, still a selection');
+  assert.equal(d.hasSelection, true);
+
+  for (let i = 0; i < 20; i++) d.nudge('end', -1);
+  assert.deepEqual(d.range, { start: 9, end: 10 }, 'and the tail is held off the head too');
+
+  // And the buffer's own ends hold.
+  d.select(0, 4);
+  d.nudge('start', -5);
+  assert.equal(d.range.start, 0);
+  d.select(15, 19);
+  d.nudge('end', 5);
+  assert.equal(d.range.end, 19);
+});
+
+test('a handle is a stem with a ball, not a loose dot', () => {
+  const h = host();
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 }, armed: 'start' });
+  const start = h.querySelector('[data-edge="start"]');
+  assert.equal(start.childNodes.length, 2, 'the stem and the ball');
+  const [bar, dot] = start.childNodes;
+  assert.match(dot.getAttribute('style'), /border-radius:50%/);
+  assert.match(dot.getAttribute('style'), /box-shadow/, 'armed, so it is ringed');
+  assert.ok(!/border-radius:50%/.test(bar.getAttribute('style')), 'the stem is a bar');
+  // Neither is a tap target of its own: the box around them is, so the whole
+  // handle is one 32px-wide thing to hit rather than two small ones.
+  assert.match(bar.getAttribute('style'), /pointer-events:none/);
+  assert.match(dot.getAttribute('style'), /pointer-events:none/);
+
+  const end = h.querySelector('[data-edge="end"]');
+  assert.ok(!/box-shadow/.test(end.childNodes[1].getAttribute('style')), 'the other edge is not armed');
+});
