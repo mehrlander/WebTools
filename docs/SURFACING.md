@@ -85,12 +85,18 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   Keep the reply and the guide body in sync. A bare reply implies nothing is viewable yet. The render line is part of the caption at **every size**, turn-size refinement closers included: the smaller a diff feels, the more the reader wants to look, so if there is no render link, say why (the renderer itself is what changed, the page's data is an untracked build artifact), never omit it silently.
 * **Session diff:** summarize substantial work with `Session diff: [main...branch](url)`.
-* **Closing state:** every reply that finishes work or proposes more ends with exactly one of four labeled states, so the cheapest useful answer is one word. The bold label carries the meaning; the color makes it scannable:
+* **Closing state:** every reply that finishes work or proposes more ends with exactly one of six labeled states, so the cheapest useful answer is one word. The bold label carries the meaning; the color makes it scannable. The first three ask something of the reader, the last three report where the work stands:
 
   - 🟢 **Ready to continue:** named work available on "go", listed as bullets, one line each. "Go" authorizes only what the list names, and "go 1, 3" takes a subset. Work the session conceives belongs here as a proposal (Keep focus), never done unprompted.
   - 🟡 **Decision needed:** continuation depends on the user's call, and the state names the decision.
-  - ⚪ **Natural stopping point:** no further work proposed; the wrap-up offer lives here.
   - 🟠 **Attention:** something concrete needs addressing before proceeding. Reserved for an actual problem or risk, not routine uncertainty; there is deliberately no red.
+  - ⚪ **Natural stopping point:** no further work proposed; the wrap-up offer lives here. The branch is still live.
+  - 🟣 **Merged:** the workstream's branch is merged and finished. One line on what shipped, and the post-merge handoff where Option 1 applies.
+  - ⚫ **Closed:** the workstream's branch is abandoned, its PR closed without merging. Say why in one line, since a closed branch with no reason reads as an unexplained gap rather than a decision.
+
+  **🟣 and ⚫ are about the branch, not about a task or an idea.** They mark the workstream's own end, so a reply may close with one only in the turn that merges or closes it, and in the replies that follow while that branch stays the subject. Dropping a task, abandoning an approach, or closing a thread inside a branch that is still live is ⚪ or ordinary prose. Purple and black follow GitHub's colors for a merged and a closed pull request, which is the same object they describe; the palette otherwise colors what a reply asks of the reader rather than an object's state, and these two are the deliberate exception. Red stays unused: a closed branch is a decision, not an alarm, and 🟠 already owns the color that means act now.
+
+  Under Option 1 of the post-merge handoff, 🟣 marks the merge in the reply that reports it, and the italic `*Branch … merged in PR #N*` footer carries every reply after. One mechanism per position, not both in the same place.
 * **External proxies:** prohibited. Third-party GitHub renderers such as `htmlpreview.github.io`, `raw.githack.com`, and `gitcdn.link` fetch server-side, fail on private repos, and route content through another host. Use `[new]` for canonical source and 🥏 for a private or un-deployed render.
 * **Skip the watch offer:** never offer to watch CI or monitor a PR.
 
