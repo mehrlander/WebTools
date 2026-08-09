@@ -20,6 +20,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Route the orphan docs by cause, per the 2026-08-05 classification](tasks/skillify-orphan-docs-izv20p.md) · S
 - 🎫 [Spike the snags log (friction learned the hard way)](tasks/spike-snags-log-gobdyq.md) (`claude/pr-219-review-22csrh`)
 - 🎫 [Give the stage a way to carry part of a file](tasks/stage-partial-file-selection-k8mtou.md)
+- 🎫 [Make the cache-to-surface dependency checkable, not prose](tasks/surface-census-feeds-relation-anle6b.md) · M (awaiting: PR #387 (the State view) to land; the `feeds` field it introduces is the subject)
 - 🎫 [Make the take-away menu work inside a toss](tasks/take-away-inside-a-toss-k73cjq.md)
 
 ## In progress
