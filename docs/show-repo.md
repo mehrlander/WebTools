@@ -923,6 +923,35 @@ keeps derived, each piece with its age, what builds it, what the build costs,
 and a Refresh where one is possible. It is the address the age pills open, and
 the reason the four estate Refresh buttons could go.
 
+**Each row says who uses it, as view keys.** `feeds` is a list of shell view
+keys (`estate`, `activity`, `sessions`, `guides`, `search`) rendered as chips
+that route through the shell's own `go*` methods, so a tap goes and looks at the
+data being consumed. The list is deliberately only the clean answers. The prose
+it replaced also named the sidebar, quick links, and things below view
+granularity, which is where the detail now lives instead: configs also drives
+the sidebar, the quick-link row, and every promoted app view; activity also
+feeds the Repos cards' per-repo rollups; sessions also feeds the branch rows'
+session links and the Search view's session lane. None of those is a view, so
+inventing keys for them would be the over-normalization
+[registries.md](registries.md) warns against. The entity index's consumers are
+`pages` rather than views, kept as a separate field because a page opens at its
+own URL while a view is a stop inside this shell, and one chip cannot honestly
+mean both. Each row's crawl cost rides its Refresh button's tooltip, where it is
+actionable, rather than a line of its own.
+
+**The JSON is read in the app, not on GitHub.** Every registry row carries a
+`{}` toggle that fetches the file and hands it to the shared multi-mode viewer
+(`alpineComponents/viewer.js`, the same component behind the Files view and the
+stage preview), so tree, table, code, and raw all come along and there is no
+second JSON renderer here. One row is open at a time: these run 68 KB to 818 KB,
+so mounting four is a cost with no reader. The fetch is not cached, since the
+row's whole promise is that what you are looking at is what is committed now.
+The path beside each label is a plain label, not a link: it used to be an anchor
+to GitHub, which is the one destination a tap on this page should not have, and
+the github mark beside `{}` is the deliberate way out. The guides row has
+neither control, because the shelf is assembled in memory and there is nothing
+committed to look at.
+
 **An age pill aims at its row.** `?view=state&item=<key>` names one entry
 (`configs`, `activity`, `sessions`, `entities`, `guides`, `search`, `page`), in
 the same idiom `&detail=` uses to open one branch inside the Activity takeover:

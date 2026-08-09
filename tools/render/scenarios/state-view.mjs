@@ -30,6 +30,21 @@ export default async (page) => {
     window.GH.prototype.history = async function (p) {
       return DATES[p] ? [{ sha: 'abc1234', msg: 'Update cache via show-repo', date: DATES[p], author: 'mehrlander' }] : [];
     };
+    // The JSON peek reads the file itself. A small stand-in with the real
+    // shape (a generatedAt plus a repos map) is enough to exercise the viewer's
+    // tree mode without shipping a 400 KB fixture.
+    const realGet = window.GH.prototype.get;
+    window.GH.prototype.get = async function (p) {
+      if (!String(p).startsWith('state/')) return realGet.call(this, p);
+      return { text: JSON.stringify({
+        generatedAt: iso(2),
+        repos: {
+          'mehrlander/web-tools': { config: { estate: true, group: 'core', icon: 'ph-toolbox' }, fetchedAt: iso(2) },
+          'mehrlander/home': { config: { estate: true, group: 'core', icon: 'ph-house' }, fetchedAt: iso(2) },
+          'mehrlander/web-tools-private': { config: { estate: true, group: 'core' }, fetchedAt: iso(2) },
+        },
+      }, null, 2) };
+    };
 
     // Two of the three checked-stamps exist; sessions has none, so that row
     // reads "not this browser", which is the honest state on a fresh device
@@ -47,6 +62,8 @@ export default async (page) => {
     // Honor an `?item=` on the address so the scenario can shoot an aimed link
     // (what an age pill opens) as well as the bare view.
     window.__shell.goState(new URLSearchParams(location.search).get('item') || '');
+    // `?peek=<key>` opens that row's JSON, so the embedded viewer can be shot.
+    window.__STATE_PEEK = new URLSearchParams(location.search).get('peek') || '';
     // A `?view=state` address mounts the view during boot, so its first read ran
     // before these stubs and found no token. Announcing auth is exactly what the
     // shell does when a real token resolves, and it is what makes the deep-link
@@ -54,4 +71,13 @@ export default async (page) => {
     document.dispatchEvent(new CustomEvent('web-tools:auth-state', { detail: 'auth' }));
   });
   await page.waitForTimeout(1200);
+  await page.evaluate(() => {
+    const key = window.__STATE_PEEK;
+    if (!key) return;
+    const el = document.querySelector('[x-data="stateView()"]');
+    const d = window.Alpine.$data(el);
+    const row = d.rows.find(r => r.key === key) || (d.offline?.key === key ? d.offline : null);
+    if (row) d.togglePeek(row);
+  });
+  await page.waitForTimeout(1500);
 };
