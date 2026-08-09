@@ -71,7 +71,7 @@
     },
     {
       "path": "scripts/page-strips.py",
-      "role": "",
+      "role": "render a PDF page as overlapping horizontal strips a vision model can read, since the binding constraint is the display cap rather than scan resolution",
       "layer": "scripts",
       "lines": 97,
       "invocation": "argv",
