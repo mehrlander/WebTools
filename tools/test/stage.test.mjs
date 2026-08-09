@@ -1019,7 +1019,7 @@ test('the pencil is a mode switch over one text, and the typed version wins', as
   assert.equal(data.dictBreakable, false,
     'and Breaks goes inert as the keyboard opens, not once it closes: staging from '
     + 'here writes through the setter that clears the record either way');
-  assert.equal(data.dictDraft, 'spoken first and still being heard.',
+  assert.equal(data.dictDraft, 'spoken first. and still being heard.',
     'the draft opens on everything that was on screen, interim included');
 
   // The Breaks toggle goes inert once typing has replaced the pause record,
@@ -1059,4 +1059,22 @@ test('cancel discards, since the buffer is one utterance and staging is one tap'
   assert.equal(data.dictOpen, false);
   assert.equal(data.dictText, '');
   assert.equal(store.stage.length, 0, 'nothing reached the stage');
+});
+
+test('the pad shows three marks and a shift, and a shifted mark drops it', async () => {
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  assert.deepEqual(plain_(data.dictMarks), ['.', ',', '?'],
+    'the three ordinary-prose marks, period first');
+  data.dictShift = true;
+  assert.deepEqual(plain_(data.dictMarks), [';', '!', '¶'], 'the deliberate three');
+
+  FakeSR.last.say('a line', true);
+  await tick();
+  data.dictMark('¶');
+  assert.equal(data.dictShift, false, 'a shifted mark drops the shift, like a phone keyboard');
+  assert.deepEqual(plain_(data.dictMarks), ['.', ',', '?']);
+  assert.equal(data.dictText, 'a line.\n\n', 'and the break followed the period rather than replacing it');
+  data.dictCancel();
 });

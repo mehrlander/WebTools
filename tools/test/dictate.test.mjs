@@ -75,7 +75,7 @@ test('spoken punctuation becomes words, tapped marks become punctuation', async 
   // written by the end handler, which also restarts it.
   d.punct('.');
   assert.match(d.text, /simple period\. $/,
-    'the tapped mark replaces the provisional one rather than doubling it');
+    'the tapped mark replaces the pause\'s rather than doubling it');
   await new Promise(r => setTimeout(r, 5));
   assert.ok(FakeSR.last.started > 0, 'the engine is restarted after the mark');
   d.stop();
@@ -104,7 +104,7 @@ test('a paragraph mark breaks the line and spacing never doubles', () => {
   d.punct('¶');
   FakeSR.last.say([{ t: 'two', final: true }]);
   assert.equal(d.text, 'one.\n\ntwo.',
-    'the break keeps the period the first pause earned, and the second earns its own');
+    'the break follows the period rather than replacing it, and the second lands too');
   d.stop();
 });
 
@@ -117,15 +117,14 @@ test('saving takes the interim with it', () => {
   d.start();
   FakeSR.last.say([{ t: 'the settled part', final: true }]);
   FakeSR.last.say([{ t: 'and the part still being heard', final: false }]);
-  assert.equal(d.text, 'the settled part', 'the buffer holds only what was finalized');
-  assert.ok(!d.text.endsWith('.'),
-    'and its provisional period was taken back the moment more words arrived');
+  assert.equal(d.text, 'the settled part.',
+    'the buffer holds what was finalized, with the period the pause wrote');
   assert.ok(seen.includes('and the part still being heard'),
     'the hypothesis was painted, which is what makes committing it honest');
 
-  assert.equal(d.flush(), 'the settled part and the part still being heard.',
+  assert.equal(d.flush(), 'the settled part. and the part still being heard.',
     'flush commits the guess the reader can see, finished');
-  assert.equal(d.flush(), 'the settled part and the part still being heard.',
+  assert.equal(d.flush(), 'the settled part. and the part still being heard.',
     'and is idempotent: a second flush has nothing left to commit');
   assert.equal(seen.at(-1), '', 'and the paint is cleared, so nothing renders twice');
   d.stop();
@@ -136,16 +135,13 @@ test('the delete button drops one word, or the mark clinging to it', () => {
   d.start();
   FakeSR.last.say([{ t: 'the quick brown fox', final: true }]);
   assert.equal(d.text, 'the quick brown fox.');
+  // The trailing mark goes first, whoever wrote it. Now that the pause's
+  // period STAYS, removing it is the correction this button is reached for
+  // most, so a tap takes it before it takes a word.
   d.backWord();
-  assert.equal(d.text, 'the quick brown',
-    'one tap takes the word: the provisional period is not something to delete');
-
-  // A trailing mark goes first, so two taps undo "word." rather than one tap
-  // eating both: the mark was its own deliberate act.
-  d.punct('.');
-  assert.match(d.text, /brown\. $/);
+  assert.equal(d.text, 'the quick brown fox');
   d.backWord();
-  assert.equal(d.text, 'the quick brown');
+  assert.equal(d.text, 'the quick brown', 'and the next tap takes the word');
   d.backWord();
   assert.equal(d.text, 'the quick', 'no trailing space is left behind: append re-spaces');
 
@@ -167,24 +163,44 @@ test('starting without a recognizer reports rather than throws', () => {
   assert.match(errs[0], /not available/);
 });
 
-// ── The provisional period ────────────────────────────────────────────────
-// The rule the four above only touch in passing: a pause finishes a sentence,
-// and the next words undo that rather than landing after it.
+// ── The pause period ──────────────────────────────────────────────────────
+// The rule the tests above only touch in passing: a pause finishes a sentence,
+// the period stays, and a backspace is how the reader says it should not have.
 
-test('the period a pause earns is taken back when speech resumes', () => {
+test('the period a pause writes STAYS, so the periods accumulate as you speak', () => {
+  // The reversal of 2026-08-09, from use. Taking it back on resume meant the
+  // buffer carried one period at the very end and none in between, because
+  // each new segment removed the last one.
   const d = engine();
   d.start();
   FakeSR.last.say([{ t: 'the first thought', final: true }]);
   assert.equal(d.text, 'the first thought.', 'a pause finished the sentence');
 
-  // An interim is words arriving, so the period is no longer the end.
   FakeSR.last.say([{ t: 'and then', final: false }]);
-  assert.equal(d.text, 'the first thought',
-    'the period is gone before the reader can see it beside the new words');
+  assert.equal(d.text, 'the first thought.',
+    'and an interim arriving does not unsay it: the reader keeps the stop');
 
-  FakeSR.last.say([{ t: 'and then a second', final: true }]);
-  assert.equal(d.text, 'the first thought and then a second.',
-    'the words landed in front of it and it came back at the new pause');
+  FakeSR.last.say([{ t: 'A second one', final: true }]);
+  assert.equal(d.text, 'the first thought. A second one.',
+    'two sentences, each punctuated where it ended');
+
+  FakeSR.last.say([{ t: 'And a third', final: true }]);
+  assert.equal(d.text, 'the first thought. A second one. And a third.');
+  d.stop();
+});
+
+test('a backspace un-ends a pause that was not an ending, capital included', () => {
+  const d = engine();
+  d.start();
+  FakeSR.last.say([{ t: 'the quick brown fox', final: true }]);
+  assert.equal(d.text, 'the quick brown fox.');
+
+  // The pause was mid-thought. One tap says so.
+  d.backWord();
+  assert.equal(d.text, 'the quick brown fox');
+  FakeSR.last.say([{ t: 'Jumps over the dog', final: true }]);
+  assert.equal(d.text, 'the quick brown fox jumps over the dog.',
+    'the capital came down with the period: one decision, both directions');
   d.stop();
 });
 
@@ -250,11 +266,11 @@ test('paragraphs() proposes a break at the long pauses and changes nothing', () 
   clock.t = 4000; FakeSR.last.say([{ t: 'th', final: false }]);
   clock.t = 4200; FakeSR.last.say([{ t: 'three', final: true }]);     // 2500ms gap
 
-  assert.equal(d.text, 'one two three.', 'the buffer is untouched by the record');
-  assert.equal(d.paragraphs(1500), 'one two\n\nthree.',
-    'the long pause becomes a break; the short one does not');
-  assert.equal(d.paragraphs(5000), 'one two three.', 'no pause clears a high bar');
-  assert.equal(d.text, 'one two three.', 'and it is a proposal: nothing was written');
+  assert.equal(d.text, 'one. two. three.', 'the buffer is untouched by the record');
+  assert.equal(d.paragraphs(1500), 'one. two.\n\nthree.',
+    'the long pause becomes a break; the short one stays a sentence boundary');
+  assert.equal(d.paragraphs(5000), 'one. two. three.', 'no pause clears a high bar');
+  assert.equal(d.text, 'one. two. three.', 'and it is a proposal: nothing was written');
   d.stop();
 });
 
@@ -265,7 +281,7 @@ test('paragraphs() declines rather than guessing when the buffer has moved', () 
   FakeSR.last.say([{ t: 'one', final: true }]);
   clock.t = 4000; FakeSR.last.say([{ t: 'tw', final: false }]);
   clock.t = 4100; FakeSR.last.say([{ t: 'two', final: true }]);
-  assert.equal(d.paragraphs(1500), 'one\n\ntwo.');
+  assert.equal(d.paragraphs(1500), 'one.\n\ntwo.');
 
   // An edit through the setter clears the record, since the offsets it holds
   // no longer describe this text. Returning the text unchanged is the honest
@@ -299,29 +315,20 @@ test('a tapped mark restarts the pause clock, so reaching for the row is not a p
 // turn them to the topic of trees and plants A tree is a nice thing to
 // behold." Every boundary lost its period and kept its capital, which is the
 // worst of both readings: no stop, and a capital asserting there was one.
-test('resuming takes back the capital as well as the period', () => {
+test('the field report of 2026-08-09, read back', () => {
+  // The buffer that started this: "...if we could get punctuation And I guess
+  // that is working I would turn them to the topic of trees and plants A tree
+  // is a nice thing to behold." Every boundary had lost its period and kept
+  // its capital, which is the worst of the two readings available. Keeping the
+  // period settles it the other way, and the capital is then correct.
   const d = engine();
   d.start();
   FakeSR.last.say([{ t: 'if we could get punctuation', final: true }]);
-  assert.equal(d.text, 'if we could get punctuation.');
-
-  // The engine hears a new sentence and capitalizes accordingly. It is wrong
-  // for the same reason the period is: the reader kept talking.
   FakeSR.last.say([{ t: 'And I guess that is working', final: true }]);
-  assert.equal(d.text, 'if we could get punctuation and I guess that is working.',
-    'one boundary, one decision: both the stop and the capital came back off');
-  d.stop();
-});
-
-test('the correction survives an engine that finalizes with no interim first', () => {
-  // The path that made this a bug rather than a near miss. normalize() reads
-  // the continuation flag, so if the period is only dropped inside the commit
-  // the capital has already been decided against a stale flag.
-  const d = engine();
-  d.start();
-  FakeSR.last.say([{ t: 'the first part', final: true }]);
-  FakeSR.last.say([{ t: 'Then the rest', final: true }]);   // final, no interim ahead of it
-  assert.equal(d.text, 'the first part then the rest.');
+  FakeSR.last.say([{ t: 'A tree is a nice thing to behold', final: true }]);
+  assert.equal(d.text,
+    'if we could get punctuation. And I guess that is working. A tree is a nice thing to behold.',
+    'a stop at every boundary and a capital after each, agreeing');
   d.stop();
 });
 
@@ -341,21 +348,26 @@ test('a tapped mark is not a guess, so the capital after it stands', () => {
   d.stop();
 });
 
-test('what lowering cannot know: a proper noun after a pause', () => {
-  // The guard is /^[A-Z][a-z]/, which spares "I", "OK", and "NASA" but not
-  // "Tuesday". Asserted so the limit is recorded rather than rediscovered: the
-  // capital is wrong every time the sentence really is continuing and wrong
-  // occasionally here, and the residual is a name the editor fixes.
+test('a name after a pause survives, since nothing is lowered there any more', () => {
+  // Keeping the period retired most of the proper-noun problem with it: after
+  // a pause the sentence has ended, so the capital is right and normalize()
+  // has no reason to touch it. Lowering now happens only where the reader
+  // SAID the sentence continues, by tapping a comma or backspacing the stop.
   const d = engine();
   d.start();
   FakeSR.last.say([{ t: 'we met', final: true }]);
   FakeSR.last.say([{ t: 'Tuesday at noon', final: true }]);
-  assert.equal(d.text, 'we met tuesday at noon.', 'a known cost, not an oversight');
+  assert.equal(d.text, 'we met. Tuesday at noon.', 'the name keeps its capital');
 
-  d.text = '';
-  FakeSR.last.say([{ t: 'she said', final: true }]);
-  FakeSR.last.say([{ t: 'I agree', final: true }]);
-  assert.equal(d.text, 'she said I agree.', 'but a bare "I" is never lowered');
+  // The residual, and it is now a path the reader chose rather than a default.
+  d.backWord();                                  // un-end "noon."
+  d.text = 'we met';
+  FakeSR.last.say([{ t: 'X', final: true }]);    // reset continuation
+  d.text = 'we met';
+  d.punct(',');
+  FakeSR.last.say([{ t: 'Tuesday at noon', final: true }]);
+  assert.equal(d.text, 'we met, tuesday at noon.',
+    'after a tapped comma a name still comes down: the known cost, now opt-in');
   d.stop();
 });
 

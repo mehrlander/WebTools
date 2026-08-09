@@ -420,7 +420,7 @@ test('the pencil opens on the phrase that was on screen, not the one before it',
 
   A._state.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
   assert.equal(A._state.editing, true);
-  assert.equal(A._state.compTa.value, 'the settled part and the part still being heard.',
+  assert.equal(A._state.compTa.value, 'the settled part. and the part still being heard.',
     'the interim rode into the textarea rather than being dropped by the stop');
   A.disable();
 });
