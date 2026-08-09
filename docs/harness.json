@@ -400,10 +400,10 @@
       "tested": false
     },
     {
-      "path": "tools/render/scenarios/annotate-select-edit.mjs",
-      "role": "a note selected by clicking its highlight in the document, then reopened for editing",
+      "path": "tools/render/scenarios/annotate-select.mjs",
+      "role": "a note selected by clicking its highlight in the document rather than its row",
       "layer": "tools/render/scenarios",
-      "lines": 70,
+      "lines": 63,
       "invocation": "driver",
       "emits": false,
       "named": false,

@@ -46,7 +46,7 @@ export default async (page) => {
 
   // Dictation is the default mode now, so opening the draft already started
   // the engine: no mic tap here, or the shot would capture it switched off.
-  await page.waitForSelector('button[data-annotate-ui][title="Stop dictating"]');
+  await page.waitForSelector('button[data-annotate-ui][title^="Recording"]');
   await page.waitForTimeout(150);
   await page.evaluate(() => window.__sr.say('this rule is the one every repo repeats.', true));
   await page.click('button[data-annotate-ui][title="Insert ,"]');

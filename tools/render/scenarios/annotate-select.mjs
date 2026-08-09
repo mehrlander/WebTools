@@ -1,10 +1,10 @@
-// Shoot the selection-and-edit surface on pages/annotate.html: three notes in
+// Shoot the selection surface on pages/annotate.html: three notes in
 // the list, one of them SELECTED by clicking its highlight out in the document
 // (not its row), and the visible DOM address under each. Confirms the round
 // trip the list cannot show on its own, since a Custom Highlight has no DOM
 // node to click and the hit has to come from the click point.
 //
-//   npm run shot -- pages/annotate.html --script tools/render/scenarios/annotate-select-edit.mjs
+//   npm run shot -- pages/annotate.html --script tools/render/scenarios/annotate-select.mjs
 export default async (page) => {
   await page.waitForSelector('#doc h1', { timeout: 15000 });
 
@@ -59,11 +59,4 @@ export default async (page) => {
   });
   await page.mouse.click(box.x, box.y);
   await page.waitForTimeout(300);
-
-  // Then reopen it with the pencil. A note that already has words opens in the
-  // EDITOR, not in dictation, so this also proves the mic is never started on
-  // a path that immediately stops it.
-  const rows = page.locator('[data-annotate-ui] [title="Edit this note"]');
-  await rows.nth(2).click();
-  await page.waitForTimeout(250);
 };
