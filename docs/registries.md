@@ -194,3 +194,33 @@ model feature. A workspace that runs its own registries (budget-drs inside
 home) declares them in its own properties registry; the repo-level table
 covers the repo's own carriers and does not enumerate a project's internals.
 The integrity rule spans levels unchanged: no pair, anywhere, has two owners.
+
+### Two normal forms, and how to pick
+
+*(2026-08-09, from walking the origin instrument against this document)*
+
+budget-drs's `properties.csv` and this repo's `properties.json` express the same
+model in different normal forms, and neither should convert to the other.
+
+This repo factors a **registries** object out of its declarations, because
+several properties share one carrier: five sit on `docs/docs.json` alone, and
+without the factoring the carrier, scope, and gate would be restated on every
+one of them. budget-drs declares twenty properties across twenty distinct
+carriers, so the same factoring would add an object layer with exactly one
+declaration hanging off each entry, holding nothing together.
+
+**Fan-out decides it.** One carrier to many properties wants the registry
+object; one-to-one does not. That is a property of the estate being described,
+not of the describer, so a repo adopting this model picks the form its own
+carriers imply rather than the form the hub happens to use. Neither is the
+canonical shape.
+
+**The borrowing still runs both ways.** The origin instrument carries a field
+this one lacks: `definition_owner`, naming per property the document that
+defines its value domain (`SOURCES.md` owns `production_mode`'s values,
+`GRAINS.md` owns `additivity`'s). Here that is left implicit in a `gloss`, so
+for a closed domain like `reach`'s five values there is no structured answer to
+"which document defines these, and where do I go to change one." Worth adopting;
+not adopted yet, because the honest version means reading 34 declarations and
+naming the right document for each, and a wrong owner is worse than an absent
+one.
