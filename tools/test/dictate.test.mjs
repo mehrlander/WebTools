@@ -622,13 +622,24 @@ test('a handle is a stem with a ball, not a loose dot', () => {
   assert.equal(start.childNodes.length, 2, 'the stem and the ball');
   const [bar, dot] = start.childNodes;
   assert.match(dot.getAttribute('style'), /border-radius:50%/);
-  assert.match(dot.getAttribute('style'), /box-shadow/, 'armed, so it is ringed');
+  // Armed is an INSET ring at the same diameter, not a halo around a bigger
+  // ball: a marker sitting in the text must not grow to say it is active.
+  assert.match(dot.getAttribute('style'), /box-shadow:inset/, 'armed, so it is ringed');
+  assert.match(dot.getAttribute('style'), /width:13px/);
+  const other = h.querySelector('[data-edge="end"]').childNodes[1];
+  assert.match(other.getAttribute('style'), /width:13px/, 'and the unarmed one is the same size');
   assert.ok(!/border-radius:50%/.test(bar.getAttribute('style')), 'the stem is a bar');
   // Neither is a tap target of its own: the box around them is, so the whole
   // handle is one 32px-wide thing to hit rather than two small ones.
   assert.match(bar.getAttribute('style'), /pointer-events:none/);
   assert.match(dot.getAttribute('style'), /pointer-events:none/);
 
-  const end = h.querySelector('[data-edge="end"]');
-  assert.ok(!/box-shadow/.test(end.childNodes[1].getAttribute('style')), 'the other edge is not armed');
+  assert.ok(!/box-shadow/.test(other.getAttribute('style')), 'the other edge is not armed');
+
+  // The arrows ride the armed pin, and their chevrons are drawn rather than
+  // typed: a glyph arrives at whatever weight the system font has.
+  const arrows = [...h.querySelectorAll('[data-nudge]')];
+  assert.deepEqual(arrows.map(b => b.getAttribute('data-nudge')), ['-1', '1']);
+  assert.match(arrows[0].innerHTML, /stroke-width="1.5"/);
+  assert.ok(!/font-weight:\s*700/.test(arrows[0].getAttribute('style')));
 });
