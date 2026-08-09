@@ -812,6 +812,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/session-export.test.mjs",
+      "kind": "behavior",
+      "protects": "An excerpt carries the turns that were picked, without the result bodies, and says it is an excerpt of a bounded capture.",
+      "assertions": 9,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/session-record-hook.test.mjs",
       "kind": "tool",
       "protects": "The session recorder finds its declared store even when the project root sits above the checkouts.",

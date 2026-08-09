@@ -64,12 +64,14 @@
   }
   // proof.js backs chat-render's sandboxed Render frames; swipe-deck owns the
   // track and the takeover; chat-render renders a turn. session-render sits on
-  // all three and must load last.
+  // all three, and session-export reads session-render, so the chain is strictly
+  // ordered from the bottom up.
   try {
     await gh.load('kits/proof.js');
     await gh.load('kits/swipe-deck.js');
     await gh.load('kits/chat-render.js');
     await gh.load('kits/session-render.js');
+    await gh.load('kits/session-export.js');
   } finally { window.__depsDone(); }
 </script>
 <style>
@@ -117,6 +119,12 @@
       <button @click="openDeck()" class="btn btn-primary gap-2">
         <i class="ph ph-cards-three text-lg"></i>
         <span x-text="'Reopen the conversation (' + cards + ' cards)'"></span>
+      </button>
+      <!-- The second way in. Inside the deck the Export button carries the card
+           on screen; from here there is no card, so the picker opens with
+           nothing ticked and the quick-select chips do the work. -->
+      <button @click="openExport()" class="btn btn-ghost gap-2 self-start">
+        <i class="ph ph-export text-lg"></i>Select turns and copy them out
       </button>
       <div class="flex flex-wrap gap-x-5 gap-y-1.5 text-sm rounded-lg border border-base-300 bg-base-100 px-3 py-2">
         <template x-for="f in facts" :key="f.k">
@@ -237,6 +245,11 @@
 
       async openDeck(){
         try { await window.sessionRender.open(this.record); }
+        catch (e) { this.err = e?.message || String(e); }
+      },
+
+      openExport(){
+        try { window.sessionExport.open(this.record); }
         catch (e) { this.err = e?.message || String(e); }
       },
 
