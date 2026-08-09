@@ -12,6 +12,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Pinch-zoom and pan for pdf-inspect's page view](tasks/pdf-inspect-pinch-zoom-5wz3kt.md)
 - 🎫 [Close open table perimeters in the pdf kit's lattice](tasks/pdf-lattice-open-perimeter-h4kx9r.md)
 - 🎫 [Draggable column boundaries with live reassignment, in pdf-inspect](tasks/pdf-table-splitter-page-q7vm2d.md) · S
+- 🎫 [Make the PR bodies' open threads readable as one list](tasks/pr-body-open-threads-z5o66p.md) · M
 - 🎫 [Inline the run-time CDN references a rendering copy still carries](tasks/render-copy-runtime-cdn-refs-p4m2wq.md)
 - 🎫 [Session-start nudge for unconfigured or legacy-manifest repos](tasks/session-start-nudge-unconfigured-z0g4zn.md) (`claude/skills-portable-conventions-8x1lua`)
 - 🎫 [Retire .show-repo.json, delete the legacy file on migrate, drop the read fallback](tasks/show-repo-edit-web-tools-json-ygramz.md) · S
