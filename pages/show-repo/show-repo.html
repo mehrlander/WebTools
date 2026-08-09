@@ -111,8 +111,8 @@
      first (repo selection happens on the Repos dashboard, which is nicer than a
      dropdown); the auth shield followed, since everything it reached already had
      an on-page home: the token control is the Repos dashboard's account row, a
-     repo's config is the sidebar's Config view, and "Refresh views" is that same
-     view's Refresh button.
+     repo's config is the sidebar's Config view, and "Refresh views" is the
+     State view's config row.
 
      The BRAND went last, and for the same reason as the rest: it said nothing
      the row beside it did not. Its tap was goDashboard(), which is Activity for
@@ -4390,8 +4390,10 @@ function overview(){ return {
   token control is the account row on the Repos dashboard (estate.js
   accountPanel → the dialog's estate scope), which is where an account-level
   setting belongs, and every token-gated empty state points there. The shield's
-  other job, REFRESH VIEWS, was already the Repos view's own Refresh button
-  (both call refreshConfigs), so it needed no new home.
+  other job, REFRESH VIEWS, was the Repos view's own Refresh button when the
+  shield went (both called refreshConfigs), so it needed no new home. Both are
+  now the State view's config row, which carries that crawl with its age, its
+  throttle, and what it costs.
   There is no repo-list dropdown and no quick-links row: REPO SELECTION HAPPENS
   ON THE REPOS DASHBOARD (tap a card) or from the sidebar Repos index. Repos
   reach the header through their published VIEWS, not through a list of

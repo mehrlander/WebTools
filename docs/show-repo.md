@@ -796,8 +796,8 @@ anyway. The first cut fanned out three live reads per member on every estate
 load, which is the bill that comes due when a Map tab becomes a dashboard: a tab
 is opened sometimes, a dashboard is the front door. The trade is that a grade is
 as fresh as the last crawl rather than as fresh as the render, which is right,
-since adoption changes when someone edits a settings file. Refresh views
-re-crawls when the answer matters now. A repo the crawl has not reached shows no
+since adoption changes when someone edits a settings file. The State view's
+config row re-crawls when the answer matters now. A repo the crawl has not reached shows no
 verdict and no chips: absent means not read, never not aligned.
 
 *Surfacing* indexes the primitives from [`docs/surfacing.json`](surfacing.json),
