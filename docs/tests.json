@@ -13,8 +13,8 @@
     {
       "path": "tools/test/annotate.test.mjs",
       "kind": "behavior",
-      "protects": "A note's quote anchor survives the range round trip and disambiguates duplicates on context, the dictation rules compose spoken punctuation and a back-delete correctly, and the jot save goes through fresh-read → mutate → save rather than clobbering the list.",
-      "assertions": 11,
+      "protects": "A note's quote anchor survives the range round trip and disambiguates duplicates on context, its DOM address separates two identical phrases the quote alone cannot, selection is state rather than a flash and an edit changes the note without moving the anchor, the dictation rules compose spoken punctuation and a back-delete correctly, and the jot save goes through fresh-read → mutate → save rather than clobbering the list.",
+      "assertions": 14,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": 0

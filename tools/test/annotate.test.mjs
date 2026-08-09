@@ -144,6 +144,87 @@ test('a two-bullet selection serializes clean: edges trimmed, markers restored',
   A.clear();
 });
 
+test('a text target addresses a DOM path plus a character span inside it', () => {
+  const p2 = doc.getElementById('p2').firstChild;
+  const second = p2.data.indexOf('A repeated phrase', 10);
+  const r = doc.createRange();
+  r.setStart(p2, second);
+  r.setEnd(p2, second + 'A repeated phrase'.length);
+
+  const addr = A._addressFor(doc.getElementById('p2'), r);
+  assert.equal(addr.selector, '#p2', 'the block, addressed by css path');
+  assert.deepEqual(addr.span, { start: second, end: second + 'A repeated phrase'.length },
+    'offsets into the block, not the document');
+  assert.equal(A._addressText({ selector: addr.selector, span: addr.span }),
+    `#p2 [${second}-${second + 17}]`);
+
+  // The span is what the quote alone cannot supply: both occurrences of this
+  // phrase produce the same `exact`, and only the address separates them.
+  const first = doc.createRange();
+  first.setStart(p2, 0);
+  first.setEnd(p2, 'A repeated phrase'.length);
+  const a1 = A._addressFor(doc.getElementById('p2'), first);
+  assert.equal(a1.span.start, 0);
+  assert.notEqual(a1.span.start, addr.span.start, 'two identical phrases, two addresses');
+
+  // A selection leaving the block gets the path and no span: an offset
+  // measured against a block the selection exits would be a wrong number.
+  const across = doc.createRange();
+  across.setStart(p2, 0);
+  across.setEnd(doc.getElementById('li1').firstChild, 3);
+  assert.equal(A._addressFor(doc.getElementById('p2'), across).span, null);
+});
+
+test('the address rides the markdown so a model can act on the path', () => {
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const p1 = doc.getElementById('p1').firstChild;
+  const r = doc.createRange();
+  r.setStart(p1, 4);
+  r.setEnd(p1, 19);
+  const q = A._quoteFor(doc.body, r);
+  const addr = A._addressFor(doc.getElementById('p1'), r);
+  A.add({ type: 'text', quote: q, selector: addr.selector, span: addr.span }, 'tighten');
+  assert.ok(A.toMarkdown().includes('Path: `#p1 [4-19]`'), A.toMarkdown());
+  assert.deepEqual(A.toJSON().notes[0].span, { start: 4, end: 19 }, 'and the JSON carries it structurally');
+  A.clear();
+});
+
+test('selection is state: one note is current, and update edits it in place', () => {
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const a = A.add({ type: 'text', quote: { exact: 'one', prefix: '', suffix: '' } }, 'first');
+  const b = A.add({ type: 'text', quote: { exact: 'two', prefix: '', suffix: '' } }, 'second');
+  assert.equal(A.selected, null, 'nothing is selected until something is');
+
+  A.select(b.id);
+  assert.equal(A.selected.id, b.id);
+  A.select(b.id);                       // re-selecting is not a toggle at the API level
+  assert.equal(A.selected.id, b.id, 'select(id) is idempotent; the row handler owns the toggle');
+  A.select(null);
+  assert.equal(A.selected, null);
+
+  // An unknown id selects nothing rather than pointing at a ghost.
+  A.select('nope');
+  assert.equal(A.selected, null);
+
+  // Editing changes the note and leaves the anchor alone: a note is edited,
+  // a passage is re-selected, and conflating them moves a pinned anchor.
+  const before = a.target;
+  A.update(a.id, 'first, revised');
+  assert.equal(A.items[0].note, 'first, revised');
+  assert.equal(A.items[0].target, before, 'the target is untouched');
+  assert.ok(A.items[0].editedAt, 'an edit is dated');
+  assert.equal(A.update('nope', 'x'), null, 'updating a missing id is a no-op, not a throw');
+
+  // Removing the selected note clears the selection rather than leaving it
+  // pointed at something that is gone.
+  A.select(b.id);
+  A.remove(b.id);
+  assert.equal(A.selected, null);
+  A.clear();
+});
+
 test('remove and clear keep the list and paint state consistent', () => {
   A.add({ type: 'text', quote: { exact: 'one', prefix: '', suffix: '' } }, 'n1');
   A.add({ type: 'text', quote: { exact: 'two', prefix: '', suffix: '' } }, 'n2');
