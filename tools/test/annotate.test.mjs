@@ -225,51 +225,36 @@ test('selection is state: one note is current, and update edits it in place', ()
   A.clear();
 });
 
-test('the review sheet reads the live set and every action names its verb', () => {
+test('the set announces its changes, and Review is a request rather than a surface', () => {
   A.enable({ doc, subject: { title: 'sample', url: 'https://example.test/s' } });
   A.clear();
-  A.add({ type: 'text', quote: { exact: 'one', prefix: '', suffix: '' }, selector: '#p1' }, 'first');
-  A.add({ type: 'text', quote: { exact: 'two', prefix: '', suffix: '' }, selector: '#p2' }, 'second');
 
-  const sheet = A._state.sheet;
-  assert.ok(sheet, 'the sheet is built with the UI, not on first open');
-  assert.equal(sheet.style.display, 'none', 'and starts closed');
+  // The kit owns the data and announces that it moved; the reading surface is
+  // the FAB drawer's Notes tab. There is deliberately no sheet here to find.
+  const seen = [];
+  const onChange = () => seen.push(A.items.length);
+  window.addEventListener('annotate:change', onChange);
+
+  const it = A.add({ type: 'text', quote: { exact: 'one', prefix: '', suffix: '' }, selector: '#p1' }, 'first');
+  A.update(it.id, 'first, revised');
+  A.select(it.id, { scroll: false });
+  A.remove(it.id);
+  assert.deepEqual(seen, [1, 1, 1, 0], 'add, update, select and remove each announce');
+  window.removeEventListener('annotate:change', onChange);
+
+  // Review asks; a listener claims it by preventing the default. Unclaimed, it
+  // says so on the status line rather than appearing to do nothing.
+  let asked = 0;
+  const claim = (e) => { asked++; e.preventDefault(); };
+  window.addEventListener('annotate:review', claim);
+  A.review();
+  assert.equal(asked, 1);
+  assert.equal(A._state.status.textContent, '', 'a claimed request is silent');
+  window.removeEventListener('annotate:review', claim);
 
   A.review();
-  assert.equal(sheet.style.display, 'flex');
-  assert.match(A._state.sheetCount.textContent, /2 notes/);
-
-  // Every footer button says what it does. The retired JSON button named its
-  // format and hid its verb, which is the whole reason this surface exists.
-  const labels = [...A._state.sheetFoot.querySelectorAll('button')].map(b => b.textContent);
-  assert.deepEqual(labels, ['Copy markdown', 'Copy JSON', 'Save jot'],
-    'three actions, each naming its verb');
-  // 'JSON' still appears in the sheet, as a TAB. That is the distinction the
-  // old footer lost: a tab names a view, an action names what it does.
-  assert.ok([...sheet.querySelectorAll('button')].some(b => b.textContent === 'JSON'));
-
-  // The Notes tab edits in place, and a keystroke there reaches the item
-  // without rebuilding the card under the cursor.
-  const boxes = [...A._state.sheetBody.querySelectorAll('textarea')];
-  assert.equal(boxes.length, 2, 'one editor per note');
-  assert.equal(boxes[0].value, 'first');
-  boxes[0].value = 'first, rewritten in the sheet';
-  boxes[0].dispatchEvent(new window.Event('input'));
-  assert.equal(A.items[0].note, 'first, rewritten in the sheet');
-  assert.equal(A._state.sheetBody.querySelectorAll('textarea')[0], boxes[0],
-    'the same element survives the edit; a rebuilt card loses a keystroke');
-
-  // The format tabs render the serializations that are copied, so what is on
-  // screen is what lands on the clipboard.
-  A._state.sheetTab = 'md';
-  A._state.sheetTabs.md.dispatchEvent(new window.Event('click'));
-  assert.ok(A._state.sheetBody.textContent.includes('first, rewritten in the sheet'),
-    'the markdown view shows the edit that was just made');
-  A._state.sheetTabs.json.dispatchEvent(new window.Event('click'));
-  assert.ok(A._state.sheetBody.textContent.includes('"format": "annotate/1"'));
-
-  A.closeReview();
-  assert.equal(sheet.style.display, 'none');
+  assert.match(A._state.status.textContent, /No drawer/,
+    'unclaimed, it names the gap instead of failing quietly');
   A.clear();
 });
 

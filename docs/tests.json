@@ -13,7 +13,7 @@
     {
       "path": "tools/test/annotate.test.mjs",
       "kind": "behavior",
-      "protects": "A note's quote anchor survives the range round trip and disambiguates duplicates on context, its DOM address separates two identical phrases the quote alone cannot, selection is state rather than a flash and an edit changes the note without moving the anchor, the review sheet edits in place without rebuilding the card under the cursor and names a verb on every action, the dictation rules compose spoken punctuation and a back-delete correctly, and the jot save goes through fresh-read → mutate → save rather than clobbering the list.",
+      "protects": "A note's quote anchor survives the range round trip and disambiguates duplicates on context, its DOM address separates two identical phrases the quote alone cannot, selection is state rather than a flash and an edit changes the note without moving the anchor, every change is announced so a reader elsewhere stays current, the dictation rules compose spoken punctuation and a back-delete correctly, and the jot save goes through fresh-read → mutate → save rather than clobbering the list.",
       "assertions": 15,
       "method": "kit",
       "runner": "suite",
@@ -385,6 +385,15 @@
       "protects": "The fab re-aims what it can render and leaves everything else alone.",
       "assertions": 12,
       "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/fab-notes.test.mjs",
+      "kind": "behavior",
+      "protects": "The drawer's Notes tab stays a VIEW of kits/annotate.js rather than a second store: it holds the kit's own item objects, re-reads on the kit's change announcement rather than by polling, writes every edit and selection back through the kit, serializes exactly what Copy hands over, and never enables the annotator merely by being opened.",
+      "assertions": 5,
+      "method": "kit",
       "runner": "suite",
       "boot_smoke": 0
     },

@@ -390,10 +390,10 @@
       "tested": false
     },
     {
-      "path": "tools/render/scenarios/annotate-review-sheet.mjs",
-      "role": "the review sheet: the whole set readable at once, each note in a roomy editor, both serializations behind tabs (ANNOTATE_TAB=md|json)",
+      "path": "tools/render/scenarios/annotate-notes-tab.mjs",
+      "role": "the drawer's Notes tab: the annotator's set as a working list and as either serialization (STATE=notes|md|json|off)",
       "layer": "tools/render/scenarios",
-      "lines": 43,
+      "lines": 58,
       "invocation": "driver",
       "emits": false,
       "named": false,
