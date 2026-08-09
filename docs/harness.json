@@ -981,7 +981,7 @@
     },
     {
       "path": "tools/render/scenarios/stage-dictate.mjs",
-      "role": "",
+      "role": "the stage's dictation bar with SpeechRecognition stubbed: committed text, a live interim, the mark row, and the Breaks toggle that offers the pause-derived paragraph proposal",
       "layer": "tools/render/scenarios",
       "lines": 33,
       "invocation": "driver",
