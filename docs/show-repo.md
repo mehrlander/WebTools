@@ -950,10 +950,10 @@ so mounting four is a cost with no reader. The fetch is not cached, since the
 row's whole promise is that what you are looking at is what is committed now.
 The path beside each label is a plain label, not a link: it used to be an anchor
 to GitHub, which is the one destination a tap on this page should not have, and
-the github mark beside Expand is the deliberate way out. Refresh and Expand
-stack in one control column at the row's right edge: one acts on the crawl and
-one on the file, both act on this row, and splitting them left Expand orphaned
-at the end of the chip line. The panel is separated
+the github mark beside Expand is the deliberate way out. Refresh sits at the
+row's top right and Expand at its bottom right, on the consumer line, with the
+chips wrapping inside their own box so a third chip never pushes the controls to
+a line of their own. The panel is separated
 by a hairline and bleeds to the card's edges rather than sitting in a bordered,
 tinted, indented box of its own: that box, inside the card, around a viewer that
 draws its own frame, was four nested edges squeezing an editor that then
