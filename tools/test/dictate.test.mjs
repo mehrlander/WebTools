@@ -293,3 +293,94 @@ test('a tapped mark restarts the pause clock, so reaching for the row is not a p
     'so no paragraph is proposed where the reader was only tapping');
   d.stop();
 });
+
+// The field report of 2026-08-09, in full. Dictated on a phone, the buffer
+// read "...if we could get punctuation And I guess that is working I would
+// turn them to the topic of trees and plants A tree is a nice thing to
+// behold." Every boundary lost its period and kept its capital, which is the
+// worst of both readings: no stop, and a capital asserting there was one.
+test('resuming takes back the capital as well as the period', () => {
+  const d = engine();
+  d.start();
+  FakeSR.last.say([{ t: 'if we could get punctuation', final: true }]);
+  assert.equal(d.text, 'if we could get punctuation.');
+
+  // The engine hears a new sentence and capitalizes accordingly. It is wrong
+  // for the same reason the period is: the reader kept talking.
+  FakeSR.last.say([{ t: 'And I guess that is working', final: true }]);
+  assert.equal(d.text, 'if we could get punctuation and I guess that is working.',
+    'one boundary, one decision: both the stop and the capital came back off');
+  d.stop();
+});
+
+test('the correction survives an engine that finalizes with no interim first', () => {
+  // The path that made this a bug rather than a near miss. normalize() reads
+  // the continuation flag, so if the period is only dropped inside the commit
+  // the capital has already been decided against a stale flag.
+  const d = engine();
+  d.start();
+  FakeSR.last.say([{ t: 'the first part', final: true }]);
+  FakeSR.last.say([{ t: 'Then the rest', final: true }]);   // final, no interim ahead of it
+  assert.equal(d.text, 'the first part then the rest.');
+  d.stop();
+});
+
+test('a tapped mark is not a guess, so the capital after it stands', () => {
+  const d = engine();
+  d.start();
+  FakeSR.last.say([{ t: 'a finished thought', final: true }]);
+  d.punct('.');                       // the reader said so
+  FakeSR.last.say([{ t: 'New sentence', final: true }]);
+  assert.match(d.text, /\. New sentence\.$/,
+    'a period the reader tapped ends the sentence, so the next capital is theirs');
+
+  // And a comma still continues, which is the same rule from the other side.
+  d.punct(',');
+  FakeSR.last.say([{ t: 'Trailing on', final: true }]);
+  assert.match(d.text, /, trailing on\.$/);
+  d.stop();
+});
+
+test('what lowering cannot know: a proper noun after a pause', () => {
+  // The guard is /^[A-Z][a-z]/, which spares "I", "OK", and "NASA" but not
+  // "Tuesday". Asserted so the limit is recorded rather than rediscovered: the
+  // capital is wrong every time the sentence really is continuing and wrong
+  // occasionally here, and the residual is a name the editor fixes.
+  const d = engine();
+  d.start();
+  FakeSR.last.say([{ t: 'we met', final: true }]);
+  FakeSR.last.say([{ t: 'Tuesday at noon', final: true }]);
+  assert.equal(d.text, 'we met tuesday at noon.', 'a known cost, not an oversight');
+
+  d.text = '';
+  FakeSR.last.say([{ t: 'she said', final: true }]);
+  FakeSR.last.say([{ t: 'I agree', final: true }]);
+  assert.equal(d.text, 'she said I agree.', 'but a bare "I" is never lowered');
+  d.stop();
+});
+
+test('putting the microphone down ends the sentence; the mark cycle does not', async () => {
+  const d = engine();
+  d.start();
+  FakeSR.last.say([{ t: 'a finished thought', final: true }]);
+  d.stop();                                     // deliberate
+  assert.equal(d.text, 'a finished thought.', 'the period stays');
+
+  d.start();
+  FakeSR.last.say([{ t: 'Later, a new one', final: true }]);
+  assert.match(d.text, /thought\. Later/,
+    'and it is no longer provisional, so the capital after it stands');
+
+  // The stop the punctuation row performs internally is mid-sentence, so it
+  // must not settle anything: the mark replaces the provisional period and
+  // what follows is still the same sentence.
+  d.text = '';
+  d.start();
+  FakeSR.last.say([{ t: 'before the mark', final: true }]);
+  d.punct(',');
+  await new Promise(r => setTimeout(r, 5));
+  FakeSR.last.say([{ t: 'After the mark', final: true }]);
+  assert.equal(d.text, 'before the mark, after the mark.',
+    'the comma continued it, exactly as a tapped comma should');
+  d.stop();
+});
