@@ -1,5 +1,5 @@
 {
-  "note": "The properties registry: the declaration table of docs/registries.md, binding scope x property to its one authoritative registry. Registries name their carrier, key field (structural identity, exempt from declaration), target grain, scope, gate, and whether their per-row fields are `governed` (held to the declarations below) or `ungoverned` (declared and counted, with a written `why` naming what about the carrier the field check cannot reach). Declarations carry mode (recorded or computed, with the deriver for computed), required (what the gates enforce today: value, counted, or none), and the value domain where one is closed. Governed carriers are held both ways by tools/test/properties-registry.test.mjs: an undeclared row field fails, a declared property missing from the carrier fails, a computed declaration whose deriver does not exist fails, and the ungoverned count is asserted so it can only move deliberately. Expanded 2026-08-09 from six registries to thirteen by the reconciliation recorded in docs/registries.md, which walked the estate against the model rather than the model against itself. Nine are field-governed and four are not; the pages catalog moved from the second group to the first the same day, by teaching the field check a group walk rather than by reshaping a carrier other repos read. Origin: budget-drs data/design/properties.csv in mehrlander/home.",
+  "note": "The properties registry: the declaration table of docs/registries.md, binding scope x property to its one authoritative registry. Registries name their carrier, key field (structural identity, exempt from declaration), target grain, scope, gate, and whether their per-row fields are `governed` (held to the declarations below) or `ungoverned` (declared and counted, with a written `why` naming what about the carrier the field check cannot reach). Declarations carry mode (recorded or computed, with the deriver for computed), required (what the gates enforce today: value, counted, or none), and the value domain where one is closed. Governed carriers are held both ways by tools/test/properties-registry.test.mjs: an undeclared row field fails, a declared property missing from the carrier fails, a value outside a declared closed domain fails (431 values across eight domains; added 2026-08-09, when filling budget-drs's definition_owner field turned up that eight domains were declared and none were read), a computed declaration whose deriver does not exist fails, and the ungoverned count is asserted so it can only move deliberately. Expanded 2026-08-09 from six registries to thirteen by the reconciliation recorded in docs/registries.md, which walked the estate against the model rather than the model against itself. Nine are field-governed and four are not; the pages catalog moved from the second group to the first the same day, by teaching the field check a group walk rather than by reshaping a carrier other repos read. Origin: budget-drs data/design/properties.csv in mehrlander/home.",
   "registries": [
     {
       "id": "docs-census",
@@ -356,8 +356,14 @@
       "registry": "content-registry",
       "mode": "recorded",
       "required": "none",
-      "values": null,
-      "gloss": "which corpora may draw on the artifact"
+      "values": [
+        "concept-vocabulary",
+        "prose-review",
+        "semantic-search",
+        "source-corpus",
+        "exclude"
+      ],
+      "gloss": "what the artifact is good for downstream. The domain is closed and is owned by the content-registry skill, not here; docs/owners.json records the copy"
     },
     {
       "property": "description",

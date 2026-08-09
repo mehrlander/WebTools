@@ -680,7 +680,7 @@
       "path": "tools/test/properties-registry.test.mjs",
       "kind": "gate",
       "protects": "The declaration table of docs/registries.md: every governed carrier holds exactly its key plus declared properties, computed declarations name real derivers, and no target x property pair has two owners within a registry.",
-      "assertions": 4,
+      "assertions": 5,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
