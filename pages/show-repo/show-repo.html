@@ -1476,6 +1476,10 @@ function app(){ return {
   // never enumerated here: membership is each repo's own `estate: true`, read
   // through the config cache below.
   REGISTRY_REPO: 'mehrlander/web-tools-private',
+  // The chat archive, named for the same reason the registry is: Activity's
+  // Chats pane needs one specific corpus and no repo's `estate: true` can
+  // supply it. It is not discovered because it is not pluggable.
+  CHATS_REPO: 'mehrlander/chat-histories',
   // App views: pages any repo promotes to their own estate-level entry via an
   // `appView:true` flag on a `pages` catalog entry (estate membership, one
   // level up: the target is a rendered page, not a repo). Collected across every
@@ -1612,6 +1616,7 @@ function app(){ return {
     else if (url && url.view === 'activity') this.goActivity();
     else if (url && url.view === 'sessions') this.goSessions();
     else if (url && url.view === 'guides') this.goGuides();
+    else if (url && url.view === 'chats') this.goChats();
     else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap(url.tab);
     else if (url && url.view === 'tools') this.goTools();
     else if (url && url.view === 'search') this.goSearch({ q: url.sq, mode: url.smode, repo: url.srepo, ref: url.sref });
@@ -3425,6 +3430,7 @@ function app(){ return {
     }
     else if (this.view === 'sessions') p.set('view', 'sessions');
     else if (this.view === 'guides') p.set('view', 'guides');
+    else if (this.view === 'chats') p.set('view', 'chats');
     else if (this.view === 'map') {
       p.set('view', 'map');
       // Same `tab` key the project view stamps, and the same rule: the default
@@ -3514,6 +3520,7 @@ function app(){ return {
       else if (url && url.view === 'activity') this.goActivity();
       else if (url && url.view === 'sessions') this.goSessions();
       else if (url && url.view === 'guides') this.goGuides();
+      else if (url && url.view === 'chats') this.goChats();
       else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap(url.tab);
       else if (url && url.view === 'tools') this.goTools();
       else if (url && url.view === 'search') this.goSearch({ q: url.sq, mode: url.smode, repo: url.srepo, ref: url.sref });
@@ -3577,7 +3584,7 @@ function app(){ return {
   // the grid and the Stage, switching on this.view, sharing the one lazy
   // mount); estateCtx is the wider context test the sidebar switches on.
   // 'surfaces' is in this list as the Stage's alias, not as a second pane.
-  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions', 'guides'].includes(this.view); },
+  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions', 'guides', 'chats'].includes(this.view); },
   // The Lists view is the one estate pane that FILLS rather than flows: its two
   // halves scroll inside themselves, so the page must not scroll and the chain
   // from the pane down to the component root has to carry a definite height.
@@ -3635,7 +3642,7 @@ function app(){ return {
   // Both old keys still route (?view=todo and ?view=jots land on Lists).
   get estateNav(){
     return [
-      { view: 'activity', views: ['activity', 'sessions', 'guides'],
+      { view: 'activity', views: ['activity', 'sessions', 'guides', 'chats'],
         icon: 'ph-pulse',    label: 'Activity', go: () => this.goActivity() },
       { view: 'todo', views: ['todo', 'jots'],
         icon: 'ph-list-checks', label: 'Lists',  go: () => this.goTodo() },
@@ -3776,6 +3783,13 @@ function app(){ return {
   // does. Landing straight on ?view=guides without it is how the pane came up
   // empty: nothing to scan, and nothing to say so.
   goGuides(){ this.estateSeen = true; this.view = 'guides'; this.refreshActivityCache?.(false, { deep: false }); this.syncUrl(); },
+  // Chats warms nothing, and the absence is the design. The other three panes
+  // read a crawl cache this shell keeps fresh; the archive's month shards are
+  // immutable once committed, so there is no staleness for a crawl to chase.
+  // What can be stale is the archive itself, which no crawl can fix: it
+  // advances when an export lands in chat-histories. The pane states that
+  // instead of offering a refresh that would do nothing.
+  goChats(){ this.estateSeen = true; this.view = 'chats'; this.syncUrl(); },
   goLanding(){ this.view = 'landing'; this.syncUrl(); },
   goPages(){ this.view = 'pages'; this.syncUrl(); },
   goAtlas(){ this.atlasSeen = true; this.view = 'atlas'; this.syncUrl(); },

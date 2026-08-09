@@ -282,6 +282,47 @@ export function resolveCdn(rawUrl, repoRoot, ref) {
     return { kind: 'empty', contentType: 'application/json; charset=utf-8', tag: `MISS api ${tail}` };
   }
 
+  // --- A SIBLING repo's contents, served from its checkout next to this one ---
+  //
+  // The estate's newer panes are cross-repo: the Chats pane reads
+  // mehrlander/chat-histories, the guides fold reads whichever repos hold a
+  // shelf. Without this they render the signed-out state headlessly, which is
+  // the one view nobody needs a screenshot of, so a cross-repo pane could be
+  // shot only by hand with a real token.
+  //
+  // Scoped deliberately: the repo NAME must match a directory beside this
+  // checkout, and that directory must be a git repo. A multi-repo session
+  // already has the siblings on disk (this one holds four), and a request for
+  // a repo that is not checked out falls through to the miss below rather than
+  // reaching the network, so the render stays offline either way.
+  const sibling = /^\/repos\/[^/]+\/([^/]+)\/contents\/(.*)$/.exec(u.pathname);
+  if (host === 'api.github.com' && sibling) {
+    const [, name, tail] = sibling;
+    const root = path.join(repoRoot, '..', name);
+    const rel = decodeURIComponent(tail).replace(/\/$/, '').replace(/\?.*$/, '');
+    const fp = path.join(root, rel);
+    if (existsSync(path.join(root, '.git')) && existsSync(fp)) {
+      if (statSync(fp).isDirectory()) {
+        const entries = readdirSync(fp, { withFileTypes: true }).map(e => ({
+          name: e.name, path: rel ? `${rel}/${e.name}` : e.name,
+          type: e.isDirectory() ? 'dir' : 'file',
+          sha: 'local', size: 0, html_url: '', download_url: '',
+        }));
+        return { kind: 'fulfill', contentType: 'application/json; charset=utf-8',
+                 tag: `api ${name} dir ${rel}`, body: JSON.stringify(entries) };
+      }
+      const text = readFileSync(fp, 'utf8');
+      return {
+        kind: 'fulfill', contentType: 'application/json; charset=utf-8', tag: `api ${name}/${rel}`,
+        body: JSON.stringify({
+          content: Buffer.from(text).toString('base64'),
+          encoding: 'base64', sha: 'local', size: text.length, html_url: '',
+        }),
+      };
+    }
+    return { kind: 'empty', contentType: 'application/json; charset=utf-8', tag: `MISS api ${name}/${rel}` };
+  }
+
   // --- Third-party libs: jsDelivr /combine/ (comma-joined specs) ---
   if (host === 'cdn.jsdelivr.net' && u.pathname.startsWith('/combine/')) {
     const specs = u.pathname.slice('/combine/'.length).split(',');

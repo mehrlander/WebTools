@@ -101,6 +101,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/chat-archive.test.mjs",
+      "kind": "behavior",
+      "protects": "The Chats pane's arithmetic, which is the pane's only real claim: the archive is read one month at a time, so every number on screen is a statement about staleness rather than a count of what is loaded. Holds the hand catalog winning every collision with the machine layer (the precious layer must not be masked by the bulk one), daysSince flooring so the banner cannot cross a declared threshold a day before the repo's own content-date check reads the same file, cadence staying silent on a single export instead of reporting a zero-day rhythm, and due comparing each provider against its OWN longest observed gap.",
+      "assertions": 11,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/chat-render-exchanges.test.mjs",
       "kind": "behavior",
       "protects": "A leading header in a chat export parses as a meta note, not as a user turn.",
@@ -482,7 +491,7 @@
       "path": "tools/test/guide-index.test.mjs",
       "kind": "kit",
       "protects": "The Guides pane's fold: what path counts as a guide, and that one document found on both main and an open PR stays ONE row rather than two. Also the session collection across the older bare `session` field, which a row written before 2026-08 still carries.",
-      "assertions": 11,
+      "assertions": 15,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -770,7 +779,7 @@
       "path": "tools/test/repo-sessions-cache.test.mjs",
       "kind": "behavior",
       "protects": "The sessions aggregate, whose source is a captured and therefore unregenerable layer: summarize keeps the scan fields and drops the bulk, branches dedupe and drop main since they join the Open view, and an older record with no agent id summarizes without one rather than with a wrong one.",
-      "assertions": 15,
+      "assertions": 17,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
