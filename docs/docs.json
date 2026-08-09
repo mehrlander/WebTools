@@ -2,118 +2,6 @@
   "note": "The documentation registry, in two tables. `documents` describes what each file under docs/ is, on four axes. `subject`: what it covers. `status`: `living` claims current truth and is wrong when stale, `record` preserves a moment and is wrong when rewritten, `measured` carries dated observations and is corrected by re-probing rather than by rewriting (the third value was added 2026-08-05, when five rows were found describing that genre in prose while their status said living). `reach`: how a reader gets to the file, DERIVED from the repo by tools/build/docs-reach.mjs and gated against this declaration, never hand-set. Strongest channel first: `injected` arrives in every session's context unasked, `project` is named by the repo's own CLAUDE.md so every session is one hop away, `skill` is named by a skill so invoking it pulls the doc, `app` is named in lib/ or pages/ CODE so a page reads or opens it (a mention in a comment does not count and is stripped), `orphan` means no automated channel puts it in front of anyone not already browsing docs/. `maintenance`: the discipline that keeps it true, and where none exists the row says so plainly rather than saying 'authored' (a bare row is barred by test, since the census gate otherwise invites filling rows instead of thinking about them). `claims` records statements that live in more than one place, since repetition is the only condition under which drift exists: each row names the one authoritative carrier and every repetition, with its relation (`copy` byte-comparable, `paraphrase` restated, `pointer` no content of its own, `live read` fetched at use), who keeps a copy (`kept`: by hand, or by a named builder), and the check that holds it or the reason none does. A row with `applies_to` is a family rule: the repetition policy for a class of claims that drift individually. The registry is authoritative for what it covers and owes the repo no inventory of claims; the documents census, by contrast, is complete by construction (tools/test/docs-registry.test.mjs holds every .md/.json under docs/ to exactly one row). Rendered by show-repo's Map view, Docs tab. Genre precedents: budget-drs DOCS.md (three genres, three rules) and properties.csv (one authoritative carrier, gated copies, unchecked declared honestly).",
   "documents": [
     {
-      "path": "docs/README.md",
-      "subject": "the docs folder's front door: the generated index of this registry",
-      "status": "living",
-      "reach": "project",
-      "words": 801,
-      "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
-    },
-    {
-      "path": "docs/docs.json",
-      "subject": "this registry: the documents census and the shared-claims table",
-      "status": "living",
-      "reach": "project",
-      "words": 2791,
-      "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
-    },
-    {
-      "path": "docs/harness.json",
-      "subject": "the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting",
-      "status": "living",
-      "reach": "app",
-      "words": 3130,
-      "maintenance": "authored role and layer glossary; layer, lines, invocation, emits, named and tested stamped by tools/build/tools-index.mjs, held in lockstep by artifacts-lockstep.test.mjs; blank roles are counted, not hidden"
-    },
-    {
-      "path": "docs/manifest.json",
-      "subject": "the field registry for root .web-tools.json: every field's type, consumer, and effect",
-      "status": "living",
-      "reach": "project",
-      "words": 1577,
-      "maintenance": "authored; the structured stage under show-repo.md's former prose field list, held to the estate's real manifests by tools/test/manifest-registry.test.mjs: a key live in a manifest with no row here fails the suite"
-    },
-    {
-      "path": "docs/properties.json",
-      "subject": "the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement",
-      "status": "living",
-      "reach": "orphan",
-      "words": 939,
-      "maintenance": "authored by hand; held both ways to the carriers it governs by tools/test/properties-registry.test.mjs"
-    },
-    {
-      "path": "docs/registries.md",
-      "subject": "the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction",
-      "status": "living",
-      "reach": "orphan",
-      "words": 991,
-      "maintenance": "the doctrine behind properties.json; written to travel, origin budget-drs properties.csv"
-    },
-    {
-      "path": "docs/tests.json",
-      "subject": "the test registry: every check's kind, what it protects, and its derived counts",
-      "status": "living",
-      "reach": "app",
-      "words": 4328,
-      "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
-    },
-    {
-      "path": "docs/CONVENTIONS.md",
-      "subject": "the portable working conventions: the general-behavior hub",
-      "status": "living",
-      "reach": "injected",
-      "words": 1147,
-      "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
-    },
-    {
-      "path": "docs/SURFACING.md",
-      "subject": "the surfacing system: primitives plus the guide-PR course",
-      "status": "living",
-      "reach": "injected",
-      "words": 3763,
-      "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
-    },
-    {
-      "path": "docs/surfacing.json",
-      "subject": "the machine index of the surfacing primitives",
-      "status": "living",
-      "reach": "project",
-      "words": 917,
-      "maintenance": "authored; membership held two-way to SURFACING.md's primitive bullets by surfacing-manifest.test.mjs; the summaries are paraphrases and the doc stays authoritative"
-    },
-    {
-      "path": "docs/PORTABLE.md",
-      "subject": "the portable set: what travels, and how to adopt it",
-      "status": "living",
-      "reach": "project",
-      "words": 5579,
-      "maintenance": "authored, edited in place; the roster tables are census-gated against portable.json and disk (portable-manifest.test.mjs)"
-    },
-    {
-      "path": "docs/portable.json",
-      "subject": "the machine index of the portable set",
-      "status": "living",
-      "reach": "app",
-      "words": 1089,
-      "maintenance": "authored; held to PORTABLE.md and to the skill directories on disk by portable-manifest.test.mjs"
-    },
-    {
-      "path": "docs/MARKETPLACE.md",
-      "subject": "the plugin marketplace: how the set is published and subscribed to",
-      "status": "living",
-      "reach": "orphan",
-      "words": 535,
-      "maintenance": "authored; deliberately does not enumerate the roster (it points at the catalog instead)"
-    },
-    {
-      "path": "docs/TRACKER.md",
-      "subject": "the opt-in cross-session project tracker: schema, ids, board",
-      "status": "living",
-      "reach": "project",
-      "words": 4337,
-      "maintenance": "authored, edited in place; the schema the tasks skill implements, held to it by review alone"
-    },
-    {
       "path": "docs/CONSTELLATION.md",
       "subject": "the portable kernel of the what-goes-where doctrine",
       "status": "living",
@@ -122,36 +10,12 @@
       "maintenance": "authored; the argument is the content, so no data carrier applies"
     },
     {
-      "path": "docs/routes.json",
-      "subject": "how content moves, renders, and gets looked at: grammar, modes, routes, and the showing block",
+      "path": "docs/CONVENTIONS.md",
+      "subject": "the portable working conventions: the general-behavior hub",
       "status": "living",
-      "reach": "project",
-      "words": 1421,
-      "maintenance": "authored; the routes block is held to toss-render's inlined TOSS_ROUTES, and the showing block to its own shape, by routes-manifest.test.mjs"
-    },
-    {
-      "path": "docs/showing.md",
-      "subject": "why the showing boundaries sit where they are: the frame and the record behind routes.json",
-      "status": "living",
-      "reach": "project",
-      "words": 1948,
-      "maintenance": "authored; defers its reference layer to routes.json by design and says so"
-    },
-    {
-      "path": "docs/show-repo.md",
-      "subject": "the show-repo shell: views, stage, transfer, and the .web-tools.json manifest",
-      "status": "living",
-      "reach": "project",
-      "words": 20749,
-      "maintenance": "authored, edited in place; the corpus's largest document, and the buried home of the stage contract"
-    },
-    {
-      "path": "docs/artifacts.md",
-      "subject": "Claude Code artifacts and the link-choice matrix",
-      "status": "living",
-      "reach": "project",
-      "words": 1160,
-      "maintenance": "authored; distilled from official docs plus a dated publish trial"
+      "reach": "injected",
+      "words": 1280,
+      "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
       "path": "docs/HTML-STYLE.md",
@@ -162,12 +26,28 @@
       "maintenance": "authored, edited in place; paired with the daisy-alpine skill, which carries the mechanics and points here for composition; the split is convention, unchecked"
     },
     {
-      "path": "docs/SNAGS.md",
-      "subject": "the friction log: one line per snag, symptom then corrected move",
+      "path": "docs/MARKETPLACE.md",
+      "subject": "the plugin marketplace: how the set is published and subscribed to",
+      "status": "living",
+      "reach": "orphan",
+      "words": 535,
+      "maintenance": "authored; deliberately does not enumerate the roster (it points at the catalog instead)"
+    },
+    {
+      "path": "docs/PORTABLE.md",
+      "subject": "the portable set: what travels, and how to adopt it",
       "status": "living",
       "reach": "project",
-      "words": 3574,
-      "maintenance": "authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
+      "words": 5648,
+      "maintenance": "authored, edited in place; the roster tables are census-gated against portable.json and disk (portable-manifest.test.mjs)"
+    },
+    {
+      "path": "docs/README.md",
+      "subject": "the docs folder's front door: the generated index of this registry",
+      "status": "living",
+      "reach": "project",
+      "words": 824,
+      "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
       "path": "docs/SHARE.md",
@@ -178,12 +58,36 @@
       "maintenance": "authored; the copy-paste prompt's raw.githubusercontent URL is now covered by link-survey.py's bare-URL scan, which reads fenced shell for exactly this case"
     },
     {
-      "path": "docs/loader.md",
-      "subject": "the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality",
+      "path": "docs/SNAGS.md",
+      "subject": "the friction log: one line per snag, symptom then corrected move",
       "status": "living",
       "reach": "project",
-      "words": 4676,
-      "maintenance": "authored, edited in place; the only statement of the gh.load contract that 36 page files depend on, and CLAUDE.md now sends a reader here before they touch lib/ or a page's boot"
+      "words": 3775,
+      "maintenance": "authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
+    },
+    {
+      "path": "docs/SURFACING.md",
+      "subject": "the surfacing system: primitives plus the guide-PR course",
+      "status": "living",
+      "reach": "injected",
+      "words": 3763,
+      "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
+    },
+    {
+      "path": "docs/TRACKER.md",
+      "subject": "the opt-in cross-session project tracker: schema, ids, board",
+      "status": "living",
+      "reach": "project",
+      "words": 4337,
+      "maintenance": "authored, edited in place; the schema the tasks skill implements, held to it by review alone"
+    },
+    {
+      "path": "docs/artifacts.md",
+      "subject": "Claude Code artifacts and the link-choice matrix",
+      "status": "living",
+      "reach": "project",
+      "words": 1160,
+      "maintenance": "authored; distilled from official docs plus a dated publish trial"
     },
     {
       "path": "docs/code-layers.md",
@@ -194,36 +98,12 @@
       "maintenance": "authored; the layer counts behind it are re-derived by scripts/unclaimed-code-survey.py rather than restated here, and lib/kits/README.md's former three-category list was reduced to the kit rule plus a pointer when this landed"
     },
     {
-      "path": "docs/headless-vendoring.md",
-      "subject": "building with CDN libraries and rendering headless where the CDNs are blocked",
+      "path": "docs/docs.json",
+      "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
-      "reach": "skill",
-      "words": 2823,
-      "maintenance": "authored; self-contained recipe"
-    },
-    {
-      "path": "docs/markdown-in-chat.md",
-      "subject": "working visually with markdown in a chat client on a phone",
-      "status": "measured",
-      "reach": "skill",
-      "words": 813,
-      "maintenance": "authored; findings established empirically, re-probe on a new client"
-    },
-    {
-      "path": "docs/pdf-structure.md",
-      "subject": "recovering structure from a PDF in the browser: what the kit does and honestly does not",
-      "status": "living",
-      "reach": "orphan",
-      "words": 4003,
-      "maintenance": "authored, edited in place; the reference half of lib/kits/pdf.js, which names it only in a comment; its tolerances are empirical and undated"
-    },
-    {
-      "path": "docs/tools.json",
-      "subject": "the curated Tools gallery manifest",
-      "status": "living",
-      "reach": "app",
-      "words": 125,
-      "maintenance": "authored by hand; a sibling to pins and stage.files, no prose parent"
+      "reach": "project",
+      "words": 2856,
+      "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
       "path": "docs/envelopes/README.md",
@@ -232,14 +112,6 @@
       "reach": "orphan",
       "words": 941,
       "maintenance": "authored; carries its dated decisions inline with their reversal triggers"
-    },
-    {
-      "path": "docs/envelopes/surface.md",
-      "subject": "the surface format contract",
-      "status": "living",
-      "reach": "orphan",
-      "words": 2326,
-      "maintenance": "authored; declares the sibling schemas the validation source of truth and carries a Stale banner saying nothing validates against them, which is the honest state rather than the intended one"
     },
     {
       "path": "docs/envelopes/chat-results.md",
@@ -258,22 +130,6 @@
       "maintenance": "authored; prose contract for the data route, named by the surfacing primitives; no schema beside it"
     },
     {
-      "path": "docs/envelopes/shorter.md",
-      "subject": "the shorter envelope contract: a document and a shortening to adjudicate",
-      "status": "living",
-      "reach": "orphan",
-      "words": 704,
-      "maintenance": "authored; prose contract for pages/shorter.html, which names it only in a comment; no schema beside it"
-    },
-    {
-      "path": "docs/envelopes/schemas/surface-v2.schema.json",
-      "subject": "the surface v2 JSON Schema",
-      "status": "living",
-      "reach": "orphan",
-      "words": 776,
-      "maintenance": "authored; a written contract, not a gate: nothing in lib/, pages/, or the skills loads it, and surface.md now says so where a reader will see it"
-    },
-    {
       "path": "docs/envelopes/schemas/profiles/branch-review-v1.schema.json",
       "subject": "the branch-review profile schema",
       "status": "living",
@@ -288,6 +144,30 @@
       "reach": "orphan",
       "words": 376,
       "maintenance": "authored; a profile of the surface schema, named only by a tracker task; nothing loads it"
+    },
+    {
+      "path": "docs/envelopes/schemas/surface-v2.schema.json",
+      "subject": "the surface v2 JSON Schema",
+      "status": "living",
+      "reach": "orphan",
+      "words": 776,
+      "maintenance": "authored; a written contract, not a gate: nothing in lib/, pages/, or the skills loads it, and surface.md now says so where a reader will see it"
+    },
+    {
+      "path": "docs/envelopes/shorter.md",
+      "subject": "the shorter envelope contract: a document and a shortening to adjudicate",
+      "status": "living",
+      "reach": "orphan",
+      "words": 704,
+      "maintenance": "authored; prose contract for pages/shorter.html, which names it only in a comment; no schema beside it"
+    },
+    {
+      "path": "docs/envelopes/surface.md",
+      "subject": "the surface format contract",
+      "status": "living",
+      "reach": "orphan",
+      "words": 2326,
+      "maintenance": "authored; declares the sibling schemas the validation source of truth and carries a Stale banner saying nothing validates against them, which is the honest state rather than the intended one"
     },
     {
       "path": "docs/environment/README.md",
@@ -314,6 +194,14 @@
       "maintenance": "authored; per-claim verification dates, edited in place"
     },
     {
+      "path": "docs/environment/extending.md",
+      "subject": "the Claude Code component model and the hooks this repo runs",
+      "status": "living",
+      "reach": "project",
+      "words": 2562,
+      "maintenance": "authored; mostly stable conceptual knowledge, only the repo-specific inventory is dated"
+    },
+    {
       "path": "docs/environment/testing.md",
       "subject": "how to test HTML and JS in the sandbox",
       "status": "measured",
@@ -322,12 +210,12 @@
       "maintenance": "authored; per-claim verification dates, edited in place"
     },
     {
-      "path": "docs/environment/extending.md",
-      "subject": "the Claude Code component model and the hooks this repo runs",
+      "path": "docs/favicons/README.md",
+      "subject": "the favicon archive: active marks and retired ones",
       "status": "living",
-      "reach": "project",
-      "words": 2562,
-      "maintenance": "authored; mostly stable conceptual knowledge, only the repo-specific inventory is dated"
+      "reach": "orphan",
+      "words": 461,
+      "maintenance": "authored; the retired section is the record half, kept so iteration does not lose history"
     },
     {
       "path": "docs/github/README.md",
@@ -338,20 +226,20 @@
       "maintenance": "authored; the folder's front door, gathering two strands that used to live apart; hand-listed, not generated from the folder as docs/README.md is"
     },
     {
-      "path": "docs/github/markdown.md",
-      "subject": "what GitHub's static renderer turns markdown into",
-      "status": "living",
-      "reach": "orphan",
-      "words": 926,
-      "maintenance": "authored; a gallery of GitHub renderer behavior, so its claims age with the renderer and nothing re-probes them"
-    },
-    {
       "path": "docs/github/github-surfacing.md",
       "subject": "GitHub-native surfaces for exposing work: branches, compares, drafts, permalinks",
       "status": "living",
       "reach": "orphan",
       "words": 468,
       "maintenance": "authored; mechanical reference for GitHub's native surfaces, stable enough not to need dating"
+    },
+    {
+      "path": "docs/github/markdown.md",
+      "subject": "what GitHub's static renderer turns markdown into",
+      "status": "living",
+      "reach": "orphan",
+      "words": 926,
+      "maintenance": "authored; a gallery of GitHub renderer behavior, so its claims age with the renderer and nothing re-probes them"
     },
     {
       "path": "docs/github/mcp-server-routing.md",
@@ -370,12 +258,132 @@
       "maintenance": "authored; a conceptual argument with no repo-specific inventory to age"
     },
     {
-      "path": "docs/favicons/README.md",
-      "subject": "the favicon archive: active marks and retired ones",
+      "path": "docs/harness.json",
+      "subject": "the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting",
+      "status": "living",
+      "reach": "app",
+      "words": 3130,
+      "maintenance": "authored role and layer glossary; layer, lines, invocation, emits, named and tested stamped by tools/build/tools-index.mjs, held in lockstep by artifacts-lockstep.test.mjs; blank roles are counted, not hidden"
+    },
+    {
+      "path": "docs/headless-vendoring.md",
+      "subject": "building with CDN libraries and rendering headless where the CDNs are blocked",
+      "status": "living",
+      "reach": "skill",
+      "words": 2823,
+      "maintenance": "authored; self-contained recipe"
+    },
+    {
+      "path": "docs/loader.md",
+      "subject": "the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality",
+      "status": "living",
+      "reach": "project",
+      "words": 4676,
+      "maintenance": "authored, edited in place; the only statement of the gh.load contract that 36 page files depend on, and CLAUDE.md now sends a reader here before they touch lib/ or a page's boot"
+    },
+    {
+      "path": "docs/manifest.json",
+      "subject": "the field registry for root .web-tools.json: every field's type, consumer, and effect",
+      "status": "living",
+      "reach": "project",
+      "words": 1577,
+      "maintenance": "authored; the structured stage under show-repo.md's former prose field list, held to the estate's real manifests by tools/test/manifest-registry.test.mjs: a key live in a manifest with no row here fails the suite"
+    },
+    {
+      "path": "docs/markdown-in-chat.md",
+      "subject": "working visually with markdown in a chat client on a phone",
+      "status": "measured",
+      "reach": "skill",
+      "words": 813,
+      "maintenance": "authored; findings established empirically, re-probe on a new client"
+    },
+    {
+      "path": "docs/pdf-structure.md",
+      "subject": "recovering structure from a PDF in the browser: what the kit does and honestly does not",
       "status": "living",
       "reach": "orphan",
-      "words": 461,
-      "maintenance": "authored; the retired section is the record half, kept so iteration does not lose history"
+      "words": 4003,
+      "maintenance": "authored, edited in place; the reference half of lib/kits/pdf.js, which names it only in a comment; its tolerances are empirical and undated"
+    },
+    {
+      "path": "docs/portable.json",
+      "subject": "the machine index of the portable set",
+      "status": "living",
+      "reach": "app",
+      "words": 1122,
+      "maintenance": "authored; held to PORTABLE.md and to the skill directories on disk by portable-manifest.test.mjs"
+    },
+    {
+      "path": "docs/properties.json",
+      "subject": "the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement",
+      "status": "living",
+      "reach": "orphan",
+      "words": 939,
+      "maintenance": "authored by hand; held both ways to the carriers it governs by tools/test/properties-registry.test.mjs"
+    },
+    {
+      "path": "docs/registries.md",
+      "subject": "the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction",
+      "status": "living",
+      "reach": "orphan",
+      "words": 991,
+      "maintenance": "the doctrine behind properties.json; written to travel, origin budget-drs properties.csv"
+    },
+    {
+      "path": "docs/routes.json",
+      "subject": "how content moves, renders, and gets looked at: grammar, modes, routes, and the showing block",
+      "status": "living",
+      "reach": "project",
+      "words": 1421,
+      "maintenance": "authored; the routes block is held to toss-render's inlined TOSS_ROUTES, and the showing block to its own shape, by routes-manifest.test.mjs"
+    },
+    {
+      "path": "docs/show-repo.md",
+      "subject": "the show-repo shell: views, stage, transfer, and the .web-tools.json manifest",
+      "status": "living",
+      "reach": "project",
+      "words": 20749,
+      "maintenance": "authored, edited in place; the corpus's largest document, and the buried home of the stage contract"
+    },
+    {
+      "path": "docs/showing.md",
+      "subject": "why the showing boundaries sit where they are: the frame and the record behind routes.json",
+      "status": "living",
+      "reach": "project",
+      "words": 1948,
+      "maintenance": "authored; defers its reference layer to routes.json by design and says so"
+    },
+    {
+      "path": "docs/surfacing.json",
+      "subject": "the machine index of the surfacing primitives",
+      "status": "living",
+      "reach": "project",
+      "words": 917,
+      "maintenance": "authored; membership held two-way to SURFACING.md's primitive bullets by surfacing-manifest.test.mjs; the summaries are paraphrases and the doc stays authoritative"
+    },
+    {
+      "path": "docs/tests.json",
+      "subject": "the test registry: every check's kind, what it protects, and its derived counts",
+      "status": "living",
+      "reach": "app",
+      "words": 4328,
+      "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
+    },
+    {
+      "path": "docs/tools.json",
+      "subject": "the curated Tools gallery manifest",
+      "status": "living",
+      "reach": "app",
+      "words": 125,
+      "maintenance": "authored by hand; a sibling to pins and stage.files, no prose parent"
+    },
+    {
+      "path": "docs/venues.md",
+      "subject": "the venue map: where work can run besides the session reading it, what each reaches, and the attended-versus-unattended split",
+      "status": "measured",
+      "reach": "project",
+      "words": 701,
+      "maintenance": "dated observations about products that move; re-probe the attended column rather than rewriting from memory, and carry the date. CONVENTIONS.md names it in an always-loaded paragraph, which is what gives it reach at all"
     }
   ],
   "claims": [

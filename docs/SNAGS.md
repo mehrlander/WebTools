@@ -22,6 +22,25 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### venues-invisible-from-inside: a session inventories only the venues it can see from its own sandbox
+Asked how to reach the user's laptop, a session listed this sandbox, GitHub's
+hosted runners, and the laptop as raw hardware, then designed around that set.
+It missed Dispatch, a top-level surface in the Claude app that relays work to
+the desktop, and had to be shown a screenshot of the sidebar. The tell is
+subtle: nothing looked like a gap, because the answer was complete for the
+venues in view. Before scoping an answer to where work can run, read the venue
+map rather than enumerating from inside. *(seen: 2026-08-09)*
+→ [venues.md](venues.md)
+
+### runner-tag-documented-unused: a convention in the contract, used once, re-derived from memory
+`runner: <machine>` is defined in TRACKER.md as the tag that parks a task for a
+machine. Across 72 web-tools task files and home's five trackers it is used
+exactly once, and the user recalled that "we set up a category for that"
+without being able to name it. A convention nobody can name is a convention
+nobody applies; the fix when it recurs is to surface open tags on the board
+rather than only in the contract. *(seen: 2026-08-09)*
+→ [TRACKER.md](TRACKER.md)
+
 ### cross-repo-lib-consumer-invisible: in-repo greps cannot see an external runtime consumer of a lib file
 The lib-kits migration measured its cost as 31 runtime call sites and 84 path
 mentions, all in-repo; the one runtime consumer that would actually have broken
