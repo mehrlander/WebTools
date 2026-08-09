@@ -405,9 +405,12 @@ two readings it has: **Branches**, what is in flight, and **Sessions**, the work
 that made it. A branch is the artifact and a session is the act; each row in one
 pane cross-references the other. A segmented pill (the shared internal-tab
 style) switches between them at every width, each pill carrying its live count,
-and each pane's own as-of readout and Refresh ride the pill row, since the two
-read different caches on different throttles. Both keep their own view key, so
-`?view=activity` and `?view=sessions` deep-link directly.
+and each pane's own **age pill** rides the pill row, since the three read
+different caches on different throttles. The pill states the age at every width
+and opens the **State** view, where that cache's Refresh lives beside its cost
+and its throttle; it replaced an as-of reading that was hidden below `sm` next to
+a Refresh button that was not. Both keep their own view key, so `?view=activity`
+and `?view=sessions` deep-link directly.
 
 **The stop used to hold four panes**, adding To-do and Jots on the reasoning
 that the four read as a gradient of commitment: a jot is unshaped intent, a
@@ -572,7 +575,7 @@ the session link rides the cached PR, so nothing is fetched per visit. Landed an
 stranded older branches are the per-repo branch review's job, not this "what's in
 flight" read. The Repos view borrows the same cache for a **freshness rollup** on
 each card (branch count, stranded count, open-PR count, the branch count a one-tap
-route into the branch review). The view's Refresh forces the crawl through the
+route into the branch review). The crawl is forced from the State view through the
 shell (`refreshActivity`); a normal visit kicks it throttled. The internal view
 key stays `activity` (and `?view=activity`), so existing links resolve.
 
@@ -719,8 +722,9 @@ its own).
 **The shared dialog is scoped by how it is opened.** With no repo, from the
 **account row** at the top right of the Repos view, it is an **account panel**:
 the token control alone, no repo tabs (**Refresh views** left with the header
-shield, being the same `refreshConfigs` the Repos view's own **Refresh** button
-already ran; the account row is where the token lives now).
+shield, being the same `refreshConfigs` the Repos view carried its own button
+for; that button is now the State view's config row, and the account row is
+where the token lives).
 With a repo, from a card gear, a sidebar Repos row, or the Map, it is the **repo
 dialog**: the **Info** tab (repo facts, the token control, a Public-browse
 shortcut, and the repo name as the one-tap GitHub link), plus the **Settings**
@@ -911,6 +915,54 @@ source resolve with no token; a cross-repo or off-default entry renders through
 toss-render `#gh=` the same way the pages catalog does. The list is authored, a
 sibling to `pins` and `stage.files`, maintained by hand
 (`lib/alpineComponents/tools.js`).
+
+### State (`?view=state`)
+
+**State** (`lib/alpineComponents/state-view.js`) lists everything the estate
+keeps derived, each piece with its age, what builds it, what the build costs,
+and a Refresh where one is possible. It is the address the age pills open, and
+the reason the four estate Refresh buttons could go.
+
+The view exists because "refresh" was one icon over two unrelated verbs. A
+**crawl** commits a file to the registry and can be hours stale; a **local
+recompute** (the search caches, the stage bundle, an Inspect rescan) is instant,
+stores nothing, and has no age at all. Both wore the same button in six places,
+and the as-of reading that says whether to press was the part hidden below `sm`,
+so a phone kept the control and dropped the fact. Three sections carry the
+split: **Derived** (the registry's `state/`), **Read live** (the guides shelf,
+cheap enough to redo on demand, so nothing is committed), and **This browser**
+(the search caches and the page itself, both gone on reload, neither estate
+state).
+
+**Built and checked are two different ages, and one alone misreads.** `built` is
+the last commit touching the file; `checked` is this browser's throttle stamp
+(`wt:*CacheCheckedAt`). Every crawl here commits only on material change, so
+"built 3d ago, checked 12m ago" means current, not stale, which is precisely
+what a lone as-of could never say. The build time is read as the file's last
+commit rather than its own `generatedAt`, because reading four `generatedAt`
+fields would cost 1.5 MB of JSON for four timestamps, and for a file only the
+crawl writes, the commit is the write. Staleness is only claimed where the
+source declares a bar: past twice a crawl's own throttle, or past the 30 days
+the entity index's repo check already uses. The whole view costs one `ls state`
+plus one commit read per file, regardless of estate size, and it kicks no crawl
+on arrival: a view that ran a crawl to show you how old things were would answer
+its own question before you read it.
+
+**The fourth file has no button, and says so.** `state/entities.json` is derived
+like the other three and cannot be rebuilt from a page: it needs spaCy over
+~4,000 files across seven checkouts, about half an hour. It gets a full row
+anyway, naming its builder and why the control is missing. A freshness surface
+that lists only what it can fix repeats the omission it was built to end.
+
+Reaching the two rows the shell does not own: the guides shelf keeps its stamp
+in the estate component (it is the one derived thing with no file to read a date
+off), mirrored onto `__shell.guidesLoadedAt` as it lands, and re-read by
+announcement (`web-tools:refresh-guides`); the page reload asks the fab for its
+`hardRefresh`, the one implementation, via `web-tools:hard-refresh`. The
+registry's authored content (lists, surfaces, the private config) and its
+captured records (sessions, mailbox, proposals) are named at the foot of the
+view and deliberately have no rows: neither is derived, so neither has an age to
+report or a crawl to run.
 
 ## Public browse: the no-token file browser
 

@@ -1,0 +1,46 @@
+// Populate the State view for a headless screenshot. The view's whole content
+// is ages read from the registry, which needs a token the sandbox does not
+// have, so the two reads it makes (one `ls state` for sizes, one commit read
+// per file for the write time) are stubbed with plausible values and the two
+// browser rows are seeded so every row type renders: a current cache, a stale
+// one, a cache this browser has never checked, and the entity index with no
+// button at all.
+export default async (page) => {
+  await page.evaluate(() => {
+    window.TOKEN = 'FAKE';
+    const now = Date.now();
+    const iso = (h) => new Date(now - h * 3600e3).toISOString();
+
+    // Sizes come off the directory listing; dates off one commit read per file.
+    const SIZES = { 'configs.json': 67520, 'activity.json': 379637, 'sessions.json': 285556, 'entities.json': 838136 };
+    const DATES = {
+      'state/configs.json': iso(5),        // inside 2x its 6h throttle: current
+      'state/activity.json': iso(2),
+      'state/sessions.json': iso(31),      // past 2x its 3h throttle: stale
+      'state/entities.json': iso(24 * 41), // past the 30-day check: stale
+    };
+    window.GH.prototype.ls = async function (p) {
+      if (p !== 'state') return [];
+      return Object.entries(SIZES).map(([name, size]) => ({ name, path: 'state/' + name, size, type: 'file' }));
+    };
+    window.GH.prototype.history = async function (p) {
+      return DATES[p] ? [{ sha: 'abc1234', msg: 'Update cache via show-repo', date: DATES[p], author: 'mehrlander' }] : [];
+    };
+
+    // Two of the three checked-stamps exist; sessions has none, so that row
+    // reads "not this browser", which is the honest state on a fresh device
+    // and the one a lone as-of could not express.
+    localStorage.setItem('wt:configCacheCheckedAt', String(now - 12 * 60e3));
+    localStorage.setItem('wt:activityCacheCheckedAt', String(now - 40 * 60e3));
+    localStorage.removeItem('wt:sessionsCacheCheckedAt');
+
+    // The guides shelf keeps its stamp on the shell; the search caches keep
+    // their own counts. Both are session state with nothing committed.
+    window.__shell.guidesLoadedAt = new Date(now - 4 * 60e3).toISOString();
+    const realStats = window.EstateSearch.stats;
+    window.EstateSearch.stats = () => ({ ...realStats(), trees: 11, records: 42 });
+
+    window.__shell.goState();
+  });
+  await page.waitForTimeout(1200);
+};
