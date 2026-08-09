@@ -1078,3 +1078,31 @@ test('the pad shows three marks and a shift, and a shifted mark drops it', async
   assert.equal(data.dictText, 'a line.\n\n', 'and the break followed the period rather than replacing it');
   data.dictCancel();
 });
+
+test('the stage paints through the kit and its pad turns into casing keys', async () => {
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('the quick brown fox', true);
+  await tick();
+
+  const body = data._dictHost;
+  assert.ok(body, 'the painter has a host, bound at x-init');
+  assert.deepEqual([...body.childNodes].map(n => n.getAttribute('data-d')), ['text']);
+  assert.match(body.getAttribute('style'), /-webkit-touch-callout:\s*none/,
+    'and the browser is refused its own selection over it');
+
+  data._dict.selectWordAt(6);            // "quick"
+  data.dictPaint();
+  assert.deepEqual([...body.childNodes].map(n => n.getAttribute('data-d')),
+    ['text', 'handle-start', 'sel', 'handle-end', 'text']);
+  assert.equal(data.dictSel, true);
+  assert.deepEqual(plain_(data.dictMarks), ['AB', 'ab', 'Ab'], 'the pad is casing now');
+
+  data.dictMark('AB');
+  assert.equal(data.dictText, 'the QUICK brown fox.');
+  data.dictDrop();
+  assert.equal(data.dictSel, false);
+  assert.deepEqual(plain_(data.dictMarks), ['.', ',', '?'], 'and the marks came back');
+  data.dictCancel();
+});

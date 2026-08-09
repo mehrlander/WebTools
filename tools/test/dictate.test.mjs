@@ -396,3 +396,169 @@ test('putting the microphone down ends the sentence; the mark cycle does not', a
     'the comma continued it, exactly as a tapped comma should');
   d.stop();
 });
+
+// ── The range: a selection the browser does not own ───────────────────────
+// The offsets are the kit's, so every rule about them is testable without a
+// layout engine. What is NOT here: the gestures. A long press and a tap map a
+// POINT to a node, which needs caretRangeFromPoint and a real box model;
+// offsetAt below takes the node the browser hands back, so the arithmetic on
+// this side of that call is pinned and the surface owns only the call itself.
+
+const withText = (t) => { const d = engine(); d.text = t; return d; };
+
+test('a long press selects the word under it, and whitespace gives a caret', () => {
+  const d = withText('the quick brown fox');
+  assert.deepEqual(d.selectWordAt(6), { start: 4, end: 9 }, 'inside "quick"');
+  assert.deepEqual(d.range, { start: 4, end: 9 });
+  assert.equal(d.hasSelection, true);
+
+  // Between two words there is nothing to select, so the press places an
+  // insertion point instead. One gesture, two useful outcomes.
+  d.selectWordAt(3);
+  assert.deepEqual(d.range, { start: 3, end: 3 });
+  assert.equal(d.hasSelection, false);
+});
+
+test('tap-to-arm moves one edge and keeps the other, in either direction', () => {
+  const d = withText('the quick brown fox');
+  d.select(4, 9);                       // "quick"
+  d.moveEdge('end', 15);                // extend the tail
+  assert.deepEqual(d.range, { start: 4, end: 15 }, '"quick brown"');
+  d.moveEdge('start', 0);
+  assert.deepEqual(d.range, { start: 0, end: 15 });
+  // Dragging the head past the tail is not an error; the edges just swap.
+  d.moveEdge('start', 19);
+  assert.deepEqual(d.range, { start: 15, end: 19 });
+});
+
+test('speaking into a selection replaces it, and the caret follows the words in', () => {
+  const d = withText('the quick brown fox');
+  d.select(4, 9);
+  d.start();
+  FakeSR.last.say([{ t: 'slow', final: true }]);
+  assert.equal(d.text, 'the slow brown fox', 'the selection is what the words landed on');
+  assert.deepEqual(d.range, { start: 8, end: 8 }, 'collapsed after them, ready to carry on');
+
+  // And no period: the reader is repairing the middle of a sentence, so a
+  // full stop bolted to a far end they are not looking at would be noise.
+  assert.ok(!d.text.endsWith('.'));
+  d.stop();
+});
+
+test('a caret mid-buffer is where the words go, and the pause record stands down', () => {
+  const d = engine();
+  d.start();
+  clock.t = 1000; FakeSR.last.say([{ t: 'one', final: true }]);
+  clock.t = 4000; FakeSR.last.say([{ t: 'tw', final: false }]);
+  clock.t = 4100; FakeSR.last.say([{ t: 'two', final: true }]);
+  assert.ok(d.segments.length, 'a record exists to lose');
+
+  d.caretAt(3);                          // just after "one"
+  assert.deepEqual(d.segments, [],
+    'placing a caret mid-buffer drops the record rather than letting its offsets rot');
+  FakeSR.last.say([{ t: 'and a half', final: true }]);
+  assert.equal(d.text, 'one and a half. two.');
+  assert.equal(d.paragraphs(1500), 'one and a half. two.', 'and paragraphs() declines, honestly');
+  d.stop();
+});
+
+test('the pad becomes casing keys, and they act on the selection alone', () => {
+  const d = withText('the quick brown fox');
+  assert.equal(d.recase('upper'), false, 'nothing selected, nothing to case');
+  d.select(4, 9);
+  d.recase('upper');
+  assert.equal(d.text, 'the QUICK brown fox');
+  assert.deepEqual(d.range, { start: 4, end: 9 }, 'the selection survives, so it can be cased again');
+  d.recase('lower');
+  assert.equal(d.text, 'the quick brown fox');
+  d.recase('title');
+  assert.equal(d.text, 'the Quick brown fox');
+});
+
+test('delete takes the selection when there is one, and the word before a caret otherwise', () => {
+  const d = withText('the quick brown fox');
+  d.select(4, 10);                       // "quick "
+  d.backWord();
+  assert.equal(d.text, 'the brown fox');
+
+  d.caretAt(9);                          // after "brown"
+  d.backWord();
+  assert.equal(d.text, 'the  fox', 'the word before the caret, not the last word of the buffer');
+  assert.deepEqual(d.range, { start: 4, end: 4 });
+});
+
+test('a mark lands at the caret rather than at the far end', () => {
+  const d = withText('one two');
+  d.caretAt(3);
+  d.punct(',');
+  assert.equal(d.text, 'one, two');
+  d.caretAt(0);
+  d.punct('¶');
+  assert.equal(d.text, '\n\none, two');
+});
+
+test('setting the text clears the range: the offsets described another buffer', () => {
+  const d = withText('the quick brown fox');
+  d.select(4, 9);
+  d.text = 'something else entirely';
+  assert.equal(d.range, null);
+  assert.equal(d.hasSelection, false);
+});
+
+// ── The painter, and the half of the hit test that is arithmetic ──────────
+// One painter for both surfaces, because two would diverge on the first edge
+// case and the offsets are the kit's already. offsetAt is the pure half of
+// the hit test: the surface calls caretRangeFromPoint (no layout engine here)
+// and hands back a node, and everything after that is counting.
+
+const host = () => window.document.createElement('div');
+const parts = (h) => [...h.childNodes].map(n => [n.getAttribute('data-d'), n.textContent]);
+
+test('the painter renders text, caret and selection as marked parts', () => {
+  const h = host();
+  D.paint(h, { text: 'the quick fox' });
+  assert.deepEqual(parts(h), [['text', 'the quick fox']]);
+
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 4 } });
+  assert.deepEqual(parts(h), [['text', 'the '], ['caret', ''], ['text', 'quick fox']]);
+
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 } });
+  assert.deepEqual(parts(h),
+    [['text', 'the '], ['handle-start', ''], ['sel', 'quick'], ['handle-end', ''], ['text', ' fox']]);
+});
+
+test('handles and the caret carry no text, so they never shift an offset', () => {
+  const h = host();
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 } });
+  assert.equal([...h.childNodes].map(n => n.textContent).join(''), 'the quick fox',
+    'the painted text is the buffer exactly, furniture and all');
+});
+
+test('the interim paints last and is marked, so a tap in it cannot place a caret', () => {
+  const h = host();
+  D.paint(h, { text: 'settled', interim: 'still being heard' });
+  assert.deepEqual(parts(h), [['text', 'settled'], ['interim', ' still being heard']]);
+  // A point inside the hypothesis clamps to the end of what is committed.
+  assert.equal(D.offsetAt(h, h.childNodes[1].firstChild || h.childNodes[1], 4), 7);
+});
+
+test('offsetAt counts the parts before the one that was hit', () => {
+  const h = host();
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 } });
+  const [t0, hs, sel, he, t1] = h.childNodes;
+  assert.equal(D.offsetAt(h, t0.firstChild, 2), 2, 'inside the head');
+  assert.equal(D.offsetAt(h, sel.firstChild, 3), 7, 'inside the selection, past the head');
+  assert.equal(D.offsetAt(h, t1.firstChild, 1), 10, 'inside the tail, past both');
+  // A handle is a target for arming, not a place: it reports its own edge.
+  assert.equal(D.offsetAt(h, hs, 0), 4);
+  assert.equal(D.offsetAt(h, he, 0), 9);
+  // A node nested inside a part still resolves, since the walk climbs to the
+  // part first: that is what a browser hands back on a wrapped render.
+  assert.equal(D.offsetAt(h, sel, 0), 4);
+});
+
+test('the suppression CSS is handed out rather than written down twice', () => {
+  assert.match(D.SUPPRESS, /user-select:\s*none/);
+  assert.match(D.SUPPRESS, /-webkit-touch-callout:\s*none/,
+    'the iOS callout is the whole reason this exists');
+});

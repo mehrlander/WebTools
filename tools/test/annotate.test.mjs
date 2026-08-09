@@ -424,3 +424,53 @@ test('the pencil opens on the phrase that was on screen, not the one before it',
     'the interim rode into the textarea rather than being dropped by the stop');
   A.disable();
 });
+
+test('the composer paints through the kit and swaps its pad for a selection', () => {
+  // The seam again: the offsets are the kit's, the pixels are this file's, and
+  // the pad's face is a reading of the kit's state rather than a second copy
+  // of it. The GESTURES are not here (a long press maps a point to a node,
+  // which needs a layout engine); what is asserted is everything downstream.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state, d = S.dict;
+  d.text = 'the quick brown fox';
+
+  const body = S.compBody;
+  assert.deepEqual([...body.childNodes].map(n => n.getAttribute('data-d')), ['text'],
+    'no selection, one part');
+
+  d.selectWordAt(6);                       // "quick"
+  A._paintDraft();
+  assert.deepEqual([...body.childNodes].map(n => n.getAttribute('data-d')),
+    ['text', 'handle-start', 'sel', 'handle-end', 'text'], 'handles at both edges');
+  assert.equal(body.querySelector('[data-d="sel"]').textContent, 'quick');
+
+  // The pad is now casing, and its fourth key is the way out of the mode.
+  const keys = [...S.compPunct.children].map(b => b.textContent);
+  assert.deepEqual(keys.slice(0, 3), ['AB', 'ab', 'Ab']);
+  assert.equal(keys[3], '✕', 'and one key drops the selection, so the mode has an exit');
+
+  S.compPunct.children[0].dispatchEvent(new window.Event('pointerdown', { bubbles: true }));
+  assert.equal(d.text, 'the QUICK brown fox', 'the key cased the selection');
+
+  S.compPunct.children[3].dispatchEvent(new window.Event('pointerdown', { bubbles: true }));
+  assert.equal(d.hasSelection, false);
+  assert.deepEqual([...S.compPunct.children].map(b => b.textContent).slice(0, 3), ['.', ',', '?'],
+    'and the marks came back');
+  A.disable();
+});
+
+test('the read surface refuses the browser its own selection', () => {
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  // Read the ATTRIBUTE, not .style: -webkit-touch-callout is not a CSSOM
+  // property, so the object drops it and only the authored text has it. That
+  // is also why the kit writes the attribute.
+  const css = A._state.compView.getAttribute('style');
+  assert.match(css, /user-select:\s*none/);
+  assert.match(css, /-webkit-touch-callout:\s*none/,
+    'the iOS callout landing over the text is what this is for');
+  A.disable();
+});
