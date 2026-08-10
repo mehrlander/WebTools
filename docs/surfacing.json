@@ -84,7 +84,7 @@
       "glyph": "📋",
       "use": "Link whose payoff is content on the reader's clipboard; Shortcuts actions are one case.",
       "form": "shortcuts://run-shortcut?name=<shortcut>&input=text&text=<payload>",
-      "boundary": "Device-made content only: a pasteboard type you cannot produce, or a value computed at tap time. Otherwise hand over a file."
+      "boundary": "Device-made content only: a pasteboard type you cannot produce, or a value computed at tap time. Otherwise hand over a file. Paste the link as emitted; an edited payload keeps its actions and loses its label."
     },
     {
       "key": "run-shortcut",
