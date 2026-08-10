@@ -14,7 +14,7 @@
       "subject": "the portable working conventions: the general-behavior hub",
       "status": "living",
       "reach": "injected",
-      "words": 1147,
+      "words": 1280,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -38,7 +38,7 @@
       "subject": "the portable set: what travels, and how to adopt it",
       "status": "living",
       "reach": "project",
-      "words": 5579,
+      "words": 5648,
       "maintenance": "authored, edited in place; the roster tables are census-gated against portable.json and disk (portable-manifest.test.mjs)"
     },
     {
@@ -46,7 +46,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 817,
+      "words": 840,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -62,7 +62,7 @@
       "subject": "the friction log: one line per snag, symptom then corrected move",
       "status": "living",
       "reach": "project",
-      "words": 3574,
+      "words": 3906,
       "maintenance": "authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
     },
     {
@@ -70,7 +70,7 @@
       "subject": "the surfacing system: primitives plus the guide-PR course",
       "status": "living",
       "reach": "injected",
-      "words": 3861,
+      "words": 4185,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -102,7 +102,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2138,
+      "words": 2203,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -262,7 +262,7 @@
       "subject": "the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting",
       "status": "living",
       "reach": "app",
-      "words": 3130,
+      "words": 3429,
       "maintenance": "authored role and layer glossary; layer, lines, invocation, emits, named and tested stamped by tools/build/tools-index.mjs, held in lockstep by artifacts-lockstep.test.mjs; blank roles are counted, not hidden"
     },
     {
@@ -278,7 +278,7 @@
       "subject": "the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality",
       "status": "living",
       "reach": "project",
-      "words": 4676,
+      "words": 4722,
       "maintenance": "authored, edited in place; the only statement of the gh.load contract that 36 page files depend on, and CLAUDE.md now sends a reader here before they touch lib/ or a page's boot"
     },
     {
@@ -318,7 +318,7 @@
       "subject": "the machine index of the portable set",
       "status": "living",
       "reach": "app",
-      "words": 1089,
+      "words": 1122,
       "maintenance": "authored; held to PORTABLE.md and to the skill directories on disk by portable-manifest.test.mjs"
     },
     {
@@ -350,7 +350,7 @@
       "subject": "the show-repo shell: views, stage, transfer, and the .web-tools.json manifest",
       "status": "living",
       "reach": "project",
-      "words": 20749,
+      "words": 22190,
       "maintenance": "authored, edited in place; the corpus's largest document, and the buried home of the stage contract"
     },
     {
@@ -366,7 +366,7 @@
       "subject": "the machine index of the surfacing primitives",
       "status": "living",
       "reach": "project",
-      "words": 917,
+      "words": 1012,
       "maintenance": "authored; membership held two-way to SURFACING.md's primitive bullets by surfacing-manifest.test.mjs; the summaries are paraphrases and the doc stays authoritative"
     },
     {
@@ -374,7 +374,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 4419,
+      "words": 4686,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {
@@ -384,6 +384,14 @@
       "reach": "app",
       "words": 125,
       "maintenance": "authored by hand; a sibling to pins and stage.files, no prose parent"
+    },
+    {
+      "path": "docs/venues.md",
+      "subject": "the venue map: where work can run besides the session reading it, what each reaches, and the attended-versus-unattended split",
+      "status": "measured",
+      "reach": "project",
+      "words": 701,
+      "maintenance": "dated observations about products that move; re-probe the attended column rather than rewriting from memory, and carry the date. CONVENTIONS.md names it in an always-loaded paragraph, which is what gives it reach at all"
     }
   ]
 }

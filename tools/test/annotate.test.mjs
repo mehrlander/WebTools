@@ -349,15 +349,16 @@ test('remove and clear keep the list and paint state consistent', () => {
   assert.ok(!A.enabled);
 });
 
-// ── Dictation: the composition rules, driven through a fake engine ─────────
-// The four ideas ported from the dropped prototype are text rules, not speech
-// ones, so they test without a microphone: a stub SpeechRecognition lets the
-// test play the part of the engine and assert what lands in the buffer.
+// ── Dictation: the seam, not the engine ───────────────────────────────────
+// The composition rules moved to tools/test/dictate.test.mjs with the engine
+// on 2026-08-09. What stays here is what the annotator owes the pair: it
+// builds an engine from the kit when one is loaded, and it degrades to a
+// composer with no microphone when one is not, rather than throwing on a
+// window that never chained kits/dictate.js.
 class FakeSR {
   constructor() { FakeSR.last = this; this.started = 0; }
   start() { this.started++; }
   stop() { this.onend && this.onend(); }
-  // Feed results the way the API does: a list of {transcript, isFinal}.
   say(parts) {
     const results = parts.map(p => Object.assign([{ transcript: p.t }], { isFinal: !!p.final }));
     results.resultIndex = 0;
@@ -365,111 +366,234 @@ class FakeSR {
   }
 }
 
-test('dictation: spoken punctuation becomes words, tapped marks become punctuation', async () => {
+test('the annotator builds its engine from kits/dictate.js and paints what it hears', () => {
   window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
   A.enable({ doc, subject: { title: 'x', url: '' } });
   const d = A._state.dict;
   assert.ok(d, 'the annotator built a dictation engine');
 
-  d.start();
-  // The engine hears a sentence WITH punctuation: it must not survive as one.
-  FakeSR.last.say([{ t: 'the rule is simple.', final: true }]);
-  assert.equal(d.text, 'the rule is simple period',
-    'a recognized period is spoken text, since the engine guesses badly at marks');
-
-  // A tapped mark rides the stop-restart cycle: parked, engine stopped, then
-  // written by the end handler, which also restarts it.
-  const before = FakeSR.last.started;
-  d.punct('.');
-  assert.match(d.text, /simple period\. $/, 'the tapped mark is the real punctuation');
-  await new Promise(r => setTimeout(r, 5));
-  assert.ok(FakeSR.last.started > 0 || before >= 0, 'the engine is restarted after the mark');
-  d.stop();
-});
-
-test('dictation: a comma continues the sentence, so the next capital is lowered', () => {
-  window.SpeechRecognition = FakeSR;
-  A.enable({ doc, subject: { title: 'x', url: '' } });
-  const d = A._state.dict;
+  // The wiring is the claim: text spoken into the engine reaches the buffer
+  // the composer reads, through the callbacks enable() passed in.
   d.text = '';
   d.start();
-  FakeSR.last.say([{ t: 'first part', final: true }]);
-  d.punct(',');                       // continuation on
-  FakeSR.last.say([{ t: 'Then more', final: true }]);
-  assert.equal(d.text, 'first part, then more',
-    'stitched utterances read as one sentence, not as two');
-
-  // A full stop ends it, so the next capital stands.
-  d.punct('.');
-  FakeSR.last.say([{ t: 'New sentence', final: true }]);
-  assert.match(d.text, /\. New sentence$/);
-  d.stop();
-});
-
-test('dictation: a paragraph mark breaks the line and spacing never doubles', () => {
-  window.SpeechRecognition = FakeSR;
-  A.enable({ doc, subject: { title: 'x', url: '' } });
-  const d = A._state.dict;
-  d.text = '';
-  d.start();
-  FakeSR.last.say([{ t: 'one', final: true }]);
-  d.punct('¶');
-  FakeSR.last.say([{ t: 'two', final: true }]);
-  assert.equal(d.text, 'one\n\ntwo');
+  FakeSR.last.say([{ t: 'a note by voice', final: true }]);
+  assert.equal(d.text, 'a note by voice.',
+    'including the period the pause earned, which is the kit\'s rule and not the annotator\'s');
   d.stop();
   A.disable();
 });
 
-test('dictation: saving takes the interim with it', () => {
-  // The engine finalizes at a pause, so a reader who taps save mid-phrase has
-  // words on screen that the buffer does not hold. Dropping them was the field
-  // report (2026-08-09): the last sentence spoken vanished on save.
+test('without the dictate kit the annotator still works, minus the microphone', () => {
+  // A page may chain annotate.js alone. The composer must open, take a typed
+  // note, and serialize; only the voice affordance is missing. Anything else
+  // makes the kit pair a hard dependency, which it is deliberately not.
+  const { window: bare } = makeWindow({
+    html: `<!doctype html><html><body><p id="t">Some text to annotate here.</p></body></html>`,
+  });
+  bare.SpeechRecognition = FakeSR;      // a recognizer exists; the KIT does not
+  loadKit('annotate.js', { window: bare });
+  const B = bare.Annotate;
+  B.enable({ doc: bare.document, subject: { title: 'bare', url: '' } });
+  assert.equal(B.enabled, true, 'enable() survives a missing Dictate');
+  assert.equal(bare.Annotate._state.dict, null, 'and leaves no engine behind');
+
+  B.add({ type: 'text', quote: { exact: 'Some text', prefix: '', suffix: '' } }, 'typed');
+  assert.equal(B.items.length, 1);
+  assert.match(B.toMarkdown(), /typed/, 'the set still serializes');
+  B.disable();
+});
+
+test('the pencil opens on the phrase that was on screen, not the one before it', () => {
+  // stop() runs the engine's end handler, which clears the interim, so the
+  // flush has to come first. The other order lost the sentence the reader was
+  // looking at when they reached for the pencil. Found in the stage's copy of
+  // the same toggle (tools/test/stage.test.mjs) and fixed in both.
   window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
   A.enable({ doc, subject: { title: 'x', url: '' } });
-  A.clear();
   const d = A._state.dict;
   d.text = '';
   d.start();
   FakeSR.last.say([{ t: 'the settled part', final: true }]);
   FakeSR.last.say([{ t: 'and the part still being heard', final: false }]);
-  assert.equal(d.text, 'the settled part', 'the buffer holds only what was finalized');
 
-  assert.equal(d.flush(), 'the settled part and the part still being heard',
-    'flush commits the guess the reader can see');
-  assert.equal(d.flush(), 'the settled part and the part still being heard',
-    'and is idempotent: a second flush has nothing left to commit');
-
-  // A finalization arriving after the flush is the engine's own copy of the
-  // same words; the buffer has moved on, so nothing here re-reads it.
-  d.stop();
+  A._state.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A._state.editing, true);
+  assert.equal(A._state.compTa.value, 'the settled part. and the part still being heard.',
+    'the interim rode into the textarea rather than being dropped by the stop');
   A.disable();
 });
 
-test('dictation: the delete button drops one word, or the mark clinging to it', () => {
+test('the composer paints through the kit and swaps its pad for a selection', () => {
+  // The seam again: the offsets are the kit's, the pixels are this file's, and
+  // the pad's face is a reading of the kit's state rather than a second copy
+  // of it. The GESTURES are not here (a long press maps a point to a node,
+  // which needs a layout engine); what is asserted is everything downstream.
   window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
   A.enable({ doc, subject: { title: 'x', url: '' } });
-  const d = A._state.dict;
-  d.text = '';
-  d.start();
-  FakeSR.last.say([{ t: 'the quick brown fox', final: true }]);
-  d.backWord();
-  assert.equal(d.text, 'the quick brown', 'one word, not the whole utterance');
+  const S = A._state, d = S.dict;
+  d.text = 'the quick brown fox';
 
-  // A trailing mark goes first, so two taps undo "word." rather than one tap
-  // eating both: the mark was its own deliberate act.
-  d.punct('.');
-  assert.match(d.text, /brown\. $/);
-  d.backWord();
-  assert.equal(d.text, 'the quick brown');
-  d.backWord();
-  assert.equal(d.text, 'the quick', 'no trailing space is left behind: append re-spaces');
+  const body = S.compBody;
+  assert.deepEqual([...body.childNodes].map(n => n.getAttribute('data-d')), ['text'],
+    'no selection, one part');
 
-  // Deleting back past a comma restores the continuation state, so the next
-  // utterance is not lowercased on the strength of punctuation that is gone.
-  d.text = 'first,';
-  d.backWord();
-  FakeSR.last.say([{ t: 'Then more', final: true }]);
-  assert.match(d.text, /Then more$/, 'the capital stands once the comma is gone');
-  d.stop();
+  d.selectWordAt(6);                       // "quick"
+  A._paintDraft();
+  assert.deepEqual([...body.childNodes].map(n => n.getAttribute('data-d')),
+    ['text', 'sel', 'text'], 'the text box holds only text');
+  // The handles live in the LAYER, outside the scrolling box, so a ball above
+  // the first line sits in the white space rather than being clipped by it.
+  const layer = S.compStack;
+  assert.deepEqual([...layer.querySelectorAll('[data-edge]')].map(n => n.getAttribute('data-edge')),
+    ['start', 'end']);
+  assert.ok(!body.querySelector('[data-edge]'), 'and none of them is inside the text');
+  assert.equal(body.querySelector('[data-d="sel"]').textContent, 'quick');
+
+  // The pad is now casing, and its fourth key is the way out of the mode.
+  const keys = [...S.compPunct.children].map(b => b.textContent);
+  assert.deepEqual(keys.slice(0, 3), ['AB', 'ab', 'Ab']);
+  assert.equal(keys[3], '✕', 'and one key drops the selection, so the mode has an exit');
+
+  S.compPunct.children[0].dispatchEvent(new window.Event('pointerdown', { bubbles: true }));
+  assert.equal(d.text, 'the QUICK brown fox', 'the key cased the selection');
+
+  S.compPunct.children[3].dispatchEvent(new window.Event('pointerdown', { bubbles: true }));
+  assert.equal(d.hasSelection, false);
+  assert.deepEqual([...S.compPunct.children].map(b => b.textContent).slice(0, 3), ['.', ',', '?'],
+    'and the marks came back');
+  A.disable();
+});
+
+test('the read surface refuses the browser its own selection', () => {
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  // Read the ATTRIBUTE, not .style: -webkit-touch-callout is not a CSSOM
+  // property, so the object drops it and only the authored text has it. That
+  // is also why the kit writes the attribute.
+  const css = A._state.compView.getAttribute('style');
+  assert.match(css, /user-select:\s*none/);
+  assert.match(css, /-webkit-touch-callout:\s*none/,
+    'the iOS callout landing over the text is what this is for');
+  A.disable();
+});
+
+test('a tap on the blank canvas sends the caret to the end', () => {
+  // The listeners are on the SCROLL BOX, not on the painted span. A span
+  // shrink-wraps to its text, so the canvas below the last line belongs to the
+  // box and a tap there used to reach no handler at all: every tap that landed
+  // on words worked, which is what hid it. jsdom has no layout, so
+  // getClientRects is empty and hitsText answers false for every point, which
+  // is exactly the case under test.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state, d = S.dict;
+  d.text = 'the quick brown fox';
+  d.selectWordAt(6);
+  A._paintDraft();
+  assert.equal(d.hasSelection, true);
+
+  const tap = new window.Event('pointerup', { bubbles: true });
+  tap.clientX = 50; tap.clientY = 500;
+  S.compView.dispatchEvent(tap);
+
+  assert.equal(d.range, null, 'the caret is past the last character, so the next words append');
+  assert.equal(d.hasSelection, false);
+  assert.equal(d.text, 'the quick brown fox', 'and getting there wrote nothing');
+  assert.ok(!S.compStack.querySelector('[data-edge]'), 'the pins went with it');
+  A.disable();
+});
+
+test('three taps in a run take the whole buffer', () => {
+  // hitsText is stubbed because jsdom has no layout and would answer false for
+  // every point; its own geometry is measured in dictate.test.mjs. What is
+  // under test here is the counting, and that a triple needs no point at all:
+  // the offset is resolved AFTER the count, so select-all does not depend on
+  // which character the third tap landed on (jsdom has no caretRangeFromPoint
+  // either, so a triple that needed one could not work at all).
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  const real = window.Dictate.hitsText;
+  window.Dictate.hitsText = () => true;
+  try {
+    A.enable({ doc, subject: { title: 'x', url: '' } });
+    const S = A._state, d = S.dict;
+    d.text = 'the quick brown fox';
+    A._paintDraft();
+
+    const tap = () => {
+      const e = new window.Event('pointerup', { bubbles: true });
+      e.clientX = 20; e.clientY = 20;
+      S.compView.dispatchEvent(e);
+    };
+    tap();
+    assert.equal(d.range, null, 'one tap with nothing live waits');
+    tap(); tap();
+    assert.deepEqual(d.range, { start: 0, end: 19 }, 'the third takes everything');
+    assert.equal(d.hasSelection, true);
+    A.disable();
+  } finally { window.Dictate.hitsText = real; }
+});
+
+test('the keyboard mode does not wear a microphone', () => {
+  // Wrong twice before this test existed. The exit button carried a microphone
+  // on the theory that the icon names where the tap lands; readers read it as
+  // "recording", and the mic button hiding in edit mode slid this one into the
+  // mic's slot, which made the reading almost unavoidable. What is pinned here
+  // is the absence of the microphone and the presence of the dimmed real one.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  assert.match(S.compEdit._icon.className, /ph-pencil-simple/, 'dictation mode: a pencil');
+  assert.equal(S.compMic.disabled, false);
+
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.editing, true, 'the keyboard is open');
+  assert.ok(!/ph-microphone/.test(S.compEdit._icon.className),
+    'the way OUT of the keyboard is not a microphone');
+  assert.match(S.compEdit._icon.className, /ph-check/);
+  assert.equal(S.compEditTxt.style.display, 'inline', 'and it says Done');
+  // The mic holds its slot instead of vanishing, so nothing slides into it.
+  assert.notEqual(S.compMic.style.display, 'none');
+  assert.equal(S.compMic.disabled, true, 'visibly off rather than absent');
+
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.editing, false);
+  assert.match(S.compEdit._icon.className, /ph-pencil-simple/, 'and the face goes back');
+  assert.equal(S.compMic.disabled, false);
+  A.disable();
+});
+
+test('Done resumes dictation only if the keyboard interrupted it', () => {
+  // Closing used to call start() unconditionally, on the reading that
+  // dictation is the default mode. A reader who had already stopped listening,
+  // tapped the pencil, and tapped Done came back to a live microphone they
+  // never asked for. Both directions are pinned, since the resume itself is
+  // wanted: it is the switching ON that was not.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+
+  // Live when the keyboard opens: resumed on the way out.
+  S.dict.start();
+  assert.equal(S.dict.listening, true);
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.dict.listening, false, 'the keyboard stops the engine');
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.dict.listening, true, 'and Done puts it back');
+
+  // Stopped when the keyboard opens: still stopped on the way out.
+  S.dict.stop();
+  assert.equal(S.dict.listening, false);
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.dict.listening, false,
+    'Done does not switch the microphone on for a reader who had it off');
   A.disable();
 });

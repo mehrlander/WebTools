@@ -391,9 +391,19 @@
     },
     {
       "path": "tools/render/scenarios/annotate-dictate-demo.mjs",
-      "role": "the voice-first compose surface with SpeechRecognition stubbed: committed text, a live interim, and the punctuation bar",
+      "role": "the voice-first compose surface with SpeechRecognition stubbed: committed text, a live interim, the punctuation bar, and a resume across a pause, which is the case that shows the period and the capital coming back off together",
       "layer": "tools/render/scenarios",
-      "lines": 59,
+      "lines": 67,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/annotate-keyboard-mode.mjs",
+      "role": "the composer with the keyboard open: whether the way out wears a microphone, and whether the mic still holds its slot",
+      "layer": "tools/render/scenarios",
+      "lines": 62,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -410,6 +420,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/annotate-select-text.mjs",
+      "role": "the composer's own selection driven the way a thumb drives it: long press to take a word, tap to arm a pin, tap to place it",
+      "layer": "tools/render/scenarios",
+      "lines": 85,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/annotate-select.mjs",
       "role": "a note selected by clicking its highlight in the document rather than its row",
       "layer": "tools/render/scenarios",
@@ -420,10 +440,30 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/annotate-tap-canvas.mjs",
+      "role": "a tap on the blank canvas below the text, which jsdom cannot judge: whether it reaches a listener at all, and whether the painted rects say it missed the words",
+      "layer": "tools/render/scenarios",
+      "lines": 103,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/annotate-tossed-notes.mjs",
       "role": "annotate.html inside a toss: the kit runs in the subject frame, and Review has to reach the shell's drawer (asserts, not just shoots)",
       "layer": "tools/render/scenarios",
       "lines": 53,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/annotate-triple-tap.mjs",
+      "role": "the buffer scrolled to its newest line in a box of whole lines, then three taps in a run taking the whole thing",
+      "layer": "tools/render/scenarios",
+      "lines": 102,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -980,6 +1020,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/stage-dictate.mjs",
+      "role": "the stage's dictation intake: the mic beside Paste, committed text with a live interim, and the mark pad",
+      "layer": "tools/render/scenarios",
+      "lines": 33,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/stage-diff-longrefs.mjs",
       "role": "the Diff tab's A/B selects clipping long repo@ref:path labels",
       "layer": "tools/render/scenarios",
@@ -997,6 +1047,26 @@
       "invocation": "driver",
       "emits": false,
       "named": true,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/stage-keyboard-mode.mjs",
+      "role": "the stage's dictation card with the keyboard open, which is where the recording misreading was reported",
+      "layer": "tools/render/scenarios",
+      "lines": 53,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/state-view.mjs",
+      "role": "Populate the State view for a screenshot: stub the registry reads with a current cache, a stale one, an unchecked one, and the buttonless entity index",
+      "layer": "tools/render/scenarios",
+      "lines": 84,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
       "tested": false
     },
     {

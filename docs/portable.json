@@ -145,6 +145,13 @@
     },
     {
       "kind": "doc",
+      "path": "docs/venues.md",
+      "title": "Venues",
+      "role": "the venue map: where work can run besides the session reading it, and the attended-versus-unattended split that decides where a job belongs",
+      "use": "live"
+    },
+    {
+      "kind": "doc",
       "path": "docs/PORTABLE.md",
       "title": "The to-go bag",
       "role": "catalog of everything here that travels; the prose parent of this manifest",
