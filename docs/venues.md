@@ -17,15 +17,18 @@ going unstated.
 
 ## The venues
 
-| Venue | Attended | Reaches | Hand work to it by |
-| --- | --- | --- | --- |
-| **Claude Code on the web** | yes | an ephemeral clone, an allowlisted network, a headless Chromium, no local files | starting a session, or a Routine that spawns one |
-| **Claude Code CLI, local** | yes | the machine and everything on it; peers via cross-session messaging | running it in a terminal |
-| **Cowork, desktop** | yes | local files, apps, connectors, plugins | working in the desktop app |
-| **Dispatch** | yes: desktop awake, app open | Cowork's reach, plus computer use | a message from the phone, into one persistent thread |
-| **GitHub Actions, hosted runner** | no | open egress, CPU only, no GPU, no local files | `workflow_dispatch`, `repository_dispatch`, `schedule`, `push` |
-| **GitHub Actions, self-hosted runner** | no | whatever that machine has, including a local model | the same four triggers; the job queues while the machine sleeps |
-| **Claude Code Remote environment** | no | a provisioned cloud container, or a self-hosted pool (`ccpool_` ids) | `create_session`, or a Routine |
+The `venue:` column is the tracker tag's value set, so this table is the
+vocabulary as well as the map. See "The `venue:` tag" below.
+
+| `venue:` | Venue | Attended | Reaches | Hand work to it by |
+| --- | --- | --- | --- | --- |
+| `web` | **Claude Code on the web** | yes | an ephemeral clone, an allowlisted network, a headless Chromium, no local files | starting a session, or a Routine that spawns one |
+| `cli` | **Claude Code CLI, local** | yes | the machine and everything on it; peers via cross-session messaging | running it in a terminal |
+| `cowork` | **Cowork, desktop** | yes | local files, apps, connectors, plugins | working in the desktop app |
+| `dispatch` | **Dispatch** | yes: desktop awake, app open | Cowork's reach, plus computer use | a message from the phone, into one persistent thread |
+| `actions` | **GitHub Actions, hosted runner** | no | open egress, CPU only, no GPU, no local files | `workflow_dispatch`, `repository_dispatch`, `schedule`, `push` |
+| `runner` | **GitHub Actions, self-hosted runner** | no | whatever that machine has, including a local model | the same four triggers; the job queues while the machine sleeps |
+| `remote` | **Claude Code Remote environment** | no | a provisioned cloud container, or a self-hosted pool (`ccpool_` ids) | `create_session`, or a Routine |
 
 Two properties are easy to get wrong and worth stating outright:
 
@@ -46,14 +49,40 @@ from a fork would execute arbitrary code on that machine. In this estate that
 means `web-tools` is out, since it serves the github.io pages, and
 `web-tools-private` is the place.
 
-## The tracker's `runner:` tag
+## The `venue:` tag
 
-[TRACKER.md](TRACKER.md) defines `runner: <machine>` as the tag that parks a task
-for a machine. It predates this file and names a machine rather than a venue,
-which is the coarser axis: one laptop is reachable through the CLI, Cowork,
-Dispatch, and a self-hosted runner, and those four differ in exactly the way
-that decides whether a task can run tonight. Where the distinction matters, say
-the venue in the task body until the tag earns the change.
+[TRACKER.md](TRACKER.md) defines `venue: <name>` as the tag that parks a task for
+somewhere particular, and its value set is the first column above. **This file is
+the catalog**, the way the skill set is the catalog for `action:`. There is no
+second registry, for the same reason: a separate list of venues would drift from
+the map that describes them.
+
+The tag used to be `runner: <machine>`, and the rename on 2026-08-10 is the point
+rather than a tidy-up. **A venue determines a machine; a machine does not
+determine a venue.** One laptop answers to the CLI, Cowork, Dispatch, and a
+self-hosted runner, and those four differ in exactly the way that decides whether
+a task can run tonight, so naming the machine discards the only fact the tag
+exists to carry. The old name also collided with what it could not distinguish:
+`runner` is now one venue among seven, not the axis.
+
+The body still carries one line naming **which constraint** parked the task,
+because constraints have different lifespans and no tag can tell them apart. A
+task parked for an hour of unattended time migrates the moment tokens are cheap;
+one parked because the data stays on the machine never does.
+
+**A session cannot always name its own venue.** From inside, `cli`, `cowork`, and
+`dispatch` on one desktop look alike, and a Cowork session has no reliable way to
+know it was reached from a phone. So a machine picking up its queue selects the
+**set of venues it serves**, not one value:
+
+```
+grep -rlE '^venue: (cli|cowork|dispatch)$' */tracker/tasks/ */*/tracker/tasks/
+```
+
+**One machine per venue is an assumption, not a guarantee.** It holds in this
+estate today, so nothing encodes the alternative. When a second machine serves
+the same venue, the value takes a suffix, `venue: cli@work`, which stays a scalar
+and needs no parser change.
 
 ## Keeping this true
 

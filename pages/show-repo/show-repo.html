@@ -1093,6 +1093,20 @@
                                  class="link link-hover font-medium" x-text="t.title"></a>
                               <span x-show="t.size" class="badge badge-sm badge-outline font-mono"
                                     x-text="t.size"></span>
+                              <!-- The two conventional open tags (TRACKER.md).
+                                   They are routing, not status, so they read as
+                                   an address and an invocation rather than as
+                                   another state word: `@venue` is where this
+                                   can run, `/action` is the skill that runs it.
+                                   Surfaced here because a tag visible only in
+                                   the contract is a tag nobody applies, which
+                                   is the snag this closes. -->
+                              <span x-show="t.tags && t.tags.venue"
+                                    class="badge badge-sm badge-info badge-outline font-mono"
+                                    x-text="'@' + (t.tags && t.tags.venue)"></span>
+                              <span x-show="t.tags && t.tags.action"
+                                    class="badge badge-sm badge-accent badge-outline font-mono"
+                                    x-text="'/' + (t.tags && t.tags.action)"></span>
                               <span x-show="t.session" class="font-mono text-xs text-base-content/50"
                                     x-text="t.session"></span>
                             </div>

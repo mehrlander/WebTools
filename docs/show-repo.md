@@ -224,9 +224,13 @@ The per-repo views in the sidebar:
     parsing it would be the display-before-data inversion. What the typed read
     adds: sections grouped and counted with **Done collapsed** (it is the
     majority of every mature tracker, and a list that opens on its own history
-    buries the few rows anyone can act on), `size` and `awaiting` per row, and
+    buries the few rows anyone can act on), `size` and `awaiting` per row, the
+    two conventional open tags as `@venue` and `/action` badges, and
     a review line counting the open set, how many await someone, how many have
     been quiet three weeks or more, and how many carry no progress log at all.
+    The tag badges are why the projection carries `tags` at all: a routing tag
+    readable only in the task file is one nobody applies, and `@dispatch` on a
+    row is the difference between a backlog and a queue.
     That last pair is the signal `board.md` structurally cannot hold, and
     "never logged" is kept distinct from "old" because a task nobody has
     written a line about has not aged, it never started. Rows open their task
