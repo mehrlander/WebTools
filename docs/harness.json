@@ -213,7 +213,7 @@
       "path": "tools/build/pages-index.mjs",
       "role": "regenerate both page catalogs: pages/README.md and pages/index.html",
       "layer": "tools/build",
-      "lines": 443,
+      "lines": 442,
       "invocation": "npm:pages-index",
       "emits": false,
       "named": true,
