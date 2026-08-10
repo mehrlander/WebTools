@@ -4,15 +4,17 @@ title: Make the cache-to-surface dependency checkable, not prose
 status: backlog
 opened: 2026-08-09
 size: M
-awaiting: PR #387 (the State view) to land; the `feeds` field it introduces is the subject
+awaiting: nothing; PR #387 landed `feeds` as routed view keys, which retires this task's interim step
 ---
 # Make the cache-to-surface dependency checkable, not prose
 
 show-repo's State view (PR #387) gives each derived cache a `feeds` field naming
-what depends on it, in free prose: "the Activity view, the Repos cards' rollups,
-the Branches view's landed/stranded verdicts". The strings name real things and
-nothing recognizes them, so the edge cannot be linked, checked, or read the
-other way ("what does the Activity view depend on?").
+what depends on it. It was filed as free prose ("the Activity view, the Repos
+cards' rollups, the Branches view's landed/stranded verdicts"), and #387 landed
+it instead as an array of routed view keys rendered as chips that navigate. So
+the edge is already linkable and readable in one direction. What remains is that
+it is still **authored**, and still cannot be read the other way ("what does the
+Activity view depend on?").
 
 The registry reconciliation (PR #388) settled enough of the surrounding model
 that this is now a shaped problem rather than an open one. Recording the design
@@ -58,12 +60,13 @@ across many rows, one field's prose does not.
 scope must say so, the way `harness-census` subtracts `tools/test/`.
 
 ## Scoped list
-- The cheap interim, available as soon as #387 lands and worth doing first: a
-  locator gate that extracts view-name tokens from each `feeds` string and
-  resolves them against the routed key list. Roughly half the prose becomes
-  checkable, and it fails when a view is renamed out from under a string. Same
-  pattern as `tools/test/owners-registry.test.mjs`, pointed at a different
-  vocabulary. About twenty lines, no census required.
+- ~~The cheap interim: a locator gate extracting view-name tokens from each
+  `feeds` string.~~ Retired by #387, which made `feeds` an array of routed keys
+  rather than prose, so there are no tokens to extract. The gate it described is
+  now smaller and total rather than partial: assert every `feeds` entry is a
+  routed key. Still worth doing first, still about twenty lines, still the
+  `owners-registry.test.mjs` pattern, but it covers the field completely instead
+  of roughly half.
 - The surface census itself: carrier, `target: a routed view`, the `component`
   field, a scope naming the 22 keys and their disjointness from `pages-catalog`,
   and a row in `docs/properties.json`.
@@ -79,3 +82,9 @@ string.
   reconciled model; the derivation-granularity finding above is the part worth
   not rediscovering. Blocked on #387 only because the subject field does not
   exist on main yet.
+- 2026-08-10: #387 landed `feeds` as routed view keys (`['activity','guides','estate']`),
+  not prose, which is what this task's scope decision had called for anyway. Three
+  of its findings held on contact: the routed-key vocabulary was the right scope,
+  chrome regions stayed prose, and the sub-view cases went to `docs/show-repo.md`
+  rather than growing a locator. The interim gate shrank accordingly. Unblocked;
+  the derivation-granularity finding is still the part worth not rediscovering.
