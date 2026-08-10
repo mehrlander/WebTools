@@ -191,6 +191,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/content-domain-lockstep.test.mjs",
+      "kind": "lockstep",
+      "protects": "docs/properties.json's copy of the content registry's value domains against the content-registry skill that owns them. The declaration table copies the domains so the properties gate can check content.csv without parsing markdown every run; a convenience that can drift is what this registry model exists to catch.",
+      "assertions": 1,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/content-registry.test.mjs",
       "kind": "behavior",
       "protects": "The browser-side registry reader: quoted CSV parses header-driven, an exact file row beats any subtree and the longest prefix wins, and grouping leads with authored work, collapses mechanical, and carries a description only when one locator covers the group.",

@@ -302,7 +302,7 @@
       "subject": "the owners registry: for a statement the coordination layer repeats, its one authoritative carrier and every typed repetition",
       "status": "living",
       "reach": "app",
-      "words": 914,
+      "words": 926,
       "maintenance": "tools/test/owners-registry.test.mjs holds shape, subject uniqueness, and locator resolution; coverage is curated against the written scope, not gated"
     },
     {
@@ -326,7 +326,7 @@
       "subject": "the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement",
       "status": "living",
       "reach": "project",
-      "words": 1872,
+      "words": 2228,
       "maintenance": "authored by hand; held both ways to the carriers it governs by tools/test/properties-registry.test.mjs"
     },
     {
@@ -334,7 +334,7 @@
       "subject": "the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction",
       "status": "living",
       "reach": "project",
-      "words": 2343,
+      "words": 2484,
       "maintenance": "the doctrine behind properties.json; written to travel, origin budget-drs properties.csv"
     },
     {
@@ -374,7 +374,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 4686,
+      "words": 4747,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {
