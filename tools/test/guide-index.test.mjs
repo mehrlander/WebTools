@@ -127,6 +127,61 @@ test('renderUrl addresses the toss renderer at a ref, preferring the PR head', (
   assert.equal(G.renderUrl(null), '');
 });
 
+// The fault this comparison exists to prevent: build() reads a DIRECTORY
+// LISTING of each PR head, which inherits every guide already on the default
+// branch. Presence on a branch is not authorship, so without the sha check a
+// landed guide reads "in flight" on every branch cut after it merged, and
+// carries that PR's sessions as though they had written it.
+test('a guide unchanged on a PR head is not in flight on that PR', () => {
+  const rows = G.build({
+    main: [{ repo: REPO, path: GUIDE, ref: 'main', sha: 'aaa111' }],
+    // Two open PRs that merely contain the file, exactly as a branch cut from
+    // main after the guide landed does.
+    onPrs: [
+      { repo: REPO, path: GUIDE, sha: 'aaa111', pr: { number: 380, head: 'claude/unrelated-a' } },
+      { repo: REPO, path: GUIDE, sha: 'aaa111', pr: { number: 381, head: 'claude/unrelated-b' } },
+    ],
+  });
+  assert.equal(rows.length, 1, 'still one row: the guide exists');
+  assert.deepEqual(rows[0].prs, [], 'no PR is proposing it');
+  assert.deepEqual(rows[0].sessions, [], 'and no session is credited with it');
+  assert.equal(rows[0].onMain, true);
+});
+
+test('a guide whose blob differs on a PR head IS in flight, with that session', () => {
+  const rows = G.build({
+    main: [{ repo: REPO, path: GUIDE, ref: 'main', sha: 'aaa111' }],
+    onPrs: [
+      { repo: REPO, path: GUIDE, sha: 'bbb222',
+        pr: { number: 382, head: 'claude/revising', sessions: ['https://claude.ai/code/session_01X'] } },
+      // A second PR that only carries the file is still filtered out, so the
+      // revising PR is not diluted by branches that did nothing.
+      { repo: REPO, path: GUIDE, sha: 'aaa111', pr: { number: 383, head: 'claude/bystander' } },
+    ],
+  });
+  assert.deepEqual(rows[0].prs.map(p => p.number), [382]);
+  assert.deepEqual(rows[0].sessions, ['https://claude.ai/code/session_01X']);
+});
+
+test('a new guide that exists only on a branch is in flight with no baseline', () => {
+  const rows = G.build({
+    main: [],
+    onPrs: [{ repo: REPO, path: GUIDE, sha: 'ccc333', pr: { number: 384, head: 'claude/new' } }],
+  });
+  assert.equal(rows[0].onMain, false);
+  assert.deepEqual(rows[0].prs.map(p => p.number), [384]);
+});
+
+test('a caller that supplies no sha is taken at face value, not emptied', () => {
+  // The comparison is an improvement on a listing that carries shas, never a
+  // requirement. A fixture or an older caller without them still folds.
+  const rows = G.build({
+    main: [{ repo: REPO, path: GUIDE, ref: 'main' }],
+    onPrs: [{ repo: REPO, path: GUIDE, pr: { number: 385, head: 'claude/x' } }],
+  });
+  assert.deepEqual(rows[0].prs.map(p => p.number), [385]);
+});
+
 test('the kit registers exactly its namespace against a bare window', () => {
   const w = {};
   new Function('window', src)(w);

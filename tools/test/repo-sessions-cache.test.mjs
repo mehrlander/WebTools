@@ -247,6 +247,41 @@ test('a row built by an older summarizer is stale even when its sha never moves'
     'a published record is frozen, so the version is the only thing that can say its row is behind');
 });
 
+// The guides slice: the session-to-guide edge that is exact and survives merge,
+// where the branch route says only that a head CONTAINS the file and goes dark
+// once the PR closes.
+test('guideFilesOf collects every guide a session touched, uncapped', () => {
+  const files = {
+    'web-tools/pages/guides/code-layers.html': { read: 1 },
+    'web-tools/pages/guides/second.html': { write: 4, edit: 2 },
+    // The shelf's own README is prose about the shelf, and a nested file is
+    // not on the flat shelf: both match guide-index.js's admission rule.
+    'web-tools/pages/guides/README.md': { read: 9 },
+    'web-tools/pages/guides/sub/deep.html': { read: 9 },
+    // A page that merely lives near the shelf is not on it.
+    'web-tools/pages/branch.html': { edit: 30 },
+    'home/docs/whatever.md': { read: 2 },
+  };
+  assert.deepEqual(S.guideFilesOf(files), [
+    ['web-tools/pages/guides/second.html', 6],
+    ['web-tools/pages/guides/code-layers.html', 1],
+  ]);
+  assert.deepEqual(S.guideFilesOf({}), []);
+});
+
+test('a guide opened once among many files still lands on the row', () => {
+  // The cap on `files` is the whole reason this is a separate slice: a session
+  // that touched forty files keeps the busiest eight, and a guide read once
+  // would fall off, reading as "wrote no guide" rather than as a truncation.
+  const files = { 'web-tools/pages/guides/code-layers.html': { read: 1 } };
+  for (let i = 0; i < 40; i++) files['web-tools/lib/file' + i + '.js'] = { edit: 50 + i };
+  const row = S.summarize({ files, files_total: 41, schema: 3 }, 'sha1');
+  assert.equal(row.files.length, S.FILES_KEPT);
+  assert.ok(!row.files.some(([p]) => p.includes('pages/guides/')), 'the cap drops it from files');
+  assert.deepEqual(row.guides, [['web-tools/pages/guides/code-layers.html', 1]],
+    'and the uncapped slice keeps it');
+});
+
 test('cacheChanged ignores the crawl stamp and the blob sha', () => {
   const p = 'sessions/2026/08/2026-08-05-b8fae678.json';
   const a = S.buildCache(null, { [p]: { record: record(), sha: 'sha1' } }, null, '2026-08-05T18:00:00Z');

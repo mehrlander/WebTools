@@ -312,9 +312,10 @@ the header nav the way a repo shows landing/atlas/files/…:
 - **Stage** — one nav stop with two pill-switched sub-views, each keeping its
   own deep link: the **bench** (`?view=stage`) and **Saved** (`?view=surfaces`)
   (below).
-- **Activity** — the estate's own motion: one nav stop with two pill-switched
-  sub-tabs, each keeping its own deep link: **Branches** (`?view=activity`) and
-  **Sessions** (`?view=sessions`) (both below).
+- **Activity** — the estate's own motion: one nav stop with four pill-switched
+  sub-tabs, each keeping its own deep link: **Branches** (`?view=activity`),
+  **Sessions** (`?view=sessions`), **Guides** (`?view=guides`), and **Chats**
+  (`?view=chats`) (all below).
 - **Lists** — the two personal piles, To-do over Jot, in one pane rather than
   two tabs. Both `?view=todo` and `?view=jots` resolve here (below).
 - **Tools** (`?view=tools`) — a curated gallery of utility pages (below).
@@ -400,17 +401,65 @@ card, deep-linking straight to its section. Rendered item kinds (both sources):
 path}` or a github.com URL), `url` (external link), `note` / `story` (inline
 body), `embed` (a renderer page in an iframe via a toss-render route).
 
-**Activity** gathers the estate's own motion under one header-nav stop, in the
-two readings it has: **Branches**, what is in flight, and **Sessions**, the work
-that made it. A branch is the artifact and a session is the act; each row in one
-pane cross-references the other. A segmented pill (the shared internal-tab
-style) switches between them at every width, each pill carrying its live count,
-and each pane's own **age pill** rides the pill row, since the three read
-different caches on different throttles. The pill states the age at every width
-and opens the **State** view, where that cache's Refresh lives beside its cost
-and its throttle; it replaced an as-of reading that was hidden below `sm` next to
-a Refresh button that was not. Both keep their own view key, so `?view=activity`
-and `?view=sessions` deep-link directly.
+**Activity** gathers the estate's own motion under one header-nav stop. Four
+panes on a segmented pill (the shared internal-tab style), switching at every
+width, each keeping its own view key so `?view=activity`, `?view=sessions`,
+`?view=guides`, and `?view=chats` deep-link directly. Where a pane reads a
+cache, its **age pill** rides the pill row: it states the age at every width and
+opens the **State** view, where that cache's Refresh lives beside its cost and
+its throttle. It replaced an as-of reading that was hidden below `sm` next to a
+Refresh button that was not.
+
+The first three are readings of the repos. **Branches** is what is in flight and
+**Sessions** is the work that made it: a branch is the artifact and a session is
+the act, and each row cross-references the other. **Guides** is the account,
+the shelf of `pages/guides/*.html` across the estate, in flight first.
+**Chats** is not a reading of the repos at all, and that is why it belongs
+rather than despite it. It is a separate **venue**: the conversation half of the
+work, read from `mehrlander/chat-histories`. No key joins a chat to a branch or
+a session, the archive's ids are chat uuids while sessions carry harness
+`session_...` ids, and the two corpora do not overlap in time, so the pane
+cross-links chat to chat (tags) and claims no join it does not have. The test it
+passes is the one the other three pass, that it reports where work actually
+happens; it is the only one that can say so about thinking done outside a
+checkout. To-do and Jot failed exactly that test and left (below).
+
+Three things about Chats follow from the archive rather than from taste.
+
+- **It is read one month at a time.** The corpus is 14,844 conversations and
+  the annotation layers alone are 1.9 MB and 9.9 MB, so nothing loads it. The
+  archive is already sharded by month per layer, so the pane opens on the newest
+  month and pages back on demand, two small requests each, and the footer says
+  how many of the archive's months are loaded. That count is the honesty: a
+  short list means "most of this is not on screen", not "this is all there is".
+- **Staleness is the pane's headline.** This is the one subject that advances by
+  hand, through an export requested on a website, so how far behind it is *is*
+  the state of the venue. The banner reads
+  `annotations/catalog/frontier.json`, which chat-histories generates for
+  itself, and the repo's own declared `content-date` check reads the same file,
+  so the pane and the estate card cannot disagree. Per provider it shows the
+  newest chat held, days behind, and the export cadence to read that against,
+  marking a provider due only when it is past its **own** longest observed gap.
+  The archive can say when it last heard, never how much it is missing, and the
+  banner says so where the number is read.
+- **It has no cache, so it has no age pill and no Refresh.** The month shards
+  are immutable once committed and the frontier moves only when an export lands,
+  which is a commit to another repo rather than a crawl this page could run. So
+  there is nothing for the State view to hold a row for: what can be stale here
+  is the archive itself, and the banner reports that instead. This is the case
+  the State view's "a Refresh where one is possible" leaves open, not an
+  omission.
+
+The hand catalog wins every collision with the machine layer, and gets a filter
+chip of its own: it was summarized through the chat UI and is the archive's
+precious layer, so showing the bulk read-through of a chat somebody hand-wrote
+would display the lesser of the two. A Gemini row renders its title as text
+rather than a link, since Gemini Apps chats have no per-conversation address.
+
+`kits/chat-archive.js` holds the folds and the cached reader, in the memo plus
+in-flight-dedup shape `kits/estate-search.js` established; a failed read is
+never memoized as empty, because an empty month and an unreachable month look
+identical on screen and mean opposite things.
 
 **The stop used to hold four panes**, adding To-do and Jots on the reasoning
 that the four read as a gradient of commitment: a jot is unshaped intent, a
