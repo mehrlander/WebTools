@@ -406,3 +406,13 @@ in the text distinguishes them, so **duplicates are now reported, not dropped.**
 An explained double-count costs a line of output; a dropped marker costs the
 audit its only claim to being auditable. *(seen: 2026-08-09)*
 → [markers/status.py](../.claude/skills/markers/status.py)
+
+## `words` in docs/docs.json conflicts on every concurrent branch (2026-08-10)
+
+Two merges in one session, both conflicting on nothing but a derived `words`
+count: each branch had restamped it against its own tree, so git saw two edits
+to one line. The resolution is mechanical (take either, re-run `npm run
+docs-reach`), but it is a conflict on a field no human wrote, and it will fire
+for any two branches that touch `docs/`. → the derived-field rule in
+[CLAUDE.md](../CLAUDE.md); a `.gitattributes` union or ours-merge driver for the
+derived keys would end it, if it recurs.

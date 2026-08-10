@@ -62,7 +62,7 @@
       "subject": "the friction log: one line per snag, symptom then corrected move",
       "status": "living",
       "reach": "project",
-      "words": 4066,
+      "words": 4161,
       "maintenance": "authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
     },
     {
@@ -350,7 +350,7 @@
       "subject": "the show-repo shell: views, stage, transfer, and the .web-tools.json manifest",
       "status": "living",
       "reach": "project",
-      "words": 24684,
+      "words": 24891,
       "maintenance": "authored, edited in place; the corpus's largest document, and the buried home of the stage contract"
     },
     {
@@ -382,7 +382,7 @@
       "subject": "the estate's authored text: whether the carriers holding it are organized, and how much never reached one",
       "status": "measured",
       "reach": "project",
-      "words": 4401,
+      "words": 4440,
       "maintenance": "re-derive with scripts/text-census.py and scripts/text-carriers.py; every figure is a command away, and the date in the opening line is what the numbers are as of"
     },
     {
