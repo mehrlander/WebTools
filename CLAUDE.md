@@ -87,6 +87,11 @@ use with no row fails). The model, the rules, and the 2026-08-09 reconciliation
 are in [`docs/registries.md`](docs/registries.md); read it before inventing a
 carrier, since the answer is usually a row in one that exists.
 
+The prose inside `.js` and `.html` is the part no registry reaches, and
+[`data/design/content.csv`](data/design/content.csv) covers it by declaring it
+`exclude`. [`docs/text-content.md`](docs/text-content.md) measures what that
+hides and proposes a carrier.
+
 ## Snags
 
 [`docs/SNAGS.md`](docs/SNAGS.md) is this repo's friction log, the store behind the conventions' "where a friction observation goes instead." Append when a session trips over something whose real fix belongs in a durable doc. Its own header carries the intake shape, the recurrence rule, and what is still provisional; this section used to restate all three and was the copy.
