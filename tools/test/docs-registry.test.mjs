@@ -1,10 +1,13 @@
-// docs/docs.json — the documentation registry: the documents census and the
-// shared-claims table. The census half is complete by construction: every
-// .md/.json file under docs/ has exactly one row, so a file cannot sit in the
-// folder unaccounted for (the same completeness gate build-census.py runs for
-// budget-drs's data files). The claims half is curated, not complete: a claim
-// earns a row by living in more than one place, and this test checks shape and
-// vocabulary, not coverage.
+// docs/docs.json — the documentation registry: the documents census. Complete
+// by construction: every .md/.json file under docs/ has exactly one row, so a
+// file cannot sit in the folder unaccounted for (the same completeness gate
+// build-census.py runs for budget-drs's data files).
+//
+// The shared-ownership table used to ride along here as a second `claims`
+// block, checked by a shape test at the bottom of this file. It moved to
+// docs/owners.json on 2026-08-09, with tools/test/owners-registry.test.mjs as
+// its own gate: a registry does not live inside another registry's carrier, and
+// a census and a curated catalog do not want the same checks.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,7 +23,6 @@ const registry = JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'docs.json'
 // client") while their status said living, which is the tell that a vocabulary
 // is a value short: the column that cannot say it says it somewhere else.
 const STATUSES = new Set(['living', 'record', 'measured']);
-const RELATIONS = new Set(['copy', 'paraphrase', 'pointer', 'live read']);
 // Rows whose maintenance says only that a human wrote it. Not banned, but
 // counted: a bare row means nothing keeps the file true, and the count is the
 // honest measure of how much of the folder is unheld. It stood at 15 of 42
@@ -102,24 +104,6 @@ test('no document row has been filled in with a bare "authored"', () => {
   assert.deepEqual(bare.map(d => d.path), [],
     'these rows say only that a human wrote the file; say what keeps it true, ' +
     'or say plainly that nothing does');
-});
-
-test('claims are shaped: one authoritative carrier, typed repetitions, families scoped', () => {
-  assert.ok(registry.claims.length > 3, 'the seed claims are present');
-  for (const c of registry.claims) {
-    const name = c.claim || c.family;
-    assert.ok(name, 'a claims row names itself via claim or family');
-    assert.ok(!(c.claim && c.family), name + ': claim and family are exclusive');
-    if (c.family) assert.ok(c.applies_to, name + ': a family rule states its scope');
-    assert.ok(c.authoritative, name + ': authoritative carrier');
-    assert.ok(Array.isArray(c.repetitions) && c.repetitions.length > 0, name + ': repetitions');
-    for (const r of c.repetitions) {
-      assert.ok(r.where, name + ': a repetition says where');
-      assert.ok(RELATIONS.has(r.relation), name + ': relation must be one of ' + [...RELATIONS] + ', got ' + r.relation);
-      if (r.kept) assert.equal(r.relation, 'copy', name + ': kept applies only to copies');
-      if (r.relation === 'copy') assert.ok(r.kept, name + ': a copy says who keeps it');
-    }
-  }
 });
 
 test('paths named as document rows resolve inside the repo', () => {
