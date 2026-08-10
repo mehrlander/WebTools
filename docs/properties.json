@@ -314,8 +314,15 @@
       "mode": "computed",
       "deriver": "tools/build/tools-index.mjs",
       "required": "value",
-      "values": null,
-      "gloss": "the file's folder, the rail's tree"
+      "values": [
+        "scripts",
+        "tools",
+        "tools/build",
+        "tools/concept-lab",
+        "tools/render",
+        "tools/render/scenarios"
+      ],
+      "gloss": "which shelf the file sits on. The domain is closed and owned by the carrier's own layers glossary block, the same arrangement as manifest-fields.consumer; docs/code-layers.md is the prose behind it"
     },
     {
       "property": "lines",
@@ -333,7 +340,7 @@
       "deriver": "tools/build/tools-index.mjs",
       "required": "value",
       "values": null,
-      "gloss": "how the file gets run: npm:<script>, driver, imported, argv, or none found (the warning state)"
+      "gloss": "how the file gets run: argv, imported, driver, 'none found' (the warning state), or npm:<script> naming the script. Deliberately OPEN, because the npm form is a grammar rather than an enumeration and a new script must not need a declaration edit"
     },
     {
       "property": "emits",
@@ -441,8 +448,14 @@
       "registry": "portable-catalog",
       "mode": "recorded",
       "required": "none",
-      "values": null,
-      "gloss": "when to reach for it"
+      "values": [
+        "plugin",
+        "live",
+        "reference",
+        "adopt",
+        "on-demand"
+      ],
+      "gloss": "how a consumer takes the item: installed by the plugin, read live, referenced, adopted once, or fetched on demand"
     },
     {
       "property": "title",
@@ -620,9 +633,9 @@
       "registry": "tracker-board",
       "mode": "computed",
       "deriver": ".claude/skills/tasks/build-board.py",
-      "required": "value",
+      "required": "counted",
       "values": null,
-      "gloss": "the date of the newest progress-log line"
+      "gloss": "the date of the newest progress-log line. Blank on a task filed without one, which the board generator allows and the tasks template does not produce; the blank is the honest reading of 'filed, nothing logged yet' and is worth counting"
     },
     {
       "property": "logEntries",
