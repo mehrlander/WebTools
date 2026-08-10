@@ -58,11 +58,13 @@ lands:
 
 ## Notes
 
-The venue vocabulary this task depends on is being written up separately as
-`docs/venues.md`; read it first if it has landed. The tracker's `runner:` tag
-names a machine, but the laptop is reachable three ways with materially
-different properties, so venue is the sharper axis and the tag may want to carry
-it.
+The venue vocabulary this task depends on landed as `docs/venues.md` in PR #384;
+read it first. The tag question it raised is settled: `runner: <machine>` became
+`venue: <name>` on 2026-08-10, because a venue determines a machine and a
+machine does not determine a venue, and venues.md's first column is now the
+value set. This task carries no `venue:` of its own, and deliberately: writing
+the decision is sandbox work, and only the execution it prescribes belongs on
+the laptop.
 
 ## Progress log
 - 2026-08-09: Filed from a session that reached for the laptop while building the
@@ -71,3 +73,13 @@ it.
   Dispatch-attended finding are confirmed against Anthropic and GitHub
   documentation, not recalled. Next: pick a mechanism and write the setup steps
   into this file.
+- 2026-08-10: a read-only probe went to the laptop through Dispatch, asking the
+  six things only that machine can answer. The one that decides option 1 is
+  whether a job running as a Windows **service**, in session 0, can reach an
+  Ollama server that starts in the user session; if the answer is "only while
+  someone is logged in," the unattended premise fails and the recommendation
+  moves. Also asked: machine and disk, models pulled, sleep and wake behaviour,
+  git and credentials, whether a runner is already registered, and any MDM or
+  endpoint-protection block on installing a service. Next: write the decision
+  into this file when the probe returns, then scaffold the receiving workflow in
+  `web-tools-private`, which still has none.
