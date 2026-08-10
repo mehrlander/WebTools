@@ -188,7 +188,7 @@
           "where": "docs/properties.json, the values arrays for creation_mode and analysis_use",
           "relation": "copy",
           "kept": "by hand",
-          "check": "none: the two domains agree today, six values and five, and nothing holds them together. Found 2026-08-09 while testing whether the hub wanted budget-drs's definition_owner field"
+          "check": "lockstep (content-domain-lockstep.test.mjs): the declared domains are compared token for token against the bullets in the skill that owns them. Filed 2026-08-09 with no check and the honest admission that nothing held the two together; the check landed 2026-08-10"
         }
       ]
     }

@@ -1,5 +1,5 @@
 {
-  "note": "The properties registry: the declaration table of docs/registries.md, binding scope x property to its one authoritative registry. Registries name their carrier, key field (structural identity, exempt from declaration), target grain, scope, gate, and whether their per-row fields are `governed` (held to the declarations below) or `ungoverned` (declared and counted, with a written `why` naming what about the carrier the field check cannot reach). Declarations carry mode (recorded or computed, with the deriver for computed), required (what the gates enforce today: value, counted, or none), and the value domain where one is closed. Governed carriers are held both ways by tools/test/properties-registry.test.mjs: an undeclared row field fails, a declared property missing from the carrier fails, a value outside a declared closed domain fails (431 values across eight domains; added 2026-08-09, when filling budget-drs's definition_owner field turned up that eight domains were declared and none were read), a computed declaration whose deriver does not exist fails, and the ungoverned count is asserted so it can only move deliberately. Expanded 2026-08-09 from six registries to thirteen by the reconciliation recorded in docs/registries.md, which walked the estate against the model rather than the model against itself. Nine are field-governed and four are not; the pages catalog moved from the second group to the first the same day, by teaching the field check a group walk rather than by reshaping a carrier other repos read. Origin: budget-drs data/design/properties.csv in mehrlander/home.",
+  "note": "The properties registry: the declaration table of docs/registries.md, binding scope x property to its one authoritative registry. Registries name their carrier, key field (structural identity, exempt from declaration), target grain, scope, gate, and whether their per-row fields are `governed` (held to the declarations below) or `ungoverned` (declared and counted, with a written `why` naming what about the carrier the field check cannot reach). Declarations carry mode (recorded or computed, with the deriver for computed), required (what the gates enforce today: value, counted, or none), and the value domain where one is closed. Governed carriers are held both ways by tools/test/properties-registry.test.mjs: an undeclared row field fails, a declared property missing from the carrier fails, a value outside a declared closed domain fails (431 values across eight domains; added 2026-08-09, when filling budget-drs's definition_owner field turned up that eight domains were declared and none were read), a computed declaration whose deriver does not exist fails, and the ungoverned count is asserted so it can only move deliberately. Expanded 2026-08-09 from six registries to thirteen by the reconciliation recorded in docs/registries.md, which walked the estate against the model rather than the model against itself. Ten are field-governed and three are not; the pages catalog moved from the second group to the first the same day, by teaching the field check a group walk rather than by reshaping a carrier other repos read. Origin: budget-drs data/design/properties.csv in mehrlander/home.",
   "registries": [
     {
       "id": "docs-census",
@@ -115,10 +115,9 @@
       "rows": "tasks",
       "key": "id",
       "kind": "census",
-      "target": "a tracker task file",
+      "target": "a tracker task",
       "scope": "every task file under tracker/tasks/",
-      "fields": "ungoverned",
-      "why": "every field is stamped by build-board.py, which ships inside the portable PLUGIN rather than this repo, and a computed declaration must name a deriver path that exists here",
+      "fields": "governed",
       "gate": "tools/test/artifacts-lockstep.test.mjs"
     },
     {
@@ -529,6 +528,153 @@
       "required": "value",
       "values": null,
       "gloss": "the GitHub blob URL for the page source"
+    },
+    {
+      "property": "title",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "value",
+      "values": null,
+      "gloss": "the task's short imperative, read from its frontmatter"
+    },
+    {
+      "property": "status",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "value",
+      "values": [
+        "backlog",
+        "in-progress",
+        "blocked",
+        "done"
+      ],
+      "gloss": "where the task sits. Domain owned by docs/TRACKER.md"
+    },
+    {
+      "property": "opened",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "value",
+      "values": null,
+      "gloss": "the date the task was filed"
+    },
+    {
+      "property": "closed",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": null,
+      "gloss": "the date it was completed; absent while open, which is not a blank to count"
+    },
+    {
+      "property": "file",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "value",
+      "values": null,
+      "gloss": "the task file this row is derived from"
+    },
+    {
+      "property": "href",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "value",
+      "values": null,
+      "gloss": "the blob URL the board and the caption link to"
+    },
+    {
+      "property": "lastActivity",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "value",
+      "values": null,
+      "gloss": "the date of the newest progress-log line"
+    },
+    {
+      "property": "logEntries",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "value",
+      "values": null,
+      "gloss": "how many progress-log lines the task carries"
+    },
+    {
+      "property": "session",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": null,
+      "gloss": "the branch that owns the task while it is in progress, or completed it"
+    },
+    {
+      "property": "project",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": null,
+      "gloss": "the workspace a task belongs to, where the repo scopes them"
+    },
+    {
+      "property": "size",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "?"
+      ],
+      "gloss": "effort calibrated to the session. Domain owned by docs/TRACKER.md; optional by design, and carried on 9 of 75"
+    },
+    {
+      "property": "track",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": null,
+      "gloss": "the dependency or workstream tag, including depends-on: pointers"
+    },
+    {
+      "property": "tags",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": null,
+      "gloss": "open tags preserved from the frontmatter and not acted on"
+    },
+    {
+      "property": "awaiting",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": null,
+      "gloss": "free text naming what is holding the task; cleared by hand"
+    },
+    {
+      "property": "blockedBy",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": null,
+      "gloss": "the task or condition a blocked row names"
     }
   ]
 }

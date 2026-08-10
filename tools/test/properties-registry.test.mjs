@@ -130,7 +130,7 @@ test('every ungoverned registry says why, and the count is the one on the books'
       if (r.format === 'json') assert.ok(r.rows, `${r.id}: a governed JSON carrier names its row array`);
     }
   }
-  assert.equal(ungoverned.length, 4,
+  assert.equal(ungoverned.length, 3,
     'the ungoverned count moved. Down is progress and the number should follow; up means a ' +
     'carrier was declared without being governed, which wants a reason in the commit message');
 });
