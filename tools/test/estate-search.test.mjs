@@ -112,6 +112,40 @@ test('sessions: greps what a record quotes, caches the corpus, newest first', as
   assert.deepEqual([...fresh.hits.map(h => h.id)], ['bbbb2222']);
 });
 
+test('sessions: the derived name is searchable, and says so in the hit', async () => {
+  ES.reset();   // the corpus cache is module-level and survives the test above
+  FILES = {
+    'state/sessions.json': { rows: [
+      { id: 'aaaa1111', day: '2026-08-02', branches: ['claude/fab-naming-todqvq'] },
+    ] },
+    'sessions/2026/08/2026-08-02-aaaa1111.json':
+      { day: '2026-08-02', opening_ask: 'about the app button', prompts: [], last_message: '' },
+  };
+  // The title as remembered, spaced, finds the slug as stored.
+  const spaced = await ES.sessions({ q: 'fab naming', registry: REGISTRY, token: 'tkn' });
+  assert.deepEqual([...spaced.hits.map(h => h.id)], ['aaaa1111']);
+  // And the note line says the name matched, not the conversation, which is the
+  // whole reason a name rides the same corpus as what was said.
+  assert.match(spaced.hits[0].frag, /session name:/);
+  ES.reset();
+  const slug = await ES.sessions({ q: 'fab-naming', registry: REGISTRY, token: 'tkn' });
+  assert.deepEqual([...slug.hits.map(h => h.id)], ['aaaa1111']);
+});
+
+test('sessions: a match on what was said beats the name to the note line', async () => {
+  ES.reset();
+  FILES = {
+    'state/sessions.json': { rows: [
+      { id: 'aaaa1111', day: '2026-08-02', branches: ['claude/wayback-urls-todqvq'] },
+    ] },
+    'sessions/2026/08/2026-08-02-aaaa1111.json':
+      { day: '2026-08-02', opening_ask: 'about the wayback urls', prompts: [], last_message: '' },
+  };
+  const res = await ES.sessions({ q: 'wayback', registry: REGISTRY, token: 'tkn' });
+  assert.equal(res.hits.length, 1);
+  assert.doesNotMatch(res.hits[0].frag, /session name:/);
+});
+
 test('clip: one line of context around the first case-insensitive hit', () => {
   const long = 'x'.repeat(100) + ' the NEEDLE appears ' + 'y'.repeat(100);
   const c = ES.clip(long, 'needle');
