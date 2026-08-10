@@ -119,7 +119,9 @@ test('the config crawl runs under overlay, reads at main only, and commits', asy
   win.RepoConfigCache = {
     CACHE_PATH: 'state/configs.json',
     buildCache: (prev, fetched, now) => { built.push(fetched); return { generatedAt: now, repos: fetched }; },
-    cacheChanged: () => true,
+    // The crawl commits on the changed LIST rather than the boolean, so the run
+    // record and the gate that decides to write it share one derivation.
+    changedRepos: () => ['me/home'],
   };
   await shell.refreshConfigCache(true);
   assert.equal(built.length, 1, 'the crawl must run under overlay');
@@ -146,7 +148,7 @@ test('refreshConfigs under overlay rebuilds the cache, then re-applies the splic
   win.RepoConfigCache = {
     CACHE_PATH: 'state/configs.json',
     buildCache: (prev, fetched, now) => ({ generatedAt: now, repos: prev?.repos || {} }),
-    cacheChanged: () => false,
+    changedRepos: () => [],
   };
   await shell.refreshConfigs();
   assert.deepEqual(shell.repoProjects('me/home'),

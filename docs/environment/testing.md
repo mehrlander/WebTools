@@ -114,6 +114,53 @@ npm run shot -- pages/nav-repo.html --query "repo=mehrlander/web-tools&file=READ
   URL until it merges. For branch HTML on a live origin, use toss-render's
   `#gh=` address mode or the FAB's Render tab.
 
+### Measuring the rendered ink (2026-08-10)
+
+A screenshot answers "does it look right" only if you can see it, and precise
+vertical alignment is the case where looking fails: the difference between an
+icon set well and an icon sagging is one or two pixels, and it does not survive
+being described. Two techniques settle it, and the second is the one that
+decides.
+
+**Measure the ink, not the boxes.** `getBoundingClientRect` returns a font's box,
+which carries leading, ascent, and descent the glyphs do not fill, so comparing
+box centres says nothing about what the eye compares. Take a clipped screenshot
+inside the scenario, decode it back into the page, and report which rows each
+element actually darkens:
+
+```js
+const shot = (await page.screenshot({ clip })).toString('base64');
+const ink = await page.evaluate(async ({ shot, clip, band }) => {
+  const img = await createImageBitmap(await (await fetch('data:image/png;base64,' + shot)).blob());
+  const c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+  const px = g.getImageData(0, 0, c.width, c.height).data;
+  const hit = [];
+  for (let y = 0; y < c.height; y++) {
+    for (let x = band[0]; x < band[1]; x++) {
+      const i = (y * c.width + x) * 4;
+      if (0.299 * px[i] + 0.587 * px[i+1] + 0.114 * px[i+2] < 210) { hit.push(y); break; }
+    }
+  }
+  return { top: hit[0], bottom: hit.at(-1) };
+}, { shot, clip, band });
+```
+
+Sweep the candidate offsets in one run (set `style.top`, re-measure, repeat)
+and read the value off the table. Only integers matter: at DPR 1, `-0.5px`
+renders identically to `0`.
+
+**Then look at it, magnified.** The measurement needs a target, and choosing the
+wrong target is the failure the numbers cannot catch. Redraw the clip 6x to 10x
+with `imageSmoothingEnabled = false` and write it out with `writeFileSync`. On
+2026-08-10 this reversed a decision twice over: a 14px mark beside mono text was
+genuinely 2px under the baseline and wanted `-1px`, while the same arithmetic
+said the row's 18px leading icon was 4px low, and at 6x the "corrected" version
+was visibly floating above the cap line. A wide, low-profile glyph is centred in
+its own em box and reads against the x-height, not against cap-to-baseline. The
+numbers say how far; only the picture says from what.
+
 ## npm run preview: boot logic under jsdom
 
 `npm run preview` runs a page's full `gh.load` chain and mounts Alpine under

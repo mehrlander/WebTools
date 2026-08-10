@@ -98,6 +98,10 @@
   // gh-store rides in the pre-build cached but unexecuted; this load runs it
   // from the inlined cache (no network) so GH.prototype.save exists as before.
   await gh.load('gh-store.js');
+  // The `runs` ring every state/ cache carries: what a crawl cost, appended to
+  // the commit the crawl was making anyway. Loaded before the three caches
+  // because each writes one.
+  await gh.load('kits/crawl-runs.js');
   // Config-aggregate builders for the private cache (state/configs.json).
   await gh.load('kits/repo-config-cache.js');
   // The pure survey math + shared fetch orchestrators behind the branches view
@@ -2199,6 +2203,7 @@ function app(){ return {
         if (Date.now() - last < this.CONFIG_CACHE_INTERVAL_MS) return;
       } catch {}
     }
+    const t0 = Date.now();   // for the run record, appended below if this commits
     try {
       // One GH per repo (the shared store.gh is bound to the open repo). Read
       // the current manifest for each participant, legacy name as fallback.
@@ -2250,7 +2255,19 @@ function app(){ return {
       try { localStorage.setItem(this._cacheCheckKey, String(Date.now())); } catch {}
       // Only commit when substance changed (buildCache always restamps
       // timestamps, so a deep-equal would never skip).
-      if (window.RepoConfigCache.cacheChanged(prev, next)){
+      const moved = window.RepoConfigCache.changedRepos(prev, next);
+      if (moved.length){
+        // The run record rides the commit the crawl was making anyway; see
+        // lib/kits/crawl-runs.js for why it cannot cause one. No `failed`: this
+        // crawl swallows a per-repo read failure, so it has no count to give and
+        // a zero would read as "none failed".
+        // Optional by construction: the run record is an extra reading, and
+        // nothing about it may stand between a crawl and the commit it exists
+        // to make. A window without the kit simply carries the ring forward.
+        next.runs = window.CrawlRuns?.push(prev?.runs, {
+          at: new Date().toISOString(), ms: Date.now() - t0,
+          checked: repos.length, changed: moved.length,
+        }) ?? prev?.runs;
         await reg.save(window.RepoConfigCache.CACHE_PATH, next, 'Update config cache (state/configs.json) via show-repo');
       }
     } catch(e){ console.warn('config cache refresh:', e?.message || e); }
@@ -2351,6 +2368,7 @@ function app(){ return {
   },
   async _crawlActivity(deep){
     const A = window.RepoActivityCache, B = window.BranchSurvey;
+    const t0 = Date.now();   // for the run record, appended below if this commits
     // Estate membership from the config cache (estate:true). The activity crawl
     // is estate-scoped, not account-wide: only repos on the dashboard need the
     // survey. No cache yet means nothing to crawl (the config crawl seeds it).
@@ -2426,6 +2444,15 @@ function app(){ return {
       try { localStorage.setItem(this._activityCheckKey, String(Date.now())); } catch {}
       const changed = A.changedRepos(prev, next);
       if (changed.length){
+        // The run record rides this commit (lib/kits/crawl-runs.js). `deep`
+        // distinguishes the two passes of a split refresh, which differ by an
+        // order of magnitude in cost and would otherwise average into one
+        // meaningless duration.
+        next.runs = window.CrawlRuns?.push(prev?.runs, {
+          at: new Date().toISOString(), ms: Date.now() - t0,
+          checked: members.length, changed: changed.length, failed: failed.length,
+          pass: deep ? 'survey' : 'quick',
+        }) ?? prev?.runs;
         await reg.save(A.CACHE_PATH, next, 'Update activity cache (state/activity.json) via show-repo');
       }
       return { total: members.length, changed, failed, committed: changed.length > 0 };
@@ -2473,6 +2500,7 @@ function app(){ return {
   async _crawlSessions(){
     const S = window.RepoSessionsCache;
     const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
+    const t0 = Date.now();   // for the run record, appended below if this commits
     try {
       const nowISO = new Date().toISOString();
       // One recursive tree read gives every record's path AND blob sha, which
@@ -2515,6 +2543,15 @@ function app(){ return {
       try { localStorage.setItem(this._sessionsCheckKey, String(Date.now())); } catch {}
       const changed = S.cacheChanged(prev, next);
       if (changed){
+        // The run record rides this commit (lib/kits/crawl-runs.js). `checked`
+        // is the whole listing and `read` the records this pass actually
+        // fetched, which are different numbers here in a way they are not for
+        // the other two crawls: the cap defers the rest to the next pass.
+        next.runs = window.CrawlRuns?.push(prev?.runs, {
+          at: new Date().toISOString(), ms: Date.now() - t0,
+          checked: listing.length, read: Object.keys(fetched).length,
+          deferred: Math.max(0, stale.length - take.length),
+        }) ?? prev?.runs;
         await reg.save(S.CACHE_PATH, next, 'Update sessions cache (state/sessions.json) via show-repo');
       }
       return { total: listing.length, read: Object.keys(fetched).length,

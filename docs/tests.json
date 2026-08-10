@@ -542,6 +542,26 @@
       ]
     },
     {
+      "path": "tools/test/crawl-runs.test.mjs",
+      "kind": "kit",
+      "protects": "The runs ring each state/ cache carries: a field the crawl did not measure is dropped rather than written as zero, and a run is joined to the commit it produced by interval, so a commit predating the ring shifts nobody.",
+      "assertions": 9,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "push appends newest-last and holds the cap",
+        "push does not mutate the ring it was handed",
+        "a field the crawl did not measure is dropped, never written as zero",
+        "each commit gets the run that produced it",
+        "a commit with no run of its own takes none, and shifts nobody",
+        "a run landing just after its commit is still its run",
+        "a run far ahead of every commit belongs to none of them",
+        "the newest run inside an interval wins, and no run is used twice",
+        "an empty or absent ring joins to nothing rather than throwing"
+      ]
+    },
+    {
       "path": "tools/test/data-payload.test.mjs",
       "kind": "behavior",
       "protects": "A JSON object with item-shaped entries is recognized as an envelope rather than raw data.",
@@ -2516,6 +2536,36 @@
         "the third tap counts even when it lands on the pin the second one painted",
         "the keyboard mode does not wear a microphone",
         "Done resumes dictation only if the keyboard interrupted it"
+      ]
+    },
+    {
+      "path": "tools/test/state-history.test.mjs",
+      "kind": "component",
+      "protects": "The State view's History panel reads a derived file's change log honestly: the cadence summary, and a per-interval diff taken through each store's own fingerprint so the panel and the crawl's commit gate cannot disagree.",
+      "assertions": 19,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "the history is the commit list, newest first, each with its gap",
+        "the summary is the cadence, on a median so one quiet stretch cannot set it",
+        "a full window says so, since its span is a floor and not a history",
+        "a repo cache diffs on hash, and an alignment grade counts as a change",
+        "a record that joined or left is named as such, not silently counted",
+        "a second tap closes the interval; a committed version is read once",
+        "the sessions cache diffs on the record blob sha, at its own grain",
+        "a store with no fingerprint falls back to comparing the record itself",
+        "nothing changed and nothing to count do not print alike",
+        "a failed read fails its own interval, never the panel",
+        "one panel, two tabs, and the tab sticks across rows",
+        "a duration is read from the ring in the newest committed version",
+        "the summary carries what a run costs beside how often it changes",
+        "the probe reports pushes and record writes since each row was built",
+        "a quiet source says so plainly rather than saying nothing",
+        "the probe carries the Refresh weight, and the clock only where it cannot",
+        "the probe says what its figure is worth, in both directions",
+        "a probe that cannot read leaves the rows exactly as they were",
+        "teardown clears the tick and the listeners"
       ]
     },
     {
