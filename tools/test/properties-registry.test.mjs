@@ -10,7 +10,8 @@
 // registry: registry-level blocks (notes, glossaries) are outside the rule,
 // and files it does not govern are untouched.
 //
-// `fields` is the reconciliation's addition (2026-08-09). The estate ran
+// `fields` is the reconciliation's addition (2026-08-09), and it is now a
+// PROHIBITION rather than a ledger: the assertion below reads zero. The estate ran
 // thirteen registry-like mechanisms while six were declared, and five of the
 // seven found could not be field-governed for reasons that are facts about the
 // carrier rather than neglect: a bare array of groups, a deriver that ships in
@@ -20,10 +21,13 @@
 // count-rather-than-ban posture the censuses run for authored judgment. The
 // number is asserted below so it can only move deliberately.
 //
-// It has moved once, down: the pages catalog was governed the same day, and
-// the fix was the group walk in rowsAt() rather than anything about the
-// carrier. That is the ledger working as intended, and the reason the count is
-// asserted rather than merely reported.
+// It moved four times in two days, always down, and ended at zero: all five
+// reasons were wrong on inspection, two being false statements about the repo
+// and three being statements about this gate mistaken for statements about a
+// carrier. So the ledger became a prohibition. `fields` survives only so that
+// adding an ungoverned carrier has to change this test, which is a deliberate
+// act; the record says such a reason is more likely an unchecked assumption
+// than a fact. docs/registries.md carries the five and what each got wrong.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -130,9 +134,11 @@ test('every ungoverned registry says why, and the count is the one on the books'
       if (r.format === 'json') assert.ok(r.rows, `${r.id}: a governed JSON carrier names its row array`);
     }
   }
-  assert.equal(ungoverned.length, 3,
-    'the ungoverned count moved. Down is progress and the number should follow; up means a ' +
-    'carrier was declared without being governed, which wants a reason in the commit message');
+  assert.equal(ungoverned.length, 0,
+    'a carrier was declared ungoverned. Every one of the five that ever claimed this was wrong ' +
+    'on inspection, so check the carrier before believing the reason: is there a keyed row array ' +
+    'anywhere in it, possibly under a dotted or [] path, and may it be a second registry sharing ' +
+    'the carrier? If it truly cannot be governed, say why here and raise this number.');
 });
 
 test('each governed carrier holds exactly its key plus its declared properties', () => {
@@ -175,6 +181,35 @@ test('every value in a closed domain is in that domain', () => {
           `${r.carrier}: ${d.property}="${v}" is outside its declared domain ` +
           `[${d.values.join(', ')}]. Widen the declaration or fix the row.`);
       }
+    }
+  }
+});
+
+// `required` was the next unchecked claim after `why`, and the same audit found
+// the same shape of rot: 54 declarations said `value`, nothing read any of
+// them, and three were false. Two were tests-census fields that are blank on
+// the ten browser-driven checks (blank, never zero, because test() is not their
+// unit), which is a `counted` figure wearing a `value` grade. The third was
+// pages-catalog.title, blank on one page that genuinely had no <title>; there
+// the data was wrong rather than the grade, and the page got a title.
+//
+// So `value` now means what it says on every governed property, not only on the
+// ones that happen to carry a closed domain.
+test('every required:value property is present on every row', () => {
+  for (const r of reg.registries.filter(r => r.fields === 'governed')) {
+    const required = decls.filter(d => d.registry === r.id && d.required === 'value');
+    if (!required.length) continue;
+    const rows = carrierRows(r);
+    for (const d of required) {
+      const blank = rows.filter(row => {
+        const v = row[d.property];
+        return v === undefined || v === null || v === '' ||
+          (Array.isArray(v) && v.length === 0);
+      });
+      assert.equal(blank.length, 0,
+        `${r.carrier}: ${d.property} is declared required:value but is blank on ` +
+        `${blank.length} of ${rows.length} rows. Either fill them, or grade it "counted" ` +
+        `(a blank that means something and is worth a ledger figure) or "none".`);
     }
   }
 });

@@ -6,12 +6,14 @@ skills/,mixed,concept-vocabulary,"Skill prose is authored vocabulary, but 117 ve
 tracker/,hybrid-authored,concept-vocabulary,"Task files. Their boilerplate headings (Progress log, Definition of done) rank high in termlab and that is arguably correct"
 sites/,hybrid-authored,prose-review,Long-form written pages
 popups/,hybrid-authored,exclude,Browser tool markup
-lib/,hybrid-authored,exclude,Library JavaScript; code register, not prose
+lib/,hybrid-authored,exclude,Library JavaScript; code register
 tools/,hybrid-authored,exclude,Build and test tooling; code register
 scripts/,hybrid-authored,exclude,Utility scripts; code register
 bookmarklets/,hybrid-authored,exclude,Single-purpose JavaScript
 console/,hybrid-authored,exclude,Console snippets
 pages/,hybrid-authored,exclude,"Browser pages and their thumbnails; the prose lives in HTML comments, not extractable as text"
+pages/wsl-sync/data/,supplied,source-corpus,"Bill records fetched from the Washington State Legislature API by the wsl-fetch cron; without this row the pages/ row above calls 134,022 words of supplied text hybrid-authored"
+pages/wsl-sync/rcw/,supplied,source-corpus,"The RCW hierarchy pulled whole, titles through section captions; supplied statute text"
 data/,mechanical,exclude,Generated data
 data/design/content.csv,hybrid-authored,exclude,This registry; curated rows over generated data
 dist/,mechanical,exclude,The pre-build; lib/ frozen into one artifact by build:lib

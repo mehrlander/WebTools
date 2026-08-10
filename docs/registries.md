@@ -113,44 +113,95 @@ wrong. It was that a declaration table with no population had nothing to be
 wrong about, so seven mechanisms with a committed carrier and, in most cases, a
 gate had never been asked to say what they govern.
 
-Four of the seven turned out to be field-governable and are now declared and
-checked: the owners table (below), the skills census, whose coverage was exact
-and whose only guarantee had been that whoever last added a skill remembered to
-add a row, the pages catalog, and the tracker board. Three could not be, and
-the reasons are facts about their carriers rather than neglect, so each is
-declared `fields: ungoverned` with a written `why` and the count is asserted.
-Counting them is the point: omitted, they read as absent; declared, they read as
-three carriers whose shape the field check cannot yet reach.
+All seven turned out to be field-governable, and every one is now declared and
+checked. That was not the first answer. Five were initially marked
+`fields: ungoverned` with a written reason, and the count was asserted so it
+could only move deliberately. It moved four times in two days, always down, and
+ended at zero.
 
-**The count is a ledger, and it has moved down twice within two days**, from
-five to three. Both movements say the same thing about what an `ungoverned`
-reason is worth.
+**The escape hatch went nought for five, and that is the finding.** Each reason
+sounded like a fact about a carrier. Each was wrong:
 
-The **pages catalog** was ungoverned on the stated reason that its top level is
-a bare array of groups with no single row array to read. The fix was not to
-reshape the carrier, whose layout show-repo reads for this repo and for every
-other repo's pages catalog, but to teach the field check a group walk
-(`rows: "[].items"`). The limitation was in the gate, not the file. Its group
-wrapper's own fields (`label`, `top`) stay undeclared on purpose: they are
-structure, not assertions about a page, and take the same standing as a
-carrier's note block.
+| Registry | The reason given | What was true |
+| --- | --- | --- |
+| pages catalog | a bare array of groups, no single row array to read | the field check assumed one flat array; `rows: "[].items"` walks the groups |
+| tracker board | the deriver ships in the plugin, not this repo | `.claude/skills/tasks/build-board.py` is vendored here and always was |
+| routes manifest | four sibling blocks, not one population | several registries may share a carrier with different `rows`; it is three |
+| surfacing index | an index of prose, no properties to declare | twenty rows carrying six fields |
+| manifest fields | the target is a key, not a row | the target grain is irrelevant, and `fields` is a row array |
 
-The **tracker board** was ungoverned on a reason that was simply **false**. The
-entry said its deriver ships inside the portable plugin rather than this repo,
-so no in-repo deriver path could be named. web-tools vendors the tasks skill,
-and `.claude/skills/tasks/build-board.py` is what `npm run tracker-board`
-has been running all along. Nothing blocked it; the declaration asserted a fact
-about the repo without checking it, and the gate could not catch that because a
-`why` is prose. Its 15 fields are now declared, `status` and `size` closed
-against the domains `TRACKER.md` owns.
+Two were false statements about the repo. Three were true statements about the
+gate mistaken for statements about the carrier. None survived being checked, and
+the checking took minutes in each case, because the answer was always visible in
+the carrier itself.
 
-So read the three remaining as a worklist, not a taxonomy, and read a `why`
-with suspicion: it is the one field in this table that states something the
-gate cannot verify. Two of the first five were wrong or superable within
-forty-eight hours of being written.
+**So the ledger is now a prohibition.** The assertion reads zero rather than a
+count, and `fields: ungoverned` remains only so that adding one is a deliberate
+act that has to change a test. Treat the field as a smell and never a resting
+state: the record says a reason to leave a carrier ungoverned is more likely to
+be an unchecked assumption than a fact.
 
-**Three limits of the model surfaced, and none had been visible from inside
-it.**
+### The same audit, run on `required`
+
+`why` was wrong five times because nothing read it. That is a property of
+unchecked authored fields, not of that field, so the obvious next question was
+which other claim in this table nothing reads. `required` was the answer.
+
+Fifty-four declarations graded a property `value`, meaning an assertion is
+present for every target. Nothing checked any of them; the value gate read only
+the closed domains. Three were false:
+
+- `tests-census.assertions` and `boot_smoke`, blank on the ten browser-driven
+  checks that are not `node:test` files. Blank there is correct and meaningful,
+  never zero, because `test()` is not their unit. The **grade** was wrong, and
+  both are now `counted`, which is what a blank worth counting has always meant.
+- `pages-catalog.title`, blank on one page that genuinely had no `<title>`.
+  Here the **data** was wrong, and the page got a title.
+
+Both repairs are in the table, and they are not the same repair: one moved the
+claim to fit the world, the other moved the world to fit the claim. Deciding
+which way to go is the judgment the gate cannot make, which is why it reports
+rather than fixes.
+
+`value` now means what it says on every governed property, not only the ones
+carrying a closed domain: 2,304 presence assertions across 52 declarations,
+where there were none.
+
+**The general rule this table keeps teaching.** An authored field that no gate
+reads will be wrong, and the error rate is not small: `why` ran nought for five,
+`required` ran fifty-one for fifty-four. Both were written carefully by someone
+who believed them. The fix is never to write more carefully; it is to make the
+claim readable by a check, or to stop making it.
+
+### Where the audit stops, and why
+
+`values` is the third of the authored trio and it does not get the same
+treatment, because the check that would do it cannot decide.
+
+A declared domain is enforced against the data. The reverse, that a property
+with a closed domain has one declared, is not, and the tempting heuristic is a
+ratio: few distinct values over many rows means a closed vocabulary. Run it and
+it flags four. Two are real and now declared: `harness-census.layer`, six values
+over 113 rows, whose domain was already written in the carrier's own `layers`
+glossary; and `portable-catalog.use`, five over forty.
+
+The other two are exactly why this stays a judgment. `tracker-board.project`
+shows eight values over thirty-two rows and `tests-census.runner` ten over 129,
+and both are *young enumerations, not closed vocabularies*. Every new project
+and every new npm script adds a value. Closing them would turn ordinary growth
+into a build failure and teach everyone to widen the declaration without
+thinking, which is worse than not checking. `harness-census.invocation` makes
+the point sharply: it reads as twenty-one distinct values because it carries
+`npm:<script>`, a grammar rather than an enumeration, and no ratio can see the
+difference.
+
+So the rule above has a boundary worth stating with it. Make a claim readable by
+a check **where a check can decide**. Where it cannot, the honest move is to say
+so here rather than to ship a gate that is right twice and wrong twice and
+therefore ignored. A noisy gate is a third way for an unchecked claim to hide.
+
+**Two limits of the model surfaced, and neither had been visible from inside
+it.** A third was claimed and was not real, which is recorded above.
 
 *A carrier can be distributed.* A registry names one carrier path. But the
 authoritative statement of what a skill does is each skill's own `SKILL.md`,
@@ -158,15 +209,10 @@ one carrier per target, which the declaration table cannot express. This is why
 the owners table's family rule stays where it is instead of moving into the
 declarations array where its shape belongs.
 
-*A deriver can live outside the repo.* `tracker/board.json` is entirely
-computed, and every field would declare `mode: computed` with a deriver, except
-that `build-board.py` ships inside the portable plugin. A computed declaration
-must name a deriver that exists here, and this one correctly does not.
-
 *A scope can overstate its own gate.* The docs census declared "every file under
 docs/" while its gate walks `.md` and `.json` only, leaving four files inside
-the stated scope and outside the check. Corrected here by narrowing the scope to
-what is enforced, which is the honest direction: the four files are examples,
+the stated scope and outside the check. Corrected by narrowing the scope to what
+is enforced, which is the honest direction: the four files are examples,
 prototypes, and a favicon, and pulling them into a documentation census would be
 filling rows to satisfy a gate.
 

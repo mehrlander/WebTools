@@ -410,7 +410,7 @@
       "path": "tools/test/estate-search.test.mjs",
       "kind": "behavior",
       "protects": "The shared search core: a failed tree fetch is never cached as an empty tree, names search reaches any ref and reports unreadable trees, code search carries its scope and fragments, the session grep matches what a record quotes, and reset forgets it all.",
-      "assertions": 6,
+      "assertions": 8,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
@@ -590,7 +590,7 @@
       "path": "tools/test/map-view.test.mjs",
       "kind": "component",
       "protects": "The Map view mounts, loads the public set, and reports adoption without startup warnings, and its open tab stays addressable: the shell validates ?tab= and stamps every tab but the default, and the component renders and loads whichever tab it is handed, by URL or by tap.",
-      "assertions": 22,
+      "assertions": 23,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1
@@ -734,7 +734,7 @@
       "path": "tools/test/properties-registry.test.mjs",
       "kind": "gate",
       "protects": "The declaration table of docs/registries.md: every governed carrier holds exactly its key plus declared properties, computed declarations name real derivers, and no target x property pair has two owners within a registry.",
-      "assertions": 5,
+      "assertions": 6,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -833,7 +833,7 @@
       "path": "tools/test/repo-sessions-cache.test.mjs",
       "kind": "behavior",
       "protects": "The sessions aggregate, whose source is a captured and therefore unregenerable layer: summarize keeps the scan fields and drops the bulk, branches dedupe and drop main since they join the Open view, and an older record with no agent id summarizes without one rather than with a wrong one.",
-      "assertions": 17,
+      "assertions": 21,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -1042,6 +1042,24 @@
       "protects": "Every test file has a row saying what it protects, the derived fields match disk, and no browser check is left with nothing to run it.",
       "assertions": 8,
       "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/text-fields-registry.test.mjs",
+      "kind": "behavior",
+      "protects": "the estate's prose-field vocabulary: that it stays the declared size, that every name is typed and carries the use_when rule that settles which to pick, and that the alias map is a function no name escapes through twice",
+      "assertions": 6,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/text-vocabulary-conformance.test.mjs",
+      "kind": "behavior",
+      "protects": "this repo's own carriers against the stated prose-field vocabulary: a field name nothing accounts for fails, an alias passes, since a carrier conforms by declaration rather than by rename",
+      "assertions": 1,
+      "method": "spawn",
       "runner": "suite",
       "boot_smoke": 0
     },

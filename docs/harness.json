@@ -90,6 +90,26 @@
       "tested": true
     },
     {
+      "path": "scripts/text-carriers.py",
+      "role": "inventory the CSV and JSON carriers that already hold authored prose, and census their field names to show how much vocabulary the carriers share",
+      "layer": "scripts",
+      "lines": 539,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": true
+    },
+    {
+      "path": "scripts/text-census.py",
+      "role": "count the prose inside .js, .mjs, .html and .py, split into commentary, text tables, and inline reader-facing text; --check gates a comment-length budget",
+      "layer": "scripts",
+      "lines": 759,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
       "path": "scripts/unclaimed-code-survey.py",
       "role": "per-layer counts of files, files prose names, and files a test exercises; the code-survey behind code-layers.md",
       "layer": "scripts",
