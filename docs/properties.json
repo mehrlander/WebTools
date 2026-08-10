@@ -152,6 +152,17 @@
       "fields": "ungoverned",
       "why": "the target is a manifest KEY, not a file, and the carrier describes the key rather than asserting properties of rows; the field check has no row array to read",
       "gate": "tools/test/manifest-registry.test.mjs"
+    },
+    {
+      "id": "text-field-vocabulary",
+      "carrier": "docs/text-fields.csv",
+      "format": "csv",
+      "key": "field",
+      "kind": "catalog",
+      "scope": "the names a prose-bearing CSV column or JSON key may carry, estate-wide; portable, since a concept named once should be the same concept in every repo",
+      "gate": "tools/test/text-fields-registry.test.mjs",
+      "target": "a prose field name",
+      "fields": "governed"
     }
   ],
   "declarations": [
@@ -675,6 +686,41 @@
       "required": "none",
       "values": null,
       "gloss": "the task or condition a blocked row names"
+    },
+    {
+      "property": "audience",
+      "registry": "text-field-vocabulary",
+      "mode": "recorded",
+      "required": "value",
+      "values": [
+        "reader",
+        "editor"
+      ],
+      "gloss": "who the text under this field name is addressed to; the split that decides whether it belongs in a carrier or in source"
+    },
+    {
+      "property": "gloss",
+      "registry": "text-field-vocabulary",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "what this field name means, in a sentence"
+    },
+    {
+      "property": "use_when",
+      "registry": "text-field-vocabulary",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the rule for picking this name over its neighbours, which is the part a definition alone never settles"
+    },
+    {
+      "property": "instead_of",
+      "registry": "text-field-vocabulary",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "the names already in use that this one accounts for; the survey resolves them rather than reporting them as violations, so an existing carrier conforms by declaration rather than by rename"
     }
   ]
 }

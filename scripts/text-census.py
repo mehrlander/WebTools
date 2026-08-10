@@ -576,6 +576,38 @@ def strip_comments(path, src):
     return "".join(kept)
 
 
+
+# Options that take a value. Without this the value is read as a path prefix,
+# which silently scopes the run to a directory that does not exist and reports
+# a clean zero: the most misleading possible failure for a survey.
+VALUED = {"--min", "--check", "--vocab"}
+
+
+def split_args(argv):
+    """(root, prefixes, opts, values) from a flat argv."""
+    opts, values, positional = set(), {}, []
+    i = 1
+    while i < len(argv):
+        a = argv[i]
+        if a.startswith("--"):
+            if "=" in a:
+                k, v = a.split("=", 1)
+                opts.add(k)
+                values[k] = v
+            elif a in VALUED and i + 1 < len(argv):
+                opts.add(a)
+                values[a] = argv[i + 1]
+                i += 1
+            else:
+                opts.add(a)
+        else:
+            positional.append(a)
+        i += 1
+    root = positional[0] if positional and os.path.isdir(positional[0]) else "."
+    prefixes = positional[1:] if positional and os.path.isdir(positional[0]) else positional
+    return root, prefixes, opts, values
+
+
 BANDS = [("<40", 0), ("40-99", 40), ("100-249", 100), ("250-599", 250), ("600+", 600)]
 
 
@@ -587,22 +619,9 @@ def band(n):
 
 
 def main(argv):
-    args = [a for a in argv[1:] if not a.startswith("--")]
-    opts = {a for a in argv[1:] if a.startswith("--")}
-    root = args[0] if args and os.path.isdir(args[0]) else "."
-    prefixes = args[1:] if args and os.path.isdir(args[0]) else args
-    minw = 40
-    for a in argv[1:]:
-        if a.startswith("--min"):
-            minw = int(a.split("=", 1)[1]) if "=" in a else minw
-    check = None
-    for i, a in enumerate(argv):
-        if a == "--min" and i + 1 < len(argv):
-            minw = int(argv[i + 1])
-        if a == "--check" and i + 1 < len(argv):
-            check = int(argv[i + 1])
-        if a.startswith("--check="):
-            check = int(a.split("=", 1)[1])
+    root, prefixes, opts, values = split_args(argv)
+    minw = int(values.get("--min", 40))
+    check = int(values["--check"]) if "--check" in values else None
 
     files = tracked_files(root)
     reg = content_registry(root)

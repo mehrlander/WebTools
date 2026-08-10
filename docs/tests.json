@@ -1028,6 +1028,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/text-fields-registry.test.mjs",
+      "kind": "behavior",
+      "protects": "the estate's prose-field vocabulary: that it stays the declared size, that every name is typed and carries the use_when rule that settles which to pick, and that the alias map is a function no name escapes through twice",
+      "assertions": 6,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/tools-view.test.mjs",
       "kind": "component",
       "protects": "The Tools view mounts and loads its curated manifest.",

@@ -38,7 +38,10 @@ Usage:
     --undeclared only carriers nothing in the repo names
     --csv        emit rows as CSV
     --min N      a field is prose-bearing at N+ qualifying cells (default 3)
-    --check      exit 1 if any non-supplied carrier is undeclared
+    --vocab P    path to the field vocabulary (default docs/text-fields.csv)
+    --offvocab   only the field names that are not in the vocabulary
+    --check      exit 1 if any authored carrier is undeclared, or any prose
+                 field name is off-vocabulary
 """
 import csv
 import json
@@ -170,6 +173,43 @@ def named_by(corpus, rel):
 
 SUPPLIED_HINT = re.compile(r"(^|/)(data/)?source/|/raw/|/vendor|/pulls?/|/extracts?/")
 
+# The stated vocabulary of prose field names. Portable: one set for the whole
+# estate, since the point of naming a concept once is that it is the same
+# concept in every repo. A repo overrides the path with --vocab.
+VOCAB_PATHS = (
+    "docs/text-fields.csv",
+    ".web-tools-scripts/text-fields.csv",
+    "data/design/text-fields.csv",
+)
+
+
+def load_vocab(root, override=None):
+    """Return {field: row} for the sanctioned names, plus {alias: field}."""
+    paths = [override] if override else [os.path.join(root, p) for p in VOCAB_PATHS]
+    for p in paths:
+        if p and os.path.exists(p):
+            with open(p, encoding="utf-8-sig", newline="") as fh:
+                rows = list(csv.DictReader(fh))
+            vocab = {r["field"]: r for r in rows}
+            alias = {}
+            for r in rows:
+                for a in (r.get("instead_of") or "").split(","):
+                    a = a.strip().split(" ")[0].strip()
+                    if a and a not in vocab:
+                        alias[a] = r["field"]
+            return vocab, alias, p
+    return {}, {}, None
+
+
+# Names that are a value, not prose about a value: an identifier, a caption, or
+# a typed cell that happens to run long. Off-vocabulary is not a finding for
+# these, because they were never trying to be one of the nine.
+VALUE_FIELD = re.compile(
+    r"^(.*_)?(title|name|label|id|key|path|url|agency|fund|item|section|step|"
+    r"unit|grain|measure|values?|column_roles|primary_key|reads|via|maps|"
+    r"applies_to|carrier|host|from|verdict|deliverable|authoritative|target|record_owner)$", re.I
+)
+
 
 def content_registry(root):
     p = os.path.join(root, "data", "design", "content.csv")
@@ -193,22 +233,47 @@ def registry_mode(reg, rel):
 
 # ---------------------------------------------------------------- main
 
+# Options that take a value. Without this the value is read as a path prefix,
+# which silently scopes the run to a directory that does not exist and reports
+# a clean zero: the most misleading possible failure for a survey.
+VALUED = {"--min", "--check", "--vocab"}
+
+
+def split_args(argv):
+    """(root, prefixes, opts, values) from a flat argv."""
+    opts, values, positional = set(), {}, []
+    i = 1
+    while i < len(argv):
+        a = argv[i]
+        if a.startswith("--"):
+            if "=" in a:
+                k, v = a.split("=", 1)
+                opts.add(k)
+                values[k] = v
+            elif a in VALUED and i + 1 < len(argv):
+                opts.add(a)
+                values[a] = argv[i + 1]
+                i += 1
+            else:
+                opts.add(a)
+        else:
+            positional.append(a)
+        i += 1
+    root = positional[0] if positional and os.path.isdir(positional[0]) else "."
+    prefixes = positional[1:] if positional and os.path.isdir(positional[0]) else positional
+    return root, prefixes, opts, values
+
+
 def main(argv):
-    opts = {a for a in argv[1:] if a.startswith("--")}
-    args = [a for a in argv[1:] if not a.startswith("--")]
-    root = args[0] if args and os.path.isdir(args[0]) else "."
-    prefixes = args[1:] if args and os.path.isdir(args[0]) else args
-    global MIN_WORDS
-    minc = 3
-    for i, a in enumerate(argv):
-        if a == "--min" and i + 1 < len(argv):
-            minc = int(argv[i + 1])
+    root, prefixes, opts, values = split_args(argv)
+    minc = int(values.get("--min", 3))
 
     files = tracked(root, (".csv", ".json"))
     if prefixes:
         files = [f for f in files if any(f.startswith(p.rstrip("/")) for p in prefixes)]
     corpus = naming_corpus(root)
     reg = content_registry(root)
+    vocab, alias, vocab_path = load_vocab(root, values.get("--vocab"))
 
     carriers, fields = [], []
     for rel in sorted(files):
@@ -237,8 +302,17 @@ def main(argv):
             "creation_mode": mode,
         })
         for f, c, w in found:
+            if not vocab or f in vocab:
+                standing = "sanctioned"
+            elif VALUE_FIELD.match(f):
+                standing = "value"
+            elif f in alias:
+                standing = "alias:" + alias[f]
+            else:
+                standing = "off-vocabulary"
             fields.append({"carrier": rel, "field": f, "cells": c, "words": w,
-                           "supplied": int(supplied), "declared": int(bool(namers))})
+                           "supplied": int(supplied), "declared": int(bool(namers)),
+                           "standing": standing})
 
     authored = [c for c in carriers if not c["supplied"]]
     undeclared = [c for c in authored if not c["declared"]]
@@ -269,6 +343,30 @@ def main(argv):
         singles = [n for n, e in by_name.items() if len(e["carriers"]) == 1]
         print("%d of them (%d%%) appear in exactly one carrier." % (
             len(singles), len(singles) / len(by_name) * 100 if by_name else 0))
+        return 0
+
+    if "--offvocab" in opts:
+        if not vocab:
+            print("No field vocabulary found. Looked for: %s" % ", ".join(VOCAB_PATHS))
+            return 0
+        bad = [f for f in fields if not f["supplied"] and f["standing"].startswith(("alias", "off"))]
+        by = defaultdict(lambda: {"carriers": set(), "words": 0, "standing": ""})
+        for f in bad:
+            e = by[f["field"]]
+            e["carriers"].add(f["carrier"])
+            e["words"] += f["words"]
+            e["standing"] = f["standing"]
+        print("Prose field names outside %s (%d):\n" % (vocab_path, len(by)))
+        for name, e in sorted(by.items(), key=lambda kv: -kv[1]["words"]):
+            fix = e["standing"].split(":", 1)[1] if ":" in e["standing"] else "?"
+            print("  %-22s %6sw %2d carriers   -> %s" % (
+                name, f"{e['words']:,}", len(e["carriers"]), fix))
+            for c in sorted(e["carriers"])[:3]:
+                print("        %s" % c)
+        print()
+        print("An arrow names the vocabulary field the alias list already maps this to.")
+        print("A '?' means nothing claims it: either it is a value rather than prose about")
+        print("one, or the vocabulary is a name short. Both happen; read the samples.")
         return 0
 
     if "--carriers" in opts or "--undeclared" in opts:
@@ -313,6 +411,22 @@ def main(argv):
     print("  %d names (%d%%) are used by exactly one carrier." % (
         once, once / len(names) * 100 if names else 0))
 
+    if vocab:
+        authored_fields = [f for f in fields if not f["supplied"]]
+        san = [f for f in authored_fields if f["standing"] == "sanctioned"]
+        val = [f for f in authored_fields if f["standing"] == "value"]
+        ali = [f for f in authored_fields if f["standing"].startswith("alias")]
+        off = [f for f in authored_fields if f["standing"] == "off-vocabulary"]
+        print("\n  against %s (%d sanctioned names):" % (vocab_path, len(vocab)))
+        print("    on a sanctioned name  %8s words, %d fields" % (
+            f"{sum(f['words'] for f in san):,}", len(san)))
+        print("    an alias of one       %8s words, %d fields, %d names the vocabulary maps" % (
+            f"{sum(f['words'] for f in ali):,}", len(ali), len({f["field"] for f in ali})))
+        print("    a value, not prose    %8s words, %d fields" % (
+            f"{sum(f['words'] for f in val):,}", len(val)))
+        print("    UNCLAIMED             %8s words, %d fields, %d names nothing accounts for" % (
+            f"{sum(f['words'] for f in off):,}", len(off), len({f["field"] for f in off})))
+
     if undeclared:
         print("\n  largest undeclared authored carriers:")
         for c in sorted(undeclared, key=lambda c: -c["words"])[:8]:
@@ -323,8 +437,16 @@ def main(argv):
     print("field-name spread first: a concept called four things across four carriers cannot")
     print("be asked for, and that is what disorganized carriers actually costs.")
 
-    if "--check" in opts and undeclared:
-        return 1
+    if "--check" in opts:
+        bad = [f for f in fields
+               if not f["supplied"] and f["standing"].startswith(("alias", "off"))]
+        if undeclared or bad:
+            if undeclared:
+                print("\n%d authored carrier(s) nothing names." % len(undeclared))
+            if bad:
+                print("%d prose field name(s) outside the vocabulary; see --offvocab."
+                      % len({f["field"] for f in bad}))
+            return 1
     return 0
 
 

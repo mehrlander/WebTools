@@ -12,18 +12,20 @@ python3 scripts/text-carriers.py . --fields           # the carriers we have
 
 Re-derive rather than cite. The numbers move as the repos do.
 
-Two questions, and they need different work:
+Two questions, and they needed different work:
 
 1. **How organized are the carriers we have?** Every authored carrier in both
    repos is declared, which is better than expected. The vocabulary inside them
-   is not: budget-DRS uses **16 different field names for what is broadly one
+   was not: budget-DRS used **16 different field names for what is broadly one
    concept**, an authored justification or gloss, across 46 carriers and 31,883
-   words.
+   words. [`docs/text-fields.csv`](text-fields.csv) now states twelve names with
+   the rule for picking among them, and every prose field name in budget-DRS
+   maps to one of them.
 2. **What never reached a carrier?** Widening the census from `.js`/`.html` to
    `.py` roughly doubled the commentary found in budget-DRS's app and took its
-   uncarried text tables from 2 to 10. Six registry rows added in this pass
-   moved another 53,115 words from "no carrier" to correctly declared as
-   supplied or generated.
+   uncarried text tables from 2 to 10. Six registry rows moved another 53,115
+   words from "no carrier" to correctly declared as supplied or generated, and
+   the largest remaining uncarried table, the app's ten view blurbs, now has one.
 
 ## Three kinds, three different answers
 
@@ -243,39 +245,122 @@ the manifest read the same rows, and the regexes would go away.
 
 ---
 
-# Proposed: a text carrier registry
+---
 
-Not an extension of `content.csv`. That registry's subject is a file's
-epistemic origin; this one's subject is where a displayed string comes from.
-Same estate, different question, and fusing them would give one row two keys.
+# The vocabulary, and what replaced the registry this document first proposed
 
-Carrier `data/design/text.csv`, one row per **text set**, meaning a coherent
-body of strings with one author and one purpose:
+## What was proposed, and why it was wrong
 
-| Column | Values | Notes |
+The first draft of this document proposed `data/design/text.csv`: one row per
+text set, carrying `carrier`, `rendered_by`, `field`, `rows`, and the rest. That
+was a mistake, and the estate's own rule says why. **Do not commit what a live
+read already answers.** `text-carriers.py` derives the carrier, the field, the
+row count, and the word count on every run; committing them would add a refresh
+obligation and a way to be out of date, which is exactly the argument that
+retired `docs/MERGE-GUIDE.md`.
+
+What a survey cannot derive is what a name *means*. That is the whole finding of
+Part 1, and it needs one row per **name**, not one per carrier.
+
+## The carrier: docs/text-fields.csv
+
+Twelve sanctioned names, each with the audience it implies, a gloss, and the
+`use_when` rule that settles which to pick. A definition alone never settles
+that, which is why `use_when` is required rather than optional:
+
+| Field | Audience | For |
 | --- | --- | --- |
-| `id` | slug | the set's handle |
-| `carrier` | path | where the strings live. A `.js`, `.html`, or `.py` path is a declared exception, not a hidden one |
-| `rendered_by` | path | the page or module that displays them |
-| `audience` | `reader`, `editor` | `editor` is commentary; the row counts it rather than relocating it |
-| `field` | column or key name | drawn from a stated vocabulary, which is the fix for Part 1 |
-| `category` | `gloss`, `blurb`, `caveat`, `definition`, `narrative`, `quoted-source`, `chrome` | what kind of text |
-| `creation_mode` | the `content.csv` vocabulary | reused deliberately, not redefined |
-| `rows` | integer | how many strings, so drift is visible |
-| `gate` | path or empty | the check that holds it |
+| `gloss` | reader | what the row's subject is |
+| `narrative` | reader | prose meant to be read as prose |
+| `rationale` | reader | why this judgment, against the alternative |
+| `use_when` | reader | when to pick this over its neighbour |
+| `scope` | reader | what it covers and deliberately does not |
+| `evidence` | reader | the measured check, with figures |
+| `caveat` | reader | what limits or qualifies it |
+| `provenance` | reader | where it came from, how to reproduce it |
+| `upkeep` | editor | what keeps it true, and who does it |
+| `open` | editor | what is unresolved |
+| `note` | editor | the deliberate catch-all |
+| `quoted` | reader | verbatim from a source |
 
-A violator becomes a mechanical statement rather than an opinion: a row with
-`audience: reader` whose `carrier` is a source file. Registering the row does
-not fix it and is not meant to. It moves the text from invisible to declared,
-which is the step that lets it be counted, reviewed, and scheduled.
+It is portable, because a concept named once should be the same concept in every
+repo, and it is declared in [`docs/properties.json`](properties.json) with
+[`tools/test/text-fields-registry.test.mjs`](../tools/test/text-fields-registry.test.mjs)
+as its gate. That test holds the size (a vocabulary that grows a name whenever a
+carrier wants one is not a vocabulary), the typing, and two properties that are
+invisible on reading the file: the alias map has to be a function, and no alias
+may also be a sanctioned name.
 
-**The `field` column is the part Part 1 needs**, and it is the reason to build
-this registry rather than only run the surveys. Sixteen names for one concept
-persist because nothing states the vocabulary; a registry with a controlled
-`field` set makes the seventeenth name fail a check instead of joining the pile.
+## Conformance by declaration, not by rename
 
-Adding the registry means a row in [`docs/properties.json`](properties.json) in
-the same commit, per [`docs/registries.md`](registries.md).
+The `instead_of` column is the part that makes this usable on an estate that
+already exists. It lists the names in use that each sanctioned name accounts
+for, so `text-carriers.py` resolves an old name rather than reporting it as a
+violation. **An existing carrier conforms by declaration.** Renaming is optional
+and separate, and mostly not worth it: `blurb` appears in 23 places across
+budget-DRS, and renaming it to `gloss` would buy nothing the alias map does not
+already give while touching a live app in 23 places.
+
+Measured after the vocabulary was written against both repos:
+
+| | On a sanctioned name | An alias of one | A value, not prose | Unclaimed |
+| --- | --- | --- | --- | --- |
+| budget-DRS | 17,817 words | 28,744 | 7,291 | **0** |
+| web-tools | 1,249 words | 11,758 | 713 | **324, one name** |
+
+Every prose field name in budget-DRS now maps to one of twelve stated concepts.
+web-tools has one residue, `prompt` in a one-off tracker assessment, which is a
+payload being carried rather than prose about a row. Leaving it unclaimed is
+more honest than widening the vocabulary to absorb it.
+
+The alias lists were built from the observed names, not invented: the run that
+produced them is `text-carriers.py --offvocab`, and a name entered the list only
+after its actual values were read.
+
+---
+
+# The worked example: the VIEWS blurbs
+
+The migration this document listed as the highest-ratio move, done, so the
+convention has a case rather than only a rule.
+
+[`data/design/views.csv`](https://github.com/mehrlander/home/blob/main/projects/budget-drs/data/design/views.csv)
+is now the carrier for ten views' `title`, `lens`, `kind`, and `gloss`. It sits
+beside `view-grains.csv` and `view-tabs.csv`, which are the same kind of
+manifest about the same views, and that placement was not a preference: the
+verify suite's leaf-homing rule rejected it anywhere else.
+
+What the shell keeps is the structural half of each entry (lens/kind, icon,
+source, data links, embed), and it merges the text in from a generated
+`views-data.js` at module scope, so every consumer still reads one `VIEWS`
+object. `build-data-explorer.py` reads the CSV directly, and the two drift
+guards it carried against its own regexes are gone, replaced by a stronger
+check: the carrier and the shell have to agree about which views exist, which
+neither could notice before.
+
+`app/data-explorer/data.js` came out **byte-identical**, which is what a refactor
+onto a structured stage is supposed to leave behind.
+
+Three things the migration turned up that generalize:
+
+* **A fallback hides a break.** The merge falls back to the view key for a
+  missing title and an empty string for a missing blurb. That is right at
+  runtime and exactly wrong to leave unchecked, since a stale payload renders as
+  a plausible header with the prose silently gone.
+  [`verify-views-text.mjs`](https://github.com/mehrlander/home/blob/main/projects/budget-drs/app/view/tools/verify-views-text.mjs)
+  walks carrier to payload to shell and was confirmed against a negative
+  control.
+* **Two verify scripts were reading the fields being moved.** Both now read the
+  carrier, which is a better place to read them from.
+* **Widening a check's assumption exposed a second one.** Letting the lineage
+  verifier accept a payload in the page's own directory made its bare `src=`
+  pattern match a comment explaining why a relative `src="./data.js"` resolves
+  against nothing. Anchoring the match to a real script tag fixed it. A check
+  that has only ever seen one shape encodes that shape as a rule without saying
+  so.
+
+
+---
 
 # Proposed: what a gate can and cannot hold
 
@@ -319,21 +404,20 @@ every pull request.
 
 # What to do first, if anything
 
-In order of ratio, best first:
+Two of the five are done, and are described above: the field vocabulary and the
+`VIEWS` blurbs. What remains, in order of ratio:
 
-1. **State the field vocabulary.** One table of names with one meaning each,
-   and a rule for picking among them. Nothing else in this document unblocks as
-   much: it is the prerequisite for the `text.csv` `field` column, for a gate,
-   and for any tool that wants to ask the estate a question about its own
-   reasoning.
-2. **The `VIEWS` blurbs.** One CSV retires a regex parser and its two drift
-   guards and gives ten reader-facing paragraphs a carrier.
-3. **The spend glosses.** 22 definitions of the app's own taxonomy, readable
-   today only by opening a JavaScript file.
-4. **Decide the show-repo authority question.** 23,665 words in the page and
+1. **The spend glosses.** 22 definitions of the app's own taxonomy, readable
+   today only by opening a JavaScript file. The `VIEWS` migration is the pattern
+   and this one is simpler, being a flat map with no structural half.
+2. **Decide the show-repo authority question.** 23,665 words in the page and
    23,920 in the doc, overlapping 4.5%. A decision about which is the record,
    not a cleanup, and until it is made both keep growing.
-5. **Register, do not move.** For everything else a row saying where the text is
+3. **Turn on the vocabulary gate.** `text-carriers.py --check` already exits 1
+   on an unclaimed name and both repos pass today. Running it in the verify
+   suites would hold that, at the cost of a failure the next time a genuinely
+   new concept appears, which is the intended cost.
+4. **Register, do not move.** For everything else a row saying where the text is
    and who wrote it is worth more than relocating it, at a fraction of the cost.
 
 # What the census cannot see
