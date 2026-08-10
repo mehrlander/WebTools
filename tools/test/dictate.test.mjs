@@ -754,3 +754,26 @@ test('a box with nothing to scroll is left alone', () => {
   D.paint(h, { text: 'short' });
   assert.equal(box.scrollTop, 0);
 });
+
+test('the leading between two lines is text, not a gap to fall through', () => {
+  // An inline span's client rects are the FONT box, not the line box, so at
+  // 17px text on 26px lines there is 6px of dead band between every pair of
+  // lines. A tap there used to read as a miss and send the caret to the end.
+  const h = host();
+  h.setAttribute('style', 'line-height:26px;');
+  D.paint(h, { text: 'two lines of it' });
+  const part = h.childNodes[0];
+  // Two font boxes 20px tall on 26px lines: 100-120 and 126-146, with the
+  // dead band at 120-126.
+  part.getClientRects = () => [
+    { left: 10, right: 90, top: 100, bottom: 120, height: 20 },
+    { left: 10, right: 60, top: 126, bottom: 146, height: 20 },
+  ];
+  assert.equal(D.hitsText(h, 50, 110), true, 'on the first line');
+  assert.equal(D.hitsText(h, 50, 123), true, 'in the leading between them');
+  assert.equal(D.hitsText(h, 50, 136), true, 'on the second line');
+  assert.equal(D.hitsText(h, 50, 160), false, 'below the last line is still canvas');
+  assert.equal(D.hitsText(h, 50, 86), false, 'and above the first is too');
+  assert.equal(D.hitsText(h, 75, 136), false,
+    'the inflation is vertical only: past the end of a short line is canvas');
+});

@@ -221,7 +221,7 @@
       "path": "tools/test/dictate.test.mjs",
       "kind": "behavior",
       "protects": "The voice buffer composes text the way the prototype established, independent of any caller: a recognized mark becomes its spoken word while only a tapped one is real punctuation, a tapped mark rides the stop-restart cycle a live recognition stream forces, a comma lowers the next utterance's capital so stitched fragments read as prose, the running hypothesis is committable on save rather than lost to a pause, and back-delete drops one word or the mark clinging to it. Also that the kit reads the window it was handed rather than an ambient one, and reports a missing recognizer instead of throwing.",
-      "assertions": 41,
+      "assertions": 42,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": 0
