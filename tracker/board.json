@@ -607,6 +607,17 @@
    }
   },
   {
+   "id": "promote-shortcuts-skill-to-plugin-5d74br",
+   "title": "Decide whether apple-shortcuts-actions belongs in the portable plugin",
+   "status": "backlog",
+   "opened": "2026-08-10",
+   "size": "S",
+   "file": "promote-shortcuts-skill-to-plugin-5d74br.md",
+   "href": "tasks/promote-shortcuts-skill-to-plugin-5d74br.md",
+   "lastActivity": "",
+   "logEntries": 0
+  },
+  {
    "id": "proposals-diff-and-removal-w1y9lk",
    "title": "Two gaps the proposal channel showed on first use",
    "status": "done",
