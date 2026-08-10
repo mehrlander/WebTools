@@ -3976,6 +3976,17 @@ function app(){ return {
     }
     return false;
   },
+  // The declarative opt-out beside the scroll one. _inHScroll infers from the
+  // DOM that a region owns the horizontal axis; this lets a region SAY so.
+  // The case that needed it: dragging to extend a text selection in the
+  // stage's dictation card is a horizontal gesture over nothing scrollable, so
+  // nothing could be inferred and the pager paged the whole app out from under
+  // the selection. A region that handles its own horizontal drag declares it.
+  _optedOut(el){
+    for (; el && el !== document.body; el = el.parentElement)
+      if (el.hasAttribute && el.hasAttribute('data-no-swipe')) return true;
+    return false;
+  },
   // A once-guard: transitionend and the safety timeout both call the finisher, so
   // wrap it to run a single time.
   _run(fn){ let done = false; return () => { if (done) return; done = true; fn(); }; },
@@ -3983,7 +3994,7 @@ function app(){ return {
   onSwipeStart(e){
     if (this._pBusy || this.drawer || !e.touches || e.touches.length !== 1){ this._pPane = null; return; }
     const pane = this._activePane();
-    if (!pane || this._inHScroll(e.target)){ this._pPane = null; return; }
+    if (!pane || this._inHScroll(e.target) || this._optedOut(e.target)){ this._pPane = null; return; }
     this._pX = e.touches[0].clientX; this._pY = e.touches[0].clientY;
     this._pLock = null; this._pPane = pane; this._pW = pane.clientWidth || window.innerWidth;
     pane.style.transition = '';

@@ -53,6 +53,14 @@ export default async (page) => {
   await page.waitForTimeout(200);
   await page.evaluate(() => window.__sr.say('So it belongs in the hub', true));
   await page.waitForTimeout(100);
-  await page.evaluate(() => window.__sr.say('rather than in each', false));
+
+  // Cross a pause and resume, which is the case one segment could never show:
+  // the pause writes a period, and the engine capitalizes what follows because
+  // it believes a sentence started there. Both come back off, so the shot
+  // reads "...in the hub rather than..." and not "...in the hub Rather than..."
+  // with no stop. That was the field report of 2026-08-09.
+  await page.evaluate(() => window.__sr.say('Rather than in each one separately', true));
+  await page.waitForTimeout(100);
+  await page.evaluate(() => window.__sr.say('which is the whole', false));
   await page.waitForTimeout(400);
 };
