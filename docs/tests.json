@@ -239,7 +239,7 @@
       "path": "tools/test/docs-registry.test.mjs",
       "kind": "gate",
       "protects": "Every docs/ file has exactly one census row, and reach and words match the derivation.",
-      "assertions": 7,
+      "assertions": 6,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -545,7 +545,7 @@
       "path": "tools/test/map-view.test.mjs",
       "kind": "component",
       "protects": "The Map view mounts, loads the public set, and reports adoption without startup warnings, and its open tab stays addressable: the shell validates ?tab= and stamps every tab but the default, and the component renders and loads whichever tab it is handed, by URL or by tap.",
-      "assertions": 21,
+      "assertions": 22,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1
@@ -574,6 +574,15 @@
       "protects": "Publish delivers occasion, data, and path to every subscriber.",
       "assertions": 7,
       "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/owners-registry.test.mjs",
+      "kind": "gate",
+      "protects": "docs/owners.json: that every row names a unique subject and one authoritative carrier, that a family rule states its scope, that the relation vocabulary stays closed, and that every path a locator names still resolves. The last is the maintenance check the table went without: nothing else in the repo reads it, so a carrier that moved would have gone unnoticed.",
+      "assertions": 5,
+      "method": "spawn",
       "runner": "suite",
       "boot_smoke": 0
     },
@@ -680,7 +689,7 @@
       "path": "tools/test/properties-registry.test.mjs",
       "kind": "gate",
       "protects": "The declaration table of docs/registries.md: every governed carrier holds exactly its key plus declared properties, computed declarations name real derivers, and no target x property pair has two owners within a registry.",
-      "assertions": 3,
+      "assertions": 4,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -897,6 +906,15 @@
       "kind": "component",
       "protects": "Project rows render from the manifest and degrade quietly when the field is absent or malformed.",
       "assertions": 28,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/skills-registry.test.mjs",
+      "kind": "gate",
+      "protects": "skills/manifest.json against skills/ both ways, so a skill cannot be added or removed without its row. The manifest is served to other repos by absolute URL and had no gate and no builder; its accuracy rested on memory.",
+      "assertions": 3,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0

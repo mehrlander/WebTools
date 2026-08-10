@@ -64,7 +64,7 @@ Don't hand-edit any of those five files; edit the source and let the hook refres
 
 **Best-effort still.** A clone that never set `core.hooksPath` runs nothing, so `npm test` keeps [`tools/test/artifacts-lockstep.test.mjs`](tools/test/artifacts-lockstep.test.mjs), which re-runs each generator in `--check` mode and fails if a tracked artifact is behind its source. Run the command it names and commit the result.
 
-The tracker board was the last of the three to get an owner there, on 2026-08-05, and the gap was not theoretical: `board.json` emitted its per-task keys by iterating a set, so hash randomization reordered them on every run. Same input, different bytes, in an artifact whose own closing comment promises the opposite, unnoticed because it is read by machines and diffed by no one. The suite now asserts determinism directly rather than inferring it from one passing run, since a nondeterministic generator makes a lockstep test flaky rather than false. Regenerating by hand after touching `lib/` or `pages/` is still the fast path; the test makes forgetting loud instead of silent.
+Regenerating by hand after touching `lib/` or `pages/` is still the fast path; the test makes forgetting loud instead of silent. Why each generator has to be byte-deterministic, and the tracker board's 2026-08-05 counterexample, are in [`tools/README.md`](tools/README.md#the-refresh-model).
 
 **And a third owner, which does not depend on anyone remembering.** The test only speaks when the suite is run, so [`.github/workflows/test.yml`](.github/workflows/test.yml) runs `npm test` on every pull request and reports it as a check on the PR. That is the whole reason it exists: a hook that may not fire, guarded by a test that may not be run, was a chain with no link the platform enforced. It is the repo's only workflow triggered by a commit under review, so it is the only one whose result appears as a check rather than only in the Actions tab; `wsl-fetch.yml` is an errand on a cron. The suite is browser-free by construction (`node --test` globs `tools/test/**/*.test.mjs`, and every Playwright-driven check is named without `.test.`), so keep it that way or the runner grows a browser install. One caveat worth knowing: `package-lock.json` is gitignored, so CI resolves dependency ranges fresh on each run and a green check is not a claim about a pinned tree.
 
@@ -75,12 +75,17 @@ Root-level `tracker/` scoped to repo-wide work (conventions, build tooling, docs
 - **Placement:** `tracker/` (single tracker, no registry).
 - **Board generator:** `npm run tracker-board` (wired into the commit hook above).
 
-## The repo manifest
+## Registries
 
-Root `.web-tools.json`'s fields are data in [`docs/manifest.json`](docs/manifest.json)
-(type, `consumer`, effect), gated against every manifest in the estate by
+A committed JSON or CSV that inventories or classifies part of the tree is a
+**registry**; adding one means adding a row to
+[`docs/properties.json`](docs/properties.json) in the same commit. Thirteen are
+declared, including [`docs/manifest.json`](docs/manifest.json) for root
+`.web-tools.json`'s fields (gated by
 [`manifest-registry.test.mjs`](tools/test/manifest-registry.test.mjs): a key in
-use with no row fails. Both files carry the rest.
+use with no row fails). The model, the rules, and the 2026-08-09 reconciliation
+are in [`docs/registries.md`](docs/registries.md); read it before inventing a
+carrier, since the answer is usually a row in one that exists.
 
 ## Snags
 
