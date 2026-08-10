@@ -148,28 +148,20 @@
         "code": "https://github.com/mehrlander/web-tools/blob/main/pages/shorter.html"
       },
       {
-        "href": "table-compress.html",
-        "label": "table-compress",
-        "title": "Transform",
-        "note": "Single-function row transform + brotli/gz bundle round-trip.",
-        "thumb": "thumbs/table-compress.png",
-        "code": "https://github.com/mehrlander/web-tools/blob/main/pages/table-compress.html"
-      },
-      {
-        "href": "table-compress-multi.html",
-        "label": "table-compress-multi",
-        "title": "Transform Multi",
-        "note": "Multi-function variant of table-compress.",
-        "thumb": "thumbs/table-compress-multi.png",
-        "code": "https://github.com/mehrlander/web-tools/blob/main/pages/table-compress-multi.html"
-      },
-      {
         "href": "toss-render.html",
         "label": "toss-render",
         "title": "Toss Render",
         "note": "Render tossed HTML payloads or allowlisted repo paths — the 🥏 target.",
         "thumb": "thumbs/toss-render.png",
         "code": "https://github.com/mehrlander/web-tools/blob/main/pages/toss-render.html"
+      },
+      {
+        "href": "transform.html",
+        "label": "transform",
+        "title": "Transform",
+        "note": "Multi-tab rows ⇒ rows workbench: $name refs, worker run, profile view, gz bundles. The standalone face of lib/alpineComponents/transform-workbench.js.",
+        "thumb": "thumbs/transform.png",
+        "code": "https://github.com/mehrlander/web-tools/blob/main/pages/transform.html"
       },
       {
         "href": "word-select.html",
