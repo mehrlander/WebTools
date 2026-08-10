@@ -1,4 +1,67 @@
 <!DOCTYPE html>
+<!-- ── Where the writing about this page lives ───────────────────────────────
+     THE CONTRACT IS docs/show-repo.md: the views, the stage and its link
+     grammar, the .web-tools.json manifest, the caches, the branch overlay, the
+     boundary against toss-render. It is the reader-facing account and the one
+     to update when behaviour changes.
+
+     THE COMMENTS HERE explain the code they sit beside, and are addressed to
+     whoever edits it: why a control is where it is, what left and why, the
+     conventions a new view has to honour. Keep them beside their code.
+
+     A 5,962-word block used to sit at the end of this file doing both jobs at
+     once. Its contract half restated the doc and had fallen six views behind
+     it; its rationale half is now at the sites below. Retired 2026-08-10; the
+     measurement and the reasoning are in docs/text-content.md. Do not start a
+     second one: if a passage is not about the code it sits beside, it belongs
+     in the doc. -->
+<!-- ── GitHub jump-overs: the convention every view honours ──────────────────
+     GITHUB JUMP-OVERS: show-repo is a wrapper over GitHub, not a wall — every
+     view keeps a one-tap route to the GitHub presentation of what it is showing.
+     A jump-over for a FILE or a FOLDER is one link: the explorer's breadcrumb
+     links the current folder (ghFolderUrl), the viewer's actions link the open
+     file's blob, the sidebar's recent entries link theirs (fileGhUrl), each
+     staged item and finder row links its own repo@ref (stage.js itemGh), each
+     compare row links its blob at head, and every estate card and surface item
+     carries its github-logo link. A jump-over for a REPO or a BRANCH is a small
+     set, which is what earns a menu: the repo's is lib/kits/github-links.js, off
+     the sidebar row's github button and the Activity view's repo chip, and the
+     branch's is estate.js's branchMenuItems, off each Open row (tree, compare,
+     commits, the PR's files and checks, new PR). When adding a view, add its
+     jump-over, and prefer the shared list to a fresh one. ONE GLYPH, FOUR
+     MEANINGS, and the reader could not tell them apart. The github-logo marks a
+     repo MENU (a set of destinations), a repo or branch DESTINATION, the
+     MANIFEST behind a whole view, and an EXACT FILE. The ambiguity is not
+     theoretical: the Map's Transport (now Showing) header set a bare icon
+     immediately after the code span naming pages/toss-render.html while pointing
+     at docs/routes.json, so the icon read as belonging to the filename beside
+     it. Two rules separate them now. A manifest link is LABELLED — "Curate", as
+     the Tools view already did — and pushed to the header's far edge, away from
+     any filename; what the header names on the left carries its own jump. And an
+     exact-file link carries a SOURCE PEEK. THE PEEK (lib/kits/source-peek.js) is
+     a hover card showing the file: markdown rendered, JSON pretty-printed with
+     its top-level shape named, everything else as source, always the first 20
+     lines with a footer saying what was left behind. One attribute at the call
+     site (:data-peek="owner/repo[@ref]:path"), one delegated listener on
+     document, so a row Alpine renders later needs no wiring. gh-boot.js loads
+     it, alongside the FAB and for the same reason, so this page's boot block
+     does not: it belongs wherever a peek-bearing icon is rendered, and a page's
+     own boot list is the wrong owner of that. It first hung off the boot block
+     below and failed the one test that matters, since a page shell is served
+     from main even under ?use=, so a preview of the branch ran the new
+     components with no SourcePeek behind them and every :data-peek bound to
+     null. It is what makes the fourth meaning self-evident: an icon that can
+     show you the file is pointing at a file, and one that cannot is pointing at
+     something broader. So repo, branch and menu icons deliberately have none,
+     and neither does a folder. WHERE IT IS DELIBERATELY ABSENT, beyond the broad
+     destinations: the viewer's GitHub action and the config view's, since both
+     sit above the file's full contents already on screen. A peek that repeats
+     what the page is showing is noise. POINTER AND KEYBOARD, NOT TOUCH: the card
+     opens on hover where the pointer can hover and on focus for a keyboard
+     reader; on a touch screen it never opens, and the icon keeps its single
+     meaning of a tap that jumps to GitHub. A press-and-hold would contradict the
+     finding recorded above about the repo menu, and an icon whose tap does one
+     clear thing needs no gesture. -->
 <html lang="en" data-theme="winter">
 <head>
 <meta charset="utf-8">
@@ -137,6 +200,42 @@
            ones repos publish. Same set on every viewport, since the nav already
            scrolls; the sidebar keeps its copy, which is what saves a phone from
            scrolling the nav to reach them. -->
+      <!-- ── What the header does NOT carry, and why each thing left ───────────────
+           The HEADER carries the view nav in TWO GROUPS, split by a hairline. First
+           estateNav, the app's own views — Activity (Open / To-do / Jots by pill),
+           Repos, Surfaces, Stage, Tools, Map — as labeled buttons, lit on the active
+           view, on every viewport. Then appNav, the REPO-SPONSORED views
+           (appView:true, e.g. News), each with the icon its repo declared, which is
+           what tells the two groups apart beyond the rule between them. The sponsored
+           group is the same on desktop and mobile; the sidebar keeps its own copy,
+           which is the phone's way to them without scrolling the nav. On a touch
+           device the FIRST group is also a SWIPE CAROUSEL: the active dashboard pane
+           follows the finger through a horizontal drag and slides out to commit one
+           step along estateNav (onSwipeStart/Move/End → _commit), an accelerator for
+           the tabs that stay the visible state. The estate sub-views share one
+           component, so the incoming content slides in on commit rather than
+           previewing live mid-drag; it rubber-bands at the ends, no-ops inside a repo,
+           and yields to any horizontally-scrollable region the gesture starts in.
+           Beside them the #repo component runs HEADLESS: it is the repo/auth
+           controller and hosts the shared dialog, but renders nothing (the old repo-
+           list dropdown and the auth shield are both gone). THE BRAND WENT TOO: its
+           tap was goDashboard (Activity if signed in, else Repos), and both of those
+           are the nav's own first item, so the mark was a second route to a
+           destination sitting a few pixels away. It still leads the sidebar crumb
+           trail, which is where a reader inside a repo goes home from, so the app
+           shows one copy of it rather than two, and the header keeps the width. The
+           mobile drawer toggle is its own hamburger, and it is now the only button in
+           the header outside the nav and the rail. AUTH left the chrome entirely: the
+           token control is the account row on the Repos dashboard (estate.js
+           accountPanel → the dialog's estate scope), which is where an account-level
+           setting belongs, and every token-gated empty state points there. The
+           shield's other job, REFRESH VIEWS, was the Repos view's own Refresh button
+           when the shield went (both called refreshConfigs), so it needed no new home.
+           Both are now the State view's config row, which carries that crawl with its
+           age, its throttle, and what it costs. There is no repo-list dropdown and no
+           quick-links row: REPO SELECTION HAPPENS ON THE REPOS DASHBOARD (tap a card)
+           or from the sidebar Repos index. Repos reach the header through their
+           published VIEWS, not through a list of themselves. -->
       <nav class="flex items-center gap-0.5 min-w-0 overflow-x-auto no-scrollbar">
         <template x-for="v in estateNav" :key="v.view">
           <button @click="v.go()" :title="v.label"
@@ -248,6 +347,16 @@
   <div x-show="drawer" @click="drawer=false" x-transition.opacity
        class="fixed inset-0 bg-black/30 z-40 lg:hidden" x-cloak></div>
 
+  <!-- ── What the sidebar holds, and why the app views sit in two places ───────
+       The SIDEBAR holds only what is contextual: in a repo its views + pins +
+       recents; in the estate a compact Repos index (the estate members, grouped
+       like the grid; its header icon opens the full grid) and the same app views
+       the header's second group carries, both token-gated. The app views sit in
+       both places on purpose: the header is the one-tap route, the sidebar the one
+       that survives a header too narrow to show them. It hides on desktop only
+       when the estate has neither (showSidebar), so a signed-out dashboard runs
+       full-width, and is a drawer on mobile. app.landingKind(repo) is the one
+       landing decision point within a repo. -->
   <aside class="fixed inset-y-0 left-0 w-72 max-w-[85vw] z-50 bg-base-100 border-r border-base-300 shadow-xl flex flex-col transition-transform duration-200 ease-out lg:static lg:z-auto lg:shadow-none lg:translate-x-0 lg:w-80 xl:w-[22rem] lg:shrink-0"
          :class="[drawer ? 'translate-x-0' : '-translate-x-full lg:translate-x-0', !showSidebar && 'lg:hidden']">
     <!-- Sidebar top bar: in a repo, a CRUMB TRAIL (crumbBar, sidebarCrumbs).
@@ -266,6 +375,26 @@
            which says the same thing the word "Views" did and says it in the
            vocabulary the repo trail already established: the mark is where the
            dashboard lives. In a repo the same mark leads the path. -->
+      <!-- ── Why the crumb trail replaced the top bar label, in both contexts ──────
+           THE SIDEBAR CRUMB TRAIL (crumbBar, sidebarCrumbs) replaced the top bar's
+           dead label in BOTH contexts. At the app level it is the MARK ALONE, which
+           says what the word "Views" said and says it in the vocabulary the repo trail
+           already teaches; in a repo it is the mark, the repo, and the ref only when
+           off-default. The mark is the route to the dashboard, and since the header
+           dropped its own copy it is the only one in the chrome; it renders grayscale
+           at rest and in colour on hover, so it reads as a control rather than as
+           branding. Dropping the owner prefix (always this account) is what pays for
+           it, and the full owner/name stays in the tooltip. crumbHome is the one
+           navigation here that LEAVES THE DRAWER OPEN: the others swap the main area,
+           where the drawer is in the way, but this one swaps what the drawer itself
+           lists, so closing it would hide the change. THE DRAWER NO LONGER CLOSES ON
+           NAVIGATION AT ALL (see navActive); the scrim and the X are the only
+           dismissals, so crumbHome needs no special case. The repo crumb's menu is a
+           REPO SWITCHER (pickRepo) and nothing else: which repository is showing, with
+           the current one checked. A trail names where you are, so the only menu it
+           earns is the set of other places that slot could hold; acting on a repo
+           lives in the row menu above. The caret only appears when there is somewhere
+           to switch to. -->
       <nav id="sidebarCrumbs" class="min-w-0 flex-1"
            x-data="crumbBar({ items: () => window.__shell.sidebarCrumbs })"></nav>
       <button @click="drawer=false" class="btn btn-square btn-ghost lg:hidden shrink-0"><i class="ph ph-x text-lg"></i></button>
@@ -296,6 +425,24 @@
       </div>
     </div>
 
+    <!-- ── The finder's query grammar, lane by lane ──────────────────────────────
+         Under the sidebar's crumb bar sits THE FINDER (quickFind,
+         lib/alpineComponents/quick-find.js): one always-ready input whose query
+         shape picks a lane — #123 opens an open PR's branch takeover estate-wide; @
+         is repo-then-file navigation (the mention picker's reading of the trigger:
+         pick a repo, walk or fuzzy-match its cached tree, open the file); a pasted
+         owner/repo[@ref]:path or repo@branch address resolves exactly with no
+         suggestions; +idea jots explicitly; plain text matches repos, the nav, file
+         names from cached trees (a tap-gated row extends the pass estate-wide, the
+         stage's loadAllTrees economy), and PR titles — with a token-gated "Jot this"
+         floor so an unmatched query lands in the pile instead of nowhere. Two deeper
+         passes sit behind their own tap gates: "Search file contents" calls the
+         code-search API (snippets via text-match; default branches only), and
+         "Search sessions" greps the captured records in web-tools-private client-
+         side, hits opening the Sessions pane's paged reader. `/` focuses it; branch
+         and session hits travel the web-tools:open-branch-detail and web-tools:open-
+         session events, consumed in estate.js beside the &detail= deep link they
+         mirror. -->
     <!-- ── The finder: one input, always ready ─────────────────────────────
          Directly under the crumb bar, above the scroll area so its results
          panel (the crumb menu's anchored idiom) overlays the lists rather
@@ -801,6 +948,13 @@
 
       <div x-show="!(landingKind()==='custom' && view==='landing')" class="!max-w-none px-6 py-8">
 
+        <!-- ── The landing seam stays small ──────────────────────────────────────────
+             The seam stays small: each landing kind is a branch in landingKind() plus a
+             matching landing block. `pages` now has two read sites (landingKind()'s
+             gallery branch, and showPagesNav's standalone-entry gate) rather than one,
+             since `landing` and `pages` can both be set on the same repo; both sites
+             render through the one gallery mount shared by the 'landing' and 'pages'
+             views, so there is still exactly one gallery implementation to maintain. -->
         <!-- The pages gallery: web-tools' own (pages.json) or any repo's `pages`
              catalog. Reached as the landing when landingKind()==='gallery', or
              directly via the standalone Pages view regardless of landingKind(). -->
@@ -3119,6 +3273,91 @@ function app(){ return {
   // submenu: a submenu hides half the answer behind a second gesture, and the
   // whole point of a jump-over list is seeing where you can go.
   menuKind: 'actions',
+  // ---- The repo menu: one panel, three lists, and what each row had to earn ----
+  // THE REPO MENU (repo-menu.js, over the shell's menuRepo / menuKind /
+  // repoMenuItems / runRepoMenu) is ONE panel showing one of THREE lists for one
+  // repo. It hangs off a Repos row's trailing buttons as an anchored dropdown,
+  // positioned FIXED from the trigger's rect (openRepoMenu) because the rows sit
+  // in an overflow-y-auto column that would clip a nested panel; it flips above
+  // the trigger near the bottom of the list. That geometry is SHARED, not
+  // copied: anchorMenu/menuStyle also position the Open view's per-branch GitHub
+  // menu (estate.js), so every anchored menu here behaves identically. ACTIONS
+  // (the marker button): Config / its outbox / Copy browse link. Things you do
+  // TO a repo rather than inside one, and a SHORT list, because every row that
+  // left had somewhere better to be. Files and Branches expanded into the repo's
+  // folders and its branch list, and "what is inside" is a browsing question the
+  // sidebar and the Files view already answer once you are in the repo. Open
+  // went because tapping the row itself opens the repo. Switch to the -private
+  // companion went because THE SIDEBAR LISTS THAT COMPANION AS ITS OWN ROW: the
+  // jump was built for a list that shows one of a pair and hides the other,
+  // which is the estate CARDS (they nest the private repo inside its public
+  // parent), not this one. A menu offering a jump to a row three lines down is
+  // answering a question the list has already answered. Nothing expands, so
+  // nothing carries a chevron. GITHUB (the github-logo button beside it,
+  // lib/kits/github-links.js): Repository / Pull requests / Issues / the
+  // declared task board / Branches / Commits / Actions, each with the out-arrow.
+  // This was one row inside the actions list, "Open on GitHub", pointing at the
+  // repo root: the single destination a reader could have guessed, while the
+  // rest of a repo's GitHub surface had no route at all. Splitting it out is
+  // what let it grow, and the split is cheap because the lists share the panel:
+  // hovering from one trigger to another swaps the rows in place, where separate
+  // panels would close one under the pointer. REPO (the Activity view's chip,
+  // estate.js repoChipMenu): both of the above in two sections, each opened by a
+  // HEAD ROW. The sidebar can afford to split its material across two buttons
+  // because the row itself opens the repo and the list shows every sibling; an
+  // Activity row is about a BRANCH, in a view with no sidebar on screen, so its
+  // chip is the reader's only route to the repo and carries the lot. Sections
+  // rather than a submenu: a submenu hides half the answer behind a second
+  // gesture, and seeing where you can go is the whole point of a jump-over list.
+  // A HEAD ROW is the section's label and its default destination at once: the
+  // mark of WHERE (the app's own favicon, then the github-logo) beside the name
+  // of WHAT (the repo, in mono), over the places inside it. It replaced an inert
+  // uppercase label plus the row underneath it, since "Open repo" and
+  // "Repository" were one idea named twice and read as two vocabularies for the
+  // same thing. Now the two sections are the same name under two marks. A rule
+  // sits above each head row but the first, so nothing needs reading to see the
+  // split, and the rows under a head are INDENTED to their head's label, so the
+  // sections read as structure rather than as a flat list with two odd entries
+  // in it. A row contributed by the caller is neither, so it is set in bold and
+  // sits at the left margin: its own thing, above the first rule. The app's mark
+  // is drawn INLINE (item.mark:'app', an outline rendition of lib/favicon.svg
+  // living in repo-menu.js) rather than loaded as that file: an <img> cannot
+  // take currentColor, so it would sit in brand blue beside a column of muted
+  // glyphs and stay blue on hover. Inline with stroke:currentColor it behaves
+  // like the Phosphor glyphs around it. The GitHub keys are prefixed 'gh:' in
+  // the combined list because both halves name a `branches` row and the loop
+  // keys on `key`; a duplicate silently drops the second row. FLAT and COMPACT,
+  // and compact by pointer: 26 px rows at 13 px for a fine pointer, 32 px for a
+  // thumb (.wt-menu-row in <style>, measured by the shell's MENU_ROW), in a 184
+  // px panel. Both heights are under the 44 px floor, which is for a cold target
+  // in chrome rather than a panel already aimed at and opened. The out-arrow
+  // column is dropped from a list where EVERY row leaves the app (repo-menu.js
+  // allExternal): the GitHub menu's seven identical arrows said what the github-
+  // logo that opened it already said, and the width is worth more to the labels.
+  // A mixed list (the branch menu) keeps them, where the arrow marks the odd row
+  // out. OPENS ON HOVER where the pointer can hover ((hover:hover) and
+  // (pointer:fine), hoverRepoMenu), after ~140 ms so crossing a row does not
+  // open it, and closes ~220 ms after the pointer leaves both the trigger and
+  // the panel, which is what lets it cross the 2 px gap between them. A tap
+  // works everywhere and a second tap on the same trigger dismisses. THE DELAY
+  // APPLIES TO A SWAP TOO, and that is not polish: the two triggers are
+  // neighbours and the panel opens past both, so the pointer's route from one
+  // button to the panel runs over the other. Swapping on contact made the github
+  // menu unreachable from the github button, the marker's menu replacing it
+  // every time. A crossing takes tens of milliseconds and a decision takes
+  // longer, so one threshold separates them. This replaced a three-icon cluster
+  // on every row (marker + gear + github logo). Those icons were ~16 px against
+  // a 44 px floor and each bought one tap; the two that came back each open a
+  // list rather than a single destination. They are 28 px wide and CHROME-FREE
+  // on a fine pointer (.wt-row-btn): a hover background on each made a pair of
+  // glyphs read as two separate tiles, where the row's own tint is already the
+  // feedback and the glyph going primary is already the state. A thumb still
+  // gets 40 px. The marker is the old inert span promoted, so the row keeps its
+  // public/private state while carrying its menu. Two presentations were tried
+  // here and taken back out, a press-and-hold and a bottom sheet: a visible
+  // control answering a single tap does the work without a gesture to discover,
+  // and nothing about a short list justifies the far edge of the screen. The
+  // estate CARDS still carry the old cluster, where there is room for it.
   get repoMenuItems(){
     if (this.menuKind === 'github') return this.githubMenuItems;
     if (this.menuKind !== 'repo') return [...this.menuExtra, ...this.repoActionItems];
@@ -4366,559 +4605,5 @@ function overview(){ return {
   }
 }}
 </script>
-
-<!-- ── Design notes: the estate, the landing mechanism, the views, the stage ───
-  The page has TWO CONTEXT LEVELS. The ESTATE is the global, all-repo context;
-  a REPO is a per-repo context, with its own VIEWS (landing, project, atlas,
-  files, branches, config) plus pinned/recent shortcuts. A PROJECT is the third
-  unit and the newest: a workspace inside a repo, declared in `projects`, with a
-  view that is the landing one level down: a constant header (its name, and the
-  routes to its files, its board, and its folder on GitHub) over a pill row of
-  Overview / Board / Pages / Docs. Overview repeats the repo's landing decision
-  at project scale (an entry's `landing` page rendered live, else the README);
-  Board renders a file board in-pane with its relative links resolved into the
-  shell's viewer (a folder board keeps the header button instead); Pages is the
-  workspace's slice of the repo catalog, derived by path prefix or an entry's
-  `project` claim; Docs is every markdown file in the workspace off one
-  recursive tree, with a curated DOCS.md leading when one exists. It is the
-  same destination from either level, since the estate sidebar's nested rows
-  and the repo sidebar's Projects section both open it, and &tab= deep-links a
-  specific pill. Config is the open repo's
-  .web-tools.json as a roomy view (a Settings form + a raw JSON tab, saving
-  through the config-saved event), the counterpart to the shared repo dialog,
-  which stays for the token and for configuring a repo you are not in.
-
-  The HEADER carries the view nav in TWO GROUPS, split by a hairline. First
-  estateNav, the app's own views — Activity (Open / To-do / Jots by pill), Repos,
-  Surfaces, Stage, Tools, Map — as labeled buttons, lit on the active view, on
-  every viewport. Then appNav, the REPO-SPONSORED views (appView:true, e.g.
-  News), each with the icon its repo declared, which is what tells the two groups
-  apart beyond the rule between them. The sponsored group is the same on desktop
-  and mobile; the sidebar keeps its own copy, which is the phone's way to them
-  without scrolling the nav. On a touch device the FIRST group is also a SWIPE CAROUSEL: the
-  active dashboard pane follows the finger through a horizontal drag and slides
-  out to commit one step along estateNav (onSwipeStart/Move/End → _commit), an
-  accelerator for the tabs that stay the visible state. The estate sub-views
-  share one component, so the incoming content slides in on commit rather than
-  previewing live mid-drag; it rubber-bands at the ends, no-ops inside a repo, and
-  yields to any horizontally-scrollable region the gesture starts in.
-  Beside them the #repo component runs HEADLESS: it is the repo/auth controller
-  and hosts the shared dialog, but renders nothing (the old repo-list dropdown and
-  the auth shield are both gone). THE BRAND WENT TOO: its tap was goDashboard
-  (Activity if signed in, else Repos), and both of those are the nav's own first
-  item, so the mark was a second route to a destination sitting a few pixels
-  away. It still leads the sidebar crumb trail, which is where a reader inside a
-  repo goes home from, so the app shows one copy of it rather than two, and the
-  header keeps the width. The mobile drawer toggle is its own hamburger, and it
-  is now the only button in the header outside the nav and the rail.
-  AUTH left the chrome entirely: the
-  token control is the account row on the Repos dashboard (estate.js
-  accountPanel → the dialog's estate scope), which is where an account-level
-  setting belongs, and every token-gated empty state points there. The shield's
-  other job, REFRESH VIEWS, was the Repos view's own Refresh button when the
-  shield went (both called refreshConfigs), so it needed no new home. Both are
-  now the State view's config row, which carries that crawl with its age, its
-  throttle, and what it costs.
-  There is no repo-list dropdown and no quick-links row: REPO SELECTION HAPPENS
-  ON THE REPOS DASHBOARD (tap a card) or from the sidebar Repos index. Repos
-  reach the header through their published VIEWS, not through a list of
-  themselves. Under the sidebar's crumb bar sits THE FINDER (quickFind,
-  lib/alpineComponents/quick-find.js): one always-ready input whose query
-  shape picks a lane — #123 opens an open PR's branch takeover estate-wide;
-  @ is repo-then-file navigation (the mention picker's reading of the
-  trigger: pick a repo, walk or fuzzy-match its cached tree, open the file);
-  a pasted owner/repo[@ref]:path or repo@branch address resolves exactly
-  with no suggestions; +idea jots explicitly; plain text matches repos, the
-  nav, file names from cached trees (a tap-gated row extends the pass
-  estate-wide, the stage's loadAllTrees economy), and PR titles — with a
-  token-gated "Jot this" floor so an unmatched query lands in the pile
-  instead of nowhere. Two deeper passes sit behind their own tap gates:
-  "Search file contents" calls the code-search API (snippets via
-  text-match; default branches only), and "Search sessions" greps the
-  captured records in web-tools-private client-side, hits opening the
-  Sessions pane's paged reader. `/` focuses it; branch and session hits
-  travel the web-tools:open-branch-detail and web-tools:open-session
-  events, consumed in estate.js beside the &detail= deep link they
-  mirror. The SIDEBAR holds
-  only what is contextual: in a repo its views + pins + recents; in the estate a
-  compact Repos index (the estate members, grouped like the grid; its header icon
-  opens the full grid) and the same app views the header's second group carries,
-  both token-gated. The app views sit in both places on purpose: the header is
-  the one-tap route, the sidebar the one that survives a header too narrow to
-  show them. It hides on desktop only when the estate has neither
-  (showSidebar), so a signed-out dashboard runs full-width, and is a drawer on
-  mobile.
-  app.landingKind(repo) is the one landing decision point within a repo.
-
-  THE ESTATE: the all-repo context (lib/alpineComponents/estate.js), and the
-  page's front door — a bare open (no ?repo/?file/?view, no #stage=) lands here,
-  as does the sidebar trail's mark. It is a context above any repo,
-  with three views of its own — Repos, Surfaces, and Open — shown in the
-  sidebar the same way a repo shows landing/atlas/files/… One estate component
-  renders all three and switches on the shell view, sharing the one lazy mount.
-    Repos (?view=estate): a card per repo that opts in with estate:true in its
-      OWN .web-tools.json. Membership and every descriptive field (group, note,
-      icon, order) live on the repo; the registry holds no per-repo
-      config. The estate discovers members by enumerating the account's repos
-      (gh.repos()) and reading their configs, served through the registry's
-      config cache (state/configs.json) with a live-scan fallback when the cache
-      has no members yet. Cards enrich with live GitHub metadata and lay out
-      full-width as a three-wide grid grouped by group (like the pages index);
-      group order and within-group order come from each repo's own `order`, and
-      an owner/foo-private companion folds into owner/foo's card by naming
-      convention (no field). ?view=estate is only stamped when a repo/ref param
-      is also present; the bare URL IS the Repos estate.
-    Surfaces (?view=surfaces): the registry's surfaces/*.surface files (the
-      surfacer's format; archive category excluded), tabbed, each editable in
-      place through a JSON dialog the same shape as the repo config editor
-      (gear on the surface header; "New" seeds a fresh one). ?view=surfaces is
-      always stamped, so a Surfaces link is shareable without a repo param.
-    Activity: one header-nav stop bundling the three live sub-views below
-      (Open / To-do / Jots), switched by a segmented pill inside the estate
-      pane; each keeps its own ?view key, so their deep links are unchanged.
-    To-do (?view=todo): a general personal checklist, one flat item list
-      ({id, text, done, created_at}) in the registry's lists/todo.json. Not a
-      surface (no kind/curation, just text + done), so it keeps its own tiny
-      file and tab rather than folding into the surfaces schema. Checking an
-      item off keeps it (moved to a collapsed "done" pile), it isn't deleted;
-      the trash icon is the only way an item goes away. ?view=todo is always
-      stamped, so a To-do link is shareable without a repo param.
-    Jots (?view=jots): quick-captured ideas, one flat item list
-      ({id, text, created_at}) in the registry's lists/jots.json. The capture
-      sibling of To-do: same file mechanics, no done state. The pile renders
-      newest first with each jot's age; a jot leaves by deletion, normally
-      after being promoted somewhere real (a chron entry, a tracker task, a
-      to-do). The add commit carries the jot's text, so the file's history is
-      itself a capture log, and the registry is in agent-session scope, so an
-      agent can drain the pile. ?view=jots is always stamped, so a Jots link
-      is shareable without a repo param.
-    Pins (no ?view key of its own; it renders atop the Lists pane the two
-      views above share): internal links kept at hand, one flat item list
-      ({id, target, title, note, group, created_at}) in the registry's
-      lists/pins.json, target in the owner/repo[@ref]:path grammar. The
-      estate-wide personal sibling of the per-repo `pins` manifest field
-      (the sidebar's Pinned block): same keep-at-hand meaning, same open
-      rule (extension = file, else the Files view at that folder). Unpinning
-      removes only the pointer; the target stays where it lives.
-    Map (?view=map&tab=set|surfacing|showing|docs|claims|tests; ?view=portable
-      still resolves here, and the default tab stays out of the URL): the coordination layer
-      made inspectable, and the operational face of the constellation doctrine
-      (home's created/2026-06-27-constellation-architecture.md, kernel at the
-      hub's docs/CONSTELLATION.md, linked from the Portable header). Six tabs,
-      all public, each a projection of one committed hub manifest: Portable
-      (docs/portable.json; labelled The set until 2026-08-07, and the ?tab=set
-      URL key is unchanged), Surfacing (docs/surfacing.json), Showing
-      (docs/routes.json), Docs (docs/docs.json, a folder rail beside the
-      selected folder's files), Owners (docs/owners.json; ?tab=claims is
-      unchanged, the way ?tab=set outlived "The set"), and Tests
-      (docs/tests.json). Per-repo scope and
-      adoption moved onto the Repos cards on 2026-08-03; the alignment grading
-      (lib/kits/portable-align.js) rides there now.
-    Tools (?view=tools): a curated gallery of the owner's utility pages (the
-      text-diff tool and the like), fed from the hub's hand-curated
-      docs/tools.json (lib/alpineComponents/tools.js). Reuses the pages-catalog
-      card (thumbnail/live toggle, open link, source link). Public: the hub is
-      public, so thumbnails (jsDelivr), the hosted render URL, and the blob
-      source all resolve with no token. A cross-repo or off-default entry
-      renders through toss-render #gh= the same way the pages catalog does.
-    Branches (?view=activity): EVERY branch of the estate in one cross-repo
-      list, read off the registry's activity cache (state/activity.json,
-      lib/kits/repo-activity-cache.js) in one GET, freshest first, highlighted by PR
-      state (ready / draft / no-PR) and carrying a caption-style link cluster
-      (browse here, the branch's GitHub menu, the guide PR, the authoring Claude
-      Code session lifted from the PR body) plus the survey's content verdict
-      (of the paths this branch uniquely touched, how many are on the default
-      branch now). Each row opens with its repo as a CHIP, the repo's own
-      declared icon plus its short name, which opens that repo's whole grouped
-      menu. The key stays 'activity' so old links resolve, and the pane was
-      called Open until the scope chips arrived.
-      TWO AXES narrow it. SCOPE (branchScope over BRANCH_SCOPES) picks which of
-      the survey's groups to show: Open (an open PR, or stranded: work in
-      flight, which is NOT the same as recent, since a branch merged by a merge
-      commit is an ancestor of the default and stages to nothing while its date
-      still reads fresh), Recent ('active'), Stranded, Landed, All. Each chip
-      counts off the FULL list, so the row doubles as the estate's branch
-      census. REPO chips then narrow to one repo, and the row's own chip menu
-      contributes "Show only this repo", the same filter reached from the row
-      you are reading. Landed is the addition that matters: the crawl always
-      stored it, one hard filter here hid it, and the per-repo branch review was
-      the only place a landed branch appeared, one repo at a time. The Repos
-      view borrows the same cache for a freshness rollup on each card. The
-      cache is refreshActivityCache's output: a ~12h-throttled crawl that runs
-      the capped branch survey (shared with the branches view via
-      lib/kits/branch-survey.js surveyBranchLive/surveyOlder) once and stores it, so
-      neither this view nor the branch review fans out per visit. The branch
-      review renders cache-first, live only on Refresh. See docs/show-repo.md
-      "The estate" and web-tools-private/DESIGN.md.
-      REFRESH REPORTS ITSELF, in the two places a tens-of-seconds crawl needs it:
-      while it runs the as-of readout becomes the repo count (activityProgress,
-      written by refreshActivityCache, read by the estate's activityProgress*
-      getters) over a determinate bar, and when it lands reportActivityRefresh
-      toasts what changed. Repos finished over repos total is the whole measure;
-      the per-repo work is deliberately not counted, since it ticks several times
-      a second and would read as the churn this replaced. The toast is the only
-      thing that distinguishes a productive refresh from a no-op one, because the
-      crawl commits only on a material change.
-    App views (?view=app&appRepo&appPath): pages any repo promotes to their own
-      estate-level entry with appView:true on a `pages` catalog entry, collected
-      across every repo's config through the config cache (loadEstateSidebar,
-      which the sidebar Repos index shares: estate membership one level up,
-      the target a rendered page rather than a repo).
-      Each is a peer of Repos/Surfaces/Stage rather than an estate-grid card,
-      and appears twice: in the header's second nav group (appNav, behind the
-      hairline) and in the sidebar,
-      rendered live in the main area via toss-render #gh=. The link stands alone
-      (like Surfaces), stamping the promoted page's repo and path independent of
-      the open repo.
-  The estate SIDEBAR also carries a Repos index: the estate members (estate:true),
-    grouped/ordered like the grid. The row name opens that repo's landing
-    (openPinned); everything else about that repo is behind the row's two
-    trailing buttons, the REPO MENU's two lists (below).
-    The section's header icon opens the full Repos grid. Same cache read as the
-    app views (loadEstateSidebar), token-gated; privacy for the row's marker is
-    filled by enrichSidebarPrivacy (the cache has none).
-  No token: the public default card only, and no surfaces, activity, app views, or
-    sidebar Repos index.
-
-  THE REPO MENU (repo-menu.js, over the shell's menuRepo / menuKind /
-  repoMenuItems / runRepoMenu) is ONE panel showing one of THREE lists for one
-  repo. It hangs off a Repos row's trailing buttons as an anchored dropdown,
-  positioned FIXED from the trigger's rect (openRepoMenu) because the rows sit
-  in an overflow-y-auto column that would clip a nested panel; it flips above
-  the trigger near the bottom of the list. That geometry is SHARED, not copied:
-  anchorMenu/menuStyle also position the Open view's per-branch GitHub menu
-  (estate.js), so every anchored menu here behaves identically.
-    ACTIONS (the marker button): Config / its outbox / Copy browse link. Things
-    you do TO a repo rather than inside one, and a SHORT list, because every row
-    that left had somewhere better to be. Files and Branches expanded into the
-    repo's folders and its branch list, and "what is inside" is a browsing
-    question the sidebar and the Files view already answer once you are in the
-    repo. Open went because tapping the row itself opens the repo. Switch to the
-    -private companion went because THE SIDEBAR LISTS THAT COMPANION AS ITS OWN
-    ROW: the jump was built for a list that shows one of a pair and hides the
-    other, which is the estate CARDS (they nest the private repo inside its
-    public parent), not this one. A menu offering a jump to a row three lines
-    down is answering a question the list has already answered. Nothing expands,
-    so nothing carries a chevron.
-    GITHUB (the github-logo button beside it, lib/kits/github-links.js): Repository /
-    Pull requests / Issues / the declared task board / Branches / Commits /
-    Actions, each with the out-arrow. This was one row inside the actions list,
-    "Open on GitHub", pointing at the repo root: the single destination a reader
-    could have guessed, while the rest of a repo's GitHub surface had no route
-    at all. Splitting it out is what let it grow, and the split is cheap because
-    the lists share the panel: hovering from one trigger to another swaps the
-    rows in place, where separate panels would close one under the pointer.
-    REPO (the Activity view's chip, estate.js repoChipMenu): both of the above
-    in two sections, each opened by a HEAD ROW. The sidebar can afford to split
-    its material across two buttons because the row itself opens the repo and
-    the list shows every sibling; an Activity row is about a BRANCH, in a view
-    with no sidebar on screen, so its chip is the reader's only route to the
-    repo and carries the lot. Sections rather than a submenu: a submenu hides
-    half the answer behind a second gesture, and seeing where you can go is the
-    whole point of a jump-over list.
-      A HEAD ROW is the section's label and its default destination at once: the
-      mark of WHERE (the app's own favicon, then the github-logo) beside the
-      name of WHAT (the repo, in mono), over the places inside it. It replaced
-      an inert uppercase label plus the row underneath it, since "Open repo" and
-      "Repository" were one idea named twice and read as two vocabularies for
-      the same thing. Now the two sections are the same name under two marks. A
-      rule sits above each head row but the first, so nothing needs reading to
-      see the split, and the rows under a head are INDENTED to their head's
-      label, so the sections read as structure rather than as a flat list with
-      two odd entries in it. A row contributed by the caller is neither, so it
-      is set in bold and sits at the left margin: its own thing, above the first
-      rule.
-      The app's mark is drawn INLINE (item.mark:'app', an outline rendition of
-      lib/favicon.svg living in repo-menu.js) rather than loaded as that file:
-      an <img> cannot take currentColor, so it would sit in brand blue beside a
-      column of muted glyphs and stay blue on hover. Inline with
-      stroke:currentColor it behaves like the Phosphor glyphs around it.
-      The GitHub keys are prefixed 'gh:' in the combined list because both
-      halves name a `branches` row and the loop keys on `key`; a duplicate
-      silently drops the second row.
-    FLAT and COMPACT, and compact by pointer: 26 px rows at 13 px for a fine
-    pointer, 32 px for a thumb (.wt-menu-row in <style>, measured by the shell's
-    MENU_ROW), in a 184 px panel. Both heights are under the 44 px floor, which
-    is for a cold target in chrome rather than a panel already aimed at and
-    opened. The out-arrow column is dropped from a list where EVERY row leaves
-    the app (repo-menu.js allExternal): the GitHub menu's seven identical arrows
-    said what the github-logo that opened it already said, and the width is
-    worth more to the labels. A mixed list (the branch menu) keeps them, where
-    the arrow marks the odd row out.
-    OPENS ON HOVER where the pointer can hover ((hover:hover) and
-    (pointer:fine), hoverRepoMenu), after ~140 ms so crossing a row does not
-    open it, and closes ~220 ms after the pointer leaves both the trigger and
-    the panel, which is what lets it cross the 2 px gap between them. A tap
-    works everywhere and a second tap on the same trigger dismisses.
-    THE DELAY APPLIES TO A SWAP TOO, and that is not polish: the two triggers
-    are neighbours and the panel opens past both, so the pointer's route from
-    one button to the panel runs over the other. Swapping on contact made the
-    github menu unreachable from the github button, the marker's menu replacing
-    it every time. A crossing takes tens of milliseconds and a decision takes
-    longer, so one threshold separates them.
-    This replaced a three-icon cluster on every row (marker + gear + github
-    logo). Those icons were ~16 px against a 44 px floor and each bought one
-    tap; the two that came back each open a list rather than a single
-    destination. They are 28 px wide and CHROME-FREE on a fine pointer
-    (.wt-row-btn): a hover background on each made a pair of glyphs read as two
-    separate tiles, where the row's own tint is already the feedback and the
-    glyph going primary is already the state. A thumb still gets 40 px. The
-    marker is the old inert span promoted, so the row keeps its public/private
-    state while carrying its menu. Two presentations were tried here and taken back out, a press-and-hold
-    and a bottom sheet: a visible control answering a single tap does the work
-    without a gesture to discover, and nothing about a short list justifies the
-    far edge of the screen. The estate CARDS still carry the old cluster, where
-    there is room for it.
-
-  THE SIDEBAR CRUMB TRAIL (crumbBar, sidebarCrumbs) replaced the top bar's dead
-  label in BOTH contexts. At the app level it is the MARK ALONE, which says what
-  the word "Views" said and says it in the vocabulary the repo trail already
-  teaches; in a repo it is the mark, the repo, and the ref only when
-  off-default. The mark
-  is the route to the dashboard, and since the header dropped its own copy it is
-  the only one in the chrome; it renders grayscale at rest and in colour on
-  hover, so it reads as a control rather than as branding. Dropping the owner
-  prefix (always this account) is what pays for it, and the full owner/name
-  stays in the tooltip. crumbHome is the one navigation here that LEAVES THE
-  DRAWER OPEN: the others swap the main area, where the drawer is in the way,
-  but this one swaps what the drawer itself lists, so closing it would hide the
-  change. THE DRAWER NO LONGER CLOSES ON NAVIGATION AT ALL (see navActive); the
-  scrim and the X are the only dismissals, so crumbHome needs no special case.
-    The repo crumb's menu is a REPO SWITCHER (pickRepo) and nothing else: which
-    repository is showing, with the current one checked. A trail names where you
-    are, so the only menu it earns is the set of other places that slot could
-    hold; acting on a repo lives in the row menu above. The caret only appears
-    when there is somewhere to switch to.
-
-  GITHUB JUMP-OVERS: show-repo is a wrapper over GitHub, not a wall — every
-  view keeps a one-tap route to the GitHub presentation of what it is showing.
-  A jump-over for a FILE or a FOLDER is one link: the explorer's breadcrumb
-  links the current folder (ghFolderUrl), the viewer's actions link the open
-  file's blob, the sidebar's recent entries link theirs (fileGhUrl), each
-  staged item and finder row links its own repo@ref (stage.js itemGh), each
-  compare row links its blob at head, and every estate card and surface item
-  carries its github-logo link. A jump-over for a REPO or a BRANCH is a small
-  set, which is what earns a menu: the repo's is lib/kits/github-links.js, off the
-  sidebar row's github button and the Activity view's repo chip, and the
-  branch's is estate.js's branchMenuItems, off each Open row (tree, compare,
-  commits, the PR's files and checks, new PR). When adding a view, add its
-  jump-over, and prefer the shared list to a fresh one.
-    ONE GLYPH, FOUR MEANINGS, and the reader could not tell them apart. The
-    github-logo marks a repo MENU (a set of destinations), a repo or branch
-    DESTINATION, the MANIFEST behind a whole view, and an EXACT FILE. The
-    ambiguity is not theoretical: the Map's Transport (now Showing) header set a bare icon
-    immediately after the code span naming pages/toss-render.html while pointing
-    at docs/routes.json, so the icon read as belonging to the filename beside it.
-    Two rules separate them now. A manifest link is LABELLED — "Curate", as the
-    Tools view already did — and pushed to the header's far edge, away from any
-    filename; what the header names on the left carries its own jump. And an
-    exact-file link carries a SOURCE PEEK.
-    THE PEEK (lib/kits/source-peek.js) is a hover card showing the file: markdown
-    rendered, JSON pretty-printed with its top-level shape named, everything
-    else as source, always the first 20 lines with a footer saying what was left
-    behind. One attribute at the call site (:data-peek="owner/repo[@ref]:path"),
-    one delegated listener on document, so a row Alpine renders later needs no
-    wiring. gh-boot.js loads it, alongside the FAB and for the same reason, so
-    this page's boot block does not: it belongs wherever a peek-bearing icon is
-    rendered, and a page's own boot list is the wrong owner of that. It first
-    hung off the boot block below and failed the one test that matters, since a
-    page shell is served from main even under ?use=, so a preview of the branch
-    ran the new components with no SourcePeek behind them and every :data-peek
-    bound to null. It is what makes the fourth meaning self-evident: an icon that can
-    show you the file is pointing at a file, and one that cannot is pointing at
-    something broader. So repo, branch and menu icons deliberately have none,
-    and neither does a folder.
-    WHERE IT IS DELIBERATELY ABSENT, beyond the broad destinations: the viewer's
-    GitHub action and the config view's, since both sit above the file's full
-    contents already on screen. A peek that repeats what the page is showing is
-    noise.
-    POINTER AND KEYBOARD, NOT TOUCH: the card opens on hover where the pointer
-    can hover and on focus for a keyboard reader; on a touch screen it never
-    opens, and the icon keeps its single meaning of a tap that jumps to GitHub.
-    A press-and-hold would contradict the finding recorded above about the repo
-    menu, and an icon whose tap does one clear thing needs no gesture.
-
-  Today: web-tools -> 'gallery' (its pages index); any repo declaring a `pages`
-  catalog -> 'gallery' too (fed from that catalog, tiles live via toss-render);
-  a repo whose manifest names a single landing -> 'custom' (see below); every
-  other repo -> 'overview' (a synthesized default: stats + README + a jump to
-  the atlas). The atlas is a standing repo view, available for every repo
-  regardless of its landing: the "ready mechanism" for it.
-
-  THE MANIFEST: .web-tools.json at the repo root is the repo's web-tools config,
-  and how a repo designates what this shell should consider. Probed once per
-  repo@ref (404 = no config), parsed as data, never executed. Reads
-  .web-tools.json, falling back to the legacy .show-repo.json name. The open
-  repo's Config view edits it; for any other repo the shared dialog (repoModal,
-  lib/alpineComponents/repo.js) has a Config tab beside Info/Settings: a JSON
-  editor that writes the manifest via the viewer's token. It always saves the new name, so editing a repo still on
-  .show-repo.json migrates it in place (no delete; the stale legacy file is
-  inert since readers prefer the new name). Current fields:
-
-    icon     Phosphor class (e.g. "ph-scales") for the repo's estate card and
-             its header quick-link button. The repo owns it.
-    estate   true to appear on the all-repo estate. Membership is a repo
-             property: the estate enumerates account repos and includes those
-             whose config sets this. There is no registry membership list.
-    group    the estate section this card sits in (e.g. "core", "data").
-    note     the card's one-line description (overrides the GitHub description).
-    order    arrangement weight: group order (a group sorts by its lowest
-             member's order) and within-group order both derive from it.
-    landing  path to the repo's own landing page (e.g. "pages/landing.html"),
-             rendered live via toss-render #gh= — token-authed, so private
-             repos and branches work; gated by toss-render's OWNERS allowlist.
-             "The repo builds its own page." (A repo with a `pages` catalog gets
-             the gallery landing instead; `landing` is the single-page form.)
-    pages    a hand-declared page catalog, a flat list of
-             { path, title, note } (optional icon, thumb, and the app-view
-             flags below). A `path` is a bare repo-relative path or a qualified
-             cross-repo ref ("owner/repo[@ref]:path", the stage.files grammar),
-             so a repo can promote a page whose file lives elsewhere (home
-             promotes the news view; its renderer stays in web-tools). A repo
-             declaring `pages` gets the gallery landing (the
-             same card/toggle/search view web-tools gets from its generated
-             pages.json), with each tile rendered live via toss-render #gh=
-             (no committed thumbs for a private repo). An entry also flagged
-             `appView: true` (with `viewLabel` and `icon`) is promoted to its
-             own estate-level view beside Repos/Surfaces/Stage, collected across
-             every repo's config through the config cache: estate membership
-             one level up, the target a rendered page not a repo.
-             Token-gated: no token, no app views (like Surfaces).
-    pins     folders/files surfaced in the sidebar Pinned block; a last
-             segment with an extension opens as a file, else opens the Files
-             view at that folder.
-    projects the repo's workspaces. Bare folder paths or { path, label,
-             tracker, landing } objects. TWO LISTS, ONE DESTINATION: nested
-             under the repo's row in the estate sidebar, and the Projects
-             section of that repo's own sidebar; the name in either opens the
-             repo's PROJECT VIEW (view==='project'), which is the landing one
-             level down: a constant header (files / board / GitHub folder)
-             over Overview / Board / Pages / Docs pills (&tab= deep-links
-             one; Board renders a file board in-pane, navigable). An
-             entry's `landing` (repo-root-relative, like `tracker`) takes the
-             Overview slot rendered live, the way a repo landing outranks the
-             overview; absent, Overview is the workspace README. Pages and
-             Docs are derived, not declared: Pages is the repo `pages` catalog
-             filtered to entries under the workspace folder (or claiming it
-             with a `project` key), Docs is every markdown file off one
-             recursive tree. The defining convention: a workspace running a
-             tracker is a project (the repo root's tracker marks the repo
-             itself, no row), so the field is generatable from a tracker walk
-             and discovery costs the shell nothing beyond the config cache it
-             already reads. That same convention fixes the board at
-             <workspace>/tracker/board.md, so the button needs no declaration;
-             `tracker` on an entry names a different one and `tracker: false`
-             drops the button. An `icon` is accepted and ignored (the rows
-             stopped drawing one). The estate list reads the config cache; the
-             OPEN repo reads its own live manifest, so inside a repo the list
-             follows the browsed ref.
-    tracker  where the repo keeps its task board ("tracker/board.md", or a
-             folder). One row in the repo's GITHUB MENU, since it is the one
-             destination in that menu GitHub cannot name for itself: every
-             other row is a fixed GitHub route, and where a repo tracks work is
-             a repo property. A path with an extension links the blob, a bare
-             path links the tree. Declaring none simply drops the row.
-    stage    { files: [...], targets: ["owner/repo:dir", ...] } — a durable
-             staged-files list and the default destinations the Stage view's
-             transfer UI offers. Entries in files are bare paths (this repo at
-             its default branch) or qualified refs ("owner/repo[@ref]:path").
-             Copying goes through gh-transfer.js (lib/): per-file Contents-API
-             commits, base64 pass-through, viewer's token, two-tap confirm.
-
-  ONE MEMBERSHIP LIST: a repo is in the estate when its own .web-tools.json
-  says `estate: true`, and that answer serves every consumer: the Repos grid,
-  the sidebar index (estateRepos), the activity crawl, the stage's repo
-  pickers, and the Map's adoption roster. Two rival lists were retired in
-  favor of it. `quickLink: true` fed a header row the nav redesign deleted,
-  and by then it named seven of the eight members, distinguishing nothing. The
-  registry manifest's `repos` array fed the Map, and it had drifted a member
-  short. Both were central lists standing in for a property each repo can
-  state itself, which is what made them drift. A future prominence subset
-  belongs in `order` on the membership, not in a second flag.
-
-  THE CONFIG CACHE: state/configs.json in the registry is a periodic crawl of
-  every account repo's .web-tools.json (refreshConfigCache, throttled ~6h,
-  forced after a config save), keeping bounded per-repo history
-  (lib/kits/repo-config-cache.js). It is the read path for estate membership and the
-  quick-link row, so a normal load is two GETs (the cache + the account list),
-  not an N-repo scan. Each repo's own file stays the source of truth; the cache
-  is derived. Cold cache falls back to a live per-repo scan, then rebuilds.
-
-  THE BRANCH OVERLAY (?overlay=<branch>): preview the estate as if that branch
-  were merged wherever it exists. Rides the fact that a session names ONE
-  branch across every repo it touches, so a same-named branch is a session's
-  signature. Per overlaid repo: manifest read live at the branch and spliced
-  over the cache entry (the cache is main-derived, so this is the only honest
-  source), and the repo opens AT the branch. Repos without the branch read
-  main. The Repos header chip + per-row glyph make the posture visible. The
-  cache crawls RUN under overlay: their clients are pinned at main, so a
-  Refresh in a preview reads and commits exactly what a normal session would
-  (held by test; this shipped guarded at first and the guard defended
-  nothing). The hazardous-write class is the one the overlay touches, and its
-  known member is the config editor, whose contents-API save lands on the
-  default branch while the editor would be reading the branch; entering it
-  under overlay warns. Because the toss params shim delivers a subject's
-  ?query, the whole thing works through main's deployed toss before any of it
-  merges. Full write-up: docs/show-repo.md, "The branch overlay".
-
-  THE STAGE: a cross-repo fileset (store.stage, [{repo, ref, path}]) fed by the
-  explorer's "+" buttons, a manifest's stage.files, or a #stage= link, and
-  presented as the WORKING SURFACE (stager, lib/alpineComponents/stage.js).
-  A staged fileset IS a surface (docs/envelopes/surface.md, the stage/1
-  profile), so the Stage view is one scroll holding both: THE BENCH, a fixed
-  card at the top that is always the working set and always open, and below it
-  the shelf of saved surfaces, each displayed and each offering Load onto the
-  stage. The bench does not move and no card becomes it: Load reads a saved
-  surface's items onto the one bench and remembers the origin, so saving writes
-  back to that file; saving an unattached set appends a new one. ?view=stage is
-  canonical, ?view=surfaces the alias. lib/kits/surface.js is the model every reader
-  shares, though only at the seams: see its header for what is not yet true.
-  The link is the transport — refs only, content stays behind the viewer's
-  token:
-
-    #stage=owner/repo[@ref]:path1,path2;owner2/repo2:path3
-
-  opens this page with those refs staged for action (view, copy out or download
-  the concatenated bundle, send to a repo); "Copy link" mints one from the
-  current stage. This folds toss-render's link-as-transport insight into
-  show-repo on the transfer side: a link can deliver a fileset for moving, not
-  only a page for rendering. Compare (ref-diff) also lives in this view: a diff
-  belongs with the fileset, not under the file viewer. A content-carrying
-  bundle form (#gz= style, for token-less contexts like the Claude app's
-  in-app browser) is a contemplated follow-up, not built.
-
-  THE BRANCH REVIEW: a per-repo view (lib/alpineComponents/branches.js) that
-  rolls every branch up into recently-active / likely-landed / likely-stranded
-  on the content-level signal from lib/kits/branch-survey.js — the browser port of
-  home's tools/branch-survey.sh, whose math is unit-tested and held in
-  agreement with the CLI by scripts/check-branch-survey.mjs. Advisory and
-  read-only: rows jump to GitHub's tree/compare (and the in-shell compare),
-  the header to GitHub's branches UI, where the delete action itself lives.
-  Deep link: ?view=branches.
-
-  RENDERING stays toss-render's job: the viewer's "Toss render" action hands an
-  HTML file to toss-render #gh= at the file's own repo@ref, and custom landings
-  embed toss-render the same way. show-repo shows and moves files; toss-render
-  runs pages.
-
-  A private repo's landing presence was once planned as federation: read a
-  landing.json in mehrlander/home and fold each featured repo's landing into
-  web-tools' own gallery, through a single HOME_REPO constant as the one
-  public-private hinge. It shipped in the per-repo form instead, and the
-  distinction is worth keeping straight, since the federated form keeps
-  getting re-proposed. Membership is a property of each repo's own
-  .web-tools.json (estate, plus pages and appView for what it publishes),
-  aggregated by the config cache; the one private string this page names is
-  REGISTRY_REPO, and
-  no curated list of featured repos exists to maintain. The no-token posture
-  is the same either way: no cache read, so nothing private is named.
-
-  The seam stays small: each landing kind is a branch in landingKind() plus a
-  matching landing block. `pages` now has two read sites (landingKind()'s
-  gallery branch, and showPagesNav's standalone-entry gate) rather than one,
-  since `landing` and `pages` can both be set on the same repo; both sites
-  render through the one gallery mount shared by the 'landing' and 'pages'
-  views, so there is still exactly one gallery implementation to maintain.
-─────────────────────────────────────────────────────────────────────────── -->
 </body>
 </html>
