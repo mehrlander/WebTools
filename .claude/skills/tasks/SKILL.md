@@ -12,8 +12,9 @@ description: >-
   "add a task", "file a task", "make a tracker task", "claim a task", "check
   the tracker", "what's on the board", "regenerate the board", "close task X",
   "assess the tracker", "refine the tracker", "groom the tracker", "clean up
-  the backlog", "audit the tasks", or "prune stale tasks", or when a follow-up
-  needs to survive across sessions. Owns the tracker's operations and filing
+  the backlog", "audit the tasks", "prune stale tasks", "check what's parked
+  for you", "what's in my queue", or "anything left for this machine", or when
+  a follow-up needs to survive across sessions. Owns the tracker's operations and filing
   rules; the web-tools skill owns PR bodies, surfacing links, and the merge
   guide, so route those there.
 ---
@@ -158,7 +159,13 @@ open tag: preserved, shown, not acted on. Full schema in `TRACKER.md`.
 
 A task whose method is already settled carries `action: <skill-name>` and is
 written thin: no argument, no history, because the reasoning lives in the skill.
-Add `runner: <machine>` when the session has to happen somewhere particular.
+Add `venue: <name>` when the session has to happen somewhere particular. Its
+value set is the first column of `venues.md`: `web`, `cli`, `cowork`,
+`dispatch`, `actions`, `runner`, `remote`. The body carries one line naming
+which constraint parked it, since the tag cannot tell a permanent constraint
+from a temporary one. (Until 2026-08-10 this tag was `runner: <machine>`;
+migrate any you find, and note that `runner` is now a venue value rather than a
+key.)
 
 ```markdown
 ---
@@ -167,7 +174,7 @@ title: <short imperative>
 status: backlog
 opened: <YYYY-MM-DD>
 action: <skill-name>
-runner: <machine, when it is pinned>
+venue: <name, when it is pinned>
 ---
 # <title>
 
@@ -188,11 +195,30 @@ test, or CI**, not here. Prefer a parameter that derives ("every month in X with
 no file in Y") over a literal list, so the task stays true as the work lands.
 Shape and reasoning in `TRACKER.md`.
 
-**Finding them.** A machine picking up its queue holds the clones and greps:
+## Pick up the queue for this venue
+
+**Standing phrase: *"check what's parked for you"*** (also "what's in my queue",
+"anything left for this machine"). It means: find every open task tagged for a
+venue this session can serve, across every tracker in the clones on hand, and
+report them before starting anything.
+
+**Select over a set, not a value.** A session cannot always name its own venue:
+`cli`, `cowork`, and `dispatch` on one desktop are indistinguishable from
+inside, and a Cowork session has no reliable way to know a phone reached it. So
+grep the venues this machine serves. A desktop:
 
 ```
-grep -rl 'runner: <machine>' */tracker/tasks/ */*/tracker/tasks/
+grep -rlE '^venue: (cli|cowork|dispatch)$' */tracker/tasks/ */*/tracker/tasks/
 ```
+
+Add `runner` once a self-hosted runner is registered on it; a sandbox session
+greps `web` alone. Skip anything already `status: done`.
+
+Then report each hit as its title, its tracker, its `size`, and its constraint
+line, and stop. **Picking up is not claiming**: the user chooses what to start,
+and claiming follows the rules below. An `action:` tag says the method is
+settled and names the skill to run; without one the task is an ordinary task
+that happens to be parked here.
 
 Both tags ride into `board.json` under `tags`, so anything machine-side can
 select on them without the generator changing.
@@ -252,7 +278,7 @@ closing, reframing, or splitting.
 
 Check the status itself, not only the prose. A `blocked` task waiting on an
 external event wants `awaiting:` and a `backlog` status; one waiting on a
-particular machine wants `runner:` and the same, since both are startable and
+particular venue wants `venue:` and the same, since both are startable and
 `blocked` reads as "do not try." Leave `blocked` to what genuinely depends on
 other work. A `done` task missing `closed:`, or a `backlog` task carrying a
 `session:`, is the same class of finding.

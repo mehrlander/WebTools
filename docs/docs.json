@@ -62,7 +62,7 @@
       "subject": "the friction log: one line per snag, symptom then corrected move",
       "status": "living",
       "reach": "project",
-      "words": 4066,
+      "words": 4126,
       "maintenance": "authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
     },
     {
@@ -70,7 +70,7 @@
       "subject": "the surfacing system: primitives plus the guide-PR course",
       "status": "living",
       "reach": "injected",
-      "words": 4185,
+      "words": 4462,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -78,7 +78,7 @@
       "subject": "the opt-in cross-session project tracker: schema, ids, board",
       "status": "living",
       "reach": "project",
-      "words": 4337,
+      "words": 4542,
       "maintenance": "authored, edited in place; the schema the tasks skill implements, held to it by review alone"
     },
     {
@@ -350,7 +350,7 @@
       "subject": "the show-repo shell: views, stage, transfer, and the .web-tools.json manifest",
       "status": "living",
       "reach": "project",
-      "words": 22744,
+      "words": 22792,
       "maintenance": "authored, edited in place; the corpus's largest document, and the buried home of the stage contract"
     },
     {
@@ -390,7 +390,7 @@
       "subject": "the venue map: where work can run besides the session reading it, what each reaches, and the attended-versus-unattended split",
       "status": "measured",
       "reach": "project",
-      "words": 701,
+      "words": 974,
       "maintenance": "dated observations about products that move; re-probe the attended column rather than rewriting from memory, and carry the date. CONVENTIONS.md names it in an always-loaded paragraph, which is what gives it reach at all"
     }
   ]

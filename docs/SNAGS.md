@@ -65,8 +65,13 @@ machine. Across 72 web-tools task files and home's five trackers it is used
 exactly once, and the user recalled that "we set up a category for that"
 without being able to name it. A convention nobody can name is a convention
 nobody applies; the fix when it recurs is to surface open tags on the board
-rather than only in the contract. *(seen: 2026-08-09)*
-→ [TRACKER.md](TRACKER.md)
+rather than only in the contract. *(seen: 2026-08-09; recurred 2026-08-10,
+same user, same tag, still unnameable, and fixed)* **Fixed 2026-08-10:** the
+tag is `venue:`, named for the word CONVENTIONS.md already puts in every
+session's context, its value set is venues.md's first column, and show-repo's
+Board pane now renders it as a row badge. Both halves mattered: the name was
+unrecallable and the board could not show it.
+→ [TRACKER.md](TRACKER.md), [venues.md](venues.md)
 
 ### cross-repo-lib-consumer-invisible: in-repo greps cannot see an external runtime consumer of a lib file
 The lib-kits migration measured its cost as 31 runtime call sites and 84 path
