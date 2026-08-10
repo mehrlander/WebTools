@@ -140,30 +140,69 @@ block, at line 4370, runs **5,962 words** under the heading "Design notes: the
 estate, the landing mechanism, the views, the stage."
 
 The page also has a companion doc, [`docs/show-repo.md`](show-repo.md), at
-23,920 words. The two are almost exactly the same size and overlap 4.5% by
-8-gram, and the first draft of this document read that as two parallel bodies
-with no declared authority. **That was wrong, and looking at the structure says
-why.**
+23,920 words, overlapping 4.5% by 8-gram. This document has now been wrong
+about that pair twice, and the second correction is the useful one.
 
-The doc's 27 headings are a *contract*: link grammars, cache file paths,
-manifest fields, the boundary against toss-render, the roadmap. The page's
-comment blocks are per-site rationale, sitting beside the code they explain and
-addressed to whoever edits it: why the ref switch is where it is, why the rail
-sits at the far end, why swipe paging is touch-only. That is a defensible split
-along exactly the axis the field vocabulary names, `reader` against `editor`,
-and 326 of the 327 blocks are on the right side of it.
+**First reading:** two parallel bodies with no declared authority. Wrong. The
+doc's 27 headings are a contract; 326 of the page's 327 comment blocks are
+per-site rationale beside the code they explain. That is the reader/editor
+split the field vocabulary names, and both halves are on the right side of it.
 
-**The exception is the one block.** Its paragraph leads are THE ESTATE, THE REPO
-MENU, THE MANIFEST, ONE MEMBERSHIP LIST, THE CONFIG CACHE, THE BRANCH OVERLAY,
-THE STAGE, the `#stage=` grammar, THE BRANCH REVIEW, the rendering boundary. A
-substring match puts **12 of the doc's 27 headings** inside it. It is not
-rationale attached to nearby code; it is a second telling of the contract,
-parked at line 4370 and saying the same things in different words, which is why
-the verbatim overlap stayed low while the subject overlap did not.
+**Second reading:** the one exception, a 5,962-word block at line 4370, is a
+lagging partial copy of the contract, so delete it. Also wrong, and the way it
+was wrong is worth recording. The evidence for it was a token comparison: the
+doc carries 57 technical tokens to the block's 34, sharing 29, and names six
+view keys (`chats`, `guides`, `proposals`, `public`, `sessions`, `state`) the
+block never mentions. All of that is true. It is also the wrong instrument for
+the question, because it can only see claims that carry an identifier.
 
-So the decision is narrower than "which body is the record," and it is one
-block rather than a corpus: whether that block is deleted in favour of the doc,
-or the doc is retired in favour of it. Everything around it is working.
+**What a read found that the tokens could not.** The block is a mix, and its
+two halves want opposite treatments:
+
+| | Words | Verified against | Treatment |
+| --- | --- | --- | --- |
+| Contract | ~3,850 | the doc, by substance | redundant |
+| UI decision rationale | ~2,760 | the doc *and* the page's own per-site comments | unique |
+
+The contract half checks out as redundant on every probe run against it: all
+ten `.web-tools.json` fields in its table are in the doc, and
+[`manifest.json`](manifest.json) governs twenty; the federation account is in
+the doc's Roadmap with the same reasoning; the branch overlay section is longer
+and carries a "why this needs to exist" analysis the block lacks; the boundary
+covers four channels where the block covers two.
+
+The rationale half is not in the doc and, measured, not in the page's own
+per-site comments either: the header-nav passage overlaps those at 7.5%, the
+jump-overs at 3.2%. It is material like *"Open went because tapping the row
+itself opens the repo"*, *"a menu offering a jump to a row three lines down is
+answering a question the list has already answered"*, *"when adding a view, add
+its jump-over, and prefer the shared list to a fresh one"*, and the rule that
+repo, branch, menu and folder icons deliberately carry no file glyph. Those are
+decisions and conventions addressed to whoever edits this page. Deleting them
+would lose them.
+
+**So the treatment is a split, not a verdict.** The contract half goes, because
+the doc says it better and two copies is a tax the git history shows being paid:
+four commits in one week touched both, and the block still fell six views
+behind. The rationale half moves to the code it explains, which is where the
+file's own convention already puts everything else. The passages and their
+anchors are the header nav (`estateNav`), the repo menu (`repoMenuItems`), the
+crumb trail (`sidebarCrumbs`), the jump-over convention, which is cross-cutting
+and belongs at the top of the file rather than at one site, and the landing seam
+(`landingKind`).
+
+One passage is unresolved and should not be moved on the current evidence: the
+1,540-word estate description overlaps `estate.js`'s own commentary at 9.7% and
+the doc at 11.9%, and low n-gram overlap is not evidence of unique content in
+this pair, since the whole page-and-doc corpus overlaps 4.5% while covering the
+same subjects. It needs the same substance check the manifest table got.
+
+**The general lesson, which is why this sits in this document rather than in a
+commit message:** a token comparison is the right first instrument and the wrong
+last one. It found the coverage gap in minutes and would have authorized
+deleting 2,760 words of unique judgment, because the judgments that matter most
+are exactly the ones phrased without an identifier to match on. Every survey in
+this document has that shape. They are worth running and not worth obeying.
 
 The transfer cost is real and separable. Stripping comments takes the page from
 295 KB to 139 KB, and gzipped from 92.0 KB to 31.5 KB, so **two thirds of what
@@ -463,12 +502,11 @@ turning the gate on and watching it misfire.
 
 What remains:
 
-1. **Decide the one show-repo block.** Not the corpus: 326 of the page's 327
-   comment blocks are per-site rationale and belong where they are. The single
-   5,962-word "Design notes" block is a second telling of the doc's contract,
-   covering 12 of its 27 sections, and it is a quarter of the page's commentary
-   and two thirds of nothing else. Delete it in favour of the doc, or retire the
-   doc in favour of it, but one of the two.
+1. **Split the one show-repo block**, per the reading above: retire its ~3,850
+   words of contract, relocate its ~2,760 words of UI rationale to the code each
+   passage explains, and substance-check the 1,540-word estate passage first.
+   It is a careful editing job rather than a deletion, and it deserves a session
+   with room to place five passages accurately.
 2. **Register, do not move.** For everything else a row saying where the text is
    and who wrote it is worth more than relocating it, at a fraction of the cost.
 
