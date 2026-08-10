@@ -3,7 +3,7 @@
   "skills": [
     {
       "name": "apple-shortcuts-actions",
-      "description": "Compose Apple Shortcuts actions and hand them to the user as a tappable shortcuts:// link that drops real, wired-up action cards onto their clipboard, ready to paste into any shortcut. Use this whenever the user wants to build, generate, assemble, or share Shortcuts actions or action chains, when they mention pasting actions, action links, \"Copy-ActionFromJson\", the compact {id, p} action format, the U+FFFC / &#65532; anchor, or wiring one action's output into another. Also use when they want to explore the Shortcuts action ecosystem, discover action identifiers, or turn a described automation into pasteable actions. Reach for this even when they just say \"make me a shortcut that...\" and the natural delivery is a paste-in link rather than a signed file."
+      "description": "Compose Apple Shortcuts actions and hand them over as a tappable link that drops wired action cards onto the user's clipboard, ready to paste into any shortcut. Use when they want to build, generate, or share a shortcut or a chain of actions, when they ask for actions they can paste, or when they describe an automation and the natural delivery is a paste-in link rather than a signed file. Also use when an action's identifier or parameter shape has to be looked up."
     },
     {
       "name": "arriving-together",
