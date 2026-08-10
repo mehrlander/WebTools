@@ -1147,19 +1147,34 @@ buffer would be per-browser, so a run count assembled that way would silently
 undercount every device that never commits again, which is worse than a figure
 plainly absent.
 
-**Two limits remain, stated in the panel rather than left to be inferred**,
-because each is a way the log could be misread as something it is not. A crawl
-commits only on material change, so a run that found nothing leaves no trace:
-this is a log of changes, not of runs, and a quiet week reads exactly like a
-week nobody opened the page. A row is dated when a crawl *noticed* a change, not
-when the change happened, and a crawl cannot notice faster than it runs, so the
-cadence reported is partly a fact about the estate and partly a fact about how
-often the page was open. Both are limits of *reading* rather than writing; the
-fix for either is to have the crawl record something, which is a separate
-decision and should not arrive by having them left unsaid. Duration was the
-third and was lifted that way deliberately, which is the exception that shows
-the rule: a row from before the ring shipped carries no figure rather than a
-zero.
+**Two limits remain, and each is carried by the thing it qualifies rather than
+by a notice.** A crawl commits only on material change, so a run that found
+nothing leaves no trace: the log counts changes, not runs, and a quiet week
+reads exactly like a week nobody opened the page. That is carried by the
+summary's own first word, `10 changes`, which is the whole caveat in one word in
+the place the eye lands first. Separately, a row is dated when a crawl *noticed*
+a change rather than when it happened, so a gap bounds the interval instead of
+measuring it, and the cadence is partly a fact about the estate and partly a
+fact about how often the page was open. No label can carry that, so it hangs on
+the gap figure's own hover, where someone puzzling over a long gap will look.
+Both are limits of *reading* rather than writing; the fix for either is to have
+the crawl record something. Duration was a third and was lifted exactly that
+way, which is the exception that shows the rule, and it needs no notice either:
+a duration shows or it does not.
+
+**This shipped as a paragraph and the paragraph was removed** (2026-08-10),
+which is worth recording because the mistake is easy to repeat. All of the above
+sat as 40 words of standing prose above the rows, printed on every open. Not
+over-claiming is a property of the **labels**; standing prose is insurance
+against a misreading, and it earns its space only where the labels actually
+invite one. Two of the three clauses restated what the rendering already said,
+and on a 430px phone the block was four of about ten visible lines, read once
+and noise thereafter. The general rule: **prose in the interface is the
+expensive fallback for a label that cannot be made honest, and it should be
+rare.** The same pass moved the probe's reading off the Refresh button's
+tooltip, where it duplicated the probe line an inch to its left; the button
+again says only what pressing it does and costs, and the visible line beside it
+is the basis for the button's weight.
 
 **The fourth file has no button, and says so.** `state/entities.json` is derived
 like the other three and cannot be rebuilt from a page: it needs spaCy over
