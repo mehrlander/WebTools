@@ -249,19 +249,31 @@ Every derived artifact in the repo is refreshed one of two ways, split on one
 property: whether its generator is **deterministic**.
 
 **Deterministic artifacts ride in the commit that changes their source.** The
-commit-time hook
-([`.claude/hooks/build-on-commit.sh`](../.claude/hooks/build-on-commit.sh), a
-`PreToolUse(Bash)` hook wired in `.claude/settings.json`) fires before every
-`git commit` and regenerates + stages whatever the pending changes touch:
+commit-time hook ([`.githooks/pre-commit`](../.githooks/pre-commit), a git hook
+rather than a Claude Code hook, so it fires whatever the session's project root
+is) runs before every `git commit` and regenerates + stages whatever the pending
+changes touch:
 
 | Source dirty | Generator | Staged into the same commit |
 |---|---|---|
 | `lib/` | `npm run build:lib` | `dist/web-tools.js` |
-| `pages/**/*.html` | `npm run pages-index` | `pages/README.md`, `pages/index.html` |
+| `console/` | `npm run build:console` | `console/suite.js` |
+| `pages/**/*.html` | `npm run pages-index` | `pages/README.md`, `pages/index.html`, `pages/pages.json` |
+| skills, `lib/`, `pages/`, `docs/` | `npm run docs-reach` | `reach` and `words` in `docs/docs.json` |
+| `docs/docs.json` | `npm run docs-readme` | `docs/README.md` |
+| `tracker/tasks/` | `npm run tracker-board` | `tracker/board.md`, `tracker/board.json` |
 
-Both generators are byte-deterministic, so the hook can fire on every commit and
+Every generator is byte-deterministic, so the hook can fire on every commit and
 no-op invisibly when nothing real changed. It's non-blocking: a generator failure
 warns and the commit proceeds.
+
+The tracker board was the last to get an owner there, on 2026-08-05, and the gap
+was not theoretical: `board.json` emitted its per-task keys by iterating a set,
+so hash randomization reordered them on every run. Same input, different bytes,
+in an artifact whose own closing comment promises the opposite, unnoticed
+because it is read by machines and diffed by no one. The suite now asserts
+determinism directly rather than inferring it from one passing run, since a
+nondeterministic generator makes a lockstep test flaky rather than false.
 
 **Thumbnails (`pages/thumbs/*.png`) refresh once per session, at wrap-up.**
 Screenshots are slow (a Chromium render per page) and not byte-deterministic

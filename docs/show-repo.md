@@ -405,9 +405,12 @@ two readings it has: **Branches**, what is in flight, and **Sessions**, the work
 that made it. A branch is the artifact and a session is the act; each row in one
 pane cross-references the other. A segmented pill (the shared internal-tab
 style) switches between them at every width, each pill carrying its live count,
-and each pane's own as-of readout and Refresh ride the pill row, since the two
-read different caches on different throttles. Both keep their own view key, so
-`?view=activity` and `?view=sessions` deep-link directly.
+and each pane's own **age pill** rides the pill row, since the three read
+different caches on different throttles. The pill states the age at every width
+and opens the **State** view, where that cache's Refresh lives beside its cost
+and its throttle; it replaced an as-of reading that was hidden below `sm` next to
+a Refresh button that was not. Both keep their own view key, so `?view=activity`
+and `?view=sessions` deep-link directly.
 
 **The stop used to hold four panes**, adding To-do and Jots on the reasoning
 that the four read as a gradient of commitment: a jot is unshaped intent, a
@@ -572,7 +575,7 @@ the session link rides the cached PR, so nothing is fetched per visit. Landed an
 stranded older branches are the per-repo branch review's job, not this "what's in
 flight" read. The Repos view borrows the same cache for a **freshness rollup** on
 each card (branch count, stranded count, open-PR count, the branch count a one-tap
-route into the branch review). The view's Refresh forces the crawl through the
+route into the branch review). The crawl is forced from the State view through the
 shell (`refreshActivity`); a normal visit kicks it throttled. The internal view
 key stays `activity` (and `?view=activity`), so existing links resolve.
 
@@ -719,8 +722,9 @@ its own).
 **The shared dialog is scoped by how it is opened.** With no repo, from the
 **account row** at the top right of the Repos view, it is an **account panel**:
 the token control alone, no repo tabs (**Refresh views** left with the header
-shield, being the same `refreshConfigs` the Repos view's own **Refresh** button
-already ran; the account row is where the token lives now).
+shield, being the same `refreshConfigs` the Repos view carried its own button
+for; that button is now the State view's config row, and the account row is
+where the token lives).
 With a repo, from a card gear, a sidebar Repos row, or the Map, it is the **repo
 dialog**: the **Info** tab (repo facts, the token control, a Public-browse
 shortcut, and the repo name as the one-tap GitHub link), plus the **Settings**
@@ -792,8 +796,8 @@ anyway. The first cut fanned out three live reads per member on every estate
 load, which is the bill that comes due when a Map tab becomes a dashboard: a tab
 is opened sometimes, a dashboard is the front door. The trade is that a grade is
 as fresh as the last crawl rather than as fresh as the render, which is right,
-since adoption changes when someone edits a settings file. Refresh views
-re-crawls when the answer matters now. A repo the crawl has not reached shows no
+since adoption changes when someone edits a settings file. The State view's
+config row re-crawls when the answer matters now. A repo the crawl has not reached shows no
 verdict and no chips: absent means not read, never not aligned.
 
 *Surfacing* indexes the primitives from [`docs/surfacing.json`](surfacing.json),
@@ -911,6 +915,124 @@ source resolve with no token; a cross-repo or off-default entry renders through
 toss-render `#gh=` the same way the pages catalog does. The list is authored, a
 sibling to `pins` and `stage.files`, maintained by hand
 (`lib/alpineComponents/tools.js`).
+
+### State (`?view=state`)
+
+**State** (`lib/alpineComponents/state-view.js`) lists everything the estate
+keeps derived, each piece with its age, what builds it, what the build costs,
+and a Refresh where one is possible. It is the address the age pills open, and
+the reason the four estate Refresh buttons could go.
+
+**Each row says who uses it, as view keys.** `feeds` is a list of shell view
+keys (`estate`, `activity`, `sessions`, `guides`, `search`) rendered as chips
+that route through the shell's own `go*` methods, so a tap goes and looks at the
+data being consumed. The list is deliberately only the clean answers. The prose
+it replaced also named the sidebar, quick links, and things below view
+granularity, which is where the detail now lives instead: configs also drives
+the sidebar, the quick-link row, and every promoted app view; activity also
+feeds the Repos cards' per-repo rollups; sessions also feeds the branch rows'
+session links and the Search view's session lane. None of those is a view, so
+inventing keys for them would be the over-normalization
+[registries.md](registries.md) warns against. The entity index's consumers are
+`pages` rather than views, kept as a separate field because a page opens at its
+own URL while a view is a stop inside this shell, and one chip cannot honestly
+mean both. Each row's crawl cost rides its Refresh button's tooltip, where it is
+actionable, rather than a line of its own.
+
+**The JSON is read in the app, not on GitHub.** Every registry row carries an
+**Expand** control, a captioned caret rather than a glyph: expanding a row to
+see its detail is the gesture people arrive with, where `{}` said "JSON" only to
+someone who already knew. It fetches the file and shows the bytes, verbatim,
+in a scrolling `pre` with a line count and a Copy button and nothing else. It
+ran through the shared multi-mode viewer first, which brought a mode switcher, a
+filter, a sort, a search, an undo pair, a tree toggle, an open-out, and a
+GitHub/Raw/CDN menu, all stacked above the data on a phone. That is an editor's
+chrome, and nothing here is edited: the crawl owns these files, so every control
+but copy answered a question the row does not raise. The full multi-mode reading
+stays one tap away at the github mark and at the data route
+(`toss-render.html#data=`), where a reader who wants to pivot a table should go.
+Nothing is re-serialized, since the crawls already write a 2-space indent and the
+row's promise is that this is what is committed. One row is open at a time: these run 68 KB to 818 KB,
+so mounting four is a cost with no reader. The fetch is not cached, since the
+row's whole promise is that what you are looking at is what is committed now.
+The path beside each label is a plain label, not a link: it used to be an anchor
+to GitHub, which is the one destination a tap on this page should not have, and
+the github mark beside Expand is the deliberate way out. Refresh sits at the
+row's top right and Expand at its bottom right, on the consumer line, with the
+chips wrapping inside their own box so a third chip never pushes the controls to
+a line of their own. The panel is separated
+by a hairline and bleeds to the card's edges rather than sitting in a bordered,
+tinted, indented box of its own: that box, inside the card, around a viewer that
+draws its own frame, was four nested edges squeezing an editor that then
+truncated its own filename. The viewer is handed the file's basename for the
+same reason, since the row two lines up already names the path in full and
+`origin` still carries the real one for its links. Height is a share of the
+viewport, not a fixed 26rem that was cramped on a phone and stingy on a desktop.
+
+The card's icon rides its title line rather than a gutter to the left. Hanging
+it cost about 28px of width on every row, narrowed the description into three
+wrapped lines on a phone, and left every line beneath it choosing between a
+matching indent and a ragged edge. The guides row has
+neither control, because the shelf is assembled in memory and there is nothing
+committed to look at.
+
+**An age pill aims at its row.** `?view=state&item=<key>` names one entry
+(`configs`, `activity`, `sessions`, `entities`, `guides`, `search`, `page`), in
+the same idiom `&detail=` uses to open one branch inside the Activity takeover:
+the estate addresses one entry in a rendered set by naming it in the URL, not by
+scrolling on a callback. Rows carry `id="state-<key>"`, so the anchor is a real
+element. The named row is tinted and scrolled to on arrival, and the tint fades
+after a few seconds rather than latching, since it answers "which one did I come
+here for" and stops meaning anything once that is read; the `?item=` persists, so
+the link stays shareable and a reload lands the same way. A bare `?view=state`,
+which is what the nav opens, singles out nothing.
+
+The view exists because "refresh" was one icon over two unrelated verbs. A
+**crawl** commits a file to the registry and can be hours stale; a **local
+recompute** (the search caches, the stage bundle, an Inspect rescan) is instant,
+stores nothing, and has no age at all. Both wore the same button in six places,
+and the as-of reading that says whether to press was the part hidden below `sm`,
+so a phone kept the control and dropped the fact. Three sections carry the
+split: **Derived** (the registry's `state/`), **Read live** (the guides shelf,
+cheap enough to redo on demand, so nothing is committed), and **This browser**
+(the search caches and the page itself, both gone on reload, neither estate
+state).
+
+**Built and checked are two different ages, and one alone misreads.** `built` is
+the last commit touching the file; `checked` is this browser's throttle stamp
+(`wt:*CacheCheckedAt`). Every crawl here commits only on material change, so
+"built 3d ago, checked 12m ago" means current, not stale, which is precisely
+what a lone as-of could never say. The build time is read as the file's last
+commit rather than its own `generatedAt`, because reading four `generatedAt`
+fields would cost 1.5 MB of JSON for four timestamps, and for a file only the
+crawl writes, the commit is the write. Staleness is only claimed where the
+source declares a bar: past twice a crawl's own throttle, or past the 30 days
+the entity index's repo check already uses. The whole view costs one `ls state`
+plus one commit read per file, regardless of estate size, and it kicks no crawl
+on arrival: a view that ran a crawl to show you how old things were would answer
+its own question before you read it.
+
+**The fourth file has no button, and says so.** `state/entities.json` is derived
+like the other three and cannot be rebuilt from a page: it needs spaCy over
+~4,000 files across seven checkouts, about half an hour. It gets a full row
+anyway, naming its builder and why the control is missing. A freshness surface
+that lists only what it can fix repeats the omission it was built to end.
+
+**A deep link mounts the view before auth resolves**, so its first read finds no
+token and it would otherwise hold its signed-out state for the life of the page.
+The shell announces `web-tools:auth-state` from the same watch that reloads the
+estate, and the view re-reads on it. Signed out is a note, not an error: nothing
+has gone wrong, the registry rows simply have no ages yet.
+
+Reaching the two rows the shell does not own: the guides shelf keeps its stamp
+in the estate component (it is the one derived thing with no file to read a date
+off), mirrored onto `__shell.guidesLoadedAt` as it lands, and re-read by
+announcement (`web-tools:refresh-guides`); the page reload asks the fab for its
+`hardRefresh`, the one implementation, via `web-tools:hard-refresh`. The
+registry's authored content (lists, surfaces, the private config) and its
+captured records (sessions, mailbox, proposals) are named at the foot of the
+view and deliberately have no rows: neither is derived, so neither has an age to
+report or a crawl to run.
 
 ## Public browse: the no-token file browser
 
