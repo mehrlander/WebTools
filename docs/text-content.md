@@ -264,7 +264,7 @@ Part 1, and it needs one row per **name**, not one per carrier.
 
 ## The carrier: docs/text-fields.csv
 
-Twelve sanctioned names, each with the audience it implies, a gloss, and the
+Thirteen sanctioned names, each with the audience it implies, a gloss, and the
 `use_when` rule that settles which to pick. A definition alone never settles
 that, which is why `use_when` is required rather than optional:
 
@@ -272,6 +272,7 @@ that, which is why `use_when` is required rather than optional:
 | --- | --- | --- |
 | `gloss` | reader | what the row's subject is |
 | `narrative` | reader | prose meant to be read as prose |
+| `payload` | reader | text the row exists to carry, not text about it |
 | `rationale` | reader | why this judgment, against the alternative |
 | `use_when` | reader | when to pick this over its neighbour |
 | `scope` | reader | what it covers and deliberately does not |
@@ -306,12 +307,21 @@ Measured after the vocabulary was written against both repos:
 | | On a sanctioned name | An alias of one | A value, not prose | Unclaimed |
 | --- | --- | --- | --- | --- |
 | budget-DRS | 17,817 words | 28,744 | 7,291 | **0** |
-| web-tools | 1,249 words | 11,758 | 713 | **324, one name** |
+| web-tools | 1,573 words | 11,758 | 815 | **0** |
 
-Every prose field name in budget-DRS now maps to one of twelve stated concepts.
-web-tools has one residue, `prompt` in a one-off tracker assessment, which is a
-payload being carried rather than prose about a row. Leaving it unclaimed is
-more honest than widening the vocabulary to absorb it.
+Every prose field name in both repos now maps to one of thirteen stated
+concepts, and `text-carriers.py --check` exits 0 on both.
+Both reached zero, but not by the same route, and the difference is the point.
+budget-DRS's residue was absorbed by alias rows. web-tools' last name, `prompt`
+in a tracker assessment, was not: it holds a session instruction, so the row
+exists to CARRY the text rather than to describe something else. Every other
+name in the set annotates a subject, and that one is the subject. It earned a
+thirteenth name, `payload`, rather than an alias to something it is not.
+
+That is the intended way for the vocabulary to grow: a name is added when a
+carrier turns out to hold a kind the set genuinely lacks, and the count in
+[`text-fields-registry.test.mjs`](../tools/test/text-fields-registry.test.mjs)
+has to move in the same commit, so growth is deliberate.
 
 The alias lists were built from the observed names, not invented: the run that
 produced them is `text-carriers.py --offvocab`, and a name entered the list only
@@ -413,10 +423,10 @@ Two of the five are done, and are described above: the field vocabulary and the
 2. **Decide the show-repo authority question.** 23,665 words in the page and
    23,920 in the doc, overlapping 4.5%. A decision about which is the record,
    not a cleanup, and until it is made both keep growing.
-3. **Turn on the vocabulary gate.** `text-carriers.py --check` already exits 1
-   on an unclaimed name and both repos pass today. Running it in the verify
-   suites would hold that, at the cost of a failure the next time a genuinely
-   new concept appears, which is the intended cost.
+3. **Turn on the vocabulary gate.** `text-carriers.py --check` exits 0 on both
+   repos today. Running it in the verify suites would hold that, at the cost of
+   a failure the next time a genuinely new concept appears, which is the
+   intended cost and is what `payload` was.
 4. **Register, do not move.** For everything else a row saying where the text is
    and who wrote it is worth more than relocating it, at a fraction of the cost.
 

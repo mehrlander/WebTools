@@ -41,7 +41,8 @@ Usage:
     --vocab P    path to the field vocabulary (default docs/text-fields.csv)
     --offvocab   only the field names that are not in the vocabulary
     --check      exit 1 if any authored carrier is undeclared, or any prose
-                 field name is off-vocabulary
+                 field name is one the vocabulary does not account for. An
+                 alias passes: it conforms by declaration, not by rename.
 """
 import csv
 import json
@@ -207,7 +208,7 @@ def load_vocab(root, override=None):
 VALUE_FIELD = re.compile(
     r"^(.*_)?(title|name|label|id|key|path|url|agency|fund|item|section|step|"
     r"unit|grain|measure|values?|column_roles|primary_key|reads|via|maps|"
-    r"applies_to|carrier|host|from|verdict|deliverable|authoritative|target|record_owner)$", re.I
+    r"applies_to|carrier|host|from|verdict|deliverable|authoritative|target|record_owner|instead_of|aliases)$", re.I
 )
 
 
@@ -438,14 +439,19 @@ def main(argv):
     print("be asked for, and that is what disorganized carriers actually costs.")
 
     if "--check" in opts:
+        # An ALIAS is not a failure. The vocabulary states what the old name
+        # means, so a carrier using it conforms by declaration; gating on it
+        # would turn every existing carrier red and make the only way to green
+        # a rename across the estate, which is the cost `instead_of` exists to
+        # avoid. Only a name nothing accounts for is a finding.
         bad = [f for f in fields
-               if not f["supplied"] and f["standing"].startswith(("alias", "off"))]
+               if not f["supplied"] and f["standing"] == "off-vocabulary"]
         if undeclared or bad:
             if undeclared:
                 print("\n%d authored carrier(s) nothing names." % len(undeclared))
             if bad:
-                print("%d prose field name(s) outside the vocabulary; see --offvocab."
-                      % len({f["field"] for f in bad}))
+                print("%d prose field name(s) the vocabulary does not account for; "
+                      "see --offvocab." % len({f["field"] for f in bad}))
             return 1
     return 0
 

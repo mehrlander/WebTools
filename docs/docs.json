@@ -382,7 +382,7 @@
       "subject": "the estate's authored text: whether the carriers holding it are organized, and how much never reached one",
       "status": "measured",
       "reach": "project",
-      "words": 3531,
+      "words": 3641,
       "maintenance": "re-derive with scripts/text-census.py and scripts/text-carriers.py; every figure is a command away, and the date in the opening line is what the numbers are as of"
     },
     {

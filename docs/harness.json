@@ -93,7 +93,7 @@
       "path": "scripts/text-carriers.py",
       "role": "inventory the CSV and JSON carriers that already hold authored prose, and census their field names to show how much vocabulary the carriers share",
       "layer": "scripts",
-      "lines": 455,
+      "lines": 461,
       "invocation": "argv",
       "emits": false,
       "named": true,

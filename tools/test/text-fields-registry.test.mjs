@@ -56,7 +56,7 @@ function parseCsv(text) {
 const rows = parseCsv(raw);
 const FIELDS = new Set(rows.map(r => r.field));
 const AUDIENCES = new Set(['reader', 'editor']);
-const EXPECTED_NAMES = 12;
+const EXPECTED_NAMES = 13;
 
 function aliasesOf(r) {
   return (r.instead_of || '').split(',').map(s => s.trim()).filter(Boolean);
