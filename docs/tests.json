@@ -401,7 +401,7 @@
       "path": "tools/test/estate-search.test.mjs",
       "kind": "behavior",
       "protects": "The shared search core: a failed tree fetch is never cached as an empty tree, names search reaches any ref and reports unreadable trees, code search carries its scope and fragments, the session grep matches what a record quotes, and reset forgets it all.",
-      "assertions": 6,
+      "assertions": 8,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 0
@@ -824,7 +824,7 @@
       "path": "tools/test/repo-sessions-cache.test.mjs",
       "kind": "behavior",
       "protects": "The sessions aggregate, whose source is a captured and therefore unregenerable layer: summarize keeps the scan fields and drops the bulk, branches dedupe and drop main since they join the Open view, and an older record with no agent id summarizes without one rather than with a wrong one.",
-      "assertions": 17,
+      "assertions": 21,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
