@@ -1009,10 +1009,19 @@ so mounting four is a cost with no reader. The fetch is not cached, since the
 row's whole promise is that what you are looking at is what is committed now.
 The path beside each label is a plain label, not a link: it used to be an anchor
 to GitHub, which is the one destination a tap on this page should not have, and
-the github mark beside Expand is the deliberate way out. Refresh sits at the
-row's top right and the file controls at its bottom right, on the consumer line,
-with the chips wrapping inside their own box so a third chip never pushes the
-controls to a line of their own. The panel is separated
+the small github mark tight beside it is the deliberate way out. That mark rides
+the **filename**, which is the shell's own convention for a jump-over naming an
+exact file (the estate's surface rows, the Map's item rows, the repo dialog's
+title all place it the same way): beside the name it opens, faint and small,
+rather than in a strip at the far end of the card. It sat with Expand at first
+because the two read as one group of file controls, which they are not, since
+Expand acts on the panel and the mark leaves the page. Moving it also fixed an
+omission: naming an exact file, it must carry `data-peek`, the narrow rule
+[source-peek](https://github.com/mehrlander/web-tools/blob/main/lib/kits/source-peek.js)
+states so that a reader can tell a file jump-over from a repo, branch, or menu
+one. Refresh sits at the row's top right and Expand at its bottom right, on the
+consumer line, with the chips wrapping inside their own box so a third chip
+never pushes the control to a line of its own. The panel is separated
 by a hairline and bleeds to the card's edges rather than sitting in a bordered,
 tinted, indented box of its own: that box, inside the card, around a viewer that
 draws its own frame, was four nested edges squeezing an editor that then
