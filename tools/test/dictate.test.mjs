@@ -556,7 +556,17 @@ test('handles and the caret carry no text, so they never shift an offset', () =>
 test('the interim paints last and is marked, so a tap in it cannot place a caret', () => {
   const h = host();
   D.paint(h, { text: 'settled', interim: 'still being heard' });
-  assert.deepEqual(parts(h), [['text', 'settled'], ['interim', ' still being heard']]);
+  // A TENTATIVE full stop rides the hypothesis, in the hypothesis's own muted
+  // italic. The real one is written when the segment finalizes, which is after
+  // the pause, so without this the sentence trails off unpunctuated and the
+  // period looks like it arrives late.
+  assert.deepEqual(parts(h),
+    [['text', 'settled'], ['interim', ' still being heard'], ['interim-stop', '.']]);
+  // It is a PAINT, not a commit: nothing was added to the buffer.
+  D.paint(h, { text: 'settled', interim: 'a question mark?' });
+  assert.deepEqual(parts(h).map(p => p[0]), ['text', 'interim'],
+    'and it stands down when the hypothesis already ends in a mark');
+  D.paint(h, { text: 'settled', interim: 'still being heard' });
   // A point inside the hypothesis clamps to the end of what is committed.
   assert.equal(D.offsetAt(h, h.childNodes[1].firstChild || h.childNodes[1], 4), 7);
 });
@@ -638,8 +648,10 @@ test('a handle is a stem with a ball, not a loose dot', () => {
 
   // The arrows ride the armed pin, and their chevrons are drawn rather than
   // typed: a glyph arrives at whatever weight the system font has.
-  const arrows = [...h.querySelectorAll('[data-nudge]')];
-  assert.deepEqual(arrows.map(b => b.getAttribute('data-nudge')), ['-1', '1']);
-  assert.match(arrows[0].innerHTML, /stroke-width="1.5"/);
-  assert.ok(!/font-weight:\s*700/.test(arrows[0].getAttribute('style')));
+  const cluster = h.querySelector('[data-d="nudge"]');
+  assert.deepEqual([...cluster.children].map(b =>
+    b.getAttribute('data-nudge') || 'confirm:' + b.getAttribute('data-disarm')),
+    ['-1', 'confirm:1', '1'], 'confirm sits between the arrows, where the thumb already is');
+  assert.match(cluster.children[0].innerHTML, /stroke-width="1.5"/);
+  assert.ok(!/font-weight:\s*700/.test(cluster.children[0].getAttribute('style')));
 });
