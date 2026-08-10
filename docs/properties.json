@@ -633,9 +633,9 @@
       "registry": "tracker-board",
       "mode": "computed",
       "deriver": ".claude/skills/tasks/build-board.py",
-      "required": "value",
+      "required": "counted",
       "values": null,
-      "gloss": "the date of the newest progress-log line"
+      "gloss": "the date of the newest progress-log line. Blank on a task filed without one, which the board generator allows and the tasks template does not produce; the blank is the honest reading of 'filed, nothing logged yet' and is worth counting"
     },
     {
       "property": "logEntries",
