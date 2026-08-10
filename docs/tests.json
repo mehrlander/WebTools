@@ -983,6 +983,15 @@
       "boot_smoke": 1
     },
     {
+      "path": "tools/test/state-history.test.mjs",
+      "kind": "component",
+      "protects": "The State view's History panel reads a derived file's change log honestly: the cadence summary, and a per-interval diff taken through each store's own fingerprint so the panel and the crawl's commit gate cannot disagree.",
+      "assertions": 12,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/subject-actions.mjs",
       "kind": "behavior",
       "protects": "Inside a toss, the fab reaches the subject page actions across the frame boundary.",

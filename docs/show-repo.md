@@ -1007,9 +1007,9 @@ row's whole promise is that what you are looking at is what is committed now.
 The path beside each label is a plain label, not a link: it used to be an anchor
 to GitHub, which is the one destination a tap on this page should not have, and
 the github mark beside Expand is the deliberate way out. Refresh sits at the
-row's top right and Expand at its bottom right, on the consumer line, with the
-chips wrapping inside their own box so a third chip never pushes the controls to
-a line of their own. The panel is separated
+row's top right and the file controls at its bottom right, on the consumer line,
+with the chips wrapping inside their own box so a third chip never pushes the
+controls to a line of their own. The panel is separated
 by a hairline and bleeds to the card's edges rather than sitting in a bordered,
 tinted, indented box of its own: that box, inside the card, around a viewer that
 draws its own frame, was four nested edges squeezing an editor that then
@@ -1022,8 +1022,8 @@ The card's icon rides its title line rather than a gutter to the left. Hanging
 it cost about 28px of width on every row, narrowed the description into three
 wrapped lines on a phone, and left every line beneath it choosing between a
 matching indent and a ragged edge. The guides row has
-neither control, because the shelf is assembled in memory and there is nothing
-committed to look at.
+none of these controls, because the shelf is assembled in memory: there is
+nothing committed to look at, and nothing with a past to read.
 
 **An age pill aims at its row.** `?view=state&item=<key>` names one entry
 (`configs`, `activity`, `sessions`, `entities`, `guides`, `search`, `page`), in
@@ -1060,6 +1060,49 @@ the entity index's repo check already uses. The whole view costs one `ls state`
 plus one commit read per file, regardless of estate size, and it kicks no crawl
 on arrival: a view that ran a crawl to show you how old things were would answer
 its own question before you read it.
+
+**History answers what an age cannot: how often this really changes.** Beside
+Expand, every registry row carries a **History** caret that opens the file's
+change log, and the two share one slot, since a row is being read one way or the
+other. It is not a tab inside the JSON panel: a tab bar would say the two are
+readings of one thing, when the bytes and the file's past are different
+subjects. The list is the registry's own commits touching that path, one call
+per open (the same `history` the row already makes for `built`, asked for twenty
+rows rather than one), each with its stamp, its age, and the gap to the change
+before it. The header folds that into the reading worth having, a count, a span,
+and a **median** gap, set beside the throttle that governs when the file is
+checked. Two measured numbers side by side, not a verdict: a store that changes
+every 3h under a 12h throttle is a fact about the estate the schedule has to
+answer for, and the panel's job is to put them in one line rather than to grade
+them.
+
+**What changed is lazy, and read through each store's own fingerprint.** Tapping
+an interval fetches its two committed versions and names the records that moved:
+`4 of 19 repos · 21%`, at the grain the row already declares. The comparison is
+each cache's *own* change detector, the one its crawl uses to decide whether to
+commit at all (`hash` in the config and activity caches, with `alignHash` beside
+it where a moved alignment grade counts as a changed cache; the record's blob
+`sha` in the sessions cache; the serialized record for the entity index, which
+keeps no fingerprint). So the panel's answer and the commit gate are one
+reading and cannot drift into disagreeing. It is lazy because these files run 68
+KB to 818 KB: diffing twenty intervals up front would read a megabyte and a half
+to fill a column nobody asked for. Adjacent intervals share a version, and a
+version addressed by sha cannot move, so it is parsed once and kept, which is
+the opposite of the peek panel's rule and for the same reason: the peek promises
+the current bytes, a version promises an immutable one.
+
+**Three limits, stated in the panel rather than left to be inferred**, because
+each is a way the log could be misread as something it is not. A crawl commits
+only on material change, so a run that found nothing leaves no trace: this is a
+log of changes, not of runs, and a quiet week reads exactly like a week nobody
+opened the page. A row is dated when a crawl *noticed* a change, not when the
+change happened, and a crawl cannot notice faster than it runs, so the cadence
+reported is partly a fact about the estate and partly a fact about how often the
+page was open. Duration appears nowhere: the only party that knows how long a
+crawl took is the browser that ran it, and it reports that to a four-second
+toast and drops it. All three are limits of *reading* rather than writing. The
+fix for each is to have the crawl record something, which is a separate decision
+and should not arrive by having them left unsaid.
 
 **The fourth file has no button, and says so.** `state/entities.json` is derived
 like the other three and cannot be rebuilt from a page: it needs spaCy over
