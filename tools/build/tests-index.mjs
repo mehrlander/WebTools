@@ -8,9 +8,23 @@
 //
 // Derived here, never authored:
 //
-//   assertions  the number of top-level test() calls. The unit the suite
-//               counts, so the registry counts the same unit and their sum
-//               can be checked against the runner's own total.
+//   assertions  the number of top-level test() calls written in the file.
+//               Static, and a LOWER BOUND rather than the runner's figure: a
+//               test() inside a loop is one call here and N tests at runtime.
+//               Four files parameterize theirs, so `npm test` reports more
+//               than this column sums to. The header used to claim the two
+//               could be checked against each other; nothing did, and they
+//               never matched.
+//   assertion_names
+//               what each of those calls is named, in source order. The names
+//               are already read to count them and were being thrown away.
+//               They are the file's own account of what it checks, authored
+//               with the test and updated with it, so the registry does not
+//               have to restate coverage in `protects` and cannot go stale
+//               against the file the way a hand-written summary does. A
+//               parameterized name is carried as its template text, `${...}`
+//               and all, which is how a reader can tell one row stands for
+//               several runtime tests.
 //   method      how a test reaches its subject, which is the axis that
 //               decides how much a pass is worth:
 //                 kit     loads a lib/kits/*.js through the bootstrap and
@@ -26,17 +40,29 @@
 //               without `.test.` on purpose, so the CI runner never installs a
 //               browser; that convention is invisible from the pass count and
 //               is exactly what this field makes visible.
-//   boot_smoke  how many of the file's assertions only check that a component
-//               mounts without warnings. Not a criticism: a boot check catches
-//               real breakage cheaply. But it is the lowest-information
-//               assertion in the suite, and a file that is mostly boot smoke
-//               is claiming less than its count suggests.
+//   boot_smoke  WHICH of the file's assertions only check that a component
+//               mounts without warnings, as indices into assertion_names. Not a
+//               criticism: a boot check catches real breakage cheaply. But it
+//               is the lowest-information assertion in the suite, and a file
+//               that is mostly boot smoke is claiming less than its count
+//               suggests. Indices rather than a count because the property is
+//               per assertion, so the count is an aggregate and a consumer that
+//               wants one can take the length.
 //
 // Authored in the registry, because no derivation can supply it: `kind` (what
 // genre of check this is) and `protects` (the one thing that breaks if it is
 // deleted). `protects` is held to the same standard as the documents census's
 // `maintenance`: a row that cannot say what it protects is a test nobody has
 // examined, and the gate counts those rather than banning them.
+//
+// `protects` and `assertion_names` answer different questions, and the split is
+// why deriving the names does not make the authored field redundant. The names
+// say WHAT the file asserts; `protects` says what BREAKS if it goes, which for
+// a gate or a lockstep is not recoverable from any test name. What the names do
+// retire is the inventory: `protects` had been absorbing coverage lists because
+// coverage was invisible in the view, and twelve rows had grown past 300
+// characters restating what the file already said better. One sentence here,
+// the list derived beside it.
 //
 // Run `npm run tests-index` to restamp after adding or changing a test.
 
@@ -54,11 +80,40 @@ const TEST_DIR = 'tools/test';
 // exactly the kind of thing that goes quietly stale.
 const NOT_A_TEST = new Set(['bootstrap.mjs', 'show-repo-shell.mjs']);
 
-const BOOT_SMOKE = /test\('[^']*(mounts?[^']*(warning|error)|no startup warning)/i;
+// A boot smoke assertion proves one thing: the component mounted and logged
+// nothing. Two things changed here on 2026-08-10, and both are about level.
+//
+// It reads the derived NAMES rather than scanning the source a second time. The
+// old pattern was anchored to `test('`, so it saw single-quoted names only and
+// would have missed a boot check written with a double quote or a backtick,
+// silently. The names are already extracted in every quote style and unescaped.
+//
+// And it returns INDICES, not a count. The property is per assertion: one
+// test() call is a boot check or it is not, and a file-level number is an
+// aggregate of that. Storing only the aggregate is what let the view render
+// "19 smoke" without being able to say whether 19 counted files or assertions.
+// Both were 19, because every file happens to carry exactly one, so nothing
+// revealed the ambiguity and the first file to gain a second boot check would
+// have made the label quietly wrong.
+const BOOT_SMOKE = /mounts?.*(warning|error)|no startup warning/i;
 
 /** Count top-level test() calls. */
 function assertions(src) {
   return (src.match(/^\s*test\(/gm) || []).length;
+}
+
+// The name of each of those calls. The quote class covers all three string
+// forms, and `(?:\\.|(?!\1)[\s\S])*` steps over an escaped quote instead of
+// ending on it, which matters more than it looks: test names here are prose and
+// prose has apostrophes, so a naive `[^']*` truncates "the repo's own registry"
+// to "the repo" and the row reads as a terse name rather than a clipped one.
+// Anchored with the same `^\s*` as the counter so the two cannot disagree; the
+// gate below asserts that they don't.
+const TEST_NAME = /^\s*test\(\s*(['"`])((?:\\.|(?!\1)[\s\S])*)\1/gm;
+
+function assertionNames(src) {
+  return [...src.matchAll(TEST_NAME)]
+    .map(m => m[2].replace(/\\(['"`\\])/g, '$1').replace(/\s+/g, ' ').trim());
 }
 
 function method(src) {
@@ -69,14 +124,14 @@ function method(src) {
   return 'pure';
 }
 
-function bootSmoke(src) {
-  return (src.match(new RegExp(BOOT_SMOKE.source, 'gi')) || []).length;
+function bootSmoke(names) {
+  return names.flatMap((n, i) => (BOOT_SMOKE.test(n) ? [i] : []));
 }
 
 /**
  * Derive the machine-visible fields for every test file on disk.
  * @param {string} repoRoot
- * @returns {Map<string, {assertions:number, method:string, runner:string, boot_smoke:number}>}
+ * @returns {Map<string, {assertions:number, assertion_names:string[], method:string, runner:string, boot_smoke:number}>}
  */
 export function deriveTests(repoRoot) {
   const dir = path.join(repoRoot, TEST_DIR);
@@ -98,11 +153,13 @@ export function deriveTests(repoRoot) {
     // not fold a null into a total. Same rule the traffic accounting follows:
     // no total absorbs a figure it could not measure.
     const suite = name.endsWith('.test.mjs');
+    const names = suite ? assertionNames(src) : null;
     out.set(rel, {
       assertions: suite ? assertions(src) : null,
+      assertion_names: names,
       method: method(src),
       runner,
-      boot_smoke: suite ? bootSmoke(src) : null,
+      boot_smoke: names ? bootSmoke(names) : null,
     });
   }
   return out;
@@ -133,9 +190,12 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
 
   for (const t of registry.tests) {
     const d = derived.get(t.path);
+    // assertion_names goes last: it is the longest field by far, and a row
+    // whose scannable fields sit above it stays readable in the diff.
     const ordered = { path: t.path, kind: t.kind, protects: t.protects,
                       assertions: d.assertions, method: d.method,
-                      runner: d.runner, boot_smoke: d.boot_smoke };
+                      runner: d.runner, boot_smoke: d.boot_smoke,
+                      assertion_names: d.assertion_names };
     for (const k of Object.keys(t)) delete t[k];
     Object.assign(t, ordered);
   }
@@ -143,7 +203,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   writeFileSync(file, JSON.stringify(registry, null, 2) + '\n');
 
   const total = registry.tests.reduce((s, t) => s + t.assertions, 0);
-  const smoke = registry.tests.reduce((s, t) => s + t.boot_smoke, 0);
+  const smoke = registry.tests.reduce((s, t) => s + (t.boot_smoke?.length || 0), 0);
   const byKind = {};
   for (const t of registry.tests) byKind[t.kind] = (byKind[t.kind] || 0) + t.assertions;
   console.log(`tests-index: ${registry.tests.length} files, ${total} assertions ` +
