@@ -118,15 +118,18 @@ export default async (page) => {
     const realStats = window.EstateSearch.stats;
     window.EstateSearch.stats = () => ({ ...realStats(), trees: 11, records: 42 });
 
+    // `?open=<key>` opens that row's panel, `?read=contents|history` picks the
+    // reading, and `?diff=<i,…>` expands intervals, since the magnitude is lazy
+    // and never renders on its own. Read BEFORE goState below, which calls the
+    // shell's syncUrl and rewrites location.search to the keys the shell owns;
+    // `read` rather than `tab` because `tab` is one of those keys.
+    window.__STATE_OPEN = new URLSearchParams(location.search).get('open') || '';
+    window.__STATE_TAB = new URLSearchParams(location.search).get('read') || 'contents';
+    window.__STATE_DIFF = new URLSearchParams(location.search).get('diff') || '';
+
     // Honor an `?item=` on the address so the scenario can shoot an aimed link
     // (what an age pill opens) as well as the bare view.
     window.__shell.goState(new URLSearchParams(location.search).get('item') || '');
-    // `?peek=<key>` opens that row's JSON, so the embedded viewer can be shot.
-    // `?hist=<key>` opens its change log instead, with `?diff=<i>` expanding one
-    // interval, since the magnitude is lazy and never renders on its own.
-    window.__STATE_PEEK = new URLSearchParams(location.search).get('peek') || '';
-    window.__STATE_HIST = new URLSearchParams(location.search).get('hist') || '';
-    window.__STATE_DIFF = new URLSearchParams(location.search).get('diff') || '';
     // A `?view=state` address mounts the view during boot, so its first read ran
     // before these stubs and found no token. Announcing auth is exactly what the
     // shell does when a real token resolves, and it is what makes the deep-link
@@ -135,14 +138,14 @@ export default async (page) => {
   });
   await page.waitForTimeout(1200);
   await page.evaluate(async () => {
-    const key = window.__STATE_PEEK || window.__STATE_HIST;
+    const key = window.__STATE_OPEN;
     if (!key) return;
     const el = document.querySelector('[x-data="stateView()"]');
     const d = window.Alpine.$data(el);
     const row = d.rows.find(r => r.key === key) || (d.offline?.key === key ? d.offline : null);
     if (!row) return;
-    if (window.__STATE_PEEK) return d.togglePeek(row);
-    await d.toggleHist(row);
+    d.tab = window.__STATE_TAB;
+    await d.toggleOpen(row);
     for (const i of window.__STATE_DIFF.split(',').filter(s => s !== '')) await d.diffAt(row, +i);
   });
   await page.waitForTimeout(1500);

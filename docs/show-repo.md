@@ -988,10 +988,11 @@ own URL while a view is a stop inside this shell, and one chip cannot honestly
 mean both. Each row's crawl cost rides its Refresh button's tooltip, where it is
 actionable, rather than a line of its own.
 
-**The JSON is read in the app, not on GitHub.** Every registry row carries an
+**The JSON is read in the app, not on GitHub.** Every registry row carries one
 **Expand** control, a captioned caret rather than a glyph: expanding a row to
 see its detail is the gesture people arrive with, where `{}` said "JSON" only to
-someone who already knew. It fetches the file and shows the bytes, verbatim,
+someone who already knew. It opens a panel with two tabs, **Contents** and
+**History**, described below. The **Contents** tab fetches the file and shows the bytes, verbatim,
 in a scrolling `pre` with a line count and a Copy button and nothing else. It
 ran through the shared multi-mode viewer first, which brought a mode switcher, a
 filter, a sort, a search, an undo pair, a tree toggle, an open-out, and a
@@ -1090,9 +1091,16 @@ probe is the rebuild.
 **History answers what an age cannot: how often this really changes.** Beside
 Expand, every registry row carries a **History** caret that opens the file's
 change log, and the two share one slot, since a row is being read one way or the
-other. It is not a tab inside the JSON panel: a tab bar would say the two are
-readings of one thing, when the bytes and the file's past are different
-subjects. The list is the registry's own commits touching that path, one call
+other, as the panel's second tab. It first shipped as a second caret beside
+Expand, on the argument that the bytes and the file's past are different
+subjects rather than two readings of one thing. Overruled 2026-08-10, and the
+reason generalizes: at the control strip nobody is reading an argument about
+subjects, they are reading two adjacent disclosure triangles on one row and
+wondering what the second one does. The distinction was real and belonged one
+level in, where a tab strip states it in two words and the panel is already
+open. The tab choice sticks across rows for the life of the panel, so a reader
+working down the histories does not re-pick it on every row, and each tab loads
+on its first showing and then holds. The list is the registry's own commits touching that path, one call
 per open (the same `history` the row already makes for `built`, asked for twenty
 rows rather than one), each with its stamp, its age, and the gap to the change
 before it. The header folds that into the reading worth having, a count, a span,
@@ -1104,7 +1112,11 @@ them.
 
 **What changed is lazy, and read through each store's own fingerprint.** Tapping
 an interval fetches its two committed versions and names the records that moved:
-`4 of 19 repos · 21%`, at the grain the row already declares. The comparison is
+`4 of 19 repos · 21%`, at the grain the row already declares. Because the
+magnitude is lazy, that control exists before its own answer does, and it
+carried the words "what changed" twenty times down the column to say so. It is a
+caret now, in the idiom the panel already uses, and the reading takes its place
+on the tap: the column stays quiet until it has something to report. The comparison is
 each cache's *own* change detector, the one its crawl uses to decide whether to
 commit at all (`hash` in the config and activity caches, with `alignHash` beside
 it where a moved alignment grade counts as a changed cache; the record's blob

@@ -118,10 +118,20 @@ const data = Alpine.$data(window.document.getElementById('sv'));
 // plain literal of the same shape; the assertions are about the values.
 const plain = (v) => JSON.parse(JSON.stringify(v));
 const row = (key) => data.rows.find(r => r.key === key) || (data.offline?.key === key ? data.offline : null);
+// One row is open at a time on one sticky tab, so a test wanting a fresh read
+// closes the row first: reopening is what re-runs the load.
+const show = async (key, tab = 'history') => {
+  const r = row(key);
+  if (data.open === key) await data.toggleOpen(r);
+  data.tab = tab;
+  await data.toggleOpen(r);
+  return r;
+};
 
 test('the history is the commit list, newest first, each with its gap', async () => {
-  await data.toggleHist(row('activity'));
-  assert.equal(data.hist, 'activity');
+  await show('activity');
+  assert.equal(data.open, 'activity');
+  assert.equal(data.tab, 'history');
   assert.deepEqual(data.histRows.map(h => h.sha), ['v3', 'v2', 'v1', 'v0']);
   // The gap belongs to the row above the one it is measured from: newest first,
   // so row i's gap is i minus its older neighbour, and the oldest has none.
@@ -141,14 +151,14 @@ test('a full window says so, since its span is a floor and not a history', async
   const long = Array.from({ length: 20 }, (_, i) =>
     ({ sha: 'L' + i, date: new Date(Date.UTC(2026, 7, 9, 20 - i)).toISOString() }));
   HISTORY['state/configs.json'] = long;
-  await data.toggleHist(row('configs'));
+  await show('configs');
   assert.match(data.histSummary(), /^20 changes \(the window\) · over 19h/);
-  await data.toggleHist(row('configs'));       // closed again
-  assert.equal(data.hist, '');
+  await data.toggleOpen(row('configs'));       // closed again
+  assert.equal(data.open, '');
 });
 
 test('a repo cache diffs on hash, and an alignment grade counts as a change', async () => {
-  await data.toggleHist(row('activity'));
+  await show('activity');
   await data.diffAt(row('activity'), 0);       // v3 against v2
   assert.equal(data.histDiff[0].line, '2 of 9 repos · 22%');
   assert.deepEqual(plain(data.histDiff[0].records),
@@ -174,7 +184,7 @@ test('a second tap closes the interval; a committed version is read once', async
 });
 
 test('the sessions cache diffs on the record blob sha, at its own grain', async () => {
-  await data.toggleHist(row('sessions'));
+  await show('sessions');
   await data.diffAt(row('sessions'), 0);
   assert.equal(data.histDiff[0].line, '1 of 4 sessions · 25%');
   // The store path is scaffolding; the record is the session.
@@ -182,7 +192,7 @@ test('the sessions cache diffs on the record blob sha, at its own grain', async 
 });
 
 test('a store with no fingerprint falls back to comparing the record itself', async () => {
-  await data.toggleHist(row('entities'));
+  await show('entities');
   await data.diffAt(row('entities'), 0);
   assert.equal(data.histDiff[0].line, '1 of 2 repos · 50%');
   assert.deepEqual(plain(data.histDiff[0].records), [{ key: 'wt', kind: 'changed' }]);
@@ -197,8 +207,7 @@ test('nothing changed and nothing to count do not print alike', async () => {
   VERSIONS.z1 = { repos: {} }; VERSIONS.z0 = { repos: {} };
   HISTORY['state/entities.json'] = [
     { sha: 'z1', date: '2026-08-05T00:00:00Z' }, { sha: 'z0', date: '2026-08-01T00:00:00Z' }];
-  await data.toggleHist(row('entities'));      // close
-  await data.toggleHist(row('entities'));      // reopen on the empty pair
+  await show('entities');                      // reopen on the empty pair
   await data.diffAt(row('entities'), 0);
   assert.equal(data.histDiff[0].line, 'no repos to count');
 });
@@ -206,8 +215,7 @@ test('nothing changed and nothing to count do not print alike', async () => {
 test('a failed read fails its own interval, never the panel', async () => {
   HISTORY['state/entities.json'] = [
     { sha: 'missing', date: '2026-08-05T00:00:00Z' }, { sha: 'z0', date: '2026-08-01T00:00:00Z' }];
-  await data.toggleHist(row('entities'));
-  await data.toggleHist(row('entities'));
+  await show('entities');
   await data.diffAt(row('entities'), 0);
   assert.match(data.histDiff[0].err, /404/);
   assert.equal(data.histDiff[0].line, 'failed');
@@ -215,13 +223,20 @@ test('a failed read fails its own interval, never the panel', async () => {
   assert.equal(data.histRows.length, 2);
 });
 
-test('history and the JSON peek share one slot', async () => {
-  await data.togglePeek(row('activity'));
-  assert.equal(data.peek, 'activity');
-  assert.equal(data.hist, '');
-  await data.toggleHist(row('activity'));
-  assert.equal(data.hist, 'activity');
-  assert.equal(data.peek, '');
+test('one panel, two tabs, and the tab sticks across rows', async () => {
+  // Contents and History are two readings of one open row, not two controls on
+  // the strip. The choice persists when the reader moves to another row, so
+  // working down the histories does not mean re-picking the tab each time.
+  await show('activity', 'contents');
+  assert.equal(data.open, 'activity');
+  assert.ok(data.peekText.length, 'the open tab loaded');
+  assert.equal(data.histRows.length, 0, 'the other tab is not read until shown');
+  await data.showTab(row('activity'), 'history');
+  assert.ok(data.histRows.length, 'switching tabs loads that reading');
+  await data.toggleOpen(row('sessions'));      // a different row, same tab
+  assert.equal(data.open, 'sessions');
+  assert.equal(data.tab, 'history');
+  assert.equal(data.histRows[0].sha, 's1');
 });
 
 // ── The duration column ──────────────────────────────────────────────────────
@@ -244,8 +259,7 @@ test('a duration is read from the ring in the newest committed version', async (
   // once and keeps it; the earlier tests already cached v3 without a ring.
   // Dropping the store is what a fresh page load does.
   data._vers = new Map();
-  await data.toggleHist(row('activity'));      // close (it was left open)
-  await data.toggleHist(row('activity'));      // reopen, now with a ring
+  await show('activity');                      // reopen, now with a ring
   assert.deepEqual(data.histRows.map(h => h.took || ''), ['12s', '', '1m36s', '41s']);
   // v2 predates the ring, and the runs below it must not slide up into its slot.
   assert.equal(data.histRows[1].run, undefined);
