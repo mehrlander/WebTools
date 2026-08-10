@@ -1259,3 +1259,31 @@ test('the keyboard mode does not wear a microphone', async () => {
   assert.equal(data.dictEdit, false);
   data.dictCancel();
 });
+
+test('Done resumes dictation only if the keyboard interrupted it', async () => {
+  // Same rule and same reason as the annotator's composer: the resume is
+  // wanted, the switching ON is not.
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  assert.equal(data.dictOn, true, 'the card opens listening');
+
+  data.dictEditOpen();
+  await tick();
+  assert.equal(data.dictOn, false, 'the keyboard stops the engine');
+  data.dictEditClose();
+  await tick();
+  assert.equal(data.dictOn, true, 'and Done puts it back');
+
+  // Stopped first, then the keyboard: still stopped on the way out.
+  data.dictToggle();
+  await tick();
+  assert.equal(data.dictOn, false);
+  data.dictEditOpen();
+  await tick();
+  data.dictEditClose();
+  await tick();
+  assert.equal(data.dictOn, false,
+    'Done does not switch the microphone on for a reader who had it off');
+  data.dictCancel();
+});

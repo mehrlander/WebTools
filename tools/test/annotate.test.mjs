@@ -568,3 +568,32 @@ test('the keyboard mode does not wear a microphone', () => {
   assert.equal(S.compMic.disabled, false);
   A.disable();
 });
+
+test('Done resumes dictation only if the keyboard interrupted it', () => {
+  // Closing used to call start() unconditionally, on the reading that
+  // dictation is the default mode. A reader who had already stopped listening,
+  // tapped the pencil, and tapped Done came back to a live microphone they
+  // never asked for. Both directions are pinned, since the resume itself is
+  // wanted: it is the switching ON that was not.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+
+  // Live when the keyboard opens: resumed on the way out.
+  S.dict.start();
+  assert.equal(S.dict.listening, true);
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.dict.listening, false, 'the keyboard stops the engine');
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.dict.listening, true, 'and Done puts it back');
+
+  // Stopped when the keyboard opens: still stopped on the way out.
+  S.dict.stop();
+  assert.equal(S.dict.listening, false);
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.dict.listening, false,
+    'Done does not switch the microphone on for a reader who had it off');
+  A.disable();
+});
