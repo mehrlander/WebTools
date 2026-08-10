@@ -1016,8 +1016,11 @@ row's whole promise is that what you are looking at is what is committed now.
 The path beside each label is a plain label, not a link: it used to be an anchor
 to GitHub, which is the one destination a tap on this page should not have, and
 the small github mark tight beside it is the deliberate way out. That mark rides
-the **filename**, which is the shell's own convention for a jump-over naming an
-exact file (the estate's surface rows, the Map's item rows, the repo dialog's
+the **filename** at the house size (16px, the shell's default for the mark,
+explicit or inherited, and what this view's own header mark already used; it
+shipped at 14px, one of only two such instances in the codebase, which put two
+github marks at two sizes on one screen). Riding the filename is the shell's own
+convention for a jump-over naming an exact file (the estate's surface rows, the Map's item rows, the repo dialog's
 title all place it the same way): beside the name it opens, faint and small,
 rather than in a strip at the far end of the card. It sat with Expand at first
 because the two read as one group of file controls, which they are not, since
