@@ -140,11 +140,30 @@ block, at line 4370, runs **5,962 words** under the heading "Design notes: the
 estate, the landing mechanism, the views, the stage."
 
 The page also has a companion doc, [`docs/show-repo.md`](show-repo.md), at
-23,920 words. The two are almost exactly the same size, and they are not
-copies: an 8-gram comparison puts the overlap at 4.4% of the comments and 4.6%
-of the doc. That is the harder problem. Two parallel bodies of design prose
-about one subject, neither declared as the authority, and no way for a reader
-to tell which is current.
+23,920 words. The two are almost exactly the same size and overlap 4.5% by
+8-gram, and the first draft of this document read that as two parallel bodies
+with no declared authority. **That was wrong, and looking at the structure says
+why.**
+
+The doc's 27 headings are a *contract*: link grammars, cache file paths,
+manifest fields, the boundary against toss-render, the roadmap. The page's
+comment blocks are per-site rationale, sitting beside the code they explain and
+addressed to whoever edits it: why the ref switch is where it is, why the rail
+sits at the far end, why swipe paging is touch-only. That is a defensible split
+along exactly the axis the field vocabulary names, `reader` against `editor`,
+and 326 of the 327 blocks are on the right side of it.
+
+**The exception is the one block.** Its paragraph leads are THE ESTATE, THE REPO
+MENU, THE MANIFEST, ONE MEMBERSHIP LIST, THE CONFIG CACHE, THE BRANCH OVERLAY,
+THE STAGE, the `#stage=` grammar, THE BRANCH REVIEW, the rendering boundary. A
+substring match puts **12 of the doc's 27 headings** inside it. It is not
+rationale attached to nearby code; it is a second telling of the contract,
+parked at line 4370 and saying the same things in different words, which is why
+the verbatim overlap stayed low while the subject overlap did not.
+
+So the decision is narrower than "which body is the record," and it is one
+block rather than a corpus: whether that block is deleted in favour of the doc,
+or the doc is retired in favour of it. Everything around it is working.
 
 The transfer cost is real and separable. Stripping comments takes the page from
 295 KB to 139 KB, and gzipped from 92.0 KB to 31.5 KB, so **two thirds of what
@@ -444,9 +463,12 @@ turning the gate on and watching it misfire.
 
 What remains:
 
-1. **Decide the show-repo authority question.** 23,665 words in the page and
-   23,920 in the doc, overlapping 4.5%. A decision about which is the record,
-   not a cleanup, and until it is made both keep growing.
+1. **Decide the one show-repo block.** Not the corpus: 326 of the page's 327
+   comment blocks are per-site rationale and belong where they are. The single
+   5,962-word "Design notes" block is a second telling of the doc's contract,
+   covering 12 of its 27 sections, and it is a quarter of the page's commentary
+   and two thirds of nothing else. Delete it in favour of the doc, or retire the
+   doc in favour of it, but one of the two.
 2. **Register, do not move.** For everything else a row saying where the text is
    and who wrote it is worth more than relocating it, at a fraction of the cost.
 
