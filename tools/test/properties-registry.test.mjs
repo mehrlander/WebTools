@@ -185,6 +185,35 @@ test('every value in a closed domain is in that domain', () => {
   }
 });
 
+// `required` was the next unchecked claim after `why`, and the same audit found
+// the same shape of rot: 54 declarations said `value`, nothing read any of
+// them, and three were false. Two were tests-census fields that are blank on
+// the ten browser-driven checks (blank, never zero, because test() is not their
+// unit), which is a `counted` figure wearing a `value` grade. The third was
+// pages-catalog.title, blank on one page that genuinely had no <title>; there
+// the data was wrong rather than the grade, and the page got a title.
+//
+// So `value` now means what it says on every governed property, not only on the
+// ones that happen to carry a closed domain.
+test('every required:value property is present on every row', () => {
+  for (const r of reg.registries.filter(r => r.fields === 'governed')) {
+    const required = decls.filter(d => d.registry === r.id && d.required === 'value');
+    if (!required.length) continue;
+    const rows = carrierRows(r);
+    for (const d of required) {
+      const blank = rows.filter(row => {
+        const v = row[d.property];
+        return v === undefined || v === null || v === '' ||
+          (Array.isArray(v) && v.length === 0);
+      });
+      assert.equal(blank.length, 0,
+        `${r.carrier}: ${d.property} is declared required:value but is blank on ` +
+        `${blank.length} of ${rows.length} rows. Either fill them, or grade it "counted" ` +
+        `(a blank that means something and is worth a ledger figure) or "none".`);
+    }
+  }
+});
+
 test('modes are coherent: computed names a real deriver, recorded names none', () => {
   for (const d of decls) {
     if (d.mode === 'computed') {
