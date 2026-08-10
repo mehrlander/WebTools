@@ -707,6 +707,19 @@
    }
   },
   {
+   "id": "session-titles-from-export-4vgu4x",
+   "title": "Carry real session titles from the Dispatch export, without depending on it",
+   "status": "backlog",
+   "project": "show-repo",
+   "track": "independent",
+   "opened": "2026-08-10",
+   "size": "M",
+   "file": "session-titles-from-export-4vgu4x.md",
+   "href": "tasks/session-titles-from-export-4vgu4x.md",
+   "lastActivity": "2026-08-10",
+   "logEntries": 1
+  },
+  {
    "id": "show-repo-edit-web-tools-json-ygramz",
    "title": "Retire .show-repo.json, delete the legacy file on migrate, drop the read fallback",
    "status": "backlog",

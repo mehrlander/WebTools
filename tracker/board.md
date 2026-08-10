@@ -16,6 +16,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Make the PR bodies' open threads readable as one list](tasks/pr-body-open-threads-z5o66p.md) · M
 - 🎫 [Inline the run-time CDN references a rendering copy still carries](tasks/render-copy-runtime-cdn-refs-p4m2wq.md)
 - 🎫 [Session-start nudge for unconfigured or legacy-manifest repos](tasks/session-start-nudge-unconfigured-z0g4zn.md) (`claude/skills-portable-conventions-8x1lua`)
+- 🎫 [Carry real session titles from the Dispatch export, without depending on it](tasks/session-titles-from-export-4vgu4x.md) · M
 - 🎫 [Retire .show-repo.json, delete the legacy file on migrate, drop the read fallback](tasks/show-repo-edit-web-tools-json-ygramz.md) · S
 - 🎫 [Route the orphan docs by cause, per the 2026-08-05 classification](tasks/skillify-orphan-docs-izv20p.md) · S
 - 🎫 [Spike the snags log (friction learned the hard way)](tasks/spike-snags-log-gobdyq.md) (`claude/pr-219-review-22csrh`)
