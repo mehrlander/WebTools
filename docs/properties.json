@@ -241,6 +241,15 @@
       "gloss": "top-level test() calls; null for a browser check, whose unit test() is not"
     },
     {
+      "property": "assertion_names",
+      "registry": "tests-census",
+      "mode": "computed",
+      "deriver": "tools/build/tests-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "what each top-level test() call is named, in source order; the file's own account of its coverage, so protects need not restate it. A parameterized name is carried as its template text. Null for a browser check, alongside its null count"
+    },
+    {
       "property": "method",
       "registry": "tests-census",
       "mode": "computed",

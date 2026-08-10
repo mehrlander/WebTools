@@ -8,9 +8,23 @@
 //
 // Derived here, never authored:
 //
-//   assertions  the number of top-level test() calls. The unit the suite
-//               counts, so the registry counts the same unit and their sum
-//               can be checked against the runner's own total.
+//   assertions  the number of top-level test() calls written in the file.
+//               Static, and a LOWER BOUND rather than the runner's figure: a
+//               test() inside a loop is one call here and N tests at runtime.
+//               Four files parameterize theirs, so `npm test` reports more
+//               than this column sums to. The header used to claim the two
+//               could be checked against each other; nothing did, and they
+//               never matched.
+//   assertion_names
+//               what each of those calls is named, in source order. The names
+//               are already read to count them and were being thrown away.
+//               They are the file's own account of what it checks, authored
+//               with the test and updated with it, so the registry does not
+//               have to restate coverage in `protects` and cannot go stale
+//               against the file the way a hand-written summary does. A
+//               parameterized name is carried as its template text, `${...}`
+//               and all, which is how a reader can tell one row stands for
+//               several runtime tests.
 //   method      how a test reaches its subject, which is the axis that
 //               decides how much a pass is worth:
 //                 kit     loads a lib/kits/*.js through the bootstrap and
@@ -38,6 +52,15 @@
 // `maintenance`: a row that cannot say what it protects is a test nobody has
 // examined, and the gate counts those rather than banning them.
 //
+// `protects` and `assertion_names` answer different questions, and the split is
+// why deriving the names does not make the authored field redundant. The names
+// say WHAT the file asserts; `protects` says what BREAKS if it goes, which for
+// a gate or a lockstep is not recoverable from any test name. What the names do
+// retire is the inventory: `protects` had been absorbing coverage lists because
+// coverage was invisible in the view, and twelve rows had grown past 300
+// characters restating what the file already said better. One sentence here,
+// the list derived beside it.
+//
 // Run `npm run tests-index` to restamp after adding or changing a test.
 
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
@@ -61,6 +84,20 @@ function assertions(src) {
   return (src.match(/^\s*test\(/gm) || []).length;
 }
 
+// The name of each of those calls. The quote class covers all three string
+// forms, and `(?:\\.|(?!\1)[\s\S])*` steps over an escaped quote instead of
+// ending on it, which matters more than it looks: test names here are prose and
+// prose has apostrophes, so a naive `[^']*` truncates "the repo's own registry"
+// to "the repo" and the row reads as a terse name rather than a clipped one.
+// Anchored with the same `^\s*` as the counter so the two cannot disagree; the
+// gate below asserts that they don't.
+const TEST_NAME = /^\s*test\(\s*(['"`])((?:\\.|(?!\1)[\s\S])*)\1/gm;
+
+function assertionNames(src) {
+  return [...src.matchAll(TEST_NAME)]
+    .map(m => m[2].replace(/\\(['"`\\])/g, '$1').replace(/\s+/g, ' ').trim());
+}
+
 function method(src) {
   if (/loadKit/.test(src)) return 'kit';
   if (/startAlpine|makeWindow/.test(src)) return 'alpine';
@@ -76,7 +113,7 @@ function bootSmoke(src) {
 /**
  * Derive the machine-visible fields for every test file on disk.
  * @param {string} repoRoot
- * @returns {Map<string, {assertions:number, method:string, runner:string, boot_smoke:number}>}
+ * @returns {Map<string, {assertions:number, assertion_names:string[], method:string, runner:string, boot_smoke:number}>}
  */
 export function deriveTests(repoRoot) {
   const dir = path.join(repoRoot, TEST_DIR);
@@ -100,6 +137,7 @@ export function deriveTests(repoRoot) {
     const suite = name.endsWith('.test.mjs');
     out.set(rel, {
       assertions: suite ? assertions(src) : null,
+      assertion_names: suite ? assertionNames(src) : null,
       method: method(src),
       runner,
       boot_smoke: suite ? bootSmoke(src) : null,
@@ -133,9 +171,12 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
 
   for (const t of registry.tests) {
     const d = derived.get(t.path);
+    // assertion_names goes last: it is the longest field by far, and a row
+    // whose scannable fields sit above it stays readable in the diff.
     const ordered = { path: t.path, kind: t.kind, protects: t.protects,
                       assertions: d.assertions, method: d.method,
-                      runner: d.runner, boot_smoke: d.boot_smoke };
+                      runner: d.runner, boot_smoke: d.boot_smoke,
+                      assertion_names: d.assertion_names };
     for (const k of Object.keys(t)) delete t[k];
     Object.assign(t, ordered);
   }

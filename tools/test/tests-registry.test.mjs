@@ -64,6 +64,23 @@ test('the declared derivation matches the files on disk', () => {
     assert.equal(t.method, d.method, `${t.path}: method; run: npm run tests-index`);
     assert.equal(t.runner, d.runner, `${t.path}: runner; run: npm run tests-index`);
     assert.equal(t.boot_smoke, d.boot_smoke, `${t.path}: boot_smoke; run: npm run tests-index`);
+    assert.deepEqual(t.assertion_names, d.assertion_names,
+      `${t.path}: assertion_names; run: npm run tests-index`);
+  }
+});
+
+// The two derived fields read the same call sites, so a drift between them is
+// the extractor losing names rather than the files changing. The apostrophe bug
+// is the case that motivates it: a name regex that ends on an escaped quote
+// still matches, still yields a string, and silently truncates prose names, so
+// nothing fails and the list quietly gets worse. Counting is the check the
+// truncation cannot pass.
+test('every counted assertion has a name', () => {
+  for (const t of registry.tests) {
+    if (t.assertions === null) continue;
+    assert.equal(t.assertion_names.length, t.assertions,
+      `${t.path}: ${t.assertions} assertions but ${t.assertion_names.length} names; ` +
+      'the name extractor and the counter disagree');
   }
 });
 
@@ -76,7 +93,33 @@ test('a non-suite check reports no assertion count rather than zero', () => {
     if (suite) assert.equal(typeof t.assertions, 'number', t.path + ': suite files count');
     else assert.equal(t.assertions, null,
       t.path + ': a browser check must report null, not 0, since test() is not its unit');
+    // Same rule for the names: an empty array would read as "this file checks
+    // nothing named", which is false. A browser check names its assertions in
+    // its own harness, somewhere this extractor cannot see.
+    if (suite) assert.ok(Array.isArray(t.assertion_names), t.path + ': suite files list names');
+    else assert.equal(t.assertion_names, null,
+      t.path + ': a browser check must report null names, not an empty list');
   }
+});
+
+// A ceiling on `protects`, and it is a proxy rather than a style rule. The
+// fault it catches is one field doing two jobs: `protects` says what breaks if
+// the file goes, and it had been absorbing coverage inventories because
+// coverage was invisible in the view. Twelve rows had run past 300 characters
+// that way, the worst at 697, six clauses joined by "and" that between them
+// named 10 of the file's 22 assertions and silently dropped the other 12.
+// `assertion_names` carries that job now, derived and complete. Length is not
+// the defect, but it is the one signal of the defect a machine can read, and
+// the corpus it was set against topped out at 299.
+const PROTECTS_MAX = 320;
+
+test('protects says what breaks, and does not become an inventory', () => {
+  const long = registry.tests
+    .filter(t => (t.protects || '').length > PROTECTS_MAX)
+    .map(t => `${t.path} (${t.protects.length})`);
+  assert.deepEqual(long, [],
+    `over ${PROTECTS_MAX} chars: say what BREAKS in one sentence and let ` +
+    'assertion_names carry the coverage: ' + long.join(', '));
 });
 
 // Not a ban. The number is the point: it says how much of the suite nobody has
