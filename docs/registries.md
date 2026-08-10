@@ -139,9 +139,39 @@ the carrier itself.
 count, and `fields: ungoverned` remains only so that adding one is a deliberate
 act that has to change a test. Treat the field as a smell and never a resting
 state: the record says a reason to leave a carrier ungoverned is more likely to
-be an unchecked assumption than a fact. The lesson generalizes past this table,
-because `why` was the one field in it stating something no gate could verify,
-and that is exactly where five wrong things accumulated.
+be an unchecked assumption than a fact.
+
+### The same audit, run on `required`
+
+`why` was wrong five times because nothing read it. That is a property of
+unchecked authored fields, not of that field, so the obvious next question was
+which other claim in this table nothing reads. `required` was the answer.
+
+Fifty-four declarations graded a property `value`, meaning an assertion is
+present for every target. Nothing checked any of them; the value gate read only
+the closed domains. Three were false:
+
+- `tests-census.assertions` and `boot_smoke`, blank on the ten browser-driven
+  checks that are not `node:test` files. Blank there is correct and meaningful,
+  never zero, because `test()` is not their unit. The **grade** was wrong, and
+  both are now `counted`, which is what a blank worth counting has always meant.
+- `pages-catalog.title`, blank on one page that genuinely had no `<title>`.
+  Here the **data** was wrong, and the page got a title.
+
+Both repairs are in the table, and they are not the same repair: one moved the
+claim to fit the world, the other moved the world to fit the claim. Deciding
+which way to go is the judgment the gate cannot make, which is why it reports
+rather than fixes.
+
+`value` now means what it says on every governed property, not only the ones
+carrying a closed domain: 2,304 presence assertions across 52 declarations,
+where there were none.
+
+**The general rule this table keeps teaching.** An authored field that no gate
+reads will be wrong, and the error rate is not small: `why` ran nought for five,
+`required` ran fifty-one for fifty-four. Both were written carefully by someone
+who believed them. The fix is never to write more carefully; it is to make the
+claim readable by a check, or to stop making it.
 
 **Two limits of the model surfaced, and neither had been visible from inside
 it.** A third was claimed and was not real, which is recorded above.
