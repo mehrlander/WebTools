@@ -87,8 +87,10 @@ export default async (page) => {
   if (after.pins) throw new Error('the canvas tap left the pins behind');
 
   // And the caret is at the end, which is proved by speaking: the words append
-  // rather than replacing anything.
-  await page.evaluate(() => window.__sr.say('and more', true));
+  // rather than replacing anything. Capitalised, because a real engine
+  // capitalises after a full stop and the kit only ever LOWERS one; a fake
+  // saying "and more" measures the fake's habits instead of the buffer's.
+  await page.evaluate(() => window.__sr.say('And more', true));
   await page.waitForTimeout(250);
   const text = await page.evaluate(() =>
     [...document.querySelectorAll('[data-annotate-ui] [data-d]')]

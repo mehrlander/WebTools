@@ -433,7 +433,7 @@
       "path": "tools/render/scenarios/annotate-tap-canvas.mjs",
       "role": "",
       "layer": "tools/render/scenarios",
-      "lines": 101,
+      "lines": 103,
       "invocation": "driver",
       "emits": false,
       "named": false,
