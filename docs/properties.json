@@ -1,5 +1,5 @@
 {
-  "note": "The properties registry: the declaration table of docs/registries.md, binding scope x property to its one authoritative registry. Registries name their carrier, key field (structural identity, exempt from declaration), scope, and gate; declarations carry mode (recorded or computed, with the deriver for computed), required (what the gates enforce today: value, counted, or none), and the value domain where one is closed. Governed carriers are held both ways by tools/test/properties-registry.test.mjs: an undeclared row field fails, a declared property missing from the carrier fails, a computed declaration whose deriver does not exist fails. Origin: budget-drs data/design/properties.csv in mehrlander/home.",
+  "note": "The properties registry: the declaration table of docs/registries.md, binding scope x property to its one authoritative registry. Registries name their carrier, key field (structural identity, exempt from declaration), target grain, scope, gate, and whether their per-row fields are `governed` (held to the declarations below) or `ungoverned` (declared and counted, with a written `why` naming what about the carrier the field check cannot reach). Declarations carry mode (recorded or computed, with the deriver for computed), required (what the gates enforce today: value, counted, or none), and the value domain where one is closed. Governed carriers are held both ways by tools/test/properties-registry.test.mjs: an undeclared row field fails, a declared property missing from the carrier fails, a value outside a declared closed domain fails (431 values across eight domains; added 2026-08-09, when filling budget-drs's definition_owner field turned up that eight domains were declared and none were read), a computed declaration whose deriver does not exist fails, and the ungoverned count is asserted so it can only move deliberately. Expanded 2026-08-09 from six registries to thirteen by the reconciliation recorded in docs/registries.md, which walked the estate against the model rather than the model against itself. Ten are field-governed and three are not; the pages catalog moved from the second group to the first the same day, by teaching the field check a group walk rather than by reshaping a carrier other repos read. Origin: budget-drs data/design/properties.csv in mehrlander/home.",
   "registries": [
     {
       "id": "docs-census",
@@ -8,8 +8,10 @@
       "rows": "documents",
       "key": "path",
       "kind": "census",
-      "scope": "every file under docs/",
-      "gate": "tools/test/docs-registry.test.mjs"
+      "scope": "every .md and .json file under docs/ (the gate walks those two extensions; docs/examples/, docs/prototypes/ and docs/favicons/ hold four other files, out of scope and deliberately so)",
+      "gate": "tools/test/docs-registry.test.mjs",
+      "target": "a file under docs/",
+      "fields": "governed"
     },
     {
       "id": "tests-census",
@@ -19,7 +21,9 @@
       "key": "path",
       "kind": "census",
       "scope": "every .mjs under tools/test/ except the declared shared helpers",
-      "gate": "tools/test/tests-registry.test.mjs"
+      "gate": "tools/test/tests-registry.test.mjs",
+      "target": "a test file",
+      "fields": "governed"
     },
     {
       "id": "harness-census",
@@ -29,7 +33,9 @@
       "key": "path",
       "kind": "census",
       "scope": "code files under tools/ and scripts/, except tools/test/, which the tests census owns",
-      "gate": "tools/test/artifacts-lockstep.test.mjs"
+      "gate": "tools/test/artifacts-lockstep.test.mjs",
+      "target": "a harness code file",
+      "fields": "governed"
     },
     {
       "id": "content-registry",
@@ -38,7 +44,9 @@
       "key": "locator",
       "kind": "catalog",
       "scope": "artifacts the registry curates; authoritative for what it covers, undeclared is a normal state",
-      "gate": null
+      "gate": null,
+      "target": "an artifact, by locator (may refine below a file)",
+      "fields": "governed"
     },
     {
       "id": "portable-catalog",
@@ -48,7 +56,9 @@
       "key": "path",
       "kind": "catalog",
       "scope": "what the hub ships to other repos",
-      "gate": "tools/test/portable-manifest.test.mjs"
+      "gate": "tools/test/portable-manifest.test.mjs",
+      "target": "a shipped file",
+      "fields": "governed"
     },
     {
       "id": "tools-gallery",
@@ -58,78 +68,613 @@
       "key": "path",
       "kind": "catalog",
       "scope": "utility pages curated into show-repo's Tools view",
-      "gate": null
+      "gate": null,
+      "target": "a utility page",
+      "fields": "governed"
+    },
+    {
+      "id": "owners",
+      "carrier": "docs/owners.json",
+      "format": "json",
+      "rows": "owners",
+      "key": "subject",
+      "kind": "catalog",
+      "target": "a repeated statement, or a scope for a family rule",
+      "scope": "statements the hub's coordination layer repeats; curated against the written scope in the carrier, not complete over the estate",
+      "fields": "governed",
+      "gate": "tools/test/owners-registry.test.mjs"
+    },
+    {
+      "id": "skills-catalog",
+      "carrier": "skills/manifest.json",
+      "format": "json",
+      "rows": "skills",
+      "key": "name",
+      "kind": "census",
+      "target": "a skill",
+      "scope": "every directory under skills/",
+      "fields": "governed",
+      "gate": "tools/test/skills-registry.test.mjs"
+    },
+    {
+      "id": "pages-catalog",
+      "carrier": "pages/pages.json",
+      "format": "json",
+      "rows": "[].items",
+      "key": "href",
+      "kind": "catalog",
+      "target": "a page",
+      "scope": "every .html page under pages/, arranged into groups; the group wrapper (label, top) is structure rather than assertions about a page, the same standing as a carrier note block",
+      "fields": "governed",
+      "gate": "tools/test/artifacts-lockstep.test.mjs"
+    },
+    {
+      "id": "tracker-board",
+      "carrier": "tracker/board.json",
+      "format": "json",
+      "rows": "tasks",
+      "key": "id",
+      "kind": "census",
+      "target": "a tracker task",
+      "scope": "every task file under tracker/tasks/",
+      "fields": "governed",
+      "gate": "tools/test/artifacts-lockstep.test.mjs"
+    },
+    {
+      "id": "routes-manifest",
+      "carrier": "docs/routes.json",
+      "format": "json",
+      "kind": "catalog",
+      "target": "a route, a delivery mode, or a showing mechanism",
+      "scope": "how content moves, renders, and gets looked at",
+      "fields": "ungoverned",
+      "why": "four sibling blocks (grammar, modes, routes, showing) with different row shapes, not one population; splitting it into four registries would declare four scopes nobody uses separately",
+      "gate": "tools/test/routes-manifest.test.mjs"
+    },
+    {
+      "id": "surfacing-index",
+      "carrier": "docs/surfacing.json",
+      "format": "json",
+      "kind": "catalog",
+      "target": "a surfacing primitive",
+      "scope": "the primitives SURFACING.md defines; the PROSE is authoritative and this is its gated index, so ownership runs opposite to every other registry here",
+      "fields": "ungoverned",
+      "why": "an index of prose rather than a table of assertions: membership is held two-way against the document, and the summaries carry no properties to declare",
+      "gate": "tools/test/surfacing-manifest.test.mjs"
+    },
+    {
+      "id": "manifest-fields",
+      "carrier": "docs/manifest.json",
+      "format": "json",
+      "kind": "census",
+      "target": "a .web-tools.json manifest key",
+      "scope": "every key in use across the estate's repo manifests",
+      "fields": "ungoverned",
+      "why": "the target is a manifest KEY, not a file, and the carrier describes the key rather than asserting properties of rows; the field check has no row array to read",
+      "gate": "tools/test/manifest-registry.test.mjs"
     }
   ],
   "declarations": [
-    { "property": "subject", "registry": "docs-census", "mode": "recorded", "required": "none", "values": null,
-      "gloss": "what the document is about, one line" },
-    { "property": "status", "registry": "docs-census", "mode": "recorded", "required": "none",
-      "values": ["living", "record", "measured"],
-      "gloss": "whether the document is kept true, preserved as written, or derived from measurement" },
-    { "property": "reach", "registry": "docs-census", "mode": "computed", "deriver": "tools/build/docs-reach.mjs", "required": "value",
-      "values": ["injected", "project", "skill", "app", "orphan"],
-      "gloss": "who can get to the document: injected at session start, reachable from project instructions, a skill, the app, or nothing" },
-    { "property": "words", "registry": "docs-census", "mode": "computed", "deriver": "tools/build/docs-reach.mjs", "required": "value", "values": null,
-      "gloss": "the document's size, and its share of the folder" },
-    { "property": "maintenance", "registry": "docs-census", "mode": "recorded", "required": "counted", "values": null,
-      "gloss": "who keeps the document true; a bare row is counted by the census rather than hidden" },
-
-    { "property": "kind", "registry": "tests-census", "mode": "recorded", "required": "value",
-      "values": ["behavior", "component", "kit", "tool", "gate", "lockstep", "guard"],
-      "gloss": "the genre of check; the vocabulary is closed and the gate holds rows to it" },
-    { "property": "protects", "registry": "tests-census", "mode": "recorded", "required": "counted", "values": null,
-      "gloss": "the one thing that breaks if the test is deleted; blanks are counted" },
-    { "property": "assertions", "registry": "tests-census", "mode": "computed", "deriver": "tools/build/tests-index.mjs", "required": "value", "values": null,
-      "gloss": "top-level test() calls; null for a browser check, whose unit test() is not" },
-    { "property": "method", "registry": "tests-census", "mode": "computed", "deriver": "tools/build/tests-index.mjs", "required": "value",
-      "values": ["kit", "alpine", "spawn", "read", "pure"],
-      "gloss": "how the check reaches its subject, strongest present wins" },
-    { "property": "runner", "registry": "tests-census", "mode": "computed", "deriver": "tools/build/tests-index.mjs", "required": "value", "values": null,
-      "gloss": "suite for a *.test.mjs file, else the npm script that runs it, else unrun" },
-    { "property": "boot_smoke", "registry": "tests-census", "mode": "computed", "deriver": "tools/build/tests-index.mjs", "required": "value", "values": null,
-      "gloss": "assertions that only check a component mounts" },
-
-    { "property": "role", "registry": "harness-census", "mode": "recorded", "required": "counted", "values": null,
-      "gloss": "what the file is for; blanks are counted rather than hidden" },
-    { "property": "layer", "registry": "harness-census", "mode": "computed", "deriver": "tools/build/tools-index.mjs", "required": "value", "values": null,
-      "gloss": "the file's folder, the rail's tree" },
-    { "property": "lines", "registry": "harness-census", "mode": "computed", "deriver": "tools/build/tools-index.mjs", "required": "value", "values": null,
-      "gloss": "file length" },
-    { "property": "invocation", "registry": "harness-census", "mode": "computed", "deriver": "tools/build/tools-index.mjs", "required": "value", "values": null,
-      "gloss": "how the file gets run: npm:<script>, driver, imported, argv, or none found (the warning state)" },
-    { "property": "emits", "registry": "harness-census", "mode": "computed", "deriver": "tools/build/tools-index.mjs", "required": "value", "values": null,
-      "gloss": "writes a file: a generator rather than a reader" },
-    { "property": "named", "registry": "harness-census", "mode": "computed", "deriver": "tools/build/tools-index.mjs", "required": "value", "values": null,
-      "gloss": "its path or basename appears in tracked prose" },
-    { "property": "tested", "registry": "harness-census", "mode": "computed", "deriver": "tools/build/tools-index.mjs", "required": "value", "values": null,
-      "gloss": "a file under tools/test/ exercises it" },
-
-    { "property": "creation_mode", "registry": "content-registry", "mode": "recorded", "required": "none",
-      "values": ["supplied", "mechanical", "human-authored", "model-authored", "hybrid-authored", "mixed"],
-      "gloss": "what the artifact IS epistemically; the portable content-registry skill owns the convention" },
-    { "property": "analysis_use", "registry": "content-registry", "mode": "recorded", "required": "none", "values": null,
-      "gloss": "which corpora may draw on the artifact" },
-    { "property": "description", "registry": "content-registry", "mode": "recorded", "required": "none", "values": null,
-      "gloss": "one line on the artifact" },
-
-    { "property": "kind", "registry": "portable-catalog", "mode": "recorded", "required": "value",
-      "values": ["skill", "doc", "script", "dir"],
-      "gloss": "what species of thing travels" },
-    { "property": "command", "registry": "portable-catalog", "mode": "recorded", "required": "none", "values": null,
-      "gloss": "the invocation name; present on kind:skill rows only" },
-    { "property": "title", "registry": "portable-catalog", "mode": "recorded", "required": "none", "values": null,
-      "gloss": "display name" },
-    { "property": "role", "registry": "portable-catalog", "mode": "recorded", "required": "none", "values": null,
-      "gloss": "what the item does for an adopting repo" },
-    { "property": "use", "registry": "portable-catalog", "mode": "recorded", "required": "none", "values": null,
-      "gloss": "when to reach for it" },
-
-    { "property": "title", "registry": "tools-gallery", "mode": "recorded", "required": "none", "values": null,
-      "gloss": "card title" },
-    { "property": "note", "registry": "tools-gallery", "mode": "recorded", "required": "none", "values": null,
-      "gloss": "one line under the card title" },
-    { "property": "icon", "registry": "tools-gallery", "mode": "recorded", "required": "none", "values": null,
-      "gloss": "phosphor icon name" }
+    {
+      "property": "subject",
+      "registry": "docs-census",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "what the document is about, one line"
+    },
+    {
+      "property": "status",
+      "registry": "docs-census",
+      "mode": "recorded",
+      "required": "none",
+      "values": [
+        "living",
+        "record",
+        "measured"
+      ],
+      "gloss": "whether the document is kept true, preserved as written, or derived from measurement"
+    },
+    {
+      "property": "reach",
+      "registry": "docs-census",
+      "mode": "computed",
+      "deriver": "tools/build/docs-reach.mjs",
+      "required": "value",
+      "values": [
+        "injected",
+        "project",
+        "skill",
+        "app",
+        "orphan"
+      ],
+      "gloss": "who can get to the document: injected at session start, reachable from project instructions, a skill, the app, or nothing"
+    },
+    {
+      "property": "words",
+      "registry": "docs-census",
+      "mode": "computed",
+      "deriver": "tools/build/docs-reach.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "the document's size, and its share of the folder"
+    },
+    {
+      "property": "maintenance",
+      "registry": "docs-census",
+      "mode": "recorded",
+      "required": "counted",
+      "values": null,
+      "gloss": "who keeps the document true; a bare row is counted by the census rather than hidden"
+    },
+    {
+      "property": "kind",
+      "registry": "tests-census",
+      "mode": "recorded",
+      "required": "value",
+      "values": [
+        "behavior",
+        "component",
+        "kit",
+        "tool",
+        "gate",
+        "lockstep",
+        "guard"
+      ],
+      "gloss": "the genre of check; the vocabulary is closed and the gate holds rows to it"
+    },
+    {
+      "property": "protects",
+      "registry": "tests-census",
+      "mode": "recorded",
+      "required": "counted",
+      "values": null,
+      "gloss": "the one thing that breaks if the test is deleted; blanks are counted"
+    },
+    {
+      "property": "assertions",
+      "registry": "tests-census",
+      "mode": "computed",
+      "deriver": "tools/build/tests-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "top-level test() calls; null for a browser check, whose unit test() is not"
+    },
+    {
+      "property": "method",
+      "registry": "tests-census",
+      "mode": "computed",
+      "deriver": "tools/build/tests-index.mjs",
+      "required": "value",
+      "values": [
+        "kit",
+        "alpine",
+        "spawn",
+        "read",
+        "pure"
+      ],
+      "gloss": "how the check reaches its subject, strongest present wins"
+    },
+    {
+      "property": "runner",
+      "registry": "tests-census",
+      "mode": "computed",
+      "deriver": "tools/build/tests-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "suite for a *.test.mjs file, else the npm script that runs it, else unrun"
+    },
+    {
+      "property": "boot_smoke",
+      "registry": "tests-census",
+      "mode": "computed",
+      "deriver": "tools/build/tests-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "assertions that only check a component mounts"
+    },
+    {
+      "property": "role",
+      "registry": "harness-census",
+      "mode": "recorded",
+      "required": "counted",
+      "values": null,
+      "gloss": "what the file is for; blanks are counted rather than hidden"
+    },
+    {
+      "property": "layer",
+      "registry": "harness-census",
+      "mode": "computed",
+      "deriver": "tools/build/tools-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "the file's folder, the rail's tree"
+    },
+    {
+      "property": "lines",
+      "registry": "harness-census",
+      "mode": "computed",
+      "deriver": "tools/build/tools-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "file length"
+    },
+    {
+      "property": "invocation",
+      "registry": "harness-census",
+      "mode": "computed",
+      "deriver": "tools/build/tools-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "how the file gets run: npm:<script>, driver, imported, argv, or none found (the warning state)"
+    },
+    {
+      "property": "emits",
+      "registry": "harness-census",
+      "mode": "computed",
+      "deriver": "tools/build/tools-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "writes a file: a generator rather than a reader"
+    },
+    {
+      "property": "named",
+      "registry": "harness-census",
+      "mode": "computed",
+      "deriver": "tools/build/tools-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "its path or basename appears in tracked prose"
+    },
+    {
+      "property": "tested",
+      "registry": "harness-census",
+      "mode": "computed",
+      "deriver": "tools/build/tools-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "a file under tools/test/ exercises it"
+    },
+    {
+      "property": "creation_mode",
+      "registry": "content-registry",
+      "mode": "recorded",
+      "required": "none",
+      "values": [
+        "supplied",
+        "mechanical",
+        "human-authored",
+        "model-authored",
+        "hybrid-authored",
+        "mixed"
+      ],
+      "gloss": "what the artifact IS epistemically; the portable content-registry skill owns the convention"
+    },
+    {
+      "property": "analysis_use",
+      "registry": "content-registry",
+      "mode": "recorded",
+      "required": "none",
+      "values": [
+        "concept-vocabulary",
+        "prose-review",
+        "semantic-search",
+        "source-corpus",
+        "exclude"
+      ],
+      "gloss": "what the artifact is good for downstream. The domain is closed and is owned by the content-registry skill, not here; docs/owners.json records the copy"
+    },
+    {
+      "property": "description",
+      "registry": "content-registry",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "one line on the artifact"
+    },
+    {
+      "property": "kind",
+      "registry": "portable-catalog",
+      "mode": "recorded",
+      "required": "value",
+      "values": [
+        "skill",
+        "doc",
+        "script",
+        "dir"
+      ],
+      "gloss": "what species of thing travels"
+    },
+    {
+      "property": "command",
+      "registry": "portable-catalog",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "the invocation name; present on kind:skill rows only"
+    },
+    {
+      "property": "title",
+      "registry": "portable-catalog",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "display name"
+    },
+    {
+      "property": "role",
+      "registry": "portable-catalog",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "what the item does for an adopting repo"
+    },
+    {
+      "property": "use",
+      "registry": "portable-catalog",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "when to reach for it"
+    },
+    {
+      "property": "title",
+      "registry": "tools-gallery",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "card title"
+    },
+    {
+      "property": "note",
+      "registry": "tools-gallery",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "one line under the card title"
+    },
+    {
+      "property": "icon",
+      "registry": "tools-gallery",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "phosphor icon name"
+    },
+    {
+      "property": "kind",
+      "registry": "owners",
+      "mode": "recorded",
+      "required": "value",
+      "values": [
+        "statement",
+        "family"
+      ],
+      "gloss": "whether the row owns one repeated statement or declares a rule over a scope; a family row is a DECLARATION in this model, carried here because its carrier is distributed"
+    },
+    {
+      "property": "applies_to",
+      "registry": "owners",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "the population a family rule covers; absent on a statement row"
+    },
+    {
+      "property": "authoritative",
+      "registry": "owners",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the one carrier that owns the statement; every other mention is a repetition"
+    },
+    {
+      "property": "repetitions",
+      "registry": "owners",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "each other place the statement appears, with its relation (copy, paraphrase, pointer, live read), who keeps a copy, and the check that holds it or the honest absence of one"
+    },
+    {
+      "property": "description",
+      "registry": "skills-catalog",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the skill's trigger description. A COPY: the authoritative carrier is the skill's own SKILL.md, per the family rule in docs/owners.json"
+    },
+    {
+      "property": "label",
+      "registry": "pages-catalog",
+      "mode": "computed",
+      "deriver": "tools/build/pages-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "the short name the catalog card and the picker show"
+    },
+    {
+      "property": "title",
+      "registry": "pages-catalog",
+      "mode": "computed",
+      "deriver": "tools/build/pages-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "the page's own <title>, read from the file"
+    },
+    {
+      "property": "note",
+      "registry": "pages-catalog",
+      "mode": "computed",
+      "deriver": "tools/build/pages-index.mjs",
+      "required": "counted",
+      "values": null,
+      "gloss": "the one-line blurb. Authored in the NOTES map inside the deriver, not here, and blank on 42 of 69 pages: a counted figure, the honest measure of how much of the gallery is unexplained"
+    },
+    {
+      "property": "thumb",
+      "registry": "pages-catalog",
+      "mode": "computed",
+      "deriver": "tools/build/pages-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "the committed screenshot path; refreshed once per session, never by the commit hook"
+    },
+    {
+      "property": "code",
+      "registry": "pages-catalog",
+      "mode": "computed",
+      "deriver": "tools/build/pages-index.mjs",
+      "required": "value",
+      "values": null,
+      "gloss": "the GitHub blob URL for the page source"
+    },
+    {
+      "property": "title",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "value",
+      "values": null,
+      "gloss": "the task's short imperative, read from its frontmatter"
+    },
+    {
+      "property": "status",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "value",
+      "values": [
+        "backlog",
+        "in-progress",
+        "blocked",
+        "done"
+      ],
+      "gloss": "where the task sits. Domain owned by docs/TRACKER.md"
+    },
+    {
+      "property": "opened",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "value",
+      "values": null,
+      "gloss": "the date the task was filed"
+    },
+    {
+      "property": "closed",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": null,
+      "gloss": "the date it was completed; absent while open, which is not a blank to count"
+    },
+    {
+      "property": "file",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "value",
+      "values": null,
+      "gloss": "the task file this row is derived from"
+    },
+    {
+      "property": "href",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "value",
+      "values": null,
+      "gloss": "the blob URL the board and the caption link to"
+    },
+    {
+      "property": "lastActivity",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "value",
+      "values": null,
+      "gloss": "the date of the newest progress-log line"
+    },
+    {
+      "property": "logEntries",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "value",
+      "values": null,
+      "gloss": "how many progress-log lines the task carries"
+    },
+    {
+      "property": "session",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": null,
+      "gloss": "the branch that owns the task while it is in progress, or completed it"
+    },
+    {
+      "property": "project",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": null,
+      "gloss": "the workspace a task belongs to, where the repo scopes them"
+    },
+    {
+      "property": "size",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "?"
+      ],
+      "gloss": "effort calibrated to the session. Domain owned by docs/TRACKER.md; optional by design, and carried on 9 of 75"
+    },
+    {
+      "property": "track",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": null,
+      "gloss": "the dependency or workstream tag, including depends-on: pointers"
+    },
+    {
+      "property": "tags",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": null,
+      "gloss": "open tags preserved from the frontmatter and not acted on"
+    },
+    {
+      "property": "awaiting",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": null,
+      "gloss": "free text naming what is holding the task; cleared by hand"
+    },
+    {
+      "property": "blockedBy",
+      "registry": "tracker-board",
+      "mode": "computed",
+      "deriver": ".claude/skills/tasks/build-board.py",
+      "required": "none",
+      "values": null,
+      "gloss": "the task or condition a blocked row names"
+    }
   ]
 }

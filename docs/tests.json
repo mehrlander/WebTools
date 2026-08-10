@@ -13,8 +13,8 @@
     {
       "path": "tools/test/annotate.test.mjs",
       "kind": "behavior",
-      "protects": "A note's quote anchor survives the range round trip and disambiguates duplicates on context, its DOM address separates two identical phrases the quote alone cannot, selection is state rather than a flash and an edit changes the note without moving the anchor, every change is announced so a reader elsewhere stays current, the dictation rules compose spoken punctuation and a back-delete correctly, and the jot save goes through fresh-read → mutate → save rather than clobbering the list.",
-      "assertions": 18,
+      "protects": "A note's quote anchor survives the range round trip and disambiguates duplicates on context, its DOM address separates two identical phrases the quote alone cannot, selection is state rather than a flash and an edit changes the note without moving the anchor, every change is announced so a reader elsewhere stays current, the annotator builds its voice buffer from kits/dictate.js and still works without it, and the jot save goes through fresh-read → mutate → save rather than clobbering the list.",
+      "assertions": 22,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": 0
@@ -128,6 +128,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/chat-render-wide-table.test.mjs",
+      "kind": "behavior",
+      "protects": "A wide markdown table scrolls inside its own box instead of widening the slide it sits in, which would silently break the deck's pager: go() and active() compute in units of track width, so every index past an over-wide slide is wrong.",
+      "assertions": 5,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/claude-md.test.mjs",
       "kind": "guard",
       "protects": "CLAUDE.md still points at the showing manifest and frame, and stays under its 1600-word ceiling. The size half is a policy, not a behavior, which is why it sits here rather than inside the routes manifest test.",
@@ -191,6 +200,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/content-domain-lockstep.test.mjs",
+      "kind": "lockstep",
+      "protects": "docs/properties.json's copy of the content registry's value domains against the content-registry skill that owns them. The declaration table copies the domains so the properties gate can check content.csv without parsing markdown every run; a convenience that can drift is what this registry model exists to catch.",
+      "assertions": 1,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/content-registry.test.mjs",
       "kind": "behavior",
       "protects": "The browser-side registry reader: quoted CSV parses header-driven, an exact file row beats any subtree and the longest prefix wins, and grouping leads with authored work, collapses mechanical, and carries a description only when one locator covers the group.",
@@ -227,6 +245,15 @@
       "boot_smoke": null
     },
     {
+      "path": "tools/test/dictate.test.mjs",
+      "kind": "behavior",
+      "protects": "The voice buffer composes text the way the prototype established, independent of any caller: a recognized mark becomes its spoken word while only a tapped one is real punctuation, a tapped mark rides the stop-restart cycle a live recognition stream forces, a comma lowers the next utterance's capital so stitched fragments read as prose, the running hypothesis is committable on save rather than lost to a pause, and back-delete drops one word or the mark clinging to it. Also that the kit reads the window it was handed rather than an ambient one, and reports a missing recognizer instead of throwing.",
+      "assertions": 43,
+      "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/diff-tool-engine.test.mjs",
       "kind": "behavior",
       "protects": "The diff engine: identical input yields only equalities, and every edit type round-trips.",
@@ -239,7 +266,7 @@
       "path": "tools/test/docs-registry.test.mjs",
       "kind": "gate",
       "protects": "Every docs/ file has exactly one census row, and reach and words match the derivation.",
-      "assertions": 7,
+      "assertions": 6,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -554,7 +581,7 @@
       "path": "tools/test/map-view.test.mjs",
       "kind": "component",
       "protects": "The Map view mounts, loads the public set, and reports adoption without startup warnings, and its open tab stays addressable: the shell validates ?tab= and stamps every tab but the default, and the component renders and loads whichever tab it is handed, by URL or by tap.",
-      "assertions": 21,
+      "assertions": 22,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": 1
@@ -583,6 +610,15 @@
       "protects": "Publish delivers occasion, data, and path to every subscriber.",
       "assertions": 7,
       "method": "kit",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
+      "path": "tools/test/owners-registry.test.mjs",
+      "kind": "gate",
+      "protects": "docs/owners.json: that every row names a unique subject and one authoritative carrier, that a family rule states its scope, that the relation vocabulary stays closed, and that every path a locator names still resolves. The last is the maintenance check the table went without: nothing else in the repo reads it, so a carrier that moved would have gone unnoticed.",
+      "assertions": 5,
+      "method": "spawn",
       "runner": "suite",
       "boot_smoke": 0
     },
@@ -689,7 +725,7 @@
       "path": "tools/test/properties-registry.test.mjs",
       "kind": "gate",
       "protects": "The declaration table of docs/registries.md: every governed carrier holds exactly its key plus declared properties, computed declarations name real derivers, and no target x property pair has two owners within a registry.",
-      "assertions": 3,
+      "assertions": 5,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -830,6 +866,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/session-export.test.mjs",
+      "kind": "behavior",
+      "protects": "An excerpt carries the turns that were picked, without the result bodies, and says it is an excerpt of a bounded capture.",
+      "assertions": 9,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/session-record-hook.test.mjs",
       "kind": "tool",
       "protects": "The session recorder finds its declared store even when the project root sits above the checkouts.",
@@ -841,8 +886,8 @@
     {
       "path": "tools/test/session-render.test.mjs",
       "kind": "behavior",
-      "protects": "A session record merges into one ordered conversation, and groups into cards small enough to page.",
-      "assertions": 17,
+      "protects": "A session record merges into one ordered conversation, groups into cards small enough to page, each card gets a mechanical title (chrome leads skipped, short leads fall through, an unnarrated card named by what it ran and marked derived), and each card is classified ask / answer / work / note, which is what the outline's guideline is drawn from and the one distinction a reader cannot make by eye.",
+      "assertions": 26,
       "method": "read",
       "runner": "suite",
       "boot_smoke": 0
@@ -911,6 +956,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/skills-registry.test.mjs",
+      "kind": "gate",
+      "protects": "skills/manifest.json against skills/ both ways, so a skill cannot be added or removed without its row. The manifest is served to other repos by absolute URL and had no gate and no builder; its accuracy rested on memory.",
+      "assertions": 3,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/source-peek.test.mjs",
       "kind": "behavior",
       "protects": "The rendition is chosen by extension, and code is the default rather than a guess.",
@@ -923,8 +977,8 @@
       "path": "tools/test/stage.test.mjs",
       "kind": "component",
       "protects": "The stage: membership, grouping, the diff lens, saving, and the cross-repo address grammar.",
-      "assertions": 60,
-      "method": "alpine",
+      "assertions": 72,
+      "method": "kit",
       "runner": "suite",
       "boot_smoke": 1
     },

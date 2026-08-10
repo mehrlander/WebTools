@@ -104,6 +104,104 @@ read-through standing in for judgment) is stored when it is expensive and
 irreproducible, regenerated when it is scripted; chat-histories' two catalog
 layers are the worked precedent.
 
+## What reconciliation found
+
+Written 2026-08-09, after the estate was walked against the model rather than
+the model against itself. The model was settled on 2026-08-08 and declared six
+registries; the repo was running thirteen. The gap was not that the six were
+wrong. It was that a declaration table with no population had nothing to be
+wrong about, so seven mechanisms with a committed carrier and, in most cases, a
+gate had never been asked to say what they govern.
+
+Four of the seven turned out to be field-governable and are now declared and
+checked: the owners table (below), the skills census, whose coverage was exact
+and whose only guarantee had been that whoever last added a skill remembered to
+add a row, the pages catalog, and the tracker board. Three could not be, and
+the reasons are facts about their carriers rather than neglect, so each is
+declared `fields: ungoverned` with a written `why` and the count is asserted.
+Counting them is the point: omitted, they read as absent; declared, they read as
+three carriers whose shape the field check cannot yet reach.
+
+**The count is a ledger, and it has moved down twice within two days**, from
+five to three. Both movements say the same thing about what an `ungoverned`
+reason is worth.
+
+The **pages catalog** was ungoverned on the stated reason that its top level is
+a bare array of groups with no single row array to read. The fix was not to
+reshape the carrier, whose layout show-repo reads for this repo and for every
+other repo's pages catalog, but to teach the field check a group walk
+(`rows: "[].items"`). The limitation was in the gate, not the file. Its group
+wrapper's own fields (`label`, `top`) stay undeclared on purpose: they are
+structure, not assertions about a page, and take the same standing as a
+carrier's note block.
+
+The **tracker board** was ungoverned on a reason that was simply **false**. The
+entry said its deriver ships inside the portable plugin rather than this repo,
+so no in-repo deriver path could be named. web-tools vendors the tasks skill,
+and `.claude/skills/tasks/build-board.py` is what `npm run tracker-board`
+has been running all along. Nothing blocked it; the declaration asserted a fact
+about the repo without checking it, and the gate could not catch that because a
+`why` is prose. Its 15 fields are now declared, `status` and `size` closed
+against the domains `TRACKER.md` owns.
+
+So read the three remaining as a worklist, not a taxonomy, and read a `why`
+with suspicion: it is the one field in this table that states something the
+gate cannot verify. Two of the first five were wrong or superable within
+forty-eight hours of being written.
+
+**Three limits of the model surfaced, and none had been visible from inside
+it.**
+
+*A carrier can be distributed.* A registry names one carrier path. But the
+authoritative statement of what a skill does is each skill's own `SKILL.md`,
+one carrier per target, which the declaration table cannot express. This is why
+the owners table's family rule stays where it is instead of moving into the
+declarations array where its shape belongs.
+
+*A deriver can live outside the repo.* `tracker/board.json` is entirely
+computed, and every field would declare `mode: computed` with a deriver, except
+that `build-board.py` ships inside the portable plugin. A computed declaration
+must name a deriver that exists here, and this one correctly does not.
+
+*A scope can overstate its own gate.* The docs census declared "every file under
+docs/" while its gate walks `.md` and `.json` only, leaving four files inside
+the stated scope and outside the check. Corrected here by narrowing the scope to
+what is enforced, which is the honest direction: the four files are examples,
+prototypes, and a favicon, and pulling them into a documentation census would be
+filling rows to satisfy a gate.
+
+### The owners table
+
+`docs/owners.json` is the reconciliation's one relocation. It had been a second
+block inside `docs/docs.json`, which is the arrangement this model exists to
+forbid: a registry does not live inside another registry's carrier, and a
+complete census and a curated catalog do not want the same checks. It also
+carried no scope, which is why eleven rows read as a thin sample of the estate
+rather than a population of the coordination layer, and no coverage gate, which
+the catalog framing quietly excused.
+
+Two changes beyond the move. Its scope is written down. And its rows are keyed
+by one `subject` field and typed by a `kind`, replacing two mutually exclusive
+keys that were doing the work of a type column, because the table was holding
+two different objects: ten **assertions** about a repeated statement, and one
+**declaration** binding a scope to the carrier that owns a property across it.
+
+What was **not** done, and the reason is in this document: the table was not
+flattened into one row per pair. Normalizing it would make the one-owner rule an
+assertion over rows, which is attractive, but the storage rules above already
+say a committed carrier is a denormalized join, convenient for the browser and
+the diff, and the ownership rule is checkable on the nested shape by holding
+`subject` unique. Flattening would also not close the hole it was proposed to
+close: a second document quietly claiming an owned subject is undetectable in
+either shape, because detection needs a corpus scan and not a schema. That is
+the detectors' job, and they exist.
+
+The gate that was missing is now there and is a maintenance check, not a
+coverage one: every path a locator names must resolve. It stood at 29
+references, 0 unresolved, on the day it was written. Whether the table is worth
+keeping current was unanswerable before, since nothing would have reported the
+rot. It is now observable.
+
 ## Federation
 
 How finely responsibility is delegated is a configuration choice, not a
@@ -111,3 +209,59 @@ model feature. A workspace that runs its own registries (budget-drs inside
 home) declares them in its own properties registry; the repo-level table
 covers the repo's own carriers and does not enumerate a project's internals.
 The integrity rule spans levels unchanged: no pair, anywhere, has two owners.
+
+### Two normal forms, and how to pick
+
+*(2026-08-09, from walking the origin instrument against this document)*
+
+budget-drs's `properties.csv` and this repo's `properties.json` express the same
+model in different normal forms, and neither should convert to the other.
+
+This repo factors a **registries** object out of its declarations, because
+several properties share one carrier: five sit on `docs/docs.json` alone, and
+without the factoring the carrier, scope, and gate would be restated on every
+one of them. budget-drs declares twenty properties across twenty distinct
+carriers, so the same factoring would add an object layer with exactly one
+declaration hanging off each entry, holding nothing together.
+
+**Fan-out decides it.** One carrier to many properties wants the registry
+object; one-to-one does not. That is a property of the estate being described,
+not of the describer, so a repo adopting this model picks the form its own
+carriers imply rather than the form the hub happens to use. Neither is the
+canonical shape.
+
+**The borrowing runs both ways, and the first attempt at it failed usefully.**
+The origin instrument carries a field this one lacks: `definition_owner`, naming
+per property the document that defines its value domain (`SOURCES.md` owns
+`production_mode`'s values, `GRAINS.md` owns `additivity`'s). This document
+recorded it as worth adopting. Adopting it was then tried, and should not be.
+
+Reading all 39 declarations to fill the field showed why the hub never had it.
+In budget-drs, every one of the twenty properties is defined by a separate
+design document, because that repo has a design-doc layer: `SCHEMA.md`,
+`GRAINS.md`, `SOURCES.md`, `LAYERS.md`. In the hub, almost every domain is
+defined in its own carrier's `note` or in a glossary block beside the rows
+(`kinds` in `docs/tests.json`, `layers` in `docs/harness.json`), because here
+the carrier's note *is* the design document. The field would have been populated
+on a handful of rows and blank on the rest, and a field that is blank by
+construction teaches a reader nothing.
+
+**Where a hub domain genuinely is defined elsewhere, the owners table already
+says so**, which is the answer to the question `definition_owner` was going to
+answer. The code layers are `docs/code-layers.md`'s, and an owners row records
+it. That is the table doing exactly its job, and it is a better home for the
+relation than a column, because it also carries how the copy relates and what
+holds it.
+
+**What the attempt actually found was a missing gate.** Filling the field meant
+reading every closed domain, and doing that turned up `analysis_use` declared
+open here while the content-registry skill closes it at five values, plus the
+larger point: this registry declared eight closed domains and *read none of
+them*. budget-drs's `verify-properties.py` hard-fails on any value outside a
+declared set, and that hard-fail is most of what makes its registry
+load-bearing. The hub's gate checked field names and never values. It now checks
+both, and the content-registry copy has since gained a lockstep of its own
+(`content-domain-lockstep.test.mjs`) comparing the declared domains token for
+token against the skill bullets that define them, so the owners row that said
+"nothing holds them together" now names what does. The borrowing was real; it
+was just a check rather than a column.

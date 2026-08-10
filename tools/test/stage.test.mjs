@@ -962,3 +962,328 @@ test('the destination trigger splits repo from its scope, and the folder never t
   pk.label = 'lib/alpineComponents/fab.js';
   assert.deepEqual(plain_(pk.labelParts), { main: 'lib/alpineComponents/fab.js', ref: '', dir: '' });
 });
+
+// ── Dictation: the stage's third intake ────────────────────────────────────
+// The composition rules belong to kits/dictate.js and are tested there. What
+// is here is what the stager owes the kit: it holds no buffer of its own, the
+// keyboard and the microphone are one toggle over one text, and whichever mode
+// is open when Stage is tapped is the one that reaches the file.
+class FakeSR {
+  constructor() { FakeSR.last = this; }
+  start() {}
+  stop() { this.onend && this.onend(); }
+  say(t, final) {
+    this.onresult({ resultIndex: 0,
+      results: [Object.assign([{ transcript: t }], { isFinal: !!final })] });
+  }
+}
+
+test('dictation stages a file that exists nowhere, breaks and all', async () => {
+  reset();
+  window.SpeechRecognition = FakeSR;
+  // The kit is normally fetched on the first tap; hand it over directly, since
+  // the point here is the component's use of it and not the load.
+  const { loadKit } = await import('./bootstrap.mjs');
+  loadKit('dictate.js', { window });
+  assert.equal(data.dictAvail, true, 'the button is offered once a recognizer exists');
+
+  await data.dictStart();
+  assert.equal(data.dictOpen, true);
+  FakeSR.last.say('a file that exists nowhere yet', true);
+  await tick();
+  assert.equal(data.dictText, 'a file that exists nowhere yet.',
+    'the component mirrors the kit rather than keeping its own buffer');
+
+  data.dictStage();
+  assert.equal(data.dictOpen, false, 'staging closes the bar');
+  assert.equal(store.stage.length, 1);
+  assert.equal(store.stage[0].local, true);
+  assert.equal(store.stage[0].text, 'a file that exists nowhere yet.');
+  assert.match(store.stage[0].name, /\.(txt|md)$/, 'and it is named for what it is');
+});
+
+test('the pencil is a mode switch over one text, and the typed version wins', async () => {
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('spoken first', true);
+  FakeSR.last.say('and still being heard', false);
+  await tick();
+
+  // Opening stops the engine, since dictating into a focused textarea is two
+  // writers on one buffer, and takes the hypothesis with it: it is part of
+  // what is being edited.
+  data.dictEditOpen();
+  assert.equal(data.dictEdit, true);
+  assert.equal(data.dictOn, false, 'the engine is stopped, not left running behind the keyboard');
+  assert.equal(data.dictBreakable, false,
+    'and Breaks goes inert as the keyboard opens, not once it closes: staging from '
+    + 'here writes through the setter that clears the record either way');
+  assert.equal(data.dictDraft, 'spoken first. and still being heard.',
+    'the draft opens on everything that was on screen, interim included');
+
+  // The Breaks toggle goes inert once typing has replaced the pause record,
+  // and says so rather than silently doing nothing.
+  data.dictDraft = 'typed over the top';
+  data.dictEditClose();
+  await tick();
+  assert.equal(data.dictEdit, false);
+  assert.equal(data.dictText, 'typed over the top', 'no period is added to what was typed');
+  assert.equal(data.dictBreakable, false, 'and the pause record is gone with it');
+
+  data.dictStage();
+  assert.equal(store.stage[0].text, 'typed over the top');
+});
+
+test('staging from inside the keyboard takes the textarea, not the stale buffer', async () => {
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('the dictated version', true);
+  await tick();
+  data.dictEditOpen();
+  data.dictDraft = 'the corrected version';
+  data.dictStage();                    // straight from edit mode, no close first
+  assert.equal(store.stage[0].text, 'the corrected version');
+  assert.equal(data.dictEdit, false, 'and the bar resets, keyboard mode included');
+  assert.equal(data.dictDraft, '');
+});
+
+test('cancel discards, since the buffer is one utterance and staging is one tap', async () => {
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('never mind', true);
+  await tick();
+  data.dictCancel();
+  assert.equal(data.dictOpen, false);
+  assert.equal(data.dictText, '');
+  assert.equal(store.stage.length, 0, 'nothing reached the stage');
+});
+
+test('the pad shows three marks and a shift, and a shifted mark drops it', async () => {
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  assert.deepEqual(plain_(data.dictMarks), ['.', ',', '?'],
+    'the three ordinary-prose marks, period first');
+  data.dictShift = true;
+  assert.deepEqual(plain_(data.dictMarks), [';', '!', '¶'], 'the deliberate three');
+
+  FakeSR.last.say('a line', true);
+  await tick();
+  data.dictMark('¶');
+  assert.equal(data.dictShift, false, 'a shifted mark drops the shift, like a phone keyboard');
+  assert.deepEqual(plain_(data.dictMarks), ['.', ',', '?']);
+  assert.equal(data.dictText, 'a line.\n\n', 'and the break followed the period rather than replacing it');
+  data.dictCancel();
+});
+
+test('the stage paints through the kit and its pad turns into casing keys', async () => {
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('the quick brown fox', true);
+  await tick();
+
+  const body = data._dictHost;
+  assert.ok(body, 'the painter has a host, bound at x-init');
+  assert.deepEqual([...body.childNodes].map(n => n.getAttribute('data-d')), ['text']);
+  assert.match(body.getAttribute('style'), /-webkit-touch-callout:\s*none/,
+    'and the browser is refused its own selection over it');
+
+  data._dict.selectWordAt(6);            // "quick"
+  data.dictPaint();
+  assert.deepEqual([...body.childNodes].map(n => n.getAttribute('data-d')),
+    ['text', 'sel', 'text'], 'the text box holds only text');
+  // The handles live in the card, outside the scrolling box, so a ball above
+  // the first line sits in the card's padding rather than being clipped.
+  const layer = data.$refs.dictLayer;
+  assert.deepEqual([...layer.querySelectorAll('[data-edge]')].map(n => n.getAttribute('data-edge')),
+    ['start', 'end']);
+  assert.ok(!body.querySelector('[data-edge]'));
+  assert.equal(data.dictSel, true);
+  assert.deepEqual(plain_(data.dictMarks), ['AB', 'ab', 'Ab'], 'the pad is casing now');
+
+  data.dictMark('AB');
+  assert.equal(data.dictText, 'the QUICK brown fox.');
+  data.dictDrop();
+  assert.equal(data.dictSel, false);
+  assert.deepEqual(plain_(data.dictMarks), ['.', ',', '?'], 'and the marks came back');
+  data.dictCancel();
+});
+
+test('an armed pin puts arrows where Stage was, and they walk that edge', async () => {
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('the quick brown fox', true);
+  await tick();
+  data._dict.selectWordAt(6);            // "quick"
+  data.dictPaint();
+  assert.equal(data.dictArmed, null, 'a selection alone arms nothing');
+
+  data.dictArmed = 'end';
+  data.dictNudge(1);
+  assert.deepEqual(plain_(data._dict.range), { start: 4, end: 10 });
+  data.dictNudge(-1);
+  assert.deepEqual(plain_(data._dict.range), { start: 4, end: 9 });
+
+  // Nothing armed, nothing to move: the arrows are the armed state's controls
+  // and a pair that needs a prior tap to mean anything is worse than none.
+  data.dictArmed = null;
+  data.dictNudge(1);
+  assert.deepEqual(plain_(data._dict.range), { start: 4, end: 9 }, 'unchanged');
+  data.dictCancel();
+});
+
+test('a tap on the blank canvas sends the caret to the end', async () => {
+  // Same defect and same fix as the annotator's composer: the listeners are on
+  // the SCROLL BOX, not on the painted span, because a span shrink-wraps to
+  // its text and the canvas below the last line belongs to the box. jsdom has
+  // no layout, so getClientRects is empty and hitsText answers false for every
+  // point, which is the case under test.
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('the quick brown fox', true);
+  await tick();
+  data._dict.selectWordAt(6);            // "quick"
+  data.dictArmed = 'start';
+  data.dictPaint();
+  assert.equal(data.dictSel, true);
+
+  const surface = data._dictHost.parentElement;
+  assert.ok(surface && surface !== data._dictHost, 'the box is not the span');
+  const tap = new window.Event('pointerup', { bubbles: true });
+  tap.clientX = 50; tap.clientY = 500;
+  surface.dispatchEvent(tap);
+
+  assert.equal(data._dict.range, null, 'the caret is past the last character');
+  assert.equal(data.dictSel, false);
+  assert.equal(data.dictArmed, null, 'and the armed pin was disarmed with it');
+  assert.equal(data.dictText, 'the quick brown fox.', 'getting there wrote nothing');
+  data.dictCancel();
+});
+
+test('three taps in a run take the whole buffer', async () => {
+  // hitsText is stubbed: jsdom has no layout and would answer false for every
+  // point, and its geometry is measured in dictate.test.mjs. Under test here
+  // is the counting, and that a triple needs no point (the offset is resolved
+  // after the count, so select-all does not depend on where the third landed).
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('the quick brown fox', true);
+  await tick();
+  const real = window.Dictate.hitsText;
+  window.Dictate.hitsText = () => true;
+  try {
+    const surface = data._dictHost.parentElement;
+    const tap = () => {
+      const e = new window.Event('pointerup', { bubbles: true });
+      e.clientX = 20; e.clientY = 20;
+      surface.dispatchEvent(e);
+    };
+    tap();
+    assert.equal(data.dictSel, false, 'one tap with nothing live waits');
+    tap(); tap();
+    assert.deepEqual(plain_(data._dict.range), { start: 0, end: 20 },
+      'the third takes everything, the pause period included');
+    assert.equal(data.dictSel, true);
+  } finally { window.Dictate.hitsText = real; }
+  data.dictCancel();
+});
+
+test('the third tap counts even when it lands on the pin the second one painted', async () => {
+  // The regression a real browser found and jsdom could not: a double tap
+  // paints a handle AT the point tapped, so the third tap of a triple hits the
+  // pin. A pin is not inside the scroll box, so a listener bound there never
+  // saw it and the run stalled at two, which made select-all unreachable in
+  // exactly the place it is used. The listener is on the layer now, and that
+  // is what these three taps on a pin assert.
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('the quick brown fox', true);
+  await tick();
+  data._dict.selectWordAt(6);            // "quick", so the handles exist
+  data.dictPaint();
+
+  const pin = data.$refs.dictLayer.querySelector('[data-edge="start"]');
+  assert.ok(pin, 'a handle to tap');
+  assert.ok(!data._dictHost.parentElement.contains(pin),
+    'and it is outside the scroll box, which is the whole reason this needs the layer');
+
+  for (let i = 0; i < 3; i++) {
+    const e = new window.Event('pointerup', { bubbles: true });
+    e.clientX = 20; e.clientY = 20;
+    pin.dispatchEvent(e);
+  }
+  assert.deepEqual(plain_(data._dict.range), { start: 0, end: 20 },
+    'three taps on the pin still take the whole buffer');
+  data.dictCancel();
+});
+
+test('the keyboard mode does not wear a microphone', async () => {
+  // Same defect and same pin as the annotator's composer. The class bindings
+  // are read off the rendered buttons rather than the source, so a change to
+  // either surface's markup has to keep this true.
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('a line', true);
+  await tick();
+
+  const btns = [...data.$refs.dictLayer.querySelectorAll('button')];
+  const mic = btns.find(b => b.querySelector('.ph-microphone'));
+  assert.ok(mic, 'the mic is there while dictating');
+
+  data.dictEditOpen();
+  await tick();
+  const exit = [...data.$refs.dictLayer.querySelectorAll('button')]
+    .find(b => (b.textContent || '').includes('Done'));
+  assert.ok(exit, 'the way out says Done');
+  assert.ok(!exit.querySelector('.ph-microphone'),
+    'and the way OUT of the keyboard is not a microphone');
+  assert.ok(exit.querySelector('.ph-check'));
+  assert.ok(!/btn-warning/.test(exit.className), 'nor amber, which is this UI live accent');
+  // The mic holds its slot instead of vanishing, so nothing slides into it.
+  const stillMic = [...data.$refs.dictLayer.querySelectorAll('button')]
+    .find(b => b.querySelector('.ph-microphone'));
+  assert.ok(stillMic, 'the mic is still rendered');
+  assert.equal(stillMic.disabled, true, 'visibly off rather than absent');
+
+  data.dictEditClose();
+  await tick();
+  assert.equal(data.dictEdit, false);
+  data.dictCancel();
+});
+
+test('Done resumes dictation only if the keyboard interrupted it', async () => {
+  // Same rule and same reason as the annotator's composer: the resume is
+  // wanted, the switching ON is not.
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  assert.equal(data.dictOn, true, 'the card opens listening');
+
+  data.dictEditOpen();
+  await tick();
+  assert.equal(data.dictOn, false, 'the keyboard stops the engine');
+  data.dictEditClose();
+  await tick();
+  assert.equal(data.dictOn, true, 'and Done puts it back');
+
+  // Stopped first, then the keyboard: still stopped on the way out.
+  data.dictToggle();
+  await tick();
+  assert.equal(data.dictOn, false);
+  data.dictEditOpen();
+  await tick();
+  data.dictEditClose();
+  await tick();
+  assert.equal(data.dictOn, false,
+    'Done does not switch the microphone on for a reader who had it off');
+  data.dictCancel();
+});

@@ -570,6 +570,48 @@ document inside a readable `#gh=` toss; a `#gz=` sandbox is opaque and gets
 the shell, which the take's caveat says. `pages/annotate.html` is the page
 half: load any `owner/repo[@ref]:path` document and annotate it.
 
+The composer's voice half is **`dictate.js`**, below, and it is a soft
+dependency: load `annotate.js` alone and everything works except the
+microphone, which simply never appears. Both loaders here chain the pair.
+
+### dictate.js
+
+Voice input as a plain text buffer. `Dictate.create({win, onText, onInterim,
+onState, onError})` returns a handle over `SpeechRecognition`; read `text`
+back, or paint it from the callbacks. Every option is optional.
+
+Extracted from `annotate.js` on 2026-08-09, where it had been written as a
+callback factory with no reference to the annotator so that this would be a
+move. The value is four **text** rules, none of them about speech recognition:
+
+- **Spoken punctuation is text, tapped punctuation is punctuation.** Engines
+  guess badly at where a comma goes, so a recognized `.` is rewritten to the
+  word " period" and real marks arrive only from the caller's mark row. The
+  guess is removed rather than corrected.
+- **The stop-mark-restart cycle.** Nothing can be injected into a live
+  recognition stream, so a tapped mark parks itself, stops the engine, and the
+  end handler writes it and starts again.
+- **Continuation casing.** After a comma or semicolon the next utterance is
+  the same sentence, so its leading capital is lowered. This is what makes
+  stitched fragments read as prose.
+- **The running hypothesis is committable.** `flush()` commits the interim the
+  reader can see, because they have read it; the alternative is losing a
+  sentence to a pause they did not know they owed the recognizer.
+
+```js
+const d = Dictate.create({ win })   // win: a window or an accessor for one
+d.start() / d.stop() / d.toggle()
+d.punct('.')                        // a real mark; '¶' breaks the paragraph
+d.backWord()                        // drop a word without stopping the engine
+d.flush()                           // commit the interim, return the buffer
+d.text                              // get/set
+Dictate.available(win)              // is there a recognizer there
+```
+
+`win` is a parameter rather than a global read because the annotator points it
+at a frame's window: the kit runs in the shell realm and dictates into a
+document it does not own.
+
 ### wsl-core.js
 
 Dependency-free core for Washington State Legislature data: URL builders
