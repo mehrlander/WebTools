@@ -47,7 +47,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`showing.md`](showing.md) — why the showing boundaries sit where they are: the frame and the record behind routes.json
 - [`surfacing.json`](surfacing.json) — the machine index of the surfacing primitives
 - [`tests.json`](tests.json) — the test registry: every check's kind, what it protects, and its derived counts
-- [`text-content.md`](text-content.md) *(measured)* — the estate's undeclared natural language: text content, commentary, and inline prose, measured and split
+- [`text-content.md`](text-content.md) *(measured)* — the estate's authored text: whether the carriers holding it are organized, and how much never reached one
 - [`tools.json`](tools.json) — the curated Tools gallery manifest
 - [`venues.md`](venues.md) *(measured)* — the venue map: where work can run besides the session reading it, what each reaches, and the attended-versus-unattended split
 

@@ -292,6 +292,13 @@
     },
     {
       "kind": "script",
+      "path": "scripts/text-carriers.py",
+      "title": "text-carriers.py",
+      "role": "inventory the CSV and JSON carriers that hold authored prose, and census their field names",
+      "use": "on-demand"
+    },
+    {
+      "kind": "script",
       "path": "scripts/build-tree.py",
       "title": "build-tree.py",
       "role": "render a repo tree as a linked markdown table for chat",

@@ -44,6 +44,11 @@ Usage:
     --min N          floor for the listings (default 40 words)
     --check N        exit 1 if any single comment block exceeds N words
     --weight         add the gzipped transfer cost of the commentary
+
+Reads .js, .mjs, .html, and .py. Python is in scope because a build script is
+where a page's reader-facing strings go to hide: a `blurb` list in a builder
+reaches a reader exactly as a `blurb` list in a view module does, and the two
+should not be countable by different means.
 """
 import gzip
 import os
@@ -55,6 +60,7 @@ WORD = re.compile(r"[A-Za-z][A-Za-z'’\-]+")
 HTML_COMMENT = re.compile(r"<!--(.*?)-->", re.S)
 SCRIPT = re.compile(r"<script\b[^>]*>(.*?)</script>", re.S | re.I)
 STYLE = re.compile(r"<style\b[^>]*>.*?</style>", re.S | re.I)
+EXTS = (".js", ".mjs", ".html", ".py")
 SKIP_DIRS = {".git", "node_modules", "dist", ".venv", "__pycache__", ".preview", "thumbs"}
 
 # A '/' opens a regex literal only where a value cannot precede it.
@@ -224,8 +230,155 @@ def is_generated(src):
     return bool(GENERATED.search(src[:800]))
 
 
+# The repo's own content registry, where it has one, is the authority on what a
+# file is. Reading it here means the census reports against the declaration
+# rather than beside it, and a file the registry gets wrong shows up as a misfit
+# instead of being silently averaged in.
+
+def content_registry(root):
+    p = os.path.join(root, "data", "design", "content.csv")
+    if not os.path.exists(p):
+        return []
+    import csv as _csv
+    with open(p, encoding="utf-8-sig", newline="") as fh:
+        return list(_csv.DictReader(fh))
+
+
+def declared_mode(reg, rel):
+    """The creation_mode of the most specific row covering this path."""
+    best = ""
+    best_len = -1
+    for r in reg:
+        loc = r.get("locator", "")
+        if rel == loc:
+            return r.get("creation_mode", "")
+        if loc.endswith("/") and rel.startswith(loc) and len(loc) > best_len:
+            best, best_len = r.get("creation_mode", ""), len(loc)
+    return best
+
+
+# ---------------------------------------------------------------- python
+#
+# The same three classes in a different syntax. A module or function docstring
+# is Python's file-header comment, and a dict of prose values is Python's text
+# table, which is where a builder's reader-facing strings actually live: a
+# `blurb` list in a build script renders in front of a reader exactly like one
+# in a view module, and until this ran they had to be counted by hand.
+
+TRIPLES = ('"""', "'''")
+PY_STRING = re.compile(
+    r"""(?P<q>\"\"\"|'''|"|')(?P<v>(?:\\.|(?!(?P=q))[\s\S])*?)(?P=q)"""
+)
+PY_ENTRY = re.compile(
+    r"""(?P<k>"[^"\n]{1,80}"|'[^'\n]{1,80}')\s*:\s*"""
+    r"""(?P<q>["'])(?P<v>(?:\\.|(?!(?P=q))[^\\\n]){12,}?)(?P=q)"""
+)
+# A message raised, asserted, or printed is addressed to whoever ran the build.
+# It is code, not content, and counting it as content roughly doubles the number.
+PY_GUARD = re.compile(
+    r"\b(raise|assert|sys\.exit|SystemExit|die|fail|warn|print)\s*\(?\s*[A-Za-z_]*\(?$"
+)
+
+
+def py_spans(src):
+    """(start, end, kind) for every string literal and `#` comment.
+
+    A walk, not a substitution: a `#` inside a string and a quote inside a
+    comment both have to land on the right side of the line.
+    """
+    out, i, n = [], 0, len(src)
+    while i < n:
+        c = src[i]
+        if c == "#":
+            j = src.find("\n", i)
+            out.append((i, n if j < 0 else j, "comment"))
+            i = n if j < 0 else j
+        elif c in "\"'":
+            m = PY_STRING.match(src, i)
+            if m:
+                out.append((m.start(), m.end(), "string"))
+                i = m.end()
+            else:
+                i += 1
+        else:
+            i += 1
+    return out
+
+
+def py_comment_blocks(src):
+    """Coalesced `#` runs, plus every docstring long enough to be prose."""
+    found, run, start = [], [], None
+    for a, z, kind in py_spans(src):
+        if kind != "comment":
+            continue
+        line = src.count("\n", 0, a) + 1
+        own_line = not src[src.rfind("\n", 0, a) + 1:a].strip()
+        if own_line and run and line == start + len(run):
+            run.append(src[a + 1:z])
+            continue
+        if run:
+            found.append((start, "\n".join(run)))
+            run, start = [], None
+        if own_line:
+            run, start = [src[a + 1:z]], line
+        else:
+            found.append((line, src[a + 1:z]))
+    if run:
+        found.append((start, "\n".join(run)))
+    for a, z, kind in py_spans(src):
+        if kind == "string" and src[a:a + 3] in TRIPLES:
+            body = src[a + 3:z - 3]
+            if len(WORD.findall(body)) >= 12:
+                found.append((src.count("\n", 0, a) + 1, body))
+    return [
+        (line, body, len(WORD.findall(body)))
+        for line, body in found
+        if prosey(body) and len(WORD.findall(body)) >= 3
+    ]
+
+
+def py_text_tables(src):
+    """Dict literals whose values are prose."""
+    out = []
+    for start, blob in _containers(src):
+        if not (60 < len(blob) < 200000) or blob[0] != "{":
+            continue
+        ents = [
+            (m.group("k").strip("\"'"), value_words(m.group("v")))
+            for m in PY_ENTRY.finditer(blob)
+        ]
+        ents = [(k, n) for k, n in ents if n]
+        if len(ents) >= MIN_TABLE_ROWS:
+            out.append((
+                src.count("\n", 0, start) + 1, len(ents),
+                sum(n for _, n in ents),
+                ", ".join(k for k, _ in ents[:5])[:120],
+            ))
+    return out
+
+
+def py_inline(src):
+    """Prose string literals that are neither docstrings nor guard messages."""
+    out = []
+    for a, z, kind in py_spans(src):
+        if kind != "string" or src[a:a + 3] in TRIPLES:
+            continue
+        val = src[a + 1:z - 1]
+        n = len(WORD.findall(val))
+        if n < 8 or not prosey(val) or NOT_PROSE_VALUE.search(val.strip()):
+            continue
+        if not SENTENCE.search(val) or CODEY.search(val) or "%" in val or "{}" in val:
+            continue
+        if PY_GUARD.search(src[max(0, a - 80):a].rstrip().rstrip("f")):
+            continue
+        out.append((src.count("\n", 0, a) + 1, n, re.sub(r"\s+", " ", val)[:200]))
+    return out
+
+
 def comment_blocks(path, src):
     """Class 1: coalesced comment blocks."""
+    if path.endswith(".py"):
+        return py_comment_blocks(src)
     found = []
     if path.endswith(".html"):
         for m in HTML_COMMENT.finditer(src):
@@ -353,13 +506,13 @@ def tracked_files(root):
         out = subprocess.run(
             ["git", "-C", root, "ls-files"], capture_output=True, text=True, check=True
         ).stdout
-        return [f for f in out.splitlines() if f.endswith((".js", ".html"))]
+        return [f for f in out.splitlines() if f.endswith(EXTS)]
     except Exception:
         found = []
         for d, dirnames, filenames in os.walk(root):
             dirnames[:] = [x for x in dirnames if x not in SKIP_DIRS]
             for f in filenames:
-                if f.endswith((".js", ".html")):
+                if f.endswith(EXTS):
                     found.append(os.path.relpath(os.path.join(d, f), root))
         return found
 
@@ -452,6 +605,7 @@ def main(argv):
             check = int(a.split("=", 1)[1])
 
     files = tracked_files(root)
+    reg = content_registry(root)
     if prefixes:
         files = [f for f in files if any(f.startswith(p.rstrip("/")) for p in prefixes)]
 
@@ -463,9 +617,12 @@ def main(argv):
         except OSError:
             continue
         blocks = comment_blocks(rel, src)
-        gen = is_generated(src)
-        tables = text_tables(src)
-        inline = inline_prose(rel, src)
+        mode = declared_mode(reg, rel)
+        # Either banner says the same thing: the text here has a carrier
+        # somewhere else, or was never the estate's to write.
+        gen = is_generated(src) or mode in ("supplied", "mechanical")
+        tables = py_text_tables(src) if rel.endswith(".py") else text_tables(src)
+        inline = py_inline(src) if rel.endswith(".py") else inline_prose(rel, src)
         cw = sum(n for _, _, n in blocks)
         cb = sum(len(b) for _, b, _ in blocks)
         if not (cw or tables or inline):
@@ -479,7 +636,7 @@ def main(argv):
             "file": rel, "bytes": len(src), "comment_bytes": cb, "comment_words": cw,
             "blocks": len(blocks), "biggest": max((n for _, _, n in blocks), default=0),
             "tables": len(tables), "table_words": sum(t[2] for t in tables),
-            "generated": int(gen),
+            "generated": int(gen), "declared_mode": mode or "-",
             "inline": len(inline), "inline_words": sum(i[1] for i in inline),
             "gz_saved": gz_saved,
         })
@@ -523,13 +680,20 @@ def main(argv):
         (cb / tb * 100) if tb else 0))
     loose = [r for r in rows if not r["generated"]]
     built = [r for r in rows if r["generated"]]
+    unrowed = [r for r in loose if r["declared_mode"] == "-"]
     print("  text-table  %s words in %s tables, no carrier behind them" % (
         f"{sum(r['table_words'] for r in loose):,}", f"{sum(r['tables'] for r in loose):,}"))
     if any(r["tables"] for r in built):
         print("              %s more in %s tables inside generated payloads, which have one" % (
             f"{sum(r['table_words'] for r in built):,}", f"{sum(r['tables'] for r in built):,}"))
-    print("  inline      %s words in %s runs" % (
-        f"{sum(r['inline_words'] for r in rows):,}", f"{sum(r['inline'] for r in rows):,}"))
+    print("  inline      %s words in %s runs, no carrier behind them" % (
+        f"{sum(r['inline_words'] for r in loose):,}", f"{sum(r['inline'] for r in loose):,}"))
+    if any(r["inline"] for r in built):
+        print("              %s more in %s runs inside supplied or generated files" % (
+            f"{sum(r['inline_words'] for r in built):,}", f"{sum(r['inline'] for r in built):,}"))
+    if reg:
+        print("  registry    %d of %d files sit under a content.csv row; %d do not" % (
+            len(rows) - len(unrowed), len(rows), len(unrowed)))
     if "--weight" in opts:
         print("  ships       %s gzipped bytes of commentary" % f"{sum(r['gz_saved'] for r in rows):,}")
 
