@@ -307,6 +307,17 @@
    "logEntries": 2
   },
   {
+   "id": "estate-js-commentary-read-mymt4u",
+   "title": "Read estate.js's commentary the way show-repo.html's was read",
+   "status": "backlog",
+   "opened": "2026-08-10",
+   "size": "M",
+   "file": "estate-js-commentary-read-mymt4u.md",
+   "href": "tasks/estate-js-commentary-read-mymt4u.md",
+   "lastActivity": "2026-08-10",
+   "logEntries": 1
+  },
+  {
    "id": "estate-rows-tests-stale-7r39ry",
    "title": "Update estate tests to the groupSections layout",
    "status": "done",
