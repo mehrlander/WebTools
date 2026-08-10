@@ -22,6 +22,21 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### ci-watch-on-blocked-api: a curl watch loop on the GitHub API waits forever
+Backgrounding `until curl .../check-runs | grep completed; do sleep; done` to
+wait on a PR's CI reports nothing, ever. Unauthenticated `curl` to
+`api.github.com` returns `{"message": "GitHub access is not enabled for this
+session..."}`, which contains no completion string, so the loop spins to
+timeout while the check has long since gone green. The failure is silent in the
+worst way: "no output yet" from a watch is indistinguishable from "still
+running," so it reads as a slow build rather than a broken instrument. Twice in
+one session the real answer came from checking the MCP by hand, which is the
+corrected move: **poll `pull_request_read` with `method: get_check_runs`;
+there is no shell route to CI state.** capabilities.md already recorded the REST
+API as proxy-blocked, in a section about something else, so this is a case of a
+documented fact not reaching the moment it mattered. *(seen: 2026-08-10)*
+→ [environment/capabilities.md](environment/capabilities.md)
+
 ### claude-logomark-copied: the standard session mark is six inline copies with no owner
 Linking a session wants the Claude logomark in `#d97757`, the estate's standard
 way to say "this goes to a session," and there is nowhere to get it: the same
