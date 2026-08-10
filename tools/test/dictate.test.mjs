@@ -777,3 +777,50 @@ test('the leading between two lines is text, not a gap to fall through', () => {
   assert.equal(D.hitsText(h, 75, 136), false,
     'the inflation is vertical only: past the end of a short line is canvas');
 });
+
+test('a pin whose line is scrolled out of view is not painted, nor its arrows', () => {
+  // The layer is outside the scroll box and does not clip, which is what lets
+  // a ball hang in the whitespace above the first line. The cost is that an
+  // edge scrolled far out of view lands its pin over the toolbar, pointing at
+  // nothing, and select-all on a buffer taller than the box makes that the
+  // normal case rather than the odd one. The test is the LINE against the box.
+  //
+  // The rects are supplied on the prototype rather than on one node, because
+  // the painter builds the selection span and measures it inside the same
+  // call: a stub attached after the fact is wiped by the next paint.
+  const h = host();
+  const box = { getBoundingClientRect: () => ({ top: 100, bottom: 200, left: 0, right: 300 }),
+                scrollHeight: 0, clientHeight: 0 };
+  Object.defineProperty(h, 'parentNode', { value: box });
+  const layer = host();
+  layer.getBoundingClientRect = () => ({ left: 0, top: 0 });
+
+  const line = (top) => ({ left: 10, right: 90, top, bottom: top + 20, height: 20 });
+  const El = window.Element.prototype;
+  const real = El.getClientRects;
+  const run = (rects, armed) => {
+    El.getClientRects = function () {
+      return this.getAttribute && this.getAttribute('data-d') === 'sel' ? rects : [];
+    };
+    try {
+      D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 }, armed, overlay: layer });
+    } finally { El.getClientRects = real; }
+    return {
+      pins: [...layer.querySelectorAll('[data-edge]')].map(n => n.getAttribute('data-edge')),
+      arrows: !!layer.querySelector('[data-d="nudge"]'),
+    };
+  };
+
+  assert.deepEqual(run([line(120)]).pins, ['start', 'end'],
+    'a selection inside the box shows both edges');
+
+  // Two lines: the first above the box (scrolled out), the last inside it.
+  const split = run([line(20), line(120)], 'start');
+  assert.deepEqual(split.pins, ['end'], 'the pin on the out-of-view line is dropped');
+  assert.equal(split.arrows, false,
+    'and its arrows with it: they would step a boundary the reader cannot see');
+
+  const other = run([line(120), line(400)], 'start');
+  assert.deepEqual(other.pins, ['start'], 'it cuts the other way too, below the box');
+  assert.equal(other.arrows, true, 'the armed edge is in view, so its arrows are');
+});
