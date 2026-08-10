@@ -127,8 +127,12 @@ nssm set Ollama Start SERVICE_AUTO_START
 nssm start Ollama
 ```
 
-If running as the user is unworkable, fall back to LocalSystem and set
-`OLLAMA_MODELS` to the existing store explicitly. Do not skip that line.
+`ObjectName` wants the account's real password, which a machine signed in
+with a Microsoft account, a PIN, or Windows Hello may not have in usable form.
+That is the likeliest place this step stalls. When it does, fall back to
+LocalSystem and set `OLLAMA_MODELS` to the existing store explicitly. Do not
+skip that line: it is the difference between a working service and a silent
+14.5 GB re-pull.
 
 **Verify before going further**, since everything downstream assumes it: sign
 out completely, sign back in, and confirm `curl http://127.0.0.1:11434/api/tags`
