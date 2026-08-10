@@ -278,7 +278,7 @@
       "subject": "the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality",
       "status": "living",
       "reach": "project",
-      "words": 4722,
+      "words": 4773,
       "maintenance": "authored, edited in place; the only statement of the gh.load contract that 36 page files depend on, and CLAUDE.md now sends a reader here before they touch lib/ or a page's boot"
     },
     {
@@ -382,7 +382,7 @@
       "subject": "the curated Tools gallery manifest",
       "status": "living",
       "reach": "app",
-      "words": 125,
+      "words": 130,
       "maintenance": "authored by hand; a sibling to pins and stage.files, no prose parent"
     },
     {

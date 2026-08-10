@@ -9,10 +9,11 @@ in `lib/`, reload, and the next run uses it.
 The repo has two tiers of pages:
 
 - **Simple pages** (`pages/index.html`, `pages/stories/bookmarklets-story.html`,
-  `show-repo/repo-drag.html`, `table-compress*.html`) — each is
+  `show-repo/repo-drag.html`, `transform.html`) — each is
   self-contained: CDN Tailwind + Phosphor + Alpine (via `<script defer>`),
-  then an inline `<script>` with the page's Alpine components. They don't use
-  the loader at all.
+  then an inline `<script>` with the page's Alpine components (or, as
+  `transform.html` does, one plain `<script src>` pulling a self-contained
+  component file from `lib/`). They don't use the loader at all.
 - **Loader-based pages** (`show-repo/show-repo.html`,
   `show-repo/demo-viewer.html`, `scratch/demo-spacex.html`,
   `lib/kits/demos/{persistence,messaging,io}.html`) —
@@ -181,6 +182,7 @@ itself; a page that instantiates `GH` by hand gets only what it loads.
 | `chatRender` | `chat-render.js` | chat transcript renderer; fenced blocks become live artifacts. Loads after `swipe-deck.js` |
 | `sessionRender` | `session-render.js` | a session record (web-tools-private `sessions/**.json`) as a paged conversation: merges the record's three parallel turn lists on `at`, groups a card per ask and per prose turn, and names what the record could not capture. Loads after `chat-render.js` |
 | `swipeDeck` | `swipe-deck.js` | the house swipe format: a snap track of slides, and the fullscreen takeover that frames it. Self-contained, so another repo's page can load it with a plain `<script src>` |
+| `TransformWorkbench` | `alpineComponents/transform-workbench.js` | the multi-tab transform workbench: `panelHTML()` markup plus the `transformWorkbench` / `tfViewer` Alpine components. Not boot-chain: page-loaded (a plain `<script src>` or `gh.load`); `pages/transform.html` and the budget-drs app both mount it |
 | Alpine stores `browser`, `toasts`; magics `$clip`, `$paste`, `$toast` | `alpine-bundle.js` | exist only after `alpine:init` |
 | `Annotate` | `kits/annotate.js` | notes pinned to selections/elements/regions of a target document; serializes to markdown/JSON, saves jots. FAB take "Annotate" and `pages/annotate.html` drive it. Chain `kits/dictate.js` before it for the voice composer |
 | `Dictate` | `kits/dictate.js` | voice input as a text buffer over `SpeechRecognition`, with the punctuation and casing rules that make stitched utterances read as prose. Soft dependency of `annotate.js`: absent, the composer simply shows no microphone |
@@ -475,7 +477,7 @@ the `new Function()` constraint.
 ### Option D — step outside the pattern for one-off pages
 
 Best for: pages that don't need repo browsing at all (e.g., the simple
-`pages/stories/bookmarklets-story.html` or `table-compress.html`).
+`pages/stories/bookmarklets-story.html` or `transform.html`).
 
 Rules:
 - Just use CDN Alpine + inline components, like the existing simple pages.
