@@ -70,7 +70,7 @@
       "subject": "the surfacing system: primitives plus the guide-PR course",
       "status": "living",
       "reach": "injected",
-      "words": 3861,
+      "words": 3998,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -366,7 +366,7 @@
       "subject": "the machine index of the surfacing primitives",
       "status": "living",
       "reach": "project",
-      "words": 917,
+      "words": 1012,
       "maintenance": "authored; membership held two-way to SURFACING.md's primitive bullets by surfacing-manifest.test.mjs; the summaries are paraphrases and the doc stays authoritative"
     },
     {
