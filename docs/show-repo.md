@@ -991,7 +991,9 @@ actionable, rather than a line of its own.
 **The JSON is read in the app, not on GitHub.** Every registry row carries one
 **Expand** control, a captioned caret rather than a glyph: expanding a row to
 see its detail is the gesture people arrive with, where `{}` said "JSON" only to
-someone who already knew. It opens a panel with two tabs, **Contents** and
+someone who already knew. The caption is on the CLOSED state alone, since a word
+is an invitation and, open, the panel below already answers what the control
+does; the caret grows to carry the control on its own. It opens a panel with two tabs, **Contents** and
 **History**, described below. The **Contents** tab fetches the file and shows the bytes, verbatim,
 in a scrolling `pre` with a line count and a Copy button and nothing else. It
 ran through the shared multi-mode viewer first, which brought a mode switcher, a
@@ -1098,9 +1100,11 @@ reason generalizes: at the control strip nobody is reading an argument about
 subjects, they are reading two adjacent disclosure triangles on one row and
 wondering what the second one does. The distinction was real and belonged one
 level in, where a tab strip states it in two words and the panel is already
-open. The tab choice sticks across rows for the life of the panel, so a reader
-working down the histories does not re-pick it on every row, and each tab loads
-on its first showing and then holds. The list is the registry's own commits touching that path, one call
+open. The tabs are two plain words: a glyph beside an exact word is decoration,
+the same charge that kept `{}` off the Expand control. The tab choice sticks
+across rows for the life of the panel, so a reader working down the histories
+does not re-pick it on every row, and each tab loads on its first showing and
+then holds. The list is the registry's own commits touching that path, one call
 per open (the same `history` the row already makes for `built`, asked for twenty
 rows rather than one), each with its stamp, its age, and the gap to the change
 before it. The header folds that into the reading worth having, a count, a span,
