@@ -302,7 +302,7 @@
       "subject": "the owners registry: for a statement the coordination layer repeats, its one authoritative carrier and every typed repetition",
       "status": "living",
       "reach": "app",
-      "words": 848,
+      "words": 914,
       "maintenance": "tools/test/owners-registry.test.mjs holds shape, subject uniqueness, and locator resolution; coverage is curated against the written scope, not gated"
     },
     {
@@ -326,7 +326,7 @@
       "subject": "the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement",
       "status": "living",
       "reach": "project",
-      "words": 1818,
+      "words": 1872,
       "maintenance": "authored by hand; held both ways to the carriers it governs by tools/test/properties-registry.test.mjs"
     },
     {
@@ -334,7 +334,7 @@
       "subject": "the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction",
       "status": "living",
       "reach": "project",
-      "words": 2091,
+      "words": 2343,
       "maintenance": "the doctrine behind properties.json; written to travel, origin budget-drs properties.csv"
     },
     {

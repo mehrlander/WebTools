@@ -215,12 +215,36 @@ not of the describer, so a repo adopting this model picks the form its own
 carriers imply rather than the form the hub happens to use. Neither is the
 canonical shape.
 
-**The borrowing still runs both ways.** The origin instrument carries a field
-this one lacks: `definition_owner`, naming per property the document that
-defines its value domain (`SOURCES.md` owns `production_mode`'s values,
-`GRAINS.md` owns `additivity`'s). Here that is left implicit in a `gloss`, so
-for a closed domain like `reach`'s five values there is no structured answer to
-"which document defines these, and where do I go to change one." Worth adopting;
-not adopted yet, because the honest version means reading 34 declarations and
-naming the right document for each, and a wrong owner is worse than an absent
-one.
+**The borrowing runs both ways, and the first attempt at it failed usefully.**
+The origin instrument carries a field this one lacks: `definition_owner`, naming
+per property the document that defines its value domain (`SOURCES.md` owns
+`production_mode`'s values, `GRAINS.md` owns `additivity`'s). This document
+recorded it as worth adopting. Adopting it was then tried, and should not be.
+
+Reading all 39 declarations to fill the field showed why the hub never had it.
+In budget-drs, every one of the twenty properties is defined by a separate
+design document, because that repo has a design-doc layer: `SCHEMA.md`,
+`GRAINS.md`, `SOURCES.md`, `LAYERS.md`. In the hub, almost every domain is
+defined in its own carrier's `note` or in a glossary block beside the rows
+(`kinds` in `docs/tests.json`, `layers` in `docs/harness.json`), because here
+the carrier's note *is* the design document. The field would have been populated
+on a handful of rows and blank on the rest, and a field that is blank by
+construction teaches a reader nothing.
+
+**Where a hub domain genuinely is defined elsewhere, the owners table already
+says so**, which is the answer to the question `definition_owner` was going to
+answer. The code layers are `docs/code-layers.md`'s, and an owners row records
+it. That is the table doing exactly its job, and it is a better home for the
+relation than a column, because it also carries how the copy relates and what
+holds it.
+
+**What the attempt actually found was a missing gate.** Filling the field meant
+reading every closed domain, and doing that turned up `analysis_use` declared
+open here while the content-registry skill closes it at five values, plus the
+larger point: this registry declared eight closed domains and *read none of
+them*. budget-drs's `verify-properties.py` hard-fails on any value outside a
+declared set, and that hard-fail is most of what makes its registry
+load-bearing. The hub's gate checked field names and never values. It now checks
+both, 431 values across the eight domains, and the content-registry copy is
+recorded in the owners table as the unchecked hand-kept copy it is. The
+borrowing was real; it was just a check rather than a column.

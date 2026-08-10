@@ -178,6 +178,19 @@
           "check": "none; it owns the tools/ folder split in detail and code-layers.md names it as the owner rather than repeating it"
         }
       ]
+    },
+    {
+      "subject": "the content registry classification vocabulary",
+      "kind": "statement",
+      "authoritative": ".claude/skills/content-registry/SKILL.md (the skill owns the convention; CLAUDE.md says so)",
+      "repetitions": [
+        {
+          "where": "docs/properties.json, the values arrays for creation_mode and analysis_use",
+          "relation": "copy",
+          "kept": "by hand",
+          "check": "none: the two domains agree today, six values and five, and nothing holds them together. Found 2026-08-09 while testing whether the hub wanted budget-drs's definition_owner field"
+        }
+      ]
     }
   ]
 }
