@@ -63,7 +63,28 @@ test('the declared derivation matches the files on disk', () => {
     assert.equal(t.assertions, d.assertions, `${t.path}: assertions; run: npm run tests-index`);
     assert.equal(t.method, d.method, `${t.path}: method; run: npm run tests-index`);
     assert.equal(t.runner, d.runner, `${t.path}: runner; run: npm run tests-index`);
-    assert.equal(t.boot_smoke, d.boot_smoke, `${t.path}: boot_smoke; run: npm run tests-index`);
+    assert.deepEqual(t.boot_smoke, d.boot_smoke, `${t.path}: boot_smoke; run: npm run tests-index`);
+    assert.deepEqual(t.assertion_names, d.assertion_names,
+      `${t.path}: assertion_names; run: npm run tests-index`);
+  }
+});
+
+// `assertions` and `assertion_names` are two independent reads of the same call
+// sites, kept independent so this can compare them. What it catches is a test()
+// whose name is not a string literal: the counter sees the call, the extractor
+// finds nothing to capture, and the list silently comes up short.
+//
+// What it does NOT catch, corrected here after the comment claimed otherwise:
+// truncation. A name pattern that ends on an escaped quote still matches once
+// and still yields a string, so the counts stay equal while the captured prose
+// is clipped. Only reading the names catches that, which is why the extractor
+// steps over `\\.` rather than being guarded from the outside.
+test('every counted assertion has a name', () => {
+  for (const t of registry.tests) {
+    if (t.assertions === null) continue;
+    assert.equal(t.assertion_names.length, t.assertions,
+      `${t.path}: ${t.assertions} assertions but ${t.assertion_names.length} names; ` +
+      'the name extractor and the counter disagree');
   }
 });
 
@@ -76,7 +97,72 @@ test('a non-suite check reports no assertion count rather than zero', () => {
     if (suite) assert.equal(typeof t.assertions, 'number', t.path + ': suite files count');
     else assert.equal(t.assertions, null,
       t.path + ': a browser check must report null, not 0, since test() is not its unit');
+    // Same rule for the names: an empty array would read as "this file checks
+    // nothing named", which is false. A browser check names its assertions in
+    // its own harness, somewhere this extractor cannot see.
+    if (suite) assert.ok(Array.isArray(t.assertion_names), t.path + ': suite files list names');
+    else assert.equal(t.assertion_names, null,
+      t.path + ': a browser check must report null names, not an empty list');
+    if (suite) assert.ok(Array.isArray(t.boot_smoke), t.path + ': suite files list smoke indices');
+    else assert.equal(t.boot_smoke, null, t.path + ': a browser check reports null smoke');
   }
+});
+
+// boot_smoke indexes assertion_names, so an index outside it is a stale stamp
+// pointing at an assertion that no longer exists. Cheap to check and the whole
+// reason indices are safe to store: they are only meaningful against the list
+// beside them, and nothing else would notice if they drifted apart.
+test('every smoke index addresses a real assertion', () => {
+  for (const t of registry.tests) {
+    if (!t.boot_smoke) continue;
+    for (const i of t.boot_smoke)
+      assert.ok(Number.isInteger(i) && i >= 0 && i < t.assertion_names.length,
+        `${t.path}: boot_smoke index ${i} is outside its ${t.assertion_names.length} names`);
+  }
+});
+
+// A ceiling on `protects`, and it is a proxy rather than a style rule. The
+// fault it catches is one field doing two jobs: `protects` says what breaks if
+// the file goes, and it had been absorbing coverage inventories because
+// coverage was invisible in the view. Twelve rows had run past 300 characters
+// that way, the worst at 697, six clauses joined by "and" that between them
+// named 10 of the file's 22 assertions and silently dropped the other 12.
+// `assertion_names` carries that job now, derived and complete. Length is not
+// the defect, but it is the one signal of the defect a machine can read, and
+// the corpus it was set against topped out at 299.
+const PROTECTS_MAX = 320;
+
+test('protects says what breaks, and does not become an inventory', () => {
+  const long = registry.tests
+    .filter(t => (t.protects || '').length > PROTECTS_MAX)
+    .map(t => `${t.path} (${t.protects.length})`);
+  assert.deepEqual(long, [],
+    `over ${PROTECTS_MAX} chars: say what BREAKS in one sentence and let ` +
+    'assertion_names carry the coverage: ' + long.join(', '));
+});
+
+// The floor, added 2026-08-10 with the ceiling above it, because deriving
+// assertion_names made the opposite failure visible for the first time. Fourteen
+// rows described only the boot check ("The jots list mounts clean") on files
+// asserting eight or nine real behaviours, so the sentence claimed far LESS than
+// the file did. The ceiling cannot see that direction, and neither could anyone
+// reading the registry, since a short sentence looks disciplined.
+//
+// Deliberately narrow. The pattern alone over-fires: two rows open with "mounts"
+// and then say plenty, so length is the second condition, and a file with almost
+// nothing but a boot check is entitled to say so, which is the third. It is a
+// detector for one shape, not a quality bar for prose.
+const BOOT_ONLY = /mounts?\b|exposes (its|every) documented/i;
+
+test('protects says more than "it mounts" when the file does more', () => {
+  const thin = registry.tests.filter(t => {
+    if (!t.protects || !t.assertion_names) return false;
+    const behavioural = t.assertion_names.length - (t.boot_smoke?.length || 0);
+    return BOOT_ONLY.test(t.protects) && t.protects.length < 120 && behavioural >= 4;
+  }).map(t => `${t.path} (${t.assertion_names.length - (t.boot_smoke?.length || 0)} beyond the boot check)`);
+  assert.deepEqual(thin, [],
+    'these say only that the subject mounts, on files that assert much more; ' +
+    'read assertion_names and say what would BREAK: ' + thin.join(', '));
 });
 
 // Not a ban. The number is the point: it says how much of the suite nobody has

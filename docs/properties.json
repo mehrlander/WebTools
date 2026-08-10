@@ -279,6 +279,15 @@
       "gloss": "how many assertions the file makes. Blank, never zero, on the 10 browser-driven checks that are not node:test files, because test() is not their unit; the blank is the honest reading and the count is the ledger figure"
     },
     {
+      "property": "assertion_names",
+      "registry": "tests-census",
+      "mode": "computed",
+      "deriver": "tools/build/tests-index.mjs",
+      "required": "counted",
+      "values": null,
+      "gloss": "what each top-level test() call is named, in source order; the file's own account of its coverage, so protects need not restate it. A parameterized name is carried as its template text. Blank on the same 10 browser-driven checks as its count, for the same reason: test() is not their unit"
+    },
+    {
       "property": "method",
       "registry": "tests-census",
       "mode": "computed",
@@ -309,7 +318,7 @@
       "deriver": "tools/build/tests-index.mjs",
       "required": "counted",
       "values": null,
-      "gloss": "how many of the assertions are boot smoke. Blank on the same 10 browser-driven checks, for the same reason"
+      "gloss": "which assertions only check a component mounts, as indices into assertion_names; the property is per assertion, so a file-level count is the length rather than the record. Blank on the same 10 browser-driven checks, for the same reason"
     },
     {
       "property": "role",
