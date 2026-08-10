@@ -32,6 +32,9 @@ Portable: python3 stdlib only, argv-driven, runs from any repo root.
 Usage:
     python3 text-carriers.py [ROOT] [prefix ...] [options]
 
+    --markdown   also read GFM tables in .md as carriers. Their headers report as
+                 `label` and are never gated: a table header is a phrase for a
+                 reader, not a field name a tool reads
     --fields     the field-name census: every prose field name, with how many
                  carriers use it and how much text it holds
     --carriers   one row per carrier file
@@ -144,6 +147,59 @@ def json_fields(path):
         yield k.split(".")[-1].replace("[]", ""), cells, words
 
 
+# ---------------------------------------------------------------- markdown
+
+# A GFM table is a carrier too, and it was the last shape nothing here read:
+# 482 rows of it under web-tools docs/ alone. It is deliberately NOT held to the
+# field vocabulary, and the reason is not leniency. A CSV column name is an
+# identifier a tool reads; a table header is a phrase written for whoever is
+# reading the table ("What it does", "Use when"), so holding "What it does" to a
+# vocabulary of field names would be a category error and would fail every doc
+# in the estate. They report as `label`, counted and never gated, which is the
+# same treatment an identifier column gets.
+
+MD_DELIM = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$")
+
+
+def md_cells(line):
+    line = line.strip()
+    if line.startswith("|"):
+        line = line[1:]
+    if line.endswith("|"):
+        line = line[:-1]
+    return [c.strip() for c in line.split("|")]
+
+
+def md_fields(path):
+    """Yield (header label, cells, words) for each prose-bearing table column."""
+    try:
+        lines = open(path, encoding="utf-8", errors="replace").read().split("\n")
+    except OSError:
+        return
+    acc = defaultdict(lambda: [0, 0])
+    i = 0
+    while i < len(lines) - 1:
+        if "|" in lines[i] and MD_DELIM.match(lines[i + 1]):
+            head = md_cells(lines[i])
+            i += 2
+            while i < len(lines) and "|" in lines[i] and lines[i].strip():
+                row = md_cells(lines[i])
+                for h, v in zip(head, row):
+                    # strip the markdown a cell carries, so a link's target does
+                    # not count as words and bold does not change a word count
+                    v = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", v)
+                    v = re.sub(r"[`*_]", "", v)
+                    if is_prose(v):
+                        key = h.strip().lower() or "(unnamed column)"
+                        acc[key][0] += 1
+                        acc[key][1] += len(WORD.findall(v))
+                i += 1
+        else:
+            i += 1
+    for k, (cells, words) in acc.items():
+        yield k, cells, words
+
+
 # ---------------------------------------------------------------- declaration
 
 def naming_corpus(root):
@@ -185,8 +241,17 @@ VOCAB_PATHS = (
 
 
 def load_vocab(root, override=None):
-    """Return {field: row} for the sanctioned names, plus {alias: field}."""
-    paths = [override] if override else [os.path.join(root, p) for p in VOCAB_PATHS]
+    """Return {field: row} for the sanctioned names, plus {alias: field}.
+
+    Falls back to the copy beside this script, so a repo that resolves the
+    script from the hub gets the vocabulary with it and needs no second
+    resolver of its own. The vocabulary is portable for the same reason the
+    script is: a concept named once should be the same concept in every repo.
+    """
+    beside = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                          "docs", "text-fields.csv")
+    paths = ([override] if override
+             else [os.path.join(root, p) for p in VOCAB_PATHS] + [beside])
     for p in paths:
         if p and os.path.exists(p):
             with open(p, encoding="utf-8-sig", newline="") as fh:
@@ -269,7 +334,8 @@ def main(argv):
     root, prefixes, opts, values = split_args(argv)
     minc = int(values.get("--min", 3))
 
-    files = tracked(root, (".csv", ".json"))
+    exts = (".csv", ".json", ".md") if "--markdown" in opts else (".csv", ".json")
+    files = tracked(root, exts)
     if prefixes:
         files = [f for f in files if any(f.startswith(p.rstrip("/")) for p in prefixes)]
     corpus = naming_corpus(root)
@@ -280,7 +346,12 @@ def main(argv):
     for rel in sorted(files):
         full = os.path.join(root, rel)
         try:
-            found = list(csv_fields(full) if rel.endswith(".csv") else json_fields(full))
+            if rel.endswith(".csv"):
+                found = list(csv_fields(full))
+            elif rel.endswith(".json"):
+                found = list(json_fields(full))
+            else:
+                found = list(md_fields(full))
         except Exception:
             continue
         found = [(f, c, w) for f, c, w in found if c >= minc]
@@ -303,7 +374,9 @@ def main(argv):
             "creation_mode": mode,
         })
         for f, c, w in found:
-            if not vocab or f in vocab:
+            if rel.endswith(".md"):
+                standing = "label"
+            elif not vocab or f in vocab:
                 standing = "sanctioned"
             elif VALUE_FIELD.match(f):
                 standing = "value"
@@ -316,7 +389,12 @@ def main(argv):
                            "standing": standing})
 
     authored = [c for c in carriers if not c["supplied"]]
-    undeclared = [c for c in authored if not c["declared"]]
+    # A .md is exempt from the naming check. The question "does anything name
+    # this carrier" is about a data file that could be filed and forgotten; a
+    # document is its own thing, needs no second file to vouch for it, and in
+    # this estate docs/docs.json already governs whether docs/ is fully claimed.
+    undeclared = [c for c in authored
+                  if not c["declared"] and not c["carrier"].endswith(".md")]
 
     if "--csv" in opts:
         rows = fields if "--fields" in opts else carriers
@@ -415,7 +493,7 @@ def main(argv):
     if vocab:
         authored_fields = [f for f in fields if not f["supplied"]]
         san = [f for f in authored_fields if f["standing"] == "sanctioned"]
-        val = [f for f in authored_fields if f["standing"] == "value"]
+        val = [f for f in authored_fields if f["standing"] in ("value", "label")]
         ali = [f for f in authored_fields if f["standing"].startswith("alias")]
         off = [f for f in authored_fields if f["standing"] == "off-vocabulary"]
         print("\n  against %s (%d sanctioned names):" % (vocab_path, len(vocab)))

@@ -414,29 +414,49 @@ every pull request.
 
 # What to do first, if anything
 
-Two of the five are done, and are described above: the field vocabulary and the
-`VIEWS` blurbs. What remains, in order of ratio:
+Four of the five are done and described above: the field vocabulary, the
+`VIEWS` blurbs, the spend glosses, and the gate.
 
-1. **The spend glosses.** 22 definitions of the app's own taxonomy, readable
-   today only by opening a JavaScript file. The `VIEWS` migration is the pattern
-   and this one is simpler, being a flat map with no structural half.
-2. **Decide the show-repo authority question.** 23,665 words in the page and
+**The spend glosses** moved to
+[`app/spend/spend-glosses.csv`](https://github.com/mehrlander/home/blob/main/projects/budget-drs/app/spend/spend-glosses.csv),
+23 rows with a `grain` column that had been a comment heading in the source and
+could not survive into a payload. Making it a column is most of what moving the
+table bought.
+
+**The gate runs in both suites.** `text-carriers.py --check` is a step of home's
+`tools/verify-artifacts.sh` and a node test here, and both pass. It gates two
+classes and only two: an authored carrier nothing names, and a field name
+nothing accounts for. An alias passes.
+
+**The check that holds the migrations is generic**, not one per carrier.
+[`verify-text-payloads.mjs`](https://github.com/mehrlander/home/blob/main/projects/budget-drs/app/lineage/tools/verify-text-payloads.mjs)
+declares nothing new: it reads `pipeline.csv` for which CSV feeds which payload,
+`pages.csv` for which page loads it, and this vocabulary for which columns hold
+prose. It found a third pair nobody had touched, and covers the next one without
+being edited.
+
+**Markdown is read now too**, which closes the gap this document used to name.
+`--markdown` reports GFM tables as carriers, with two deliberate exemptions: a
+table header is a phrase written for a reader rather than a field name a tool
+reads, so headers report as `label` and are never gated; and a `.md` needs no
+second file to vouch for it, so the naming check skips it. Both were found by
+turning the gate on and watching it misfire.
+
+What remains:
+
+1. **Decide the show-repo authority question.** 23,665 words in the page and
    23,920 in the doc, overlapping 4.5%. A decision about which is the record,
    not a cleanup, and until it is made both keep growing.
-3. **Turn on the vocabulary gate.** `text-carriers.py --check` exits 0 on both
-   repos today. Running it in the verify suites would hold that, at the cost of
-   a failure the next time a genuinely new concept appears, which is the
-   intended cost and is what `payload` was.
-4. **Register, do not move.** For everything else a row saying where the text is
+2. **Register, do not move.** For everything else a row saying where the text is
    and who wrote it is worth more than relocating it, at a fraction of the cost.
 
 # What the census cannot see
 
 Stated so the numbers are not read as more than they are.
 
-- **Markdown and CSV prose are out of the census's scope** by design; the
-  carrier survey covers CSV and JSON, and nothing covers `.md`, which is the
-  one gap left.
+- **Markdown prose outside a table is uncovered.** The carrier survey reads GFM
+  tables under `--markdown`; body prose in a document is not a carrier and
+  nothing here counts it.
 - **A template literal that emits JavaScript** reads as prose to a word
   counter. The `inline` class filters the obvious cases and still leaks.
 - **"Generated" is detected from a banner** in the first 800 bytes, or from a
