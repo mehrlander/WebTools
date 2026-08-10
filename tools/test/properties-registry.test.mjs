@@ -10,7 +10,8 @@
 // registry: registry-level blocks (notes, glossaries) are outside the rule,
 // and files it does not govern are untouched.
 //
-// `fields` is the reconciliation's addition (2026-08-09). The estate ran
+// `fields` is the reconciliation's addition (2026-08-09), and it is now a
+// PROHIBITION rather than a ledger: the assertion below reads zero. The estate ran
 // thirteen registry-like mechanisms while six were declared, and five of the
 // seven found could not be field-governed for reasons that are facts about the
 // carrier rather than neglect: a bare array of groups, a deriver that ships in
@@ -20,10 +21,13 @@
 // count-rather-than-ban posture the censuses run for authored judgment. The
 // number is asserted below so it can only move deliberately.
 //
-// It has moved once, down: the pages catalog was governed the same day, and
-// the fix was the group walk in rowsAt() rather than anything about the
-// carrier. That is the ledger working as intended, and the reason the count is
-// asserted rather than merely reported.
+// It moved four times in two days, always down, and ended at zero: all five
+// reasons were wrong on inspection, two being false statements about the repo
+// and three being statements about this gate mistaken for statements about a
+// carrier. So the ledger became a prohibition. `fields` survives only so that
+// adding an ungoverned carrier has to change this test, which is a deliberate
+// act; the record says such a reason is more likely an unchecked assumption
+// than a fact. docs/registries.md carries the five and what each got wrong.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -130,9 +134,11 @@ test('every ungoverned registry says why, and the count is the one on the books'
       if (r.format === 'json') assert.ok(r.rows, `${r.id}: a governed JSON carrier names its row array`);
     }
   }
-  assert.equal(ungoverned.length, 3,
-    'the ungoverned count moved. Down is progress and the number should follow; up means a ' +
-    'carrier was declared without being governed, which wants a reason in the commit message');
+  assert.equal(ungoverned.length, 0,
+    'a carrier was declared ungoverned. Every one of the five that ever claimed this was wrong ' +
+    'on inspection, so check the carrier before believing the reason: is there a keyed row array ' +
+    'anywhere in it, possibly under a dotted or [] path, and may it be a second registry sharing ' +
+    'the carrier? If it truly cannot be governed, say why here and raise this number.');
 });
 
 test('each governed carrier holds exactly its key plus its declared properties', () => {
