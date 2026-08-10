@@ -38,7 +38,7 @@
       "subject": "the portable set: what travels, and how to adopt it",
       "status": "living",
       "reach": "project",
-      "words": 5648,
+      "words": 6022,
       "maintenance": "authored, edited in place; the roster tables are census-gated against portable.json and disk (portable-manifest.test.mjs)"
     },
     {
@@ -46,7 +46,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 840,
+      "words": 861,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -102,7 +102,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2203,
+      "words": 2257,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -262,7 +262,7 @@
       "subject": "the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting",
       "status": "living",
       "reach": "app",
-      "words": 3501,
+      "words": 3582,
       "maintenance": "authored role and layer glossary; layer, lines, invocation, emits, named and tested stamped by tools/build/tools-index.mjs, held in lockstep by artifacts-lockstep.test.mjs; blank roles are counted, not hidden"
     },
     {
@@ -318,7 +318,7 @@
       "subject": "the machine index of the portable set",
       "status": "living",
       "reach": "app",
-      "words": 1122,
+      "words": 1175,
       "maintenance": "authored; held to PORTABLE.md and to the skill directories on disk by portable-manifest.test.mjs"
     },
     {
@@ -326,7 +326,7 @@
       "subject": "the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement",
       "status": "living",
       "reach": "project",
-      "words": 3239,
+      "words": 3422,
       "maintenance": "authored by hand; held both ways to the carriers it governs by tools/test/properties-registry.test.mjs"
     },
     {
@@ -350,7 +350,7 @@
       "subject": "the show-repo shell: views, stage, transfer, and the .web-tools.json manifest",
       "status": "living",
       "reach": "project",
-      "words": 22744,
+      "words": 22951,
       "maintenance": "authored, edited in place; the corpus's largest document, and the buried home of the stage contract"
     },
     {
@@ -374,8 +374,16 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 19778,
+      "words": 19943,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
+    },
+    {
+      "path": "docs/text-content.md",
+      "subject": "the estate's authored text: whether the carriers holding it are organized, and how much never reached one",
+      "status": "measured",
+      "reach": "project",
+      "words": 4440,
+      "maintenance": "re-derive with scripts/text-census.py and scripts/text-carriers.py; every figure is a command away, and the date in the opening line is what the numbers are as of"
     },
     {
       "path": "docs/tools.json",

@@ -2,6 +2,17 @@
   "note": "The properties registry: the declaration table of docs/registries.md, binding scope x property to its one authoritative registry. Registries name their carrier, key field (structural identity, exempt from declaration), target grain, scope, gate, and whether their per-row fields are `governed` (held to the declarations below) or `ungoverned` (declared and counted, with a written `why` naming what about the carrier the field check cannot reach). Declarations carry mode (recorded or computed, with the deriver for computed), required (what the gates enforce today: value, counted, or none), and the value domain where one is closed. Governed carriers are held both ways by tools/test/properties-registry.test.mjs: an undeclared row field fails, a declared property missing from the carrier fails, a value outside a declared closed domain fails, and a required:value property blank on any row fails (2,304 presence assertions across 52 declarations; both added after audits found the same rot, that a field nothing reads goes wrong: eight domains declared and none read, then 54 value grades unchecked and three false), a computed declaration whose deriver does not exist fails, and the ungoverned count is asserted so it can only move deliberately. Expanded 2026-08-09 from six registries to thirteen by the reconciliation recorded in docs/registries.md, which walked the estate against the model rather than the model against itself. All fifteen are field-governed. Five were initially declared ungoverned with written reasons and all five reasons proved wrong on inspection, so the assertion now reads zero rather than a count: `fields: ungoverned` survives only so that adding one has to change a test. Origin: budget-drs data/design/properties.csv in mehrlander/home.",
   "registries": [
     {
+      "id": "content-registry",
+      "carrier": "data/design/content.csv",
+      "format": "csv",
+      "key": "locator",
+      "kind": "catalog",
+      "scope": "artifacts the registry curates; authoritative for what it covers, undeclared is a normal state",
+      "gate": null,
+      "target": "an artifact, by locator (may refine below a file)",
+      "fields": "governed"
+    },
+    {
       "id": "docs-census",
       "carrier": "docs/docs.json",
       "format": "json",
@@ -11,18 +22,6 @@
       "scope": "every .md and .json file under docs/ (the gate walks those two extensions; docs/examples/, docs/prototypes/ and docs/favicons/ hold four other files, out of scope and deliberately so)",
       "gate": "tools/test/docs-registry.test.mjs",
       "target": "a file under docs/",
-      "fields": "governed"
-    },
-    {
-      "id": "tests-census",
-      "carrier": "docs/tests.json",
-      "format": "json",
-      "rows": "tests",
-      "key": "path",
-      "kind": "census",
-      "scope": "every .mjs under tools/test/ except the declared shared helpers",
-      "gate": "tools/test/tests-registry.test.mjs",
-      "target": "a test file",
       "fields": "governed"
     },
     {
@@ -38,39 +37,16 @@
       "fields": "governed"
     },
     {
-      "id": "content-registry",
-      "carrier": "data/design/content.csv",
-      "format": "csv",
-      "key": "locator",
-      "kind": "catalog",
-      "scope": "artifacts the registry curates; authoritative for what it covers, undeclared is a normal state",
-      "gate": null,
-      "target": "an artifact, by locator (may refine below a file)",
-      "fields": "governed"
-    },
-    {
-      "id": "portable-catalog",
-      "carrier": "docs/portable.json",
+      "id": "manifest-fields",
+      "carrier": "docs/manifest.json",
       "format": "json",
-      "rows": "items",
-      "key": "path",
-      "kind": "catalog",
-      "scope": "what the hub ships to other repos",
-      "gate": "tools/test/portable-manifest.test.mjs",
-      "target": "a shipped file",
-      "fields": "governed"
-    },
-    {
-      "id": "tools-gallery",
-      "carrier": "docs/tools.json",
-      "format": "json",
-      "rows": "items",
-      "key": "path",
-      "kind": "catalog",
-      "scope": "utility pages curated into show-repo's Tools view",
-      "gate": null,
-      "target": "a utility page",
-      "fields": "governed"
+      "rows": "fields",
+      "key": "key",
+      "kind": "census",
+      "target": "a .web-tools.json manifest key",
+      "scope": "every key in use across the estate's repo manifests",
+      "fields": "governed",
+      "gate": "tools/test/manifest-registry.test.mjs"
     },
     {
       "id": "owners",
@@ -85,18 +61,6 @@
       "gate": "tools/test/owners-registry.test.mjs"
     },
     {
-      "id": "skills-catalog",
-      "carrier": "skills/manifest.json",
-      "format": "json",
-      "rows": "skills",
-      "key": "name",
-      "kind": "census",
-      "target": "a skill",
-      "scope": "every directory under skills/",
-      "fields": "governed",
-      "gate": "tools/test/skills-registry.test.mjs"
-    },
-    {
       "id": "pages-catalog",
       "carrier": "pages/pages.json",
       "format": "json",
@@ -109,16 +73,16 @@
       "gate": "tools/test/artifacts-lockstep.test.mjs"
     },
     {
-      "id": "tracker-board",
-      "carrier": "tracker/board.json",
+      "id": "portable-catalog",
+      "carrier": "docs/portable.json",
       "format": "json",
-      "rows": "tasks",
-      "key": "id",
-      "kind": "census",
-      "target": "a tracker task",
-      "scope": "every task file under tracker/tasks/",
-      "fields": "governed",
-      "gate": "tools/test/artifacts-lockstep.test.mjs"
+      "rows": "items",
+      "key": "path",
+      "kind": "catalog",
+      "scope": "what the hub ships to other repos",
+      "gate": "tools/test/portable-manifest.test.mjs",
+      "target": "a shipped file",
+      "fields": "governed"
     },
     {
       "id": "routes-modes",
@@ -157,6 +121,18 @@
       "gate": "tools/test/routes-manifest.test.mjs"
     },
     {
+      "id": "skills-catalog",
+      "carrier": "skills/manifest.json",
+      "format": "json",
+      "rows": "skills",
+      "key": "name",
+      "kind": "census",
+      "target": "a skill",
+      "scope": "every directory under skills/",
+      "fields": "governed",
+      "gate": "tools/test/skills-registry.test.mjs"
+    },
+    {
       "id": "surfacing-index",
       "carrier": "docs/surfacing.json",
       "format": "json",
@@ -169,16 +145,51 @@
       "gate": "tools/test/surfacing-manifest.test.mjs"
     },
     {
-      "id": "manifest-fields",
-      "carrier": "docs/manifest.json",
+      "id": "tests-census",
+      "carrier": "docs/tests.json",
       "format": "json",
-      "rows": "fields",
-      "key": "key",
+      "rows": "tests",
+      "key": "path",
       "kind": "census",
-      "target": "a .web-tools.json manifest key",
-      "scope": "every key in use across the estate's repo manifests",
+      "scope": "every .mjs under tools/test/ except the declared shared helpers",
+      "gate": "tools/test/tests-registry.test.mjs",
+      "target": "a test file",
+      "fields": "governed"
+    },
+    {
+      "id": "text-field-vocabulary",
+      "carrier": "docs/text-fields.csv",
+      "format": "csv",
+      "key": "field",
+      "kind": "catalog",
+      "scope": "the names a prose-bearing CSV column or JSON key may carry, estate-wide; portable, since a concept named once should be the same concept in every repo",
+      "gate": "tools/test/text-fields-registry.test.mjs",
+      "target": "a prose field name",
+      "fields": "governed"
+    },
+    {
+      "id": "tools-gallery",
+      "carrier": "docs/tools.json",
+      "format": "json",
+      "rows": "items",
+      "key": "path",
+      "kind": "catalog",
+      "scope": "utility pages curated into show-repo's Tools view",
+      "gate": null,
+      "target": "a utility page",
+      "fields": "governed"
+    },
+    {
+      "id": "tracker-board",
+      "carrier": "tracker/board.json",
+      "format": "json",
+      "rows": "tasks",
+      "key": "id",
+      "kind": "census",
+      "target": "a tracker task",
+      "scope": "every task file under tracker/tasks/",
       "fields": "governed",
-      "gate": "tools/test/manifest-registry.test.mjs"
+      "gate": "tools/test/artifacts-lockstep.test.mjs"
     }
   ],
   "declarations": [
@@ -1012,6 +1023,41 @@
       "required": "none",
       "values": null,
       "gloss": "the shape of a nested object or array key"
+    },
+    {
+      "property": "audience",
+      "registry": "text-field-vocabulary",
+      "mode": "recorded",
+      "required": "value",
+      "values": [
+        "reader",
+        "editor"
+      ],
+      "gloss": "who the text under this field name is addressed to; the split that decides whether it belongs in a carrier or in source"
+    },
+    {
+      "property": "gloss",
+      "registry": "text-field-vocabulary",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "what this field name means, in a sentence"
+    },
+    {
+      "property": "use_when",
+      "registry": "text-field-vocabulary",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the rule for picking this name over its neighbours, which is the part a definition alone never settles"
+    },
+    {
+      "property": "instead_of",
+      "registry": "text-field-vocabulary",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "the names already in use that this one accounts for; the survey resolves them rather than reporting them as violations, so an existing carrier conforms by declaration rather than by rename"
     }
   ]
 }

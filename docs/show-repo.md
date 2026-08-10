@@ -328,7 +328,14 @@ Tools and Map are their own components on their own lazy mounts.
 
 Behind those, past a hairline rule, the header carries a **second nav group: the
 repo-sponsored app views** (`appView:true`), one button each, carrying the icon
-its repo declared. The list is the sidebar's list (`appNav` reads
+its repo declared. Each is addressable as
+`?view=app&appRepo=<owner/repo>&appPath=<path>`, and the link stands alone the
+way a Surfaces link does: it stamps the promoted page's repo and path
+independent of whichever repo is open, so it is shareable on its own. The entry
+is a peer of Repos and Surfaces rather than a card in the estate grid, and the
+main area renders it live through toss-render `#gh=`.
+
+The list is the sidebar's list (`appNav` reads
 `sidebarAppViews`), so the two cannot disagree, and it is the same on desktop and
 mobile: the nav scrolls rather than clipping, and the sidebar copy is what a
 phone reaches without scrolling it. The rule plus the icons is the whole of the
@@ -517,7 +524,21 @@ or deleted. Two hooks anticipate the maintenance cycle around that promotion
 without building it yet: the add commit carries the jot's text, so the file's git
 history is itself a capture log, and the registry sits in agent-session scope, so
 an agent session can read the pile and drain it (promote, then delete) the way
-`chron/dump/` is drained. Both lists live under `lists/` because they are
+`chron/dump/` is drained.
+
+**Pins** render above the two lists rather than beside them, and have no
+`?view` key of their own. They are internal links kept at hand, one flat item
+list in the registry's `lists/pins.json` (`{items: [{id, target, title, note,
+group, created_at}]}`), each `target` in the `owner/repo[@ref]:path` grammar.
+This is the estate-wide personal sibling of the per-repo `pins` manifest field
+that fills the sidebar's Pinned block: same keep-at-hand meaning, same open rule
+(an extension means a file, anything else opens the Files view at that folder).
+Unpinning removes the pointer only; the target stays where it lives. Off the
+commitment gradient the other two sit on, deliberately: a jot is unshaped
+intent and a to-do is shaped intent, while a pin is memory, a pointer to
+something that already has a home.
+
+All three live under `lists/` because they are
 authored content with the registry as their source of truth; `state/` stays
 derived caches only.
 
@@ -916,7 +937,8 @@ repetitions (copy, paraphrase, pointer, live read; a copy says who keeps it, by
 hand or by a named builder), where an absent check renders in the warning tone
 rather than being omitted, because an unchecked copy should look unchecked every
 time the tab opens. The claims table renders on its own **Claims** tab
-(2026-08-07): it keys on claims rather than files, so trailing the census it
+(2026-08-07), off [`docs/owners.json`](owners.json); the `?tab=claims` key is
+unchanged, the way `?tab=set` outlived "The set". It keys on claims rather than files, so trailing the census it
 read as an appendix, first open, then folded behind a count; a tab keeps the
 census on one viewport and gives the table its own. The registry is authoritative for the claims it covers and
 owes the repo no inventory of them; the census, by contrast, is complete.

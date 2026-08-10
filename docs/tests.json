@@ -2606,6 +2606,35 @@
       ]
     },
     {
+      "path": "tools/test/text-fields-registry.test.mjs",
+      "kind": "behavior",
+      "protects": "the estate's prose-field vocabulary: that it stays the declared size, that every name is typed and carries the use_when rule that settles which to pick, and that the alias map is a function no name escapes through twice",
+      "assertions": 6,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "the vocabulary is the declared size",
+        "every row is typed: field, audience, gloss, use_when",
+        "field names are unique",
+        "the alias map is a function: no name maps to two fields",
+        "no alias is also a sanctioned name",
+        "every sanctioned name is prose about a row, not a row identifier"
+      ]
+    },
+    {
+      "path": "tools/test/text-vocabulary-conformance.test.mjs",
+      "kind": "behavior",
+      "protects": "this repo's own carriers against the stated prose-field vocabulary: a field name nothing accounts for fails, an alias passes, since a carrier conforms by declaration rather than by rename",
+      "assertions": 1,
+      "method": "spawn",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "every prose field name in this repo is one the vocabulary accounts for"
+      ]
+    },
+    {
       "path": "tools/test/tools-view.test.mjs",
       "kind": "component",
       "protects": "The Tools view mounts and loads its curated manifest.",
