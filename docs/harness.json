@@ -90,6 +90,16 @@
       "tested": true
     },
     {
+      "path": "scripts/text-census.py",
+      "role": "",
+      "layer": "scripts",
+      "lines": 576,
+      "invocation": "argv",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
       "path": "scripts/unclaimed-code-survey.py",
       "role": "per-layer counts of files, files prose names, and files a test exercises; the code-survey behind code-layers.md",
       "layer": "scripts",

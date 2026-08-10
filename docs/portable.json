@@ -285,6 +285,13 @@
     },
     {
       "kind": "script",
+      "path": "scripts/text-census.py",
+      "title": "text-census.py",
+      "role": "count the prose inside .js and .html, split into commentary, text tables, and inline reader-facing text",
+      "use": "on-demand"
+    },
+    {
+      "kind": "script",
       "path": "scripts/build-tree.py",
       "title": "build-tree.py",
       "role": "render a repo tree as a linked markdown table for chat",

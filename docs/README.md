@@ -13,7 +13,7 @@ observations and is corrected by re-probing; everything else is living and
 must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
-2 arrive in every session's context, 21 are named by CLAUDE.md,
+2 arrive in every session's context, 22 are named by CLAUDE.md,
 3 by a skill, 6 by a page or component. The remaining 17 are
 marked *(orphan)* below: nothing points at them except this index.
 
@@ -47,6 +47,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`showing.md`](showing.md) — why the showing boundaries sit where they are: the frame and the record behind routes.json
 - [`surfacing.json`](surfacing.json) — the machine index of the surfacing primitives
 - [`tests.json`](tests.json) — the test registry: every check's kind, what it protects, and its derived counts
+- [`text-content.md`](text-content.md) *(measured)* — the estate's undeclared natural language: text content, commentary, and inline prose, measured and split
 - [`tools.json`](tools.json) — the curated Tools gallery manifest
 - [`venues.md`](venues.md) *(measured)* — the venue map: where work can run besides the session reading it, what each reaches, and the attended-versus-unattended split
 
