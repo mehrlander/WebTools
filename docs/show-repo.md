@@ -989,12 +989,18 @@ mean both. Each row's crawl cost rides its Refresh button's tooltip, where it is
 actionable, rather than a line of its own.
 
 **The JSON is read in the app, not on GitHub.** Every registry row carries one
-**Expand** control, a captioned caret rather than a glyph: expanding a row to
-see its detail is the gesture people arrive with, where `{}` said "JSON" only to
-someone who already knew. The caption is on the CLOSED state alone, since a word
-is an invitation and, open, the panel below already answers what the control
-does; the caret grows to carry the control on its own. It opens a panel with two tabs, **Contents** and
-**History**, described below. The **Contents** tab fetches the file and shows the bytes, verbatim,
+**Expand** control, a bare caret at the row's end: expanding a row to see its
+detail is the gesture people arrive with, where `{}` said "JSON" only to someone
+who already knew. It carried a caption first (`Expand`/`Collapse`, then `Expand`
+alone) and carries none now. A caret at the end of a row is the most established
+control on the web, the panel it opens is directly beneath it, and every other
+affordance on the row is already a word, so the caption was a third label
+competing on a line that has Refresh and a chip strip. Size carries it instead. It opens a panel with two tabs, **Contents** and
+**History**, described below. The file's SIZE is not on the row: it is one more
+figure on a line already carrying a path, a grain, and three ages, and it
+answers no question the reader arrived with. It rides the Expand control's
+tooltip, where it qualifies what pressing costs, which is also what keeps the
+one `ls state` read earning its place. The **Contents** tab fetches the file and shows the bytes, verbatim,
 in a scrolling `pre` with a line count and a Copy button and nothing else. It
 ran through the shared multi-mode viewer first, which brought a mode switcher, a
 filter, a sort, a search, an undo pair, a tree toggle, an open-out, and a
