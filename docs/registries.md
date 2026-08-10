@@ -173,6 +173,33 @@ reads will be wrong, and the error rate is not small: `why` ran nought for five,
 who believed them. The fix is never to write more carefully; it is to make the
 claim readable by a check, or to stop making it.
 
+### Where the audit stops, and why
+
+`values` is the third of the authored trio and it does not get the same
+treatment, because the check that would do it cannot decide.
+
+A declared domain is enforced against the data. The reverse, that a property
+with a closed domain has one declared, is not, and the tempting heuristic is a
+ratio: few distinct values over many rows means a closed vocabulary. Run it and
+it flags four. Two are real and now declared: `harness-census.layer`, six values
+over 113 rows, whose domain was already written in the carrier's own `layers`
+glossary; and `portable-catalog.use`, five over forty.
+
+The other two are exactly why this stays a judgment. `tracker-board.project`
+shows eight values over thirty-two rows and `tests-census.runner` ten over 129,
+and both are *young enumerations, not closed vocabularies*. Every new project
+and every new npm script adds a value. Closing them would turn ordinary growth
+into a build failure and teach everyone to widen the declaration without
+thinking, which is worse than not checking. `harness-census.invocation` makes
+the point sharply: it reads as twenty-one distinct values because it carries
+`npm:<script>`, a grammar rather than an enumeration, and no ratio can see the
+difference.
+
+So the rule above has a boundary worth stating with it. Make a claim readable by
+a check **where a check can decide**. Where it cannot, the honest move is to say
+so here rather than to ship a gate that is right twice and wrong twice and
+therefore ignored. A noisy gate is a third way for an unchecked claim to hide.
+
 **Two limits of the model surfaced, and neither had been visible from inside
 it.** A third was claimed and was not real, which is recorded above.
 
