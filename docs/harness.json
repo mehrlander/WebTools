@@ -1050,6 +1050,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/stage-keyboard-mode.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 49,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/subject-action-probe.mjs",
       "role": "probe: can the shell invoke a toss subject's action closure, or only reach it",
       "layer": "tools/render/scenarios",
