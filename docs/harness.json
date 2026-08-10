@@ -430,6 +430,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/annotate-tap-canvas.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 101,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/annotate-tossed-notes.mjs",
       "role": "annotate.html inside a toss: the kit runs in the subject frame, and Review has to reach the shell's drawer (asserts, not just shoots)",
       "layer": "tools/render/scenarios",

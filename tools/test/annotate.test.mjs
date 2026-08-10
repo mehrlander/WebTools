@@ -480,3 +480,30 @@ test('the read surface refuses the browser its own selection', () => {
     'the iOS callout landing over the text is what this is for');
   A.disable();
 });
+
+test('a tap on the blank canvas sends the caret to the end', () => {
+  // The listeners are on the SCROLL BOX, not on the painted span. A span
+  // shrink-wraps to its text, so the canvas below the last line belongs to the
+  // box and a tap there used to reach no handler at all: every tap that landed
+  // on words worked, which is what hid it. jsdom has no layout, so
+  // getClientRects is empty and hitsText answers false for every point, which
+  // is exactly the case under test.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state, d = S.dict;
+  d.text = 'the quick brown fox';
+  d.selectWordAt(6);
+  A._paintDraft();
+  assert.equal(d.hasSelection, true);
+
+  const tap = new window.Event('pointerup', { bubbles: true });
+  tap.clientX = 50; tap.clientY = 500;
+  S.compView.dispatchEvent(tap);
+
+  assert.equal(d.range, null, 'the caret is past the last character, so the next words append');
+  assert.equal(d.hasSelection, false);
+  assert.equal(d.text, 'the quick brown fox', 'and getting there wrote nothing');
+  assert.ok(!S.compStack.querySelector('[data-edge]'), 'the pins went with it');
+  A.disable();
+});

@@ -655,3 +655,66 @@ test('a handle is a stem with a ball, not a loose dot', () => {
   assert.match(cluster.children[0].innerHTML, /stroke-width="1.5"/);
   assert.ok(!/font-weight:\s*700/.test(cluster.children[0].getAttribute('style')));
 });
+
+// ── hitsText: the other half of the hit test, and the one caret-from-point
+// cannot answer ───────────────────────────────────────────────────────────
+// A browser's caret-from-point returns the NEAREST position, so it reports a
+// hit for a tap an inch below the last line. Only the painted parts' own
+// rects say whether the point was on text at all. jsdom has no layout, so the
+// rects are supplied here; what is under test is which parts are asked and
+// how the box is compared, not the geometry engine.
+
+const rect = (n, box) => { n.getClientRects = () => (box ? [box] : []); };
+const BOX = { left: 10, right: 90, top: 10, bottom: 30 };
+
+test('a point on the text hits, a point on the blank canvas does not', () => {
+  const h = host();
+  D.paint(h, { text: 'the quick fox' });
+  rect(h.childNodes[0], BOX);
+  assert.equal(D.hitsText(h, 50, 20), true, 'inside');
+  assert.equal(D.hitsText(h, 50, 80), false, 'below the last line, where a caret-from-point would still answer');
+  assert.equal(D.hitsText(h, 200, 20), false, 'off the right end of the line');
+  assert.equal(D.hitsText(h, 10, 10), true, 'the edge counts, since a rect is inclusive of it');
+});
+
+test('the selection and the hypothesis are text; the furniture is not', () => {
+  const h = host();
+  D.paint(h, { text: 'the quick fox', interim: 'and more', range: { start: 4, end: 9 } });
+  const by = {};
+  for (const n of h.childNodes) by[n.getAttribute('data-d')] = n;
+  for (const k of Object.keys(by)) rect(by[k], null);
+
+  rect(by.sel, BOX);
+  assert.equal(D.hitsText(h, 50, 20), true, 'a tap on the selection is a tap on text');
+  rect(by.sel, null);
+
+  rect(by.interim, BOX);
+  assert.equal(D.hitsText(h, 50, 20), true, 'so is one on the hypothesis');
+  rect(by.interim, null);
+
+  rect(by['interim-stop'], BOX);
+  assert.equal(D.hitsText(h, 50, 20), true, 'and on its tentative full stop');
+  rect(by['interim-stop'], null);
+
+  // A handle is furniture. It never reaches here (the layer's own delegated
+  // listener takes the tap first), but if it did, arming is not placing.
+  rect(by['handle-start'], BOX);
+  assert.equal(D.hitsText(h, 50, 20), false, 'a pin is not text');
+});
+
+test('an empty buffer is all canvas, so every tap in it means the end', () => {
+  const h = host();
+  D.paint(h, { text: '' });
+  assert.equal(D.hitsText(h, 50, 20), false);
+  assert.equal(D.hitsText(null, 50, 20), false, 'and a surface that has not painted yet does not throw');
+});
+
+test('the caret at the end IS the append state, which is what a canvas tap asks for', () => {
+  const d = withText('the quick fox');
+  d.select(4, 9);
+  assert.equal(d.hasSelection, true);
+  d.caretAt(d.text.length);
+  assert.equal(d.range, null, 'no range, so the next words go on the end');
+  assert.equal(d.hasSelection, false);
+  assert.equal(d.text, 'the quick fox', 'and nothing was written to get there');
+});

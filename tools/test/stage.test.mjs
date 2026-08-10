@@ -1136,3 +1136,32 @@ test('an armed pin puts arrows where Stage was, and they walk that edge', async 
   assert.deepEqual(plain_(data._dict.range), { start: 4, end: 9 }, 'unchanged');
   data.dictCancel();
 });
+
+test('a tap on the blank canvas sends the caret to the end', async () => {
+  // Same defect and same fix as the annotator's composer: the listeners are on
+  // the SCROLL BOX, not on the painted span, because a span shrink-wraps to
+  // its text and the canvas below the last line belongs to the box. jsdom has
+  // no layout, so getClientRects is empty and hitsText answers false for every
+  // point, which is the case under test.
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('the quick brown fox', true);
+  await tick();
+  data._dict.selectWordAt(6);            // "quick"
+  data.dictArmed = 'start';
+  data.dictPaint();
+  assert.equal(data.dictSel, true);
+
+  const surface = data._dictHost.parentElement;
+  assert.ok(surface && surface !== data._dictHost, 'the box is not the span');
+  const tap = new window.Event('pointerup', { bubbles: true });
+  tap.clientX = 50; tap.clientY = 500;
+  surface.dispatchEvent(tap);
+
+  assert.equal(data._dict.range, null, 'the caret is past the last character');
+  assert.equal(data.dictSel, false);
+  assert.equal(data.dictArmed, null, 'and the armed pin was disarmed with it');
+  assert.equal(data.dictText, 'the quick brown fox.', 'getting there wrote nothing');
+  data.dictCancel();
+});
