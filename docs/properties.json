@@ -1,6 +1,17 @@
 {
-  "note": "The properties registry: the declaration table of docs/registries.md, binding scope x property to its one authoritative registry. Registries name their carrier, key field (structural identity, exempt from declaration), target grain, scope, gate, and whether their per-row fields are `governed` (held to the declarations below) or `ungoverned` (declared and counted, with a written `why` naming what about the carrier the field check cannot reach). Declarations carry mode (recorded or computed, with the deriver for computed), required (what the gates enforce today: value, counted, or none), and the value domain where one is closed. Governed carriers are held both ways by tools/test/properties-registry.test.mjs: an undeclared row field fails, a declared property missing from the carrier fails, a value outside a declared closed domain fails (431 values across eight domains; added 2026-08-09, when filling budget-drs's definition_owner field turned up that eight domains were declared and none were read), a computed declaration whose deriver does not exist fails, and the ungoverned count is asserted so it can only move deliberately. Expanded 2026-08-09 from six registries to thirteen by the reconciliation recorded in docs/registries.md, which walked the estate against the model rather than the model against itself. Ten are field-governed and three are not; the pages catalog moved from the second group to the first the same day, by teaching the field check a group walk rather than by reshaping a carrier other repos read. Origin: budget-drs data/design/properties.csv in mehrlander/home.",
+  "note": "The properties registry: the declaration table of docs/registries.md, binding scope x property to its one authoritative registry. Registries name their carrier, key field (structural identity, exempt from declaration), target grain, scope, gate, and whether their per-row fields are `governed` (held to the declarations below) or `ungoverned` (declared and counted, with a written `why` naming what about the carrier the field check cannot reach). Declarations carry mode (recorded or computed, with the deriver for computed), required (what the gates enforce today: value, counted, or none), and the value domain where one is closed. Governed carriers are held both ways by tools/test/properties-registry.test.mjs: an undeclared row field fails, a declared property missing from the carrier fails, a value outside a declared closed domain fails, and a required:value property blank on any row fails (2,304 presence assertions across 52 declarations; both added after audits found the same rot, that a field nothing reads goes wrong: eight domains declared and none read, then 54 value grades unchecked and three false), a computed declaration whose deriver does not exist fails, and the ungoverned count is asserted so it can only move deliberately. Expanded 2026-08-09 from six registries to thirteen by the reconciliation recorded in docs/registries.md, which walked the estate against the model rather than the model against itself. All fifteen are field-governed. Five were initially declared ungoverned with written reasons and all five reasons proved wrong on inspection, so the assertion now reads zero rather than a count: `fields: ungoverned` survives only so that adding one has to change a test. Origin: budget-drs data/design/properties.csv in mehrlander/home.",
   "registries": [
+    {
+      "id": "content-registry",
+      "carrier": "data/design/content.csv",
+      "format": "csv",
+      "key": "locator",
+      "kind": "catalog",
+      "scope": "artifacts the registry curates; authoritative for what it covers, undeclared is a normal state",
+      "gate": null,
+      "target": "an artifact, by locator (may refine below a file)",
+      "fields": "governed"
+    },
     {
       "id": "docs-census",
       "carrier": "docs/docs.json",
@@ -11,18 +22,6 @@
       "scope": "every .md and .json file under docs/ (the gate walks those two extensions; docs/examples/, docs/prototypes/ and docs/favicons/ hold four other files, out of scope and deliberately so)",
       "gate": "tools/test/docs-registry.test.mjs",
       "target": "a file under docs/",
-      "fields": "governed"
-    },
-    {
-      "id": "tests-census",
-      "carrier": "docs/tests.json",
-      "format": "json",
-      "rows": "tests",
-      "key": "path",
-      "kind": "census",
-      "scope": "every .mjs under tools/test/ except the declared shared helpers",
-      "gate": "tools/test/tests-registry.test.mjs",
-      "target": "a test file",
       "fields": "governed"
     },
     {
@@ -38,15 +37,40 @@
       "fields": "governed"
     },
     {
-      "id": "content-registry",
-      "carrier": "data/design/content.csv",
-      "format": "csv",
-      "key": "locator",
+      "id": "manifest-fields",
+      "carrier": "docs/manifest.json",
+      "format": "json",
+      "rows": "fields",
+      "key": "key",
+      "kind": "census",
+      "target": "a .web-tools.json manifest key",
+      "scope": "every key in use across the estate's repo manifests",
+      "fields": "governed",
+      "gate": "tools/test/manifest-registry.test.mjs"
+    },
+    {
+      "id": "owners",
+      "carrier": "docs/owners.json",
+      "format": "json",
+      "rows": "owners",
+      "key": "subject",
       "kind": "catalog",
-      "scope": "artifacts the registry curates; authoritative for what it covers, undeclared is a normal state",
-      "gate": null,
-      "target": "an artifact, by locator (may refine below a file)",
-      "fields": "governed"
+      "target": "a repeated statement, or a scope for a family rule",
+      "scope": "statements the hub's coordination layer repeats; curated against the written scope in the carrier, not complete over the estate",
+      "fields": "governed",
+      "gate": "tools/test/owners-registry.test.mjs"
+    },
+    {
+      "id": "pages-catalog",
+      "carrier": "pages/pages.json",
+      "format": "json",
+      "rows": "[].items",
+      "key": "href",
+      "kind": "catalog",
+      "target": "a page",
+      "scope": "every .html page under pages/, arranged into groups; the group wrapper (label, top) is structure rather than assertions about a page, the same standing as a carrier note block",
+      "fields": "governed",
+      "gate": "tools/test/artifacts-lockstep.test.mjs"
     },
     {
       "id": "portable-catalog",
@@ -58,6 +82,89 @@
       "scope": "what the hub ships to other repos",
       "gate": "tools/test/portable-manifest.test.mjs",
       "target": "a shipped file",
+      "fields": "governed"
+    },
+    {
+      "id": "routes-modes",
+      "carrier": "docs/routes.json",
+      "format": "json",
+      "rows": "modes",
+      "key": "param",
+      "kind": "catalog",
+      "target": "a delivery mode toss-render accepts",
+      "scope": "the ways toss-render.html is handed a payload or a reference, and the trust posture each buys",
+      "fields": "governed",
+      "gate": "tools/test/routes-manifest.test.mjs"
+    },
+    {
+      "id": "routes-routes",
+      "carrier": "docs/routes.json",
+      "format": "json",
+      "rows": "routes",
+      "key": "key",
+      "kind": "catalog",
+      "target": "a toss route",
+      "scope": "the content types that map to a renderer page; owner of toss-render.html's inlined TOSS_ROUTES literal",
+      "fields": "governed",
+      "gate": "tools/test/routes-manifest.test.mjs"
+    },
+    {
+      "id": "showing-mechanisms",
+      "carrier": "docs/routes.json",
+      "format": "json",
+      "rows": "showing.mechanisms",
+      "key": "key",
+      "kind": "catalog",
+      "target": "a showing mechanism",
+      "scope": "the links that can show a change, what each reaches and misses; rendered as the Map view Showing tab",
+      "fields": "governed",
+      "gate": "tools/test/routes-manifest.test.mjs"
+    },
+    {
+      "id": "skills-catalog",
+      "carrier": "skills/manifest.json",
+      "format": "json",
+      "rows": "skills",
+      "key": "name",
+      "kind": "census",
+      "target": "a skill",
+      "scope": "every directory under skills/",
+      "fields": "governed",
+      "gate": "tools/test/skills-registry.test.mjs"
+    },
+    {
+      "id": "surfacing-index",
+      "carrier": "docs/surfacing.json",
+      "format": "json",
+      "rows": "primitives",
+      "key": "key",
+      "kind": "catalog",
+      "target": "a surfacing primitive",
+      "scope": "the primitives SURFACING.md defines. The PROSE stays authoritative and this is its gated index, so ownership runs opposite to every other registry here; declaring its fields governs the INDEX, not the definitions",
+      "fields": "governed",
+      "gate": "tools/test/surfacing-manifest.test.mjs"
+    },
+    {
+      "id": "tests-census",
+      "carrier": "docs/tests.json",
+      "format": "json",
+      "rows": "tests",
+      "key": "path",
+      "kind": "census",
+      "scope": "every .mjs under tools/test/ except the declared shared helpers",
+      "gate": "tools/test/tests-registry.test.mjs",
+      "target": "a test file",
+      "fields": "governed"
+    },
+    {
+      "id": "text-field-vocabulary",
+      "carrier": "docs/text-fields.csv",
+      "format": "csv",
+      "key": "field",
+      "kind": "catalog",
+      "scope": "the names a prose-bearing CSV column or JSON key may carry, estate-wide; portable, since a concept named once should be the same concept in every repo",
+      "gate": "tools/test/text-fields-registry.test.mjs",
+      "target": "a prose field name",
       "fields": "governed"
     },
     {
@@ -73,42 +180,6 @@
       "fields": "governed"
     },
     {
-      "id": "owners",
-      "carrier": "docs/owners.json",
-      "format": "json",
-      "rows": "owners",
-      "key": "subject",
-      "kind": "catalog",
-      "target": "a repeated statement, or a scope for a family rule",
-      "scope": "statements the hub's coordination layer repeats; curated against the written scope in the carrier, not complete over the estate",
-      "fields": "governed",
-      "gate": "tools/test/owners-registry.test.mjs"
-    },
-    {
-      "id": "skills-catalog",
-      "carrier": "skills/manifest.json",
-      "format": "json",
-      "rows": "skills",
-      "key": "name",
-      "kind": "census",
-      "target": "a skill",
-      "scope": "every directory under skills/",
-      "fields": "governed",
-      "gate": "tools/test/skills-registry.test.mjs"
-    },
-    {
-      "id": "pages-catalog",
-      "carrier": "pages/pages.json",
-      "format": "json",
-      "rows": "[].items",
-      "key": "href",
-      "kind": "catalog",
-      "target": "a page",
-      "scope": "every .html page under pages/, arranged into groups; the group wrapper (label, top) is structure rather than assertions about a page, the same standing as a carrier note block",
-      "fields": "governed",
-      "gate": "tools/test/artifacts-lockstep.test.mjs"
-    },
-    {
       "id": "tracker-board",
       "carrier": "tracker/board.json",
       "format": "json",
@@ -119,50 +190,6 @@
       "scope": "every task file under tracker/tasks/",
       "fields": "governed",
       "gate": "tools/test/artifacts-lockstep.test.mjs"
-    },
-    {
-      "id": "routes-manifest",
-      "carrier": "docs/routes.json",
-      "format": "json",
-      "kind": "catalog",
-      "target": "a route, a delivery mode, or a showing mechanism",
-      "scope": "how content moves, renders, and gets looked at",
-      "fields": "ungoverned",
-      "why": "four sibling blocks (grammar, modes, routes, showing) with different row shapes, not one population; splitting it into four registries would declare four scopes nobody uses separately",
-      "gate": "tools/test/routes-manifest.test.mjs"
-    },
-    {
-      "id": "surfacing-index",
-      "carrier": "docs/surfacing.json",
-      "format": "json",
-      "kind": "catalog",
-      "target": "a surfacing primitive",
-      "scope": "the primitives SURFACING.md defines; the PROSE is authoritative and this is its gated index, so ownership runs opposite to every other registry here",
-      "fields": "ungoverned",
-      "why": "an index of prose rather than a table of assertions: membership is held two-way against the document, and the summaries carry no properties to declare",
-      "gate": "tools/test/surfacing-manifest.test.mjs"
-    },
-    {
-      "id": "manifest-fields",
-      "carrier": "docs/manifest.json",
-      "format": "json",
-      "kind": "census",
-      "target": "a .web-tools.json manifest key",
-      "scope": "every key in use across the estate's repo manifests",
-      "fields": "ungoverned",
-      "why": "the target is a manifest KEY, not a file, and the carrier describes the key rather than asserting properties of rows; the field check has no row array to read",
-      "gate": "tools/test/manifest-registry.test.mjs"
-    },
-    {
-      "id": "text-field-vocabulary",
-      "carrier": "docs/text-fields.csv",
-      "format": "csv",
-      "key": "field",
-      "kind": "catalog",
-      "scope": "the names a prose-bearing CSV column or JSON key may carry, estate-wide; portable, since a concept named once should be the same concept in every repo",
-      "gate": "tools/test/text-fields-registry.test.mjs",
-      "target": "a prose field name",
-      "fields": "governed"
     }
   ],
   "declarations": [
@@ -247,9 +274,9 @@
       "registry": "tests-census",
       "mode": "computed",
       "deriver": "tools/build/tests-index.mjs",
-      "required": "value",
+      "required": "counted",
       "values": null,
-      "gloss": "top-level test() calls; null for a browser check, whose unit test() is not"
+      "gloss": "how many assertions the file makes. Blank, never zero, on the 10 browser-driven checks that are not node:test files, because test() is not their unit; the blank is the honest reading and the count is the ledger figure"
     },
     {
       "property": "method",
@@ -280,9 +307,9 @@
       "registry": "tests-census",
       "mode": "computed",
       "deriver": "tools/build/tests-index.mjs",
-      "required": "value",
+      "required": "counted",
       "values": null,
-      "gloss": "assertions that only check a component mounts"
+      "gloss": "how many of the assertions are boot smoke. Blank on the same 10 browser-driven checks, for the same reason"
     },
     {
       "property": "role",
@@ -298,8 +325,15 @@
       "mode": "computed",
       "deriver": "tools/build/tools-index.mjs",
       "required": "value",
-      "values": null,
-      "gloss": "the file's folder, the rail's tree"
+      "values": [
+        "scripts",
+        "tools",
+        "tools/build",
+        "tools/concept-lab",
+        "tools/render",
+        "tools/render/scenarios"
+      ],
+      "gloss": "which shelf the file sits on. The domain is closed and owned by the carrier's own layers glossary block, the same arrangement as manifest-fields.consumer; docs/code-layers.md is the prose behind it"
     },
     {
       "property": "lines",
@@ -317,7 +351,7 @@
       "deriver": "tools/build/tools-index.mjs",
       "required": "value",
       "values": null,
-      "gloss": "how the file gets run: npm:<script>, driver, imported, argv, or none found (the warning state)"
+      "gloss": "how the file gets run: argv, imported, driver, 'none found' (the warning state), or npm:<script> naming the script. Deliberately OPEN, because the npm form is a grammar rather than an enumeration and a new script must not need a declaration edit"
     },
     {
       "property": "emits",
@@ -425,8 +459,14 @@
       "registry": "portable-catalog",
       "mode": "recorded",
       "required": "none",
-      "values": null,
-      "gloss": "when to reach for it"
+      "values": [
+        "plugin",
+        "live",
+        "reference",
+        "adopt",
+        "on-demand"
+      ],
+      "gloss": "how a consumer takes the item: installed by the plugin, read live, referenced, adopted once, or fetched on demand"
     },
     {
       "property": "title",
@@ -604,9 +644,9 @@
       "registry": "tracker-board",
       "mode": "computed",
       "deriver": ".claude/skills/tasks/build-board.py",
-      "required": "value",
+      "required": "counted",
       "values": null,
-      "gloss": "the date of the newest progress-log line"
+      "gloss": "the date of the newest progress-log line. Blank on a task filed without one, which the board generator allows and the tasks template does not produce; the blank is the honest reading of 'filed, nothing logged yet' and is worth counting"
     },
     {
       "property": "logEntries",
@@ -686,6 +726,294 @@
       "required": "none",
       "values": null,
       "gloss": "the task or condition a blocked row names"
+    },
+    {
+      "property": "form",
+      "registry": "routes-modes",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the address shape, e.g. #gz=<base64url of gzipped HTML>"
+    },
+    {
+      "property": "carries",
+      "registry": "routes-modes",
+      "mode": "recorded",
+      "required": "value",
+      "values": [
+        "inline",
+        "reference"
+      ],
+      "gloss": "whether the payload rides in the URL or is fetched"
+    },
+    {
+      "property": "trust",
+      "registry": "routes-modes",
+      "mode": "recorded",
+      "required": "value",
+      "values": [
+        "trusted",
+        "untrusted",
+        "n/a"
+      ],
+      "gloss": "how the renderer treats what arrives. n/a is the data route, which hands bytes to a viewer rather than executing a page, so the question does not arise"
+    },
+    {
+      "property": "sandbox",
+      "registry": "routes-modes",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the sandbox the mode renders under"
+    },
+    {
+      "property": "reach",
+      "registry": "routes-modes",
+      "mode": "recorded",
+      "required": "value",
+      "values": [
+        "any reader",
+        "viewer holding the token"
+      ],
+      "gloss": "who can open it: any reader, or a token holder"
+    },
+    {
+      "property": "note",
+      "registry": "routes-modes",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "what the mode buys and what it costs"
+    },
+    {
+      "property": "repo",
+      "registry": "routes-routes",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the repo holding the renderer page"
+    },
+    {
+      "property": "ref",
+      "registry": "routes-routes",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the ref the renderer is read at"
+    },
+    {
+      "property": "path",
+      "registry": "routes-routes",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the renderer page"
+    },
+    {
+      "property": "renders",
+      "registry": "routes-routes",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the content type this route is for"
+    },
+    {
+      "property": "doc",
+      "registry": "routes-routes",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the envelope contract the route honors"
+    },
+    {
+      "property": "example",
+      "registry": "routes-routes",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "a worked address"
+    },
+    {
+      "property": "glyph",
+      "registry": "showing-mechanisms",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the marker the caption uses"
+    },
+    {
+      "property": "label",
+      "registry": "showing-mechanisms",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the mechanism name a reader sees"
+    },
+    {
+      "property": "form",
+      "registry": "showing-mechanisms",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "the address shape; absent where the mechanism is not a URL"
+    },
+    {
+      "property": "subject",
+      "registry": "showing-mechanisms",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "what kind of thing it can show"
+    },
+    {
+      "property": "version",
+      "registry": "showing-mechanisms",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "which version of the subject it reaches"
+    },
+    {
+      "property": "viewer",
+      "registry": "showing-mechanisms",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "who can open it"
+    },
+    {
+      "property": "reaches",
+      "registry": "showing-mechanisms",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "what it does show"
+    },
+    {
+      "property": "misses",
+      "registry": "showing-mechanisms",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "what it does NOT show, which is the field the picker turns on"
+    },
+    {
+      "property": "trap",
+      "registry": "showing-mechanisms",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "the failure mode, where one has bitten; carried on 1 of 7"
+    },
+    {
+      "property": "use",
+      "registry": "showing-mechanisms",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "when to pick it"
+    },
+    {
+      "property": "lead",
+      "registry": "surfacing-index",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the bullet lead-in, held two-way against SURFACING.md's prose"
+    },
+    {
+      "property": "title",
+      "registry": "surfacing-index",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the short name"
+    },
+    {
+      "property": "glyph",
+      "registry": "surfacing-index",
+      "mode": "recorded",
+      "required": "counted",
+      "values": null,
+      "gloss": "the caption marker; blank on 9 of 20, which have no marker of their own"
+    },
+    {
+      "property": "use",
+      "registry": "surfacing-index",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "what the primitive is for, in one line"
+    },
+    {
+      "property": "boundary",
+      "registry": "surfacing-index",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "where it stops working; carried on 14 of 20"
+    },
+    {
+      "property": "form",
+      "registry": "surfacing-index",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "the concrete shape, where the primitive has one"
+    },
+    {
+      "property": "type",
+      "registry": "manifest-fields",
+      "mode": "recorded",
+      "required": "value",
+      "values": [
+        "string",
+        "number",
+        "boolean",
+        "object",
+        "array",
+        "boolean|object",
+        "string|array"
+      ],
+      "gloss": "the JSON type the key takes"
+    },
+    {
+      "property": "consumer",
+      "registry": "manifest-fields",
+      "mode": "recorded",
+      "required": "value",
+      "values": [
+        "show-repo",
+        "portable",
+        "session-hook"
+      ],
+      "gloss": "which reader acts on the key. Domain owned by the carrier's own consumers block"
+    },
+    {
+      "property": "summary",
+      "registry": "manifest-fields",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "what the key does and who owns its value"
+    },
+    {
+      "property": "status",
+      "registry": "manifest-fields",
+      "mode": "recorded",
+      "required": "none",
+      "values": [
+        "deprecated"
+      ],
+      "gloss": "set only where a key is superseded but still parsed"
+    },
+    {
+      "property": "subfields",
+      "registry": "manifest-fields",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "the shape of a nested object or array key"
     },
     {
       "property": "audience",

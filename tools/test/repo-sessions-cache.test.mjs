@@ -307,3 +307,32 @@ test('pathOf round-trips a row back to the store path it came from', () => {
   assert.equal(S.pathOf(cache.rows[0]), p);
   assert.ok(p in cache.byPath);
 });
+
+// The derived name. It stands in for a title the record cannot carry, so the
+// cases that matter are the two ways it can mislead: mangling a branch that has
+// no uniquifier to strip, and claiming a name for a session that has none.
+test('nameOf strips the claude/ prefix and the six-character uniquifier', () => {
+  assert.equal(S.nameOf({ branches: ['claude/fab-naming-todqvq'] }), 'fab-naming');
+  assert.equal(S.nameOf({ branches: ['claude/show-repo-refresh-buttons-aklshi'] }),
+    'show-repo-refresh-buttons');
+  // A one-word slug still has a suffix to shed, and shedding it must not eat
+  // the slug.
+  assert.equal(S.nameOf({ branches: ['claude/x-1g5p9v'] }), 'x');
+});
+
+test('nameOf leaves a hand-named branch whole rather than mangling it', () => {
+  // No uniquifier to strip, so the regex must not match and take the last
+  // hyphenated word with it.
+  assert.equal(S.nameOf({ branches: ['refactor-the-loader'] }), 'refactor-the-loader');
+});
+
+test('nameOf prefers a claude/ branch over one that is merely present first', () => {
+  assert.equal(S.nameOf({ branches: ['some-other-branch', 'claude/fab-naming-todqvq'] }),
+    'fab-naming');
+});
+
+test('nameOf says nothing rather than guessing when a session has no branch', () => {
+  assert.equal(S.nameOf({ branches: [] }), '');
+  assert.equal(S.nameOf({}), '');
+  assert.equal(S.nameOf(null), '');
+});

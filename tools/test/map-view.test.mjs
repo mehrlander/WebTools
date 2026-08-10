@@ -37,6 +37,7 @@ const routesJson = readFileSync(path.join(repoRoot, 'docs', 'routes.json'), 'utf
 const docsJson = readFileSync(path.join(repoRoot, 'docs', 'docs.json'), 'utf8');
 const surfJson = readFileSync(path.join(repoRoot, 'docs', 'surfacing.json'), 'utf8');
 const ownersJson = readFileSync(path.join(repoRoot, 'docs', 'owners.json'), 'utf8');
+const propsJson = readFileSync(path.join(repoRoot, 'docs', 'properties.json'), 'utf8');
 const testsJson = readFileSync(path.join(repoRoot, 'docs', 'tests.json'), 'utf8');
 // The private registry's sessions cache, trimmed to the rollup the Docs tab
 // reads. Paths are repo-qualified there and hub-relative in the registry, which
@@ -59,6 +60,7 @@ window.GH = class {
     if (p === 'docs/docs.json') return { text: docsJson };
     if (p === 'docs/surfacing.json') return { text: surfJson };
     if (p === 'docs/owners.json') return { text: ownersJson };
+    if (p === 'docs/properties.json') return { text: propsJson };
     if (p === 'docs/tests.json') return { text: testsJson };
     if (p === 'state/sessions.json') return { text: JSON.stringify(sessions) };
     return { text: JSON.stringify(manifest) };
@@ -376,4 +378,29 @@ test('the shell and the component agree on the tab set', () => {
   const buttons = [...src.matchAll(/setTab\('(\w+)'\)/g)].map(x => x[1]);
   assert.deepEqual([...new Set(buttons)].sort(), [...tabs].sort(),
     'a tab the shell will not validate is a tab the URL cannot carry');
+});
+
+// The Registries tab renders the table the other seven hang off, so its shape
+// assertions are about the JOIN (declarations grouped under their registry),
+// not about any one manifest.
+test('Registries groups declarations under the registry that governs them', async () => {
+  assert.equal(data.propsReg, null, 'the table is not fetched until the tab is opened');
+  await data.loadPropsReg();
+  assert.equal(data.propsErr, '');
+
+  const rows = data.registryRows;
+  assert.equal(rows.length, data.propsReg.registries.length, 'every registry gets a row');
+  for (const r of rows) {
+    assert.ok(r.target, r.id + ': a row carries its target grain');
+    assert.ok(r.scope, r.id + ': a row carries its scope');
+  }
+  // The join must not drop or duplicate a declaration.
+  const grouped = rows.reduce((n, r) => n + r.decls.length, 0);
+  assert.equal(grouped, data.propsReg.declarations.length,
+    'every declaration lands under exactly one registry row');
+
+  const t = data.registryTotals;
+  assert.equal(t.census + t.catalog, t.registries, 'every registry is a census or a catalog');
+  assert.equal(t.decls, grouped);
+  assert.ok(t.closed > 0 && t.closed <= t.decls);
 });
