@@ -400,6 +400,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/annotate-keyboard-mode.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 62,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/annotate-notes-tab.mjs",
       "role": "the drawer's Notes tab: the annotator's set as a working list and as either serialization (STATE=notes|md|json|off)",
       "layer": "tools/render/scenarios",
