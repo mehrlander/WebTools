@@ -30,7 +30,7 @@ const src = readFileSync(path.join(repoRoot, 'lib/kits/session-render.js'), 'utf
 const window = {};
 const document = { createElement: () => ({ style: {}, append() {}, setAttribute() {} }) };
 new Function('window', 'document', src)(window, document);
-const { turns, groups, describe } = window.sessionRender;
+const { turns, groups, outline, describe } = window.sessionRender;
 
 const at = s => `2026-08-07T15:00:${String(s).padStart(2, '0')}Z`;
 
@@ -204,4 +204,104 @@ test('a record with no schema field is treated as schema 1, not as complete', ()
   assert.equal(t.length, 1);
   assert.equal(t[0].role, 'meta');
   assert.match(t[0].md, /prose was not captured/i);
+});
+
+// ── The outline ────────────────────────────────────────────────────────────
+// The titler is mechanical: a card's title is the first sentence of its lead
+// turn. Measured over the store's 1,242 card leads on 2026-08-09, the residue
+// split four ways, and three of those four are extraction bugs rather than
+// anything a model would fix. These guard the three fixes, since each of them
+// looks like a cosmetic nicety and is the difference between an outline that
+// orients and one that reads as noise.
+
+const outlineOf = rec => outline(rec).map(c => c.title);
+
+test('a card is titled by the first sentence of its lead turn', () => {
+  const t = outlineOf(REC);
+  assert.equal(t[0], 'Do we capture session content?');
+  assert.equal(t[1], 'Let me look at the plugin.');
+  assert.equal(t[2], 'Yes, and here is what it holds.');
+});
+
+test('a lead that opens with chrome is skipped, not shown as the title', () => {
+  // Every file-modifying reply opens with the branch anchor, so this shape
+  // heads a card in most working sessions. Taking the first sentence naively
+  // titles those cards with a URL.
+  const rec = { ...REC, replies: [{ at: at(5),
+    text: 'Working branch: [claude/some-branch](https://github.com/o/r/tree/b)\n\n'
+        + 'The registry now names every page, which is what the census was missing.' }] };
+  const t = outline(rec).find(c => c.role === 'assistant');
+  assert.equal(t.title, 'The registry now names every page, which is what the census was missing.');
+  assert.equal(t.source, 'lead-sentence');
+});
+
+test('a lead too short to say anything falls through to the next sentence', () => {
+  const rec = { ...REC, replies: [{ at: at(5),
+    text: 'Done. The lockstep test now re-runs each generator in check mode.' }] };
+  assert.equal(outline(rec).find(c => c.role === 'assistant').title,
+    'The lockstep test now re-runs each generator in check mode.');
+});
+
+test('with no usable prose, the title says what the card ran', () => {
+  // The honest fallback, and it is marked as one: `source` lets the renderer
+  // style a derived title differently from a narrated one, so a reader can
+  // tell which rows the session actually described.
+  // One reply means one prose card, so all three of REC's calls attach to it.
+  const rec = { ...REC, replies: [{ at: at(5), text: 'Done.' }] };
+  const c = outline(rec).find(x => x.role === 'assistant');
+  assert.equal(c.title, 'Ran 2× Bash, Read');
+  assert.equal(c.source, 'tool-calls');
+});
+
+test('the run summary counts repeats and keeps first-run order', () => {
+  const rec = { ...REC, replies: [{ at: at(5), text: 'x' }], calls: [
+    { at: at(5), name: 'Bash', arg: 'a' }, { at: at(5), name: 'Read', arg: 'b' },
+    { at: at(5), name: 'Bash', arg: 'c' }, { at: at(5), name: 'Bash', arg: 'd' },
+  ] };
+  assert.equal(outline(rec).find(c => c.role === 'assistant').ran, '3× Bash, Read');
+});
+
+test('a long title is cut at a word boundary and marked as cut', () => {
+  const long = 'The registry ' + 'names every page and every kit and every doc '.repeat(4) + 'exactly once.';
+  const rec = { ...REC, replies: [{ at: at(5), text: long }] };
+  const title = outline(rec).find(c => c.role === 'assistant').title;
+  assert.ok(title.length <= 97, 'capped: ' + title.length);
+  assert.match(title, /…$/);
+  assert.doesNotMatch(title, /\s…$/, 'trailing space before the ellipsis');
+});
+
+test('one outline row per deck card, in the same order', () => {
+  const o = outline(REC);
+  assert.equal(o.length, groups(turns(REC)).length);
+  assert.deepEqual(o.map(c => c.i), o.map((_, i) => i));
+});
+
+// `kind` is what the outline's guideline is drawn from, and it is the one
+// classification a reader cannot make by eye: a coding session alternates
+// between saying something and doing something, and both are assistant cards.
+// Measured across the store on 2026-08-09: 13.5% ask, 13.0% answer, 72.2%
+// work, 1.2% note. The near 1:1 of ask to answer is the pattern the test
+// pins; if `calls` ever stops being the discriminator, every answer in the
+// list silently becomes work and the spine disappears.
+
+test('an assistant card with tool calls is work; without them it is the answer', () => {
+  const kinds = outline(REC).map(c => c.kind);
+  assert.deepEqual(kinds, ['ask', 'work', 'work', 'ask']);
+
+  // REC's two replies both carry calls. Give the second none and it flips.
+  const rec = { ...REC, calls: REC.calls.filter(c => c.at === at(5)) };
+  assert.deepEqual(outline(rec).map(c => c.kind), ['ask', 'work', 'answer', 'ask']);
+});
+
+test('a meta card is a note, never an answer', () => {
+  // The closing summary and the capture note are assistant-shaped in neither
+  // role nor content, and styling them as replies would put a rule beside a
+  // renderer's own footnote.
+  // The closing summary is the standalone meta card; a leading capture note
+  // folds into card 0 and the ask there still leads it, which is why the
+  // fixture supplies `tools` rather than a gap.
+  const o = outline({ schema: 4, tools: { Bash: 2 },
+    prompts: [{ at: at(0), text: 'Anything?' }], replies: [], calls: [] });
+  assert.ok(o.every(c => c.kind !== 'answer'));
+  assert.ok(o.some(c => c.kind === 'note'));
 });

@@ -64,6 +64,12 @@ A bare string is shorthand for `{ "path": ... }`; a trailing `/` covers a direct
 
 **The one cross-check, and it runs one way:** a markdown file declared frozen should carry a `Frozen` banner, because the JSON is invisible to someone opening the file. The reverse does not hold, since a `Frozen` marker inside a living document annotates one claim and implies nothing about the file.
 
+## Venues: this session is not the only place work can run
+
+Besides this sandbox, work can run in a local Claude Code CLI, in Cowork on the desktop, through **Dispatch** (a phone-to-desktop relay, attended: the machine must be awake with the app open), on GitHub's hosted runners, on a **self-hosted runner** on your own machine (unattended: it queues while the machine sleeps), and in a Claude Code Remote environment. Before concluding that something cannot be done from here, or scoping an answer to the venues visible from inside the sandbox, read [venues.md](https://github.com/mehrlander/web-tools/blob/main/docs/venues.md): what each reaches, and the attended-versus-unattended split that decides where a job belongs.
+
+This paragraph exists to be always in context, because the failure it prevents is not failing to find a doc. It is not knowing a question exists.
+
 ## Leave it nicer than you found it
 
 Adding to a doc is a pass over it, not just an append. New material has to match the surrounding voice and structure. Go a step further and tighten related material while you are there.
