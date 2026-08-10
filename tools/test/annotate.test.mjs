@@ -507,3 +507,34 @@ test('a tap on the blank canvas sends the caret to the end', () => {
   assert.ok(!S.compStack.querySelector('[data-edge]'), 'the pins went with it');
   A.disable();
 });
+
+test('three taps in a run take the whole buffer', () => {
+  // hitsText is stubbed because jsdom has no layout and would answer false for
+  // every point; its own geometry is measured in dictate.test.mjs. What is
+  // under test here is the counting, and that a triple needs no point at all:
+  // the offset is resolved AFTER the count, so select-all does not depend on
+  // which character the third tap landed on (jsdom has no caretRangeFromPoint
+  // either, so a triple that needed one could not work at all).
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  const real = window.Dictate.hitsText;
+  window.Dictate.hitsText = () => true;
+  try {
+    A.enable({ doc, subject: { title: 'x', url: '' } });
+    const S = A._state, d = S.dict;
+    d.text = 'the quick brown fox';
+    A._paintDraft();
+
+    const tap = () => {
+      const e = new window.Event('pointerup', { bubbles: true });
+      e.clientX = 20; e.clientY = 20;
+      S.compView.dispatchEvent(e);
+    };
+    tap();
+    assert.equal(d.range, null, 'one tap with nothing live waits');
+    tap(); tap();
+    assert.deepEqual(d.range, { start: 0, end: 19 }, 'the third takes everything');
+    assert.equal(d.hasSelection, true);
+    A.disable();
+  } finally { window.Dictate.hitsText = real; }
+});

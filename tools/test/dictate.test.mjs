@@ -718,3 +718,39 @@ test('the caret at the end IS the append state, which is what a canvas tap asks 
   assert.equal(d.hasSelection, false);
   assert.equal(d.text, 'the quick fox', 'and nothing was written to get there');
 });
+
+test('the newest line is scrolled into view as the buffer grows', () => {
+  // A dictation surface fills from the top and keeps going, so without this
+  // the box shows the opening sentence while the reader is four sentences on.
+  // jsdom reports no layout, so the box is a stub: what is under test is WHEN
+  // the painter reaches for it, which is the whole of the logic.
+  const h = host();
+  const box = { scrollHeight: 400, clientHeight: 100, scrollTop: 0,
+                appendChild() {}, childNodes: [] };
+  Object.defineProperty(h, 'parentNode', { value: box });
+
+  D.paint(h, { text: 'one' });
+  assert.equal(box.scrollTop, 400, 'the first words scroll it down');
+
+  box.scrollTop = 0;
+  D.paint(h, { text: 'one' });
+  assert.equal(box.scrollTop, 0,
+    'a repaint with no new text leaves it alone, or the box could never be scrolled up');
+
+  D.paint(h, { text: 'one two' });
+  assert.equal(box.scrollTop, 400, 'growth brings it back');
+
+  box.scrollTop = 0;
+  D.paint(h, { text: 'one two three', range: { start: 0, end: 3 } });
+  assert.equal(box.scrollTop, 0,
+    'a live selection holds it: the interesting text is where the reader put it');
+});
+
+test('a box with nothing to scroll is left alone', () => {
+  const h = host();
+  const box = { scrollHeight: 40, clientHeight: 100, scrollTop: 0,
+                appendChild() {}, childNodes: [] };
+  Object.defineProperty(h, 'parentNode', { value: box });
+  D.paint(h, { text: 'short' });
+  assert.equal(box.scrollTop, 0);
+});

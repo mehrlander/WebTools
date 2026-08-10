@@ -1165,3 +1165,32 @@ test('a tap on the blank canvas sends the caret to the end', async () => {
   assert.equal(data.dictText, 'the quick brown fox.', 'getting there wrote nothing');
   data.dictCancel();
 });
+
+test('three taps in a run take the whole buffer', async () => {
+  // hitsText is stubbed: jsdom has no layout and would answer false for every
+  // point, and its geometry is measured in dictate.test.mjs. Under test here
+  // is the counting, and that a triple needs no point (the offset is resolved
+  // after the count, so select-all does not depend on where the third landed).
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('the quick brown fox', true);
+  await tick();
+  const real = window.Dictate.hitsText;
+  window.Dictate.hitsText = () => true;
+  try {
+    const surface = data._dictHost.parentElement;
+    const tap = () => {
+      const e = new window.Event('pointerup', { bubbles: true });
+      e.clientX = 20; e.clientY = 20;
+      surface.dispatchEvent(e);
+    };
+    tap();
+    assert.equal(data.dictSel, false, 'one tap with nothing live waits');
+    tap(); tap();
+    assert.deepEqual(plain_(data._dict.range), { start: 0, end: 20 },
+      'the third takes everything, the pause period included');
+    assert.equal(data.dictSel, true);
+  } finally { window.Dictate.hitsText = real; }
+  data.dictCancel();
+});
