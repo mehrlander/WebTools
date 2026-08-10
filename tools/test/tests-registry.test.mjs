@@ -63,18 +63,22 @@ test('the declared derivation matches the files on disk', () => {
     assert.equal(t.assertions, d.assertions, `${t.path}: assertions; run: npm run tests-index`);
     assert.equal(t.method, d.method, `${t.path}: method; run: npm run tests-index`);
     assert.equal(t.runner, d.runner, `${t.path}: runner; run: npm run tests-index`);
-    assert.equal(t.boot_smoke, d.boot_smoke, `${t.path}: boot_smoke; run: npm run tests-index`);
+    assert.deepEqual(t.boot_smoke, d.boot_smoke, `${t.path}: boot_smoke; run: npm run tests-index`);
     assert.deepEqual(t.assertion_names, d.assertion_names,
       `${t.path}: assertion_names; run: npm run tests-index`);
   }
 });
 
-// The two derived fields read the same call sites, so a drift between them is
-// the extractor losing names rather than the files changing. The apostrophe bug
-// is the case that motivates it: a name regex that ends on an escaped quote
-// still matches, still yields a string, and silently truncates prose names, so
-// nothing fails and the list quietly gets worse. Counting is the check the
-// truncation cannot pass.
+// `assertions` and `assertion_names` are two independent reads of the same call
+// sites, kept independent so this can compare them. What it catches is a test()
+// whose name is not a string literal: the counter sees the call, the extractor
+// finds nothing to capture, and the list silently comes up short.
+//
+// What it does NOT catch, corrected here after the comment claimed otherwise:
+// truncation. A name pattern that ends on an escaped quote still matches once
+// and still yields a string, so the counts stay equal while the captured prose
+// is clipped. Only reading the names catches that, which is why the extractor
+// steps over `\\.` rather than being guarded from the outside.
 test('every counted assertion has a name', () => {
   for (const t of registry.tests) {
     if (t.assertions === null) continue;
@@ -99,6 +103,21 @@ test('a non-suite check reports no assertion count rather than zero', () => {
     if (suite) assert.ok(Array.isArray(t.assertion_names), t.path + ': suite files list names');
     else assert.equal(t.assertion_names, null,
       t.path + ': a browser check must report null names, not an empty list');
+    if (suite) assert.ok(Array.isArray(t.boot_smoke), t.path + ': suite files list smoke indices');
+    else assert.equal(t.boot_smoke, null, t.path + ': a browser check reports null smoke');
+  }
+});
+
+// boot_smoke indexes assertion_names, so an index outside it is a stale stamp
+// pointing at an assertion that no longer exists. Cheap to check and the whole
+// reason indices are safe to store: they are only meaningful against the list
+// beside them, and nothing else would notice if they drifted apart.
+test('every smoke index addresses a real assertion', () => {
+  for (const t of registry.tests) {
+    if (!t.boot_smoke) continue;
+    for (const i of t.boot_smoke)
+      assert.ok(Number.isInteger(i) && i >= 0 && i < t.assertion_names.length,
+        `${t.path}: boot_smoke index ${i} is outside its ${t.assertion_names.length} names`);
   }
 });
 

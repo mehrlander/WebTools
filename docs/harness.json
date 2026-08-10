@@ -223,7 +223,7 @@
       "path": "tools/build/tests-index.mjs",
       "role": "restamp the derived half of docs/tests.json, the test registry",
       "layer": "tools/build",
-      "lines": 197,
+      "lines": 216,
       "invocation": "npm:tests-index",
       "emits": true,
       "named": false,

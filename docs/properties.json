@@ -280,7 +280,7 @@
       "deriver": "tools/build/tests-index.mjs",
       "required": "value",
       "values": null,
-      "gloss": "assertions that only check a component mounts"
+      "gloss": "which assertions only check a component mounts, as indices into assertion_names; the property is per assertion, so a file-level count is the length rather than the record. Null for a browser check"
     },
     {
       "property": "role",

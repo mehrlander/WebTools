@@ -40,11 +40,14 @@
 //               without `.test.` on purpose, so the CI runner never installs a
 //               browser; that convention is invisible from the pass count and
 //               is exactly what this field makes visible.
-//   boot_smoke  how many of the file's assertions only check that a component
-//               mounts without warnings. Not a criticism: a boot check catches
-//               real breakage cheaply. But it is the lowest-information
-//               assertion in the suite, and a file that is mostly boot smoke
-//               is claiming less than its count suggests.
+//   boot_smoke  WHICH of the file's assertions only check that a component
+//               mounts without warnings, as indices into assertion_names. Not a
+//               criticism: a boot check catches real breakage cheaply. But it
+//               is the lowest-information assertion in the suite, and a file
+//               that is mostly boot smoke is claiming less than its count
+//               suggests. Indices rather than a count because the property is
+//               per assertion, so the count is an aggregate and a consumer that
+//               wants one can take the length.
 //
 // Authored in the registry, because no derivation can supply it: `kind` (what
 // genre of check this is) and `protects` (the one thing that breaks if it is
@@ -77,7 +80,22 @@ const TEST_DIR = 'tools/test';
 // exactly the kind of thing that goes quietly stale.
 const NOT_A_TEST = new Set(['bootstrap.mjs', 'show-repo-shell.mjs']);
 
-const BOOT_SMOKE = /test\('[^']*(mounts?[^']*(warning|error)|no startup warning)/i;
+// A boot smoke assertion proves one thing: the component mounted and logged
+// nothing. Two things changed here on 2026-08-10, and both are about level.
+//
+// It reads the derived NAMES rather than scanning the source a second time. The
+// old pattern was anchored to `test('`, so it saw single-quoted names only and
+// would have missed a boot check written with a double quote or a backtick,
+// silently. The names are already extracted in every quote style and unescaped.
+//
+// And it returns INDICES, not a count. The property is per assertion: one
+// test() call is a boot check or it is not, and a file-level number is an
+// aggregate of that. Storing only the aggregate is what let the view render
+// "19 smoke" without being able to say whether 19 counted files or assertions.
+// Both were 19, because every file happens to carry exactly one, so nothing
+// revealed the ambiguity and the first file to gain a second boot check would
+// have made the label quietly wrong.
+const BOOT_SMOKE = /mounts?.*(warning|error)|no startup warning/i;
 
 /** Count top-level test() calls. */
 function assertions(src) {
@@ -106,8 +124,8 @@ function method(src) {
   return 'pure';
 }
 
-function bootSmoke(src) {
-  return (src.match(new RegExp(BOOT_SMOKE.source, 'gi')) || []).length;
+function bootSmoke(names) {
+  return names.flatMap((n, i) => (BOOT_SMOKE.test(n) ? [i] : []));
 }
 
 /**
@@ -135,12 +153,13 @@ export function deriveTests(repoRoot) {
     // not fold a null into a total. Same rule the traffic accounting follows:
     // no total absorbs a figure it could not measure.
     const suite = name.endsWith('.test.mjs');
+    const names = suite ? assertionNames(src) : null;
     out.set(rel, {
       assertions: suite ? assertions(src) : null,
-      assertion_names: suite ? assertionNames(src) : null,
+      assertion_names: names,
       method: method(src),
       runner,
-      boot_smoke: suite ? bootSmoke(src) : null,
+      boot_smoke: names ? bootSmoke(names) : null,
     });
   }
   return out;
@@ -184,7 +203,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   writeFileSync(file, JSON.stringify(registry, null, 2) + '\n');
 
   const total = registry.tests.reduce((s, t) => s + t.assertions, 0);
-  const smoke = registry.tests.reduce((s, t) => s + t.boot_smoke, 0);
+  const smoke = registry.tests.reduce((s, t) => s + (t.boot_smoke?.length || 0), 0);
   const byKind = {};
   for (const t of registry.tests) byKind[t.kind] = (byKind[t.kind] || 0) + t.assertions;
   console.log(`tests-index: ${registry.tests.length} files, ${total} assertions ` +

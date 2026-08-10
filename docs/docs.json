@@ -326,7 +326,7 @@
       "subject": "the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement",
       "status": "living",
       "reach": "project",
-      "words": 2284,
+      "words": 2309,
       "maintenance": "authored by hand; held both ways to the carriers it governs by tools/test/properties-registry.test.mjs"
     },
     {
@@ -374,7 +374,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 19298,
+      "words": 19343,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {
