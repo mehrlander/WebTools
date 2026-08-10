@@ -326,7 +326,7 @@
       "subject": "the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement",
       "status": "living",
       "reach": "project",
-      "words": 2228,
+      "words": 2985,
       "maintenance": "authored by hand; held both ways to the carriers it governs by tools/test/properties-registry.test.mjs"
     },
     {
@@ -334,7 +334,7 @@
       "subject": "the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction",
       "status": "living",
       "reach": "project",
-      "words": 2484,
+      "words": 2432,
       "maintenance": "the doctrine behind properties.json; written to travel, origin budget-drs properties.csv"
     },
     {
