@@ -194,7 +194,7 @@
     {
       "path": "tools/test/branches-view.test.mjs",
       "kind": "component",
-      "protects": "The branches view mounts clean.",
+      "protects": "Every older branch is judged on the content signal rather than on ref-level merge status, with a marked commits fallback when there is no merge base and a REST fallback when GraphQL is unavailable.",
       "assertions": 5,
       "method": "alpine",
       "runner": "suite",
@@ -701,7 +701,7 @@
     {
       "path": "tools/test/drop-zone.test.mjs",
       "kind": "component",
-      "protects": "The reusable drop zone mounts clean.",
+      "protects": "The drop zone accepts what it declared and refuses the rest visibly: an oversize or wrong-typed file emits no event and sets an error status rather than passing quietly.",
       "assertions": 9,
       "method": "alpine",
       "runner": "suite",
@@ -757,7 +757,7 @@
     {
       "path": "tools/test/estate-bench.test.mjs",
       "kind": "component",
-      "protects": "The estate bench mounts clean.",
+      "protects": "The bench holds only what was saved, with the store as its single source: loading a surface stages its addressable items and remembers the origin, and detaching keeps them while dropping the write-back.",
       "assertions": 10,
       "method": "alpine",
       "runner": "suite",
@@ -868,7 +868,7 @@
     {
       "path": "tools/test/estate-embed.test.mjs",
       "kind": "component",
-      "protects": "The estate embed mounts clean.",
+      "protects": "An embed item reports its kind and builds a toss-render address, and its expand state stays off the item object rather than being written back into the surface.",
       "assertions": 5,
       "method": "alpine",
       "runner": "suite",
@@ -886,7 +886,7 @@
     {
       "path": "tools/test/estate-jots.test.mjs",
       "kind": "component",
-      "protects": "The jots list mounts clean.",
+      "protects": "A jot write merges against a fresh read, so a jot added elsewhere survives; a missing pile is empty rather than an error, and a real load failure is surfaced instead of read as empty.",
       "assertions": 9,
       "method": "alpine",
       "runner": "suite",
@@ -965,7 +965,7 @@
     {
       "path": "tools/test/estate-repo-surfaces.test.mjs",
       "kind": "component",
-      "protects": "The per-repo surfaces block mounts clean.",
+      "protects": "Only declaring repos are fetched, a missing declared file is skipped rather than failing the block, and a declaring entry is marked so a plain repo is never shown as having a surface.",
       "assertions": 6,
       "method": "alpine",
       "runner": "suite",
@@ -984,7 +984,7 @@
     {
       "path": "tools/test/estate-rows.test.mjs",
       "kind": "component",
-      "protects": "The estate rows layout mounts clean.",
+      "protects": "Repo cards group and order by each repo's declared position, a -private companion nests into its parent, and an opted-out repo is absent entirely rather than rendered empty.",
       "assertions": 7,
       "method": "alpine",
       "runner": "suite",
@@ -1458,7 +1458,7 @@
     {
       "path": "tools/test/mention.test.mjs",
       "kind": "component",
-      "protects": "The mention component mounts clean.",
+      "protects": "A pick emits an address at the right scope: open-repo-relative in default mode, fully qualified from roots mode. A root that fails to load still appears rather than vanishing.",
       "assertions": 8,
       "method": "alpine",
       "runner": "suite",
@@ -1528,7 +1528,7 @@
     {
       "path": "tools/test/pages.test.mjs",
       "kind": "component",
-      "protects": "The pages gallery mounts closed and opens without warnings.",
+      "protects": "The gallery finds pages by scanning for .html blobs, and each row's render URL follows the ref: off the default ref an owner repo routes through toss-render rather than a github.io URL that would serve the wrong code.",
       "assertions": 7,
       "method": "alpine",
       "runner": "suite",
@@ -2224,7 +2224,7 @@
     {
       "path": "tools/test/sheet-modal.test.mjs",
       "kind": "component",
-      "protects": "The sheet modal mounts clean despite its eager slot bindings.",
+      "protects": "Slot nodes are MOVED into the assembled chrome rather than rebuilt, so node identity and bindings survive init, and a breakpoint flip re-presents in place rather than resetting the sheet.",
       "assertions": 13,
       "method": "alpine",
       "runner": "suite",
@@ -2578,7 +2578,7 @@
       "path": "tools/test/tests-registry.test.mjs",
       "kind": "gate",
       "protects": "Every test file has a row saying what it protects, the derived fields match disk, and no browser check is left with nothing to run it.",
-      "assertions": 11,
+      "assertions": 12,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -2590,6 +2590,7 @@
         "a non-suite check reports no assertion count rather than zero",
         "every smoke index addresses a real assertion",
         "protects says what breaks, and does not become an inventory",
+        "protects says more than \"it mounts\" when the file does more",
         "the unexamined count is reported",
         "every browser check is owned by an npm script",
         "the registry note and kind glosses are substantive",
@@ -2742,7 +2743,7 @@
     {
       "path": "tools/test/treemap.test.mjs",
       "kind": "kit",
-      "protects": "The treemap kit exposes its documented surface.",
+      "protects": "squarify tiles its rectangle exactly, in proportion and without overlap, including degenerate input, and stays fast at ten thousand items.",
       "assertions": 9,
       "method": "kit",
       "runner": "suite",
@@ -2801,7 +2802,7 @@
     {
       "path": "tools/test/viewer.test.mjs",
       "kind": "component",
-      "protects": "The file viewer mounts clean and plumbs the map option onto its default mode.",
+      "protects": "Mode resolution always lands somewhere: every form of the option falls back to raw when it cannot resolve, and a delimited parse pads short rows and names blank or duplicate headers so no column or record is dropped.",
       "assertions": 17,
       "method": "alpine",
       "runner": "suite",
@@ -2839,7 +2840,7 @@
     {
       "path": "tools/test/wring.test.mjs",
       "kind": "kit",
-      "protects": "The wring kit exposes every documented export.",
+      "protects": "The grammar round-trips: the induced start rule regenerates the stream, reconstruction leaves $ patterns in slot values verbatim, and template selection matches brute force.",
       "assertions": 9,
       "method": "kit",
       "runner": "suite",
@@ -2883,7 +2884,7 @@
     {
       "path": "tools/test/xlsx.test.mjs",
       "kind": "kit",
-      "protects": "The xlsx kit exposes its documented surface.",
+      "protects": "A workbook is read without losing shape or failing whole: a sparse row keeps its gap rather than compacting, shared strings resolve regardless of part order, and one malformed XML part is skipped rather than fatal.",
       "assertions": 13,
       "method": "kit",
       "runner": "suite",

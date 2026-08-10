@@ -141,6 +141,30 @@ test('protects says what breaks, and does not become an inventory', () => {
     'assertion_names carry the coverage: ' + long.join(', '));
 });
 
+// The floor, added 2026-08-10 with the ceiling above it, because deriving
+// assertion_names made the opposite failure visible for the first time. Fourteen
+// rows described only the boot check ("The jots list mounts clean") on files
+// asserting eight or nine real behaviours, so the sentence claimed far LESS than
+// the file did. The ceiling cannot see that direction, and neither could anyone
+// reading the registry, since a short sentence looks disciplined.
+//
+// Deliberately narrow. The pattern alone over-fires: two rows open with "mounts"
+// and then say plenty, so length is the second condition, and a file with almost
+// nothing but a boot check is entitled to say so, which is the third. It is a
+// detector for one shape, not a quality bar for prose.
+const BOOT_ONLY = /mounts?\b|exposes (its|every) documented/i;
+
+test('protects says more than "it mounts" when the file does more', () => {
+  const thin = registry.tests.filter(t => {
+    if (!t.protects || !t.assertion_names) return false;
+    const behavioural = t.assertion_names.length - (t.boot_smoke?.length || 0);
+    return BOOT_ONLY.test(t.protects) && t.protects.length < 120 && behavioural >= 4;
+  }).map(t => `${t.path} (${t.assertion_names.length - (t.boot_smoke?.length || 0)} beyond the boot check)`);
+  assert.deepEqual(thin, [],
+    'these say only that the subject mounts, on files that assert much more; ' +
+    'read assertion_names and say what would BREAK: ' + thin.join(', '));
+});
+
 // Not a ban. The number is the point: it says how much of the suite nobody has
 // examined. It stood at 0 when the registry was written.
 test('the unexamined count is reported', () => {
