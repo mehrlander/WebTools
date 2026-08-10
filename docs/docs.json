@@ -262,7 +262,7 @@
       "subject": "the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting",
       "status": "living",
       "reach": "app",
-      "words": 3130,
+      "words": 3173,
       "maintenance": "authored role and layer glossary; layer, lines, invocation, emits, named and tested stamped by tools/build/tools-index.mjs, held in lockstep by artifacts-lockstep.test.mjs; blank roles are counted, not hidden"
     },
     {
@@ -326,7 +326,7 @@
       "subject": "the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement",
       "status": "living",
       "reach": "project",
-      "words": 1644,
+      "words": 1818,
       "maintenance": "authored by hand; held both ways to the carriers it governs by tools/test/properties-registry.test.mjs"
     },
     {
@@ -334,7 +334,7 @@
       "subject": "the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction",
       "status": "living",
       "reach": "project",
-      "words": 1684,
+      "words": 2091,
       "maintenance": "the doctrine behind properties.json; written to travel, origin budget-drs properties.csv"
     },
     {
@@ -350,7 +350,7 @@
       "subject": "the show-repo shell: views, stage, transfer, and the .web-tools.json manifest",
       "status": "living",
       "reach": "project",
-      "words": 20749,
+      "words": 22190,
       "maintenance": "authored, edited in place; the corpus's largest document, and the buried home of the stage contract"
     },
     {

@@ -111,8 +111,8 @@
      first (repo selection happens on the Repos dashboard, which is nicer than a
      dropdown); the auth shield followed, since everything it reached already had
      an on-page home: the token control is the Repos dashboard's account row, a
-     repo's config is the sidebar's Config view, and "Refresh views" is that same
-     view's Refresh button.
+     repo's config is the sidebar's Config view, and "Refresh views" is the
+     State view's config row.
 
      The BRAND went last, and for the same reason as the rest: it said nothing
      the row beside it did not. Its tap was goDashboard(), which is Activity for
@@ -1327,6 +1327,21 @@
       </div>
     </div>
 
+    <!-- The State view: the estate's derived state in one list, each piece with
+         when it was last built, when this browser last checked, what builds it,
+         and a Refresh where one is possible. It exists because "refresh" was one
+         icon over two unrelated verbs (a committed crawl that can be hours stale,
+         and a local recompute with no age at all), spread over six surfaces, with
+         the as-of reading that tells you whether to press hidden below `sm`.
+         Estate-level, token-gated, its own component and lazy mount. -->
+    <div x-show="view==='state'" data-pane="state" class="h-full overflow-y-auto">
+      <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 max-w-4xl">
+        <template x-if="stateSeen">
+          <div x-data="stateView()"></div>
+        </template>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -1510,6 +1525,19 @@ function app(){ return {
   _overlayResolved: null, // memoized resolution (the branch never changes mid-session)
   proposalCount: 0, // pending cross-repo edit proposals; gates the nav entry
   proposalsSeen: false,
+  stateSeen: false, // mount the State view lazily, on first visit
+  // Which State row a link is aiming at. A query key the view consumes on
+  // arrival, in the idiom `detail` already uses to open one branch inside the
+  // Activity takeover: the estate addresses one entry in a rendered set by
+  // naming it in the URL, not by scrolling on a callback. Blank when the nav
+  // opened the view, since arriving with nothing named singles out nothing.
+  stateItem: new URLSearchParams(location.search).get('item') || '',
+  // The guides shelf's read stamp, mirrored here by the estate component as it
+  // lands. Every other derived thing carries its age in a file the State view
+  // can read; this one has no file, so the shell holds the only copy outside
+  // the component that produced it.
+  guidesLoadedAt: '',
+  guidesBusy: false,   // mirrored the same way, so the State row can spin
   configRefreshing: false,  // the estate refresh button is mid-crawl
   activityRefreshing: false, // the activity crawl (heavier: per-repo survey) is running
   // Live progress for the Activity header while that crawl runs, or null when
@@ -1571,6 +1599,11 @@ function app(){ return {
     // can change membership, so that path rebuilds the cache and reloads.
     this.$watch(() => this._authState, (s) => {
       if (s === 'auth') { this.loadEstateSidebar().then(() => this.refreshConfigCache()).then(() => this.refreshActivityCache()); this.processMailbox(); this.loadProposalCount(); }
+      // Announced for views that mount before auth resolves and would otherwise
+      // sit on their signed-out state forever. A deep link is exactly that case:
+      // ?view=state mounts the view during boot, its first read finds no token,
+      // and nothing afterwards told it the token had arrived.
+      document.dispatchEvent(new CustomEvent('web-tools:auth-state', { detail: s }));
     });
     document.addEventListener('web-tools:config-saved', async () => {
       // Rebuild the cache, THEN fan out the reload. refreshConfigs awaits the
@@ -1616,6 +1649,7 @@ function app(){ return {
     else if (url && url.view === 'tools') this.goTools();
     else if (url && url.view === 'search') this.goSearch({ q: url.sq, mode: url.smode, repo: url.srepo, ref: url.sref });
     else if (url && url.view === 'proposals') this.goProposals();
+    else if (url && url.view === 'state') this.goState(url.item);
     else if (url && url.view === 'atlas') this.goAtlas();
     else if (url && url.view === 'stage') this.goStage();
     else if (url && url.view === 'public') this.goPublicBrowse();
@@ -3370,6 +3404,7 @@ function app(){ return {
              appRepo: p.get('appRepo') || '', appPath: p.get('appPath') || '', appRef: p.get('appRef') || '',
              appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '',
              sq: p.get('sq') || '', smode: p.get('smode') || '', srepo: p.get('srepo') || '', sref: p.get('sref') || '',
+             item: p.get('item') || '',
              window: this.parseWindowParam(p.get('window')) };
   },
 
@@ -3390,7 +3425,7 @@ function app(){ return {
     if (this.view === 'files' && s.ref && s.ref !== s.defaultRef) p.set('ref', s.ref); else p.delete('ref');
     p.delete('file'); p.delete('view'); p.delete('path'); p.delete('project'); p.delete('tab');
     p.delete('appRepo'); p.delete('appPath'); p.delete('appRef');
-    p.delete('appLabel'); p.delete('appIcon'); p.delete('detail');
+    p.delete('appLabel'); p.delete('appIcon'); p.delete('detail'); p.delete('item');
     p.delete('sq'); p.delete('smode'); p.delete('srepo'); p.delete('sref');
     if (this.view === 'files') {
       // A cross-repo staged file (activeFile.origin from another repo) has no
@@ -3432,6 +3467,10 @@ function app(){ return {
       if (this.mapTab && this.mapTab !== 'set') p.set('tab', this.mapTab);
     }
     else if (this.view === 'tools') p.set('view', 'tools');
+    else if (this.view === 'state') {
+      p.set('view', 'state');
+      if (this.stateItem) p.set('item', this.stateItem);
+    }
     // The Search view's address carries the ran search (sq + friends, stamped
     // from searchSeed, which the view updates on each run), so a search can be
     // shared like any other screen. A bare ?view=search opens it empty.
@@ -3518,6 +3557,7 @@ function app(){ return {
       else if (url && url.view === 'tools') this.goTools();
       else if (url && url.view === 'search') this.goSearch({ q: url.sq, mode: url.smode, repo: url.srepo, ref: url.sref });
       else if (url && url.view === 'proposals') this.goProposals();
+      else if (url && url.view === 'state') this.goState(url.item);
       else if (url && url.view === 'pages') this.goPages();
       else if (url && url.view === 'atlas') this.goAtlas();
       else if (url && url.view === 'stage') this.goStage();
@@ -3588,7 +3628,7 @@ function app(){ return {
   // App views are estate-level (peers of Repos/Stage), so they share
   // the estate sidebar context: the per-repo view list stays hidden and the
   // header reads "Repositories".
-  get estateCtx(){ return this.isEstate || this.view === 'map' || this.view === 'tools' || this.view === 'search' || this.view === 'app' || this.view === 'public'; },
+  get estateCtx(){ return this.isEstate || this.view === 'map' || this.view === 'tools' || this.view === 'search' || this.view === 'state' || this.view === 'app' || this.view === 'public'; },
   // Whether the pinned desktop sidebar has anything to show: always in a repo
   // (its views / pins / recents), and in the estate whenever it has repo-sourced
   // content — the Repos index or the app views (News). Both are token-gated, so
@@ -3652,6 +3692,12 @@ function app(){ return {
       { view: 'tools',    icon: 'ph-wrench',       label: 'Tools',    go: () => this.goTools() },
       { view: 'search',   icon: 'ph-magnifying-glass', label: 'Search', go: () => this.goSearch() },
       { view: 'map',      icon: 'ph-compass',      label: 'Map',      go: () => this.goMap() },
+      // State: what the estate keeps derived, and how old each piece is. A
+      // standing entry rather than a conditional one (Proposals is the only
+      // conditional): the answer to "is what I am looking at current" has to be
+      // reachable before you know you need it, which is the failure the four
+      // scattered Refresh buttons had.
+      { view: 'state',    icon: 'ph-stack-simple', label: 'State',    go: () => this.goState() },
       // Proposals is the one conditional entry: an empty channel should cost no
       // attention, so it appears only while something is pending (or while the
       // view is open, so the nav does not vanish under the user on the apply
@@ -3737,6 +3783,18 @@ function app(){ return {
   },
   // The Proposals view: pending cross-repo edits awaiting the user's confirm.
   goProposals(){ this.proposalsSeen = true; this.view = 'proposals'; this.syncUrl(); },
+  // State kicks nothing. Every other view warms the cache it reads on arrival;
+  // this one reports ages, and a view that ran a crawl to show you how old
+  // things were would answer its own question before you read it.
+  goState(item){
+    this.stateItem = item || '';
+    this.stateSeen = true; this.view = 'state';
+    // Announced even when the view is already mounted: arriving from a second
+    // age pill has to move the highlight, and re-setting `view` to the value it
+    // already holds is not something Alpine reacts to.
+    document.dispatchEvent(new CustomEvent('web-tools:state-item', { detail: this.stateItem }));
+    this.syncUrl();
+  },
   // Open is the estate's cross-repo live-branch view; the one estate component
   // renders it by reading the shell view (internal key 'activity'). A visit
   // kicks the throttled activity crawl (like Repos kicks the config crawl) so
@@ -4332,8 +4390,10 @@ function overview(){ return {
   token control is the account row on the Repos dashboard (estate.js
   accountPanel → the dialog's estate scope), which is where an account-level
   setting belongs, and every token-gated empty state points there. The shield's
-  other job, REFRESH VIEWS, was already the Repos view's own Refresh button
-  (both call refreshConfigs), so it needed no new home.
+  other job, REFRESH VIEWS, was the Repos view's own Refresh button when the
+  shield went (both called refreshConfigs), so it needed no new home. Both are
+  now the State view's config row, which carries that crawl with its age, its
+  throttle, and what it costs.
   There is no repo-list dropdown and no quick-links row: REPO SELECTION HAPPENS
   ON THE REPOS DASHBOARD (tap a card) or from the sidebar Repos index. Repos
   reach the header through their published VIEWS, not through a list of
