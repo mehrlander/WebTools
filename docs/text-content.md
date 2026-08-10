@@ -181,7 +181,15 @@ repo, branch, menu and folder icons deliberately carry no file glyph. Those are
 decisions and conventions addressed to whoever edits this page. Deleting them
 would lose them.
 
-**So the treatment is a split, not a verdict.** The contract half goes, because
+**Done 2026-08-10.** The contract half is retired, the rationale half sits at
+the code it explains, and three facts that were in the block and in neither the
+doc nor `estate.js` were salvaged into the doc first: the `?view=app&appRepo&appPath`
+address for a promoted app view, `docs/owners.json` behind the Map's Claims tab,
+and `lists/pins.json` with the Pin item shape. The page went from 294,628 to
+255,545 bytes and from 91,970 to 76,894 gzipped, and its comment count rose from
+327 blocks to 335, which is the shape of the change: fewer words, more sites.
+
+**The treatment was a split, not a verdict.** The contract half went, because
 the doc says it better and two copies is a tax the git history shows being paid:
 four commits in one week touched both, and the block still fell six views
 behind. The rationale half moves to the code it explains, which is where the
@@ -502,13 +510,10 @@ turning the gate on and watching it misfire.
 
 What remains:
 
-1. **Split the one show-repo block**, per the reading above: retire its ~3,850
-   words of contract, relocate its ~2,760 words of UI rationale to the code each
-   passage explains, and substance-check the 1,540-word estate passage first.
-   It is a careful editing job rather than a deletion, and it deserves a session
-   with room to place five passages accurately.
-2. **Register, do not move.** For everything else a row saying where the text is
-   and who wrote it is worth more than relocating it, at a fraction of the cost.
+1. **Register, do not move.** The show-repo split is done. For everything else a
+   row saying where the text is and who wrote it is worth more than relocating
+   it, at a fraction of the cost.
+
 
 # What the census cannot see
 
