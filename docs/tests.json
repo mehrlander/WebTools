@@ -119,6 +119,15 @@
       "boot_smoke": 0
     },
     {
+      "path": "tools/test/chat-render-wide-table.test.mjs",
+      "kind": "behavior",
+      "protects": "A wide markdown table scrolls inside its own box instead of widening the slide it sits in, which would silently break the deck's pager: go() and active() compute in units of track width, so every index past an over-wide slide is wrong.",
+      "assertions": 5,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": 0
+    },
+    {
       "path": "tools/test/claude-md.test.mjs",
       "kind": "guard",
       "protects": "CLAUDE.md still points at the showing manifest and frame, and stays under its 1600-word ceiling. The size half is a policy, not a behavior, which is why it sits here rather than inside the routes manifest test.",
