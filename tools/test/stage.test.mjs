@@ -1194,3 +1194,33 @@ test('three taps in a run take the whole buffer', async () => {
   } finally { window.Dictate.hitsText = real; }
   data.dictCancel();
 });
+
+test('the third tap counts even when it lands on the pin the second one painted', async () => {
+  // The regression a real browser found and jsdom could not: a double tap
+  // paints a handle AT the point tapped, so the third tap of a triple hits the
+  // pin. A pin is not inside the scroll box, so a listener bound there never
+  // saw it and the run stalled at two, which made select-all unreachable in
+  // exactly the place it is used. The listener is on the layer now, and that
+  // is what these three taps on a pin assert.
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('the quick brown fox', true);
+  await tick();
+  data._dict.selectWordAt(6);            // "quick", so the handles exist
+  data.dictPaint();
+
+  const pin = data.$refs.dictLayer.querySelector('[data-edge="start"]');
+  assert.ok(pin, 'a handle to tap');
+  assert.ok(!data._dictHost.parentElement.contains(pin),
+    'and it is outside the scroll box, which is the whole reason this needs the layer');
+
+  for (let i = 0; i < 3; i++) {
+    const e = new window.Event('pointerup', { bubbles: true });
+    e.clientX = 20; e.clientY = 20;
+    pin.dispatchEvent(e);
+  }
+  assert.deepEqual(plain_(data._dict.range), { start: 0, end: 20 },
+    'three taps on the pin still take the whole buffer');
+  data.dictCancel();
+});

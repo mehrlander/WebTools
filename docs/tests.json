@@ -932,7 +932,7 @@
       "path": "tools/test/stage.test.mjs",
       "kind": "component",
       "protects": "The stage: membership, grouping, the diff lens, saving, and the cross-repo address grammar.",
-      "assertions": 69,
+      "assertions": 70,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": 1
