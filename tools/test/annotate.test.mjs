@@ -538,3 +538,33 @@ test('three taps in a run take the whole buffer', () => {
     A.disable();
   } finally { window.Dictate.hitsText = real; }
 });
+
+test('the keyboard mode does not wear a microphone', () => {
+  // Wrong twice before this test existed. The exit button carried a microphone
+  // on the theory that the icon names where the tap lands; readers read it as
+  // "recording", and the mic button hiding in edit mode slid this one into the
+  // mic's slot, which made the reading almost unavoidable. What is pinned here
+  // is the absence of the microphone and the presence of the dimmed real one.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  assert.match(S.compEdit._icon.className, /ph-pencil-simple/, 'dictation mode: a pencil');
+  assert.equal(S.compMic.disabled, false);
+
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.editing, true, 'the keyboard is open');
+  assert.ok(!/ph-microphone/.test(S.compEdit._icon.className),
+    'the way OUT of the keyboard is not a microphone');
+  assert.match(S.compEdit._icon.className, /ph-check/);
+  assert.equal(S.compEditTxt.style.display, 'inline', 'and it says Done');
+  // The mic holds its slot instead of vanishing, so nothing slides into it.
+  assert.notEqual(S.compMic.style.display, 'none');
+  assert.equal(S.compMic.disabled, true, 'visibly off rather than absent');
+
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.editing, false);
+  assert.match(S.compEdit._icon.className, /ph-pencil-simple/, 'and the face goes back');
+  assert.equal(S.compMic.disabled, false);
+  A.disable();
+});

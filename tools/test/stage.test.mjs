@@ -1224,3 +1224,38 @@ test('the third tap counts even when it lands on the pin the second one painted'
     'three taps on the pin still take the whole buffer');
   data.dictCancel();
 });
+
+test('the keyboard mode does not wear a microphone', async () => {
+  // Same defect and same pin as the annotator's composer. The class bindings
+  // are read off the rendered buttons rather than the source, so a change to
+  // either surface's markup has to keep this true.
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('a line', true);
+  await tick();
+
+  const btns = [...data.$refs.dictLayer.querySelectorAll('button')];
+  const mic = btns.find(b => b.querySelector('.ph-microphone'));
+  assert.ok(mic, 'the mic is there while dictating');
+
+  data.dictEditOpen();
+  await tick();
+  const exit = [...data.$refs.dictLayer.querySelectorAll('button')]
+    .find(b => (b.textContent || '').includes('Done'));
+  assert.ok(exit, 'the way out says Done');
+  assert.ok(!exit.querySelector('.ph-microphone'),
+    'and the way OUT of the keyboard is not a microphone');
+  assert.ok(exit.querySelector('.ph-check'));
+  assert.ok(!/btn-warning/.test(exit.className), 'nor amber, which is this UI live accent');
+  // The mic holds its slot instead of vanishing, so nothing slides into it.
+  const stillMic = [...data.$refs.dictLayer.querySelectorAll('button')]
+    .find(b => b.querySelector('.ph-microphone'));
+  assert.ok(stillMic, 'the mic is still rendered');
+  assert.equal(stillMic.disabled, true, 'visibly off rather than absent');
+
+  data.dictEditClose();
+  await tick();
+  assert.equal(data.dictEdit, false);
+  data.dictCancel();
+});

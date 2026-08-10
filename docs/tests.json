@@ -14,7 +14,7 @@
       "path": "tools/test/annotate.test.mjs",
       "kind": "behavior",
       "protects": "A note's quote anchor survives the range round trip and disambiguates duplicates on context, its DOM address separates two identical phrases the quote alone cannot, selection is state rather than a flash and an edit changes the note without moving the anchor, every change is announced so a reader elsewhere stays current, the annotator builds its voice buffer from kits/dictate.js and still works without it, and the jot save goes through fresh-read → mutate → save rather than clobbering the list.",
-      "assertions": 20,
+      "assertions": 21,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": 0
@@ -932,7 +932,7 @@
       "path": "tools/test/stage.test.mjs",
       "kind": "component",
       "protects": "The stage: membership, grouping, the diff lens, saving, and the cross-repo address grammar.",
-      "assertions": 70,
+      "assertions": 71,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": 1
