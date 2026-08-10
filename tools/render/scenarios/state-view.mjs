@@ -23,6 +23,20 @@ export default async (page) => {
       'state/sessions.json': iso(31),      // past 2x its 3h throttle: stale
       'state/entities.json': iso(24 * 41), // past the 30-day check: stale
     };
+    // The probe: one account listing and one commits call on the registry's
+    // sessions/ tree, both compared against the rows' own built dates. Seeded
+    // so every reading renders: repos pushed since (configs and activity, which
+    // read the same listing against different built dates), and records written
+    // since (sessions).
+    window.GH.prototype.repos = async function () {
+      return [
+        { full_name: 'mehrlander/web-tools', pushed_at: iso(1) },
+        { full_name: 'mehrlander/web-tools-private', pushed_at: iso(1.5) },
+        { full_name: 'mehrlander/home', pushed_at: iso(3) },
+        { full_name: 'mehrlander/shortcut-tools', pushed_at: iso(9) },
+        { full_name: 'mehrlander/wps', pushed_at: iso(30) },
+      ];
+    };
     window.GH.prototype.ls = async function (p) {
       if (p !== 'state') return [];
       return Object.entries(SIZES).map(([name, size]) => ({ name, path: 'state/' + name, size, type: 'file' }));
@@ -32,6 +46,12 @@ export default async (page) => {
     // a property of the schedule when it is a property of the estate.
     const GAPS_H = [0, 3, 9, 4, 27, 6, 5, 52, 7, 11];
     window.GH.prototype.history = async function (p, limit = 20) {
+      // The sessions store is written one commit per record, so the probe reads
+      // this path rather than a cache file.
+      if (p === 'sessions') {
+        return [8, 20, 26, 34].map((h, i) => ({ sha: 's' + i, msg: 'sessions: record',
+                                                date: iso(h), author: 'mehrlander' }));
+      }
       if (!DATES[p]) return [];
       const base = +new Date(DATES[p]);
       let t = base;
@@ -41,9 +61,6 @@ export default async (page) => {
                  date: new Date(t).toISOString(), author: 'mehrlander' };
       });
     };
-    // The JSON peek reads the file itself. A small stand-in with the real
-    // shape (a generatedAt plus a repos map) is enough to exercise the viewer's
-    // tree mode without shipping a 400 KB fixture.
     // The peek reads at main; the history panel reads the SAME path at a commit
     // sha, so the stand-in varies with `this.ref`. Each version carries a
     // per-repo hash, which is the fingerprint the real caches store and the
@@ -71,7 +88,21 @@ export default async (page) => {
         byPath['sessions/2026/08/' + day + '-' + (i + 10).toString(16) + 'a4b2c1.json'] =
           { id: (i + 10).toString(16) + 'a4b2c1', day, sha: 'b' + i + (i % 7 === v % 7 ? v : 0) };
       }
-      return { text: JSON.stringify({ generatedAt: iso(2), repos, byPath }, null, 2) };
+      // The `runs` ring the crawls now append to the commit they were making
+      // anyway: the newest version carries the whole window, which is the one
+      // eager read the History panel makes.
+      // Walked off the same gaps as the commits and stamped a few seconds
+      // before each, which is where a real record lands: the crawl writes `at`
+      // into the file it is about to commit. Capped short of the window on
+      // purpose, so the oldest rows show the honest absent case for a commit
+      // that predates the ring.
+      let rt = +new Date(DATES['state/activity.json']);
+      const runs = GAPS_H.slice(0, 6).map((g, i) => {
+        rt -= g * 3600e3;
+        return { at: new Date(rt - 4000).toISOString(),
+                 ms: 9000 + i * 7400, checked: 9, changed: 2 + (i % 4), failed: i === 3 ? 1 : 0 };
+      }).reverse();
+      return { text: JSON.stringify({ generatedAt: iso(2), repos, byPath, runs }, null, 2) };
     };
 
     // Two of the three checked-stamps exist; sessions has none, so that row

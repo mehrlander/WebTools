@@ -1061,6 +1061,32 @@ plus one commit read per file, regardless of estate size, and it kicks no crawl
 on arrival: a view that ran a crawl to show you how old things were would answer
 its own question before you read it.
 
+**The probe answers the question the age was standing in for.** An age says how
+old a file is; the question anyone opens this view with is whether there is
+anything to fetch, and until the probe the only proxy was the clock (a row went
+bold past twice its own throttle, which is a guess dressed as a reading). Two
+calls answer it as a fact for the whole view, whatever the estate's size: one
+account repo listing gives every repo's live `pushed_at`, and one commits call
+on the registry's `sessions/` tree gives the records written. Each is compared
+against the row's own `built` date, which the view has already read, so the
+probe needs no cache contents and reads no file. Comparing against each cached
+entry's own stamp would have meant pulling 66 KB, 371 KB and 279 KB of JSON to
+count timestamps. It runs as a second pass after the ages, unawaited, so a slow
+or failed probe leaves every row exactly as it was.
+
+**It reports a fact about the source, never a verdict about the cache**, and the
+distinction is not pedantry. A push that never touched a manifest still moves
+`pushed_at`, so "3 repos pushed since built" is true where "3 repos changed"
+would not be; a PR opened with no push changes what the activity cache stores
+and moves no `pushed_at` at all. The same figure is an over-count in one
+direction and an under-count in the other, and each row's tooltip says which way
+its own reading leans. **The Refresh button's weight now rides the probe**,
+which is what that weight always claimed to say: solid where the source has
+moved, soft where it has not, and back to the twice-the-throttle clock only for
+a row the probe cannot answer. The entity index gets no probe, because its
+source is the content of ~4,000 files across seven checkouts and the honest
+probe is the rebuild.
+
 **History answers what an age cannot: how often this really changes.** Beside
 Expand, every registry row carries a **History** caret that opens the file's
 change log, and the two share one slot, since a row is being read one way or the
@@ -1091,18 +1117,49 @@ version addressed by sha cannot move, so it is parsed once and kept, which is
 the opposite of the peek panel's rule and for the same reason: the peek promises
 the current bytes, a version promises an immutable one.
 
-**Three limits, stated in the panel rather than left to be inferred**, because
-each is a way the log could be misread as something it is not. A crawl commits
-only on material change, so a run that found nothing leaves no trace: this is a
-log of changes, not of runs, and a quiet week reads exactly like a week nobody
-opened the page. A row is dated when a crawl *noticed* a change, not when the
-change happened, and a crawl cannot notice faster than it runs, so the cadence
-reported is partly a fact about the estate and partly a fact about how often the
-page was open. Duration appears nowhere: the only party that knows how long a
-crawl took is the browser that ran it, and it reports that to a four-second
-toast and drops it. All three are limits of *reading* rather than writing. The
-fix for each is to have the crawl record something, which is a separate decision
-and should not arrive by having them left unsaid.
+**How long a run took is the one thing a read could not answer, so the crawls
+record it.** Each cache file carries a bounded `runs` ring
+([`lib/kits/crawl-runs.js`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/crawl-runs.js)):
+per run, when it finished, how long it took, how much it examined, and how much
+changed or failed. Two constraints make it free. It **rides the commit that
+already happens**, so it adds no commit of its own: a run log written on every
+run would destroy the material-change gate that keeps the registry from filling
+with no-op commits, and a separate file beside each cache would double them.
+And it is **invisible to the change detectors**, because all three caches decide
+whether to commit by comparing their record collections (`repos`, `rows`) rather
+than the whole document, so a `runs` key can never cause a commit by itself.
+That is a property of those three functions, which is why the ring must stay a
+top-level sibling of the records. The config cache gained a `changedRepos` to
+match the activity cache's, so the count written into the record and the gate
+that decided to write it are one derivation rather than two that can part. A
+field the crawl did not measure is **dropped rather than written as zero**: the
+config crawl swallows a per-repo read failure, and `0 failed` would be a claim
+where an absent key is not. The record is optional by construction: a window
+without the kit carries the ring forward and still commits, since nothing about
+an extra reading may stand between a crawl and the commit it exists to make.
+
+The panel reads the ring in the **one eager read** it makes: the newest
+committed version, whose window is the same twenty, so a single fetch fills the
+duration column for every row and is also the version the first interval needs,
+making that expansion cost one read rather than two. Buffering the *no-op* runs
+locally and flushing them into the next commit was considered and dropped: the
+buffer would be per-browser, so a run count assembled that way would silently
+undercount every device that never commits again, which is worse than a figure
+plainly absent.
+
+**Two limits remain, stated in the panel rather than left to be inferred**,
+because each is a way the log could be misread as something it is not. A crawl
+commits only on material change, so a run that found nothing leaves no trace:
+this is a log of changes, not of runs, and a quiet week reads exactly like a
+week nobody opened the page. A row is dated when a crawl *noticed* a change, not
+when the change happened, and a crawl cannot notice faster than it runs, so the
+cadence reported is partly a fact about the estate and partly a fact about how
+often the page was open. Both are limits of *reading* rather than writing; the
+fix for either is to have the crawl record something, which is a separate
+decision and should not arrive by having them left unsaid. Duration was the
+third and was lifted that way deliberately, which is the exception that shows
+the rule: a row from before the ring shipped carries no figure rather than a
+zero.
 
 **The fourth file has no button, and says so.** `state/entities.json` is derived
 like the other three and cannot be rebuilt from a page: it needs spaCy over
