@@ -1,77 +1,82 @@
 // show-repo's view routing: the address a screen mints must be an address the
 // page can open.
 //
-// The shell states its view table THREE times, by hand: the dispatch chain in
-// init(), the dispatch chain in restoreFromUrl() (the popstate mirror), and the
-// stamp chain in deepLinkParams(). Nothing held them in step, and all three
-// ways of drifting had happened at once by the time anyone looked (measured
-// 2026-08-11, against a live headless walk of every ?view= param):
+// The shell used to state its view table THREE times, by hand: the dispatch
+// chain in init(), the dispatch chain in restoreFromUrl() (the popstate
+// mirror), and the stamp chain in deepLinkParams(). Nothing held them in step,
+// and all three ways of drifting had happened at once (measured 2026-08-11, by
+// walking every ?view= param through the real page in headless Chromium):
 //
 //   ?view=pages      stamped and restorable, missing from init: a link copied
 //                    out of the Pages view cold-loaded onto the repo landing.
 //   ?view=proposals  dispatched by both chains, stamped by neither: the view
 //                    opened, then erased its own address on the first sync.
 //   ?view=estate     stamped only beside a repo/ref param, on a premise that
-//                    had expired (see the comment at that line).
+//                    had expired (see the comment at that row).
 //
-// So this holds the three lists to each other, and then round-trips each view
-// through the real stamp and the real parse. The parity half is source
-// reading; the round-trip half executes the shell through the shared harness.
-// Both are wanted: parity catches a view added to one chain and not another,
-// round-trip catches a view present in all three whose keys still do not
-// survive the trip.
+// The three chains are now one VIEWS table, so that class of drift is
+// structural rather than a thing to remember. This holds the collapse in place
+// (nothing may route around the table) and then round-trips every row through
+// the real stamp and the real parse, which is the property the table is FOR
+// and which the table alone does not prove.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { makeShell, page } from './show-repo-shell.mjs';
 
-// A view the chains READ but never stamp, on purpose: a retired key kept
-// resolving so saved links still land somewhere real. An alias is not drift,
-// but it has to be declared here rather than inferred, or a genuinely
-// unstamped view could hide behind the exemption.
-const ALIASES = new Set(['portable']);
+const { shell } = makeShell({ browserStore: { repo: '' } });
+const rows = shell.VIEWS;
 
-// The three chains, sliced out of the page source. Anchored on tokens that
-// would not survive a reshuffle, so a move fails loudly here rather than
-// silently narrowing what the test reads.
-function slice(from, to) {
-  const a = page.indexOf(from);
-  assert.ok(a >= 0, 'anchor not found in the page source: ' + from);
-  const b = page.indexOf(to, a);
-  assert.ok(b > a, 'closing anchor not found after it: ' + to);
-  return page.slice(a, b);
-}
+// The landing is the one row with no address of its own on the DEFAULT repo:
+// `repo` is dropped there as redundant and the landing stamps no ?view=, so its
+// query is empty and the bare URL is the dashboard, not the hub's landing. Real
+// and pre-existing, exempted here by name rather than left to look like
+// coverage. It round-trips normally on every other repo, which the loop checks.
+const NO_ADDRESS_ON_DEFAULT_REPO = new Set(['landing']);
 
-const initChain = slice('const url = this.parseUrl();\n    if (url && url.window)', 'const staged =');
-const restoreChain = slice('async restoreFromUrl(){', '} finally { this._restoring = false; }');
-const stampChain = slice('deepLinkParams(base){', 'return p;');
-
-const dispatched = (block) => new Set([...block.matchAll(/url\.view === '(\w+)'/g)].map(m => m[1]));
-const stamped = new Set([...stampChain.matchAll(/this\.view === '(\w+)'/g)].map(m => m[1]));
-
-const initViews = dispatched(initChain);
-const restoreViews = dispatched(restoreChain);
-
-test('boot and popstate dispatch the same views', () => {
-  for (const v of restoreViews)
-    assert.ok(initViews.has(v), `?view=${v} is restorable on Back but not on a cold load: add it to the init chain`);
-  for (const v of initViews)
-    assert.ok(restoreViews.has(v), `?view=${v} loads but does not survive Back: add it to restoreFromUrl`);
-});
-
-test('every view the page can address, it can also open', () => {
-  for (const v of stamped)
-    assert.ok(initViews.has(v), `?view=${v} is stamped into the URL but no boot branch reads it back`);
-});
-
-test('every view the page can open, it can also address', () => {
-  for (const v of initViews) {
-    if (ALIASES.has(v)) continue;
-    assert.ok(stamped.has(v), `?view=${v} opens from a link but is never stamped, so it erases its own address`);
+test('the table is the only router', () => {
+  // A view-name literal inside the routing functions is the shape the collapse
+  // removed: it is how a special case creeps back in and starts drifting again.
+  for (const fn of ['routeFromUrl(url){', 'deepLinkParams(base){']) {
+    const at = page.indexOf(fn);
+    assert.ok(at > 0, 'routing function not found in the page source: ' + fn);
+    const body = page.slice(at, page.indexOf('\n  },', at));
+    const literals = [...body.matchAll(/(?:this\.view|url\.view|\.view) === '(\w+)'/g)].map(m => m[1]);
+    assert.deepEqual(literals, [],
+      `${fn} compares a view name directly (${literals}); route it through VIEWS instead`);
   }
 });
 
-// What each view needs on the shell before it has anything to stamp. A view
+test('every view the shell can enter has a row', () => {
+  // `this.view = '<key>'` in a go* method is the app entering a view. One with
+  // no row would render fine and be unaddressable, which is defect 2 exactly.
+  const entered = new Set([...page.matchAll(/this\.view = '(\w+)'/g)].map(m => m[1]));
+  const keys = new Set(rows.map(r => r.key));
+  for (const v of entered)
+    assert.ok(keys.has(v), `the shell enters view '${v}' but VIEWS has no row for it`);
+});
+
+test('rows are well formed, and keys and aliases are unique', () => {
+  const seen = new Set();
+  for (const r of rows) {
+    assert.ok(r.key && typeof r.open === 'function', `row ${r.key}: needs a key and an open()`);
+    for (const name of [r.key, r.alias].filter(Boolean)) {
+      assert.ok(!seen.has(name), `two rows answer to '${name}'`);
+      seen.add(name);
+    }
+    // `self` says the view names itself another way, which only makes sense
+    // when the row stamps something; otherwise it stamps nothing at all.
+    if (r.self && r.key !== 'landing')
+      assert.ok(r.stamp, `row ${r.key}: declares self but stamps nothing`);
+  }
+});
+
+test('an alias resolves to its row rather than to a view of its own', () => {
+  for (const r of rows.filter(r => r.alias))
+    assert.equal(shell.routeFor(r.alias)?.key, r.key, `alias ${r.alias} does not resolve to ${r.key}`);
+});
+
+// What each view needs on the shell before it has anything to stamp. A row
 // absent from here stamps from its key alone.
 const SEED = {
   project: (s) => { s.projectPath = 'projects/budget-drs'; },
@@ -81,49 +86,60 @@ const SEED = {
 };
 
 // Run the round trip against BOTH repo cases. On the default repo the `repo`
-// key is deleted as redundant, which is a different query and was the case
+// key is dropped as redundant, which is a different query and was the case
 // ?view=estate broke in: it stamped only when a repo/ref param happened to be
 // there, so browsing the hub itself left the view unaddressable while browsing
 // any other repo looked fine.
 const REPOS = ['mehrlander/home', 'mehrlander/web-tools'];
 
+// What the app would open for a parsed address: routeFromUrl's resolution,
+// modelled rather than run, since running it would need the whole DOM.
+function landsOn(reopened, url) {
+  if (!url) return 'dashboard';
+  if (url.file) return 'files';
+  const r = reopened.routeFor(url.view);
+  return r && (!r.when || r.when(url)) ? r.key : 'landing';
+}
+
 test('every view round-trips: stamped, then parsed back to itself', () => {
-  for (const repo of REPOS) for (const view of stamped) {
+  for (const repo of REPOS) for (const row of rows) {
+    const view = row.key;
+    if (repo === 'mehrlander/web-tools' && NO_ADDRESS_ON_DEFAULT_REPO.has(view)) continue;
     const where = `${view} (browsing ${repo})`;
-    const { shell } = makeShell({ browserStore: {
+    const { shell: s } = makeShell({ browserStore: {
       repo, ref: '', defaultRef: 'main', activeFile: null, path: '' } });
-    shell.view = view;
-    SEED[view]?.(shell);
-    const qs = shell.deepLinkParams(new URLSearchParams()).toString();
-    assert.ok(qs.includes('view=' + view) || view === 'files',
-      `${where}: stamped nothing that names the view (got "${qs || 'an empty query'}")`);
+    s.view = view;
+    SEED[view]?.(s);
+    const qs = s.deepLinkParams(new URLSearchParams()).toString();
+    assert.ok(qs, `${where}: stamped an empty query, so the view has no address at all`);
 
     const { shell: reopened } = makeShell({ search: '?' + qs, browserStore: { repo: '' } });
     const url = reopened.parseUrl();
     assert.ok(url, `${where}: its own address parses to nothing, so a cold load ignores it`);
-    assert.equal(url.view || (url.file ? 'files' : ''), view,
-      `${where}: reopening its address lands on a different view`);
+    assert.equal(landsOn(reopened, url), view,
+      `${where}: reopening its address (?${qs}) lands on a different view`);
   }
 });
 
-test('the second key rides along, for the three views that carry one', () => {
+test('the second key rides along, for the views that carry one', () => {
   const cases = [
     ['state', (s) => { s.stateItem = 'sessions'; }, 'item', 'sessions'],
     ['search', (s) => { s.searchSeed = { q: 'tracker', mode: 'names' }; }, 'sq', 'tracker'],
+    ['map', (s) => { s.mapTab = 'showing'; }, 'tab', 'showing'],
     ['activity', (s) => { s.detailSpec = 'mehrlander/web-tools@main'; }, 'detail', 'mehrlander/web-tools@main'],
   ];
   for (const [view, seed, key, want] of cases) {
-    const { shell } = makeShell({ browserStore: {
+    const { shell: s } = makeShell({ browserStore: {
       repo: 'mehrlander/home', ref: '', defaultRef: 'main', activeFile: null, path: '' } });
-    shell.view = view;
-    seed(shell);
-    const qs = shell.deepLinkParams(new URLSearchParams()).toString();
+    s.view = view;
+    seed(s);
+    const qs = s.deepLinkParams(new URLSearchParams()).toString();
     const { shell: reopened } = makeShell({ search: '?' + qs, browserStore: { repo: '' } });
     // `detail` is read off the location directly rather than through parseUrl,
     // because deepLinkParams rebuilds the query from a whitelist and would
     // erase an incoming value before the estate read it. Assert the field the
-    // shell actually seeds, which is the thing the deep link depends on.
-    const got = key === 'detail' ? reopened.detailSpec : reopened.parseUrl()[key === 'sq' ? 'sq' : 'item'];
+    // shell actually seeds, which is what the deep link depends on.
+    const got = key === 'detail' ? reopened.detailSpec : reopened.parseUrl()[key];
     assert.equal(got, want, `?view=${view}&${key}= did not survive the round trip`);
   }
 });

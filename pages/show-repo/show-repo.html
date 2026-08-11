@@ -1791,36 +1791,15 @@ function app(){ return {
       if (this.view === 'files') this.syncUrl();
     });
 
-    // The repo bar is always visible, so point the browser at a repo now.
-    // Deep link: ?repo&ref then ?file / ?view=atlas|files|stage|branches
-    // (&path with files). A #stage= fragment (a set of refs; see stage.js) preloads the
-    // stage and wins the initial view: it is the point of such a link.
+    // The repo bar is always visible, so point the browser at a repo now, then
+    // hand the address to the view table (?repo&ref first, then ?file or
+    // ?view=, which the table enumerates). A #stage= fragment (a set of refs;
+    // see stage.js) preloads the stage and wins the initial view: it is the
+    // point of such a link, so it is read after the route and overrides it.
     const url = this.parseUrl();
     if (url && url.window) this.branchWindow = url.window;
     await this.ensureBrowser(url?.repo, url?.ref);
-    if (url && url.file) await this.openFile(url.file);
-    else if (url && url.view === 'app' && url.appRepo && url.appPath) this.goAppView(this.appViewFromUrl(url));
-    else if (url && url.view === 'estate') this.goEstate();
-    else if (url && url.view === 'surfaces') this.goSurfaces();
-    else if (url && url.view === 'todo') this.goTodo();
-    else if (url && url.view === 'jots') this.goJots();
-    else if (url && url.view === 'activity') this.goActivity();
-    else if (url && url.view === 'sessions') this.goSessions();
-    else if (url && url.view === 'guides') this.goGuides();
-    else if (url && url.view === 'chats') this.goChats();
-    else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap(url.tab);
-    else if (url && url.view === 'tools') this.goTools();
-    else if (url && url.view === 'search') this.goSearch({ q: url.sq, mode: url.smode, repo: url.srepo, ref: url.sref });
-    else if (url && url.view === 'proposals') this.goProposals();
-    else if (url && url.view === 'state') this.goState(url.item);
-    else if (url && url.view === 'pages') this.goPages();
-    else if (url && url.view === 'atlas') this.goAtlas();
-    else if (url && url.view === 'stage') this.goStage();
-    else if (url && url.view === 'public') this.goPublicBrowse();
-    else if (url && url.view === 'branches') this.goBranches();
-    else if (url && url.view === 'config') this.goConfig();
-    else if (url && url.view === 'project' && url.project) this.goProject(url.project, url.tab);
-    else if (url && url.view === 'files') { this.goFiles(); if (url.path) await this.openFolder(url.path); }
+    await this.routeFromUrl(url);
     const staged = window.StageLink ? window.StageLink.read(location).items : [];
     if (staged.length) {
       Alpine.store('browser').stage = staged;
@@ -3677,6 +3656,141 @@ function app(){ return {
     return u;
   },
 
+  // ── The view table ────────────────────────────────────────────────────────
+  //
+  // One statement of what a view is called in the URL, how a link opens it, and
+  // what it stamps back. Read three ways: routeFromUrl() dispatches through it
+  // at boot and again on popstate, and deepLinkParams() stamps through it.
+  //
+  // It was three hand-copied else-if chains until 2026-08-11, and by then all
+  // three ways of drifting had happened at once: ?view=pages stamped and
+  // restorable but missing from the boot chain, ?view=proposals dispatched by
+  // both chains and stamped by neither, ?view=estate stamped only beside a
+  // repo/ref param on a premise that had expired. Each was a view the app could
+  // reach and could not name. A row here cannot be half-addressable, which is
+  // the promise three parallel chains could not make.
+  //
+  //   key    the ?view= value AND the this.view value; deliberately one name
+  //   alias  a retired key that still resolves, so saved links land somewhere real
+  //   open   what a link to it does. `u` is the parsed URL
+  //   when   the address carries what open() needs; a miss falls through to the landing
+  //   ready  the shell holds what stamp() needs; a miss stamps nothing
+  //   stamp  the view's OWN keys. The caller has already set ?view=
+  //   self   this view names itself another way, so the caller sets no ?view=
+  VIEWS: [
+    // Files is the one `self` view: its address is ?file=<path>, and ?view=files
+    // is only the fallback for a folder or a file it cannot honestly name.
+    { key: 'files', self: true,
+      open(u){ this.goFiles(); return u.path ? this.openFolder(u.path) : null; },
+      stamp(p, s){
+        // ?ref= is Files-scoped, like the picker that sets it: it deep-links
+        // which ref the file browser reads, so it rides only this view.
+        if (s.ref && s.ref !== s.defaultRef) p.set('ref', s.ref);
+        // A cross-repo staged file (activeFile.origin from another repo) has no
+        // honest ?file= deep link against the open repo, so it gets none.
+        const f = s.activeFile;
+        if (f && (!f.origin || f.origin.repo === s.repo)) p.set('file', f.path);
+        else { p.set('view', 'files'); if (s.path) p.set('path', s.path); }
+      } },
+    { key: 'landing', open(){ this.goLanding(); }, self: true },
+    { key: 'pages',    open(){ this.goPages(); } },
+    { key: 'atlas',    open(){ this.goAtlas(); } },
+    { key: 'branches', open(){ this.goBranches(); } },
+    { key: 'config',   open(){ this.goConfig(); } },
+    // A project is repo-scoped, so its link carries the workspace beside the
+    // ?repo= already stamped; a non-default pill rides as &tab= so "open
+    // budget-wa's docs" is one link.
+    { key: 'project', when: u => !!u.project,
+      open(u){ this.goProject(u.project, u.tab); },
+      ready(){ return !!this.projectPath; },
+      stamp(p){
+        p.set('project', this.projectPath);
+        if (this.projectTab && this.projectTab !== 'overview') p.set('tab', this.projectTab);
+      } },
+    { key: 'estate',   open(){ this.goEstate(); } },
+    { key: 'stage',    open(){ this.goStage(); } },
+    { key: 'surfaces', open(){ this.goSurfaces(); } },
+    { key: 'public',   open(){ this.goPublicBrowse(); } },
+    { key: 'todo',     open(){ this.goTodo(); } },
+    { key: 'jots',     open(){ this.goJots(); } },
+    { key: 'activity', open(){ this.goActivity(); },
+      stamp(p){
+        // The branch open in the takeover, when one is. Being inside the swiper
+        // is a state worth linking to and was the one state here without an
+        // address: the list had ?view=activity, the branch had its standalone
+        // page, and the reader in between could only be reached by tapping.
+        if (this.detailSpec) p.set('detail', this.detailSpec);
+        // The window is a reading parameter, so it travels with the link:
+        // without it a shared ?view=activity silently lands the reader on a
+        // different slice than the one that was being discussed.
+        const w = this.branchWindow;
+        if (w && w !== this.BRANCH_WINDOW_DEFAULT) p.set('window', this.windowParam(w));
+      } },
+    { key: 'sessions', open(){ this.goSessions(); } },
+    { key: 'guides',   open(){ this.goGuides(); } },
+    { key: 'chats',    open(){ this.goChats(); } },
+    { key: 'map', alias: 'portable',
+      open(u){ this.goMap(u.tab); },
+      stamp(p){
+        // Same `tab` key the project view stamps, and the same rule: the
+        // default stays out of the URL so a plain ?view=map link keeps working.
+        if (this.mapTab && this.mapTab !== 'set') p.set('tab', this.mapTab);
+      } },
+    { key: 'tools',     open(){ this.goTools(); } },
+    { key: 'proposals', open(){ this.goProposals(); } },
+    { key: 'state', open(u){ this.goState(u.item); },
+      stamp(p){ if (this.stateItem) p.set('item', this.stateItem); } },
+    // The Search view's address carries the ran search (sq + friends, stamped
+    // from searchSeed, which the view updates on each run), so a search can be
+    // shared like any other screen. A bare ?view=search opens it empty.
+    { key: 'search',
+      open(u){ this.goSearch({ q: u.sq, mode: u.smode, repo: u.srepo, ref: u.sref }); },
+      stamp(p){
+        const sd = this.searchSeed;
+        if (!sd?.q) return;
+        p.set('sq', sd.q);
+        if (sd.mode && sd.mode !== 'names') p.set('smode', sd.mode);
+        if (sd.repo) p.set('srepo', sd.repo);
+        if (sd.ref) p.set('sref', sd.ref);
+      } },
+    // App views are estate-level, so the link stands alone (like the Stage):
+    // the promoted page's repo and path ride it, independent of the open repo.
+    { key: 'app', when: u => !!(u.appRepo && u.appPath),
+      open(u){ this.goAppView(this.appViewFromUrl(u)); },
+      ready(){ return !!this.appView; },
+      stamp(p){
+        p.set('appRepo', this.appView.repo);
+        p.set('appPath', this.appView.path);
+        if (this.appView.ref) p.set('appRef', this.appView.ref);
+        // Carry the label/icon so a deep link is self-describing: the sidebar
+        // entry reads "News" with its icon even before the config cache
+        // (main-only discovery) has the entry.
+        if (this.appView.label) p.set('appLabel', this.appView.label);
+        if (this.appView.icon) p.set('appIcon', this.appView.icon);
+      } },
+  ],
+
+  // Every key any row can stamp. Deleted unconditionally before a stamp, so the
+  // result never depends on what the base happened to hold.
+  VIEW_KEYS: ['file', 'view', 'path', 'ref', 'project', 'tab', 'detail', 'item', 'window',
+              'sq', 'smode', 'srepo', 'sref',
+              'appRepo', 'appPath', 'appRef', 'appLabel', 'appIcon'],
+
+  routeFor(view){ return this.VIEWS.find(r => r.key === view || r.alias === view); },
+
+  // The one dispatch, shared by the boot and the popstate restore. Reports
+  // whether the address named a view it could open, so each caller decides what
+  // a miss means: at boot a #stage= fragment may still claim the screen, while
+  // on a restore there is nothing left to try and the landing is the answer.
+  async routeFromUrl(url){
+    if (!url) return false;
+    if (url.file) { await this.openFile(url.file); return true; }
+    const r = this.routeFor(url.view);
+    if (!r || (r.when && !r.when(url))) return false;
+    await r.open.call(this, url);
+    return true;
+  },
+
   parseUrl(){
     const p = new URLSearchParams(location.search);
     if (!p.has('repo') && !p.has('file') && !p.has('view')) return null;
@@ -3702,98 +3816,15 @@ function app(){ return {
     const p = base || new URLSearchParams();
     const s = Alpine.store('browser');
     if (s.repo && s.repo !== this.DEFAULT_REPO) p.set('repo', s.repo); else p.delete('repo');
-    // ?ref= is Files-scoped, like the picker that sets it: it deep-links which
-    // ref the file browser reads, so it only accompanies ?file=/?view=files.
-    if (this.view === 'files' && s.ref && s.ref !== s.defaultRef) p.set('ref', s.ref); else p.delete('ref');
-    p.delete('file'); p.delete('view'); p.delete('path'); p.delete('project'); p.delete('tab');
-    p.delete('appRepo'); p.delete('appPath'); p.delete('appRef');
-    p.delete('appLabel'); p.delete('appIcon'); p.delete('detail'); p.delete('item');
-    p.delete('sq'); p.delete('smode'); p.delete('srepo'); p.delete('sref');
-    if (this.view === 'files') {
-      // A cross-repo staged file (activeFile.origin from another repo) has no
-      // honest ?file= deep link against the open repo, so it gets none.
-      const f = s.activeFile;
-      if (f && (!f.origin || f.origin.repo === s.repo)) p.set('file', f.path);
-      else { p.set('view', 'files'); if (s.path) p.set('path', s.path); }
+    for (const k of this.VIEW_KEYS) p.delete(k);
+    // One lookup where three parallel else-if chains used to be. A row that is
+    // not `ready` stamps nothing rather than a half address naming a view the
+    // shell cannot yet describe.
+    const r = this.routeFor(this.view);
+    if (r && (!r.ready || r.ready.call(this))) {
+      if (!r.self) p.set('view', r.key);
+      r.stamp?.call(this, p, s);
     }
-    else if (this.view === 'pages') p.set('view', 'pages');
-    // A project is repo-scoped, so its link carries the workspace beside the
-    // ?repo= the line above already stamped; a non-default pill rides as &tab=
-    // so "open budget-wa's docs" is one link.
-    else if (this.view === 'project' && this.projectPath) {
-      p.set('view', 'project'); p.set('project', this.projectPath);
-      if (this.projectTab && this.projectTab !== 'overview') p.set('tab', this.projectTab);
-    }
-    else if (this.view === 'atlas') p.set('view', 'atlas');
-    else if (this.view === 'stage') p.set('view', 'stage');
-    else if (this.view === 'surfaces') p.set('view', 'surfaces');
-    else if (this.view === 'public') p.set('view', 'public');
-    else if (this.view === 'branches') p.set('view', 'branches');
-    else if (this.view === 'config') p.set('view', 'config');
-    else if (this.view === 'todo') p.set('view', 'todo');
-    else if (this.view === 'jots') p.set('view', 'jots');
-    else if (this.view === 'activity') {
-      p.set('view', 'activity');
-      // The branch open in the takeover, when one is. Being inside the swiper
-      // is a state worth linking to and was the one state here without an
-      // address: the list had ?view=activity, the branch had its standalone
-      // page, and the reader in between could only be reached by tapping.
-      if (this.detailSpec) p.set('detail', this.detailSpec);
-    }
-    else if (this.view === 'sessions') p.set('view', 'sessions');
-    else if (this.view === 'guides') p.set('view', 'guides');
-    else if (this.view === 'chats') p.set('view', 'chats');
-    else if (this.view === 'map') {
-      p.set('view', 'map');
-      // Same `tab` key the project view stamps, and the same rule: the default
-      // stays out of the URL so a plain ?view=map link keeps working.
-      if (this.mapTab && this.mapTab !== 'set') p.set('tab', this.mapTab);
-    }
-    else if (this.view === 'tools') p.set('view', 'tools');
-    else if (this.view === 'state') {
-      p.set('view', 'state');
-      if (this.stateItem) p.set('item', this.stateItem);
-    }
-    // The Search view's address carries the ran search (sq + friends, stamped
-    // from searchSeed, which the view updates on each run), so a search can be
-    // shared like any other screen. A bare ?view=search opens it empty.
-    else if (this.view === 'search') {
-      p.set('view', 'search');
-      const sd = this.searchSeed;
-      if (sd?.q) {
-        p.set('sq', sd.q);
-        if (sd.mode && sd.mode !== 'names') p.set('smode', sd.mode);
-        if (sd.repo) p.set('srepo', sd.repo);
-        if (sd.ref) p.set('sref', sd.ref);
-      }
-    }
-    // App views are estate-level, so the link stands alone (like the Stage): stamp
-    // the view plus the promoted page's repo and path, independent of the open repo.
-    else if (this.view === 'app' && this.appView) {
-      p.set('view', 'app');
-      p.set('appRepo', this.appView.repo);
-      p.set('appPath', this.appView.path);
-      if (this.appView.ref) p.set('appRef', this.appView.ref);
-      // Carry the label/icon so a deep link is self-describing: the sidebar
-      // entry reads "News" with its icon even before the config cache (main-only
-      // discovery) has the entry.
-      if (this.appView.label) p.set('appLabel', this.appView.label);
-      if (this.appView.icon) p.set('appIcon', this.appView.icon);
-    }
-    // Stamped unconditionally, like every other estate view. It used to stamp
-    // only alongside a `repo`/`ref` param, on the reasoning that the bare URL
-    // was the Repos estate already, so naming it added nothing. That premise
-    // expired when goDashboard started sending a token-bearing browser to
-    // Activity: signed in, the bare URL opens Branches, so an unstamped Repos
-    // had no address at all and copying it handed the reader a different view.
-    else if (this.view === 'estate') p.set('view', 'estate');
-    else if (this.view === 'proposals') p.set('view', 'proposals');
-    // The Branches window is a reading parameter, so it travels with the
-    // link: without it a shared ?view=activity silently lands the reader on
-    // a different slice than the one that was being discussed.
-    const w = this.branchWindow;
-    if (this.view === 'activity' && w && w !== this.BRANCH_WINDOW_DEFAULT) p.set('window', this.windowParam(w));
-    else p.delete('window');
     return p;
   },
 
@@ -3825,40 +3856,19 @@ function app(){ return {
     else history.pushState(null, '', next);
   },
 
-  // Browser Back/Forward: re-derive the shell state from the URL, mirroring the
-  // init routing. `_restoring` makes syncUrl replace-in-place during the restore,
-  // so the watchers this fires don't push new entries.
+  // Browser Back/Forward: re-derive the shell state from the URL through the
+  // same routeFromUrl() the boot uses, so the two cannot disagree about what an
+  // address means. `_restoring` makes syncUrl replace-in-place during the
+  // restore, so the watchers this fires don't push new entries.
   async restoreFromUrl(){
     this._restoring = true;
     try {
       const url = this.parseUrl();
       if (url && url.window) this.branchWindow = url.window;
       await this.ensureBrowser(url?.repo, url?.ref);
-      if (url && url.file) await this.openFile(url.file);
-      else if (url && url.view === 'app' && url.appRepo && url.appPath) this.goAppView(this.appViewFromUrl(url));
-      else if (url && url.view === 'estate') this.goEstate();
-      else if (url && url.view === 'surfaces') this.goSurfaces();
-      else if (url && url.view === 'todo') this.goTodo();
-      else if (url && url.view === 'jots') this.goJots();
-      else if (url && url.view === 'activity') this.goActivity();
-      else if (url && url.view === 'sessions') this.goSessions();
-      else if (url && url.view === 'guides') this.goGuides();
-      else if (url && url.view === 'chats') this.goChats();
-      else if (url && (url.view === 'map' || url.view === 'portable')) this.goMap(url.tab);
-      else if (url && url.view === 'tools') this.goTools();
-      else if (url && url.view === 'search') this.goSearch({ q: url.sq, mode: url.smode, repo: url.srepo, ref: url.sref });
-      else if (url && url.view === 'proposals') this.goProposals();
-      else if (url && url.view === 'state') this.goState(url.item);
-      else if (url && url.view === 'pages') this.goPages();
-      else if (url && url.view === 'atlas') this.goAtlas();
-      else if (url && url.view === 'stage') this.goStage();
-      else if (url && url.view === 'public') this.goPublicBrowse();
-      else if (url && url.view === 'branches') this.goBranches();
-      else if (url && url.view === 'config') this.goConfig();
-    else if (url && url.view === 'project' && url.project) this.goProject(url.project, url.tab);
-      else if (url && url.view === 'files') { this.goFiles(); if (url.path) await this.openFolder(url.path); }
-      else if (!url) this.goDashboard();
-      else this.goLanding();
+      // A miss here is a real address the table cannot open, so land somewhere
+      // honest rather than leaving the previous screen up under a new URL.
+      if (!await this.routeFromUrl(url)) url ? this.goLanding() : this.goDashboard();
     } finally { this._restoring = false; }
   },
 

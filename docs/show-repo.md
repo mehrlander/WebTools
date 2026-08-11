@@ -46,16 +46,33 @@ keeps its default second key out of the URL, so an existing bare link still
 opens where it always did. `&view=portable` is a retired alias that still
 resolves to the Map.
 
-**Every view is addressable, and the address is round-tripped by test.** The
-shell states its view table three times by hand (the dispatch chain in `init`,
-the same chain in `restoreFromUrl` for Back, and the stamp chain in
-`deepLinkParams`), and by 2026-08-11 all three ways of drifting had happened:
-`?view=pages` stamped but absent from boot, `?view=proposals` dispatched but
-never stamped, `?view=estate` stamped only beside a `repo`/`ref` param.
+**Every view is addressable, and one table says so.** The shell holds a `VIEWS`
+table, each row naming a view's URL key, how a link opens it, and what it stamps
+back; `routeFromUrl` dispatches through it at boot and again on popstate, and
+`deepLinkParams` stamps through it. Adding a row is the whole of adding an
+addressable view.
+
+It was three hand-copied else-if chains until 2026-08-11 (a dispatch chain in
+`init`, the same chain in `restoreFromUrl` for Back, and the stamp chain in
+`deepLinkParams`), and by then all three ways of drifting had happened at once:
+`?view=pages` stamped and restorable but absent from boot, `?view=proposals`
+dispatched by both chains and stamped by neither, `?view=estate` stamped only
+beside a `repo`/`ref` param on a premise that had expired. Each was a view the
+app could reach and could not name, and none of the three was visible from
+inside any one chain.
 [`tools/test/show-repo-routing.test.mjs`](../tools/test/show-repo-routing.test.mjs)
-holds the three lists to each other and re-parses each view's own stamped
-address, on the default repo and on another, since the `repo` key is dropped as
-redundant on the first and that is the case estate broke in.
+keeps the collapse honest (no view name may be compared directly inside the
+routing functions; every view the shell enters has a row) and then re-parses
+each row's own stamped address, on the default repo and on another, since the
+`repo` key is dropped as redundant on the first and that is the case estate
+broke in.
+
+The one row with no address of its own is **landing**, on the default repo only:
+`repo` is dropped there as redundant and the landing stamps no `?view=`, so its
+query is empty and the bare URL opens the dashboard rather than the hub's
+landing. `?view=landing` resolves on arrival and then clears itself. Named here
+rather than fixed, since the alternative is stamping `?repo=mehrlander/web-tools`
+onto every link in the app.
 
 **Two context levels.** The page is either in the **estate** (the global,
 all-repo context) or in a **repo** (a per-repo context with its own views).
