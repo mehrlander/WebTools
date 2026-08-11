@@ -2415,6 +2415,23 @@
       ]
     },
     {
+      "path": "tools/test/show-repo-routing.test.mjs",
+      "kind": "behavior",
+      "protects": "Every show-repo view can be linked to and reopened: the one VIEWS table stays the only router (no view name compared directly in the routing functions, no view the shell enters without a row), and each row's own stamped address parses back to it, on the default repo and on another.",
+      "assertions": 6,
+      "method": "pure",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "the table is the only router",
+        "every view the shell can enter has a row",
+        "rows are well formed, and keys and aliases are unique",
+        "an alias resolves to its row rather than to a view of its own",
+        "every view round-trips: stamped, then parsed back to itself",
+        "the second key rides along, for the views that carry one"
+      ]
+    },
+    {
       "path": "tools/test/skills-registry.test.mjs",
       "kind": "gate",
       "protects": "skills/manifest.json against skills/ both ways, so a skill cannot be added or removed without its row. The manifest is served to other repos by absolute URL and had no gate and no builder; its accuracy rested on memory.",

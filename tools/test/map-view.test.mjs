@@ -362,8 +362,11 @@ test('the shell reads the tab back off a deep link, on both boot paths', () => {
   const url = shell.parseUrl();
   assert.equal(url.view, 'map');
   assert.equal(url.tab, 'docs');
-  assert.equal([...page.matchAll(/this\.goMap\(url\.tab\)/g)].length, 2,
-    'init and popstate no longer route the tab');
+  // Boot and popstate share one dispatch through the VIEWS table, so routing
+  // the tab is the map row's job rather than a line copied into two chains.
+  // That the two paths cannot disagree is show-repo-routing.test.mjs's beat.
+  shell.routeFor('map').open.call(shell, url);
+  assert.equal(shell.mapTab, 'docs', 'the map row does not route the tab off the URL');
 });
 
 test('the shell and the component agree on the tab set', () => {

@@ -510,9 +510,17 @@ test('a non-default pill rides the deep link as &tab=, and boot routes it back',
     search: '?repo=mehrlander/home&view=project&project=projects/budget-wa&tab=docs',
   });
   assert.equal(s2.parseUrl().tab, 'docs');
-  // Both boot paths hand the tab through goProject with the project.
-  assert.equal([...page.matchAll(/goProject\(url\.project, url\.tab\)/g)].length, 2,
-    'init and popstate no longer route the tab');
+  // Boot and popstate share one dispatch through the VIEWS table, so handing
+  // the tab over with the project is the project row's job rather than a line
+  // copied into two chains. The row also declares `when`, so an address naming
+  // no project falls through to the landing instead of opening an empty pane.
+  s2.loadProjectReadme = async () => {};
+  s2.loadProjectDocs = async () => {};
+  const row = s2.routeFor('project');
+  assert.equal(row.when({ project: '' }), false, 'a project-less address still routes here');
+  row.open.call(s2, s2.parseUrl());
+  assert.equal(s2.projectPath, 'projects/budget-wa');
+  assert.equal(s2.projectTab, 'docs', 'the project row does not route the tab off the URL');
 });
 
 test('the pane wires the pills, the landing embed, the pages grid, and the docs rows', () => {
