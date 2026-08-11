@@ -67,12 +67,15 @@ each row's own stamped address, on the default repo and on another, since the
 `repo` key is dropped as redundant on the first and that is the case estate
 broke in.
 
-The one row with no address of its own is **landing**, on the default repo only:
-`repo` is dropped there as redundant and the landing stamps no `?view=`, so its
-query is empty and the bare URL opens the dashboard rather than the hub's
-landing. `?view=landing` resolves on arrival and then clears itself. Named here
-rather than fixed, since the alternative is stamping `?repo=mehrlander/web-tools`
-onto every link in the app.
+**The landing names itself by naming its repo.** A repo's front page is
+`?repo=owner/name`, with no `?view=` beside it, since a view key on the
+most-linked shape in the app would be redundant on every one of them.
+`?view=landing` still resolves, and then clears itself back to the plain form.
+The catch was the **default repo**, whose `repo` key is dropped as redundant
+everywhere else: that left the hub's own landing with an empty query and no
+address at all, the same defect estate had. The landing row puts `repo` back for
+that one view, so `?repo=mehrlander/web-tools` persists and reopens where it
+says. No other URL changes shape.
 
 **Two context levels.** The page is either in the **estate** (the global,
 all-repo context) or in a **repo** (a per-repo context with its own views).

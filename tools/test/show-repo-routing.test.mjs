@@ -27,13 +27,6 @@ import { makeShell, page } from './show-repo-shell.mjs';
 const { shell } = makeShell({ browserStore: { repo: '' } });
 const rows = shell.VIEWS;
 
-// The landing is the one row with no address of its own on the DEFAULT repo:
-// `repo` is dropped there as redundant and the landing stamps no ?view=, so its
-// query is empty and the bare URL is the dashboard, not the hub's landing. Real
-// and pre-existing, exempted here by name rather than left to look like
-// coverage. It round-trips normally on every other repo, which the loop checks.
-const NO_ADDRESS_ON_DEFAULT_REPO = new Set(['landing']);
-
 test('the table is the only router', () => {
   // A view-name literal inside the routing functions is the shape the collapse
   // removed: it is how a special case creeps back in and starts drifting again.
@@ -64,10 +57,9 @@ test('rows are well formed, and keys and aliases are unique', () => {
       assert.ok(!seen.has(name), `two rows answer to '${name}'`);
       seen.add(name);
     }
-    // `self` says the view names itself another way, which only makes sense
-    // when the row stamps something; otherwise it stamps nothing at all.
-    if (r.self && r.key !== 'landing')
-      assert.ok(r.stamp, `row ${r.key}: declares self but stamps nothing`);
+    // `self` says the view names itself another way, so the row must stamp
+    // that other way itself; without a stamp it would name nothing at all.
+    if (r.self) assert.ok(r.stamp, `row ${r.key}: declares self but stamps nothing`);
   }
 });
 
@@ -104,7 +96,6 @@ function landsOn(reopened, url) {
 test('every view round-trips: stamped, then parsed back to itself', () => {
   for (const repo of REPOS) for (const row of rows) {
     const view = row.key;
-    if (repo === 'mehrlander/web-tools' && NO_ADDRESS_ON_DEFAULT_REPO.has(view)) continue;
     const where = `${view} (browsing ${repo})`;
     const { shell: s } = makeShell({ browserStore: {
       repo, ref: '', defaultRef: 'main', activeFile: null, path: '' } });

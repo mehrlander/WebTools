@@ -3692,7 +3692,15 @@ function app(){ return {
         if (f && (!f.origin || f.origin.repo === s.repo)) p.set('file', f.path);
         else { p.set('view', 'files'); if (s.path) p.set('path', s.path); }
       } },
-    { key: 'landing', open(){ this.goLanding(); }, self: true },
+    // The landing names itself by naming its repo, not with a ?view=: a repo's
+    // front page IS ?repo=owner/name, and stamping a view key beside it would
+    // put a redundant param on the most-linked shape in the app. The one catch
+    // is the DEFAULT repo, whose `repo` key is dropped above as redundant: that
+    // left the hub's own landing with an empty query and no address at all, so
+    // this row puts it back for this view only. Nothing else changes shape.
+    { key: 'landing', self: true,
+      open(){ this.goLanding(); },
+      stamp(p, s){ if (s.repo) p.set('repo', s.repo); } },
     { key: 'pages',    open(){ this.goPages(); } },
     { key: 'atlas',    open(){ this.goAtlas(); } },
     { key: 'branches', open(){ this.goBranches(); } },
