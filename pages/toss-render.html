@@ -574,7 +574,7 @@
   function showTrusted(html, title, addr, frag) {
     document.title = title;
     window.__tossPayload = null;   // address mode has a real subject instead
-    mountFrame(html, 'allow-scripts allow-same-origin allow-popups allow-forms allow-modals', frag);
+    mountFrame(html, 'allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-downloads', frag);
     tossLinkFn = async () => absUrl('#gh=' + addr);
     reveal();
   }
