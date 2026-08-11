@@ -2415,6 +2415,22 @@
       ]
     },
     {
+      "path": "tools/test/show-repo-routing.test.mjs",
+      "kind": "behavior",
+      "protects": "Every show-repo view can be linked to and reopened: the three hand-copied view tables (boot dispatch, popstate dispatch, URL stamp) stay in step, and each view's own stamped address parses back to it, on the default repo and on another.",
+      "assertions": 5,
+      "method": "pure",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "boot and popstate dispatch the same views",
+        "every view the page can address, it can also open",
+        "every view the page can open, it can also address",
+        "every view round-trips: stamped, then parsed back to itself",
+        "the second key rides along, for the three views that carry one"
+      ]
+    },
+    {
       "path": "tools/test/skills-registry.test.mjs",
       "kind": "gate",
       "protects": "skills/manifest.json against skills/ both ways, so a skill cannot be added or removed without its row. The manifest is served to other repos by absolute URL and had no gate and no builder; its accuracy rested on memory.",

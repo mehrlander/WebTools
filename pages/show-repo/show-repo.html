@@ -1813,6 +1813,7 @@ function app(){ return {
     else if (url && url.view === 'search') this.goSearch({ q: url.sq, mode: url.smode, repo: url.srepo, ref: url.sref });
     else if (url && url.view === 'proposals') this.goProposals();
     else if (url && url.view === 'state') this.goState(url.item);
+    else if (url && url.view === 'pages') this.goPages();
     else if (url && url.view === 'atlas') this.goAtlas();
     else if (url && url.view === 'stage') this.goStage();
     else if (url && url.view === 'public') this.goPublicBrowse();
@@ -3779,7 +3780,14 @@ function app(){ return {
       if (this.appView.label) p.set('appLabel', this.appView.label);
       if (this.appView.icon) p.set('appIcon', this.appView.icon);
     }
-    else if (this.view === 'estate' && (p.has('repo') || p.has('ref'))) p.set('view', 'estate');
+    // Stamped unconditionally, like every other estate view. It used to stamp
+    // only alongside a `repo`/`ref` param, on the reasoning that the bare URL
+    // was the Repos estate already, so naming it added nothing. That premise
+    // expired when goDashboard started sending a token-bearing browser to
+    // Activity: signed in, the bare URL opens Branches, so an unstamped Repos
+    // had no address at all and copying it handed the reader a different view.
+    else if (this.view === 'estate') p.set('view', 'estate');
+    else if (this.view === 'proposals') p.set('view', 'proposals');
     // The Branches window is a reading parameter, so it travels with the
     // link: without it a shared ?view=activity silently lands the reader on
     // a different slice than the one that was being discussed.

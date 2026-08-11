@@ -35,7 +35,27 @@ states its `#gh=`-vs-`#gz=` split.
 
 Open a repo with `?repo=owner/repo`, optionally `&ref=<branch|tag|sha>`. Public
 repos browse with no auth; private repos and branches need the viewer's token.
-Deep-link params: `&view=pages|atlas|files|stage|surfaces|branches|public|todo|jots|activity|map`, `&file=<path>`, `&path=<dir>`, and `&tab=<tab>` for the two views that carry tabs (the **project** view's pill row, the **Map** view's tabs). A tabbed view keeps its default tab out of the URL, so an existing tab-less link still opens where it always did.
+Deep-link params: `&view=` takes any of `estate`, `activity`, `sessions`,
+`guides`, `chats`, `todo`, `jots`, `stage`, `surfaces`, `tools`, `map`,
+`state`, `search`, `proposals`, `public`, `app` (the estate's own views) or
+`landing`, `pages`, `atlas`, `files`, `branches`, `config`, `project` (a repo's).
+Beside it: `&file=<path>`, `&path=<dir>`, and a second key for the views that
+carry one, `&tab=<tab>` (**project**'s pill row, **Map**'s tabs), `&item=`
+(**State**), `&detail=` (**Branches**), `&sq=` (**Search**), `&window=`. A view
+keeps its default second key out of the URL, so an existing bare link still
+opens where it always did. `&view=portable` is a retired alias that still
+resolves to the Map.
+
+**Every view is addressable, and the address is round-tripped by test.** The
+shell states its view table three times by hand (the dispatch chain in `init`,
+the same chain in `restoreFromUrl` for Back, and the stamp chain in
+`deepLinkParams`), and by 2026-08-11 all three ways of drifting had happened:
+`?view=pages` stamped but absent from boot, `?view=proposals` dispatched but
+never stamped, `?view=estate` stamped only beside a `repo`/`ref` param.
+[`tools/test/show-repo-routing.test.mjs`](../tools/test/show-repo-routing.test.mjs)
+holds the three lists to each other and re-parses each view's own stamped
+address, on the default repo and on another, since the `repo` key is dropped as
+redundant on the first and that is the case estate broke in.
 
 **Two context levels.** The page is either in the **estate** (the global,
 all-repo context) or in a **repo** (a per-repo context with its own views).
@@ -784,10 +804,12 @@ Token gating: no token means the public default card only, no surfaces, no
 activity, no sessions, and no write controls. In that state the Repos view leads with a
 **public banner** that says exactly what is and isn't available and offers the
 two real next steps, a token or Public browse, instead of a vague "set a token"
-aside. Deep links: `?view=estate` (the bare URL is the Repos estate already; the
-param is stamped only when a `repo`/`ref` param is also present), `?view=stage`
-`?view=activity`, and `?view=sessions` (always stamped, so each is shareable on
-its own).
+aside. Deep links: `?view=estate`, `?view=stage`, `?view=activity`, and
+`?view=sessions`, each always stamped and so shareable on its own. Estate was
+the exception until 2026-08-11, stamped only alongside a `repo`/`ref` param on
+the reasoning that the bare URL was the Repos estate already. That premise
+expired when the bare URL started routing a token-bearing browser to Activity:
+signed in, Repos had no address, and copying it handed the reader Branches.
 
 **The shared dialog is scoped by how it is opened.** With no repo, from the
 **account row** at the top right of the Repos view, it is an **account panel**:
