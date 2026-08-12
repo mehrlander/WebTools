@@ -736,10 +736,13 @@ test('the cursor pad moves the caret and not the text', () => {
   assert.equal(S.dict.text, 'the quick brown fox', 'and the buffer is never what the pad touches');
 
   // The keyboard brings its own caret, so the pad stands down with the pad of
-  // marks rather than competing with the platform's.
+  // marks rather than competing with the platform's. It comes back to '' and
+  // not to flex: a button's own inline-block line box is what gives the
+  // control row its height, and as a flex container the pad stood 42px against
+  // its neighbours' 47.8.
   S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
   assert.equal(S.compPad.style.display, 'none');
   S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(S.compPad.style.display, 'flex');
+  assert.equal(S.compPad.style.display, '');
   A.disable();
 });

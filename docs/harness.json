@@ -413,7 +413,7 @@
       "path": "tools/render/scenarios/annotate-cursor-pad.mjs",
       "role": "the cursor pad mid-drag: the caret walking back through wrapped lines while the button stays put, which is the half jsdom cannot see (it maps a virtual point to an offset through caret-from-point)",
       "layer": "tools/render/scenarios",
-      "lines": 29,
+      "lines": 33,
       "invocation": "driver",
       "emits": false,
       "named": false,
