@@ -886,3 +886,26 @@ test('the caret pulses, which needs a stylesheet rather than a style attribute',
   D.paint(h, { text: 'the quick fox', range: { start: 6, end: 6 } });
   assert.equal(doc.querySelectorAll('#dictate-style').length, 1, 'injected once, not per paint');
 });
+
+test('endCaret paints the insertion point a null range implies', () => {
+  // A caret at the very end IS a null range in this kit, which is the right
+  // model and the wrong picture: a surface showing a caret everywhere except
+  // at the end appears to lose it exactly when a reader drags one there.
+  const h = host();
+  D.paint(h, { text: 'the quick fox' });
+  assert.deepEqual(parts(h).map(p => p[0]), ['text'], 'off by default: the stage keeps its barer render');
+
+  D.paint(h, { text: 'the quick fox', endCaret: true });
+  assert.deepEqual(parts(h).map(p => p[0]), ['text', 'caret']);
+  assert.equal(D.offsetAt(h, h.childNodes[0].firstChild, 13), 13,
+    'and it shifts no offsets, since it carries no text');
+
+  // After the hypothesis, which is where the committed words will leave it.
+  D.paint(h, { text: 'the quick fox', interim: 'jumps', endCaret: true });
+  assert.deepEqual(parts(h).map(p => p[0]), ['text', 'interim', 'interim-stop', 'caret']);
+
+  // A real range still owns the caret: the flag adds one where there is none,
+  // it does not add a second.
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 4 }, endCaret: true });
+  assert.equal(parts(h).filter(p => p[0] === 'caret').length, 1);
+});

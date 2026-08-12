@@ -437,8 +437,11 @@ test('the composer paints through the kit and swaps its pad for a selection', ()
   d.text = 'the quick brown fox';
 
   const body = S.compBody;
-  assert.deepEqual([...body.childNodes].map(n => n.getAttribute('data-d')), ['text'],
-    'no selection, one part');
+  // Text plus a caret at the end: the composer asks for `endCaret`, because a
+  // caret at the very end is a null range and the surface would otherwise show
+  // no cursor at exactly the place the cursor pad can always reach.
+  assert.deepEqual([...body.childNodes].map(n => n.getAttribute('data-d')), ['text', 'caret'],
+    'no selection, and the insertion point still says where it is');
 
   d.selectWordAt(6);                       // "quick"
   A._paintDraft();
@@ -699,5 +702,44 @@ test('the launcher-staged page draft opens idle: an offer, not a recorder', () =
   assert.equal(S.compose.style.display, 'flex');
   S.dict.start();
   assert.match(S.compHint.textContent, /^Listening/, 'starting it repaints the hint');
+  A.disable();
+});
+
+test('the cursor pad moves the caret and not the text', () => {
+  // Placing a caret by touching the text puts a thumb over the two words
+  // either side of the target, and a second tap there takes the word instead:
+  // the one gesture for "put it between these two" hid its target and had a
+  // homonym. The pad is a relative pointer, so the finger is elsewhere.
+  //
+  // The DRAG is a real-browser fact (it maps a virtual point to an offset
+  // through caret-from-point, which jsdom does not implement), and is measured
+  // in tools/render/scenarios/annotate-cursor-pad.mjs. What is asserted here
+  // is the wiring around it, including that a drag with no layout to read
+  // leaves the buffer exactly as it was rather than guessing.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  S.dict.text = 'the quick brown fox';
+  S.dict.caretAt(4);
+  A._paintDraft();
+
+  assert.ok(S.compPad, 'the pad sits in the control row');
+  assert.match(S.compPad.title, /drag to move the cursor/i);
+  assert.match(S.compPad.getAttribute('style'), /touch-action:\s*none/,
+    'or a phone scrolls the page instead of dragging');
+
+  const at = (type, x, y) => S.compPad.dispatchEvent(
+    new window.MouseEvent(type, { clientX: x, clientY: y, bubbles: true }));
+  assert.doesNotThrow(() => { at('pointerdown', 50, 50); at('pointermove', 20, 50); at('pointerup', 20, 50); });
+  assert.deepEqual(S.dict.range, { start: 4, end: 4 }, 'no layout to read, so nothing moved');
+  assert.equal(S.dict.text, 'the quick brown fox', 'and the buffer is never what the pad touches');
+
+  // The keyboard brings its own caret, so the pad stands down with the pad of
+  // marks rather than competing with the platform's.
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.compPad.style.display, 'none');
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.compPad.style.display, 'flex');
   A.disable();
 });

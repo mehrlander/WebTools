@@ -14,7 +14,7 @@
       "path": "tools/test/annotate.test.mjs",
       "kind": "behavior",
       "protects": "A note's anchor survives the range round trip and keeps pointing at the same phrase across edits, duplicate text, and a reader in another window.",
-      "assertions": 26,
+      "assertions": 27,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [],
@@ -44,7 +44,8 @@
         "a page note pins to nothing, and the set says which page it means",
         "the Page chip opens a draft outright: no gesture to make first",
         "the review button says what a tap will do before it is tapped",
-        "the launcher-staged page draft opens idle: an offer, not a recorder"
+        "the launcher-staged page draft opens idle: an offer, not a recorder",
+        "the cursor pad moves the caret and not the text"
       ]
     },
     {
@@ -611,7 +612,7 @@
       "path": "tools/test/dictate.test.mjs",
       "kind": "behavior",
       "protects": "The voice buffer composes text the way the prototype established, independent of any caller, and reads the window it was handed rather than an ambient one.",
-      "assertions": 45,
+      "assertions": 46,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [],
@@ -660,7 +661,8 @@
         "a box with nothing to scroll is left alone",
         "the leading between two lines is text, not a gap to fall through",
         "a pin whose line is scrolled out of view is not painted, nor its arrows",
-        "the caret pulses, which needs a stylesheet rather than a style attribute"
+        "the caret pulses, which needs a stylesheet rather than a style attribute",
+        "endCaret paints the insertion point a null range implies"
       ]
     },
     {
