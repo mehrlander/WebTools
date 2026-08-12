@@ -400,6 +400,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/annotate-caret-interim.mjs",
+      "role": "a caret placed mid-buffer with speech stubbed: the pulsing caret, and the hypothesis painting at the insertion point rather than at the end of the buffer",
+      "layer": "tools/render/scenarios",
+      "lines": 48,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/annotate-demo.mjs",
       "role": "a text selection annotated end to end: bubble, draft, saved note, painted highlight",
       "layer": "tools/render/scenarios",

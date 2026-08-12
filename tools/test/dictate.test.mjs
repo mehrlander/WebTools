@@ -553,7 +553,42 @@ test('handles and the caret carry no text, so they never shift an offset', () =>
     'the painted text is the buffer exactly, furniture and all');
 });
 
-test('the interim paints last and is marked, so a tap in it cannot place a caret', () => {
+test('the interim paints at the insertion point, not at the end of the buffer', () => {
+  // It used to append after everything, which is right only when the caret is
+  // already there. Place a caret mid-buffer and speak, and the words appeared
+  // at the bottom and then jumped up when the segment finalized: the right
+  // answer, arrived at in a way that looks broken, which costs the reader
+  // their trust in the caret they just placed.
+  const h = host();
+  D.paint(h, { text: 'the quick fox', interim: 'brown', range: { start: 4, end: 4 } });
+  assert.deepEqual(parts(h),
+    [['text', 'the '], ['interim', 'brown'], ['interim-stop', '.'], ['caret', ''], ['text', 'quick fox']],
+    'head, hypothesis, caret, tail: exactly where the committed words will land');
+
+  // No leading space here, because the head already ends in one. The space is
+  // cosmetic and follows the text before the insertion point rather than the
+  // buffer as a whole.
+  D.paint(h, { text: 'the quick fox', interim: 'brown', range: { start: 3, end: 3 } });
+  assert.equal(h.childNodes[1].textContent, ' brown', 'and it appears when the head ends in a letter');
+
+  // A selection is what speaking replaces, so the hypothesis paints where the
+  // replacement will sit.
+  D.paint(h, { text: 'the quick fox', interim: 'lazy', range: { start: 4, end: 9 } });
+  assert.deepEqual(parts(h).map(p => p[0]).filter(k => !k.startsWith('handle')),
+    ['text', 'sel', 'interim', 'interim-stop', 'text']);
+
+  // Offsets are the point of the marking: the hypothesis is not in the buffer,
+  // so it must shift nothing after it. Returning on sight was right while it
+  // was always last; now it would report the caret's offset for every tap in
+  // the tail below it.
+  D.paint(h, { text: 'the quick fox', interim: 'brown', range: { start: 4, end: 4 } });
+  const tail = h.childNodes[4];
+  assert.equal(D.offsetAt(h, tail.firstChild, 2), 6, 'a tap in the tail counts committed text only');
+  assert.equal(D.offsetAt(h, h.childNodes[1].firstChild, 3), 4,
+    'and a tap inside the hypothesis clamps to where it will land');
+});
+
+test('the interim paints last with no caret, and is marked so a tap cannot land in it', () => {
   const h = host();
   D.paint(h, { text: 'settled', interim: 'still being heard' });
   // A TENTATIVE full stop rides the hypothesis, in the hypothesis's own muted
@@ -823,4 +858,31 @@ test('a pin whose line is scrolled out of view is not painted, nor its arrows', 
   const other = run([line(120), line(400)], 'start');
   assert.deepEqual(other.pins, ['start'], 'it cuts the other way too, below the box');
   assert.equal(other.arrows, true, 'the armed edge is in view, so its arrows are');
+});
+
+test('the caret pulses, which needs a stylesheet rather than a style attribute', () => {
+  // A keyframe cannot be written into a style attribute, and the kit paints
+  // into arbitrary documents, so the rule is injected once into whichever
+  // document the surface lives in. Reduced motion gets a steady bar: the
+  // caret's job is to say WHERE, and the pulse only says it is live.
+  const doc = window.document;
+  const old = doc.getElementById('dictate-style');
+  if (old) old.remove();
+
+  const h = host();
+  D.paint(h, { text: 'the quick fox' });
+  assert.equal(doc.getElementById('dictate-style'), null,
+    'nothing is injected until a caret is actually painted');
+
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 4 } });
+  const st = doc.getElementById('dictate-style');
+  assert.ok(st, 'the caret brought its stylesheet');
+  assert.match(st.textContent, /@keyframes dictate-caret/);
+  assert.match(st.textContent, /\[data-d="caret"\]/, 'aimed at the painted part, not at a class');
+  assert.match(st.textContent, /prefers-reduced-motion: no-preference/);
+  assert.equal(st.getAttribute('data-annotate-ui'), '',
+    'and marked as furniture, so the annotator’s text index skips it');
+
+  D.paint(h, { text: 'the quick fox', range: { start: 6, end: 6 } });
+  assert.equal(doc.querySelectorAll('#dictate-style').length, 1, 'injected once, not per paint');
 });

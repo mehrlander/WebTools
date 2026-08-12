@@ -611,7 +611,7 @@
       "path": "tools/test/dictate.test.mjs",
       "kind": "behavior",
       "protects": "The voice buffer composes text the way the prototype established, independent of any caller, and reads the window it was handed rather than an ambient one.",
-      "assertions": 43,
+      "assertions": 45,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [],
@@ -646,7 +646,8 @@
         "setting the text clears the range: the offsets described another buffer",
         "the painter renders text, caret and selection as marked parts",
         "handles and the caret carry no text, so they never shift an offset",
-        "the interim paints last and is marked, so a tap in it cannot place a caret",
+        "the interim paints at the insertion point, not at the end of the buffer",
+        "the interim paints last with no caret, and is marked so a tap cannot land in it",
         "offsetAt counts the parts before the one that was hit",
         "the suppression CSS is handed out rather than written down twice",
         "the arrows step the armed edge and never let it cross the other",
@@ -658,7 +659,8 @@
         "the newest line is scrolled into view as the buffer grows",
         "a box with nothing to scroll is left alone",
         "the leading between two lines is text, not a gap to fall through",
-        "a pin whose line is scrolled out of view is not painted, nor its arrows"
+        "a pin whose line is scrolled out of view is not painted, nor its arrows",
+        "the caret pulses, which needs a stylesheet rather than a style attribute"
       ]
     },
     {
