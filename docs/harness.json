@@ -440,6 +440,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/annotate-page-note.mjs",
+      "role": "the page-level note through the real path (Page chip, typed, saved) plus the two controls it shipped with: the review button reading the drawer's state, and the launcher's long-press menu",
+      "layer": "tools/render/scenarios",
+      "lines": 47,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/annotate-select-text.mjs",
       "role": "the composer's own selection driven the way a thumb drives it: long press to take a word, tap to arm a pin, tap to place it",
       "layer": "tools/render/scenarios",

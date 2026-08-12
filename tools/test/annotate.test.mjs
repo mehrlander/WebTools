@@ -597,3 +597,78 @@ test('Done resumes dictation only if the keyboard interrupted it', () => {
     'Done does not switch the microphone on for a reader who had it off');
   A.disable();
 });
+
+test('a page note pins to nothing, and the set says which page it means', () => {
+  // The case the other three targets leave out: the complaint is about the
+  // page, not about a passage in it. Nothing is selected, so nothing anchors,
+  // and the address in the serialization is what makes the note self-sufficient
+  // (the workflow it replaces was opening another window and typing the page
+  // out by hand).
+  A.enable({ doc, subject: { title: 'pages/thing.html', url: 'https://example.test/blob/thing' } });
+  A.clear();
+  A.add({ type: 'page' }, 'the sidebar overlaps the footer under 400px');
+
+  const md = A.toMarkdown();
+  assert.ok(md.includes('# Notes — pages/thing.html'), md);
+  assert.ok(md.includes('https://example.test/blob/thing'), 'the source address');
+  assert.match(md, /Viewed at: http/, 'and the address it was read at, which the source URL does not give');
+  assert.ok(md.includes('## 1. the page'), md);
+  assert.ok(!md.includes('Path: `'), 'a page note claims no DOM path');
+  assert.ok(md.includes('**Note:** the sidebar overlaps the footer under 400px'));
+
+  const j = A.toJSON();
+  assert.equal(j.notes[0].type, 'page');
+  assert.equal(j.notes[0].quote, undefined, 'and carries no anchor it cannot honor');
+  A.clear();
+});
+
+test('the Page chip opens a draft outright: no gesture to make first', () => {
+  A.enable({ doc, subject: { title: 'pages/thing.html', url: 'https://example.test/blob/thing' } });
+  A.clear();
+  const S = A._state;
+
+  S.pageChip.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.draft.target.type, 'page');
+  assert.equal(S.compose.style.display, 'flex', 'the composer is open and listening');
+  assert.match(S.compCap.textContent, /This page: pages\/thing\.html/,
+    'and names what the note will be about');
+  assert.ok(!S.draftBox, 'nothing is outlined, since nothing was aimed at');
+
+  // A page note is not a MODE: there is nothing to exit, so it leaves the two
+  // that are unlit.
+  assert.equal(S.mode, null);
+  A.disable();
+});
+
+test('the review button says what a tap will do before it is tapped', () => {
+  // It was a yellow pill reading "Review" that looked the same whether it would
+  // open the drawer, close it, or reach nothing at all. The drawer broadcasts
+  // its state; the button reads it.
+  let asked = 0;
+  const query = () => asked++;
+  window.addEventListener('annotate:drawer-query', query);
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  assert.equal(asked, 1, 'the card asks once on mount rather than waiting to be told');
+  window.removeEventListener('annotate:drawer-query', query);
+
+  const say = (detail) => window.dispatchEvent(new window.CustomEvent('annotate:drawer', { detail }));
+
+  say({ open: false, tab: 'render' });
+  assert.match(S.reviewBtn.title, /^Open/);
+  assert.equal(S.reviewBtn.disabled, false);
+
+  say({ open: true, tab: 'render' });
+  assert.match(S.reviewBtn.title, /^Open/, 'open on another tab is still an open');
+
+  say({ open: true, tab: 'notes' });
+  assert.match(S.reviewBtn.title, /^Close/, 'and in front of you, the only honest offer is to put it away');
+  assert.equal(S.reviewBtn.style.background, 'rgb(250, 204, 21)', 'lit, the way a live mode chip is');
+
+  // No drawer at all: the click that proves it is the click that disables the
+  // button, so it stops offering something it cannot do.
+  A.review();
+  assert.equal(S.reviewBtn.disabled, true);
+  assert.match(S.reviewBtn.title, /No drawer/);
+  A.disable();
+});

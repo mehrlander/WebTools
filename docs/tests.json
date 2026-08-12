@@ -14,7 +14,7 @@
       "path": "tools/test/annotate.test.mjs",
       "kind": "behavior",
       "protects": "A note's anchor survives the range round trip and keeps pointing at the same phrase across edits, duplicate text, and a reader in another window.",
-      "assertions": 22,
+      "assertions": 25,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [],
@@ -40,7 +40,10 @@
         "a tap on the blank canvas sends the caret to the end",
         "three taps in a run take the whole buffer",
         "the keyboard mode does not wear a microphone",
-        "Done resumes dictation only if the keyboard interrupted it"
+        "Done resumes dictation only if the keyboard interrupted it",
+        "a page note pins to nothing, and the set says which page it means",
+        "the Page chip opens a draft outright: no gesture to make first",
+        "the review button says what a tap will do before it is tapped"
       ]
     },
     {
