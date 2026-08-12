@@ -40,7 +40,7 @@
       "key": "inbox",
       "type": "string",
       "consumer": "show-repo",
-      "summary": "Where an unaddressed deposit lands: 'inbox', '@ref:dir', or a full 'owner/repo[@ref]:dir'. Absent means the repo root."
+      "summary": "Where an unaddressed deposit lands: 'inbox', '@ref:dir', or a full 'owner/repo[@ref]:dir'. Absent means the repo root. This is the repo's DEFAULT, and there is exactly one, because it answers a deposit addressed only to `owner/repo`, which carries nothing to discriminate on. A workspace's own tray is an `inbox` on its `projects` entry: many per repo, never automatic, reached by choosing it. The repo is its own root project, which is why that default lives here as a top-level key rather than as a synthetic entry in `projects`."
     },
     {
       "key": "outbox",
@@ -187,7 +187,7 @@
       "key": "projects",
       "type": "array",
       "consumer": "show-repo",
-      "summary": "The repo's workspaces, as bare folder paths or { path, label, tracker, landing } objects. Rendered in three lists with one destination: the estate sidebar's Repos index, the repo's own sidebar, and the repo's Repos-grid card. The defining convention is that a workspace running a tracker is a project, so no separate registry says what counts. Edited in the Config view's Projects section, whose Scan reads the tree for that same convention (a folder carrying tracker/tasks/) and offers whatever this field does not yet declare.",
+      "summary": "The repo's workspaces, as bare folder paths or { path, label, tracker, landing, inbox } objects. An entry's `inbox` is the repo-level field one level down, same grammar, naming where a deposit aimed at that workspace lands; unlike `tracker` it is declared rather than derived, because a board is a link whose wrong guess costs a 404 while an inbox is a write target whose wrong guess misfiles a deposit into a folder nothing drains. Rendered in three lists with one destination: the estate sidebar's Repos index, the repo's own sidebar, and the repo's Repos-grid card. The defining convention is that a workspace running a tracker is a project, so no separate registry says what counts. Edited in the Config view's Projects section, whose Scan reads the tree for that same convention (a folder carrying tracker/tasks/) and offers whatever this field does not yet declare.",
       "subfields": [
         {
           "key": "path",
@@ -209,6 +209,11 @@
           "key": "landing",
           "type": "string",
           "summary": "The workspace's own front page, repo-root-relative. Takes the project view's Overview slot ahead of the README."
+        },
+        {
+          "key": "inbox",
+          "type": "string",
+          "summary": "Where a deposit aimed at this workspace lands, in the repo-level `inbox` grammar: a bare folder is repo-root-relative like `tracker` and `landing`, '@ref:dir' names a branch, and a full 'owner/repo[@ref]:dir' a box elsewhere. Optional, and unlike `tracker` it is declared rather than derived: a board is a link whose wrong guess costs a 404, while an inbox is a write target whose wrong guess files a deposit into a plausible folder nothing drains. Surfaces as a destination pill in the stage; a project that declares nothing offers none."
         },
         {
           "key": "icon",

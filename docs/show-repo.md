@@ -1921,6 +1921,46 @@ the fallback, so a repo declaring nothing behaves exactly as before. Nothing
 creates the folder in the background: the commit that lands the first file is
 what makes it exist.
 
+**A project can declare one too, and the repo's is the root project's.** A
+`projects` entry takes an `inbox` in the same grammar, so a repo carrying
+several workspaces can aim a deposit at the one that owns it. The two levels do
+different jobs and neither replaces the other:
+
+| | Repo-level `inbox` | A `projects` entry's `inbox` |
+| --- | --- | --- |
+| How many | exactly one | any number |
+| Answers | a deposit addressed to `owner/repo` with no directory | a destination you choose |
+| Reached by | automatic resolution at send | tapping its pill |
+
+There is one repo-level box because the input carries nothing to discriminate
+on: a file sent to `mehrlander/home` cannot be *inferred* to belong to a
+particular workspace. A project inbox therefore never enters automatic
+resolution. Conceptually the repo is its own root project, which is why its
+default lives as a top-level key rather than as a synthetic entry in `projects`:
+no migration, and the new field is purely additive.
+
+**Declared, not derived,** which is where `inbox` parts from the sibling
+`tracker` field. A board is derived from the convention (`<path>/tracker/board.md`)
+because a board is a **link**, and a wrong guess costs a 404. An inbox is a
+**write target**, and a wrong guess files a deposit into a plausible folder that
+nothing drains, where it is not missing so much as quietly elsewhere. The
+measured case: `mehrlander/home` ran an undeclared root `dump/` beside its
+declared `chron/dump/` from 2026-07-30 to 2026-08-12, and because every reader
+it had (its repo map, its staleness check, its drain skill) watched the declared
+one, the map reported the tray empty while four files sat in the other.
+
+**Destination pills.** The Stage view's Out pane renders every declared box
+across the picker's repos as a one-tap strip under the destination picker, read
+from the shell's config cache (one pass at load, already in memory), so the
+strip costs no fetches. Only **declared** boxes appear. The picker beside it
+already lists every folder that *exists*, which is a different claim, and the
+difference is the point: a browser cannot tell you which plausible folder is
+drained. A repo with no pill is visibly missing a declaration rather than
+quietly defaulting, which is the pressure worth having. Tapping a pill sets the
+destination and the picker's own trigger label together, since the picker
+commits its label on a pick and would otherwise name one place while the send
+went to another.
+
 **Outbox, on the pull side.** A repo declaring one gets an **Open outbox** row
 in its repo menu, which opens the Files view at that folder. The pull itself is
 ordinary browsing or staging from there. For a **public** repo the outbox is

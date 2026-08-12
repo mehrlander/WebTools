@@ -100,6 +100,55 @@ test('pickerRoots without shell or targets is just the open repo', () => {
   assert.deepEqual(plain_(data.pickerRoots()), [{ repo: 'me/open', ref: '' }]);
 });
 
+// ---- declared destinations -----------------------------------------------
+// The pills are the DECLARED boxes, against a picker that lists every folder
+// that exists. Only what a manifest says is for receiving appears, so a repo
+// with no pill is visibly undeclared rather than quietly defaulting to its
+// root.
+
+test('destPills: the repo box, then each project box, deduped and labelled', () => {
+  store.repo = 'me/open';
+  store.config = { inbox: 'chron/dump', projects: [{ path: 'projects/wps', inbox: 'projects/wps/dump' }] };
+  window.__shell = {
+    estateRepos: [{ repo: 'me/fav' }],
+    estateConfigs: {
+      'me/fav': { inbox: '@drops:incoming', projects: [{ path: 'projects/x' }] },
+      // The open repo's cache entry is deliberately stale: the live config
+      // above must win, the same rule repoProjects follows.
+      'me/open': { inbox: 'stale/box' },
+    },
+    repoProjects: (repo, cfg) => (cfg.projects || []).map(p => ({
+      label: p.path.split('/').pop(),
+      inbox: p.inbox ? window.RepoAddress.parseBox(p.inbox, repo) : null,
+    })),
+  };
+  assert.deepEqual(plain_(data.destPills), [
+    { label: 'open', kind: 'repo', spec: 'me/open:chron/dump', dir: 'chron/dump' },
+    { label: 'wps', kind: 'project', spec: 'me/open:projects/wps/dump', dir: 'projects/wps/dump' },
+    { label: 'fav', kind: 'repo', spec: 'me/fav@drops:incoming', dir: 'incoming' },
+  ], 'a project that declares no inbox contributes no pill');
+  delete window.__shell;
+});
+
+test('destPills is empty when nothing is declared, and never guesses a root', () => {
+  store.repo = 'me/open';
+  store.config = { projects: [{ path: 'projects/wps' }] };
+  window.__shell = { estateRepos: [], estateConfigs: { 'me/open': {} }, repoProjects: () => [] };
+  assert.deepEqual(plain_(data.destPills), []);
+  delete window.__shell;
+});
+
+test('aim sets the destination and the picker label together', () => {
+  store.repo = 'me/open';
+  const picker = { label: 'stale' };
+  data.$refs.destPicker = { __pathPicker: picker };
+  data.aim('me/open:chron/dump');
+  assert.equal(data.destSpec, 'me/open:chron/dump');
+  assert.equal(picker.label, 'me/open:chron/dump',
+    'the picker commits its own label, so destSpec alone would name one place while the send went to another');
+  delete data.$refs.destPicker;
+});
+
 // ---- grabbing from a repo, previewing inline -----------------------------
 
 test('grab stages the picked ref once, deduped by key', () => {
