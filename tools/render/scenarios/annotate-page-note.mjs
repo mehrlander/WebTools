@@ -8,6 +8,8 @@
 // STATE=draft  the Page draft open on the card                  (the default)
 // STATE=saved  the note saved, drawer open on Notes beside it
 // STATE=menu   the launcher's long-press menu
+// STATE=idle   what the menu row leaves behind: the page draft staged, the
+//              microphone off, the hint saying so
 
 const STATE = process.env.STATE || 'draft';
 
@@ -16,12 +18,18 @@ export default async (page) => {
   await page.waitForFunction(() => window.Alpine && document.querySelector('[x-data^="fab"]'),
     null, { timeout: 15000 });
 
-  if (STATE === 'menu') {
+  if (STATE === 'menu' || STATE === 'idle') {
+    // From cold: this page turns the annotator on itself, and the menu row has
+    // to work where nothing is running yet.
+    await page.evaluate(() => window.Annotate.disable());
     await page.evaluate(() => {
       const d = window.Alpine.$data(document.querySelector('[x-data^="fab"]'));
       d.openFabMenu();
     });
     await page.waitForTimeout(400);
+    if (STATE === 'menu') return;
+    await page.click('button:has-text("Take a note")');
+    await page.waitForTimeout(700);
     return;
   }
 

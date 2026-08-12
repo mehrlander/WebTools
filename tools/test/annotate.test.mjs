@@ -672,3 +672,32 @@ test('the review button says what a tap will do before it is tapped', () => {
   assert.match(S.reviewBtn.title, /No drawer/);
   A.disable();
 });
+
+test('the launcher-staged page draft opens idle: an offer, not a recorder', () => {
+  // Every other draft is opened by aiming at something, so starting the engine
+  // is what the reader just asked for. The launcher's menu stages a page draft
+  // nobody aimed, and a microphone that switches itself on there is a recorder
+  // the reader never started. The hint has to agree, which is why it reports
+  // the engine rather than the mode.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const S = A._state;
+
+  A.notePage();
+  assert.equal(S.draft.target.type, 'page');
+  assert.equal(S.dict.listening, true, 'the chip path still starts listening');
+  assert.match(S.compHint.textContent, /^Listening/);
+
+  A.notePage({ listen: false });
+  assert.equal(S.draft.target.type, 'page');
+  assert.equal(S.dict.listening, false, 'the launcher path does not');
+  assert.match(S.compHint.textContent, /Tap the microphone/,
+    'and the hint says what to do rather than claiming it is listening');
+
+  // Still a draft in every other respect: the mic is one tap away, and the
+  // save key is live for a note that was typed.
+  assert.equal(S.compose.style.display, 'flex');
+  S.dict.start();
+  assert.match(S.compHint.textContent, /^Listening/, 'starting it repaints the hint');
+  A.disable();
+});

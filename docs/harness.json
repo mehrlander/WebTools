@@ -443,7 +443,7 @@
       "path": "tools/render/scenarios/annotate-page-note.mjs",
       "role": "the page-level note through the real path (Page chip, typed, saved) plus the two controls it shipped with: the review button reading the drawer's state, and the launcher's long-press menu",
       "layer": "tools/render/scenarios",
-      "lines": 47,
+      "lines": 55,
       "invocation": "driver",
       "emits": false,
       "named": false,
