@@ -51,19 +51,21 @@ check nobody runs: a path-shaped token sitting outside any `[](…)` is decidabl
 from the DOM alone.
 
 **2. Match.** One cached fetch each, still decidable. Terms in the page's text
-that resolve to a row in a registry, reported in confidence order the way
-`vocab.py check` already orders its two findings:
+that resolve to a row in a registry. **Built**, and not in the shape this
+document first proposed. The survey below listed nine candidate sources; the
+build found that only some of them can be matched at all, which is the section
+"The join is the path" further down.
 
 | Class | Source | Answers |
 | --- | --- | --- |
 | a path that resolves to a tracked file | `EstateSearch.tree(repo, ref)`, already cached per repo and ref | this names a real file; here it is |
 | a declared doc | [`docs/docs.json`](docs.json), 51 rows | what that document is, and whether it is living, measured, or a record |
+| a declared test | [`docs/tests.json`](tests.json) | what that test protects, and of what kind |
+| a harness tool | [`docs/harness.json`](harness.json) | that tool's role, and its layer |
 | a surfacing primitive | [`docs/surfacing.json`](surfacing.json), 20 rows | the estate's own glossary, already gated against its prose |
 | a prose field name | [`docs/text-fields.csv`](text-fields.csv), 13 names plus aliases | which of thirteen concepts this name is |
 | a route key | [`docs/routes.json`](routes.json) | what that address form reaches |
-| a property or registry name | [`docs/properties.json`](properties.json), 16 registries, 92 declarations | who owns that classification |
 | a page | [`pages/pages.json`](../pages/pages.json) | the live view, its thumb, its source |
-| a task | [`tracker/board.json`](../tracker/board.json) | whether work is already filed on it |
 | a citation (RCW, bill id, biennium) | `wa-bills` citation index, `state/entities.json`'s `rcwByRepo` | which bills cite it, which repos discuss it |
 
 Every hit here is checkable. That is what makes it a *registry connection*
@@ -221,25 +223,104 @@ show-repo, because a file browser listing file names is doing exactly what it
 should. Unwithheld, that would be the pane's loudest number and its least true
 one.
 
+## The join is the path
+
+Match is built, and building it settled the question the operation list left
+open: **what, exactly, is a term matched against?**
+
+The intended design was a glossary. Take the estate's terms of art, find them in
+the prose, link each to where it is declared. There is nothing to match against,
+and the reason is structural rather than a gap somebody forgot to fill:
+
+- [`docs/surfacing.json`](surfacing.json)'s rows are keyed by sentence-shaped
+  titles (*Reference is a link*, *Toss a live view*). Those phrases do not occur
+  in prose. The single words that do occur (toss, stage, caption) appear nowhere
+  in the carrier as keys, and deriving them would be guesswork.
+- [`docs/text-fields.csv`](text-fields.csv) and
+  [`docs/properties.json`](properties.json) are keyed by ordinary English words:
+  note, open, scope, role, reach. Matching those against prose returns noise at a
+  rate that would bury anything true.
+- [`tracker/board.json`](../tracker/board.json) is keyed by task titles, which
+  are sentences.
+
+The estate has no committed vocabulary keyed by surface form, and that is a
+decision rather than an oversight: `vocab.py` builds one in 1.7 seconds and the
+`concept-index` skill declines to commit the result, on the same rule that
+retired the merge guide. Inventing one inside a UI component would be inventing
+a registry the estate has decided not to keep.
+
+What it has instead is better for this purpose. **Three registries are keyed by
+path**, and a path is a token that really does appear in this prose:
+
+| Registry | Covers | Says |
+| --- | --- | --- |
+| [`docs/docs.json`](docs.json) | `docs/` | subject, status |
+| [`docs/tests.json`](tests.json) | `tools/test/` | protects, kind |
+| [`docs/harness.json`](harness.json) | `tools/`, `scripts/` | role, layer |
+
+So path matching **is** registry matching here, with no glossary in the middle
+and no guess in any step. A path outside those three shelves resolves in the
+tree and gets a link with no gloss, which is the honest result rather than a gap
+to apologize for.
+
+Three rules the build settled, each visible in the pane:
+
+- **Named and bare are different questions about the same token.** A path in a
+  code span breaks no rule (a citation is not a reference), so it is not counted
+  as a bare path; it is still a file the page is about, so it is resolved. One
+  walk, two answers.
+- **A candidate that does not resolve is not a finding.** It is usually another
+  repo's path or a filename-shaped string. Listed, never flagged.
+- **Only the tree read may fail the answer.** A registry that will not read
+  costs a gloss; the row still resolves and links.
+
+## Selection scope, and the bug it hid
+
+The read takes a live selection as its subject when there is one, and the whole
+page otherwise. That is the reading this tab exists for: the question asked of
+the passage in front of you, which is the one thing every other instrument in
+the estate answers badly by taking a corpus.
+
+It did not work at first, and would not have worked in any amount of code
+review. **The tap that opens the drawer destroys the selection.** Pressing
+anywhere outside a selection collapses it, and the launcher is outside every
+selection by construction, so the only route to the tab clears its subject.
+The fix is one line at the launcher's existing `pointerdown`: snapshot the
+selection before the tap lands. That is a listener on the fab's own element,
+not on the host document, which matters because this drawer already declines to
+arm a listener on someone's page for a tab they may only be glancing at.
+
+Found by shooting it. The screenshot said "The whole page" where the scenario
+had selected a paragraph.
+
 ## What to build next
 
-**The path half of Match**, which was the other half of the original
-recommendation: the files this page names, resolved against
-`EstateSearch.tree` and each one tappable. It is decidable, zero-model, and it
-is what turns the bare-path count from a number into a list.
+Operations 1 and 2 are in. Operations 3 and 4 are not, and the honest reading of
+what the build learned is that neither is a small increment:
 
-Everything above it is a later increment, and each increment should be able to
-name what it would be wrong about.
+- **Flag** wants the corpus the browser does not have. The `assumed` tier is a
+  property of a repo's whole prose, not of one page, so this pane can only reach
+  it by fetching a vocabulary index, which is the artifact the estate declines
+  to commit. The likely resolution is that Flag stays an agent-side answer and
+  the tab links to it rather than reimplementing it.
+- **Ask** may not belong in this tab at all. The FAB already has a take-away
+  menu whose entire job is handing the page somewhere else, with five named
+  outputs. A sixth that hands the text to `shorter.html` is a row in that menu,
+  not a section here.
+
+Everything from here should be able to name what it would be wrong about.
 
 ## Open
 
-- Whether the Ask routes belong in this tab or in the existing take-away menu,
-  which is already where the FAB hands the page somewhere else.
-- Whether a match against `tracker/board.json` is useful or noisy. Task titles
-  are sentences, so they will match loosely.
-- Whether the Flag pane can honestly exist client-side at all, or whether it
-  stays an agent-side answer that the tab only links to.
+- Whether the Ask routes belong in this tab or in the existing take-away menu.
+  Leaning toward the menu, for the reason above.
 - Whether the words-per-run gate holds on a page rendering a long markdown
   document, which the calibration sample does not contain: the pages with the
   most prose in this repo (`word-select`, `console-playground`) load no lib
   chain, so they mount no fab and could not be measured.
+- Whether Match should offer the ⭐ live view for a resolved `pages/*.html`
+  rather than only the blob. `pages/pages.json` carries the address; it is a
+  fourth registry read, and the rule that only the tree may fail the answer
+  already covers the cost of one more.
+- Whether a resolved path should be tappable to the **stage** rather than to
+  GitHub, since a list of the files a document names is exactly a fileset.

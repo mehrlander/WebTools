@@ -850,6 +850,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/fab-text-match.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 100,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/fab-toss.mjs",
       "role": "toss-render address mode with the fab's toss integration and singleton guard",
       "layer": "tools/render/scenarios",

@@ -173,6 +173,120 @@ test('the prose checks ignore what is not prose', async () => {
   assert.equal(noise.barePaths, 0, '"and/or", a bare folder, and a decimal are not paths');
 });
 
+test('the read scopes to a live selection, and falls back to the page', async () => {
+  const d = await mountFab();
+  const host = doc.createElement('article');
+  host.innerHTML = '<p id="a">First sentence here about nothing at all.</p>' +
+                   '<p id="b">Second paragraph, which the selection will not cover.</p>';
+  doc.body.appendChild(host);
+
+  assert.equal(d.textRoot().scope, 'page', 'no selection means the whole page');
+
+  const sel = window.getSelection();
+  const range = doc.createRange();
+  range.selectNodeContents(doc.getElementById('a'));
+  sel.removeAllRanges(); sel.addRange(range);
+
+  const scoped = d.textRoot();
+  assert.equal(scoped.scope, 'selection');
+  assert.match(scoped.root.textContent, /First sentence/);
+  assert.doesNotMatch(scoped.root.textContent, /Second paragraph/,
+    'the selection is the subject, not a highlighted part of the page');
+
+  // THE TAP THAT OPENS THE DRAWER DESTROYS THE SELECTION. Pressing anywhere
+  // outside a selection collapses it, and the launcher is outside every
+  // selection by construction, so without a snapshot taken at pointerdown the
+  // scope could never fire once: the only route to the tab clears its subject.
+  // Found by shooting it, not by reading it.
+  d._grabSelection();
+  sel.collapseToStart();
+  assert.equal(d.textRoot().scope, 'selection',
+    'the snapshot survives the tap that opened the drawer');
+  assert.match(d.textRoot().root.textContent, /First sentence/);
+
+  // A caret is not a selection, so a snapshot taken with nothing selected must
+  // clear the old one rather than resurrecting a passage the reader left.
+  d._grabSelection();
+  assert.equal(d.textRoot().scope, 'page', 'a collapsed selection is a caret, not a subject');
+
+  sel.removeAllRanges();
+  host.remove();
+});
+
+test('named paths include code spans; bare paths do not', async () => {
+  const d = await mountFab();
+  const r = d._textRead(docWith(
+    `<p>See docs/text-tools.md for the design.</p>
+     <p>It loads <code>lib/kits/annotate.js</code> and <a href="#">docs/loader.md</a>.</p>`));
+
+  // The two answers disagree about the same tokens on purpose: a path in a
+  // code span is a citation, so it breaks no rule, but it is still a file this
+  // page is about and Match should resolve it.
+  assert.equal(r.barePaths, 1, 'only the unlinked, uncoded path breaks the rule');
+  // Joined, not deep-compared: fab.js runs inside the jsdom realm, so the
+  // arrays it returns have jsdom's Array prototype and assert/strict's
+  // deepEqual compares prototypes before contents.
+  assert.equal([...r.named].join('|'),
+    'docs/loader.md|docs/text-tools.md|lib/kits/annotate.js',
+    'every path named anywhere is a candidate, sorted and deduplicated');
+});
+
+test('match resolves against the tree and glosses from the registries', async () => {
+  const d = await mountFab();
+  d.textStats = d._textRead(docWith(
+    `<p>See docs/loader.md and tools/build/nope.mjs and other/repo/thing.md.</p>`));
+
+  window.EstateSearch = {
+    tree: async () => ({ paths: ['docs/loader.md', 'other/repo/thing.md'], truncated: false }),
+  };
+  window.GH = function () {
+    this.get = async (p) => {
+      if (p === 'docs/docs.json') {
+        return { text: JSON.stringify({ documents: [
+          { path: 'docs/loader.md', subject: 'the loader contract', status: 'living' }] }) };
+      }
+      throw new Error('no such registry');   // the other two fail, deliberately
+    };
+  };
+
+  await d.textMatchRun();
+  assert.equal(d.textMatchState, 'done', d.textMatchError);
+
+  assert.equal([...d.textMatch.hits].map(h => h.path).join('|'),
+    'docs/loader.md|other/repo/thing.md',
+    'a hit is a path the tree actually holds');
+  assert.equal([...d.textMatch.missed].join('|'), 'tools/build/nope.mjs',
+    'a candidate the tree does not hold is listed, not flagged');
+
+  const loader = d.textMatch.hits.find(h => h.path === 'docs/loader.md');
+  assert.equal(loader.what, 'the loader contract', 'the registry says what the file is');
+  assert.equal(loader.tag, 'living');
+  assert.match(loader.blob, /^https:\/\/github\.com\/.+\/blob\/.+\/docs\/loader\.md$/);
+
+  // Two of the three registries threw. A missing gloss must not cost the row:
+  // the tree is the only read allowed to decide the answer.
+  const other = d.textMatch.hits.find(h => h.path === 'other/repo/thing.md');
+  assert.equal(other.what, '', 'a path no registry covers still resolves and links');
+});
+
+test('match reports its own failure rather than half an answer', async () => {
+  const d = await mountFab();
+  d.textStats = d._textRead(docWith('<p>See docs/loader.md.</p>'));
+
+  window.EstateSearch = { tree: async () => { throw new Error('tree fetch failed'); } };
+  await d.textMatchRun();
+  assert.equal(d.textMatchState, 'error');
+  assert.match(d.textMatchError, /tree fetch failed/);
+
+  // Nothing to resolve is a finished answer, not an error and not a fetch.
+  const d2 = await mountFab();
+  d2.textStats = d2._textRead(docWith('<p>No files named here at all.</p>'));
+  window.EstateSearch = { tree: async () => { throw new Error('must not be called'); } };
+  await d2.textMatchRun();
+  assert.equal(d2.textMatchState, 'done');
+  assert.equal([...d2.textMatch.hits].length, 0);
+});
+
 test('an unreadable document is a null, not a throw', async () => {
   const d = await mountFab();
   assert.equal(d._textRead(null), null);
