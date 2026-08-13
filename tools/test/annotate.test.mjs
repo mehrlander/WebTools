@@ -716,6 +716,27 @@ test('the launcher-staged page draft opens idle: an offer, not a recorder', () =
   A.disable();
 });
 
+test('the card spends its whitespace evenly: an empty list is not a band', () => {
+  // The list's bottom padding separates the last note from the card's edge.
+  // With no notes there is nothing to separate, and the 8px stacked under the
+  // composer's own 8px: measured with a draft open and nothing filed, 17px
+  // below the frame against 9 down either side. The header controls carry the
+  // action row's height for the same reason, a control half the height of the
+  // ones under it reading as a label that happens to be tappable.
+  A.enable({ doc, subject: { title: 'x', url: 'https://e.test/p' } });
+  A.clear();
+  const S = A._state;
+  A.notePage({ listen: false });
+  assert.equal(S.listEl.style.paddingBottom, '0px', 'nothing filed, so no band');
+
+  A.add({ target: { type: 'page' }, note: 'one' });
+  assert.equal(S.listEl.style.paddingBottom, '8px', 'and it returns with the first note');
+
+  assert.match(S.reviewBtn.getAttribute('style'), /min-height:\s*30px/, 'the title matches the action row');
+  assert.match(S.pageChip.getAttribute('style'), /min-height:\s*28px/, 'and a chip plus its group border makes 30');
+  A.disable();
+});
+
 test('the cursor pad moves the caret and not the text', () => {
   // Placing a caret by touching the text puts a thumb over the two words
   // either side of the target, and a second tap there takes the word instead:
