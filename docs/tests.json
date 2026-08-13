@@ -36,7 +36,7 @@
         "without the dictate kit the annotator still works, minus the microphone",
         "the pencil opens on the phrase that was on screen, not the one before it",
         "the composer paints through the kit and swaps its pad for a selection",
-        "the read surface refuses the browser its own selection",
+        "the card refuses the browser its own selection, from a stylesheet",
         "a tap on the blank canvas sends the caret to the end",
         "three taps in a run take the whole buffer",
         "the keyboard mode does not wear a microphone",

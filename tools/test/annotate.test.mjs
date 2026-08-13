@@ -470,17 +470,28 @@ test('the composer paints through the kit and swaps its pad for a selection', ()
   A.disable();
 });
 
-test('the read surface refuses the browser its own selection', () => {
+test('the card refuses the browser its own selection, from a stylesheet', () => {
+  // The lock is a RULE, not an inline style, and the reason is a trap worth
+  // keeping named. `-webkit-touch-callout` is absent from the CSSOM's property
+  // list, so it survives only as authored attribute text, and any later
+  // `.style.foo =` on that element re-serializes the attribute from its parsed
+  // declarations and drops it. The frame writes `gridColumn` on the text cell
+  // as it lays out, which took the lock off silently until this test caught it.
   window.SpeechRecognition = FakeSR;
   loadKit('dictate.js', { window });
   A.enable({ doc, subject: { title: 'x', url: '' } });
-  // Read the ATTRIBUTE, not .style: -webkit-touch-callout is not a CSSOM
-  // property, so the object drops it and only the authored text has it. That
-  // is also why the kit writes the attribute.
-  const css = A._state.compView.getAttribute('style');
-  assert.match(css, /user-select:\s*none/);
-  assert.match(css, /-webkit-touch-callout:\s*none/,
+  const sheet = doc.getElementById('annotate-style');
+  assert.ok(sheet, 'the kit injects one stylesheet, and the lock rides it');
+  assert.match(sheet.textContent, /-webkit-touch-callout:\s*none/,
     'the iOS callout landing over the text is what this is for');
+  assert.match(sheet.textContent, /user-select:\s*none/);
+  assert.match(sheet.textContent, /textarea[^{]*\{[^}]*user-select:\s*text/,
+    'and the one child that needs a real caret opts back out');
+
+  // The inline write that used to hold it happens anyway, and must not matter.
+  A._state.compView.style.gridColumn = '1 / 6';
+  assert.match(doc.getElementById('annotate-style').textContent, /-webkit-touch-callout:\s*none/,
+    'an inline write on the locked element cannot clobber a rule');
   A.disable();
 });
 
@@ -735,15 +746,16 @@ test('the cursor pad moves the caret and not the text', () => {
   assert.deepEqual(S.dict.range, { start: 4, end: 4 }, 'no layout to read, so nothing moved');
   assert.equal(S.dict.text, 'the quick brown fox', 'and the buffer is never what the pad touches');
 
-  // The keyboard brings its own caret, so the pad stands down with the pad of
-  // marks rather than competing with the platform's. It comes back to '' and
-  // not to flex: a button's own inline-block line box is what gives the
-  // control row its height, and as a flex container the pad stood 42px against
-  // its neighbours' 47.8.
+  // The keyboard brings its own caret, so the pad stands down in edit mode. It
+  // DIMS rather than hides: it is a cell in the frame, and a cell that
+  // disappears takes its column with it, which is the one thing a continuous
+  // border cannot survive.
   S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(S.compPad.style.display, 'none');
+  assert.equal(S.compPad.disabled, true);
+  assert.equal(parseFloat(S.compPad.style.opacity), 0.3);
+  assert.notEqual(S.compPad.style.display, 'none', 'the column holds');
   S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(S.compPad.style.display, '');
+  assert.equal(S.compPad.disabled, false);
   A.disable();
 });
 
@@ -760,20 +772,8 @@ test('the card refuses the platform’s selection, and the textarea takes it bac
   const S = A._state;
   const style = (el) => el.getAttribute('style') || '';
 
-  assert.match(style(S.ui), /user-select:\s*none/);
-  assert.match(style(S.ui), /-webkit-touch-callout:\s*none/,
-    'the iOS callout is the half a plain user-select does not cover');
-  assert.match(style(S.compView), /-webkit-touch-callout:\s*none/,
-    'and the read surface says it itself rather than only inheriting');
-
-  // A keyboard needs a real caret, so the one child that opts back out is the
-  // textarea. Both directions matter: locked, iOS will not let you place a
-  // cursor in your own note.
-  assert.match(style(S.compTa), /user-select:\s*text/);
-  assert.match(style(S.compTa), /-webkit-touch-callout:\s*default/);
-
-  // Touch: nothing in the card reaches the page, except the two boxes that
-  // scroll, which take vertical panning back and keep the chain to themselves.
+  // The selection half is a stylesheet rule (see the test above); what stays
+  // inline is TOUCH, which is a real CSSOM property and survives.
   assert.match(style(S.ui), /touch-action:\s*none/);
   for (const [name, node] of [['the read surface', S.compView], ['the note list', S.listEl],
                               ['the editor', S.compTa]]) {
