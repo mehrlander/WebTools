@@ -834,3 +834,40 @@ test('a note row opens a menu, and Edit reopens it in the composer', () => {
   assert.equal(A.items.length, 0);
   A.disable();
 });
+
+test('a drag surface cancels the touch itself, not just its touch-action', () => {
+  // `touch-action: none` is the fix everyone reaches for, and inside a
+  // sheet-presented in-app browser it is not sufficient: the host dismisses on
+  // the web view's SCROLL, and only a cancelled touch event stops one reaching
+  // it. Measured on device across five variants (docs/ios-sheet-drags.md); the
+  // negative result for touch-action alone is the reason this test exists,
+  // since nothing headless can reproduce the dismissal itself.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'page' }, 'a note, so the card has a row');
+  const S = A._state;
+  const touch = (node, type = 'touchstart') => {
+    const e = new window.Event(type, { bubbles: true, cancelable: true });
+    node.dispatchEvent(e);
+    return e.defaultPrevented;
+  };
+
+  // The pad is the drag this was worked out for. Both events, since cancelling
+  // touchstart is what also takes the selection and the callout.
+  assert.equal(touch(S.compPad, 'touchstart'), true);
+  assert.equal(touch(S.compPad, 'touchmove'), true);
+
+  // The card's header is a drag handle too, and it now holds the capture chips.
+  // Cancelling touchstart suppresses the compatibility CLICK, so a chip inside
+  // it must be skipped or it stops working on a phone entirely.
+  // The header is the panel's first child, and the drag handle that moves the
+  // card. (Selected by position rather than by style: the CSSOM re-serializes
+  // `cursor:move` with a space, so a style-substring match is a false negative
+  // waiting to happen.)
+  const header = S.panel.firstChild;
+  assert.ok(header.textContent.includes('Notes'), 'the header, by position');
+  assert.equal(touch(header, 'touchstart'), true, 'the bare header cancels');
+  assert.equal(touch(S.pageChip, 'touchstart'), false,
+    'and a chip inside it does not, or a tap on it would never become a click');
+  A.disable();
+});
