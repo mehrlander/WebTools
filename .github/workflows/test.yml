@@ -25,11 +25,21 @@ name: Tests
 # an open PR with zero checks and nothing said so. The next push to the same PR
 # ran normally, so the trigger is not broken; what correlated was pushing the
 # branch and then its base branch inside the same minute, which moves the merge
-# ref the pull_request event is computed against. Unconfirmed as a cause. The
-# move that does not depend on the cause: after a push you care about, look for a
-# run on the new head sha rather than assuming the trigger fired. A workflow that
-# exists so the platform catches what memory does not is worth exactly nothing on
-# the commit where it silently did not start.
+# ref the pull_request event is computed against.
+#
+# Seen a second time 2026-08-13 on PR #413, and that reading did not survive it.
+# Nothing was pushed to main anywhere near the window: the branch got three
+# pushes, the first two ran, the third produced no run for ten minutes while the
+# previous run sat green on the commit before it. So the base-branch push is not
+# the cause, or not the only one. What the two share is a push landing within a
+# few minutes of the last one on the same PR, which is worth watching but is not
+# yet a claim. Both times the next push ran normally.
+#
+# The move that does not depend on the cause, and it is the same move: after a
+# push you care about, look for a run on the new head sha rather than assuming
+# the trigger fired, and push again if none appears. A workflow that exists so
+# the platform catches what memory does not is worth exactly nothing on the
+# commit where it silently did not start.
 
 on:
   pull_request:
