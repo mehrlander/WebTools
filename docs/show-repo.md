@@ -545,13 +545,27 @@ breakpoint to disagree at any size.
 
 **To-do** is a general, personal checklist: not repo-scoped and not a surface,
 so it keeps its own tiny file, `lists/todo.json` in the registry (`{items: [{id,
-text, done, created_at, done_at, urgent}]}`), rather than reusing the surfaces
-schema. Add a line, check it off, or delete it; a checked item moves into a
-collapsed "done" pile instead of disappearing, so delete is the only way an item
-actually goes away. The flag button marks an item **urgent**: it takes the
-colored left rail the branch and session rows use for state, sorts above the
-rest, and adds a count beside the total. `urgent` is written only when set and
-deleted when cleared, and the done pile ignores it, since a done item is not
+text, done, created_at, done_at, urgent, due}]}`), rather than reusing the
+surfaces schema. Add a line, check it off, or delete it; a checked item moves
+into a collapsed "done" pile instead of disappearing, so delete is the only way
+an item actually goes away.
+
+Two fields say an item needs attention, and they answer the same question by
+different routes. **`urgent`** is the flag button: set by hand, cleared by hand.
+**`due`** is a plain `YYYY-MM-DD` from the date chip, which lays a transparent
+native date input over itself so one tap opens the platform picker. A row is
+**hot** when it is flagged or its date has arrived (today or overdue), and a hot
+row takes the colored left rail the branch and session rows use for state. The
+distinction is the point: a flag has no expiry and decays into noise once a busy
+week has flagged everything, while a date arrives on its own and stops mattering
+on its own.
+
+Open items sort in three bands, soonest first within each and the file's own
+order breaking ties: hot, then dated but not yet, then undated. The chip reads
+forward (`3d late`, `today`, `tomorrow`, `4d`, then the date past a week) and
+colors by band, and the count beside the total is the hot count. Both fields are
+written only when set and deleted when cleared, so "never urgent" and "no longer
+urgent" read identically; the done pile ignores both, since a done item is not
 urgent whatever it was on the way in. Optional keys are honored where present
 and the savers write the parsed items straight back, so a field added by hand or
 by an agent session survives a round trip through this pane. Every mutation writes the whole file straight through the viewer's

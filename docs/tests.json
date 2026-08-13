@@ -923,7 +923,7 @@
       "path": "tools/test/estate-jots.test.mjs",
       "kind": "component",
       "protects": "A jot write merges against a fresh read, so a jot added elsewhere survives; a missing pile is empty rather than an error, and a real load failure is surfaced instead of read as empty.",
-      "assertions": 16,
+      "assertions": 21,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
@@ -943,6 +943,11 @@
         "the registry client is held, not rebuilt per gesture",
         "toggleUrgent sets the flag, and clearing it removes the key",
         "urgent items sort above the rest, keeping file order within each band",
+        "a date that has arrived makes a row hot without anyone flagging it",
+        "the labels read forward, and lateness never abbreviates to a date",
+        "the chip colors by band",
+        "setDue stores a plain date, and anything else clears it",
+        "urgent and due are independent, and either one alone is enough",
         "a long to-do is clipped in the urgent commit message",
         "a key the pane does not know survives a round trip",
         "swapping the registry repo or the token gets a new client"

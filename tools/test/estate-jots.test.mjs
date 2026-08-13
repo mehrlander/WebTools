@@ -227,8 +227,81 @@ test('urgent items sort above the rest, keeping file order within each band', ()
     { id: 'e', text: 'e', done: false, urgent: true },
   ];
   assert.deepEqual([...data.todoOpen.map(i => i.id)], ['b', 'e', 'a', 'd']);
-  assert.deepEqual([...data.todoUrgent.map(i => i.id)], ['b', 'e'],
+  assert.deepEqual([...data.todoHot.map(i => i.id)], ['b', 'e'],
     'the count covers open items only: a done item is not urgent');
+});
+
+// ── due ──────────────────────────────────────────────────────────────────────
+// The temporal half of the same signal. A date arrives on its own and stops
+// mattering on its own, which is the thing the flag cannot do.
+const isoDaysFromNow = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+test('a date that has arrived makes a row hot without anyone flagging it', () => {
+  const late = { id: 'l', text: 'late', done: false, due: isoDaysFromNow(-2) };
+  const today = { id: 't', text: 'today', done: false, due: isoDaysFromNow(0) };
+  const soon = { id: 's', text: 'soon', done: false, due: isoDaysFromNow(2) };
+  const far = { id: 'f', text: 'far', done: false, due: isoDaysFromNow(40) };
+  const none = { id: 'n', text: 'none', done: false };
+  data.todoItems = [none, far, soon, today, late];
+
+  assert.equal(data.isHot(late), true);
+  assert.equal(data.isHot(today), true);
+  assert.equal(data.isHot(soon), false, 'three days out is not a summons');
+  assert.equal(data.isHot(far), false);
+  assert.equal(data.isHot(none), false);
+
+  // Three bands: hot, dated-but-not-yet (soonest first), undated.
+  assert.deepEqual([...data.todoOpen.map(i => i.id)], ['l', 't', 's', 'f', 'n']);
+});
+
+test('the labels read forward, and lateness never abbreviates to a date', () => {
+  assert.equal(data.dueLabel(isoDaysFromNow(-3)), '3d late');
+  assert.equal(data.dueLabel(isoDaysFromNow(0)), 'today');
+  assert.equal(data.dueLabel(isoDaysFromNow(1)), 'tomorrow');
+  assert.equal(data.dueLabel(isoDaysFromNow(4)), '4d');
+  assert.equal(data.dueLabel(isoDaysFromNow(400)), new Date(new Date().setDate(new Date().getDate() + 400))
+    .toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+  assert.equal(data.dueLabel(''), '', 'no date, no label');
+  assert.equal(data.dueLabel('not-a-date'), '');
+});
+
+test('the chip colors by band', () => {
+  assert.equal(data.dueClass(isoDaysFromNow(-1)), 'badge-error');
+  assert.equal(data.dueClass(isoDaysFromNow(0)), 'badge-error');
+  assert.equal(data.dueClass(isoDaysFromNow(2)), 'badge-warning');
+  assert.equal(data.dueClass(isoDaysFromNow(30)), 'badge-ghost');
+});
+
+test('setDue stores a plain date, and anything else clears it', async () => {
+  SAVES = [];
+  data.todoItems = [{ id: 't1', text: 'Internal allotment', done: false }];
+  const it = data.todoItems[0];
+
+  await data.setDue(it, '2026-08-15');
+  assert.equal(it.due, '2026-08-15');
+  assert.match(SAVES.at(-1).message, /^Set "Internal allotment" due 2026-08-15 via show-repo$/);
+
+  const before = SAVES.length;
+  await data.setDue(it, '2026-08-15');
+  assert.equal(SAVES.length, before, 'no write when the value did not change');
+
+  await data.setDue(it, '');                       // the picker's own clear control
+  assert.equal('due' in it, false, 'cleared means absent, not empty');
+  assert.match(SAVES.at(-1).message, /^Clear due date on "Internal allotment" via show-repo$/);
+
+  await data.setDue(it, '2026-8-1');               // half-typed: not a stored value
+  assert.equal('due' in it, false);
+});
+
+test('urgent and due are independent, and either one alone is enough', () => {
+  const flagged = { id: 'a', text: 'a', done: false, urgent: true, due: isoDaysFromNow(60) };
+  assert.equal(data.isHot(flagged), true, 'a flag outranks a distant date');
+  delete flagged.urgent;
+  assert.equal(data.isHot(flagged), false);
 });
 
 // A long text is clipped in the subject the same way every other gesture clips
