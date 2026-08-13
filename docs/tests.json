@@ -923,7 +923,7 @@
       "path": "tools/test/estate-jots.test.mjs",
       "kind": "component",
       "protects": "A jot write merges against a fresh read, so a jot added elsewhere survives; a missing pile is empty rather than an error, and a real load failure is surfaced instead of read as empty.",
-      "assertions": 12,
+      "assertions": 16,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
@@ -941,6 +941,10 @@
         "a write merges against a FRESH read, so a jot added elsewhere survives (the spine regression)",
         "every list read asks to bypass the HTTP cache",
         "the registry client is held, not rebuilt per gesture",
+        "toggleUrgent sets the flag, and clearing it removes the key",
+        "urgent items sort above the rest, keeping file order within each band",
+        "a long to-do is clipped in the urgent commit message",
+        "a key the pane does not know survives a round trip",
         "swapping the registry repo or the token gets a new client"
       ]
     },

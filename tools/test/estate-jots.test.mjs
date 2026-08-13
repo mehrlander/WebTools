@@ -199,6 +199,62 @@ test('the registry client is held, not rebuilt per gesture', async () => {
   assert.equal(data.regGH(), first, 'and they all share the one the writes cache their shas on');
 });
 
+// ── urgent ───────────────────────────────────────────────────────────────────
+// The one flag the list carries. Written only when set and deleted when
+// cleared, so "never urgent" and "no longer urgent" read identically in the
+// file and the shape stays the smallest thing that works.
+test('toggleUrgent sets the flag, and clearing it removes the key', async () => {
+  SAVES = [];
+  data.todoItems = [{ id: 't1', text: 'Internal allotment by August 15', done: false, created_at: '2026-08-06T00:00:00Z' }];
+  const it = data.todoItems[0];
+
+  await data.toggleUrgent(it);
+  assert.equal(it.urgent, true);
+  assert.equal(SAVES.at(-1).value.items[0].urgent, true);
+  assert.match(SAVES.at(-1).message, /^Flag "Internal allotment by August 15" urgent via show-repo$/);
+
+  await data.toggleUrgent(it);
+  assert.equal('urgent' in it, false, 'cleared means absent, not false');
+  assert.match(SAVES.at(-1).message, /^Clear urgent on "Internal allotment by August 15" via show-repo$/);
+});
+
+test('urgent items sort above the rest, keeping file order within each band', () => {
+  data.todoItems = [
+    { id: 'a', text: 'a', done: false },
+    { id: 'b', text: 'b', done: false, urgent: true },
+    { id: 'c', text: 'c', done: true, urgent: true },   // done, so not in the open list at all
+    { id: 'd', text: 'd', done: false },
+    { id: 'e', text: 'e', done: false, urgent: true },
+  ];
+  assert.deepEqual([...data.todoOpen.map(i => i.id)], ['b', 'e', 'a', 'd']);
+  assert.deepEqual([...data.todoUrgent.map(i => i.id)], ['b', 'e'],
+    'the count covers open items only: a done item is not urgent');
+});
+
+// A long text is clipped in the subject the same way every other gesture clips
+// it, so the file's history stays readable as a log.
+test('a long to-do is clipped in the urgent commit message', async () => {
+  SAVES = [];
+  data.todoItems = [{ id: 't1', text: 'y'.repeat(100), done: false }];
+  await data.toggleUrgent(data.todoItems[0]);
+  assert.match(SAVES.at(-1).message, /^Flag "y{59}…" urgent via show-repo$/);
+});
+
+// The pane must not be the only thing that can write this field: the file is
+// hand-editable and an agent session drains it, and the savers write the parsed
+// items straight back. This is the property that made `urgent` possible to add
+// without a migration, so it is worth holding.
+test('a key the pane does not know survives a round trip', async () => {
+  SAVES = [];
+  FILES = { 'lists/todo.json': { items: [{ id: 't1', text: 'x', done: false, due: '2026-08-15', urgent: true }] } };
+  await data.loadTodos(reg());
+  await data.toggleTodo(data.todoItems[0]);
+  const saved = SAVES.at(-1).value.items[0];
+  assert.equal(saved.due, '2026-08-15', 'an unrecognized field is preserved');
+  assert.equal(saved.urgent, true);
+  assert.equal(saved.done, true);
+});
+
 test('swapping the registry repo or the token gets a new client', () => {
   const before = data.regGH();
   window.TOKEN = 'different';

@@ -545,10 +545,16 @@ breakpoint to disagree at any size.
 
 **To-do** is a general, personal checklist: not repo-scoped and not a surface,
 so it keeps its own tiny file, `lists/todo.json` in the registry (`{items: [{id,
-text, done, created_at, done_at}]}`), rather than reusing the surfaces schema.
-Add a line, check it off, or delete it; a checked item moves into a collapsed
-"done" pile instead of disappearing, so delete is the only way an item actually
-goes away. Every mutation writes the whole file straight through the viewer's
+text, done, created_at, done_at, urgent}]}`), rather than reusing the surfaces
+schema. Add a line, check it off, or delete it; a checked item moves into a
+collapsed "done" pile instead of disappearing, so delete is the only way an item
+actually goes away. The flag button marks an item **urgent**: it takes the
+colored left rail the branch and session rows use for state, sorts above the
+rest, and adds a count beside the total. `urgent` is written only when set and
+deleted when cleared, and the done pile ignores it, since a done item is not
+urgent whatever it was on the way in. Optional keys are honored where present
+and the savers write the parsed items straight back, so a field added by hand or
+by an agent session survives a round trip through this pane. Every mutation writes the whole file straight through the viewer's
 token (`gh-store.js`'s `save`), the same as a surface edit, so it is durable
 across browsers and devices, not a per-browser `localStorage` list. Token-gated
 like Surfaces: no token, no list.
