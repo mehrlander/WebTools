@@ -561,6 +561,57 @@ test('two taps in a run open the keyboard, with the caret where they landed', ()
     // than a select-all that no longer exists: once the read surface is gone
     // the platform's own gesture is where a reader looks for it.
     A.disable();
+
+    // AND FROM THE CANVAS. Tapping the empty space under the words is the
+    // gesture that most obviously means "let me type here", and it was the one
+    // place the double did nothing: the canvas used to win before the count,
+    // so a tap past the text could never be part of a run. The caret lands at
+    // the end, which is what a tap there has always meant.
+    window.Dictate.hitsText = () => false;
+    A.enable({ doc, subject: { title: 'x', url: '' } });
+    const S2 = A._state;
+    S2.dict.text = 'the quick brown fox';
+    A._paintDraft();
+    tap2(S2); tap2(S2);
+    assert.equal(S2.editing, true, 'a double on the canvas opens it too');
+    assert.equal(S2.compTa.selectionStart, 19, 'at the end');
+    A.disable();
+  } finally { window.Dictate.hitsText = realHits; delete doc.caretRangeFromPoint; }
+});
+
+function tap2(S) {
+  const e = new S.compView.ownerDocument.defaultView.Event('pointerup', { bubbles: true });
+  e.clientX = 20; e.clientY = 20;
+  S.compView.dispatchEvent(e);
+}
+
+test('arming a pin ends a tap run', () => {
+  // pointerdown already armed or disarmed the pin, and counting the pointerup
+  // as well made "tap a pin, then tap the text" a double, which now opens the
+  // keyboard on the gesture that is meant to move the edge. Measured in a real
+  // browser first, where a scenario's pin tap and the canvas tap 120ms later
+  // came back as one double.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  const realHits = window.Dictate.hitsText;
+  window.Dictate.hitsText = () => true;
+  try {
+    A.enable({ doc, subject: { title: 'x', url: '' } });
+    const S = A._state;
+    S.dict.text = 'the quick brown fox';
+    S.dict.select(4, 9);
+    S.compArmed = 'end';
+    A._paintDraft();
+    doc.caretRangeFromPoint = () => ({ startContainer: S.compBody.firstChild, startOffset: 2 });
+
+    const p = S.compStack.querySelector('[data-edge="end"]');
+    assert.ok(p, 'the pin is painted');
+    const up = new window.Event('pointerup', { bubbles: true });
+    up.clientX = 20; up.clientY = 20;
+    p.dispatchEvent(up);
+    tap2(S);
+    assert.equal(S.editing, false, 'the tap after a pin is a first tap, not a second');
+    A.disable();
   } finally { window.Dictate.hitsText = realHits; delete doc.caretRangeFromPoint; }
 });
 

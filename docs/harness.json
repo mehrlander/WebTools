@@ -401,9 +401,9 @@
     },
     {
       "path": "tools/render/scenarios/annotate-canvas-tap.mjs",
-      "role": "the two readings of a tap on the blank canvas below the last line: with a pin armed it takes that pin to the end of the buffer (select-to-end, the extent with no other gesture), and with nothing armed it is still the one-tap way out of selection mode. Both need layout, since jsdom has no client rects for hitsText to tell canvas from text",
+      "role": "the three readings of a tap on the blank canvas below the last line: with a pin armed it takes that pin to the end of the buffer (select-to-end, the extent with no other gesture), with nothing armed it is still the one-tap way out of selection mode, and doubled it opens the keyboard with the caret at the end. All need layout, since jsdom has no client rects for hitsText to tell canvas from text",
       "layer": "tools/render/scenarios",
-      "lines": 70,
+      "lines": 84,
       "invocation": "driver",
       "emits": false,
       "named": false,

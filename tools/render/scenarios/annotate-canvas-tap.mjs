@@ -58,6 +58,20 @@ export default async (page) => {
     range: window.Annotate._state.dict.range,
   }))));
 
+  // And a DOUBLE on the canvas opens the keyboard with the caret at the end,
+  // which is the same place the single tap means.
+  await page.waitForTimeout(400);
+  await page.mouse.click(at.x, at.y);
+  await page.waitForTimeout(60);
+  await page.mouse.click(at.x, at.y);
+  await page.waitForTimeout(250);
+  console.log('CANVASDOUBLE ' + JSON.stringify(await page.evaluate(() => {
+    const S = window.Annotate._state;
+    return { editing: S.editing, caret: S.compTa.selectionStart, len: S.compTa.value.length };
+  })));
+  await page.evaluate(() => window.Annotate._state.compEdit.click());
+  await page.waitForTimeout(200);
+
   // Back to the armed case, so the shot shows the state this exists for.
   await page.evaluate(() => {
     const S = window.Annotate._state;
