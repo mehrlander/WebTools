@@ -746,3 +746,39 @@ test('the cursor pad moves the caret and not the text', () => {
   assert.equal(S.compPad.style.display, '');
   A.disable();
 });
+
+test('the card refuses the platform’s selection, and the textarea takes it back', () => {
+  // The card runs a selection mechanism of its own, so the platform's is not a
+  // fallback but a competitor: a long press over any of this furniture (the
+  // caption, a note row, the painted buffer) means "select this word" to the
+  // browser, and that is what came back from the field on 2026-08-12. The lock
+  // sits on the card rather than on the read surface, because the card is what
+  // a thumb lands on. It is also no longer conditional on the dictation kit
+  // having loaded first, which made it a lock that was off exactly when
+  // nothing was watching.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  const style = (el) => el.getAttribute('style') || '';
+
+  assert.match(style(S.ui), /user-select:\s*none/);
+  assert.match(style(S.ui), /-webkit-touch-callout:\s*none/,
+    'the iOS callout is the half a plain user-select does not cover');
+  assert.match(style(S.compView), /-webkit-touch-callout:\s*none/,
+    'and the read surface says it itself rather than only inheriting');
+
+  // A keyboard needs a real caret, so the one child that opts back out is the
+  // textarea. Both directions matter: locked, iOS will not let you place a
+  // cursor in your own note.
+  assert.match(style(S.compTa), /user-select:\s*text/);
+  assert.match(style(S.compTa), /-webkit-touch-callout:\s*default/);
+
+  // Touch: nothing in the card reaches the page, except the two boxes that
+  // scroll, which take vertical panning back and keep the chain to themselves.
+  assert.match(style(S.ui), /touch-action:\s*none/);
+  for (const [name, node] of [['the read surface', S.compView], ['the note list', S.listEl],
+                              ['the editor', S.compTa]]) {
+    assert.match(style(node), /touch-action:\s*pan-y/, name + ' scrolls');
+    assert.match(style(node), /overscroll-behavior:\s*contain/, name + ' keeps its overscroll');
+  }
+  A.disable();
+});
