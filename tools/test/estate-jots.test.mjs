@@ -13,13 +13,17 @@ const REGISTRY = 'me/registry';
 
 let FILES = {};    // "<path>" -> parsed JSON served from the registry
 let SAVES = [];    // every save call: { repo, path, value, message }
+let READS = [];    // every get call: { path, opts }
+let BUILT = 0;     // how many GH instances the component has constructed
 
 class FakeGH {
-  constructor(conf = {}) { this.repo = conf.repo || ''; this.ref = conf.ref || 'main'; }
+  static FRESH = { cache: 'no-store' };
+  constructor(conf = {}) { this.repo = conf.repo || ''; this.ref = conf.ref || 'main'; BUILT++; }
   ago() { return 'recently'; }
   async repos() { return []; }
   async ls() { return []; }
-  async get(name) {
+  async get(name, opts) {
+    READS.push({ path: name, opts });
     if (this.repo === REGISTRY && FILES[name]) return { text: JSON.stringify(FILES[name]) };
     throw Object.assign(new Error('404'), { status: 404 });
   }
@@ -155,4 +159,50 @@ test('a write merges against a FRESH read, so a jot added elsewhere survives (th
   FILES['lists/jots.json'] = SAVES.at(-1).value;
   await data.deleteJot({ id: 'jB', text: 'B' });
   assert.deepEqual([...SAVES.at(-1).value.items.map(i => i.text)], ['A', 'C']);
+});
+
+// The test above passed for months against a read that was not fresh at all.
+// A fake GH has no HTTP cache, so nothing in this file could see that the real
+// one was answering the merge read out of the browser's 60-second cache and
+// handing the mutation a pre-write copy. The only thing a unit test can hold is
+// the option itself, so it holds it: every list read carries GH.FRESH.
+test('every list read asks to bypass the HTTP cache', async () => {
+  for (const [load, path] of [[data.loadJots, 'lists/jots.json'],
+                              [data.loadTodos, 'lists/todo.json'],
+                              [data.loadPins, 'lists/pins.json']]) {
+    READS = [];
+    await load.call(data, reg());
+    assert.equal(READS.length, 1, path + ': one read');
+    assert.equal(READS[0].path, path);
+    assert.equal(READS[0].opts?.cache, 'no-store', path + ': a list read feeds a write, so it must be fresh');
+  }
+  // And the read a jot write merges against, which is the one with a documented
+  // lost-update guard behind it.
+  READS = []; FILES = { 'lists/jots.json': { items: [] } };
+  data.jotDraft = 'x';
+  await data.addJot();
+  assert.equal(READS.at(-1).opts?.cache, 'no-store');
+});
+
+// gh-store keeps the sha a successful write returns on the GH instance, and
+// that record is the only copy of it the browser can trust for the next minute.
+// Minting a GH per gesture threw it away and left the following write to
+// rediscover the sha through the cache that could not have it: one check-off
+// poisoned the next. Measured 2026-08-13; the account is on GH.FRESH.
+test('the registry client is held, not rebuilt per gesture', async () => {
+  const first = data.regGH();
+  BUILT = 0;
+  await data.saveTodos('probe');
+  await data.savePins('probe');
+  await data.reloadTodos();
+  assert.equal(BUILT, 0, 'no gesture builds its own client');
+  assert.equal(data.regGH(), first, 'and they all share the one the writes cache their shas on');
+});
+
+test('swapping the registry repo or the token gets a new client', () => {
+  const before = data.regGH();
+  window.TOKEN = 'different';
+  const after = data.regGH();
+  assert.notEqual(after, before, 'a new token must not write through the old identity');
+  window.TOKEN = 'tkn';
 });

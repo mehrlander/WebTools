@@ -923,7 +923,7 @@
       "path": "tools/test/estate-jots.test.mjs",
       "kind": "component",
       "protects": "A jot write merges against a fresh read, so a jot added elsewhere survives; a missing pile is empty rather than an error, and a real load failure is surfaced instead of read as empty.",
-      "assertions": 9,
+      "assertions": 12,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
@@ -938,7 +938,10 @@
         "jotPile orders newest first regardless of stored order",
         "deleteJot removes the item and saves the remainder",
         "the to-do list also lives under lists/ (moved out of state/)",
-        "a write merges against a FRESH read, so a jot added elsewhere survives (the spine regression)"
+        "a write merges against a FRESH read, so a jot added elsewhere survives (the spine regression)",
+        "every list read asks to bypass the HTTP cache",
+        "the registry client is held, not rebuilt per gesture",
+        "swapping the registry repo or the token gets a new client"
       ]
     },
     {
@@ -1249,7 +1252,7 @@
       "path": "tools/test/gh-store.test.mjs",
       "kind": "behavior",
       "protects": "saveBytes writes byte-exact content, so a binary round-trip cannot be silently re-encoded.",
-      "assertions": 8,
+      "assertions": 11,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -1261,7 +1264,10 @@
         "a 409 recovers by refetching the SHA and retrying",
         "the instance ref rides the PUT as branch; empty ref stays default",
         "repeated conflicts keep retrying, backing off, until one lands",
-        "a branch that never stops conflicting gets a bounded number of attempts"
+        "a branch that never stops conflicting gets a bounded number of attempts",
+        "the conflict refetch reads past the HTTP cache",
+        "del reads its sha past the HTTP cache",
+        "a successful write leaves the new sha on the instance for the next one"
       ]
     },
     {
