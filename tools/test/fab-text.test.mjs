@@ -94,6 +94,29 @@ test('setTab switches the pane and runs the tab’s opener', async () => {
   assert.equal(ran, 1, 'opening a tab runs its opener, once');
 });
 
+test('the strip’s one label names the selected tab, and is derived', async () => {
+  const d = await mountFab();
+  for (const t of [...d.TABS]) {
+    d.activeTab = t.key;
+    assert.equal(d.tabLabel, t.label, `the slot names ${t.key}`);
+  }
+
+  // A getter, not stored state. The label sits in its own slot away from the
+  // buttons, so a copy that drifted would name one tab while another was
+  // highlighted, and nothing on screen would resolve the disagreement.
+  //
+  // Asserted against the source, because the shape is not reachable at runtime:
+  // Alpine's reactive proxy reports no descriptor for an accessor at all, own
+  // or inherited, and Alpine.raw returns the same proxy through this harness.
+  // So a runtime check here cannot tell a getter from a stored value, which is
+  // exactly the distinction being made.
+  assert.match(SRC, /get tabLabel\(\)/,
+    'tabLabel must be derived from activeTab, not stored beside it');
+
+  d.activeTab = 'nonesuch';
+  assert.equal(d.tabLabel, '', 'an unknown tab empties the slot rather than throwing');
+});
+
 test('the read separates body prose from chrome, and counts runs', async () => {
   const d = await mountFab();
   const r = d._textRead(docWith(PROSE));

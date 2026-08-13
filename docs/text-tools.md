@@ -155,16 +155,37 @@ document's first recommendation. It is honest about their relationship but it
 charges a tap on every visit to the second of them, and it solves the width
 problem only once: a sixth tab would reopen it.
 
-**The label rides the selected tab alone.** This is what was built. An icon says
-what a tab *would* do, and the reader has already decided that; the name of what
-is in front of them is the one place a label is not redundant. Four icons plus
-one label costs about 195px of 348px, so a sixth tab fits without another
-ratchet, and an unselected tab keeps its name in `title` and `aria-label` so
-hover and a screen reader both still say it. The strip is now data
-(`TABS` in [`fab.js`](../lib/alpineComponents/fab.js)), and
-[`fab-text.test.mjs`](../tools/test/fab-text.test.mjs) fails if a tab has no
-pane, since under this rule a paneless tab does not even carry a name to explain
-itself.
+**The label rides the selected tab.** Built, and then replaced, and the way it
+was wrong is the useful part. Putting the active tab's name inside its own
+button fits, and it reflows: the label grows in whichever button is selected, so
+every icon to its right shifts on every tap.
+
+A tab strip is a **spatial memory**. The third icon is Traffic, always, and a
+reader who has used the strip twice reaches for a position rather than reading a
+row. A strip that rearranges itself cannot be one. Measured at 390px, the five
+tab states produced five distinct layouts and an icon travelled up to **49px**
+between two of them, about 1.6 icon widths, far enough to put a different tab
+under the finger that just tapped.
+
+**One label, in a fixed slot at the left.** This is what shipped. The slot names
+whichever tab is selected and the icons after it hold one set of coordinates for
+the life of the strip, whatever is active and however long its name. Reading
+order follows: what you are looking at, then what you could switch to. The slot
+is sized to the longest label rather than to its content, since a slot that
+resizes is the same bug moved one element to the left. The label is not a
+control and carries no button styling; it takes the selected icon's colour,
+which is what ties the two together and why the icon keeps its pill.
+
+Two checks hold it. [`fab-text.test.mjs`](../tools/test/fab-text.test.mjs) fails
+if a tab has no pane, since under this rule a paneless tab does not even carry a
+name to explain itself, and pins the label as derived from `activeTab` rather
+than stored beside it.
+[`fab-tabstrip-geometry.mjs`](../tools/test/fab-tabstrip-geometry.mjs)
+(`npm run test:tabstrip`) measures the icons in a real browser at 390px and
+fails on more than one layout. It is a browser check rather than a suite test
+because jsdom lays nothing out, so every rectangle there is zero; it was
+confirmed against the previous layout as a negative control, where it reports
+the five layouts and the 49px.
 
 ## What was built, and the two things the build corrected
 

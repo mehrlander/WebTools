@@ -1158,16 +1158,27 @@
       ]
     },
     {
+      "path": "tools/test/fab-tabstrip-geometry.mjs",
+      "kind": "behavior",
+      "protects": "The FAB's tab icons hold identical coordinates in every tab state, so the strip stays a spatial memory; measured in a real browser at 390px, which jsdom cannot do.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:tabstrip",
+      "boot_smoke": null,
+      "assertion_names": null
+    },
+    {
       "path": "tools/test/fab-text.test.mjs",
       "kind": "behavior",
       "protects": "The drawer's fifth tab reports only what it can stand behind: the app-versus-document gate reads the signal that was measured to separate them, and the prose checks stay off pages whose text is labels.",
-      "assertions": 6,
+      "assertions": 7,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
       "assertion_names": [
         "the strip is data, and every tab in it has a pane",
         "setTab switches the pane and runs the tab’s opener",
+        "the strip’s one label names the selected tab, and is derived",
         "the read separates body prose from chrome, and counts runs",
         "the app gate reads words per run, which is the signal that separates",
         "the prose checks ignore what is not prose",
