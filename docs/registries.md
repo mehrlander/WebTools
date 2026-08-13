@@ -31,14 +31,35 @@ integrity layer: gates are this system's foreign keys, because git has none.
 
 | Word | Means | Examples here |
 | --- | --- | --- |
+| **target** | the thing a registry asserts about; not always a file | a docs path, a page, a manifest key, a prose field name, a task |
 | **property** | a recognized attribute that may be asserted about a target | role, protects, reach, creation_mode |
+| **assertion** | one target's value for one property; a blank is not an assertion | `docs/venues.md . status = living` |
 | **scope** | the population a declaration covers | the docs shelf, the harness shelf, a project |
 | **registry** | the authoritative committed record of assertions | docs.json, tests.json, harness.json, portable.json |
+| **carrier** | the committed file a registry is stored in; not one to one, since one file may carry several registries | docs/routes.json carries three |
+| **gate** | the test that fails when a carrier and the repo disagree; this system's foreign keys, because git has none | properties-registry.test.mjs |
+| **declaration** | binds `scope × property → registry`: which registry owns a property, and how hard | a row in properties.json's `declarations` |
 | **census** | a registry whose scope is intensional: a predicate over the tree; coverage gated, blanks counted | docs.json, tests.json, harness.json |
 | **catalog** | a registry whose scope is extensional: the rows are the membership, curation is the definition | portable.json, tools.json, content.csv |
+| **crosswalk** | a catalog that curates *which* targets belong and leaves their description to the census that owns them | tools.json over pages.json |
 | **properties registry** | the declaration table: every property's registry, mode, and enforcement | properties.json |
+| **area** | which of three questions a registry answers, the reader's grouping | contents, conventions, presentation |
 | **shelf** | a tree-defined population, the usual way a census scope is written | docs/, tools/test/, tools/ + scripts/ |
 | **projection** | a generated view of registry data, never authoritative, never edited | tracker board.md, docs/README.md |
+
+**Carrier, gate and target were used from the start and defined nowhere**, which
+is how this table came to be audited on 2026-08-13: `carrier` ran to 225 uses
+across 26 files and `gate` to 154 across 39, and `carrier` was load-bearing
+inside the one definition that did exist ("a **registry** is the committed
+carrier of assertions"), so the defined term rested on an undefined one. The
+repo's own vocabulary tool could not see either, by construction: `vocab.py`
+tiers a term `assumed` only when it is multi-word or hyphenated, so a bare
+undeclared noun is invisible to it however often it runs. Nothing was going to
+find these but a reader.
+
+Two of the rows above are new mechanisms rather than back-filled words.
+**Crosswalk** names the shape two catalogs had already grown into, and **area**
+is the grouping the Registries tab renders. Both are gated.
 
 Census and catalog are not two species of registry; they are two ways of
 giving the scope. That is also why a catalog can never carry a coverage gate:
@@ -62,6 +83,66 @@ the point. Property assertions have **ownership** semantics, one authoritative
 answer per pair. Overlay resolves quietly; ownership must fail loudly, because
 knowing that two registries contend is the entire value of the governance
 layer.
+
+### The gate that was missing, and what it found
+
+The paragraph above was written on 2026-08-08 and nothing read it until
+2026-08-13. Its own gate did not exist: `properties-registry.test.mjs` held six
+checks and every one of them compared a registry against **its own** carrier,
+so the one rule requiring a cross-registry read was the only rule with nothing
+behind it. It was false in two places when the gate first ran:
+
+| Pair | Property | Targets | State |
+| --- | --- | --- | --- |
+| harness-census × portable-catalog | `role` | 9 scripts | paraphrases; `text-census.py` already stale, harness knowing about `.mjs` and `.py` and portable not |
+| pages-catalog × tools-gallery | `title`, `note` | 4 pages | `note` differed on all four, `title` on one |
+
+Both are now resolved by **inheritance**, and the manner matters more than the
+fix. A rename would have satisfied the gate while leaving one claim stored
+twice, which is worse than the collision it hides: the duplication survives and
+the instrument that could find it is defused. So the rule is: decide which
+registry owns the claim, blank it in the other, join at render time.
+
+The gate decides on **assertions, not declarations**. Two registries may declare
+the same property name, which is common and fine (`kind`, `role`, `title` and
+`note` all recur); what fails is both carrying a **value** for it on one target.
+That is what lets a crosswalk declare a property it fills only where no census
+owns it: portable-catalog still declares `role`, blank on the nine scripts and
+present on the seventeen skills, whose `skills-catalog` row carries a
+model-facing trigger description rather than a reader's one-liner.
+
+Comparison needs an identity space, since the same page is `annotate.html` to
+the pages catalog and `pages/annotate.html` to the tools shelf. A registry
+declares `identity`: `path` where its key is a repo-relative path,
+`path:<prefix>` where it is relative to one, absent where the key is opaque. An
+opaque target never collides, which is honest rather than lax: a route key and a
+docs path are not the same kind of name, so no comparison of them means
+anything. Matching is exact, so `content.csv`'s directory locators do not
+collide with the files beneath them; nesting stays a scope question, handled by
+subtraction as above.
+
+One more thing the fix needed, and it generalizes past this rule: **a gate that
+passes on a clean tree would pass identically if it were broken.** The suite
+therefore drives the same normalizer with a synthetic pair, so the detector is
+held to detecting.
+
+### The crosswalk shape
+
+Both resolutions produced the same object, so it has a name. A **crosswalk** is
+a catalog that curates *which* targets belong to something and leaves each
+target's description to the census that owns it. `docs/tools.json` asserts only
+which pages the Tools view shelves and what icon each gets; `docs/portable.json`
+asserts only what travels, how a consumer takes it, and its invocation.
+
+The count does not fall when a registry becomes one. Reshaping tools-gallery
+leaves sixteen registries, not fifteen: a crosswalk asserting `icon` about a
+page is still a registry with a target and a property. What goes away is the
+duplication, which is the better win and worth naming as itself.
+
+A crosswalk pays for its shape with a gate of its own, because dropping a field
+makes a new silent failure possible: a shelved row whose page is gone renders
+with no title and no description at all. So every `tools.json` row must resolve
+to a row in `pages/pages.json`, checked.
 
 ## Declarations
 
@@ -90,6 +171,59 @@ early symptom of an unaccounted classification, which is the drift this
 instrument exists to catch. Registry-level blocks (a note, a glossary) are the
 carrier's own metadata and outside the rule. Files the registry does not
 govern are untouched by it.
+
+**What no registry reaches at all** is the prose living inside `.js` and
+`.html`. [`data/design/content.csv`](../data/design/content.csv) covers it by
+declaring it `exclude`, which is an honest accounting rather than a fix;
+[`text-content.md`](text-content.md) measures what that hides and proposes a
+carrier for it.
+
+**The index governs the carriers and nothing governed the index.** A registry
+row in `properties.json` was itself an unaccounted classification: the field
+check above reaches into the carriers and cannot reach the file it reads them
+from, because that file is the index rather than a peer among the sixteen. So
+the gate now applies the same rule to itself, holding the registry row to a
+named field set. Adding a field to a registry row is a deliberate act that has
+to change a test, on the same reasoning as `fields: ungoverned`.
+
+## The reader's view
+
+Three fields exist for the person reading the tab rather than for the model, and
+they are declared and gated like everything else, because a classification held
+in a renderer's source is exactly the unaccounted kind.
+
+- **title**: the identity, two or three words. "Documentation inventory", "Test
+  coverage map", "Renderer dispatch table". A reader meets this before the
+  mechanics.
+- **gloss**: one sentence on what the registry governs, for someone who does not
+  already know. Every *declaration* carried a gloss from the start and no
+  *registry* did, and closing that asymmetry is what these two fields are.
+- **area**: which of three questions the registry answers.
+
+| Area | The membership question | Count |
+| --- | --- | --- |
+| **contents** | Is the target an artifact in this tree? | 9 |
+| **conventions** | Is the target a name the estate settled on? | 3 |
+| **presentation** | Is the target a way of getting something in front of a reader? | 4 |
+
+The question is the point, not the label. Without a stated rule the grouping is
+re-litigated on every addition, and three of the sixteen were genuinely
+arguable: `manifest-fields` governs how show-repo presents a repo, which reads
+as presentation, and `showing-mechanisms` and `surfacing-index` are working
+conventions that live in `SURFACING.md`. Keying strictly on the **target**
+settles all three, because that is what the model already says a registry
+asserts about.
+
+Contents takes 9 of 16, so the split does little sorting there. That is accepted
+rather than fixed: a mechanical rule anyone can apply cold is worth more than a
+balanced one that needs a judgment call.
+
+Two naming notes, both collisions caught before they landed. `domain` was the
+first candidate for `area` and means the permissible value set throughout this
+document. `family` was the second and is already `owners.kind`'s value for a row
+that declares a rule over a scope. `title` was preferred to `label` because five
+registries already use `title` for a display name while `pages-catalog.label` is
+the slug.
 
 ## Storage rules
 

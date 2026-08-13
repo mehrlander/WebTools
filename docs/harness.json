@@ -940,6 +940,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/map-registries.mjs",
+      "role": "drive the Map view's Registries tab for a screenshot, serving the real docs/properties.json through a stubbed GH so a tokenless render still shows the three areas and the cards",
+      "layer": "tools/render/scenarios",
+      "lines": 53,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/map-set-adoption.mjs",
       "role": "the Map's first two tabs, both halves populated",
       "layer": "tools/render/scenarios",
