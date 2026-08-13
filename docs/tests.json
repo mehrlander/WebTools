@@ -1986,7 +1986,7 @@
       "path": "tools/test/repo-mailbox.test.mjs",
       "kind": "behavior",
       "protects": "Pending returns request files with no matching result, which is the whole mailbox protocol.",
-      "assertions": 6,
+      "assertions": 10,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -1996,7 +1996,11 @@
         "fulfill tree flattens the recursive tree",
         "fulfill branches maps name + tip sha",
         "fulfill fetch isolates per-file errors",
-        "fulfill captures a bad request without touching the network"
+        "fulfill captures a bad request without touching the network",
+        "isAsk keys on the record, not on whether it validates",
+        "fulfill refuses an ask, which is exactly why the caller must skip it first",
+        "validateAsk wants prose and a destination",
+        "closeAsk records both outcomes as served, and refuses a bare decline"
       ]
     },
     {
@@ -2341,6 +2345,22 @@
       ]
     },
     {
+      "path": "tools/test/show-repo-mailbox.test.mjs",
+      "kind": "behavior",
+      "protects": "An `ask` survives a page load. fulfill() returns a result for an unsupported kind and writing a result is what marks a request answered, so an ask reaching the fulfil loop would be closed by its own rejection before anyone saw it; the guard keys on the record, not on whether it validates.",
+      "assertions": 5,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "an ask is skipped by the fulfil loop, so no result is written for it",
+        "a malformed ask is skipped too, since the guard reads the kind not the verdict",
+        "the read kinds still fulfil, so the guard did not switch the channel off",
+        "an ask alongside a read kind blocks neither",
+        "an already-answered ask is not listed as pending"
+      ]
+    },
+    {
       "path": "tools/test/show-repo-overlay.test.mjs",
       "kind": "behavior",
       "protects": "With no overlay the cache is served as-is and no per-repo reads happen.",
@@ -2475,7 +2495,7 @@
       "path": "tools/test/stage.test.mjs",
       "kind": "component",
       "protects": "The stage: membership, grouping, the diff lens, saving, and the cross-repo address grammar.",
-      "assertions": 75,
+      "assertions": 80,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [
@@ -2556,7 +2576,12 @@
         "three taps in a run take the whole buffer",
         "the third tap counts even when it lands on the pin the second one painted",
         "the keyboard mode does not wear a microphone",
-        "Done resumes dictation only if the keyboard interrupted it"
+        "Done resumes dictation only if the keyboard interrupted it",
+        "askAge is coarse, and says nothing when the record carries no date",
+        "askTaskUrl links the citation, and stays quiet without one",
+        "loadAsks keeps valid asks and drops everything it cannot use",
+        "resolveAsk writes the result that closes it, and drops the row",
+        "resolveAsk refuses a decline with no reason, and leaves the row standing"
       ]
     },
     {

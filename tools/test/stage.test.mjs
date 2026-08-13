@@ -53,6 +53,10 @@ const Alpine = await startAlpine(window, [
   // the pre-build boots both in this position for the same reason.
   'lib/kits/url-params.js',
   'lib/kits/repo-address.js',
+  // The mailbox kit: the stage reads its `ask` kind, the one the browser cannot
+  // fulfil. show-repo loads every kit before any component, so this mirrors the
+  // page's own order rather than adding a dependency the page lacks.
+  'lib/kits/repo-mailbox.js',
   'lib/kits/surface.js',
   'lib/kits/text-diff.js',
   'lib/alpineComponents/drop-zone.js',
@@ -1335,4 +1339,90 @@ test('Done resumes dictation only if the keyboard interrupted it', async () => {
   assert.equal(data.dictOn, false,
     'Done does not switch the microphone on for a reader who had it off');
   data.dictCancel();
+});
+
+// ---- asks: what a session wants FROM you ---------------------------------
+// The mailbox's fourth kind. The other three are deferred reads from a repo and
+// answer themselves on page load; this one waits for a person, so the stage is
+// where it is read and closed.
+
+test('askAge is coarse, and says nothing when the record carries no date', () => {
+  assert.equal(data.askAge(''), '');
+  assert.equal(data.askAge('not-a-date'), '', 'a guess would be worse than silence');
+  assert.equal(data.askAge(new Date().toISOString()), 'today');
+  assert.equal(data.askAge(new Date(Date.now() - 86400000 * 1).toISOString()), '1 day');
+  assert.equal(data.askAge(new Date(Date.now() - 86400000 * 9).toISOString()), '9 days');
+});
+
+test('askTaskUrl links the citation, and stays quiet without one', () => {
+  assert.equal(data.askTaskUrl({ task: 'mehrlander/home:projects/wps/tracker/tasks/x.md' }),
+    'https://github.com/mehrlander/home/blob/HEAD/projects/wps/tracker/tasks/x.md');
+  assert.equal(data.askTaskUrl({ task: 'mehrlander/home@main:t.md' }),
+    'https://github.com/mehrlander/home/blob/main/t.md');
+  assert.equal(data.askTaskUrl({}), '');
+  assert.equal(data.askTaskUrl({ task: 'nonsense' }), '');
+});
+
+test('loadAsks keeps valid asks and drops everything it cannot use', async () => {
+  const requests = {
+    'ask-ok.json': { id: 'ask-ok', kind: 'ask', note: 'the PowerShell files', dest: 'me/dest:projects/wps/dump' },
+    'ask-bad.json': { id: 'ask-bad', kind: 'ask' },              // no note or dest
+    'br.json': { id: 'br', kind: 'branches', repo: 'me/open' },  // a read kind, not ours
+    'junk.json': '<<<not json>>>',
+  };
+  window.__shell = { REGISTRY_REPO: 'me/registry' };
+  data.srcGh = () => ({
+    async ls(dir) {
+      if (dir === 'mailbox/requests') return Object.keys(requests).map(name => ({ name, type: 'file' }));
+      return [];
+    },
+    async get(p) {
+      const name = p.split('/').pop();
+      const v = requests[name];
+      if (v === undefined) throw new Error('404');
+      return { text: typeof v === 'string' ? v : JSON.stringify(v) };
+    },
+  });
+  await data.loadAsks();
+  assert.deepEqual(plain_(data.asks.map(a => a.id)), ['ask-ok'],
+    'a malformed ask and an unparsable record drop their own row, not the section');
+  assert.equal(data.asks[0].dest, 'me/dest:projects/wps/dump');
+  delete data.srcGh;
+  delete window.__shell;
+});
+
+test('resolveAsk writes the result that closes it, and drops the row', async () => {
+  const saved = [];
+  window.__shell = { REGISTRY_REPO: 'me/registry' };
+  data.srcGh = () => ({ async save(path, body, msg) { saved.push({ path, body, msg }); return {}; } });
+  data.asks = [{ name: 'ask-ok.json', id: 'ask-ok', kind: 'ask', dest: 'me/dest:d', message: '', busy: false }];
+
+  await data.resolveAsk(data.asks[0], true);
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].path, 'mailbox/results/ask-ok.json', 'the result takes the request name; that is what closes it');
+  assert.equal(saved[0].body.answered, true);
+  assert.deepEqual(plain_(data.asks), []);
+
+  delete data.srcGh;
+  delete window.__shell;
+});
+
+test('resolveAsk refuses a decline with no reason, and leaves the row standing', async () => {
+  const saved = [];
+  window.__shell = { REGISTRY_REPO: 'me/registry' };
+  data.srcGh = () => ({ async save(path, body, msg) { saved.push({ path, body, msg }); return {}; } });
+  data.asks = [{ name: 'ask-ok.json', id: 'ask-ok', kind: 'ask', dest: 'me/dest:d', message: '  ', busy: false }];
+
+  await data.resolveAsk(data.asks[0], false);
+  assert.deepEqual(saved, [], 'a decline is the valuable answer, so it must say why');
+  assert.equal(data.asks.length, 1, 'nothing was written, so nothing was closed');
+
+  data.asks[0].message = 'nothing references it, stop looking';
+  await data.resolveAsk(data.asks[0], false);
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].body.answered, false);
+  assert.equal(saved[0].body.ok, true, 'a decline is a served request, not a failure');
+
+  delete data.srcGh;
+  delete window.__shell;
 });

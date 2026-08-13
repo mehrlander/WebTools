@@ -1885,6 +1885,40 @@ spends write access on agent-authored instructions. It is manual-triggered, not
 live: show-repo is the worker and only runs when the user opens it. Protocol and
 schema: `web-tools-private/mailbox/README.md`.
 
+**A fourth kind, `ask`, addresses the user instead of their repos**, and it
+completes the channel family rather than extending it. Lay the two channels out
+by who has to act and one cell is empty:
+
+| | Deferred read | Deferred write |
+| --- | --- | --- |
+| **from a repo** | mailbox `tree`/`branches`/`fetch`, answered on load | proposals, answered on your confirm |
+| **from you** | **`ask`**, answered when you go and get it | (nothing: handing you a file is immediate) |
+
+An ask names what is wanted in **prose** and where it lands as a **structured
+`dest`**. The split is the design: what is wanted often has no filename
+("whatever is in that folder", "a listing of that directory"), so a path schema
+would drop the real cases or fake them, while `dest` has to be an address
+because it aims the stage and lets one list span every repo.
+
+**It is never auto-fulfilled, and the guard must run before `fulfill()`.**
+`fulfill()` returns a *result* for an unsupported kind rather than throwing, and
+writing a result is what marks a request answered, so an ask reaching the fulfil
+loop would be closed by its own rejection on the first page load and never seen.
+`processMailbox` skips on `RepoMailbox.isAsk`, which keys on the record and not
+on a validation verdict, so a half-written ask waits for a person rather than
+being answered by its own malformity.
+
+**The Stage reads and closes them**, in the lens column under the destination
+picker, because that is the order of the act: read what is wanted, aim (one tap,
+the destination pills are already there), add the material through the intakes
+that already exist (upload, paste, dictation), send, close. No new transport was
+built; the only new steps are the reading and the closing. Closing writes a
+result at the request's own name, carrying `answered: true` when material was
+sent and `false` on a decline, `ok: true` either way. A message is optional on a
+send and required on a decline, since "nothing references that file, stop
+looking" is often worth more to the next session than the file, while a bare
+refusal wastes its time as surely as silence.
+
 ### Inbox and outbox
 
 Two optional manifest fields naming where material lands and where it is
