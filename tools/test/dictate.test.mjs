@@ -546,6 +546,27 @@ test('the painter renders text, caret and selection as marked parts', () => {
   assert.match(hs.getAttribute('style'), /position:absolute/, 'so the text never moves for them');
 });
 
+test('the caret is a plain inline, so it cannot break the word it sits inside', () => {
+  // A caret between two characters splits the word into two spans, and an
+  // ATOMIC inline (inline-block, which this was) is a line-break opportunity
+  // on both sides: a word at the wrap point broke where the caret was, so
+  // "extraordinarily" became "extra" and "ordinarily" on two lines the moment
+  // a caret landed in it. A non-atomic inline is not a break opportunity, and
+  // a border on an empty one draws the same 2px bar at the font's own content
+  // height, which also drops the 1.05em-plus-vertical-align guess it used.
+  //
+  // The wrap itself needs a line box, so it is swept in a real browser by
+  // tools/render/scenarios/annotate-caret-wrap.mjs (560 caret positions, 82
+  // of them breaking before this, 0 after). What is held here is the property
+  // that makes it true.
+  const h = host();
+  D.paint(h, { text: 'extraordinarily', range: { start: 5, end: 5 } });
+  const css = h.querySelector('[data-d="caret"]').getAttribute('style');
+  assert.match(css, /display:\s*inline\s*;/, 'inline, and not inline-block');
+  assert.doesNotMatch(css, /inline-block/);
+  assert.match(css, /border-left:\s*2px/, 'the bar is a border, since an empty inline has no width');
+});
+
 test('handles and the caret carry no text, so they never shift an offset', () => {
   const h = host();
   D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 } });

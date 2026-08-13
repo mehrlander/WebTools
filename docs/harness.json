@@ -420,6 +420,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/annotate-caret-wrap.mjs",
+      "role": "a sweep of 560 caret positions inside one long word at every distance from the wrap point, reporting each one where the caret broke its own word: 82 while the caret was an atomic inline, 0 as a plain inline with a border. Needs a real line box, so it cannot be a test",
+      "layer": "tools/render/scenarios",
+      "lines": 54,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": true
+    },
+    {
       "path": "tools/render/scenarios/annotate-cursor-pad.mjs",
       "role": "the cursor pad mid-drag, in both its subjects: the caret walking back through wrapped lines, and (STATE=pin) an armed selection edge dragged by the same gesture, which is what retired the arrow cluster. The half jsdom cannot see, since it maps a virtual point to an offset through caret-from-point",
       "layer": "tools/render/scenarios",
