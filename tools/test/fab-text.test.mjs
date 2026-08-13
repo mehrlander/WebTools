@@ -269,6 +269,45 @@ test('match resolves against the tree and glosses from the registries', async ()
   assert.equal(other.what, '', 'a path no registry covers still resolves and links');
 });
 
+test('match loads its kit before using it, and only when it has to', async () => {
+  // THE TEST THAT WAS MISSING, and the shape of the miss is the point: every
+  // other match test stubs window.EstateSearch before calling, which supplies
+  // the exact thing the lazy load exists to supply. So the load line could be
+  // deleted, as it was by an unrelated edit, and the whole suite stayed green
+  // while the feature threw on its first real tap. A stub that stands in for
+  // the dependency under test hides the wiring to it.
+  const d = await mountFab();
+  d.repo = 'mehrlander/web-tools';
+  d.textStats = d._textRead(docWith('<p>See docs/loader.md.</p>'));
+
+  delete window.EstateSearch;
+  const asked = [];
+  window.gh = { load: async (p) => {
+    asked.push(p);
+    window.EstateSearch = { tree: async () => ({ paths: ['docs/loader.md'], truncated: false }) };
+  } };
+  window.GH = function () { this.get = async () => { throw new Error('no registries here'); }; };
+
+  await d.textMatchRun();
+  assert.equal(d.textMatchState, 'done', d.textMatchError);
+  assert.equal(asked.join(','), 'kits/estate-search.js',
+    'the kit is loaded before it is used');
+
+  // Already present means no second fetch: the drawer counts every call it
+  // makes, and a reload would be one it did not need.
+  asked.length = 0;
+  await d.textMatchRun();
+  assert.equal(asked.length, 0, 'a kit already registered is not loaded again');
+
+  // And a load that resolves without registering is named, rather than
+  // surfacing later as an unreadable property error on undefined.
+  delete window.EstateSearch;
+  window.gh = { load: async () => {} };
+  await d.textMatchRun();
+  assert.equal(d.textMatchState, 'error');
+  assert.match(d.textMatchError, /registered nothing/);
+});
+
 test('match reports its own failure rather than half an answer', async () => {
   const d = await mountFab();
   d.textStats = d._textRead(docWith('<p>See docs/loader.md.</p>'));
