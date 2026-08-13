@@ -1768,6 +1768,74 @@ assuming one. **Standalone the page is left alone** and scrolls as a document,
 since pinning a page's own header costs a phone its URL-bar collapse and buys
 nothing.
 
+#### Reading the files: the drill
+
+The Files pane is for **scanning**: thirty hairline rows a reader sweeps to find
+something. Reading a diff through it means expanding a row, scrolling past it,
+collapsing, expanding the next. Since 2026-08-13 the other half exists: the same
+`fileReview` cards, one per slide, in the house swipe deck
+([`kits/file-deck.js`](../lib/kits/file-deck.js) over
+[`kits/swipe-deck.js`](../lib/kits/swipe-deck.js)).
+
+**It opens as a drill, not as a nested pager.** The deck covers the branch view,
+the header becomes the file's, and Back returns the reader to the branch where
+they left it. One deck visible, one header, and the swipe means one thing at a
+time. The nesting lives entirely in the return path, which is why it does not
+look nested.
+
+Two shapes were considered and rejected, and the reasons generalize past this
+case:
+
+* **A nested pager**, an outer branch deck with an inner file deck live at once.
+  The disqualifying property is not gesture ambiguity, it is that **the outer
+  axis has no meaning at the inner position**: file lists are unrelated across
+  branches and of different lengths, so "next branch" while sitting on file 7
+  either resets to file 0 (a jump dressed as a swipe) or does something
+  arbitrary. Two headers would advertise a two-dimensional space that is not
+  two-dimensional.
+* **A level picker in the header**, a breadcrumb that sets what the swipe means.
+  That is a mode, and a mode has to be remembered while a place has a back
+  button. A picker earns its cost at four levels; at two, a stack is the answer.
+  The breadcrumb survives as the drilled header's **subtitle**, read-only, where
+  it says where you are without offering to change it.
+
+**Entry points**, two, and both keep the collapsed row scannable: a control on
+the Files tab row opens at the first file, and **Read from here** in an expanded
+card's action strip opens at that one. Not an icon per row, which the
+collapsed-density pass rejected for exactly this reason.
+
+**The deck pages what the pane is showing.** A collapsed registry group is a
+reader saying the machine's output is not what they came for, so the group
+toggles are the deck's filter and there is no second control to keep in step.
+
+Every slide's card starts **open** on its diff, which the pane cannot afford:
+swipe-deck mounts the active slide and its two neighbours, so three cards exist
+however long the changeset is, while the pane hedges its cards closed past a
+dozen files to avoid twelve diffs fetched at once.
+
+**The shell stands down while a deck is up.** The deck is opened inside the
+frame, so it covers the frame's viewport but not show-repo's own header strip
+above it. Left alone that strip keeps its branch arrows and its position counter
+live over a file the reader has drilled into, which is the same incoherence the
+drill shape exists to avoid, and its drag would page branches out from under a
+swipe meant for files. The page posts `branch-drill` and the shell hides the
+strip and stops listening. Measured: with a deck open, a full drag moved the
+file deck one slide and wrote nothing at all to the branch surface.
+
+`pages/review.html` mounts the same deck as a root rather than a drill, since
+there is no level above it there; its dismiss is an ✕ and returns to the list.
+
+**Two things in swipe-deck had to change first**, and both were found by opening
+one deck inside another in a real browser rather than by reading the code. Every
+deck registered its own `popstate`, and one `history.back()` fires all of them,
+so a single Back closed the whole stack: the return path itself, which is the
+entire point of drilling. And every deck registered its own `keydown`, so one
+ArrowRight stepped the child **and** the parent underneath it, so popping back
+landed on a slide the reader never chose with nothing on screen having said so.
+Both are one mistake, a deck assuming it is the only one alive; the kit now
+keeps a stack and only its top answers. The overflow lock needed nothing, since
+each deck saves the value it found and restores it.
+
 ### Drop a file on a branch
 
 The Activity view's branch menu carries **Drop a file here**: GitHub's

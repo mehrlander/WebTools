@@ -215,6 +215,12 @@
        One bordered list with hairline separators, matching the branch page:
        a card each, with a gap between, spent vertical space on borders that
        carried nothing and made a long changeset harder to scan, not easier. -->
+  <div x-show="files.length > 1" class="flex justify-end pb-1.5">
+    <button @click="openFileDeck(files[0] && files[0].path)"
+            class="btn btn-sm btn-ghost gap-1.5 normal-case"
+            :title="'Read ' + files.length + ' files one at a time'">
+      <i class="ph ph-cards-three text-base"></i>Read one at a time</button>
+  </div>
   <div x-show="files.length" class="border border-base-300 rounded-lg overflow-hidden">
     <template x-for="f in files" :key="f.path">
       <div x-data="fileReview(f)"></div>
@@ -358,7 +364,30 @@ function reviewApp() { return {
       status: f.status, additions: f.additions, deletions: f.deletions,
       patch: f.patch || '',
       open: (d.files || []).length === 1,
+      action: { label: 'Read from here', icon: 'ph-cards-three',
+                onClick: (path) => this.openFileDeck(path) },
     }));
+  },
+
+  // The file deck: the same cards, one per slide, in the house swipe deck
+  // (kits/file-deck.js). This page is a root, so it opens as a root deck and
+  // its ✕ returns here; inside show-repo's branch takeover the same call
+  // drills. Loaded on first use, so a visit that only scans the list pays
+  // nothing for it.
+  async openFileDeck(path) {
+    if (!this.files.length) return;
+    const i = Math.max(0, this.files.findIndex(f => f.path === path));
+    try {
+      if (!window.swipeDeck) await gh.load('kits/swipe-deck.js');
+      if (!window.fileDeck) await gh.load('kits/file-deck.js');
+      window.fileDeck.open({
+        repo: this.repo, ref: this.head,
+        base: this.files[0].base, baseName: this.base,
+        files: this.files, start: i,
+        subtitle: this.head,
+        parent: window.swipeDeck.top(),
+      });
+    } catch (e) { this.error = 'Could not open the file deck: ' + (e?.message || e); }
   },
 
   goPaste() {
