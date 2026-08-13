@@ -1,0 +1,166 @@
+# Text tools on the page at hand
+
+A proposed fifth surface for the FAB drawer: the reader's text, analyzed where
+it is being read. Written 2026-08-13 as an exploration, not a decision. The
+figures are re-derivable from the files named; the recommendation at the end is
+the only part that is a judgment.
+
+## The finding: the instruments exist, the application point does not
+
+The estate has spent real effort on text analysis and has ten working
+instruments to show for it. Every one of them runs somewhere other than the
+page you are looking at.
+
+| Instrument | Asks | Runs |
+| --- | --- | --- |
+| [`concept-lab/termlab.py`](../tools/concept-lab/termlab.py) | what vocabulary does this repo coin | agent, over checkouts |
+| [`concept-lab/entitylab.py`](../tools/concept-lab/entitylab.py) | what does it name from outside itself, and can a table resolve it | agent, over checkouts |
+| [`concept-lab/entityprofile.py`](../tools/concept-lab/entityprofile.py) | what does a standard recognizer see | agent, spaCy |
+| [`concept-lab/build-entity-index.py`](../tools/concept-lab/build-entity-index.py) | the pipeline behind `state/entities.json` | agent, offline |
+| [`concept-lab/flag_reply.py`](../tools/concept-lab/flag_reply.py) | did this reply use jargon it never introduced | a Stop hook, on a reply |
+| [`concept-index/vocab.py`](../.claude/skills/concept-index/vocab.py) | index a repo's declared vocabulary, check a draft against it | agent, on demand |
+| [`tools/semsearch.py`](../tools/semsearch.py) | what else in the estate is about this | agent, over an index |
+| [`pages/entities.html`](../pages/entities.html) | what each repo names | a browser, over a committed index |
+| [`pages/citations.html`](../pages/citations.html) | which bills touch the statute this document discusses | a browser, over two indexes |
+| [`pages/shorter.html`](../pages/shorter.html) | can this be said in less | a browser, over pasted text |
+
+Nine of the ten take a corpus or a paste. None takes *this page*. The gap is not
+capability. It is that nothing owns the moment where a reader is looking at
+something and wants to know what is in it.
+
+The FAB already owns that moment, and nothing else does. It knows the page's
+repo, path, and ref; it survives into a toss and retargets at the rendered
+subject; and through [`kits/annotate.js`](../lib/kits/annotate.js) it already
+holds the two hard pieces: `textIndex(root)`, which flattens a document to one
+string with a node map, and quote anchoring that paints through the CSS Custom
+Highlight API without rewriting anyone's DOM. A text tab is not new machinery.
+It is a second reader of machinery the Notes tab already built.
+
+## Four operations, in ascending cost
+
+Keeping these apart matters, because they have different failure modes and only
+the first two are decidable.
+
+**1. Read.** Local, instant, no network. The page's text mass, its longest
+sentence, its reading time. The house prose rules checked where they are broken
+rather than at commit time: zero em dashes is stated in
+[`CONVENTIONS.md`](CONVENTIONS.md) and enforced by nothing in this repo
+(`home`'s `lint-conventions.py` covers `home`'s tracked markdown and stops
+there). The surfacing set's own first primitive, *Reference is a link*, is a
+check nobody runs: a path-shaped token sitting outside any `[](…)` is decidable
+from the DOM alone.
+
+**2. Match.** One cached fetch each, still decidable. Terms in the page's text
+that resolve to a row in a registry, reported in confidence order the way
+`vocab.py check` already orders its two findings:
+
+| Class | Source | Answers |
+| --- | --- | --- |
+| a path that resolves to a tracked file | `EstateSearch.tree(repo, ref)`, already cached per repo and ref | this names a real file; here it is |
+| a declared doc | [`docs/docs.json`](docs.json), 51 rows | what that document is, and whether it is living, measured, or a record |
+| a surfacing primitive | [`docs/surfacing.json`](surfacing.json), 20 rows | the estate's own glossary, already gated against its prose |
+| a prose field name | [`docs/text-fields.csv`](text-fields.csv), 13 names plus aliases | which of thirteen concepts this name is |
+| a route key | [`docs/routes.json`](routes.json) | what that address form reaches |
+| a property or registry name | [`docs/properties.json`](properties.json), 16 registries, 92 declarations | who owns that classification |
+| a page | [`pages/pages.json`](../pages/pages.json) | the live view, its thumb, its source |
+| a task | [`tracker/board.json`](../tracker/board.json) | whether work is already filed on it |
+| a citation (RCW, bill id, biennium) | `wa-bills` citation index, `state/entities.json`'s `rcwByRepo` | which bills cite it, which repos discuss it |
+
+Every hit here is checkable. That is what makes it a *registry connection*
+rather than a guess, and it is the whole reason to prefer it to the recognizer.
+
+**3. Flag.** Heuristic, advisory, never a verdict. The `assumed` tier from the
+concept index: a term used referentially with nothing in the corpus declaring
+it. This is the signal that retired `spine`, `backbone`, and `weld` in `home`,
+so it earns its place. The honest boundary is that the browser sees one page
+and the tier is a corpus property, so this pane cannot exist without fetching a
+vocabulary index, and it should say so rather than degrade quietly.
+
+**4. Ask.** Costs a model, so it is a hand-off and not a computation. The tab
+builds an envelope and gives it away; it runs nothing. Four routes already
+exist and none needs inventing:
+
+- to [`pages/shorter.html`](../pages/shorter.html) as a `shorter/1` envelope,
+  which is the succinctness ask the user reaches for most
+- to the stage's Diff lens with `&prompts=` commentary, which is what the
+  `edit-review` skill already mints
+- to an annotation set carried out as markdown, which is the Notes tab's
+  existing exit
+- to a `#gz=` toss of a selection, for a reader with no token
+
+## What the measurements already rule out
+
+Two things, and both were settled here before this document existed.
+
+**Do not build on the recognizer.** `state/entities.json` reports `ORG`
+precision of 0.19 stratified and 0.23 at the head, on one rater, with a 0.681
+flag rate on web-tools' own `ORG` names. Its top `ORG` entries for this repo are
+`ref`, `API`, `HTML`, and `GitHub`. A tab that surfaced that as "terms on this
+page" would be wrong four times in five, and would be wrong in the specific way
+that is hardest to notice: plausibly.
+
+The removal note in [`pages/entities.html`](../pages/entities.html) already
+reached the right conclusion and left it on the shelf: a dictionary lookup over
+this prose "may still be worth having. It would be its own thing, run without
+the model." Operation 2 is that thing.
+
+**Do not commit a terms index.** `vocab.py` builds a repo's vocabulary in 1.7
+seconds over web-tools and the skill declines to commit the result for exactly
+the reason [`SURFACING.md`](SURFACING.md) gives for retiring the merge guide:
+do not commit what a live read already answers. The browser side should read
+the registries live, which is what every other FAB tab already does. The
+registries are the index. Nothing new needs a carrier.
+
+## Two subjects, and the tab has to say which
+
+The rendered DOM and the page's source file are different bodies of text, and
+conflating them is how this gets confusing.
+
+The **rendered text** is what nothing else can reach, so it is the right
+subject. But it is only worth analyzing on a *document page*, one whose job is
+to render a body of prose: `data-view`, `toss-render`, `chat-results`,
+`branch.html`, `annotate`. On an **app page** like `show-repo` or `transform`
+the DOM text is button labels, and a word count over it means nothing.
+[`docs/text-content.md`](text-content.md) measured the same split from the other
+side: show-repo is 52% comments by byte, and none of that is in the DOM.
+
+So the subject defaults to the rendered text, narrows to the selection when
+there is one, and the tab says plainly when the page it is on is an app rather
+than a document. Selection-scoped is likely the interaction that carries this:
+select a passage, open the drawer, and every operation above applies to the
+passage rather than the page.
+
+## The constraint the pixels found
+
+At 390px the drawer's tab strip is full. Render, Inspect, Traffic, and Notes run
+edge to edge with the hard-refresh button, and the strip's own commentary
+records that Traffic's label used to hide below 400px until the branches badge
+was dropped to buy the width. A fifth labeled tab does not fit.
+
+Three ways out, none free. Drop to icons for all five, which costs the labels
+that make the strip legible. Let the strip scroll, which hides a tab behind a
+gesture nobody will find. Or pair Text and Notes as one content tab with an
+inner segment, which is honest about their relationship (Text reads the
+document, Notes writes on it, and they share a text index and a highlight
+painter) and costs one tap on the second of them. The third is the one worth
+trying first.
+
+## What to build first
+
+The smallest thing that is useful daily and needs no new carrier: **Read plus
+the path half of Match.** Both are decidable, both are zero-model, and the path
+match is the finding `vocab.py check` already puts first because it is the one
+that cannot be wrong. That is a pane with a word count, a link check, and a list
+of the files this page names, each one tappable.
+
+Everything above it is a later increment, and each increment should be able to
+name what it would be wrong about.
+
+## Open
+
+- Whether the Ask routes belong in this tab or in the existing take-away menu,
+  which is already where the FAB hands the page somewhere else.
+- Whether a match against `tracker/board.json` is useful or noisy. Task titles
+  are sentences, so they will match loosely.
+- Whether the Flag pane can honestly exist client-side at all, or whether it
+  stays an agent-side answer that the tab only links to.
