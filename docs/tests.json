@@ -107,7 +107,7 @@
       "path": "tools/test/branch-brief-embedded.test.mjs",
       "kind": "behavior",
       "protects": "The branch page reloading in place for an embedder instead of being reloaded by one: the postMessage channel, the guard against a slower read landing on a newer branch, the PR number the embedder's own list cannot know, and the neighbour warming that makes a step cost nothing.",
-      "assertions": 10,
+      "assertions": 13,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -121,14 +121,17 @@
         "the neighbours named on the message are warmed, and a step to one is free",
         "the registry is read once per ref, not once per visit",
         "branch-refresh drops the cached reading and asks GitHub again",
-        "a message from anywhere else is not a message to this page"
+        "a message from anywhere else is not a message to this page",
+        "framed: the document is pinned and the pane is the scroller",
+        "the head survives a load, and says the new branch at once",
+        "the tab strip holds still across a swap rather than dropping a tab and putting it back"
       ]
     },
     {
       "path": "tools/test/branch-brief-groups.test.mjs",
       "kind": "component",
       "protects": "The branch review's Files pane groups by creation mode where a content registry is declared, mounts no cards inside a collapsed group, and stays the flat unlabeled list where no registry exists.",
-      "assertions": 4,
+      "assertions": 5,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -136,7 +139,8 @@
         "with a registry, files group by creation mode and mechanical trails collapsed",
         "a collapsed group mounts no cards until its header is toggled",
         "without a registry the pane is the flat unlabeled list it always was",
-        "the GitHub exits are labeled menu rows, and the plus aims the stage at this branch"
+        "the GitHub exits are labeled menu rows, and the plus aims the stage at this branch",
+        "standalone: the document is left alone and nothing is pinned"
       ]
     },
     {

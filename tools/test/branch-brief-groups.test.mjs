@@ -124,3 +124,14 @@ test('the GitHub exits are labeled menu rows, and the plus aims the stage at thi
     'no declared inbox means dump/, the convention default');
   assert.ok(u.pathname.endsWith('/show-repo/show-repo.html'));
 });
+
+// The unframed counterpart to the layout case in branch-brief-embedded: a page
+// is a page and scrolls as one. Pinning its own header would cost a phone the
+// URL-bar collapse and buy nothing, since there is no dialog to keep in view.
+test('standalone: the document is left alone and nothing is pinned', () => {
+  assert.equal(window.document.body.style.overflow, '', 'the page still scrolls as a document');
+  assert.equal(window.document.body.style.height, '');
+  const root = window.document.querySelector('#m > div');
+  assert.ok(!root.className.includes('h-full'), 'the view is as tall as its content');
+  assert.ok(!root.lastElementChild.className.includes('overflow-y-auto'), 'and owns no scroller');
+});

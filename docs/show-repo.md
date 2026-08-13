@@ -1714,6 +1714,41 @@ Measured with `tools/render/scenarios/branch-step-cost.mjs`, which drives real
 steps in a real browser and prints, per step, whether the document reloaded,
 which calls went out, and where the header's PR number came from.
 
+#### Nothing covers the page, and nothing tears it down
+
+Two leftovers of the src-swap era survived it by a few hours, and together they
+were a visible flash on every step.
+
+The shell used to fade the frame out and raise the **instant facts card** over it
+on each step. Both exist because a reloading frame is genuinely blank, which a
+persistent one never is, so the cover is now first-open only: `detailSeen` marks
+that the embedded page has rendered once in this takeover, after which the frame
+stays at full opacity and the card stands down. The first open still gets both,
+since the frame there really is empty.
+
+Inside the page, the identity, the facts strip and the pane switch used to sit in
+the same `x-if` as the panes, so a load tore all of it down to a spinner and built
+it again. Nothing in that head needs the compare: the branch, the repo and the base
+arrive on the message that asked for them. The head is therefore mounted through a
+load and correct immediately, only the numbers wait, and the spinner is confined to
+the pane. Two small pieces of state keep the strip from twitching across a swap:
+`pane` is not reset on `branch-open` (settled once the brief lands), and
+`showGuideTab` answers with the previous branch's `hadGuide` while loading, so the
+Guide tab does not vanish and return one round trip later.
+
+**Where the scrollbar lives** is decided by the same split, and it was the other
+half of the complaint. Framed, the view is a dialog and a dialog scrolls inside
+itself: the root fills the mount, the head is `shrink-0`, and the pane is the one
+`overflow-y-auto min-h-0` region, so a long guide or a three-hundred-file list
+never carries away the branch name or the control that would switch panes. The
+component stamps the document to match in `fitDocument` (body to `100dvh`, a
+column, `overflow: hidden`, the mount flexing into what the masthead leaves),
+which lives in the library rather than in `pages/branch.html` for the `?use=`
+reason above and because reading the layout off whatever shell is serving beats
+assuming one. **Standalone the page is left alone** and scrolls as a document,
+since pinning a page's own header costs a phone its URL-bar collapse and buys
+nothing.
+
 ### Drop a file on a branch
 
 The Activity view's branch menu carries **Drop a file here**: GitHub's

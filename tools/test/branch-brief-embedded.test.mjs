@@ -218,3 +218,76 @@ test('a message from anywhere else is not a message to this page', async () => {
   assert.equal(data.branch, 'feat/a');
   assert.deepEqual(calls.compare, []);
 });
+
+// ── The layout, and where the scrollbar lives ────────────────────────────────
+//
+// Framed, this is a dialog, and a dialog scrolls inside itself. The document
+// scrolling instead meant a long guide or a three-hundred-file list carried
+// away the branch name and the control that would switch panes, which is the
+// one thing a reader always wants back. The classes are the whole mechanism,
+// so the classes are what this pins; the pixels are in
+// tools/render/scenarios (a jsdom box has no layout to measure).
+
+const root = () => window.document.querySelector('#m > div');
+
+test('framed: the document is pinned and the pane is the scroller', () => {
+  assert.equal(window.document.body.style.overflow, 'hidden', 'the document cannot scroll');
+  assert.equal(window.document.body.style.height, '100dvh');
+  assert.equal(window.document.body.style.flexDirection, 'column');
+  assert.equal(data.$el.style.flex, '1 1 auto', 'the mount takes the height the masthead leaves');
+
+  const r = root();
+  assert.ok(r.className.includes('h-full'), 'the view fills the mount');
+  assert.ok(r.firstElementChild.className.includes('shrink-0'), 'the head holds its place');
+  assert.ok(r.lastElementChild.className.includes('overflow-y-auto'), 'and the pane takes the scroll');
+  assert.ok(r.lastElementChild.className.includes('min-h-0'),
+    'without which a flex child refuses to shrink and scrolls the document again');
+});
+
+// ── The flash ────────────────────────────────────────────────────────────────
+//
+// Every step used to tear the page down to a spinner and build it again: the
+// head sat inside the same x-if as the panes, so the branch name, the facts
+// strip and the tab switch all went away and came back. Nothing in the head
+// needs the compare. The branch, the repo and the base arrive on the message
+// that asked for them, so the head can be right immediately and only the
+// numbers wait.
+
+test('the head survives a load, and says the new branch at once', async () => {
+  window.BranchBrief.forget();
+  let release;
+  hold = new Promise(r => { release = r; });
+  const sent = send({ type: 'branch-open', repo: 'me/tools', branch: 'feat/c', base: 'main' }, 2);
+  await tick(1);
+
+  const head = root().firstElementChild;
+  assert.ok(head, 'the head is still mounted mid-load');
+  assert.match(head.textContent, /feat\/c/, 'and already names the branch being opened');
+  assert.equal(data.loading, true);
+
+  release(); hold = null;
+  await sent;
+  await tick(6);
+  assert.match(root().firstElementChild.textContent, /feat\/c/);
+});
+
+test('the tab strip holds still across a swap rather than dropping a tab and putting it back', async () => {
+  // feat/a has a PR, so it has a Guide tab. Step to it, then start a load.
+  window.BranchBrief.forget();
+  await send({ type: 'branch-open', repo: 'me/tools', branch: 'feat/a', base: 'main' });
+  assert.equal(data.showGuideTab, true);
+  assert.equal(data.pane, 'guide');
+
+  let release;
+  hold = new Promise(r => { release = r; });
+  const sent = send({ type: 'branch-open', repo: 'me/tools', branch: 'feat/c', base: 'main' }, 2);
+  await tick(1);
+  assert.equal(data.showGuideTab, true, 'mid-load it keeps the answer it had');
+  assert.equal(data.pane, 'guide', 'and the selection does not move under the reader');
+
+  release(); hold = null;
+  await sent;
+  await tick(6);
+  assert.equal(data.showGuideTab, false, 'feat/c has no PR, so the tab goes once that is known');
+  assert.equal(data.pane, 'files');
+});
