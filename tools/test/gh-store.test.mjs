@@ -20,18 +20,22 @@ const b64ToBytes = (b64) => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
 // is exercised, after which get() supplies the current SHA.
 function makeGH({ failPuts = 0 } = {}) {
   const puts = [];
+  const reads = [];   // every sha refetch: the opts it was made with
   let failed = 0;
   function GH() {}
+  GH.FRESH = { cache: 'no-store' };
   GH.prototype.req = async function (p, opts) {
+    if (opts && opts.method === 'DELETE') { puts.push({ path: p, body: JSON.parse(opts.body), method: 'DELETE' }); return {}; }
+    if (!opts || !opts.body) { reads.push({ path: p, opts }); return { sha: 'cursha' }; }
     const body = JSON.parse(opts.body);
     puts.push({ path: p, body });
     if (failed < failPuts) { failed++; const e = new Error('conflict'); e.status = 409; throw e; }
     return { content: { sha: 'newsha' } };
   };
-  GH.prototype.get = async function () { return { sha: 'cursha' }; };
+  GH.prototype.get = async function (p, opts) { reads.push({ path: p, opts }); return { sha: 'cursha' }; };
   const window = { GH };
   new Function('window', src)(window);
-  return { gh: new GH(), puts };
+  return { gh: new GH(), puts, reads };
 }
 
 test('saveBytes writes byte-exact content', async () => {
@@ -93,4 +97,39 @@ test('a branch that never stops conflicting gets a bounded number of attempts', 
   const { gh, puts } = makeGH({ failPuts: 99 });
   await assert.rejects(() => gh.saveBytes('p', new Uint8Array([7])), /conflict/);
   assert.equal(puts.length, 4, 'gives up after PUT_TRIES attempts');
+});
+
+// The recovery's re-read must not come from the HTTP cache, which is where this
+// whole loop went inert. GitHub caches an API read in the browser for a minute,
+// so a refetch on the default fetch cache mode is handed back the same sha that
+// was just rejected, and four attempts converge on nothing. Measured
+// 2026-08-13 on a show-repo to-do check-off; see GH.FRESH in gh-api.js.
+test('the conflict refetch reads past the HTTP cache', async () => {
+  const { gh, reads } = makeGH({ failPuts: 1 });
+  await gh.save('lists/todo.json', { items: [] });
+  assert.equal(reads.length, 1, 'the conflict refetched the sha');
+  assert.equal(reads[0].opts?.cache, 'no-store',
+    'a refetch through the cache re-reads the sha it was rejected for');
+});
+
+// del() reads the sha with no retry behind it, so a cached read is fatal rather
+// than merely slow: deleting a file written in the last minute would fail on a
+// sha the browser never re-requested.
+test('del reads its sha past the HTTP cache', async () => {
+  const { gh, reads } = makeGH();
+  gh.ref = 'main';
+  await gh.del('surfaces/x.json', 'drop it');
+  assert.equal(reads.length, 1);
+  assert.equal(reads[0].opts?.cache, 'no-store');
+});
+
+// The sha a successful write hands back is the one copy of it that no cache can
+// stale, which is why callers hold their GH rather than minting one per save.
+test('a successful write leaves the new sha on the instance for the next one', async () => {
+  const { gh, puts, reads } = makeGH();
+  await gh.save('lists/todo.json', { items: [1] });
+  await gh.save('lists/todo.json', { items: [1, 2] });
+  assert.equal(puts.length, 2, 'no conflict, so no retry');
+  assert.equal(reads.length, 0, 'and no read at all: the write supplied the sha');
+  assert.equal(puts[1].body.sha, 'newsha', 'the second write carries the first write\'s sha');
 });
