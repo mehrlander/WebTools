@@ -46,7 +46,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 861,
+      "words": 883,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -102,7 +102,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2257,
+      "words": 2302,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -262,7 +262,7 @@
       "subject": "the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting",
       "status": "living",
       "reach": "app",
-      "words": 3582,
+      "words": 4015,
       "maintenance": "authored role and layer glossary; layer, lines, invocation, emits, named and tested stamped by tools/build/tools-index.mjs, held in lockstep by artifacts-lockstep.test.mjs; blank roles are counted, not hidden"
     },
     {
@@ -274,11 +274,19 @@
       "maintenance": "authored; self-contained recipe"
     },
     {
+      "path": "docs/ios-sheet-drags.md",
+      "subject": "why a drag inside a sheet-presented in-app browser dismisses the sheet, and the two fixes, measured on device",
+      "status": "living",
+      "reach": "orphan",
+      "words": 854,
+      "maintenance": "authored from a device measurement; re-measure rather than reason if a variant is ever doubted"
+    },
+    {
       "path": "docs/loader.md",
       "subject": "the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality",
       "status": "living",
       "reach": "project",
-      "words": 4773,
+      "words": 4780,
       "maintenance": "authored, edited in place; the only statement of the gh.load contract that 36 page files depend on, and CLAUDE.md now sends a reader here before they touch lib/ or a page's boot"
     },
     {
@@ -374,7 +382,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 20775,
+      "words": 20974,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {

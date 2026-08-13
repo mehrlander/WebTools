@@ -546,6 +546,27 @@ test('the painter renders text, caret and selection as marked parts', () => {
   assert.match(hs.getAttribute('style'), /position:absolute/, 'so the text never moves for them');
 });
 
+test('the caret is a plain inline, so it cannot break the word it sits inside', () => {
+  // A caret between two characters splits the word into two spans, and an
+  // ATOMIC inline (inline-block, which this was) is a line-break opportunity
+  // on both sides: a word at the wrap point broke where the caret was, so
+  // "extraordinarily" became "extra" and "ordinarily" on two lines the moment
+  // a caret landed in it. A non-atomic inline is not a break opportunity, and
+  // a border on an empty one draws the same 2px bar at the font's own content
+  // height, which also drops the 1.05em-plus-vertical-align guess it used.
+  //
+  // The wrap itself needs a line box, so it is swept in a real browser by
+  // tools/render/scenarios/annotate-caret-wrap.mjs (560 caret positions, 82
+  // of them breaking before this, 0 after). What is held here is the property
+  // that makes it true.
+  const h = host();
+  D.paint(h, { text: 'extraordinarily', range: { start: 5, end: 5 } });
+  const css = h.querySelector('[data-d="caret"]').getAttribute('style');
+  assert.match(css, /display:\s*inline\s*;/, 'inline, and not inline-block');
+  assert.doesNotMatch(css, /inline-block/);
+  assert.match(css, /border-left:\s*2px/, 'the bar is a border, since an empty inline has no width');
+});
+
 test('handles and the caret carry no text, so they never shift an offset', () => {
   const h = host();
   D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 } });
@@ -553,7 +574,42 @@ test('handles and the caret carry no text, so they never shift an offset', () =>
     'the painted text is the buffer exactly, furniture and all');
 });
 
-test('the interim paints last and is marked, so a tap in it cannot place a caret', () => {
+test('the interim paints at the insertion point, not at the end of the buffer', () => {
+  // It used to append after everything, which is right only when the caret is
+  // already there. Place a caret mid-buffer and speak, and the words appeared
+  // at the bottom and then jumped up when the segment finalized: the right
+  // answer, arrived at in a way that looks broken, which costs the reader
+  // their trust in the caret they just placed.
+  const h = host();
+  D.paint(h, { text: 'the quick fox', interim: 'brown', range: { start: 4, end: 4 } });
+  assert.deepEqual(parts(h),
+    [['text', 'the '], ['interim', 'brown'], ['interim-stop', '.'], ['caret', ''], ['text', 'quick fox']],
+    'head, hypothesis, caret, tail: exactly where the committed words will land');
+
+  // No leading space here, because the head already ends in one. The space is
+  // cosmetic and follows the text before the insertion point rather than the
+  // buffer as a whole.
+  D.paint(h, { text: 'the quick fox', interim: 'brown', range: { start: 3, end: 3 } });
+  assert.equal(h.childNodes[1].textContent, ' brown', 'and it appears when the head ends in a letter');
+
+  // A selection is what speaking replaces, so the hypothesis paints where the
+  // replacement will sit.
+  D.paint(h, { text: 'the quick fox', interim: 'lazy', range: { start: 4, end: 9 } });
+  assert.deepEqual(parts(h).map(p => p[0]).filter(k => !k.startsWith('handle')),
+    ['text', 'sel', 'interim', 'interim-stop', 'text']);
+
+  // Offsets are the point of the marking: the hypothesis is not in the buffer,
+  // so it must shift nothing after it. Returning on sight was right while it
+  // was always last; now it would report the caret's offset for every tap in
+  // the tail below it.
+  D.paint(h, { text: 'the quick fox', interim: 'brown', range: { start: 4, end: 4 } });
+  const tail = h.childNodes[4];
+  assert.equal(D.offsetAt(h, tail.firstChild, 2), 6, 'a tap in the tail counts committed text only');
+  assert.equal(D.offsetAt(h, h.childNodes[1].firstChild, 3), 4,
+    'and a tap inside the hypothesis clamps to where it will land');
+});
+
+test('the interim paints last with no caret, and is marked so a tap cannot land in it', () => {
   const h = host();
   D.paint(h, { text: 'settled', interim: 'still being heard' });
   // A TENTATIVE full stop rides the hypothesis, in the hypothesis's own muted
@@ -823,4 +879,70 @@ test('a pin whose line is scrolled out of view is not painted, nor its arrows', 
   const other = run([line(120), line(400)], 'start');
   assert.deepEqual(other.pins, ['start'], 'it cuts the other way too, below the box');
   assert.equal(other.arrows, true, 'the armed edge is in view, so its arrows are');
+});
+
+test('the caret pulses, which needs a stylesheet rather than a style attribute', () => {
+  // A keyframe cannot be written into a style attribute, and the kit paints
+  // into arbitrary documents, so the rule is injected once into whichever
+  // document the surface lives in. Reduced motion gets a steady bar: the
+  // caret's job is to say WHERE, and the pulse only says it is live.
+  const doc = window.document;
+  const old = doc.getElementById('dictate-style');
+  if (old) old.remove();
+
+  const h = host();
+  D.paint(h, { text: 'the quick fox' });
+  assert.equal(doc.getElementById('dictate-style'), null,
+    'nothing is injected until a caret is actually painted');
+
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 4 } });
+  const st = doc.getElementById('dictate-style');
+  assert.ok(st, 'the caret brought its stylesheet');
+  assert.match(st.textContent, /@keyframes dictate-caret/);
+  assert.match(st.textContent, /\[data-d="caret"\]/, 'aimed at the painted part, not at a class');
+  assert.match(st.textContent, /prefers-reduced-motion: no-preference/);
+  assert.equal(st.getAttribute('data-annotate-ui'), '',
+    'and marked as furniture, so the annotator’s text index skips it');
+
+  D.paint(h, { text: 'the quick fox', range: { start: 6, end: 6 } });
+  assert.equal(doc.querySelectorAll('#dictate-style').length, 1, 'injected once, not per paint');
+});
+
+test('endCaret paints the insertion point a null range implies', () => {
+  // A caret at the very end IS a null range in this kit, which is the right
+  // model and the wrong picture: a surface showing a caret everywhere except
+  // at the end appears to lose it exactly when a reader drags one there.
+  const h = host();
+  D.paint(h, { text: 'the quick fox' });
+  assert.deepEqual(parts(h).map(p => p[0]), ['text'], 'off by default: the stage keeps its barer render');
+
+  D.paint(h, { text: 'the quick fox', endCaret: true });
+  assert.deepEqual(parts(h).map(p => p[0]), ['text', 'caret']);
+  assert.equal(D.offsetAt(h, h.childNodes[0].firstChild, 13), 13,
+    'and it shifts no offsets, since it carries no text');
+
+  // After the hypothesis, which is where the committed words will leave it.
+  D.paint(h, { text: 'the quick fox', interim: 'jumps', endCaret: true });
+  assert.deepEqual(parts(h).map(p => p[0]), ['text', 'interim', 'interim-stop', 'caret']);
+
+  // A real range still owns the caret: the flag adds one where there is none,
+  // it does not add a second.
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 4 }, endCaret: true });
+  assert.equal(parts(h).filter(p => p[0] === 'caret').length, 1);
+});
+
+test('the arrow cluster is opt-out, for a surface that has a pad instead', () => {
+  // Two surfaces paint through this, and only one of them grew a cursor pad.
+  // Where a pad exists an armed pin is dragged with the same gesture that moves
+  // the caret, so arrows chasing the pin are furniture for a job already done;
+  // the stage has no pad and keeps them.
+  const h = host();
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 }, armed: 'end' });
+  assert.ok(h.querySelector('[data-d="nudge"]'), 'on by default');
+
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 }, armed: 'end', arrows: false });
+  assert.equal(h.querySelector('[data-d="nudge"]'), null, 'and gone when asked');
+  // The pin itself stays, armed: the state is still readable, it just has no
+  // buttons of its own.
+  assert.equal(h.querySelectorAll('[data-edge]').length, 2, 'both handles still painted');
 });
