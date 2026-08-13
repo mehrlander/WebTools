@@ -130,28 +130,82 @@ than a document. Selection-scoped is likely the interaction that carries this:
 select a passage, open the drawer, and every operation above applies to the
 passage rather than the page.
 
-## The constraint the pixels found
+## The constraint the pixels found, and what was done about it
 
-At 390px the drawer's tab strip is full. Render, Inspect, Traffic, and Notes run
+At 390px the drawer's tab strip was full. Render, Inspect, Traffic and Notes ran
 edge to edge with the hard-refresh button, and the strip's own commentary
-records that Traffic's label used to hide below 400px until the branches badge
-was dropped to buy the width. A fifth labeled tab does not fit.
+recorded the last time width was bought: dropping Render's branch count, which
+had itself bought room for Traffic's label after it hid below 400px. That
+ratchet had one notch left and Text was the fifth tab.
 
-Three ways out, none free. Drop to icons for all five, which costs the labels
-that make the strip legible. Let the strip scroll, which hides a tab behind a
-gesture nobody will find. Or pair Text and Notes as one content tab with an
-inner segment, which is honest about their relationship (Text reads the
-document, Notes writes on it, and they share a text index and a highlight
-painter) and costs one tap on the second of them. The third is the one worth
-trying first.
+Four ways out were available and three are worse than they sound.
 
-## What to build first
+**Scroll** was already the standing fallback, and it is the wrong answer rather
+than the cheap one. The strip has carried `overflow-x-auto` since a clipping bug
+was fixed, so a fifth tab does not break anything; it just moves off the right
+edge, behind a horizontal drag on a strip with no scroll affordance. The tab
+most likely to be hidden is the newest one, which is the one nobody knows to
+look for.
 
-The smallest thing that is useful daily and needs no new carrier: **Read plus
-the path half of Match.** Both are decidable, both are zero-model, and the path
-match is the finding `vocab.py check` already puts first because it is the one
-that cannot be wrong. That is a pane with a word count, a link check, and a list
-of the files this page names, each one tappable.
+**Icons for all five** costs the labels that make the strip legible, and buys
+more width than the problem needs.
+
+**Pairing Text and Notes under one tab** with an inner segment was this
+document's first recommendation. It is honest about their relationship but it
+charges a tap on every visit to the second of them, and it solves the width
+problem only once: a sixth tab would reopen it.
+
+**The label rides the selected tab alone.** This is what was built. An icon says
+what a tab *would* do, and the reader has already decided that; the name of what
+is in front of them is the one place a label is not redundant. Four icons plus
+one label costs about 195px of 348px, so a sixth tab fits without another
+ratchet, and an unselected tab keeps its name in `title` and `aria-label` so
+hover and a screen reader both still say it. The strip is now data
+(`TABS` in [`fab.js`](../lib/alpineComponents/fab.js)), and
+[`fab-text.test.mjs`](../tools/test/fab-text.test.mjs) fails if a tab has no
+pane, since under this rule a paneless tab does not even carry a name to explain
+itself.
+
+## What was built, and the two things the build corrected
+
+**Read is in**, and only Read: the pane reports words against a chrome
+denominator, sentence count and average, reading time, the longest sentence with
+its text, and the two house-rule checks. No network, no model, and the pane says
+so in a closing line rather than leaving the boundary implied.
+
+Two things this document had wrong, both found by running it.
+
+**The app-versus-document gate is words per text run, not chrome share.** The
+first attempt counted the share of words sitting in buttons, links and labels.
+Measured across six fab-bearing pages it inverts the thing it was meant to
+separate, putting the most document-like page at 2% and an app at 9%. Words per
+run separates cleanly, because an app's text arrives as thousands of
+one-to-three-word labels while a document's arrives as sentences:
+
+| Page | Words per run | Reads as |
+| --- | --- | --- |
+| links | 1.1 | app |
+| data-view | 3.0 | app |
+| show-repo | 4.0 | app |
+| pages index | 5.0 | app |
+| annotate | 8.3 | prose |
+| shorter | 20.0 | prose |
+
+The gate sits at 6, in the gap. The sample is small and covers only pages that
+mount a fab, which is the honest limit of the calibration.
+
+**The prose checks have to be withheld on an app, and this is not a
+precaution.** The bare-path check reads 186 on the pages gallery and 53 on
+show-repo, because a file browser listing file names is doing exactly what it
+should. Unwithheld, that would be the pane's loudest number and its least true
+one.
+
+## What to build next
+
+**The path half of Match**, which was the other half of the original
+recommendation: the files this page names, resolved against
+`EstateSearch.tree` and each one tappable. It is decidable, zero-model, and it
+is what turns the bare-path count from a number into a list.
 
 Everything above it is a later increment, and each increment should be able to
 name what it would be wrong about.
@@ -164,3 +218,7 @@ name what it would be wrong about.
   are sentences, so they will match loosely.
 - Whether the Flag pane can honestly exist client-side at all, or whether it
   stays an agent-side answer that the tab only links to.
+- Whether the words-per-run gate holds on a page rendering a long markdown
+  document, which the calibration sample does not contain: the pages with the
+  most prose in this repo (`word-select`, `console-playground`) load no lib
+  chain, so they mount no fab and could not be measured.
