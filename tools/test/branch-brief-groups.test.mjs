@@ -84,8 +84,14 @@ test('a collapsed group mounts no cards until its header is toggled', async () =
   data.toggleGroup('mechanical');
 });
 
+// The registry read is memoized per repo@ref for the swiper's sake (stepping
+// eight branches of one repo asked the same question eight times, and on a
+// repo declaring none that is eight 404s). No reader can make a ref's registry
+// change under them inside the memo's life, so the transition this case needs
+// is one only a test can stage: drop the memo, then re-read.
 test('without a registry the pane is the flat unlabeled list it always was', async () => {
   SERVE_CSV = false;
+  data.forgetRegistry();
   await data.load();
   await tick(3);
   assert.equal(data.registry, null);
@@ -96,6 +102,7 @@ test('without a registry the pane is the flat unlabeled list it always was', asy
 
 test('the GitHub exits are labeled menu rows, and the plus aims the stage at this branch', async () => {
   SERVE_CSV = true;
+  data.forgetRegistry();
   await data.load();
   await tick(3);
 

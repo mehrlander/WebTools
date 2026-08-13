@@ -104,6 +104,27 @@
       ]
     },
     {
+      "path": "tools/test/branch-brief-embedded.test.mjs",
+      "kind": "behavior",
+      "protects": "The branch page reloading in place for an embedder instead of being reloaded by one: the postMessage channel, the guard against a slower read landing on a newer branch, the PR number the embedder's own list cannot know, and the neighbour warming that makes a step cost nothing.",
+      "assertions": 10,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "it opened on the branch it was mounted at, and said so",
+        "a branch-open message swaps the subject in place",
+        "the merged PR reaches the embedder, which is the whole point of the channel",
+        "loading is reported before ready, and clears the previous PR",
+        "nothing of the previous branch survives the swap",
+        "a step that lands mid-read is not overwritten by the slower one behind it",
+        "the neighbours named on the message are warmed, and a step to one is free",
+        "the registry is read once per ref, not once per visit",
+        "branch-refresh drops the cached reading and asks GitHub again",
+        "a message from anywhere else is not a message to this page"
+      ]
+    },
+    {
       "path": "tools/test/branch-brief-groups.test.mjs",
       "kind": "component",
       "protects": "The branch review's Files pane groups by creation mode where a content registry is declared, mounts no cards inside a collapsed group, and stays the flat unlabeled list where no registry exists.",
@@ -122,7 +143,7 @@
       "path": "tools/test/branch-brief.test.mjs",
       "kind": "behavior",
       "protects": "Branch state classification: ahead, behind, merged, and stranded.",
-      "assertions": 26,
+      "assertions": 33,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -152,7 +173,14 @@
         "fetchBrief asks for the compare and the branch PR",
         "a 404 compare is a finding, not a failure",
         "a failed PR lookup leaves the page otherwise intact",
-        "a non-404 compare error propagates rather than reading as unrelated"
+        "a non-404 compare error propagates rather than reading as unrelated",
+        "the compare and the PR list are in flight at the same time",
+        "each side keeps its own failure rule when they run together",
+        "readBrief: a second read inside the window does not touch GitHub",
+        "readBrief: a warm still in flight is joined, not re-issued",
+        "readBrief: the base is part of the identity",
+        "readBrief: a failure is not the answer for a minute",
+        "forget: one branch, or all of them"
       ]
     },
     {
@@ -945,7 +973,7 @@
       "path": "tools/test/estate-open-branches.test.mjs",
       "kind": "component",
       "protects": "The open-branches list shows open PRs and stranded branches only, freshest first.",
-      "assertions": 22,
+      "assertions": 29,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -971,7 +999,14 @@
         "branchScopes: counts off the FULL list, not the current scope",
         "the repo chips follow the scope",
         "a row carries the survey evidence, and an unsurveyed one carries zeros",
-        "the finder's open-branch-detail event opens the takeover like a deep link"
+        "the finder's open-branch-detail event opens the takeover like a deep link",
+        "the frame address is fixed at open and does not move when the reader steps",
+        "a step is a message, and it carries the neighbours to warm",
+        "a step taken before the frame has loaded is delivered when it does",
+        "an open PR comes from the row, instantly",
+        "a merged PR comes from the frame, since nothing in the cache has seen it",
+        "a report about a branch the reader has left is ignored",
+        "closing forgets the frame, so the next takeover opens its own"
       ]
     },
     {

@@ -590,6 +590,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/branch-step-cost.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 186,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/branch-takeover.mjs",
       "role": "show-repo's branch-detail takeover with the embedded branch page fully rendered",
       "layer": "tools/render/scenarios",

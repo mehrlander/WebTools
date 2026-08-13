@@ -204,9 +204,13 @@ test('runBranchMenu builds the GitHub destinations', () => {
 
 // ── The branch detail takeover ───────────────────────────────────────────
 // Tap a name, get the full-viewport detail with the list as its sequence.
-// The sequence is frozen at open (a cache refresh must not yank it), the
-// stepping clamps at the ends, and the iframe address carries a per-branch
-// query so stepping actually navigates (a fragment-only change would not).
+// The sequence is frozen at open (a cache refresh must not yank it) and the
+// stepping clamps at the ends.
+//
+// The address carries `&base=` because the shell already knows the row's
+// default branch, and without it the embedded page opens by asking GitHub for
+// the repo meta before it can compare anything: a round trip on the critical
+// path of every open, spent on a fact the caller had.
 
 test('tapping a row takes over: frozen sequence, position, clamped stepping', () => {
   const row = data.openBranches[1];
@@ -215,7 +219,7 @@ test('tapping a row takes over: frozen sequence, position, clamped stepping', ()
   assert.equal(data.detail.rows.length, 3);
   assert.equal(data.detailRow.name, row.name);
   assert.equal(data.detailUrl,
-    '../branch.html?swipe=me%2Ftools%40feat%2Fb#gh=me/tools@feat/b');
+    '../branch.html?swipe=me%2Ftools%40feat%2Fb#gh=me/tools@feat/b&base=main');
   assert.equal(data.detailReady, false, 'the facts card is the content until the page reports ready');
   data.detailReady = true;                 // as if the embedded brief reported in
   data.detailStep(1);
@@ -346,5 +350,111 @@ test('the finder\'s open-branch-detail event opens the takeover like a deep link
     { detail: { repo: 'me/tools', name: 'just-pushed' } }));
   assert.equal(data.detailRow?.name, 'just-pushed');
   assert.equal(data.detail.rows.length, 1);
+  data.closeDetail();
+});
+
+// ── The takeover's frame: opened once, then talked to ────────────────────────
+//
+// Stepping used to swap the iframe's src, which is a whole document load per
+// step: the pre-build re-parsed and re-executed, Alpine booted, the DOM walked,
+// before the first API call went out, and the reader watched the instant facts
+// card through all of it. The frame is now opened once and asked for the next
+// branch over postMessage, so what a step costs is what the data costs.
+
+const fakeFrame = () => {
+  const sent = [];
+  return { sent, el: { contentWindow: { postMessage: (m) => sent.push(m) }, contentDocument: null } };
+};
+
+test('the frame address is fixed at open and does not move when the reader steps', () => {
+  seed();
+  const fr = fakeFrame();
+  data.openBranchDetail(data.openBranches[0]);
+  const src = data.detailSrc;
+  assert.ok(src.includes('#gh=me/tools@feat/a'), 'it opens at the branch that was tapped');
+  data.onDetailFrame({ target: fr.el });
+  data.detailStep(1);
+  assert.equal(data.detailSrc, src, 'stepping did not reload the document');
+  assert.notEqual(data.detailUrl, src, 'though the address it WOULD open at moved');
+  data.closeDetail();
+});
+
+test('a step is a message, and it carries the neighbours to warm', () => {
+  seed();
+  const fr = fakeFrame();
+  data.openBranchDetail(data.openBranches[0]);
+  data.onDetailFrame({ target: fr.el });
+  assert.equal(fr.sent.length, 0, 'the frame opened at the first branch on its own address');
+  data.detailStep(1);
+  const m = fr.sent.pop();
+  assert.equal(m.type, 'branch-open');
+  assert.equal(m.branch, data.detailRow.name);
+  assert.equal(m.base, 'main', 'the shell knows the default branch, so the page need not ask');
+  assert.deepEqual(plain_(m.warm.map(w => w.branch)), ['feat/a', 'fresh'],
+    'both neighbours, so a step either way is already answered');
+  data.closeDetail();
+});
+
+test('a step taken before the frame has loaded is delivered when it does', () => {
+  seed();
+  data.openBranchDetail(data.openBranches[0]);
+  data.detailStep(1);                     // no frame yet: the first load is the slow one
+  const fr = fakeFrame();
+  data.onDetailFrame({ target: fr.el });
+  assert.equal(fr.sent.length, 1, 'the queued step went out on load');
+  assert.equal(fr.sent[0].branch, data.detailRow.name);
+  data.closeDetail();
+});
+
+// ── The PR number in the header ──────────────────────────────────────────────
+//
+// The row carries a PR only when it is OPEN: the activity crawl asks GitHub for
+// open pull requests alone, so a branch whose PR merged had nothing to show and
+// the header sat blank on exactly the branches whose work is finished. The
+// embedded page reads `state=all` at open time and reports what it found.
+
+test('an open PR comes from the row, instantly', () => {
+  seed();
+  data.openBranchDetail(data.openBranches[0]);
+  assert.equal(data.detailPrNumber, 12);
+  assert.equal(data.detailPrState, 'draft');
+  data.closeDetail();
+});
+
+test('a merged PR comes from the frame, since nothing in the cache has seen it', () => {
+  seed();
+  const row = data.openBranches.find(r => r.name === 'feat/b');
+  data.openBranchDetail(row);
+  assert.equal(data.detailPrNumber, 0, 'the row knows of no PR for this branch');
+  data.onBranchMessage({ source: 'web-tools', type: 'branch-state', phase: 'ready',
+                         repo: row.repo, branch: row.name, pr: 409, prState: 'merged' });
+  assert.equal(data.detailPrNumber, 409);
+  assert.equal(data.detailPrState, 'merged');
+  assert.equal(data.detailReady, true);
+  data.closeDetail();
+});
+
+test('a report about a branch the reader has left is ignored', () => {
+  seed();
+  const first = data.openBranches[0];
+  data.openBranchDetail(first);
+  data.detailStep(1);
+  data.onBranchMessage({ source: 'web-tools', type: 'branch-state', phase: 'ready',
+                         repo: first.repo, branch: first.name, pr: 999, prState: 'open' });
+  assert.equal(data.detailReady, false, 'a late ready must not reveal the page mid-read');
+  assert.notEqual(data.detailPrNumber, 999);
+  data.closeDetail();
+});
+
+test('closing forgets the frame, so the next takeover opens its own', () => {
+  seed();
+  const fr = fakeFrame();
+  data.openBranchDetail(data.openBranches[0]);
+  data.onDetailFrame({ target: fr.el });
+  data.closeDetail();
+  assert.equal(data.detailSrc, '');
+  data.openBranchDetail(data.openBranches[1]);
+  data.detailStep(-1);
+  assert.equal(fr.sent.length, 0, 'the dead frame was not messaged');
   data.closeDetail();
 });

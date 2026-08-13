@@ -259,3 +259,108 @@ test('a non-404 compare error propagates rather than reading as unrelated', asyn
   };
   await assert.rejects(() => BB.fetchBrief(gh, { repo: 'acme/w', branch: 'f', base: 'main' }));
 });
+
+// ── the two reads run together ──────────────────────────────────────────────
+//
+// The pulls call used to wait on the compare for no reason but the order they
+// were written in. One page load hardly noticed; the swiper pays it once per
+// step, which is where a spare round trip stops being free.
+
+test('the compare and the PR list are in flight at the same time', async () => {
+  let both = false;
+  let comparePending = false;
+  const gh = {
+    async compare() {
+      comparePending = true;
+      await new Promise(r => setTimeout(r, 5));
+      comparePending = false;
+      return compare();
+    },
+    async req() { both = comparePending; return []; },
+  };
+  await BB.fetchBrief(gh, { repo: 'acme/w', branch: 'f', base: 'main' });
+  assert.equal(both, true, 'the PR list went out while the compare was still open');
+});
+
+test('each side keeps its own failure rule when they run together', async () => {
+  const gh = {
+    compare: async () => { throw Object.assign(new Error('404'), { status: 404 }); },
+    req: async () => { throw new Error('403'); },
+  };
+  const r = await BB.fetchBrief(gh, { repo: 'acme/w', branch: 'f', base: 'main' });
+  assert.equal(r.noBase, true, 'a 404 compare is still a finding');
+  assert.deepEqual(r.pulls, [], 'a failed PR lookup still costs only the guide');
+});
+
+// ── the read-through cache ──────────────────────────────────────────────────
+//
+// It exists for one surface: the swiper, which re-opens branches the reader
+// stepped past and warms the ones they have not reached. A TTL rather than a
+// session store, because this page's standing claim is that its facts are read
+// at open time and only a cache describing ONE reading pass keeps that honest.
+
+const counting = (over = {}) => {
+  const n = { compare: 0, req: 0 };
+  return { n, gh: {
+    async compare() { n.compare++; return compare(); },
+    async req() { n.req++; return []; },
+    ...over,
+  } };
+};
+
+test('readBrief: a second read inside the window does not touch GitHub', async () => {
+  BB.forget();
+  const { n, gh } = counting();
+  const at = { repo: 'acme/w', branch: 'cached', base: 'main' };
+  await BB.readBrief(gh, at);
+  await BB.readBrief(gh, at);
+  assert.equal(n.compare, 1);
+  assert.equal(n.req, 1);
+});
+
+test('readBrief: a warm still in flight is joined, not re-issued', async () => {
+  BB.forget();
+  const { n, gh } = counting();
+  const at = { repo: 'acme/w', branch: 'warm', base: 'main' };
+  const [a, b] = await Promise.all([BB.readBrief(gh, at), BB.readBrief(gh, at)]);
+  assert.equal(n.compare, 1, 'the prefetch and the arrival are one call');
+  assert.equal(a, b, 'and one answer');
+});
+
+test('readBrief: the base is part of the identity', async () => {
+  BB.forget();
+  const { n, gh } = counting();
+  await BB.readBrief(gh, { repo: 'acme/w', branch: 'f', base: 'main' });
+  await BB.readBrief(gh, { repo: 'acme/w', branch: 'f', base: 'release' });
+  assert.equal(n.compare, 2, 'a different comparison is a different reading');
+});
+
+test('readBrief: a failure is not the answer for a minute', async () => {
+  BB.forget();
+  let calls = 0;
+  const gh = {
+    async compare() {
+      calls++;
+      if (calls === 1) throw Object.assign(new Error('500'), { status: 500 });
+      return compare();
+    },
+    async req() { return []; },
+  };
+  const at = { repo: 'acme/w', branch: 'flaky', base: 'main' };
+  await assert.rejects(() => BB.readBrief(gh, at));
+  const ok = await BB.readBrief(gh, at);
+  assert.ok(ok.compare, 'the rejection evicted itself and the retry reached GitHub');
+});
+
+test('forget: one branch, or all of them', async () => {
+  BB.forget();
+  const { n, gh } = counting();
+  const at = { repo: 'acme/w', branch: 'f', base: 'main' };
+  await BB.readBrief(gh, at);
+  BB.forget('acme/w', 'f', 'main');
+  await BB.readBrief(gh, at);
+  assert.equal(n.compare, 2);
+  BB.forget();
+  await BB.readBrief(gh, at);
+  assert.equal(n.compare, 3);
+});

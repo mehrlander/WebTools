@@ -1662,6 +1662,58 @@ Open row's primary read, and the 🌿 entry in
 shareable address with `?view=activity` as the browsing route, its tossed
 fallback retired.
 
+#### A step is a message, not a page load
+
+Until 2026-08-13 a step swapped the iframe's `src`, which is a **whole document
+load**: the 2.4 MB pre-build re-parsed and re-executed, Alpine booted, the DOM
+walked, all before the first API call went out, while the reader watched the
+instant facts card. A branch is a different *subject* for the embedded
+component, not a different page, so the frame is now opened once per takeover
+and asked for each branch over `postMessage`.
+
+The channel is small and lives in `lib/alpineComponents/branch-brief.js`
+(`listen`), not in `pages/branch.html`, for a reason this page has been caught
+by before: `?use=` swaps the library while github.io still serves the page file
+from the default branch, so behaviour written into the shell cannot be previewed
+from a branch and ships dark. Two messages in, one out:
+
+| Message | Direction | Carries |
+| --- | --- | --- |
+| `branch-open` | shell → page | the next `repo`/`branch`/`base`, plus `warm`: the neighbours worth reading ahead |
+| `branch-refresh` | shell → page | nothing; drops the cached reading and asks GitHub again |
+| `branch-state` | page → shell | `loading` or `ready`, and on ready the PR number and its state |
+
+Four things follow, and each was something the src swap got for free by throwing
+the document away:
+
+* **The reads that were serial are not.** The compare and the PR list now go out
+  together (`kits/branch-brief.js`, `fetchBrief`), the content registry starts
+  beside them rather than after, and the shell passes `&base=` from the row it
+  already holds, which removes the repo-meta call the page used to make before it
+  could compare anything. Four round trips on the critical path became one.
+* **The neighbours are warmed.** `readBrief` is a read-through cache with a
+  sixty-second TTL, and it stores the *promise*, so a prefetch still in flight is
+  joined rather than re-issued. The TTL rather than a session store is what keeps
+  the page's freshness claim honest: it describes one reading pass, not a visit.
+* **A slower read cannot land on a newer branch.** Each load carries a pass
+  number and a late answer is dropped.
+* **The header can show a merged PR.** The activity crawl asks GitHub for open
+  pull requests only (`g.pulls('open', 30)`), so a branch whose PR merged had no
+  number in the cache at all and the header sat blank on exactly the branches
+  whose work is finished. The page reads `state=all` at open time and reports
+  what it found, so the row's number shows instantly when there is one and the
+  frame's fills in when there is not.
+
+One rendering fact is worth recording because it is invisible to jsdom and cost
+a debugging pass. Closing and reopening the takeover inside one tick leaves
+Alpine's `x-if` with the same `<iframe>` to reuse, so **no second `load` event
+fires**; a shell holding only the load event's reference then has none, and every
+step after that queues silently while the header steps over a page that does not.
+The frame is therefore resolved from `x-ref` first and the load event second.
+Measured with `tools/render/scenarios/branch-step-cost.mjs`, which drives real
+steps in a real browser and prints, per step, whether the document reloaded,
+which calls went out, and where the header's PR number came from.
+
 ### Drop a file on a branch
 
 The Activity view's branch menu carries **Drop a file here**: GitHub's
