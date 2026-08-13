@@ -2729,6 +2729,12 @@ function app(){ return {
         let req;
         try { req = JSON.parse((await reg.get(M.REQ_DIR + '/' + name)).text); }
         catch(e){ continue; } // unreadable/!JSON request: leave it, don't loop
+        // An ask addresses the USER, so this loop must not touch it. The skip
+        // has to happen before fulfill, not inside it: fulfill returns a result
+        // for an unsupported kind, saving a result is what marks a request
+        // answered, and an ask closed by its own rejection would be gone before
+        // anyone saw it. The stage lists these and a person closes them.
+        if (M.isAsk && M.isAsk(req)) continue;
         const result = await M.fulfill(req, { GH: window.GH, token: window.TOKEN });
         await reg.save(M.RES_DIR + '/' + name, result, 'Fulfill mailbox request ' + name + ' via show-repo');
       }
@@ -2834,7 +2840,25 @@ function app(){ return {
       // overview. Junk (non-string, empty) reads as undeclared.
       const landing = (typeof o.landing === 'string' && o.landing)
         ? o.landing.replace(/^\/+/, '').replace(/\/+$/, '') : '';
-      out.push({ path, label: o.label || path.split('/').pop(), board, landing });
+      // `inbox` is the repo field one level down: where a deposit aimed at this
+      // workspace lands, in the same parseBox grammar (a bare folder is
+      // repo-root-relative like `tracker` and `landing`, `@ref:dir` names a
+      // branch, a full address a box in another repo). Optional, so a project
+      // that declares nothing has no inbox and offers no destination.
+      //
+      // DECLARED, NOT DERIVED, which is the one place this parts from `board`
+      // above, and the difference is what the field is FOR. A board is a LINK,
+      // so deriving it from the convention costs a 404 when the guess is wrong,
+      // and the convention is reliable enough to be worth it. An inbox is a
+      // WRITE TARGET: a wrong guess deposits files into a folder nothing
+      // drains, and they are not missing, they are somewhere plausible. That is
+      // precisely how home grew a second intake tray, from a path typed at the
+      // root instead of into the declared one, invisible to its own map and
+      // staleness check for six weeks (removed 2026-08-12). A destination is
+      // worth saying out loud.
+      const inbox = (typeof o.inbox === 'string' && o.inbox && window.RepoAddress)
+        ? window.RepoAddress.parseBox(o.inbox, repo) : null;
+      out.push({ path, label: o.label || path.split('/').pop(), board, landing, inbox });
     }
     return out;
   },
@@ -2886,8 +2910,13 @@ function app(){ return {
     if (!this.projectPath) return null;
     const s = Alpine.store('browser');
     const found = this.repoProjects(s.repo).find(p => p.path === this.projectPath);
+    // `inbox` is null rather than derived in the fallback, and that asymmetry
+    // with `board` is deliberate: a board can be guessed from the convention
+    // because a wrong guess is a dead link, while an undeclared inbox has no
+    // safe guess at all. One shape either way, so a consumer need not test for
+    // the key's presence.
     return found || { path: this.projectPath, label: this.projectPath.split('/').pop(),
-                      board: this.projectPath + '/tracker/board.md', landing: '' };
+                      board: this.projectPath + '/tracker/board.md', landing: '', inbox: null };
   },
   goProject(path, tab){
     const p = String(path || '').replace(/\/+$/, '');
