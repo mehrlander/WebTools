@@ -450,6 +450,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/annotate-double-tap.mjs",
+      "role": "a double tap on a word opening the keyboard with the caret inside that word, and the long press still taking the word: the two gestures that traded places on 2026-08-13, both needing a real caret-from-point that jsdom stubs",
+      "layer": "tools/render/scenarios",
+      "lines": 62,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/annotate-keyboard-mode.mjs",
       "role": "the composer with the keyboard open: whether the way out wears a microphone, and whether the mic still holds its slot",
       "layer": "tools/render/scenarios",

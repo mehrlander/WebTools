@@ -38,7 +38,7 @@
         "the composer paints through the kit and swaps its pad for a selection",
         "the card refuses the browser its own selection, from a stylesheet",
         "a tap on the blank canvas sends the caret to the end",
-        "three taps in a run take the whole buffer",
+        "two taps in a run open the keyboard, with the caret where they landed",
         "the keyboard mode does not wear a microphone",
         "Done resumes dictation only if the keyboard interrupted it",
         "a page note pins to nothing, and the set says which page it means",

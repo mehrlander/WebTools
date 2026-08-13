@@ -522,22 +522,27 @@ test('a tap on the blank canvas sends the caret to the end', () => {
   A.disable();
 });
 
-test('three taps in a run take the whole buffer', () => {
-  // hitsText is stubbed because jsdom has no layout and would answer false for
-  // every point; its own geometry is measured in dictate.test.mjs. What is
-  // under test here is the counting, and that a triple needs no point at all:
-  // the offset is resolved AFTER the count, so select-all does not depend on
-  // which character the third tap landed on (jsdom has no caretRangeFromPoint
-  // either, so a triple that needed one could not work at all).
+test('two taps in a run open the keyboard, with the caret where they landed', () => {
+  // The double took the WORD until 2026-08-13, which the long press already
+  // does and does better. The quick gesture is better spent on the mode
+  // switch, since reaching the pencil to fix one letter is the trip this
+  // surface asks for most, and the caret has to arrive where the reader
+  // pointed or they point again through a textarea their thumb half covers.
+  //
+  // Two stubs, both for things jsdom does not have and both measured for real
+  // elsewhere: hitsText needs client rects (its own geometry is in
+  // dictate.test.mjs) and caret-from-point does not exist at all (the offset
+  // arithmetic it feeds is Dictate.offsetAt, which is pure and tested).
   window.SpeechRecognition = FakeSR;
   loadKit('dictate.js', { window });
-  const real = window.Dictate.hitsText;
+  const realHits = window.Dictate.hitsText;
   window.Dictate.hitsText = () => true;
   try {
     A.enable({ doc, subject: { title: 'x', url: '' } });
     const S = A._state, d = S.dict;
     d.text = 'the quick brown fox';
     A._paintDraft();
+    doc.caretRangeFromPoint = () => ({ startContainer: S.compBody.firstChild, startOffset: 6 });
 
     const tap = () => {
       const e = new window.Event('pointerup', { bubbles: true });
@@ -545,12 +550,18 @@ test('three taps in a run take the whole buffer', () => {
       S.compView.dispatchEvent(e);
     };
     tap();
-    assert.equal(d.range, null, 'one tap with nothing live waits');
-    tap(); tap();
-    assert.deepEqual(d.range, { start: 0, end: 19 }, 'the third takes everything');
-    assert.equal(d.hasSelection, true);
+    assert.equal(S.editing, false, 'one tap with nothing live waits');
+    assert.equal(d.range, null);
+    tap();
+    assert.equal(S.editing, true, 'the second opens the keyboard');
+    assert.equal(S.compTa.value, 'the quick brown fox');
+    assert.equal(S.compTa.selectionStart, 6, 'at the offset that was tapped, not at the end');
+
+    // The run is reset by the open, so a third tap is a fresh first tap rather
+    // than a select-all that no longer exists: once the read surface is gone
+    // the platform's own gesture is where a reader looks for it.
     A.disable();
-  } finally { window.Dictate.hitsText = real; }
+  } finally { window.Dictate.hitsText = realHits; delete doc.caretRangeFromPoint; }
 });
 
 test('the keyboard mode does not wear a microphone', () => {
