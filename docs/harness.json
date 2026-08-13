@@ -470,6 +470,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/annotate-row-menu.mjs",
+      "role": "a note row's menu and the edit behind it: the kebab that replaced the bare delete, the menu flipping above the row when the card has no room below, and the note reopened in the composer with its text loaded",
+      "layer": "tools/render/scenarios",
+      "lines": 27,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/annotate-select-text.mjs",
       "role": "the composer's own selection driven the way a thumb drives it: long press to take a word, tap to arm a pin, tap to place it",
       "layer": "tools/render/scenarios",

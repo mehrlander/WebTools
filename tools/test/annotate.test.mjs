@@ -782,3 +782,55 @@ test('the card refuses the platform’s selection, and the textarea takes it bac
   }
   A.disable();
 });
+
+test('a note row opens a menu, and Edit reopens it in the composer', () => {
+  // The row carried a bare × and nothing else. A destructive action alone in a
+  // row is the wrong default, and the edit that was missing had to be reached
+  // through the drawer, a tab away on a phone. Both now sit behind one tap.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const S = A._state;
+  const it = A.add({ type: 'page' }, 'the ref bar wraps');
+
+  const row = S.listEl.firstChild;
+  const more = row.querySelector('[data-annotate-menu]');
+  assert.ok(more, 'the row carries a menu button, not a delete');
+  assert.equal(row.textContent.includes('×'), false, 'and no bare × beside it');
+
+  more.dispatchEvent(new window.Event('click', { bubbles: true }));
+  const menu = S.ui.querySelector('div[data-annotate-menu]');
+  assert.ok(menu, 'the menu opens on the row it belongs to');
+  assert.deepEqual([...menu.querySelectorAll('button')].map(b => b.textContent), ['Edit', 'Remove']);
+
+  // Edit stages the SAME note: same target, its text loaded, nothing recording,
+  // and saving updates rather than adding a second one.
+  menu.querySelectorAll('button')[0].dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.draft.editId, it.id);
+  assert.equal(S.draft.target, it.target, 'an edit never re-aims the anchor');
+  assert.equal(S.dict.text, 'the ref bar wraps', 'the note is loaded to be revised, not retyped');
+  assert.equal(S.dict.listening, false, 'and the microphone stays off over words already written');
+  assert.match(S.compCap.textContent, /^Editing: /);
+
+  S.dict.text = 'the ref bar wraps under 380px';
+  S.compSave.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A.items.length, 1, 'one note, revised');
+  assert.equal(A.items[0].id, it.id);
+  assert.equal(A.items[0].note, 'the ref bar wraps under 380px');
+  assert.ok(A.items[0].editedAt, 'and the edit is dated');
+
+  // Remove is the other half, and closing is a click anywhere else.
+  S.listEl.querySelector('[data-annotate-menu]')
+    .dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A._state.menuId, it.id, 'the same tap toggles it back open');
+  doc.body.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A._state.menuId, null, 'a click off the menu closes it');
+
+  S.listEl.querySelector('[data-annotate-menu]')
+    .dispatchEvent(new window.Event('click', { bubbles: true }));
+  S.ui.querySelector('div[data-annotate-menu]').querySelectorAll('button')[1]
+    .dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A.items.length, 0);
+  A.disable();
+});
