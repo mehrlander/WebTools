@@ -139,7 +139,22 @@ try {
   ok('the frame is scaled down to fit', /^scale\(0\.39/.test(wideBox.transform), JSON.stringify(wideBox));
   ok('and the body stops scrolling sideways', wideBox.overflow === 'hidden', JSON.stringify(wideBox));
 
+  console.log('a width with nothing rendered under it:');
+  // The width is applied at boot, before any render, so the input panel can be
+  // all the viewer ever sees. It has to keep its own scrolling.
+  await page.goto(`${origin}/pages/toss-render.html?w=1280`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1200);
+  const idle = await page.evaluate(() => ({
+    overflow: document.body.style.overflow,
+    panel: !document.getElementById('empty').classList.contains('hidden'),
+    w: window.__tossWidthNow,
+  }));
+  ok('the panel is showing', idle.panel === true, JSON.stringify(idle));
+  ok('the width is held for the next render', idle.w === 1280, JSON.stringify(idle));
+  ok('and the body is left able to scroll', idle.overflow === '', JSON.stringify(idle));
+
   console.log('the address stays honest:');
+  await probe(`${origin}/pages/toss-render.html?w=1280#gh=${ADDR}`);
   const url = await page.evaluate(() => location.search);
   ok('?w= survives on the address bar', url.includes('w=1280'), url);
   const cleared = await page.evaluate(() => { window.__tossWidth(0); return location.search; });

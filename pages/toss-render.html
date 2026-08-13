@@ -265,6 +265,9 @@
     frame.classList.add('hidden');
     empty.classList.remove('hidden');
     empty.classList.add('flex');
+    // A width forced before a render that then failed must not leave the panel
+    // unable to scroll: the frame it was hiding overflow for is not there.
+    document.body.style.overflow = '';
     msg.textContent = error || '';
     // Only token-shaped failures surface the token link; a decode or parse
     // failure must not send the viewer off to mint a new token for nothing.
@@ -276,6 +279,9 @@
   function reveal() {
     empty.classList.add('hidden'); empty.classList.remove('flex');
     frame.classList.remove('hidden');
+    // The forced-width layout owns the body's overflow, and only while there
+    // is a frame under it: the input panel scrolls on its own terms.
+    if (window.__tossWidthNow) document.body.style.overflow = 'hidden';
   }
 
   // ── Forced frame width: seeing a page at a shape the device is not ────────
@@ -325,7 +331,10 @@
     s.transform = 'scale(' + scale + ')';
     s.marginLeft = Math.max(0, Math.round((availW - forcedWidth * scale) / 2)) + 'px';
     s.outline = scale === 1 ? '1px solid rgba(128,128,128,0.35)' : '';
-    document.body.style.overflow = 'hidden';
+    // Only while a frame is actually under it: a width asked for on the URL is
+    // applied at boot, before anything has rendered, and the input panel that
+    // may be all the viewer ever sees has to keep its own scrolling.
+    document.body.style.overflow = frame.classList.contains('hidden') ? '' : 'hidden';
     window.__tossWidthNow = forcedWidth;
   }
 
