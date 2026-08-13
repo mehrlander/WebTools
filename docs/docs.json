@@ -38,7 +38,7 @@
       "subject": "the portable set: what travels, and how to adopt it",
       "status": "living",
       "reach": "project",
-      "words": 6022,
+      "words": 6123,
       "maintenance": "authored, edited in place; the roster tables are census-gated against portable.json and disk (portable-manifest.test.mjs)"
     },
     {
@@ -182,7 +182,7 @@
       "subject": "what the sandbox can run and reach",
       "status": "measured",
       "reach": "project",
-      "words": 4262,
+      "words": 5149,
       "maintenance": "authored; per-claim verification dates, edited in place and re-dated, probes preferred over assertions"
     },
     {

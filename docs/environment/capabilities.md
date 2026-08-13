@@ -500,3 +500,118 @@ there and all failed.
 like one. It appears throughout the log of a server whose calls succeed.
 Probing-discipline rule 1 in another costume: the conspicuous log line was the
 visible thing, and the working control was the fact.
+
+## WebSearch is metered per session and shared across every subagent
+
+Measured 2026-08-13 from 81 subagent transcripts in one Claude Code web
+session. The refusal is explicit and names its own lever:
+
+```
+this session has used its web search budget (200 of 200 WebSearch calls).
+Continue with the information already gathered instead of issuing more
+searches. If more searches are genuinely needed, ask the user to raise
+CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION.
+```
+
+**The pool is shared, not per-agent.** Agents dispatched later in a fan-out
+found the budget already spent by earlier agents, before issuing a query of
+their own. Across that run, 541 searches were attempted, 45 were refused, and
+the refusals hit **19 of 75 agents**.
+
+**One number does not reconcile, and is recorded rather than explained away.**
+496 searches were actually performed across subagents alone, well past a stated
+cap of 200, so the counter resets on some boundary the transcripts cannot pin
+down (a container swap is known to have happened mid-session). Plan against 200
+in a window, not 200 for all time.
+
+**WebFetch is not metered**, and the same run made 1,687 fetches against 541
+searches. When the budget ran out, agents independently improvised the same
+workaround: fetching search-engine result pages through WebFetch, visible in
+the host list as `html.duckduckgo.com` (16 agents), `bing.com` (12),
+`google.com` (11), `duckduckgo.com` (11). That degrades *discovery* while
+leaving *retrieval* intact, so the damage is per-claim rather than per-source:
+anything from a known URL is unaffected, and anything that required locating a
+document is exposed.
+
+## Subagents share the container, not just the budget
+
+Tested directly, both directions, in one session: a subagent read a file the
+main loop had just written, and the main loop read a file the subagent wrote.
+Same hostname, same `/proc/uptime` (sixteen seconds apart, so the same boot),
+same `HTTPS_PROXY`, same user, same repo checkouts, same branch, same HEAD.
+
+**What is separate is the context window, not the machine.** That single fact
+explains the shared search budget, the shared concurrency cap, and why agents
+can write directly into the repo for the main loop to commit. The `Agent`
+tool's `isolation: "worktree"` and `isolation: "remote"` options are the
+exceptions; by default everything is shared.
+
+**Concurrency caps at 20 subagents.** Larger dispatches partially fail with
+`Concurrent subagent limit reached`, raisable with
+`CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`. The cap's real cost is not the visible
+rejection but a **silent drop**: an item that was in the roster, never
+dispatched successfully, and therefore never reports. Reconcile the roster
+against what actually launched, never against what was dispatched.
+`ListAgents` settles it in one call.
+
+## Subagent transcripts are durable, greppable, and outside every repo
+
+Every subagent's full turn-by-turn transcript is a real file at
+`~/.claude/projects/<session>/subagents/agent-<id>.jsonl`, holding every tool
+call with its arguments. One session's set was 81 files and about 30 MB, and
+they survived a container swap.
+
+This is more recoverable than it looks: a corpus whose *written output*
+preserved a URL in only 7 of 776 files still yielded **1,734 fetches across
+511 hosts** when the transcripts were mined. What transcripts do **not** carry
+is page link structure, because WebFetch returns a small model's answer rather
+than the page's markdown; a check of `tool_result` blocks found zero markdown
+links.
+
+Because they sit outside every repo and die with the environment, distil what
+matters into a committed artifact while the environment is alive.
+
+**One contaminant worth knowing:** the WebFetch summarizer sometimes returns
+`Anthropic` or `Anthropic's Claude Agent SDK` as page content on unrelated
+pages. Four agents caught and excluded it independently in one run.
+
+## `web.archive.org` is gated per container, and the container can change under a session
+
+Diagnosed end to end 2026-08-13. A Wayback CDX harvest of hundreds of thousands
+of URLs succeeded at 07:00, and every request failed by 15:05 in what presented
+as the same session.
+
+**It is not the model.** A Sonnet subagent dispatched in the same container at
+the same moment as an Opus main loop returned byte-identical failures.
+
+**It is a container swap.** `/proc/uptime` put the second container's boot eight
+hours after the successful harvest. The workspace disk persists across the
+swap, which is precisely what hides the transition and makes it read as one
+continuous session.
+
+Two distinct blocks, which fail differently and are worth telling apart:
+
+- **WebFetch** returns a named harness refusal, `Claude Code is unable to fetch
+  from web.archive.org`. Not a timeout, and probably constant, so anyone whose
+  habit is fetching Wayback URLs that way would conclude it never works.
+- **Bash `curl`** fails at the proxy with exit 35 `CURLE_SSL_CONNECT_ERROR`
+  after about 11.4s. The gateway logs `connect_rejected`, "gateway answered 502
+  to CONNECT (policy denial or upstream failure)". `archive.org` returns 200
+  from the same shell while `web.archive.org` does not, so it is a per-host
+  allowlist entry rather than an outage, and `timetravel.mementoweb.org` is
+  denied too, so the obvious fallback is not one.
+
+Rate limiting was considered and does not fit: a limit answers 429 rather than
+refusing the TLS handshake, and the sibling host stayed up.
+
+**Probe before planning around it, and never trust a reachability note that
+carries no container boot time.** This supersedes both an older "archive.org is
+unreachable from the sandbox" note and the same day's "verified reachable":
+each was true of one container.
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" --max-time 20 \
+  "https://web.archive.org/cdx/search/cdx?url=example.com&limit=1"
+```
+
+`000` means plan without it.
