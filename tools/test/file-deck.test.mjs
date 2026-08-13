@@ -147,3 +147,15 @@ test('back: true earns the chevron without a parent deck to drill from', async (
   assert.ok(d.el.querySelector('button[aria-label="Back"]'));
   d.close(); await tick(4);
 });
+
+test('the crumb does not say the same thing twice', async () => {
+  // A host that names the branch AND drills from a deck titled the branch is
+  // the normal case (show-repo's branch deck does exactly that), so the
+  // dedupe lives here rather than in every caller's knowledge of its parent.
+  const parent = window.swipeDeck.open({ count: 2, title: 'claude/some-branch', render: () => {} });
+  await tick(2);
+  const child = window.fileDeck.open({ ...AT, files: FILES, parent, subtitle: 'claude/some-branch' });
+  await tick(2);
+  assert.equal(head(child).sub, 'claude/some-branch · lib/kits/');
+  child.close(); await tick(4); parent.close(); await tick(4);
+});

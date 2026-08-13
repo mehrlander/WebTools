@@ -4287,8 +4287,12 @@ function app(){ return {
   // tab stays the source of truth. Touch-only, so pointer users are never
   // affected; a drag outside the carousel (inside a repo) no-ops.
   //
-  // The same idiom, against an embedded page rather than a local pane, drives
-  // the estate's branch-detail takeover (alpineComponents/estate.js, dTouch*).
+  // This is now the only hand-rolled swipe in the app. The estate's branch
+  // takeover ran the same idiom against an embedded page until 2026-08-13, when
+  // it became a swipe-deck and the drag went with the iframe that forced it.
+  // Worth knowing if this one ever needs the same treatment: what it buys is a
+  // native snap track, and what it costs is that the panes must be real
+  // siblings rather than one surface being translated.
   _pX: 0, _pY: 0, _pLock: null, _pPane: null, _pW: 0, _pBusy: false,
   DRAG_MIN: 8,          // px before the gesture locks to an axis
   COMMIT_FRAC: 0.22,    // fraction of pane width that commits a page…

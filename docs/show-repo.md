@@ -1662,179 +1662,66 @@ Open row's primary read, and the 🌿 entry in
 shareable address with `?view=activity` as the browsing route, its tossed
 fallback retired.
 
-#### A step is a message, not a page load
+#### One mechanism, two levels
 
-Until 2026-08-13 a step swapped the iframe's `src`, which is a **whole document
-load**: the 2.4 MB pre-build re-parsed and re-executed, Alpine booted, the DOM
-walked, all before the first API call went out, while the reader watched the
-instant facts card. A branch is a different *subject* for the embedded
-component, not a different page, so the frame is now opened once per takeover
-and asked for each branch over `postMessage`.
+Until 2026-08-13 the takeover was bespoke: an overlay, a hand-rolled
+touchstart/move/end drag, a two-phase commit animation, an instant facts card,
+and an `<iframe>` of `branch.html` with a postMessage channel to talk to it. It
+is now a **swipe-deck** whose slides each mount the `branchBrief` component
+directly in this shell's Alpine, and the file deck **drills** from it: same
+chrome, same gesture, one level down.
 
-The channel is small and lives in `lib/alpineComponents/branch-brief.js`
-(`listen`), not in `pages/branch.html`, for a reason this page has been caught
-by before: `?use=` swaps the library while github.io still serves the page file
-from the default branch, so behaviour written into the shell cannot be previewed
-from a branch and ships dark. Two messages in, one out:
+**The iframe was the whole reason for the rest, and it was never needed.** The
+shell's own bundle already registers `branchBrief` and `fileReview`, and every
+kit the branch view wants loads into it with zero network requests, so the frame
+was a second copy of a library already running. Removing it deleted about 540
+lines here and 165 in `branch-brief.js`, and replaced them with an `open()` call
+and a render function.
 
-| Message | Direction | Carries |
-| --- | --- | --- |
-| `branch-open` | shell → page | the next `repo`/`branch`/`base`, plus `warm`: the neighbours worth reading ahead |
-| `branch-refresh` | shell → page | nothing; drops the cached reading and asks GitHub again |
-| `branch-state` | page → shell | `loading` or `ready`, and on ready the PR number and its state |
+What that buys is not tidiness, it is the gesture. A native scroll-snap track
+runs on the compositor thread, keeps tracking when the main thread is busy
+rendering a diff, carries the platform's fling and deceleration, is
+interruptible mid-flight, and has the neighbouring branches really there under
+the finger. The hand-rolled drag had none of that: it ran on the main thread,
+sampled `touchmove` at a lower resolution than the compositor does, called
+`preventDefault` so the browser had to wait for it, read no velocity at all
+(commit was `|dx| > min(90px, 22%)`, so a fast flick of 60px was rejected and a
+slow crawl of 100px committed), spent about 400 ms sliding one surface out and
+back in, and locked out a second swipe while it did. `show-repo.html`'s own
+dashboard pager is now the only hand-rolled swipe left in the app.
 
-Four things follow, and each was something the src swap got for free by throwing
-the document away:
+**What the header carries.** The deck's slots take the takeover's chrome one for
+one: the branch's last segment as the title, `repo · #PR` as the subtitle, the
+repo's icon, the PR as the header exit, `n / m` in the pill, the pager in the
+footer, and copy-this-link as an action. The **last segment** rather than the
+whole name, for the reason the file deck titles a file by its filename: a header
+at phone width has room for one of the two, and `claude/` distinguishes nothing.
+The full name is written once, in full, on the slide's own identity line, which
+is also why a framed slide drops the repo and the PR link it used to carry.
 
-* **The reads that were serial are not.** The compare and the PR list now go out
-  together (`kits/branch-brief.js`, `fetchBrief`), the content registry starts
-  beside them rather than after, and the shell passes `&base=` from the row it
-  already holds, which removes the repo-meta call the page used to make before it
-  could compare anything. Four round trips on the critical path became one.
-* **The neighbours are warmed.** `readBrief` is a read-through cache with a
-  sixty-second TTL, and it stores the *promise*, so a prefetch still in flight is
-  joined rather than re-issued. The TTL rather than a session store is what keeps
-  the page's freshness claim honest: it describes one reading pass, not a visit.
-* **A slower read cannot land on a newer branch.** Each load carries a pass
-  number and a late answer is dropped.
-* **The header can show a merged PR.** The activity crawl asks GitHub for open
-  pull requests only (`g.pulls('open', 30)`), so a branch whose PR merged had no
-  number in the cache at all and the header sat blank on exactly the branches
-  whose work is finished. The page reads `state=all` at open time and reports
-  what it found, so the row's number shows instantly when there is one and the
-  frame's fills in when there is not.
+**Three things the shell still owns.** The sequence and the position (`detail`),
+because the address is stamped from them; the header, through `deckChrome` and
+`dressDeck`; and `onSlideMeta`, which is how a **merged** PR number reaches the
+header at all, since the activity crawl asks GitHub for open pull requests only
+and a finished branch has none in the cache.
 
-One rendering fact is worth recording because it is invisible to jsdom and cost
-a debugging pass. Closing and reopening the takeover inside one tick leaves
-Alpine's `x-if` with the same `<iframe>` to reuse, so **no second `load` event
-fires**; a shell holding only the load event's reference then has none, and every
-step after that queues silently while the header steps over a page that does not.
-The frame is therefore resolved from `x-ref` first and the load event second.
-Measured with `tools/render/scenarios/branch-step-cost.mjs`, which drives real
-steps in a real browser and prints, per step, whether the document reloaded,
-which calls went out, and where the header's PR number came from.
+**Opening replaces rather than stacks.** Two branch decks is the same level
+twice, not a level down, and the finder's open-branch event and a `&detail=`
+deep link can both fire while one is open. The old deck is `drop()`ped rather
+than closed: `close()` leaves through history, and a history round trip cannot
+land while a newer deck sits on top of it, so the old deck would defer to the
+top of the stack forever and leak, still mounted. The replacement then reuses
+its history entry, so Back still costs one press.
 
-#### Nothing covers the page, and nothing tears it down
+**The kit chain is pulled on first use** in `mountDeck`, and it is not optional.
+The pre-build auto-boots every component, so the shell has `branchBrief`, but
+not `kits/branch-brief.js`, which that component reads; a slide mounted without
+it renders "this page has not finished loading its code" and nothing else. That
+is the one thing the iframe did for free, since `branch.html` named the whole
+chain and nobody had to notice it existed.
 
-Two leftovers of the src-swap era survived it by a few hours, and together they
-were a visible flash on every step.
-
-The shell used to fade the frame out and raise the **instant facts card** over it
-on each step. Both exist because a reloading frame is genuinely blank, which a
-persistent one never is, so the cover is now first-open only: `detailSeen` marks
-that the embedded page has rendered once in this takeover, after which the frame
-stays at full opacity and the card stands down. The first open still gets both,
-since the frame there really is empty.
-
-Inside the page, the identity, the facts strip and the pane switch used to sit in
-the same `x-if` as the panes, so a load tore all of it down to a spinner and built
-it again. Nothing in that head needs the compare: the branch, the repo and the base
-arrive on the message that asked for them. The head is therefore mounted through a
-load and correct immediately, only the numbers wait, and the spinner is confined to
-the pane. Two small pieces of state keep the strip from twitching across a swap:
-`pane` is not reset on `branch-open` (settled once the brief lands), and
-`showGuideTab` answers with the previous branch's `hadGuide` while loading, so the
-Guide tab does not vanish and return one round trip later.
-
-#### The drag measured itself
-
-A separate bug, older than the stepping work and the reason the swipe never
-tracked properly on a phone. The drag reaches **inside** the frame, which is what
-made the whole surface swipeable rather than two 24px strips. It also means most
-touches are born in the frame's document and report `clientX` relative to the
-**frame's** viewport, and the frame is the element being translated. So a
-stationary finger reads differently after every move, by exactly the offset just
-applied, and the surface oscillates between two values rather than following
-anything. Measured 2026-08-13 by driving a real CDP touch drag: a finger walking
-left in even 8px steps was read as 284, 292, 276, 284, 268, 276, which is `page ±
-the offset last written`. On a phone that is a visible shake.
-
-`_fingerX` converts a frame-born reading back into the shell's coordinates by
-adding the frame's own `getBoundingClientRect().left`, which carries the live
-transform, so the loop closes. Shell-born touches (the header, the edge strips)
-are already in the right frame of reference and are left alone. The same drag
-now steps −8, −16, −24, −32, −40 for the same finger.
-
-**Where the scrollbar lives** is decided by the same split, and it was the other
-half of the complaint. Framed, the view is a dialog and a dialog scrolls inside
-itself: the root fills the mount, the head is `shrink-0`, and the pane is the one
-`overflow-y-auto min-h-0` region, so a long guide or a three-hundred-file list
-never carries away the branch name or the control that would switch panes. The
-component stamps the document to match in `fitDocument` (body to `100dvh`, a
-column, `overflow: hidden`, the mount flexing into what the masthead leaves),
-which lives in the library rather than in `pages/branch.html` for the `?use=`
-reason above and because reading the layout off whatever shell is serving beats
-assuming one. **Standalone the page is left alone** and scrolls as a document,
-since pinning a page's own header costs a phone its URL-bar collapse and buys
-nothing.
-
-#### Reading the files: the drill
-
-The Files pane is for **scanning**: thirty hairline rows a reader sweeps to find
-something. Reading a diff through it means expanding a row, scrolling past it,
-collapsing, expanding the next. Since 2026-08-13 the other half exists: the same
-`fileReview` cards, one per slide, in the house swipe deck
-([`kits/file-deck.js`](../lib/kits/file-deck.js) over
-[`kits/swipe-deck.js`](../lib/kits/swipe-deck.js)).
-
-**It opens as a drill, not as a nested pager.** The deck covers the branch view,
-the header becomes the file's, and Back returns the reader to the branch where
-they left it. One deck visible, one header, and the swipe means one thing at a
-time. The nesting lives entirely in the return path, which is why it does not
-look nested.
-
-Two shapes were considered and rejected, and the reasons generalize past this
-case:
-
-* **A nested pager**, an outer branch deck with an inner file deck live at once.
-  The disqualifying property is not gesture ambiguity, it is that **the outer
-  axis has no meaning at the inner position**: file lists are unrelated across
-  branches and of different lengths, so "next branch" while sitting on file 7
-  either resets to file 0 (a jump dressed as a swipe) or does something
-  arbitrary. Two headers would advertise a two-dimensional space that is not
-  two-dimensional.
-* **A level picker in the header**, a breadcrumb that sets what the swipe means.
-  That is a mode, and a mode has to be remembered while a place has a back
-  button. A picker earns its cost at four levels; at two, a stack is the answer.
-  The breadcrumb survives as the drilled header's **subtitle**, read-only, where
-  it says where you are without offering to change it.
-
-**Entry points**, two, and both keep the collapsed row scannable: a control on
-the Files tab row opens at the first file, and **Read from here** in an expanded
-card's action strip opens at that one. Not an icon per row, which the
-collapsed-density pass rejected for exactly this reason.
-
-**The deck pages what the pane is showing.** A collapsed registry group is a
-reader saying the machine's output is not what they came for, so the group
-toggles are the deck's filter and there is no second control to keep in step.
-
-Every slide's card starts **open** on its diff, which the pane cannot afford:
-swipe-deck mounts the active slide and its two neighbours, so three cards exist
-however long the changeset is, while the pane hedges its cards closed past a
-dozen files to avoid twelve diffs fetched at once.
-
-**The shell stands down while a deck is up.** The deck is opened inside the
-frame, so it covers the frame's viewport but not show-repo's own header strip
-above it. Left alone that strip keeps its branch arrows and its position counter
-live over a file the reader has drilled into, which is the same incoherence the
-drill shape exists to avoid, and its drag would page branches out from under a
-swipe meant for files. The page posts `branch-drill` and the shell hides the
-strip and stops listening. Measured: with a deck open, a full drag moved the
-file deck one slide and wrote nothing at all to the branch surface.
-
-`pages/review.html` mounts the same deck as a root rather than a drill, since
-there is no level above it there; its dismiss is an ✕ and returns to the list.
-
-**Two things in swipe-deck had to change first**, and both were found by opening
-one deck inside another in a real browser rather than by reading the code. Every
-deck registered its own `popstate`, and one `history.back()` fires all of them,
-so a single Back closed the whole stack: the return path itself, which is the
-entire point of drilling. And every deck registered its own `keydown`, so one
-ArrowRight stepped the child **and** the parent underneath it, so popping back
-landed on a slide the reader never chose with nothing on screen having said so.
-Both are one mistake, a deck assuming it is the only one alive; the kit now
-keeps a stack and only its top answers. The overflow lock needed nothing, since
-each deck saves the value it found and restores it.
+Measured end to end by `tools/render/scenarios/branch-deck.mjs`, which is also
+what caught both of those last two faults.
 
 ### Drop a file on a branch
 

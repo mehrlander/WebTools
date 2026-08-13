@@ -14,7 +14,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeWindow, startAlpine, tick } from './bootstrap.mjs';
+import { makeWindow, startAlpine, tick, deckGeometry } from './bootstrap.mjs';
 
 class FakeGH {
   constructor(c = {}) { this.repo = c.repo || ''; }
@@ -27,6 +27,11 @@ const { window, problems } = makeWindow({
   html: '<!doctype html><html><body><div id="es" x-data="estate()"></div></body></html>',
 });
 window.GH = FakeGH;
+deckGeometry(window);   // the takeover is a swipe-deck; give jsdom a track to scroll
+// mountDeck pulls the branch view's kit chain through gh.load on first use.
+// The kits themselves are loaded below by startAlpine, so the loader only has
+// to exist and resolve; without it the whole mount is caught and abandoned.
+window.gh = { load: async () => {} };
 window.TOKEN = '';
 
 // What the shell offers the estate: a sink for the spec. The real one stamps
@@ -42,9 +47,16 @@ window.__shell = {
 // unguarded, the way the shell's own load chain guarantees it.
 const Alpine = await startAlpine(window, [
   'lib/kits/branch-survey.js',
+  // The takeover is a swipe-deck now, so the kit has to be present or
+  // mountDeck falls back to gh.load, which is not wired in a unit harness.
+  'lib/kits/swipe-deck.js',
   'lib/kits/repo-config-cache.js', 'lib/kits/repo-activity-cache.js', 'lib/kits/repo-sessions-cache.js',
   'lib/alpineComponents/estate.js',
 ]);
+// A slide mounts the real branch view, which is a network-reading component
+// covered in its own suites. Here the deck's bookkeeping is the subject, so a
+// slide is a name on a div.
+Alpine.data('branchBrief', (opts) => ({ opts, init(){ this.$el.textContent = opts.branch; } }));
 const data = Alpine.$data(window.document.getElementById('es'));
 await tick(10);
 
@@ -73,17 +85,25 @@ data.activity = {
 await tick(4);
 const ROWS = [...data.openRows];
 
-test('opening stamps the branch, stepping follows it, closing clears it', () => {
+
+test('opening stamps the branch, stepping follows it, closing clears it', async () => {
   stamped.length = 0;
   assert.equal(ROWS.length, 3, 'the fixture really produced three rows');
 
   data.openBranchDetail(ROWS[1]);
+  await tick(6);
   assert.equal(stamped.at(-1), 'me/tools@claude/feat-b');
 
-  data.detailStep(1);
+  // The deck owns the position now; the shell follows it. Driving the deck is
+  // therefore the honest way to step, and what the swipe ends up calling.
+  // The deck owns the position and the shell follows it; onDeckSlide is that
+  // following, and it is what the deck's own listener calls. The scroll that
+  // triggers it is the browser's, and is proven in tools/render/scenarios.
+  data.onDeckSlide(2);
   assert.equal(stamped.at(-1), 'me/tools@claude/feat-c', 'the address follows the swipe');
 
   data.closeDetail();
+  await tick(8);
   assert.equal(stamped.at(-1), '', 'and empties on close, so Back leaves the takeover');
 });
 

@@ -580,6 +580,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/branch-deck.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 119,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/branch-guide.mjs",
       "role": "the branch page showing a branch with its guide PR body rendered in place",
       "layer": "tools/render/scenarios",
@@ -587,16 +597,6 @@
       "invocation": "driver",
       "emits": false,
       "named": false,
-      "tested": false
-    },
-    {
-      "path": "tools/render/scenarios/branch-step-cost.mjs",
-      "role": "",
-      "layer": "tools/render/scenarios",
-      "lines": 186,
-      "invocation": "driver",
-      "emits": false,
-      "named": true,
       "tested": false
     },
     {

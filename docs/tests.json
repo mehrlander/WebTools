@@ -104,30 +104,6 @@
       ]
     },
     {
-      "path": "tools/test/branch-brief-embedded.test.mjs",
-      "kind": "behavior",
-      "protects": "The branch page reloading in place for an embedder instead of being reloaded by one: the postMessage channel, the guard against a slower read landing on a newer branch, the PR number the embedder's own list cannot know, and the neighbour warming that makes a step cost nothing.",
-      "assertions": 13,
-      "method": "alpine",
-      "runner": "suite",
-      "boot_smoke": [],
-      "assertion_names": [
-        "it opened on the branch it was mounted at, and said so",
-        "a branch-open message swaps the subject in place",
-        "the merged PR reaches the embedder, which is the whole point of the channel",
-        "loading is reported before ready, and clears the previous PR",
-        "nothing of the previous branch survives the swap",
-        "a step that lands mid-read is not overwritten by the slower one behind it",
-        "the neighbours named on the message are warmed, and a step to one is free",
-        "the registry is read once per ref, not once per visit",
-        "branch-refresh drops the cached reading and asks GitHub again",
-        "a message from anywhere else is not a message to this page",
-        "framed: the document is pinned and the pane is the scroller",
-        "the head survives a load, and says the new branch at once",
-        "the tab strip holds still across a swap rather than dropping a tab and putting it back"
-      ]
-    },
-    {
       "path": "tools/test/branch-brief-groups.test.mjs",
       "kind": "component",
       "protects": "The branch review's Files pane groups by creation mode where a content registry is declared, mounts no cards inside a collapsed group, and stays the flat unlabeled list where no registry exists.",
@@ -144,6 +120,25 @@
         "the deck pages what the pane is showing, in the order it shows it",
         "with every group shut there is nothing to read, and no control offering to",
         "a card carries the deck action, aimed at its own path"
+      ]
+    },
+    {
+      "path": "tools/test/branch-brief-hosted.test.mjs",
+      "kind": "behavior",
+      "protects": "What a host is owed by the branch view it mounts directly: `framed` chrome, `warm` neighbours, and `onMeta` reporting the PR number for a branch whose PR merged, which the activity crawl never sees; plus the framed layout, where the head holds its place and the pane takes the scroll.",
+      "assertions": 8,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "a host mounts it at a branch and is told what the read found",
+        "the merged PR is reported, which is the whole point of onMeta",
+        "a branch with no PR reports none rather than the last one",
+        "the neighbours a host names are warmed, and arriving at one is free",
+        "the registry is read once per ref, not once per mount",
+        "framed: the head holds its place and the pane takes the scroll",
+        "framed: the document itself is left alone",
+        "a read that is overtaken does not land on top of the newer one"
       ]
     },
     {
@@ -884,29 +879,6 @@
       ]
     },
     {
-      "path": "tools/test/estate-branch-swipe.test.mjs",
-      "kind": "component",
-      "protects": "A horizontal drag moves the branch surface and owns the axis, so vertical scroll is not stolen.",
-      "assertions": 12,
-      "method": "alpine",
-      "runner": "suite",
-      "boot_smoke": [],
-      "assertion_names": [
-        "a horizontal drag moves the surface with the finger and owns the axis",
-        "a vertical drag is left alone: no transform, no preventDefault",
-        "a drag under the axis threshold decides nothing yet",
-        "past the threshold commits one step; short of it, none",
-        "a commit resets the ready flag, so the row facts cover the incoming page",
-        "an end with no neighbour rubber-bands and cannot step",
-        "a horizontally-scrollable target keeps its own scroll",
-        "with the takeover closed the handlers are inert",
-        "a touch born in the frame is converted out of the moving frame of reference",
-        "a touch on the shell chrome is already in the right coordinates",
-        "with no frame to measure against, the reading is taken as it comes",
-        "a frame-born drag tracks the finger one to one instead of oscillating"
-      ]
-    },
-    {
       "path": "tools/test/estate-chats-retry.test.mjs",
       "kind": "behavior",
       "protects": "The Chats pane's loader attempts once per failure. Guarding on success rather than on the attempt makes a failed load relaunch itself forever, pegging the main thread with no network traffic to explain it; that shipped and froze a phone.",
@@ -984,7 +956,7 @@
       "path": "tools/test/estate-open-branches.test.mjs",
       "kind": "component",
       "protects": "The open-branches list shows open PRs and stranded branches only, freshest first.",
-      "assertions": 31,
+      "assertions": 17,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -999,27 +971,13 @@
         "branchMenuItems: a PR row offers its tabs, a bare branch offers New PR",
         "openBranchMenu anchors through the shell and closes on a pick",
         "runBranchMenu builds the GitHub destinations",
-        "tapping a row takes over: frozen sequence, position, clamped stepping",
-        "keyboard: arrows step, Escape closes, all dead when nothing is open",
-        "dropFileUrl: the new-file form on the branch, filename in the inbox",
-        "allBranchRows: everything the cache knows, landed included",
-        "the default scope is Recent and it leads the row",
-        "Open still selects the old list exactly, at any age",
-        "the window is disjoint from stranded and landed, so it cannot narrow them",
-        "each scope shows its own group",
-        "branchScopes: counts off the FULL list, not the current scope",
-        "the repo chips follow the scope",
-        "a row carries the survey evidence, and an unsurveyed one carries zeros",
-        "the finder's open-branch-detail event opens the takeover like a deep link",
-        "the frame address is fixed at open and does not move when the reader steps",
-        "a step is a message, and it carries the neighbours to warm",
-        "a step taken before the frame has loaded is delivered when it does",
-        "an open PR comes from the row, instantly",
-        "a merged PR comes from the frame, since nothing in the cache has seen it",
-        "a report about a branch the reader has left is ignored",
-        "closing forgets the frame, so the next takeover opens its own",
-        "after the page has rendered once, a step does not cover it again",
-        "a fresh takeover earns the cover back, since its frame really is empty"
+        "tapping a row takes over: the frozen list is the deck, opened at the row",
+        "the header names the branch, its repo and an open PR",
+        "a merged PR reaches the header from the slide, since the cache never saw it",
+        "a slide that settles while the reader is elsewhere is ignored",
+        "the header follows the reader from slide to slide",
+        "opening while one is open replaces it rather than stacking a second",
+        "closing clears the shell at once, whatever the deck does next"
       ]
     },
     {
@@ -1230,7 +1188,7 @@
       "path": "tools/test/file-deck.test.mjs",
       "kind": "behavior",
       "protects": "The contract between the Files pane and the file deck: the deck pages what the pane is showing, its header names the file the reader is on rather than the one they opened at, and a card is handed its options by reference rather than through an x-data expression.",
-      "assertions": 8,
+      "assertions": 9,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -1242,7 +1200,8 @@
         "nothing to read opens nothing",
         "a card is handed its options by reference, not through the x-data expression",
         "it drills when given a parent and roots when not",
-        "back: true earns the chevron without a parent deck to drill from"
+        "back: true earns the chevron without a parent deck to drill from",
+        "the crumb does not say the same thing twice"
       ]
     },
     {
