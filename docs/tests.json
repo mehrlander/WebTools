@@ -614,7 +614,7 @@
       "path": "tools/test/dictate.test.mjs",
       "kind": "behavior",
       "protects": "The voice buffer composes text the way the prototype established, independent of any caller, and reads the window it was handed rather than an ambient one.",
-      "assertions": 46,
+      "assertions": 47,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [],
@@ -664,7 +664,8 @@
         "the leading between two lines is text, not a gap to fall through",
         "a pin whose line is scrolled out of view is not painted, nor its arrows",
         "the caret pulses, which needs a stylesheet rather than a style attribute",
-        "endCaret paints the insertion point a null range implies"
+        "endCaret paints the insertion point a null range implies",
+        "the arrow cluster is opt-out, for a surface that has a pad instead"
       ]
     },
     {

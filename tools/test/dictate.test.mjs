@@ -909,3 +909,19 @@ test('endCaret paints the insertion point a null range implies', () => {
   D.paint(h, { text: 'the quick fox', range: { start: 4, end: 4 }, endCaret: true });
   assert.equal(parts(h).filter(p => p[0] === 'caret').length, 1);
 });
+
+test('the arrow cluster is opt-out, for a surface that has a pad instead', () => {
+  // Two surfaces paint through this, and only one of them grew a cursor pad.
+  // Where a pad exists an armed pin is dragged with the same gesture that moves
+  // the caret, so arrows chasing the pin are furniture for a job already done;
+  // the stage has no pad and keeps them.
+  const h = host();
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 }, armed: 'end' });
+  assert.ok(h.querySelector('[data-d="nudge"]'), 'on by default');
+
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 }, armed: 'end', arrows: false });
+  assert.equal(h.querySelector('[data-d="nudge"]'), null, 'and gone when asked');
+  // The pin itself stays, armed: the state is still readable, it just has no
+  // buttons of its own.
+  assert.equal(h.querySelectorAll('[data-edge]').length, 2, 'both handles still painted');
+});

@@ -411,9 +411,9 @@
     },
     {
       "path": "tools/render/scenarios/annotate-cursor-pad.mjs",
-      "role": "the cursor pad mid-drag: the caret walking back through wrapped lines while the button stays put, which is the half jsdom cannot see (it maps a virtual point to an offset through caret-from-point)",
+      "role": "the cursor pad mid-drag, in both its subjects: the caret walking back through wrapped lines, and (STATE=pin) an armed selection edge dragged by the same gesture, which is what retired the arrow cluster. The half jsdom cannot see, since it maps a virtual point to an offset through caret-from-point",
       "layer": "tools/render/scenarios",
-      "lines": 33,
+      "lines": 53,
       "invocation": "driver",
       "emits": false,
       "named": false,
