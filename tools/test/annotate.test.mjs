@@ -759,6 +759,36 @@ test('the cursor pad moves the caret and not the text', () => {
   A.disable();
 });
 
+test('a pad drag makes the selection pins transparent to the caret lookup', () => {
+  // The pad aims AT the armed pin, and a pin's hit box is 32px wide, so
+  // caret-from-point answered with the pin rather than with the word under it
+  // and the edge did not move until the aim point had cleared the pin's own
+  // box. Measured in a real browser on 2026-08-13: a sweep across the text
+  // reported a 32px dead band at each pin, and a slow drag stepped the edge
+  // 13, 15, 17. The rule is CSS keyed on an attribute, because the painter
+  // rebuilds every pin on every repaint and a repaint happens on every move.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  S.dict.text = 'the quick brown fox';
+  S.dict.select(4, 9);
+  S.compArmed = 'end';
+  A._paintDraft();
+
+  const css = doc.getElementById('annotate-style').textContent;
+  assert.match(css, /\[data-annotate-pad\]\s*\[data-edge\]\s*\{\s*pointer-events:\s*none/,
+    'the rule that stands the pins down');
+
+  const at = (type, x, y) => S.compPad.dispatchEvent(
+    new window.MouseEvent(type, { clientX: x, clientY: y, bubbles: true }));
+  at('pointerdown', 50, 50);
+  assert.equal(S.compStack.hasAttribute('data-annotate-pad'), true, 'set for the length of the drag');
+  at('pointerup', 50, 50);
+  assert.equal(S.compStack.hasAttribute('data-annotate-pad'), false, 'and a tap arms a pin again');
+  A.disable();
+});
+
 test('the card refuses the platform’s selection, and the textarea takes it back', () => {
   // The card runs a selection mechanism of its own, so the platform's is not a
   // fallback but a competitor: a long press over any of this furniture (the

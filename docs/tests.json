@@ -14,7 +14,7 @@
       "path": "tools/test/annotate.test.mjs",
       "kind": "behavior",
       "protects": "A note's anchor survives the range round trip and keeps pointing at the same phrase across edits, duplicate text, and a reader in another window.",
-      "assertions": 30,
+      "assertions": 31,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [],
@@ -46,6 +46,7 @@
         "the review button says what a tap will do before it is tapped",
         "the launcher-staged page draft opens idle: an offer, not a recorder",
         "the cursor pad moves the caret and not the text",
+        "a pad drag makes the selection pins transparent to the caret lookup",
         "the card refuses the platform’s selection, and the textarea takes it back",
         "a note row opens a menu, and Edit reopens it in the composer",
         "a drag surface cancels the touch itself, not just its touch-action"
