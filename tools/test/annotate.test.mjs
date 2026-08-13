@@ -437,8 +437,11 @@ test('the composer paints through the kit and swaps its pad for a selection', ()
   d.text = 'the quick brown fox';
 
   const body = S.compBody;
-  assert.deepEqual([...body.childNodes].map(n => n.getAttribute('data-d')), ['text'],
-    'no selection, one part');
+  // Text plus a caret at the end: the composer asks for `endCaret`, because a
+  // caret at the very end is a null range and the surface would otherwise show
+  // no cursor at exactly the place the cursor pad can always reach.
+  assert.deepEqual([...body.childNodes].map(n => n.getAttribute('data-d')), ['text', 'caret'],
+    'no selection, and the insertion point still says where it is');
 
   d.selectWordAt(6);                       // "quick"
   A._paintDraft();
@@ -467,17 +470,28 @@ test('the composer paints through the kit and swaps its pad for a selection', ()
   A.disable();
 });
 
-test('the read surface refuses the browser its own selection', () => {
+test('the card refuses the browser its own selection, from a stylesheet', () => {
+  // The lock is a RULE, not an inline style, and the reason is a trap worth
+  // keeping named. `-webkit-touch-callout` is absent from the CSSOM's property
+  // list, so it survives only as authored attribute text, and any later
+  // `.style.foo =` on that element re-serializes the attribute from its parsed
+  // declarations and drops it. The frame writes `gridColumn` on the text cell
+  // as it lays out, which took the lock off silently until this test caught it.
   window.SpeechRecognition = FakeSR;
   loadKit('dictate.js', { window });
   A.enable({ doc, subject: { title: 'x', url: '' } });
-  // Read the ATTRIBUTE, not .style: -webkit-touch-callout is not a CSSOM
-  // property, so the object drops it and only the authored text has it. That
-  // is also why the kit writes the attribute.
-  const css = A._state.compView.getAttribute('style');
-  assert.match(css, /user-select:\s*none/);
-  assert.match(css, /-webkit-touch-callout:\s*none/,
+  const sheet = doc.getElementById('annotate-style');
+  assert.ok(sheet, 'the kit injects one stylesheet, and the lock rides it');
+  assert.match(sheet.textContent, /-webkit-touch-callout:\s*none/,
     'the iOS callout landing over the text is what this is for');
+  assert.match(sheet.textContent, /user-select:\s*none/);
+  assert.match(sheet.textContent, /textarea[^{]*\{[^}]*user-select:\s*text/,
+    'and the one child that needs a real caret opts back out');
+
+  // The inline write that used to hold it happens anyway, and must not matter.
+  A._state.compView.style.gridColumn = '1 / 6';
+  assert.match(doc.getElementById('annotate-style').textContent, /-webkit-touch-callout:\s*none/,
+    'an inline write on the locked element cannot clobber a rule');
   A.disable();
 });
 
@@ -508,22 +522,27 @@ test('a tap on the blank canvas sends the caret to the end', () => {
   A.disable();
 });
 
-test('three taps in a run take the whole buffer', () => {
-  // hitsText is stubbed because jsdom has no layout and would answer false for
-  // every point; its own geometry is measured in dictate.test.mjs. What is
-  // under test here is the counting, and that a triple needs no point at all:
-  // the offset is resolved AFTER the count, so select-all does not depend on
-  // which character the third tap landed on (jsdom has no caretRangeFromPoint
-  // either, so a triple that needed one could not work at all).
+test('two taps in a run open the keyboard, with the caret where they landed', () => {
+  // The double took the WORD until 2026-08-13, which the long press already
+  // does and does better. The quick gesture is better spent on the mode
+  // switch, since reaching the pencil to fix one letter is the trip this
+  // surface asks for most, and the caret has to arrive where the reader
+  // pointed or they point again through a textarea their thumb half covers.
+  //
+  // Two stubs, both for things jsdom does not have and both measured for real
+  // elsewhere: hitsText needs client rects (its own geometry is in
+  // dictate.test.mjs) and caret-from-point does not exist at all (the offset
+  // arithmetic it feeds is Dictate.offsetAt, which is pure and tested).
   window.SpeechRecognition = FakeSR;
   loadKit('dictate.js', { window });
-  const real = window.Dictate.hitsText;
+  const realHits = window.Dictate.hitsText;
   window.Dictate.hitsText = () => true;
   try {
     A.enable({ doc, subject: { title: 'x', url: '' } });
     const S = A._state, d = S.dict;
     d.text = 'the quick brown fox';
     A._paintDraft();
+    doc.caretRangeFromPoint = () => ({ startContainer: S.compBody.firstChild, startOffset: 6 });
 
     const tap = () => {
       const e = new window.Event('pointerup', { bubbles: true });
@@ -531,12 +550,69 @@ test('three taps in a run take the whole buffer', () => {
       S.compView.dispatchEvent(e);
     };
     tap();
-    assert.equal(d.range, null, 'one tap with nothing live waits');
-    tap(); tap();
-    assert.deepEqual(d.range, { start: 0, end: 19 }, 'the third takes everything');
-    assert.equal(d.hasSelection, true);
+    assert.equal(S.editing, false, 'one tap with nothing live waits');
+    assert.equal(d.range, null);
+    tap();
+    assert.equal(S.editing, true, 'the second opens the keyboard');
+    assert.equal(S.compTa.value, 'the quick brown fox');
+    assert.equal(S.compTa.selectionStart, 6, 'at the offset that was tapped, not at the end');
+
+    // The run is reset by the open, so a third tap is a fresh first tap rather
+    // than a select-all that no longer exists: once the read surface is gone
+    // the platform's own gesture is where a reader looks for it.
     A.disable();
-  } finally { window.Dictate.hitsText = real; }
+
+    // AND FROM THE CANVAS. Tapping the empty space under the words is the
+    // gesture that most obviously means "let me type here", and it was the one
+    // place the double did nothing: the canvas used to win before the count,
+    // so a tap past the text could never be part of a run. The caret lands at
+    // the end, which is what a tap there has always meant.
+    window.Dictate.hitsText = () => false;
+    A.enable({ doc, subject: { title: 'x', url: '' } });
+    const S2 = A._state;
+    S2.dict.text = 'the quick brown fox';
+    A._paintDraft();
+    tap2(S2); tap2(S2);
+    assert.equal(S2.editing, true, 'a double on the canvas opens it too');
+    assert.equal(S2.compTa.selectionStart, 19, 'at the end');
+    A.disable();
+  } finally { window.Dictate.hitsText = realHits; delete doc.caretRangeFromPoint; }
+});
+
+function tap2(S) {
+  const e = new S.compView.ownerDocument.defaultView.Event('pointerup', { bubbles: true });
+  e.clientX = 20; e.clientY = 20;
+  S.compView.dispatchEvent(e);
+}
+
+test('arming a pin ends a tap run', () => {
+  // pointerdown already armed or disarmed the pin, and counting the pointerup
+  // as well made "tap a pin, then tap the text" a double, which now opens the
+  // keyboard on the gesture that is meant to move the edge. Measured in a real
+  // browser first, where a scenario's pin tap and the canvas tap 120ms later
+  // came back as one double.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  const realHits = window.Dictate.hitsText;
+  window.Dictate.hitsText = () => true;
+  try {
+    A.enable({ doc, subject: { title: 'x', url: '' } });
+    const S = A._state;
+    S.dict.text = 'the quick brown fox';
+    S.dict.select(4, 9);
+    S.compArmed = 'end';
+    A._paintDraft();
+    doc.caretRangeFromPoint = () => ({ startContainer: S.compBody.firstChild, startOffset: 2 });
+
+    const p = S.compStack.querySelector('[data-edge="end"]');
+    assert.ok(p, 'the pin is painted');
+    const up = new window.Event('pointerup', { bubbles: true });
+    up.clientX = 20; up.clientY = 20;
+    p.dispatchEvent(up);
+    tap2(S);
+    assert.equal(S.editing, false, 'the tap after a pin is a first tap, not a second');
+    A.disable();
+  } finally { window.Dictate.hitsText = realHits; delete doc.caretRangeFromPoint; }
 });
 
 test('the keyboard mode does not wear a microphone', () => {
@@ -595,5 +671,316 @@ test('Done resumes dictation only if the keyboard interrupted it', () => {
   S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
   assert.equal(S.dict.listening, false,
     'Done does not switch the microphone on for a reader who had it off');
+  A.disable();
+});
+
+test('a page note pins to nothing, and the set says which page it means', () => {
+  // The case the other three targets leave out: the complaint is about the
+  // page, not about a passage in it. Nothing is selected, so nothing anchors,
+  // and the address in the serialization is what makes the note self-sufficient
+  // (the workflow it replaces was opening another window and typing the page
+  // out by hand).
+  A.enable({ doc, subject: { title: 'pages/thing.html', url: 'https://example.test/blob/thing' } });
+  A.clear();
+  A.add({ type: 'page' }, 'the sidebar overlaps the footer under 400px');
+
+  const md = A.toMarkdown();
+  assert.ok(md.includes('# Notes — pages/thing.html'), md);
+  assert.ok(md.includes('https://example.test/blob/thing'), 'the source address');
+  assert.match(md, /Viewed at: http/, 'and the address it was read at, which the source URL does not give');
+  assert.ok(md.includes('## 1. the page'), md);
+  assert.ok(!md.includes('Path: `'), 'a page note claims no DOM path');
+  assert.ok(md.includes('**Note:** the sidebar overlaps the footer under 400px'));
+
+  const j = A.toJSON();
+  assert.equal(j.notes[0].type, 'page');
+  assert.equal(j.notes[0].quote, undefined, 'and carries no anchor it cannot honor');
+  A.clear();
+});
+
+test('the Page chip opens a draft outright: no gesture to make first', () => {
+  A.enable({ doc, subject: { title: 'pages/thing.html', url: 'https://example.test/blob/thing' } });
+  A.clear();
+  const S = A._state;
+
+  S.pageChip.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.draft.target.type, 'page');
+  assert.equal(S.compose.style.display, 'flex', 'the composer is open and listening');
+  assert.match(S.compCap.textContent, /This page: pages\/thing\.html/,
+    'and names what the note will be about');
+  assert.ok(!S.draftBox, 'nothing is outlined, since nothing was aimed at');
+
+  // A page note is not a MODE: there is nothing to exit, so it leaves the two
+  // that are unlit.
+  assert.equal(S.mode, null);
+  A.disable();
+});
+
+test('the review button says what a tap will do before it is tapped', () => {
+  // It was a yellow pill reading "Review" that looked the same whether it would
+  // open the drawer, close it, or reach nothing at all. The drawer broadcasts
+  // its state; the button reads it.
+  let asked = 0;
+  const query = () => asked++;
+  window.addEventListener('annotate:drawer-query', query);
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  assert.equal(asked, 1, 'the card asks once on mount rather than waiting to be told');
+  window.removeEventListener('annotate:drawer-query', query);
+
+  const say = (detail) => window.dispatchEvent(new window.CustomEvent('annotate:drawer', { detail }));
+
+  say({ open: false, tab: 'render' });
+  assert.match(S.reviewBtn.title, /^Open/);
+  assert.equal(S.reviewBtn.disabled, false);
+
+  say({ open: true, tab: 'render' });
+  assert.match(S.reviewBtn.title, /^Open/, 'open on another tab is still an open');
+
+  say({ open: true, tab: 'notes' });
+  assert.match(S.reviewBtn.title, /^Close/, 'and in front of you, the only honest offer is to put it away');
+  assert.equal(S.reviewBtn.style.background, 'rgb(250, 204, 21)', 'lit, the way a live mode chip is');
+
+  // No drawer at all: the click that proves it is the click that disables the
+  // button, so it stops offering something it cannot do.
+  A.review();
+  assert.equal(S.reviewBtn.disabled, true);
+  assert.match(S.reviewBtn.title, /No drawer/);
+  A.disable();
+});
+
+test('the launcher-staged page draft opens idle: an offer, not a recorder', () => {
+  // Every other draft is opened by aiming at something, so starting the engine
+  // is what the reader just asked for. The launcher's menu stages a page draft
+  // nobody aimed, and a microphone that switches itself on there is a recorder
+  // the reader never started. The hint has to agree, which is why it reports
+  // the engine rather than the mode.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const S = A._state;
+
+  A.notePage();
+  assert.equal(S.draft.target.type, 'page');
+  assert.equal(S.dict.listening, true, 'the chip path still starts listening');
+  assert.match(S.compHint.textContent, /^Listening/);
+
+  A.notePage({ listen: false });
+  assert.equal(S.draft.target.type, 'page');
+  assert.equal(S.dict.listening, false, 'the launcher path does not');
+  assert.match(S.compHint.textContent, /Tap the microphone/,
+    'and the hint says what to do rather than claiming it is listening');
+
+  // Still a draft in every other respect: the mic is one tap away, and the
+  // save key is live for a note that was typed.
+  assert.equal(S.compose.style.display, 'flex');
+  S.dict.start();
+  assert.match(S.compHint.textContent, /^Listening/, 'starting it repaints the hint');
+  A.disable();
+});
+
+test('the card spends its whitespace evenly: an empty list is not a band', () => {
+  // The list's bottom padding separates the last note from the card's edge.
+  // With no notes there is nothing to separate, and the 8px stacked under the
+  // composer's own 8px: measured with a draft open and nothing filed, 17px
+  // below the frame against 9 down either side. The header controls carry the
+  // action row's height for the same reason, a control half the height of the
+  // ones under it reading as a label that happens to be tappable.
+  A.enable({ doc, subject: { title: 'x', url: 'https://e.test/p' } });
+  A.clear();
+  const S = A._state;
+  A.notePage({ listen: false });
+  assert.equal(S.listEl.style.paddingBottom, '0px', 'nothing filed, so no band');
+
+  A.add({ target: { type: 'page' }, note: 'one' });
+  assert.equal(S.listEl.style.paddingBottom, '8px', 'and it returns with the first note');
+
+  assert.match(S.reviewBtn.getAttribute('style'), /min-height:\s*30px/, 'the title matches the action row');
+  assert.match(S.pageChip.getAttribute('style'), /min-height:\s*28px/, 'and a chip plus its group border makes 30');
+  A.disable();
+});
+
+test('the cursor pad moves the caret and not the text', () => {
+  // Placing a caret by touching the text puts a thumb over the two words
+  // either side of the target, and a second tap there takes the word instead:
+  // the one gesture for "put it between these two" hid its target and had a
+  // homonym. The pad is a relative pointer, so the finger is elsewhere.
+  //
+  // The DRAG is a real-browser fact (it maps a virtual point to an offset
+  // through caret-from-point, which jsdom does not implement), and is measured
+  // in tools/render/scenarios/annotate-cursor-pad.mjs. What is asserted here
+  // is the wiring around it, including that a drag with no layout to read
+  // leaves the buffer exactly as it was rather than guessing.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  S.dict.text = 'the quick brown fox';
+  S.dict.caretAt(4);
+  A._paintDraft();
+
+  assert.ok(S.compPad, 'the pad sits in the control row');
+  assert.match(S.compPad.title, /drag to move the cursor/i);
+  assert.match(S.compPad.getAttribute('style'), /touch-action:\s*none/,
+    'or a phone scrolls the page instead of dragging');
+
+  const at = (type, x, y) => S.compPad.dispatchEvent(
+    new window.MouseEvent(type, { clientX: x, clientY: y, bubbles: true }));
+  assert.doesNotThrow(() => { at('pointerdown', 50, 50); at('pointermove', 20, 50); at('pointerup', 20, 50); });
+  assert.deepEqual(S.dict.range, { start: 4, end: 4 }, 'no layout to read, so nothing moved');
+  assert.equal(S.dict.text, 'the quick brown fox', 'and the buffer is never what the pad touches');
+
+  // The keyboard brings its own caret, so the pad stands down in edit mode. It
+  // DIMS rather than hides: it is a cell in the frame, and a cell that
+  // disappears takes its column with it, which is the one thing a continuous
+  // border cannot survive.
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.compPad.disabled, true);
+  assert.equal(parseFloat(S.compPad.style.opacity), 0.3);
+  assert.notEqual(S.compPad.style.display, 'none', 'the column holds');
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.compPad.disabled, false);
+  A.disable();
+});
+
+test('a pad drag makes the selection pins transparent to the caret lookup', () => {
+  // The pad aims AT the armed pin, and a pin's hit box is 32px wide, so
+  // caret-from-point answered with the pin rather than with the word under it
+  // and the edge did not move until the aim point had cleared the pin's own
+  // box. Measured in a real browser on 2026-08-13: a sweep across the text
+  // reported a 32px dead band at each pin, and a slow drag stepped the edge
+  // 13, 15, 17. The rule is CSS keyed on an attribute, because the painter
+  // rebuilds every pin on every repaint and a repaint happens on every move.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  S.dict.text = 'the quick brown fox';
+  S.dict.select(4, 9);
+  S.compArmed = 'end';
+  A._paintDraft();
+
+  const css = doc.getElementById('annotate-style').textContent;
+  assert.match(css, /\[data-annotate-pad\]\s*\[data-edge\]\s*\{\s*pointer-events:\s*none/,
+    'the rule that stands the pins down');
+
+  const at = (type, x, y) => S.compPad.dispatchEvent(
+    new window.MouseEvent(type, { clientX: x, clientY: y, bubbles: true }));
+  at('pointerdown', 50, 50);
+  assert.equal(S.compStack.hasAttribute('data-annotate-pad'), true, 'set for the length of the drag');
+  at('pointerup', 50, 50);
+  assert.equal(S.compStack.hasAttribute('data-annotate-pad'), false, 'and a tap arms a pin again');
+  A.disable();
+});
+
+test('the card refuses the platform’s selection, and the textarea takes it back', () => {
+  // The card runs a selection mechanism of its own, so the platform's is not a
+  // fallback but a competitor: a long press over any of this furniture (the
+  // caption, a note row, the painted buffer) means "select this word" to the
+  // browser, and that is what came back from the field on 2026-08-12. The lock
+  // sits on the card rather than on the read surface, because the card is what
+  // a thumb lands on. It is also no longer conditional on the dictation kit
+  // having loaded first, which made it a lock that was off exactly when
+  // nothing was watching.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  const style = (el) => el.getAttribute('style') || '';
+
+  // The selection half is a stylesheet rule (see the test above); what stays
+  // inline is TOUCH, which is a real CSSOM property and survives.
+  assert.match(style(S.ui), /touch-action:\s*none/);
+  for (const [name, node] of [['the read surface', S.compView], ['the note list', S.listEl],
+                              ['the editor', S.compTa]]) {
+    assert.match(style(node), /touch-action:\s*pan-y/, name + ' scrolls');
+    assert.match(style(node), /overscroll-behavior:\s*contain/, name + ' keeps its overscroll');
+  }
+  A.disable();
+});
+
+test('a note row opens a menu, and Edit reopens it in the composer', () => {
+  // The row carried a bare × and nothing else. A destructive action alone in a
+  // row is the wrong default, and the edit that was missing had to be reached
+  // through the drawer, a tab away on a phone. Both now sit behind one tap.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const S = A._state;
+  const it = A.add({ type: 'page' }, 'the ref bar wraps');
+
+  const row = S.listEl.firstChild;
+  const more = row.querySelector('[data-annotate-menu]');
+  assert.ok(more, 'the row carries a menu button, not a delete');
+  assert.equal(row.textContent.includes('×'), false, 'and no bare × beside it');
+
+  more.dispatchEvent(new window.Event('click', { bubbles: true }));
+  const menu = S.ui.querySelector('div[data-annotate-menu]');
+  assert.ok(menu, 'the menu opens on the row it belongs to');
+  assert.deepEqual([...menu.querySelectorAll('button')].map(b => b.textContent), ['Edit', 'Remove']);
+
+  // Edit stages the SAME note: same target, its text loaded, nothing recording,
+  // and saving updates rather than adding a second one.
+  menu.querySelectorAll('button')[0].dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.draft.editId, it.id);
+  assert.equal(S.draft.target, it.target, 'an edit never re-aims the anchor');
+  assert.equal(S.dict.text, 'the ref bar wraps', 'the note is loaded to be revised, not retyped');
+  assert.equal(S.dict.listening, false, 'and the microphone stays off over words already written');
+  assert.match(S.compCap.textContent, /^Editing: /);
+
+  S.dict.text = 'the ref bar wraps under 380px';
+  S.compSave.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A.items.length, 1, 'one note, revised');
+  assert.equal(A.items[0].id, it.id);
+  assert.equal(A.items[0].note, 'the ref bar wraps under 380px');
+  assert.ok(A.items[0].editedAt, 'and the edit is dated');
+
+  // Remove is the other half, and closing is a click anywhere else.
+  S.listEl.querySelector('[data-annotate-menu]')
+    .dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A._state.menuId, it.id, 'the same tap toggles it back open');
+  doc.body.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A._state.menuId, null, 'a click off the menu closes it');
+
+  S.listEl.querySelector('[data-annotate-menu]')
+    .dispatchEvent(new window.Event('click', { bubbles: true }));
+  S.ui.querySelector('div[data-annotate-menu]').querySelectorAll('button')[1]
+    .dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A.items.length, 0);
+  A.disable();
+});
+
+test('a drag surface cancels the touch itself, not just its touch-action', () => {
+  // `touch-action: none` is the fix everyone reaches for, and inside a
+  // sheet-presented in-app browser it is not sufficient: the host dismisses on
+  // the web view's SCROLL, and only a cancelled touch event stops one reaching
+  // it. Measured on device across five variants (docs/ios-sheet-drags.md); the
+  // negative result for touch-action alone is the reason this test exists,
+  // since nothing headless can reproduce the dismissal itself.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'page' }, 'a note, so the card has a row');
+  const S = A._state;
+  const touch = (node, type = 'touchstart') => {
+    const e = new window.Event(type, { bubbles: true, cancelable: true });
+    node.dispatchEvent(e);
+    return e.defaultPrevented;
+  };
+
+  // The pad is the drag this was worked out for. Both events, since cancelling
+  // touchstart is what also takes the selection and the callout.
+  assert.equal(touch(S.compPad, 'touchstart'), true);
+  assert.equal(touch(S.compPad, 'touchmove'), true);
+
+  // The card's header is a drag handle too, and it now holds the capture chips.
+  // Cancelling touchstart suppresses the compatibility CLICK, so a chip inside
+  // it must be skipped or it stops working on a phone entirely.
+  // The header is the panel's first child, and the drag handle that moves the
+  // card. (Selected by position rather than by style: the CSSOM re-serializes
+  // `cursor:move` with a space, so a style-substring match is a false negative
+  // waiting to happen.)
+  const header = S.panel.firstChild;
+  assert.ok(header.textContent.includes('Notes'), 'the header, by position');
+  assert.equal(touch(header, 'touchstart'), true, 'the bare header cancels');
+  assert.equal(touch(S.pageChip, 'touchstart'), false,
+    'and a chip inside it does not, or a tap on it would never become a click');
   A.disable();
 });

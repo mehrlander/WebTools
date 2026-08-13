@@ -74,3 +74,63 @@ test('fulfill captures a bad request without touching the network', async () => 
   assert.equal(r.ok, false);
   assert.match(r.error, /unsupported kind/);
 });
+
+// ── ask: the kind the browser cannot serve ─────────────────────────────────
+// The other three kinds are a deferred read from a repo and fulfil themselves
+// on page load. An ask is a deferred read from the person, so the contract it
+// needs is different: it must be recognizable BEFORE fulfillment (or it would
+// be answered by its own rejection), and it must be closable with a message in
+// both directions, because "no, and here is why" is a served request rather
+// than a failure.
+
+test('isAsk keys on the record, not on whether it validates', () => {
+  assert.equal(M.isAsk({ kind: 'ask', note: 'x', dest: 'o/r:d' }), true);
+  // The load-bearing case: a MALFORMED ask is still an ask. If the guard were a
+  // validation verdict, a half-written record would fall through to fulfill(),
+  // get a result written, and be closed before anyone saw it.
+  assert.equal(M.isAsk({ kind: 'ask' }), true);
+  assert.equal(M.isAsk({ kind: 'tree', repo: 'o/r' }), false);
+  assert.equal(M.isAsk(null), false);
+  assert.equal(M.isAsk('ask'), false);
+});
+
+test('fulfill refuses an ask, which is exactly why the caller must skip it first', () => {
+  // Documents the trap rather than endorsing it: the refusal is a RESULT, and
+  // writing a result is what marks a request answered.
+  const r = M.validate({ kind: 'ask', note: 'x', dest: 'o/r:d' });
+  assert.equal(r.ok, false);
+  assert.match(r.error, /unsupported kind/);
+});
+
+test('validateAsk wants prose and a destination', () => {
+  assert.equal(M.validateAsk({ kind: 'ask', note: 'the PowerShell files', dest: 'o/r:projects/wps/dump' }).ok, true);
+  // Prose, because what is wanted often has no filename: "whatever is in that
+  // folder" is the normal case, and a path schema would have to fake it.
+  assert.equal(M.validateAsk({ kind: 'ask', dest: 'o/r:d' }).ok, false);
+  assert.equal(M.validateAsk({ kind: 'ask', note: '   ', dest: 'o/r:d' }).ok, false);
+  // Structured, because dest is what aims the stage and spans repos.
+  assert.equal(M.validateAsk({ kind: 'ask', note: 'x' }).ok, false);
+  assert.equal(M.validateAsk({ kind: 'ask', note: 'x', dest: 'nodir' }).ok, false);
+  assert.equal(M.validateAsk({ kind: 'tree', repo: 'o/r' }).ok, false);
+});
+
+test('closeAsk records both outcomes as served, and refuses a bare decline', () => {
+  const req = { id: 'a1', kind: 'ask', dest: 'o/r:d', task: 'o/r:t.md' };
+  const sent = M.closeAsk(req, { answered: true, now: '2026-08-12T00:00:00Z' });
+  assert.equal(sent.ok, true);
+  assert.equal(sent.answered, true);
+  assert.equal(sent.message, '', 'a message is optional when the material was sent');
+  assert.equal(sent.dest, 'o/r:d');
+  assert.equal(sent.task, 'o/r:t.md');
+
+  const declined = M.closeAsk(req, { answered: false, message: 'nothing references it, stop looking' });
+  assert.equal(declined.ok, true, 'a decline is a served request, not a failure');
+  assert.equal(declined.answered, false);
+  assert.equal(declined.message, 'nothing references it, stop looking');
+
+  // The one thing refused: a decline with no reason wastes the next session's
+  // time as surely as no answer at all.
+  const bare = M.closeAsk(req, { answered: false, message: '   ' });
+  assert.equal(bare.ok, false);
+  assert.match(bare.error, /needs a message/);
+});

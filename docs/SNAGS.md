@@ -416,3 +416,17 @@ docs-reach`), but it is a conflict on a field no human wrote, and it will fire
 for any two branches that touch `docs/`. → the derived-field rule in
 [CLAUDE.md](../CLAUDE.md); a `.gitattributes` union or ours-merge driver for the
 derived keys would end it, if it recurs.
+
+## pages/transform.html silently ignores `?use=` (2026-08-11)
+
+The carry-in-your-head showing rule says a lib change is viewable at
+`pages/<page>.html?use=<ref>`, and a session handed over exactly that link for
+a workbench change; the user saw main's lib with no error, because the rule's
+premise is that the page boots through the loader, and transform.html loads
+`lib/alpineComponents/transform-workbench.js` with a bare relative script tag.
+`?use=` is a loader convention, not a platform one, so a page that skips
+`gh.load` opts out silently and the wrong link looks identical to the right
+one. Until the page is aligned or the exception recorded where links are
+minted, the honest lib-change view for it is the 🥏 address toss at the SHA.
+*(seen: 2026-08-11)*
+→ [loader.md](loader.md); the page-boot alignment is an open thread on PR #406
