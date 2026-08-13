@@ -46,7 +46,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 883,
+      "words": 882,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -277,7 +277,7 @@
       "path": "docs/ios-sheet-drags.md",
       "subject": "why a drag inside a sheet-presented in-app browser dismisses the sheet, and the two fixes, measured on device",
       "status": "living",
-      "reach": "orphan",
+      "reach": "skill",
       "words": 854,
       "maintenance": "authored from a device measurement; re-measure rather than reason if a variant is ever doubted"
     },

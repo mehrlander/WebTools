@@ -14,7 +14,7 @@ must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
 2 arrive in every session's context, 22 are named by CLAUDE.md,
-3 by a skill, 6 by a page or component. The remaining 18 are
+4 by a skill, 6 by a page or component. The remaining 17 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -34,7 +34,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`docs.json`](docs.json) — this registry: the documents census and the shared-claims table
 - [`harness.json`](harness.json) — the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting
 - [`headless-vendoring.md`](headless-vendoring.md) — building with CDN libraries and rendering headless where the CDNs are blocked
-- [`ios-sheet-drags.md`](ios-sheet-drags.md) *(orphan)* — why a drag inside a sheet-presented in-app browser dismisses the sheet, and the two fixes, measured on device
+- [`ios-sheet-drags.md`](ios-sheet-drags.md) — why a drag inside a sheet-presented in-app browser dismisses the sheet, and the two fixes, measured on device
 - [`loader.md`](loader.md) — the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality
 - [`manifest.json`](manifest.json) — the field registry for root .web-tools.json: every field's type, consumer, and effect
 - [`markdown-in-chat.md`](markdown-in-chat.md) *(measured)* — working visually with markdown in a chat client on a phone
