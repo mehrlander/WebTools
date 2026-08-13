@@ -1173,11 +1173,11 @@
       "path": "tools/test/fab-toss.test.mjs",
       "kind": "component",
       "protects": "The fab keeps shell identity when mounted inside a toss.",
-      "assertions": 8,
+      "assertions": 11,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
-        7
+        10
       ],
       "assertion_names": [
         "normal mount renders and keeps shell identity",
@@ -1187,6 +1187,9 @@
         "renderAtRef in a toss re-addresses the shell instead of opening the overlay",
         "mode getters: a toss reads as off-canonical, marks the subject ref",
         "a toss at the default branch is not a preview",
+        "the width bar is reachable through a frame, or an address that can make one",
+        "off the renderer, a preset addresses it with ?w= on the query",
+        "on the renderer, a preset moves the frame in place",
         "no startup warnings or errors"
       ]
     },
@@ -2845,6 +2848,16 @@
         "an unknown route says so and stamps nothing",
         "a failed fetch leaves no subject rather than a file that never rendered"
       ]
+    },
+    {
+      "path": "tools/test/toss-width.mjs",
+      "kind": "behavior",
+      "protects": "A page tossed at a forced width really is laid out at it, in both directions, and the pointer type it cannot fake stays untouched.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:toss-width",
+      "boot_smoke": null,
+      "assertion_names": null
     },
     {
       "path": "tools/test/tracker-assessments.test.mjs",

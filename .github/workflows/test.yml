@@ -25,11 +25,27 @@ name: Tests
 # an open PR with zero checks and nothing said so. The next push to the same PR
 # ran normally, so the trigger is not broken; what correlated was pushing the
 # branch and then its base branch inside the same minute, which moves the merge
-# ref the pull_request event is computed against. Unconfirmed as a cause. The
-# move that does not depend on the cause: after a push you care about, look for a
-# run on the new head sha rather than assuming the trigger fired. A workflow that
-# exists so the platform catches what memory does not is worth exactly nothing on
-# the commit where it silently did not start.
+# ref the pull_request event is computed against.
+#
+# Seen again 2026-08-13 on PR #413, and this time the cause was measured rather
+# than guessed: main had moved under the branch and the merge conflicted, so the
+# PR's mergeable_state was `dirty`. A pull_request run is computed against the
+# MERGE ref, and a PR that cannot be merged has none, so no run starts. Nothing
+# reports this: the PR shows the previous commit's green check, the new commit
+# shows no check at all, and the conflict notice is elsewhere in the UI. Two
+# pushes in a row produced no run for exactly this reason and both looked, from
+# the checks alone, like a trigger that had misfired.
+#
+# That confirms the 2026-08-06 reading rather than retiring it. Pushing the base
+# branch inside the same minute is one way to leave the merge ref unavailable;
+# an outright conflict is the durable way. The general statement covers both: no
+# usable merge ref, no run.
+#
+# The move: after a push you care about, look for a run on the new head sha
+# rather than assuming the trigger fired, and when none appears, check
+# mergeable_state before anything else. A workflow that exists so the platform
+# catches what memory does not is worth exactly nothing on the commit where it
+# silently did not start.
 
 on:
   pull_request:
