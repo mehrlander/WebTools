@@ -458,3 +458,50 @@ test('closing forgets the frame, so the next takeover opens its own', () => {
   assert.equal(fr.sent.length, 0, 'the dead frame was not messaged');
   data.closeDetail();
 });
+
+// ── The cover, and why it is first-open only ─────────────────────────────────
+//
+// The takeover raises an instant facts card over the frame and fades the frame
+// out. Both exist because a frame reloading a document is genuinely BLANK, and
+// a persistent one never is. Left on every step they were a flash, and a
+// measurable one: the card is `bg-base-100`, so the dialog interior went from
+// its tinted 247 to a flat 255 for about four frames and back, which over a
+// dimmed page reads as the whole overlay lightening (measured 2026-08-13 at
+// 1280x800, pixels rather than opinion).
+
+test('after the page has rendered once, a step does not cover it again', () => {
+  seed();
+  const fr = fakeFrame();
+  data.openBranchDetail(data.openBranches[0]);
+  data.onDetailFrame({ target: fr.el });
+  assert.equal(data.detailSeen, false, 'the first open has nothing to show yet, so the card is right');
+
+  const row = data.detailRow;
+  data.onBranchMessage({ source: 'web-tools', type: 'branch-state', phase: 'ready',
+                         repo: row.repo, branch: row.name, pr: 0, prState: '' });
+  assert.equal(data.detailSeen, true);
+
+  data.detailStep(1);
+  assert.equal(data.detailReady, false, 'the shell still knows the new branch is loading');
+  assert.equal(data.detailSeen, true, 'but it no longer hides the page to say so');
+
+  const next = data.detailRow;
+  data.onBranchMessage({ source: 'web-tools', type: 'branch-state', phase: 'loading',
+                         repo: next.repo, branch: next.name });
+  assert.equal(data.detailSeen, true, 'and a loading report does not re-arm it either');
+  data.closeDetail();
+});
+
+test('a fresh takeover earns the cover back, since its frame really is empty', () => {
+  seed();
+  const row = data.openBranches[0];
+  data.openBranchDetail(row);
+  data.onBranchMessage({ source: 'web-tools', type: 'branch-state', phase: 'ready',
+                         repo: row.repo, branch: row.name, pr: 0, prState: '' });
+  assert.equal(data.detailSeen, true);
+  data.closeDetail();
+  assert.equal(data.detailSeen, false);
+  data.openBranchDetail(data.openBranches[1]);
+  assert.equal(data.detailSeen, false);
+  data.closeDetail();
+});

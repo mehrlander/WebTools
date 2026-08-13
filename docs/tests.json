@@ -977,7 +977,7 @@
       "path": "tools/test/estate-open-branches.test.mjs",
       "kind": "component",
       "protects": "The open-branches list shows open PRs and stranded branches only, freshest first.",
-      "assertions": 29,
+      "assertions": 31,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -1010,7 +1010,9 @@
         "an open PR comes from the row, instantly",
         "a merged PR comes from the frame, since nothing in the cache has seen it",
         "a report about a branch the reader has left is ignored",
-        "closing forgets the frame, so the next takeover opens its own"
+        "closing forgets the frame, so the next takeover opens its own",
+        "after the page has rendered once, a step does not cover it again",
+        "a fresh takeover earns the cover back, since its frame really is empty"
       ]
     },
     {
