@@ -28,6 +28,7 @@
     "test:subject-actions": "node tools/test/subject-actions.mjs",
     "test:traffic-states": "node tools/test/traffic-states.mjs",
     "test:toss-multiparam": "node tools/test/toss-multiparam.mjs",
+    "test:toss-width": "node tools/test/toss-width.mjs",
     "test:data-view-links": "node tools/test/data-view-links.mjs",
     "tests-index": "node tools/build/tests-index.mjs",
     "test:playground": "node tools/test/playground-pass.mjs",

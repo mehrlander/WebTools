@@ -880,6 +880,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/fab-width-bar.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 30,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/inbox-demo.mjs",
       "role": "the inbox resolution with the armed redirect button on screen",
       "layer": "tools/render/scenarios",

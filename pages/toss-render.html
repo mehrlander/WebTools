@@ -179,7 +179,7 @@
   <a id="empty-token" target="_blank" rel="noreferrer" class="link link-primary text-xs hidden"
      href="https://github.com/settings/tokens/new?scopes=repo&description=web-tools">Get or renew a GitHub token</a>
   <p class="text-[10px] text-base-content/30 max-w-md leading-relaxed">
-    URL forms: <code>#gh=owner/repo@ref:path?a=1&amp;b=2</code> (the whole ?query reaches the page), <code>#gz=</code>/<code>#html=</code> base64 HTML, <code>#url=</code> base64 URL.
+    URL forms: <code>#gh=owner/repo@ref:path?a=1&amp;b=2</code> (the whole ?query reaches the page), <code>#gz=</code>/<code>#html=</code> base64 HTML, <code>#url=</code> base64 URL. Add <code>?w=390</code> to render at that width.
   </p>
 </div>
 
@@ -244,14 +244,18 @@
   // included, so origin + pathname doubles it. A blob: shell also has no
   // visitable address of its own, which is the real problem: the enclosing page
   // is the thing a bookmark can name. Same-origin in address mode, so read it.
+  //
+  // The query rides along: `?w=` (and `?use=`) say how to render what the
+  // fragment addresses, so a bookmark that dropped them would name the right
+  // page and open it in the wrong shape.
   const absUrl = frag => {
     if (location.protocol === 'blob:') {
-      try { return top.location.origin + top.location.pathname + frag; } catch (e) {}
+      try { return top.location.origin + top.location.pathname + top.location.search + frag; } catch (e) {}
       // Sandboxed under an opaque origin (a payload toss), so the enclosing
       // address is unreadable. The blob href is at least not malformed.
       return location.href.split('#')[0] + frag;
     }
-    return location.origin + location.pathname + frag;
+    return location.origin + location.pathname + location.search + frag;
   };
 
   function showInput(error, tokenHint) {
@@ -273,6 +277,82 @@
     empty.classList.add('hidden'); empty.classList.remove('flex');
     frame.classList.remove('hidden');
   }
+
+  // ── Forced frame width: seeing a page at a shape the device is not ────────
+  //
+  // A FRAME IS A VIEWPORT, which is the whole mechanism. Give the subject a
+  // frame W CSS px wide and every width question agrees: media queries, a
+  // boot-time innerWidth read, a container measure. Nothing is faked, so
+  // nothing has to be kept consistent; the page really is laid out at W.
+  //
+  // Both directions come off this one lever, which is why the shell owns it
+  // and the drawer only calls it. A phone at 1280 gets a frame wider than the
+  // screen, scaled down to fit: the same trade "Request Desktop Site" makes,
+  // reached without touching this document's own viewport meta. A desktop at
+  // 390 gets a narrow frame at scale 1, centered, with an edge so it reads as
+  // a shape rather than as a page that failed to fill the window.
+  //
+  // The transform is presentation only and does not shrink the layout box, so
+  // a frame wider than the screen still pushes out a horizontal scrollbar.
+  // Hence overflow:hidden on the body for as long as a width is forced, and
+  // the height divided back out by the scale so the frame still fills.
+  //
+  // What no width can fake, and the drawer says so rather than implying
+  // otherwise: `pointer` and `hover`. A phone rendering at 1280 still answers
+  // `(pointer: coarse)`. This shows the LAYOUT another device gets, not its
+  // interaction model.
+  //
+  // Read from `?w=` on the renderer's own query, never from inside the address:
+  // the address is what to show, the width is how to show it, and keeping them
+  // apart is what lets a width ride any of the render modes unchanged.
+  let forcedWidth = 0;
+  window.__tossWidthNow = 0;
+
+  function applyWidth() {
+    const s = frame.style;
+    if (!forcedWidth) {
+      s.width = s.height = s.transform = s.transformOrigin = s.marginLeft = s.outline = '';
+      document.body.style.overflow = '';
+      window.__tossWidthNow = 0;
+      return;
+    }
+    const availW = document.documentElement.clientWidth;
+    const availH = document.documentElement.clientHeight;
+    const scale = Math.min(1, availW / forcedWidth);
+    s.width = forcedWidth + 'px';
+    s.height = Math.round(availH / scale) + 'px';
+    s.transformOrigin = 'top left';
+    s.transform = 'scale(' + scale + ')';
+    s.marginLeft = Math.max(0, Math.round((availW - forcedWidth * scale) / 2)) + 'px';
+    s.outline = scale === 1 ? '1px solid rgba(128,128,128,0.35)' : '';
+    document.body.style.overflow = 'hidden';
+    window.__tossWidthNow = forcedWidth;
+  }
+
+  // 0 (or anything falsy) is "actual". A real width is floored at 240, since
+  // below that there is no page left to look at, only a column of wrapped
+  // words, and a typo should not render something unreadable in silence.
+  window.__tossWidth = w => {
+    const n = Math.round(+w) || 0;
+    forcedWidth = n > 0 ? Math.max(240, Math.min(4000, n)) : 0;
+    applyWidth();
+    // Keep the address honest, so the width survives a reload and travels when
+    // the address bar is copied. replaceState fires no hashchange, so the
+    // reload listener above stays quiet.
+    try {
+      const u = new URL(location.href);
+      if (forcedWidth) u.searchParams.set('w', String(forcedWidth));
+      else u.searchParams.delete('w');
+      history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    } catch (e) {}
+    return forcedWidth;
+  };
+
+  // Rotating the device, or resizing the window, changes what "fit" means.
+  window.addEventListener('resize', () => { if (forcedWidth) applyWidth(); });
+
+  const bootWidth = +param('w');
+  if (bootWidth) window.__tossWidth(bootWidth);
 
   // Mount HTML in the frame at a real URL, so a trailing #frag reaches the
   // page as its own location.hash.
@@ -1009,7 +1089,11 @@ window.fetch=function(input,init){try{
     Alpine.data('tossRender', () => ({
       description: 'Full-viewport renderer for tossed HTML, URLs, and GitHub files ' +
         '(#gz / #html / #url / #gh, plus typed #<page>= content tosses). Paste or use ' +
-        'the panel to render; "Copy toss link" rebuilds the durable bookmark for what is on screen.',
+        'the panel to render; "Copy toss link" rebuilds the durable bookmark for what is on screen. ' +
+        'A ?w=<px> on its own query renders the subject at that width instead of the ' +
+        'device\'s: the frame IS a viewport, so media queries and a boot-time innerWidth ' +
+        'read both see it, and a width wider than the screen is scaled down to fit rather ' +
+        'than scrolled. The drawer\'s Render tab drives it through window.__tossWidth().',
       // `group` files this with the FAB's other clipboard outputs instead of
       // standing apart: copying the address of what is on screen belongs beside
       // copying its HTML. "New toss" is retired; it only cleared the URL, which
