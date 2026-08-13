@@ -1736,6 +1736,25 @@ the pane. Two small pieces of state keep the strip from twitching across a swap:
 `showGuideTab` answers with the previous branch's `hadGuide` while loading, so the
 Guide tab does not vanish and return one round trip later.
 
+#### The drag measured itself
+
+A separate bug, older than the stepping work and the reason the swipe never
+tracked properly on a phone. The drag reaches **inside** the frame, which is what
+made the whole surface swipeable rather than two 24px strips. It also means most
+touches are born in the frame's document and report `clientX` relative to the
+**frame's** viewport, and the frame is the element being translated. So a
+stationary finger reads differently after every move, by exactly the offset just
+applied, and the surface oscillates between two values rather than following
+anything. Measured 2026-08-13 by driving a real CDP touch drag: a finger walking
+left in even 8px steps was read as 284, 292, 276, 284, 268, 276, which is `page ±
+the offset last written`. On a phone that is a visible shake.
+
+`_fingerX` converts a frame-born reading back into the shell's coordinates by
+adding the frame's own `getBoundingClientRect().left`, which carries the live
+transform, so the loop closes. Shell-born touches (the header, the edge strips)
+are already in the right frame of reference and are left alone. The same drag
+now steps −8, −16, −24, −32, −40 for the same finger.
+
 **Where the scrollbar lives** is decided by the same split, and it was the other
 half of the complaint. Framed, the view is a dialog and a dialog scrolls inside
 itself: the root fills the mount, the head is `shrink-0`, and the pane is the one

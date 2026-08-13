@@ -884,7 +884,7 @@
       "path": "tools/test/estate-branch-swipe.test.mjs",
       "kind": "component",
       "protects": "A horizontal drag moves the branch surface and owns the axis, so vertical scroll is not stolen.",
-      "assertions": 8,
+      "assertions": 12,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -896,7 +896,11 @@
         "a commit resets the ready flag, so the row facts cover the incoming page",
         "an end with no neighbour rubber-bands and cannot step",
         "a horizontally-scrollable target keeps its own scroll",
-        "with the takeover closed the handlers are inert"
+        "with the takeover closed the handlers are inert",
+        "a touch born in the frame is converted out of the moving frame of reference",
+        "a touch on the shell chrome is already in the right coordinates",
+        "with no frame to measure against, the reading is taken as it comes",
+        "a frame-born drag tracks the finger one to one instead of oscillating"
       ]
     },
     {

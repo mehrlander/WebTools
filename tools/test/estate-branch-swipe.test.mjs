@@ -202,3 +202,77 @@ test('with the takeover closed the handlers are inert', async () => {
   drag(300, 150);
   assert.equal(pane.style.transform, '');
 });
+
+// ── The finger, measured in a frame of reference that is not moving ──────────
+//
+// The drag reaches INSIDE the embedded page, which is what made the whole
+// surface swipeable rather than two 24px strips. It also means most touches
+// are born in the frame's document and report clientX relative to the FRAME's
+// viewport, and the frame is the thing being translated. So a stationary finger
+// reads differently after every move, by exactly the offset just applied, and
+// the surface oscillates between two values instead of tracking: measured
+// 2026-08-13 as 284, 292, 276, 284, 268, 276 for a finger walking left in even
+// 8px steps. On a phone that is a visible shake, and it is why the drag never
+// felt like it was following anything.
+//
+// The correction is the frame's own bounding rect, which carries the live
+// transform, so a frame-relative reading converts back to the shell's frame of
+// reference. jsdom has no layout, so the rect is supplied here; what the cases
+// hold is the arithmetic and, more importantly, that it applies to frame-born
+// touches and not to shell-born ones.
+
+const frameAt = (left) => ({
+  contentWindow: {},
+  getBoundingClientRect: () => ({ left, top: 0, right: 0, bottom: 0, width: 400, height: 800 }),
+});
+const inFrame = { ownerDocument: { defaultView: { getComputedStyle: () => ({ overflowX: 'visible' }) } } };
+
+test('a touch born in the frame is converted out of the moving frame of reference', () => {
+  data._detailFrame = frameAt(-40);          // the surface is 40px into a drag
+  const x = data._fingerX({ target: inFrame }, { clientX: 292 });
+  assert.equal(x, 252, 'the offset already applied is added back out of the reading');
+});
+
+test('a touch on the shell chrome is already in the right coordinates', () => {
+  data._detailFrame = frameAt(-40);
+  const x = data._fingerX({ target: pane }, { clientX: 292 });
+  assert.equal(x, 292, 'the header and the edge strips do not move with the surface');
+});
+
+test('with no frame to measure against, the reading is taken as it comes', () => {
+  data._detailFrame = null;
+  assert.equal(data._fingerX({ target: inFrame }, { clientX: 292 }), 292);
+});
+
+test('a frame-born drag tracks the finger one to one instead of oscillating', async () => {
+  await open(1);
+  const offsetOf = () => {
+    const m = /translateX\((-?[\d.]+)px\)/.exec(pane.style.transform || '');
+    return m ? +m[1] : 0;
+  };
+  // detailFrame() is stubbed rather than _detailFrame, because opening the
+  // takeover renders the real <iframe x-ref="detailFrame"> and it wins the
+  // lookup. In jsdom that iframe has no layout, so its rect reads 0 and the
+  // correction silently becomes a no-op: the case would then reproduce the BUG
+  // and call it the fix, which is the one way a regression test can lie.
+  const realDetailFrame = data.detailFrame;
+  data.detailFrame = () => ({ contentWindow: {}, getBoundingClientRect: () => ({ left: offsetOf() }) });
+
+  // Replay a real finger: the surface has moved, so the frame-relative reading
+  // of a finger at page X is X minus the offset currently applied. That is the
+  // loop, supplied faithfully, and the assertion is that it no longer closes.
+  const frameTouch = (pageX) => {
+    const cx = pageX - offsetOf();
+    return { touches: [{ clientX: cx, clientY: 0 }], changedTouches: [{ clientX: cx, clientY: 0 }],
+             target: inFrame, cancelable: true, preventDefault() {}, defaultPrevented: false };
+  };
+  data.dTouchStart(frameTouch(300));
+  const seen = [];
+  for (const p of [292, 284, 276, 268, 260]) { data.dTouchMove(frameTouch(p)); seen.push(offsetOf()); }
+  assert.deepEqual(seen, [-8, -16, -24, -32, -40],
+    'every step moves the surface by exactly what the finger moved');
+
+  data.dTouchCancel();
+  data.detailFrame = realDetailFrame;
+  await sleep(FADE_MS);
+});
