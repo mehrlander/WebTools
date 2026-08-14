@@ -46,7 +46,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 907,
+      "words": 911,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -102,7 +102,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2356,
+      "words": 2360,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -395,11 +395,11 @@
     },
     {
       "path": "docs/text-tools.md",
-      "subject": "the FAB's text surface: the instruments the estate already has, the four operations by cost, and what the measurements rule out",
+      "subject": "the FAB's Text tab: why it exists, why the join is the path rather than a term, and an assessment of what it is not",
       "status": "living",
       "reach": "orphan",
-      "words": 3279,
-      "maintenance": "authored; its figures cite the registries and measurements they came from, and the words-per-run calibration is re-derivable by running the pane"
+      "words": 1290,
+      "maintenance": "authored; carries its own honest assessment, so a later reader is not left to infer the limits from a feature description"
     },
     {
       "path": "docs/tools.json",

@@ -49,7 +49,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`surfacing.json`](surfacing.json) — the machine index of the surfacing primitives
 - [`tests.json`](tests.json) — the test registry: every check's kind, what it protects, and its derived counts
 - [`text-content.md`](text-content.md) *(measured)* — the estate's authored text: whether the carriers holding it are organized, and how much never reached one
-- [`text-tools.md`](text-tools.md) *(orphan)* — the FAB's text surface: the instruments the estate already has, the four operations by cost, and what the measurements rule out
+- [`text-tools.md`](text-tools.md) *(orphan)* — the FAB's Text tab: why it exists, why the join is the path rather than a term, and an assessment of what it is not
 - [`tools.json`](tools.json) — the curated Tools gallery manifest
 - [`venues.md`](venues.md) *(measured)* — the venue map: where work can run besides the session reading it, what each reaches, and the attended-versus-unattended split
 
