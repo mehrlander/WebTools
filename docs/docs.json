@@ -46,7 +46,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 884,
+      "words": 913,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -62,7 +62,7 @@
       "subject": "the friction log: one line per snag, symptom then corrected move",
       "status": "living",
       "reach": "project",
-      "words": 4403,
+      "words": 4481,
       "maintenance": "authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
     },
     {
@@ -102,7 +102,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2302,
+      "words": 2360,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -262,7 +262,7 @@
       "subject": "the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting",
       "status": "living",
       "reach": "app",
-      "words": 4079,
+      "words": 4127,
       "maintenance": "authored role and layer glossary; layer, lines, invocation, emits, named and tested stamped by tools/build/tools-index.mjs, held in lockstep by artifacts-lockstep.test.mjs; blank roles are counted, not hidden"
     },
     {
@@ -382,7 +382,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 21402,
+      "words": 21679,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {
@@ -392,6 +392,14 @@
       "reach": "orphan",
       "words": 4440,
       "maintenance": "re-derive with scripts/text-census.py and scripts/text-carriers.py; every figure is a command away, and the date in the opening line is what the numbers are as of"
+    },
+    {
+      "path": "docs/text-tools.md",
+      "subject": "the FAB's Text tab: why it exists, why the join is the path rather than a term, and an assessment of what it is not",
+      "status": "living",
+      "reach": "orphan",
+      "words": 1290,
+      "maintenance": "authored; carries its own honest assessment, so a later reader is not left to infer the limits from a feature description"
     },
     {
       "path": "docs/tools.json",

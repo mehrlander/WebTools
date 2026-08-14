@@ -22,18 +22,17 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
-### headless-prose-unstyled: a headless shot of markdown looks broken and is not
-Any page whose stylesheet combine carries
-`npm/@tailwindcss/typography/dist/typography.min.css` renders its `prose` blocks
-flat under `npm run shot`: no heading sizes, no bullets, no blockquote rule,
-because Tailwind's preflight reset lands and the typography rules do not. The
-cause is vendoring, not the page. The npm package ships `src/` only, so
-`node_modules` has no such file and `resolveCdn` serves empty; jsDelivr builds
-and serves a real 100 KB stylesheet at that path, so the browser is fine. Read
-`tools/.preview/<page>.shot.log` before believing a flat-prose screenshot: the
-line is `combine 2/3 MISS:npm/@tailwindcss/typography/…`. Six pages combine it.
-*(seen: 2026-08-14)*
-→ [headless-vendoring.md](headless-vendoring.md); the map lives in `tools/render/cdn.mjs`
+### stub-hides-the-wiring: a test that stubs a lazy dependency cannot see it go missing
+The Match pane loads `kits/estate-search.js` on first use, and every test for
+it stubbed `window.EstateSearch` before calling, which supplies exactly what
+the lazy load exists to supply. An unrelated edit deleted the load line; the
+suite stayed green and the feature threw `Cannot read properties of undefined`
+on its first real tap. The corrected move: where a dependency is fetched
+lazily, one test must stub the LOADER and assert the fetch, not stub the thing
+the loader would have produced. Generalizes to every `gh.load` inside a
+component, which is most of them.
+*(seen: 2026-08-13)*
+→ [loader.md](loader.md); the case is `tools/test/fab-text.test.mjs`, "match loads its kit before using it"
 
 ### ci-watch-on-blocked-api: a curl watch loop on the GitHub API waits forever
 Backgrounding `until curl .../check-runs | grep completed; do sleep; done` to
@@ -97,8 +96,13 @@ a pointless `npm i -D @tailwindcss/typography`; the limit was already
 documented, dated 2026-08-01: the typography npm tarball ships no built CSS,
 so `cdn.mjs` has nothing to resolve and markdown renders unstyled in every
 harness while the deployed page styles it fine. Read the documented limits
-before debugging shot pixels. *(seen: 2026-08-07)*
-→ [environment/testing.md](environment/testing.md)
+before debugging shot pixels. Bit again on 2026-08-14, in the same shape: a
+screenshot of pasted markdown read as a rendering bug, and the second session
+wrote a fresh entry for it rather than finding this one, which the merge caught
+and this line records. The tell is in the render log, one grep from the
+screenshot: `combine 2/3 MISS:npm/@tailwindcss/typography/…`. Six pages combine
+it. Third time earns the task. *(seen: 2026-08-07, 2026-08-14)*
+→ [environment/testing.md](environment/testing.md); the map is `tools/render/cdn.mjs`
 
 ### pre-build-boots-alpine-early: a page's own gh.load chain runs after its components init
 `branch.html` died with `Cannot read properties of undefined (reading 'fetchBrief')`.

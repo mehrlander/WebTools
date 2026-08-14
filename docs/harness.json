@@ -850,6 +850,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/fab-text-match.mjs",
+      "role": "drive the Text tab for a shot: the read is real, the tree and registry reads are seeded, and STATE picks the un-run pane, the resolved match, or a selection-scoped read",
+      "layer": "tools/render/scenarios",
+      "lines": 91,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/fab-toss.mjs",
       "role": "toss-render address mode with the fab's toss integration and singleton guard",
       "layer": "tools/render/scenarios",
