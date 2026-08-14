@@ -244,6 +244,38 @@ test('a stop owning one route says so, so it need not render as a section', () =
   assert.equal(g.find(s => s.stop === 'Pair').rows.length, 2);
 });
 
+// The join run backwards, for the Branches pane. It has to agree with the
+// forward direction exactly: two panes disagreeing about the same pair of facts
+// would be worse than one of them not showing it.
+test('routesTouched applies the same narrow/wide rule as the forward join', () => {
+  const r = R.routesTouched(FIXTURE, ['one.js', 'README.md']);
+  assert.deepEqual(r.on.map(x => x.key), ['one']);
+  assert.deepEqual(r.near.map(x => x.key), []);
+  const wide = R.routesTouched(FIXTURE, ['wide.js']);
+  // A wide-only hit is near every route that file carries and on none.
+  assert.deepEqual(wide.on.map(x => x.key), []);
+  assert.deepEqual(wide.near.map(x => x.key), ['one', 'two', 'three']);
+});
+
+test('routesTouched never counts the shell, and reports the hits it used', () => {
+  assert.deepEqual(R.routesTouched(FIXTURE, ['shell.html']), { on: [], near: [] });
+  const r = R.routesTouched(FIXTURE, ['one.js', 'wide.js']);
+  assert.deepEqual(r.on[0].hits, ['one.js', 'wide.js']);
+});
+
+// The two directions on one fixture: whatever the forward join calls open on a
+// route, the reverse join calls that route open for the branch, and likewise
+// for near. Asserted rather than assumed, since they are separate code paths.
+test('the forward and reverse joins agree', () => {
+  const files = ['one.js', 'wide.js'];
+  const forward = R.rank(FIXTURE, { branches: [{ pr: 1, files }] });
+  const reverse = R.routesTouched(FIXTURE, files);
+  assert.deepEqual(forward.filter(r => r.branches.length).map(r => r.key).sort(),
+                   reverse.on.map(r => r.key).sort());
+  assert.deepEqual(forward.filter(r => r.nearBranches.length).map(r => r.key).sort(),
+                   reverse.near.map(r => r.key).sort());
+});
+
 test('a stop sums the work open across its rows', () => {
   const branches = [{ pr: 1, files: ['one.js'] }, { pr: 2, files: ['wide.js'] }];
   const g = R.stops(R.rank(STOPPED, { branches }));

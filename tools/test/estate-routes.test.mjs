@@ -203,6 +203,36 @@ test('a failed load names the address it could not read', async () => {
   failNext = false;
 });
 
+// The Branches pane's side of the join. It reads the SAME state the Routes
+// pane loads, so visiting either warms the other; what it must not do is answer
+// for a repo whose routes nobody declared.
+test('a branch row reports the routes it touches, and only for the hub', async () => {
+  await data.loadRoutes(true);
+  const row = { repo: 'mehrlander/web-tools', name: 'claude/registries' };  // PR 7: map.js
+  const r = data.branchRoutes(row);
+  assert.deepEqual(plain_(r.on.map(x => x.key)), ['map']);
+  // A row from any other repo has no answer here rather than an empty one.
+  assert.equal(data.branchRoutes({ repo: 'mehrlander/home', name: 'claude/registries' }), null);
+  // A hub branch nobody has file lists for is also absent, not empty.
+  assert.equal(data.branchRoutes({ repo: 'mehrlander/web-tools', name: 'claude/unknown' }), null);
+  // PR 8 touches docs/SNAGS.md, which no route declares.
+  assert.equal(data.branchRoutes({ repo: 'mehrlander/web-tools', name: 'claude/snag' }), null);
+});
+
+test('the shared half loads without the dating, and only once', async () => {
+  data.routeJoinTried = false;
+  data.routeManifest = null;
+  asked = [];
+  await data.loadRouteJoin();
+  assert.ok(data.routeManifest, 'manifest loaded');
+  assert.deepEqual(plain_(asked), [], 'no per-carrier commit reads for the join alone');
+  assert.equal(data.routeBranchFiles.length, 2);
+  // Guarded: the x-effect on the Branches pane fires on every render.
+  data.routeBranchFiles = [];
+  await data.loadRouteJoin();
+  assert.equal(data.routeBranchFiles.length, 0, 'an unforced second call is a no-op');
+});
+
 test('the group is a row label read off the manifest, not a section', async () => {
   await data.loadRoutes(true);
   assert.equal(data.routeGroupLabel('estate'), 'Estate');

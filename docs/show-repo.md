@@ -589,6 +589,16 @@ and the header counts it once as a figure rather than repeating a sentence on
 every folded stop. A stop owning one route is not a grouping and renders as a
 plain row.
 
+**The join runs both ways.** A route row lists the pull requests open against
+it; a **Branches** row carries a chip strip of the routes it is working on, off
+the same manifest, the same PR file lists, and the same narrow/wide rule, so the
+two readings cannot disagree. That shared half (the manifest plus one
+`pulls/N/files` per open PR, about six calls) loads on either pane, so visiting
+one warms the other, and the Branches pane skips the per-carrier dating it has
+no use for. A chip taps through to its route. Rows from every other repo carry
+nothing rather than an empty strip: routes are one page in one repo, and a row
+that cannot be answered should not look like a row with no answer.
+
 **The grouping takes its order from the ranking rather than recomputing it.**
 That is what keeps freshest-first true at both levels at once: stops appear in
 the order their freshest member does, rows keep their rank order inside. An

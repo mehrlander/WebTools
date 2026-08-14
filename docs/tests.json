@@ -58,7 +58,7 @@
       "path": "tools/test/app-routes.test.mjs",
       "kind": "gate",
       "protects": "The route manifest and show-repo.html's VIEWS table describe the same set of addresses, every declared file exists, and the fold refuses to date a route off the shell or off a file too many routes share.",
-      "assertions": 17,
+      "assertions": 20,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -79,6 +79,9 @@
         "pathsToRead is every carrier plus the shell, deduped",
         "stops order by their freshest member, rows by recency inside",
         "a stop owning one route says so, so it need not render as a section",
+        "routesTouched applies the same narrow/wide rule as the forward join",
+        "routesTouched never counts the shell, and reports the hits it used",
+        "the forward and reverse joins agree",
         "a stop sums the work open across its rows"
       ]
     },
@@ -1061,7 +1064,7 @@
       "path": "tools/test/estate-routes.test.mjs",
       "kind": "behavior",
       "protects": "The Routes pane reads exactly the carriers its manifest declares, survives one with no commits, keeps the shell out of every route's date, joins open PRs on the files they touch, and does not relaunch itself after a failure.",
-      "assertions": 10,
+      "assertions": 12,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -1075,6 +1078,8 @@
         "only a bare ?view= address is offered as a tap",
         "the pane reads at the running ref, so a preview is not pinned to main",
         "a failed load names the address it could not read",
+        "a branch row reports the routes it touches, and only for the hub",
+        "the shared half loads without the dating, and only once",
         "the group is a row label read off the manifest, not a section"
       ]
     },
