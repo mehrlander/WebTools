@@ -615,62 +615,69 @@ test('arming a pin ends a tap run', () => {
   } finally { window.Dictate.hitsText = realHits; delete doc.caretRangeFromPoint; }
 });
 
-test('the keyboard mode does not wear a microphone', () => {
-  // Wrong twice before this test existed. The exit button carried a microphone
-  // on the theory that the icon names where the tap lands; readers read it as
-  // "recording", and the mic button hiding in edit mode slid this one into the
-  // mic's slot, which made the reading almost unavoidable. What is pinned here
-  // is the absence of the microphone and the presence of the dimmed real one.
+test('the keyboard mode has no controls of its own, and the keyboard is the way out', () => {
+  // Three attempts went into making ONE of these buttons legible in edit mode:
+  // the exit wore a microphone (read as recording), then an amber fill (read as
+  // live), then a green check. The question was always which controls to keep,
+  // and the answer is none. The keyboard brings its own delete, caret and
+  // punctuation, so every cell here is a duplicate or a control for the mode
+  // you are not in, and the way out is the keyboard's own dismiss, which is a
+  // blur and nothing else.
   window.SpeechRecognition = FakeSR;
   loadKit('dictate.js', { window });
   A.enable({ doc, subject: { title: 'x', url: '' } });
   const S = A._state;
+  const row = () => [S.compMic, S.compEdit, S.compBack, S.compSave, S.compPad];
+
+  A._paintDraft();
   assert.match(S.compEdit._icon.className, /ph-pencil-simple/, 'dictation mode: a pencil');
-  assert.equal(S.compMic.disabled, false);
+  assert.ok(row().every(b => b.style.display !== 'none'), 'and a full control row');
 
   S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
   assert.equal(S.editing, true, 'the keyboard is open');
-  assert.ok(!/ph-microphone/.test(S.compEdit._icon.className),
-    'the way OUT of the keyboard is not a microphone');
-  assert.match(S.compEdit._icon.className, /ph-check/);
-  assert.equal(S.compEditTxt.style.display, 'inline', 'and it says Done');
-  // The mic holds its slot instead of vanishing, so nothing slides into it.
-  assert.notEqual(S.compMic.style.display, 'none');
-  assert.equal(S.compMic.disabled, true, 'visibly off rather than absent');
+  assert.ok(row().every(b => b.style.display === 'none'),
+    'and every control is gone, the exit among them');
+  assert.equal(S.compPunct.style.display, 'none', 'marks included');
+  assert.match(S.compEdit._icon.className, /ph-pencil-simple/,
+    'the pencil keeps one face, since it is no longer the way back');
 
-  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(S.editing, false);
-  assert.match(S.compEdit._icon.className, /ph-pencil-simple/, 'and the face goes back');
-  assert.equal(S.compMic.disabled, false);
+  // The keyboard's own dismiss. It leaves the typed text behind, which is what
+  // makes taking the blur safe: a slip costs the keyboard, never the words.
+  S.compTa.value = 'typed, then dismissed';
+  S.compTa.dispatchEvent(new window.Event('blur', { bubbles: true }));
+  assert.equal(S.editing, false, 'putting the keyboard away leaves edit mode');
+  assert.equal(S.dict.text, 'typed, then dismissed', 'with the words kept');
+  assert.ok(row().every(b => b.style.display !== 'none'), 'and the row back');
   A.disable();
 });
 
-test('Done resumes dictation only if the keyboard interrupted it', () => {
+test('leaving the keyboard resumes dictation only if it interrupted it', () => {
   // Closing used to call start() unconditionally, on the reading that
   // dictation is the default mode. A reader who had already stopped listening,
-  // tapped the pencil, and tapped Done came back to a live microphone they
+  // opened the keyboard and put it away came back to a live microphone they
   // never asked for. Both directions are pinned, since the resume itself is
   // wanted: it is the switching ON that was not.
   window.SpeechRecognition = FakeSR;
   loadKit('dictate.js', { window });
   A.enable({ doc, subject: { title: 'x', url: '' } });
   const S = A._state;
+  const dismiss = () => S.compTa.dispatchEvent(new window.Event('blur', { bubbles: true }));
 
   // Live when the keyboard opens: resumed on the way out.
   S.dict.start();
   assert.equal(S.dict.listening, true);
   S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
   assert.equal(S.dict.listening, false, 'the keyboard stops the engine');
-  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(S.dict.listening, true, 'and Done puts it back');
+  dismiss();
+  assert.equal(S.dict.listening, true, 'and putting it away puts the engine back');
 
   // Stopped when the keyboard opens: still stopped on the way out.
   S.dict.stop();
   assert.equal(S.dict.listening, false);
   S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
-  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  dismiss();
   assert.equal(S.dict.listening, false,
-    'Done does not switch the microphone on for a reader who had it off');
+    'and it does not switch the microphone on for a reader who had it off');
   A.disable();
 });
 
@@ -829,16 +836,14 @@ test('the cursor pad moves the caret and not the text', () => {
   assert.deepEqual(S.dict.range, { start: 4, end: 4 }, 'no layout to read, so nothing moved');
   assert.equal(S.dict.text, 'the quick brown fox', 'and the buffer is never what the pad touches');
 
-  // The keyboard brings its own caret, so the pad stands down in edit mode. It
-  // DIMS rather than hides: it is a cell in the frame, and a cell that
-  // disappears takes its column with it, which is the one thing a continuous
-  // border cannot survive.
+  // The keyboard brings its own caret, so the pad goes in edit mode, with the
+  // rest of the row. Dimming it in place was the earlier answer, on the rule
+  // that a grid cell which disappears takes its column with it; hiding the
+  // whole row leaves nothing beside it for a border to jog against.
   S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(S.compPad.disabled, true);
-  assert.equal(parseFloat(S.compPad.style.opacity), 0.3);
-  assert.notEqual(S.compPad.style.display, 'none', 'the column holds');
-  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(S.compPad.disabled, false);
+  assert.equal(S.compPad.style.display, 'none');
+  S.compTa.dispatchEvent(new window.Event('blur', { bubbles: true }));
+  assert.equal(S.compPad.style.display, 'flex', 'and comes back with the read surface');
   A.disable();
 });
 

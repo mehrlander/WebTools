@@ -19,6 +19,10 @@ export default async (page) => {
     // a headless run: the pencil is a mode switch, and Done is the same key.
     await page.click('button[data-annotate-ui][title^="Type instead"]');
     await page.fill('textarea[data-annotate-ui]', note);
+    // Putting the keyboard away is what leaves edit mode, and the control row
+    // (Save among it) comes back with the read surface. A phone does this with
+    // the keyboard's own dismiss; here it is the blur that dismiss amounts to.
+    await page.evaluate(() => document.querySelector('textarea[data-annotate-ui]').blur());
     await page.click('button[data-annotate-ui][title^="Save note"]');
     await page.waitForTimeout(150);
   };

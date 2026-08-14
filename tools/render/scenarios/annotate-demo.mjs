@@ -34,6 +34,9 @@ export default async (page) => {
     // box since the composer was rebuilt, and failed on every run.
     await page.click('button[data-annotate-ui][title^="Type instead"]');
     await page.fill('textarea[data-annotate-ui]', note);
+    // The keyboard's dismiss is the way out of edit mode, and Save is on the
+    // control row that comes back with the read surface.
+    await page.evaluate(() => document.querySelector('textarea[data-annotate-ui]').blur());
     await page.click('button[data-annotate-ui][title^="Save note"]');
     await page.waitForTimeout(150);
   };

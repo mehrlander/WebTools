@@ -1,7 +1,9 @@
-// The composer with the keyboard open. The question this answers is whether
-// the mode reads as "typing" rather than "recording", which is a pixel
-// question: the glyph, the fill, and whether the mic button still holds its
-// slot are three separate signals that have twice been read together.
+// The composer with the keyboard open. It used to ask whether the exit button
+// read as "typing" rather than "recording", a pixel question three attempts
+// failed at (a microphone glyph, then an amber fill, then a green check). The
+// row is gone in keyboard mode now, so the question retires with it and this
+// asserts what replaced it: no control of any kind while the keyboard is up,
+// and the keyboard's own dismiss brings the row back with the words kept.
 //
 //   npm run shot -- pages/annotate.html --script tools/render/scenarios/annotate-keyboard-mode.mjs
 export default async (page) => {
@@ -42,20 +44,28 @@ export default async (page) => {
   await page.click('button[data-annotate-ui][title^="Type instead"]');
   await page.waitForTimeout(400);
 
-  const row = await page.evaluate(() => {
-    const btns = [...document.querySelectorAll('[data-annotate-ui] button')];
-    const done = btns.find(b => (b.textContent || '').includes('Done'));
-    const mic = btns.find(b => b.querySelector('.ph-microphone'));
-    const seen = (el) => el && getComputedStyle(el).display !== 'none' && el.offsetParent !== null;
-    return {
-      done: done ? { glyph: done.querySelector('i').className, shown: seen(done) } : null,
-      mic: mic ? { shown: seen(mic), disabled: mic.disabled } : null,
-    };
-  });
-  if (!row.done || !row.done.shown) throw new Error('no Done button in keyboard mode');
-  if (/ph-microphone/.test(row.done.glyph)) {
-    throw new Error('the way out of the keyboard is wearing a microphone again');
+  const CONTROLS = ['[title^="Dictate"]', '[title^="Recording"]', '[title^="Type instead"]',
+                   '[title^="Delete the last word"]', '[title^="Save note"]', '[title^="Press and drag"]'];
+  const seenCount = () => page.evaluate((sel) => sel
+    .map(q => document.querySelector('[data-annotate-ui] button' + q))
+    .filter(b => b && getComputedStyle(b).display !== 'none' && b.offsetParent !== null).length, CONTROLS);
+
+  const open = await seenCount();
+  if (open) throw new Error(`${open} control(s) still on screen with the keyboard open`);
+  const marks = await page.evaluate(() =>
+    getComputedStyle(window.Annotate._state.compPunct).display !== 'none');
+  if (marks) throw new Error('the punctuation pad is showing under an open keyboard');
+
+  // The dismiss, which on a phone is the keyboard's own key and here is the
+  // blur that key amounts to. It ends edit mode, keeps the text, and gives the
+  // row back, which is the whole of why the row could go.
+  await page.fill('textarea[data-annotate-ui]', 'typed, then dismissed');
+  await page.evaluate(() => document.querySelector('textarea[data-annotate-ui]').blur());
+  await page.waitForTimeout(300);
+  const back = await seenCount();
+  if (back !== CONTROLS.length - 1) {   // Dictate and Recording are one button in two states
+    throw new Error(`the control row did not come back: ${back} of ${CONTROLS.length - 1}`);
   }
-  if (!row.mic || !row.mic.shown) throw new Error('the mic vanished, so Done slid into its slot');
-  if (!row.mic.disabled) throw new Error('the mic is live while the keyboard is open');
+  const kept = await page.evaluate(() => window.Annotate._state.dict.text);
+  if (kept !== 'typed, then dismissed') throw new Error('the dismiss lost the typed text: ' + kept);
 };
