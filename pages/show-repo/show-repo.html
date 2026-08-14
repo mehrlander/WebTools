@@ -762,37 +762,57 @@
       <!-- Per-repo views, hidden in the estate (global) context. The estate is
            reached from the header nav and the sidebar trail's mark, not from
            here, since it is a context above the repo, not a view of it.
-           Repo views: the landing (web-tools' is its pages index, a repo with a
-           custom `landing` gets that page, others get an overview), an optional
-           standalone Pages entry (showPagesNav; a repo with both `landing` and a
-           `pages` catalog reaches its gallery here since the landing slot is
-           taken), the atlas, the file explorer, and the branch review. (The
-           stage lives in the estate list above: it is cross-repo by nature.) -->
+
+           WHAT A REPO VIEW IS FOR, after the 2026-08-14 pass: the things only
+           this repository can answer. Its README, its structure, its declared
+           pages, its manifest. Three rows left because the estate answers the
+           same question better for the whole constellation at once:
+
+             files     the tree walk. Reading a file is central now, so this row
+                       hands the Files view this repo and leaves (the arrow says
+                       so). ?view=files is retired; ?file= and a pin open the
+                       central reader.
+             branches  the per-repo branch review. Activity's Branches tab is
+                       the same rollup, same landed/stranded signal, across
+                       every repo, and opens the branch takeover. A per-repo
+                       copy of a cross-repo answer is a narrower view of a
+                       thing nobody wants narrowed.
+
+           Overview leads, and always: it is the README, for every repo. -->
       <div class="flex flex-col gap-0.5" x-show="!estateCtx">
         <button @click="goLanding()"
                 class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-base hover:bg-base-200 transition-colors"
                 :class="view==='landing' ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
-          <i class="ph text-base" :class="landingIcon"></i><span x-text="landingLabel"></span>
+          <i class="ph ph-house text-base"></i><span>Overview</span>
         </button>
         <button @click="goPages()" x-show="showPagesNav"
                 class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-base hover:bg-base-200 transition-colors"
                 :class="view==='pages' ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
           <i class="ph ph-squares-four text-base"></i><span>Pages</span>
         </button>
+        <!-- A repo's own declared front page, when it names one. It renders
+             through the app view rather than a landing kind of its own, since
+             this shell already knows how to show a repo's page as an
+             addressable view. -->
+        <button x-show="repoLandingView" @click="goAppView(repoLandingView)"
+                class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-base hover:bg-base-200 transition-colors"
+                :class="view==='app' && appView && repoLandingView && appView.key===repoLandingView.key
+                          ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
+          <i class="ph ph-planet text-base"></i><span>Landing</span>
+        </button>
         <button @click="goAtlas()"
                 class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-base hover:bg-base-200 transition-colors"
                 :class="view==='atlas' ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
           <i class="ph ph-map-trifold text-base"></i><span>Atlas</span>
         </button>
-        <button @click="goFiles()"
-                class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-base hover:bg-base-200 transition-colors"
-                :class="view==='files' ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
-          <i class="ph ph-folders text-base"></i><span>Files</span>
-        </button>
-        <button @click="goBranches()"
-                class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-base hover:bg-base-200 transition-colors"
-                :class="view==='branches' ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
-          <i class="ph ph-git-branch text-base"></i><span>Branches</span>
+        <!-- Files LEAVES the repo, and that is the point: reading a file is
+             central now, so this row hands that surface this repo at the ref
+             being browsed and goes there. -->
+        <button @click="searchRepoFiles()"
+                class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-base hover:bg-base-200 transition-colors text-base-content/80">
+          <i class="ph ph-files text-base"></i><span>Files</span>
+          <span class="grow"></span>
+          <i class="ph ph-arrow-up-right text-sm opacity-30"></i>
         </button>
         <button @click="goConfig()"
                 class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-base hover:bg-base-200 transition-colors"
@@ -888,7 +908,7 @@
         <template x-for="p in pins" :key="p">
           <button @click="openPin(p)"
                   class="flex items-center gap-2 px-2 py-1 rounded-lg text-base hover:bg-base-200 transition-colors text-left"
-                  :class="Alpine.store('browser').activeFile?.path===p ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
+                  :class="openFilePath===p ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
             <i class="ph text-base shrink-0" :class="pinIsFile(p) ? 'ph-file text-info' : 'ph-folder text-warning'"></i>
             <span class="truncate font-mono text-base" :title="p" x-text="p"></span>
           </button>
@@ -910,7 +930,7 @@
              a button, so the anchor sits beside it rather than within. -->
         <template x-for="f in recent" :key="f.path">
           <div class="group flex items-center rounded-lg hover:bg-base-200 transition-colors"
-               :class="Alpine.store('browser').activeFile?.path===f.path ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
+               :class="openFilePath===f.path ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
             <button @click="openFile(f.path)"
                     class="flex items-center justify-between gap-2 px-2 py-1 min-w-0 flex-1 text-base text-left">
               <span class="truncate font-mono text-base" :title="f.path" x-text="f.path.split('/').pop()"></span>
@@ -980,27 +1000,14 @@
          it, so the two entry points never drift apart. -->
     <div x-show="view==='landing' || view==='pages'" class="h-full overflow-y-auto">
 
-      <!-- Custom landing: the repo's own page (config.landing), rendered live
-           through toss-render's #gh= address mode. Full-bleed, like the atlas.
-           Only the 'landing' view can be custom; 'pages' always means gallery. -->
-      <template x-if="landingKind()==='custom' && view==='landing'">
-        <iframe :src="customLandingUrl" class="w-full h-full border-0 bg-base-100"
-                sandbox="allow-scripts allow-same-origin allow-popups allow-downloads"></iframe>
-      </template>
+      <div class="!max-w-none px-6 py-8">
 
-      <div x-show="!(landingKind()==='custom' && view==='landing')" class="!max-w-none px-6 py-8">
-
-        <!-- ── The landing seam stays small ──────────────────────────────────────────
-             The seam stays small: each landing kind is a branch in landingKind() plus a
-             matching landing block. `pages` now has two read sites (landingKind()'s
-             gallery branch, and showPagesNav's standalone-entry gate) rather than one,
-             since `landing` and `pages` can both be set on the same repo; both sites
-             render through the one gallery mount shared by the 'landing' and 'pages'
-             views, so there is still exactly one gallery implementation to maintain. -->
-        <!-- The pages gallery: web-tools' own (pages.json) or any repo's `pages`
-             catalog. Reached as the landing when landingKind()==='gallery', or
-             directly via the standalone Pages view regardless of landingKind(). -->
-        <div x-show="landingKind()==='gallery' || view==='pages'">
+        <!-- Two blocks, one per view, and no decision between them: `landing` is
+             the overview and `pages` is the gallery, always. The three-way
+             landingKind() this replaced is described where it used to live. A
+             repo's own declared landing page renders through the app view, not
+             here. -->
+        <div x-show="view==='pages'">
           <div x-data="gallery()">
             <p x-show="isDefault" class="text-base-content/50 text-base mb-6">
               Browser-based tools and demos. Cards toggle between a
@@ -1112,7 +1119,7 @@
         <!-- Default landing for any other repo: an overview — stats, README,
              and a jump to the atlas. 'pages' view never wants this, even on a
              stray deep link to a repo with no pages catalog. -->
-        <div x-show="landingKind()==='overview' && view==='landing'">
+        <div x-show="view==='landing'">
           <div x-data="overview()">
             <div class="flex items-start justify-between gap-4 flex-wrap mb-4">
               <div class="min-w-0">
@@ -1417,35 +1424,13 @@
       </template>
     </div>
 
-    <!-- Files: the folder navigation (breadcrumb + listing), with the selected
-         file's content beneath it. The explorer lives here in the main area;
-         the sidebar's pins and recents deep-link into it. -->
-    <div x-show="view==='files'" class="h-full overflow-y-auto">
-      <div class="mx-auto px-4 py-6 flex flex-col gap-4">
-        <div id="explorer" x-data="explorer()"></div>
-        <div id="viewer" x-data="viewer()" x-show="$store.browser.activeFile"></div>
-      </div>
-    </div>
-
-    <!-- Branches: the branch-review rollup — every branch with the
-         content-level landed/stranded signal (lib/kits/branch-survey.js, the
-         browser port of home's branch-survey.sh). Advisory only; rows link
-         out to GitHub's tree/compare and the header to its branches UI.
-         Mounted lazily on first visit, like the estate. -->
-    <div x-show="view==='branches'" class="h-full overflow-y-auto">
-      <div class="mx-auto px-6 py-8 max-w-5xl">
-        <template x-if="branchesSeen">
-          <div x-data="branches()"></div>
-        </template>
-        <!-- The ref compare (base...head over the open repo) lives with the
-             branch review it serves; the estate-level stage has its own
-             file-vs-file compare in its output box. Mounted outside the x-if
-             so #compare exists for openCompare() calls before a first visit. -->
-        <div class="border-t border-base-200 pt-3 mt-6">
-          <div id="compare" x-data="compare()"></div>
-        </div>
-      </div>
-    </div>
+    <!-- The Files tree walk and the per-repo Branches review stood here until
+         2026-08-14, and both were removed rather than moved: reading a file is
+         the estate's Files view, and the branch rollup is Activity's Branches
+         tab, which carries the same landed/stranded signal across every repo.
+         `?view=files` and `?view=branches` alias onto those, so a shared link
+         still lands. The ref compare went with the branch review, its only
+         caller here; the component keeps its mount on nav-repo.html. -->
 
     <!-- Config: the open repo's .web-tools.json as a full view (a Settings form
          and a raw JSON tab), the roomy counterpart to the shared repo dialog's
@@ -1507,16 +1492,21 @@
       </div>
     </div>
 
-    <!-- The Search view: the parameterized search surface (file names at any
-         ref, contents through the code-search API, the captured session
+    <!-- The Search view: the central file surface (file names at any ref under
+         any folder, contents through the code-search API, the captured session
          records), over the same shared core the sidebar finder uses
          (lib/kits/estate-search.js). The finder is for jumping; this is for
          investigating, and it is where each mode's caveats are stated in
          full. Estate-level, token-gated in effect, its own component and
          lazy mount; the finder's "File contents" gate routes here with the
-         query carried over (goSearch → searchSeed). -->
+         query carried over (goSearch → searchSeed).
+
+         It READS the file too, through the shared viewer embedded inside it,
+         which is why this pane is no longer capped at max-w-4xl: a results
+         column and a file beside it want the width the Tools gallery takes.
+         The per-repo Files view (?view=files) keeps the tree walk. -->
     <div x-show="view==='search'" data-pane="search" class="h-full overflow-y-auto">
-      <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 max-w-4xl">
+      <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 max-w-7xl">
         <template x-if="searchSeen">
           <div x-data="searchView()"></div>
         </template>
@@ -1641,9 +1631,7 @@ function app(){ return {
   // out is how you reach its full experience, subject-adopted FAB included.
   get actions(){
     let src = '', label = '';
-    if (this.view === 'landing' && this.landingKind() === 'custom' && this.customLandingUrl) {
-      src = this.customLandingUrl; label = 'Open landing full-page';
-    } else if (this.view === 'project' && this.projectTab === 'overview' && this.projectLandingUrl) {
+    if (this.view === 'project' && this.projectTab === 'overview' && this.projectLandingUrl) {
       src = this.projectLandingUrl;
       label = 'Open ' + (this.project?.label || 'project') + ' landing full-page';
     } else if (this.view === 'app' && this.appView && this.appViewUrl) {
@@ -1665,7 +1653,7 @@ function app(){ return {
               desc: 'Leave the embed and open the framed page full-viewport.',
               run: () => ({ nav: href }) }];
   },
-  view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'files' | 'stage' | 'branches' | 'config' | 'app' | 'public'
+  view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'stage' | 'config' | 'app' | 'public'
 
   // ── The shell mode: how much of the app is drawn around the view ──────────
   //
@@ -1706,15 +1694,16 @@ function app(){ return {
   sidebarOpen: false,
   atlasSeen: false,       // mount the atlas iframe lazily, on first visit
   estateSeen: false,      // mount the estate component lazily, on first visit
-  branchesSeen: false,    // mount the branches component lazily, on first visit
   configSeen: false,      // mount the config-view component lazily, on first visit
   mapSeen: false,         // mount the map component lazily, on first visit
   mapTab: 'set',          // the Map view's open tab, held HERE and not in map() because the URL is the shell's to own (see goMap)
   toolsSeen: false,       // mount the tools component lazily, on first visit
   searchSeen: false,      // mount the search view lazily, on first visit
-  // What the Search view is showing, parked by goSearch (the finder's gate, a
-  // deep link's ?sq= family) and restamped by the view on each run so a search
-  // is an address. Null when nothing is parked.
+  // What the Search view is showing, parked by goSearch (the finder's gate, the
+  // explorer's hand-off, a deep link's ?sq= family) and restamped by the view
+  // on each run and each file opened, so the screen is an address. Fields:
+  // { q, mode, repo, ref, path, file }, where `path` is the folder scope and
+  // `file` is an owner/repo[@ref]:path address. Null when nothing is parked.
   searchSeed: null,
   publicSeen: false,      // mount the public-browse component lazily, on first visit
   publicSeed: '',         // repo the public browser should open; a card sets it, the component watches it
@@ -1810,15 +1799,13 @@ function app(){ return {
     const gh = new window.GH({ token: window.TOKEN });
     Alpine.store('browser').gh = gh;
 
-    // Selecting a file (explorer row, landing card, staged item) flips to the
-    // Files view, where the shared viewer shows it beneath the listing.
-    this.$watch(() => Alpine.store('browser').activeFile, (f) => {
-      if (f) { this.view = 'files'; this.syncUrl(); }
-    });
-
-    // Changing the repo takes you to its landing (default or specified).
+    // Changing the repo takes you to its overview. It used to bail out when a
+    // file was open, because selecting one flipped the shell to the Files view
+    // through the watcher above this: the store's `activeFile` was the shell's
+    // idea of "a file is on screen". Reading is the estate's Files view now, so
+    // `activeFile` is the STAGE PREVIEW's concern and no longer a view state
+    // here, and a repo switch simply goes to the repo.
     this.$watch(() => Alpine.store('browser').repo, () => {
-      if (Alpine.store('browser').activeFile) return;
       this.view = 'landing';
       this.syncUrl();
     });
@@ -1858,16 +1845,11 @@ function app(){ return {
     this.processMailbox();
     this.loadProposalCount();
 
-    // Folder navigation in the explorer keeps the ?path deep link honest.
-    this.$watch(() => Alpine.store('browser').path, () => {
-      if (this.view === 'files') this.syncUrl();
-    });
-
-    // A ref switch in the Files view keeps the ?ref deep link honest the same
-    // way (the header switcher never synced it; the picker lives in Files now).
-    this.$watch(() => Alpine.store('browser').ref, () => {
-      if (this.view === 'files') this.syncUrl();
-    });
+    // A ref switch keeps the ?ref deep link honest. It used to fire only in the
+    // Files view, where the picker was; the browsed ref is now read by the
+    // atlas, the config form, the pages gallery and mention, so the address
+    // follows it in any of them.
+    this.$watch(() => Alpine.store('browser').ref, () => this.syncUrl());
 
     // The repo bar is always visible, so point the browser at a repo now, then
     // hand the address to the view table (?repo&ref first, then ?file or
@@ -1898,13 +1880,11 @@ function app(){ return {
     if (!s.repo || !s.gh) return;
     this._recentKey = key;
     this.recentLoading = true; this.recent = [];
-    // Let the file listing win the early network window: hold this panel's
-    // fetches until the explorer's first listing has landed (loadedOnce),
-    // with a timeout so a listing that never mounts can't starve the panel.
-    // On later repo/ref switches the flag is already set, so this is a
-    // cold-load deferral only — the case the phone-load symptom came from.
-    await waitFor(() => document.getElementById('explorer')?.__explorer?.loadedOnce, 5000);
-    if (this._recentKey !== key) return;
+    // This used to hold its fetches until the explorer's first listing had
+    // landed, so the file listing won the early network window on a cold load.
+    // The explorer was mounted on every page load (x-show does not defer an
+    // init) and is gone with the Files view, so there is no listing to defer
+    // behind and the wait would only ever have timed out.
     try {
       const files = await s.gh.recentFiles(12);
       if (this._recentKey !== key) return; // repo/ref changed while in flight
@@ -2828,23 +2808,38 @@ function app(){ return {
   // gallery through the standalone Pages sidebar entry (goPages(), 'pages' view),
   // gated on config.pages.length rather than on this function. The design notes
   // below cover the gallery catalog and the custom render path.
-  landingKind(){
-    const s = Alpine.store('browser');
-    if (s.repo === this.DEFAULT_REPO) return 'gallery';
-    if (s.config?.landing) return 'custom';
-    if (Array.isArray(s.config?.pages) && s.config.pages.length) return 'gallery';
-    return 'overview';
-  },
-  get landingLabel(){ return { gallery: 'Pages', custom: 'Landing', overview: 'Overview' }[this.landingKind()]; },
-  get landingIcon(){ return { gallery: 'ph-squares-four', custom: 'ph-planet', overview: 'ph-house' }[this.landingKind()]; },
-  // The standalone Pages sidebar entry: shown only when it would offer something
-  // the Landing button doesn't already — i.e. the repo has a `pages` catalog but
-  // `landingKind()` resolved to something else (a custom landing won the front
-  // door). A gallery-fronted repo (web-tools, or `pages`-only like home) has no
-  // use for a second identical button.
+  // THE LANDING IS THE README, for every repo, and there is no longer a
+  // decision to make. `landingKind()` used to pick one of three things to put
+  // in the front-door slot, and the two that were not the overview both won
+  // whenever they were declared: web-tools got its page gallery, any repo with
+  // a `pages` catalog got the same, and a repo naming a `landing` got that. So
+  // the one thing a repository always has, and the one thing a reader arriving
+  // at a repository is looking for, was the thing displaced. A front door that
+  // shows anything other than the README has to be *worth more* than the
+  // README, and none of these were: they are destinations, and the sidebar is
+  // where destinations belong.
+  //
+  // So both of them moved out to rows of their own, where each says what it is
+  // instead of standing in for something else. The gallery is the Pages row,
+  // which already existed for exactly this case (a repo declaring both) and is
+  // now simply always on when there is a catalog. A declared `landing` goes
+  // through the APP-VIEW machinery rather than a landing kind of its own,
+  // since "render this repo's page as a view" is a thing this shell already
+  // does, addressably, for `appView: true` pages. That deletes a branch rather
+  // than moving one.
   get showPagesNav(){
     const s = Alpine.store('browser');
-    return Array.isArray(s.config?.pages) && s.config.pages.length > 0 && this.landingKind() !== 'gallery';
+    if (s.repo === this.DEFAULT_REPO) return true;   // the hub's catalog is pages.json, not the manifest
+    return Array.isArray(s.config?.pages) && s.config.pages.length > 0;
+  },
+  // The repo's declared front page, as an app view. Absent for a repo that
+  // names none, which is every repo in the estate today.
+  get repoLandingView(){
+    const s = Alpine.store('browser');
+    if (!s.config?.landing) return null;
+    return { repo: s.repo, ref: '', path: s.config.landing,
+             label: 'Landing', icon: 'ph-planet',
+             key: s.repo + ':' + s.config.landing };
   },
 
   // Custom landings render through toss-render's #gh= address mode: fetched
@@ -2853,15 +2848,18 @@ function app(){ return {
   // toss-render's refusal, not the page. Pinned to the default branch: the
   // Files-view ref picker chooses what the file browser reads, not what the
   // repo's app renders (rendering at a ref is the FAB's Render tab / a toss).
-  get customLandingUrl(){
-    const s = Alpine.store('browser');
-    if (!s.config?.landing) return '';
-    return '../toss-render.html#gh=' + s.repo + ':' + s.config.landing;
-  },
-
   // Pinned folders and files from the manifest. A pin whose last segment has
-  // an extension opens as a file; anything else opens the Files view at that
-  // folder, where the explorer navigates onward.
+  // an extension opens as a file; anything else opens the Files view scoped to
+  // that folder, where its walk carries on.
+  // What the Files view has open, as a bare path of the browsed repo, so a pin
+  // or a recent row can light while you are reading it. It read the store's
+  // `activeFile` until the Files view retired, and that was the only thing that
+  // ever set it here; the reading now happens in a view that publishes what it
+  // is showing as an address.
+  get openFilePath(){
+    const a = window.RepoAddress?.parse?.(this.searchSeed?.file || '');
+    return a && a.repo === Alpine.store('browser').repo ? a.path : '';
+  },
   get pins(){ return Alpine.store('browser').config?.pins || []; },
   pinIsFile(p){ return /\.[^./]+$/.test(p.split('/').pop()); },
   async openPin(p){
@@ -3342,7 +3340,7 @@ function app(){ return {
     ];
     if (s.ref && s.defaultRef && s.ref !== s.defaultRef)
       out.push({ key: 'ref', icon: 'ph-git-branch', label: s.ref, mono: true,
-                 title: 'Browsing ' + s.ref + ', not ' + s.defaultRef, action: () => this.goFiles() });
+                 title: 'Browsing ' + s.ref + ', not ' + s.defaultRef, action: () => this.searchRepoFiles() });
     return out;
   },
   // Going home from the crumb leaves the drawer OPEN, unlike every other
@@ -3734,9 +3732,7 @@ function app(){ return {
     await this.ensureBrowser(repo);
     if (Alpine.store('browser').repo !== repo) return;
     if (key === 'outbox'){
-      const box = this.menuRepoOutbox;
-      this.goFiles();
-      if (box?.dir) await this.openFolder(box.dir);
+      this.openFolder(this.menuRepoOutbox?.dir || '');
       return;
     }
     if (key === 'config') this.goConfig();
@@ -3785,20 +3781,6 @@ function app(){ return {
   //   stamp  the view's OWN keys. The caller has already set ?view=
   //   self   this view names itself another way, so the caller sets no ?view=
   VIEWS: [
-    // Files is the one `self` view: its address is ?file=<path>, and ?view=files
-    // is only the fallback for a folder or a file it cannot honestly name.
-    { key: 'files', self: true,
-      open(u){ this.goFiles(); return u.path ? this.openFolder(u.path) : null; },
-      stamp(p, s){
-        // ?ref= is Files-scoped, like the picker that sets it: it deep-links
-        // which ref the file browser reads, so it rides only this view.
-        if (s.ref && s.ref !== s.defaultRef) p.set('ref', s.ref);
-        // A cross-repo staged file (activeFile.origin from another repo) has no
-        // honest ?file= deep link against the open repo, so it gets none.
-        const f = s.activeFile;
-        if (f && (!f.origin || f.origin.repo === s.repo)) p.set('file', f.path);
-        else { p.set('view', 'files'); if (s.path) p.set('path', s.path); }
-      } },
     // The landing names itself by naming its repo, not with a ?view=: a repo's
     // front page IS ?repo=owner/name, and stamping a view key beside it would
     // put a redundant param on the most-linked shape in the app. The one catch
@@ -3810,7 +3792,6 @@ function app(){ return {
       stamp(p, s){ if (s.repo) p.set('repo', s.repo); } },
     { key: 'pages',    open(){ this.goPages(); } },
     { key: 'atlas',    open(){ this.goAtlas(); } },
-    { key: 'branches', open(){ this.goBranches(); } },
     { key: 'config',   open(){ this.goConfig(); } },
     // A project is repo-scoped, so its link carries the workspace beside the
     // ?repo= already stamped; a non-default pill rides as &tab= so "open
@@ -3828,7 +3809,9 @@ function app(){ return {
     { key: 'public',   open(){ this.goPublicBrowse(); } },
     { key: 'todo',     open(){ this.goTodo(); } },
     { key: 'jots',     open(){ this.goJots(); } },
-    { key: 'activity', open(){ this.goActivity(); },
+    // `branches` is the retired per-repo branch review, whose rollup this tab
+    // already carried for every repo at once.
+    { key: 'activity', alias: 'branches', open(){ this.goActivity(); },
       stamp(p){
         // The branch open in the takeover, when one is. Being inside the swiper
         // is a state worth linking to and was the one state here without an
@@ -3857,17 +3840,28 @@ function app(){ return {
     { key: 'state', open(u){ this.goState(u.item); },
       stamp(p){ if (this.stateItem) p.set('item', this.stateItem); } },
     // The Search view's address carries the ran search (sq + friends, stamped
-    // from searchSeed, which the view updates on each run), so a search can be
-    // shared like any other screen. A bare ?view=search opens it empty.
-    { key: 'search',
-      open(u){ this.goSearch({ q: u.sq, mode: u.smode, repo: u.srepo, ref: u.sref }); },
+    // from searchSeed, which the view updates on each run) AND the file open in
+    // it (sfile, an owner/repo[@ref]:path address), so the screen can be shared
+    // as what is on it rather than as the query behind it. A bare ?view=search
+    // opens it empty. There is no `if (!sd.q) return` guard any more: since the
+    // view browses on a repo or a folder alone, a screen with no query at all
+    // is a screen worth addressing.
+    // `files` is the retired per-repo tree walk, whose reading moved here.
+    { key: 'search', alias: 'files',
+      // `path` and `file` are the retired view's keys, read as fallbacks so an
+      // old ?view=files&path=docs link opens this view scoped to that folder
+      // rather than at the repo root.
+      open(u){ this.goSearch({ q: u.sq, mode: u.smode, repo: u.srepo, ref: u.sref,
+                               path: u.spath || u.path, file: u.sfile }); },
       stamp(p){
         const sd = this.searchSeed;
-        if (!sd?.q) return;
-        p.set('sq', sd.q);
+        if (!sd) return;
+        if (sd.q) p.set('sq', sd.q);
         if (sd.mode && sd.mode !== 'names') p.set('smode', sd.mode);
         if (sd.repo) p.set('srepo', sd.repo);
         if (sd.ref) p.set('sref', sd.ref);
+        if (sd.path) p.set('spath', sd.path);
+        if (sd.file) p.set('sfile', sd.file);
       } },
     // App views are estate-level, so the link stands alone (like the Stage):
     // the promoted page's repo and path ride it, independent of the open repo.
@@ -3888,8 +3882,12 @@ function app(){ return {
 
   // Every key any row can stamp. Deleted unconditionally before a stamp, so the
   // result never depends on what the base happened to hold.
+  // `file` and `path` are the retired Files view's keys, kept in the delete
+  // list so a stale one is cleared rather than carried into a screen that does
+  // not mean it; nothing stamps them now. `ref` is deleted here and re-stamped
+  // above, being repo-scoped rather than any view's.
   VIEW_KEYS: ['file', 'view', 'path', 'ref', 'project', 'tab', 'detail', 'item', 'window',
-              'sq', 'smode', 'srepo', 'sref',
+              'sq', 'smode', 'srepo', 'sref', 'spath', 'sfile',
               'appRepo', 'appPath', 'appRef', 'appLabel', 'appIcon'],
 
   routeFor(view){ return this.VIEWS.find(r => r.key === view || r.alias === view); },
@@ -3916,6 +3914,7 @@ function app(){ return {
              appRepo: p.get('appRepo') || '', appPath: p.get('appPath') || '', appRef: p.get('appRef') || '',
              appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '',
              sq: p.get('sq') || '', smode: p.get('smode') || '', srepo: p.get('srepo') || '', sref: p.get('sref') || '',
+             spath: p.get('spath') || '', sfile: p.get('sfile') || '',
              item: p.get('item') || '',
              window: this.parseWindowParam(p.get('window')) };
   },
@@ -3939,6 +3938,11 @@ function app(){ return {
     // survive but this must, or a ref switch would silently reframe the page).
     if (this.shellMode !== 'full') p.set('shell', this.shellMode); else p.delete('shell');
     for (const k of this.VIEW_KEYS) p.delete(k);
+    // The browsed ref rides beside the repo, not on a view. It was the Files
+    // view's key while the Files view was the only thing that read it; the
+    // atlas, the config form, the gallery and mention all read it now, so it
+    // is repo-scoped state and belongs where `repo` is.
+    if (s.ref && s.defaultRef && s.ref !== s.defaultRef) p.set('ref', s.ref);
     // One lookup where three parallel else-if chains used to be. A row that is
     // not `ready` stamps nothing rather than a half address naming a view the
     // shell cannot yet describe.
@@ -4021,19 +4025,28 @@ function app(){ return {
     }
   },
 
-  async openFile(path){
-    const el = document.getElementById('explorer');
-    if (!await waitFor(() => el.__explorer)) return;
-    const folder = path.split('/').slice(0, -1).join('/');
-    if (folder) await el.__explorer.load(folder, true);
-    await el.__explorer.sel(path);
+  // Open a file of the OPEN repo, from wherever names one: a pin, a recent, a
+  // ?file= deep link, the repo menu. Every one of these used to drive the
+  // explorer's own listing and viewer; they route to the central Files view
+  // now, scoped to the file's folder so the walk around it is right there and
+  // the file itself is the thing on screen.
+  //
+  // The ref rides only when it is off the default, which is that view's rule
+  // for '' and not a shortcut taken here.
+  openFile(path){
+    const s = Alpine.store('browser');
+    const ref = s.ref && s.ref !== s.defaultRef ? s.ref : '';
+    this.goSearch({
+      mode: 'names', repo: s.repo, ref,
+      path: path.split('/').slice(0, -1).join('/'),
+      file: s.repo + (ref ? '@' + ref : '') + ':' + path,
+    });
   },
 
-  async openFolder(path){
-    const el = document.getElementById('explorer');
-    if (!await waitFor(() => el.__explorer)) return;
-    this.goFiles();
-    await el.__explorer.load(path);
+  openFolder(path){
+    const s = Alpine.store('browser');
+    this.goSearch({ mode: 'names', repo: s.repo,
+                    ref: s.ref && s.ref !== s.defaultRef ? s.ref : '', path });
   },
 
   // The estate is a context above any repo, with three views of its own — the
@@ -4117,7 +4130,13 @@ function app(){ return {
       { view: 'stage', views: ['stage', 'surfaces'],
         icon: 'ph-stack',        label: 'Stage',    go: () => this.goStage() },
       { view: 'tools',    icon: 'ph-wrench',       label: 'Tools',    go: () => this.goTools() },
-      { view: 'search',   icon: 'ph-magnifying-glass', label: 'Search', go: () => this.goSearch() },
+      // Named for the thing, not the verb, so it sits with Repos and Stage
+      // rather than beside them as an activity. It browses as much as it
+      // searches now, and it is where every repo's files are read, so "Files"
+      // is what a reader is looking for in this row. The ?view= key stays
+      // `search`: an address is not a label, and every ?view=search link ever
+      // shared still opens it.
+      { view: 'search',   icon: 'ph-files', label: 'Files', go: () => this.goSearch() },
       { view: 'map',      icon: 'ph-compass',      label: 'Map',      go: () => this.goMap() },
       // State: what the estate keeps derived, and how old each piece is. A
       // standing entry rather than a conditional one (Proposals is the only
@@ -4198,12 +4217,18 @@ function app(){ return {
   goPortable(){ this.goMap(); },
   // The Tools view: the curated utility-page gallery (docs/tools.json), public.
   goTools(){ this.toolsSeen = true; this.view = 'tools'; this.syncUrl(); },
-  // Open the Search view, optionally seeded ({ q, mode, repo, ref }). A seed
-  // reaches a mounted view by event (the component mounts once and persists
-  // behind x-show); a first mount reads shell.searchSeed in its init instead.
+  // Open the Search view, optionally seeded ({ q, mode, repo, ref, path, file }).
+  // A seed reaches a mounted view by event (the component mounts once and
+  // persists behind x-show); a first mount reads shell.searchSeed in its init
+  // instead.
+  //
+  // The gate is "any field arrived", not "a query arrived": the view browses on
+  // a repo or a folder with no query, so the explorer's hand-off ({ repo, ref,
+  // path }) and a ?spath= deep link both have to seed as fully as a query does.
   goSearch(opts){
-    if (opts && opts.q != null) {
-      this.searchSeed = { q: opts.q || '', mode: opts.mode || '', repo: opts.repo || '', ref: opts.ref || '' };
+    if (opts && Object.values(opts).some(v => v != null && v !== '')) {
+      this.searchSeed = { q: opts.q || '', mode: opts.mode || '', repo: opts.repo || '',
+                          ref: opts.ref || '', path: opts.path || '', file: opts.file || '' };
       if (this.searchSeen) document.dispatchEvent(new CustomEvent('web-tools:search-seed', { detail: this.searchSeed }));
     }
     this.searchSeen = true; this.view = 'search'; this.syncUrl();
@@ -4277,7 +4302,14 @@ function app(){ return {
   goLanding(){ this.view = 'landing'; this.syncUrl(); },
   goPages(){ this.view = 'pages'; this.syncUrl(); },
   goAtlas(){ this.atlasSeen = true; this.view = 'atlas'; this.syncUrl(); },
-  goFiles(){ this.view = 'files'; this.syncUrl(); },
+  // The repo sidebar's Files row: hand the central surface this repo at the ref
+  // being browsed, and go. The ref rides only when it is off the default, since
+  // '' there means "the default branch" and is what the Files view holds.
+  searchRepoFiles(){
+    const s = Alpine.store('browser');
+    this.goSearch({ mode: 'names', repo: s.repo,
+                    ref: s.ref && s.ref !== s.defaultRef ? s.ref : '' });
+  },
   // The Stage's bench sub-view: the working surface. Every caller already
   // routed here (the explorer's "+", a #stage= link, a saved surface's Load),
   // and all of them mean "show me what is staged", which is this pill.
@@ -4304,7 +4336,6 @@ function app(){ return {
     }
     return 'Could not open ' + repo + ': ' + (e?.message || e);
   },
-  goBranches(){ this.branchesSeen = true; this.view = 'branches'; this.syncUrl(); },
   // The per-repo Config view: the open repo's .web-tools.json as a roomy editor,
   // reached from the sidebar Config entry and the Pinned gear. The shared repo
   // dialog stays for the token and for configuring a repo you are not in.
@@ -4846,8 +4877,12 @@ function overview(){ return {
   goAtlas(){ window.__shell?.goAtlas(); },
 
   async load(){
-    // web-tools uses the gallery landing, so skip the README fetch there.
-    if (!this.repo || this.repo === window.__shell?.DEFAULT_REPO) return;
+    // Every repo, the hub included. This used to skip the hub, because the hub
+    // was the one repo whose landing was its page gallery rather than its
+    // README, so fetching one would have been work nothing rendered. The
+    // landing is the README everywhere now, and the gallery is its own view, so
+    // the carve-out has nothing left to protect.
+    if (!this.repo) return;
     const gh = Alpine.store('browser').gh;
     if (!gh) return;
     this.loading = true; this.html = '';
