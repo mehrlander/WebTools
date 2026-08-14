@@ -1078,7 +1078,21 @@ required except in the sense that something has to be: **an empty query under a
 repo or a folder is a listing**, so the button reads *List* rather than
 *Search* and the same call serves browsing. Only an unscoped empty query is a
 miss, since reading every tree the token can see is not a listing anyone asked
-for. The scope narrows before the cap is spent, and in Contents it rides the
+for, and that one dead state says so in its facts line rather than only greying
+out its own button.
+
+**A bare arrival lists the browsed repo.** Nothing seeded is still a request,
+and the request is "show me files". The view first shipped landing on an empty
+box over an empty list with the button dead and no account of why, which is a
+front door that reports nothing; it now scopes to whatever repo the shell is
+browsing, at the ref being browsed when that is off the default, and lists it.
+Only a bare arrival: a seed carrying a query means that query, over whatever
+scope it named, every repo included. The repo select carries the scoped repo as
+an option even when it is not on the estate, since a select holding a value it
+has no option for renders blank, which reads as no scope while the list under it
+is scoped.
+
+The scope narrows before the cap is spent, and in Contents it rides the
 API's own `path:` qualifier, so scoping narrows the search rather than the
 results it already paid for. A row is stated **relative to the scope** and drops
 the repo badge when a single repo is the scope, which is what stops a scoped

@@ -2175,7 +2175,7 @@
       "path": "tools/test/search-view.test.mjs",
       "kind": "component",
       "protects": "The central file surface: a hit is read in place at the ref it was found on, without switching the browsed repo, and an empty query under a folder lists it rather than missing.",
-      "assertions": 16,
+      "assertions": 17,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -2195,7 +2195,8 @@
         "a session hit dispatches web-tools:open-session",
         "the cap raises on demand, and only offers to where more can come from",
         "each run restamps the address; clear empties results, the reader and the seed",
-        "a later routing re-seeds the mounted view by event, scope and file included"
+        "a later routing re-seeds the mounted view by event, scope and file included",
+        "a bare arrival lists the browsed repo rather than landing on nothing"
       ]
     },
     {

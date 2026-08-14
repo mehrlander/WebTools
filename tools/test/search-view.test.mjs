@@ -288,3 +288,38 @@ test('a later routing re-seeds the mounted view by event, scope and file include
   assert.deepEqual(j(data.open), { repo: 'me/tools', ref: '', path: 'docs/x.md' });
   assert.deepEqual(FETCHED.at(-1), { repo: 'me/tools', ref: '', path: 'docs/x.md' });
 });
+
+// A bare arrival is the cold open: the header nav's Search, or ?view=search
+// with nothing beside it. Mounted as a SECOND instance, since the default is an
+// init-time decision and the instance above was seeded at its own mount.
+test('a bare arrival lists the browsed repo rather than landing on nothing', async () => {
+  CALLS = [];
+  ANSWER = { hits: [{ repo: 'me/browsed', ref: '', path: 'a.js' }], total: 1, truncated: false, errors: [] };
+  shell.searchSeed = null;
+  const store = Alpine.store('browser');
+  store.repo = 'me/browsed'; store.ref = 'topic'; store.defaultRef = 'main';
+
+  const el = window.document.createElement('div');
+  el.setAttribute('x-data', 'searchView()');
+  window.document.body.appendChild(el);
+  Alpine.initTree(el);
+  await tick();
+
+  const cold = Alpine.$data(el);
+  assert.equal(cold.repo, 'me/browsed');
+  assert.equal(cold.ref, 'topic', 'a browsed ref off the default is carried; the default itself is left as ""');
+  assert.equal(CALLS.filter(c => c[0] === 'names').length, 1);
+  assert.equal(cold.hits.length, 1);
+  // The scoped repo is selectable even when it is not on the estate, so the
+  // control cannot read as unscoped while the list under it is scoped.
+  assert.ok(cold.repoOptions.some(r => r.repo === 'me/browsed'));
+
+  // And the one state that still cannot run says why, rather than only greying
+  // out its own button.
+  cold.repo = ''; cold.path = ''; cold.q = '';
+  assert.equal(cold.canRun, false);
+  assert.match(cold.facts, /Pick a repo or name a folder/);
+
+  el.remove();
+  store.repo = ''; store.ref = ''; store.defaultRef = '';
+});
