@@ -1807,7 +1807,7 @@
       "path": "tools/test/properties-registry.test.mjs",
       "kind": "gate",
       "protects": "The declaration table of docs/registries.md: every governed carrier holds exactly its key plus declared properties, computed declarations name real derivers, and no target x property pair has two owners within a registry.",
-      "assertions": 6,
+      "assertions": 10,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -1817,7 +1817,11 @@
         "each governed carrier holds exactly its key plus its declared properties",
         "every value in a closed domain is in that domain",
         "every required:value property is present on every row",
-        "modes are coherent: computed names a real deriver, recorded names none"
+        "modes are coherent: computed names a real deriver, recorded names none",
+        "every registry declares its area, and leads with a title and a gloss",
+        "no target answers to two registries for the same property",
+        "the ownership gate still fires when two registries do claim one pair",
+        "every tools-gallery row resolves to a page the gallery owns"
       ]
     },
     {
@@ -2767,8 +2771,8 @@
     {
       "path": "tools/test/tools-view.test.mjs",
       "kind": "component",
-      "protects": "The Tools view mounts and loads its curated manifest.",
-      "assertions": 4,
+      "protects": "The Tools view's address grammar and its identity join: breaks if a bare path stops meaning the hub at main, if an off-default ref stops routing through toss-render, or if a shelved page stops inheriting its title from pages/pages.json.",
+      "assertions": 5,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
@@ -2778,7 +2782,8 @@
         "mounts and loads the curated manifest with no startup warnings",
         "resolve: bare path means the hub at main; qualified ref overrides",
         "render/thumb/source URLs follow the pages-catalog conventions",
-        "cards derive title/icon defaults and carry the resolved URLs"
+        "cards inherit the page identity and carry the resolved URLs",
+        "the identity join does not leak across repos"
       ]
     },
     {
