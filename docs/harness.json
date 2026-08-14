@@ -1130,6 +1130,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/routes-pane.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 78,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/sidebar-projects-overlay.mjs",
       "role": "the same sidebar state in overlay posture; only the posture distinguishes the pair",
       "layer": "tools/render/scenarios",

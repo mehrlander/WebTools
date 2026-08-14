@@ -55,6 +55,29 @@
       ]
     },
     {
+      "path": "tools/test/app-routes.test.mjs",
+      "kind": "gate",
+      "protects": "The route manifest and show-repo.html's VIEWS table describe the same set of addresses, every declared file exists, and the fold refuses to date a route off the shell or off a file too many routes share.",
+      "assertions": 12,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "every route the router dispatches is described, and nothing else is",
+        "every row says what it is, where it is, and what draws it",
+        "an alias is a retired key, so it never doubles as a live one",
+        "shared is derived from being named twice, never authored",
+        "a wide file does not date a row it cannot speak for",
+        "the shell is excluded from attribution and reported on its own",
+        "a route with no code of its own is a row, flagged, not a gap",
+        "branches join on the files they touch, carrying the hits",
+        "a row dated by its own code outranks every borrowed one, however fresh",
+        "undated rows fall to the bottom rather than to the top",
+        "a branch hitting only a wide file is near a route, not open on it",
+        "pathsToRead is every carrier plus the shell, deduped"
+      ]
+    },
+    {
       "path": "tools/test/artifacts-lockstep.test.mjs",
       "kind": "lockstep",
       "protects": "Every deterministic generator is re-run in check mode, so a committed artifact cannot sit behind its source.",
@@ -1027,6 +1050,26 @@
         "surfaceSections puts General first, then a per-repo section with a DOM anchor",
         "load() marks a declaring entry hasSurface and leaves a plain one false",
         "openRepoSurfaces switches the shell to the Surfaces view"
+      ]
+    },
+    {
+      "path": "tools/test/estate-routes.test.mjs",
+      "kind": "behavior",
+      "protects": "The Routes pane reads exactly the carriers its manifest declares, survives one with no commits, keeps the shell out of every route's date, joins open PRs on the files they touch, and does not relaunch itself after a failure.",
+      "assertions": 9,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "the loader asks for exactly the declared carriers plus the shell",
+        "a carrier with no commits leaves its route undated rather than throwing",
+        "the shell dates its own row and no route",
+        "rows rank freshest first, undated last",
+        "open PRs join on the files they touch, and only those",
+        "the census counts the routes with no code of their own",
+        "only a bare ?view= address is offered as a tap",
+        "a failed load reports and does not relaunch itself",
+        "the group is a row label read off the manifest, not a section"
       ]
     },
     {

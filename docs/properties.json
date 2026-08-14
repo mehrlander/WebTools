@@ -245,6 +245,22 @@
       "scope": "every task file under tracker/tasks/",
       "fields": "governed",
       "gate": "tools/test/artifacts-lockstep.test.mjs"
+    },
+    {
+      "id": "app-routes",
+      "area": "names",
+      "title": "App route inventory",
+      "gloss": "Every destination the show-repo app can be sent to, what it is for, and which files draw it.",
+      "carrier": "docs/app-routes.json",
+      "format": "json",
+      "rows": "routes",
+      "key": "key",
+      "identity": "app route",
+      "kind": "catalog",
+      "target": "a show-repo address",
+      "scope": "the ?view= keys show-repo.html's VIEWS table dispatches, and the files that render each; not toss routes, which are a content type mapped to a renderer page and answer to routes-routes",
+      "fields": "governed",
+      "gate": "tools/test/app-routes.test.mjs"
     }
   ],
   "declarations": [
@@ -1097,6 +1113,74 @@
       "required": "none",
       "values": null,
       "gloss": "the names already in use that this one accounts for; the survey resolves them rather than reporting them as violations, so an existing carrier conforms by declaration rather than by rename"
+    },
+    {
+      "property": "address",
+      "registry": "app-routes",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the URL shape that opens it, e.g. ?view=map"
+    },
+    {
+      "property": "label",
+      "registry": "app-routes",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "its name in the nav and on the row"
+    },
+    {
+      "property": "group",
+      "registry": "app-routes",
+      "mode": "recorded",
+      "required": "value",
+      "values": [
+        "repo",
+        "estate",
+        "shell"
+      ],
+      "gloss": "which context it is reached from"
+    },
+    {
+      "property": "what",
+      "registry": "app-routes",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "what the destination is for, one line"
+    },
+    {
+      "property": "files",
+      "registry": "app-routes",
+      "mode": "recorded",
+      "required": "counted",
+      "values": null,
+      "gloss": "the files that render it, shell excluded. Blank is a finding, not a gap: three routes render from components defined inline in the shell and so have no code of their own, which the Routes pane counts rather than hides"
+    },
+    {
+      "property": "note",
+      "registry": "app-routes",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "why a row has no files, or what qualifies the row"
+    },
+    {
+      "property": "alias",
+      "registry": "app-routes",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "a retired key that still resolves"
+    },
+    {
+      "property": "tabs",
+      "registry": "app-routes",
+      "mode": "recorded",
+      "required": "none",
+      "values": null,
+      "gloss": "the sub-tabs addressable within it"
     }
   ]
 }

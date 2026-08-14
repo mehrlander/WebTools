@@ -14,7 +14,7 @@ must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
 2 arrive in every session's context, 20 are named by CLAUDE.md,
-4 by a skill, 6 by a page or component. The remaining 19 are
+4 by a skill, 6 by a page or component. The remaining 20 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -29,6 +29,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`SNAGS.md`](SNAGS.md) — the friction log: one line per snag, symptom then corrected move
 - [`SURFACING.md`](SURFACING.md) — the surfacing system: primitives plus the guide-PR course
 - [`TRACKER.md`](TRACKER.md) — the opt-in cross-session project tracker: schema, ids, board
+- [`app-routes.json`](app-routes.json) *(orphan)* — the show-repo app's own destinations: every address, what it is for, and which files draw it
 - [`artifacts.md`](artifacts.md) — Claude Code artifacts and the link-choice matrix
 - [`code-layers.md`](code-layers.md) — the code layers and the admission rule that sorts a new file into one of them
 - [`docs.json`](docs.json) — this registry: the documents census and the shared-claims table
