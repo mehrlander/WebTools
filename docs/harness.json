@@ -363,7 +363,7 @@
       "path": "tools/render/cdn.mjs",
       "role": "the CDN URL to local-file resolver both renderers share",
       "layer": "tools/render",
-      "lines": 363,
+      "lines": 369,
       "invocation": "imported",
       "emits": false,
       "named": true,

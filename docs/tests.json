@@ -1173,16 +1173,17 @@
       "path": "tools/test/fab-toss.test.mjs",
       "kind": "component",
       "protects": "The fab keeps shell identity when mounted inside a toss.",
-      "assertions": 11,
+      "assertions": 12,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
-        10
+        11
       ],
       "assertion_names": [
         "normal mount renders and keeps shell identity",
         "singleton guard: __fabHosted suppresses the mount",
         "adopts a pre-stamped toss subject at init, restores on clear, re-adopts on event",
+        "a local subject is a toss with no repo: the frame is kept, the repo claims are dropped",
         "classifyRows: statuses and ordering (baseline, differs desc, unknown, same, missing)",
         "renderAtRef in a toss re-addresses the shell instead of opening the overlay",
         "mode getters: a toss reads as off-canonical, marks the subject ref",
@@ -2990,6 +2991,16 @@
         "every ?use= loader passes cache: no-store",
         "no page still claims a branch ref is cache-safe on its own"
       ]
+    },
+    {
+      "path": "tools/test/viewer-image.mjs",
+      "kind": "component",
+      "protects": "The viewer's image module: a repo image is re-fetched as bytes and drawn (so a private repo works), and it opens over a host's blanket defaultMode.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:viewer-image",
+      "boot_smoke": null,
+      "assertion_names": null
     },
     {
       "path": "tools/test/viewer.test.mjs",

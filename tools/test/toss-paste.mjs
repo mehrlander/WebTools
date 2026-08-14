@@ -100,7 +100,11 @@ const rendered = () => page.evaluate(() => {
   return { hidden, subject: window.__tossSubject, title: document.title, inner };
 });
 
-const inViewer = r => !r.hidden && r.subject?.path === 'pages/data-view.html';
+// The subject a paste leaves behind: no repo, the renderer named as `via`.
+// Asserting the shape and not just "it rendered" is the point, since the bug
+// this replaced was the drawer reporting the renderer's address as the file.
+const inViewer = r => !r.hidden && r.subject?.local === true &&
+                      r.subject?.via?.path === 'pages/data-view.html';
 
 try {
   console.log('a CSV (was: a wall of text in a frame):');
@@ -179,6 +183,16 @@ try {
   r = await rendered();
   ok('it resolves through address mode', r.subject?.path === 'pages/index.html',
      JSON.stringify(r.subject));
+
+  console.log('the subject a paste leaves behind:');
+  await paste('a,b\n1,2\n');
+  r = await rendered();
+  ok('it carries no repo', !r.subject?.repo, JSON.stringify(r.subject));
+  ok('it is marked local', r.subject?.local === true, JSON.stringify(r.subject));
+  ok('and names the renderer as via', r.subject?.via?.repo === 'mehrlander/web-tools',
+     JSON.stringify(r.subject));
+  ok('the frame stays reachable for the drawer', await page.evaluate(() => !!window.__tossFrame));
+  ok('and the tab says clipboard, not data-view', /clipboard/i.test(r.title), r.title);
 
   console.log('the link stays copyable:');
   await paste('a,b\n1,2\n');

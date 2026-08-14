@@ -524,7 +524,10 @@
   async function iconDataUri(href, subject) {
     if (!href) return null;
     if (href.startsWith('data:')) return href;
-    if (isRelativeRef(href) && subject) {
+    // A relative icon resolves against the SUBJECT's repo, so a subject with no
+    // repo (a pasted payload) has nothing to resolve against and keeps the
+    // frisbee, which is the honest mark for a render with no address behind it.
+    if (isRelativeRef(href) && subject && subject.repo) {
       const dir = subject.path.includes('/')
         ? subject.path.slice(0, subject.path.lastIndexOf('/') + 1) : '';
       const p = resolveRepoPath(dir, href);
@@ -1101,8 +1104,25 @@ window.fetch=function(input,init){try{
   const looksLikeAddress = t => /^[\w.-]+\/[\w.-]+(?:@[^\s:]+)?:[^\s?#]+(?:[?#]\S*)?$/.test(t);
 
   // Hand text to the multi-mode viewer, addressed with the payload attached.
+  //
+  // Then re-stamp the subject, for the reason showRoute re-stamps its own: the
+  // address showAddress just resolved names the RENDERER, so the drawer around
+  // it would report that you are looking at web-tools@main:pages/data-view.html
+  // when you are looking at your clipboard. A routed toss fixes that by
+  // re-stamping with the envelope's address; a paste has no address, so it
+  // stamps `local` instead, which the fab reads as a subject with no repo
+  // behind it: the frame stays reachable (take actions, Inspect) and every
+  // claim about a repo file is dropped.
   async function showData(text) {
     await showAddress(DATA_VIEWER + '#gz=' + await gzipB64(text));
+    // Only when something actually mounted: showAddress's failure path clears
+    // the subject on its way to the panel, and a re-stamp would resurrect one
+    // for a render that is not on screen.
+    if (!window.__tossSubject) return;
+    document.title = 'Toss · clipboard';
+    const [repo, path] = DATA_VIEWER.split('@main:');
+    setSubject({ local: true, label: 'Clipboard', path: '', route: 'data',
+                 via: { repo, ref: 'main', path } });
   }
 
   // A pasted image has no modes to switch between, so it needs no viewer: a
