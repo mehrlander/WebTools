@@ -235,24 +235,6 @@
       ]
     },
     {
-      "path": "tools/test/branches-view.test.mjs",
-      "kind": "component",
-      "protects": "Every older branch is judged on the content signal rather than on ref-level merge status, with a marked commits fallback when there is no merge base and a REST fallback when GraphQL is unavailable.",
-      "assertions": 5,
-      "method": "alpine",
-      "runner": "suite",
-      "boot_smoke": [
-        0
-      ],
-      "assertion_names": [
-        "mounts with no startup warnings or errors",
-        "surveys every older branch and groups on the content signal",
-        "a no-merge-base branch takes the commits fallback and is marked",
-        "tabList carries active/landed/stranded counts",
-        "falls back to the REST branch list when GraphQL is unavailable"
-      ]
-    },
-    {
       "path": "tools/test/build-board.test.mjs",
       "kind": "tool",
       "protects": "The tracker board generator: dependency reporting, the schema it accepts, and byte-determinism.",
@@ -1108,7 +1090,7 @@
       "path": "tools/test/estate-search.test.mjs",
       "kind": "behavior",
       "protects": "The shared search core: a failed tree fetch is never cached as an empty tree, names search reaches any ref and reports unreadable trees, code search carries its scope and fragments, the session grep matches what a record quotes, and reset forgets it all.",
-      "assertions": 8,
+      "assertions": 10,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -1116,6 +1098,8 @@
         "tree: one fetch per (repo, ref), then the cache answers",
         "tree: a failure is not cached as an empty tree, and backs off rather than hammering",
         "names: matches across repos at their own refs; an unreadable tree is reported, not fatal",
+        "names: a folder scope narrows before the cap, and an empty query under one is a listing",
+        "level: one level of the tree, folders and files, off the same cache",
         "code: scope rides the query, fragments become clipped snippets",
         "sessions: greps what a record quotes, caches the corpus, newest first",
         "sessions: the derived name is searchable, and says so in the hit",
@@ -1983,6 +1967,26 @@
       ]
     },
     {
+      "path": "tools/test/ref-picker.test.mjs",
+      "kind": "component",
+      "protects": "The shared ref picker: the host's scope is read fresh rather than captured, the survey runs once per repo and again when it changes, a GraphQL failure degrades to the REST list instead of erroring, and the default branch is handed back as '' rather than by name.",
+      "assertions": 9,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "the scope is read fresh, so a host switching repos moves the picker with it",
+        "an unset ref reads as what unset MEANS, and off-default is marked",
+        "the survey runs once per repo, and again when the repo changes",
+        "the default branch is not repeated in the list; it has its own row",
+        "the filter narrows the list; a name it holds is not also offered as typed",
+        "the default branch is handed back as an empty ref, never by name",
+        "a GraphQL failure degrades to the REST list and says so, rather than erroring",
+        "a branch prefix is dimmed rather than dropped, since two can share a tail",
+        "no repo means no list, and the trigger says so instead of offering one"
+      ]
+    },
+    {
       "path": "tools/test/ref-switch.test.mjs",
       "kind": "component",
       "protects": "The ref switch pins the ref on both halves and carries the page query across.",
@@ -2280,18 +2284,31 @@
       "path": "tools/test/search-view.test.mjs",
       "kind": "component",
       "protects": "The Search view: a carried seed auto-runs, names mode passes the ref through to opening, contents mode builds its scope qualifier, errors surface whole, session hits dispatch the open event, and each run restamps the address.",
-      "assertions": 7,
+      "assertions": 20,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
       "assertion_names": [
         "a parked seed is consumed at mount and auto-runs",
-        "names mode passes the ref to every scoped repo; hits open at that ref",
-        "contents mode scopes to the chosen repo, or the account when none is",
+        "names mode passes the ref and the folder scope to every scoped repo",
+        "a row is stated relative to the scope, and offers to scope only where that goes somewhere",
+        "a scope is normalized once, and its crumbs walk back out",
+        "an empty query lists under a repo or a folder, and is a miss otherwise",
+        "no query is a WALK: folders, then files, and a way back up",
+        "typing turns the walk back into a recursive search of the same scope",
+        "contents mode scopes to the chosen repo, or the account, and adds path: for a folder",
         "a search failure surfaces the whole error and still counts as ran",
+        "a file hit is read in place, at the ref it was found on",
+        "the position steps through the file hits, and stops at the ends",
+        "a contents hit carries no ref, and resolves late to the default branch",
+        "a failed read reports itself in place of the file",
+        "the open file rides the address, and the route out to the Files view still exists",
         "a session hit dispatches web-tools:open-session",
-        "each run restamps the address; clear empties results and the seed",
-        "a later routing re-seeds the mounted view by event"
+        "the cap raises on demand, and only offers to where more can come from",
+        "each run restamps the address; clear empties results, the reader and the seed",
+        "a later routing re-seeds the mounted view by event, scope and file included",
+        "the reader opens a file in the mode its type deserves, and falls back on size",
+        "a bare arrival lists the browsed repo rather than landing on nothing"
       ]
     },
     {
@@ -2592,8 +2609,8 @@
     {
       "path": "tools/test/show-repo-routing.test.mjs",
       "kind": "behavior",
-      "protects": "Every show-repo view can be linked to and reopened: the one VIEWS table stays the only router (no view name compared directly in the routing functions, no view the shell enters without a row), and each row's own stamped address parses back to it, on the default repo and on another.",
-      "assertions": 10,
+      "protects": "show-repo's view routing: every screen the shell can enter has an address that reopens it, no view name is compared outside the VIEWS table, and a retired view's key aliases onto what replaced it rather than dropping the link.",
+      "assertions": 15,
       "method": "pure",
       "runner": "suite",
       "boot_smoke": [],
@@ -2607,7 +2624,12 @@
         "the shell mode round-trips, and only when it is not the default",
         "an unknown shell mode reads as the default rather than blanking the app",
         "the FAB toggle contract is well formed, and its setter is the mode setter",
-        "the header toggle returns to the mode it left, not to full"
+        "the header toggle returns to the mode it left, not to full",
+        "the repo sidebar hands its Files row to the central surface, scoped",
+        "the retired views alias onto what replaced them, carrying their scope",
+        "opening a file routes to the Files view, scoped to its folder",
+        "the browsed ref rides the address from any repo view",
+        "the landing is the overview, and the gallery is its own view"
       ]
     },
     {

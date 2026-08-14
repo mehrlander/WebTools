@@ -24,12 +24,12 @@
     {
       "key": "landing",
       "address": "?repo=owner/name",
-      "label": "Landing",
-      "stop": "Landing",
+      "label": "Overview",
+      "stop": "Overview",
       "group": "repo",
-      "what": "A repo's front door: its declared landing page, else its pages gallery, else a synthesized overview.",
+      "what": "A repo's front page: its README, with the repo's stats and a jump to the atlas.",
       "files": [],
-      "note": "Renders from gallery() and overview(), both defined inline in the shell, so it has no file of its own."
+      "note": "Renders from overview(), defined inline in the shell, so it has no file of its own. It used to be a three-way choice (a declared landing page, else the pages gallery, else this); the README lost that choice whenever anything else was declared, so the other two became rows of their own."
     },
     {
       "key": "pages",
@@ -37,22 +37,9 @@
       "label": "Pages",
       "stop": "Pages",
       "group": "repo",
-      "what": "The standalone pages gallery, for a repo whose landing slot went to a custom page.",
+      "what": "The pages gallery: web-tools' own catalog, or any repo's `pages` entries.",
       "files": [],
-      "note": "The same inline gallery() the landing uses; lib/alpineComponents/pages.js is a different component, used by other pages."
-    },
-    {
-      "key": "files",
-      "address": "?file=<path>",
-      "label": "Files",
-      "stop": "Files",
-      "group": "repo",
-      "what": "The file browser and viewer: the tree on the left, the rendered or highlighted file on the right.",
-      "files": [
-        "lib/alpineComponents/explorer.js",
-        "lib/alpineComponents/viewer.js",
-        "lib/alpineComponents/path-picker.js"
-      ]
+      "note": "A standing view since 2026-08-14, wherever there is a catalog; it used to appear only when a custom landing had taken the front door from it. The same inline gallery() the landing used to use; lib/alpineComponents/pages.js is a different component, used by other pages."
     },
     {
       "key": "atlas",
@@ -64,20 +51,6 @@
       "files": [
         "pages/repo-atlas.html",
         "lib/kits/treemap.js"
-      ]
-    },
-    {
-      "key": "branches",
-      "address": "?view=branches",
-      "label": "Branches",
-      "stop": "Branches",
-      "group": "repo",
-      "what": "One repo's branch estate: landed, stranded, and recently active, with the delete gesture.",
-      "files": [
-        "lib/alpineComponents/branches.js",
-        "lib/alpineComponents/branch-brief.js",
-        "lib/kits/branch-survey.js",
-        "lib/kits/branch-brief.js"
       ]
     },
     {
@@ -151,11 +124,13 @@
       "label": "Branches",
       "stop": "Activity",
       "group": "estate",
-      "what": "The cross-repo live branches: what the estate is working on, freshest first.",
+      "what": "The cross-repo live branches: what the estate is working on, freshest first, with the landed/stranded signal. `?view=branches` aliases here from the retired per-repo review.",
       "files": [
         "lib/alpineComponents/estate.js",
         "lib/kits/repo-activity-cache.js",
-        "lib/kits/branch-survey.js"
+        "lib/kits/branch-survey.js",
+        "lib/alpineComponents/branch-brief.js",
+        "lib/kits/branch-brief.js"
       ]
     },
     {
@@ -273,14 +248,18 @@
     {
       "key": "search",
       "address": "?view=search",
-      "label": "Search",
-      "stop": "Search",
+      "label": "Files",
+      "stop": "Files",
       "group": "estate",
-      "what": "Cross-repo search over names, code, and sessions, with the ran search in the address.",
+      "what": "The central file surface: walk a repo's tree, search names at any ref under any folder, search contents, grep the session records, and read the file in place.",
       "files": [
         "lib/alpineComponents/search-view.js",
-        "lib/kits/estate-search.js"
-      ]
+        "lib/kits/estate-search.js",
+        "lib/alpineComponents/ref-picker.js",
+        "lib/alpineComponents/path-picker.js",
+        "lib/alpineComponents/viewer.js"
+      ],
+      "note": "The ?view= key stays `search`, its name since the view was a results list: an address is not a label. `?view=files` and a bare `?file=` alias here, from the per-repo tree walk this replaced."
     },
     {
       "key": "state",
