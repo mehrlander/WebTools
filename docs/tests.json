@@ -14,7 +14,7 @@
       "path": "tools/test/annotate.test.mjs",
       "kind": "behavior",
       "protects": "A note's anchor survives the range round trip and keeps pointing at the same phrase across edits, duplicate text, and a reader in another window.",
-      "assertions": 22,
+      "assertions": 33,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [],
@@ -36,11 +36,22 @@
         "without the dictate kit the annotator still works, minus the microphone",
         "the pencil opens on the phrase that was on screen, not the one before it",
         "the composer paints through the kit and swaps its pad for a selection",
-        "the read surface refuses the browser its own selection",
+        "the card refuses the browser its own selection, from a stylesheet",
         "a tap on the blank canvas sends the caret to the end",
-        "three taps in a run take the whole buffer",
+        "two taps in a run open the keyboard, with the caret where they landed",
+        "arming a pin ends a tap run",
         "the keyboard mode does not wear a microphone",
-        "Done resumes dictation only if the keyboard interrupted it"
+        "Done resumes dictation only if the keyboard interrupted it",
+        "a page note pins to nothing, and the set says which page it means",
+        "the Page chip opens a draft outright: no gesture to make first",
+        "the review button says what a tap will do before it is tapped",
+        "the launcher-staged page draft opens idle: an offer, not a recorder",
+        "the card spends its whitespace evenly: an empty list is not a band",
+        "the cursor pad moves the caret and not the text",
+        "a pad drag makes the selection pins transparent to the caret lookup",
+        "the card refuses the platform’s selection, and the textarea takes it back",
+        "a note row opens a menu, and Edit reopens it in the composer",
+        "a drag surface cancels the touch itself, not just its touch-action"
       ]
     },
     {
@@ -607,7 +618,7 @@
       "path": "tools/test/dictate.test.mjs",
       "kind": "behavior",
       "protects": "The voice buffer composes text the way the prototype established, independent of any caller, and reads the window it was handed rather than an ambient one.",
-      "assertions": 43,
+      "assertions": 48,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [],
@@ -641,8 +652,10 @@
         "a mark lands at the caret rather than at the far end",
         "setting the text clears the range: the offsets described another buffer",
         "the painter renders text, caret and selection as marked parts",
+        "the caret is a plain inline, so it cannot break the word it sits inside",
         "handles and the caret carry no text, so they never shift an offset",
-        "the interim paints last and is marked, so a tap in it cannot place a caret",
+        "the interim paints at the insertion point, not at the end of the buffer",
+        "the interim paints last with no caret, and is marked so a tap cannot land in it",
         "offsetAt counts the parts before the one that was hit",
         "the suppression CSS is handed out rather than written down twice",
         "the arrows step the armed edge and never let it cross the other",
@@ -654,7 +667,10 @@
         "the newest line is scrolled into view as the buffer grows",
         "a box with nothing to scroll is left alone",
         "the leading between two lines is text, not a gap to fall through",
-        "a pin whose line is scrolled out of view is not painted, nor its arrows"
+        "a pin whose line is scrolled out of view is not painted, nor its arrows",
+        "the caret pulses, which needs a stylesheet rather than a style attribute",
+        "endCaret paints the insertion point a null range implies",
+        "the arrow cluster is opt-out, for a surface that has a pad instead"
       ]
     },
     {
@@ -907,7 +923,7 @@
       "path": "tools/test/estate-jots.test.mjs",
       "kind": "component",
       "protects": "A jot write merges against a fresh read, so a jot added elsewhere survives; a missing pile is empty rather than an error, and a real load failure is surfaced instead of read as empty.",
-      "assertions": 9,
+      "assertions": 21,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
@@ -922,7 +938,19 @@
         "jotPile orders newest first regardless of stored order",
         "deleteJot removes the item and saves the remainder",
         "the to-do list also lives under lists/ (moved out of state/)",
-        "a write merges against a FRESH read, so a jot added elsewhere survives (the spine regression)"
+        "a write merges against a FRESH read, so a jot added elsewhere survives (the spine regression)",
+        "every list read asks to bypass the HTTP cache",
+        "the registry client is held, not rebuilt per gesture",
+        "toggleUrgent sets the flag, and clearing it removes the key",
+        "urgent items sort above the rest, keeping file order within each band",
+        "a date that has arrived makes a row hot without anyone flagging it",
+        "the labels read forward, and lateness never abbreviates to a date",
+        "the chip colors by band",
+        "setDue stores a plain date, and anything else clears it",
+        "urgent and due are independent, and either one alone is enough",
+        "a long to-do is clipped in the urgent commit message",
+        "a key the pane does not know survives a round trip",
+        "swapping the registry repo or the token gets a new client"
       ]
     },
     {
@@ -1142,14 +1170,52 @@
       ]
     },
     {
+      "path": "tools/test/fab-tabstrip-geometry.mjs",
+      "kind": "behavior",
+      "protects": "The FAB's tab icons hold identical coordinates in every tab state, so the strip stays a spatial memory; measured in a real browser at 390px, which jsdom cannot do.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:tabstrip",
+      "boot_smoke": null,
+      "assertion_names": null
+    },
+    {
+      "path": "tools/test/fab-text.test.mjs",
+      "kind": "behavior",
+      "protects": "The drawer's fifth tab reports only what it can stand behind: the app-versus-document gate reads the signal that was measured to separate them, and the prose checks stay off pages whose text is labels.",
+      "assertions": 17,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "the strip is data, and every tab in it has a pane",
+        "setTab switches the pane and runs the tab’s opener",
+        "the strip’s one label names the selected tab, and is derived",
+        "the read separates body prose from chrome, and counts runs",
+        "a block boundary ends a sentence; an inline element does not",
+        "the app gate reads words per run, which is the signal that separates",
+        "the prose checks ignore what is not prose",
+        "the read scopes to a live selection, and falls back to the page",
+        "named paths include code spans; bare paths do not",
+        "match looks up the registered set, and root-level files are reachable",
+        "the tree is read only for what the registry does not know",
+        "the unregistered lane drops what it used to report as findings",
+        "a lookup respects name boundaries and claims the longest span",
+        "a registry that will not read costs descriptions, not rows",
+        "a tree failure degrades the answer rather than ending it",
+        "match runs with the read, without a tap",
+        "an unreadable document is a null, not a throw"
+      ]
+    },
+    {
       "path": "tools/test/fab-toss.test.mjs",
       "kind": "component",
       "protects": "The fab keeps shell identity when mounted inside a toss.",
-      "assertions": 8,
+      "assertions": 11,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
-        7
+        10
       ],
       "assertion_names": [
         "normal mount renders and keeps shell identity",
@@ -1159,6 +1225,9 @@
         "renderAtRef in a toss re-addresses the shell instead of opening the overlay",
         "mode getters: a toss reads as off-canonical, marks the subject ref",
         "a toss at the default branch is not a preview",
+        "the width bar is reachable through a frame, or an address that can make one",
+        "off the renderer, a preset addresses it with ?w= on the query",
+        "on the renderer, a preset moves the frame in place",
         "no startup warnings or errors"
       ]
     },
@@ -1233,7 +1302,7 @@
       "path": "tools/test/gh-store.test.mjs",
       "kind": "behavior",
       "protects": "saveBytes writes byte-exact content, so a binary round-trip cannot be silently re-encoded.",
-      "assertions": 8,
+      "assertions": 11,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -1245,7 +1314,10 @@
         "a 409 recovers by refetching the SHA and retrying",
         "the instance ref rides the PUT as branch; empty ref stays default",
         "repeated conflicts keep retrying, backing off, until one lands",
-        "a branch that never stops conflicting gets a bounded number of attempts"
+        "a branch that never stops conflicting gets a bounded number of attempts",
+        "the conflict refetch reads past the HTTP cache",
+        "del reads its sha past the HTTP cache",
+        "a successful write leaves the new sha on the instance for the next one"
       ]
     },
     {
@@ -1773,7 +1845,7 @@
       "path": "tools/test/properties-registry.test.mjs",
       "kind": "gate",
       "protects": "The declaration table of docs/registries.md: every governed carrier holds exactly its key plus declared properties, computed declarations name real derivers, and no target x property pair has two owners within a registry.",
-      "assertions": 6,
+      "assertions": 10,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -1783,7 +1855,11 @@
         "each governed carrier holds exactly its key plus its declared properties",
         "every value in a closed domain is in that domain",
         "every required:value property is present on every row",
-        "modes are coherent: computed names a real deriver, recorded names none"
+        "modes are coherent: computed names a real deriver, recorded names none",
+        "every registry declares its area, and leads with a title and a gloss",
+        "no target answers to two registries for the same property",
+        "the ownership gate still fires when two registries do claim one pair",
+        "every tools-gallery row resolves to a page the gallery owns"
       ]
     },
     {
@@ -1986,7 +2062,7 @@
       "path": "tools/test/repo-mailbox.test.mjs",
       "kind": "behavior",
       "protects": "Pending returns request files with no matching result, which is the whole mailbox protocol.",
-      "assertions": 6,
+      "assertions": 10,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -1996,7 +2072,11 @@
         "fulfill tree flattens the recursive tree",
         "fulfill branches maps name + tip sha",
         "fulfill fetch isolates per-file errors",
-        "fulfill captures a bad request without touching the network"
+        "fulfill captures a bad request without touching the network",
+        "isAsk keys on the record, not on whether it validates",
+        "fulfill refuses an ask, which is exactly why the caller must skip it first",
+        "validateAsk wants prose and a destination",
+        "closeAsk records both outcomes as served, and refuses a bare decline"
       ]
     },
     {
@@ -2341,6 +2421,22 @@
       ]
     },
     {
+      "path": "tools/test/show-repo-mailbox.test.mjs",
+      "kind": "behavior",
+      "protects": "An `ask` survives a page load. fulfill() returns a result for an unsupported kind and writing a result is what marks a request answered, so an ask reaching the fulfil loop would be closed by its own rejection before anyone saw it; the guard keys on the record, not on whether it validates.",
+      "assertions": 5,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "an ask is skipped by the fulfil loop, so no result is written for it",
+        "a malformed ask is skipped too, since the guard reads the kind not the verdict",
+        "the read kinds still fulfil, so the guard did not switch the channel off",
+        "an ask alongside a read kind blocks neither",
+        "an already-answered ask is not listed as pending"
+      ]
+    },
+    {
       "path": "tools/test/show-repo-overlay.test.mjs",
       "kind": "behavior",
       "protects": "With no overlay the cache is served as-is and no per-repo reads happen.",
@@ -2379,16 +2475,17 @@
       "path": "tools/test/show-repo-projects.test.mjs",
       "kind": "component",
       "protects": "Project rows render from the manifest and degrade quietly when the field is absent or malformed.",
-      "assertions": 28,
+      "assertions": 29,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
       "assertion_names": [
         "repoProjects: absent, non-array, or empty config yields no rows",
-        "repoProjects: string and object entries normalize to {path, label, board}",
+        "repoProjects: string and object entries normalize to {path, label, board, inbox}",
         "repoProjects: a landing is kept as a root-relative path, junk reads as undeclared",
         "repoProjects: the board is derived from the convention, and overridable",
         "repoProjects: junk entries drop instead of throwing",
+        "repoProjects: an inbox parses in the repo-level grammar, and stays optional",
         "openProject switches the repo, then opens the project view",
         "openProject does not navigate when the repo switch failed",
         "goProject sets the view, normalizes the path, and reads the README",
@@ -2474,7 +2571,7 @@
       "path": "tools/test/stage.test.mjs",
       "kind": "component",
       "protects": "The stage: membership, grouping, the diff lens, saving, and the cross-repo address grammar.",
-      "assertions": 72,
+      "assertions": 80,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [
@@ -2484,6 +2581,9 @@
         "mounts with no startup warnings or errors",
         "pickerRoots: open repo, then quick links, then targets, deduped",
         "pickerRoots without shell or targets is just the open repo",
+        "destPills: the repo box, then each project box, deduped and labelled",
+        "destPills is empty when nothing is declared, and never guesses a root",
+        "aim sets the destination and the picker label together",
         "grab stages the picked ref once, deduped by key",
         "view loads a ref into the inline preview, not the shared activeFile",
         "the preview walks the staged set, and every position opens",
@@ -2552,7 +2652,12 @@
         "three taps in a run take the whole buffer",
         "the third tap counts even when it lands on the pin the second one painted",
         "the keyboard mode does not wear a microphone",
-        "Done resumes dictation only if the keyboard interrupted it"
+        "Done resumes dictation only if the keyboard interrupted it",
+        "askAge is coarse, and says nothing when the record carries no date",
+        "askTaskUrl links the citation, and stays quiet without one",
+        "loadAsks keeps valid asks and drops everything it cannot use",
+        "resolveAsk writes the result that closes it, and drops the row",
+        "resolveAsk refuses a decline with no reason, and leaves the row standing"
       ]
     },
     {
@@ -2704,8 +2809,8 @@
     {
       "path": "tools/test/tools-view.test.mjs",
       "kind": "component",
-      "protects": "The Tools view mounts and loads its curated manifest.",
-      "assertions": 4,
+      "protects": "The Tools view's address grammar and its identity join: breaks if a bare path stops meaning the hub at main, if an off-default ref stops routing through toss-render, or if a shelved page stops inheriting its title from pages/pages.json.",
+      "assertions": 5,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
@@ -2715,7 +2820,8 @@
         "mounts and loads the curated manifest with no startup warnings",
         "resolve: bare path means the hub at main; qualified ref overrides",
         "render/thumb/source URLs follow the pages-catalog conventions",
-        "cards derive title/icon defaults and carry the resolved URLs"
+        "cards inherit the page identity and carry the resolved URLs",
+        "the identity join does not leak across repos"
       ]
     },
     {
@@ -2785,6 +2891,16 @@
         "an unknown route says so and stamps nothing",
         "a failed fetch leaves no subject rather than a file that never rendered"
       ]
+    },
+    {
+      "path": "tools/test/toss-width.mjs",
+      "kind": "behavior",
+      "protects": "A page tossed at a forced width really is laid out at it, in both directions, and the pointer type it cannot fake stays untouched.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:toss-width",
+      "boot_smoke": null,
+      "assertion_names": null
     },
     {
       "path": "tools/test/tracker-assessments.test.mjs",

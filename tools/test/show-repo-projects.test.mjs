@@ -29,7 +29,7 @@ test('repoProjects: absent, non-array, or empty config yields no rows', () => {
   assert.deepEqual(shell.repoProjects('mehrlander/home'), [], 'a bare string field is not a list');
 });
 
-test('repoProjects: string and object entries normalize to {path, label, board}', () => {
+test('repoProjects: string and object entries normalize to {path, label, board, inbox}', () => {
   const { shell } = makeShell();
   shell.estateConfigs = {
     'mehrlander/home': {
@@ -43,11 +43,11 @@ test('repoProjects: string and object entries normalize to {path, label, board}'
     },
   };
   assert.deepEqual(shell.repoProjects('mehrlander/home'), [
-    { path: 'news', label: 'news', board: 'news/tracker/board.md', landing: '' },
+    { path: 'news', label: 'news', board: 'news/tracker/board.md', landing: '', inbox: null },
     { path: 'projects/budget-drs', label: 'budget-drs',
-      board: 'projects/budget-drs/tracker/board.md', landing: '' },
+      board: 'projects/budget-drs/tracker/board.md', landing: '', inbox: null },
     { path: 'projects/budget-wa', label: 'WA budget',
-      board: 'projects/budget-wa/tracker/board.md', landing: '' },
+      board: 'projects/budget-wa/tracker/board.md', landing: '', inbox: null },
   ]);
 });
 
@@ -97,7 +97,36 @@ test('repoProjects: junk entries drop instead of throwing', () => {
     'mehrlander/home': { projects: [null, 42, {}, { path: '' }, { label: 'no path' }, 'ok'] },
   };
   assert.deepEqual(shell.repoProjects('mehrlander/home'),
-    [{ path: 'ok', label: 'ok', board: 'ok/tracker/board.md', landing: '' }]);
+    [{ path: 'ok', label: 'ok', board: 'ok/tracker/board.md', landing: '', inbox: null }]);
+});
+
+// The workspace's own tray, and the reason it is DECLARED where `board` above
+// is derived: a board is a link, so a wrong guess costs a 404, while an inbox
+// is a write target and a wrong guess files a deposit into a plausible folder
+// nothing drains. repoProjects guards on the kit's absence, which is why every
+// other test here reads inbox: null; this one loads the real parser the way the
+// page does, as an IIFE assigning window.RepoAddress.
+test('repoProjects: an inbox parses in the repo-level grammar, and stays optional', () => {
+  const { shell, win } = makeShell();
+  new Function('window', readFileSync(path.join(repoRoot, 'lib/kits/repo-address.js'), 'utf8'))(win);
+  shell.estateConfigs = {
+    'mehrlander/home': {
+      projects: [
+        { path: 'projects/wps', inbox: 'projects/wps/dump' },
+        { path: 'projects/b', inbox: '@drop:incoming' },
+        { path: 'projects/c', inbox: 'mehrlander/other@v2:tray' },
+        { path: 'projects/d' },
+        { path: 'projects/e', inbox: 42 },
+      ],
+    },
+  };
+  assert.deepEqual(shell.repoProjects('mehrlander/home').map(p => p.inbox), [
+    { repo: 'mehrlander/home', ref: '', dir: 'projects/wps/dump' },
+    { repo: 'mehrlander/home', ref: 'drop', dir: 'incoming' },
+    { repo: 'mehrlander/other', ref: 'v2', dir: 'tray' },
+    null,
+    null,
+  ]);
 });
 
 test('openProject switches the repo, then opens the project view', async () => {
@@ -146,12 +175,12 @@ test('the open project resolves to its declared entry, or a derived one', () => 
   shell.loadProjectReadme = async () => {};
   shell.goProject('projects/a');
   assert.deepEqual(shell.project, { path: 'projects/a', label: 'Alpha',
-                                    board: 'projects/a/tracker/board.md', landing: '' });
+                                    board: 'projects/a/tracker/board.md', landing: '', inbox: null });
   // A deep link may name a workspace the manifest has not caught up with; the
   // view still opens, on the conventions the path itself implies.
   shell.goProject('projects/unlisted');
   assert.deepEqual(shell.project, { path: 'projects/unlisted', label: 'unlisted',
-                                    board: 'projects/unlisted/tracker/board.md', landing: '' });
+                                    board: 'projects/unlisted/tracker/board.md', landing: '', inbox: null });
 });
 
 test('repoProjects prefers the OPEN repo\'s live manifest over the estate cache', () => {

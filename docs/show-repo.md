@@ -545,10 +545,30 @@ breakpoint to disagree at any size.
 
 **To-do** is a general, personal checklist: not repo-scoped and not a surface,
 so it keeps its own tiny file, `lists/todo.json` in the registry (`{items: [{id,
-text, done, created_at, done_at}]}`), rather than reusing the surfaces schema.
-Add a line, check it off, or delete it; a checked item moves into a collapsed
-"done" pile instead of disappearing, so delete is the only way an item actually
-goes away. Every mutation writes the whole file straight through the viewer's
+text, done, created_at, done_at, urgent, due}]}`), rather than reusing the
+surfaces schema. Add a line, check it off, or delete it; a checked item moves
+into a collapsed "done" pile instead of disappearing, so delete is the only way
+an item actually goes away.
+
+Two fields say an item needs attention, and they answer the same question by
+different routes. **`urgent`** is the flag button: set by hand, cleared by hand.
+**`due`** is a plain `YYYY-MM-DD` from the date chip, which lays a transparent
+native date input over itself so one tap opens the platform picker. A row is
+**hot** when it is flagged or its date has arrived (today or overdue), and a hot
+row takes the colored left rail the branch and session rows use for state. The
+distinction is the point: a flag has no expiry and decays into noise once a busy
+week has flagged everything, while a date arrives on its own and stops mattering
+on its own.
+
+Open items sort in three bands, soonest first within each and the file's own
+order breaking ties: hot, then dated but not yet, then undated. The chip reads
+forward (`3d late`, `today`, `tomorrow`, `4d`, then the date past a week) and
+colors by band, and the count beside the total is the hot count. Both fields are
+written only when set and deleted when cleared, so "never urgent" and "no longer
+urgent" read identically; the done pile ignores both, since a done item is not
+urgent whatever it was on the way in. Optional keys are honored where present
+and the savers write the parsed items straight back, so a field added by hand or
+by an agent session survives a round trip through this pane. Every mutation writes the whole file straight through the viewer's
 token (`gh-store.js`'s `save`), the same as a surface edit, so it is durable
 across browsers and devices, not a per-browser `localStorage` list. Token-gated
 like Surfaces: no token, no list.
@@ -1885,6 +1905,40 @@ spends write access on agent-authored instructions. It is manual-triggered, not
 live: show-repo is the worker and only runs when the user opens it. Protocol and
 schema: `web-tools-private/mailbox/README.md`.
 
+**A fourth kind, `ask`, addresses the user instead of their repos**, and it
+completes the channel family rather than extending it. Lay the two channels out
+by who has to act and one cell is empty:
+
+| | Deferred read | Deferred write |
+| --- | --- | --- |
+| **from a repo** | mailbox `tree`/`branches`/`fetch`, answered on load | proposals, answered on your confirm |
+| **from you** | **`ask`**, answered when you go and get it | (nothing: handing you a file is immediate) |
+
+An ask names what is wanted in **prose** and where it lands as a **structured
+`dest`**. The split is the design: what is wanted often has no filename
+("whatever is in that folder", "a listing of that directory"), so a path schema
+would drop the real cases or fake them, while `dest` has to be an address
+because it aims the stage and lets one list span every repo.
+
+**It is never auto-fulfilled, and the guard must run before `fulfill()`.**
+`fulfill()` returns a *result* for an unsupported kind rather than throwing, and
+writing a result is what marks a request answered, so an ask reaching the fulfil
+loop would be closed by its own rejection on the first page load and never seen.
+`processMailbox` skips on `RepoMailbox.isAsk`, which keys on the record and not
+on a validation verdict, so a half-written ask waits for a person rather than
+being answered by its own malformity.
+
+**The Stage reads and closes them**, in the lens column under the destination
+picker, because that is the order of the act: read what is wanted, aim (one tap,
+the destination pills are already there), add the material through the intakes
+that already exist (upload, paste, dictation), send, close. No new transport was
+built; the only new steps are the reading and the closing. Closing writes a
+result at the request's own name, carrying `answered: true` when material was
+sent and `false` on a decline, `ok: true` either way. A message is optional on a
+send and required on a decline, since "nothing references that file, stop
+looking" is often worth more to the next session than the file, while a bare
+refusal wastes its time as surely as silence.
+
 ### Inbox and outbox
 
 Two optional manifest fields naming where material lands and where it is
@@ -1920,6 +1974,46 @@ confirms where the files actually go rather than hiding a redirect. Root stays
 the fallback, so a repo declaring nothing behaves exactly as before. Nothing
 creates the folder in the background: the commit that lands the first file is
 what makes it exist.
+
+**A project can declare one too, and the repo's is the root project's.** A
+`projects` entry takes an `inbox` in the same grammar, so a repo carrying
+several workspaces can aim a deposit at the one that owns it. The two levels do
+different jobs and neither replaces the other:
+
+| | Repo-level `inbox` | A `projects` entry's `inbox` |
+| --- | --- | --- |
+| How many | exactly one | any number |
+| Answers | a deposit addressed to `owner/repo` with no directory | a destination you choose |
+| Reached by | automatic resolution at send | tapping its pill |
+
+There is one repo-level box because the input carries nothing to discriminate
+on: a file sent to `mehrlander/home` cannot be *inferred* to belong to a
+particular workspace. A project inbox therefore never enters automatic
+resolution. Conceptually the repo is its own root project, which is why its
+default lives as a top-level key rather than as a synthetic entry in `projects`:
+no migration, and the new field is purely additive.
+
+**Declared, not derived,** which is where `inbox` parts from the sibling
+`tracker` field. A board is derived from the convention (`<path>/tracker/board.md`)
+because a board is a **link**, and a wrong guess costs a 404. An inbox is a
+**write target**, and a wrong guess files a deposit into a plausible folder that
+nothing drains, where it is not missing so much as quietly elsewhere. The
+measured case: `mehrlander/home` ran an undeclared root `dump/` beside its
+declared `chron/dump/` from 2026-07-30 to 2026-08-12, and because every reader
+it had (its repo map, its staleness check, its drain skill) watched the declared
+one, the map reported the tray empty while four files sat in the other.
+
+**Destination pills.** The Stage view's Out pane renders every declared box
+across the picker's repos as a one-tap strip under the destination picker, read
+from the shell's config cache (one pass at load, already in memory), so the
+strip costs no fetches. Only **declared** boxes appear. The picker beside it
+already lists every folder that *exists*, which is a different claim, and the
+difference is the point: a browser cannot tell you which plausible folder is
+drained. A repo with no pill is visibly missing a declaration rather than
+quietly defaulting, which is the pressure worth having. Tapping a pill sets the
+destination and the picker's own trigger label together, since the picker
+commits its label on a pick and would otherwise name one place while the send
+went to another.
 
 **Outbox, on the pull side.** A repo declaring one gets an **Open outbox** row
 in its repo menu, which opens the Files view at that folder. The pull itself is

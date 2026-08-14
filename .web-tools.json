@@ -15,7 +15,7 @@
   "stage": {
     "files": [],
     "targets": [
-      "mehrlander/home:inbox/web-tools"
+      "mehrlander/home:chron/dump"
     ]
   },
   "checks": [

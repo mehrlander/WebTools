@@ -46,7 +46,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 861,
+      "words": 913,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -62,7 +62,7 @@
       "subject": "the friction log: one line per snag, symptom then corrected move",
       "status": "living",
       "reach": "project",
-      "words": 4290,
+      "words": 4411,
       "maintenance": "authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
     },
     {
@@ -70,7 +70,7 @@
       "subject": "the surfacing system: primitives plus the guide-PR course",
       "status": "living",
       "reach": "injected",
-      "words": 4185,
+      "words": 4289,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -102,7 +102,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2257,
+      "words": 2360,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -262,7 +262,7 @@
       "subject": "the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting",
       "status": "living",
       "reach": "app",
-      "words": 3582,
+      "words": 4127,
       "maintenance": "authored role and layer glossary; layer, lines, invocation, emits, named and tested stamped by tools/build/tools-index.mjs, held in lockstep by artifacts-lockstep.test.mjs; blank roles are counted, not hidden"
     },
     {
@@ -274,19 +274,27 @@
       "maintenance": "authored; self-contained recipe"
     },
     {
+      "path": "docs/ios-sheet-drags.md",
+      "subject": "why a drag inside a sheet-presented in-app browser dismisses the sheet, and the two fixes, measured on device",
+      "status": "living",
+      "reach": "skill",
+      "words": 854,
+      "maintenance": "authored from a device measurement; re-measure rather than reason if a variant is ever doubted"
+    },
+    {
       "path": "docs/loader.md",
       "subject": "the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality",
       "status": "living",
       "reach": "project",
-      "words": 4773,
+      "words": 4780,
       "maintenance": "authored, edited in place; the only statement of the gh.load contract that 36 page files depend on, and CLAUDE.md now sends a reader here before they touch lib/ or a page's boot"
     },
     {
       "path": "docs/manifest.json",
       "subject": "the field registry for root .web-tools.json: every field's type, consumer, and effect",
       "status": "living",
-      "reach": "project",
-      "words": 1614,
+      "reach": "orphan",
+      "words": 1803,
       "maintenance": "authored; the structured stage under show-repo.md's former prose field list, held to the estate's real manifests by tools/test/manifest-registry.test.mjs: a key live in a manifest with no row here fails the suite"
     },
     {
@@ -318,7 +326,7 @@
       "subject": "the machine index of the portable set",
       "status": "living",
       "reach": "app",
-      "words": 1213,
+      "words": 1088,
       "maintenance": "authored; held to PORTABLE.md and to the skill directories on disk by portable-manifest.test.mjs"
     },
     {
@@ -326,7 +334,7 @@
       "subject": "the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement",
       "status": "living",
       "reach": "project",
-      "words": 3422,
+      "words": 4004,
       "maintenance": "authored by hand; held both ways to the carriers it governs by tools/test/properties-registry.test.mjs"
     },
     {
@@ -334,7 +342,7 @@
       "subject": "the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction",
       "status": "living",
       "reach": "project",
-      "words": 2955,
+      "words": 4493,
       "maintenance": "the doctrine behind properties.json; written to travel, origin budget-drs properties.csv"
     },
     {
@@ -350,7 +358,7 @@
       "subject": "the show-repo shell: views, stage, transfer, and the .web-tools.json manifest",
       "status": "living",
       "reach": "project",
-      "words": 25289,
+      "words": 26330,
       "maintenance": "authored, edited in place; the corpus's largest document, and the buried home of the stage contract"
     },
     {
@@ -374,23 +382,31 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 20505,
+      "words": 21568,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {
       "path": "docs/text-content.md",
       "subject": "the estate's authored text: whether the carriers holding it are organized, and how much never reached one",
       "status": "measured",
-      "reach": "project",
+      "reach": "orphan",
       "words": 4440,
       "maintenance": "re-derive with scripts/text-census.py and scripts/text-carriers.py; every figure is a command away, and the date in the opening line is what the numbers are as of"
+    },
+    {
+      "path": "docs/text-tools.md",
+      "subject": "the FAB's Text tab: why it exists, why the join is the path rather than a term, and an assessment of what it is not",
+      "status": "living",
+      "reach": "orphan",
+      "words": 1290,
+      "maintenance": "authored; carries its own honest assessment, so a later reader is not left to infer the limits from a feature description"
     },
     {
       "path": "docs/tools.json",
       "subject": "the curated Tools gallery manifest",
       "status": "living",
       "reach": "app",
-      "words": 130,
+      "words": 142,
       "maintenance": "authored by hand; a sibling to pins and stage.files, no prose parent"
     },
     {

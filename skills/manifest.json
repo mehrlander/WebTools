@@ -42,6 +42,10 @@
       "description": "Copy and paste on iOS Safari. Use when building web apps that need clipboard access on iPhone or iPad, especially in data URL contexts (bookmarklets, paste-and-run pages) where the modern clipboard API is unavailable."
     },
     {
+      "name": "ios-sheet-drag",
+      "description": "Keep a drag interaction working on iPhone when the page is opened in a sheet, the presented card the user dismisses by dragging down. Use when a splitter, slider, resize handle, drag-to-reorder, or canvas pan closes the sheet or refuses to move on iOS, when a scrollable pane dismisses the sheet on overscroll, or when touch-action:none did not fix it. Also use before building any custom drag gesture for a page that will be opened from an app on a phone."
+    },
+    {
       "name": "mobile",
       "description": "Apply when the user invokes this skill explicitly. Marks the session as mobile-originated, for context and later review. Input may be transcribed. Typos and odd phrasing should be read accordingly. No other change needed."
     },
@@ -139,7 +143,7 @@
     }
   ],
   "meta": {
-    "count": 34,
+    "count": 35,
     "snapshot_date": "2026-07-10"
   }
 }

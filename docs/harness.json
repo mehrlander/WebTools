@@ -400,6 +400,46 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/annotate-canvas-tap.mjs",
+      "role": "the three readings of a tap on the blank canvas below the last line: with a pin armed it takes that pin to the end of the buffer (select-to-end, the extent with no other gesture), with nothing armed it is still the one-tap way out of selection mode, and doubled it opens the keyboard with the caret at the end. All need layout, since jsdom has no client rects for hitsText to tell canvas from text",
+      "layer": "tools/render/scenarios",
+      "lines": 84,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/annotate-caret-interim.mjs",
+      "role": "a caret placed mid-buffer with speech stubbed: the pulsing caret, and the hypothesis painting at the insertion point rather than at the end of the buffer",
+      "layer": "tools/render/scenarios",
+      "lines": 48,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/annotate-caret-wrap.mjs",
+      "role": "a sweep of 560 caret positions inside one long word at every distance from the wrap point, reporting each one where the caret broke its own word: 82 while the caret was an atomic inline, 0 as a plain inline with a border. Needs a real line box, so it cannot be a test",
+      "layer": "tools/render/scenarios",
+      "lines": 54,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": true
+    },
+    {
+      "path": "tools/render/scenarios/annotate-cursor-pad.mjs",
+      "role": "the cursor pad mid-drag, in both its subjects: the caret walking back through wrapped lines, and (STATE=pin) an armed selection edge dragged by the same gesture, which is what retired the arrow cluster. The half jsdom cannot see, since it maps a virtual point to an offset through caret-from-point",
+      "layer": "tools/render/scenarios",
+      "lines": 53,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": true
+    },
+    {
       "path": "tools/render/scenarios/annotate-demo.mjs",
       "role": "a text selection annotated end to end: bubble, draft, saved note, painted highlight",
       "layer": "tools/render/scenarios",
@@ -420,6 +460,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/annotate-double-tap.mjs",
+      "role": "a double tap on a word opening the keyboard with the caret inside that word, and the long press still taking the word: the two gestures that traded places on 2026-08-13, both needing a real caret-from-point that jsdom stubs",
+      "layer": "tools/render/scenarios",
+      "lines": 62,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/annotate-keyboard-mode.mjs",
       "role": "the composer with the keyboard open: whether the way out wears a microphone, and whether the mic still holds its slot",
       "layer": "tools/render/scenarios",
@@ -434,6 +484,26 @@
       "role": "the drawer's Notes tab: the annotator's set as a working list and as either serialization (STATE=notes|md|json|off)",
       "layer": "tools/render/scenarios",
       "lines": 58,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/annotate-page-note.mjs",
+      "role": "the page-level note through the real path (Page chip, typed, saved) plus the two controls it shipped with: the review button reading the drawer's state, and the launcher's long-press menu",
+      "layer": "tools/render/scenarios",
+      "lines": 55,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/annotate-row-menu.mjs",
+      "role": "a note row's menu and the edit behind it: the kebab that replaced the bare delete, the menu flipping above the row when the card has no room below, and the note reopened in the composer with its text loaded",
+      "layer": "tools/render/scenarios",
+      "lines": 27,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -780,6 +850,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/fab-text-match.mjs",
+      "role": "drive the Text tab for a shot: the read is real, the tree and registry reads are seeded, and STATE picks the un-run pane, the resolved match, or a selection-scoped read",
+      "layer": "tools/render/scenarios",
+      "lines": 91,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/fab-toss.mjs",
       "role": "toss-render address mode with the fab's toss integration and singleton guard",
       "layer": "tools/render/scenarios",
@@ -804,6 +884,16 @@
       "role": "the fab's Traffic tab with a real BOOT band from the loopback render",
       "layer": "tools/render/scenarios",
       "lines": 78,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/fab-width-bar.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 30,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -854,6 +944,16 @@
       "role": "drive show-repo's Map view onto the Harness tab with the committed census served through GH.get",
       "layer": "tools/render/scenarios",
       "lines": 52,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/map-registries.mjs",
+      "role": "drive the Map view's Registries tab for a screenshot, serving the real docs/properties.json through a stubbed GH so a tokenless render still shows the three areas and the cards",
+      "layer": "tools/render/scenarios",
+      "lines": 53,
       "invocation": "driver",
       "emits": false,
       "named": false,

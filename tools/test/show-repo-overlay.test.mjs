@@ -85,7 +85,7 @@ test('overlay: the branch manifest is spliced over the cache where the branch ex
   assert.deepEqual(shell.overlayRefs, { 'me/home': BRANCH });
   assert.deepEqual(shell.repoProjects('me/home'),
     [{ path: 'projects/budget-drs', label: 'budget-drs',
-      board: 'projects/budget-drs/tracker/board.md', landing: '' }],
+      board: 'projects/budget-drs/tracker/board.md', landing: '', inbox: null }],
     'a projects field that exists only on the branch must reach the sidebar');
   assert.equal(shell.estateConfigs['me/ledger'].projects, undefined,
     'a repo without the branch keeps its cached (main) config');
@@ -152,7 +152,7 @@ test('refreshConfigs under overlay rebuilds the cache, then re-applies the splic
   };
   await shell.refreshConfigs();
   assert.deepEqual(shell.repoProjects('me/home'),
-    [{ path: 'projects/x', label: 'x', board: 'projects/x/tracker/board.md', landing: '' }],
+    [{ path: 'projects/x', label: 'x', board: 'projects/x/tracker/board.md', landing: '', inbox: null }],
     'after a Refresh the sidebar must still show the branch-spliced view');
 });
 
