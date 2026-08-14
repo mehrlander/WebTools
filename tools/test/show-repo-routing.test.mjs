@@ -134,3 +134,36 @@ test('the second key rides along, for the views that carry one', () => {
     assert.equal(got, want, `?view=${view}&${key}= did not survive the round trip`);
   }
 });
+
+// The repo sidebar's Files row leaves the repo for the central surface, and
+// what it carries is the whole of that hand-off: the repo, and the ref only
+// when it is off the default, since '' means "the default branch" on the other
+// side. A row that dropped the ref would open a listing of main while the
+// shell was browsing a branch, which reads as the branch having no files.
+test('the repo sidebar hands its Files row to the central surface, scoped', () => {
+  const off = makeShell({ browserStore: {
+    repo: 'mehrlander/home', ref: 'claude/topic', defaultRef: 'main', activeFile: null, path: '' } });
+  off.shell.searchRepoFiles();
+  assert.equal(off.shell.view, 'search');
+  assert.equal(off.shell.searchSeed.repo, 'mehrlander/home');
+  assert.equal(off.shell.searchSeed.ref, 'claude/topic');
+  assert.equal(off.shell.searchSeed.mode, 'names');
+  assert.equal(off.shell.searchSeed.q, '', 'no query: the row lists the repo, it does not search it');
+
+  const onDefault = makeShell({ browserStore: {
+    repo: 'mehrlander/home', ref: 'main', defaultRef: 'main', activeFile: null, path: '' } });
+  onDefault.shell.searchRepoFiles();
+  assert.equal(onDefault.shell.searchSeed.ref, '', 'the default branch rides as the empty ref, not by name');
+});
+
+// The tree walk keeps its address. It lost its sidebar row, not its existence:
+// a ?file= deep link, a pin, a recent, and the Files view's own way out all
+// still land on it, so the row must still be in the table and still route.
+test('?view=files still routes after the sidebar row retired', () => {
+  const { shell: s } = makeShell({ search: '?repo=mehrlander/home&view=files&path=docs',
+                                   browserStore: { repo: '' } });
+  const url = s.parseUrl();
+  assert.equal(url.view, 'files');
+  assert.ok(s.routeFor('files'), 'VIEWS still has the row');
+  assert.equal(url.path, 'docs');
+});

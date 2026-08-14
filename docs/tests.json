@@ -2195,7 +2195,7 @@
       "path": "tools/test/search-view.test.mjs",
       "kind": "component",
       "protects": "The central file surface: a hit is read in place at the ref it was found on, without switching the browsed repo, and an empty query under a folder lists it rather than missing.",
-      "assertions": 17,
+      "assertions": 18,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -2216,6 +2216,7 @@
         "the cap raises on demand, and only offers to where more can come from",
         "each run restamps the address; clear empties results, the reader and the seed",
         "a later routing re-seeds the mounted view by event, scope and file included",
+        "the reader opens a file in the mode its type deserves, and falls back on size",
         "a bare arrival lists the browsed repo rather than landing on nothing"
       ]
     },
@@ -2508,7 +2509,7 @@
       "path": "tools/test/show-repo-routing.test.mjs",
       "kind": "behavior",
       "protects": "Every show-repo view can be linked to and reopened: the one VIEWS table stays the only router (no view name compared directly in the routing functions, no view the shell enters without a row), and each row's own stamped address parses back to it, on the default repo and on another.",
-      "assertions": 6,
+      "assertions": 8,
       "method": "pure",
       "runner": "suite",
       "boot_smoke": [],
@@ -2518,7 +2519,9 @@
         "rows are well formed, and keys and aliases are unique",
         "an alias resolves to its row rather than to a view of its own",
         "every view round-trips: stamped, then parsed back to itself",
-        "the second key rides along, for the views that carry one"
+        "the second key rides along, for the views that carry one",
+        "the repo sidebar hands its Files row to the central surface, scoped",
+        "?view=files still routes after the sidebar row retired"
       ]
     },
     {

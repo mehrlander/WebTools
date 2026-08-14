@@ -294,6 +294,20 @@ test('a later routing re-seeds the mounted view by event, scope and file include
 // A bare arrival is the cold open: the header nav's Search, or ?view=search
 // with nothing beside it. Mounted as a SECOND instance, since the default is an
 // init-time decision and the instance above was seeded at its own mount.
+test('the reader opens a file in the mode its type deserves, and falls back on size', () => {
+  const m = (ext, len = 10) => data.READ_MODE({ ext, content: 'x'.repeat(len) });
+  assert.equal(m('md'), 'preview');
+  assert.equal(m('json'), 'tree');
+  assert.equal(m('csv'), 'table');
+  assert.equal(m('tsv'), 'table');
+  assert.equal(m('js'), 'code');
+  assert.equal(m('txt'), 'code');
+  // Prism highlights synchronously and this estate holds megabyte files, so
+  // past the cut a file opens raw rather than hanging the tab on arrival.
+  assert.equal(m('js', 400000), 'raw');
+  assert.equal(m('md', 400000), 'raw');
+});
+
 test('a bare arrival lists the browsed repo rather than landing on nothing', async () => {
   CALLS = [];
   ANSWER = { hits: [{ repo: 'me/browsed', ref: '', path: 'a.js' }], total: 1, truncated: false, errors: [] };

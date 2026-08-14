@@ -41,7 +41,7 @@ Deep-link params: `&view=` takes any of `estate`, `activity`, `sessions`,
 `landing`, `pages`, `atlas`, `files`, `branches`, `config`, `project` (a repo's).
 Beside it: `&file=<path>`, `&path=<dir>`, and a second key for the views that
 carry one, `&tab=<tab>` (**project**'s pill row, **Map**'s tabs), `&item=`
-(**State**), `&detail=` (**Branches**), the `&sq=` family (**Search**: `sq`,
+(**State**), `&detail=` (**Branches**), the `&sq=` family (**Files**: `sq`,
 `smode`, `srepo`, `sref`, `spath`, `sfile`), `&window=`. A view
 keeps its default second key out of the URL, so an existing bare link still
 opens where it always did. `&view=portable` is a retired alias that still
@@ -126,11 +126,14 @@ and a Go row appears for a name that is not in the list), and a **lightning
 button that jumps to the most recently committed branch**, which hides itself
 when the newest branch is the default one.
 
-**It is not the Files view's ref picker, and the two are easy to confuse.** That
-one chooses which ref of the *browsed* repo you are reading; this one chooses
-which ref of `mehrlander/web-tools` **show-repo itself runs from**. Same
-vocabulary, different subject, so the panel spells out the repo and path it acts
-on every time it opens.
+**It is not a ref picker for the repo being browsed, and the two are easy to
+confuse.** Those (the Files view's, the explorer's) choose which ref of the
+*browsed* repo you are reading; this one chooses which ref of
+`mehrlander/web-tools` **show-repo itself runs from**. Same vocabulary,
+different subject, so the panel spells out the repo and path it acts on every
+time it opens. The other two are one shared component
+(`lib/alpineComponents/refPicker`, below); this one stays its own, because
+picking a ref and *navigating to it* are different verbs.
 
 It switches by navigating to the toss renderer with the ref pinned on **both
 halves**, `?use=<ref>` for the renderer's own lib chain and `#gh=…@<ref>:…` for
@@ -299,12 +302,25 @@ The per-repo views in the sidebar:
   path implies.
 - **atlas**: a standing structural view, available for every repo regardless of
   its landing.
-- **files**: the explorer: breadcrumb + listing, selected file's content
-  beneath. Each row has a `+` that stages the file. It answers **where a file
-  sits**, which is the one question a search cannot; finding a file by name,
-  by folder, or by what is inside it, and reading it, belong to the estate's
-  **Search** view instead, and the breadcrumb's magnifier hands that view this
-  repo, this ref, and this folder so the scope never has to be re-entered.
+- **files** *(unlisted since 2026-08-14)*: the explorer: breadcrumb + listing,
+  selected file's content beneath. Each row has a `+` that stages the file, its
+  ref control is the shared `refPicker`, and its breadcrumb magnifier hands the
+  **Files** view this repo, this ref, and this folder.
+
+  It answers **where a file sits**, the one question a search cannot, and that
+  is now the whole of its job: finding a file by name, by folder, or by what is
+  inside it, and reading it, moved to the estate's Files view. So it lost its
+  sidebar row and kept everything else. `?view=files` still routes, and is
+  where a `?file=` deep link, a pin, a recent, a repo-menu outbox jump, the
+  off-default ref crumb, and the Files view's own "open in the tree" button all
+  land. The sidebar slot it vacated is now the route OUT (below).
+- **Files** *(a route out, not a view)*: hands the estate's **Files** view this
+  repo at the ref being browsed and goes there, carrying an ↗ so the row says
+  it leaves. This is the slot the explorer vacated, and the swap is the whole
+  centralization in one row: a repo keeps a one-tap way to its files, and there
+  is one place they are read. The sidebar switches to its estate list on
+  arrival, because that is what happened; which repo you are scoped to is
+  answered by the Files view's own repo rail, lit, at the top of the pane.
 - **branches**: the branch review (below).
 
 **GitHub jump-overs.** show-repo is a wrapper over GitHub, not a wall: every
@@ -363,7 +379,7 @@ the header nav the way a repo shows landing/atlas/files/…:
   (`?view=chats`) (all below).
 - **Lists** — the two personal piles, To-do over Jot, in one pane rather than
   two tabs. Both `?view=todo` and `?view=jots` resolve here (below).
-- **Search** (`?view=search`) — the central file surface: file names at any ref under any folder, contents through the code-search API, the session records, and the file itself read in place (below).
+- **Files** (`?view=search`) — the central file surface: file names at any ref under any folder, contents through the code-search API, the session records, and the file itself read in place (below). The `?view=` key stays `search`, its name since the view was a results list: an address is not a label, and every link ever shared still opens it.
 - **Tools** (`?view=tools`) — a curated gallery of utility pages (below).
 - **Map** (`?view=map`, `&tab=` deep-links a tab) — the portable set, Surfacing, Showing, the Docs registry, and Tests (below). Per-repo scope and adoption live on the Repos cards.
 - **Proposals** (`?view=proposals`) — pending cross-repo edits awaiting a confirm
@@ -1055,10 +1071,12 @@ toss-render `#gh=` the same way the pages catalog does. The list is authored, a
 sibling to `pins` and `stage.files`, maintained by hand
 (`lib/alpineComponents/tools.js`).
 
-### Search (`?view=search`): the central file surface
+### Files (`?view=search`): the central file surface
 
-**Search** (`lib/alpineComponents/search-view.js`) is where files are found
-**and read**. Three modes behind a pill row, all served by the same core the
+**Files** (`lib/alpineComponents/search-view.js`) is where files are found
+**and read**. It is named for the thing rather than the verb, so it sits beside
+Repos and Stage rather than reading as an activity next to them; the URL key
+stays `search`. Three modes behind a pill row, all served by the same core the
 sidebar finder uses ([`lib/kits/estate-search.js`](../lib/kits/estate-search.js),
 one implementation, one cache, so a tree the finder fetched is a tree this view
 never re-fetches):
@@ -1085,7 +1103,14 @@ Each scope is the control its subject deserves:
   behind a tap and reports the current one in a slot that reads as a form field
   rather than as a place you are standing.
 - **The ref is a picker** (`lib/alpineComponents/refPicker`), a dated
-  newest-first branch list with the default branch as its own row. Its box
+  newest-first branch list with the default branch as its own row. It is the
+  **explorer's ref control too** as of 2026-08-14, which retired a hand-rolled
+  copy and, with it, a silent defect: that copy read the browser store's
+  `ensureBranches`, one uncapped-at-100 REST page in alphabetical order, so a
+  repo past a hundred branches was quietly missing rows and the newest was
+  rarely near the top. The picker paginates `branchesDated`. (`repo.js` keeps
+  its own, in the non-inline template two demo pages mount; it is the last
+  copy.) Its box
   **filters** rather than leads, which inverts the header ref switch on purpose:
   there you know the name of where you are going, here you are choosing among
   what exists. A tag, a sha, or a branch past the survey's reach is still
@@ -1133,7 +1158,10 @@ would go somewhere; the crumb trail above walks back out.
 **A hit opens where it was found.** The shared viewer (`viewer.js`, embedded
 with `bindStore:false`, the same way the stage previews a staged file) renders
 the file beside the results on a wide screen and in place of them on a phone,
-with a labelled way back. It carries the file's true `origin`, so its GitHub /
+with a labelled way back. It opens in the mode the file's type deserves rather
+than the tree walk's `raw`: markdown rendered, JSON as a tree, delimited data as
+a table, everything else syntax-highlighted, and raw past 300 KB, since Prism
+highlights synchronously and this estate holds megabyte files. It carries the file's true `origin`, so its GitHub /
 Raw / CDN / toss links point at the file's own repo and ref rather than at
 whatever repo the shell happens to be browsing, and reading a hit never switches
 that repo. The position steps through the file hits, so a result set is walkable

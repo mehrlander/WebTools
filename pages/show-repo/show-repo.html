@@ -746,10 +746,21 @@
                 :class="view==='atlas' ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
           <i class="ph ph-map-trifold text-base"></i><span>Atlas</span>
         </button>
-        <button @click="goFiles()"
-                class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-base hover:bg-base-200 transition-colors"
-                :class="view==='files' ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/80'">
-          <i class="ph ph-folders text-base"></i><span>Files</span>
+        <!-- Files LEAVES the repo, and that is the point. This row used to open
+             ?view=files, the per-repo tree walk. Reading a file is central now
+             (the Files view in the header, scoped by its own repo rail), so
+             this row hands that surface this repo at the ref being browsed and
+             goes there. It is the "little button" the repo view keeps: a route
+             to its files, not a second place to read them.
+             The tree walk itself is not retired, only unlisted: ?view=files is
+             still where a ?file= deep link, a pin, a recent, and the Files
+             view's own "open in the tree" button all land, since where a file
+             SITS is the one question a search cannot answer. -->
+        <button @click="searchRepoFiles()"
+                class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-base hover:bg-base-200 transition-colors text-base-content/80">
+          <i class="ph ph-files text-base"></i><span>Files</span>
+          <span class="grow"></span>
+          <i class="ph ph-arrow-up-right text-sm opacity-30"></i>
         </button>
         <button @click="goBranches()"
                 class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-base hover:bg-base-200 transition-colors"
@@ -4043,7 +4054,13 @@ function app(){ return {
       { view: 'stage', views: ['stage', 'surfaces'],
         icon: 'ph-stack',        label: 'Stage',    go: () => this.goStage() },
       { view: 'tools',    icon: 'ph-wrench',       label: 'Tools',    go: () => this.goTools() },
-      { view: 'search',   icon: 'ph-magnifying-glass', label: 'Search', go: () => this.goSearch() },
+      // Named for the thing, not the verb, so it sits with Repos and Stage
+      // rather than beside them as an activity. It browses as much as it
+      // searches now, and it is where every repo's files are read, so "Files"
+      // is what a reader is looking for in this row. The ?view= key stays
+      // `search`: an address is not a label, and every ?view=search link ever
+      // shared still opens it.
+      { view: 'search',   icon: 'ph-files', label: 'Files', go: () => this.goSearch() },
       { view: 'map',      icon: 'ph-compass',      label: 'Map',      go: () => this.goMap() },
       // State: what the estate keeps derived, and how old each piece is. A
       // standing entry rather than a conditional one (Proposals is the only
@@ -4204,6 +4221,14 @@ function app(){ return {
   goPages(){ this.view = 'pages'; this.syncUrl(); },
   goAtlas(){ this.atlasSeen = true; this.view = 'atlas'; this.syncUrl(); },
   goFiles(){ this.view = 'files'; this.syncUrl(); },
+  // The repo sidebar's Files row: hand the central surface this repo at the ref
+  // being browsed, and go. The ref rides only when it is off the default, since
+  // '' there means "the default branch" and is what the Files view holds.
+  searchRepoFiles(){
+    const s = Alpine.store('browser');
+    this.goSearch({ mode: 'names', repo: s.repo,
+                    ref: s.ref && s.ref !== s.defaultRef ? s.ref : '' });
+  },
   // The Stage's bench sub-view: the working surface. Every caller already
   // routed here (the explorer's "+", a #stage= link, a saved surface's Load),
   // and all of them mean "show me what is staged", which is this pill.
