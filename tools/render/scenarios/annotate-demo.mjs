@@ -29,6 +29,10 @@ export default async (page) => {
     }, needle);
     await page.waitForSelector('[data-annotate-ui]:has-text("+ note")', { timeout: 5000 });
     await page.click('button[data-annotate-ui]:has-text("+ note")');
+    // The composer opens in DICTATION mode, so the textarea is hidden until
+    // the pencil asks for it. This scenario had been filling a display:none
+    // box since the composer was rebuilt, and failed on every run.
+    await page.click('button[data-annotate-ui][title^="Type instead"]');
     await page.fill('textarea[data-annotate-ui]', note);
     await page.click('button[data-annotate-ui][title^="Save note"]');
     await page.waitForTimeout(150);

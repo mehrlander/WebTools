@@ -984,3 +984,128 @@ test('a drag surface cancels the touch itself, not just its touch-action', () =>
     'and a chip inside it does not, or a tap on it would never become a click');
   A.disable();
 });
+
+test('element mode stages from a tap, with no mouse having moved first', () => {
+  // The mode ran on `mousemove` for the hover and a captured document `click`
+  // for the stage, and a phone sends neither reliably: there is no mousemove
+  // before a tap, so the staged element was still null when the click arrived,
+  // and iOS withholds click from a document-level listener when the tapped
+  // element is not itself clickable. Both are invisible from the code, since
+  // every mouse path works. Field report, 2026-08-14: tapping produced nothing.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const p1 = doc.getElementById('p1');
+  // jsdom has no layout, so what is under a point is the one thing stubbed.
+  // Everything downstream of the hit is the kit's own.
+  doc.elementsFromPoint = () => [p1];
+
+  A.startPick();
+  const cover = [...doc.querySelectorAll('div')]
+    .filter(d => d.style.cursor === 'crosshair').pop();
+  assert.ok(cover, 'the mode lays a cover, so a tap has something to land on');
+  assert.ok(!/touch-action:\s*none/.test(cover.getAttribute('style') || ''),
+    'and it keeps the page scrollable: finding the element is half the mode');
+  assert.ok(+cover.style.zIndex < +A._state.ui.style.zIndex,
+    'under the card, so the chip that exits stays tappable');
+
+  const at = (type, x, y) => cover.dispatchEvent(
+    new window.MouseEvent(type, { clientX: x, clientY: y, bubbles: true }));
+  // Diffed against what is already on the page: an earlier test's floating
+  // selection chip carries the same words.
+  const chips = () => new Set([...doc.querySelectorAll('button')].filter(b => b.textContent === '+ note'));
+  const before = chips();
+  const offer = () => [...chips()].find(b => !before.has(b));
+
+  // A press that travels is a scroll, not a tap: the reader is looking for the
+  // element rather than choosing one.
+  at('pointerdown', 40, 40);
+  at('pointermove', 40, 240);
+  at('pointerup', 40, 240);
+  assert.ok(!offer(), 'a drag scrolls and stages nothing');
+
+  at('pointerdown', 40, 40);
+  at('pointerup', 40, 40);
+  const btn = offer();
+  assert.ok(btn, 'a tap stages the element under it and offers the note');
+
+  btn.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A._state.mode, null, 'taking the offer ends the mode');
+  assert.equal(A._state.draft.target.type, 'element');
+  assert.equal(A._state.draft.target.selector, '#p1');
+  A.disable();
+});
+
+test('the card recognizes a selection and offers it, and the offer outlives the tap', async () => {
+  // The only way to note selected text was a chip floating beside it, which on
+  // a phone is where the platform puts its own callout: covered, or gone with
+  // the selection the next tap collapsed. The card says what it has instead.
+  const rect = { width: 40, height: 12, left: 10, right: 50, top: 20, bottom: 32 };
+  const prev = window.Range.prototype.getBoundingClientRect;
+  window.Range.prototype.getBoundingClientRect = () => rect;   // jsdom has no layout
+  try {
+    A.enable({ doc, subject: { title: 'x', url: '' } });
+    A.clear();
+    const S = A._state;
+    assert.equal(S.selBar.style.display, 'none', 'nothing selected, nothing offered');
+
+    const p1 = doc.getElementById('p1').firstChild;
+    const r = doc.createRange();
+    r.setStart(p1, 4);
+    r.setEnd(p1, 19);                       // "quick brown fox"
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(r);
+    doc.dispatchEvent(new window.Event('pointerup', { bubbles: true }));
+    await new Promise((done) => setTimeout(done, 40));   // the handler settles on a timer
+
+    assert.equal(S.selBar.style.display, 'flex', 'the card shows what it recognized');
+    assert.match(S.selQuote.textContent, /quick brown fox/, 'and quotes it back');
+    assert.equal(A.staged.type, 'text');
+
+    // The tap that reaches the card is the tap most likely to have collapsed
+    // the selection, so the stage has to survive it.
+    sel.removeAllRanges();
+    doc.dispatchEvent(new window.Event('pointerup', { bubbles: true }));
+    await new Promise((done) => setTimeout(done, 40));
+    assert.equal(S.selBar.style.display, 'flex', 'a collapsed selection leaves the offer standing');
+
+    const go = [...S.selBar.querySelectorAll('button')].find(b => b.textContent === '+ note');
+    go.dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.equal(S.draft.target.type, 'text');
+    assert.equal(S.draft.target.quote.exact, 'quick brown fox');
+    assert.equal(S.selBar.style.display, 'none', 'and the offer is spent, not repeated');
+    assert.equal(A.staged, null);
+    A.disable();
+  } finally {
+    window.Range.prototype.getBoundingClientRect = prev;
+  }
+});
+
+test('the set has a second reading: on the page, where a screenshot can hold it', () => {
+  // A list in a 360px card and the passages it describes cannot both be in one
+  // frame, which is the whole reason for the second reading.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'element', selector: '#p1', excerpt: 'the quick brown fox' }, 'about the paragraph');
+  A.add({ type: 'page' }, 'about the page');
+  const S = A._state;
+  const painted = () => S.boxes.map(b => b.textContent).join('|');
+
+  assert.equal(A.inPlace, false);
+  assert.equal(S.boxes.length, 1, 'the element outline, and nothing that carries words');
+  assert.equal(painted(), '');
+
+  A.showInPlace(true);
+  assert.equal(A.inPlace, true);
+  assert.equal(S.listEl.style.display, 'none', 'the list folds away for the picture');
+  assert.match(painted(), /about the paragraph/, 'each note is drawn where it is pinned');
+  assert.match(painted(), /about the page/, 'and one pinned to nothing gets the corner');
+
+  // The header is the way back, which is why the card is not what folds away.
+  S.placeBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A.inPlace, false);
+  assert.equal(S.listEl.style.display, 'flex');
+  assert.equal(painted(), '', 'and the page is clean again');
+  A.clear();
+  A.disable();
+});
