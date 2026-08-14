@@ -305,6 +305,33 @@ test('a read that is overtaken does not land on top of the newer one', async () 
   await slow;
 });
 
+// The deck is the primary route to the files, which means it cannot require
+// the reader to have opened the Files pane first: that made it a second control
+// on a list, two taps deep, with the second only discoverable after the first.
+// One tap from a branch, from any pane, fetching what it needs.
+test('the deck opens from a branch that has not read its diff', async () => {
+  window.BranchBrief.forget();
+  reset();
+  await mount('feat/a');
+  assert.equal(data.pane, 'guide');
+  assert.equal(data.brief.pending, true, 'nothing has been read but the guide');
+  assert.equal(data.deckFiles.length, 0, 'so there is no list to have opened');
+
+  let opened = null;
+  window.swipeDeck = { top: () => null };          // no parent: this is the standalone shape
+  window.fileDeck = { open: (o) => (opened = o, { deck: { onSlide() {} }, close() {} }) };
+  await data.openFileDeck(0);
+  assert.deepEqual(calls.compare, ['me/tools@feat/a'], 'the tap fetched what it needed');
+  assert.ok(opened, 'and opened the deck rather than doing nothing');
+  assert.equal(opened.files.length, 1);
+  assert.equal(opened.files[0].path, 'feat/a.js');
+  assert.equal(data.deckOpening, false, 'the button is not left spinning');
+  // The compare landing re-renders the pane and re-warms; let both settle
+  // inside this test rather than under the next mount's teardown.
+  await tick(6);
+  delete window.fileDeck; delete window.swipeDeck;
+});
+
 // The other side of the switch, and the reason it is the switch. A cold
 // pages/branch.html has no row to lend from, so the compare is the only thing
 // that can say whether the branch is live, how far ahead it is, or how long it

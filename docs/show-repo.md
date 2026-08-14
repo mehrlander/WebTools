@@ -1783,6 +1783,17 @@ logic one step out: it always takes the guide and the registry, and takes a
 neighbour's compare only once this slide has read its own, which is to say only
 for a reader who is actually looking at diffs.
 
+**One tap from a branch to its files.** The deck button used to appear only on
+the Files pane, which made the file reader something a reader found *after*
+opening a list: two taps, and the second discoverable only once the first had
+been made. It now sits on the tab row at every pane, wears the only colour in
+that row, and fetches the compare itself when the diff has not been read, which
+after the deferral is the usual case. The Files tab keeps the list, for scanning
+and for choosing where to start; the button is for reading. Cost of the
+promotion: three tab labels with counts plus four controls do not fit a 390px
+row, so the tab strip now scrolls rather than clipping its last label under the
+first button.
+
 Measured end to end by `tools/render/scenarios/branch-deck.mjs`, which is also
 what caught both of those faults above.
 

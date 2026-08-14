@@ -126,7 +126,7 @@
       "path": "tools/test/branch-brief-hosted.test.mjs",
       "kind": "behavior",
       "protects": "What a host is owed by the branch view it mounts directly: `framed` chrome, `warm` neighbours, and `onMeta` reporting the PR number for a branch whose PR merged, which the activity crawl never sees; plus the framed layout, where the head holds its place and the pane takes the scroll.",
-      "assertions": 14,
+      "assertions": 15,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -143,6 +143,7 @@
         "framed: the head holds its place and the pane takes the scroll",
         "framed: the document itself is left alone",
         "a read that is overtaken does not land on top of the newer one",
+        "the deck opens from a branch that has not read its diff",
         "with nothing lending the head, the compare is not deferred",
         "a compare that lands after a step does not overwrite the newer branch"
       ]
