@@ -21,10 +21,12 @@ window.TOKEN = 'tkn';
 
 let CALLS = [];
 let ANSWER = {};
+let LEVEL = { dirs: [], files: [], truncated: false };
 window.EstateSearch = {
   clip: (t) => String(t || ''),
   reset() { CALLS.push(['reset']); },
   async names(a) { CALLS.push(['names', a]); if (ANSWER.throw) throw new Error(ANSWER.throw); return ANSWER; },
+  async level(a) { CALLS.push(['level', a]); if (ANSWER.throw) throw new Error(ANSWER.throw); return LEVEL; },
   async code(a)  { CALLS.push(['code', a]);  if (ANSWER.throw) throw new Error(ANSWER.throw); return ANSWER; },
   async sessions(a) { CALLS.push(['sessions', a]); if (ANSWER.throw) throw new Error(ANSWER.throw); return ANSWER; },
 };
@@ -95,7 +97,7 @@ test('a row is stated relative to the scope, and offers to scope only where that
            { repo: 'me/tools', ref: '', path: 'lib/kits/demos/y.js' }],
     total: 2, truncated: false, errors: [],
   };
-  data.mode = 'names'; data.q = ''; data.repo = 'me/tools'; data.ref = ''; data.path = 'lib/kits';
+  data.mode = 'names'; data.q = 'y'; data.repo = 'me/tools'; data.ref = ''; data.path = 'lib/kits';
   await data.run();
   // The scope is not repeated on every line, which is what was truncating the
   // only part of each path that differed.
@@ -112,6 +114,7 @@ test('a row is stated relative to the scope, and offers to scope only where that
 });
 
 test('a scope is normalized once, and its crumbs walk back out', async () => {
+  data.mode = 'names'; data.q = 'y'; data.repo = 'me/tools';
   data.path = '/lib/kits/';
   assert.equal(data.scope, 'lib/kits');
   assert.deepEqual(j(data.scopeCrumbs), [{ name: 'lib', path: 'lib' }, { name: 'kits', path: 'lib/kits' }]);
@@ -139,8 +142,62 @@ test('an empty query lists under a repo or a folder, and is a miss otherwise', a
 
   CALLS = [];
   ANSWER = { hits: [], total: 0, truncated: false, errors: [] };
+  // No repo but a folder: no LEVEL to read (a level of "every repo" is not a
+  // place), so it stays the recursive listing across every repo.
   await data.run();
   assert.equal(CALLS.find(c => c[0] === 'names')[1].q, '');
+  assert.equal(data.browsing, false);
+});
+
+test('no query is a WALK: folders, then files, and a way back up', async () => {
+  CALLS = [];
+  LEVEL = {
+    dirs: [{ name: 'kits', path: 'lib/kits', n: 9 }, { name: 'demos', path: 'lib/demos', n: 2 }],
+    files: ['lib/gh-api.js', 'lib/build.js'],
+    truncated: false,
+  };
+  data.mode = 'names'; data.q = ''; data.repo = 'me/tools'; data.ref = ''; data.path = 'lib';
+  assert.equal(data.browsing, true);
+  await data.run();
+  assert.equal(CALLS.filter(c => c[0] === 'level').length, 1, 'a walk reads a level, not a recursive match');
+  assert.equal(CALLS.find(c => c[0] === 'level')[1].under, 'lib');
+
+  // The way out sits at the top of the list, then folders, then files: the
+  // order a file browser has always used.
+  assert.deepEqual([...data.hits.map(h => h.kind)], ['dir', 'dir', 'dir', 'file', 'file']);
+  assert.equal(data.hits[0].label, '..');
+  assert.equal(data.hits[0].path, '', 'the parent of lib is the repo root');
+  assert.deepEqual([...data.hits.slice(1, 3).map(h => h.label)], ['kits', 'demos']);
+  assert.equal(data.hits[1].sub, '9 files');
+
+  // A folder row descends rather than opening anything.
+  const before = FETCHED.length;
+  data.openHit(data.hits[1]);
+  await tick();
+  assert.equal(data.scope, 'lib/kits');
+  assert.equal(FETCHED.length, before, 'a folder is not a file: nothing is fetched to read');
+
+  // The tally counts what is there rather than reporting hits, since nothing
+  // was searched for.
+  data.path = 'lib';
+  await data.run();
+  assert.match(data.tally, /2 folders · 2 files/);
+
+  // And only the file rows are readable, so the reader's position ignores the
+  // folders and the way up.
+  assert.equal(data.fileHits.length, 2);
+});
+
+test('typing turns the walk back into a recursive search of the same scope', async () => {
+  CALLS = [];
+  ANSWER = { hits: [{ repo: 'me/tools', ref: '', path: 'lib/kits/deep/x.js' }], total: 1, truncated: false, errors: [] };
+  data.mode = 'names'; data.repo = 'me/tools'; data.path = 'lib'; data.q = 'x';
+  assert.equal(data.browsing, false);
+  await data.run();
+  assert.equal(CALLS.filter(c => c[0] === 'level').length, 0);
+  assert.equal(CALLS.find(c => c[0] === 'names')[1].under, 'lib', 'the scope holds across the switch');
+  assert.equal(data.hits[0].label, 'kits/deep/x.js', 'flat and relative: a match below the level is still one row');
+  data.q = '';
 });
 
 test('contents mode scopes to the chosen repo, or the account, and adds path: for a folder', async () => {
@@ -280,13 +337,13 @@ test('each run restamps the address; clear empties results, the reader and the s
 
 test('a later routing re-seeds the mounted view by event, scope and file included', async () => {
   CALLS = []; FETCHED = [];
-  ANSWER = { hits: [{ repo: 'me/tools', ref: '', path: 'docs/x.md' }], total: 1, truncated: false, errors: [] };
+  LEVEL = { dirs: [], files: ['docs/x.md'], truncated: false };
   window.document.dispatchEvent(new window.CustomEvent('web-tools:search-seed',
     { detail: { q: '', mode: 'names', repo: 'me/tools', path: 'docs', file: 'me/tools:docs/x.md' } }));
   await tick();
   assert.equal(data.mode, 'names');
   assert.equal(data.scope, 'docs');
-  assert.equal(CALLS.filter(c => c[0] === 'names').length, 1, 'a seeded scope runs without a query');
+  assert.equal(CALLS.filter(c => c[0] === 'level').length, 1, 'a seeded scope runs without a query');
   assert.deepEqual(j(data.open), { repo: 'me/tools', ref: '', path: 'docs/x.md' });
   assert.deepEqual(FETCHED.at(-1), { repo: 'me/tools', ref: '', path: 'docs/x.md' });
 });
@@ -310,7 +367,7 @@ test('the reader opens a file in the mode its type deserves, and falls back on s
 
 test('a bare arrival lists the browsed repo rather than landing on nothing', async () => {
   CALLS = [];
-  ANSWER = { hits: [{ repo: 'me/browsed', ref: '', path: 'a.js' }], total: 1, truncated: false, errors: [] };
+  LEVEL = { dirs: [], files: ['a.js'], truncated: false };
   shell.searchSeed = null;
   const store = Alpine.store('browser');
   store.repo = 'me/browsed'; store.ref = 'topic'; store.defaultRef = 'main';
@@ -324,7 +381,7 @@ test('a bare arrival lists the browsed repo rather than landing on nothing', asy
   const cold = Alpine.$data(el);
   assert.equal(cold.repo, 'me/browsed');
   assert.equal(cold.ref, 'topic', 'a browsed ref off the default is carried; the default itself is left as ""');
-  assert.equal(CALLS.filter(c => c[0] === 'names').length, 1);
+  assert.equal(CALLS.filter(c => c[0] === 'level').length, 1);
   assert.equal(cold.hits.length, 1);
   // The scoped repo is selectable even when it is not on the estate, so the
   // control cannot read as unscoped while the list under it is scoped.

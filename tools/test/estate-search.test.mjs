@@ -101,6 +101,32 @@ test('names: a folder scope narrows before the cap, and an empty query under one
   assert.equal((await ES.names({ q: '', repos, token: 'tkn' })).total, 5);
 });
 
+test('level: one level of the tree, folders and files, off the same cache', async () => {
+  ES.reset();
+  TREES = { 'me/tools@HEAD': [
+    'README.md', 'lib/gh-api.js', 'lib/kits/a.js', 'lib/kits/demos/b.js', 'docs/x.md',
+  ] };
+  TREE_CALLS = [];
+  const root = await ES.level({ repo: 'me/tools', ref: '', under: '', token: 'tkn' });
+  assert.deepEqual([...root.dirs.map(d => d.name)], ['docs', 'lib']);
+  assert.deepEqual([...root.files], ['README.md']);
+  // A folder's count is the blobs BELOW it, which is what one recursive read
+  // knows and what says whether it is worth opening.
+  assert.equal(root.dirs.find(d => d.name === 'lib').n, 3);
+
+  const lib = await ES.level({ repo: 'me/tools', ref: '', under: 'lib', token: 'tkn' });
+  assert.deepEqual([...lib.dirs.map(d => d.path)], ['lib/kits']);
+  assert.deepEqual([...lib.files], ['lib/gh-api.js']);
+
+  const kits = await ES.level({ repo: 'me/tools', ref: '', under: '/lib/kits/', token: 'tkn' });
+  assert.deepEqual([...kits.dirs.map(d => d.name)], ['demos']);
+  assert.deepEqual([...kits.files], ['lib/kits/a.js']);
+
+  // Four levels, one fetch: descending is free after the repo is read once,
+  // which is the whole reason browsing and searching share a cache.
+  assert.deepEqual(TREE_CALLS, ['me/tools@HEAD']);
+});
+
 test('code: scope rides the query, fragments become clipped snippets', async () => {
   SEARCH = { total_count: 1, items: [{
     path: 'lib/x.js', repository: { full_name: 'me/tools' },

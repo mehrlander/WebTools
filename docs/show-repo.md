@@ -307,10 +307,13 @@ The per-repo views in the sidebar:
   ref control is the shared `refPicker`, and its breadcrumb magnifier hands the
   **Files** view this repo, this ref, and this folder.
 
-  It answers **where a file sits**, the one question a search cannot, and that
-  is now the whole of its job: finding a file by name, by folder, or by what is
-  inside it, and reading it, moved to the estate's Files view. So it lost its
-  sidebar row and kept everything else. `?view=files` still routes, and is
+  What it still holds that the Files view does not is the **live directory
+  read**: it lists a folder through the contents API, so a file's size is on its
+  row and the listing is whatever the ref holds right now. The Files view walks
+  the same tree off one cached recursive read, which is why descending there is
+  free and why it knows how many blobs a folder holds, and is the trade it
+  makes. Finding a file by name, by folder, or by what is inside it, and reading
+  it, moved there. So this lost its sidebar row and kept everything else. `?view=files` still routes, and is
   where a `?file=` deep link, a pin, a recent, a repo-menu outbox jump, the
   off-default ref crumb, and the Files view's own "open in the tree" button all
   land. The sidebar slot it vacated is now the route OUT (below).
@@ -1083,9 +1086,25 @@ never re-fetches):
 
 | Mode | Reaches | Misses |
 | --- | --- | --- |
-| **Files** | file names over the repo trees, at **any ref**, under any folder | nothing inside a file |
+| **Names** | the repo trees, at **any ref**, under any folder: browsed one level or matched recursively | nothing inside a file |
 | **Contents** | full text, through the code-search API | non-default branches, a push the index has not caught, files over ~384 KB, past ten calls a minute |
 | **Sessions** | the captured session records (the opening ask, every stored prompt and reply, the closing message) | anything not captured |
+
+**Names is two readings of one corpus, and the query box is the switch.** Type
+and it is a recursive match: every path under the scope that contains what you
+typed, flat, stated relative to the scope. Clear the box and it is **one level**:
+the folders and files sitting directly in the scope, folders first with the
+count of blobs below each, a `..` at the top, and a folder row that descends
+rather than opening anything. That second reading is the file tree, and it has
+folders in it, which a recursive match structurally cannot: this is why an empty
+query here is an answer rather than a miss, and why the two are one control
+rather than a browse toggle beside a search box.
+
+Both readings come off the same cached recursive tree
+(`EstateSearch.names` and `EstateSearch.level`), so descending a folder after
+the repo's first read costs no fetch at all. A level needs a repo, since a level
+of "every repo at once" is not a place; under **All** an empty query stays the
+recursive listing.
 
 **The controls say what they are; the prose says only what is missing.** The
 slot under them used to carry a paragraph per mode explaining what that mode
@@ -1134,7 +1153,7 @@ repo or a folder is a listing**, so the button reads *List* rather than
 *Search* and the same call serves browsing. Only an unscoped empty query is a
 miss, since reading every tree the token can see is not a listing anyone asked
 for, and that one dead state says so in its facts line rather than only greying
-out its own button.
+out its own button. (Under a repo, an empty query is never dead: it is the walk.)
 
 **A bare arrival lists the browsed repo.** Nothing seeded is still a request,
 and the request is "show me files". The view first shipped landing on an empty
