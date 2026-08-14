@@ -1215,7 +1215,7 @@
       "path": "tools/test/file-deck.test.mjs",
       "kind": "behavior",
       "protects": "The contract between the Files pane and the file deck: the deck pages what the pane is showing, its header names the file the reader is on rather than the one they opened at, and a card is handed its options by reference rather than through an x-data expression.",
-      "assertions": 13,
+      "assertions": 15,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -1232,7 +1232,9 @@
         "the crumb does not say the same thing twice",
         "the deck says what the reader is on, and keeps saying it",
         "a deck opened over a toss puts the toss back, rather than clearing it",
-        "announce: false leaves the sidebar where it was"
+        "announce: false leaves the sidebar where it was",
+        "hosted in a toss, the deck announces to the shell as well",
+        "the header offers a door to the sidebar, and only where it announces"
       ]
     },
     {

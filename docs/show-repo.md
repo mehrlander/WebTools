@@ -1891,6 +1891,26 @@ could annotate perfectly well. And the drawer moved from `z-50` to `z-[75]`,
 above the deck's takeover: it now describes the file on screen, and a drawer
 behind the thing it describes is a coupling nobody can reach.
 
+**Which WINDOW is listening was the part that was wrong first.** Inside a toss
+the deck runs in the frame, whose own fab declined to mount (`toss-render`
+stamps `__fabHosted`), and the fab that is listening is the shell's, one window
+up. An announcement written only to `window` reached nobody, so the whole
+feature was invisible through exactly the link branch work gets reviewed with.
+The deck now writes to every window that might hold a fab, this one and the
+parent when hosted, and hands both back on close. An address-mode toss is
+same-origin so the parent is reachable; a `#gz=` payload toss is opaque, the
+access throws, and that is the honest end of it.
+
+**And the deck offers its own door.** On a phone the deck is the whole screen
+with the launcher on top of it, so the sidebar reads as belonging to what you
+are looking at. On a desktop the deck is a centred panel and the fab reads as
+belonging to the page behind it, so nothing says the two are connected. One
+header action opens the drawer on the Render tab, through a
+`web-tools:open-drawer` announcement the fab listens for (the same idiom as its
+hard refresh, and it crosses the frame boundary the same way the subject does).
+Deliberately a door and not a duplicate: a second branch dropdown in the deck
+header would be the third copy of FAB turf in the app.
+
 This is the first of three steps. The next is `__tossNavigate` from the deck, so
 a ref row re-renders the slide instead of navigating away; the one after is a
 second, compare-against ref in the sidebar, which is what would let the card's

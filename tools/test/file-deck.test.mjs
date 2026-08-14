@@ -237,3 +237,62 @@ test('announce: false leaves the sidebar where it was', async () => {
   assert.equal(subject() ?? null, null);
   d.close(); await tick(6);
 });
+
+
+// The case the first version missed, and the one every preview link hits.
+//
+// Inside a toss the deck runs in the FRAME, whose own fab declined to mount
+// (toss-render stamps __fabHosted); the fab that is listening is the SHELL's,
+// one window up. An announcement written only to `window` reached nobody, so
+// the feature was invisible through exactly the link branch work is reviewed
+// with. An address-mode toss is same-origin, so the frame reaches up.
+test('hosted in a toss, the deck announces to the shell as well', async () => {
+  const heard = [];
+  const parent = {
+    __tossSubject: { repo: 'me/tools', ref: 'main', path: 'pages/show-repo/show-repo.html' },
+    __tossFrame: { name: 'frame' },
+    document: {},
+    CustomEvent: window.CustomEvent,
+    dispatchEvent: (e) => heard.push(e.type + ':' + (parent.__tossSubject?.path ?? 'null')),
+  };
+  const realParent = Object.getOwnPropertyDescriptor(window, 'parent');
+  Object.defineProperty(window, 'parent', { value: parent, configurable: true });
+  window.__fabHosted = true;
+  try {
+    const d = window.fileDeck.open({ ...AT, files: FILES });
+    await tick(2);
+    assert.equal(parent.__tossSubject.path, FILES[0].path, 'the shell fab is what hears it');
+    assert.equal(parent.__tossFrame, null,
+      'and the file is in the frame document, not a frame of its own');
+    assert.ok(heard.some(h => h.startsWith('toss-subject:')), 'announced, not only stamped');
+
+    d.close(); await tick(6);
+    assert.equal(parent.__tossSubject.path, 'pages/show-repo/show-repo.html',
+      'leaving hands the tossed page back');
+    assert.equal(parent.__tossFrame.name, 'frame');
+  } finally {
+    delete window.__fabHosted;
+    if (realParent) Object.defineProperty(window, 'parent', realParent);
+    else delete window.parent;
+  }
+});
+
+test('the header offers a door to the sidebar, and only where it announces', async () => {
+  const d = window.fileDeck.open({ ...AT, files: FILES });
+  await tick(2);
+  const btn = d.el.querySelector('button[title="Open the sidebar for this file"]');
+  assert.ok(btn, 'a centred desktop deck says nothing about the fab unless it does');
+  let asked = null;
+  const on = (e) => { asked = e.detail && e.detail.tab; };
+  window.addEventListener('web-tools:open-drawer', on);
+  btn.click();
+  assert.equal(asked, 'render', 'and it opens on the tab that answers "which version"');
+  window.removeEventListener('web-tools:open-drawer', on);
+  d.close(); await tick(6);
+
+  const quiet = window.fileDeck.open({ ...AT, files: FILES, announce: false });
+  await tick(2);
+  assert.ok(!quiet.el.querySelector('button[title="Open the sidebar for this file"]'),
+    'a deck that does not retarget the sidebar must not offer to open it');
+  quiet.close(); await tick(6);
+});
