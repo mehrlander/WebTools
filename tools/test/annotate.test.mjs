@@ -651,6 +651,36 @@ test('the keyboard mode has no controls of its own, and the keyboard is the way 
   A.disable();
 });
 
+test('the keyboard does not grow the card: the editor takes the frame it found', () => {
+  // The editor opened at 30vh, so switching from speaking to typing grew the
+  // whole card. Nothing about typing asks for more of the page than dictating
+  // does; what it earns is the control row's height, inside the height the
+  // frame already had. jsdom has no layout, so the frame's measurement is
+  // stubbed and what is asserted is the arithmetic over it.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  assert.ok(!/30vh/.test(S.compTa.getAttribute('style') || ''),
+    'no viewport-sized editor left in the static style');
+
+  S.compFrame.getBoundingClientRect = () => ({ height: 188 });
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.compTa.style.height, '186px', 'the frame it found, less its own border');
+  assert.match(S.compTa.getAttribute('style'), /box-sizing:\s*border-box/,
+    'or a content-box host would add the padding on top of it');
+
+  S.compTa.dispatchEvent(new window.Event('blur', { bubbles: true }));
+  assert.equal(S.compTa.style.height, '', 'and the pin is let go on the way out');
+
+  // A frame with no layout to report leaves the static floor standing rather
+  // than pinning the box to nothing.
+  S.compFrame.getBoundingClientRect = () => ({ height: 0 });
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.compTa.style.height, '');
+  A.disable();
+});
+
 test('leaving the keyboard resumes dictation only if it interrupted it', () => {
   // Closing used to call start() unconditionally, on the reading that
   // dictation is the default mode. A reader who had already stopped listening,
