@@ -3,7 +3,7 @@
   "registries": [
     {
       "id": "content-registry",
-      "area": "contents",
+      "area": "files",
       "title": "Content classification",
       "gloss": "What each artifact is epistemically: supplied source material, mechanical output, or authored analysis, and which corpora it belongs to.",
       "carrier": "data/design/content.csv",
@@ -18,7 +18,7 @@
     },
     {
       "id": "docs-census",
-      "area": "contents",
+      "area": "files",
       "title": "Documentation inventory",
       "gloss": "Every document under docs/, what it is about, whether it is kept true, and who can reach it.",
       "carrier": "docs/docs.json",
@@ -34,7 +34,7 @@
     },
     {
       "id": "harness-census",
-      "area": "contents",
+      "area": "files",
       "title": "Harness inventory",
       "gloss": "Every code file under tools/ and scripts/, what it is for, how it is invoked, and whether prose names it or a test exercises it.",
       "carrier": "docs/harness.json",
@@ -50,7 +50,7 @@
     },
     {
       "id": "manifest-fields",
-      "area": "conventions",
+      "area": "names",
       "title": "Manifest field vocabulary",
       "gloss": "Every key a repo’s .web-tools.json may carry, what it means, and which consumer reads it.",
       "carrier": "docs/manifest.json",
@@ -65,7 +65,7 @@
     },
     {
       "id": "owners",
-      "area": "conventions",
+      "area": "names",
       "title": "Statement ownership",
       "gloss": "For a statement the coordination layer repeats, which carrier is authoritative and how every other mention relates to it.",
       "carrier": "docs/owners.json",
@@ -80,7 +80,7 @@
     },
     {
       "id": "pages-catalog",
-      "area": "contents",
+      "area": "files",
       "title": "Page gallery",
       "gloss": "Every HTML page under pages/, grouped, with the title and thumbnail the gallery and picker show.",
       "carrier": "pages/pages.json",
@@ -96,7 +96,7 @@
     },
     {
       "id": "portable-catalog",
-      "area": "contents",
+      "area": "files",
       "title": "To-go set",
       "gloss": "The files that travel to other repos, and how a consumer takes each one.",
       "carrier": "docs/portable.json",
@@ -112,7 +112,7 @@
     },
     {
       "id": "routes-modes",
-      "area": "presentation",
+      "area": "names",
       "title": "Delivery modes",
       "gloss": "How a tossed payload travels, and the trust and sandbox posture each mode carries.",
       "carrier": "docs/routes.json",
@@ -127,7 +127,7 @@
     },
     {
       "id": "routes-routes",
-      "area": "presentation",
+      "area": "names",
       "title": "Renderer dispatch table",
       "gloss": "Every route toss-render accepts, what each one addresses, and which viewer it opens.",
       "carrier": "docs/routes.json",
@@ -142,7 +142,7 @@
     },
     {
       "id": "showing-mechanisms",
-      "area": "presentation",
+      "area": "names",
       "title": "Showing mechanisms",
       "gloss": "Which link reaches which kind of change, and what each one silently misses.",
       "carrier": "docs/routes.json",
@@ -157,7 +157,7 @@
     },
     {
       "id": "skills-catalog",
-      "area": "contents",
+      "area": "files",
       "title": "Skill roster",
       "gloss": "The skills this repo ships, each carrying the trigger description its own SKILL.md owns.",
       "carrier": "skills/manifest.json",
@@ -172,7 +172,7 @@
     },
     {
       "id": "surfacing-index",
-      "area": "presentation",
+      "area": "names",
       "title": "Surfacing primitives",
       "gloss": "The gated index of SURFACING.md’s primitives, the prose staying authoritative.",
       "carrier": "docs/surfacing.json",
@@ -187,7 +187,7 @@
     },
     {
       "id": "tests-census",
-      "area": "contents",
+      "area": "files",
       "title": "Test coverage map",
       "gloss": "Every check in the suite, what kind it is, and what breaks if it is deleted.",
       "carrier": "docs/tests.json",
@@ -203,7 +203,7 @@
     },
     {
       "id": "text-field-vocabulary",
-      "area": "conventions",
+      "area": "names",
       "title": "Prose field vocabulary",
       "gloss": "The sanctioned names for a prose-bearing field, so one concept is not called four things across four carriers.",
       "carrier": "docs/text-fields.csv",
@@ -217,7 +217,7 @@
     },
     {
       "id": "tools-gallery",
-      "area": "contents",
+      "area": "files",
       "title": "Tools shelf",
       "gloss": "The authored selection of pages the Tools view shows, and the icon each is given; a crosswalk over the page gallery.",
       "carrier": "docs/tools.json",
@@ -233,7 +233,7 @@
     },
     {
       "id": "tracker-board",
-      "area": "contents",
+      "area": "files",
       "title": "Tracker board",
       "gloss": "Every task in the project tracker, its state, size, and activity, derived from the task files.",
       "carrier": "tracker/board.json",

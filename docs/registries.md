@@ -43,7 +43,7 @@ integrity layer: gates are this system's foreign keys, because git has none.
 | **catalog** | a registry whose scope is extensional: the rows are the membership, curation is the definition | portable.json, tools.json, content.csv |
 | **crosswalk** | a catalog that curates *which* targets belong and leaves their description to the census that owns them | tools.json over pages.json |
 | **properties registry** | the declaration table: every property's registry, mode, and enforcement | properties.json |
-| **area** | which of three questions a registry answers, the reader's grouping | contents, conventions, presentation |
+| **area** | which side of one question a registry falls on, the reader's grouping | files, names |
 | **shelf** | a tree-defined population, the usual way a census scope is written | docs/, tools/test/, tools/ + scripts/ |
 | **projection** | a generated view of registry data, never authoritative, never edited | tracker board.md, docs/README.md |
 
@@ -198,25 +198,45 @@ in a renderer's source is exactly the unaccounted kind.
 - **gloss**: one sentence on what the registry governs, for someone who does not
   already know. Every *declaration* carried a gloss from the start and no
   *registry* did, and closing that asymmetry is what these two fields are.
-- **area**: which of three questions the registry answers.
+- **area**: which side of one question the registry falls on.
 
 | Area | The membership question | Count |
 | --- | --- | --- |
-| **contents** | Is the target an artifact in this tree? | 9 |
-| **conventions** | Is the target a name the estate settled on? | 3 |
-| **presentation** | Is the target a way of getting something in front of a reader? | 4 |
+| **files** | Does the target have a path in this tree? | 9 |
+| **names** | Everything else: a name something declared, the registry being what declares it | 7 |
 
 The question is the point, not the label. Without a stated rule the grouping is
-re-litigated on every addition, and three of the sixteen were genuinely
-arguable: `manifest-fields` governs how show-repo presents a repo, which reads
-as presentation, and `showing-mechanisms` and `surfacing-index` are working
-conventions that live in `SURFACING.md`. Keying strictly on the **target**
-settles all three, because that is what the model already says a registry
-asserts about.
+re-litigated on every addition, so the rule has to be answerable cold, by
+someone who has never read this file. "Does it have a path" is; a topical
+judgment is not.
 
-Contents takes 9 of 16, so the split does little sorting there. That is accepted
-rather than fixed: a mechanical rule anyone can apply cold is worth more than a
-balanced one that needs a judgment call.
+A **folder** rides on the files side, which is worth saying because it is the
+one arguable case. `content-registry` locators include `docs/` and `skills/`
+alongside ordinary paths. A folder could be filed as a kind of name, but files
+are load-bearing enough here that the first cut is drawn around them, and a
+folder has a path like anything else. There is no third area for it and no
+registry of folders; the value of cataloguing folders as such has not appeared.
+
+Files takes 9 of 16, so the split does little sorting. That is accepted rather
+than fixed: a mechanical rule anyone can apply cold is worth more than a
+balanced one that needs a judgment call, and if `names` ever earns a subdivision
+it can be split then, from a boundary that already holds.
+
+**The first attempt was three areas and it did not survive contact.** Files were
+`contents`, and the seven names were split into `conventions` and a
+`presentation` group holding the routes, the showing mechanisms, and the
+surfacing primitives. That grouping was **topical**, and the topic did not
+describe the targets. Two of its four are names a program parses:
+`routes-routes` owns `toss-render.html`'s inlined `TOSS_ROUTES` literal and
+`routes-modes` is what the renderer dispatches on. The other two are vocabulary
+a person picks from when writing. `manifest-fields`, filed under conventions,
+is a program-parsed key like the routes, so the label had it on the wrong side.
+
+The seam that actually exists inside `names` is program-parsed versus
+human-chosen, and it was not adopted, because it classifies by the target's
+**consumer** rather than by the target. The model says a registry is defined by
+what it asserts about, so a consumer axis would be a second dimension wearing
+one field. Better to keep one axis that is right than two that are tangled.
 
 Two naming notes, both collisions caught before they landed. `domain` was the
 first candidate for `area` and means the permissible value set throughout this

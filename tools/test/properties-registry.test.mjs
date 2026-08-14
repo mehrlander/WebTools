@@ -238,11 +238,12 @@ test('modes are coherent: computed names a real deriver, recorded names none', (
 // A registry row is itself an unaccounted classification unless something holds
 // its shape. properties.json is the index rather than a peer, so no declaration
 // governs it and the field check above cannot reach it. This is that check,
-// self-applied. `area` is the reader's grouping and its rule is stated in
-// docs/registries.md: contents asserts about an artifact in this tree,
-// conventions about a name the estate settled on, presentation about a way of
-// getting something in front of a reader.
-const AREAS = ['contents', 'conventions', 'presentation'];
+// self-applied. `area` is the reader's grouping and its rule is one question,
+// stated in docs/registries.md: does the target have a path in this tree? Nine
+// files, seven names. The first cut was three, splitting the names by topic,
+// which did not survive: two of them were names a program parses and two were
+// vocabulary a person picks from, so the seam ran through the group.
+const AREAS = ['files', 'names'];
 const REGISTRY_FIELDS = new Set(['id', 'area', 'title', 'gloss', 'carrier', 'format', 'key',
   'identity', 'rows', 'kind', 'target', 'scope', 'gate', 'fields', 'why']);
 
