@@ -2834,6 +2834,16 @@
       "assertion_names": null
     },
     {
+      "path": "tools/test/toss-paste.mjs",
+      "kind": "behavior",
+      "protects": "The clipboard panel routes a paste by shape: data, markdown, and logs reach the viewer instead of being rendered as HTML, and a markdown payload cannot script the shell.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:toss-paste",
+      "boot_smoke": null,
+      "assertion_names": null
+    },
+    {
       "path": "tools/test/toss-routed-subject.test.mjs",
       "kind": "behavior",
       "protects": "An envelope address comes apart into repo, ref, and path.",

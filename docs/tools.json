@@ -2,6 +2,10 @@
   "note": "Authored crosswalk over the page gallery: which pages the Tools view shelves, and the icon each is given. Rendered by lib/alpineComponents/tools.js. Each entry is { path, icon }; the title and the description are NOT repeated here, they are joined from pages/pages.json at render time, because the page owns them and a second copy drifted (measured 2026-08-13: note differed on all four rows, title on one). `path` is a bare hub path (mehrlander/web-tools at main) or a qualified cross-repo ref (owner/repo[@ref]:path), the same grammar as a pages catalog entry; a bare hub path must resolve to a row in pages/pages.json, which tools/test/properties-registry.test.mjs checks. Hand-maintained, a sibling to pins and stage.files, not generated.",
   "items": [
     {
+      "path": "pages/toss-render.html",
+      "icon": "ph-clipboard-text"
+    },
+    {
       "path": "pages/diff-tool.html",
       "icon": "ph-git-diff"
     },
