@@ -43,6 +43,7 @@ Every **deterministic** derived artifact is owned by one commit-time hook, [`.gi
 - `pages/**/*.html` changed → `npm run pages-index` → `pages/README.md` + `pages/index.html`
 - skills, `lib/`, `pages/`, or `docs/` changed → `npm run docs-reach` → the `reach` and `words` fields in `docs/docs.json`
 - `docs/docs.json` changed → `npm run docs-readme` → `docs/README.md`, then `npm run docs-reach` again (leg 3c)
+- `docs/SNAGS.md` changed → `npm run snags-index` → the index block at its top
 - `tracker/tasks/` changed → `npm run tracker-board` → `tracker/board.md` + `tracker/board.json`
 
 `reach` and `words` are the odd ones: derived fields in an otherwise authored
@@ -93,7 +94,7 @@ rather than restating it.
 
 ## Snags
 
-[`docs/SNAGS.md`](docs/SNAGS.md) is this repo's friction log, the store behind the conventions' "where a friction observation goes instead." Append when a session trips over something whose real fix belongs in a durable doc. Its own header carries the intake shape, the recurrence rule, and what is still provisional; this section used to restate all three and was the copy.
+[`docs/SNAGS.md`](docs/SNAGS.md) is this repo's friction log, the store behind the conventions' "where a friction observation goes instead." Its own header carries the intake shape, the recurrence rule, the generated index, and what is still provisional; this section restated them and was the copy.
 
 ## Environment & testing
 

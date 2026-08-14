@@ -47,7 +47,8 @@ carry one, `&tab=<tab>` (**project**'s pill row, **Map**'s tabs), `&item=`
 `smode`, `srepo`, `sref`, `spath`, `sfile`), `&window=`. A view
 keeps its default second key out of the URL, so an existing bare link still
 opens where it always did. `&view=portable` is a retired alias that still
-resolves to the Map.
+resolves to the Map. Across all of them, `&shell=nav|none` says how much of the
+app is drawn around whichever view the address names (below).
 
 **Every view is addressable, and one table says so.** The shell holds a `VIEWS`
 table, each row naming a view's URL key, how a link opens it, and what it stamps
@@ -100,6 +101,96 @@ rather than two. There is no repo-list dropdown and no quick-links row:
 **repo selection happens on the Repos dashboard** (a card opens the repo), which
 reads better than a dropdown and keeps the header a fixed set rather than one
 repos opt into.
+
+### The shell mode: how much of the app surrounds the view
+
+`?shell=` decides how much of show-repo is drawn around whichever view the rest
+of the address names. Three values, and `full` is the default and stays out of
+the URL, so nothing written before this existed changed shape:
+
+| Value | Header | Sidebar |
+| --- | --- | --- |
+| `full` (default) | yes | out on a wide screen, away on a phone |
+| `nav` | yes | away at every width; the header's hamburger opens it |
+| `none` | no | away; the FAB's Render tab is the way back |
+
+**It exists because most of these views have no page behind them.** Four do: a
+custom landing, a project landing, an app view, and the atlas are all iframes
+over a real standalone page, so the FAB offers a **bust-out** that leaves the
+embed and opens that page full-viewport. Files, Branches, Map, Search, State,
+Activity, and a repo's default overview are the shell's own, with nothing to
+bust out to. `?shell=none` is the address that shows one of them alone.
+
+**The sidebar is one boolean at every width now** (`sidebarOpen`), and the
+viewports differ in two things only: below `lg` it overlays with a scrim, at
+`lg` and up it is a column the main area sits beside, and it starts out on the
+wide one and away on the phone. Before this it could not be closed on a desktop
+at all: an unconditional `lg:translate-x-0` pinned the column open and the
+hamburger that would have collapsed it was `lg:hidden`. The header now carries
+that toggle at every width, lit while the sidebar is out, and the sidebar's own
+X is no longer phone-only either.
+
+**Toggling the sidebar does not touch the URL.** `syncUrl` pushes a history
+entry per distinct address, so an addressable sidebar would stack one on every
+tap and make Back walk them. The mode already carries the part worth linking
+to, which is how the screen **opens**; moving the sidebar inside a mode is
+reading, not navigation.
+
+It is a **reading parameter**, in the class `?use=`, `?overlay=`, and `?window=`
+belong to: it says how to present the screen, not which screen. So it gets no
+`VIEWS` row and is stamped unconditionally beside whatever the view table
+stamped, which is also what carries it through a ref switch (that mints its
+address from an empty base, where `?use=` must not survive but this must).
+`show-repo-routing.test.mjs` holds the two properties the table's own rows get
+for free: the address reopens as itself, and an unrecognized value reads as
+`full` rather than hiding the header with no way back.
+
+**Named `shell` because that is already this app's word for it**, the heading
+this section sits under and the `window.__shell` the page hangs its state on.
+`chrome` was the first name and was dropped: in a browser the chrome is the
+browser's, which is the one thing this cannot touch. `frame` was dropped too,
+since the drawer's width bar already means a frame and two meanings in one tab
+is how a bar gets misread.
+
+**The FAB's Render tab carries the header half of it**, as one on/off control
+sharing the row with the width presets, which is what makes `none` a mode rather
+than a trap: the same control that sets it brings the app back. It offers the
+header and nothing else. The sidebar already has two owners a reader can reach,
+the header's hamburger and `?shell=nav` in the address, so a third copy in the
+drawer would be a control for the thing standing next to it; the header is the
+part with no in-app control, since the header cannot carry the button that hides
+the header. That leaves the drawer a binary, and a binary needs no row of its
+own. Since the drawer offers one control over three modes, the shell remembers
+which header-bearing mode it left, so turning the header off and back on from a
+`?shell=nav` link does not silently promote the reader to `full` and spring the
+sidebar out at them.
+
+That control is not hard-coded. The drawer's opt-in contract now has a **state**
+half beside the `actions` half a page already had: a component exposing
+`toggles` as `[{ key, label, icon, on, title, set }]` gets one control per
+entry, inline with the presets past a hairline, and the FAB reads and calls
+without holding an opinion about what a toggle means. Unlike `actions`, a
+toggle is re-read from the live component on every paint, since a verb is fully
+described by a closure and a state is not.
+
+**The row holds one line, and that decides the labelling.** Four labelled width
+presets plus one labelled toggle wrapped on a 390pt device, so the presets went
+**icon-only under a single `Width` label**: one word for the group instead of
+four for its members, with a phone, a tablet, and a monitor carrying what they
+name and the arrows meaning the device in your hand. The toggle keeps its word,
+since an icon alone cannot say which part of a page it means and it is the odd
+one out in a row otherwise about size. Nothing on the row explains itself in
+prose either: a contributed `hint` line was tried and dropped, having spent two
+lines saying what the tooltip and the address already said. The one line that
+survives is the width caveat, which appears only off Actual and reports what no
+icon can.
+
+Fixing that surfaced an older defect in the same scan: the contract was read
+through `Alpine.$data(el)`, which returns the merged data **stack**, so every
+component nested inside the shell answered for the shell's properties as its
+own. It arrived visible (fourteen identical bars, one per nested component) and
+had been sitting quietly in `description` and `actions`, whose values happened
+to be empty wherever anyone looked. The scan now reads the element's own scope.
 
 ### The ref switch: which ref show-repo itself is running
 
@@ -428,14 +519,14 @@ card, deep-linking straight to its section. Rendered item kinds (both sources):
 path}` or a github.com URL), `url` (external link), `note` / `story` (inline
 body), `embed` (a renderer page in an iframe via a toss-render route).
 
-**Activity** gathers the estate's own motion under one header-nav stop. Four
+**Activity** gathers the estate's own motion under one header-nav stop. Five
 panes on a segmented pill (the shared internal-tab style), switching at every
 width, each keeping its own view key so `?view=activity`, `?view=sessions`,
-`?view=guides`, and `?view=chats` deep-link directly. Where a pane reads a
-cache, its **age pill** rides the pill row: it states the age at every width and
-opens the **State** view, where that cache's Refresh lives beside its cost and
-its throttle. It replaced an as-of reading that was hidden below `sm` next to a
-Refresh button that was not.
+`?view=guides`, `?view=chats`, and `?view=routes` deep-link directly. Where a
+pane reads a cache, its **age pill** rides the pill row: it states the age at
+every width and opens the **State** view, where that cache's Refresh lives
+beside its cost and its throttle. It replaced an as-of reading that was hidden
+below `sm` next to a Refresh button that was not.
 
 The first three are readings of the repos. **Branches** is what is in flight and
 **Sessions** is the work that made it: a branch is the artifact and a session is
@@ -487,6 +578,104 @@ rather than a link, since Gemini Apps chats have no per-conversation address.
 in-flight-dedup shape `kits/estate-search.js` established; a failed read is
 never memoized as empty, because an empty month and an unreachable month look
 identical on screen and mean opposite things.
+
+### Routes (`?view=routes`)
+
+**Routes** is the fifth pane and the first keyed to something other than git.
+Branches, Sessions, Guides and Chats all answer *who was working, and when*: the
+unit is a piece of work. Routes answers *on what*: the unit is a destination in
+the app. The estate had no reading of that at all, though the UI layer is where
+most of the work lands, and the app could not previously say what its own
+destinations were: `VIEWS` in `show-repo.html` dispatches and stamps them and
+carries no label, no gloss, and no idea which code draws the screen.
+
+[`docs/app-routes.json`](app-routes.json) is that statement, one row per
+address: what it is for, which group it is reached from, and the files that
+render it. `tools/test/app-routes.test.mjs` holds it to the `VIEWS` table both
+ways, so a route cannot exist in the router and not the manifest, and every
+declared file has to exist. The word is overloaded on purpose-free grounds and
+worth stating once: these are **app routes**, addresses in this page;
+[`docs/routes.json`](routes.json)'s "routes" are **toss routes**, a content type
+mapped to a renderer page. Different targets, so neither describes the other.
+
+The pane reads the manifest and one `commits?path=` call per declared carrier
+against the hub, ranks the rows freshest first, and joins each to the open pull
+requests whose files it touches. Nothing is cached and nothing is crawled: these
+routes belong to one page in one repo, so the read is about two dozen requests
+and is taken live, which is also why this pane has no age pill.
+
+**Every read is at the ref the code came from, not at main.** The manifest and
+the `VIEWS` table are held in lockstep at a ref, so reading the code from one
+and the manifest from another breaks the invariant the gate protects. Pinning
+the manifest to main did exactly that on the first preview of the branch that
+added it: the pane reported `GitHub Error 404` for a file that did not exist on
+main yet, and the failure read as an auth problem even though the rate figure in
+the same message showed the token had worked. `?use=` is the app's standing
+answer to "which ref am I running" (the ref switch reads the same key) and a
+`#gh=` toss injects the addressed ref under that key through toss-render's
+params shim, so one read covers the deployed page, a `?use=` preview, and a
+tossed branch alike. The commit dates ride the same ref, so the whole pane
+speaks about one tree, and a non-default ref is shown as a chip in the header
+rather than left to be inferred. The error names the address it could not read,
+which is what the first diagnosis lacked.
+
+**The join is files, and files are coarser than routes.** That is the pane's one
+real limit and it is shown rather than filed:
+
+- **The shell is excluded.** `pages/show-repo/show-repo.html` holds the router,
+  the header, the sidebar, and every pane's outer markup, so a commit to it
+  would date every route at once. It gets a row of its own at the foot instead,
+  because leaving it silently out would leave a reader wondering why the busiest
+  file in the app never dates anything.
+- **A wide file cannot be a row's reason.** Nine routes render from
+  `estate.js`. A file carrying three or more routes still dates a row that has
+  nothing narrower, and the row says `shared` beside the date, so a borrowed
+  reading is never mistaken for a claim about that route in particular.
+- **A blank `files` is a finding.** Three routes (landing, pages, project)
+  render from components defined inline in the shell and so have no code of
+  their own. The header counts them. That count is a reading of the app's shape,
+  which is why the manifest grades `files` as `counted` rather than required.
+
+A row's label opens the route through the shell's own dispatcher, so it is the
+same navigation a header tab performs. Only a bare `?view=<key>` is offered: an
+address carrying a placeholder (a repo, a file path, a promoted page) has no
+single destination, and those rows show the address as text rather than a link
+that would land nowhere. Such an address is also trimmed to its `?view=` half on
+the row, with the full shape in the expanded detail: `?view=app&appRepo=<owner/
+repo>&appPath=<path>` wrapped to two lines on a phone to say what the row's tone
+now says. The `shell` group (App view, Public browse) reads muted, because
+neither is a screen this app draws.
+
+**Rows fold into nav stops, which is the level the router flattens away.** The
+app addresses sub-tabs two ways: six are their own `?view=` key (Activity's
+five, Lists' two, Stage's two) and twelve are `?view=<parent>&tab=` (Map's
+eight, Project's four). The reason is archaeological rather than designed. Each
+flattened key used to *be* a nav stop and kept its key when its pane moved under
+another, so saved links keep resolving; Map's tabs were never separate
+destinations and were born as `&tab=`. A view key that outlived its stop is a
+fossil, and a flat list rendered fossils at the same rank as live destinations,
+which is what read oddly. Each route therefore declares its `stop`, held to
+`estateNav` by the gate, so the flattening is stated here rather than inferred,
+and the header counts it once as a figure rather than repeating a sentence on
+every folded stop. A stop owning one route is not a grouping and renders as a
+plain row.
+
+**The join runs both ways.** A route row lists the pull requests open against
+it; a **Branches** row carries a chip strip of the routes it is working on, off
+the same manifest, the same PR file lists, and the same narrow/wide rule, so the
+two readings cannot disagree. That shared half (the manifest plus one
+`pulls/N/files` per open PR, about six calls) loads on either pane, so visiting
+one warms the other, and the Branches pane skips the per-carrier dating it has
+no use for. A chip taps through to its route. Rows from every other repo carry
+nothing rather than an empty strip: routes are one page in one repo, and a row
+that cannot be answered should not look like a row with no answer.
+
+**The grouping takes its order from the ranking rather than recomputing it.**
+That is what keeps freshest-first true at both levels at once: stops appear in
+the order their freshest member does, rows keep their rank order inside. An
+earlier draft grouped by a fixed manifest order and cost the pane its headline,
+an hour-old route sitting below a six-day-old one because they were in different
+sections. Deriving the group order from the rank is what makes grouping safe.
 
 **The stop used to hold four panes**, adding To-do and Jots on the reasoning
 that the four read as a gradient of commitment: a jot is unshaped intent, a

@@ -52,6 +52,32 @@ widget with page furniture around it. The content gets the viewport; the chrome 
 the two thin bars. A small embedded deck is readable on a desktop and useless on a
 phone, which is where these get opened.
 
+**The exception, and it is the common case in this estate: a page that will be
+embedded takes the takeover in normal flow, not from a fixed root.** `fixed
+inset-0` resolves against the viewport. Inside an iframe, whether that means the
+frame's box or the top-level window is an engine question, and Safari has never
+answered it the way desktop Chromium does; iOS in particular sizes the frame to
+its content and leaves fixed children measuring against the outer viewport. A
+page mounted in a host that has a sidebar, which is exactly what a budget-drs
+appendix pane is, then lays out at window width inside a narrower frame and its
+right-hand column is cut off. Nothing about that reproduces in a headless
+Chromium check at any width, so it will not be caught by the measurement rule
+below.
+
+So a **tenant** (any page another page may embed: an appendix, a toss render, a
+stage preview) gets the same shape without the fixed root. `min-h-dvh` on the
+body, `sticky top-0` chrome, `sticky bottom-0` for the footer bar, and the
+document as the scroll container. It reads identically and survives being
+framed. budget-wa's reductions explorer has been built this way since it landed
+and has never done this; `mehrlander/home`'s landscape explorer was built with a
+fixed root on 2026-08-14, showed the cut, and was moved onto sticky chrome the
+same day. Reserve the fixed root for a page you know is only ever opened
+top-level. Two consequences to handle rather than discover: the document's
+scroll position has to be saved and restored by hand when a detail view replaces
+a long list, and `viewport-fit=cover` is worth dropping unless the design is
+genuinely edge to edge, since it is the other way content reaches a screen edge
+that clips it.
+
 **Type is for reading, not for fitting.** Content runs at `text-xl` or larger with
 `leading-8`. If content had to shrink to fit, the layout is wrong, not the type. On a
 phone the test is whether it reads at arm's length.

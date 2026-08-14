@@ -111,6 +111,9 @@
   await gh.load('kits/repo-activity-cache.js');
   // Sessions-aggregate builders for the private cache (state/sessions.json).
   await gh.load('kits/repo-sessions-cache.js');
+  // The pure fold behind Activity's Routes pane: the app's own destinations
+  // ranked by when the code behind each last moved (window.routeActivity).
+  await gh.load('kits/route-activity.js');
   // The private request/response mailbox (mailbox/requests -> results).
   await gh.load('kits/repo-mailbox.js');
   // The write-side channel: proposed cross-repo edits, applied only on confirm.
@@ -160,8 +163,9 @@
      front (header). The sidebar lists the repo's views — landing, atlas,
      files, stage, branches — plus pinned and recent shortcuts; the actual folder/file
      navigation lives in the main area (breadcrumb + listing, file content
-     beneath). The sidebar is pinned on desktop, a drawer on mobile.
-     See the design notes at the end of this file. -->
+     beneath). The sidebar shows or hides at every width, out by default on a
+     wide screen and away on a phone; ?shell= sets how much of this frame a link
+     opens with. See the design notes at the end of this file. -->
 <body class="h-dvh flex flex-col overflow-hidden bg-base-100 text-base-content" x-data="app()" x-cloak>
 
 <div class="toast toast-top toast-end z-[60]" x-data x-show="$store.toasts && $store.toasts.length">
@@ -188,8 +192,14 @@
      destination already named a few pixels to its right. The mark still leads
      the sidebar's crumb trail, where it is the route home from inside a repo and
      is doing work; two copies of it on one screen were the redundancy, not the
-     mark itself. What the header buys is the width. ─────────────────────── -->
-<header class="shrink-0 z-30 bg-base-100 border-b border-base-300">
+     mark itself. What the header buys is the width.
+
+     THE WHOLE HEADER IS CONDITIONAL under ?shell=none, which is what makes an
+     unframed link possible at all: every other view here is the shell's own,
+     with no standalone page behind it to link to the way an app view or a
+     custom landing has one. The way back is the FAB's Render tab, which
+     carries the mode as a bar. ─────────────────────────────────────────── -->
+<header x-show="shellMode !== 'none'" class="shrink-0 z-30 bg-base-100 border-b border-base-300">
   <div class="max-w-full px-4">
     <div class="h-14 flex items-center gap-0.5">
       <!-- App-level views: Activity / Repos / Stage / Tools / Map, the
@@ -228,8 +238,9 @@
            destination sitting a few pixels away. It still leads the sidebar crumb
            trail, which is where a reader inside a repo goes home from, so the app
            shows one copy of it rather than two, and the header keeps the width. The
-           mobile drawer toggle is its own hamburger, and it is now the only button in
-           the header outside the nav and the rail. AUTH left the chrome entirely: the
+           sidebar toggle is its own hamburger, on every viewport since the sidebar
+           became closable on all of them, and it is the only button in the header
+           outside the nav and the rail. AUTH left the chrome entirely: the
            token control is the account row on the Repos dashboard (estate.js
            accountPanel → the dialog's estate scope), which is where an account-level
            setting belongs, and every token-gated empty state points there. The
@@ -314,7 +325,7 @@
            EVERY VIEWPORT, unlike the rail beside it. This shipped desktop-only
            on the rail's reasoning (a second header cluster competing with a nav
            that already scrolls), and that reasoning does not survive contact
-           with the header it describes: the nav scrolls, but the drawer toggle
+           with the header it describes: the nav scrolls, but the sidebar toggle
            to the right of this is pinned and always visible, so the right end
            of the header is already a place where fixed controls live and one
            more costs the nav some of its scrolling window, nothing else. The
@@ -336,8 +347,22 @@
                                path: 'pages/show-repo/show-repo.html',
                                query: () => window.__shell.deepLinkParams(new URLSearchParams()).toString() })"></div>
 
-      <!-- Drawer toggle, where the sidebar is a drawer (below lg). -->
-      <button @click="openSidebar()" class="shrink-0 p-1 rounded-lg hover:bg-base-200 transition-colors lg:hidden" title="Menu">
+      <!-- THE SIDEBAR TOGGLE, at every width. It was lg:hidden, on the premise
+           that a pinned desktop sidebar never needs summoning, which held right
+           up until the sidebar could be put away: the desktop then had a column
+           it could not collapse and a hamburger that would have collapsed it
+           sitting one media query out of reach. Now it toggles, it lights when
+           the sidebar is out, and the two viewports differ in one thing only,
+           which way the sidebar starts. Hidden on desktop where showSidebar
+           says there is nothing to show (a signed-out estate), since a control
+           that opens an empty panel is worse than no control; the phone keeps
+           it, where the sidebar is also the route back out of the view. -->
+      <button @click="toggleSidebar()"
+              class="shrink-0 p-1 rounded-lg transition-colors"
+              :class="[sidebarOpen ? 'text-primary bg-primary/10' : 'hover:bg-base-200',
+                       !showSidebar && 'lg:hidden']"
+              :title="sidebarOpen ? 'Hide the sidebar' : 'Show the sidebar'"
+              :aria-expanded="sidebarOpen ? 'true' : 'false'">
         <i class="ph ph-list text-lg leading-none"></i>
       </button>
     </div>
@@ -346,9 +371,10 @@
 
 <div class="flex-1 flex min-h-0">
 
-  <!-- ── Sidebar: repo views + the file tree. Pinned on desktop, drawer on
-       mobile. ─────────────────────────────────────────────────────────────── -->
-  <div x-show="drawer" @click="drawer=false" x-transition.opacity
+  <!-- ── Sidebar: repo views + the file tree. One boolean at every width
+       (sidebarOpen), overlaying below lg and sitting as a column at lg and up;
+       ?shell= decides which way it starts. ────────────────────────────────── -->
+  <div x-show="sidebarOpen" @click="sidebarOpen=false" x-transition.opacity
        class="fixed inset-0 bg-black/30 z-40 lg:hidden" x-cloak></div>
 
   <!-- ── What the sidebar holds, and why the app views sit in two places ───────
@@ -357,12 +383,21 @@
        like the grid; its header icon opens the full grid) and the same app views
        the header's second group carries, both token-gated. The app views sit in
        both places on purpose: the header is the one-tap route, the sidebar the one
-       that survives a header too narrow to show them. It hides on desktop only
-       when the estate has neither (showSidebar), so a signed-out dashboard runs
-       full-width, and is a drawer on mobile. app.landingKind(repo) is the one
-       landing decision point within a repo. -->
-  <aside class="fixed inset-y-0 left-0 w-72 max-w-[85vw] z-50 bg-base-100 border-r border-base-300 shadow-xl flex flex-col transition-transform duration-200 ease-out lg:static lg:z-auto lg:shadow-none lg:translate-x-0 lg:w-80 xl:w-[22rem] lg:shrink-0"
-         :class="[drawer ? 'translate-x-0' : '-translate-x-full lg:translate-x-0', !showSidebar && 'lg:hidden']">
+       that survives a header too narrow to show them. It hides on desktop when
+       the estate has neither (showSidebar), so a signed-out dashboard runs
+       full-width, and whenever the viewer has put it away. app.landingKind(repo)
+       is the one landing decision point within a repo.
+
+       TWO MECHANISMS, ONE STATE. Below lg the panel is a fixed overlay and
+       sidebarOpen slides it; at lg and up it is a static column, so closing it
+       has to REMOVE it (lg:hidden) rather than translate it off, or the main
+       area would keep the gap where it used to be. That is why the closed
+       desktop case reads as a hide and the closed phone case as a slide, and
+       why the class list no longer carries an unconditional lg:translate-x-0:
+       that one modifier was the whole reason the desktop sidebar could not be
+       put away. -->
+  <aside class="fixed inset-y-0 left-0 w-72 max-w-[85vw] z-50 bg-base-100 border-r border-base-300 shadow-xl flex flex-col transition-transform duration-200 ease-out lg:static lg:z-auto lg:shadow-none lg:w-80 xl:w-[22rem] lg:shrink-0"
+         :class="[sidebarOpen ? 'translate-x-0' : '-translate-x-full', (!showSidebar || !sidebarOpen) && 'lg:hidden']">
     <!-- Sidebar top bar: in a repo, a CRUMB TRAIL (crumbBar, sidebarCrumbs).
          Two crumbs earn the bar back. The mark is the route to the dashboard,
          and since the header dropped its own copy of it, the only one in the
@@ -401,7 +436,10 @@
            to switch to. -->
       <nav id="sidebarCrumbs" class="min-w-0 flex-1"
            x-data="crumbBar({ items: () => window.__shell.sidebarCrumbs })"></nav>
-      <button @click="drawer=false" class="btn btn-square btn-ghost lg:hidden shrink-0"><i class="ph ph-x text-lg"></i></button>
+      <!-- Every width, now that every width can close it. It was lg:hidden
+           when only a phone could, and a panel that closes with no visible way
+           to close it is the defect that hid. -->
+      <button @click="sidebarOpen=false" class="btn btn-square btn-ghost shrink-0" title="Hide the sidebar"><i class="ph ph-x text-lg"></i></button>
 
       <!-- The repo crumb opens a REPO SWITCHER: which repository is showing,
            and nothing else. A breadcrumb names where you are, so the only menu
@@ -461,7 +499,7 @@
          and a client-side grep of the captured session records. The last
          row is always "Jot this", so a query that found
          nothing is kept rather than lost. Sits in the SIDEBAR, not the
-         header: pinned and ready on desktop, one drawer tap on a phone,
+         header: out and ready on a wide screen, one tap on a phone,
          where the header's nav already scrolls and its right end is already
          spoken for. Full lane doc in quick-find.js. -->
     <div class="px-3 pt-2 shrink-0" x-data="quickFind()"></div>
@@ -1616,7 +1654,44 @@ function app(){ return {
               run: () => ({ nav: href }) }];
   },
   view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'stage' | 'config' | 'app' | 'public'
-  drawer: false,          // mobile sidebar (pinned on desktop, ignores this)
+
+  // ── The shell mode: how much of the app is drawn around the view ──────────
+  //
+  // A READING parameter, in the class ?use=, ?overlay=, and ?window= belong to:
+  // it says how to PRESENT the screen, not which screen, so it gets no VIEWS
+  // row and is stamped beside whatever the view table stamps. `full` is the
+  // default and stays out of the URL, so every existing link is unchanged.
+  //
+  //   full  header, and the sidebar at its per-width default
+  //   nav   header, sidebar closed at every width (open it from the header)
+  //   none  neither; the view alone, which is what an unframed link wants
+  //
+  // `none` is not a trap: the FAB's Render tab carries this as a bar (the
+  // `modes` contract below), beside the ref and width bars, since which ref,
+  // what width, and how much shell are three readings of one question. That is
+  // the way back, and it is the same control that sets the mode in the first
+  // place, so nothing needs a second escape hatch parked on the page.
+  //
+  // Named `shell` because that is already this app's word for the header and
+  // sidebar around a view (docs/show-repo.md leads with it, and window.__shell
+  // is this object). `chrome` was the first name and was dropped: in a browser
+  // the chrome is the BROWSER's, which is the one thing this cannot touch.
+  // `frame` was dropped too, since the Render tab's width bar already means a
+  // frame, and two meanings in one tab is how a bar gets misread.
+  SHELL_MODES: ['full', 'nav', 'none'],
+  shellMode: 'full',
+
+  // Whether the sidebar is showing. One boolean at every width, which is the
+  // whole of the mobile/desktop difference now: below lg it is an overlay with
+  // a scrim, at lg and up a static column the main area sits beside, and the
+  // only other difference is which way it starts (open on desktop, closed on a
+  // phone). It used to be `drawer`, read below lg only, with an unconditional
+  // lg:translate-x-0 pinning the column open on desktop with no way to collapse
+  // it: the hamburger that would have done it was lg:hidden. So the desktop had
+  // a sidebar it could not put away, and an unframed link had nothing to ask
+  // for. The rename is the point, not tidiness: this is no longer a phone
+  // affordance, it is the sidebar's state.
+  sidebarOpen: false,
   atlasSeen: false,       // mount the atlas iframe lazily, on first visit
   estateSeen: false,      // mount the estate component lazily, on first visit
   configSeen: false,      // mount the config-view component lazily, on first visit
@@ -1716,6 +1791,9 @@ function app(){ return {
     // session, and reading through URLSearchParams is what lets a toss deliver
     // it to the framed shell (the params shim answers this lookup).
     this.overlayBranch = (new URLSearchParams(location.search).get('overlay') || '').trim();
+    // Read before anything paints, so the shell never flashes its full self on
+    // the way to a ?shell=none load. Same read on popstate (restoreFromUrl).
+    this.readShellMode();
     const ready = await waitFor(() => window.GH);
     if (!ready) return notify('Boot timed out waiting for modules. Reload to retry.');
     const gh = new window.GH({ token: window.TOKEN });
@@ -3749,6 +3827,7 @@ function app(){ return {
     { key: 'sessions', open(){ this.goSessions(); } },
     { key: 'guides',   open(){ this.goGuides(); } },
     { key: 'chats',    open(){ this.goChats(); } },
+    { key: 'routes',   open(){ this.goRoutes(); } },
     { key: 'map', alias: 'portable',
       open(u){ this.goMap(u.tab); },
       stamp(p){
@@ -3852,6 +3931,12 @@ function app(){ return {
     const p = base || new URLSearchParams();
     const s = Alpine.store('browser');
     if (s.repo && s.repo !== this.DEFAULT_REPO) p.set('repo', s.repo); else p.delete('repo');
+    // Set or deleted unconditionally, like `repo` and for the same reason, and
+    // OUTSIDE the view table: the shell mode is a reading parameter, so it
+    // survives a view change and travels with the address the header's ref
+    // switch mints (which starts from an empty base, where ?use= must not
+    // survive but this must, or a ref switch would silently reframe the page).
+    if (this.shellMode !== 'full') p.set('shell', this.shellMode); else p.delete('shell');
     for (const k of this.VIEW_KEYS) p.delete(k);
     // The browsed ref rides beside the repo, not on a view. It was the Files
     // view's key while the Files view was the only thing that read it; the
@@ -3906,6 +3991,9 @@ function app(){ return {
     try {
       const url = this.parseUrl();
       if (url && url.window) this.branchWindow = url.window;
+      // Back out of a mode change the way you back out of a view change: the
+      // address is the whole state, so a restore re-reads this too.
+      this.readShellMode();
       await this.ensureBrowser(url?.repo, url?.ref);
       // A miss here is a real address the table cannot open, so land somewhere
       // honest rather than leaving the previous screen up under a new URL.
@@ -3968,7 +4056,7 @@ function app(){ return {
   // the grid and the Stage, switching on this.view, sharing the one lazy
   // mount); estateCtx is the wider context test the sidebar switches on.
   // 'surfaces' is in this list as the Stage's alias, not as a second pane.
-  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions', 'guides', 'chats'].includes(this.view); },
+  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions', 'guides', 'chats', 'routes'].includes(this.view); },
   // The Lists view is the one estate pane that FILLS rather than flows: its two
   // halves scroll inside themselves, so the page must not scroll and the chain
   // from the pane down to the component root has to carry a definite height.
@@ -3983,8 +4071,9 @@ function app(){ return {
   // Whether the pinned desktop sidebar has anything to show: always in a repo
   // (its views / pins / recents), and in the estate whenever it has repo-sourced
   // content — the Repos index or the app views (News). Both are token-gated, so
-  // a signed-out estate has neither and the dashboard takes the full width (the
-  // mobile drawer still opens via the hamburger regardless).
+  // a signed-out estate has neither and the dashboard takes the full width. It
+  // is about CONTENT, not about the viewer's choice: sidebarOpen carries that,
+  // and the aside is gone from a wide screen when either says so.
   get showSidebar(){ return !this.estateCtx || this.estateRepos.length > 0 || this.sidebarAppViews.length > 0; },
   // The sidebar Repos index, folded into its groups (core / data / tools …) in
   // the sorted order estateRepos already carries, so each group's rows stay
@@ -4026,7 +4115,7 @@ function app(){ return {
   // Both old keys still route (?view=todo and ?view=jots land on Lists).
   get estateNav(){
     return [
-      { view: 'activity', views: ['activity', 'sessions', 'guides', 'chats'],
+      { view: 'activity', views: ['activity', 'sessions', 'guides', 'chats', 'routes'],
         icon: 'ph-pulse',    label: 'Activity', go: () => this.goActivity() },
       { view: 'todo', views: ['todo', 'jots'],
         icon: 'ph-list-checks', label: 'Lists',  go: () => this.goTodo() },
@@ -4204,6 +4293,12 @@ function app(){ return {
   // advances when an export lands in chat-histories. The pane states that
   // instead of offering a refresh that would do nothing.
   goChats(){ this.estateSeen = true; this.view = 'chats'; this.syncUrl(); },
+  // Activity's fifth pill: the app's own destinations, dated by the code behind
+  // them. It reads docs/app-routes.json and one last-commit call per declared
+  // carrier against THIS repo, so it warms nothing shared: the other four panes
+  // are cross-repo and ride the estate's caches, while this one is a read of
+  // the hub's own history and is cheap enough to take live.
+  goRoutes(){ this.estateSeen = true; this.view = 'routes'; this.syncUrl(); },
   goLanding(){ this.view = 'landing'; this.syncUrl(); },
   goPages(){ this.view = 'pages'; this.syncUrl(); },
   goAtlas(){ this.atlasSeen = true; this.view = 'atlas'; this.syncUrl(); },
@@ -4297,7 +4392,74 @@ function app(){ return {
     if (v && v.key && !list.some(x => x.key === v.key)) list.unshift(v);
     return list;
   },
-  openSidebar(){ this.drawer = true; },
+  // ── The shell mode, and the sidebar it decides the opening state of ───────
+  //
+  // Read straight from location.search rather than through parseUrl(), which
+  // returns null when the address names no repo, file, or view: a bare
+  // `?shell=none` on the estate is a real link and would otherwise be dropped
+  // on the floor.
+  readShellMode(){
+    const v = (new URLSearchParams(location.search).get('shell') || '').trim();
+    this.shellMode = this.SHELL_MODES.includes(v) ? v : 'full';
+    this.sidebarOpen = this.defaultSidebarOpen;
+  },
+  // Desktop opens with the sidebar out, a phone with it away, and only the
+  // `full` mode takes that default: the other two are asking for the view.
+  // Matched to the lg breakpoint the sidebar's own classes switch on, so the
+  // default and the layout cannot disagree about what "desktop" means.
+  get defaultSidebarOpen(){
+    return this.shellMode === 'full' && this.wideViewport;
+  },
+  get wideViewport(){
+    try { return window.matchMedia('(min-width: 1024px)').matches; } catch { return true; }
+  },
+  setShellMode(mode){
+    if (!this.SHELL_MODES.includes(mode) || mode === this.shellMode) return;
+    if (mode === 'none') this._shellReturn = this.shellMode;
+    this.shellMode = mode;
+    this.sidebarOpen = this.defaultSidebarOpen;
+    this.syncUrl();
+  },
+  // Which header-bearing mode to come back to. The drawer offers ONE control, a
+  // header on/off (see `toggles`), which is a projection of three modes onto
+  // two, so coming back is ambiguous and this holds the answer. Without it,
+  // someone who opened a ?shell=nav link, hid the header and brought it back
+  // would land on `full` and have the sidebar spring out at them, a state they
+  // never asked for and would have to put away by hand.
+  _shellReturn: 'full',
+  setHeader(on){ this.setShellMode(on ? (this._shellReturn || 'full') : 'none'); },
+  // Deliberately NOT stamped into the URL. syncUrl pushes a history entry per
+  // distinct address, so an addressable sidebar would put one on the stack
+  // every time the drawer was tapped and make Back walk them; and the mode
+  // already carries the part of this worth linking to, which is how the screen
+  // OPENS. Toggling within a mode is reading, not navigation.
+  toggleSidebar(){ this.sidebarOpen = !this.sidebarOpen; },
+  openSidebar(){ this.sidebarOpen = true; },
+
+  // The FAB's opt-in contract for STATE, beside `actions` for verbs: each entry
+  // is one on/off control the drawer's Render tab renders INLINE with the width
+  // presets, since both answer how this view is being presented and a second
+  // row for one question was the bigger half of the drawer's height. The shape
+  // is { key, label, icon, on, title, set }; the FAB only reads and calls. The
+  // row is one line and stays one line, so there is nowhere to explain a state
+  // in prose: the tooltip carries the sentence, and the address carries the
+  // fact, which is the point of putting the mode in the address.
+  //
+  // ONE CONTROL, not three, and the sidebar is deliberately not among them.
+  // The sidebar already has two owners a reader can reach: the header's
+  // hamburger in the app, and ?shell=nav in the address. A third copy in the
+  // drawer would be a control for the thing standing next to it. What is left
+  // is the only part of the shell with no in-app control, since the header
+  // cannot carry the button that hides the header.
+  get toggles(){
+    const on = this.shellMode !== 'none';
+    return [{
+      key: 'header', label: 'Header', icon: 'ph-layout', on,
+      title: on ? 'Hide the header and show the view alone (?shell=none)'
+                : 'Bring the header back, and its sidebar toggle with it',
+      set: v => this.setHeader(v),
+    }];
+  },
 
   // ── Swipe paging between dashboard views (touch only) ─────────────────────
   // The estateNav set (Activity / Repos / Stage / Tools / Map, plus
@@ -4368,7 +4530,7 @@ function app(){ return {
   _run(fn){ let done = false; return () => { if (done) return; done = true; fn(); }; },
 
   onSwipeStart(e){
-    if (this._pBusy || this.drawer || !e.touches || e.touches.length !== 1){ this._pPane = null; return; }
+    if (this._pBusy || this.sidebarOpen || !e.touches || e.touches.length !== 1){ this._pPane = null; return; }
     const pane = this._activePane();
     if (!pane || this._inHScroll(e.target) || this._optedOut(e.target)){ this._pPane = null; return; }
     this._pX = e.touches[0].clientX; this._pY = e.touches[0].clientY;

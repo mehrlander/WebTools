@@ -135,6 +135,91 @@ test('the second key rides along, for the views that carry one', () => {
   }
 });
 
+// ── The shell mode (?shell=), a READING parameter beside the view table ──────
+//
+// It says how much of the app is drawn around the view, not which view, so it
+// has no VIEWS row on purpose and is stamped unconditionally beside whatever
+// the table stamped. That places it outside everything above, and the two
+// properties it has to hold are exactly the ones the view table's rows get for
+// free: an address that reopens as itself, and a default that never appears.
+
+test('the shell mode round-trips, and only when it is not the default', () => {
+  const store = () => ({ repo: 'mehrlander/home', ref: '', defaultRef: 'main', activeFile: null, path: '' });
+
+  for (const mode of ['nav', 'none']) {
+    const { shell: s } = makeShell({ browserStore: store() });
+    s.view = 'map';
+    s.setShellMode(mode);
+    const qs = s.deepLinkParams(new URLSearchParams()).toString();
+    assert.match(qs, new RegExp('(^|&)shell=' + mode + '($|&)'),
+      `?shell=${mode} was not stamped, so the mode cannot be linked to`);
+
+    const { shell: reopened } = makeShell({ search: '?' + qs, browserStore: { repo: '' } });
+    reopened.readShellMode();
+    assert.equal(reopened.shellMode, mode, `?shell=${mode} did not survive a cold load`);
+    // Reopening must still land on the view: the mode rides beside the view
+    // keys, so a collision would show up here as a lost or hijacked address.
+    assert.equal(landsOn(reopened, reopened.parseUrl()), 'map',
+      `?shell=${mode} disturbed the view its link also names`);
+  }
+
+  // The default stays out, which is what keeps every link written before this
+  // existed byte-identical to one written after it.
+  const { shell: plain } = makeShell({ browserStore: store() });
+  plain.view = 'map';
+  assert.equal(plain.shellMode, 'full', 'the default mode is not full');
+  assert.ok(!plain.deepLinkParams(new URLSearchParams()).has('shell'),
+    'the default mode stamped itself, so it would appear on every address');
+});
+
+test('an unknown shell mode reads as the default rather than blanking the app', () => {
+  // A hand-edited or truncated ?shell= must not hide the header with no way
+  // back: an unrecognized value is not a fourth mode, it is no mode.
+  // Surrounding whitespace is trimmed rather than rejected, the way ?overlay=
+  // is read, so `shell=%20none` is `none` and is not in this list.
+  for (const bad of ['', 'hidden', 'nav-only', 'FULL', '1']) {
+    const { shell: s } = makeShell({ search: '?shell=' + encodeURIComponent(bad), browserStore: { repo: '' } });
+    s.readShellMode();
+    assert.equal(s.shellMode, 'full', `?shell=${JSON.stringify(bad)} resolved to something other than full`);
+  }
+});
+
+test('the FAB toggle contract is well formed, and its setter is the mode setter', () => {
+  // The Render tab renders one on/off control per entry, inline with the width
+  // presets. A malformed row paints a dead button, so the shape is checked here
+  // rather than left to be seen.
+  const { shell: s } = makeShell({ browserStore: { repo: '' } });
+  const [t, ...rest] = s.toggles;
+  assert.equal(rest.length, 0, 'show-repo contributes more than one toggle; the doc names one');
+  assert.ok(t.key && t.label && t.icon && typeof t.set === 'function',
+    'the toggle row is missing key, label, icon, or set');
+  assert.equal(t.on, true, 'the toggle does not start on, so the default state reads as the exceptional one');
+  // The row is one line and carries no prose, so the tooltip is the only place
+  // a state can be said in words, and both states have to say something.
+  for (const state of [true, false]) {
+    s.setHeader(state);
+    const cur = s.toggles[0];
+    assert.equal(cur.on, state, 'the toggle re-reads a stale value, so it would light the wrong way');
+    assert.ok(cur.title && cur.title !== cur.label, `the ${state ? 'on' : 'off'} state has no tooltip of its own`);
+  }
+  assert.equal(s.shellMode, 'none', "the toggle's setter did not move the shell");
+});
+
+test('the header toggle returns to the mode it left, not to full', () => {
+  // The drawer offers one binary over three modes, so coming back is ambiguous
+  // and the shell remembers. Without this, someone who opened a ?shell=nav link
+  // and toggled the header off and on would land on full and have the sidebar
+  // spring out at them.
+  for (const start of ['full', 'nav']) {
+    const { shell: s } = makeShell({ search: '?shell=' + start, browserStore: { repo: '' } });
+    s.readShellMode();
+    s.setHeader(false);
+    assert.equal(s.shellMode, 'none', `from ${start}: the header did not come off`);
+    s.setHeader(true);
+    assert.equal(s.shellMode, start, `from ${start}: the header came back to ${s.shellMode} instead`);
+  }
+});
+
 // The repo sidebar's Files row leaves the repo for the central surface, and
 // what it carries is the whole of that hand-off: the repo, and the ref only
 // when it is off the default, since '' means "the default branch" on the other

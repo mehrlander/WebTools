@@ -55,10 +55,41 @@
       ]
     },
     {
+      "path": "tools/test/app-routes.test.mjs",
+      "kind": "gate",
+      "protects": "The route manifest and show-repo.html's VIEWS table describe the same set of addresses, every declared file exists, and the fold refuses to date a route off the shell or off a file too many routes share.",
+      "assertions": 20,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "every route the router dispatches is described, and nothing else is",
+        "every row says what it is, where it is, and what draws it",
+        "every estate route declares the nav stop that actually owns it",
+        "the two sub-tab encodings, counted",
+        "an alias is a retired key, so it never doubles as a live one",
+        "shared is derived from being named twice, never authored",
+        "a wide file does not date a row it cannot speak for",
+        "the shell is excluded from attribution and reported on its own",
+        "a route with no code of its own is a row, flagged, not a gap",
+        "branches join on the files they touch, carrying the hits",
+        "a row dated by its own code outranks every borrowed one, however fresh",
+        "undated rows fall to the bottom rather than to the top",
+        "a branch hitting only a wide file is near a route, not open on it",
+        "pathsToRead is every carrier plus the shell, deduped",
+        "stops order by their freshest member, rows by recency inside",
+        "a stop owning one route says so, so it need not render as a section",
+        "routesTouched applies the same narrow/wide rule as the forward join",
+        "routesTouched never counts the shell, and reports the hits it used",
+        "the forward and reverse joins agree",
+        "a stop sums the work open across its rows"
+      ]
+    },
+    {
       "path": "tools/test/artifacts-lockstep.test.mjs",
       "kind": "lockstep",
       "protects": "Every deterministic generator is re-run in check mode, so a committed artifact cannot sit behind its source.",
-      "assertions": 7,
+      "assertions": 8,
       "method": "spawn",
       "runner": "suite",
       "boot_smoke": [],
@@ -67,6 +98,7 @@
         "the page catalogs are in lockstep with pages/",
         "docs/README.md is in lockstep with the documentation registry",
         "the harness census is in lockstep with tools/ and scripts/",
+        "the snags index is in lockstep with docs/SNAGS.md",
         "the tracker board is in lockstep with tracker/tasks/",
         "the board generator is byte-deterministic",
         "the plugin's vendored conventions are in lockstep with docs/"
@@ -1012,6 +1044,29 @@
       ]
     },
     {
+      "path": "tools/test/estate-routes.test.mjs",
+      "kind": "behavior",
+      "protects": "The Routes pane reads exactly the carriers its manifest declares, survives one with no commits, keeps the shell out of every route's date, joins open PRs on the files they touch, and does not relaunch itself after a failure.",
+      "assertions": 12,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "the loader asks for exactly the declared carriers plus the shell",
+        "a carrier with no commits leaves its route undated rather than throwing",
+        "the shell dates its own row and no route",
+        "rows rank freshest first, undated last",
+        "open PRs join on the files they touch, and only those",
+        "the census counts the routes with no code of their own",
+        "only a bare ?view= address is offered as a tap",
+        "the pane reads at the running ref, so a preview is not pinned to main",
+        "a failed load names the address it could not read",
+        "a branch row reports the routes it touches, and only for the hub",
+        "the shared half loads without the dating, and only once",
+        "the group is a row label read off the manifest, not a section"
+      ]
+    },
+    {
       "path": "tools/test/estate-rows.test.mjs",
       "kind": "component",
       "protects": "Repo cards group and order by each repo's declared position, a -private companion nests into its parent, and an opted-out repo is absent entirely rather than rendered empty.",
@@ -1034,7 +1089,7 @@
     {
       "path": "tools/test/estate-search.test.mjs",
       "kind": "behavior",
-      "protects": "The shared search core: a failed tree fetch is never cached as an empty tree, names search reaches any ref, scopes to a folder before spending its cap, and reports unreadable trees, code search carries its scope and fragments, the session grep matches what a record quotes, and reset forgets it all.",
+      "protects": "The shared search core: a failed tree fetch is never cached as an empty tree, names search reaches any ref and reports unreadable trees, code search carries its scope and fragments, the session grep matches what a record quotes, and reset forgets it all.",
       "assertions": 10,
       "method": "alpine",
       "runner": "suite",
@@ -1154,19 +1209,58 @@
       ]
     },
     {
+      "path": "tools/test/fab-tabstrip-geometry.mjs",
+      "kind": "behavior",
+      "protects": "The FAB's tab icons hold identical coordinates in every tab state, so the strip stays a spatial memory; measured in a real browser at 390px, which jsdom cannot do.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:tabstrip",
+      "boot_smoke": null,
+      "assertion_names": null
+    },
+    {
+      "path": "tools/test/fab-text.test.mjs",
+      "kind": "behavior",
+      "protects": "The drawer's fifth tab reports only what it can stand behind: the app-versus-document gate reads the signal that was measured to separate them, and the prose checks stay off pages whose text is labels.",
+      "assertions": 17,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "the strip is data, and every tab in it has a pane",
+        "setTab switches the pane and runs the tab’s opener",
+        "the strip’s one label names the selected tab, and is derived",
+        "the read separates body prose from chrome, and counts runs",
+        "a block boundary ends a sentence; an inline element does not",
+        "the app gate reads words per run, which is the signal that separates",
+        "the prose checks ignore what is not prose",
+        "the read scopes to a live selection, and falls back to the page",
+        "named paths include code spans; bare paths do not",
+        "match looks up the registered set, and root-level files are reachable",
+        "the tree is read only for what the registry does not know",
+        "the unregistered lane drops what it used to report as findings",
+        "a lookup respects name boundaries and claims the longest span",
+        "a registry that will not read costs descriptions, not rows",
+        "a tree failure degrades the answer rather than ending it",
+        "match runs with the read, without a tap",
+        "an unreadable document is a null, not a throw"
+      ]
+    },
+    {
       "path": "tools/test/fab-toss.test.mjs",
       "kind": "component",
       "protects": "The fab keeps shell identity when mounted inside a toss.",
-      "assertions": 11,
+      "assertions": 12,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
-        10
+        11
       ],
       "assertion_names": [
         "normal mount renders and keeps shell identity",
         "singleton guard: __fabHosted suppresses the mount",
         "adopts a pre-stamped toss subject at init, restores on clear, re-adopts on event",
+        "a local subject is a toss with no repo: the frame is kept, the repo claims are dropped",
         "classifyRows: statuses and ordering (baseline, differs desc, unknown, same, missing)",
         "renderAtRef in a toss re-addresses the shell instead of opening the overlay",
         "mode getters: a toss reads as off-canonical, marks the subject ref",
@@ -1405,6 +1499,18 @@
       "assertion_names": [
         "${file} registers window.${globalName}",
         "wsl.js (async gh.load shape) registers window.wsl once awaited"
+      ]
+    },
+    {
+      "path": "tools/test/lib-parses.test.mjs",
+      "kind": "behavior",
+      "protects": "A lib file that fails to parse cannot fail quietly: gh.load swallows the SyntaxError and keeps the pre-build's older copy of the component running, so the page renders the last good version of the change you are looking at.",
+      "assertions": 1,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "every loadable lib file compiles as a function body"
       ]
     },
     {
@@ -2177,7 +2283,7 @@
     {
       "path": "tools/test/search-view.test.mjs",
       "kind": "component",
-      "protects": "The central file surface: a hit is read in place at the ref it was found on, without switching the browsed repo, and an empty query under a folder lists it rather than missing.",
+      "protects": "The Search view: a carried seed auto-runs, names mode passes the ref through to opening, contents mode builds its scope qualifier, errors surface whole, session hits dispatch the open event, and each run restamps the address.",
       "assertions": 20,
       "method": "alpine",
       "runner": "suite",
@@ -2360,6 +2466,16 @@
       ]
     },
     {
+      "path": "tools/test/shot-warnings.mjs",
+      "kind": "tool",
+      "protects": "The screenshot tool warns when the pixels are not your code: a lib file that failed to load, or a pre-build behind lib/. Also that a clean run stays silent.",
+      "assertions": null,
+      "method": "spawn",
+      "runner": "npm run test:shot-warnings",
+      "boot_smoke": null,
+      "assertion_names": null
+    },
+    {
       "path": "tools/test/show-repo-board-review.test.mjs",
       "kind": "behavior",
       "protects": "The board projection is preferred and the markdown is never fetched for it.",
@@ -2494,7 +2610,7 @@
       "path": "tools/test/show-repo-routing.test.mjs",
       "kind": "behavior",
       "protects": "show-repo's view routing: every screen the shell can enter has an address that reopens it, no view name is compared outside the VIEWS table, and a retired view's key aliases onto what replaced it rather than dropping the link.",
-      "assertions": 11,
+      "assertions": 15,
       "method": "pure",
       "runner": "suite",
       "boot_smoke": [],
@@ -2505,6 +2621,10 @@
         "an alias resolves to its row rather than to a view of its own",
         "every view round-trips: stamped, then parsed back to itself",
         "the second key rides along, for the views that carry one",
+        "the shell mode round-trips, and only when it is not the default",
+        "an unknown shell mode reads as the default rather than blanking the app",
+        "the FAB toggle contract is well formed, and its setter is the mode setter",
+        "the header toggle returns to the mode it left, not to full",
         "the repo sidebar hands its Files row to the central surface, scoped",
         "the retired views alias onto what replaced them, carrying their scope",
         "opening a file routes to the Files view, scoped to its folder",
@@ -2856,6 +2976,16 @@
       "assertion_names": null
     },
     {
+      "path": "tools/test/toss-paste.mjs",
+      "kind": "behavior",
+      "protects": "The clipboard panel routes a paste by shape: data, markdown, and logs reach the viewer instead of being rendered as HTML, and a markdown payload cannot script the shell.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:toss-paste",
+      "boot_smoke": null,
+      "assertion_names": null
+    },
+    {
       "path": "tools/test/toss-routed-subject.test.mjs",
       "kind": "behavior",
       "protects": "An envelope address comes apart into repo, ref, and path.",
@@ -3002,6 +3132,16 @@
         "every ?use= loader passes cache: no-store",
         "no page still claims a branch ref is cache-safe on its own"
       ]
+    },
+    {
+      "path": "tools/test/viewer-image.mjs",
+      "kind": "component",
+      "protects": "The viewer's image module: a repo image is re-fetched as bytes and drawn (so a private repo works), and it opens over a host's blanket defaultMode.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:viewer-image",
+      "boot_smoke": null,
+      "assertion_names": null
     },
     {
       "path": "tools/test/viewer.test.mjs",

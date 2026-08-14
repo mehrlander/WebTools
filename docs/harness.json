@@ -240,6 +240,16 @@
       "tested": false
     },
     {
+      "path": "tools/build/snags-index.mjs",
+      "role": "",
+      "layer": "tools/build",
+      "lines": 163,
+      "invocation": "npm:snags-index",
+      "emits": false,
+      "named": false,
+      "tested": true
+    },
+    {
       "path": "tools/build/tests-index.mjs",
       "role": "restamp the derived half of docs/tests.json, the test registry",
       "layer": "tools/build",
@@ -363,7 +373,7 @@
       "path": "tools/render/cdn.mjs",
       "role": "the CDN URL to local-file resolver both renderers share",
       "layer": "tools/render",
-      "lines": 363,
+      "lines": 369,
       "invocation": "imported",
       "emits": false,
       "named": true,
@@ -393,7 +403,7 @@
       "path": "tools/render/scenarios/activity-fake.mjs",
       "role": "seed fake activity data so the token-gated Open view renders for a shot",
       "layer": "tools/render/scenarios",
-      "lines": 83,
+      "lines": 101,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -850,6 +860,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/fab-text-match.mjs",
+      "role": "drive the Text tab for a shot: the read is real, the tree and registry reads are seeded, and STATE picks the un-run pane, the resolved match, or a selection-scoped read",
+      "layer": "tools/render/scenarios",
+      "lines": 91,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/fab-toss.mjs",
       "role": "toss-render address mode with the fab's toss integration and singleton guard",
       "layer": "tools/render/scenarios",
@@ -1130,8 +1150,18 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/routes-pane.mjs",
+      "role": "Renders Activity's Routes pane with real data for a headless shot: the manifest from the served tree, each carrier's last-commit date derived from git log at render time rather than frozen, and a set of open PRs covering the on/near/no-match cases.",
+      "layer": "tools/render/scenarios",
+      "lines": 78,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/search-cold.mjs",
-      "role": "the Search view's cold open, the state that shipped wrong once: the header nav tapped with nothing seeded has to land on a listing of the browsed repo, not on an empty box over an empty list with its own button greyed out",
+      "role": "",
       "layer": "tools/render/scenarios",
       "lines": 47,
       "invocation": "driver",
@@ -1141,7 +1171,7 @@
     },
     {
       "path": "tools/render/scenarios/search-controls.mjs",
-      "role": "the Search view's scope controls: repos as a single-select rail, the ref as a dated newest-first picker whose box filters rather than leads, the folder as the tap-through picker, and no explanatory prose above any of them",
+      "role": "",
       "layer": "tools/render/scenarios",
       "lines": 71,
       "invocation": "driver",
@@ -1151,7 +1181,7 @@
     },
     {
       "path": "tools/render/scenarios/search-files.mjs",
-      "role": "the Search view as the central file surface: a folder-scoped listing with no query at all, and a real file from it open in the shared viewer beside the results. The sandbox blocks the API, so the listing is stubbed and the file read is served from the committed source over a same-origin fetch",
+      "role": "",
       "layer": "tools/render/scenarios",
       "lines": 64,
       "invocation": "driver",
@@ -1273,7 +1303,7 @@
       "path": "tools/render/screenshot.mjs",
       "role": "the Chromium pixel render behind npm run shot; --script drives a scenario first",
       "layer": "tools/render",
-      "lines": 195,
+      "lines": 244,
       "invocation": "npm:shot",
       "emits": false,
       "named": true,

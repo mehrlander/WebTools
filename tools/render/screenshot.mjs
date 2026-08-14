@@ -22,6 +22,7 @@
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import http from 'node:http';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
@@ -82,6 +83,11 @@ function transformPage(html) {
   if (!re.test(html)) throw new Error('--build: no gh-api.js jsDelivr import found in page to rewrite');
   return html.replace(re, JSON.stringify(buildRel));
 }
+
+// Does this page boot from the pre-build rather than the gh.load chain? Read
+// from the page's own source, since that is what decides which code runs, and
+// it is the precondition for the staleness warning built after the render.
+const preBuildPage = (await readFile(pageAbs, 'utf8')).includes('dist/web-tools.js');
 
 // Loopback static server rooted at the repo. The target page is transformed in
 // flight; every other path is served raw from disk (lets dist/<page>.js and any
@@ -168,8 +174,51 @@ try {
 const okScripts = loadedScripts.filter(s => s.status === 'ok').map(s => s.path);
 const badScripts = loadedScripts.filter(s => s.status !== 'ok');
 
+// ── Why a screenshot can be evidence about code that is not running ────────
+//
+// Twice, one week apart, a shot was read as proof about a change it did not
+// contain, and BOTH times the page rendered perfectly. That is the whole
+// difficulty: the failure mode of this tool is a correct-looking picture.
+//
+//   1. A lib file failed to load (a syntax error, a fetch miss). gh.load warns
+//      and rejects, and the pre-build's inlined copy of that component stays
+//      registered, so the page runs the PREVIOUS build of the file being
+//      changed. Recorded as a NOT-ok row in loadedScripts.
+//      (snags: silent-fallback-old-build, 2026-08-14)
+//   2. dist/web-tools.js is behind lib/. A page that boots from the pre-build
+//      loads no lib files at all, so nothing fails and nothing is recorded:
+//      the shot is simply of the last build. Nothing in the run detects this,
+//      which is why it is checked here rather than inferred.
+//      (web-tools PR #419, chasing an image module that was working)
+//
+// Both were already discoverable from this log, at the bottom, after the
+// intercept list. Being present is not the same as being read, so anything
+// that means "these pixels may not be your code" is hoisted to the TOP and
+// labeled. Warnings do not fail the run: a stale pre-build is often exactly
+// what you meant to shoot.
+const warnings = [];
+if (badScripts.length) {
+  warnings.push(`${badScripts.length} lib file(s) did NOT load: ${badScripts.map(s => s.path).join(', ')}`);
+  warnings.push('  a page that boots the pre-build keeps running its inlined copy, so these pixels may be the last build');
+}
+if (preBuildPage) {
+  const check = spawnSync(process.execPath, [path.join(repoRoot, 'tools/build/build-lib.mjs'), '--check'],
+                          { cwd: repoRoot, encoding: 'utf8' });
+  if (check.status !== 0) {
+    warnings.push('dist/web-tools.js is BEHIND lib/, and this page boots from it: these pixels are the last build');
+    warnings.push('  run: npm run build:lib');
+  }
+}
+// Thrown JS only. A failed request is NOT warned on: this sandbox blocks the
+// GitHub API, so nearly every shot carries two or three of them, and a warning
+// block that fires every time is a block nobody reads. They stay listed below,
+// where a count is what they are worth.
+const thrown = errorLines.filter(l => /^\[(pageerror|fatal)\]/.test(l));
+if (thrown.length) warnings.push(`${thrown.length} thrown error(s): ${thrown[0].slice(0, 120)}`);
+
 const summary = [
   `=== screenshot: ${opts.page}${opts.build ? ' [build]' : ''}${opts.ref ? ` @ ${opts.ref}` : ''} ===`,
+  ...(warnings.length ? ['', '!!! WARNINGS !!!', ...warnings.map(w => `  ${w}`), ''] : []),
   `png: ${path.relative(repoRoot, pngPath)}`,
   `requests: fulfill=${tally.fulfill} empty=${tally.empty} continue=${tally.continue}`,
   '',
