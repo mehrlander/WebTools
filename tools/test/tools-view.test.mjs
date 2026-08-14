@@ -19,20 +19,31 @@ const { window, problems } = makeWindow({
 const { default: Alpine } = await import('alpinejs/dist/module.esm.js');
 window.Alpine = Alpine;
 
-// The curated manifest the component fetches, served by a stubbed GH (no token,
-// public hub). Mirrors docs/tools.json's shape.
+// The curated shelf the component fetches, served by a stubbed GH (no token,
+// public hub). Mirrors docs/tools.json's shape, which since 2026-08-13 carries
+// only { path, icon }: the title and the description belong to the page and are
+// joined from pages/pages.json, so a shelved row cannot drift from the gallery.
 const manifest = {
   items: [
-    { path: 'pages/diff-tool.html', title: 'Diff', note: 'Drop-in side-by-side text compare.', icon: 'ph-git-diff' },
-    { path: 'mehrlander/home@dev:projects/x/app.html', title: 'X', note: '', icon: 'ph-cube' },
-    { path: 'other/repo:tool.html', title: 'Ext' },
+    { path: 'pages/diff-tool.html', icon: 'ph-git-diff' },
+    { path: 'mehrlander/home@dev:projects/x/app.html', icon: 'ph-cube' },
+    { path: 'other/repo:tool.html' },
   ],
 };
+// The pages catalog the identities are joined from: grouped, keyed by href.
+const pages = [{ label: '', items: [
+  { href: 'diff-tool.html', title: 'Diff', note: 'Side-by-side text diff tool.' },
+  { href: 'annotate.html', title: 'Annotate', note: '' },
+] }];
 const getLog = [];
 window.TOKEN = 'ignored-in-test';
 window.GH = class {
   constructor(opts) { this.opts = opts; }
-  async get(p) { getLog.push([this.opts.repo, this.opts.ref, p]); return { text: JSON.stringify(manifest) }; }
+  async get(p) {
+    getLog.push([this.opts.repo, this.opts.ref, p]);
+    if (p === 'pages/pages.json') return { text: JSON.stringify(pages) };
+    return { text: JSON.stringify(manifest) };
+  }
 };
 
 new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/tools.js'), 'utf8'))();
@@ -45,7 +56,10 @@ const data = Alpine.$data(el);
 test('mounts and loads the curated manifest with no startup warnings', () => {
   assert.deepEqual(problems, []);
   assert.ok(data.description.length > 0);
-  assert.deepEqual(getLog, [['mehrlander/web-tools', 'main', 'docs/tools.json']]);
+  assert.deepEqual(getLog.sort(), [
+    ['mehrlander/web-tools', 'main', 'docs/tools.json'],
+    ['mehrlander/web-tools', 'main', 'pages/pages.json'],
+  ]);
   assert.equal(data.items.length, 3);
 });
 
@@ -74,12 +88,27 @@ test('render/thumb/source URLs follow the pages-catalog conventions', () => {
   assert.equal(data.thumbUrl('mehrlander/home@dev:projects/x/app.html'), '');
 });
 
-test('cards derive title/icon defaults and carry the resolved URLs', () => {
+test('cards inherit the page identity and carry the resolved URLs', () => {
   const cards = data.cards;
+  // A hub page takes its title and description from the gallery, not from the
+  // shelf, which no longer carries either.
+  const diff = cards.find(c => c.path === 'pages/diff-tool.html');
+  assert.equal(diff.title, 'Diff');
+  assert.equal(diff.note, 'Side-by-side text diff tool.');
+  assert.equal(diff.renderUrl, 'https://mehrlander.github.io/web-tools/pages/diff-tool.html');
+  // A cross-repo ref has no row in the hub's catalog, so it falls back to the
+  // filename rather than borrowing a same-named hub page's identity.
   const ext = cards.find(c => c.path === 'other/repo:tool.html');
-  assert.equal(ext.title, 'Ext');
+  assert.equal(ext.title, 'tool');
+  assert.equal(ext.note, '');
   assert.equal(ext.icon, 'ph-wrench', 'missing icon defaults to the wrench');
   assert.equal(ext.view, 'shot');
-  const diff = cards.find(c => c.path === 'pages/diff-tool.html');
-  assert.equal(diff.renderUrl, 'https://mehrlander.github.io/web-tools/pages/diff-tool.html');
+});
+
+// The join is by full repo path, so a cross-repo page whose filename matches a
+// hub page must not pick up the hub page's title. This is the failure mode a
+// bare-filename key would have.
+test('the identity join does not leak across repos', () => {
+  assert.equal(data.identity('other/repo:diff-tool.html').title, 'diff-tool');
+  assert.equal(data.identity('pages/diff-tool.html').title, 'Diff');
 });

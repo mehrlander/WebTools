@@ -890,6 +890,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/fab-width-bar.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 30,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/inbox-demo.mjs",
       "role": "the inbox resolution with the armed redirect button on screen",
       "layer": "tools/render/scenarios",
@@ -934,6 +944,16 @@
       "role": "drive show-repo's Map view onto the Harness tab with the committed census served through GH.get",
       "layer": "tools/render/scenarios",
       "lines": 52,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/map-registries.mjs",
+      "role": "drive the Map view's Registries tab for a screenshot, serving the real docs/properties.json through a stubbed GH so a tokenless render still shows the three areas and the cards",
+      "layer": "tools/render/scenarios",
+      "lines": 53,
       "invocation": "driver",
       "emits": false,
       "named": false,

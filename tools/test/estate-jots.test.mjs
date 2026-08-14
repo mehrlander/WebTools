@@ -13,13 +13,17 @@ const REGISTRY = 'me/registry';
 
 let FILES = {};    // "<path>" -> parsed JSON served from the registry
 let SAVES = [];    // every save call: { repo, path, value, message }
+let READS = [];    // every get call: { path, opts }
+let BUILT = 0;     // how many GH instances the component has constructed
 
 class FakeGH {
-  constructor(conf = {}) { this.repo = conf.repo || ''; this.ref = conf.ref || 'main'; }
+  static FRESH = { cache: 'no-store' };
+  constructor(conf = {}) { this.repo = conf.repo || ''; this.ref = conf.ref || 'main'; BUILT++; }
   ago() { return 'recently'; }
   async repos() { return []; }
   async ls() { return []; }
-  async get(name) {
+  async get(name, opts) {
+    READS.push({ path: name, opts });
     if (this.repo === REGISTRY && FILES[name]) return { text: JSON.stringify(FILES[name]) };
     throw Object.assign(new Error('404'), { status: 404 });
   }
@@ -155,4 +159,179 @@ test('a write merges against a FRESH read, so a jot added elsewhere survives (th
   FILES['lists/jots.json'] = SAVES.at(-1).value;
   await data.deleteJot({ id: 'jB', text: 'B' });
   assert.deepEqual([...SAVES.at(-1).value.items.map(i => i.text)], ['A', 'C']);
+});
+
+// The test above passed for months against a read that was not fresh at all.
+// A fake GH has no HTTP cache, so nothing in this file could see that the real
+// one was answering the merge read out of the browser's 60-second cache and
+// handing the mutation a pre-write copy. The only thing a unit test can hold is
+// the option itself, so it holds it: every list read carries GH.FRESH.
+test('every list read asks to bypass the HTTP cache', async () => {
+  for (const [load, path] of [[data.loadJots, 'lists/jots.json'],
+                              [data.loadTodos, 'lists/todo.json'],
+                              [data.loadPins, 'lists/pins.json']]) {
+    READS = [];
+    await load.call(data, reg());
+    assert.equal(READS.length, 1, path + ': one read');
+    assert.equal(READS[0].path, path);
+    assert.equal(READS[0].opts?.cache, 'no-store', path + ': a list read feeds a write, so it must be fresh');
+  }
+  // And the read a jot write merges against, which is the one with a documented
+  // lost-update guard behind it.
+  READS = []; FILES = { 'lists/jots.json': { items: [] } };
+  data.jotDraft = 'x';
+  await data.addJot();
+  assert.equal(READS.at(-1).opts?.cache, 'no-store');
+});
+
+// gh-store keeps the sha a successful write returns on the GH instance, and
+// that record is the only copy of it the browser can trust for the next minute.
+// Minting a GH per gesture threw it away and left the following write to
+// rediscover the sha through the cache that could not have it: one check-off
+// poisoned the next. Measured 2026-08-13; the account is on GH.FRESH.
+test('the registry client is held, not rebuilt per gesture', async () => {
+  const first = data.regGH();
+  BUILT = 0;
+  await data.saveTodos('probe');
+  await data.savePins('probe');
+  await data.reloadTodos();
+  assert.equal(BUILT, 0, 'no gesture builds its own client');
+  assert.equal(data.regGH(), first, 'and they all share the one the writes cache their shas on');
+});
+
+// ── urgent ───────────────────────────────────────────────────────────────────
+// The one flag the list carries. Written only when set and deleted when
+// cleared, so "never urgent" and "no longer urgent" read identically in the
+// file and the shape stays the smallest thing that works.
+test('toggleUrgent sets the flag, and clearing it removes the key', async () => {
+  SAVES = [];
+  data.todoItems = [{ id: 't1', text: 'Internal allotment by August 15', done: false, created_at: '2026-08-06T00:00:00Z' }];
+  const it = data.todoItems[0];
+
+  await data.toggleUrgent(it);
+  assert.equal(it.urgent, true);
+  assert.equal(SAVES.at(-1).value.items[0].urgent, true);
+  assert.match(SAVES.at(-1).message, /^Flag "Internal allotment by August 15" urgent via show-repo$/);
+
+  await data.toggleUrgent(it);
+  assert.equal('urgent' in it, false, 'cleared means absent, not false');
+  assert.match(SAVES.at(-1).message, /^Clear urgent on "Internal allotment by August 15" via show-repo$/);
+});
+
+test('urgent items sort above the rest, keeping file order within each band', () => {
+  data.todoItems = [
+    { id: 'a', text: 'a', done: false },
+    { id: 'b', text: 'b', done: false, urgent: true },
+    { id: 'c', text: 'c', done: true, urgent: true },   // done, so not in the open list at all
+    { id: 'd', text: 'd', done: false },
+    { id: 'e', text: 'e', done: false, urgent: true },
+  ];
+  assert.deepEqual([...data.todoOpen.map(i => i.id)], ['b', 'e', 'a', 'd']);
+  assert.deepEqual([...data.todoHot.map(i => i.id)], ['b', 'e'],
+    'the count covers open items only: a done item is not urgent');
+});
+
+// ── due ──────────────────────────────────────────────────────────────────────
+// The temporal half of the same signal. A date arrives on its own and stops
+// mattering on its own, which is the thing the flag cannot do.
+const isoDaysFromNow = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+test('a date that has arrived makes a row hot without anyone flagging it', () => {
+  const late = { id: 'l', text: 'late', done: false, due: isoDaysFromNow(-2) };
+  const today = { id: 't', text: 'today', done: false, due: isoDaysFromNow(0) };
+  const soon = { id: 's', text: 'soon', done: false, due: isoDaysFromNow(2) };
+  const far = { id: 'f', text: 'far', done: false, due: isoDaysFromNow(40) };
+  const none = { id: 'n', text: 'none', done: false };
+  data.todoItems = [none, far, soon, today, late];
+
+  assert.equal(data.isHot(late), true);
+  assert.equal(data.isHot(today), true);
+  assert.equal(data.isHot(soon), false, 'three days out is not a summons');
+  assert.equal(data.isHot(far), false);
+  assert.equal(data.isHot(none), false);
+
+  // Three bands: hot, dated-but-not-yet (soonest first), undated.
+  assert.deepEqual([...data.todoOpen.map(i => i.id)], ['l', 't', 's', 'f', 'n']);
+});
+
+test('the labels read forward, and lateness never abbreviates to a date', () => {
+  assert.equal(data.dueLabel(isoDaysFromNow(-3)), '3d late');
+  assert.equal(data.dueLabel(isoDaysFromNow(0)), 'today');
+  assert.equal(data.dueLabel(isoDaysFromNow(1)), 'tomorrow');
+  assert.equal(data.dueLabel(isoDaysFromNow(4)), '4d');
+  assert.equal(data.dueLabel(isoDaysFromNow(400)), new Date(new Date().setDate(new Date().getDate() + 400))
+    .toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+  assert.equal(data.dueLabel(''), '', 'no date, no label');
+  assert.equal(data.dueLabel('not-a-date'), '');
+});
+
+test('the chip colors by band', () => {
+  assert.equal(data.dueClass(isoDaysFromNow(-1)), 'badge-error');
+  assert.equal(data.dueClass(isoDaysFromNow(0)), 'badge-error');
+  assert.equal(data.dueClass(isoDaysFromNow(2)), 'badge-warning');
+  assert.equal(data.dueClass(isoDaysFromNow(30)), 'badge-ghost');
+});
+
+test('setDue stores a plain date, and anything else clears it', async () => {
+  SAVES = [];
+  data.todoItems = [{ id: 't1', text: 'Internal allotment', done: false }];
+  const it = data.todoItems[0];
+
+  await data.setDue(it, '2026-08-15');
+  assert.equal(it.due, '2026-08-15');
+  assert.match(SAVES.at(-1).message, /^Set "Internal allotment" due 2026-08-15 via show-repo$/);
+
+  const before = SAVES.length;
+  await data.setDue(it, '2026-08-15');
+  assert.equal(SAVES.length, before, 'no write when the value did not change');
+
+  await data.setDue(it, '');                       // the picker's own clear control
+  assert.equal('due' in it, false, 'cleared means absent, not empty');
+  assert.match(SAVES.at(-1).message, /^Clear due date on "Internal allotment" via show-repo$/);
+
+  await data.setDue(it, '2026-8-1');               // half-typed: not a stored value
+  assert.equal('due' in it, false);
+});
+
+test('urgent and due are independent, and either one alone is enough', () => {
+  const flagged = { id: 'a', text: 'a', done: false, urgent: true, due: isoDaysFromNow(60) };
+  assert.equal(data.isHot(flagged), true, 'a flag outranks a distant date');
+  delete flagged.urgent;
+  assert.equal(data.isHot(flagged), false);
+});
+
+// A long text is clipped in the subject the same way every other gesture clips
+// it, so the file's history stays readable as a log.
+test('a long to-do is clipped in the urgent commit message', async () => {
+  SAVES = [];
+  data.todoItems = [{ id: 't1', text: 'y'.repeat(100), done: false }];
+  await data.toggleUrgent(data.todoItems[0]);
+  assert.match(SAVES.at(-1).message, /^Flag "y{59}…" urgent via show-repo$/);
+});
+
+// The pane must not be the only thing that can write this field: the file is
+// hand-editable and an agent session drains it, and the savers write the parsed
+// items straight back. This is the property that made `urgent` possible to add
+// without a migration, so it is worth holding.
+test('a key the pane does not know survives a round trip', async () => {
+  SAVES = [];
+  FILES = { 'lists/todo.json': { items: [{ id: 't1', text: 'x', done: false, due: '2026-08-15', urgent: true }] } };
+  await data.loadTodos(reg());
+  await data.toggleTodo(data.todoItems[0]);
+  const saved = SAVES.at(-1).value.items[0];
+  assert.equal(saved.due, '2026-08-15', 'an unrecognized field is preserved');
+  assert.equal(saved.urgent, true);
+  assert.equal(saved.done, true);
+});
+
+test('swapping the registry repo or the token gets a new client', () => {
+  const before = data.regGH();
+  window.TOKEN = 'different';
+  const after = data.regGH();
+  assert.notEqual(after, before, 'a new token must not write through the old identity');
+  window.TOKEN = 'tkn';
 });
