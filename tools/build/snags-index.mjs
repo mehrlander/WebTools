@@ -52,47 +52,39 @@ const STOP = new Set(['a', 'an', 'the', 'is', 'it', 'in', 'on', 'of', 'to', 'and
 const tokens = (slug) => slug.split('-').filter(t => t.length > 2 && !STOP.has(t));
 
 // One entry per `### slug: title`, with every date its *(seen: …)* line names.
+// An entry runs to the next heading or the next `---`, whichever comes first,
+// and a bold sub-paragraph inside it is part of it: several entries carry a
+// dated correction or a "corrected move" paragraph, and each of those dates is
+// another sighting of the SAME snag, which is what the recurrence rule counts.
 //
-// An entry ends at the next heading OR the next `---`, whichever comes first,
-// and the second half of that rule is load-bearing rather than defensive. This
-// log holds two shapes: slugged `###` entries, and older bold-lead paragraphs
-// carrying their own sighting with no slug at all. Bounding only at the next
-// heading swallowed every unslugged block that followed one, and reported
-// `screenshot-hides-overflow` as having been seen fourteen times when it was
-// seen once. A count that wrong is worse than no count, since the whole point
-// of the index is to make the recurrence rule readable.
+// That boundary is only safe because every block in the file now leads with a
+// slug. It did not: until 2026-08-14 the tail held older bold-lead blocks with
+// no heading, and a rule this simple absorbed them, reporting
+// `screenshot-hides-overflow` as seen fourteen times when it was seen once.
+// Eleven of them were migrated rather than parsed around, which is why the
+// generator can be this plain.
 //
-// What that leaves out is reported rather than dropped: an unslugged block
-// cannot be matched or counted, which is the format gap the header already
-// calls provisional, and the number of them belongs in the open.
+// The guard that replaces the workaround is narrower and aimed at the way an
+// entry actually gets added: newest on top, so an unslugged block would land
+// between the index and the first heading. Any sighting there is counted as
+// orphaned and reported. A block appended with no slug lower down would be
+// absorbed by the entry above it, which this cannot see; the header's rule
+// that every entry leads with a slug is what keeps that from happening.
 function parse(md) {
   const body = md.slice(md.indexOf(CLOSE) === -1 ? 0 : md.indexOf(CLOSE));
   const heads = [...body.matchAll(/^### ([a-z0-9-]+): (.+)$/gm)]
     .map(m => ({ slug: m[1], title: m[2], at: m.index }));
   const seenAt = [...body.matchAll(/\*\(seen: ([^)]+)\)\*/g)].map(m => ({ at: m.index, raw: m[1] }));
-  const claimed = new Set();
+  const first = heads.length ? heads[0].at : body.length;
   const out = heads.map((h, i) => {
     const nextHead = i + 1 < heads.length ? heads[i + 1].at : body.length;
     const rule = body.indexOf('\n---\n', h.at);
-    // A blank line followed by a bold lead-in starts an UNSLUGGED block, the
-    // log's older shape, and those carry their own sightings. `---` alone does
-    // not bound them: the separators in this file are inconsistent, and one
-    // entry ran on through five unslugged blocks before the next rule. Bold
-    // mid-paragraph is not a boundary (a wrapped line can start with `**`),
-    // which is why the blank line is part of the pattern.
-    const bold = body.indexOf('\n\n**', h.at);
-    const end = Math.min(nextHead, rule === -1 ? body.length : rule,
-                         bold === -1 ? body.length : bold);
-    const seen = [];
-    seenAt.forEach((sa, k) => {
-      if (sa.at > h.at && sa.at < end) {
-        claimed.add(k);
-        seen.push(...sa.raw.split(',').map(d => d.trim()).filter(Boolean));
-      }
-    });
+    const end = Math.min(nextHead, rule === -1 ? body.length : rule);
+    const seen = seenAt.filter(sa => sa.at > h.at && sa.at < end)
+      .flatMap(sa => sa.raw.split(',').map(d => d.trim()).filter(Boolean));
     return { ...h, seen };
   });
-  return { entries: out, orphanSightings: seenAt.length - claimed.size };
+  return { entries: out, orphanSightings: seenAt.filter(sa => sa.at < first).length };
 }
 
 function render(entries) {
@@ -161,7 +153,7 @@ if (check) {
 
 const repeats = entries.filter(e => e.seen.length > 1).length;
 console.log(`snags-index: ${entries.length} snags, ${repeats} seen more than once` +
-  (orphanSightings ? `; ${orphanSightings} sighting(s) in unslugged blocks, not indexed` : ''));
+  (orphanSightings ? `; ${orphanSightings} sighting(s) above the first entry, in no slugged entry` : ''));
 
 const pairs = suspects(entries);
 if (pairs.length) {
