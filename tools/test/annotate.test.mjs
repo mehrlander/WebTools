@@ -536,6 +536,104 @@ test('a tap on the blank canvas sends the caret to the end', () => {
   A.disable();
 });
 
+test('a keyboard writes into the draft, without asking for a textarea first', () => {
+  // The read surface is a DISPLAY, so it takes no keystrokes of its own, and a
+  // desktop reader had to ask for a textarea before a keyboard did anything.
+  // Nothing about a physical keyboard needs asking: a printable key arriving
+  // IS the device saying it has one, which beats any media query and covers a
+  // keyboard paired to a phone for free.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  const key = (init) => {
+    const e = new window.Event('keydown', { bubbles: true, cancelable: true });
+    Object.assign(e, { key: 'a', ctrlKey: false, metaKey: false, altKey: false }, init);
+    doc.dispatchEvent(e);
+    return e;
+  };
+
+  // No draft staged: the annotator is not a text editor at rest.
+  key({ key: 'x' });
+  assert.equal(S.dict.text, '');
+
+  A.notePage({ listen: false });
+  assert.ok(S.draft, 'a draft is open');
+  for (const c of 'hi') key({ key: c });
+  assert.equal(S.dict.text, 'hi', 'a key is not a phrase: no joining space between letters');
+
+  key({ key: ' ' });
+  key({ key: 't' });
+  assert.equal(S.dict.text, 'hi t');
+  key({ key: 'Backspace' });
+  assert.equal(S.dict.text, 'hi ', 'backspace takes a character where the row key takes a word');
+  key({ key: 'Enter' });
+  assert.equal(S.dict.text, 'hi \n');
+
+  // A shortcut is not a letter, and the host's own field wins its keys.
+  const before = S.dict.text;
+  key({ key: 'z', metaKey: true });
+  assert.equal(S.dict.text, before, 'a shortcut belongs to the platform, not to us');
+  const field = doc.createElement('input');
+  doc.body.appendChild(field);
+  const e = new window.Event('keydown', { bubbles: true, cancelable: true });
+  Object.assign(e, { key: 'q' });
+  field.dispatchEvent(e);
+  assert.equal(S.dict.text, before, 'a key typed into a page input stays there');
+  field.remove();
+
+  // A RUN IS ONE STEP, and a change of kind ends the run: the letters, then
+  // the backspace, then the newline are three steps rather than seven.
+  S.dict.undo();
+  assert.equal(S.dict.text, 'hi ', 'the newline');
+  S.dict.undo();
+  assert.equal(S.dict.text, 'hi t', 'the backspace');
+  S.dict.undo();
+  assert.equal(S.dict.text, '', 'and the whole typing run at once');
+  A.disable();
+});
+
+test('a mouse drag selects, and a touch drag still scrolls', () => {
+  // The tap-to-arm pins exist because a FINGER dragging a handle covers the
+  // words it is aiming at. A pointer does not, so asking a desktop reader to
+  // tap twice for what one drag has always done is the gesture model leaking
+  // out of the case it was designed for.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  S.dict.text = 'the quick brown fox';
+  A._paintDraft();
+
+  let at = 0;
+  doc.caretRangeFromPoint = () => ({ startContainer: S.compBody.firstChild, startOffset: at });
+  const send = (type, x, init) => {
+    const e = new window.MouseEvent(type, { clientX: x, clientY: 20, bubbles: true, ...init });
+    e.pointerType = init && init.pointerType || 'mouse';
+    S.compView.dispatchEvent(e);
+    return e;
+  };
+  try {
+    at = 4;
+    send('pointerdown', 20);
+    at = 15;
+    send('pointermove', 90, { buttons: 1 });
+    assert.deepEqual(S.dict.range, { start: 4, end: 15 }, 'the drag selected between the two points');
+    send('pointerup', 90);
+    assert.deepEqual(S.dict.range, { start: 4, end: 15 },
+      'and the release does not read as a click that places a caret');
+
+    // A touch drag is a SCROLL, and must stay one.
+    S.dict.clearRange();
+    at = 4;
+    send('pointerdown', 20, { pointerType: 'touch' });
+    at = 15;
+    send('pointermove', 90, { buttons: 1, pointerType: 'touch' });
+    assert.equal(S.dict.range, null, 'nothing selected: the box scrolled instead');
+    A.disable();
+  } finally { delete doc.caretRangeFromPoint; }
+});
+
 test('a long press off the words opens the keyboard, and on them still takes a word', async () => {
   // The press had two regions and one reading, so over the canvas it did
   // nothing: a dead gesture on the largest target on the card, at the moment
