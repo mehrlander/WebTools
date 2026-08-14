@@ -1,0 +1,170 @@
+#!/usr/bin/env node
+// Generate the index at the top of docs/SNAGS.md, and warn about likely repeats.
+//
+//   node tools/build/snags-index.mjs [--check]
+//
+// The log's own rule is that recurrence is the signal: an entry tracks how
+// often it bit, and the third sighting earns a tracker task. That rule needs
+// two things nothing was supplying.
+//
+// FIRST, the set has to be visible at the moment of appending. A session that
+// trips over something opens this file, reads the header, and writes a new
+// entry at the top; it does not read 400 lines of entries first. So the index
+// sits between the header and the newest entry, in the one place the append
+// path already passes through, sorted by sighting count so the repeat
+// offenders lead and the "third time earns a task" line has something to point
+// at.
+//
+// SECOND, a near-repeat has to be caught mechanically, because a session that
+// knew the entry existed would have edited it instead. Measured 2026-08-14:
+// one session wrote `headless-prose-unstyled` for a trip `headless-shot-prose-flat`
+// already owned, and the collision surfaced days later as a merge conflict.
+// Slug equality would not have caught that; shared TOKENS would ("headless",
+// "prose"). So the generator reports every pair of entries sharing two or more
+// significant slug tokens, as a warning printed at commit time, when the entry
+// is being written and can still be folded into the one that exists.
+//
+// The warning does NOT fail the run, here or under --check. Overlap is a
+// heuristic: `headless-shot-prose-flat` and `headless-prose-unstyled` really
+// are the same snag, while two genuinely different loader snags would both
+// carry "loader" and be fine. A gate on a guess teaches people to route around
+// it. This reports, and a human decides, which is the same posture as the
+// repo's other surveys.
+//
+// --check compares instead of writing, the idiom every generator here shares,
+// so tools/test/artifacts-lockstep.test.mjs can hold the file to its source.
+
+import path from 'node:path';
+import { readFile, writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const FILE = path.join(root, 'docs/SNAGS.md');
+const OPEN = '[//]: # (snags-index)';
+const CLOSE = '[//]: # (/snags-index)';
+
+// Words that carry no distinguishing weight in a slug. Kept short on purpose:
+// over-filtering hides real overlaps, and the cost of a false pair is one
+// glance.
+const STOP = new Set(['a', 'an', 'the', 'is', 'it', 'in', 'on', 'of', 'to', 'and',
+                      'not', 'no', 'as', 'at', 'by', 'for', 'with', 'that', 'this']);
+
+const tokens = (slug) => slug.split('-').filter(t => t.length > 2 && !STOP.has(t));
+
+// One entry per `### slug: title`, with every date its *(seen: …)* line names.
+//
+// An entry ends at the next heading OR the next `---`, whichever comes first,
+// and the second half of that rule is load-bearing rather than defensive. This
+// log holds two shapes: slugged `###` entries, and older bold-lead paragraphs
+// carrying their own sighting with no slug at all. Bounding only at the next
+// heading swallowed every unslugged block that followed one, and reported
+// `screenshot-hides-overflow` as having been seen fourteen times when it was
+// seen once. A count that wrong is worse than no count, since the whole point
+// of the index is to make the recurrence rule readable.
+//
+// What that leaves out is reported rather than dropped: an unslugged block
+// cannot be matched or counted, which is the format gap the header already
+// calls provisional, and the number of them belongs in the open.
+function parse(md) {
+  const body = md.slice(md.indexOf(CLOSE) === -1 ? 0 : md.indexOf(CLOSE));
+  const heads = [...body.matchAll(/^### ([a-z0-9-]+): (.+)$/gm)]
+    .map(m => ({ slug: m[1], title: m[2], at: m.index }));
+  const seenAt = [...body.matchAll(/\*\(seen: ([^)]+)\)\*/g)].map(m => ({ at: m.index, raw: m[1] }));
+  const claimed = new Set();
+  const out = heads.map((h, i) => {
+    const nextHead = i + 1 < heads.length ? heads[i + 1].at : body.length;
+    const rule = body.indexOf('\n---\n', h.at);
+    // A blank line followed by a bold lead-in starts an UNSLUGGED block, the
+    // log's older shape, and those carry their own sightings. `---` alone does
+    // not bound them: the separators in this file are inconsistent, and one
+    // entry ran on through five unslugged blocks before the next rule. Bold
+    // mid-paragraph is not a boundary (a wrapped line can start with `**`),
+    // which is why the blank line is part of the pattern.
+    const bold = body.indexOf('\n\n**', h.at);
+    const end = Math.min(nextHead, rule === -1 ? body.length : rule,
+                         bold === -1 ? body.length : bold);
+    const seen = [];
+    seenAt.forEach((sa, k) => {
+      if (sa.at > h.at && sa.at < end) {
+        claimed.add(k);
+        seen.push(...sa.raw.split(',').map(d => d.trim()).filter(Boolean));
+      }
+    });
+    return { ...h, seen };
+  });
+  return { entries: out, orphanSightings: seenAt.length - claimed.size };
+}
+
+function render(entries) {
+  const rows = [...entries].sort((a, b) =>
+    (b.seen.length - a.seen.length) || (b.seen[0] || '').localeCompare(a.seen[0] || '') ||
+    a.slug.localeCompare(b.slug));
+  const lines = rows.map(e => {
+    const n = e.seen.length;
+    const when = n ? e.seen[e.seen.length - 1] : 'undated';
+    const mark = n > 1 ? ` **×${n}**` : '';
+    return `| \`${e.slug}\`${mark} | ${when} | ${e.title} |`;
+  });
+  return [
+    OPEN,
+    '',
+    `**${entries.length} snags**, repeats first. Read this before adding one: a trip that is`,
+    'already here belongs in the entry that owns it, as another date on its `seen`',
+    'line, not as a second entry. Generated by `npm run snags-index`.',
+    '',
+    '| snag | last seen | what it was |',
+    '| --- | --- | --- |',
+    ...lines,
+    '',
+    CLOSE,
+  ].join('\n');
+}
+
+// Pairs sharing two or more slug tokens: the cheapest signal that a new entry
+// is a repeat of one already here.
+function suspects(entries) {
+  const pairs = [];
+  for (let i = 0; i < entries.length; i++) {
+    for (let j = i + 1; j < entries.length; j++) {
+      const a = new Set(tokens(entries[i].slug));
+      const shared = tokens(entries[j].slug).filter(t => a.has(t));
+      if (shared.length >= 2) pairs.push({ a: entries[i].slug, b: entries[j].slug, shared });
+    }
+  }
+  return pairs;
+}
+
+const md = await readFile(FILE, 'utf8');
+const { entries, orphanSightings } = parse(md);
+const block = render(entries);
+
+let next;
+if (md.includes(OPEN) && md.includes(CLOSE)) {
+  next = md.slice(0, md.indexOf(OPEN)) + block + md.slice(md.indexOf(CLOSE) + CLOSE.length);
+} else {
+  // First run: insert after the header's rule, above the newest entry.
+  const rule = md.indexOf('\n---\n');
+  if (rule === -1) { console.error('snags-index: no `---` after the header to insert below'); process.exit(1); }
+  const cut = rule + '\n---\n'.length;
+  next = md.slice(0, cut) + '\n' + block + '\n' + md.slice(cut);
+}
+
+const check = process.argv.includes('--check');
+if (check) {
+  if (next !== md) {
+    console.error('snags-index: docs/SNAGS.md is stale — run `npm run snags-index`.');
+    process.exit(1);
+  }
+} else if (next !== md) {
+  await writeFile(FILE, next);
+}
+
+const repeats = entries.filter(e => e.seen.length > 1).length;
+console.log(`snags-index: ${entries.length} snags, ${repeats} seen more than once` +
+  (orphanSightings ? `; ${orphanSightings} sighting(s) in unslugged blocks, not indexed` : ''));
+
+const pairs = suspects(entries);
+if (pairs.length) {
+  console.log(`  ${pairs.length} possible repeat(s) — same snag under two slugs? fold one in if so:`);
+  for (const p of pairs) console.log(`    ${p.a}  ~  ${p.b}   (${p.shared.join(', ')})`);
+}

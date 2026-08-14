@@ -240,6 +240,16 @@
       "tested": false
     },
     {
+      "path": "tools/build/snags-index.mjs",
+      "role": "",
+      "layer": "tools/build",
+      "lines": 171,
+      "invocation": "npm:snags-index",
+      "emits": false,
+      "named": false,
+      "tested": true
+    },
+    {
       "path": "tools/build/tests-index.mjs",
       "role": "restamp the derived half of docs/tests.json, the test registry",
       "layer": "tools/build",
@@ -1253,7 +1263,7 @@
       "path": "tools/render/screenshot.mjs",
       "role": "the Chromium pixel render behind npm run shot; --script drives a scenario first",
       "layer": "tools/render",
-      "lines": 195,
+      "lines": 244,
       "invocation": "npm:shot",
       "emits": false,
       "named": true,
