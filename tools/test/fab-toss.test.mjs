@@ -356,3 +356,44 @@ test('ahead/behind is remembered per branch pair, not re-asked per file', async 
   assert.equal(compares, 1, 'no second call');
   assert.equal(d.pageBranches[0].div.ahead, 3, 'and the row still gets its answer');
 });
+
+
+test('the survey is remembered per path, so swiping back is free', async () => {
+  // The browser harness cannot reach this: without a token every branch read
+  // fails and nothing is ever cached, which is why it is asserted here instead.
+  const seen = [];
+  const realGH = window.GH;
+  window.GH = class {
+    constructor(c = {}) { this.repo = c.repo || ''; }
+    async branchesForPath(path) {
+      seen.push(path);
+      return { defaultBranch: 'main', defaultOid: 'oid0',
+               branches: [{ name: 'claude/b', oid: 'oid1', date: '', ago: '' }] };
+    }
+    async compare() { return { ahead_by: 1, behind_by: 0 }; }
+    async branches() { return []; }
+    async req() { return []; }
+  };
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="docs/one.md"');
+  const d = Alpine.$data(el);
+  try {
+    await d.loadPageBranches();
+    assert.deepEqual(seen, ['docs/one.md']);
+
+    // A swipe: new path, survey invalidated, one more read.
+    d.path = 'docs/two.md'; d.pageBranchesLoaded = false;
+    await d.loadPageBranches();
+    assert.deepEqual(seen, ['docs/one.md', 'docs/two.md']);
+
+    // And a swipe BACK, which a deck gets constantly. Four files along and
+    // four back was eight surveys for four answers.
+    d.path = 'docs/one.md'; d.pageBranchesLoaded = false;
+    await d.loadPageBranches();
+    assert.deepEqual(seen, ['docs/one.md', 'docs/two.md'], 'no third read');
+    assert.equal(d.pageBranches.length, 1, 'and the rows still arrive');
+
+    // Recheck is the reader saying they do not believe it, so it clears.
+    await d.loadPageBranches(true);
+    assert.equal(seen.length, 3, 'force re-asks');
+  } finally { window.GH = realGH; }
+});
