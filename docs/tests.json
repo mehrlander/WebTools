@@ -1686,26 +1686,6 @@
       ]
     },
     {
-      "path": "tools/test/pages.test.mjs",
-      "kind": "component",
-      "protects": "The gallery finds pages by scanning for .html blobs, and each row's render URL follows the ref: off the default ref an owner repo routes through toss-render rather than a github.io URL that would serve the wrong code.",
-      "assertions": 7,
-      "method": "alpine",
-      "runner": "suite",
-      "boot_smoke": [
-        0
-      ],
-      "assertion_names": [
-        "mounts closed with no startup warnings or errors",
-        "first open scans the tree for .html blobs only",
-        "groups by folder, root first",
-        "render/source/thumb URLs follow the conventions",
-        "ref change re-scans and appends ?use= off the default ref",
-        "mehrlander repos off the default ref route through toss-render address mode",
-        "unpublished repos are flagged"
-      ]
-    },
-    {
       "path": "tools/test/path-picker.test.mjs",
       "kind": "component",
       "protects": "Path ranking: exact, prefix, substring, then no match, with containers ordered first.",

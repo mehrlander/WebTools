@@ -364,8 +364,8 @@ and a `?file=` link opens the central reader scoped to that file's folder. What
 the explorer uniquely had, a **live directory read** (a file's size on its row,
 whatever the ref holds right now), is the one thing genuinely gone; the Files
 view walks a cached recursive tree, which is what buys free descent and folder
-counts. The ref compare went with the branch review, its only caller here; the
-component keeps its mount on `nav-repo.html`.
+counts. The ref compare went with the branch review, its only caller anywhere,
+and the component was deleted with `nav-repo.html`, its last mount, a day later.
 
 **`?ref=` moved with them.** The browsed ref was the Files view's key, stamped
 by its row, back when that view was the only thing that read it. The atlas, the

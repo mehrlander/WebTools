@@ -17,10 +17,12 @@ What remains is finishing the retirement of the legacy name:
 - **Delete the old file on migrate.** The original scoping note said `gh-store.js`
   had no delete; it does now. After a legacy migrate save succeeds, call it on
   `.show-repo.json` so the repo does not carry two manifests. Say so in the toast.
-- **Drop the read fallback at sunset.** `lib/alpineComponents/navigator.js:279`
-  carries the `SUNSET(2026-08-15)` legacy-name read entry, and `config.js`'s
-  `load()` tries both names. Once the estate's repos are migrated, remove both
-  fallbacks and the migrate banner itself.
+- **Drop the read fallback at sunset.** `pages/show-repo/show-repo.html` carries
+  the `SUNSET(2026-08-15)` legacy-name read entry, and both `config.js`'s
+  `load()` and `repo.js`'s config read try the two names in turn. Once the
+  estate's repos are migrated, remove every fallback and the migrate banner
+  itself. (A fourth reader, `navigator.js`, was deleted with `nav-repo.html` on
+  2026-08-14, so that copy is already gone.)
 
 ## Done when
 
