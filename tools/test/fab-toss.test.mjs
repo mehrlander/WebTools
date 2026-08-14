@@ -235,3 +235,53 @@ test('on the renderer, a preset moves the frame in place', async () => {
 test('no startup warnings or errors', () => {
   assert.deepEqual(problems, []);
 });
+
+
+// ── an IN-DOCUMENT subject ──────────────────────────────────────────────────
+//
+// The subject channel was built for toss-render, where the thing being
+// described lives in a frame. From 2026-08-14 the file deck announces on the
+// same channel, and its subject is in THIS document: a slide, not a frame. The
+// distinction matters wherever the fab reaches INTO the subject, and until now
+// `viaToss` stood in for it, because a frame was the only way a subject ever
+// arrived.
+
+test('a deck subject retargets the drawer without pretending to be a frame', async () => {
+  window.__tossSubject = { repo: 'mehrlander/web-tools', ref: 'claude/some-branch',
+                           path: 'docs/SNAGS.md', route: 'deck' };
+  window.__tossFrame = null;
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/show-repo/show-repo.html"');
+  const d = Alpine.$data(el);
+  try {
+    assert.equal(d.repo, 'mehrlander/web-tools');
+    assert.equal(d.path, 'docs/SNAGS.md', 'the drawer names the file the reader is on');
+    assert.equal(d.ref, 'claude/some-branch', 'at the ref the deck is reading it');
+    assert.equal(d.subjectRoute, 'deck');
+    assert.equal(d.subjectFramed, false, 'there is no frame, and nothing should look for one');
+    // The annotator is NOT blind: the slide is in this document, so a note
+    // lands on the thing being described. `viaToss && !subjectReached` used to
+    // say otherwise, which is the bug this flag exists to fix.
+    assert.equal(d.annBlind, false);
+    // And the fab fills in the app, since it recorded its own page before any
+    // subject arrived and the announcer should not have to know what it is
+    // inside of.
+    assert.equal(d.subjectVia.path, 'pages/show-repo/show-repo.html');
+  } finally {
+    window.__tossSubject = null;
+    window.dispatchEvent(new window.CustomEvent('toss-subject'));
+  }
+});
+
+test('a framed subject still reads as framed', async () => {
+  window.__tossSubject = { repo: 'mehrlander/other', ref: 'main', path: 'pages/thing.html' };
+  window.__tossFrame = { contentWindow: null };
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/toss-render.html"');
+  const d = Alpine.$data(el);
+  try {
+    assert.equal(d.subjectFramed, true);
+    assert.equal(d.annBlind, true, 'a frame not yet reached is exactly what the warning is for');
+  } finally {
+    window.__tossSubject = null; window.__tossFrame = null;
+    window.dispatchEvent(new window.CustomEvent('toss-subject'));
+  }
+});

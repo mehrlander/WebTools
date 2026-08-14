@@ -1189,7 +1189,7 @@
       "path": "tools/test/fab-toss.test.mjs",
       "kind": "component",
       "protects": "The fab keeps shell identity when mounted inside a toss.",
-      "assertions": 11,
+      "assertions": 13,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
@@ -1206,14 +1206,16 @@
         "the width bar is reachable through a frame, or an address that can make one",
         "off the renderer, a preset addresses it with ?w= on the query",
         "on the renderer, a preset moves the frame in place",
-        "no startup warnings or errors"
+        "no startup warnings or errors",
+        "a deck subject retargets the drawer without pretending to be a frame",
+        "a framed subject still reads as framed"
       ]
     },
     {
       "path": "tools/test/file-deck.test.mjs",
       "kind": "behavior",
       "protects": "The contract between the Files pane and the file deck: the deck pages what the pane is showing, its header names the file the reader is on rather than the one they opened at, and a card is handed its options by reference rather than through an x-data expression.",
-      "assertions": 10,
+      "assertions": 13,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -1227,7 +1229,10 @@
         "a card is handed its options by reference, not through the x-data expression",
         "it drills when given a parent and roots when not",
         "back: true earns the chevron without a parent deck to drill from",
-        "the crumb does not say the same thing twice"
+        "the crumb does not say the same thing twice",
+        "the deck says what the reader is on, and keeps saying it",
+        "a deck opened over a toss puts the toss back, rather than clearing it",
+        "announce: false leaves the sidebar where it was"
       ]
     },
     {

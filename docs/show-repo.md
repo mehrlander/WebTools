@@ -1871,6 +1871,32 @@ gives way before the folder does. Verified in the browser at 320, 390 and 430 by
 comparing the element's scrollWidth to its clientWidth; below about 360px the
 ten-character floor on the branch still overflows and CSS truncation takes over.
 
+**The deck tells the sidebar what it is showing.** The FAB already answers
+"which version of this am I looking at": its Render tab names a repo, a ref and
+a path, roots its path picker there, aims its github menu at it, and its ref bar
+lists the branches carrying a different version of that file, one tap to render
+at any of them. It learns all of that from one channel, `window.__tossSubject`
+plus a `toss-subject` event, which `toss-render` stamps per render and the fab
+adopts. Nothing about that channel is toss-specific but its name: it already
+carries a `route` for "a file the renderer could not show as a page, so an app
+is showing it instead", which is exactly a deck slide. So the file deck
+announces on it, and the sidebar follows the reader from file to file.
+
+Three things that took measuring. The deck leaves `via` off and the fab fills it
+from the page it recorded at mount, so an announcer never has to work out what
+app it is inside. `subjectFramed` is new and splits what `viaToss` had
+conflated: a toss subject lives in a frame the fab reaches into, a deck slide is
+in this document, and the annotator was reporting itself blind on a file it
+could annotate perfectly well. And the drawer moved from `z-50` to `z-[75]`,
+above the deck's takeover: it now describes the file on screen, and a drawer
+behind the thing it describes is a coupling nobody can reach.
+
+This is the first of three steps. The next is `__tossNavigate` from the deck, so
+a ref row re-renders the slide instead of navigating away; the one after is a
+second, compare-against ref in the sidebar, which is what would let the card's
+four source tabs (Diff, Patch, New, Base, all one comparison in four
+renderings) collapse into a Compare pane whose two ends the reader chooses.
+
 Measured end to end by `tools/render/scenarios/branch-deck.mjs`, which is also
 what caught both of those faults above.
 

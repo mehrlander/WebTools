@@ -7,6 +7,15 @@
 // three cards exist at once no matter how long the changeset is; the pane
 // cannot, which is why it hedges its cards closed past a dozen files.
 //
+// It also ANNOUNCES what the reader is on, through the subject channel the FAB
+// sidebar already listens to (window.__tossSubject plus a 'toss-subject'
+// event). That channel was built for toss-render and is not toss-specific: it
+// already carries a `route` for "a file the renderer could not show as a page,
+// so an app is showing it instead", which is exactly a deck slide. Saying it
+// makes the sidebar's ref bar, path picker and github menu follow the file the
+// reader is swiping through, with no coupling in either direction beyond a
+// global and an event.
+//
 // What the cases hold is the contract between the two, since everything else is
 // swipe-deck's (covered in swipe-deck-stack) or fileReview's (in
 // file-review-card): the deck pages what the pane is SHOWING, the header names
@@ -170,4 +179,61 @@ test('the crumb does not say the same thing twice', async () => {
   await tick(2);
   assert.equal(head(child).sub, 'claude/some-branch · lib/kits');
   child.close(); await tick(4); parent.close(); await tick(4);
+});
+
+
+// ── announcing the subject ──────────────────────────────────────────────────
+
+const subject = () => window.__tossSubject;
+
+test('the deck says what the reader is on, and keeps saying it', async () => {
+  const heard = [];
+  const onSay = () => heard.push(subject() ? subject().path : null);
+  window.addEventListener('toss-subject', onSay);
+
+  const d = drivable(window.fileDeck.open({ ...AT, files: FILES }));
+  await tick(2);
+  assert.equal(subject().path, FILES[0].path, 'on open, the file it opened on');
+  assert.equal(subject().repo, 'me/tools');
+  assert.equal(subject().ref, 'claude/some-branch', 'at the ref the deck is reading');
+  assert.equal(subject().route, 'deck',
+    'route is what tells the sidebar this file is in a document, not a frame');
+  assert.equal(subject().via, undefined,
+    'and the deck does not guess what app it is inside; the fab fills that in');
+
+  d.deck.go(2);
+  await tick(6);
+  assert.equal(subject().path, FILES[2].path, 'and it follows the swipe');
+  assert.ok(heard.length >= 2, 'each one announced, not only stamped');
+
+  d.close(); await tick(6);
+  assert.equal(subject(), null, 'leaving puts back what was there before');
+  window.removeEventListener('toss-subject', onSay);
+});
+
+test('a deck opened over a toss puts the toss back, rather than clearing it', async () => {
+  // show-repo can itself be running inside a toss, so the globals are borrowed
+  // and returned rather than owned.
+  const held = { repo: 'me/tools', ref: 'main', path: 'pages/app.html' };
+  const frame = { name: 'the toss frame' };
+  window.__tossSubject = held;
+  window.__tossFrame = frame;
+
+  const d = window.fileDeck.open({ ...AT, files: FILES });
+  await tick(2);
+  assert.equal(subject().path, FILES[0].path);
+  assert.equal(window.__tossFrame, null,
+    'a deck slide is in THIS document, so there is no frame to reach into');
+
+  d.close(); await tick(6);
+  assert.equal(window.__tossSubject, held);
+  assert.equal(window.__tossFrame, frame);
+  window.__tossSubject = null; window.__tossFrame = null;
+});
+
+test('announce: false leaves the sidebar where it was', async () => {
+  const d = window.fileDeck.open({ ...AT, files: FILES, announce: false });
+  await tick(2);
+  assert.equal(subject() ?? null, null);
+  d.close(); await tick(6);
 });
