@@ -22,6 +22,19 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### headless-prose-unstyled: a headless shot of markdown looks broken and is not
+Any page whose stylesheet combine carries
+`npm/@tailwindcss/typography/dist/typography.min.css` renders its `prose` blocks
+flat under `npm run shot`: no heading sizes, no bullets, no blockquote rule,
+because Tailwind's preflight reset lands and the typography rules do not. The
+cause is vendoring, not the page. The npm package ships `src/` only, so
+`node_modules` has no such file and `resolveCdn` serves empty; jsDelivr builds
+and serves a real 100 KB stylesheet at that path, so the browser is fine. Read
+`tools/.preview/<page>.shot.log` before believing a flat-prose screenshot: the
+line is `combine 2/3 MISS:npm/@tailwindcss/typography/…`. Six pages combine it.
+*(seen: 2026-08-14)*
+→ [headless-vendoring.md](headless-vendoring.md); the map lives in `tools/render/cdn.mjs`
+
 ### ci-watch-on-blocked-api: a curl watch loop on the GitHub API waits forever
 Backgrounding `until curl .../check-runs | grep completed; do sleep; done` to
 wait on a PR's CI reports nothing, ever. Unauthenticated `curl` to
