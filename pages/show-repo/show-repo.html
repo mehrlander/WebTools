@@ -1469,16 +1469,21 @@
       </div>
     </div>
 
-    <!-- The Search view: the parameterized search surface (file names at any
-         ref, contents through the code-search API, the captured session
+    <!-- The Search view: the central file surface (file names at any ref under
+         any folder, contents through the code-search API, the captured session
          records), over the same shared core the sidebar finder uses
          (lib/kits/estate-search.js). The finder is for jumping; this is for
          investigating, and it is where each mode's caveats are stated in
          full. Estate-level, token-gated in effect, its own component and
          lazy mount; the finder's "File contents" gate routes here with the
-         query carried over (goSearch → searchSeed). -->
+         query carried over (goSearch → searchSeed).
+
+         It READS the file too, through the shared viewer embedded inside it,
+         which is why this pane is no longer capped at max-w-4xl: a results
+         column and a file beside it want the width the Tools gallery takes.
+         The per-repo Files view (?view=files) keeps the tree walk. -->
     <div x-show="view==='search'" data-pane="search" class="h-full overflow-y-auto">
-      <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 max-w-4xl">
+      <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 max-w-7xl">
         <template x-if="searchSeen">
           <div x-data="searchView()"></div>
         </template>
@@ -1637,9 +1642,11 @@ function app(){ return {
   mapTab: 'set',          // the Map view's open tab, held HERE and not in map() because the URL is the shell's to own (see goMap)
   toolsSeen: false,       // mount the tools component lazily, on first visit
   searchSeen: false,      // mount the search view lazily, on first visit
-  // What the Search view is showing, parked by goSearch (the finder's gate, a
-  // deep link's ?sq= family) and restamped by the view on each run so a search
-  // is an address. Null when nothing is parked.
+  // What the Search view is showing, parked by goSearch (the finder's gate, the
+  // explorer's hand-off, a deep link's ?sq= family) and restamped by the view
+  // on each run and each file opened, so the screen is an address. Fields:
+  // { q, mode, repo, ref, path, file }, where `path` is the folder scope and
+  // `file` is an owner/repo[@ref]:path address. Null when nothing is parked.
   searchSeed: null,
   publicSeen: false,      // mount the public-browse component lazily, on first visit
   publicSeed: '',         // repo the public browser should open; a card sets it, the component watches it
@@ -3778,17 +3785,24 @@ function app(){ return {
     { key: 'state', open(u){ this.goState(u.item); },
       stamp(p){ if (this.stateItem) p.set('item', this.stateItem); } },
     // The Search view's address carries the ran search (sq + friends, stamped
-    // from searchSeed, which the view updates on each run), so a search can be
-    // shared like any other screen. A bare ?view=search opens it empty.
+    // from searchSeed, which the view updates on each run) AND the file open in
+    // it (sfile, an owner/repo[@ref]:path address), so the screen can be shared
+    // as what is on it rather than as the query behind it. A bare ?view=search
+    // opens it empty. There is no `if (!sd.q) return` guard any more: since the
+    // view browses on a repo or a folder alone, a screen with no query at all
+    // is a screen worth addressing.
     { key: 'search',
-      open(u){ this.goSearch({ q: u.sq, mode: u.smode, repo: u.srepo, ref: u.sref }); },
+      open(u){ this.goSearch({ q: u.sq, mode: u.smode, repo: u.srepo, ref: u.sref,
+                               path: u.spath, file: u.sfile }); },
       stamp(p){
         const sd = this.searchSeed;
-        if (!sd?.q) return;
-        p.set('sq', sd.q);
+        if (!sd) return;
+        if (sd.q) p.set('sq', sd.q);
         if (sd.mode && sd.mode !== 'names') p.set('smode', sd.mode);
         if (sd.repo) p.set('srepo', sd.repo);
         if (sd.ref) p.set('sref', sd.ref);
+        if (sd.path) p.set('spath', sd.path);
+        if (sd.file) p.set('sfile', sd.file);
       } },
     // App views are estate-level, so the link stands alone (like the Stage):
     // the promoted page's repo and path ride it, independent of the open repo.
@@ -3810,7 +3824,7 @@ function app(){ return {
   // Every key any row can stamp. Deleted unconditionally before a stamp, so the
   // result never depends on what the base happened to hold.
   VIEW_KEYS: ['file', 'view', 'path', 'ref', 'project', 'tab', 'detail', 'item', 'window',
-              'sq', 'smode', 'srepo', 'sref',
+              'sq', 'smode', 'srepo', 'sref', 'spath', 'sfile',
               'appRepo', 'appPath', 'appRef', 'appLabel', 'appIcon'],
 
   routeFor(view){ return this.VIEWS.find(r => r.key === view || r.alias === view); },
@@ -3837,6 +3851,7 @@ function app(){ return {
              appRepo: p.get('appRepo') || '', appPath: p.get('appPath') || '', appRef: p.get('appRef') || '',
              appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '',
              sq: p.get('sq') || '', smode: p.get('smode') || '', srepo: p.get('srepo') || '', sref: p.get('sref') || '',
+             spath: p.get('spath') || '', sfile: p.get('sfile') || '',
              item: p.get('item') || '',
              window: this.parseWindowParam(p.get('window')) };
   },
@@ -4109,12 +4124,18 @@ function app(){ return {
   goPortable(){ this.goMap(); },
   // The Tools view: the curated utility-page gallery (docs/tools.json), public.
   goTools(){ this.toolsSeen = true; this.view = 'tools'; this.syncUrl(); },
-  // Open the Search view, optionally seeded ({ q, mode, repo, ref }). A seed
-  // reaches a mounted view by event (the component mounts once and persists
-  // behind x-show); a first mount reads shell.searchSeed in its init instead.
+  // Open the Search view, optionally seeded ({ q, mode, repo, ref, path, file }).
+  // A seed reaches a mounted view by event (the component mounts once and
+  // persists behind x-show); a first mount reads shell.searchSeed in its init
+  // instead.
+  //
+  // The gate is "any field arrived", not "a query arrived": the view browses on
+  // a repo or a folder with no query, so the explorer's hand-off ({ repo, ref,
+  // path }) and a ?spath= deep link both have to seed as fully as a query does.
   goSearch(opts){
-    if (opts && opts.q != null) {
-      this.searchSeed = { q: opts.q || '', mode: opts.mode || '', repo: opts.repo || '', ref: opts.ref || '' };
+    if (opts && Object.values(opts).some(v => v != null && v !== '')) {
+      this.searchSeed = { q: opts.q || '', mode: opts.mode || '', repo: opts.repo || '',
+                          ref: opts.ref || '', path: opts.path || '', file: opts.file || '' };
       if (this.searchSeen) document.dispatchEvent(new CustomEvent('web-tools:search-seed', { detail: this.searchSeed }));
     }
     this.searchSeen = true; this.view = 'search'; this.syncUrl();

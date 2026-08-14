@@ -79,6 +79,28 @@ test('names: matches across repos at their own refs; an unreadable tree is repor
   assert.match(mixed.errors[0], /me\/gone/);
 });
 
+test('names: a folder scope narrows before the cap, and an empty query under one is a listing', async () => {
+  ES.reset();   // the tree cache is per-module, so an earlier test's tree would answer instead
+  TREES = {
+    'me/tools@HEAD': ['lib/kits/a.js', 'lib/kits/b.js', 'lib/gh-api.js', 'docs/kits.md', 'kits'],
+  };
+  const repos = [{ repo: 'me/tools', ref: '' }];
+  // An empty query is the listing: every path under the scope, and nothing else.
+  const listed = await ES.names({ q: '', repos, token: 'tkn', under: 'lib/kits' });
+  assert.deepEqual([...listed.hits.map(h => h.path)], ['lib/kits/a.js', 'lib/kits/b.js']);
+  // The scope is a path prefix, not a substring: 'docs/kits.md' names the same
+  // segment and is out, and the bare file 'kits' is in only as itself.
+  const bare = await ES.names({ q: '', repos, token: 'tkn', under: 'kits' });
+  assert.deepEqual([...bare.hits.map(h => h.path)], ['kits']);
+  // Slashes are forgiving, and the cap counts scoped hits rather than spending
+  // itself outside the scope.
+  const capped = await ES.names({ q: '', repos, token: 'tkn', under: '/lib/kits/', cap: 1 });
+  assert.deepEqual([...capped.hits.map(h => h.path)], ['lib/kits/a.js']);
+  assert.equal(capped.total, 2);
+  // No scope is the whole tree, unchanged.
+  assert.equal((await ES.names({ q: '', repos, token: 'tkn' })).total, 5);
+});
+
 test('code: scope rides the query, fragments become clipped snippets', async () => {
   SEARCH = { total_count: 1, items: [{
     path: 'lib/x.js', repository: { full_name: 'me/tools' },

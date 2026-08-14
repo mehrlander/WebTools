@@ -41,7 +41,8 @@ Deep-link params: `&view=` takes any of `estate`, `activity`, `sessions`,
 `landing`, `pages`, `atlas`, `files`, `branches`, `config`, `project` (a repo's).
 Beside it: `&file=<path>`, `&path=<dir>`, and a second key for the views that
 carry one, `&tab=<tab>` (**project**'s pill row, **Map**'s tabs), `&item=`
-(**State**), `&detail=` (**Branches**), `&sq=` (**Search**), `&window=`. A view
+(**State**), `&detail=` (**Branches**), the `&sq=` family (**Search**: `sq`,
+`smode`, `srepo`, `sref`, `spath`, `sfile`), `&window=`. A view
 keeps its default second key out of the URL, so an existing bare link still
 opens where it always did. `&view=portable` is a retired alias that still
 resolves to the Map.
@@ -299,7 +300,11 @@ The per-repo views in the sidebar:
 - **atlas**: a standing structural view, available for every repo regardless of
   its landing.
 - **files**: the explorer: breadcrumb + listing, selected file's content
-  beneath. Each row has a `+` that stages the file.
+  beneath. Each row has a `+` that stages the file. It answers **where a file
+  sits**, which is the one question a search cannot; finding a file by name,
+  by folder, or by what is inside it, and reading it, belong to the estate's
+  **Search** view instead, and the breadcrumb's magnifier hands that view this
+  repo, this ref, and this folder so the scope never has to be re-entered.
 - **branches**: the branch review (below).
 
 **GitHub jump-overs.** show-repo is a wrapper over GitHub, not a wall: every
@@ -358,6 +363,7 @@ the header nav the way a repo shows landing/atlas/files/…:
   (`?view=chats`) (all below).
 - **Lists** — the two personal piles, To-do over Jot, in one pane rather than
   two tabs. Both `?view=todo` and `?view=jots` resolve here (below).
+- **Search** (`?view=search`) — the central file surface: file names at any ref under any folder, contents through the code-search API, the session records, and the file itself read in place (below).
 - **Tools** (`?view=tools`) — a curated gallery of utility pages (below).
 - **Map** (`?view=map`, `&tab=` deep-links a tab) — the portable set, Surfacing, Showing, the Docs registry, and Tests (below). Per-repo scope and adoption live on the Repos cards.
 - **Proposals** (`?view=proposals`) — pending cross-repo edits awaiting a confirm
@@ -1048,6 +1054,70 @@ source resolve with no token; a cross-repo or off-default entry renders through
 toss-render `#gh=` the same way the pages catalog does. The list is authored, a
 sibling to `pins` and `stage.files`, maintained by hand
 (`lib/alpineComponents/tools.js`).
+
+### Search (`?view=search`): the central file surface
+
+**Search** (`lib/alpineComponents/search-view.js`) is where files are found
+**and read**. Three modes behind a pill row, all served by the same core the
+sidebar finder uses ([`lib/kits/estate-search.js`](../lib/kits/estate-search.js),
+one implementation, one cache, so a tree the finder fetched is a tree this view
+never re-fetches):
+
+| Mode | Reaches | Misses |
+| --- | --- | --- |
+| **Files** | file names over the repo trees, at **any ref**, under any folder | nothing inside a file |
+| **Contents** | full text, through the code-search API | non-default branches, a push the index has not caught, files over ~384 KB, past ten calls a minute |
+| **Sessions** | the captured session records (the opening ask, every stored prompt and reply, the closing message) | anything not captured |
+
+Each mode's caveats are stated in a **facts line** under the controls rather
+than abbreviated onto a row label, and an error surfaces whole.
+
+**Four filters over one list, not a search box with extras.** A query, a repo,
+a ref, and a folder scope each narrow the same set, and none of the four is
+required except in the sense that something has to be: **an empty query under a
+repo or a folder is a listing**, so the button reads *List* rather than
+*Search* and the same call serves browsing. Only an unscoped empty query is a
+miss, since reading every tree the token can see is not a listing anyone asked
+for. The scope narrows before the cap is spent, and in Contents it rides the
+API's own `path:` qualifier, so scoping narrows the search rather than the
+results it already paid for. A row is stated **relative to the scope** and drops
+the repo badge when a single repo is the scope, which is what stops a scoped
+listing from repeating itself on every line and truncating the only part that
+differs. The folder icon on a row scopes to it, and appears only where that
+would go somewhere; the crumb trail above walks back out.
+
+**A hit opens where it was found.** The shared viewer (`viewer.js`, embedded
+with `bindStore:false`, the same way the stage previews a staged file) renders
+the file beside the results on a wide screen and in place of them on a phone,
+with a labelled way back. It carries the file's true `origin`, so its GitHub /
+Raw / CDN / toss links point at the file's own repo and ref rather than at
+whatever repo the shell happens to be browsing, and reading a hit never switches
+that repo. The position steps through the file hits, so a result set is walkable
+without returning to the list. One button leaves for the repo's **Files** view,
+for when the question is where a file *sits* rather than what it says.
+
+**Why it is not the repo's Files view.** Every repo carries its own Files view,
+and reading a file there means first choosing a repository and then walking a
+tree. A file is rarely wanted as a position in a tree; it is wanted by name, by
+folder, or by what is inside it, and this view answers all three, across every
+repo at once, which no per-repo tree walk can. So the tree walk keeps
+`?view=files` and the explorer's breadcrumb gained a magnifier that hands this
+view where you were standing (repo, ref, folder, no query), while the reading
+happens here.
+
+**The screen is the address, not the query behind it.**
+`?view=search&sq=&smode=&srepo=&sref=&spath=&sfile=` round-trips the query, the
+mode, both scopes, and the open file, `sfile` being an `owner/repo[@ref]:path`
+address. A screen with no query at all is still worth addressing, which is why
+the row stamps on any field rather than on `sq` alone.
+
+Every run re-executes; the caches underneath make re-matching cheap, and
+**Refresh caches** (`EstateSearch.reset`) is the explicit way to force fresh
+fetches, which is the view-level answer to "the results seem cached". **Show
+more** raises the cap and re-runs, and appears only where more can actually come
+from: the names lane holds the whole match set in memory, the code-search API
+pages at 100 and this view reads one page, and the session grep returns
+everything already.
 
 ### State (`?view=state`)
 
