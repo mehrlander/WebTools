@@ -1812,9 +1812,22 @@ Where a file LANDS is the surface's call, and that is what `read` says: the deck
 is for reading, so a document opens rendered there and diffed in a list; an
 image and an archive have no useful diff either way and open as themselves
 everywhere. The deck also passes `bare`, dropping the card's own collapsed row,
-since the deck header already names the file. This is what made `gh.bytes()`
-necessary in `lib/gh-api.js`: `get()` is a UTF-8 decode, which is lossy by
-construction for anything that is not text.
+since the deck header already names the file. This is why `lib/gh-api.js` gained
+`bytes()`: `get()` is a UTF-8 decode, lossy by construction for anything that is
+not text, and `get()` is now that method plus the decode.
+
+Touching the client at all deserves its own note, because every page in the
+estate loads it. It was a placement call rather than a necessity: the same two
+calls could have lived in the component, at the cost of repeating the client's
+over-1MB blobs fallback. What the call costs is a **cache-skew window**:
+`toss-render.html` imports `gh-api.js` from jsDelivr on `@main`
+(`?use=<ref>` reads raw.githubusercontent with `cache: 'no-store'` and is
+therefore always current), and the client and the component are separate cache
+entries, so after a merge the CDN can serve a new component against an old
+client. The purge link shortens that window and does not close it, so
+`fileReview._bytes()` falls back to the two calls by hand when `gh.bytes` is
+absent. Nothing else in the estate calls it, and `gh.decode()` stayed where it
+was for the three pages that do use it.
 
 **The crumb is budgeted.** The deck header reads `<branch> · <dir>`, every
 branch here is a `claude/<slug>` running to twenty-five characters, and CSS

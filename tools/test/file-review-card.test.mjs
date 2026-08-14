@@ -220,3 +220,36 @@ test('bare drops the collapsed row, for a host that names the file itself', () =
   assert.equal(window.getComputedStyle(row('bare')).display, 'none',
     'a deck slide does not, since the deck header already did');
 });
+
+
+// gh-api.js and this component are two separate jsDelivr cache entries, so
+// after a merge the CDN can serve a new component against an old client for as
+// long as it takes the two to agree. `gh.bytes is not a function` would take
+// out the image and archive panes with nothing on screen saying why, so the
+// component carries the same two calls itself and uses them when the client
+// cannot. The case drives that path directly, because by construction it
+// cannot arise in this repo: the client here always has the method.
+test('a client too old to have bytes() still yields an image', async () => {
+  const seen = [];
+  const Old = class {
+    constructor(c = {}) { this.ref = c.ref || ''; }
+    async req(p) {
+      seen.push(p);
+      if (/^contents\//.test(p)) return { content: btoa('PNGDATA'), sha: 's1', size: 7 };
+      return [];
+    }
+    async get() { return { text: 'x' }; }
+  };
+  assert.equal(typeof Old.prototype.bytes, 'undefined', 'the client this simulates');
+  const real = window.GH;
+  window.GH = Old;
+  try {
+    const d = data('png');
+    d.loaded = false; d.mediaUrl = '';
+    await d._loadShown();
+    assert.ok(d.mediaUrl.startsWith('data:image/png;base64,'), 'the pane still has its image');
+    assert.equal(atob(d.mediaUrl.split(',')[1]), 'PNGDATA');
+    assert.ok(seen.some(p => p.startsWith('contents/pages/thumbs/a.png')),
+      'fetched by hand, through the one call every client has had all along');
+  } finally { window.GH = real; }
+});

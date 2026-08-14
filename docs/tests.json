@@ -1234,7 +1234,7 @@
       "path": "tools/test/file-review-card.test.mjs",
       "kind": "component",
       "protects": "What opening a changed-file row costs: a card handed a patch shows it without fetching, and only a tab that needs the bytes triggers a contents call. Plus the collapsed row's formatting, including the path elision that replaced a CSS rtl trick bidi reordering turned into a path that does not exist.",
-      "assertions": 14,
+      "assertions": 15,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -1252,7 +1252,8 @@
         "an image offers no source panes, because there is nothing there to read",
         "a reading surface loads a presentation rather than settling on the patch",
         "a binary keeps its bytes to itself",
-        "bare drops the collapsed row, for a host that names the file itself"
+        "bare drops the collapsed row, for a host that names the file itself",
+        "a client too old to have bytes() still yields an image"
       ]
     },
     {
