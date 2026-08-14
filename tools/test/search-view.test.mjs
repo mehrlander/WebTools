@@ -170,6 +170,13 @@ test('no query is a WALK: folders, then files, and a way back up', async () => {
   assert.deepEqual([...data.hits.slice(1, 3).map(h => h.label)], ['kits', 'demos']);
   assert.equal(data.hits[1].sub, '9 files');
 
+  // The estate's row palette, which a generic row builder had quietly dropped:
+  // the manila folder is what says at a glance which rows you can walk into.
+  // The way up keeps the muted treatment, being a way out and not a folder.
+  assert.equal(data.hits[1].tint, 'text-warning');
+  assert.equal(data.hits[3].tint, 'text-info');
+  assert.equal(data.hits[0].tint, undefined);
+
   // A folder row descends rather than opening anything.
   const before = FETCHED.length;
   data.openHit(data.hits[1]);
