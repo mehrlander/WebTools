@@ -62,7 +62,7 @@
       "subject": "the friction log: one line per snag, symptom then corrected move",
       "status": "living",
       "reach": "project",
-      "words": 4290,
+      "words": 4480,
       "maintenance": "authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
     },
     {
@@ -262,7 +262,7 @@
       "subject": "the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting",
       "status": "living",
       "reach": "app",
-      "words": 4210,
+      "words": 4264,
       "maintenance": "authored role and layer glossary; layer, lines, invocation, emits, named and tested stamped by tools/build/tools-index.mjs, held in lockstep by artifacts-lockstep.test.mjs; blank roles are counted, not hidden"
     },
     {
@@ -358,7 +358,7 @@
       "subject": "the show-repo shell: views, stage, transfer, and the .web-tools.json manifest",
       "status": "living",
       "reach": "project",
-      "words": 27291,
+      "words": 27630,
       "maintenance": "authored, edited in place; the corpus's largest document, and the buried home of the stage contract"
     },
     {
@@ -382,7 +382,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 21456,
+      "words": 21645,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {

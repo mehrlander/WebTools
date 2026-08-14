@@ -62,6 +62,8 @@ const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
   'lib/kits/repo-address.js',   // the real address grammar: ?sfile= round-trips through it
   'lib/alpineComponents/viewer.js',       // the reader this view embeds
+  'lib/alpineComponents/ref-picker.js',   // and the two scope pickers it mounts
+  'lib/alpineComponents/path-picker.js',
   'lib/alpineComponents/search-view.js',
 ]);
 const data = Alpine.$data(window.document.getElementById('sv'));
@@ -315,10 +317,15 @@ test('a bare arrival lists the browsed repo rather than landing on nothing', asy
   assert.ok(cold.repoOptions.some(r => r.repo === 'me/browsed'));
 
   // And the one state that still cannot run says why, rather than only greying
-  // out its own button.
+  // out its own button. Every other Files state says nothing: the controls
+  // above already say what the mode is, and only a LIMIT needs prose.
   cold.repo = ''; cold.path = ''; cold.q = '';
   assert.equal(cold.canRun, false);
-  assert.match(cold.facts, /Pick a repo or name a folder/);
+  assert.match(cold.caveat, /Pick a repo/);
+  cold.repo = 'me/browsed';
+  assert.equal(cold.caveat, '', 'a Files listing that can run explains nothing');
+  cold.mode = 'contents';
+  assert.match(cold.caveat, /384 KB/, 'contents keeps its caveats: no layout can show what a list is missing');
 
   el.remove();
   store.repo = ''; store.ref = ''; store.defaultRef = '';

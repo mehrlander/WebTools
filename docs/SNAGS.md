@@ -22,6 +22,24 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### x-data-scope-shadows-component-names: a mount's config read a component, not the host's field
+Mounting a child component with a config that closes over host state, the
+ordinary `x-data="refPicker({ repo: () => repo })"` spelling, silently read the
+wrong `repo`. Alpine evaluates an `x-data` expression with **every registered
+component name injected into scope**, and this estate has a component named
+`repo` (`alpineComponents/repo.js`), so the identifier resolved to that
+factory function rather than to the host view's scoped repository. The panel
+rendered `[object Object]` where the repo goes; `defaultRef`, which is nobody's
+component, came back undefined by the same route and read as a second,
+unrelated bug. Nothing in either file looks wrong and both components test
+green in isolation, since the collision exists only in the mount expression.
+The corrected move: **build a child mount's config in the host's `init()`,
+over a `self` captured there, and pass the stored object** (`x-data="child(pickerCfg.ref)"`).
+`init()` runs in the ordinary component scope, where the injection is gone. Any
+config that merely names its own fields is unaffected; this bites exactly the
+configs that close over the host. *(seen: 2026-08-14)*
+→ [show-repo.md](show-repo.md), the Search view's scope controls
+
 ### ci-watch-on-blocked-api: a curl watch loop on the GitHub API waits forever
 Backgrounding `until curl .../check-runs | grep completed; do sleep; done` to
 wait on a PR's CI reports nothing, ever. Unauthenticated `curl` to

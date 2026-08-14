@@ -1140,6 +1140,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/search-controls.mjs",
+      "role": "the Search view's scope controls: repos as a single-select rail, the ref as a dated newest-first picker whose box filters rather than leads, the folder as the tap-through picker, and no explanatory prose above any of them",
+      "layer": "tools/render/scenarios",
+      "lines": 71,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/search-files.mjs",
       "role": "the Search view as the central file surface: a folder-scoped listing with no query at all, and a real file from it open in the shared viewer beside the results. The sandbox blocks the API, so the listing is stubbed and the file read is served from the committed source over a same-origin fetch",
       "layer": "tools/render/scenarios",

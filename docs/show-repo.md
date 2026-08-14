@@ -1069,8 +1069,38 @@ never re-fetches):
 | **Contents** | full text, through the code-search API | non-default branches, a push the index has not caught, files over ~384 KB, past ten calls a minute |
 | **Sessions** | the captured session records (the opening ask, every stored prompt and reply, the closing message) | anything not captured |
 
-Each mode's caveats are stated in a **facts line** under the controls rather
-than abbreviated onto a row label, and an error surfaces whole.
+**The controls say what they are; the prose says only what is missing.** The
+slot under them used to carry a paragraph per mode explaining what that mode
+was, above controls already saying it. A Files pill over a repo rail over a
+branch picker does not need telling. What no layout can show is a **limit**, so
+that is all the line carries now: Contents keeps its caveats, Sessions names the
+corpus it greps, Files says nothing at all except in the one state where its
+button is dead. An error still surfaces whole.
+
+Each scope is the control its subject deserves:
+
+- **Repos are a rail**, single-select badges with "tap it again for all", the
+  stage's Recent filter idiom. The set is small, fixed, and the thing switched
+  most, which is the case a `<select>` serves worst: it hides every option
+  behind a tap and reports the current one in a slot that reads as a form field
+  rather than as a place you are standing.
+- **The ref is a picker** (`lib/alpineComponents/refPicker`), a dated
+  newest-first branch list with the default branch as its own row. Its box
+  **filters** rather than leads, which inverts the header ref switch on purpose:
+  there you know the name of where you are going, here you are choosing among
+  what exists. A tag, a sha, or a branch past the survey's reach is still
+  reachable, offered as typed at exactly the point the list runs out of
+  matches. The default branch is handed back as `''`, never by name, so a scope
+  meaning "whatever this repo calls its default" keeps meaning that when the
+  repo changes. It stands down under **All**, where there is no one repo to
+  list and each answers at its own default.
+- **The folder is the tap-through picker** (`pathPicker` in `dir` mode), rooted
+  at the scoped repo at the scoped ref and opening *inside* it, since a one-row
+  "pick a repo" level in a control two slots right of the repo rail is a tap
+  asking a question with one answer.
+
+Switching repos drops the ref and the folder with it: both name places inside
+the repo you just left.
 
 **Four filters over one list, not a search box with extras.** A query, a repo,
 a ref, and a folder scope each narrow the same set, and none of the four is

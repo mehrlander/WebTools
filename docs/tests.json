@@ -1878,6 +1878,26 @@
       ]
     },
     {
+      "path": "tools/test/ref-picker.test.mjs",
+      "kind": "component",
+      "protects": "The shared ref picker: the host's scope is read fresh rather than captured, the survey runs once per repo and again when it changes, a GraphQL failure degrades to the REST list instead of erroring, and the default branch is handed back as '' rather than by name.",
+      "assertions": 9,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "the scope is read fresh, so a host switching repos moves the picker with it",
+        "an unset ref reads as what unset MEANS, and off-default is marked",
+        "the survey runs once per repo, and again when the repo changes",
+        "the default branch is not repeated in the list; it has its own row",
+        "the filter narrows the list; a name it holds is not also offered as typed",
+        "the default branch is handed back as an empty ref, never by name",
+        "a GraphQL failure degrades to the REST list and says so, rather than erroring",
+        "a branch prefix is dimmed rather than dropped, since two can share a tail",
+        "no repo means no list, and the trigger says so instead of offering one"
+      ]
+    },
+    {
       "path": "tools/test/ref-switch.test.mjs",
       "kind": "component",
       "protects": "The ref switch pins the ref on both halves and carries the page query across.",
