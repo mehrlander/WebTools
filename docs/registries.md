@@ -1,10 +1,10 @@
 # Registries: the metadata model
 
-How the estate keeps stored information about files, settled 2026-08-08 after
-the harness census re-derived, without noticing, the convention budget-drs had
-already built as its controlled-property registry. This document states the
-model once so the next accounting is an instance of it rather than a third
-invention. It is written to travel; the origin instrument is budget-drs's
+How the estate keeps stored information about its own contents, settled
+2026-08-08 after the harness census re-derived, without noticing, the convention
+budget-drs had already built as its controlled-property registry. This document
+states the model once so the next accounting is an instance of it rather than a
+third invention. It is written to travel; the origin instrument is budget-drs's
 `properties.csv` in `mehrlander/home`, and this repo's declaration table is
 [`properties.json`](properties.json), gated by
 [`properties-registry.test.mjs`](../tools/test/properties-registry.test.mjs).
@@ -206,14 +206,13 @@ in a renderer's source is exactly the unaccounted kind.
 | **names** | Everything else: a name something declared, the registry being what declares it | 7 |
 
 The question is the point, not the label. Without a stated rule the grouping is
-re-litigated on every addition, so the rule has to be answerable cold, by
-someone who has never read this file. "Does it have a path" is; a topical
-judgment is not.
+re-litigated on every addition, so the rule has to be answerable by someone who
+has never read this file. "Does it have a path" is; a topical judgment is not.
 
 Files takes 9 of 16, so the split does little sorting. That is accepted rather
-than fixed: a mechanical rule anyone can apply cold is worth more than a
-balanced one that needs a judgment call, and if `names` ever earns a subdivision
-it can be split then, from a boundary that already holds.
+than fixed: a rule anyone can apply is worth more than a balanced one that needs
+a judgment call, and if `names` ever earns a subdivision it can be split then,
+from a boundary that already holds.
 
 **The first attempt was three areas and it did not survive contact.** Files were
 `contents`, and the seven names were split into `conventions` and a

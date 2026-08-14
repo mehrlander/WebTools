@@ -80,7 +80,7 @@ Root-level `tracker/` scoped to repo-wide work (conventions, build tooling, docs
 A committed JSON or CSV that inventories or classifies part of the tree is a
 **registry**; adding one means adding a row to
 [`docs/properties.json`](docs/properties.json) in the same commit. Sixteen are
-declared, each leading with what it is for. The model, the rules, and what three
+declared, each leading with what it is for. The model, the rules, and what its
 audits found are in [`docs/registries.md`](docs/registries.md); read it before
 inventing a carrier, since the answer is usually a row in one that exists.
 
