@@ -27,7 +27,11 @@ by hand. Full statement and reasoning: `docs/HTML-STYLE.md` in `mehrlander/web-t
    (`brief only` as a column header) rather than writing a sentence about it.
 3. **Browsing is a full-viewport takeover.** A deck, gallery, diff, or result set is
    `fixed inset-0` with `grid-rows-[auto_1fr_auto]`: thin header, content, thin
-   footer. Not a boxed widget with page furniture around it.
+   footer. Not a boxed widget with page furniture around it. **A page another
+   page may embed takes the same shape without the fixed root:** `min-h-dvh`
+   plus `sticky top-0`/`sticky bottom-0` chrome over normal flow, because a
+   fixed root inside an iframe measures against the outer viewport on Safari and
+   its right-hand column is cut off in any host narrower than the window.
 4. **Type is for reading, not for fitting.** Content at `text-xl`+ with `leading-8`.
    Two tiers only, content and chrome: everything the reader came to read gets the
    same size, and `text-xs` belongs to counters, timestamps, and labels. If content

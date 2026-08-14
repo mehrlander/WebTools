@@ -112,8 +112,13 @@ a pointless `npm i -D @tailwindcss/typography`; the limit was already
 documented, dated 2026-08-01: the typography npm tarball ships no built CSS,
 so `cdn.mjs` has nothing to resolve and markdown renders unstyled in every
 harness while the deployed page styles it fine. Read the documented limits
-before debugging shot pixels. *(seen: 2026-08-07)*
-→ [environment/testing.md](environment/testing.md)
+before debugging shot pixels. Bit again on 2026-08-14, in the same shape: a
+screenshot of pasted markdown read as a rendering bug, and the second session
+wrote a fresh entry for it rather than finding this one, which the merge caught
+and this line records. The tell is in the render log, one grep from the
+screenshot: `combine 2/3 MISS:npm/@tailwindcss/typography/…`. Six pages combine
+it. Third time earns the task. *(seen: 2026-08-07, 2026-08-14)*
+→ [environment/testing.md](environment/testing.md); the map is `tools/render/cdn.mjs`
 
 ### pre-build-boots-alpine-early: a page's own gh.load chain runs after its components init
 `branch.html` died with `Cannot read properties of undefined (reading 'fetchBrief')`.
