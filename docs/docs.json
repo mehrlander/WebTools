@@ -86,7 +86,7 @@
       "subject": "the show-repo app's own destinations: every address, what it is for, and which files draw it",
       "status": "living",
       "reach": "orphan",
-      "words": 1043,
+      "words": 1271,
       "maintenance": "authored; held to show-repo.html's VIEWS table, and its declared files to disk, by app-routes.test.mjs"
     },
     {
@@ -342,7 +342,7 @@
       "subject": "the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement",
       "status": "living",
       "reach": "project",
-      "words": 4285,
+      "words": 4338,
       "maintenance": "authored by hand; held both ways to the carriers it governs by tools/test/properties-registry.test.mjs"
     },
     {
@@ -366,7 +366,7 @@
       "subject": "the show-repo shell: views, stage, transfer, and the .web-tools.json manifest",
       "status": "living",
       "reach": "project",
-      "words": 27039,
+      "words": 27336,
       "maintenance": "authored, edited in place; the corpus's largest document, and the buried home of the stage contract"
     },
     {
@@ -390,7 +390,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 21652,
+      "words": 21702,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {

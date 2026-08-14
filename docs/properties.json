@@ -1181,6 +1181,14 @@
       "required": "none",
       "values": null,
       "gloss": "the sub-tabs addressable within it"
+    },
+    {
+      "property": "stop",
+      "registry": "app-routes",
+      "mode": "recorded",
+      "required": "value",
+      "values": null,
+      "gloss": "the nav destination it is reached as. Six sub-tabs are addressed as their own ?view= key while twelve are addressed as ?view=<parent>&tab=, so this is the level the router flattens away; the gate holds every estate route's value to estateNav"
     }
   ]
 }

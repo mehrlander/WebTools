@@ -60,6 +60,50 @@ test('every row says what it is, where it is, and what draws it', () => {
   }
 });
 
+// The nav stops, read out of the shell: each entry's `views` array is the set
+// of ?view= keys that one header button owns.
+function navStops(src) {
+  const nav = src.match(/get estateNav\(\)\{([\s\S]*?)\n {2}\},/);
+  assert.ok(nav, 'estateNav not found in ' + manifest.app);
+  const stops = [];
+  const row = /\{ view: '([a-z]+)',(?:\s*views: \[([^\]]*)\],)?[^}]*?label: '([^']+)'/g;
+  for (const [, key, views, label] of nav[1].matchAll(row)) {
+    stops.push({ label, keys: views ? [...views.matchAll(/'([a-z]+)'/g)].map(m => m[1]) : [key] });
+  }
+  assert.ok(stops.length > 5, 'estateNav parsed suspiciously short: ' + stops.length);
+  return stops;
+}
+
+// `stop` is the level the router flattens away, so it is the one field that
+// could quietly stop being true: six sub-tabs are addressed as their own
+// ?view= key, and nothing but this check ties them back to the button they
+// actually live under. Repo- and shell-group routes are not in estateNav (they
+// are reached from the sidebar), so they declare their own stop and are only
+// held to being non-empty.
+test('every estate route declares the nav stop that actually owns it', () => {
+  const stops = navStops(shellSrc);
+  const owner = new Map();
+  for (const s of stops) for (const k of s.keys) owner.set(k, s.label);
+  for (const r of manifest.routes) {
+    assert.ok(r.stop, r.key + ': stop');
+    if (r.group !== 'estate') continue;
+    assert.ok(owner.has(r.key), `${r.key}: in the estate group but not in estateNav`);
+    assert.equal(r.stop, owner.get(r.key),
+      `${r.key}: declares stop "${r.stop}" but estateNav puts it under "${owner.get(r.key)}"`);
+  }
+});
+
+// The flattening itself, asserted as a figure rather than left as folklore.
+// It moves only when a sub-tab is promoted, demoted, or re-encoded, and each of
+// those is a decision someone should have to restate here.
+test('the two sub-tab encodings, counted', () => {
+  const stops = navStops(shellSrc);
+  const flattened = stops.reduce((n, s) => n + s.keys.length - 1, 0);
+  const params = manifest.routes.reduce((n, r) => n + (r.tabs || []).length, 0);
+  assert.equal(flattened, 6, 'sub-tabs addressed as their own ?view= key');
+  assert.equal(params, 12, 'sub-tabs addressed as ?view=<parent>&tab=');
+});
+
 test('an alias is a retired key, so it never doubles as a live one', () => {
   const keys = new Set(manifest.routes.map(r => r.key));
   for (const r of manifest.routes) {
@@ -175,4 +219,35 @@ test('a branch hitting only a wide file is near a route, not open on it', () => 
 
 test('pathsToRead is every carrier plus the shell, deduped', () => {
   assert.deepEqual(R.pathsToRead(FIXTURE).sort(), ['one.js', 'shell.html', 'wide.js']);
+});
+
+// Grouping by stop takes its order FROM the ranking rather than recomputing it,
+// which is what keeps "freshest first" true at both levels at once. 'two' and
+// 'three' share a stop; 'one' is dated by its own narrow carrier and so leads
+// the ranking, and its stop leads with it.
+const STOPPED = {
+  ...FIXTURE,
+  routes: FIXTURE.routes.map(r => ({ ...r, stop: r.key === 'one' ? 'One' : r.key === 'four' ? 'Four' : 'Pair' })),
+};
+
+test('stops order by their freshest member, rows by recency inside', () => {
+  const touches = { 'one.js': { date: '2026-08-01' }, 'wide.js': { date: '2026-08-12' } };
+  const g = R.stops(R.rank(STOPPED, { touches }));
+  assert.deepEqual(g.map(s => s.stop), ['One', 'Pair', 'Four']);
+  assert.deepEqual(g[1].rows.map(r => r.key), ['two', 'three']);
+  assert.equal(g[0].lastTouch.date, '2026-08-01');
+});
+
+test('a stop owning one route says so, so it need not render as a section', () => {
+  const g = R.stops(R.rank(STOPPED, {}));
+  assert.deepEqual(g.map(s => s.solo), [true, false, true]);
+  assert.equal(g.find(s => s.stop === 'Pair').rows.length, 2);
+});
+
+test('a stop sums the work open across its rows', () => {
+  const branches = [{ pr: 1, files: ['one.js'] }, { pr: 2, files: ['wide.js'] }];
+  const g = R.stops(R.rank(STOPPED, { branches }));
+  // PR 2 hits only the wide file, so it is `near` on every row and open on none.
+  assert.equal(g.find(s => s.stop === 'One').open, 1);
+  assert.equal(g.find(s => s.stop === 'Pair').open, 0);
 });

@@ -58,13 +58,15 @@
       "path": "tools/test/app-routes.test.mjs",
       "kind": "gate",
       "protects": "The route manifest and show-repo.html's VIEWS table describe the same set of addresses, every declared file exists, and the fold refuses to date a route off the shell or off a file too many routes share.",
-      "assertions": 12,
+      "assertions": 17,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
       "assertion_names": [
         "every route the router dispatches is described, and nothing else is",
         "every row says what it is, where it is, and what draws it",
+        "every estate route declares the nav stop that actually owns it",
+        "the two sub-tab encodings, counted",
         "an alias is a retired key, so it never doubles as a live one",
         "shared is derived from being named twice, never authored",
         "a wide file does not date a row it cannot speak for",
@@ -74,7 +76,10 @@
         "a row dated by its own code outranks every borrowed one, however fresh",
         "undated rows fall to the bottom rather than to the top",
         "a branch hitting only a wide file is near a route, not open on it",
-        "pathsToRead is every carrier plus the shell, deduped"
+        "pathsToRead is every carrier plus the shell, deduped",
+        "stops order by their freshest member, rows by recency inside",
+        "a stop owning one route says so, so it need not render as a section",
+        "a stop sums the work open across its rows"
       ]
     },
     {

@@ -569,7 +569,32 @@ A row's label opens the route through the shell's own dispatcher, so it is the
 same navigation a header tab performs. Only a bare `?view=<key>` is offered: an
 address carrying a placeholder (a repo, a file path, a promoted page) has no
 single destination, and those rows show the address as text rather than a link
-that would land nowhere.
+that would land nowhere. Such an address is also trimmed to its `?view=` half on
+the row, with the full shape in the expanded detail: `?view=app&appRepo=<owner/
+repo>&appPath=<path>` wrapped to two lines on a phone to say what the row's tone
+now says. The `shell` group (App view, Public browse) reads muted, because
+neither is a screen this app draws.
+
+**Rows fold into nav stops, which is the level the router flattens away.** The
+app addresses sub-tabs two ways: six are their own `?view=` key (Activity's
+five, Lists' two, Stage's two) and twelve are `?view=<parent>&tab=` (Map's
+eight, Project's four). The reason is archaeological rather than designed. Each
+flattened key used to *be* a nav stop and kept its key when its pane moved under
+another, so saved links keep resolving; Map's tabs were never separate
+destinations and were born as `&tab=`. A view key that outlived its stop is a
+fossil, and a flat list rendered fossils at the same rank as live destinations,
+which is what read oddly. Each route therefore declares its `stop`, held to
+`estateNav` by the gate, so the flattening is stated here rather than inferred,
+and the header counts it once as a figure rather than repeating a sentence on
+every folded stop. A stop owning one route is not a grouping and renders as a
+plain row.
+
+**The grouping takes its order from the ranking rather than recomputing it.**
+That is what keeps freshest-first true at both levels at once: stops appear in
+the order their freshest member does, rows keep their rank order inside. An
+earlier draft grouped by a fixed manifest order and cost the pane its headline,
+an hour-old route sitting below a six-day-old one because they were in different
+sections. Deriving the group order from the rank is what makes grouping safe.
 
 **The stop used to hold four panes**, adding To-do and Jots on the reasoning
 that the four read as a gradient of commitment: a jot is unshaped intent, a
