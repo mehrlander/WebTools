@@ -184,21 +184,35 @@ test('an unknown shell mode reads as the default rather than blanking the app', 
   }
 });
 
-test('the FAB mode contract is well formed, and its setter is the mode setter', () => {
-  // The Render tab reads { key, label, value, options, set } off this and
-  // renders a bar per entry. A malformed row paints an empty bar, and a `value`
-  // outside `options` paints one with nothing lit, so both are checked here
+test('the FAB toggle contract is well formed, and its setter is the mode setter', () => {
+  // The Render tab renders one on/off control per entry, inline with the width
+  // presets. A malformed row paints a dead button, so the shape is checked here
   // rather than left to be seen.
   const { shell: s } = makeShell({ browserStore: { repo: '' } });
-  const [bar, ...rest] = s.modes;
-  assert.equal(rest.length, 0, 'show-repo contributes more than one mode bar; the doc names one');
-  assert.ok(bar.key && bar.label && typeof bar.set === 'function', 'the mode row is missing key, label, or set');
-  assert.deepEqual(bar.options.map(o => o.value), s.SHELL_MODES,
-    'the bar offers a different set of modes than the shell accepts');
-  for (const o of bar.options) assert.ok(o.label && o.icon, `mode ${o.value}: needs a label and an icon`);
-  assert.ok(bar.options.some(o => o.value === bar.value), 'no segment matches the current value');
+  const [t, ...rest] = s.toggles;
+  assert.equal(rest.length, 0, 'show-repo contributes more than one toggle; the doc names one');
+  assert.ok(t.key && t.label && t.icon && typeof t.set === 'function',
+    'the toggle row is missing key, label, icon, or set');
+  assert.equal(t.on, true, 'the toggle does not start on, so the default state reads as the exceptional one');
+  assert.equal(t.hint, '', 'the default state carries a hint, so the row would never sit one line high');
 
-  bar.set('none');
-  assert.equal(s.shellMode, 'none', 'the bar\'s setter did not move the shell');
-  assert.equal(s.modes[0].value, 'none', 'the bar re-reads a stale value, so it would light the wrong segment');
+  t.set(false);
+  assert.equal(s.shellMode, 'none', "the toggle's setter did not move the shell");
+  assert.equal(s.toggles[0].on, false, 'the toggle re-reads a stale value, so it would light the wrong way');
+  assert.ok(s.toggles[0].hint, 'the off state says nothing, leaving ?shell=none unexplained');
+});
+
+test('the header toggle returns to the mode it left, not to full', () => {
+  // The drawer offers one binary over three modes, so coming back is ambiguous
+  // and the shell remembers. Without this, someone who opened a ?shell=nav link
+  // and toggled the header off and on would land on full and have the sidebar
+  // spring out at them.
+  for (const start of ['full', 'nav']) {
+    const { shell: s } = makeShell({ search: '?shell=' + start, browserStore: { repo: '' } });
+    s.readShellMode();
+    s.setHeader(false);
+    assert.equal(s.shellMode, 'none', `from ${start}: the header did not come off`);
+    s.setHeader(true);
+    assert.equal(s.shellMode, start, `from ${start}: the header came back to ${s.shellMode} instead`);
+  }
 });

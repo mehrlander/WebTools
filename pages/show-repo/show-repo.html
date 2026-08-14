@@ -4374,10 +4374,19 @@ function app(){ return {
   },
   setShellMode(mode){
     if (!this.SHELL_MODES.includes(mode) || mode === this.shellMode) return;
+    if (mode === 'none') this._shellReturn = this.shellMode;
     this.shellMode = mode;
     this.sidebarOpen = this.defaultSidebarOpen;
     this.syncUrl();
   },
+  // Which header-bearing mode to come back to. The drawer offers ONE control, a
+  // header on/off (see `toggles`), which is a projection of three modes onto
+  // two, so coming back is ambiguous and this holds the answer. Without it,
+  // someone who opened a ?shell=nav link, hid the header and brought it back
+  // would land on `full` and have the sidebar spring out at them, a state they
+  // never asked for and would have to put away by hand.
+  _shellReturn: 'full',
+  setHeader(on){ this.setShellMode(on ? (this._shellReturn || 'full') : 'none'); },
   // Deliberately NOT stamped into the URL. syncUrl pushes a history entry per
   // distinct address, so an addressable sidebar would put one on the stack
   // every time the drawer was tapped and make Back walk them; and the mode
@@ -4387,24 +4396,26 @@ function app(){ return {
   openSidebar(){ this.sidebarOpen = true; },
 
   // The FAB's opt-in contract for STATE, beside `actions` for verbs: each entry
-  // is one segmented bar the drawer's Render tab renders under the ref and
-  // width bars, since all three answer how this view is being presented. The
-  // shape is { key, label, hint, value, options: [{ value, label, icon, title }],
-  // set }, and the FAB only reads and calls; the meaning stays here.
-  get modes(){
+  // is one on/off control the drawer's Render tab renders INLINE with the width
+  // presets, since both answer how this view is being presented and a second
+  // row for one question was the bigger half of the drawer's height. The shape
+  // is { key, label, icon, on, title, hint, set }; the FAB only reads and calls,
+  // and `hint` is shown when non-empty, so what is worth explaining and when is
+  // decided here rather than by a rule the drawer keeps.
+  //
+  // ONE CONTROL, not three, and the sidebar is deliberately not among them.
+  // The sidebar already has two owners a reader can reach: the header's
+  // hamburger in the app, and ?shell=nav in the address. A third copy in the
+  // drawer would be a control for the thing standing next to it. What is left
+  // is the only part of the shell with no in-app control, since the header
+  // cannot carry the button that hides the header.
+  get toggles(){
+    const on = this.shellMode !== 'none';
     return [{
-      key: 'shell', label: 'Shell',
-      hint: 'How much of show-repo is drawn around the view. Rides the address as ?shell=.',
-      value: this.shellMode,
-      options: [
-        { value: 'full', label: 'Full',      icon: 'ph-layout',
-          title: 'Header and sidebar, the sidebar out on a wide screen' },
-        { value: 'nav',  label: 'Nav only',  icon: 'ph-sidebar-simple',
-          title: 'Header only; the sidebar is one tap away in it' },
-        { value: 'none', label: 'View only', icon: 'ph-frame-corners',
-          title: 'The view alone, unframed. Come back here to bring the app back' },
-      ],
-      set: v => this.setShellMode(v),
+      key: 'header', label: 'Header', icon: 'ph-layout', on,
+      title: on ? 'Hide the header and show the view alone' : 'Bring the header back',
+      hint: on ? '' : 'View only (?shell=none). The header and its sidebar toggle come back together.',
+      set: v => this.setHeader(v),
     }];
   },
 

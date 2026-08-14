@@ -149,24 +149,35 @@ browser's, which is the one thing this cannot touch. `frame` was dropped too,
 since the drawer's width bar already means a frame and two meanings in one tab
 is how a bar gets misread.
 
-**The FAB's Render tab carries it as a bar**, under the ref and width bars, which
-is what makes `none` a mode rather than a trap: the same control that sets it is
-the one that brings the app back. That bar is not hard-coded. The drawer's
-opt-in contract now has a **state** half beside the `actions` half a page
-already had: a component exposing `modes` as
-`[{ key, label, hint, value, options: [{ value, label, icon, title }], set }]`
-gets one segmented bar per entry, and the FAB reads and calls without holding an
-opinion about what a mode means. Unlike `actions`, `modes` is re-read from the
+**The FAB's Render tab carries the header half of it**, as one on/off control
+sharing the row with the width presets, which is what makes `none` a mode rather
+than a trap: the same control that sets it brings the app back. It offers the
+header and nothing else. The sidebar already has two owners a reader can reach,
+the header's hamburger and `?shell=nav` in the address, so a third copy in the
+drawer would be a control for the thing standing next to it; the header is the
+part with no in-app control, since the header cannot carry the button that hides
+the header. That leaves the drawer a binary, and a binary needs no row of its
+own. Since the drawer offers one control over three modes, the shell remembers
+which header-bearing mode it left, so turning the header off and back on from a
+`?shell=nav` link does not silently promote the reader to `full` and spring the
+sidebar out at them.
+
+That control is not hard-coded. The drawer's opt-in contract now has a **state**
+half beside the `actions` half a page already had: a component exposing
+`toggles` as `[{ key, label, icon, on, title, hint, set }]` gets one control per
+entry, inline with the presets past a hairline, and the FAB reads and calls
+without holding an opinion about what a toggle means. `hint` renders when
+non-empty, so a page says what is worth explaining and when; show-repo's is
+empty until the header is off. Unlike `actions`, a toggle is re-read from the
 live component on every paint, since a verb is fully described by a closure and
 a state is not.
 
 Fixing that surfaced an older defect in the same scan: the contract was read
 through `Alpine.$data(el)`, which returns the merged data **stack**, so every
 component nested inside the shell answered for the shell's properties as its
-own. It arrived visible (one identical bar per nested component, fourteen of
-them) and had been sitting quietly in `description` and `actions`, whose values
-happened to be empty wherever anyone looked. The scan now reads the element's
-own scope.
+own. It arrived visible (fourteen identical bars, one per nested component) and
+had been sitting quietly in `description` and `actions`, whose values happened
+to be empty wherever anyone looked. The scan now reads the element's own scope.
 
 ### The ref switch: which ref show-repo itself is running
 
