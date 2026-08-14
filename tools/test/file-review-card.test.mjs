@@ -69,7 +69,8 @@ const { default: Alpine } = await import('alpinejs/dist/module.esm.js');
 const { default: collapse } = await import('@alpinejs/collapse/dist/module.esm.js');
 window.Alpine = Alpine;
 Alpine.plugin(collapse);
-for (const p of ['lib/kits/guide-render.js', 'lib/alpineComponents/file-review.js']) {
+for (const p of ['lib/kits/guide-render.js', 'lib/kits/source-peek.js',
+                 'lib/alpineComponents/file-review.js']) {
   new window.Function('window', readFileSync(path.join(repoRoot, p), 'utf8'))(window);
 }
 Alpine.start();
@@ -293,4 +294,67 @@ test('the controls sit on the tab row, not on a strip above it', () => {
   assert.equal(card.querySelectorAll('.ph-copy').length, 1, 'one, not two');
   assert.equal(card.querySelectorAll('details[x-ref="ghMenu"]').length, 1,
     'and the strip it used to live on is gone rather than emptied');
+});
+
+
+// ── the classifier, and why there are two of them ───────────────────────────
+//
+// kits/source-peek.js already decides what a path IS, and map.js's renderDoc
+// borrows that decision, so the peek card and the Docs deck cannot disagree
+// about a file. This component repeats the markdown row rather than calling it,
+// and the repeat is a judgement rather than an oversight: source-peek is a kit
+// this card does not otherwise need, it may not have loaded when a card mounts,
+// and a card that called a `.md` plain source because a kit was late would be a
+// worse failure than the duplication. So they are held together by assertion,
+// the shape the estate already uses for docs.json's reach and surfacing.json's
+// membership.
+
+// A probe card per path, left mounted. Tearing one down is what caused
+// trouble: removing the node (by innerHTML or by destroyTree) leaves the
+// component's own queued work running against a dead scope, and it surfaces as
+// "bare is not defined" attributed to whichever test the tick landed in. The
+// probes are inert (closed, no patch, so nothing fetches), so leaving them is
+// cheaper than teaching the test to unwind Alpine correctly.
+const kindOfPath = async (path) => {
+  window.__k = { repo: 'acme/w', ref: 'feat/x', base: 'main', path };
+  const el = window.document.createElement('div');
+  el.setAttribute('x-data', 'fileReview(window.__k)');
+  window.document.getElementById('m2').append(el);
+  Alpine.initTree(el);
+  await tick(2);
+  return Alpine.$data(el).kind;
+};
+
+test('the two classifiers agree about what markdown is', async () => {
+  window.document.body.insertAdjacentHTML('beforeend', '<div id="m2"></div>');
+  const peek = window.SourcePeek.kindOf;
+  for (const path of ['README.md', 'docs/a.markdown', 'docs/A.MD',
+                      'lib/a.js', 'data/a.json', 'a', 'weird.mdx']) {
+    assert.equal((await kindOfPath(path)) === 'markdown', peek(path) === 'markdown',
+      path + ': the card and the peek must call it the same thing');
+  }
+  // And the rows source-peek has no opinion on, which is why the copy exists.
+  assert.equal(await kindOfPath('a.png'), 'image');
+  assert.equal(peek('a.png'), 'source', 'a peek card cannot show a PNG, so it does not try');
+});
+
+test('frontmatter is fenced before rendering, not read as a paragraph', async () => {
+  // Assert on what marked is HANDED rather than on what it emits: the fencing
+  // is the change, and a real markdown parse would drag a CDN fetch into a
+  // jsdom test to prove something the input already shows.
+  let seen = '';
+  window.marked = { parse: (md) => { seen = md; return '<h1>Title</h1>'; } };
+  const d = data('docRead');
+  d.readHtml = '';
+  d.newText = '---\nstatus: living\ndate: 2026-08-14\n---\n\n# Title\n\nBody.';
+  await d._renderRead();
+  // Half this estate's docs open with a `---` block, and marked renders a bare
+  // one as a run of prose: the doc opened on "status: living date: 2026-08-14"
+  // as though that were its first paragraph. source-peek hit this first, and
+  // this is the third reader of its fix rather than a third copy of it.
+  assert.ok(seen.startsWith('```'), 'the block reached marked already fenced');
+  assert.ok(seen.includes('status: living'));
+  assert.ok(seen.includes('# Title'), 'and the document behind it is intact');
+  assert.equal(window.SourcePeek.fenceFrontmatter(d.newText), seen,
+    'byte for byte what source-peek would have produced');
 });

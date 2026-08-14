@@ -1840,6 +1840,27 @@ takes whatever is showing, says so in its tooltip, and hides on a pane a
 clipboard cannot take (an image, a binary). On the Diff pane it takes the
 unified patch, since a CM6 editor is not text.
 
+**The slide is the frame.** A card in the Files pane is one row among thirty
+and earns its border, its tint and its own capped, scrolling pane. A card that
+IS a deck slide does not, and stacking the two was measurable: at 1280px, three
+nested scrollers and 562px lost between the viewport and the prose, with two
+scrollbars visible at once. Under `bare` the card now drops its border, its
+inner padding and its `max-h`, so the slide is the only vertical scroller and
+the prose gets the deck's full column. The image pane keeps its frame in both
+hosts, because the checkerboard IS the frame and a transparent PNG without an
+edge has no visible bounds.
+
+**Rendering follows the house rule, not a fourth copy of it.** The Read pane
+goes through `kits/guide-render.js`, the renderer the guide bodies already use,
+and fences frontmatter through `SourcePeek.fenceFrontmatter` first, which is the
+same fix `map.js`'s `renderDoc` borrows for the Docs deck. The one duplication
+left is deliberate: the card repeats source-peek's markdown test rather than
+calling it, because source-peek is a kit this card does not otherwise need and a
+card that called a `.md` plain source because a kit was late would be worse than
+the repeat. The two are held together by assertion instead
+(`file-review-card`, "the two classifiers agree"). The estate's answer to which
+renderer to use at all is in [HTML-STYLE.md](HTML-STYLE.md).
+
 **The crumb is budgeted.** The deck header reads `<branch> · <dir>`, every
 branch here is a `claude/<slug>` running to twenty-five characters, and CSS
 truncates from the right, so a deep path lost its own folder and kept the repo
