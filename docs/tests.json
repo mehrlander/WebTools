@@ -1056,7 +1056,7 @@
       "path": "tools/test/estate-routes.test.mjs",
       "kind": "behavior",
       "protects": "The Routes pane reads exactly the carriers its manifest declares, survives one with no commits, keeps the shell out of every route's date, joins open PRs on the files they touch, and does not relaunch itself after a failure.",
-      "assertions": 9,
+      "assertions": 10,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -1068,7 +1068,8 @@
         "open PRs join on the files they touch, and only those",
         "the census counts the routes with no code of their own",
         "only a bare ?view= address is offered as a tap",
-        "a failed load reports and does not relaunch itself",
+        "the pane reads at the running ref, so a preview is not pinned to main",
+        "a failed load names the address it could not read",
         "the group is a row label read off the manifest, not a section"
       ]
     },

@@ -40,22 +40,34 @@ const COMMITS = {
 
 let asked = [];
 let failNext = false;
+let gotRef = null;      // the ref the pane built its client at
+let manifestRef = null; // the ref it read the manifest at
 
 class FakeGH {
-  constructor(conf = {}) { this.repo = conf.repo || ''; }
+  constructor(conf = {}) { this.repo = conf.repo || ''; this.ref = conf.ref || ''; gotRef = this.ref; }
   ago(iso) {
     const d = Math.round((Date.parse('2026-08-15T00:00:00Z') - Date.parse(iso)) / 86400000);
     return d < 1 ? 'just now' : d + ' days ago';
   }
   async get(path) {
-    if (failNext) throw new Error('GitHub Error 404');
-    if (path === 'docs/app-routes.json') return { text: JSON.stringify(MANIFEST) };
+    if (failNext) throw new Error('GitHub Error 404: Not Found');
+    // The manifest exists only at the ref the code came from, which is the
+    // whole point: reading it at main while running branch code is the bug
+    // this fixture reproduces.
+    if (path === 'docs/app-routes.json') {
+      manifestRef = this.ref;
+      if (this.ref !== 'main' && this.ref !== 'claude/branch') throw new Error('GitHub Error 404: Not Found');
+      return { text: JSON.stringify(MANIFEST) };
+    }
     throw new Error('404');
   }
   async req(path) {
     if (path.startsWith('commits?path=')) {
       const p = decodeURIComponent(path.slice('commits?path='.length).split('&')[0]);
       asked.push(p);
+      // The dates ride the same ref as the manifest, so the pane speaks about
+      // one tree rather than mixing a branch's code with main's history.
+      assert.match(path, new RegExp('&sha=' + encodeURIComponent(this.ref).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '&'));
       const c = COMMITS[p];
       if (!c) return [];
       return [{ sha: c.sha, html_url: 'https://github.com/x/y/commit/' + c.sha,
@@ -159,9 +171,28 @@ test('only a bare ?view= address is offered as a tap', () => {
   assert.equal(window.__shell.routed.length, 1);
 });
 
-test('a failed load reports and does not relaunch itself', async () => {
+// The pane reads its manifest and its dates at the ref the CODE came from, not
+// at main. Pinning to main 404ed on the very first preview of the branch that
+// added the manifest, and the failure impersonated an auth problem (the fix is
+// what the error message now names). `?use=` is the app's standing answer to
+// "which ref am I running"; a #gh= toss injects the addressed ref under that
+// same key through toss-render's params shim, so one read covers both.
+test('the pane reads at the running ref, so a preview is not pinned to main', async () => {
+  assert.equal(data.routesRef, 'main');           // the deployed default
+  window.history.replaceState(null, '', '?use=claude/branch');
+  assert.equal(data.routesRef, 'claude/branch');
+  await data.loadRoutes(true);
+  assert.equal(manifestRef, 'claude/branch');
+  assert.equal(gotRef, 'claude/branch');
+  assert.equal(data.routesError, '');
+  window.history.replaceState(null, '', '?');
+  assert.equal(data.routesRef, 'main');
+});
+
+test('a failed load names the address it could not read', async () => {
   failNext = true;
   await data.loadRoutes(true);
+  assert.match(data.routesError, /mehrlander\/web-tools@main:docs\/app-routes\.json/);
   assert.match(data.routesError, /404/);
   assert.equal(data.routesBusy, false);
   // The x-effect fires again on the next render; the attempt-once guard is

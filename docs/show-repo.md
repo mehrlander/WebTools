@@ -533,6 +533,21 @@ requests whose files it touches. Nothing is cached and nothing is crawled: these
 routes belong to one page in one repo, so the read is about two dozen requests
 and is taken live, which is also why this pane has no age pill.
 
+**Every read is at the ref the code came from, not at main.** The manifest and
+the `VIEWS` table are held in lockstep at a ref, so reading the code from one
+and the manifest from another breaks the invariant the gate protects. Pinning
+the manifest to main did exactly that on the first preview of the branch that
+added it: the pane reported `GitHub Error 404` for a file that did not exist on
+main yet, and the failure read as an auth problem even though the rate figure in
+the same message showed the token had worked. `?use=` is the app's standing
+answer to "which ref am I running" (the ref switch reads the same key) and a
+`#gh=` toss injects the addressed ref under that key through toss-render's
+params shim, so one read covers the deployed page, a `?use=` preview, and a
+tossed branch alike. The commit dates ride the same ref, so the whole pane
+speaks about one tree, and a non-default ref is shown as a chip in the header
+rather than left to be inferred. The error names the address it could not read,
+which is what the first diagnosis lacked.
+
 **The join is files, and files are coarser than routes.** That is the pane's one
 real limit and it is shown rather than filed:
 
