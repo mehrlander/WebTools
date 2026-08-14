@@ -50,26 +50,18 @@ there). The surfacing set's own first primitive, *Reference is a link*, is a
 check nobody runs: a path-shaped token sitting outside any `[](…)` is decidable
 from the DOM alone.
 
-**2. Match.** One cached fetch each, still decidable. Terms in the page's text
-that resolve to a row in a registry. **Built**, and not in the shape this
-document first proposed. The survey below listed nine candidate sources; the
-build found that only some of them can be matched at all, which is the section
-"The join is the path" further down.
+**2. Match.** Decidable, and built. Which registered files this text names, and
+which other paths it names that nothing has registered. Every hit is checkable,
+which is what makes it a *registry connection* rather than a guess, and the
+whole reason to prefer it to the recognizer.
 
-| Class | Source | Answers |
-| --- | --- | --- |
-| a path that resolves to a tracked file | `EstateSearch.tree(repo, ref)`, already cached per repo and ref | this names a real file; here it is |
-| a declared doc | [`docs/docs.json`](docs.json), 51 rows | what that document is, and whether it is living, measured, or a record |
-| a declared test | [`docs/tests.json`](tests.json) | what that test protects, and of what kind |
-| a harness tool | [`docs/harness.json`](harness.json) | that tool's role, and its layer |
-| a surfacing primitive | [`docs/surfacing.json`](surfacing.json), 20 rows | the estate's own glossary, already gated against its prose |
-| a prose field name | [`docs/text-fields.csv`](text-fields.csv), 13 names plus aliases | which of thirteen concepts this name is |
-| a route key | [`docs/routes.json`](routes.json) | what that address form reaches |
-| a page | [`pages/pages.json`](../pages/pages.json) | the live view, its thumb, its source |
-| a citation (RCW, bill id, biennium) | `wa-bills` citation index, `state/entities.json`'s `rcwByRepo` | which bills cite it, which repos discuss it |
-
-Every hit here is checkable. That is what makes it a *registry connection*
-rather than a guess, and it is the whole reason to prefer it to the recognizer.
+This entry originally carried a table of nine candidate sources, drawn from a
+survey rather than from a build. Building it retired most of them: a source is
+only matchable if its keys are strings that occur in prose, and most of those
+nine are not. The surviving five, the direction the operation runs, and what
+that changed are in *The join is the path* below, which is the authoritative
+account. The table is gone rather than annotated, since a survey of what might
+work has no standing beside a record of what does.
 
 **3. Flag.** Heuristic, advisory, never a verdict. The `assumed` tier from the
 concept index: a term used referentially with nothing in the corpus declaring
@@ -223,81 +215,80 @@ show-repo, because a file browser listing file names is doing exactly what it
 should. Unwithheld, that would be the pane's loudest number and its least true
 one.
 
-## The join is the path
+## The join is the path, and the operation runs from the registry
 
-Match is built, and building it settled the question the operation list left
-open: **what, exactly, is a term matched against?**
+Match is built. It was built twice, and the second version is the one that
+answers the question actually being asked.
 
-The intended design was a glossary. Take the estate's terms of art, find them in
-the prose, link each to where it is declared. There is nothing to match against,
-and the reason is structural rather than a gap somebody forgot to fill:
+**What is matched.** Not terms. The intended design was a glossary: take the
+estate's terms of art, find them in the prose, link each to where it is
+declared. There is nothing to match against, and the reason is structural.
+[`docs/surfacing.json`](surfacing.json) is keyed by sentence-shaped titles
+(*Reference is a link*) that do not occur in prose.
+[`docs/text-fields.csv`](text-fields.csv) and
+[`docs/properties.json`](properties.json) are keyed by ordinary English words:
+note, open, scope, role, reach. [`tracker/board.json`](../tracker/board.json) is
+keyed by task titles, which are sentences. The estate keeps no committed
+vocabulary keyed by surface form, and that is a decision rather than an
+oversight: `vocab.py` builds one in 1.7 seconds and the `concept-index` skill
+declines to commit the result, on the rule that retired the merge guide.
 
-- [`docs/surfacing.json`](surfacing.json)'s rows are keyed by sentence-shaped
-  titles (*Reference is a link*, *Toss a live view*). Those phrases do not occur
-  in prose. The single words that do occur (toss, stage, caption) appear nowhere
-  in the carrier as keys, and deriving them would be guesswork.
-- [`docs/text-fields.csv`](text-fields.csv) and
-  [`docs/properties.json`](properties.json) are keyed by ordinary English words:
-  note, open, scope, role, reach. Matching those against prose returns noise at a
-  rate that would bury anything true.
-- [`tracker/board.json`](../tracker/board.json) is keyed by task titles, which
-  are sentences.
+**Which direction it runs.** The first build extracted path-shaped strings from
+the text with a regular expression, asked the repository whether each guess was
+real, and looked up a description last. That inverts the only part of the
+problem that is known. The registered set is finite, curated and exact, so it is
+the input: about 400 strings to look for, rather than a pattern to hope at.
 
-The estate has no committed vocabulary keyed by surface form, and that is a
-decision rather than an oversight: `vocab.py` builds one in 1.7 seconds and the
-`concept-index` skill declines to commit the result, on the same rule that
-retired the merge guide. Inventing one inside a UI component would be inventing
-a registry the estate has decided not to keep.
+Five registries are keyed by path, and a path is a token this prose really uses:
 
-What it has instead is better for this purpose. **Three registries are keyed by
-path**, and a path is a token that really does appear in this prose:
+| Registry | Covers | Says | Rows |
+| --- | --- | --- | --- |
+| [`docs/docs.json`](docs.json) | `docs/`, `.md` and `.json` only | subject, status | 52 |
+| [`docs/tests.json`](tests.json) | `tools/test/` | protects, kind | 137 |
+| [`docs/harness.json`](harness.json) | `tools/`, `scripts/` | role, layer | 124 |
+| [`docs/portable.json`](portable.json) | the portable set | role, kind | 42 |
+| [`pages/pages.json`](../pages/pages.json) | `pages/` | note, and a live address | 68 |
 
-| Registry | Covers | Says |
-| --- | --- | --- |
-| [`docs/docs.json`](docs.json) | `docs/` | subject, status |
-| [`docs/tests.json`](tests.json) | `tools/test/` | protects, kind |
-| [`docs/harness.json`](harness.json) | `tools/`, `scripts/` | role, layer |
+What the inversion bought, measured against the same page:
 
-So path matching **is** registry matching here, with no glossary in the middle
-and no guess in any step. A path outside those three shelves resolves in the
-tree and gets a link with no gloss, which is the honest result rather than a gap
-to apologize for.
+- **Root-level files became reachable.** `CLAUDE.md`, `README.md`,
+  `package.json` and `package-lock.json` are all registered and were all
+  invisible, because the pattern needs a slash to fire at all.
+- **URL noise stopped being generated.** `https://example.com/a/b.html` is
+  path-shaped and was a candidate that then failed and was reported as a miss.
+  It is not in the set, so it is never produced.
+- **Two registries came into range**, and with `pages.json` a deployed page's
+  own address, which is a better gloss than any sentence about it.
+- **The tree read became optional.** It is fetched only when the text names
+  something the registry does not know, and only to tell a real-but-unregistered
+  file from a reference to nothing.
 
-Three rules the build settled, each visible in the pane:
+**The regex lane survives, demoted.** Its honest job is the second question:
+which paths does this text name that nothing has registered. An unregistered
+file is either a gap in the registries or a reference to something that does not
+exist, and the tree read is what separates those two. Both exclusions it now
+carries came from reading its own output: a candidate preceded by `//` is a
+URL's path, and a candidate whose first segment is all digits is a CDN version
+tail, since `daisyui@5/themes.css` yields `5/themes.css`.
 
-- **Named and bare are different questions about the same token.** A path in a
-  code span breaks no rule (a citation is not a reference), so it is not counted
-  as a bare path; it is still a file the page is about, so it is resolved. One
-  walk, two answers.
-- **A candidate that does not resolve is not a finding.** It is usually another
-  repo's path or a filename-shaped string. Listed, never flagged.
-- **Only the tree read may fail the answer.** A registry that will not read
-  costs a gloss; the row still resolves and links.
+**One token extractor, or the two numbers disagree.** The house-rule Bare paths
+count and the unregistered lane briefly used different rules, and the count
+overstated: on a page carrying one CDN import, Bare paths read 6 where the lane
+listed 2.
 
-## What a sentence is, settled by a document with tables in it
+**No button.** Both lanes run when the tab opens. Gating them behind a tap hid
+the answer behind a decision nobody had the information to make, since you
+cannot tell whether a page names anything registered until you have looked. The
+reads cache per repo and ref, so the cost lands once a session and the drawer's
+readout counts it like every other call.
 
-The first live run against a real document, this file rendered through the data
-route, reported a longest sentence of stitched-together table cells: *"…already
-cached per repo and ref this names a real file; here it is a declared doc, 51
-rows what that document is…"*. Visibly wrong, and wrong in the direction that
-flatters the figure.
-
-The cause is how text runs are joined, and both obvious answers fail:
-
-- **Join every run with a space** and a table's cells run together, because a
-  cell carries no terminal punctuation for a sentence splitter to find. That was
-  the bug.
-- **Join every run with a newline** and any sentence containing an `<a>` or a
-  `<code>` is cut into pieces, which is most of this estate's prose.
-
-So runs join with a **space inside one block** and a **newline between blocks**,
-and a block boundary ends a sentence whether or not it is punctuated. Whitespace
-inside a run collapses first, so the newline can mean exactly one thing: source
-formatting puts real newlines inside a single text node, and splitting on those
-cut sentences in half. The block set is a tag list rather than
-`getComputedStyle`, because the read also runs over a cloned selection fragment,
-which is in no document and has no computed style to ask for.
-
+**Three rules the build settled, each visible in the pane.** A path in a code
+span breaks no rule, since a citation is not a reference, but it is still a file
+the page is about, so one walk yields two answers. A candidate that does not
+resolve is listed, never flagged. And only the tree read may fail the answer: a
+registry that will not read costs a description, and the pane says which
+registry failed rather than rendering an absent gloss and a broken carrier
+identically.
 ## Selection scope, and the bug it hid
 
 The read takes a live selection as its subject when there is one, and the whole

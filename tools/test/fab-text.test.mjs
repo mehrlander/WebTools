@@ -258,110 +258,201 @@ test('named paths include code spans; bare paths do not', async () => {
     'every path named anywhere is a candidate, sorted and deduplicated');
 });
 
-test('match resolves against the tree and glosses from the registries', async () => {
-  const d = await mountFab();
-  d.textStats = d._textRead(docWith(
-    `<p>See docs/loader.md and tools/build/nope.mjs and other/repo/thing.md.</p>`));
+// The registry stubs, in the shape each carrier really has. pages.json is the
+// nested one, and it is in the set precisely because its shape differs: a
+// reader that only handled flat rows would drop 68 paths and nobody would see
+// it happen.
+const REG = {
+  'docs/docs.json': { documents: [
+    { path: 'docs/loader.md', subject: 'the loader contract', status: 'living' },
+    { path: 'CLAUDE.md', subject: 'the repo instructions', status: 'living' },
+  ] },
+  'docs/tests.json': { tests: [
+    { path: 'tools/test/fab-text.test.mjs', protects: 'the fifth tab', kind: 'behavior' },
+  ] },
+  'docs/harness.json': { tools: [] },
+  'docs/portable.json': { items: [
+    { path: '.claude/skills/web-tools/SKILL.md', role: 'loads the conventions', kind: 'skill' },
+  ] },
+  'pages/pages.json': [
+    { label: '', items: [{ href: 'shorter.html', title: 'Shorter', note: 'line up a shorter draft' }] },
+  ],
+};
 
-  window.EstateSearch = {
-    tree: async () => ({ paths: ['docs/loader.md', 'other/repo/thing.md'], truncated: false }),
-  };
+// Stub the two reads Match makes. `calls` records what was asked for, so a
+// test can assert the tree was NOT read as easily as that it was.
+function stubReads(d, { tree = null, treeThrows = null, drop = [] } = {}) {
+  const calls = { registries: [], tree: 0 };
+  d._regCache = {};
   window.GH = function () {
     this.get = async (p) => {
-      if (p === 'docs/docs.json') {
-        return { text: JSON.stringify({ documents: [
-          { path: 'docs/loader.md', subject: 'the loader contract', status: 'living' }] }) };
-      }
-      throw new Error('no such registry');   // the other two fail, deliberately
+      calls.registries.push(p);
+      if (drop.includes(p)) throw new Error('unreadable');
+      if (!REG[p]) throw new Error('no such registry');
+      return { text: JSON.stringify(REG[p]) };
     };
   };
+  window.EstateSearch = {
+    tree: async () => {
+      calls.tree++;
+      if (treeThrows) throw new Error(treeThrows);
+      return { paths: tree || [], truncated: false };
+    },
+  };
+  return calls;
+}
 
+test('match looks up the registered set, and root-level files are reachable', async () => {
+  const d = await mountFab();
+  d.repo = 'mehrlander/web-tools';
+  d.textStats = d._textRead(docWith(
+    '<p>The contract is in docs/loader.md, the instructions in CLAUDE.md, and the ' +
+    'page is <code>pages/shorter.html</code>.</p>'));
+  const calls = stubReads(d);
   await d.textMatchRun();
   assert.equal(d.textMatchState, 'done', d.textMatchError);
 
   assert.equal([...d.textMatch.hits].map(h => h.path).join('|'),
-    'docs/loader.md|other/repo/thing.md',
-    'a hit is a path the tree actually holds');
-  assert.equal([...d.textMatch.missed].join('|'), 'tools/build/nope.mjs',
-    'a candidate the tree does not hold is listed, not flagged');
+    'CLAUDE.md|docs/loader.md|pages/shorter.html',
+    'the input is the registry, so a root-level file with no slash is found');
 
-  const loader = d.textMatch.hits.find(h => h.path === 'docs/loader.md');
-  assert.equal(loader.what, 'the loader contract', 'the registry says what the file is');
-  assert.equal(loader.tag, 'living');
-  assert.match(loader.blob, /^https:\/\/github\.com\/.+\/blob\/.+\/docs\/loader\.md$/);
+  // That is the whole point of the inversion. The regex lane requires a slash
+  // to fire at all, so CLAUDE.md, README.md and package.json were unreachable
+  // no matter how often the estate names them.
+  const claude = d.textMatch.hits.find(h => h.path === 'CLAUDE.md');
+  assert.equal(claude.what, 'the repo instructions');
+  assert.equal(claude.tag, 'living');
 
-  // Two of the three registries threw. A missing gloss must not cost the row:
-  // the tree is the only read allowed to decide the answer.
-  const other = d.textMatch.hits.find(h => h.path === 'other/repo/thing.md');
-  assert.equal(other.what, '', 'a path no registry covers still resolves and links');
+  // A nested carrier is read by the same reader, and carries a live address,
+  // which is a better gloss for a page than any sentence about it.
+  const page = d.textMatch.hits.find(h => h.path === 'pages/shorter.html');
+  assert.equal(page.what, 'line up a shorter draft');
+  assert.match(page.live, /github\.io\/web-tools\/pages\/shorter\.html$/);
+
+  assert.equal(calls.tree, 0,
+    'nothing unregistered was named, so the tree was never read');
 });
 
-test('match loads its kit before using it, and only when it has to', async () => {
-  // THE TEST THAT WAS MISSING, and the shape of the miss is the point: every
-  // other match test stubs window.EstateSearch before calling, which supplies
-  // the exact thing the lazy load exists to supply. So the load line could be
-  // deleted, as it was by an unrelated edit, and the whole suite stayed green
-  // while the feature threw on its first real tap. A stub that stands in for
-  // the dependency under test hides the wiring to it.
+test('the tree is read only for what the registry does not know', async () => {
   const d = await mountFab();
   d.repo = 'mehrlander/web-tools';
-  d.textStats = d._textRead(docWith('<p>See docs/loader.md.</p>'));
-
-  delete window.EstateSearch;
-  const asked = [];
-  window.gh = { load: async (p) => {
-    asked.push(p);
-    window.EstateSearch = { tree: async () => ({ paths: ['docs/loader.md'], truncated: false }) };
-  } };
-  window.GH = function () { this.get = async () => { throw new Error('no registries here'); }; };
-
+  d.textStats = d._textRead(docWith(
+    '<p>See docs/loader.md, lib/kits/annotate.js, and docs/gone-away.md.</p>'));
+  const calls = stubReads(d, { tree: ['docs/loader.md', 'lib/kits/annotate.js'] });
   await d.textMatchRun();
-  assert.equal(d.textMatchState, 'done', d.textMatchError);
-  assert.equal(asked.join(','), 'kits/estate-search.js',
-    'the kit is loaded before it is used');
 
-  // Already present means no second fetch: the drawer counts every call it
-  // makes, and a reload would be one it did not need.
-  asked.length = 0;
-  await d.textMatchRun();
-  assert.equal(asked.length, 0, 'a kit already registered is not loaded again');
+  assert.equal([...d.textMatch.hits].map(h => h.path).join('|'), 'docs/loader.md');
+  assert.equal(calls.tree, 1, 'one tree read, because two paths were unregistered');
 
-  // And a load that resolves without registering is named, rather than
-  // surfacing later as an unreadable property error on undefined.
-  delete window.EstateSearch;
-  window.gh = { load: async () => {} };
-  await d.textMatchRun();
-  assert.equal(d.textMatchState, 'error');
-  assert.match(d.textMatchError, /registered nothing/);
+  const other = [...d.textMatch.other];
+  assert.equal(other.map(o => o.path).join('|'), 'docs/gone-away.md|lib/kits/annotate.js');
+  assert.equal(other.find(o => o.path === 'lib/kits/annotate.js').exists, true,
+    'a real file nothing has registered: a gap in the registries');
+  assert.equal(other.find(o => o.path === 'docs/gone-away.md').exists, false,
+    'a reference to nothing: the finding worth having');
 });
 
-test('match reports its own failure rather than half an answer', async () => {
+test('the unregistered lane drops what it used to report as findings', async () => {
   const d = await mountFab();
-  d.textStats = d._textRead(docWith('<p>See docs/loader.md.</p>'));
-
-  window.EstateSearch = { tree: async () => { throw new Error('tree fetch failed'); } };
+  d.repo = 'mehrlander/web-tools';
+  d.textStats = d._textRead(docWith(
+    `<p>Fetched from https://example.com/a/b.html and
+     cdn.jsdelivr.net/npm/daisyui@5/themes.css, next to data/clip.mp3.</p>`));
+  stubReads(d, { tree: [] });
   await d.textMatchRun();
-  assert.equal(d.textMatchState, 'error');
-  assert.match(d.textMatchError, /tree fetch failed/);
 
-  // Nothing to resolve is a finished answer, not an error and not a fetch.
-  const d2 = await mountFab();
-  d2.textStats = d2._textRead(docWith('<p>No files named here at all.</p>'));
-  window.EstateSearch = { tree: async () => { throw new Error('must not be called'); } };
-  await d2.textMatchRun();
-  assert.equal(d2.textMatchState, 'done');
-  assert.equal([...d2.textMatch.hits].length, 0);
+  const paths = [...d.textMatch.other].map(o => o.path);
+  assert.ok(!paths.some(p => p.endsWith('a/b.html')),
+    'a URL path is not a repo path: the "//" before it is the tell');
+  assert.ok(!paths.includes('5/themes.css'),
+    'a CDN version tail is not a repo path either');
+  assert.ok(paths.includes('data/clip.mp3'),
+    'an extension with a digit is a real path and used to be invisible');
+
+  // ONE token extractor, or the two numbers disagree about the same text. The
+  // house-rule count and this lane briefly used different rules and the count
+  // overstated: on a page carrying one CDN import, Bare paths read 6 where the
+  // lane listed 2, and the extra was a URL tail.
+  //
+  // Asserted as an absolute, not as equality between the two. They are not
+  // generally equal, since the house-rule count includes registered paths and
+  // the lane by definition excludes them; equality here would hold only
+  // because this fixture registers nothing, which is luck rather than a law.
+  assert.equal(d.textStats.barePaths, 1,
+    'the house-rule count sees the one real path and neither piece of URL noise');
 });
 
+test('a lookup respects name boundaries and claims the longest span', async () => {
+  const d = await mountFab();
+  d.repo = 'mehrlander/web-tools';
+
+  // docs/loader.md must not fire inside docs/loader.mdx.
+  d.textStats = d._textRead(docWith('<p>Not docs/loader.mdx but something else.</p>'));
+  stubReads(d, { tree: ['docs/loader.mdx'] });
+  await d.textMatchRun();
+  assert.equal([...d.textMatch.hits].length, 0,
+    'an extension that continues the name is a different file');
+
+  // A path at the end of a sentence is the common case and must still match.
+  d.textStats = d._textRead(docWith('<p>It is stated in docs/loader.md.</p>'));
+  stubReads(d, { tree: [] });
+  await d.textMatchRun();
+  assert.equal([...d.textMatch.hits].map(h => h.path).join('|'), 'docs/loader.md',
+    'a trailing full stop does not hide a path');
+});
+
+test('a registry that will not read costs descriptions, not rows', async () => {
+  const d = await mountFab();
+  d.repo = 'mehrlander/web-tools';
+  d.textStats = d._textRead(docWith('<p>See docs/loader.md and CLAUDE.md.</p>'));
+  stubReads(d, { drop: ['docs/docs.json'] });
+  await d.textMatchRun();
+
+  assert.equal(d.textMatchState, 'done');
+  assert.equal([...d.textMatch.hits].length, 0,
+    'those two rows lived in the registry that failed, so they are simply not known');
+  assert.equal([...d.textMatch.failed].join('|'), 'docs/docs.json',
+    'and the failure is reported, because an absent gloss and a broken registry ' +
+    'used to render identically');
+});
+
+test('a tree failure degrades the answer rather than ending it', async () => {
+  const d = await mountFab();
+  d.repo = 'mehrlander/web-tools';
+  d.textStats = d._textRead(docWith('<p>See docs/loader.md and lib/kits/annotate.js.</p>'));
+  stubReads(d, { treeThrows: 'tree fetch failed' });
+  await d.textMatchRun();
+
+  assert.equal(d.textMatchState, 'done', 'the registered half still answered');
+  assert.equal([...d.textMatch.hits].map(h => h.path).join('|'), 'docs/loader.md');
+  assert.equal([...d.textMatch.other][0].exists, null,
+    'unknown, not false: a failed check must not read as a missing file');
+  assert.match(d.textMatchError, /not checked against the tree/);
+});
+
+test('match runs with the read, without a tap', async () => {
+  const d = await mountFab();
+  let ran = 0;
+  d.textMatchRun = async function () { ran++; };
+  d.textScan();
+  assert.equal(ran, 1, 'opening the tab looks things up; a button gate hid the answer ' +
+    'behind a decision nobody had the information to make');
+});
 test('an unreadable document is a null, not a throw', async () => {
   const d = await mountFab();
   assert.equal(d._textRead(null), null);
   assert.equal(d._textRead({}), null);
 
-  // The banner that reads textStats sits outside the pane's x-if guard, so it
-  // must be an x-if of its own. As an x-show it hid the element and still
-  // evaluated the readout inside it, which threw on every mount that never
-  // opened this tab.
-  assert.ok(!/x-show="textStats && textStats\.perRun/.test(SRC),
-    'the app banner must be x-if: x-show evaluates the children it hides');
+  // The recurring shape, generalized after it was made twice. x-show only
+  // toggles display: an x-text on the same element, and every expression in
+  // the subtree beneath it, still evaluates. So a guard written as x-show does
+  // not protect what it appears to guard, and a nullable dereferenced beside
+  // it throws on every mount that never opens this tab. Both instances were
+  // found by the suite rather than by reading, one as a thrown test and one as
+  // stderr noise that failed the file while every subtest passed.
+  const guarded = [...SRC.matchAll(/<[a-z]+\b[^>]*?x-show="([^"]*)"[^>]*?x-text="([^"]*)"[^>]*>/gs)]
+    .filter(([, , text]) => /\btext(Match|Stats)\./.test(text) && !/\btext(Match|Stats)\?\./.test(text));
+  assert.equal(guarded.length, 0,
+    'x-show does not stop the x-text beside it from evaluating; use template x-if ' +
+    `(offender: ${guarded[0]?.[2] || ''})`);
 });
