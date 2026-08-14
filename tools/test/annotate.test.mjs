@@ -550,8 +550,8 @@ test('two taps in a run open the keyboard, with the caret where they landed', ()
       S.compView.dispatchEvent(e);
     };
     tap();
-    assert.equal(S.editing, false, 'one tap with nothing live waits');
-    assert.equal(d.range, null);
+    assert.equal(S.editing, false, 'one tap is a placement, not a mode switch');
+    assert.deepEqual(d.range, { start: 6, end: 6 }, 'and it puts the caret where it landed');
     tap();
     assert.equal(S.editing, true, 'the second opens the keyboard');
     assert.equal(S.compTa.value, 'the quick brown fox');
@@ -584,6 +584,74 @@ function tap2(S) {
   e.clientX = 20; e.clientY = 20;
   S.compView.dispatchEvent(e);
 }
+
+test('a single tap places the caret, on a draft with nothing live yet', () => {
+  // It used to place one only if something was already live: a selection, or a
+  // caret placed earlier. A fresh draft has neither, so the first tap on the
+  // words was dead, which is how it was reported (2026-08-14). There was never
+  // a competing reading to protect, and the caret is not decoration: it is
+  // where the next spoken words land.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  const realHits = window.Dictate.hitsText;
+  window.Dictate.hitsText = () => true;
+  try {
+    A.enable({ doc, subject: { title: 'x', url: '' } });
+    const S = A._state, d = S.dict;
+    d.text = 'the quick brown fox';
+    A._paintDraft();
+    assert.equal(d.range, null, 'nothing live: the caret reads as the end');
+    doc.caretRangeFromPoint = () => ({ startContainer: S.compBody.firstChild, startOffset: 4 });
+
+    const e = new window.Event('pointerup', { bubbles: true });
+    e.clientX = 20; e.clientY = 20;
+    S.compView.dispatchEvent(e);
+    assert.deepEqual(d.range, { start: 4, end: 4 }, 'the tap placed it');
+
+    // And what that buys, which is the point of placing one at all.
+    d.punct('.');
+    assert.equal(d.text.slice(0, 5), 'the .', 'so the next thing written lands there');
+    A.disable();
+  } finally { window.Dictate.hitsText = realHits; delete doc.caretRangeFromPoint; }
+});
+
+test('the caret is one caret: it survives the switch into the keyboard and back', () => {
+  // Two surfaces, one insertion point. The textarea used to open at the end
+  // however carefully the red caret had been placed, and leaving it sent the
+  // caret back to the end however carefully it had been moved with the
+  // keyboard, so a reader crossing the boundary placed it twice.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state, d = S.dict;
+  d.text = 'the quick brown fox';
+
+  // In: the red caret is where the keyboard opens.
+  d.caretAt(4);
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.compTa.selectionStart, 4, 'the keyboard opens where the caret was');
+  assert.equal(S.compTa.selectionEnd, 4);
+
+  // Out: where the keyboard left it is where the red one is.
+  S.compTa.setSelectionRange(10, 15);
+  S.compTa.dispatchEvent(new window.Event('blur', { bubbles: true }));
+  assert.deepEqual(d.range, { start: 10, end: 15 },
+    'and a selection comes back whole rather than collapsing to the end');
+
+  // In again, carrying the selection, so the first character typed replaces
+  // exactly what the red one covered.
+  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.compTa.selectionStart, 10);
+  assert.equal(S.compTa.selectionEnd, 15);
+
+  // An edit that shortens the text cannot leave the caret past its end.
+  S.compTa.value = 'short';
+  S.compTa.setSelectionRange(5, 5);
+  S.compTa.dispatchEvent(new window.Event('blur', { bubbles: true }));
+  assert.equal(d.text, 'short');
+  assert.equal(d.range, null, 'a caret at the very end is the buffer\'s null range');
+  A.disable();
+});
 
 test('arming a pin ends a tap run', () => {
   // pointerdown already armed or disarmed the pin, and counting the pointerup
