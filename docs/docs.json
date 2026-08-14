@@ -62,7 +62,7 @@
       "subject": "the friction log: one line per snag, symptom then corrected move",
       "status": "living",
       "reach": "project",
-      "words": 4653,
+      "words": 5455,
       "maintenance": "authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
     },
     {
@@ -270,7 +270,7 @@
       "subject": "the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting",
       "status": "living",
       "reach": "app",
-      "words": 4203,
+      "words": 4221,
       "maintenance": "authored role and layer glossary; layer, lines, invocation, emits, named and tested stamped by tools/build/tools-index.mjs, held in lockstep by artifacts-lockstep.test.mjs; blank roles are counted, not hidden"
     },
     {
@@ -390,7 +390,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 22438,
+      "words": 22495,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {

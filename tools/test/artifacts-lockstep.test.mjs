@@ -52,6 +52,11 @@ test('the harness census is in lockstep with tools/ and scripts/', () => {
 // which is exactly the property the generator's own closing comment claims. It
 // went unnoticed because board.json is read by machines and diffed by nobody,
 // and because the estate had only one board carrying it. It now has ten.
+test('the snags index is in lockstep with docs/SNAGS.md', () => {
+  const r = check(['tools/build/snags-index.mjs', '--check']);
+  assert.equal(r.status, 0, (r.stderr || '').trim() || 'snags-index --check failed');
+});
+
 test('the tracker board is in lockstep with tracker/tasks/', () => {
   const r = spawnSync('python3',
     ['.claude/skills/tasks/build-board.py', 'tracker/tasks', 'tracker/board.md', '--check'],
