@@ -453,7 +453,7 @@
       "path": "tools/render/scenarios/annotate-demo.mjs",
       "role": "a text selection annotated end to end: bubble, draft, saved note, painted highlight",
       "layer": "tools/render/scenarios",
-      "lines": 48,
+      "lines": 68,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -480,10 +480,20 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/annotate-in-place.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 95,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/annotate-keyboard-mode.mjs",
       "role": "the composer with the keyboard open: whether the way out wears a microphone, and whether the mic still holds its slot",
       "layer": "tools/render/scenarios",
-      "lines": 62,
+      "lines": 98,
       "invocation": "driver",
       "emits": false,
       "named": false,
