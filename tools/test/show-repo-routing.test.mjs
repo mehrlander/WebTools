@@ -134,3 +134,71 @@ test('the second key rides along, for the views that carry one', () => {
     assert.equal(got, want, `?view=${view}&${key}= did not survive the round trip`);
   }
 });
+
+// ── The shell mode (?shell=), a READING parameter beside the view table ──────
+//
+// It says how much of the app is drawn around the view, not which view, so it
+// has no VIEWS row on purpose and is stamped unconditionally beside whatever
+// the table stamped. That places it outside everything above, and the two
+// properties it has to hold are exactly the ones the view table's rows get for
+// free: an address that reopens as itself, and a default that never appears.
+
+test('the shell mode round-trips, and only when it is not the default', () => {
+  const store = () => ({ repo: 'mehrlander/home', ref: '', defaultRef: 'main', activeFile: null, path: '' });
+
+  for (const mode of ['nav', 'none']) {
+    const { shell: s } = makeShell({ browserStore: store() });
+    s.view = 'map';
+    s.setShellMode(mode);
+    const qs = s.deepLinkParams(new URLSearchParams()).toString();
+    assert.match(qs, new RegExp('(^|&)shell=' + mode + '($|&)'),
+      `?shell=${mode} was not stamped, so the mode cannot be linked to`);
+
+    const { shell: reopened } = makeShell({ search: '?' + qs, browserStore: { repo: '' } });
+    reopened.readShellMode();
+    assert.equal(reopened.shellMode, mode, `?shell=${mode} did not survive a cold load`);
+    // Reopening must still land on the view: the mode rides beside the view
+    // keys, so a collision would show up here as a lost or hijacked address.
+    assert.equal(landsOn(reopened, reopened.parseUrl()), 'map',
+      `?shell=${mode} disturbed the view its link also names`);
+  }
+
+  // The default stays out, which is what keeps every link written before this
+  // existed byte-identical to one written after it.
+  const { shell: plain } = makeShell({ browserStore: store() });
+  plain.view = 'map';
+  assert.equal(plain.shellMode, 'full', 'the default mode is not full');
+  assert.ok(!plain.deepLinkParams(new URLSearchParams()).has('shell'),
+    'the default mode stamped itself, so it would appear on every address');
+});
+
+test('an unknown shell mode reads as the default rather than blanking the app', () => {
+  // A hand-edited or truncated ?shell= must not hide the header with no way
+  // back: an unrecognized value is not a fourth mode, it is no mode.
+  // Surrounding whitespace is trimmed rather than rejected, the way ?overlay=
+  // is read, so `shell=%20none` is `none` and is not in this list.
+  for (const bad of ['', 'hidden', 'nav-only', 'FULL', '1']) {
+    const { shell: s } = makeShell({ search: '?shell=' + encodeURIComponent(bad), browserStore: { repo: '' } });
+    s.readShellMode();
+    assert.equal(s.shellMode, 'full', `?shell=${JSON.stringify(bad)} resolved to something other than full`);
+  }
+});
+
+test('the FAB mode contract is well formed, and its setter is the mode setter', () => {
+  // The Render tab reads { key, label, value, options, set } off this and
+  // renders a bar per entry. A malformed row paints an empty bar, and a `value`
+  // outside `options` paints one with nothing lit, so both are checked here
+  // rather than left to be seen.
+  const { shell: s } = makeShell({ browserStore: { repo: '' } });
+  const [bar, ...rest] = s.modes;
+  assert.equal(rest.length, 0, 'show-repo contributes more than one mode bar; the doc names one');
+  assert.ok(bar.key && bar.label && typeof bar.set === 'function', 'the mode row is missing key, label, or set');
+  assert.deepEqual(bar.options.map(o => o.value), s.SHELL_MODES,
+    'the bar offers a different set of modes than the shell accepts');
+  for (const o of bar.options) assert.ok(o.label && o.icon, `mode ${o.value}: needs a label and an icon`);
+  assert.ok(bar.options.some(o => o.value === bar.value), 'no segment matches the current value');
+
+  bar.set('none');
+  assert.equal(s.shellMode, 'none', 'the bar\'s setter did not move the shell');
+  assert.equal(s.modes[0].value, 'none', 'the bar re-reads a stale value, so it would light the wrong segment');
+});
