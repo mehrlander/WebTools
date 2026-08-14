@@ -767,6 +767,17 @@
    "logEntries": 3
   },
   {
+   "id": "sidebar-compare-view-lkjang",
+   "title": "Give the sidebar a compare-against ref, and collapse the card's source tabs",
+   "status": "backlog",
+   "opened": "2026-08-14",
+   "size": "L",
+   "file": "sidebar-compare-view-lkjang.md",
+   "href": "tasks/sidebar-compare-view-lkjang.md",
+   "lastActivity": "2026-08-14",
+   "logEntries": 1
+  },
+  {
    "id": "singleton-fab-toss-render-gticvb",
    "title": "Singleton fab with toss-render integration",
    "status": "done",
