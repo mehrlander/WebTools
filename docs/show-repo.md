@@ -1829,6 +1829,17 @@ client. The purge link shortens that window and does not close it, so
 absent. Nothing else in the estate calls it, and `gh.decode()` stayed where it
 was for the three pages that do use it.
 
+**One row of controls, and one copy button.** The github menu and two copy
+buttons sat on a strip above the tabs, which put two rows of chrome between the
+card's header and its content on a phone and separated the copies from the tabs
+that decide what there is to copy. They are on the tab row now, at its right
+end, with the tab strip scrolling so they keep their place at any width. And
+there is one copy button rather than two: "content" and "patch" asked the reader
+to map a label onto the tab they were on, and offered "content" for a PNG. It
+takes whatever is showing, says so in its tooltip, and hides on a pane a
+clipboard cannot take (an image, a binary). On the Diff pane it takes the
+unified patch, since a CM6 editor is not text.
+
 **The crumb is budgeted.** The deck header reads `<branch> · <dir>`, every
 branch here is a `claude/<slug>` running to twenty-five characters, and CSS
 truncates from the right, so a deep path lost its own folder and kept the repo

@@ -253,3 +253,44 @@ test('a client too old to have bytes() still yields an image', async () => {
       'fetched by hand, through the one call every client has had all along');
   } finally { window.GH = real; }
 });
+
+
+// ── one copy button, and one row ────────────────────────────────────────────
+//
+// There were two, labelled "content" and "patch", on a strip of their own above
+// the tabs. That asked the reader to map a label onto the tab they were looking
+// at, offered "content" for a PNG, and put two rows of chrome between the
+// card's header and what it was showing. One button that takes whatever is on
+// screen, on the same row as the tabs that decide it.
+
+test('copy takes what is showing, and offers nothing when there is nothing', () => {
+  const d = data('withPatch');
+  const was = d.tab;
+  d.tab = 'patch';  assert.equal(d.copyable, d.patchDump);
+  d.tab = 'diff';   assert.equal(d.copyable, d.patchDump, 'a CM6 editor is not text; its patch is');
+  d.tab = 'new';    assert.equal(d.copyable, d.newText);
+  d.tab = 'base';   assert.equal(d.copyable, d.baseText);
+  d.tab = was;
+
+  const img = data('png');
+  assert.equal(img.copyable, null, 'an image pane has nothing a clipboard can take');
+  assert.equal(img.panes.some(p => p.id === 'image'), true);
+});
+
+test('a document copies its source, not the rendered markup', () => {
+  const d = data('docRead');
+  d.newText = '# Title\n\ntext';
+  d.tab = 'read';
+  assert.equal(d.copyable, '# Title\n\ntext');
+  assert.equal(d.copyTitle, 'Copy note.md', 'the tooltip names it, since the glyph cannot');
+});
+
+test('the controls sit on the tab row, not on a strip above it', () => {
+  const card = window.document.getElementById('withPatch');
+  const row = card.querySelector('[role="tablist"]').parentElement;
+  assert.ok(row.querySelector('details[x-ref="ghMenu"]'), 'the github menu came down to the tabs');
+  assert.ok(row.querySelector('.ph-copy'), 'and so did the one copy button');
+  assert.equal(card.querySelectorAll('.ph-copy').length, 1, 'one, not two');
+  assert.equal(card.querySelectorAll('details[x-ref="ghMenu"]').length, 1,
+    'and the strip it used to live on is gone rather than emptied');
+});
