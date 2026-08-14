@@ -130,6 +130,14 @@
       "use": "plugin"
     },
     {
+      "kind": "skill",
+      "command": "/portable:scour",
+      "path": ".claude/skills/scour/SKILL.md",
+      "title": "scour",
+      "role": "acquisition fan-out: send agents to gather source material that does not exist locally, and map who says what about a subject across the open web",
+      "use": "plugin"
+    },
+    {
       "kind": "doc",
       "path": "docs/CONVENTIONS.md",
       "title": "Working conventions",
@@ -182,7 +190,7 @@
       "kind": "doc",
       "path": "docs/artifacts.md",
       "title": "Artifacts",
-      "role": "the bake-and-publish pipeline and the 📦 marker's place in the link-choice matrix",
+      "role": "the bake-and-publish pipeline and the \ud83d\udce6 marker's place in the link-choice matrix",
       "use": "on-demand"
     },
     {

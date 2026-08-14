@@ -211,6 +211,11 @@
           "summary": "The workspace's own front page, repo-root-relative. Takes the project view's Overview slot ahead of the README."
         },
         {
+          "key": "inbox",
+          "type": "string",
+          "summary": "The workspace's own intake tray, repo-root-relative, the per-workspace twin of the root inbox field. Declared because a dump is scoped to a workspace: mehrlander/home carries projects/wps/dump beside its root chron/dump."
+        },
+        {
           "key": "icon",
           "type": "string",
           "summary": "Accepted and ignored. The rows draw no leading glyph."
