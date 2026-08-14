@@ -1170,6 +1170,36 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/search-cold.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 47,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/search-controls.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 71,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/search-files.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 64,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/sidebar-projects-overlay.mjs",
       "role": "the same sidebar state in overlay posture; only the posture distinguishes the pair",
       "layer": "tools/render/scenarios",
