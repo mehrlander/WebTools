@@ -22,6 +22,22 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### silent-fallback-old-build: the pixels do not change, and nothing says the file failed to load
+A comment inside a component's HTML template quoted an identifier in backticks,
+which closed the enclosing template literal. `gh.load` caught the SyntaxError,
+warned to the console, and left the pre-build's inlined copy of the component
+running, so the page rendered perfectly at the previous build's markup through
+four screenshots taken to check the change that had failed to load. A load
+failure is a warning, not a blank screen, and the working page is the tell for
+nothing. The corrected move: when a rendered change does not appear, read the
+shot log before re-reading the diff, and treat "it still looks like before" as
+a load question rather than a markup one. `npm test` now catches the parse case
+(`tools/test/lib-parses.test.mjs` compiles every loadable lib file the way the
+loader does), which leaves the general shape uncovered: any load failure still
+degrades to the last build, quietly.
+*(seen: 2026-08-14)*
+→ [loader.md](loader.md); the parse case is gated by tools/test/lib-parses.test.mjs
+
 ### stub-hides-the-wiring: a test that stubs a lazy dependency cannot see it go missing
 The Match pane loads `kits/estate-search.js` on first use, and every test for
 it stubbed `window.EstateSearch` before calling, which supplies exactly what

@@ -1463,6 +1463,18 @@
       ]
     },
     {
+      "path": "tools/test/lib-parses.test.mjs",
+      "kind": "behavior",
+      "protects": "A lib file that fails to parse cannot fail quietly: gh.load swallows the SyntaxError and keeps the pre-build's older copy of the component running, so the page renders the last good version of the change you are looking at.",
+      "assertions": 1,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "every loadable lib file compiles as a function body"
+      ]
+    },
+    {
       "path": "tools/test/manifest-registry.test.mjs",
       "kind": "gate",
       "protects": "Every .web-tools.json key live in the estate has a field-registry row of the right type.",
@@ -2516,7 +2528,7 @@
       "path": "tools/test/show-repo-routing.test.mjs",
       "kind": "behavior",
       "protects": "Every show-repo view can be linked to and reopened: the one VIEWS table stays the only router (no view name compared directly in the routing functions, no view the shell enters without a row), and each row's own stamped address parses back to it, on the default repo and on another.",
-      "assertions": 6,
+      "assertions": 10,
       "method": "pure",
       "runner": "suite",
       "boot_smoke": [],
@@ -2526,7 +2538,11 @@
         "rows are well formed, and keys and aliases are unique",
         "an alias resolves to its row rather than to a view of its own",
         "every view round-trips: stamped, then parsed back to itself",
-        "the second key rides along, for the views that carry one"
+        "the second key rides along, for the views that carry one",
+        "the shell mode round-trips, and only when it is not the default",
+        "an unknown shell mode reads as the default rather than blanking the app",
+        "the FAB toggle contract is well formed, and its setter is the mode setter",
+        "the header toggle returns to the mode it left, not to full"
       ]
     },
     {
