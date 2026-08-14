@@ -210,13 +210,6 @@ re-litigated on every addition, so the rule has to be answerable cold, by
 someone who has never read this file. "Does it have a path" is; a topical
 judgment is not.
 
-A **folder** rides on the files side, which is worth saying because it is the
-one arguable case. `content-registry` locators include `docs/` and `skills/`
-alongside ordinary paths. A folder could be filed as a kind of name, but files
-are load-bearing enough here that the first cut is drawn around them, and a
-folder has a path like anything else. There is no third area for it and no
-registry of folders; the value of cataloguing folders as such has not appeared.
-
 Files takes 9 of 16, so the split does little sorting. That is accepted rather
 than fixed: a mechanical rule anyone can apply cold is worth more than a
 balanced one that needs a judgment call, and if `names` ever earns a subdivision
