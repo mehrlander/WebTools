@@ -483,7 +483,7 @@
       "path": "tools/render/scenarios/annotate-keyboard-mode.mjs",
       "role": "the composer with the keyboard open: whether the way out wears a microphone, and whether the mic still holds its slot",
       "layer": "tools/render/scenarios",
-      "lines": 83,
+      "lines": 98,
       "invocation": "driver",
       "emits": false,
       "named": false,

@@ -79,4 +79,19 @@ export default async (page) => {
   }
   const kept = await page.evaluate(() => window.Annotate._state.dict.text);
   if (kept !== 'typed, then dismissed') throw new Error('the dismiss lost the typed text: ' + kept);
+
+  // THE SECOND DOOR. A long press off the words asks for the keyboard too,
+  // which matters because the double tap became the only way in when the
+  // pencil was retired, and one way in is a bet on one gesture landing. Aimed
+  // at the canvas under the last line, where a press has no other meaning.
+  await page.evaluate(() => {
+    const S = window.Annotate._state;
+    const r = S.compView.getBoundingClientRect();
+    S.compView.dispatchEvent(new PointerEvent('pointerdown', {
+      clientX: Math.round(r.left + 20), clientY: Math.round(r.bottom - 6),
+      bubbles: true, pointerType: 'touch', isPrimary: true }));
+  });
+  await page.waitForTimeout(700);           // past the kit's 450ms hold
+  const held = await page.evaluate(() => window.Annotate._state.editing);
+  if (!held) throw new Error('a long press on the canvas did not open the keyboard');
 };

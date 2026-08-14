@@ -536,6 +536,47 @@ test('a tap on the blank canvas sends the caret to the end', () => {
   A.disable();
 });
 
+test('a long press off the words opens the keyboard, and on them still takes a word', async () => {
+  // The press had two regions and one reading, so over the canvas it did
+  // nothing: a dead gesture on the largest target on the card, at the moment
+  // the double tap had just become the keyboard's only door. jsdom has no
+  // layout, so hitsText answers false for every point, which IS the off-text
+  // case; the on-text half stubs it true, the way the double-tap test does.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  const realHits = window.Dictate.hitsText;
+  try {
+    A.enable({ doc, subject: { title: 'x', url: '' } });
+    const S = A._state, d = S.dict;
+    d.text = 'the quick brown fox';
+    d.caretAt(4);
+    A._paintDraft();
+
+    const press = () => {
+      const e = new window.Event('pointerdown', { bubbles: true });
+      e.clientX = 20; e.clientY = 500;
+      S.compView.dispatchEvent(e);
+      return new Promise((done) => setTimeout(done, 520));   // past LONG_MS
+    };
+
+    await press();
+    assert.equal(S.editing, true, 'a press on the canvas asks for the keyboard');
+    assert.equal(S.compTa.selectionStart, 4,
+      'and it opens on the caret the buffer was holding, collapsing nothing');
+    S.compTa.dispatchEvent(new window.Event('blur', { bubbles: true }));
+    assert.equal(S.editing, false);
+
+    // On a word it is still a word selection: that reading is what a press
+    // means everywhere, and it is the only one that region can support.
+    window.Dictate.hitsText = () => true;
+    doc.caretRangeFromPoint = () => ({ startContainer: S.compBody.firstChild, startOffset: 6 });
+    await press();
+    assert.equal(S.editing, false, 'no keyboard where there is a word to take');
+    assert.deepEqual(d.range, { start: 4, end: 9 }, 'the word under the finger');
+    A.disable();
+  } finally { window.Dictate.hitsText = realHits; delete doc.caretRangeFromPoint; }
+});
+
 test('two taps in a run open the keyboard, with the caret where they landed', () => {
   // The double took the WORD until 2026-08-13, which the long press already
   // does and does better. The quick gesture is better spent on the mode
