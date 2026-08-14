@@ -77,6 +77,10 @@ const state = () => page.evaluate(() => {
     h: img?.naturalHeight || 0,
     shown: img ? !img.classList.contains('hidden') : false,
     msg: msg ? msg.textContent.trim() : '(gone)',
+    // The header line. For a text file it is derived from the content; for an
+    // image the module reports it back after the fetch, which is the only way
+    // either number can be true.
+    stats: v?.stats || '',
   };
 });
 
@@ -91,6 +95,11 @@ try {
   ok('the src is a data URI of PNG bytes', s.src.startsWith('data:image/png;base64,'), s.src);
   ok('the bytes decoded to a real raster', s.w > 0 && s.h > 0, `${s.w}x${s.h}`);
   ok('the loading line got out of the way', s.shown === true && s.msg === '(gone)', JSON.stringify(s));
+  // The header used to read "58 lines · 53.8 KB" for this file: newline bytes
+  // inside the binary, and the size of the mangled text decode. Both false.
+  ok('the header states the real pixel size', /^\d+ × \d+/.test(s.stats), s.stats);
+  ok('and the real byte size', /· \d+\.\d KB$/.test(s.stats), s.stats);
+  ok('with no line count, which an image has none of', !/lines/.test(s.stats), s.stats);
 
   console.log('an inline SVG, which needs no fetch:');
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40">' +
@@ -111,6 +120,9 @@ try {
   ok('it opens in the image mode', s.mode === 'image', JSON.stringify(s));
   ok('carried as text, with no fetch', s.src.startsWith('data:image/svg+xml;base64,'), s.src);
   ok('and it drew at its declared size', s.w === 80 && s.h === 40, `${s.w}x${s.h}`);
+  // No fetch happened, so there is no honest byte count to report: the pixel
+  // size alone, rather than the base64 length dressed up as a file size.
+  ok('the header states pixels only', s.stats === '80 × 40', s.stats);
 
   console.log('a text file is untouched by any of this:');
   await page.goto(`${origin}/pages/data-view.html?src=${encodeURIComponent('mehrlander/web-tools@main:docs/tools.json')}`,

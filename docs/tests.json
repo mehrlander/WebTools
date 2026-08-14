@@ -89,7 +89,7 @@
       "path": "tools/test/artifacts-lockstep.test.mjs",
       "kind": "lockstep",
       "protects": "Every deterministic generator is re-run in check mode, so a committed artifact cannot sit behind its source.",
-      "assertions": 7,
+      "assertions": 8,
       "method": "spawn",
       "runner": "suite",
       "boot_smoke": [],
@@ -98,6 +98,7 @@
         "the page catalogs are in lockstep with pages/",
         "docs/README.md is in lockstep with the documentation registry",
         "the harness census is in lockstep with tools/ and scripts/",
+        "the snags index is in lockstep with docs/SNAGS.md",
         "the tracker board is in lockstep with tracker/tasks/",
         "the board generator is byte-deterministic",
         "the plugin's vendored conventions are in lockstep with docs/"
@@ -2446,6 +2447,16 @@
         "a missing ref is empty, not \"main\", so the default branch is honored",
         "the page reads its inputs through the shared helpers and registers the route"
       ]
+    },
+    {
+      "path": "tools/test/shot-warnings.mjs",
+      "kind": "tool",
+      "protects": "The screenshot tool warns when the pixels are not your code: a lib file that failed to load, or a pre-build behind lib/. Also that a clean run stays silent.",
+      "assertions": null,
+      "method": "spawn",
+      "runner": "npm run test:shot-warnings",
+      "boot_smoke": null,
+      "assertion_names": null
     },
     {
       "path": "tools/test/show-repo-board-review.test.mjs",
