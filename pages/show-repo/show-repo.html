@@ -4399,9 +4399,10 @@ function app(){ return {
   // is one on/off control the drawer's Render tab renders INLINE with the width
   // presets, since both answer how this view is being presented and a second
   // row for one question was the bigger half of the drawer's height. The shape
-  // is { key, label, icon, on, title, hint, set }; the FAB only reads and calls,
-  // and `hint` is shown when non-empty, so what is worth explaining and when is
-  // decided here rather than by a rule the drawer keeps.
+  // is { key, label, icon, on, title, set }; the FAB only reads and calls. The
+  // row is one line and stays one line, so there is nowhere to explain a state
+  // in prose: the tooltip carries the sentence, and the address carries the
+  // fact, which is the point of putting the mode in the address.
   //
   // ONE CONTROL, not three, and the sidebar is deliberately not among them.
   // The sidebar already has two owners a reader can reach: the header's
@@ -4413,8 +4414,8 @@ function app(){ return {
     const on = this.shellMode !== 'none';
     return [{
       key: 'header', label: 'Header', icon: 'ph-layout', on,
-      title: on ? 'Hide the header and show the view alone' : 'Bring the header back',
-      hint: on ? '' : 'View only (?shell=none). The header and its sidebar toggle come back together.',
+      title: on ? 'Hide the header and show the view alone (?shell=none)'
+                : 'Bring the header back, and its sidebar toggle with it',
       set: v => this.setHeader(v),
     }];
   },

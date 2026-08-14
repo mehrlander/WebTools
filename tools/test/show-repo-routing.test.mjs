@@ -194,12 +194,15 @@ test('the FAB toggle contract is well formed, and its setter is the mode setter'
   assert.ok(t.key && t.label && t.icon && typeof t.set === 'function',
     'the toggle row is missing key, label, icon, or set');
   assert.equal(t.on, true, 'the toggle does not start on, so the default state reads as the exceptional one');
-  assert.equal(t.hint, '', 'the default state carries a hint, so the row would never sit one line high');
-
-  t.set(false);
+  // The row is one line and carries no prose, so the tooltip is the only place
+  // a state can be said in words, and both states have to say something.
+  for (const state of [true, false]) {
+    s.setHeader(state);
+    const cur = s.toggles[0];
+    assert.equal(cur.on, state, 'the toggle re-reads a stale value, so it would light the wrong way');
+    assert.ok(cur.title && cur.title !== cur.label, `the ${state ? 'on' : 'off'} state has no tooltip of its own`);
+  }
   assert.equal(s.shellMode, 'none', "the toggle's setter did not move the shell");
-  assert.equal(s.toggles[0].on, false, 'the toggle re-reads a stale value, so it would light the wrong way');
-  assert.ok(s.toggles[0].hint, 'the off state says nothing, leaving ?shell=none unexplained');
 });
 
 test('the header toggle returns to the mode it left, not to full', () => {

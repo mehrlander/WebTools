@@ -164,13 +164,23 @@ sidebar out at them.
 
 That control is not hard-coded. The drawer's opt-in contract now has a **state**
 half beside the `actions` half a page already had: a component exposing
-`toggles` as `[{ key, label, icon, on, title, hint, set }]` gets one control per
+`toggles` as `[{ key, label, icon, on, title, set }]` gets one control per
 entry, inline with the presets past a hairline, and the FAB reads and calls
-without holding an opinion about what a toggle means. `hint` renders when
-non-empty, so a page says what is worth explaining and when; show-repo's is
-empty until the header is off. Unlike `actions`, a toggle is re-read from the
-live component on every paint, since a verb is fully described by a closure and
-a state is not.
+without holding an opinion about what a toggle means. Unlike `actions`, a
+toggle is re-read from the live component on every paint, since a verb is fully
+described by a closure and a state is not.
+
+**The row holds one line, and that decides the labelling.** Four labelled width
+presets plus one labelled toggle wrapped on a 390pt device, so the presets went
+**icon-only under a single `Width` label**: one word for the group instead of
+four for its members, with a phone, a tablet, and a monitor carrying what they
+name and the arrows meaning the device in your hand. The toggle keeps its word,
+since an icon alone cannot say which part of a page it means and it is the odd
+one out in a row otherwise about size. Nothing on the row explains itself in
+prose either: a contributed `hint` line was tried and dropped, having spent two
+lines saying what the tooltip and the address already said. The one line that
+survives is the width caveat, which appears only off Actual and reports what no
+icon can.
 
 Fixing that surfaced an older defect in the same scan: the contract was read
 through `Alpine.$data(el)`, which returns the merged data **stack**, so every

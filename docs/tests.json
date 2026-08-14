@@ -1424,6 +1424,18 @@
       ]
     },
     {
+      "path": "tools/test/lib-parses.test.mjs",
+      "kind": "behavior",
+      "protects": "A lib file that fails to parse cannot fail quietly: gh.load swallows the SyntaxError and keeps the pre-build's older copy of the component running, so the page renders the last good version of the change you are looking at.",
+      "assertions": 1,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "every loadable lib file compiles as a function body"
+      ]
+    },
+    {
       "path": "tools/test/manifest-registry.test.mjs",
       "kind": "gate",
       "protects": "Every .web-tools.json key live in the estate has a field-registry row of the right type.",
