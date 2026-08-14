@@ -79,4 +79,22 @@ export default async (page) => {
     d.activity = activity;
   });
   await page.waitForTimeout(400);
+
+  // The route chips: the Branches pane reads the same manifest and PR file
+  // lists the Routes pane loads, so this seeds that shared half directly rather
+  // than letting the pane fetch (no token here). Files are chosen to exercise
+  // all three cases: a narrow carrier (on), a widely shared one (near), and a
+  // branch touching nothing any route declares.
+  await page.evaluate(async () => {
+    const d = window.Alpine.$data(document.querySelector('[x-data="estate()"]'));
+    d.routeManifest = await (await fetch('/docs/app-routes.json')).json();
+    d.routeJoinTried = true;
+    d.routeBranchFiles = [
+      { repo: 'mehrlander/web-tools', name: 'claude/open-view-live-branches-yk24d9', pr: 271,
+        files: ['lib/alpineComponents/map.js', 'lib/alpineComponents/tools.js'] },
+      { repo: 'mehrlander/web-tools', name: 'claude/no-pr-branch', pr: 0,
+        files: ['lib/alpineComponents/estate.js'] },
+    ];
+  });
+  await page.waitForTimeout(300);
 };
