@@ -27,6 +27,7 @@
     "test:render-copy": "node tools/test/render-copy.mjs",
     "test:subject-actions": "node tools/test/subject-actions.mjs",
     "test:traffic-states": "node tools/test/traffic-states.mjs",
+    "test:tabstrip": "node tools/test/fab-tabstrip-geometry.mjs",
     "test:toss-multiparam": "node tools/test/toss-multiparam.mjs",
     "test:toss-width": "node tools/test/toss-width.mjs",
     "test:data-view-links": "node tools/test/data-view-links.mjs",

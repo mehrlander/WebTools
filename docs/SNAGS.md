@@ -22,6 +22,18 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### stub-hides-the-wiring: a test that stubs a lazy dependency cannot see it go missing
+The Match pane loads `kits/estate-search.js` on first use, and every test for
+it stubbed `window.EstateSearch` before calling, which supplies exactly what
+the lazy load exists to supply. An unrelated edit deleted the load line; the
+suite stayed green and the feature threw `Cannot read properties of undefined`
+on its first real tap. The corrected move: where a dependency is fetched
+lazily, one test must stub the LOADER and assert the fetch, not stub the thing
+the loader would have produced. Generalizes to every `gh.load` inside a
+component, which is most of them.
+*(seen: 2026-08-13)*
+→ [loader.md](loader.md); the case is `tools/test/fab-text.test.mjs`, "match loads its kit before using it"
+
 ### ci-watch-on-blocked-api: a curl watch loop on the GitHub API waits forever
 Backgrounding `until curl .../check-runs | grep completed; do sleep; done` to
 wait on a PR's CI reports nothing, ever. Unauthenticated `curl` to

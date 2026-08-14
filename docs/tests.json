@@ -1170,6 +1170,44 @@
       ]
     },
     {
+      "path": "tools/test/fab-tabstrip-geometry.mjs",
+      "kind": "behavior",
+      "protects": "The FAB's tab icons hold identical coordinates in every tab state, so the strip stays a spatial memory; measured in a real browser at 390px, which jsdom cannot do.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:tabstrip",
+      "boot_smoke": null,
+      "assertion_names": null
+    },
+    {
+      "path": "tools/test/fab-text.test.mjs",
+      "kind": "behavior",
+      "protects": "The drawer's fifth tab reports only what it can stand behind: the app-versus-document gate reads the signal that was measured to separate them, and the prose checks stay off pages whose text is labels.",
+      "assertions": 17,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "the strip is data, and every tab in it has a pane",
+        "setTab switches the pane and runs the tab’s opener",
+        "the strip’s one label names the selected tab, and is derived",
+        "the read separates body prose from chrome, and counts runs",
+        "a block boundary ends a sentence; an inline element does not",
+        "the app gate reads words per run, which is the signal that separates",
+        "the prose checks ignore what is not prose",
+        "the read scopes to a live selection, and falls back to the page",
+        "named paths include code spans; bare paths do not",
+        "match looks up the registered set, and root-level files are reachable",
+        "the tree is read only for what the registry does not know",
+        "the unregistered lane drops what it used to report as findings",
+        "a lookup respects name boundaries and claims the longest span",
+        "a registry that will not read costs descriptions, not rows",
+        "a tree failure degrades the answer rather than ending it",
+        "match runs with the read, without a tap",
+        "an unreadable document is a null, not a throw"
+      ]
+    },
+    {
       "path": "tools/test/fab-toss.test.mjs",
       "kind": "component",
       "protects": "The fab keeps shell identity when mounted inside a toss.",
