@@ -111,6 +111,9 @@
   await gh.load('kits/repo-activity-cache.js');
   // Sessions-aggregate builders for the private cache (state/sessions.json).
   await gh.load('kits/repo-sessions-cache.js');
+  // The pure fold behind Activity's Routes pane: the app's own destinations
+  // ranked by when the code behind each last moved (window.routeActivity).
+  await gh.load('kits/route-activity.js');
   // The private request/response mailbox (mailbox/requests -> results).
   await gh.load('kits/repo-mailbox.js');
   // The write-side channel: proposed cross-repo edits, applied only on confirm.
@@ -3841,6 +3844,7 @@ function app(){ return {
     { key: 'sessions', open(){ this.goSessions(); } },
     { key: 'guides',   open(){ this.goGuides(); } },
     { key: 'chats',    open(){ this.goChats(); } },
+    { key: 'routes',   open(){ this.goRoutes(); } },
     { key: 'map', alias: 'portable',
       open(u){ this.goMap(u.tab); },
       stamp(p){
@@ -4039,7 +4043,7 @@ function app(){ return {
   // the grid and the Stage, switching on this.view, sharing the one lazy
   // mount); estateCtx is the wider context test the sidebar switches on.
   // 'surfaces' is in this list as the Stage's alias, not as a second pane.
-  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions', 'guides', 'chats'].includes(this.view); },
+  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions', 'guides', 'chats', 'routes'].includes(this.view); },
   // The Lists view is the one estate pane that FILLS rather than flows: its two
   // halves scroll inside themselves, so the page must not scroll and the chain
   // from the pane down to the component root has to carry a definite height.
@@ -4098,7 +4102,7 @@ function app(){ return {
   // Both old keys still route (?view=todo and ?view=jots land on Lists).
   get estateNav(){
     return [
-      { view: 'activity', views: ['activity', 'sessions', 'guides', 'chats'],
+      { view: 'activity', views: ['activity', 'sessions', 'guides', 'chats', 'routes'],
         icon: 'ph-pulse',    label: 'Activity', go: () => this.goActivity() },
       { view: 'todo', views: ['todo', 'jots'],
         icon: 'ph-list-checks', label: 'Lists',  go: () => this.goTodo() },
@@ -4264,6 +4268,12 @@ function app(){ return {
   // advances when an export lands in chat-histories. The pane states that
   // instead of offering a refresh that would do nothing.
   goChats(){ this.estateSeen = true; this.view = 'chats'; this.syncUrl(); },
+  // Activity's fifth pill: the app's own destinations, dated by the code behind
+  // them. It reads docs/app-routes.json and one last-commit call per declared
+  // carrier against THIS repo, so it warms nothing shared: the other four panes
+  // are cross-repo and ride the estate's caches, while this one is a read of
+  // the hub's own history and is cheap enough to take live.
+  goRoutes(){ this.estateSeen = true; this.view = 'routes'; this.syncUrl(); },
   goLanding(){ this.view = 'landing'; this.syncUrl(); },
   goPages(){ this.view = 'pages'; this.syncUrl(); },
   goAtlas(){ this.atlasSeen = true; this.view = 'atlas'; this.syncUrl(); },
