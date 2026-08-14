@@ -62,7 +62,7 @@
       "subject": "the friction log: one line per snag, symptom then corrected move",
       "status": "living",
       "reach": "project",
-      "words": 4411,
+      "words": 4481,
       "maintenance": "authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
     },
     {
@@ -382,7 +382,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 21568,
+      "words": 21679,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {
@@ -406,7 +406,7 @@
       "subject": "the curated Tools gallery manifest",
       "status": "living",
       "reach": "app",
-      "words": 142,
+      "words": 148,
       "maintenance": "authored by hand; a sibling to pins and stage.files, no prose parent"
     },
     {
