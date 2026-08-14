@@ -136,6 +136,33 @@ test('the read separates body prose from chrome, and counts runs', async () => {
   assert.equal(mixed.words, r.words, 'and are kept out of the body count');
 });
 
+test('a block boundary ends a sentence; an inline element does not', async () => {
+  const d = await mountFab();
+
+  // The live failure this pins. A table's cells carry no terminal punctuation,
+  // so joining every text run with a space ran the whole table together into
+  // one pseudo-sentence, and "longest sentence" reported it. Seen on
+  // docs/text-tools.md rendered through the data route.
+  const table = d._textRead(docWith(
+    `<table><tr><td>a path that resolves to a tracked file</td>
+     <td>already cached per repo and ref</td></tr>
+     <tr><td>a declared doc registry</td><td>whether it is living or measured</td></tr></table>`));
+  assert.equal(table.longest, 8,
+    'the longest cell, not every cell stitched together');
+  assert.ok(table.sentences >= 4, `each cell counts once: ${table.sentences}`);
+
+  // The other half, and the reason a newline between every run is not the fix:
+  // an inline link or code span sits inside a sentence and must not break it.
+  const inline = d._textRead(docWith(
+    '<p>The loader contract lives in <code>docs/loader.md</code> and nothing else states it.</p>'));
+  assert.equal(inline.sentences, 1, 'an inline element does not end a sentence');
+  // 13, not 12: the word regex splits on / and . so a path counts as three
+  // tokens. Left alone deliberately, since a path is about that much to read.
+  assert.equal(inline.longest, 13);
+  assert.match(inline.longestText, /^The loader contract lives in docs\/loader\.md and/,
+    'the runs rejoin with a space, so the sentence reads as written');
+});
+
 test('the app gate reads words per run, which is the signal that separates', async () => {
   const d = await mountFab();
   const prose = d._textRead(docWith(PROSE));

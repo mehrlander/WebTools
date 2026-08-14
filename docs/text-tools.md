@@ -274,6 +274,30 @@ Three rules the build settled, each visible in the pane:
 - **Only the tree read may fail the answer.** A registry that will not read
   costs a gloss; the row still resolves and links.
 
+## What a sentence is, settled by a document with tables in it
+
+The first live run against a real document, this file rendered through the data
+route, reported a longest sentence of stitched-together table cells: *"…already
+cached per repo and ref this names a real file; here it is a declared doc, 51
+rows what that document is…"*. Visibly wrong, and wrong in the direction that
+flatters the figure.
+
+The cause is how text runs are joined, and both obvious answers fail:
+
+- **Join every run with a space** and a table's cells run together, because a
+  cell carries no terminal punctuation for a sentence splitter to find. That was
+  the bug.
+- **Join every run with a newline** and any sentence containing an `<a>` or a
+  `<code>` is cut into pieces, which is most of this estate's prose.
+
+So runs join with a **space inside one block** and a **newline between blocks**,
+and a block boundary ends a sentence whether or not it is punctuated. Whitespace
+inside a run collapses first, so the newline can mean exactly one thing: source
+formatting puts real newlines inside a single text node, and splitting on those
+cut sentences in half. The block set is a tag list rather than
+`getComputedStyle`, because the read also runs over a cloned selection fragment,
+which is in no document and has no computed style to ask for.
+
 ## Selection scope, and the bug it hid
 
 The read takes a live selection as its subject when there is one, and the whole

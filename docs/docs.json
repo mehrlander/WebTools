@@ -382,7 +382,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 21201,
+      "words": 21212,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {
@@ -398,7 +398,7 @@
       "subject": "the FAB's text surface: the instruments the estate already has, the four operations by cost, and what the measurements rule out",
       "status": "living",
       "reach": "orphan",
-      "words": 3130,
+      "words": 3362,
       "maintenance": "authored; its figures cite the registries and measurements they came from, and the words-per-run calibration is re-derivable by running the pane"
     },
     {
