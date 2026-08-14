@@ -2660,6 +2660,28 @@
       ]
     },
     {
+      "path": "tools/test/snags-index.test.mjs",
+      "kind": "gate",
+      "protects": "The snags log's repeat detector and its parser: the thresholds that decide what counts as a possible repeat, the boundary that credits a dated sub-paragraph to its own entry, and that every sighting in the committed log sits inside a slugged entry.",
+      "assertions": 11,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "a sighting belongs to the entry it sits in",
+        "a `---` between entries does not lose one",
+        "two dates on one line are two sightings of one snag",
+        "a dated bold sub-paragraph counts toward its own entry",
+        "a sighting above the first entry is reported as orphaned",
+        "an entry with no seen line is undated, not uncounted",
+        "the table leads with repeats and marks the count",
+        "the detector catches the pair that prompted it",
+        "one shared word is not enough, or every loader snag would pair",
+        "tokens drop stop words and fragments, so a slug is matched on its nouns",
+        "the committed log is fully slugged, with no uncounted sighting"
+      ]
+    },
+    {
       "path": "tools/test/source-peek.test.mjs",
       "kind": "behavior",
       "protects": "The rendition is chosen by extension, and code is the default rather than a guess.",

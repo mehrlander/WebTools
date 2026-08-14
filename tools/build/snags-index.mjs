@@ -49,7 +49,7 @@ const CLOSE = '[//]: # (/snags-index)';
 const STOP = new Set(['a', 'an', 'the', 'is', 'it', 'in', 'on', 'of', 'to', 'and',
                       'not', 'no', 'as', 'at', 'by', 'for', 'with', 'that', 'this']);
 
-const tokens = (slug) => slug.split('-').filter(t => t.length > 2 && !STOP.has(t));
+export const tokens = (slug) => slug.split('-').filter(t => t.length > 2 && !STOP.has(t));
 
 // One entry per `### slug: title`, with every date its *(seen: …)* line names.
 // An entry runs to the next heading or the next `---`, whichever comes first,
@@ -70,7 +70,7 @@ const tokens = (slug) => slug.split('-').filter(t => t.length > 2 && !STOP.has(t
 // orphaned and reported. A block appended with no slug lower down would be
 // absorbed by the entry above it, which this cannot see; the header's rule
 // that every entry leads with a slug is what keeps that from happening.
-function parse(md) {
+export function parse(md) {
   const body = md.slice(md.indexOf(CLOSE) === -1 ? 0 : md.indexOf(CLOSE));
   const heads = [...body.matchAll(/^### ([a-z0-9-]+): (.+)$/gm)]
     .map(m => ({ slug: m[1], title: m[2], at: m.index }));
@@ -87,7 +87,7 @@ function parse(md) {
   return { entries: out, orphanSightings: seenAt.filter(sa => sa.at < first).length };
 }
 
-function render(entries) {
+export function render(entries) {
   const rows = [...entries].sort((a, b) =>
     (b.seen.length - a.seen.length) || (b.seen[0] || '').localeCompare(a.seen[0] || '') ||
     a.slug.localeCompare(b.slug));
@@ -114,7 +114,7 @@ function render(entries) {
 
 // Pairs sharing two or more slug tokens: the cheapest signal that a new entry
 // is a repeat of one already here.
-function suspects(entries) {
+export function suspects(entries) {
   const pairs = [];
   for (let i = 0; i < entries.length; i++) {
     for (let j = i + 1; j < entries.length; j++) {
@@ -126,37 +126,43 @@ function suspects(entries) {
   return pairs;
 }
 
-const md = await readFile(FILE, 'utf8');
-const { entries, orphanSightings } = parse(md);
-const block = render(entries);
+// The CLI. Everything above is pure and importable, so the thresholds this
+// tool turns on (two shared tokens, the stop list, the three-character floor)
+// can be held by tools/test/snags-index.test.mjs rather than by whoever last
+// read the output. A detector that quietly stops detecting looks exactly like
+// a log with no repeats in it.
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+  const md = await readFile(FILE, 'utf8');
+  const { entries, orphanSightings } = parse(md);
+  const block = render(entries);
 
-let next;
-if (md.includes(OPEN) && md.includes(CLOSE)) {
-  next = md.slice(0, md.indexOf(OPEN)) + block + md.slice(md.indexOf(CLOSE) + CLOSE.length);
-} else {
-  // First run: insert after the header's rule, above the newest entry.
-  const rule = md.indexOf('\n---\n');
-  if (rule === -1) { console.error('snags-index: no `---` after the header to insert below'); process.exit(1); }
-  const cut = rule + '\n---\n'.length;
-  next = md.slice(0, cut) + '\n' + block + '\n' + md.slice(cut);
-}
-
-const check = process.argv.includes('--check');
-if (check) {
-  if (next !== md) {
-    console.error('snags-index: docs/SNAGS.md is stale — run `npm run snags-index`.');
-    process.exit(1);
+  let next;
+  if (md.includes(OPEN) && md.includes(CLOSE)) {
+    next = md.slice(0, md.indexOf(OPEN)) + block + md.slice(md.indexOf(CLOSE) + CLOSE.length);
+  } else {
+    // First run: insert after the header's rule, above the newest entry.
+    const rule = md.indexOf('\n---\n');
+    if (rule === -1) { console.error('snags-index: no `---` after the header to insert below'); process.exit(1); }
+    const cut = rule + '\n---\n'.length;
+    next = md.slice(0, cut) + '\n' + block + '\n' + md.slice(cut);
   }
-} else if (next !== md) {
-  await writeFile(FILE, next);
-}
 
-const repeats = entries.filter(e => e.seen.length > 1).length;
-console.log(`snags-index: ${entries.length} snags, ${repeats} seen more than once` +
-  (orphanSightings ? `; ${orphanSightings} sighting(s) above the first entry, in no slugged entry` : ''));
+  if (process.argv.includes('--check')) {
+    if (next !== md) {
+      console.error('snags-index: docs/SNAGS.md is stale — run `npm run snags-index`.');
+      process.exit(1);
+    }
+  } else if (next !== md) {
+    await writeFile(FILE, next);
+  }
 
-const pairs = suspects(entries);
-if (pairs.length) {
-  console.log(`  ${pairs.length} possible repeat(s) — same snag under two slugs? fold one in if so:`);
-  for (const p of pairs) console.log(`    ${p.a}  ~  ${p.b}   (${p.shared.join(', ')})`);
+  const repeats = entries.filter(e => e.seen.length > 1).length;
+  console.log(`snags-index: ${entries.length} snags, ${repeats} seen more than once` +
+    (orphanSightings ? `; ${orphanSightings} sighting(s) above the first entry, in no slugged entry` : ''));
+
+  const pairs = suspects(entries);
+  if (pairs.length) {
+    console.log(`  ${pairs.length} possible repeat(s) — same snag under two slugs? fold one in if so:`);
+    for (const p of pairs) console.log(`    ${p.a}  ~  ${p.b}   (${p.shared.join(', ')})`);
+  }
 }

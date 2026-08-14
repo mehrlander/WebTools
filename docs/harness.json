@@ -243,7 +243,7 @@
       "path": "tools/build/snags-index.mjs",
       "role": "",
       "layer": "tools/build",
-      "lines": 163,
+      "lines": 169,
       "invocation": "npm:snags-index",
       "emits": false,
       "named": false,
