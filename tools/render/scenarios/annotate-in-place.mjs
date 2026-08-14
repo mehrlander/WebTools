@@ -15,8 +15,8 @@ export default async (page) => {
   await page.waitForSelector('#doc h1', { timeout: 15000 });
 
   const save = async (note) => {
-    // The composer opens in dictation mode, so the keyboard is the way in for
-    // a headless run: the pencil is a mode switch, and Done is the same key.
+    // The composer opens in dictation mode, so the pencil is the way in for a
+    // headless run: there is no recognizer here to speak to.
     await page.click('button[data-annotate-ui][title^="Type instead"]');
     await page.fill('textarea[data-annotate-ui]', note);
     // Putting the keyboard away is what leaves edit mode, and the control row
