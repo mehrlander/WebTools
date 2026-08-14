@@ -31,6 +31,8 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   Either form takes an optional trailing `#frag`, handed to the rendered page as its own `location.hash`, so a page that routes on its hash opens where the link says: `#gh=owner/repo@ref:pages/app.html#view=spend`, `#gz=<payload>#view=spend`. An address may carry `?query` and `#frag` together.
 
+  Either form also takes `?w=<px>` on the **renderer's** own query (`toss-render.html?w=390#gh=…`), which renders the subject in a frame that wide instead of the device's. A frame is a viewport, so the page really is laid out at that width: media queries match and a boot-time `innerWidth` read agrees, and a width wider than the screen is scaled down to fit rather than scrolled. Use it to hand over a phone view from a desktop, or the reverse. It cannot move `pointer` or `hover`, so it shows another device's layout, not its interaction model. The drawer's Render tab drives the same thing with four presets.
+
   Encode `#gz=` with:
 
   ```bash

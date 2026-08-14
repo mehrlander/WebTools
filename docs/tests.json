@@ -934,7 +934,7 @@
       "path": "tools/test/estate-jots.test.mjs",
       "kind": "component",
       "protects": "A jot write merges against a fresh read, so a jot added elsewhere survives; a missing pile is empty rather than an error, and a real load failure is surfaced instead of read as empty.",
-      "assertions": 9,
+      "assertions": 21,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
@@ -949,7 +949,19 @@
         "jotPile orders newest first regardless of stored order",
         "deleteJot removes the item and saves the remainder",
         "the to-do list also lives under lists/ (moved out of state/)",
-        "a write merges against a FRESH read, so a jot added elsewhere survives (the spine regression)"
+        "a write merges against a FRESH read, so a jot added elsewhere survives (the spine regression)",
+        "every list read asks to bypass the HTTP cache",
+        "the registry client is held, not rebuilt per gesture",
+        "toggleUrgent sets the flag, and clearing it removes the key",
+        "urgent items sort above the rest, keeping file order within each band",
+        "a date that has arrived makes a row hot without anyone flagging it",
+        "the labels read forward, and lateness never abbreviates to a date",
+        "the chip colors by band",
+        "setDue stores a plain date, and anything else clears it",
+        "urgent and due are independent, and either one alone is enough",
+        "a long to-do is clipped in the urgent commit message",
+        "a key the pane does not know survives a round trip",
+        "swapping the registry repo or the token gets a new client"
       ]
     },
     {
@@ -1167,11 +1179,11 @@
       "path": "tools/test/fab-toss.test.mjs",
       "kind": "component",
       "protects": "The fab keeps shell identity when mounted inside a toss.",
-      "assertions": 8,
+      "assertions": 11,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
-        7
+        10
       ],
       "assertion_names": [
         "normal mount renders and keeps shell identity",
@@ -1181,6 +1193,9 @@
         "renderAtRef in a toss re-addresses the shell instead of opening the overlay",
         "mode getters: a toss reads as off-canonical, marks the subject ref",
         "a toss at the default branch is not a preview",
+        "the width bar is reachable through a frame, or an address that can make one",
+        "off the renderer, a preset addresses it with ?w= on the query",
+        "on the renderer, a preset moves the frame in place",
         "no startup warnings or errors"
       ]
     },
@@ -1275,7 +1290,7 @@
       "path": "tools/test/gh-store.test.mjs",
       "kind": "behavior",
       "protects": "saveBytes writes byte-exact content, so a binary round-trip cannot be silently re-encoded.",
-      "assertions": 8,
+      "assertions": 11,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -1287,7 +1302,10 @@
         "a 409 recovers by refetching the SHA and retrying",
         "the instance ref rides the PUT as branch; empty ref stays default",
         "repeated conflicts keep retrying, backing off, until one lands",
-        "a branch that never stops conflicting gets a bounded number of attempts"
+        "a branch that never stops conflicting gets a bounded number of attempts",
+        "the conflict refetch reads past the HTTP cache",
+        "del reads its sha past the HTTP cache",
+        "a successful write leaves the new sha on the instance for the next one"
       ]
     },
     {
@@ -2877,6 +2895,16 @@
         "an unknown route says so and stamps nothing",
         "a failed fetch leaves no subject rather than a file that never rendered"
       ]
+    },
+    {
+      "path": "tools/test/toss-width.mjs",
+      "kind": "behavior",
+      "protects": "A page tossed at a forced width really is laid out at it, in both directions, and the pointer type it cannot fake stays untouched.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:toss-width",
+      "boot_smoke": null,
+      "assertion_names": null
     },
     {
       "path": "tools/test/tracker-assessments.test.mjs",

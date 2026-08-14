@@ -174,6 +174,64 @@ test('a toss at the default branch is not a preview', async () => {
   await tick();
 });
 
+test('the width bar is reachable through a frame, or an address that can make one', async () => {
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/index.html"');
+  const d = Alpine.$data(el);
+  assert.equal(d.frameWidth, 0, 'a page starts at the width it actually has');
+  assert.ok(d.tossUrl, 'an owner page has an address the renderer will serve');
+  assert.equal(d.widthReachable, true);
+
+  // A repo the renderer does not serve has no way into a frame, so the bar is
+  // absent rather than present and dead.
+  d.repo = 'someone-else/repo';
+  assert.equal(d.tossUrl, '');
+  assert.equal(d.widthReachable, false);
+
+  // And a shell holding the lever is reachable even before it has a subject:
+  // the frame is there, and a width set now is the width the next render
+  // arrives at.
+  window.__tossWidth = () => 0;
+  try { assert.equal(d.widthReachable, true, 'the lever, not viaToss, is the test'); }
+  finally { delete window.__tossWidth; }
+});
+
+test('off the renderer, a preset addresses it with ?w= on the query', async () => {
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/index.html"');
+  const d = Alpine.$data(el);
+  const base = 'https://mehrlander.github.io/web-tools/pages/toss-render.html';
+  const addr = '#gh=mehrlander/web-tools@main:pages/index.html';
+  assert.equal(d.tossUrl, base + addr);
+  // ?w= belongs to the RENDERER, so it sits before the fragment: inside the
+  // #gh= address it would be read as part of the page's own query and handed
+  // to the page, which is not what asked for it.
+  assert.equal(d.widthUrl(390), base + '?w=390' + addr);
+  assert.equal(d.widthUrl(0), base + addr, 'actual carries no ?w= at all, rather than w=0');
+
+  d.repo = 'someone-else/repo';
+  assert.equal(d.widthUrl(390), '', 'no address the renderer serves, no width link');
+});
+
+test('on the renderer, a preset moves the frame in place', async () => {
+  const calls = [];
+  // The shell's lever, standing in for toss-render's: it floors and clamps, and
+  // the fab takes what it returns rather than what it asked for.
+  window.__tossWidth = w => { calls.push(w); return w ? Math.max(240, w) : 0; };
+  window.__tossWidthNow = 820;
+  try {
+    const { el } = await mountFab();
+    const d = Alpine.$data(el);
+    assert.equal(d.frameWidth, 820, 'a width the shell booted with is read, not re-asserted');
+    d.setWidth(100);
+    assert.deepEqual(calls, [100]);
+    assert.equal(d.frameWidth, 240, 'the bar reports what was applied');
+    d.setWidth(240);
+    assert.deepEqual(calls, [100], 'asking for the width already applied is not a call');
+  } finally {
+    delete window.__tossWidth;
+    delete window.__tossWidthNow;
+  }
+});
+
 test('no startup warnings or errors', () => {
   assert.deepEqual(problems, []);
 });
