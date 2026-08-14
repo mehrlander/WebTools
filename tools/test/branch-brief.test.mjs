@@ -86,12 +86,51 @@ test('past the commit cap the counts are a floor and say so', () => {
   assert.equal(b.sessionsExact, false);
 });
 
-test('a branch with no compare still assembles, as unrelated', () => {
-  const b = BB.assemble({ repo: 'acme/w', branch: 'orphan', base: 'main', compare: null });
+// The two ways a compare can be absent, and they are opposite claims. A 404 is
+// an ANSWER: no merge base, so the branch is on an unrelated line. A deferred
+// read is a GAP: the compare has not been asked for, and saying "unrelated"
+// there would be a warning badge on a perfectly ordinary branch. `noBase` is
+// what separates them, and nothing else can: both arrive as `compare: null`.
+test('a 404 compare assembles as unrelated, which is an answer', () => {
+  const b = BB.assemble({ repo: 'acme/w', branch: 'orphan', base: 'main',
+                          compare: null, noBase: true });
   assert.equal(b.state, 'unrelated');
+  assert.equal(b.pending, false);
   assert.deepEqual(b.files, []);
   assert.deepEqual(b.commits, []);
   assert.equal(b.authored, null);
+});
+
+test('an unread compare assembles as pending, which is a gap', () => {
+  const b = BB.assemble({ repo: 'acme/w', branch: 'f', base: 'main', compare: null });
+  assert.equal(b.pending, true);
+  assert.equal(b.state, '', 'no badge is honest; "unrelated" would be a false warning');
+  assert.equal(b.ahead, null);
+  assert.equal(b.commitCount, null, 'blank rather than 0, which a real answer could also be');
+  assert.deepEqual(b.files, []);
+});
+
+test('a host lends what it knows, and only until the compare answers', () => {
+  const facts = { ahead: 3, behind: 1, firstDate: '2026-08-01T00:00:00Z',
+                  lastDate: '2026-08-05T00:00:00Z', sessions: ['https://claude.ai/code/s'] };
+  const lent = BB.assemble({ repo: 'acme/w', branch: 'f', base: 'main', compare: null, facts });
+  assert.equal(lent.ahead, 3);
+  assert.equal(lent.behind, 1);
+  assert.equal(lent.state, 'live', 'derived from the lent ahead through the same three-way call');
+  assert.equal(lent.sessions.length, 1);
+  assert.equal(lent.sessionsExact, false, 'a row reads sessions from the tip, so it cannot claim exact');
+
+  // Read, and the lent numbers are gone rather than merged: compare() is 2/1.
+  const read = BB.assemble({ repo: 'acme/w', branch: 'f', base: 'main', compare: compare(), facts });
+  assert.equal(read.ahead, 2);
+  assert.equal(read.behind, 1);
+  assert.equal(read.pending, false);
+});
+
+test('a lent ahead of zero is landed, not a missing fact', () => {
+  const b = BB.assemble({ repo: 'acme/w', branch: 'f', base: 'main', compare: null,
+                          facts: { ahead: 0, behind: 4 } });
+  assert.equal(b.state, 'landed');
 });
 
 test('an open PR attaches; its absence is not an error', () => {
@@ -324,7 +363,10 @@ test('readBrief: a warm still in flight is joined, not re-issued', async () => {
   const at = { repo: 'acme/w', branch: 'warm', base: 'main' };
   const [a, b] = await Promise.all([BB.readBrief(gh, at), BB.readBrief(gh, at)]);
   assert.equal(n.compare, 1, 'the prefetch and the arrival are one call');
-  assert.equal(a, b, 'and one answer');
+  // The two halves are cached, not their composition, so readBrief builds a
+  // fresh wrapper each time. What must be shared is the READ, and it is: both
+  // wrappers carry the identical compare object off one joined promise.
+  assert.equal(a.compare, b.compare, 'and one answer');
 });
 
 test('readBrief: the base is part of the identity', async () => {

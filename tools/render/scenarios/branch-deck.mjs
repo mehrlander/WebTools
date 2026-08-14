@@ -18,6 +18,9 @@
 //     number that for a MERGED pull request can only have come up through the
 //     slide's own read (the activity crawl asks for open ones only);
 //   - the address follows the slide;
+//   - a mounted slide has NOT read the compare, so it carries a rendered guide,
+//     a head filled from the host's lent facts, and no files at all until the
+//     reader opens the pane that needs them;
 //   - the file deck DRILLS from the branch deck, wearing a back chevron and
 //     the branch as its crumb, and one Back returns to the branch that was
 //     left rather than closing the stack.
@@ -83,11 +86,18 @@ export default async function (page, ctx) {
     const stepped = hdr();
     const addr = new URLSearchParams(location.search).get('detail');
 
-    // Drill into the files from inside the branch slide.
+    // Drill into the files from inside the branch slide. Opening Files is what
+    // ASKS for the compare: a slide mounts on the pulls call alone, so until
+    // this pair runs there is no file list to drill into. That is the deferral,
+    // and here it is in a browser rather than in jsdom.
     const slide = branchDeck.deck.track.children[branchDeck.deck.active()];
     const bb = window.Alpine.$data(slide.querySelector('[x-data^="branchBrief"]'));
+    const deferred = { pending: bb.brief?.pending, files: bb.brief?.files.length,
+                       ahead: bb.brief?.ahead, state: bb.brief?.state };
     bb.pane = 'files';
+    await bb.ensureCompare();
     await new Promise(r => setTimeout(r, 500));
+    const read = { pending: bb.brief?.pending, files: bb.brief?.files.length };
     await bb.openFileDeck(1);
     await new Promise(r => setTimeout(r, 900));
     const drilled = hdr();
@@ -98,7 +108,7 @@ export default async function (page, ctx) {
     await new Promise(r => setTimeout(r, 700));
     const back = { depth: window.swipeDeck.stack.length, ...hdr() };
 
-    return { rows, noIframe, trackIsNative, opened, stepped, addr, drilled, depth, back,
+    return { rows, noIframe, trackIsNative, opened, stepped, addr, deferred, read, drilled, depth, back,
              slides: branchDeck.deck.count,
              mounted: branchDeck.el.querySelectorAll('[x-data^="branchBrief"]').length };
   });
@@ -111,6 +121,8 @@ export default async function (page, ctx) {
   console.log('   opened   ' + JSON.stringify(out.opened));
   console.log('   stepped  ' + JSON.stringify(out.stepped));
   console.log('   address follows            : ' + out.addr);
+  console.log('   on a mounted slide         : ' + JSON.stringify(out.deferred));
+  console.log('   after opening Files        : ' + JSON.stringify(out.read));
   console.log('   drilled  ' + JSON.stringify(out.drilled) + '   stack depth ' + out.depth);
   console.log('   after Back                 : depth ' + out.back.depth + '  ' + out.back.title);
   console.log('─'.repeat(60) + '\n');

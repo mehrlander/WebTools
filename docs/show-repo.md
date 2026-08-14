@@ -1754,6 +1754,35 @@ back does not re-render), Alpine tears the tree down on removal, and
 file deck, the keyed global the mount travelled through. The same twelve steps
 now plateau at four views and 10,712 nodes.
 
+**And the diff is not read until it is asked for.** A branch is two calls, and
+they cost two different things: the pulls call is the PR body and a few KB, the
+compare is ahead/behind, the commits, and every changed file with its patch
+embedded, in one response with no way to ask for a subset. On this repo that is
+1.82 MB over 23 files, 1.60 MB of it `dist/web-tools.js`, whose own diff is 52
+lines with three of them a quarter of a megabyte each. The pre-build rides in
+nearly every commit here, so nearly every branch pays it, and the reader who
+only wanted the guide paid it too. Worse, warming two neighbours meant three
+copies in flight to show three PR bodies.
+
+`kits/branch-brief.js` now caches the two reads separately (`readGuide`,
+`readCompare`; `readBrief` composes them), `assemble` tolerates an absent
+compare and marks the brief `pending`, and the view reads the guide at mount and
+the compare when the reader taps Files or Commits. Opening a branch and swiping
+three times moves no compare at all; one tap moves one.
+
+Two things make the deferral invisible rather than merely cheap. The head's
+numbers come from **`facts`**, which the host lends off the row the reader
+tapped: the activity crawl already read ahead, behind, the branch's first date
+and its sessions, so the badge and the strip are right on the first frame and
+the compare overwrites them when it lands. And `facts` is also the **switch**: a
+surface that lends nothing, meaning a cold `pages/branch.html`, has no other
+source for the head, so there the compare is read up front exactly as before.
+The rule is "defer when something else can answer the head, never otherwise",
+which is why it turns on `facts` and not on `framed`. The warm follows the same
+logic one step out: it always takes the guide and the registry, and takes a
+neighbour's compare only once this slide has read its own, which is to say only
+for a reader who is actually looking at diffs.
+
 Measured end to end by `tools/render/scenarios/branch-deck.mjs`, which is also
 what caught both of those faults above.
 
