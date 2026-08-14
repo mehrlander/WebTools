@@ -14,7 +14,7 @@
       "path": "tools/test/annotate.test.mjs",
       "kind": "behavior",
       "protects": "A note's anchor survives the range round trip and keeps pointing at the same phrase across edits, duplicate text, and a reader in another window.",
-      "assertions": 33,
+      "assertions": 43,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [],
@@ -34,14 +34,21 @@
         "remove and clear keep the list and paint state consistent",
         "the annotator builds its engine from kits/dictate.js and paints what it hears",
         "without the dictate kit the annotator still works, minus the microphone",
-        "the pencil opens on the phrase that was on screen, not the one before it",
+        "the keyboard opens on the phrase that was on screen, not the one before it",
         "the composer paints through the kit and swaps its pad for a selection",
         "the card refuses the browser its own selection, from a stylesheet",
         "a tap on the blank canvas sends the caret to the end",
+        "a keyboard writes into the draft, without asking for a textarea first",
+        "a mouse drag selects, and a touch drag still scrolls",
+        "a long press off the words opens the keyboard, and on them still takes a word",
         "two taps in a run open the keyboard, with the caret where they landed",
+        "a single tap places the caret, on a draft with nothing live yet",
+        "the caret is one caret: it survives the switch into the keyboard and back",
         "arming a pin ends a tap run",
-        "the keyboard mode does not wear a microphone",
-        "Done resumes dictation only if the keyboard interrupted it",
+        "undo and redo stand where the pencil stood, and say whether they can",
+        "the keyboard mode has no controls of its own, and the keyboard is the way out",
+        "the keyboard does not grow the card: the editor takes the frame it found",
+        "leaving the keyboard resumes dictation only if it interrupted it",
         "a page note pins to nothing, and the set says which page it means",
         "the Page chip opens a draft outright: no gesture to make first",
         "the review button says what a tap will do before it is tapped",
@@ -51,7 +58,10 @@
         "a pad drag makes the selection pins transparent to the caret lookup",
         "the card refuses the platform’s selection, and the textarea takes it back",
         "a note row opens a menu, and Edit reopens it in the composer",
-        "a drag surface cancels the touch itself, not just its touch-action"
+        "a drag surface cancels the touch itself, not just its touch-action",
+        "element mode stages from a tap, with no mouse having moved first",
+        "the card recognizes a selection and offers it, and the offer outlives the tap",
+        "the set has a second reading: on the page, where a screenshot can hold it"
       ]
     },
     {
@@ -632,7 +642,7 @@
       "path": "tools/test/dictate.test.mjs",
       "kind": "behavior",
       "protects": "The voice buffer composes text the way the prototype established, independent of any caller, and reads the window it was handed rather than an ambient one.",
-      "assertions": 48,
+      "assertions": 51,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [],
@@ -663,6 +673,7 @@
         "a caret mid-buffer is where the words go, and the pause record stands down",
         "the pad becomes casing keys, and they act on the selection alone",
         "delete takes the selection when there is one, and the word before a caret otherwise",
+        "a space behind the caret is its own step, except at the very end",
         "a mark lands at the caret rather than at the far end",
         "setting the text clears the range: the offsets described another buffer",
         "the painter renders text, caret and selection as marked parts",
@@ -684,7 +695,9 @@
         "a pin whose line is scrolled out of view is not painted, nor its arrows",
         "the caret pulses, which needs a stylesheet rather than a style attribute",
         "endCaret paints the insertion point a null range implies",
-        "the arrow cluster is opt-out, for a surface that has a pad instead"
+        "the arrow cluster is opt-out, for a surface that has a pad instead",
+        "undo steps by mutation, and the caret rides with it",
+        "a caret move is not an undo step, and a no-op assignment is not either"
       ]
     },
     {
