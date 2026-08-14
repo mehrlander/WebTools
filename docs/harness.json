@@ -363,7 +363,7 @@
       "path": "tools/render/cdn.mjs",
       "role": "the CDN URL to local-file resolver both renderers share",
       "layer": "tools/render",
-      "lines": 363,
+      "lines": 369,
       "invocation": "imported",
       "emits": false,
       "named": true,
@@ -860,6 +860,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/fab-text-match.mjs",
+      "role": "drive the Text tab for a shot: the read is real, the tree and registry reads are seeded, and STATE picks the un-run pane, the resolved match, or a selection-scoped read",
+      "layer": "tools/render/scenarios",
+      "lines": 91,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/fab-toss.mjs",
       "role": "toss-render address mode with the fab's toss integration and singleton guard",
       "layer": "tools/render/scenarios",
@@ -944,6 +954,16 @@
       "role": "drive show-repo's Map view onto the Harness tab with the committed census served through GH.get",
       "layer": "tools/render/scenarios",
       "lines": 52,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/map-registries.mjs",
+      "role": "drive the Map view's Registries tab for a screenshot, serving the real docs/properties.json through a stubbed GH so a tokenless render still shows the three areas and the cards",
+      "layer": "tools/render/scenarios",
+      "lines": 53,
       "invocation": "driver",
       "emits": false,
       "named": false,

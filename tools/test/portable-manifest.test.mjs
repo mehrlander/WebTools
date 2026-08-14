@@ -23,6 +23,9 @@ function tablePaths(md, heading) {
 
 const tableSet = new Set([...tablePaths(portableMd, '### Docs'), ...tablePaths(portableMd, '### Scripts')]);
 const manifestPaths = new Set(manifest.items.map(i => i.path));
+// The harness census owns the description of anything it carries.
+const harnessPaths = new Set(
+  JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'harness.json'), 'utf8')).tools.map(t => t.path));
 
 test('manifest shape: hub, plugin block, and non-empty typed items', () => {
   assert.equal(manifest.hub, 'mehrlander/web-tools');
@@ -30,7 +33,15 @@ test('manifest shape: hub, plugin block, and non-empty typed items', () => {
   assert.ok(manifest.items.length > 10);
   for (const it of manifest.items) {
     assert.ok(['skill', 'doc', 'dir', 'script'].includes(it.kind), it.path + ': kind');
-    assert.ok(it.path && it.title && it.role, it.path + ': path/title/role');
+    assert.ok(it.path && it.title, it.path + ': path/title');
+    // `role` is required only where no census already describes the file. The
+    // set is a crosswalk: on the nine scripts docs/harness.json describes, a
+    // role here would be a second copy of one claim, which is what the
+    // ownership gate in properties-registry.test.mjs now forbids. The Map view
+    // joins the census value for display, so the row is not left blank to a
+    // reader. See docs/registries.md, "the crosswalk shape".
+    assert.ok(it.role || harnessPaths.has(it.path),
+      it.path + ': needs a role, since no census carries a description for it');
   }
 });
 

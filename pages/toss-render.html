@@ -60,10 +60,16 @@
     renderer by adding one TOSS_ROUTES entry. Per-type schema doc:
     docs/envelopes/chat-results.md.
 
-  Empty state: with no input, the page shows a panel — a "Paste & render"
-  button (Clipboard API, so it works from one tap on iOS without revealing
-  the text) and a field for a GitHub file. A global paste listener catches
-  desktop Ctrl/Cmd-V too.
+  Empty state (the page's second job, and the reason it is listed as a tool):
+  with no input, the panel is a look at whatever is on the clipboard, whether
+  or not you know what that is. A "Paste & render" button (Clipboard API, so
+  it works from one tap on iOS without revealing the text) and a field for a
+  GitHub file; a global paste listener catches desktop Ctrl/Cmd-V too. What
+  arrives is routed by shape rather than assumed to be HTML: a blob URL or a
+  bare owner/repo:path to address mode, a URL to the frame, a whole HTML
+  document to the frame, an image to a minimal payload shell, and everything
+  else (CSV, JSON, markdown, logs, code, prose) to pages/data-view.html, which
+  picks a mode by reading the content. See renderInput below.
 
   Page actions live in the FAB, not a floating pill. A tiny `tossRender`
   x-data component exposes the FAB's opt-in contract — a `description` and an
@@ -162,7 +168,7 @@
   <i class="ph ph-disc text-5xl opacity-50"></i>
 
   <button id="paste-btn" class="btn btn-primary gap-2"><i class="ph ph-clipboard-text"></i>Paste &amp; render</button>
-  <div class="text-xs text-base-content/40 max-w-xs">Paste HTML or a URL — it renders straight to the frame, the text is never shown.</div>
+  <div class="text-xs text-base-content/40 max-w-xs">See what is on the clipboard: a page, a link, an image, a CSV, JSON, markdown, a log. It renders straight away, in whichever way suits it.</div>
 
   <div class="flex items-center gap-2 w-full max-w-sm">
     <div class="flex-1 h-px bg-base-300"></div>
@@ -518,7 +524,10 @@
   async function iconDataUri(href, subject) {
     if (!href) return null;
     if (href.startsWith('data:')) return href;
-    if (isRelativeRef(href) && subject) {
+    // A relative icon resolves against the SUBJECT's repo, so a subject with no
+    // repo (a pasted payload) has nothing to resolve against and keeps the
+    // frisbee, which is the honest mark for a render with no address behind it.
+    if (isRelativeRef(href) && subject && subject.repo) {
       const dir = subject.path.includes('/')
         ? subject.path.slice(0, subject.path.lastIndexOf('/') + 1) : '';
       const p = resolveRepoPath(dir, href);
@@ -1053,8 +1062,90 @@ window.fetch=function(input,init){try{
     return { repo: m[1], ref: m[2] || '', path: m[3].split(/[?#]/)[0] };
   }
 
-  // Route a pasted string: a github blob URL -> trusted address, a bare URL ->
-  // #url load, anything else -> untrusted HTML. Used by both paste paths.
+  // ── Look at what is on the clipboard ─────────────────────────────────────
+  //
+  // The panel's premise is that you may not know what you are holding, so the
+  // paste path has to decide. It used to decide badly: three branches, of
+  // which the last was "assume HTML." A pasted CSV, JSON blob, markdown file,
+  // log, or paragraph of prose was mounted as a document and rendered as a
+  // wall of unstyled text, which is the answer for exactly one of them.
+  //
+  // The renderer for the rest already existed and had no paste door:
+  // pages/data-view.html over alpineComponents/viewer.js picks a mode by
+  // reading the content (a JSON array is a table, an object is a tree, .md is
+  // preview) and leaves every other mode one tap away, so a wrong guess costs
+  // a tap rather than a reload. Nothing here re-implements that judgment, and
+  // nothing here sniffs: kits/data-payload.js already names a bare payload by
+  // its bytes, so handing over the raw text is the whole handoff.
+  //
+  // Delivery takes no new machinery either. Address mode already accepts a
+  // trailing #frag that rides the frame's blob: URL as a real location.hash,
+  // and data-view already reads `gz` fragment-first, so the viewer page is
+  // addressed with the paste hanging off it. "Copy toss link" then re-emits
+  // the whole thing as a durable #gh= bookmark, which is what turns a look at
+  // the clipboard into something shareable.
+  //
+  // The one thing that had to change elsewhere: data-view renders same-origin
+  // (address mode's trade, and what gives its repo links a token), so it is
+  // now rendering content nobody vetted. The viewer's markdown preview was
+  // marked -> innerHTML with no sanitizer; it takes DOMPurify as of this
+  // change. Its html preview was already sandboxed, and raw/code escape.
+  const DATA_VIEWER = 'mehrlander/web-tools@main:pages/data-view.html';
+
+  // A whole document goes to the frame; a fragment does not. `<div>x</div>` is
+  // better read as code-plus-preview in the viewer than mounted as a page, and
+  // an SVG is a document worth rendering as itself.
+  const looksLikeDocument = t =>
+    /^\s*<(!doctype\s+html|html|head|body|svg)[\s>]/i.test(t) ||
+    /<html[\s>]/i.test(t) || /<body[\s>]/i.test(t);
+
+  // owner/repo[@ref]:path on its own line: the address the panel's field takes,
+  // which is also a thing people copy. Pasting one used to render it as HTML.
+  const looksLikeAddress = t => /^[\w.-]+\/[\w.-]+(?:@[^\s:]+)?:[^\s?#]+(?:[?#]\S*)?$/.test(t);
+
+  // Hand text to the multi-mode viewer, addressed with the payload attached.
+  //
+  // Then re-stamp the subject, for the reason showRoute re-stamps its own: the
+  // address showAddress just resolved names the RENDERER, so the drawer around
+  // it would report that you are looking at web-tools@main:pages/data-view.html
+  // when you are looking at your clipboard. A routed toss fixes that by
+  // re-stamping with the envelope's address; a paste has no address, so it
+  // stamps `local` instead, which the fab reads as a subject with no repo
+  // behind it: the frame stays reachable (take actions, Inspect) and every
+  // claim about a repo file is dropped.
+  async function showData(text) {
+    await showAddress(DATA_VIEWER + '#gz=' + await gzipB64(text));
+    // Only when something actually mounted: showAddress's failure path clears
+    // the subject on its way to the panel, and a re-stamp would resurrect one
+    // for a render that is not on screen.
+    if (!window.__tossSubject) return;
+    document.title = 'Toss · clipboard';
+    const [repo, path] = DATA_VIEWER.split('@main:');
+    setSubject({ local: true, label: 'Clipboard', path: '', route: 'data',
+                 via: { repo, ref: 'main', path } });
+  }
+
+  // A pasted image has no modes to switch between, so it needs no viewer: a
+  // minimal shell rendered as a PAYLOAD, which keeps it opaque-origin and
+  // makes "Copy toss link" a self-contained #gz= link to the picture.
+  function showImage(dataUri) {
+    showHtml('<!doctype html><html><head><meta charset="utf-8">' +
+      '<title>Pasted image</title>' +
+      '<style>html,body{margin:0;height:100%;background:#1a1a1a;display:grid;place-items:center}' +
+      'img{max-width:100%;max-height:100%;object-fit:contain}</style></head>' +
+      '<body><img src="' + dataUri + '" alt="Pasted image"></body></html>');
+  }
+
+  const blobToDataUri = blob => new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error('could not read the image'));
+    r.readAsDataURL(blob);
+  });
+
+  // Route a pasted string: a github blob URL or a bare repo address -> trusted
+  // address mode, a URL -> #url load, a whole HTML document -> the frame,
+  // anything else -> the data viewer. Used by both paste paths.
   function renderInput(raw) {
     const text = (raw || '').trim();
     if (!text) return;
@@ -1064,15 +1155,31 @@ window.fetch=function(input,init){try{
       try { return showUrl(text); }
       catch (e) { return showEmpty('Decoded value is not a valid http(s) URL: ' + text); }
     }
-    showHtml(text);
+    if (looksLikeAddress(text)) return showAddress(text);
+    if (looksLikeDocument(text)) return showHtml(text);
+    return showData(text);
   }
 
   // --- input panel wiring ---
+  //
+  // read() before readText(), because readText() cannot see a screenshot: it
+  // returns '' for an image-only clipboard, which read as "empty" and was the
+  // one case the panel could not report honestly. read() is newer and not
+  // everywhere, so the text path stays as the fallback rather than the
+  // exception.
   document.getElementById('paste-btn').addEventListener('click', async () => {
     try {
+      if (navigator.clipboard.read) {
+        try {
+          for (const item of await navigator.clipboard.read()) {
+            const type = item.types.find(t => t.startsWith('image/'));
+            if (type) return showImage(await blobToDataUri(await item.getType(type)));
+          }
+        } catch (e) { /* not available or refused: fall through to text */ }
+      }
       const text = await navigator.clipboard.readText();
       if (text && text.trim()) renderInput(text);
-      else showEmpty('Clipboard is empty — copy some HTML or a link first.');
+      else showEmpty('Clipboard is empty — copy a page, a link, a file, or an image first.');
     } catch (e) {
       showEmpty('Could not read the clipboard. Paste with Ctrl/Cmd-V, or use a toss link.');
     }
@@ -1083,10 +1190,19 @@ window.fetch=function(input,init){try{
     if (v) showAddress(blobUrlToAddr(v) || v);
   });
   // Desktop convenience: paste anywhere off a field renders straight away.
-  window.addEventListener('paste', e => {
+  // Images first here too, and from the event's own items, which need no
+  // permission prompt at all.
+  window.addEventListener('paste', async e => {
     const t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-    const text = (e.clipboardData || window.clipboardData)?.getData('text/plain');
+    const dt = e.clipboardData || window.clipboardData;
+    const file = [...(dt?.items || [])].find(i => i.kind === 'file' && i.type.startsWith('image/'));
+    if (file) {
+      e.preventDefault();
+      try { return showImage(await blobToDataUri(file.getAsFile())); }
+      catch (err) { return showEmpty('Could not read the pasted image.'); }
+    }
+    const text = dt?.getData('text/plain');
     if (text && text.trim()) { e.preventDefault(); renderInput(text); }
   });
 
@@ -1097,8 +1213,10 @@ window.fetch=function(input,init){try{
   document.addEventListener('alpine:init', () => {
     Alpine.data('tossRender', () => ({
       description: 'Full-viewport renderer for tossed HTML, URLs, and GitHub files ' +
-        '(#gz / #html / #url / #gh, plus typed #<page>= content tosses). Paste or use ' +
-        'the panel to render; "Copy toss link" rebuilds the durable bookmark for what is on screen. ' +
+        '(#gz / #html / #url / #gh, plus typed #<page>= content tosses). With no address it ' +
+        'is the clipboard viewer: paste anything and it is routed by shape, with data, ' +
+        'markdown, and logs handed to pages/data-view.html rather than assumed to be HTML. ' +
+        '"Copy toss link" rebuilds the durable bookmark for what is on screen. ' +
         'A ?w=<px> on its own query renders the subject at that width instead of the ' +
         'device\'s: the frame IS a viewport, so media queries and a boot-time innerWidth ' +
         'read both see it, and a width wider than the screen is scaled down to fit rather ' +

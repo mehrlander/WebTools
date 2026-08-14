@@ -1183,19 +1183,58 @@
       ]
     },
     {
+      "path": "tools/test/fab-tabstrip-geometry.mjs",
+      "kind": "behavior",
+      "protects": "The FAB's tab icons hold identical coordinates in every tab state, so the strip stays a spatial memory; measured in a real browser at 390px, which jsdom cannot do.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:tabstrip",
+      "boot_smoke": null,
+      "assertion_names": null
+    },
+    {
+      "path": "tools/test/fab-text.test.mjs",
+      "kind": "behavior",
+      "protects": "The drawer's fifth tab reports only what it can stand behind: the app-versus-document gate reads the signal that was measured to separate them, and the prose checks stay off pages whose text is labels.",
+      "assertions": 17,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "the strip is data, and every tab in it has a pane",
+        "setTab switches the pane and runs the tab’s opener",
+        "the strip’s one label names the selected tab, and is derived",
+        "the read separates body prose from chrome, and counts runs",
+        "a block boundary ends a sentence; an inline element does not",
+        "the app gate reads words per run, which is the signal that separates",
+        "the prose checks ignore what is not prose",
+        "the read scopes to a live selection, and falls back to the page",
+        "named paths include code spans; bare paths do not",
+        "match looks up the registered set, and root-level files are reachable",
+        "the tree is read only for what the registry does not know",
+        "the unregistered lane drops what it used to report as findings",
+        "a lookup respects name boundaries and claims the longest span",
+        "a registry that will not read costs descriptions, not rows",
+        "a tree failure degrades the answer rather than ending it",
+        "match runs with the read, without a tap",
+        "an unreadable document is a null, not a throw"
+      ]
+    },
+    {
       "path": "tools/test/fab-toss.test.mjs",
       "kind": "component",
       "protects": "The fab keeps shell identity when mounted inside a toss.",
-      "assertions": 11,
+      "assertions": 12,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
-        10
+        11
       ],
       "assertion_names": [
         "normal mount renders and keeps shell identity",
         "singleton guard: __fabHosted suppresses the mount",
         "adopts a pre-stamped toss subject at init, restores on clear, re-adopts on event",
+        "a local subject is a toss with no repo: the frame is kept, the repo claims are dropped",
         "classifyRows: statuses and ordering (baseline, differs desc, unknown, same, missing)",
         "renderAtRef in a toss re-addresses the shell instead of opening the overlay",
         "mode getters: a toss reads as off-canonical, marks the subject ref",
@@ -1434,6 +1473,18 @@
       "assertion_names": [
         "${file} registers window.${globalName}",
         "wsl.js (async gh.load shape) registers window.wsl once awaited"
+      ]
+    },
+    {
+      "path": "tools/test/lib-parses.test.mjs",
+      "kind": "behavior",
+      "protects": "A lib file that fails to parse cannot fail quietly: gh.load swallows the SyntaxError and keeps the pre-build's older copy of the component running, so the page renders the last good version of the change you are looking at.",
+      "assertions": 1,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "every loadable lib file compiles as a function body"
       ]
     },
     {
@@ -1820,7 +1871,7 @@
       "path": "tools/test/properties-registry.test.mjs",
       "kind": "gate",
       "protects": "The declaration table of docs/registries.md: every governed carrier holds exactly its key plus declared properties, computed declarations name real derivers, and no target x property pair has two owners within a registry.",
-      "assertions": 6,
+      "assertions": 10,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -1830,7 +1881,11 @@
         "each governed carrier holds exactly its key plus its declared properties",
         "every value in a closed domain is in that domain",
         "every required:value property is present on every row",
-        "modes are coherent: computed names a real deriver, recorded names none"
+        "modes are coherent: computed names a real deriver, recorded names none",
+        "every registry declares its area, and leads with a title and a gloss",
+        "no target answers to two registries for the same property",
+        "the ownership gate still fires when two registries do claim one pair",
+        "every tools-gallery row resolves to a page the gallery owns"
       ]
     },
     {
@@ -2486,7 +2541,7 @@
       "path": "tools/test/show-repo-routing.test.mjs",
       "kind": "behavior",
       "protects": "Every show-repo view can be linked to and reopened: the one VIEWS table stays the only router (no view name compared directly in the routing functions, no view the shell enters without a row), and each row's own stamped address parses back to it, on the default repo and on another.",
-      "assertions": 6,
+      "assertions": 10,
       "method": "pure",
       "runner": "suite",
       "boot_smoke": [],
@@ -2496,7 +2551,11 @@
         "rows are well formed, and keys and aliases are unique",
         "an alias resolves to its row rather than to a view of its own",
         "every view round-trips: stamped, then parsed back to itself",
-        "the second key rides along, for the views that carry one"
+        "the second key rides along, for the views that carry one",
+        "the shell mode round-trips, and only when it is not the default",
+        "an unknown shell mode reads as the default rather than blanking the app",
+        "the FAB toggle contract is well formed, and its setter is the mode setter",
+        "the header toggle returns to the mode it left, not to full"
       ]
     },
     {
@@ -2780,8 +2839,8 @@
     {
       "path": "tools/test/tools-view.test.mjs",
       "kind": "component",
-      "protects": "The Tools view mounts and loads its curated manifest.",
-      "assertions": 4,
+      "protects": "The Tools view's address grammar and its identity join: breaks if a bare path stops meaning the hub at main, if an off-default ref stops routing through toss-render, or if a shelved page stops inheriting its title from pages/pages.json.",
+      "assertions": 5,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
@@ -2791,7 +2850,8 @@
         "mounts and loads the curated manifest with no startup warnings",
         "resolve: bare path means the hub at main; qualified ref overrides",
         "render/thumb/source URLs follow the pages-catalog conventions",
-        "cards derive title/icon defaults and carry the resolved URLs"
+        "cards inherit the page identity and carry the resolved URLs",
+        "the identity join does not leak across repos"
       ]
     },
     {
@@ -2838,6 +2898,16 @@
       "assertions": null,
       "method": "pure",
       "runner": "npm run test:toss-multiparam",
+      "boot_smoke": null,
+      "assertion_names": null
+    },
+    {
+      "path": "tools/test/toss-paste.mjs",
+      "kind": "behavior",
+      "protects": "The clipboard panel routes a paste by shape: data, markdown, and logs reach the viewer instead of being rendered as HTML, and a markdown payload cannot script the shell.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:toss-paste",
       "boot_smoke": null,
       "assertion_names": null
     },
@@ -2988,6 +3058,16 @@
         "every ?use= loader passes cache: no-store",
         "no page still claims a branch ref is cache-safe on its own"
       ]
+    },
+    {
+      "path": "tools/test/viewer-image.mjs",
+      "kind": "component",
+      "protects": "The viewer's image module: a repo image is re-fetched as bytes and drawn (so a private repo works), and it opens over a host's blanket defaultMode.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:viewer-image",
+      "boot_smoke": null,
+      "assertion_names": null
     },
     {
       "path": "tools/test/viewer.test.mjs",
