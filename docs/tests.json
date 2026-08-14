@@ -203,24 +203,6 @@
       ]
     },
     {
-      "path": "tools/test/branches-view.test.mjs",
-      "kind": "component",
-      "protects": "Every older branch is judged on the content signal rather than on ref-level merge status, with a marked commits fallback when there is no merge base and a REST fallback when GraphQL is unavailable.",
-      "assertions": 5,
-      "method": "alpine",
-      "runner": "suite",
-      "boot_smoke": [
-        0
-      ],
-      "assertion_names": [
-        "mounts with no startup warnings or errors",
-        "surveys every older branch and groups on the content signal",
-        "a no-merge-base branch takes the commits fallback and is marked",
-        "tabList carries active/landed/stranded counts",
-        "falls back to the REST branch list when GraphQL is unavailable"
-      ]
-    },
-    {
       "path": "tools/test/build-board.test.mjs",
       "kind": "tool",
       "protects": "The tracker board generator: dependency reporting, the schema it accepts, and byte-determinism.",
@@ -2511,8 +2493,8 @@
     {
       "path": "tools/test/show-repo-routing.test.mjs",
       "kind": "behavior",
-      "protects": "Every show-repo view can be linked to and reopened: the one VIEWS table stays the only router (no view name compared directly in the routing functions, no view the shell enters without a row), and each row's own stamped address parses back to it, on the default repo and on another.",
-      "assertions": 8,
+      "protects": "show-repo's view routing: every screen the shell can enter has an address that reopens it, no view name is compared outside the VIEWS table, and a retired view's key aliases onto what replaced it rather than dropping the link.",
+      "assertions": 11,
       "method": "pure",
       "runner": "suite",
       "boot_smoke": [],
@@ -2524,7 +2506,10 @@
         "every view round-trips: stamped, then parsed back to itself",
         "the second key rides along, for the views that carry one",
         "the repo sidebar hands its Files row to the central surface, scoped",
-        "?view=files still routes after the sidebar row retired"
+        "the retired views alias onto what replaced them, carrying their scope",
+        "opening a file routes to the Files view, scoped to its folder",
+        "the browsed ref rides the address from any repo view",
+        "the landing is the overview, and the gallery is its own view"
       ]
     },
     {

@@ -38,7 +38,9 @@ repos browse with no auth; private repos and branches need the viewer's token.
 Deep-link params: `&view=` takes any of `estate`, `activity`, `sessions`,
 `guides`, `chats`, `todo`, `jots`, `stage`, `surfaces`, `tools`, `map`,
 `state`, `search`, `proposals`, `public`, `app` (the estate's own views) or
-`landing`, `pages`, `atlas`, `files`, `branches`, `config`, `project` (a repo's).
+`landing`, `pages`, `atlas`, `config`, `project` (a repo's). `files` and
+`branches` are retired per-repo views whose keys still resolve, to the Files
+view and to Activity.
 Beside it: `&file=<path>`, `&path=<dir>`, and a second key for the views that
 carry one, `&tab=<tab>` (**project**'s pill row, **Map**'s tabs), `&item=`
 (**State**), `&detail=` (**Branches**), the `&sq=` family (**Files**: `sq`,
@@ -126,14 +128,12 @@ and a Go row appears for a name that is not in the list), and a **lightning
 button that jumps to the most recently committed branch**, which hides itself
 when the newest branch is the default one.
 
-**It is not a ref picker for the repo being browsed, and the two are easy to
-confuse.** Those (the Files view's, the explorer's) choose which ref of the
-*browsed* repo you are reading; this one chooses which ref of
-`mehrlander/web-tools` **show-repo itself runs from**. Same vocabulary,
-different subject, so the panel spells out the repo and path it acts on every
-time it opens. The other two are one shared component
-(`lib/alpineComponents/refPicker`, below); this one stays its own, because
-picking a ref and *navigating to it* are different verbs.
+**It is not the Files view's ref picker, and the two are easy to confuse.**
+That one chooses which ref of the *browsed* repo you are reading; this one
+chooses which ref of `mehrlander/web-tools` **show-repo itself runs from**. Same
+vocabulary, different subject, so the panel spells out the repo and path it acts
+on every time it opens. This one stays its own component rather than adopting
+`refPicker`, because picking a ref and *navigating to it* are different verbs.
 
 It switches by navigating to the toss renderer with the ref pinned on **both
 halves**, `?use=<ref>` for the renderer's own lib chain and `#gh=…@<ref>:…` for
@@ -227,110 +227,65 @@ estate", "The stage", and "Public browse" below.
 
 The per-repo views in the sidebar:
 
-- **landing**: the repo's front door. `landingKind(repo)` decides: web-tools →
-  its page gallery; a repo whose manifest names a `landing` → that custom page
-  (rendered live through toss-render `#gh=`), even if the same manifest also
-  declares a `pages` catalog; a repo with a `pages` catalog and no `landing` →
-  the gallery, fed from that catalog; every other repo → a synthesized
-  overview (stats + README + a jump to the atlas). `landing` outranks `pages`
-  for this one front-door slot, but never hides the catalog: see **pages**
-  below.
-- **pages** *(shown only when it adds something the landing button doesn't
-  already)*: the standalone gallery entry, for a repo whose manifest declares
-  both `landing` and `pages` — the front door went to the custom page, so this
-  is where the catalog lives instead. Renders the identical gallery component
-  the landing view uses when `landingKind()==='gallery'`; a repo without both
-  fields set never needs it and the sidebar omits it.
-- **project**: one workspace's front page, `?repo=…&view=project&project=<path>`
-  (`&tab=board|pages|docs` deep-links a pill). What the landing is to a repo,
-  this is to a project: a constant header (its name and path, and the routes
-  out: its files, its board, its folder on GitHub) over a segmented pill row of
-  **Overview / Board / Pages / Docs**, so the body changes while the reader
-  never loses which workspace they are standing in.
+- **landing**: the repo's front page, and it is the **README**, for every repo.
+  Stats, the description, the README rendered, and a jump to the atlas.
 
-  - **Overview** repeats the repo's landing decision one level down: an entry
-    declaring a `landing` gets that page rendered live under the header
-    (toss-render `#gh=` at the browsed ref; the FAB carries the full-page
-    bust-out, as for a repo's custom landing), every other project gets the
-    README at `<path>/README.md`.
-  - **Board** renders a **file** board in-pane (a folder `tracker` keeps the
-    header Board button and its open-the-folder behavior instead, having no one
-    file to render). Every board tap (estate row, repo sidebar row) routes
-    here, so the board reads the same from every level. This is the
-    "first-class trackers" half of the project layer.
-
-    It reads **`board.json`**, the typed projection the board generator writes
-    beside `board.md` ([TRACKER.md](TRACKER.md)), and falls back to rendering
-    the markdown when a ref has no projection: a tracker that has not
-    regenerated since the generator learned to emit one still gets its board.
-    The projection is what makes this a **review** surface rather than a
-    renderer, since a board is a display artifact and recovering fields by
-    parsing it would be the display-before-data inversion. What the typed read
-    adds: sections grouped and counted with **Done collapsed** (it is the
-    majority of every mature tracker, and a list that opens on its own history
-    buries the few rows anyone can act on), `size` and `awaiting` per row, and
-    a review line counting the open set, how many await someone, how many have
-    been quiet three weeks or more, and how many carry no progress log at all.
-    That last pair is the signal `board.md` structurally cannot hold, and
-    "never logged" is kept distinct from "old" because a task nobody has
-    written a line about has not aged, it never started. Rows open their task
-    file in the shell's viewer, resolved against the board's folder, which is
-    the same resolution the markdown fallback applies to a row's relative link
-    (the protocol README, a task) while absolute links behave normally.
-  - **Pages** is the workspace's slice of the repo's `pages` catalog,
-    **derived rather than declared**: entries whose path sits under the
-    workspace folder, plus entries claiming it with a `project` key. One
-    catalog, two views of it; there is no per-project pages list to drift
-    against the repo's. The tiles are lean cards (a lazy live preview that is
-    itself the link, plus the GitHub source jump-over); the shot/live/source
-    toggles stay on the repo-level gallery. The pill hides when the slice is
-    empty.
-  - **Docs** is every markdown file in the workspace, off one recursive tree
-    read (the stage Search's primitive, keyed per repo@ref:project): the
-    workspace's own root files first, then one group per folder with its full
-    relative path as the header, READMEs leading, a path filter box, each row
-    opening in the shell's viewer. A workspace keeping a curated `DOCS.md`
-    gets it rendered above the mechanical listing. No manifest field feeds
-    this; a failed tree read reports itself rather than posing as an empty
-    workspace.
-
-  The sidebar's **Projects** section lists the
-  open repo's workspaces and lights the one showing; the estate sidebar's nested
-  rows open the same view, switching the repo first. A project reads the same
-  whichever level you arrived from. A deep link may name a workspace the
-  manifest has not listed yet, and the view still opens, on the conventions the
-  path implies.
-- **atlas**: a standing structural view, available for every repo regardless of
-  its landing.
-- **files** *(unlisted since 2026-08-14)*: the explorer: breadcrumb + listing,
-  selected file's content beneath. Each row has a `+` that stages the file, its
-  ref control is the shared `refPicker`, and its breadcrumb magnifier hands the
-  **Files** view this repo, this ref, and this folder.
-
-  What it still holds that the Files view does not is the **live directory
-  read**: it lists a folder through the contents API, so a file's size is on its
-  row and the listing is whatever the ref holds right now. The Files view walks
-  the same tree off one cached recursive read, which is why descending there is
-  free and why it knows how many blobs a folder holds, and is the trade it
-  makes. Finding a file by name, by folder, or by what is inside it, and reading
-  it, moved there. So this lost its sidebar row and kept everything else. `?view=files` still routes, and is
-  where a `?file=` deep link, a pin, a recent, a repo-menu outbox jump, the
-  off-default ref crumb, and the Files view's own "open in the tree" button all
-  land. The sidebar slot it vacated is now the route OUT (below).
+  It used to be a decision. `landingKind()` picked one of three things for this
+  slot, and the two that were not the README won whenever they were declared:
+  the hub got its page gallery, any repo with a `pages` catalog got the same,
+  and a repo naming a `landing` got that page. So the one thing every
+  repository has, and the first thing a reader arriving at one is looking for,
+  was the thing displaced. A front door showing something other than the README
+  has to be worth more than the README, and a gallery and a custom page are
+  destinations rather than front doors. Both moved out to rows of their own
+  (2026-08-14), where each says what it is instead of standing in for something
+  else, and the overview's own carve-out went with them: it had skipped the
+  README fetch on the hub, since the hub was the one repo that never rendered
+  one.
+- **pages**: the gallery, from web-tools' `pages.json` or any repo's `pages`
+  catalog. A standing row now, wherever there is a catalog; it used to appear
+  only when a custom `landing` had taken the front door from it.
+- **Landing** *(a repo declaring one)*: the repo's own declared front page,
+  rendered live. It goes through the **app view** rather than a landing kind of
+  its own, since "render this repo's page as an addressable view" is a thing
+  this shell already does for `appView: true` pages. That deleted a branch
+  rather than moving one, and the page keeps the FAB's full-page bust-out that
+  every framed view has.
+- **atlas**: a standing structural view, available for every repo.
 - **Files** *(a route out, not a view)*: hands the estate's **Files** view this
   repo at the ref being browsed and goes there, carrying an ↗ so the row says
-  it leaves. This is the slot the explorer vacated, and the swap is the whole
-  centralization in one row: a repo keeps a one-tap way to its files, and there
-  is one place they are read. The sidebar switches to its estate list on
-  arrival, because that is what happened; which repo you are scoped to is
-  answered by the Files view's own repo rail, lit, at the top of the pane.
-- **branches**: the branch review (below).
+  it leaves. A repo keeps a one-tap way to its files, and there is one place
+  they are read.
+- **config**: the repo's `.web-tools.json`, as a form and as raw JSON.
+
+**Two per-repo views were removed rather than moved** (2026-08-14), and the
+question they answer is the test: *does this repository answer it better than
+the estate does?*
+
+| Retired | Why | Where it went |
+| --- | --- | --- |
+| **files** | the tree walk. Reading a file is not a per-repo job: it is wanted by name, by folder, or by content, and across repos as often as within one | the estate's **Files** view, which walks the same tree and reads the file in place |
+| **branches** | the per-repo branch review | **Activity → Branches**, the same rollup with the same landed/stranded signal, across every repo at once, opening the branch takeover |
+
+Neither key 404s: `?view=files` aliases onto the Files view and carries its
+`?path=` through as the folder scope, `?view=branches` aliases onto Activity,
+and a `?file=` link opens the central reader scoped to that file's folder. What
+the explorer uniquely had, a **live directory read** (a file's size on its row,
+whatever the ref holds right now), is the one thing genuinely gone; the Files
+view walks a cached recursive tree, which is what buys free descent and folder
+counts. The ref compare went with the branch review, its only caller here; the
+component keeps its mount on `nav-repo.html`.
+
+**`?ref=` moved with them.** The browsed ref was the Files view's key, stamped
+by its row, back when that view was the only thing that read it. The atlas, the
+config form, the pages gallery and mention all read it, so it is repo-scoped
+state and stamps beside `repo` from any repo view.
 
 **GitHub jump-overs.** show-repo is a wrapper over GitHub, not a wall: every
 view keeps a one-tap route to the GitHub presentation of what it is showing.
 The sidebar top bar links the open repo@ref and its recent entries link their
-files, the explorer breadcrumb links the current folder, the viewer's actions
-link the open file's blob, each staged item and finder row links its own
+files, the Files view's reader links the open file's blob at its own repo and
+ref, each staged item and finder row links its own
 `repo@ref`, each compare row links its blob at head, and every estate card and
 surface item carries its github-logo link. A new view should ship with its
 jump-over.
@@ -1123,10 +1078,10 @@ Each scope is the control its subject deserves:
   rather than as a place you are standing.
 - **The ref is a picker** (`lib/alpineComponents/refPicker`), a dated
   newest-first branch list with the default branch as its own row. It is the
-  **explorer's ref control too** as of 2026-08-14, which retired a hand-rolled
-  copy and, with it, a silent defect: that copy read the browser store's
-  `ensureBranches`, one uncapped-at-100 REST page in alphabetical order, so a
-  repo past a hundred branches was quietly missing rows and the newest was
+  the estate's only branch picker as of 2026-08-14. It replaced the explorer's
+  hand-rolled copy, and with it a silent defect: that copy read the browser
+  store's `ensureBranches`, one uncapped-at-100 REST page in alphabetical order,
+  so a repo past a hundred branches was quietly missing rows and the newest was
   rarely near the top. The picker paginates `branchesDated`. (`repo.js` keeps
   its own, in the non-inline template two demo pages mount; it is the last
   copy.) Its box
@@ -1191,10 +1146,10 @@ for when the question is where a file *sits* rather than what it says.
 and reading a file there means first choosing a repository and then walking a
 tree. A file is rarely wanted as a position in a tree; it is wanted by name, by
 folder, or by what is inside it, and this view answers all three, across every
-repo at once, which no per-repo tree walk can. So the tree walk keeps
-`?view=files` and the explorer's breadcrumb gained a magnifier that hands this
-view where you were standing (repo, ref, folder, no query), while the reading
-happens here.
+repo at once, which no per-repo tree walk can. The per-repo walk was retired
+with the rest of the duplication on 2026-08-14; `?view=files` aliases here,
+carrying its `?path=` as the folder scope, and a repo's sidebar keeps a Files
+row that hands this view the repo it is standing in.
 
 **The screen is the address, not the query behind it.**
 `?view=search&sq=&smode=&srepo=&sref=&spath=&sfile=` round-trips the query, the
@@ -1548,8 +1503,7 @@ a repo *accepts* files is a fact about that repo.
 Takes from:
 
 1. upload: the drop-zone (a file, or pasted text; pasted ref lines stage as refs),
-2. a repo: the **Add box** on the bench (below), or the explorer's `+` buttons
-   while visiting a repo,
+2. a repo: the **Add box** on the bench (below),
 3. a repo manifest's `stage.files` (seeds an empty stage when that repo opens),
 4. a `#stage=` link.
 
@@ -1687,32 +1641,32 @@ value.
 
 ## The branch review: landed / stranded per branch
 
-The **branches** view (`lib/alpineComponents/branches.js`) rolls every branch of
-the open repo into **recently active** (commits in the last 14 days; judge
-nothing yet), **likely landed**, and **likely stranded**, on a content-level
-signal rather than `ahead_by`: which of the branch's uniquely-touched paths
-hold, at the branch tip, bytes the default branch holds right now, at the same
-path or moved anywhere in the tree. **Missing** counts paths absent from the
-default branch in both path and bytes, the strong stranded evidence. Squash
-merges and history rewrites make ref-level "unmerged" (and `ahead_by`, whose
-count on a rewrite-orphaned branch spans its whole line, marked `*`) unreliable;
-the content columns are the ones to read.
+**Retired as a per-repo view on 2026-08-14; the reading lives in Activity's
+Branches tab**, which is the same rollup with the same signal across every repo
+at once and opens the branch takeover. `?view=branches` aliases there.
 
-The math is the browser port of home's `tools/branch-survey.sh` (the CLI
-reference instrument), lives in `lib/kits/branch-survey.js` as pure unit-tested
-functions, and is held in agreement with the CLI by
-`scripts/check-branch-survey.mjs` (on home's 56-branch estate: 52 exact, 4
-divergent only where the CLI's git rename detection credits moved-and-evolved
-content the API cannot see, all in the conservative direction). Fetch cost: one
-branch list, one recursive tree for the default branch, then per branch one
-compare (with a commits-list fallback for no-merge-base branches) and one
-recursive tree, streamed so rows fill in as they land.
+The math outlived the view and is the part worth knowing. Every branch sorts
+into **recently active** (commits in the last 14 days; judge nothing yet),
+**likely landed**, and **likely stranded**, on a content-level signal rather
+than `ahead_by`: which of the branch's uniquely-touched paths hold, at the
+branch tip, bytes the default branch holds right now, at the same path or moved
+anywhere in the tree. **Missing** counts paths absent from the default branch in
+both path and bytes, the strong stranded evidence. Squash merges and history
+rewrites make ref-level "unmerged" (and `ahead_by`, whose count on a
+rewrite-orphaned branch spans its whole line, marked `*`) unreliable; the
+content columns are the ones to read.
 
-Advisory and read-only, matching the CLI's posture: the view frames the
-per-branch reconcile judgment and decides nothing. Each row jumps to the branch
-tree and `main...branch` compare on GitHub (ground truth), opens the branch or
-the in-shell compare here, and the header links GitHub's branches UI, where the
-delete action itself lives. Deep link: `?view=branches`.
+It is the browser port of home's `tools/branch-survey.sh` (the CLI reference
+instrument), lives in `lib/kits/branch-survey.js` as pure unit-tested functions,
+and is held in agreement with the CLI by `scripts/check-branch-survey.mjs` (on
+home's 56-branch estate: 52 exact, 4 divergent only where the CLI's git rename
+detection credits moved-and-evolved content the API cannot see, all in the
+conservative direction). Fetch cost per branch: one compare (with a
+commits-list fallback for no-merge-base branches) and one recursive tree, over
+one branch list and one default-branch tree.
+
+Advisory and read-only, matching the CLI's posture: it frames the per-branch
+reconcile judgment and decides nothing. The delete action lives on GitHub.
 
 ## The branch overlay: preview a cross-repo change before it merges
 

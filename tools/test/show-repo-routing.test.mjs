@@ -156,14 +156,89 @@ test('the repo sidebar hands its Files row to the central surface, scoped', () =
   assert.equal(onDefault.shell.searchSeed.ref, '', 'the default branch rides as the empty ref, not by name');
 });
 
-// The tree walk keeps its address. It lost its sidebar row, not its existence:
-// a ?file= deep link, a pin, a recent, and the Files view's own way out all
-// still land on it, so the row must still be in the table and still route.
-test('?view=files still routes after the sidebar row retired', () => {
-  const { shell: s } = makeShell({ search: '?repo=mehrlander/home&view=files&path=docs',
-                                   browserStore: { repo: '' } });
-  const url = s.parseUrl();
-  assert.equal(url.view, 'files');
-  assert.ok(s.routeFor('files'), 'VIEWS still has the row');
-  assert.equal(url.path, 'docs');
+// The two retired per-repo views. Removing a view is not removing its links:
+// every ?view=files and ?view=branches ever shared has to land on whatever
+// took over, scoped as well as the old address described.
+test('the retired views alias onto what replaced them, carrying their scope', () => {
+  const files = makeShell({ search: '?repo=mehrlander/home&view=files&path=docs',
+                            browserStore: { repo: '' } });
+  assert.equal(files.shell.routeFor('files')?.key, 'search',
+    'the tree walk moved into the central Files view');
+  files.shell.routeFor('files').open.call(files.shell, files.shell.parseUrl());
+  assert.equal(files.shell.view, 'search');
+  assert.equal(files.shell.searchSeed.path, 'docs',
+    'the old ?path= scopes the new view rather than being dropped on the floor');
+
+  const branches = makeShell({ search: '?repo=mehrlander/home&view=branches',
+                               browserStore: { repo: '' } });
+  assert.equal(branches.shell.routeFor('branches')?.key, 'activity',
+    "the per-repo branch review moved into Activity's Branches tab");
+
+  // And neither is a view the shell can still enter, which is what would make
+  // an alias a lie: a row it aliases to must be the only thing that renders.
+  const keys = new Set(rows.map(r => r.key));
+  assert.ok(!keys.has('files') && !keys.has('branches'));
+});
+
+// A file named by a pin, a recent, or a ?file= link opens in the central
+// reader, scoped to its folder so the walk around it is right there.
+test('opening a file routes to the Files view, scoped to its folder', () => {
+  const { shell: s } = makeShell({ browserStore: {
+    repo: 'mehrlander/home', ref: 'claude/topic', defaultRef: 'main', path: '' } });
+  s.openFile('docs/envelopes/surface.md');
+  assert.equal(s.view, 'search');
+  assert.equal(s.searchSeed.repo, 'mehrlander/home');
+  assert.equal(s.searchSeed.path, 'docs/envelopes');
+  assert.equal(s.searchSeed.file, 'mehrlander/home@claude/topic:docs/envelopes/surface.md');
+  assert.equal(s.searchSeed.q, '', 'a named file is not a search for it');
+});
+
+// The browsed ref is repo-scoped state, not a view's. It rode the Files view's
+// row until that row retired, and the atlas, the config form, the gallery and
+// mention all read it, so it stamps beside `repo` now.
+test('the browsed ref rides the address from any repo view', () => {
+  for (const view of ['landing', 'atlas', 'config', 'pages']) {
+    const { shell: s } = makeShell({ browserStore: {
+      repo: 'mehrlander/home', ref: 'claude/topic', defaultRef: 'main', path: '' } });
+    s.view = view;
+    const qs = s.deepLinkParams(new URLSearchParams()).toString();
+    assert.match(qs, /ref=claude%2Ftopic/, `${view} dropped the browsed ref`);
+    const { shell: reopened } = makeShell({ search: '?' + qs, browserStore: { repo: '' } });
+    assert.equal(reopened.parseUrl().ref, 'claude/topic');
+  }
+  // The default branch stays out of the URL, as every other default does.
+  const { shell: onDefault } = makeShell({ browserStore: {
+    repo: 'mehrlander/home', ref: 'main', defaultRef: 'main', path: '' } });
+  onDefault.view = 'atlas';
+  assert.doesNotMatch(onDefault.deepLinkParams(new URLSearchParams()).toString(), /ref=/);
+});
+
+// The landing is the README, for every repo including the hub. `landingKind()`
+// used to pick one of three things for that slot and the README lost whenever
+// anything else was declared.
+test('the landing is the overview, and the gallery is its own view', () => {
+  const hub = makeShell({ browserStore: {
+    repo: 'mehrlander/web-tools', ref: '', defaultRef: 'main', config: {} } });
+  assert.equal(hub.shell.showPagesNav, true, "the hub's catalog gets the Pages row");
+  assert.equal(hub.shell.repoLandingView, null);
+
+  const plain = makeShell({ browserStore: {
+    repo: 'mehrlander/other', ref: '', defaultRef: 'main', config: {} } });
+  assert.equal(plain.shell.showPagesNav, false);
+
+  const withPages = makeShell({ browserStore: {
+    repo: 'mehrlander/other', ref: '', defaultRef: 'main',
+    config: { pages: [{ path: 'a.html' }] } } });
+  assert.equal(withPages.shell.showPagesNav, true);
+
+  // A declared landing is a row of its own, routed through the app view, so
+  // there is one mechanism for "render this repo's page as a view".
+  const withLanding = makeShell({ browserStore: {
+    repo: 'mehrlander/other', ref: '', defaultRef: 'main',
+    config: { landing: 'site/index.html' } } });
+  const lv = withLanding.shell.repoLandingView;
+  assert.equal(lv.repo, 'mehrlander/other');
+  assert.equal(lv.path, 'site/index.html');
+  assert.equal(withLanding.shell.showPagesNav, false,
+    'a landing no longer displaces anything, so it turns nothing else on either');
 });
