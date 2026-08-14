@@ -22,6 +22,34 @@ with a slug so a repeat can be matched and counted.)*
 
 ---
 
+### silent-fallback-old-build: the pixels do not change, and nothing says the file failed to load
+A comment inside a component's HTML template quoted an identifier in backticks,
+which closed the enclosing template literal. `gh.load` caught the SyntaxError,
+warned to the console, and left the pre-build's inlined copy of the component
+running, so the page rendered perfectly at the previous build's markup through
+four screenshots taken to check the change that had failed to load. A load
+failure is a warning, not a blank screen, and the working page is the tell for
+nothing. The corrected move: when a rendered change does not appear, read the
+shot log before re-reading the diff, and treat "it still looks like before" as
+a load question rather than a markup one. `npm test` now catches the parse case
+(`tools/test/lib-parses.test.mjs` compiles every loadable lib file the way the
+loader does), which leaves the general shape uncovered: any load failure still
+degrades to the last build, quietly.
+*(seen: 2026-08-14)*
+→ [loader.md](loader.md); the parse case is gated by tools/test/lib-parses.test.mjs
+
+### stub-hides-the-wiring: a test that stubs a lazy dependency cannot see it go missing
+The Match pane loads `kits/estate-search.js` on first use, and every test for
+it stubbed `window.EstateSearch` before calling, which supplies exactly what
+the lazy load exists to supply. An unrelated edit deleted the load line; the
+suite stayed green and the feature threw `Cannot read properties of undefined`
+on its first real tap. The corrected move: where a dependency is fetched
+lazily, one test must stub the LOADER and assert the fetch, not stub the thing
+the loader would have produced. Generalizes to every `gh.load` inside a
+component, which is most of them.
+*(seen: 2026-08-13)*
+→ [loader.md](loader.md); the case is `tools/test/fab-text.test.mjs`, "match loads its kit before using it"
+
 ### ci-watch-on-blocked-api: a curl watch loop on the GitHub API waits forever
 Backgrounding `until curl .../check-runs | grep completed; do sleep; done` to
 wait on a PR's CI reports nothing, ever. Unauthenticated `curl` to
@@ -84,8 +112,13 @@ a pointless `npm i -D @tailwindcss/typography`; the limit was already
 documented, dated 2026-08-01: the typography npm tarball ships no built CSS,
 so `cdn.mjs` has nothing to resolve and markdown renders unstyled in every
 harness while the deployed page styles it fine. Read the documented limits
-before debugging shot pixels. *(seen: 2026-08-07)*
-→ [environment/testing.md](environment/testing.md)
+before debugging shot pixels. Bit again on 2026-08-14, in the same shape: a
+screenshot of pasted markdown read as a rendering bug, and the second session
+wrote a fresh entry for it rather than finding this one, which the merge caught
+and this line records. The tell is in the render log, one grep from the
+screenshot: `combine 2/3 MISS:npm/@tailwindcss/typography/…`. Six pages combine
+it. Third time earns the task. *(seen: 2026-08-07, 2026-08-14)*
+→ [environment/testing.md](environment/testing.md); the map is `tools/render/cdn.mjs`
 
 ### pre-build-boots-alpine-early: a page's own gh.load chain runs after its components init
 `branch.html` died with `Cannot read properties of undefined (reading 'fetchBrief')`.

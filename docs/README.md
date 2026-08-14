@@ -14,7 +14,7 @@ must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
 2 arrive in every session's context, 20 are named by CLAUDE.md,
-4 by a skill, 6 by a page or component. The remaining 20 are
+4 by a skill, 6 by a page or component. The remaining 21 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -50,6 +50,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`surfacing.json`](surfacing.json) — the machine index of the surfacing primitives
 - [`tests.json`](tests.json) — the test registry: every check's kind, what it protects, and its derived counts
 - [`text-content.md`](text-content.md) *(measured, orphan)* — the estate's authored text: whether the carriers holding it are organized, and how much never reached one
+- [`text-tools.md`](text-tools.md) *(orphan)* — the FAB's Text tab: why it exists, why the join is the path rather than a term, and an assessment of what it is not
 - [`tools.json`](tools.json) — the curated Tools gallery manifest
 - [`venues.md`](venues.md) *(measured)* — the venue map: where work can run besides the session reading it, what each reaches, and the attended-versus-unattended split
 

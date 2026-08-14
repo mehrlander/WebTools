@@ -44,7 +44,8 @@ carry one, `&tab=<tab>` (**project**'s pill row, **Map**'s tabs), `&item=`
 (**State**), `&detail=` (**Branches**), `&sq=` (**Search**), `&window=`. A view
 keeps its default second key out of the URL, so an existing bare link still
 opens where it always did. `&view=portable` is a retired alias that still
-resolves to the Map.
+resolves to the Map. Across all of them, `&shell=nav|none` says how much of the
+app is drawn around whichever view the address names (below).
 
 **Every view is addressable, and one table says so.** The shell holds a `VIEWS`
 table, each row naming a view's URL key, how a link opens it, and what it stamps
@@ -97,6 +98,96 @@ rather than two. There is no repo-list dropdown and no quick-links row:
 **repo selection happens on the Repos dashboard** (a card opens the repo), which
 reads better than a dropdown and keeps the header a fixed set rather than one
 repos opt into.
+
+### The shell mode: how much of the app surrounds the view
+
+`?shell=` decides how much of show-repo is drawn around whichever view the rest
+of the address names. Three values, and `full` is the default and stays out of
+the URL, so nothing written before this existed changed shape:
+
+| Value | Header | Sidebar |
+| --- | --- | --- |
+| `full` (default) | yes | out on a wide screen, away on a phone |
+| `nav` | yes | away at every width; the header's hamburger opens it |
+| `none` | no | away; the FAB's Render tab is the way back |
+
+**It exists because most of these views have no page behind them.** Four do: a
+custom landing, a project landing, an app view, and the atlas are all iframes
+over a real standalone page, so the FAB offers a **bust-out** that leaves the
+embed and opens that page full-viewport. Files, Branches, Map, Search, State,
+Activity, and a repo's default overview are the shell's own, with nothing to
+bust out to. `?shell=none` is the address that shows one of them alone.
+
+**The sidebar is one boolean at every width now** (`sidebarOpen`), and the
+viewports differ in two things only: below `lg` it overlays with a scrim, at
+`lg` and up it is a column the main area sits beside, and it starts out on the
+wide one and away on the phone. Before this it could not be closed on a desktop
+at all: an unconditional `lg:translate-x-0` pinned the column open and the
+hamburger that would have collapsed it was `lg:hidden`. The header now carries
+that toggle at every width, lit while the sidebar is out, and the sidebar's own
+X is no longer phone-only either.
+
+**Toggling the sidebar does not touch the URL.** `syncUrl` pushes a history
+entry per distinct address, so an addressable sidebar would stack one on every
+tap and make Back walk them. The mode already carries the part worth linking
+to, which is how the screen **opens**; moving the sidebar inside a mode is
+reading, not navigation.
+
+It is a **reading parameter**, in the class `?use=`, `?overlay=`, and `?window=`
+belong to: it says how to present the screen, not which screen. So it gets no
+`VIEWS` row and is stamped unconditionally beside whatever the view table
+stamped, which is also what carries it through a ref switch (that mints its
+address from an empty base, where `?use=` must not survive but this must).
+`show-repo-routing.test.mjs` holds the two properties the table's own rows get
+for free: the address reopens as itself, and an unrecognized value reads as
+`full` rather than hiding the header with no way back.
+
+**Named `shell` because that is already this app's word for it**, the heading
+this section sits under and the `window.__shell` the page hangs its state on.
+`chrome` was the first name and was dropped: in a browser the chrome is the
+browser's, which is the one thing this cannot touch. `frame` was dropped too,
+since the drawer's width bar already means a frame and two meanings in one tab
+is how a bar gets misread.
+
+**The FAB's Render tab carries the header half of it**, as one on/off control
+sharing the row with the width presets, which is what makes `none` a mode rather
+than a trap: the same control that sets it brings the app back. It offers the
+header and nothing else. The sidebar already has two owners a reader can reach,
+the header's hamburger and `?shell=nav` in the address, so a third copy in the
+drawer would be a control for the thing standing next to it; the header is the
+part with no in-app control, since the header cannot carry the button that hides
+the header. That leaves the drawer a binary, and a binary needs no row of its
+own. Since the drawer offers one control over three modes, the shell remembers
+which header-bearing mode it left, so turning the header off and back on from a
+`?shell=nav` link does not silently promote the reader to `full` and spring the
+sidebar out at them.
+
+That control is not hard-coded. The drawer's opt-in contract now has a **state**
+half beside the `actions` half a page already had: a component exposing
+`toggles` as `[{ key, label, icon, on, title, set }]` gets one control per
+entry, inline with the presets past a hairline, and the FAB reads and calls
+without holding an opinion about what a toggle means. Unlike `actions`, a
+toggle is re-read from the live component on every paint, since a verb is fully
+described by a closure and a state is not.
+
+**The row holds one line, and that decides the labelling.** Four labelled width
+presets plus one labelled toggle wrapped on a 390pt device, so the presets went
+**icon-only under a single `Width` label**: one word for the group instead of
+four for its members, with a phone, a tablet, and a monitor carrying what they
+name and the arrows meaning the device in your hand. The toggle keeps its word,
+since an icon alone cannot say which part of a page it means and it is the odd
+one out in a row otherwise about size. Nothing on the row explains itself in
+prose either: a contributed `hint` line was tried and dropped, having spent two
+lines saying what the tooltip and the address already said. The one line that
+survives is the width caveat, which appears only off Actual and reports what no
+icon can.
+
+Fixing that surfaced an older defect in the same scan: the contract was read
+through `Alpine.$data(el)`, which returns the merged data **stack**, so every
+component nested inside the shell answered for the shell's properties as its
+own. It arrived visible (fourteen identical bars, one per nested component) and
+had been sitting quietly in `description` and `actions`, whose values happened
+to be empty wherever anyone looked. The scan now reads the element's own scope.
 
 ### The ref switch: which ref show-repo itself is running
 
