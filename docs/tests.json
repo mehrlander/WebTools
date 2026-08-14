@@ -1282,7 +1282,7 @@
       "path": "tools/test/fab-toss.test.mjs",
       "kind": "component",
       "protects": "The fab keeps shell identity when mounted inside a toss.",
-      "assertions": 17,
+      "assertions": 19,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
@@ -1305,7 +1305,9 @@
         "a framed subject still reads as framed",
         "a swipe keeps the guide and drops only the per-file survey",
         "ahead/behind is remembered per branch pair, not re-asked per file",
-        "the survey is remembered per path, so swiping back is free"
+        "the survey is remembered per path, so swiping back is free",
+        "the picker is handed a real component, not Alpine's scope proxy",
+        "the drawer template carries no backtick, being a template literal"
       ]
     },
     {

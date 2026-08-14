@@ -434,3 +434,48 @@ test('the survey is remembered per path, so swiping back is free', async () => {
     assert.equal(seen.length, 3, 'force re-asks');
   } finally { window.GH = realGH; }
 });
+
+
+// ── the scope collision, for the third time ─────────────────────────────────
+//
+// Alpine evaluates an x-data EXPRESSION under with(scope), where scope is a
+// proxy carrying every registered component name. This repo registers one
+// called `repo` (alpineComponents/repo.js), so any callback built in such an
+// expression and invoked bare runs with `this` bound to that proxy, and a
+// method reading `this.repo` gets the data-provider FUNCTION rather than the
+// string. The path picker's roots callback did exactly that and died on
+// "repo.split is not a function" behind an empty Repos list, on every page with
+// a fab, reported 2026-08-14 from a phone.
+//
+// cardOpts in alpineComponents/branch-brief.js and the mount note in
+// kits/file-deck.js document the same collision on a bare identifier. This
+// case pins the `this` form, which no amount of care at the call site catches.
+
+test('the picker is handed a real component, not Alpine\'s scope proxy', async () => {
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/p.html"');
+  const d = Alpine.$data(el);
+  assert.ok(d.self, 'the component keeps a handle on itself for its own template');
+  assert.equal(d.self.repo, d.repo);
+
+  // What the collision looked like: the method invoked with `this` bound to
+  // something whose `repo` is the registered component rather than a string.
+  const proxy = { repo: Alpine.data ? function repoProvider() {} : null,
+                  viewingRef: 'main', pickerGh: d.pickerGh, pickerRoots: d.pickerRoots };
+  await assert.rejects(async () => { await proxy.pickerRoots(); }, /split is not a function/,
+    'which is the failure the mount must not be able to reproduce');
+
+  // And through the real handle it does not.
+  const roots = await d.self.pickerRoots();
+  assert.ok(Array.isArray(roots), 'the picker gets its roots');
+  assert.equal(roots[0].repo, 'mehrlander/web-tools');
+});
+
+test('the drawer template carries no backtick, being a template literal', () => {
+  // The first attempt at the fix above put backticks in a comment inside the
+  // template, which ends the JS string and took the whole component out with a
+  // SyntaxError at load. Cheap to assert, and it fails loudly rather than as a
+  // blank page.
+  const d = Alpine.$data(doc.getElementById('f'));
+  assert.ok(typeof d.template === 'string' && d.template.length > 1000);
+  assert.ok(!d.template.includes('\u0060'), 'no backtick survived into the template');
+});
