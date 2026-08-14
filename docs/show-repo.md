@@ -1794,6 +1794,38 @@ promotion: three tab labels with counts plus four controls do not fit a 390px
 row, so the tab strip now scrolls rather than clipping its last label under the
 first button.
 
+**A file opens as itself.** The card had four tabs and all four were source
+(Diff, Patch, New, Base), which is right for source and wrong for everything
+else. A `.gz` printed "Binary or oversized content" and then printed the
+content, mojibake and all, because the notice and the New pane were gated on
+different conditions; a `.md` opened on a diff of its markup; a `.png` had no
+view at all. `fileReview` now reads a `kind` off the extension, with the NUL
+sniff as the fallback, and computes its tab strip from it: markdown renders
+through `kits/guide-render.js` (one definition of what this estate's prose looks
+like, and the link re-aiming comes with it), an image and an SVG show from the
+bytes as a data: URL, a gzip is **inflated** natively by
+`DecompressionStream` so a `urls.txt.gz` shows its urls, and anything else
+binary gets a stated fact and the exits with its decode dropped so no pane can
+reach it. Source files are unchanged.
+
+Where a file LANDS is the surface's call, and that is what `read` says: the deck
+is for reading, so a document opens rendered there and diffed in a list; an
+image and an archive have no useful diff either way and open as themselves
+everywhere. The deck also passes `bare`, dropping the card's own collapsed row,
+since the deck header already names the file. This is what made `gh.bytes()`
+necessary in `lib/gh-api.js`: `get()` is a UTF-8 decode, which is lossy by
+construction for anything that is not text.
+
+**The crumb is budgeted.** The deck header reads `<branch> · <dir>`, every
+branch here is a `claude/<slug>` running to twenty-five characters, and CSS
+truncates from the right, so a deep path lost its own folder and kept the repo
+root: the specific half discarded to keep the general one. The directory now
+elides from the middle (`sources/…/drs.wa.gov`) and the whole crumb has a
+character budget scaled off the viewport, spent from the left, so the branch
+gives way before the folder does. Verified in the browser at 320, 390 and 430 by
+comparing the element's scrollWidth to its clientWidth; below about 360px the
+ten-character floor on the branch still overflows and CSS truncation takes over.
+
 Measured end to end by `tools/render/scenarios/branch-deck.mjs`, which is also
 what caught both of those faults above.
 

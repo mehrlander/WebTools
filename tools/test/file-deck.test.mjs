@@ -63,7 +63,7 @@ test('the filename is the title and its directory is the crumb', async () => {
   await tick(2);
   assert.equal(head(d).title, 'swipe-deck.js',
     'the filename is what the eye is looking for, so it gets the title line');
-  assert.equal(head(d).sub, 'claude/some-branch · lib/kits/');
+  assert.equal(head(d).sub, 'claude/some-branch · lib/kits');
   d.close(); await tick(4);
 });
 
@@ -83,6 +83,18 @@ test('the header follows the reader rather than the file they opened at', async 
   assert.equal(head(d).title, 'README.md', 'a file at the root has no directory to show');
   assert.equal(head(d).sub, 'b');
   d.close(); await tick(4);
+});
+
+// A deep path defeated the crumb: CSS truncates from the RIGHT, which keeps
+// the segment nearest the repo root and throws away the file's own folder,
+// exactly backwards. Shortening from the middle keeps both ends.
+test('a deep directory keeps both its ends and elides the middle', () => {
+  const c = window.fileDeck.crumbDir;
+  assert.equal(c('lib/kits/'), 'lib/kits', 'short enough to say in full');
+  assert.equal(c('sources/wayback/url-corpora/corpora/drs.wa.gov/'),
+               'sources/…/drs.wa.gov',
+               'which part of the tree, and which folder the file is in');
+  assert.equal(c(''), '', 'a file at the root has no crumb to make');
 });
 
 test('a file with no directory keeps its whole name', () => {
@@ -128,7 +140,7 @@ test('it drills when given a parent and roots when not', async () => {
   const child = window.fileDeck.open({ ...AT, files: FILES, parent });
   await tick(2);
   assert.ok(child.el.querySelector('button[aria-label="Back"]'), 'a drilled deck returns');
-  assert.equal(head(child).sub, 'claude/some-branch · lib/kits/', 'and wears the parent as its crumb');
+  assert.equal(head(child).sub, 'claude/some-branch · lib/kits', 'and wears the parent as its crumb');
   child.close(); await tick(4);
   parent.close(); await tick(4);
 
@@ -156,6 +168,6 @@ test('the crumb does not say the same thing twice', async () => {
   await tick(2);
   const child = window.fileDeck.open({ ...AT, files: FILES, parent, subtitle: 'claude/some-branch' });
   await tick(2);
-  assert.equal(head(child).sub, 'claude/some-branch · lib/kits/');
+  assert.equal(head(child).sub, 'claude/some-branch · lib/kits');
   child.close(); await tick(4); parent.close(); await tick(4);
 });

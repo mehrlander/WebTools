@@ -1213,7 +1213,7 @@
       "path": "tools/test/file-deck.test.mjs",
       "kind": "behavior",
       "protects": "The contract between the Files pane and the file deck: the deck pages what the pane is showing, its header names the file the reader is on rather than the one they opened at, and a card is handed its options by reference rather than through an x-data expression.",
-      "assertions": 9,
+      "assertions": 10,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -1221,6 +1221,7 @@
         "the filename is the title and its directory is the crumb",
         "start opens on a named file, which is what \"read from here\" needs",
         "the header follows the reader rather than the file they opened at",
+        "a deep directory keeps both its ends and elides the middle",
         "a file with no directory keeps its whole name",
         "nothing to read opens nothing",
         "a card is handed its options by reference, not through the x-data expression",
@@ -1233,7 +1234,7 @@
       "path": "tools/test/file-review-card.test.mjs",
       "kind": "component",
       "protects": "What opening a changed-file row costs: a card handed a patch shows it without fetching, and only a tab that needs the bytes triggers a contents call. Plus the collapsed row's formatting, including the path elision that replaced a CSS rtl trick bidi reordering turned into a path that does not exist.",
-      "assertions": 8,
+      "assertions": 14,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -1245,7 +1246,13 @@
         "the path splits, and a long directory elides from the left",
         "the size bar is proportional, and never empty on a real change",
         "the row carries one action, routed by file type through the guide table",
-        "mounting the cards is quiet"
+        "mounting the cards is quiet",
+        "kind is read from the name, and each kind has its own pane",
+        "the surface decides whether a document opens read or diffed",
+        "an image offers no source panes, because there is nothing there to read",
+        "a reading surface loads a presentation rather than settling on the patch",
+        "a binary keeps its bytes to itself",
+        "bare drops the collapsed row, for a host that names the file itself"
       ]
     },
     {

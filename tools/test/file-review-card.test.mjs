@@ -12,6 +12,14 @@
 // the string to the bidi algorithm and rendered `.claude/skills/caption/` as
 // `/claude/skills/caption.`, a path that does not exist, displayed as though it
 // did. That is a wrong answer rather than an ugly one, so it gets a test.
+//
+// The second subject is WHAT a file is shown as, added 2026-08-14. The card had
+// four tabs and all four were source, which produced a wrong answer of the same
+// kind: a `.gz` printed a notice saying its content could not be shown and then
+// printed the content, mojibake and all, because the notice and the New pane
+// were gated on different conditions. `kind` and `panes` are the fix and the
+// cases below pin the routing, the default landing, and the one thing the card
+// must never do again, which is hand a reader the bytes of a binary.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,13 +34,33 @@ const { window, problems } = makeWindow({
          patch: '@@ -1 +1 @@', open: true })"></div>
     <div id="noPatch" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
          path: 'lib/b.js', status: 'modified', open: true })"></div>
+    <div id="doc" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
+         path: 'docs/note.md', status: 'modified', patch: '@@ -1 +1 @@' })"></div>
+    <div id="docRead" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
+         path: 'docs/note.md', status: 'modified', patch: '@@ -1 +1 @@', read: true })"></div>
+    <div id="png" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
+         path: 'pages/thumbs/a.png', status: 'modified', patch: '@@ -1 +1 @@',
+         read: true, open: true })"></div>
+    <div id="arch" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
+         path: 'data/urls.txt.gz', status: 'modified', read: true })"></div>
+    <div id="bare" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
+         path: 'lib/c.js', status: 'modified', patch: '@@ -1 +1 @@', bare: true })"></div>
+    <div id="blob" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
+         path: 'data/x.dat', status: 'modified' })"></div>
   </body></html>`,
 });
 
 const fetched = [];
 window.GH = class {
   constructor(c = {}) { this.repo = c.repo || ''; this.ref = c.ref || ''; }
-  async get(p) { fetched.push(this.ref + ':' + p); return { text: 'x' }; }
+  async get(p) {
+    fetched.push(this.ref + ':' + p);
+    // x.dat is the unknown-extension binary: nothing in its name says so, and
+    // the NUL in its decode is the only thing that can.
+    return { text: /x\.dat$/.test(p) ? 'ab\u0000cd' : 'x', size: 8 };
+  }
+  async bytes(p) { fetched.push(this.ref + ':bytes:' + p);
+                   return { bytes: new Uint8Array([1, 2, 3]), size: 3 }; }
   async req() { return []; }
 };
 window.TOKEN = 't';
@@ -130,4 +158,65 @@ test('the row carries one action, routed by file type through the guide table', 
 
 test('mounting the cards is quiet', () => {
   assert.deepEqual(problems, []);
+});
+
+
+// ── what a file is shown as ─────────────────────────────────────────────────
+
+test('kind is read from the name, and each kind has its own pane', () => {
+  assert.equal(data('doc').kind, 'markdown');
+  assert.equal(data('png').kind, 'image');
+  assert.equal(data('arch').kind, 'gzip');
+  assert.equal(data('withPatch').kind, '', 'source has no presentation but itself');
+  assert.equal(data('doc').shownPane, 'read');
+  assert.equal(data('png').shownPane, 'image');
+  assert.equal(data('arch').shownPane, 'inside');
+  assert.equal(data('withPatch').shownPane, '');
+});
+
+// Markdown is the one judgement call, and the SURFACE makes it: a deck exists
+// to read a file and passes `read`, a changed-file list exists to review one
+// and does not. An image and an archive have no useful diff either way.
+test('the surface decides whether a document opens read or diffed', () => {
+  assert.equal(data('docRead')._defaultTab(), 'read', 'in the deck, the document is the subject');
+  assert.notEqual(data('doc')._defaultTab(), 'read',
+    'in a review list the change is, so the same file lands on its diff or its patch');
+  assert.equal(data('png')._defaultTab(), 'image');
+  assert.equal(data('arch')._defaultTab(), 'inside');
+});
+
+test('an image offers no source panes, because there is nothing there to read', () => {
+  assert.equal(data('png').panes.map(p => p.label).join('|'), 'Image|Patch');
+  assert.equal(data('doc').panes.map(p => p.label).join('|'), 'Read|Diff|Patch|New|Base');
+});
+
+test('a reading surface loads a presentation rather than settling on the patch', async () => {
+  await tick(4);
+  assert.ok(fetched.some(f => f.includes('bytes:pages/thumbs/a.png')),
+    'the deck fetched the image on mount; the old card sat on a diff of its bytes');
+  assert.equal(data('png').tab, 'image');
+  // The list card's own restraint is the first case in this file; it is not
+  // re-asserted here, because the tab test above has since driven that card.
+  assert.equal(fetched.filter(f => f.includes('bytes:')).length, 1,
+    'and only the reading surface paid for bytes');
+});
+
+test('a binary keeps its bytes to itself', async () => {
+  const d = data('blob');
+  d.open = true;
+  await d.load();
+  assert.equal(d.kind, 'binary');
+  assert.equal(d.tab, 'binary');
+  assert.equal(d.newText, null,
+    'the decode is dropped, so no pane can reach it: this is the exact bug, ' +
+    'where a notice said the content could not be shown above the content');
+  assert.equal(d.panes.map(p => p.label).join('|'), 'File');
+});
+
+test('bare drops the collapsed row, for a host that names the file itself', () => {
+  const row = (id) => window.document.getElementById(id)
+    .querySelector('[class*="hover:bg-base-200"]');
+  assert.ok(row('withPatch'), 'a list card names its own file');
+  assert.equal(window.getComputedStyle(row('bare')).display, 'none',
+    'a deck slide does not, since the deck header already did');
 });
