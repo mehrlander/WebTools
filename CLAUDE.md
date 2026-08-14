@@ -43,6 +43,7 @@ Every **deterministic** derived artifact is owned by one commit-time hook, [`.gi
 - `pages/**/*.html` changed → `npm run pages-index` → `pages/README.md` + `pages/index.html`
 - skills, `lib/`, `pages/`, or `docs/` changed → `npm run docs-reach` → the `reach` and `words` fields in `docs/docs.json`
 - `docs/docs.json` changed → `npm run docs-readme` → `docs/README.md`, then `npm run docs-reach` again (leg 3c)
+- `docs/SNAGS.md` changed → `npm run snags-index` → the index block at its top
 - `tracker/tasks/` changed → `npm run tracker-board` → `tracker/board.md` + `tracker/board.json`
 
 `reach` and `words` are the odd ones: derived fields in an otherwise authored
@@ -79,22 +80,21 @@ Root-level `tracker/` scoped to repo-wide work (conventions, build tooling, docs
 
 A committed JSON or CSV that inventories or classifies part of the tree is a
 **registry**; adding one means adding a row to
-[`docs/properties.json`](docs/properties.json) in the same commit. Thirteen are
-declared, including [`docs/manifest.json`](docs/manifest.json) for root
-`.web-tools.json`'s fields (gated by
-[`manifest-registry.test.mjs`](tools/test/manifest-registry.test.mjs): a key in
-use with no row fails). The model, the rules, and the 2026-08-09 reconciliation
-are in [`docs/registries.md`](docs/registries.md); read it before inventing a
-carrier, since the answer is usually a row in one that exists.
+[`docs/properties.json`](docs/properties.json) in the same commit. Sixteen are
+declared, each leading with what it is for. The model, the rules, and what its
+audits found are in [`docs/registries.md`](docs/registries.md); read it before
+inventing a carrier, since the answer is usually a row in one that exists.
 
-The prose inside `.js` and `.html` is the part no registry reaches, and
-[`data/design/content.csv`](data/design/content.csv) covers it by declaring it
-`exclude`. [`docs/text-content.md`](docs/text-content.md) measures what that
-hides and proposes a carrier.
+The one trap worth carrying: **one property about one target answers to one
+registry**, gated since 2026-08-13. Never resolve a collision by renaming a
+side, which satisfies the gate and keeps the duplicate. Curating targets a
+census already describes makes a **crosswalk**, inheriting the description
+rather than restating it.
+
 
 ## Snags
 
-[`docs/SNAGS.md`](docs/SNAGS.md) is this repo's friction log, the store behind the conventions' "where a friction observation goes instead." Append when a session trips over something whose real fix belongs in a durable doc. Its own header carries the intake shape, the recurrence rule, and what is still provisional; this section used to restate all three and was the copy.
+[`docs/SNAGS.md`](docs/SNAGS.md) is this repo's friction log, the store behind the conventions' "where a friction observation goes instead." Its own header carries the intake shape, the recurrence rule, the generated index, and what is still provisional; this section restated them and was the copy.
 
 ## Environment & testing
 

@@ -240,6 +240,16 @@
       "tested": false
     },
     {
+      "path": "tools/build/snags-index.mjs",
+      "role": "",
+      "layer": "tools/build",
+      "lines": 163,
+      "invocation": "npm:snags-index",
+      "emits": false,
+      "named": false,
+      "tested": true
+    },
+    {
       "path": "tools/build/tests-index.mjs",
       "role": "restamp the derived half of docs/tests.json, the test registry",
       "layer": "tools/build",
@@ -363,7 +373,7 @@
       "path": "tools/render/cdn.mjs",
       "role": "the CDN URL to local-file resolver both renderers share",
       "layer": "tools/render",
-      "lines": 363,
+      "lines": 369,
       "invocation": "imported",
       "emits": false,
       "named": true,
@@ -393,7 +403,7 @@
       "path": "tools/render/scenarios/activity-fake.mjs",
       "role": "seed fake activity data so the token-gated Open view renders for a shot",
       "layer": "tools/render/scenarios",
-      "lines": 83,
+      "lines": 101,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -860,6 +870,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/fab-text-match.mjs",
+      "role": "drive the Text tab for a shot: the read is real, the tree and registry reads are seeded, and STATE picks the un-run pane, the resolved match, or a selection-scoped read",
+      "layer": "tools/render/scenarios",
+      "lines": 91,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/fab-toss.mjs",
       "role": "toss-render address mode with the fab's toss integration and singleton guard",
       "layer": "tools/render/scenarios",
@@ -944,6 +964,16 @@
       "role": "drive show-repo's Map view onto the Harness tab with the committed census served through GH.get",
       "layer": "tools/render/scenarios",
       "lines": 52,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/map-registries.mjs",
+      "role": "drive the Map view's Registries tab for a screenshot, serving the real docs/properties.json through a stubbed GH so a tokenless render still shows the three areas and the cards",
+      "layer": "tools/render/scenarios",
+      "lines": 53,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -1130,6 +1160,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/routes-pane.mjs",
+      "role": "Renders Activity's Routes pane with real data for a headless shot: the manifest from the served tree, each carrier's last-commit date derived from git log at render time rather than frozen, and a set of open PRs covering the on/near/no-match cases.",
+      "layer": "tools/render/scenarios",
+      "lines": 78,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/sidebar-projects-overlay.mjs",
       "role": "the same sidebar state in overlay posture; only the posture distinguishes the pair",
       "layer": "tools/render/scenarios",
@@ -1243,7 +1283,7 @@
       "path": "tools/render/screenshot.mjs",
       "role": "the Chromium pixel render behind npm run shot; --script drives a scenario first",
       "layer": "tools/render",
-      "lines": 195,
+      "lines": 244,
       "invocation": "npm:shot",
       "emits": false,
       "named": true,

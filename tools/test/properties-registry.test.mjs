@@ -227,8 +227,137 @@ test('modes are coherent: computed names a real deriver, recorded names none', (
     assert.ok(['value', 'counted', 'none'].includes(d.required),
       `${d.registry}.${d.property}: unknown required grade ${d.required}`);
   }
-  // One owner per pair within a registry; cross-registry reuse of a property
-  // name is legal when scopes are disjoint (kind, role, title do this).
-  const pairs = decls.map(d => d.registry + ' ' + d.property);
+  // One owner per pair within a registry. Cross-registry reuse of a property
+  // NAME is legal and common (kind, role, title, note all do it); what is not
+  // legal is two registries asserting it about the same target, which the
+  // ownership gate below decides on the assertions rather than on the names.
+  const pairs = decls.map(d => d.registry + '\0' + d.property);
   assert.equal(new Set(pairs).size, pairs.length, 'a property is declared twice for one registry');
+});
+
+// A registry row is itself an unaccounted classification unless something holds
+// its shape. properties.json is the index rather than a peer, so no declaration
+// governs it and the field check above cannot reach it. This is that check,
+// self-applied. `area` is the reader's grouping and its rule is one question,
+// stated in docs/registries.md: does the target have a path in this tree? Nine
+// files, seven names. The first cut was three, splitting the names by topic,
+// which did not survive: two of them were names a program parses and two were
+// vocabulary a person picks from, so the seam ran through the group.
+const AREAS = ['files', 'names'];
+const REGISTRY_FIELDS = new Set(['id', 'area', 'title', 'gloss', 'carrier', 'format', 'key',
+  'identity', 'rows', 'kind', 'target', 'scope', 'gate', 'fields', 'why']);
+
+test('every registry declares its area, and leads with a title and a gloss', () => {
+  for (const r of reg.registries) {
+    assert.ok(AREAS.includes(r.area),
+      `${r.id}: area must be one of ${AREAS.join(', ')}, got ${JSON.stringify(r.area)}`);
+    assert.ok(r.title && r.title.length <= 40,
+      `${r.id}: needs a short title, the identity a reader meets before the mechanics`);
+    assert.ok(r.gloss && r.gloss.length > 40,
+      `${r.id}: needs a gloss, one sentence on what it governs for someone who does not know`);
+    assert.notEqual(r.title, r.gloss, `${r.id}: title and gloss are doing the same job`);
+    for (const f of Object.keys(r)) {
+      assert.ok(REGISTRY_FIELDS.has(f),
+        `${r.id}: registry field "${f}" is not accounted for. The index governs the carriers and ` +
+        `nothing governs the index, so add it to REGISTRY_FIELDS deliberately or drop it.`);
+    }
+  }
+  // Every declaration already glossed its property; no registry did, and that
+  // asymmetry is what this pair of fields closes.
+  for (const d of decls) assert.ok(d.gloss, `${d.registry}.${d.property}: no gloss`);
+});
+
+// THE OWNERSHIP GATE. docs/registries.md: "Any applicable target x property
+// resolves to at most one authoritative registry ... Two registries claiming
+// the same pair is an invalid configuration, surfaced by the gate, never
+// resolved by precedence." That rule was written on 2026-08-08 and nothing read
+// it, so it was false in two places when this gate first ran: harness-census
+// and portable-catalog both asserted `role` over nine scripts (paraphrases, one
+// already stale on .mjs and .py), and pages-catalog and tools-gallery both
+// asserted `title` and `note` over four pages (note differed on all four).
+// Both are resolved by inheritance, not by renaming: a rename would defuse this
+// gate while leaving one claim stored twice, which is worse than the collision.
+//
+// It decides on ASSERTIONS, not declarations. A blank is not an assertion, so a
+// crosswalk may declare a property it fills only where no census owns it. And
+// it compares only registries whose key resolves to a shared identity space,
+// declared as `identity`: "path" where the key is a repo-relative path,
+// "path:<prefix>" where it is relative to one. Absent means opaque, and an
+// opaque target never collides, which is honest rather than lax: a route key
+// and a docs path are not the same kind of name, so no comparison of them means
+// anything. Matching is exact, so content.csv's directory locators do not
+// collide with the files beneath them; nesting is a scope question the model
+// handles by subtraction, and deliberately not this gate's business.
+function identityOf(r, row) {
+  if (!r.identity) return null;
+  const raw = String(row[r.key] ?? '');
+  if (!raw) return null;
+  // A qualified cross-repo ref (owner/repo[@ref]:path) addresses another repo
+  // and shares no identity space with a bare path here.
+  if (raw.includes(':')) return null;
+  return (r.identity.startsWith('path:') ? r.identity.slice(5) : '') + raw;
+}
+
+function assertionOwners() {
+  const seen = new Map();   // identity -> Map(property -> [registry id])
+  for (const r of reg.registries.filter(r => r.identity && r.fields === 'governed')) {
+    const declared = decls.filter(d => d.registry === r.id).map(d => d.property);
+    for (const row of carrierRows(r)) {
+      const id = identityOf(r, row);
+      if (!id) continue;
+      for (const prop of declared) {
+        const v = row[prop];
+        if (v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length)) continue;
+        if (!seen.has(id)) seen.set(id, new Map());
+        const byProp = seen.get(id);
+        byProp.set(prop, [...(byProp.get(prop) ?? []), r.id]);
+      }
+    }
+  }
+  return seen;
+}
+
+test('no target answers to two registries for the same property', () => {
+  const conflicts = [];
+  for (const [id, byProp] of assertionOwners()) {
+    for (const [prop, owners] of byProp) {
+      if (owners.length > 1) conflicts.push(`${id} . ${prop} <- ${owners.join(' and ')}`);
+    }
+  }
+  assert.deepEqual(conflicts, [],
+    `${conflicts.length} target/property pairs are claimed by two registries. This is an invalid ` +
+    `configuration, not a precedence question: decide which registry owns the claim, blank it in ` +
+    `the other, and join the two at render time. Do NOT rename one of the properties, which hides ` +
+    `the duplication from this gate without removing it.\n  ` + conflicts.join('\n  '));
+});
+
+// The gate above passes on a clean tree, so a broken one would pass identically.
+// This drives the same normalizer with a synthetic pair to prove it can still
+// bring two spellings of one target together.
+test('the ownership gate still fires when two registries do claim one pair', () => {
+  const a = { id: 'a', identity: 'path', key: 'path' };
+  const b = { id: 'b', identity: 'path:pages/', key: 'href' };
+  const owners = new Map();
+  for (const [r, row] of [[a, { path: 'pages/x.html' }], [b, { href: 'x.html' }]]) {
+    const id = identityOf(r, row);
+    owners.set(id, [...(owners.get(id) ?? []), r.id]);
+  }
+  assert.deepEqual(owners.get('pages/x.html'), ['a', 'b'],
+    'the identity normalizer no longer brings two spellings of one target together');
+});
+
+// A crosswalk earns its shape only if the inheritance resolves. A Tools row
+// whose page is gone renders with no title and no description, the silent-blank
+// failure that dropping those fields makes possible.
+test('every tools-gallery row resolves to a page the gallery owns', () => {
+  const tools = reg.registries.find(r => r.id === 'tools-gallery');
+  const pages = reg.registries.find(r => r.id === 'pages-catalog');
+  const known = new Set(carrierRows(pages).map(row => 'pages/' + row[pages.key]));
+  for (const row of carrierRows(tools)) {
+    const p = row[tools.key];
+    if (p.includes(':')) continue;   // a cross-repo ref is not this repo's to check
+    assert.ok(known.has(p),
+      `docs/tools.json: "${p}" is not a row in pages/pages.json, so the Tools view has no title ` +
+      `or description to inherit for it`);
+  }
 });

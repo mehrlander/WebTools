@@ -13,8 +13,8 @@ observations and is corrected by re-probing; everything else is living and
 must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
-2 arrive in every session's context, 22 are named by CLAUDE.md,
-4 by a skill, 6 by a page or component. The remaining 17 are
+2 arrive in every session's context, 20 are named by CLAUDE.md,
+4 by a skill, 6 by a page or component. The remaining 21 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -29,6 +29,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`SNAGS.md`](SNAGS.md) — the friction log: one line per snag, symptom then corrected move
 - [`SURFACING.md`](SURFACING.md) — the surfacing system: primitives plus the guide-PR course
 - [`TRACKER.md`](TRACKER.md) — the opt-in cross-session project tracker: schema, ids, board
+- [`app-routes.json`](app-routes.json) *(orphan)* — the show-repo app's own destinations: every address, what it is for, and which files draw it
 - [`artifacts.md`](artifacts.md) — Claude Code artifacts and the link-choice matrix
 - [`code-layers.md`](code-layers.md) — the code layers and the admission rule that sorts a new file into one of them
 - [`docs.json`](docs.json) — this registry: the documents census and the shared-claims table
@@ -36,7 +37,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`headless-vendoring.md`](headless-vendoring.md) — building with CDN libraries and rendering headless where the CDNs are blocked
 - [`ios-sheet-drags.md`](ios-sheet-drags.md) — why a drag inside a sheet-presented in-app browser dismisses the sheet, and the two fixes, measured on device
 - [`loader.md`](loader.md) — the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality
-- [`manifest.json`](manifest.json) — the field registry for root .web-tools.json: every field's type, consumer, and effect
+- [`manifest.json`](manifest.json) *(orphan)* — the field registry for root .web-tools.json: every field's type, consumer, and effect
 - [`markdown-in-chat.md`](markdown-in-chat.md) *(measured)* — working visually with markdown in a chat client on a phone
 - [`owners.json`](owners.json) — the owners registry: for a statement the coordination layer repeats, its one authoritative carrier and every typed repetition
 - [`pdf-structure.md`](pdf-structure.md) *(orphan)* — recovering structure from a PDF in the browser: what the kit does and honestly does not
@@ -48,7 +49,8 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`showing.md`](showing.md) — why the showing boundaries sit where they are: the frame and the record behind routes.json
 - [`surfacing.json`](surfacing.json) — the machine index of the surfacing primitives
 - [`tests.json`](tests.json) — the test registry: every check's kind, what it protects, and its derived counts
-- [`text-content.md`](text-content.md) *(measured)* — the estate's authored text: whether the carriers holding it are organized, and how much never reached one
+- [`text-content.md`](text-content.md) *(measured, orphan)* — the estate's authored text: whether the carriers holding it are organized, and how much never reached one
+- [`text-tools.md`](text-tools.md) *(orphan)* — the FAB's Text tab: why it exists, why the join is the path rather than a term, and an assessment of what it is not
 - [`tools.json`](tools.json) — the curated Tools gallery manifest
 - [`venues.md`](venues.md) *(measured)* — the venue map: where work can run besides the session reading it, what each reaches, and the attended-versus-unattended split
 

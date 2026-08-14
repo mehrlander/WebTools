@@ -171,6 +171,21 @@ if git status --porcelain -- tracker/tasks/ | grep -q .; then
   fi
 fi
 
+# --- leg 4b: docs/SNAGS.md -> its index, plus the repeat warning --------------
+# The index is deterministic and rides the same rule as the rest. The repeat
+# warning is the reason this leg exists at all: it fires while the new entry is
+# being committed, which is the last moment folding it into the entry that
+# already owns it is cheap. So the generator's stdout is shown rather than
+# swallowed, unlike the legs above.
+if git status --porcelain -- docs/SNAGS.md | grep -q .; then
+  if out="$(npm run snags-index --silent 2>&1)"; then
+    git add docs/SNAGS.md 2>/dev/null || true
+    printf '%s\n' "$out" >&2
+  else
+    echo "build hook: 'npm run snags-index' failed — committing without refreshing the snags index" >&2
+  fi
+fi
+
 # --- leg 5: SUNSET markers now due (warn only) --------------------------------
 # Back-compat shims are tagged SUNSET(YYYY-MM-DD); warn at commit time once a
 # marker's date has passed so it gets removed rather than lingering forever.

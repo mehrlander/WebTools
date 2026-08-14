@@ -85,6 +85,43 @@ test('adopts a pre-stamped toss subject at init, restores on clear, re-adopts on
   await tick();
 });
 
+test('a local subject is a toss with no repo: the frame is kept, the repo claims are dropped', async () => {
+  // What toss-render stamps for a pasted clipboard payload. The drawer used to
+  // take the RENDERER's address as the subject and report that you were
+  // looking at web-tools@main:pages/data-view.html while you were looking at
+  // your clipboard. A paste has no address to re-stamp with, so it stamps
+  // `local` and the drawer answers with what it actually knows.
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/toss-render.html"');
+  const d = Alpine.$data(el);
+
+  window.__tossSubject = { local: true, label: 'Clipboard', path: '', route: 'data',
+                           via: { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/data-view.html' } };
+  window.dispatchEvent(new window.CustomEvent('toss-subject'));
+  await tick();
+
+  // It IS a toss: the take actions and Inspect reach into the frame, and that
+  // is exactly what viaToss gates.
+  assert.equal(d.viaToss, true);
+  assert.equal(d.subjectLocal, true);
+  // And it claims nothing about a repo file.
+  assert.equal(d.repo, '');
+  assert.equal(d.path, '');
+  assert.equal(d.subjectLabel, 'Clipboard');
+  assert.equal(d.subjectVia.path, 'pages/data-view.html');
+  // Shell identity is still there for the script links, as in any toss.
+  assert.equal(d.shellRepo, 'mehrlander/web-tools');
+
+  // Clearing restores the shell, and leaves no local flag behind to make the
+  // next real subject read as one.
+  window.__tossSubject = null;
+  window.dispatchEvent(new window.CustomEvent('toss-subject'));
+  await tick();
+  assert.equal(d.viaToss, false);
+  assert.equal(d.subjectLocal, false);
+  assert.equal(d.subjectLabel, '');
+  assert.equal(d.repo, 'mehrlander/web-tools');
+});
+
 test('classifyRows: statuses and ordering (baseline, differs desc, unknown, same, missing)', () => {
   const d = Alpine.$data(doc.getElementById('f'));
 

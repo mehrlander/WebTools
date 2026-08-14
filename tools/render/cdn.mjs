@@ -270,12 +270,18 @@ export function resolveCdn(rawUrl, repoRoot, ref) {
         }));
         return { kind: 'fulfill', contentType: 'application/json; charset=utf-8', tag: `api dir ${rel}`, body: JSON.stringify(entries) };
       }
-      const text = readFileSync(fp, 'utf8');
+      // Bytes, not text. Reading as utf8 and re-encoding round-trips a text
+      // file exactly and CORRUPTS every binary one, since the invalid
+      // sequences in a PNG are replaced on decode and the base64 that goes out
+      // is of the replacements. The real contents API base64s the bytes, so
+      // this does too, which is what lets a page fetching an image through the
+      // API (the viewer's image module) be rendered headlessly at all.
+      const bytes = readFileSync(fp);
       return {
         kind: 'fulfill', contentType: 'application/json; charset=utf-8', tag: `api ${tail}`,
         body: JSON.stringify({
-          content: Buffer.from(text).toString('base64'),
-          encoding: 'base64', sha: 'local', size: text.length, html_url: '',
+          content: bytes.toString('base64'),
+          encoding: 'base64', sha: 'local', size: bytes.length, html_url: '',
         }),
       };
     }

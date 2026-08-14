@@ -151,7 +151,7 @@
         "href": "toss-render.html",
         "label": "toss-render",
         "title": "Toss Render",
-        "note": "Render tossed HTML payloads or allowlisted repo paths — the 🥏 target.",
+        "note": "Render tossed HTML payloads or allowlisted repo paths (the 🥏 target); with no address, paste anything and see it shown the way it deserves.",
         "thumb": "thumbs/toss-render.png",
         "code": "https://github.com/mehrlander/web-tools/blob/main/pages/toss-render.html"
       },
