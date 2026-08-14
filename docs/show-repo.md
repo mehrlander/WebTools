@@ -1911,6 +1911,26 @@ hard refresh, and it crosses the frame boundary the same way the subject does).
 Deliberately a door and not a duplicate: a second branch dropdown in the deck
 header would be the third copy of FAB turf in the app.
 
+**What a swipe costs the drawer.** Adoption was written for tosses, which
+re-address rarely and change everything when they do, so it dropped the lot. A
+deck announces on every swipe and changes only the path, and dropping the lot
+there re-ran the whole branch survey per swipe and re-parsed the guide body:
+visibly reloading the drawer while the reader was moving between files. The
+invalidation now splits by what each thing is keyed on. Guide, version chip and
+default branch belong to repo + ref and survive a swipe. The branch survey is
+the one genuinely per-file answer ("which branches carry a different copy of
+THIS path") and reloads. Measured after: zero guide re-renders per swipe.
+
+Two smaller cuts fell out of the same question. Ahead/behind is a property of
+the branch pair rather than of the file, but the survey hands back fresh row
+objects each time, so twelve rows meant twelve REST compares per swipe for an
+answer that had not changed; it is memoized per `repo|base...branch`, holding
+two integers rather than going through `branch-brief`'s cache, which holds the
+whole compare with its patches. And `loadBranchPrs` now goes through
+`BranchBrief.readGuide` where the page has it: the same pulls call, behind the
+sixty-second cache the deck has already warmed, so the drawer joins a read
+instead of issuing a second identical one.
+
 This is the first of three steps. The next is `__tossNavigate` from the deck, so
 a ref row re-renders the slide instead of navigating away; the one after is a
 second, compare-against ref in the sidebar, which is what would let the card's

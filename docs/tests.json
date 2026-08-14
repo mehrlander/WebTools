@@ -1189,7 +1189,7 @@
       "path": "tools/test/fab-toss.test.mjs",
       "kind": "component",
       "protects": "The fab keeps shell identity when mounted inside a toss.",
-      "assertions": 13,
+      "assertions": 15,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
@@ -1208,7 +1208,9 @@
         "on the renderer, a preset moves the frame in place",
         "no startup warnings or errors",
         "a deck subject retargets the drawer without pretending to be a frame",
-        "a framed subject still reads as framed"
+        "a framed subject still reads as framed",
+        "a swipe keeps the guide and drops only the per-file survey",
+        "ahead/behind is remembered per branch pair, not re-asked per file"
       ]
     },
     {

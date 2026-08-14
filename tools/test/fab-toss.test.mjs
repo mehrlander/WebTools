@@ -285,3 +285,74 @@ test('a framed subject still reads as framed', async () => {
     window.dispatchEvent(new window.CustomEvent('toss-subject'));
   }
 });
+
+
+// ── what a swipe costs the drawer ───────────────────────────────────────────
+//
+// A toss re-addresses rarely and changes everything when it does, so adoption
+// used to drop the lot. A file deck announces on EVERY SWIPE and changes only
+// the path. Dropping the lot there re-ran the whole branch survey per swipe and
+// re-parsed the guide body, which is what made the drawer visibly reload while
+// the reader was moving between files (reported 2026-08-14). The invalidation
+// now splits by what each thing is keyed on.
+
+const announce = (win, s) => {
+  win.__tossSubject = s;
+  win.dispatchEvent(new win.CustomEvent('toss-subject'));
+};
+
+test('a swipe keeps the guide and drops only the per-file survey', async () => {
+  window.__tossSubject = { repo: 'mehrlander/web-tools', ref: 'claude/b',
+                           path: 'docs/one.md', route: 'deck' };
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/show-repo/show-repo.html"');
+  const d = Alpine.$data(el);
+  try {
+    // Stand in for a survey and a guide that have already landed.
+    d.prBodyHtml = '<p>the guide</p>'; d.prBodyFor = '411';
+    d.pageBranches = [{ name: 'claude/b' }]; d.pageBranchesLoaded = true;
+    d.ver = { sha: 'abc' }; d.verLoaded = true; d.defaultBranch = 'main';
+
+    announce(window, { repo: 'mehrlander/web-tools', ref: 'claude/b',
+                       path: 'docs/two.md', route: 'deck' });
+    await tick(2);
+    assert.equal(d.path, 'docs/two.md', 'the drawer followed the swipe');
+    assert.equal(d.prBodyFor, '411', 'and did not throw away a guide belonging to the same ref');
+    assert.equal(d.prBodyHtml, '<p>the guide</p>');
+    assert.equal(d.verLoaded, true, 'nor the version chip, which is the ref\'s too');
+    assert.equal(d.defaultBranch, 'main', 'nor the repo\'s default branch');
+    assert.equal(d.pageBranchesLoaded, false,
+      'but the survey is the one genuinely per-file answer, so it reloads');
+
+    // A ref change is the other case and still drops everything.
+    d.prBodyFor = '411'; d.verLoaded = true;
+    announce(window, { repo: 'mehrlander/web-tools', ref: 'claude/other',
+                       path: 'docs/two.md', route: 'deck' });
+    await tick(2);
+    assert.equal(d.prBodyFor, null, 'a different ref is a different guide');
+    assert.equal(d.verLoaded, false);
+  } finally {
+    window.__tossSubject = null;
+    window.dispatchEvent(new window.CustomEvent('toss-subject'));
+  }
+});
+
+test('ahead/behind is remembered per branch pair, not re-asked per file', async () => {
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/p.html"');
+  const d = Alpine.$data(el);
+  let compares = 0;
+  const gh = { compare: async () => { compares++; return { ahead_by: 3, behind_by: 1 }; } };
+  d.defaultBranch = 'main';
+
+  d.pageBranches = [{ name: 'claude/b', status: 'preview' }];
+  await d.loadDivergence(gh);
+  assert.equal(compares, 1);
+  assert.equal(d.pageBranches[0].div.ahead, 3);
+
+  // The survey reloads on the next swipe and hands back FRESH row objects, so
+  // without the memo every one of them is a fresh compare for an answer that
+  // cannot have changed: ahead/behind belongs to the branch pair, not the file.
+  d.pageBranches = [{ name: 'claude/b', status: 'preview' }];
+  await d.loadDivergence(gh);
+  assert.equal(compares, 1, 'no second call');
+  assert.equal(d.pageBranches[0].div.ahead, 3, 'and the row still gets its answer');
+});
