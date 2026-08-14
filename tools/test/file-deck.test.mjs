@@ -248,12 +248,21 @@ test('announce: false leaves the sidebar where it was', async () => {
 // with. An address-mode toss is same-origin, so the frame reaches up.
 test('hosted in a toss, the deck announces to the shell as well', async () => {
   const heard = [];
+  const listeners = [];
   const parent = {
     __tossSubject: { repo: 'me/tools', ref: 'main', path: 'pages/show-repo/show-repo.html' },
     __tossFrame: { name: 'frame' },
     document: {},
     CustomEvent: window.CustomEvent,
-    dispatchEvent: (e) => heard.push(e.type + ':' + (parent.__tossSubject?.path ?? 'null')),
+    dispatchEvent: (e) => {
+      heard.push(e.type + ':' + (parent.__tossSubject?.path ?? 'null'));
+      for (const [t, fn] of listeners) if (t === e.type) fn(e);
+    },
+    addEventListener: (t, fn) => listeners.push([t, fn]),
+    removeEventListener: (t, fn) => {
+      const i = listeners.findIndex(l => l[0] === t && l[1] === fn);
+      if (i >= 0) listeners.splice(i, 1);
+    },
   };
   const realParent = Object.getOwnPropertyDescriptor(window, 'parent');
   Object.defineProperty(window, 'parent', { value: parent, configurable: true });
@@ -266,7 +275,22 @@ test('hosted in a toss, the deck announces to the shell as well', async () => {
       'and the file is in the frame document, not a frame of its own');
     assert.ok(heard.some(h => h.startsWith('toss-subject:')), 'announced, not only stamped');
 
+    // And the answer comes back down. The shell's fab publishes the compare
+    // pair on ITS window; the cards are in this one, so the deck bridges it.
+    // Without this the sidebar's compare bar would change nothing through the
+    // one link branch work is actually reviewed with.
+    const seen = [];
+    window.addEventListener('web-tools:compare-ref', (e) => seen.push(e.detail));
+    parent.dispatchEvent(new window.CustomEvent('web-tools:compare-ref',
+      { detail: { repo: 'me/tools', ref: 'x', base: 'main' } }));
+    assert.equal(seen.length, 1, 'the frame heard the shell’s choice');
+    assert.equal(window.__compareRef.base, 'main', 'and a card mounting later reads it off the global');
+
     d.close(); await tick(6);
+    assert.equal(window.__compareRef, null, 'leaving takes the choice with it');
+    parent.dispatchEvent(new window.CustomEvent('web-tools:compare-ref',
+      { detail: { base: 'other' } }));
+    assert.equal(seen.length, 1, 'and the bridge is gone, not left listening on the shell');
     assert.equal(parent.__tossSubject.path, 'pages/show-repo/show-repo.html',
       'leaving hands the tossed page back');
     assert.equal(parent.__tossFrame.name, 'frame');

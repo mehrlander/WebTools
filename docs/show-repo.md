@@ -2120,14 +2120,76 @@ whole compare with its patches. And `loadBranchPrs` now goes through
 sixty-second cache the deck has already warmed, so the drawer joins a read
 instead of issuing a second identical one.
 
-This is the first of three steps. The next is `__tossNavigate` from the deck, so
-a ref row re-renders the slide instead of navigating away; the one after is a
-second, compare-against ref in the sidebar, which is what would let the card's
-four source tabs (Diff, Patch, New, Base, all one comparison in four
-renderings) collapse into a Compare pane whose two ends the reader chooses.
-
 Measured end to end by `tools/render/scenarios/branch-deck.mjs`, which is also
 what caught both of those faults above.
+
+### The sidebar owns the second ref too
+
+The drawer answered "which version am I looking at". From 2026-08-14 it answers
+"against what", and the file surface answers neither. That is the whole
+division: **the sidebar owns the comparison, and a card showing a file does
+what it is told.**
+
+The card's four source tabs were the argument for it. Diff, Patch, New and Base
+are four renderings of one fixed pair, and on a reading surface the question is
+not which of four renderings but against what: the branch's merge base, the
+default branch, another branch entirely. That is a ref, and a ref is the one
+thing the drawer already knows how to pick. So on a `read` host the strip
+collapses to the file and one **Compare** pane, and the pair arrives from
+outside.
+
+Two channels, one per direction, and neither side holds a reference to the
+other. Up: the deck's subject announcement gained `base` and `baseName`, which
+is what makes the compare bar appear at all; a page rendered at a ref has no
+second version in play and gets no bar. Down: `web-tools:compare-ref` carries
+`{repo, ref, base, baseName, off}`, with `window.__compareRef` holding the last
+one for a slide that mounts after the choice was made. `off` is a field rather
+than a null payload, because null already means "nobody has published
+anything", and a deck that has just opened must not read the previous deck's
+silence as an instruction.
+
+Three things the move costs, all of them facts that were only ever true of the
+announced base:
+
+- **The API patch.** The compare endpoint's patch text describes the merge
+  base and nothing else, so moving the base drops it: the diff is computed from
+  the two files instead, and the copy button on that pane goes with the patch
+  it used to hand over.
+- **The status.** `added`, `removed` and `renamed` are the same kind of claim,
+  so once the base moves the card stops trusting them and derives status from
+  what the two fetches found. A file "added" on this branch may well exist on
+  the branch now being compared against.
+- **The rename mapping.** `previousPath` is how the announced base saw the
+  file, so on any other ref it is a guess. It is still the best guess going, so
+  it is tried first and the current path is the fallback, at one extra call on
+  a renamed file only.
+
+Only the base side refetches. The new side did not move, and on a deck slide it
+is already on screen: refetching it would blank the pane the reader is looking
+at to arrive back at the same bytes.
+
+The comparison is a property of the branch pair, so it survives a swipe and
+does not survive the branch changing under it, and leaving the deck takes it
+with it rather than leaving a pair on the global naming a branch nothing on
+screen is showing. A card also declines a pair addressed to another repo or
+another ref: the channel is a global, and silently diffing against a ref the
+reader never chose for this file is the worst failure available here.
+
+The cross-window case is the same asymmetry as the announcement and needs the
+same bridge. Inside a toss the cards are in the frame and the listening fab is
+the shell's, so it publishes on a window the cards are not in; the deck relays
+shell to frame, one direction, for as long as it is open.
+
+`tools/render/scenarios/sidebar-compare.mjs` runs the round trip in a browser,
+which is the only place the two halves meet: jsdom holds the publish
+(`fab-toss.test.mjs`) and the adoption (`file-review-card.test.mjs`)
+separately. `SHOT=menu` and `SHOT=card` point the same scenario at the picker
+and at the slide.
+
+One step of the original three is still open: `__tossNavigate` from the deck,
+so picking a ref in the bar above re-renders the slide instead of navigating
+away. Until it lands, the ref bar retargets and the compare bar is the half
+that acts in place.
 
 ### Drop a file on a branch
 

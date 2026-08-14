@@ -47,6 +47,9 @@ const { window, problems } = makeWindow({
          path: 'lib/c.js', status: 'modified', patch: '@@ -1 +1 @@', bare: true })"></div>
     <div id="blob" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
          path: 'data/x.dat', status: 'modified' })"></div>
+    <div id="srcRead" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'mb-sha',
+         baseName: 'main', path: 'lib/d.js', status: 'modified', patch: '@@ -1 +1 @@',
+         read: true, bare: true, open: true })"></div>
   </body></html>`,
 });
 
@@ -56,8 +59,11 @@ window.GH = class {
   async get(p) {
     fetched.push(this.ref + ':' + p);
     // x.dat is the unknown-extension binary: nothing in its name says so, and
-    // the NUL in its decode is the only thing that can.
-    return { text: /x\.dat$/.test(p) ? 'ab\u0000cd' : 'x', size: 8 };
+    // the NUL in its decode is the only thing that can. d.js is the one file
+    // whose content depends on the ref, which is what gives the compare cases
+    // below something to actually differ about.
+    return { text: /x\.dat$/.test(p) ? 'ab\u0000cd'
+                 : /d\.js$/.test(p) ? 'body at ' + this.ref : 'x', size: 8 };
   }
   async bytes(p) { fetched.push(this.ref + ':bytes:' + p);
                    return { bytes: new Uint8Array([1, 2, 3]), size: 3 }; }
@@ -187,7 +193,9 @@ test('the surface decides whether a document opens read or diffed', () => {
 });
 
 test('an image offers no source panes, because there is nothing there to read', () => {
-  assert.equal(data('png').panes.map(p => p.label).join('|'), 'Image|Patch');
+  // A reading surface, so there is no Patch tab to fall back to either: the
+  // sidebar owns the comparison there, and an image has none worth showing.
+  assert.equal(data('png').panes.map(p => p.label).join('|'), 'Image');
   assert.equal(data('doc').panes.map(p => p.label).join('|'), 'Read|Diff|Patch|New|Base');
 });
 
@@ -357,4 +365,78 @@ test('frontmatter is fenced before rendering, not read as a paragraph', async ()
   assert.ok(seen.includes('# Title'), 'and the document behind it is intact');
   assert.equal(window.SourcePeek.fenceFrontmatter(d.newText), seen,
     'byte for byte what source-peek would have produced');
+});
+
+
+// ── who owns the comparison ─────────────────────────────────────────────────
+//
+// In a list this card owns it: Diff, Patch, New and Base are four readings of
+// one fixed pair. On a reading surface the honest question is "against what",
+// and the answer is a ref the card has no business choosing, so from
+// 2026-08-14 the strip collapses to the file plus one Compare pane and the
+// pair arrives on `web-tools:compare-ref` from the FAB sidebar.
+//
+// The two traps are both about believing something that is only true of the
+// announced base: the API patch, and the file's status.
+
+const publish = (detail) => window.dispatchEvent(
+  new window.CustomEvent('web-tools:compare-ref', { detail }));
+
+test('a reading surface shows the file and one comparison, not four readings of it', async () => {
+  const d = data('srcRead');
+  await tick(4);
+  assert.equal(d.panes.map(p => p.label).join('|'), 'File|Compare');
+  assert.equal(d.panes.map(p => p.id).join('|'), 'new|diff',
+    'the source IS the file pane where the file has no presentation of its own');
+  assert.ok(fetched.some(f => f.endsWith('lib/d.js')),
+    'and it loads on open rather than settling on a patch it has no tab for');
+});
+
+test('the sidebar can turn the comparison off, and the file stands alone', async () => {
+  const d = data('srcRead');
+  publish({ repo: 'acme/w', ref: 'feat/x', off: true });
+  await tick(2);
+  assert.equal(d.compareOff, true);
+  assert.equal(d.panes.map(p => p.label).join('|'), 'File');
+  assert.equal(d.tab, 'new', 'and the reader is not left on a pane that no longer exists');
+
+  publish({ repo: 'acme/w', ref: 'feat/x', off: false, base: 'mb-sha', baseName: 'main' });
+  await tick(2);
+  assert.equal(d.compareOff, false);
+  assert.equal(d.panes.map(p => p.label).join('|'), 'File|Compare');
+});
+
+test('moving the base drops the patch, since the patch was only true of the old one', async () => {
+  const d = data('srcRead');
+  assert.equal(d.patch, '@@ -1 +1 @@');
+  const before = fetched.length;
+  publish({ repo: 'acme/w', ref: 'feat/x', off: false, base: 'claude/other',
+            baseName: 'claude/other' });
+  await tick(4);
+  assert.equal(d.base, 'claude/other');
+  assert.equal(d.baseName, 'claude/other');
+  assert.equal(d.patch, '', 'the API patch is a fact about the merge base and nothing else');
+  const calls = fetched.slice(before);
+  assert.ok(calls.some(f => f.startsWith('claude/other:')), 'the base side is refetched');
+  assert.ok(!calls.some(f => f.startsWith('feat/x:')),
+    'and the new side is not, because it did not move');
+});
+
+test('a pair addressed to another branch is not applied to this file', async () => {
+  const d = data('srcRead');
+  const was = d.base;
+  publish({ repo: 'acme/w', ref: 'some/other-branch', off: false, base: 'nope' });
+  await tick(2);
+  assert.equal(d.base, was, 'the channel is a global, so a card has to check who is being spoken to');
+  publish({ repo: 'other/repo', ref: 'feat/x', off: false, base: 'nope' });
+  await tick(2);
+  assert.equal(d.base, was);
+});
+
+test('a list card is not listening: its four tabs are its own', async () => {
+  const d = data('withPatch');
+  publish({ repo: 'acme/w', ref: 'feat/x', off: true });
+  await tick(2);
+  assert.equal(d.compareOff, false, 'the sidebar drives reading surfaces, not review lists');
+  assert.ok(d.panes.some(p => p.id === 'patch'));
 });

@@ -1282,7 +1282,7 @@
       "path": "tools/test/fab-toss.test.mjs",
       "kind": "component",
       "protects": "The fab keeps shell identity when mounted inside a toss.",
-      "assertions": 19,
+      "assertions": 23,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
@@ -1307,7 +1307,11 @@
         "ahead/behind is remembered per branch pair, not re-asked per file",
         "the survey is remembered per path, so swiping back is free",
         "the picker is handed a real component, not Alpine's scope proxy",
-        "the drawer template carries no backtick, being a template literal"
+        "the drawer template carries no backtick, being a template literal",
+        "the compare bar exists only for a subject that announced a base",
+        "picking, and turning it off, publish a pair the file surface can act on",
+        "the comparison survives a swipe and not a change of branch",
+        "a file is not offered as its own comparison"
       ]
     },
     {
@@ -1340,7 +1344,7 @@
       "path": "tools/test/file-review-card.test.mjs",
       "kind": "component",
       "protects": "What opening a changed-file row costs: a card handed a patch shows it without fetching, and only a tab that needs the bytes triggers a contents call. Plus the collapsed row's formatting, including the path elision that replaced a CSS rtl trick bidi reordering turned into a path that does not exist.",
-      "assertions": 20,
+      "assertions": 25,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -1364,7 +1368,12 @@
         "a document copies its source, not the rendered markup",
         "the controls sit on the tab row, not on a strip above it",
         "the two classifiers agree about what markdown is",
-        "frontmatter is fenced before rendering, not read as a paragraph"
+        "frontmatter is fenced before rendering, not read as a paragraph",
+        "a reading surface shows the file and one comparison, not four readings of it",
+        "the sidebar can turn the comparison off, and the file stands alone",
+        "moving the base drops the patch, since the patch was only true of the old one",
+        "a pair addressed to another branch is not applied to this file",
+        "a list card is not listening: its four tabs are its own"
       ]
     },
     {

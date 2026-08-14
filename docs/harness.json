@@ -1170,6 +1170,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/sidebar-compare.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 142,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/sidebar-projects-overlay.mjs",
       "role": "the same sidebar state in overlay posture; only the posture distinguishes the pair",
       "layer": "tools/render/scenarios",

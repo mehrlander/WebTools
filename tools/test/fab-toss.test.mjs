@@ -479,3 +479,105 @@ test('the drawer template carries no backtick, being a template literal', () => 
   assert.ok(typeof d.template === 'string' && d.template.length > 1000);
   assert.ok(!d.template.includes('\u0060'), 'no backtick survived into the template');
 });
+
+
+// ── the compare bar ─────────────────────────────────────────────────────────
+//
+// The sidebar already owned WHICH version. From 2026-08-14 it owns the second
+// one too: a surface showing a file (the deck) announces what it is already
+// comparing against, and the drawer turns that fact into a control. The whole
+// coupling is two globals and two events, one per direction, which is why the
+// cases here are about the payload and the invalidation rather than the UI.
+
+test('the compare bar exists only for a subject that announced a base', async () => {
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/p.html"');
+  const d = Alpine.$data(el);
+  assert.equal(d.subjectBase, '', 'an ordinary page has no second version in play');
+  assert.equal(d.comparePair, null);
+
+  announce(window, { repo: 'mehrlander/web-tools', ref: 'claude/b', path: 'docs/one.md',
+                     route: 'deck', base: 'abc123', baseName: 'main' });
+  await tick(2);
+  try {
+    assert.equal(d.subjectBase, 'abc123', 'the sha is what a client fetches');
+    assert.equal(d.compareName, 'main', 'and the name is what a reader is told');
+    assert.equal(d.comparePair.base, 'abc123');
+  } finally {
+    window.__tossSubject = null;
+    window.dispatchEvent(new window.CustomEvent('toss-subject'));
+  }
+});
+
+test('picking, and turning it off, publish a pair the file surface can act on', async () => {
+  window.__tossSubject = { repo: 'mehrlander/web-tools', ref: 'claude/b', path: 'docs/one.md',
+                           route: 'deck', base: 'abc123', baseName: 'main' };
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/show-repo/show-repo.html"');
+  const d = Alpine.$data(el);
+  const heard = [];
+  const on = (e) => heard.push(e.detail);
+  window.addEventListener('web-tools:compare-ref', on);
+  try {
+    d.compareWith('claude/other');
+    assert.equal(heard.length, 1);
+    assert.equal(heard[0].base, 'claude/other');
+    assert.equal(heard[0].ref, 'claude/b', 'addressed, so a card on another branch can decline it');
+    assert.equal(heard[0].off, false);
+    assert.equal(window.__compareRef.base, 'claude/other',
+      'and left on the global for the next slide to mount');
+
+    d.compareStop();
+    assert.equal(heard[1].off, true, 'off is a field, not a null payload');
+    assert.equal(d.comparePair, null);
+
+    // '' is how the reader comes back to the announced base without having to
+    // remember what it was.
+    d.compareWith('');
+    assert.equal(heard[2].base, 'abc123');
+    assert.equal(heard[2].baseName, 'main');
+  } finally {
+    window.removeEventListener('web-tools:compare-ref', on);
+    window.__tossSubject = null; window.__compareRef = null;
+    window.dispatchEvent(new window.CustomEvent('toss-subject'));
+  }
+});
+
+test('the comparison survives a swipe and not a change of branch', async () => {
+  window.__tossSubject = { repo: 'mehrlander/web-tools', ref: 'claude/b', path: 'docs/one.md',
+                           route: 'deck', base: 'abc123', baseName: 'main' };
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/show-repo/show-repo.html"');
+  const d = Alpine.$data(el);
+  try {
+    d.compareWith('claude/other');
+    announce(window, { repo: 'mehrlander/web-tools', ref: 'claude/b', path: 'docs/two.md',
+                       route: 'deck', base: 'abc123', baseName: 'main' });
+    await tick(2);
+    assert.equal(d.compareRef, 'claude/other',
+      'the pair is a property of the branch, not of the file being read');
+
+    announce(window, { repo: 'mehrlander/web-tools', ref: 'claude/z', path: 'docs/two.md',
+                       route: 'deck', base: 'def456', baseName: 'main' });
+    await tick(2);
+    assert.equal(d.compareRef, '', 'a different branch is a different comparison');
+    assert.equal(d.subjectBase, 'def456');
+
+    // And leaving the deck takes the choice with it rather than leaving a pair
+    // on the global naming a branch nothing on screen is showing.
+    window.__tossSubject = null;
+    window.dispatchEvent(new window.CustomEvent('toss-subject'));
+    await tick(2);
+    assert.equal(d.subjectBase, '');
+    assert.equal(window.__compareRef, null);
+  } finally {
+    window.__tossSubject = null;
+    window.dispatchEvent(new window.CustomEvent('toss-subject'));
+  }
+});
+
+test('a file is not offered as its own comparison', async () => {
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/p.html"');
+  const d = Alpine.$data(el);
+  d.pageBranches = [{ name: 'main', status: 'baseline' }, { name: 'claude/b', status: 'differs' }];
+  d.showAllBranches = true;
+  assert.equal(d.compareTargets.map(b => b.name).join(','), 'claude/b',
+    'main is what this page is rendered at, and against itself there is nothing to show');
+});
