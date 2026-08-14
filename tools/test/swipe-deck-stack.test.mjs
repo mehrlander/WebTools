@@ -129,6 +129,70 @@ test('drill: the parent is the head of the child’s breadcrumb', async () => {
   child.close(); await tick(3); parent.close(); await tick(3);
 });
 
+// ── eviction ─────────────────────────────────────────────────────────────────
+//
+// Building lazily was only half the job: `built[i]` never cleared, so a deck
+// retained every slide the reader had ever visited. Free when a slide is inert
+// DOM, and not free at all when it is a live app. Measured 2026-08-13 by
+// stepping show-repo's branch deck through twelve branches of a fourteen-file
+// changeset: twelve mounted branch views, 168 mounted file cards, and the DOM
+// climbing 7,100 → 25,160 nodes, monotonically. Zero network requests over the
+// same eleven steps, so it was never a download; it just got slower the longer
+// you read.
+
+// jsdom has no layout and no scrollTo, and the deck computes in units of the
+// track's width. Six lines make the track real enough to page.
+const drivable = (core, width = 400) => {
+  const t = core.track;
+  Object.defineProperty(t, 'clientWidth', { value: width, configurable: true });
+  let left = 0;
+  Object.defineProperty(t, 'scrollLeft', { configurable: true, get: () => left, set: v => { left = v; } });
+  t.scrollTo = ({ left: v }) => { left = v; t.dispatchEvent(new window.Event('scroll')); };
+  return core;
+};
+
+test('a slide the reader has left is emptied, and rebuilt on return', async () => {
+  const built = [], freed = [];
+  const c = drivable(sd.core(8, (i, el) => { built.push(i); el.textContent = 'slide ' + i; },
+                             { keep: 1, release: (i) => freed.push(i) }));
+  await tick(3);
+  assert.equal(c.builtCount, 2, 'open builds the first slide and its neighbour');
+
+  c.go(4);
+  await tick(3);
+  assert.deepEqual(freed.slice().sort(), [0, 1], 'the slides two behind are let go');
+  assert.equal(c.builtCount, 3, 'and what is held is the reader’s slide and its neighbours');
+  assert.equal(c.track.children[0].textContent, '', 'the far slide is empty DOM, not a live tree');
+
+  const seen = built.length;
+  c.go(0);
+  await tick(3);
+  assert.ok(built.slice(seen).includes(0), 'coming back renders it again');
+  assert.equal(c.track.children[0].textContent, 'slide 0');
+});
+
+test('one slide of hysteresis, so a step back does not rebuild', async () => {
+  const built = [];
+  const c = drivable(sd.core(8, (i) => built.push(i), { keep: 2 }));
+  await tick(3);
+  c.go(2); await tick(3);
+  const seen = built.length;
+  c.go(1); await tick(3);
+  assert.equal(built.length, seen, 'slide 1 was still held, so nothing was rendered twice');
+});
+
+test('closing lets every slide go, not just the far ones', async () => {
+  const freed = [];
+  const d = sd.open({ count: 4, title: 'x', render: (i, el) => { el.textContent = String(i); },
+                      release: (i) => freed.push(i) });
+  await tick(3);
+  assert.equal(d.deck.builtCount, 2);
+  d.close();
+  await tick(5);
+  assert.deepEqual(freed.slice().sort(), [0, 1],
+    'a deck that leaves takes its live slides with it, which is where a mount’s references are handed back');
+});
+
 test('the header is writable, which is how a deck follows its own slides', async () => {
   const d = deck('one');
   await tick();

@@ -1720,8 +1720,22 @@ it renders "this page has not finished loading its code" and nothing else. That
 is the one thing the iframe did for free, since `branch.html` named the whole
 chain and nobody had to notice it existed.
 
+**A slide the reader leaves is emptied.** swipe-deck built lazily from the
+start, and that was only half the job: `built[i]` never cleared, so the deck
+retained every slide ever visited. Free when a slide is inert chat DOM, and not
+free at all when it is a live app with fourteen file cards under it. Stepping
+this deck through twelve branches left twelve mounted branch views and 168
+mounted cards behind, with the DOM climbing 7,100 → 25,160 nodes,
+monotonically, so it got slower the longer you read. Zero network requests over
+the same eleven steps, so nothing was being fetched. The kit now drops any slide
+more than `keep` positions away (default 2, one slide of hysteresis so a step
+back does not re-render), Alpine tears the tree down on removal, and
+`release(i, slide)` hands the caller back anything of its own: here and in the
+file deck, the keyed global the mount travelled through. The same twelve steps
+now plateau at four views and 10,712 nodes.
+
 Measured end to end by `tools/render/scenarios/branch-deck.mjs`, which is also
-what caught both of those last two faults.
+what caught both of those faults above.
 
 ### Drop a file on a branch
 
