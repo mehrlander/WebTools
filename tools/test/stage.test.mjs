@@ -280,6 +280,87 @@ test('pasted prose is held as a local text item', () => {
   assert.match(data.localItems[0].name, /^\d{4}-\d{2}-\d{2}-paste\.txt$/);
 });
 
+// ---- renaming a local item ----------------------------------------------
+// The name a paste gets is sniffed, so the rename is what makes a wrong sniff
+// correctable. It has to reach the deposit, since that is the field's real
+// consumer, and it has to stay off ref items, whose path is their identity.
+
+test('a rename reaches both fields a local item is read through', () => {
+  reset();
+  const it = { local: true, id: 200, name: '2026-08-14-paste.txt', path: '2026-08-14-paste.txt', size: 4, isText: true, text: '# hi' };
+  store.stage = [it];
+  data.startRename(data.localItems[0]);
+  assert.equal(data.renameId, 200);
+  assert.equal(data.renameDraft, '2026-08-14-paste.txt', 'the draft opens on the current name');
+  data.renameDraft = 'notes.md';
+  data.commitRename();
+  assert.equal(data.localItems[0].name, 'notes.md');
+  assert.equal(data.localItems[0].path, 'notes.md', 'the preview and diff labels read path');
+  assert.equal(data.renameId, null);
+});
+
+test('a renamed local file deposits under its new name', async () => {
+  reset();
+  calls.length = 0;
+  store.stage = [{ local: true, id: 201, name: '2026-08-14-paste.txt', path: '2026-08-14-paste.txt', size: 4, isText: true, text: '# hi' }];
+  data.startRename(data.localItems[0]);
+  data.renameDraft = 'docs/notes.md';
+  data.commitRename();
+  data.destSpec = 'me/dest:pkg';
+  await data.send();               // arm
+  await data.send();               // deposit
+  const txt = calls.find(c => c.kind === 'save');
+  assert.equal(txt.path, 'pkg/docs/notes.md', 'a slash in the name is a subpath under the destination');
+});
+
+test('a name that cleans to nothing leaves the item alone, and so does Escape', () => {
+  reset();
+  store.stage = [{ local: true, id: 202, name: 'n.txt', path: 'n.txt', size: 2, isText: true, text: 'hi' }];
+  data.startRename(data.localItems[0]);
+  data.renameDraft = '  /../  ';
+  data.commitRename();
+  assert.equal(data.localItems[0].name, 'n.txt', 'nothing usable was typed');
+
+  data.startRename(data.localItems[0]);
+  data.renameDraft = 'other.txt';
+  data.cancelRename();
+  assert.equal(data.localItems[0].name, 'n.txt', 'Escape drops the draft');
+  assert.equal(data.renameId, null);
+});
+
+test('commit is idempotent, since Enter commits and the blur behind it fires too', () => {
+  reset();
+  store.stage = [{ local: true, id: 203, name: 'n.txt', path: 'n.txt', size: 2, isText: true, text: 'hi' }];
+  data.startRename(data.localItems[0]);
+  data.renameDraft = 'first.txt';
+  data.commitRename();
+  data.commitRename();             // the blur
+  assert.equal(data.localItems[0].name, 'first.txt');
+  assert.equal(data.localItems.length, 1);
+});
+
+test('a ref item cannot be renamed: its path is where it came from', () => {
+  reset();
+  store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
+  data.startRename(data.refItems[0]);
+  assert.equal(data.renameId, null, 'the row offers no rename, and the call refuses one');
+  assert.equal(data.refItems[0].path, 'lib/x.js');
+});
+
+test('renaming under an open preview re-labels it', async () => {
+  reset();
+  const it = { local: true, id: 204, name: 'n.txt', path: 'n.txt', size: 2, isText: true, text: 'hi' };
+  store.stage = [it];
+  await data.view(data.localItems[0]);
+  await tick(3);
+  assert.equal(data.preview.name, 'n.txt');
+  data.startRename(data.localItems[0]);
+  data.renameDraft = 'renamed.md';
+  data.commitRename();
+  assert.equal(data.preview.name, 'renamed.md');
+  data.preview = null;
+});
+
 test('groups covers only refs; local items render on their own', () => {
   reset();
   store.stage = [

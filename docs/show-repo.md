@@ -1729,6 +1729,22 @@ Stage-view actions:
   search. Browse has no text input at all, which is the tap-through picker's
   own rule and its reason. Local files are the one source that is not a repo
   file, so they stay a header action (the paperclip) belonging to no pane;
+- **rename** a **local** item: the pencil on its row turns the name into an
+  input with the stem preselected, Enter or a blur commits, Escape drops it. A
+  local name is authored nowhere (a drop takes the file's own, a paste and a
+  dictation get one sniffed from the first few characters), and it is read in
+  four places: the row, the bundle header, the `name` a local item rides on a
+  `#gz=` link, and the deposited path. The **extension** is the whole of what
+  the preview reads to pick a mode and what the destination blob renders as, so
+  a wrong sniff used to mean deleting the item and pasting it again. A slash is
+  allowed and means a subpath under the destination (`docs/notes.md` lands at
+  `<dir>/docs/notes.md`); `..` and empty segments are dropped. Two locals with
+  one name is warned about, not refused, since the deposit writes one over the
+  other and nothing else on screen would say so. **Ref items do not rename:**
+  a ref's `path` is its identity at its source, which the row states, the
+  jump-over resolves, and `copyTo` reads back, so editing it would either lie
+  about the origin or silently mean "land it elsewhere", which is a destination
+  override and a different feature;
 - **view** a staged file inline (a preview panel in the stage itself, with a
   GitHub jump-over to the file's true home; it never routes through a repo's
   Files view). **The preview is a position in the stage, not one file:** it
