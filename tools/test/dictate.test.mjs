@@ -498,8 +498,43 @@ test('delete takes the selection when there is one, and the word before a caret 
 
   d.caretAt(9);                          // after "brown"
   d.backWord();
-  assert.equal(d.text, 'the  fox', 'the word before the caret, not the last word of the buffer');
-  assert.deepEqual(d.range, { start: 4, end: 4 });
+  assert.equal(d.text, 'the fox', 'the word before the caret, not the last word of the buffer');
+  assert.deepEqual(d.range, { start: 3, end: 3 },
+    'and the space that separated it goes with it, rather than doubling up at the seam');
+});
+
+test('a space behind the caret is its own step, except at the very end', () => {
+  // The key was taking a space AND the word before it in one tap, which is
+  // one tap doing two things and left a seam behind either way: mid-buffer it
+  // produced a double space (reported 2026-08-14). A reader whose caret sits
+  // after a space is most often trimming, and trimming is cheap to repeat.
+  const d = withText('the quick brown fox');
+  d.caretAt(10);                         // between the space and "brown"
+  d.backWord();
+  assert.equal(d.text, 'the quickbrown fox', 'the space, and only the space');
+  assert.deepEqual(d.range, { start: 9, end: 9 });
+  d.backWord();
+  assert.equal(d.text, 'the brown fox', 'the next tap takes the word');
+
+  const e = withText('one two three');
+  e.caretAt(7);                          // after "two", the tail a space away
+  e.backWord();
+  assert.equal(e.text, 'one three', 'one space at the seam, not two and not none');
+
+  // A tail that does NOT start with whitespace keeps the space in front of the
+  // deleted word, or the two words either side of the caret would be glued.
+  const g = withText('one twothree');
+  g.caretAt(7);
+  g.backWord();
+  assert.equal(g.text, 'one three');
+
+  // AT THE END the space is absorbed, because a mark writes its own trailing
+  // one and a tap that removed only that would look like a dead key.
+  const f = withText('a note. ');
+  f.backWord();
+  assert.equal(f.text, 'a note', 'the invisible space and the mark, in one visible step');
+  f.backWord();
+  assert.equal(f.text, 'a', 'then the word, with its separating space');
 });
 
 test('a mark lands at the caret rather than at the far end', () => {
