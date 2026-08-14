@@ -27,6 +27,20 @@ const doc = window.document;
 loadKit('annotate.js', { window });
 const A = window.Annotate;
 
+// The way into the keyboard, and the only one since the pencil was retired
+// (2026-08-14): a double tap on the composer's read surface. jsdom has no
+// layout, so hitsText answers false for every point and the pair lands on the
+// CANVAS, which opens the keyboard with the caret at the end. A test that
+// needs it opened somewhere else taps on the text with hitsText stubbed, the
+// way the double-tap test does.
+const openKeyboard = (S) => {
+  for (let i = 0; i < 2; i++) {
+    const e = new window.Event('pointerup', { bubbles: true });
+    e.clientX = 20; e.clientY = 500;
+    S.compView.dispatchEvent(e);
+  }
+};
+
 test('quote anchor round-trips through the text index', () => {
   const p1 = doc.getElementById('p1').firstChild;
   const r = doc.createRange();
@@ -404,10 +418,10 @@ test('without the dictate kit the annotator still works, minus the microphone', 
   B.disable();
 });
 
-test('the pencil opens on the phrase that was on screen, not the one before it', () => {
+test('the keyboard opens on the phrase that was on screen, not the one before it', () => {
   // stop() runs the engine's end handler, which clears the interim, so the
   // flush has to come first. The other order lost the sentence the reader was
-  // looking at when they reached for the pencil. Found in the stage's copy of
+  // looking at when they reached for the keyboard. Found in the stage's copy of
   // the same toggle (tools/test/stage.test.mjs) and fixed in both.
   window.SpeechRecognition = FakeSR;
   loadKit('dictate.js', { window });
@@ -418,7 +432,7 @@ test('the pencil opens on the phrase that was on screen, not the one before it',
   FakeSR.last.say([{ t: 'the settled part', final: true }]);
   FakeSR.last.say([{ t: 'and the part still being heard', final: false }]);
 
-  A._state.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  openKeyboard(A._state);
   assert.equal(A._state.editing, true);
   assert.equal(A._state.compTa.value, 'the settled part. and the part still being heard.',
     'the interim rode into the textarea rather than being dropped by the stop');
@@ -622,14 +636,18 @@ test('the caret is one caret: it survives the switch into the keyboard and back'
   // keyboard, so a reader crossing the boundary placed it twice.
   window.SpeechRecognition = FakeSR;
   loadKit('dictate.js', { window });
+  const realHits = window.Dictate.hitsText;
   A.enable({ doc, subject: { title: 'x', url: '' } });
   const S = A._state, d = S.dict;
   d.text = 'the quick brown fox';
+  A._paintDraft();
 
-  // In: the red caret is where the keyboard opens.
-  d.caretAt(4);
-  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(S.compTa.selectionStart, 4, 'the keyboard opens where the caret was');
+  // In: the double tap that opens the keyboard lands the caret under itself,
+  // and the keyboard opens there rather than at the end.
+  window.Dictate.hitsText = () => true;
+  doc.caretRangeFromPoint = () => ({ startContainer: S.compBody.firstChild, startOffset: 4 });
+  openKeyboard(S);
+  assert.equal(S.compTa.selectionStart, 4, 'the keyboard opens where the taps landed');
   assert.equal(S.compTa.selectionEnd, 4);
 
   // Out: where the keyboard left it is where the red one is.
@@ -638,9 +656,12 @@ test('the caret is one caret: it survives the switch into the keyboard and back'
   assert.deepEqual(d.range, { start: 10, end: 15 },
     'and a selection comes back whole rather than collapsing to the end');
 
-  // In again, carrying the selection, so the first character typed replaces
-  // exactly what the red one covered.
-  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  // In again with no offset supplied, which is the canvas path: the caret the
+  // buffer is holding is what the keyboard opens on, selection and all, so the
+  // first character typed replaces exactly what the red one covered.
+  window.Dictate.hitsText = realHits;
+  delete doc.caretRangeFromPoint;
+  A._openEditor();
   assert.equal(S.compTa.selectionStart, 10);
   assert.equal(S.compTa.selectionEnd, 15);
 
@@ -683,6 +704,42 @@ test('arming a pin ends a tap run', () => {
   } finally { window.Dictate.hitsText = realHits; delete doc.caretRangeFromPoint; }
 });
 
+test('undo and redo stand where the pencil stood, and say whether they can', () => {
+  // The pencil was a button for a gesture that is both shorter and better
+  // aimed: the double tap opens the keyboard AND places the caret, where the
+  // button could only guess at one. Retiring it paid for the pair, and the
+  // pair is the one thing a voice buffer could not do, since the delete key
+  // takes words where a recognizer mishears phrases.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  assert.ok(!S.compEdit, 'no pencil left on the row');
+  assert.match(S.compUndo._icon.className, /ph-arrow-counter-clockwise/);
+  assert.match(S.compRedo._icon.className, /ph-arrow-clockwise/);
+
+  A._paintDraft();
+  assert.equal(S.compUndo.disabled, true, 'a fresh buffer has nothing to take back');
+  assert.equal(S.compRedo.disabled, true);
+
+  S.dict.insert('a phrase');
+  A._paintDraft();
+  assert.equal(S.compUndo.disabled, false, 'and a written one does');
+
+  S.compUndo.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.dict.text, '', 'the key undoes the mutation');
+  assert.equal(S.compRedo.disabled, false, 'and redo lights up behind it');
+  S.compRedo.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.dict.text, 'a phrase');
+
+  // The row grew a column, and the read surface has to span all five or the
+  // marks fall into a flexible cell and the fixed one shows as a grey stripe.
+  assert.match(S.compFrame.getAttribute('style'), /repeat\(5,minmax\(0,1fr\)\)\s*46px/);
+  assert.equal(S.compView.style.gridColumn, '1 / 6');
+  assert.equal(S.compPad.style.gridColumn, '6');
+  A.disable();
+});
+
 test('the keyboard mode has no controls of its own, and the keyboard is the way out', () => {
   // Three attempts went into making ONE of these buttons legible in edit mode:
   // the exit wore a microphone (read as recording), then an amber fill (read as
@@ -695,19 +752,16 @@ test('the keyboard mode has no controls of its own, and the keyboard is the way 
   loadKit('dictate.js', { window });
   A.enable({ doc, subject: { title: 'x', url: '' } });
   const S = A._state;
-  const row = () => [S.compMic, S.compEdit, S.compBack, S.compSave, S.compPad];
+  const row = () => [S.compMic, S.compUndo, S.compRedo, S.compBack, S.compSave, S.compPad];
 
   A._paintDraft();
-  assert.match(S.compEdit._icon.className, /ph-pencil-simple/, 'dictation mode: a pencil');
-  assert.ok(row().every(b => b.style.display !== 'none'), 'and a full control row');
+  assert.ok(row().every(b => b.style.display !== 'none'), 'dictation mode: a full control row');
 
-  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  openKeyboard(S);
   assert.equal(S.editing, true, 'the keyboard is open');
   assert.ok(row().every(b => b.style.display === 'none'),
-    'and every control is gone, the exit among them');
+    'and every control is gone, including anything that could have been the exit');
   assert.equal(S.compPunct.style.display, 'none', 'marks included');
-  assert.match(S.compEdit._icon.className, /ph-pencil-simple/,
-    'the pencil keeps one face, since it is no longer the way back');
 
   // The keyboard's own dismiss. It leaves the typed text behind, which is what
   // makes taking the blur safe: a slip costs the keyboard, never the words.
@@ -733,7 +787,7 @@ test('the keyboard does not grow the card: the editor takes the frame it found',
     'no viewport-sized editor left in the static style');
 
   S.compFrame.getBoundingClientRect = () => ({ height: 188 });
-  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  openKeyboard(S);
   assert.equal(S.compTa.style.height, '186px', 'the frame it found, less its own border');
   assert.match(S.compTa.getAttribute('style'), /box-sizing:\s*border-box/,
     'or a content-box host would add the padding on top of it');
@@ -744,7 +798,7 @@ test('the keyboard does not grow the card: the editor takes the frame it found',
   // A frame with no layout to report leaves the static floor standing rather
   // than pinning the box to nothing.
   S.compFrame.getBoundingClientRect = () => ({ height: 0 });
-  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  openKeyboard(S);
   assert.equal(S.compTa.style.height, '');
   A.disable();
 });
@@ -764,7 +818,7 @@ test('leaving the keyboard resumes dictation only if it interrupted it', () => {
   // Live when the keyboard opens: resumed on the way out.
   S.dict.start();
   assert.equal(S.dict.listening, true);
-  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  openKeyboard(S);
   assert.equal(S.dict.listening, false, 'the keyboard stops the engine');
   dismiss();
   assert.equal(S.dict.listening, true, 'and putting it away puts the engine back');
@@ -772,7 +826,7 @@ test('leaving the keyboard resumes dictation only if it interrupted it', () => {
   // Stopped when the keyboard opens: still stopped on the way out.
   S.dict.stop();
   assert.equal(S.dict.listening, false);
-  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  openKeyboard(S);
   dismiss();
   assert.equal(S.dict.listening, false,
     'and it does not switch the microphone on for a reader who had it off');
@@ -938,7 +992,7 @@ test('the cursor pad moves the caret and not the text', () => {
   // rest of the row. Dimming it in place was the earlier answer, on the rule
   // that a grid cell which disappears takes its column with it; hiding the
   // whole row leaves nothing beside it for a border to jog against.
-  S.compEdit.dispatchEvent(new window.Event('click', { bubbles: true }));
+  openKeyboard(S);
   assert.equal(S.compPad.style.display, 'none');
   S.compTa.dispatchEvent(new window.Event('blur', { bubbles: true }));
   assert.equal(S.compPad.style.display, 'flex', 'and comes back with the read surface');

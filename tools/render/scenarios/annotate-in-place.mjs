@@ -14,10 +14,23 @@
 export default async (page) => {
   await page.waitForSelector('#doc h1', { timeout: 15000 });
 
+  // The way into the keyboard since the pencil was retired: a double tap on
+  // the read surface. Aimed at the blank canvas under the words, so it opens
+  // with the caret at the end whatever the buffer holds.
+  const openKeyboard = () => page.evaluate(() => {
+    const S = window.Annotate._state;
+    const r = S.compView.getBoundingClientRect();
+    const x = Math.round(r.left + 20), y = Math.round(r.bottom - 6);
+    for (let i = 0; i < 2; i++) {
+      S.compView.dispatchEvent(new PointerEvent('pointerup', {
+        clientX: x, clientY: y, bubbles: true, pointerType: 'touch', isPrimary: true }));
+    }
+  });
+
   const save = async (note) => {
-    // The composer opens in dictation mode, so the pencil is the way in for a
-    // headless run: there is no recognizer here to speak to.
-    await page.click('button[data-annotate-ui][title^="Type instead"]');
+    // The composer opens in dictation mode, and there is no recognizer in a
+    // headless run to speak to, so the keyboard is the way in.
+    await openKeyboard();
     await page.fill('textarea[data-annotate-ui]', note);
     // Putting the keyboard away is what leaves edit mode, and the control row
     // (Save among it) comes back with the read surface. A phone does this with

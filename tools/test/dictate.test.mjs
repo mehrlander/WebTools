@@ -946,3 +946,75 @@ test('the arrow cluster is opt-out, for a surface that has a pad instead', () =>
   // buttons of its own.
   assert.equal(h.querySelectorAll('[data-edge]').length, 2, 'both handles still painted');
 });
+
+test('undo steps by mutation, and the caret rides with it', () => {
+  // The unit is the MUTATION, which is the unit a mistake arrives in: a
+  // recognizer mishears a whole phrase, and the delete key takes words one at
+  // a time. Snapshots are whole (text plus range) because the buffer is a
+  // note, not a document, and a diff would have to be inverted correctly under
+  // every mutation here to be worth its cleverness.
+  const d = engine();
+  assert.equal(d.canUndo, false, 'nothing written, nothing to take back');
+  assert.equal(d.canRedo, false);
+
+  d.start();
+  FakeSR.last.say([{ t: 'the first phrase', final: true }]);
+  FakeSR.last.say([{ t: 'and the second', final: true }]);
+  d.punct('.');
+  const full = d.text;
+  assert.match(full, /the first phrase\. and the second\./);
+  assert.equal(d.canUndo, true);
+
+  assert.equal(d.undo(), true, 'the mark');
+  assert.equal(d.canRedo, true);
+  assert.equal(d.undo(), true, 'the second phrase');
+  assert.equal(d.text, 'the first phrase.');
+  assert.equal(d.undo(), true, 'the first');
+  assert.equal(d.text, '');
+  assert.equal(d.undo(), false, 'and the stack is honest about being empty');
+
+  assert.equal(d.redo(), true);
+  assert.equal(d.text, 'the first phrase.');
+  d.redo(); d.redo();
+  assert.equal(d.text, full, 'redo walks back up the same steps');
+  assert.equal(d.canRedo, false);
+
+  // The caret rides along, since landing an undo without knowing where you are
+  // is half an undo.
+  d.caretAt(4);
+  d.punct(',');
+  assert.equal(d.text.slice(0, 5), 'the ,', 'the mark landed at the caret');
+  d.undo();
+  assert.equal(d.text, full);
+  assert.deepEqual(d.range, { start: 4, end: 4 }, 'and the caret came back with it');
+
+  // A new mutation forks the timeline: what was undone is gone, which is the
+  // one rule every undo stack shares.
+  d.insert('fresh');
+  assert.equal(d.canRedo, false);
+});
+
+test('a caret move is not an undo step, and a no-op assignment is not either', () => {
+  // Undo is about the words. A stack that also replayed every tap would spend
+  // its depth on gestures the reader can simply make again.
+  const d = engine();
+  d.insert('one two three');
+  const after = d.canUndo;
+  assert.equal(after, true);
+  d.caretAt(3);
+  d.select(0, 3);
+  d.clearRange();
+  d.undo();
+  assert.equal(d.text, '', 'one step back is the insert, not the three selections');
+
+  // The annotator hands the buffer back on the way out of the keyboard, and an
+  // untouched note comes back byte-identical: recording that would make the
+  // first undo do nothing visible, which reads as a broken key.
+  const e = engine();
+  e.text = 'kept';
+  e.text = 'kept';
+  e.text = 'kept';
+  assert.equal(e.undo(), true, 'the one assignment that changed something');
+  assert.equal(e.text, '');
+  assert.equal(e.canUndo, false, 'and the two that changed nothing recorded nothing');
+});

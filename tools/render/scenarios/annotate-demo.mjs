@@ -7,6 +7,19 @@
 export default async (page) => {
   await page.waitForSelector('#doc h1', { timeout: 15000 });
 
+  // The way into the keyboard since the pencil was retired: a double tap on
+  // the read surface. Aimed at the blank canvas under the words, so it opens
+  // with the caret at the end whatever the buffer holds.
+  const openKeyboard = () => page.evaluate(() => {
+    const S = window.Annotate._state;
+    const r = S.compView.getBoundingClientRect();
+    const x = Math.round(r.left + 20), y = Math.round(r.bottom - 6);
+    for (let i = 0; i < 2; i++) {
+      S.compView.dispatchEvent(new PointerEvent('pointerup', {
+        clientX: x, clientY: y, bubbles: true, pointerType: 'touch', isPrimary: true }));
+    }
+  });
+
   const annotate = async (needle, note) => {
     await page.evaluate((text) => {
       const walker = document.createTreeWalker(document.getElementById('doc'), NodeFilter.SHOW_TEXT);
@@ -30,9 +43,9 @@ export default async (page) => {
     await page.waitForSelector('[data-annotate-ui]:has-text("+ note")', { timeout: 5000 });
     await page.click('button[data-annotate-ui]:has-text("+ note")');
     // The composer opens in DICTATION mode, so the textarea is hidden until
-    // the pencil asks for it. This scenario had been filling a display:none
+    // the double tap asks for it. This scenario had been filling a display:none
     // box since the composer was rebuilt, and failed on every run.
-    await page.click('button[data-annotate-ui][title^="Type instead"]');
+    await openKeyboard();
     await page.fill('textarea[data-annotate-ui]', note);
     // The keyboard's dismiss is the way out of edit mode, and Save is on the
     // control row that comes back with the read surface.

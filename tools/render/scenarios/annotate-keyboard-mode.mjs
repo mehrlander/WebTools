@@ -41,10 +41,21 @@ export default async (page) => {
   await page.evaluate(() => window.__sr.say('This', true));
   await page.waitForTimeout(200);
 
-  await page.click('button[data-annotate-ui][title^="Type instead"]');
+  // The double tap on the read surface, which is the only way in now that the
+  // pencil is retired: two pointerups inside the double window, aimed at the
+  // canvas under the words.
+  await page.evaluate(() => {
+    const S = window.Annotate._state;
+    const r = S.compView.getBoundingClientRect();
+    const x = Math.round(r.left + 20), y = Math.round(r.bottom - 6);
+    for (let i = 0; i < 2; i++) {
+      S.compView.dispatchEvent(new PointerEvent('pointerup', {
+        clientX: x, clientY: y, bubbles: true, pointerType: 'touch', isPrimary: true }));
+    }
+  });
   await page.waitForTimeout(400);
 
-  const CONTROLS = ['[title^="Dictate"]', '[title^="Recording"]', '[title^="Type instead"]',
+  const CONTROLS = ['[title^="Dictate"]', '[title^="Recording"]', '[title^="Undo"]', '[title^="Redo"]',
                    '[title^="Delete the last word"]', '[title^="Save note"]', '[title^="Press and drag"]'];
   const seenCount = () => page.evaluate((sel) => sel
     .map(q => document.querySelector('[data-annotate-ui] button' + q))

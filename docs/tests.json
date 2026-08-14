@@ -14,7 +14,7 @@
       "path": "tools/test/annotate.test.mjs",
       "kind": "behavior",
       "protects": "A note's anchor survives the range round trip and keeps pointing at the same phrase across edits, duplicate text, and a reader in another window.",
-      "assertions": 39,
+      "assertions": 40,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [],
@@ -34,7 +34,7 @@
         "remove and clear keep the list and paint state consistent",
         "the annotator builds its engine from kits/dictate.js and paints what it hears",
         "without the dictate kit the annotator still works, minus the microphone",
-        "the pencil opens on the phrase that was on screen, not the one before it",
+        "the keyboard opens on the phrase that was on screen, not the one before it",
         "the composer paints through the kit and swaps its pad for a selection",
         "the card refuses the browser its own selection, from a stylesheet",
         "a tap on the blank canvas sends the caret to the end",
@@ -42,6 +42,7 @@
         "a single tap places the caret, on a draft with nothing live yet",
         "the caret is one caret: it survives the switch into the keyboard and back",
         "arming a pin ends a tap run",
+        "undo and redo stand where the pencil stood, and say whether they can",
         "the keyboard mode has no controls of its own, and the keyboard is the way out",
         "the keyboard does not grow the card: the editor takes the frame it found",
         "leaving the keyboard resumes dictation only if it interrupted it",
@@ -624,7 +625,7 @@
       "path": "tools/test/dictate.test.mjs",
       "kind": "behavior",
       "protects": "The voice buffer composes text the way the prototype established, independent of any caller, and reads the window it was handed rather than an ambient one.",
-      "assertions": 48,
+      "assertions": 50,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [],
@@ -676,7 +677,9 @@
         "a pin whose line is scrolled out of view is not painted, nor its arrows",
         "the caret pulses, which needs a stylesheet rather than a style attribute",
         "endCaret paints the insertion point a null range implies",
-        "the arrow cluster is opt-out, for a surface that has a pad instead"
+        "the arrow cluster is opt-out, for a surface that has a pad instead",
+        "undo steps by mutation, and the caret rides with it",
+        "a caret move is not an undo step, and a no-op assignment is not either"
       ]
     },
     {
