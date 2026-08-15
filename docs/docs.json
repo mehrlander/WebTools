@@ -62,7 +62,7 @@
       "subject": "the friction log: one line per snag, symptom then corrected move",
       "status": "living",
       "reach": "project",
-      "words": 6143,
+      "words": 6273,
       "maintenance": "authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
     },
     {
@@ -190,7 +190,7 @@
       "subject": "what the sandbox can run and reach",
       "status": "measured",
       "reach": "project",
-      "words": 5421,
+      "words": 5602,
       "maintenance": "authored; per-claim verification dates, edited in place and re-dated, probes preferred over assertions"
     },
     {

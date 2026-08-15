@@ -496,10 +496,28 @@ nothing. Its per-server log resolves it: `mcp-logs-<id>/` under
 name (`tool_name=mcp__mehrlander__update_pull_request`). One grep, and it is
 worth making the first triage step rather than the last.
 
-**The rules.** On `-32003`, call the built-in equivalent rather than whatever
-discovery returned first: reload it explicitly with ToolSearch
-(`select:mcp__github__<tool>`) instead of reissuing whatever is already in hand,
-since discovery is what routed you wrong in the first place. Do not re-approve
+**`-32003` is not the only symptom** *(added 2026-08-15, same connector id)*. The
+connector can also answer a plain **`403 Resource not accessible by
+integration`**, GitHub's own wording for an app missing a permission, which reads
+as a settled fact rather than as a routing question. `create_pull_request` on
+`mcp__8d0009e2-…__` returned it for three repositories in a row; the identical
+call on `mcp__github__create_pull_request` opened all three. Reads on the
+connector were unaffected (`list_pull_requests` and `pull_request_read` both
+worked), so the asymmetry looked exactly like `pull_requests: read` without
+`write`, which is the wrong diagnosis it invites.
+
+What sealed it was a second probe that appeared to confirm it: a direct `curl` to
+`api.github.com` with `GITHUB_TOKEN` also returned 403. That is the **agent
+proxy's** refusal, documented under "Reading a PR body back" above, and it says
+nothing about any installation's permissions. Two independent-looking 403s
+agreed and neither was about scope. So: read that curl result as "the API is
+unreachable from the shell," never as a permission finding, and treat **any**
+unexpected refusal on a UUID server as a routing candidate first.
+
+**The rules.** On `-32003` or an unexplained 403, call the built-in equivalent
+rather than whatever discovery returned first: reload it explicitly with
+ToolSearch (`select:mcp__github__<tool>`) instead of reissuing whatever is
+already in hand, since discovery is what routed you wrong in the first place. Do not re-approve
 on the failing server; approving does not clear the already-errored call, which
 is what makes the approval flow itself look broken. A capability that exists
 *only* on a connector has no in-session workaround, which for `add_repo` means
