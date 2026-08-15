@@ -2301,10 +2301,34 @@ which is the only place the two halves meet: jsdom holds the publish
 separately. `SHOT=menu` and `SHOT=card` point the same scenario at the picker
 and at the slide.
 
-One step of the original three is still open: `__tossNavigate` from the deck,
-so picking a ref in the bar above re-renders the slide instead of navigating
-away. Until it lands, the ref bar retargets and the compare bar is the half
-that acts in place.
+### And the ref bar acts in place too
+
+The bar above it still went to the renderer: outside a toss it navigates to
+`toss-render`, inside one it re-addresses through `__tossNavigate`. Over a deck
+both are wrong. The reader is thirty files into a changeset, and answering
+"show me this at main" by leaving for a single-file renderer throws away the
+list, their place in it, and the way back.
+
+A deck can do better, because it already owns the slide: change the ref,
+rebuild the two or three slides that are mounted, and the reader has not moved.
+So the deck publishes `__deckNavigate({repo, ref, path})` on the windows it
+announces to, borrowed and returned with the subject, and `goTarget` tries it
+before it navigates. **The handle's answer is authoritative:** false means the
+deck genuinely cannot show that file (another repo, or a path not in this
+changeset), and then it is a real navigation after all. That is what keeps the
+path picker working, which reaches `goTarget` by the same route.
+
+Moving the ref voids the same class of fact the compare bar's move does, one
+step further out: `patch`, `status`, `additions`, `deletions` and
+`previousPath` are all things the compare said about **the branch**, so a slide
+rebuilt at another ref is passed none of them and derives what it needs from
+the two fetches. The crumb changes too, and it has to: its whole job is to say
+where the reader is, so the ref takes the head slot from the parent deck's
+title, and a caller-supplied context that was itself naming the ref gives way
+rather than leaving both refs in one line saying neither is current.
+
+That closes the three steps this section has been tracking since the deck
+first announced.
 
 ### Drop a file on a branch
 

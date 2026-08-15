@@ -581,3 +581,48 @@ test('a file is not offered as its own comparison', async () => {
   assert.equal(d.compareTargets.map(b => b.name).join(','), 'claude/b',
     'main is what this page is rendered at, and against itself there is nothing to show');
 });
+
+
+// ── the deck is re-addressed, not navigated away from ───────────────────────
+//
+// The ref bar's whole trip is "go to the renderer at this ref", which over a
+// deck slide would leave the changeset the reader is in. kits/file-deck.js
+// publishes __deckNavigate; this is the fab's half of that contract.
+
+test('a ref pick over a deck slide is handed to the deck, not to the address bar', async () => {
+  window.__tossSubject = { repo: 'mehrlander/web-tools', ref: 'claude/b', path: 'docs/one.md',
+                           route: 'deck', base: 'abc123', baseName: 'main' };
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/show-repo/show-repo.html"');
+  const d = Alpine.$data(el);
+  const asked = [], went = [];
+  d._go = (u) => went.push(u);
+  window.__deckNavigate = (spec) => { asked.push(spec); return spec.path === 'docs/one.md'; };
+  try {
+    d.goTarget({ url: 'https://example.test/x', addr: 'mehrlander/web-tools@main:docs/one.md' });
+    assert.equal(asked.length, 1);
+    assert.equal(asked[0].ref, 'main', 'the address is split into the three pieces the deck needs');
+    assert.equal(asked[0].path, 'docs/one.md');
+    assert.equal(went.length, 0, 'and nothing navigated');
+
+    // A file the deck does not hold is a real navigation after all, which is
+    // what the handle's false answer is for.
+    d.goTarget({ url: 'https://example.test/y', addr: 'mehrlander/web-tools@main:docs/other.md' });
+    assert.equal(went.length, 1, 'the deck declined, so the trip happens');
+  } finally {
+    delete window.__deckNavigate;
+    window.__tossSubject = null;
+    window.dispatchEvent(new window.CustomEvent('toss-subject'));
+  }
+});
+
+test('the address grammar splits three ways, and refuses what is not one', async () => {
+  const d = Alpine.$data(doc.getElementById('f'));
+  const a = d._addrParts('mehrlander/web-tools@claude/b:pages/show-repo/show-repo.html');
+  assert.equal(a.repo, 'mehrlander/web-tools');
+  assert.equal(a.ref, 'claude/b', 'a slashed ref is the normal case here');
+  assert.equal(a.path, 'pages/show-repo/show-repo.html');
+  assert.equal(d._addrParts('mehrlander/web-tools:README.md').ref, '',
+    'no @ref means the default branch, which is a real answer');
+  assert.equal(d._addrParts('nonsense'), null);
+  assert.equal(d._addrParts(''), null);
+});

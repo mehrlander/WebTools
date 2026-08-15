@@ -1279,7 +1279,7 @@
       "path": "tools/test/fab-toss.test.mjs",
       "kind": "component",
       "protects": "The fab keeps shell identity when mounted inside a toss.",
-      "assertions": 23,
+      "assertions": 25,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
@@ -1308,14 +1308,16 @@
         "the compare bar exists only for a subject that announced a base",
         "picking, and turning it off, publish a pair the file surface can act on",
         "the comparison survives a swipe and not a change of branch",
-        "a file is not offered as its own comparison"
+        "a file is not offered as its own comparison",
+        "a ref pick over a deck slide is handed to the deck, not to the address bar",
+        "the address grammar splits three ways, and refuses what is not one"
       ]
     },
     {
       "path": "tools/test/file-deck.test.mjs",
       "kind": "behavior",
       "protects": "The contract between the Files pane and the file deck: the deck pages what the pane is showing, its header names the file the reader is on rather than the one they opened at, and a card is handed its options by reference rather than through an x-data expression.",
-      "assertions": 15,
+      "assertions": 18,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -1334,7 +1336,10 @@
         "a deck opened over a toss puts the toss back, rather than clearing it",
         "announce: false leaves the sidebar where it was",
         "hosted in a toss, the deck announces to the shell as well",
-        "the header offers a door to the sidebar, and only where it announces"
+        "the header offers a door to the sidebar, and only where it announces",
+        "the deck answers a re-address in place, and stops speaking for the compare",
+        "a file the deck does not hold is a real navigation, and it says so",
+        "a deck that does not announce does not claim the handle either"
       ]
     },
     {

@@ -320,3 +320,58 @@ test('the header offers a door to the sidebar, and only where it announces', asy
     'a deck that does not retarget the sidebar must not offer to open it');
   quiet.close(); await tick(6);
 });
+
+
+// ── re-addressing, rather than being navigated away from ────────────────────
+//
+// The sidebar's ref bar renders a file at another ref by going TO the
+// renderer. Over a deck that is the wrong answer: the reader is thirty files
+// into a changeset, and leaving for a single-file renderer throws away the
+// list, their place in it, and the way back. The deck publishes a handle, the
+// fab tries it first, and a false answer is the deck saying it genuinely
+// cannot show that file.
+
+test('the deck answers a re-address in place, and stops speaking for the compare', async () => {
+  mounted.length = 0;
+  const d = drivable(window.fileDeck.open({ ...AT, files: FILES, subtitle: 'b' }));
+  await tick(4);
+  assert.equal(typeof window.__deckNavigate, 'function', 'the handle is published while it is open');
+  const first = mounted.find(m => m.opts && m.opts.path === FILES[0].path);
+  assert.equal(first.opts.ref, 'claude/some-branch');
+  assert.equal(first.opts.patch, '@@ a');
+
+  mounted.length = 0;
+  assert.equal(window.__deckNavigate({ repo: 'me/tools', ref: 'main', path: FILES[0].path }), true);
+  await tick(4);
+  const again = mounted.find(m => m.opts && m.opts.path === FILES[0].path);
+  assert.ok(again, 'the slide was rebuilt rather than the page navigated');
+  assert.equal(again.opts.ref, 'main', 'at the ref that was asked for');
+  // Everything the compare said is a fact about the BRANCH. Carrying it onto
+  // another ref would show a patch of changes that are not in the file.
+  assert.equal(again.opts.patch, '', 'the patch belonged to the branch');
+  assert.equal(again.opts.status, '');
+  assert.equal(again.opts.additions, null);
+  assert.equal(head(d).sub, 'main · b · lib/kits',
+    'and the crumb leads with where the reader is, which is no longer the branch');
+
+  d.close(); await tick(6);
+  assert.ok(!window.__deckNavigate, 'and the handle goes with it');
+});
+
+test('a file the deck does not hold is a real navigation, and it says so', async () => {
+  const d = window.fileDeck.open({ ...AT, files: FILES });
+  await tick(3);
+  assert.equal(window.__deckNavigate({ repo: 'me/tools', path: 'docs/elsewhere.md' }), false,
+    'not in this changeset');
+  assert.equal(window.__deckNavigate({ repo: 'other/repo', path: FILES[0].path }), false,
+    'nor is another repo the deck to show it');
+  d.close(); await tick(4);
+});
+
+test('a deck that does not announce does not claim the handle either', async () => {
+  const d = window.fileDeck.open({ ...AT, files: FILES, announce: false });
+  await tick(3);
+  assert.ok(!window.__deckNavigate,
+    'announce:false is a deck that should not retarget the sidebar, in either direction');
+  d.close(); await tick(4);
+});

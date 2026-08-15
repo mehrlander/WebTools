@@ -16,7 +16,9 @@
 //     of a pair the card no longer owns;
 //   - picking another branch in the drawer moves the card's base, drops the
 //     API patch (only ever true of the merge base) and refetches one side;
-//   - turning it off leaves the file alone on the strip.
+//   - turning it off leaves the file alone on the strip;
+//   - and picking a ref in the bar above re-renders the slide where it stands
+//     rather than leaving the deck for the single-file renderer.
 import openList from '/home/user/web-tools/tools/render/scenarios/estate-open.mjs';
 
 export default async function (page, ctx) {
@@ -109,7 +111,23 @@ export default async function (page, ctx) {
     await wait(900);
     const back = { strip: strip(), baseName: card().baseName };
 
-    return { announced, opened, barText, picked, off, back };
+    // And the other half of the bar: picking a ref re-renders the slide in
+    // place instead of navigating to the single-file renderer. The tell is
+    // that the deck is still open and still on the same file afterwards.
+    const href = location.href;
+    fab.renderAtRef('main');
+    await wait(1500);
+    const c = window.swipeDeck.stack.length ? card() : null;
+    const reref = {
+      stillOpen: window.swipeDeck.stack.length > 0,
+      navigated: location.href !== href,
+      ref: c && c.ref, path: c && c.path, patch: !!(c && c.patch),
+      // The TOP deck's crumb: the first .fixed.inset-0 is the branch deck
+      // underneath, which still says what it always said.
+      crumb: window.swipeDeck.top()?.el.querySelector('h1 + p')?.textContent || '',
+    };
+
+    return { announced, opened, barText, picked, off, back, reref };
   });
 
   console.log('\n── the sidebar owns the second ref ' + '─'.repeat(26));
@@ -119,6 +137,7 @@ export default async function (page, ctx) {
   console.log('   after picking a branch  : ' + JSON.stringify(out.picked));
   console.log('   after turning it off    : ' + JSON.stringify(out.off));
   console.log('   back to the merge base  : ' + JSON.stringify(out.back));
+  console.log('   after picking a ref     : ' + JSON.stringify(out.reref));
   console.log('─'.repeat(60) + '\n');
 
   // Where the shot is pointed. Default is the bar in place under the ref bar;
