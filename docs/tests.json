@@ -3373,7 +3373,7 @@
       "path": "tools/test/xlsx.test.mjs",
       "kind": "kit",
       "protects": "A workbook is read without losing shape or failing whole: a sparse row keeps its gap rather than compacting, shared strings resolve regardless of part order, and one malformed XML part is skipped rather than fatal.",
-      "assertions": 26,
+      "assertions": 33,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [],
@@ -3403,6 +3403,13 @@
         "readMashup: recovers the M source from inside the two containers",
         "readZip: a workbook carrying queries reports them under xl.powerQuery",
         "readZip: a workbook without queries leaves xl.powerQuery undefined",
+        "formatKind: classifies a code by what it makes a value mean",
+        "formatKind: literal text cannot be mistaken for a date token",
+        "serialToDate: the 1900 leap-year bug, on both sides of the phantom day",
+        "serialToDate: the 1904 epoch shifts everything by four years and a day",
+        "cellFormat: a cell style resolves through cellXfs to a code and a kind",
+        "sheetRows: formats are applied only when the workbook is passed",
+        "formatValue: a non-numeric value under a date format is left alone",
         "analyze: malformed XML in one part is skipped, not fatal"
       ]
     }

@@ -72,7 +72,22 @@ const SHEET2 = `<?xml version="1.0"?>
 const SHARED_STRINGS = `<?xml version="1.0"?>
 <sst xmlns="sst"><si><t>hello</t></si></sst>`;
 
-const STYLES = `<?xml version="1.0"?><styleSheet xmlns="s"><cellXfs count="4"/></styleSheet>`;
+// cellXfs index is a cell's `s`. Index 3 is the one SHEET2 uses. numFmtId 164
+// is custom and declared; 14 and 9 are built in and have no code written
+// anywhere in the file, which is the reason the kit has to carry a table.
+const STYLES = `<?xml version="1.0"?>
+<styleSheet xmlns="s">
+  <numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy\\-mm\\-dd"/></numFmts>
+  <cellXfs count="7">
+    <xf numFmtId="0"/>
+    <xf numFmtId="14"/>
+    <xf numFmtId="164"/>
+    <xf numFmtId="0"/>
+    <xf numFmtId="9"/>
+    <xf numFmtId="22"/>
+    <xf numFmtId="49"/>
+  </cellXfs>
+</styleSheet>`;
 
 // i is a ZERO-based workbook index, so i="0" is Calc, which is part sheet2.xml
 // and holds the only formula. Under the old file-number arithmetic this looked
@@ -338,6 +353,78 @@ test('readZip: a workbook without queries leaves xl.powerQuery undefined', async
   for (const [path, xml] of buildParts()) wb.file(path, xml);
   const { xl } = await xlsxKit.readZip(await wb.generateAsync({ type: 'uint8array' }));
   assert.equal(xl.powerQuery, undefined);
+});
+
+// ---- number formats -----------------------------------------------------
+
+test('formatKind: classifies a code by what it makes a value mean', () => {
+  const k = xlsxKit.formatKind;
+  assert.equal(k('General'), 'general');
+  assert.equal(k('@'), 'text');
+  assert.equal(k('yyyy-mm-dd'), 'date');
+  assert.equal(k('h:mm:ss'), 'time');
+  assert.equal(k('m/d/yy h:mm'), 'datetime');
+  assert.equal(k('0.00%'), 'percent');
+  assert.equal(k('[h]:mm:ss'), 'duration'); // elapsed, not a clock reading
+  assert.equal(k('#,##0.00'), 'number');
+  assert.equal(k('$#,##0'), 'currency');
+  assert.equal(k(null), 'general');
+});
+
+test('formatKind: literal text cannot be mistaken for a date token', () => {
+  // The d in "day" and the m in "min" are text, not format tokens.
+  assert.equal(xlsxKit.formatKind('"day "0'), 'number');
+  assert.equal(xlsxKit.formatKind('0" min"'), 'number');
+  // A bracketed colour is not evidence of anything either.
+  assert.equal(xlsxKit.formatKind('[Red]#,##0'), 'number');
+});
+
+test('serialToDate: the 1900 leap-year bug, on both sides of the phantom day', () => {
+  const iso = (d) => d.toISOString().slice(0, 10);
+  assert.equal(iso(xlsxKit.serialToDate(1)), '1900-01-01');   // before: corrected
+  assert.equal(iso(xlsxKit.serialToDate(59)), '1900-02-28');  // last corrected day
+  assert.equal(iso(xlsxKit.serialToDate(61)), '1900-03-01');  // after: linear
+  assert.equal(iso(xlsxKit.serialToDate(25569)), '1970-01-01'); // the JS epoch
+  assert.equal(iso(xlsxKit.serialToDate(45000)), '2023-03-15');
+});
+
+test('serialToDate: the 1904 epoch shifts everything by four years and a day', () => {
+  assert.equal(xlsxKit.serialToDate(0, true).toISOString().slice(0, 10), '1904-01-01');
+  assert.equal(xlsxKit.serialToDate(1, true).toISOString().slice(0, 10), '1904-01-02');
+});
+
+test('cellFormat: a cell style resolves through cellXfs to a code and a kind', () => {
+  const { xl } = xlsxKit.analyze(buildParts());
+  assert.equal(xlsxKit.cellFormat(xl, '2').code, 'yyyy\\-mm\\-dd'); // custom
+  assert.equal(xlsxKit.cellFormat(xl, '2').kind, 'date');
+  assert.equal(xlsxKit.cellFormat(xl, '1').code, 'mm-dd-yy');       // built in
+  assert.equal(xlsxKit.cellFormat(xl, '4').kind, 'percent');
+  assert.equal(xlsxKit.cellFormat(xl, '6').kind, 'text');
+  assert.equal(xlsxKit.cellFormat(xl, null), null);                 // unstyled
+});
+
+test('sheetRows: formats are applied only when the workbook is passed', () => {
+  const DATED = `<?xml version="1.0"?>
+<worksheet xmlns="ws"><sheetData><row r="1">
+  <c r="A1" s="1"><v>45000</v></c>
+  <c r="B1" s="4"><v>0.125</v></c>
+  <c r="C1" s="5"><v>45000.5</v></c>
+  <c r="D1"><v>45000</v></c>
+</row></sheetData></worksheet>`;
+  const parts = buildParts().map(([p, x]) => p === 'xl/worksheets/sheet1.xml' ? [p, DATED] : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  assert.deepEqual(xlsxKit.sheetRows(xl.sheets.sheet1), // raw, the old behaviour
+    [{ Row: 1, A: '45000', B: '0.125', C: '45000.5', D: '45000' }]);
+  assert.deepEqual(xlsxKit.sheetRows(xl.sheets.sheet1, xl),
+    [{ Row: 1, A: '2023-03-15', B: '12.5%', C: '2023-03-15 12:00:00', D: '45000' }]);
+  // D carries no style, so it stays a number even under formatting. That is
+  // the file's answer, not a fallback.
+});
+
+test('formatValue: a non-numeric value under a date format is left alone', () => {
+  const fmt = { kind: 'date', code: 'yyyy-mm-dd' };
+  assert.equal(xlsxKit.formatValue('not a number', fmt), 'not a number');
+  assert.equal(xlsxKit.formatValue('', fmt), '');
 });
 
 test('analyze: malformed XML in one part is skipped, not fatal', () => {
