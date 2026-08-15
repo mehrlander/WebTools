@@ -7,7 +7,19 @@ This hub holds behavior that applies regardless of whether anything is being sur
 - **[SURFACING.md](SURFACING.md)** — the surfacing system: the primitives that make session work visible in chat (no setup), plus the surfacing course (the guide-PR lifecycle, idle until you open a PR). This was the bulk of this file; it now lives on its own.
 - **[PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md)** — installation, the plugin, and the full catalog of what travels from the hub to any repo.
 
-**Prose style:** zero em dashes. Use colons, commas, semicolons, parentheses, or new sentences.
+## Prose style
+
+Zero em dashes. Use colons, commas, semicolons, parentheses, or new sentences.
+
+**Define a local term or drop it.** A word that means something particular in this estate needs its meaning written where the reader meets it. Undefined, it is decoration, and the reader cannot tell whether they missed something or the writer did. The test is a cold reader: someone opening the file with no session context, who should feel welcomed into the discussion rather than measured at the door. Three habits do most of the damage and no lint catches any of them:
+
+- Using the term as a count noun with a definite article, as in "the twelve registers" or "the second obligation-shaped one." That asserts a shared vocabulary the reader has no way to acquire, and it is the form the failure usually takes, because it reads as confident rather than as jargon.
+- Letting one word mean different things in the same document.
+- Reaching for a term whose near-homophone means something else nearby: register and registry, seam and stage.
+
+When challenged on a term, test the distinction against the data before defending it. An invented justification is worse than the word it rescues, since it adds a second undefined claim. Usually the plain word is also the stronger claim, because it commits to something a reader can check. Recorded 2026-08-15, after a session used "register" 23 times across a README and three tools to mean three different things, next to the estate's own `registry`, and then invented a distinction the data disproved.
+
+The estate's detectors are advisory and wired to nothing: [`tools/concept-lab/termlab.py`](https://github.com/mehrlander/web-tools/blob/main/tools/concept-lab/termlab.py) studies a corpus for terms that carry this risk, and [`flag_reply.py`](https://github.com/mehrlander/web-tools/blob/main/tools/concept-lab/flag_reply.py) reads a draft reply against that index. Its `ungrounded` flag names this failure exactly. Neither substitutes for reading your own draft as a stranger would.
 
 ## Scope and precedence
 
