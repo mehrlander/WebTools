@@ -3288,10 +3288,20 @@
       "assertion_names": null
     },
     {
+      "path": "tools/test/viewer-pdf.mjs",
+      "kind": "component",
+      "protects": "The viewer's pdf module: a repo PDF is fetched as bytes and rasterized (so a private repo works), it opens over a host's blanket defaultMode, the header states pages and real size, the pager repaints, the handoff carries the file's address, and pdf-lib is never pulled for a read.",
+      "assertions": null,
+      "method": "read",
+      "runner": "npm run test:viewer-pdf",
+      "boot_smoke": null,
+      "assertion_names": null
+    },
+    {
       "path": "tools/test/viewer.test.mjs",
       "kind": "component",
       "protects": "Mode resolution always lands somewhere: every form of the option falls back to raw when it cannot resolve, and a delimited parse pads short rows and names blank or duplicate headers so no column or record is dropped.",
-      "assertions": 17,
+      "assertions": 22,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -3312,7 +3322,12 @@
         "a short row pads rather than dropping the record",
         "tableRows passes a JSON array through, and names the shape it wanted",
         "no stray warnings or errors after the resolves",
-        "the markdown preview scrolls on its pane, not on its text column"
+        "the markdown preview scrolls on its pane, not on its text column",
+        "mimeFor answers for images and PDFs, and stays quiet otherwise",
+        "isPdf and isImage stay separate questions",
+        "a PDF offers the pdf mode, with raw still one tap away",
+        "the pdf mode is exclusive: it beats a host blanket default of raw",
+        "the pdf pane hides its bar and canvas until something is read"
       ]
     },
     {

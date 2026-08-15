@@ -33,6 +33,7 @@
     "test:toss-width": "node tools/test/toss-width.mjs",
     "test:toss-paste": "node tools/test/toss-paste.mjs",
     "test:viewer-image": "node tools/test/viewer-image.mjs",
+    "test:viewer-pdf": "node tools/test/viewer-pdf.mjs",
     "test:preview-height": "node tools/test/stage-preview-height.mjs",
     "test:shot-warnings": "node tools/test/shot-warnings.mjs",
     "test:data-view-links": "node tools/test/data-view-links.mjs",

@@ -180,3 +180,57 @@ test('the markdown preview scrolls on its pane, not on its text column', () => {
     assert.match(mod.render({ ext: 'html', content: '<p>x</p>' }), /^<iframe/);
   } finally { delete window.URL.createObjectURL; }
 });
+
+// ── the pdf mode ────────────────────────────────────────────────────────────
+//
+// Its `after` fetches bytes and pulls pdf.js from a CDN, neither of which
+// resolves under jsdom, so what is checked here is everything up to that: the
+// classifier, the mode gating, and the exclusivity that decides what a PDF
+// OPENS in. The render path itself is tools/test/viewer-pdf.mjs, in a browser.
+
+test('mimeFor answers for images and PDFs, and stays quiet otherwise', () => {
+  assert.equal(VR.mimeFor('pdf'), 'application/pdf');
+  assert.equal(VR.mimeFor('png'), 'image/png');
+  assert.equal(VR.mimeFor('svg'), 'image/svg+xml');
+  assert.equal(VR.mimeFor('md'), '', 'text is not carried as a data: URI');
+  assert.equal(VR.mimeFor(''), '');
+});
+
+test('isPdf and isImage stay separate questions', () => {
+  assert.ok(VR.isPdf('pdf'));
+  assert.ok(!VR.isImage('pdf'), 'a PDF must not reach the <img> path');
+  assert.ok(VR.isImage('png') && !VR.isPdf('png'));
+});
+
+test('a PDF offers the pdf mode, with raw still one tap away', () => {
+  data.file = 'budget.pdf';
+  data.content = '%PDF-1.4 ...';
+  const ids = data.availableModes.map(m => m.id);
+  assert.ok(ids.includes('pdf'), 'a .pdf should reach the pdf mode');
+  assert.ok(ids.includes('raw'), 'the escape hatch the mode strip promises');
+  assert.ok(!ids.includes('image'), 'and it is not an image');
+});
+
+test('the pdf mode is exclusive: it beats a host blanket default of raw', () => {
+  // show-repo's file view sets defaultMode 'raw', which is right for the only
+  // kind of file it used to have and wrong for a PDF. Before this mode existed
+  // that produced a pane of replacement characters, which is what `exclusive`
+  // is here to prevent, exactly as it does for images.
+  assert.equal(resolve('budget.pdf', '%PDF-1.4', 'raw'), 'pdf');
+  assert.equal(resolve('budget.pdf', '%PDF-1.4', { '*': 'raw' }), 'pdf');
+  assert.equal(resolve('budget.pdf', '%PDF-1.4', () => 'code'), 'pdf');
+});
+
+test('the pdf pane hides its bar and canvas until something is read', () => {
+  // The bar is revealed only when it has a pager or an address to carry, and
+  // the canvas only once a page is painted, so a failed fetch leaves the
+  // message visible rather than an empty frame that looks like a blank page.
+  const mod = VR.modules.find(m => m.id === 'pdf');
+  const doc = new window.DOMParser().parseFromString(mod.render(), 'text/html');
+  assert.match(doc.getElementById('viewer-pdf-bar').className, /hidden/);
+  assert.match(doc.getElementById('viewer-pdf-canvas').className, /hidden/);
+  assert.match(doc.getElementById('viewer-pdf-open').className, /hidden/,
+    'the inspect link stays hidden until there is an address behind it');
+  assert.ok(doc.getElementById('viewer-pdf-msg').textContent.trim().length,
+    'and the pane says what it is doing meanwhile');
+});

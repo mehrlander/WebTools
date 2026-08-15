@@ -70,7 +70,7 @@
       "subject": "the surfacing system: primitives plus the guide-PR course",
       "status": "living",
       "reach": "injected",
-      "words": 4289,
+      "words": 4384,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -358,7 +358,7 @@
       "subject": "how content moves, renders, and gets looked at: grammar, modes, routes, and the showing block",
       "status": "living",
       "reach": "project",
-      "words": 1421,
+      "words": 1491,
       "maintenance": "authored; the routes block is held to toss-render's inlined TOSS_ROUTES, and the showing block to its own shape, by routes-manifest.test.mjs"
     },
     {
@@ -390,7 +390,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 24275,
+      "words": 24396,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {

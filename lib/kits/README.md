@@ -679,6 +679,20 @@ the kit makes lives there, which is why the whole table-detection surface is
 testable under node against synthetic geometry. Only `open()` needs pdf.js,
 and only `doc` needs pdf-lib (both load lazily from jsDelivr).
 
+The two libraries load **separately**, and a caller that only reads should say
+so. `loadPdfjs()` is the reading half, `loadPdfLib()` the writing half, and
+`loadLibs()` still means both. `open()` takes the first, everything under `doc`
+takes the second, and nothing takes both. That matters to anyone rendering
+rather than editing: the viewer's `pdf` mode
+([`alpineComponents/viewer.js`](../alpineComponents/viewer.js)) draws a page
+with pdf.js alone, so it no longer pulls roughly a megabyte of editor library
+it never calls before the first pixel. `tools/test/viewer-pdf.mjs` asserts that
+request is never made, since the regression is invisible from the pixels.
+
+A viewer also does not want `open()`. It parses every page's text and operator
+list up front, which is exactly right for extraction and wrong for showing page
+1 of a 200-page submittal; go through `pdfjsLib` directly for that.
+
 ```js
 const d = await pdf.open('/report.pdf');   // url, File/Blob, or bytes
 const d = await pdf.pick();                // file picker, for console use
@@ -728,6 +742,15 @@ real defects. Version pinning is settled by running rather than by changelog:
 `npm run test:pdf-versions`. Tolerances, failure modes, the measured font-alignment numbers, the
 government-PDF pathologies, and the honest limits are in
 [`docs/pdf-structure.md`](../../docs/pdf-structure.md).
+
+**Two ways in, and the difference is the point.** The page reads a local file
+(picker or drop) and an **address**, `#gh=owner/repo[@ref]:path`, so a PDF
+anywhere in any repo is a link rather than a download-and-drag; it accepts
+`?src=` in the same grammar, which is what the `#pdf=` toss route feeds it. So
+`#data=<a pdf>` is the FIRST LOOK, the viewer's `pdf` mode drawing a page with
+a pager, and `#pdf=<the same file>` is the WORKBENCH, this page with its
+layers, trim and two table readings. One decision, spelled two ways, so the
+link says which one was meant. Both are in [`docs/routes.json`](../../docs/routes.json).
 
 ### xlsx.js
 
