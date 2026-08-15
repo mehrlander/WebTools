@@ -8,7 +8,10 @@
 // WHERE picks the view:
 //   recent   the sidebar's Recent entries, with one row's icon hovered (default)
 //   stage    the Stage view's staged rows, one hovered
-//   compare  the compare panel's per-file rows
+//
+// A third arm, the ref compare's per-file rows, went with the compare component
+// when the per-repo branch review was retired (2026-08-14). The jump-over it
+// exercised is the same one the other two arms cover.
 
 const RECENT = [
   { path: 'lib/kits/source-peek.js', age: '2h' },
@@ -22,16 +25,6 @@ const STAGE = [
   { repo: 'mehrlander/web-tools', ref: 'main', path: 'lib/kits/source-peek.js' },
   { repo: 'mehrlander/home', ref: '', path: 'docs/CONSTELLATION.md' },
 ];
-
-const COMPARE = {
-  status: 'ahead', ahead_by: 3, behind_by: 0,
-  commits: [{ sha: 'a'.repeat(40), commit: { message: 'Give the icon one meaning', author: { date: new Date(0).toISOString() } } }],
-  files: [
-    { filename: 'lib/kits/source-peek.js', status: 'added', additions: 260, deletions: 0 },
-    { filename: 'lib/alpineComponents/map.js', status: 'modified', additions: 41, deletions: 12 },
-    { filename: 'docs/old-notes.md', status: 'removed', additions: 0, deletions: 88 },
-  ],
-};
 
 export default async (page) => {
   await page.waitForFunction(() => window.__shell && window.Alpine, null, { timeout: 15000 });
@@ -50,31 +43,15 @@ export default async (page) => {
     return;
   }
 
-  // Both remaining views are inside a repo, so open one first. The sandbox's
-  // contents-API shim serves this repo from the working tree.
-  // goFiles leaves the estate context, which is what un-hides the sidebar's
-  // per-repo panels (estateCtx gates them).
+  // The Recent list is a per-repo panel, so open a repo first; the sandbox's
+  // contents-API shim serves this repo from the working tree. goSearch leaves
+  // the estate context, which is what un-hides the sidebar's per-repo panels
+  // (estateCtx gates them).
   await page.evaluate(async () => {
     await window.__shell.ensureBrowser('mehrlander/web-tools', '');
-    window.__shell.goFiles();
+    window.__shell.goSearch();
   });
   await page.waitForTimeout(1500);
-
-  if (where === 'compare') {
-    await page.evaluate((data) => {
-      window.__shell.view = 'branches';
-      window.__shell.branchesSeen = true;
-      const d = document.getElementById('compare').__compare;
-      d.open = true;   // the panel is collapsed until a reader opens it
-      d.base = 'main'; d.head = 'claude/github-icon-placement'; d.data = data;
-    }, COMPARE);
-    await page.waitForTimeout(600);
-    const icon = page.locator('#compare a[data-peek$="kits/source-peek.js"]').first();
-    await icon.scrollIntoViewIfNeeded();
-    await icon.hover();
-    await page.waitForTimeout(1600);
-    return;
-  }
 
   await page.evaluate((recent) => {
     window.__shell.drawer = true;

@@ -21,7 +21,7 @@ window.TOKEN = 'tkn';
 
 let CALLS = [];
 let ANSWER = {};
-let LEVEL = { dirs: [], files: [], truncated: false };
+let LEVEL = { dirs: [], files: [], truncated: false };   // files are { path, size }
 window.EstateSearch = {
   clip: (t) => String(t || ''),
   reset() { CALLS.push(['reset']); },
@@ -153,7 +153,7 @@ test('no query is a WALK: folders, then files, and a way back up', async () => {
   CALLS = [];
   LEVEL = {
     dirs: [{ name: 'kits', path: 'lib/kits', n: 9 }, { name: 'demos', path: 'lib/demos', n: 2 }],
-    files: ['lib/gh-api.js', 'lib/build.js'],
+    files: [{ path: 'lib/gh-api.js', size: 9001 }, { path: 'lib/build.js', size: 400 }],
     truncated: false,
   };
   data.mode = 'names'; data.q = ''; data.repo = 'me/tools'; data.ref = ''; data.path = 'lib';
@@ -177,6 +177,13 @@ test('no query is a WALK: folders, then files, and a way back up', async () => {
   assert.equal(data.hits[3].tint, 'text-info');
   assert.equal(data.hits[0].tint, undefined);
 
+  // A file's weight rides the same tree read, rounded the way the rest of the
+  // estate rounds bytes. A folder row carries a count instead, and the way out
+  // carries neither.
+  assert.deepEqual([...data.hits.slice(3).map(h => h.size)], ['8.8 KB', '400 B']);
+  assert.equal(data.hits[1].size, undefined);
+  assert.equal(data.hits[0].size, undefined);
+
   // A folder row descends rather than opening anything.
   const before = FETCHED.length;
   data.openHit(data.hits[1]);
@@ -197,13 +204,15 @@ test('no query is a WALK: folders, then files, and a way back up', async () => {
 
 test('typing turns the walk back into a recursive search of the same scope', async () => {
   CALLS = [];
-  ANSWER = { hits: [{ repo: 'me/tools', ref: '', path: 'lib/kits/deep/x.js' }], total: 1, truncated: false, errors: [] };
+  ANSWER = { hits: [{ repo: 'me/tools', ref: '', path: 'lib/kits/deep/x.js', size: 1536 }],
+             total: 1, truncated: false, errors: [] };
   data.mode = 'names'; data.repo = 'me/tools'; data.path = 'lib'; data.q = 'x';
   assert.equal(data.browsing, false);
   await data.run();
   assert.equal(CALLS.filter(c => c[0] === 'level').length, 0);
   assert.equal(CALLS.find(c => c[0] === 'names')[1].under, 'lib', 'the scope holds across the switch');
   assert.equal(data.hits[0].label, 'kits/deep/x.js', 'flat and relative: a match below the level is still one row');
+  assert.equal(data.hits[0].size, '1.5 KB', 'the size survives the switch: both lanes read the same tree');
   data.q = '';
 });
 
@@ -344,7 +353,7 @@ test('each run restamps the address; clear empties results, the reader and the s
 
 test('a later routing re-seeds the mounted view by event, scope and file included', async () => {
   CALLS = []; FETCHED = [];
-  LEVEL = { dirs: [], files: ['docs/x.md'], truncated: false };
+  LEVEL = { dirs: [], files: [{ path: 'docs/x.md', size: 120 }], truncated: false };
   window.document.dispatchEvent(new window.CustomEvent('web-tools:search-seed',
     { detail: { q: '', mode: 'names', repo: 'me/tools', path: 'docs', file: 'me/tools:docs/x.md' } }));
   await tick();
@@ -374,7 +383,7 @@ test('the reader opens a file in the mode its type deserves, and falls back on s
 
 test('a bare arrival lists the browsed repo rather than landing on nothing', async () => {
   CALLS = [];
-  LEVEL = { dirs: [], files: ['a.js'], truncated: false };
+  LEVEL = { dirs: [], files: [{ path: 'a.js', size: 12 }], truncated: false };
   shell.searchSeed = null;
   const store = Alpine.store('browser');
   store.repo = 'me/browsed'; store.ref = 'topic'; store.defaultRef = 'main';

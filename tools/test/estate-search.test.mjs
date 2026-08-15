@@ -12,7 +12,10 @@ import { makeWindow, startAlpine } from './bootstrap.mjs';
 const REGISTRY = 'me/registry';
 
 let FILES = {};    // registry "<path>" -> parsed JSON
-let TREES = {};    // "<repo>@<ref>" -> [blob paths]; absent -> the fetch throws
+// "<repo>@<ref>" -> blob entries, each a path or a { path, size }; absent ->
+// the fetch throws. The two forms exist because the trees API reports a blob's
+// size on the entry and most of these tests do not care what it is.
+let TREES = {};
 let SEARCH = null; // response served for /search/code
 let TREE_CALLS = [];
 
@@ -28,7 +31,12 @@ class FakeGH {
     if (tm) {
       const key = this.repo + '@' + decodeURIComponent(tm[1]);
       TREE_CALLS.push(key);
-      if (TREES[key]) return { tree: TREES[key].map(p => ({ type: 'blob', path: p })), truncated: false };
+      if (TREES[key]) return {
+        tree: TREES[key].map(e => (typeof e === 'string'
+          ? { type: 'blob', path: e }
+          : { type: 'blob', path: e.path, size: e.size })),
+        truncated: false,
+      };
       throw Object.assign(new Error('GitHub Error 404'), { status: 404 });
     }
     if (String(path).startsWith('/search/code') && SEARCH) return SEARCH;
@@ -109,21 +117,47 @@ test('level: one level of the tree, folders and files, off the same cache', asyn
   TREE_CALLS = [];
   const root = await ES.level({ repo: 'me/tools', ref: '', under: '', token: 'tkn' });
   assert.deepEqual([...root.dirs.map(d => d.name)], ['docs', 'lib']);
-  assert.deepEqual([...root.files], ['README.md']);
+  assert.deepEqual([...root.files.map(f => f.path)], ['README.md']);
   // A folder's count is the blobs BELOW it, which is what one recursive read
   // knows and what says whether it is worth opening.
   assert.equal(root.dirs.find(d => d.name === 'lib').n, 3);
 
   const lib = await ES.level({ repo: 'me/tools', ref: '', under: 'lib', token: 'tkn' });
   assert.deepEqual([...lib.dirs.map(d => d.path)], ['lib/kits']);
-  assert.deepEqual([...lib.files], ['lib/gh-api.js']);
+  assert.deepEqual([...lib.files.map(f => f.path)], ['lib/gh-api.js']);
 
   const kits = await ES.level({ repo: 'me/tools', ref: '', under: '/lib/kits/', token: 'tkn' });
   assert.deepEqual([...kits.dirs.map(d => d.name)], ['demos']);
-  assert.deepEqual([...kits.files], ['lib/kits/a.js']);
+  assert.deepEqual([...kits.files.map(f => f.path)], ['lib/kits/a.js']);
 
   // Four levels, one fetch: descending is free after the repo is read once,
   // which is the whole reason browsing and searching share a cache.
+  assert.deepEqual(TREE_CALLS, ['me/tools@HEAD']);
+});
+
+test('sizes ride the same tree read, so a listing and a match both carry them', async () => {
+  ES.reset();
+  TREES = { 'me/tools@HEAD': [
+    { path: 'README.md', size: 512 },
+    { path: 'lib/gh-api.js', size: 9001 },
+    'lib/no-size.js',                       // an entry the API answered without one
+  ] };
+  TREE_CALLS = [];
+
+  const t = await ES.tree('me/tools', '', 'tkn');
+  assert.equal(t.sizes['lib/gh-api.js'], 9001);
+  assert.equal(t.sizes['lib/no-size.js'], undefined);
+
+  // The browse lane: a file row carries its own size, a folder row does not.
+  const root = await ES.level({ repo: 'me/tools', ref: '', under: '', token: 'tkn' });
+  assert.deepEqual([...root.files.map(f => [f.path, f.size])], [['README.md', 512]]);
+  assert.equal('size' in root.dirs[0], false);
+  const lib = await ES.level({ repo: 'me/tools', ref: '', under: 'lib', token: 'tkn' });
+  assert.deepEqual([...lib.files.map(f => f.size)], [9001, undefined]);
+
+  // The search lane: same number, same cache, no second fetch for any of it.
+  const res = await ES.names({ q: 'gh-api', repos: [{ repo: 'me/tools', ref: '' }], token: 'tkn' });
+  assert.equal(res.hits[0].size, 9001);
   assert.deepEqual(TREE_CALLS, ['me/tools@HEAD']);
 });
 

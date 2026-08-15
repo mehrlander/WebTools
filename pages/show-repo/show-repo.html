@@ -1430,7 +1430,8 @@
          tab, which carries the same landed/stranded signal across every repo.
          `?view=files` and `?view=branches` alias onto those, so a shared link
          still lands. The ref compare went with the branch review, its only
-         caller here; the component keeps its mount on nav-repo.html. -->
+         caller anywhere; the component was deleted with nav-repo.html, its
+         last mount, a day later. -->
 
     <!-- Config: the open repo's .web-tools.json as a full view (a Settings form
          and a raw JSON tab), the roomy counterpart to the shared repo dialog's
@@ -1923,8 +1924,8 @@ function app(){ return {
   // web-tools page, not just this shell. One GET per repo@ref; 404 means no
   // config. Parsed as data, never executed, so probing any repo is safe. Reads
   // .web-tools.json, falling back to the legacy .show-repo.json during the
-  // rename's deprecation window. Consumers: landingKind() (landing), the sidebar
-  // Pinned block (pins), and the navigator's stage/transfer panel (stage).
+  // rename's deprecation window. Consumers: the sidebar's Landing and Pages
+  // rows (landing, pages), its Pinned block (pins), and the Stage view (stage).
   _configKey: '',
   async loadConfig(){
     const s = Alpine.store('browser');
