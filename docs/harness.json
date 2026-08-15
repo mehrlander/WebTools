@@ -241,7 +241,7 @@
     },
     {
       "path": "tools/build/snags-index.mjs",
-      "role": "",
+      "role": "generates the index at the top of docs/SNAGS.md and warns about likely repeats",
       "layer": "tools/build",
       "lines": 169,
       "invocation": "npm:snags-index",
@@ -481,7 +481,7 @@
     },
     {
       "path": "tools/render/scenarios/annotate-in-place.mjs",
-      "role": "",
+      "role": "annotate's three touch-only paths: an element picked by a plain tap, a selection noted from the card's bar, and the set read in place",
       "layer": "tools/render/scenarios",
       "lines": 95,
       "invocation": "driver",
@@ -651,7 +651,7 @@
     },
     {
       "path": "tools/render/scenarios/chats-paging.mjs",
-      "role": "",
+      "role": "the Chats pane's paging control: one earlier month loaded on demand, shot at the footer",
       "layer": "tools/render/scenarios",
       "lines": 20,
       "invocation": "driver",
@@ -661,7 +661,7 @@
     },
     {
       "path": "tools/render/scenarios/chats-pane.mjs",
-      "role": "",
+      "role": "the estate's Chats pane with the sibling-repo archive actually loaded",
       "layer": "tools/render/scenarios",
       "lines": 23,
       "invocation": "driver",
@@ -671,7 +671,7 @@
     },
     {
       "path": "tools/render/scenarios/chats-probe.mjs",
-      "role": "",
+      "role": "diagnostic: whether the Chats pane's failure state is a pending request or a pegged main thread, counted in animation frames",
       "layer": "tools/render/scenarios",
       "lines": 22,
       "invocation": "driver",
@@ -921,7 +921,7 @@
     },
     {
       "path": "tools/render/scenarios/fab-width-bar.mjs",
-      "role": "",
+      "role": "the FAB Render tab's width bar, shot on toss-render where the lever is live",
       "layer": "tools/render/scenarios",
       "lines": 30,
       "invocation": "driver",
@@ -1021,7 +1021,7 @@
     },
     {
       "path": "tools/render/scenarios/map-tests.mjs",
-      "role": "",
+      "role": "the Map view's Tests tab: the test census rendered live with assertion names expanded",
       "layer": "tools/render/scenarios",
       "lines": 63,
       "invocation": "driver",
