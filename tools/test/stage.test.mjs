@@ -280,6 +280,102 @@ test('pasted prose is held as a local text item', () => {
   assert.match(data.localItems[0].name, /^\d{4}-\d{2}-\d{2}-paste\.txt$/);
 });
 
+// ---- every flavor a paste carried ---------------------------------------
+// One copy out of a spreadsheet puts three things on the clipboard at once.
+// The handler used to read one and return, so which one you got depended on
+// where the caret was: the page took the image, a form field took the text,
+// and neither could reach the other. The fixture is a real PI 01304 range.
+
+const TSV = [
+  '\tJUL\tAUG\tSEPT',
+  'AA\tSalaries\t $186,927 \t $186,927 ',
+  'BA\tSocial Security (OASI)\t $9,448 \t $9,448 ',
+].join('\n');
+const HTML = '<table><tr><td>Salaries</td><td>186,927</td></tr></table>';
+
+// A DataTransfer stand-in: jsdom's ClipboardEvent carries none, and what is
+// under test is the reading, not the platform's construction of it.
+const fakeCd = ({ types = [], data = {}, files = [] }) => ({
+  types, files,
+  getData: (t) => data[t] || '',
+});
+const fakeFile = (name, type, size) => ({ name, type, size, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer });
+
+const paste = async (cd, target) => {
+  data.offers = [];
+  data._onPaste({ clipboardData: cd, target: target || { tagName: 'DIV' }, preventDefault() {} });
+  await tick(2);
+};
+
+test('a spreadsheet paste stages one flavor and offers the rest', async () => {
+  reset();
+  await paste(fakeCd({
+    types: ['text/plain', 'text/html', 'Files'],
+    data: { 'text/plain': TSV, 'text/html': HTML },
+    files: [fakeFile('image.png', 'image/png', 4096)],
+  }));
+  assert.equal(data.localItems.length, 1, 'one flavor is staged, not three');
+  assert.match(data.localItems[0].name, /\.png$/, 'the image, which is what this handler always took');
+  assert.deepEqual(plain_(data.offers.map(o => data.flavorLabel(o)).sort()), ['html', 'tsv'],
+    'the two it could not take are offered, not discarded');
+});
+
+test('a text/plain grid is named .tsv, so it opens as a table', async () => {
+  reset();
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': TSV } }));
+  assert.match(data.localItems[0].name, /\.tsv$/);
+  assert.equal(data.offers.length, 0, 'one flavor offers nothing');
+});
+
+test('prose with a stray tab is not a grid', async () => {
+  reset();
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': 'a note\twith a tab\nand a second line' } }));
+  assert.match(data.localItems[0].name, /\.txt$/, 'the tab counts differ, so it is text');
+});
+
+test('staging an offered flavor moves it onto the stage and off the bar', async () => {
+  reset();
+  await paste(fakeCd({
+    types: ['text/plain', 'text/html'],
+    data: { 'text/plain': TSV, 'text/html': HTML },
+  }));
+  assert.equal(data.localItems.length, 1);
+  assert.equal(data.offers.length, 1);
+  await data.stageFlavor(data.offers[0]);
+  assert.equal(data.localItems.length, 2);
+  assert.equal(data.offers.length, 0);
+  const html = data.localItems.find(it => /\.html$/.test(it.name));
+  assert.equal(html.text, HTML, 'the html flavor is staged as html, not sniffed from its first characters');
+});
+
+test('a paste into a form field keeps its native paste, and offers the rest', async () => {
+  reset();
+  await paste(fakeCd({
+    types: ['text/plain', 'text/html', 'Files'],
+    data: { 'text/plain': TSV, 'text/html': HTML },
+    files: [fakeFile('image.png', 'image/png', 4096)],
+  }), { tagName: 'INPUT' });
+  assert.equal(data.localItems.length, 0, 'the field pastes its own text; nothing is stolen');
+  assert.deepEqual(plain_(data.offers.map(o => data.flavorLabel(o)).sort()), ['html', 'png'],
+    'what a text field cannot hold is offered instead of lost');
+});
+
+test('ref lines still stage as refs, through the flavor path', async () => {
+  reset();
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': 'me/a:lib/x.js\nme/b@dev:docs/y.md' } }));
+  assert.equal(data.refItems.length, 2);
+  assert.equal(data.localItems.length, 0);
+});
+
+test('an offer already on the stage under that name is not offered again', async () => {
+  reset();
+  const cd = fakeCd({ types: ['text/plain', 'text/html'], data: { 'text/plain': TSV, 'text/html': HTML } });
+  await paste(cd);
+  await data.stageFlavor(data.offers[0]);
+  await paste(cd);
+  assert.equal(data.offers.length, 0, 'the same paste twice is quiet, not cumulative');
+});
+
 // ---- a pasted image is a file, not an unviewable binary -----------------
 
 test('a local image previews from its own bytes, with no repo behind it', async () => {

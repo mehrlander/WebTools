@@ -1290,6 +1290,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/stage-paste-flavors.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 46,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/stage-rename-local.mjs",
       "role": "",
       "layer": "tools/render/scenarios",

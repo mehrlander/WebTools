@@ -1689,6 +1689,32 @@ business. The line is whether a field is still true a year later with no tool
 running. `stage.targets` stays in the repo manifest for the same reason: where
 a repo *accepts* files is a fact about that repo.
 
+**A paste carries several formats, and the stage reads all of them.** One copy
+out of a spreadsheet puts three things on the clipboard at once: the cells as
+tab-separated text, the same cells as an HTML table, and a picture of the range.
+The handler used to read one and return, so which one you got depended on where
+the caret was (the page took the image, a form field took the text) and the rest
+was gone. Neither behavior was the platform's: `clipboardData.types` had always
+listed all three.
+
+Now the flavor that was always taken is still taken, and the rest appear on an
+**offer bar** above the staged list, one tap each. A bar rather than a dialog,
+since the common case is "take the obvious one and carry on," and the bar is
+also the only place that says what a copy actually put on your clipboard. A form
+field keeps its native paste untouched and contributes what it cannot hold. Each
+flavor is named for what it is, which is load-bearing rather than cosmetic:
+tab-separated text is detected and named `.tsv` (at least two lines, every line
+carrying the same nonzero number of tabs, so prose with a stray tab is not a
+grid), and the preview opens `.tsv` as a **table**. The button path reads
+`io.pasteItems()`, so it sees the same set the keyboard path does; on iOS, where
+Safari fires no paste event unless an editable is focused, it is the only intake
+and used to be text-only.
+
+The preview opens a staged file through `ViewRegistry.READ_MODE`, the same
+policy the Files view uses: markdown rendered, JSON as a tree, delimited data as
+a table, everything else highlighted, raw past 300 KB. It was the Files view's
+private constant until 2026-08-15; the stage wanting it is what made it shared.
+
 Takes from:
 
 1. upload: the drop-zone (a file, or pasted text; pasted ref lines stage as refs),
