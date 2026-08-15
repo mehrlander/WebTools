@@ -771,13 +771,15 @@
   {
    "id": "sidebar-compare-view-lkjang",
    "title": "Give the sidebar a compare-against ref, and collapse the card's source tabs",
-   "status": "backlog",
+   "status": "done",
    "opened": "2026-08-14",
+   "closed": "2026-08-15",
+   "session": "claude/pr-file-swiping-jgj0kc",
    "size": "L",
    "file": "sidebar-compare-view-lkjang.md",
    "href": "tasks/sidebar-compare-view-lkjang.md",
-   "lastActivity": "2026-08-14",
-   "logEntries": 1
+   "lastActivity": "2026-08-15",
+   "logEntries": 2
   },
   {
    "id": "singleton-fab-toss-render-gticvb",
