@@ -702,6 +702,18 @@
    }
   },
   {
+   "id": "retire-shell-name-the-parts-r152bt",
+   "title": "Retire `shell`, and name the parts instead of the collection",
+   "status": "backlog",
+   "project": "show-repo",
+   "opened": "2026-08-15",
+   "size": "M",
+   "file": "retire-shell-name-the-parts-r152bt.md",
+   "href": "tasks/retire-shell-name-the-parts-r152bt.md",
+   "lastActivity": "2026-08-15",
+   "logEntries": 1
+  },
+  {
    "id": "session-link-from-commit-trailer-7a407c",
    "title": "Resolve a branch's session from the commit trailer, not the open PR body",
    "status": "done",
