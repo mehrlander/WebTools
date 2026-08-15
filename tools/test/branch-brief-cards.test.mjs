@@ -16,7 +16,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { makeWindow, tick, repoRoot } from './bootstrap.mjs';
+import { makeWindow, tick, repoRoot, captureAlpineErrors } from './bootstrap.mjs';
 
 const REPO = 'acme/widgets';
 
@@ -60,6 +60,7 @@ window.TOKEN = 'tkn';
 // repo.js is the collision: registering it is what makes `repo` a data
 // provider. file-review.js is the card the branch view mounts.
 const { default: Alpine } = await import('alpinejs/dist/module.esm.js');
+captureAlpineErrors(Alpine);
 const { default: collapse } = await import('@alpinejs/collapse/dist/module.esm.js');
 window.Alpine = Alpine;
 Alpine.plugin(collapse);

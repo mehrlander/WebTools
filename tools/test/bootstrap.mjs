@@ -183,6 +183,37 @@ export function makeWindow({ html = '<!doctype html><html><body></body></html>',
   return { dom, window, setMedia, problems };
 }
 
+// Stop Alpine turning an expression error into a process-level throw.
+//
+// Alpine's normalErrorHandler warns AND rethrows asynchronously
+// (`setTimeout(() => { throw error }, 0)`), so the console line is a copy and
+// the throw itself lands wherever the event loop happens to be by then. Under
+// `node --test` that is fatal and its victim is arbitrary: a test still
+// running takes the failure, and if none is running the runner reports
+// "generated asynchronous activity after the test ended" and fails the WHOLE
+// FILE with every subtest green.
+//
+// That is what made branch-brief-groups.test.mjs flaky at roughly one full
+// suite run in seven, here and on CI. Collapsing a registry group removes the
+// `x-if` holding its cards, and Alpine re-evaluates those cards' bindings once
+// against the scope it has already popped: `tab is not defined` and 239 of its
+// kin, all on a timer nobody awaits. Nothing decided pass or fail but whether
+// that timer beat the test to the exit, which is why it moved with machine
+// load and why the file failed with all its assertions passing.
+//
+// The errors are not silenced. The handler still warns, so the `problems`
+// array collects them exactly as before and any test can assert on them. Only
+// the rethrow goes, because a throw on an unawaited timer is not a test
+// result: it fails whichever test it lands on, which may be one that has
+// nothing to do with it.
+export function captureAlpineErrors(Alpine) {
+  Alpine.setErrorHandler((error, el, expression) => {
+    const msg = error?.message ?? String(error ?? 'No error message given.');
+    console.warn(`Alpine Expression Error: ${msg}\n\n`
+      + (expression ? `Expression: "${expression}"\n\n` : ''), el);
+  });
+}
+
 // Import the real Alpine, register it on the window, run each component file
 // in the window realm (they hook 'alpine:init'), start Alpine, and let the
 // first effects flush. Component paths are repo-relative.
@@ -192,6 +223,7 @@ export async function startAlpine(window, componentPaths = []) {
   // double-wrapped under Node's interop (and it news a MutationObserver at
   // import time, so makeWindow must already have run either way).
   const { default: Alpine } = await import('alpinejs/dist/module.esm.js');
+  captureAlpineErrors(Alpine);
   window.Alpine = Alpine;
   for (const p of componentPaths) {
     const src = readFileSync(path.join(repoRoot, p), 'utf8');
