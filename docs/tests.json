@@ -11,6 +11,16 @@
   },
   "tests": [
     {
+      "path": "tools/test/alpine-teardown.mjs",
+      "kind": "component",
+      "protects": "The detached-tree guard, in a real browser: a component removed between its mount and the initTree it deferred must not init while detached. Runs both arms, so it fails if the guard ever stops being load-bearing.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:alpine-teardown",
+      "boot_smoke": null,
+      "assertion_names": null
+    },
+    {
       "path": "tools/test/annotate.test.mjs",
       "kind": "behavior",
       "protects": "A note's anchor survives the range round trip and keeps pointing at the same phrase across edits, duplicate text, and a reader in another window.",
