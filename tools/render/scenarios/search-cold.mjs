@@ -29,8 +29,11 @@ export default async function (page) {
       'tools/build/build-lib.mjs', 'tools/test/search-view.test.mjs',
     ];
     // The real level and names calls, over a stubbed tree: the walk is the
-    // thing under test, so only the fetch is replaced.
-    window.EstateSearch.tree = async () => ({ paths: PATHS, truncated: false });
+    // thing under test, so only the fetch is replaced. Sizes come off the same
+    // entries in the real read, so the stub carries them too; they are the
+    // path's length scaled, which is arbitrary but stable across runs.
+    const sizes = Object.fromEntries(PATHS.map(p => [p, p.length * 137]));
+    window.EstateSearch.tree = async () => ({ paths: PATHS, sizes, truncated: false });
     window.__shell.goSearch();   // the header nav's tap: no options at all
     return true;
   });

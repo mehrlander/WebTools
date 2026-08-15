@@ -593,6 +593,85 @@ test('a keyboard writes into the draft, without asking for a textarea first', ()
   A.disable();
 });
 
+test('shift extends from a fixed anchor, and anything else drops it', () => {
+  // Which END of a selection is moving is a fact about the gesture, not about
+  // the text, so the buffer holds {start, end} and the anchor lives in the
+  // card. Defaults read the buffer, so a selection made by drag or long press
+  // extends from its far end the first time shift is used on it.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state, d = S.dict;
+  A.notePage({ listen: false });
+  d.text = 'the quick brown fox';
+  d.caretAt(9);
+  const key = (k, shift) => {
+    const e = new window.Event('keydown', { bubbles: true, cancelable: true });
+    Object.assign(e, { key: k, shiftKey: !!shift });
+    doc.dispatchEvent(e);
+  };
+
+  key('ArrowRight', true);
+  key('ArrowRight', true);
+  assert.deepEqual(d.range, { start: 9, end: 11 }, 'the anchor holds while the focus moves');
+  key('ArrowLeft', true);
+  assert.deepEqual(d.range, { start: 9, end: 10 }, 'and comes back without swapping ends');
+  key('End', true);
+  assert.deepEqual(d.range, { start: 9, end: 19 });
+  key('Home', true);
+  assert.deepEqual(d.range, { start: 0, end: 9 },
+    'crossing the anchor is a selection on the other side of it, not an empty one');
+
+  // A plain movement ends the extension: the next shift starts a new anchor.
+  key('ArrowLeft');
+  assert.equal(d.hasSelection, false);
+  assert.equal(S.selAnchor, null, 'the anchor is dropped, not carried');
+  key('ArrowRight', true);
+  assert.deepEqual(d.range, { start: 0, end: 1 }, 'a fresh anchor where the caret was');
+
+  // So does typing. A browser sends the capital itself, so shift plus a letter
+  // arrives here as an ordinary character and must not read as a gesture.
+  key('Z', true);
+  assert.equal(d.text.includes('Z'), true, 'the capital was typed, not swallowed');
+  assert.equal(S.selAnchor, null, 'and it ended the extension');
+  A.disable();
+});
+
+test('the editor grows to the same ceiling the read surface has', () => {
+  // The floor is the card as it stands, so the switch moves nothing; the
+  // ceiling is the card the SAME text would make in dictation. Without it a
+  // typed note scrolled at whatever height the card happened to be when the
+  // keyboard opened while a dictated one ran on to the read surface's cap:
+  // one buffer, two behaviours. jsdom has no layout, so the two measurements
+  // are stubbed and what is asserted is the arithmetic over them.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  S.compFrame.getBoundingClientRect = () => ({ height: 188 });
+  S.compView.getBoundingClientRect = () => ({ height: 155 });
+
+  A._openEditor();
+  assert.equal(S.compTaBase, 186, 'the frame it found, less its own border');
+  assert.equal(S.compTaMax, 203, 'plus what the read surface had left before its cap');
+  assert.equal(S.compTa.style.height, '186px', 'and it opens at the floor');
+
+  // Content taller than the floor grows the box, to the ceiling and no further.
+  Object.defineProperty(S.compTa, 'scrollHeight', { value: 195, configurable: true });
+  S.compTa.dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert.equal(S.compTa.style.height, '195px');
+  Object.defineProperty(S.compTa, 'scrollHeight', { value: 400, configurable: true });
+  S.compTa.dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert.equal(S.compTa.style.height, '203px', 'capped where dictation would be');
+
+  // And back down: the box is measured from the floor each time rather than
+  // from its current height, or deleting text would leave it stretched.
+  Object.defineProperty(S.compTa, 'scrollHeight', { value: 80, configurable: true });
+  S.compTa.dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert.equal(S.compTa.style.height, '186px', 'no ratchet');
+  A.disable();
+});
+
 test('a mouse drag selects, and a touch drag still scrolls', () => {
   // The tap-to-arm pins exist because a FINGER dragging a handle covers the
   // words it is aiming at. A pointer does not, so asking a desktop reader to

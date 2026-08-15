@@ -24,7 +24,8 @@ export default async function (page) {
       async names({ repos }) {
         const paths = ['CLAUDE.md', 'README.md', 'docs/CONVENTIONS.md', 'docs/show-repo.md',
                        'lib/gh-api.js', 'lib/kits/estate-search.js'];
-        return { hits: paths.map(p => ({ repo: repos[0].repo, ref: repos[0].ref || '', path: p })),
+        return { hits: paths.map(p => ({ repo: repos[0].repo, ref: repos[0].ref || '',
+                                        path: p, size: p.length * 137 })),
                  total: paths.length, truncated: false, errors: [] };
       },
     };

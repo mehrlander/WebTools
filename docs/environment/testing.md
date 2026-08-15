@@ -83,7 +83,7 @@ repos, and `setup(gh, { quiet: true })` fills the picker in the background
 page). That drops the page into the repo-content category. Worked example:
 
 ```bash
-npm run shot -- pages/nav-repo.html --query "repo=mehrlander/web-tools&file=README.md"
+npm run shot -- pages/repo-atlas.html --query "repo=mehrlander/web-tools"
 ```
 
 ### Limits

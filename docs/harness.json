@@ -600,6 +600,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/branch-deck.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 131,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/branch-guide.mjs",
       "role": "the branch page showing a branch with its guide PR body rendered in place",
       "layer": "tools/render/scenarios",
@@ -610,20 +620,20 @@
       "tested": false
     },
     {
-      "path": "tools/render/scenarios/branch-takeover.mjs",
-      "role": "show-repo's branch-detail takeover with the embedded branch page fully rendered",
+      "path": "tools/render/scenarios/branch-panes.mjs",
+      "role": "",
       "layer": "tools/render/scenarios",
-      "lines": 86,
+      "lines": 103,
       "invocation": "driver",
       "emits": false,
       "named": false,
       "tested": false
     },
     {
-      "path": "tools/render/scenarios/branches-survey.mjs",
-      "role": "show-repo's Branches view with a populated survey",
+      "path": "tools/render/scenarios/branch-takeover.mjs",
+      "role": "show-repo's branch-detail takeover with the embedded branch page fully rendered",
       "layer": "tools/render/scenarios",
-      "lines": 111,
+      "lines": 86,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -933,7 +943,7 @@
       "path": "tools/render/scenarios/jumpover-coverage.mjs",
       "role": "the exact-file jump-overs rendered headlessly with seeded rows",
       "layer": "tools/render/scenarios",
-      "lines": 90,
+      "lines": 67,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -1150,6 +1160,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/repo-landing-row.mjs",
+      "role": "the per-repo sidebar for a repo declaring a `landing`: the Landing row beside Overview, which no real repo produces",
+      "layer": "tools/render/scenarios",
+      "lines": 56,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/routed-subject.mjs",
       "role": "the drawer over a routed subject, the file as the reported identity",
       "layer": "tools/render/scenarios",
@@ -1171,9 +1191,9 @@
     },
     {
       "path": "tools/render/scenarios/search-cold.mjs",
-      "role": "",
+      "role": "the Files view's cold open: a bare arrival scopes to the browsed repo and walks it",
       "layer": "tools/render/scenarios",
-      "lines": 47,
+      "lines": 50,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -1181,9 +1201,9 @@
     },
     {
       "path": "tools/render/scenarios/search-controls.mjs",
-      "role": "",
+      "role": "the Files view's scope controls, with the ref picker open",
       "layer": "tools/render/scenarios",
-      "lines": 71,
+      "lines": 72,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -1191,12 +1211,22 @@
     },
     {
       "path": "tools/render/scenarios/search-files.mjs",
-      "role": "",
+      "role": "the Files view a level into a folder, with a file from it open in the shared viewer",
       "layer": "tools/render/scenarios",
       "lines": 64,
       "invocation": "driver",
       "emits": false,
       "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/sidebar-compare.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 166,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
       "tested": false
     },
     {

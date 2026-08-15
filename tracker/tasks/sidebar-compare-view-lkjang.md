@@ -1,9 +1,11 @@
 ---
 id: sidebar-compare-view-lkjang
 title: Give the sidebar a compare-against ref, and collapse the card's source tabs
-status: backlog
+status: done
 size: L
 opened: 2026-08-14
+closed: 2026-08-15
+session: claude/pr-file-swiping-jgj0kc
 ---
 # Give the sidebar a compare-against ref, and collapse the card's source tabs
 
@@ -56,3 +58,4 @@ file's diff is computable only against the merge base.
 
 ## Progress log
 - 2026-08-14: Filed from the session that built the file deck (PR #411). Step 1 of the coupling shipped there; this is steps 2 and 3. Not started in that branch on purpose: it moves vocabulary the surfacing caption also uses, and the branch was already large.
+- 2026-08-15: Done on `claude/pr-file-swiping-jgj0kc`; lands via PR #411. All three scope items shipped. (1) The drawer's Render tab grew a compare bar under the ref bar: the announced merge base, any surveyed branch, or off. (2) A `read` host's strip is the file plus one Compare pane; Diff, Patch, New and Base are gone there, and the split/unified toggle stayed. (3) The deck publishes `__deckNavigate` and the fab tries it before navigating, so a ref pick rebuilds the slide in place. The open question about the words `New` and `Base` was answered by removal rather than renaming: neither appears on a reading surface, and a review list keeps both, so the surfacing caption's vocabulary is untouched. Two facts had to stop being carried when either ref moves: the API patch (only true of the merge base) and the compare's `status`/line counts/rename mapping.

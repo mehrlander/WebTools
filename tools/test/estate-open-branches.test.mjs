@@ -11,7 +11,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeWindow, startAlpine } from './bootstrap.mjs';
+import { makeWindow, startAlpine, deckGeometry } from './bootstrap.mjs';
 
 class FakeGH {
   constructor(conf = {}) { this.repo = conf.repo || ''; }
@@ -46,15 +46,26 @@ window.__shell = {
   menuStyle: (at) => at ? `left:${at.x}px;top:${at.y}px` : 'left:-9999px;top:-9999px',
 };
 
+deckGeometry(window);   // the takeover is a swipe-deck now; jsdom needs a track to scroll
+// mountDeck pulls the branch view's kit chain through gh.load on first use.
+// The kits themselves are loaded below by startAlpine, so the loader only has
+// to exist and resolve; without it the whole mount is caught and abandoned.
+window.gh = { load: async () => {} };
+
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
   'lib/kits/branch-survey.js',      // the lifespan display rules live here, shared
+  'lib/kits/swipe-deck.js',         // the takeover IS one
   // The shelf reads every surface through the shared envelope model, which
   // gh-boot loads ahead of the components for exactly this reason.
   'lib/kits/surface.js',
   'lib/alpineComponents/estate.js',
 ]);
+// A slide mounts the real branch view, which reads the network and has its own
+// suites. Here the deck's bookkeeping is the subject, so a slide is a name.
+Alpine.data('branchBrief', (opts) => ({ opts, init(){ this.$el.textContent = opts.branch; } }));
 const data = Alpine.$data(window.document.getElementById('es'));
+const tick = (n = 1) => new Promise(r => setTimeout(r, n * 10));
 
 // A cache entry: `branches` are survey rows, `prs` are open pull requests.
 const entry = (branches, prs, def = 'main') => ({
@@ -202,149 +213,108 @@ test('runBranchMenu builds the GitHub destinations', () => {
 // (the form GitHub's own UI emits); the filename lands in the repo's declared
 // inbox, else dump/, date-stamped.
 
-// ── The branch detail takeover ───────────────────────────────────────────
-// Tap a name, get the full-viewport detail with the list as its sequence.
-// The sequence is frozen at open (a cache refresh must not yank it), the
-// stepping clamps at the ends, and the iframe address carries a per-branch
-// query so stepping actually navigates (a fragment-only change would not).
+// ── The branch deck ─────────────────────────────────────────────────────
+// Tapping a branch name opens the list as a swipe-deck, one slide per row.
+// What the shell still owns is the sequence, the position, and the header;
+// the gesture is the platform's now, and 540 lines of hand-rolled drag and
+// iframe plumbing went with the change.
 
-test('tapping a row takes over: frozen sequence, position, clamped stepping', () => {
+const deckOf = () => data._deck;
+
+test('tapping a row takes over: the frozen list is the deck, opened at the row', async () => {
+  seed();
   const row = data.openBranches[1];
   data.openBranchDetail(row);
+  await tick(4);
   assert.equal(data.detail.i, 1);
-  assert.equal(data.detail.rows.length, 3);
+  assert.equal(data.detail.rows.length, 3, 'the list as tapped is the sequence');
   assert.equal(data.detailRow.name, row.name);
-  assert.equal(data.detailUrl,
-    '../branch.html?swipe=me%2Ftools%40feat%2Fb#gh=me/tools@feat/b');
-  assert.equal(data.detailReady, false, 'the facts card is the content until the page reports ready');
-  data.detailReady = true;                 // as if the embedded brief reported in
-  data.detailStep(1);
-  assert.equal(data.detailRow.name, 'fresh');
-  assert.equal(data.detailReady, false, 'stepping re-arms the instant layer');
-  data.detailStep(1);
-  assert.equal(data.detail.i, 2, 'clamped at the end, no wrap');
-  data.detailStep(-1); data.detailStep(-1); data.detailStep(-1);
-  assert.equal(data.detail.i, 0, 'clamped at the start');
+  assert.ok(deckOf(), 'and it is a deck, not markup');
+  assert.equal(deckOf().deck.count, 3, 'one slide per row');
   data.closeDetail();
-  assert.equal(data.detail, null);
-  assert.equal(data.detailUrl, '', 'no address when nothing is open');
+  await tick(4);
 });
 
-// The takeover's swipe lives in estate-branch-swipe.test.mjs: it now follows
-// the finger, so the gesture needs a move phase and a surface to translate,
-// and a start-then-end pair (all this file's DOM could offer) no longer
-// describes it.
+test('the header names the branch, its repo and an open PR', async () => {
+  seed();
+  data.openBranchDetail(data.openBranches[0]);      // feat/a, PR #12 draft
+  await tick(4);
+  const el = deckOf().el;
+  // The last segment, the way the file deck titles a file by its filename: a
+  // header at phone width has room for one of the two, and the slug is the
+  // half that distinguishes. The full name is on the slide's own line.
+  assert.equal(el.querySelector('h1').textContent, 'a', 'the distinguishing segment is the title');
+  assert.match(el.querySelector('h1 + p').textContent, /tools/);
+  assert.match(el.querySelector('h1 + p').textContent, /#12/);
+  const link = el.querySelector('a[href*="/pull/12"]');
+  assert.ok(link, 'the PR is the header exit');
+  data.closeDetail();
+  await tick(4);
+});
 
-test('keyboard: arrows step, Escape closes, all dead when nothing is open', () => {
+test('a merged PR reaches the header from the slide, since the cache never saw it', async () => {
+  seed();
+  const row = data.openBranches.find(r => r.name === 'feat/b');   // no PR in openPRs
+  data.openBranchDetail(row);
+  await tick(4);
+  assert.equal(data.detailPrNumber, 0, 'the crawl asks for open pull requests only');
+  assert.ok(!deckOf().el.querySelector('a[href*="/pull/"]'), 'so the header has no exit yet');
+
+  data.onSlideMeta(data.detail.i,
+    { repo: row.repo, branch: row.name, pr: 409, prState: 'merged' });
+  assert.match(deckOf().el.querySelector('h1 + p').textContent, /#409/);
+  assert.match(deckOf().el.querySelector('h1 + p').textContent, /merged/);
+  assert.ok(deckOf().el.querySelector('a[href*="/pull/409"]'));
+  data.closeDetail();
+  await tick(4);
+});
+
+test('a slide that settles while the reader is elsewhere is ignored', async () => {
+  seed();
   data.openBranchDetail(data.openBranches[0]);
-  data.detailKeys({ key: 'ArrowRight' });
-  assert.equal(data.detail.i, 1);
-  data.detailKeys({ key: 'ArrowLeft' });
-  assert.equal(data.detail.i, 0);
-  data.detailKeys({ key: 'Escape', preventDefault: () => {} });
-  assert.equal(data.detail, null);
-  data.detailKeys({ key: 'ArrowRight' });   // must not throw with no detail
-  assert.equal(data.detail, null);
-});
-
-test('dropFileUrl: the new-file form on the branch, filename in the inbox', () => {
-  const row = data.openBranches[0];                       // me/tools feat/a
-  window.__shell.estateConfigs = { 'me/tools': { inbox: 'inbox/' } };
-  const u = data.dropFileUrl(row);
-  assert.match(u, /^https:\/\/github\.com\/me\/tools\/new\/feat\/a\?filename=/);
-  const name = decodeURIComponent(u.split('filename=')[1]);
-  assert.match(name, /^inbox\/\d{4}-\d{2}-\d{2}-\d{4}-drop\.md$/,
-    'the declared inbox, trailing slash trimmed, date-stamped');
-  window.__shell.estateConfigs = {};
-  assert.match(decodeURIComponent(data.dropFileUrl(row).split('filename=')[1]),
-    /^dump\//, 'no declared inbox falls back to dump/');
-  const items = (data.menuBranch = row, data.branchMenuItems);
-  assert.ok(items.some(i => i.key === 'dropFile' && i.external),
-    'the menu carries the row, marked as leaving the app');
-});
-
-// ── The scope axis ───────────────────────────────────────────────────────
-// The list used to hard-filter to open work, so landed branches had no route
-// anywhere in the estate. These hold the two halves apart: allBranchRows is
-// everything the cache knows, openBranches is what the chosen scope shows.
-
-test('allBranchRows: everything the cache knows, landed included', () => {
-  assert.deepEqual(names(data.allBranchRows),
-    ['me/tools/feat/a', 'me/tools/feat/b', 'me/home/fresh',
-     'me/tools/old/landed', 'me/quiet/done']);
-});
-
-test('the default scope is Recent and it leads the row', () => {
-  // Recent leads and opens because the pane's question is "what am I working
-  // on", and it is the only scope the window control acts on: landing on any
-  // other scope opened the pane with its one parameter invisible.
-  assert.equal(DEFAULT_SCOPE, 'active');
-  assert.equal(data.BRANCH_SCOPES[0].key, 'active');
-});
-
-test('Open still selects the old list exactly, at any age', () => {
-  data.branchScope = 'open';
-  assert.deepEqual(names(data.openBranches), names(data.allBranchRows.filter(r => r.pr || r.group === 'stranded')));
-});
-
-test('the window is disjoint from stranded and landed, so it cannot narrow them', () => {
-  // Both require daysAgo > 14 at classify time and the window tops out at 7,
-  // which is why the control renders under Recent alone: applied to either of
-  // these it would empty the list at every setting rather than narrow it.
-  for (const r of data.allBranchRows.filter(r => r.group === 'stranded' || r.group === 'landed')) {
-    assert.ok(!data.inScope(r, 'active'), r.name + ' must not be reachable as Recent');
-  }
-});
-
-test('each scope shows its own group', () => {
-  data.branchScope = 'landed';
-  assert.deepEqual(names(data.openBranches), ['me/tools/old/landed', 'me/quiet/done']);
-  data.branchScope = 'stranded';
-  assert.deepEqual(names(data.openBranches), ['me/tools/feat/a', 'me/tools/feat/b']);
-  data.branchScope = 'active';
-  // The one row the survey never reached: an open PR, so the crawl could not
-  // have classified it, and 'active' is the honest default.
-  assert.deepEqual(names(data.openBranches), ['me/home/fresh']);
-  data.branchScope = 'all';
-  assert.equal(data.openBranches.length, 5);
-  data.branchScope = 'open';
-});
-
-test('branchScopes: counts off the FULL list, not the current scope', () => {
-  data.branchScope = 'landed';           // counting must not follow the selection
-  const by = Object.fromEntries(data.branchScopes.map(s => [s.key, s.count]));
-  assert.deepEqual(by, { open: 3, active: 1, stranded: 2, landed: 2, all: 5 });
-  data.branchScope = 'open';
-});
-
-test('the repo chips follow the scope', () => {
-  data.branchScope = 'landed';
-  // Both landed rows are alone in their repo, so the busiest-first sort falls
-  // through to the name tiebreak.
-  assert.deepEqual(plain_(data.openRepos.map(r => [r.short, r.count])), [['quiet', 1], ['tools', 1]]);
-  data.branchScope = 'open';
-});
-
-test('a row carries the survey evidence, and an unsurveyed one carries zeros', () => {
-  const landed = data.allBranchRows.find(r => r.name === 'old/landed');
-  assert.equal(landed.group, 'landed');
-  assert.equal(landed.nUnique, 0);        // this fixture row was stored without counts
-  const fresh = data.allBranchRows.find(r => r.name === 'fresh');
-  assert.deepEqual(plain_([fresh.nUnique, fresh.nLanded, fresh.nMissing, fresh.noBase]), [0, 0, 0, false]);
-});
-
-test('the finder\'s open-branch-detail event opens the takeover like a deep link', () => {
-  window.__shell.goActivity = () => { window.__shell._activated = true; };
-  // A row the list carries opens seated in the full sequence…
-  window.document.dispatchEvent(new window.CustomEvent('web-tools:open-branch-detail',
-    { detail: { repo: 'me/home', name: 'fresh' } }));
-  assert.equal(window.__shell._activated, true);
-  assert.equal(data.detailRow?.name, 'fresh');
-  assert.ok(data.detail.rows.length > 1);
-  // …and one the cache does not know still opens, as a list of one.
-  window.document.dispatchEvent(new window.CustomEvent('web-tools:open-branch-detail',
-    { detail: { repo: 'me/tools', name: 'just-pushed' } }));
-  assert.equal(data.detailRow?.name, 'just-pushed');
-  assert.equal(data.detail.rows.length, 1);
+  await tick(4);
+  const before = deckOf().el.querySelector('h1 + p').textContent;
+  data.onSlideMeta(2, { repo: 'me/tools', branch: 'feat/b', pr: 999, prState: 'merged' });
+  assert.equal(deckOf().el.querySelector('h1 + p').textContent, before,
+    'a neighbour finishing its read does not rewrite the header of the slide in view');
   data.closeDetail();
+  await tick(4);
+});
+
+test('the header follows the reader from slide to slide', async () => {
+  seed();
+  data.openBranchDetail(data.openBranches[0]);
+  await tick(4);
+  data.onDeckSlide(2);                              // me/home/fresh, PR #7
+  assert.equal(deckOf().el.querySelector('h1').textContent, 'fresh',
+    'a branch with no slash is its own last segment');
+  assert.match(deckOf().el.querySelector('h1 + p').textContent, /home/);
+  assert.match(deckOf().el.querySelector('h1 + p').textContent, /#7/);
+  data.closeDetail();
+  await tick(4);
+});
+
+test('opening while one is open replaces it rather than stacking a second', async () => {
+  seed();
+  data.openBranchDetail(data.openBranches[0]);
+  await tick(4);
+  const first = data._deck;
+  data.openBranchDetail(data.openBranches[1]);
+  await tick(6);
+  assert.notEqual(data._deck, first, 'a new deck');
+  assert.equal(window.swipeDeck.stack.length, 1,
+    'and only one: two branch decks is the same level twice, not a level down');
+  assert.equal(data.detailRow.name, 'feat/b');
+  data.closeDetail();
+  await tick(6);
+});
+
+test('closing clears the shell at once, whatever the deck does next', async () => {
+  seed();
+  data.openBranchDetail(data.openBranches[0]);
+  await tick(4);
+  data.closeDetail();
+  assert.equal(data.detail, null, 'synchronously, so a caller can open something else');
+  assert.equal(data._deck, null);
+  await tick(6);
 });
