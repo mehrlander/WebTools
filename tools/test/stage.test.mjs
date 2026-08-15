@@ -280,6 +280,40 @@ test('pasted prose is held as a local text item', () => {
   assert.match(data.localItems[0].name, /^\d{4}-\d{2}-\d{2}-paste\.txt$/);
 });
 
+// ---- a pasted image is a file, not an unviewable binary -----------------
+
+test('a local image previews from its own bytes, with no repo behind it', async () => {
+  reset();
+  // The 1x1 PNG, as the bytes a paste or a drop hands over.
+  const png = Uint8Array.from(atob(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+  ), c => c.charCodeAt(0));
+  store.stage = [{ local: true, id: 210, name: 'image.png', path: 'image.png', size: png.length, type: 'image/png', isText: false, bytes: png }];
+  await data.view(data.localItems[0]);
+  await tick(3);
+  assert.equal(data.preview.note, '', 'an image is not refused as a binary');
+  const vwr = previewViewer();
+  assert.match(vwr.content, /^data:image\/png;base64,/, 'the bytes ride as a data URI, the one form a repo-less file can supply');
+  data.preview = null;
+});
+
+test('the data URI keys on the extension, so a rename changes what it renders as', () => {
+  const bytes = Uint8Array.from([1, 2, 3]);
+  assert.match(data.dataUri({ name: 'a.png', bytes }), /^data:image\/png;/);
+  assert.match(data.dataUri({ name: 'a.svg', bytes }), /^data:image\/svg\+xml;/);
+  assert.equal(data.dataUri({ name: 'a.xlsx', bytes }), '', 'a binary the viewer cannot render still says so');
+  assert.equal(data.dataUri({ name: 'a.png' }), '', 'no bytes, no URI');
+});
+
+test('a non-image binary is still refused, and says which', async () => {
+  reset();
+  store.stage = [{ local: true, id: 211, name: 'book.xlsx', path: 'book.xlsx', size: 2048, type: '', isText: false, bytes: Uint8Array.from([1, 2]) }];
+  await data.view(data.localItems[0]);
+  await tick(3);
+  assert.match(data.preview.note, /^Binary/);
+  data.preview = null;
+});
+
 // ---- renaming a local item ----------------------------------------------
 // The name a paste gets is sniffed, so the rename is what makes a wrong sniff
 // correctable. It has to reach the deposit, since that is the field's real

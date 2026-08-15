@@ -2710,7 +2710,7 @@
       "path": "tools/test/stage.test.mjs",
       "kind": "component",
       "protects": "The stage: membership, grouping, the diff lens, saving, and the cross-repo address grammar.",
-      "assertions": 86,
+      "assertions": 89,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [
@@ -2731,6 +2731,9 @@
         "a dropped file becomes a local stage item holding its bytes",
         "pasted text that reads as refs stages those refs, not a text file",
         "pasted prose is held as a local text item",
+        "a local image previews from its own bytes, with no repo behind it",
+        "the data URI keys on the extension, so a rename changes what it renders as",
+        "a non-image binary is still refused, and says which",
         "a rename reaches both fields a local item is read through",
         "a renamed local file deposits under its new name",
         "a name that cleans to nothing leaves the item alone, and so does Escape",
