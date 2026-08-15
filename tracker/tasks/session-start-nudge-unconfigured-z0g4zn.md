@@ -26,7 +26,13 @@ hook, not the setup script.
 4. **Legacy manifest** (`.show-repo.json` present, `.web-tools.json` absent) ->
    nudge: "the web-tools manifest uses the old name; offer to rename it." A
    session has git, so it can do the `git mv` (and remove the old file), which the
-   show-repo shell alone cannot (see task 0013).
+   show-repo shell alone cannot (see task 0013). **This check's population is
+   empty as of 2026-08-15**: the estate's config sweep found every configured
+   repo on the new name, and the readers' legacy fallback was removed on its
+   sunset date. Such a repo now reads as unconfigured and gets check 3, which
+   nudges anyway, so check 4 is optional and buys only a more precise fix
+   ("rename it" rather than "set one up"). Build it only if a repo on the old
+   name actually turns up.
 
 ## Notes
 
@@ -41,3 +47,6 @@ hook, not the setup script.
 - 2026-07-15: filed while wrapping PR #222. Designed in that session's discussion;
   not built. The opt-out contract landed in PR #222; the hook and setup-script
   install are the remaining work.
+- 2026-08-15: check 4 annotated. The legacy-manifest population went to zero
+  and its read fallback was removed (task show-repo-edit-web-tools-json-ygramz,
+  closed the same day), so that check is now optional rather than required.

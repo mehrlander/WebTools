@@ -140,8 +140,8 @@
    "opened": "2026-07-26",
    "file": "brief-from-the-pages-gallery-7d4031.md",
    "href": "tasks/brief-from-the-pages-gallery-7d4031.md",
-   "lastActivity": "2026-07-26",
-   "logEntries": 1,
+   "lastActivity": "2026-08-14",
+   "logEntries": 2,
    "blockedBy": "needs: Find a way to focus attention on one piece of a page's UI"
   },
   {
@@ -723,8 +723,8 @@
    "session": "claude/skills-portable-conventions-8x1lua",
    "file": "session-start-nudge-unconfigured-z0g4zn.md",
    "href": "tasks/session-start-nudge-unconfigured-z0g4zn.md",
-   "lastActivity": "2026-07-15",
-   "logEntries": 1,
+   "lastActivity": "2026-08-15",
+   "logEntries": 2,
    "tags": {
     "next": "write a global SessionStart hook that checks repo state and injects a nudge; wire its install into the Claude Code web account setup script"
    }
@@ -745,14 +745,16 @@
   {
    "id": "show-repo-edit-web-tools-json-ygramz",
    "title": "Retire .show-repo.json, delete the legacy file on migrate, drop the read fallback",
-   "status": "backlog",
+   "status": "done",
    "project": "show-repo",
    "opened": "2026-07-15",
+   "closed": "2026-08-15",
+   "session": "claude/centralize-file-viewer-search-en30ye",
    "size": "S",
    "file": "show-repo-edit-web-tools-json-ygramz.md",
    "href": "tasks/show-repo-edit-web-tools-json-ygramz.md",
-   "lastActivity": "2026-08-07",
-   "logEntries": 2
+   "lastActivity": "2026-08-15",
+   "logEntries": 3
   },
   {
    "id": "show-repo-first-class-projects-7stibm",
@@ -769,13 +771,15 @@
   {
    "id": "sidebar-compare-view-lkjang",
    "title": "Give the sidebar a compare-against ref, and collapse the card's source tabs",
-   "status": "backlog",
+   "status": "done",
    "opened": "2026-08-14",
+   "closed": "2026-08-15",
+   "session": "claude/pr-file-swiping-jgj0kc",
    "size": "L",
    "file": "sidebar-compare-view-lkjang.md",
    "href": "tasks/sidebar-compare-view-lkjang.md",
-   "lastActivity": "2026-08-14",
-   "logEntries": 1
+   "lastActivity": "2026-08-15",
+   "logEntries": 2
   },
   {
    "id": "singleton-fab-toss-render-gticvb",

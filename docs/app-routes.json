@@ -39,7 +39,7 @@
       "group": "repo",
       "what": "The pages gallery: web-tools' own catalog, or any repo's `pages` entries.",
       "files": [],
-      "note": "A standing view since 2026-08-14, wherever there is a catalog; it used to appear only when a custom landing had taken the front door from it. The same inline gallery() the landing used to use; lib/alpineComponents/pages.js is a different component, used by other pages."
+      "note": "A standing view since 2026-08-14, wherever there is a catalog; it used to appear only when a custom landing had taken the front door from it. The same inline gallery() the landing used to use."
     },
     {
       "key": "atlas",

@@ -7,8 +7,9 @@ track: depends-on:focus-a-ui-component-f0awt7
 ---
 # Reach the take-away menu from show-repo's Pages gallery
 
-The Pages gallery (`lib/alpineComponents/pages.js`) is where a person is
-already looking at pages, so it is the natural place to say "take that one."
+The Pages gallery (the inline `gallery()` in `pages/show-repo/show-repo.html`)
+is where a person is already looking at pages, so it is the natural place to
+say "take that one."
 The take-away menu that does it lives in the FAB on the page itself (PR #295).
 Connect the two.
 
@@ -34,3 +35,8 @@ gallery link should carry that too rather than being retrofitted twice.
 ## Progress log
 - 2026-07-26: Filed from PR #295 wrap-up, where the gallery entry point was
   proposed and deliberately not built.
+- 2026-08-14: Re-aimed. The gallery this task names is show-repo's inline
+  `gallery()`, which became a standing per-repo view that day; the separate
+  `lib/alpineComponents/pages.js`, which the task had pointed at, was deleted
+  with its only mount (`nav-repo.html`). The design is unaffected: the card
+  still holds a path and still has to link into the FAB rather than rebuild it.

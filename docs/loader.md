@@ -60,14 +60,14 @@ Every loader-based page's `<head>` looks like this, with minor variation:
   // await gh.load('gh-store.js');                // optional: write methods
 
   await gh.load('alpineComponents/repo.js');      // 1) register Alpine.data('repo', ...)
-  await gh.load('alpineComponents/navigator.js'); // 2) register Alpine.data('navigator', ...)
+  await gh.load('alpineComponents/mention.js');   // 2) register Alpine.data('mention', ...)
   await gh.load('alpineComponents/viewer.js');    // 3) register Alpine.data('viewer', ...)
   await gh.load('alpine-bundle.js');              // 4) register magics + boot Alpine
 </script>
 ```
 
 The page body then has `<body x-data="app()" x-init="init()">` and the
-components each use `x-data="repo()"`, `x-data="navigator()"`,
+components each use `x-data="repo()"`, `x-data="mention()"`,
 `x-data="viewer()"`.
 
 The `?use=` convention is opt-in per page. Pages that adopt it gain a runtime
@@ -153,7 +153,7 @@ stays dormant and the page instantiates `GH` by hand.
 - `alpineComponents/*.js` — each calls `document.addEventListener('alpine:init', …)`
   with `Alpine.data('name', fn)` inside. They reach across to other
   components via `Alpine.store('browser')` and via per-element back-pointers
-  (`this.$root.__navigator = this`).
+  (`this.$root.__viewer = this`).
 - The view registry (Tabulator/Prism/Marked render modes) lives inside
   `alpineComponents/viewer.js` as a module-private constant.
   Pages don't load it separately.
@@ -291,9 +291,9 @@ anything we add:
    `gh.load(...)` resolves, because the two tasks (module script vs.
    Alpine boot) aren't coordinated.
 5. **Component-to-component handles rely on element back-pointers.**
-   `init() { this.$root.__navigator = this }` in `navigator.js`, and other
-   pages do `while(!navEl.__navigator) await new Promise(r => setTimeout(r, 50));`
-   to wait for it. This is the current idiom for "have I mounted yet?".
+   `init() { this.$root.__viewer = this }` in `viewer.js`, and a caller does
+   `while(!el.__viewer) await new Promise(r => setTimeout(r, 50));` to wait for
+   it. This is the current idiom for "have I mounted yet?".
 6. **Token sentinel `🎟️GitHubToken`.** Both `gh-api.js` (in `headers`) and
    pages look for that exact string and replace it (or fall back to
    `localStorage.ghToken`). Anything we add that touches tokens must use

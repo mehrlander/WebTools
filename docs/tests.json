@@ -1121,7 +1121,7 @@
       "path": "tools/test/estate-search.test.mjs",
       "kind": "behavior",
       "protects": "The shared search core: a failed tree fetch is never cached as an empty tree, names search reaches any ref and reports unreadable trees, code search carries its scope and fragments, the session grep matches what a record quotes, and reset forgets it all.",
-      "assertions": 10,
+      "assertions": 11,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -1131,6 +1131,7 @@
         "names: matches across repos at their own refs; an unreadable tree is reported, not fatal",
         "names: a folder scope narrows before the cap, and an empty query under one is a listing",
         "level: one level of the tree, folders and files, off the same cache",
+        "sizes ride the same tree read, so a listing and a match both carry them",
         "code: scope rides the query, fragments become clipped snippets",
         "sessions: greps what a record quotes, caches the corpus, newest first",
         "sessions: the derived name is searchable, and says so in the hit",
@@ -1760,26 +1761,6 @@
         "${file} declares the ready gate before its module script",
         "${file} resolves the gate, and does so even when a load fails",
         "${file} awaits the gate in init"
-      ]
-    },
-    {
-      "path": "tools/test/pages.test.mjs",
-      "kind": "component",
-      "protects": "The gallery finds pages by scanning for .html blobs, and each row's render URL follows the ref: off the default ref an owner repo routes through toss-render rather than a github.io URL that would serve the wrong code.",
-      "assertions": 7,
-      "method": "alpine",
-      "runner": "suite",
-      "boot_smoke": [
-        0
-      ],
-      "assertion_names": [
-        "mounts closed with no startup warnings or errors",
-        "first open scans the tree for .html blobs only",
-        "groups by folder, root first",
-        "render/source/thumb URLs follow the conventions",
-        "ref change re-scans and appends ?use= off the default ref",
-        "mehrlander repos off the default ref route through toss-render address mode",
-        "unpublished repos are flagged"
       ]
     },
     {
