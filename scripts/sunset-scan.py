@@ -4,8 +4,8 @@
 A SUNSET marker flags code kept only for backward compatibility, with the date
 it can probably be removed:
 
-    // SUNSET(2026-08-15): reads the legacy .show-repo.json name. Remove once
-    // consumer repos are migrated to .web-tools.json.
+    // SUNSET(2027-01-01): reads the old manifest name too. Remove once
+    // consumer repos are migrated to the new one.
 
 By default this prints only markers whose date is today or earlier (the ones
 worth acting on) and stays silent otherwise, so it is safe to run warn-only from

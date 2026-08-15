@@ -43,7 +43,7 @@ the legacy name.
   sunset date. The estate's config sweep (web-tools-private `state/configs.json`,
   2026-08-13, 18 repos) showed all nine configured repos already on
   `.web-tools.json` and none on the legacy name, which settled both bullets at
-  once. The read fallback is gone from the shell, `config.js`, `repo.js`, and
+  once. The read fallback is gone from `show-repo.html`, `config.js`, `repo.js`, and
   `scripts/declared-paths.py`. The first bullet was NOT built: a delete-on-migrate
   for zero repos is a branch nobody can reach, so the whole migration path went
   instead (the legacy banner, `dlgLegacy`/`legacy`, and the migrate commit

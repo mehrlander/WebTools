@@ -2487,9 +2487,10 @@ documented in [PORTABLE.md](PORTABLE.md)). show-repo is one consumer: it reads t
 `landing`, `pins`, and `stage` fields to decide how to present the repo. Those
 fields sit at the top level, not under a `showRepo` key, because they describe the
 repo in ways any web-tools page may read, not just this shell. The shell probes
-the file once per `repo@ref` (a 404 means no config), parses it as **data**, never
-executed, and falls back to the legacy `.show-repo.json` name during the rename's
-deprecation window. Fields:
+the file once per `repo@ref` (a 404 means no config) and parses it as **data**,
+never executed. It is the only name read: the legacy `.show-repo.json` fallback
+was removed on its 2026-08-15 sunset, once the config cache showed every
+configured repo already on the new name. Fields:
 
 ```json
 {
@@ -3121,11 +3122,11 @@ token.
   and stopped mirroring exactly when there was something to mirror. And the save
   bar sticks to the bottom of the scrolling pane at every width, since a button
   at the far end of three screens is a scroll each time you use it.
-- **Auto-migration**: a save always writes `.web-tools.json`. A repo still on the
-  legacy `.show-repo.json` is edited the same way; the save lands the new name,
-  which readers already prefer, so the legacy file goes inert. No delete step
-  (the gh layer has no delete helper), and the section flags the migration when
-  it loaded from the legacy name.
+- **One manifest name**: a save writes `.web-tools.json`, the only name read.
+  Both editors used to carry a migration path (read the legacy
+  `.show-repo.json`, flag it, and land the new name on save); it went with the
+  read fallback on the 2026-08-15 sunset, since a migration for zero repos is
+  a branch nobody can reach.
 - **Projects** (Config view only): the workspace list, `projects`, as its own
   section under the repo-level fields. It reconciles two facts that are easy to
   let drift apart. A project is **declared** by an entry in that array, which is
