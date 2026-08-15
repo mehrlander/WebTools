@@ -570,10 +570,11 @@ test('a keyboard writes into the draft, without asking for a textarea first', ()
   key({ key: 'Enter' });
   assert.equal(S.dict.text, 'hi \n');
 
-  // A shortcut is not a letter, and the host's own field wins its keys.
+  // A shortcut this card does not claim is not a letter either, and stays the
+  // platform's. (The three it does claim are the test below.)
   const before = S.dict.text;
-  key({ key: 'z', metaKey: true });
-  assert.equal(S.dict.text, before, 'a shortcut belongs to the platform, not to us');
+  key({ key: 's', metaKey: true });
+  assert.equal(S.dict.text, before, 'cmd-S belongs to the platform, not to us');
   const field = doc.createElement('input');
   doc.body.appendChild(field);
   const e = new window.Event('keydown', { bubbles: true, cancelable: true });
@@ -591,6 +592,104 @@ test('a keyboard writes into the draft, without asking for a textarea first', ()
   S.dict.undo();
   assert.equal(S.dict.text, '', 'and the whole typing run at once');
   A.disable();
+});
+
+test('the card claims three shortcuts, and only three', () => {
+  // Undo, redo and word-delete were reachable by a key on the row and by no
+  // keystroke at all, which left a keyboard reader tapping a button for the
+  // one operation every editor binds. Claiming them costs the platform nothing
+  // here: with a draft staged there is no native editable focused, so the
+  // browser's own undo has nothing to undo.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state, d = S.dict;
+  A.notePage({ listen: false });
+  const key = (init) => {
+    const e = new window.Event('keydown', { bubbles: true, cancelable: true });
+    Object.assign(e, { key: 'a', ctrlKey: false, metaKey: false, altKey: false, shiftKey: false }, init);
+    doc.dispatchEvent(e);
+    return e;
+  };
+
+  d.insert('one two three');
+  assert.equal(d.canUndo, true);
+  key({ key: 'z', metaKey: true });
+  assert.equal(d.text, '', 'cmd-Z undoes');
+  key({ key: 'z', metaKey: true, shiftKey: true });
+  assert.equal(d.text, 'one two three', 'cmd-shift-Z redoes');
+  key({ key: 'z', ctrlKey: true });
+  assert.equal(d.text, '', 'and ctrl-Z is the same key on another platform');
+  key({ key: 'y', ctrlKey: true });
+  assert.equal(d.text, 'one two three', 'as ctrl-Y is for redo');
+
+  // The word delete, in both spellings.
+  key({ key: 'Backspace', altKey: true });
+  assert.equal(d.text, 'one two', 'alt-Backspace takes a word');
+  key({ key: 'Backspace', ctrlKey: true });
+  assert.equal(d.text, 'one', 'and so does ctrl-Backspace');
+
+  // Everything else with a modifier stays the platform's, and is not
+  // preventDefault'd on the way past.
+  const before = d.text;
+  const e = key({ key: 'p', metaKey: true });
+  assert.equal(d.text, before);
+  assert.equal(e.defaultPrevented, false, 'cmd-P is the browser\'s, untouched');
+  A.disable();
+});
+
+test('the card follows the input in use, not the device it thinks it is on', () => {
+  // A media query is the wrong instrument here: `(pointer: fine)` is true of an
+  // iPad with a keyboard case while the reader is still touching the screen,
+  // and that reader would lose the affordances they are actively using. The
+  // event is the evidence, which is the rule that let typing work with no
+  // detection at all, and it follows a reader who switches hands mid-note.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  const realPaint = window.Dictate.paint;
+  const seen = [];
+  window.Dictate.paint = (host, o) => { seen.push(o); return realPaint(host, o); };
+  try {
+    A.enable({ doc, subject: { title: 'x', url: '' } });
+    const S = A._state;
+    A.notePage({ listen: false });
+    S.dict.text = 'the quick brown fox';
+    S.precise = false;
+    A._paintDraft();
+    assert.notEqual(S.compPad.style.display, 'none', 'a thumb keeps the pad');
+    assert.equal(S.compPunct.style.display, 'grid', 'and the marks');
+    assert.equal(seen[seen.length - 1].handles, true, 'and the pins it taps to arm');
+
+    // A physical keyboard: the soft one lives inside the textarea, which this
+    // handler returns on, so a key reaching it is a real one.
+    const e = new window.Event('keydown', { bubbles: true, cancelable: true });
+    Object.assign(e, { key: 'x' });
+    doc.dispatchEvent(e);
+    assert.equal(S.precise, true);
+    assert.equal(S.compPad.style.display, 'none', 'a click places a caret, so the pad goes');
+    assert.equal(S.compPunct.style.display, 'none', 'and every mark is a keystroke away');
+    assert.equal(seen[seen.length - 1].handles, false, 'and the pins go with them');
+    assert.equal(S.compSave.style.gridColumn, '5 / 7',
+      'save takes the corner, or the empty cell shows as a grey stripe');
+
+    // THE CASING KEYS ARE THE EXCEPTION, and the column already swaps to them
+    // when a selection is live: there is no key for "capitalise this".
+    S.dict.select(4, 9);
+    A._paintDraft();
+    assert.equal(S.compPunct.style.display, 'grid',
+      'the column comes back as the casing pad, which a keyboard cannot replace');
+    assert.equal(seen[seen.length - 1].handles, false, 'the pins do not come back with it');
+
+    // A finger takes it all back.
+    const t = new window.MouseEvent('pointerdown', { clientX: 20, clientY: 20, bubbles: true });
+    t.pointerType = 'touch';
+    S.compView.dispatchEvent(t);
+    A._paintDraft();
+    assert.equal(S.precise, false);
+    assert.notEqual(S.compPad.style.display, 'none');
+    assert.equal(S.compSave.style.gridColumn, '5');
+    A.disable();
+  } finally { window.Dictate.paint = realPaint; }
 });
 
 test('shift extends from a fixed anchor, and anything else drops it', () => {
