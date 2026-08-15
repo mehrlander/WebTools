@@ -570,10 +570,11 @@ test('a keyboard writes into the draft, without asking for a textarea first', ()
   key({ key: 'Enter' });
   assert.equal(S.dict.text, 'hi \n');
 
-  // A shortcut is not a letter, and the host's own field wins its keys.
+  // A shortcut this card does not claim is not a letter either, and stays the
+  // platform's. (The three it does claim are the test below.)
   const before = S.dict.text;
-  key({ key: 'z', metaKey: true });
-  assert.equal(S.dict.text, before, 'a shortcut belongs to the platform, not to us');
+  key({ key: 's', metaKey: true });
+  assert.equal(S.dict.text, before, 'cmd-S belongs to the platform, not to us');
   const field = doc.createElement('input');
   doc.body.appendChild(field);
   const e = new window.Event('keydown', { bubbles: true, cancelable: true });
@@ -590,6 +591,50 @@ test('a keyboard writes into the draft, without asking for a textarea first', ()
   assert.equal(S.dict.text, 'hi t', 'the backspace');
   S.dict.undo();
   assert.equal(S.dict.text, '', 'and the whole typing run at once');
+  A.disable();
+});
+
+test('the card claims three shortcuts, and only three', () => {
+  // Undo, redo and word-delete were reachable by a key on the row and by no
+  // keystroke at all, which left a keyboard reader tapping a button for the
+  // one operation every editor binds. Claiming them costs the platform nothing
+  // here: with a draft staged there is no native editable focused, so the
+  // browser's own undo has nothing to undo.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state, d = S.dict;
+  A.notePage({ listen: false });
+  const key = (init) => {
+    const e = new window.Event('keydown', { bubbles: true, cancelable: true });
+    Object.assign(e, { key: 'a', ctrlKey: false, metaKey: false, altKey: false, shiftKey: false }, init);
+    doc.dispatchEvent(e);
+    return e;
+  };
+
+  d.insert('one two three');
+  assert.equal(d.canUndo, true);
+  key({ key: 'z', metaKey: true });
+  assert.equal(d.text, '', 'cmd-Z undoes');
+  key({ key: 'z', metaKey: true, shiftKey: true });
+  assert.equal(d.text, 'one two three', 'cmd-shift-Z redoes');
+  key({ key: 'z', ctrlKey: true });
+  assert.equal(d.text, '', 'and ctrl-Z is the same key on another platform');
+  key({ key: 'y', ctrlKey: true });
+  assert.equal(d.text, 'one two three', 'as ctrl-Y is for redo');
+
+  // The word delete, in both spellings.
+  key({ key: 'Backspace', altKey: true });
+  assert.equal(d.text, 'one two', 'alt-Backspace takes a word');
+  key({ key: 'Backspace', ctrlKey: true });
+  assert.equal(d.text, 'one', 'and so does ctrl-Backspace');
+
+  // Everything else with a modifier stays the platform's, and is not
+  // preventDefault'd on the way past.
+  const before = d.text;
+  const e = key({ key: 'p', metaKey: true });
+  assert.equal(d.text, before);
+  assert.equal(e.defaultPrevented, false, 'cmd-P is the browser\'s, untouched');
   A.disable();
 });
 
