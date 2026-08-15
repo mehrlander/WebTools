@@ -410,10 +410,20 @@
       "tested": false
     },
     {
-      "path": "tools/render/scenarios/activity-pr-state.mjs",
-      "role": "",
+      "path": "tools/render/scenarios/activity-pr-abandoned.mjs",
+      "role": "the same seed opened on the Abandoned scope chip",
       "layer": "tools/render/scenarios",
-      "lines": 77,
+      "lines": 11,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/activity-pr-state.mjs",
+      "role": "the Branches pane with every PR state seeded (merged, closed, draft, none, unknown)",
+      "layer": "tools/render/scenarios",
+      "lines": 80,
       "invocation": "driver",
       "emits": false,
       "named": false,

@@ -264,6 +264,40 @@ test('an uncapped read speaks for every branch, however old', () => {
   assert.equal(data.branchState(row('ancient')), 'nopr');
 });
 
+test('the Abandoned scope collects closed-unmerged branches at any age', () => {
+  seed({
+    branches: [
+      { name: 'claude/dropped', group: 'stranded', date: '2026-05-01T00:00:00Z' },
+      { name: 'claude/also-dropped', group: 'active', date: '2026-08-14T00:00:00Z' },
+      { name: 'claude/merged', group: 'active', date: '2026-08-14T00:00:00Z' },
+      { name: 'claude/never', group: 'active', date: '2026-08-14T00:00:00Z' },
+    ],
+    branchPRs: [
+      { head: 'claude/dropped', number: 300, state: 'closed', draft: false, count: 1 },
+      { head: 'claude/also-dropped', number: 426, state: 'closed', draft: true, count: 1 },
+      { head: 'claude/merged', number: 425, state: 'merged', draft: false, count: 1 },
+    ],
+  });
+  data.branchScope = 'abandoned';
+  // Round-tripped: the rows are Alpine proxies built in the jsdom realm, so a
+  // structurally-identical array still fails a strict deepEqual on prototype.
+  assert.deepEqual(JSON.parse(JSON.stringify(data.openRows.map(r => r.name).sort())),
+                   ['claude/also-dropped', 'claude/dropped']);
+});
+
+test('Abandoned is a chip with its own count, beside the survey groups', () => {
+  seed({
+    branches: [{ name: 'claude/dropped', group: 'stranded' }, { name: 'claude/merged', group: 'active' }],
+    branchPRs: [{ head: 'claude/dropped', number: 300, state: 'closed', draft: false, count: 1 },
+                { head: 'claude/merged', number: 425, state: 'merged', draft: false, count: 1 }],
+  });
+  const chip = data.branchScopes.find(s => s.key === 'abandoned');
+  assert.equal(chip.count, 1);
+  // A stranded branch that was abandoned is in both scopes, which is the point:
+  // the content survey says its bytes are nowhere, the PR says nobody wants them.
+  assert.equal(data.branchScopes.find(s => s.key === 'stranded').count, 1);
+});
+
 test('the row menu reaches a merged PR, and still offers a new one', () => {
   seed({
     branches: [{ name: 'claude/merged', group: 'active' }],

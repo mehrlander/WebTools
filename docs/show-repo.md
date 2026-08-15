@@ -778,9 +778,10 @@ derived caches only.
 **every** branch of the estate in one cross-repo list, freshest first, narrowed
 by two axes: **scope** and **repo**.
 
-**Scope** picks which of the survey's `group` values to show, and the chips
-carry their counts off the full list, so the row doubles as the estate's branch
-census:
+**Scope** picks which branches to show, and the chips carry their counts off the
+full list, so the row doubles as the estate's branch census. Four scopes read
+the survey's `group` values; **Abandoned** reads the PR index instead, which is
+why it is a chip rather than a fifth group:
 
 | Scope | Shows | For |
 | --- | --- | --- |
@@ -788,7 +789,18 @@ census:
 | **Recent** | `active` | what was touched lately, unjudged |
 | **Stranded** | `stranded` | content that exists nowhere on the default branch |
 | **Landed** | `landed` | the cleanup pass: content already on the default branch |
+| **Abandoned** | a PR closed unmerged | work decided against, still in the list |
 | **All** | everything surveyed | the census |
+
+**Abandoned is the scope the content survey could not have.** Its verdict is
+landed-or-not, and abandoned work is landed nowhere, so a closed-unmerged branch
+sat among the stranded looking exactly like work still waiting to be finished.
+The two answers are opposite: stranded asks to be rescued, abandoned asks to be
+deleted. It is appended to the chip row rather than slotted beside Stranded,
+where it reads better: the row scrolls sideways on a phone, so a chip inserted
+mid-row pushes Landed and All off the screen and moves every position a reader
+had learned. Like Open, it ignores the window, since a branch abandoned in May
+is as abandoned as one abandoned yesterday.
 
 Open is not "recent", which is why it is its own scope rather than a date sort:
 a branch merged via a merge commit is an ancestor of the default, so it holds

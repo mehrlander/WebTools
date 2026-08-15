@@ -70,7 +70,10 @@ export default async (page) => {
     };
     // Every seeded row inside one window, so the pane shows the whole set.
     window.__shell.branchWindow = 7;
-    d.branchScope = 'active';
+    // The scope the harness opens on, overridable per shot: `--script` cannot
+    // take an argument, so the caller sets window.__scenarioScope before the
+    // page settles when it wants a different chip lit.
+    d.branchScope = window.__scenarioScope || 'active';
   });
   await page.waitForTimeout(500);
 };

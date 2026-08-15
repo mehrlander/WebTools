@@ -890,7 +890,7 @@
       "path": "tools/test/estate-branch-pr-state.test.mjs",
       "kind": "behavior",
       "protects": "A branch row says what became of its pull request (merged, closed unmerged, open, never proposed, or past the index's reach) rather than only whether one is open, across the fetch, the cache, and the row.",
-      "assertions": 19,
+      "assertions": 21,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -913,6 +913,8 @@
         "past the reach it says it does not know, rather than \"no PR\"",
         "a cache written before the index existed claims nothing either way",
         "an uncapped read speaks for every branch, however old",
+        "the Abandoned scope collects closed-unmerged branches at any age",
+        "Abandoned is a chip with its own count, beside the survey groups",
         "the row menu reaches a merged PR, and still offers a new one"
       ]
     },
