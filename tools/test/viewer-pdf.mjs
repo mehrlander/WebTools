@@ -171,6 +171,7 @@ const state = () => page.evaluate(() => {
     msg: msg && !msg.classList.contains('hidden') ? msg.textContent.trim() : '(gone)',
     barShown: bar ? !bar.classList.contains('hidden') : false,
     label: document.getElementById('viewer-pdf-page')?.textContent || '',
+    size: document.getElementById('viewer-pdf-size')?.textContent || '',
     openHref: open && !open.classList.contains('hidden') ? open.getAttribute('href') : '',
     ink,
   };
@@ -188,9 +189,16 @@ try {
   ok('raw is still offered beside it', (s.modes || []).includes('raw'), JSON.stringify(s.modes));
   ok('the canvas is showing', s.shown === true && s.msg === '(gone)', JSON.stringify(s));
   ok('a page was actually rasterized', s.ink > 200, `ink=${s.ink}`);
-  ok('the header states the page count', /^2 pages/.test(s.stats), s.stats);
-  ok('and the real byte size', /· \d+\.\d KB$/.test(s.stats), s.stats);
-  ok('with no line count, which a PDF has none of', !/lines/.test(s.stats), s.stats);
+  // The facts about the document as an OBJECT live with the pager, not in the
+  // viewer's header line. That line used to read "2 pages · N KB" directly
+  // above a pager reading "1 / 2", so the count was stated twice and the
+  // second statement was the more useful one. What is left in the header must
+  // be nothing at all: a PDF's text is not the file, so a derived line would
+  // report newline bytes in the binary as "lines" and the mangled decode as a
+  // size, which is what the binary flag on the module suppresses.
+  ok('the header line says nothing it cannot know', s.stats === '', s.stats);
+  ok('the real byte size rides with the pager', /^\d+\.\d KB$/.test(s.size), s.size);
+  ok('and no page count is stated twice', !/pages?/.test(s.size + s.stats), s.size + ' / ' + s.stats);
   ok('pdf-lib was never requested', askedForPdfLib === false,
      'the viewer pulled the editor library it never calls');
 
