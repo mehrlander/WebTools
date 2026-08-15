@@ -410,6 +410,26 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/activity-pr-abandoned.mjs",
+      "role": "the same seed opened on the Abandoned scope chip",
+      "layer": "tools/render/scenarios",
+      "lines": 11,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/activity-pr-state.mjs",
+      "role": "the Branches pane with every PR state seeded (merged, closed, draft, none, unknown)",
+      "layer": "tools/render/scenarios",
+      "lines": 80,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/annotate-canvas-tap.mjs",
       "role": "the three readings of a tap on the blank canvas below the last line: with a pin armed it takes that pin to the end of the buffer (select-to-end, the extent with no other gesture), with nothing armed it is still the one-tap way out of selection mode, and doubled it opens the keyboard with the caret at the end. All need layout, since jsdom has no client rects for hitsText to tell canvas from text",
       "layer": "tools/render/scenarios",
@@ -520,10 +540,10 @@
       "tested": false
     },
     {
-      "path": "tools/render/scenarios/annotate-row-menu.mjs",
-      "role": "a note row's menu and the edit behind it: the kebab that replaced the bare delete, the menu flipping above the row when the card has no room below, and the note reopened in the composer with its text loaded",
+      "path": "tools/render/scenarios/annotate-row-keys.mjs",
+      "role": "a note row's three floating keys and the edit one of them leads to: edit, copy and remove sitting over the note where a kebab menu used to open, and the note reopened in the composer with its text loaded",
       "layer": "tools/render/scenarios",
-      "lines": 27,
+      "lines": 35,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -544,6 +564,16 @@
       "role": "a note selected by clicking its highlight in the document rather than its row",
       "layer": "tools/render/scenarios",
       "lines": 63,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/annotate-stitch.mjs",
+      "role": "the composer pad's stitch key: a caret dropped in a sentence gap turns the full-stop cell into the cell that takes one back, and one tap drops the mark and the capital the pause invented",
+      "layer": "tools/render/scenarios",
+      "lines": 38,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -860,6 +890,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/estate-unfiled.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 99,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/fab-export.mjs",
       "role": "the FAB's Export controls",
       "layer": "tools/render/scenarios",
@@ -1170,6 +1210,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/repos-abandoned-badge.mjs",
+      "role": "the repo card's abandoned-branch badge, beside stranded and open PRs",
+      "layer": "tools/render/scenarios",
+      "lines": 12,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/routed-subject.mjs",
       "role": "the drawer over a routed subject, the file as the reported identity",
       "layer": "tools/render/scenarios",
@@ -1334,6 +1384,16 @@
       "role": "",
       "layer": "tools/render/scenarios",
       "lines": 23,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/stage-stitch.mjs",
+      "role": "the stage composer's stitch key: a caret in a sentence gap turns the full-stop cell into the cell that takes one back, the same swap the annotator's card makes off the same kit verb",
+      "layer": "tools/render/scenarios",
+      "lines": 52,
       "invocation": "driver",
       "emits": false,
       "named": false,

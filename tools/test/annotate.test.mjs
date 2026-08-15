@@ -484,6 +484,53 @@ test('the composer paints through the kit and swaps its pad for a selection', ()
   A.disable();
 });
 
+test('a caret in a sentence gap turns the full-stop key into the key that takes one back', () => {
+  // The pad already swaps its whole face for a selection. This swaps ONE cell,
+  // and it is the cell whose own mark is the thing being undone: a full stop
+  // cannot be wanted where one is already sitting, so nothing is lost while
+  // the stitch is showing, and `,` and `?` do not move under the thumb.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.notePage({ listen: false });
+  const S = A._state;
+  const face = () => [...S.compPunct.children]
+    .map(b => b._icon ? b._icon.className.replace('ph ph-', '') : b.textContent);
+
+  S.dict.text = 'I went to the store. And then I came back';
+  A._paintDraft();
+  assert.deepEqual(face().slice(0, 3), ['.', ',', '?'], 'at rest it is the marks');
+
+  S.dict.caretAt(20);                     // the gap
+  assert.deepEqual(face().slice(0, 3), ['arrows-in-line-horizontal', ',', '?']);
+  assert.match(S.compPunct.children[0].style.background, /254, 249, 195|#fef9c3/,
+    'and it tints, since it appeared under a thumb aimed at something else');
+
+  S.compPunct.children[0].dispatchEvent(new window.Event('pointerdown', { bubbles: true }));
+  assert.equal(S.dict.text, 'I went to the store and then I came back',
+    'one tap: the mark goes and the capital comes down with it');
+  assert.deepEqual(face().slice(0, 3), ['.', ',', '?'], 'and the marks are back, the seam being closed');
+  A.disable();
+});
+
+test('an icon key paints its glyph, which the swap alone could not', () => {
+  // The pad's keys are plain buttons, so setIcon had no `_icon` to reach and
+  // the one glyph face in the set, `¶`, rendered EMPTY. Found 2026-08-15 while
+  // adding a second glyph key beside it.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.notePage({ listen: false });
+  const S = A._state;
+  S.compShiftBtn.dispatchEvent(new window.Event('pointerdown', { bubbles: true }));
+  const para = S.compPunct.children[2];
+  assert.ok(para._icon, 'the paragraph key has a face');
+  assert.equal(para._icon.className, 'ph ph-paragraph');
+  S.compShiftBtn.dispatchEvent(new window.Event('pointerdown', { bubbles: true }));
+  assert.equal(S.compPunct.children[2].textContent, '?', 'and swapping back leaves no glyph behind');
+  A.disable();
+});
+
 test('the card refuses the browser its own selection, from a stylesheet', () => {
   // The lock is a RULE, not an inline style, and the reason is a trap worth
   // keeping named. `-webkit-touch-callout` is absent from the CSSOM's property
@@ -1370,10 +1417,11 @@ test('the card refuses the platform’s selection, and the textarea takes it bac
   A.disable();
 });
 
-test('a note row opens a menu, and Edit reopens it in the composer', () => {
-  // The row carried a bare × and nothing else. A destructive action alone in a
-  // row is the wrong default, and the edit that was missing had to be reached
-  // through the drawer, a tab away on a phone. Both now sit behind one tap.
+test('a note row carries three keys over it, and Edit reopens it in the composer', async () => {
+  // The row carried a bare ×, then a ⋮ menu, and now the three verbs
+  // themselves: one tap each rather than one to open and one to choose. They
+  // float over the row, so the note keeps its full width and only the
+  // caption's first line gives ground.
   window.SpeechRecognition = FakeSR;
   loadKit('dictate.js', { window });
   A.enable({ doc, subject: { title: 'x', url: '' } });
@@ -1382,18 +1430,24 @@ test('a note row opens a menu, and Edit reopens it in the composer', () => {
   const it = A.add({ type: 'page' }, 'the ref bar wraps');
 
   const row = S.listEl.firstChild;
-  const more = row.querySelector('[data-annotate-menu]');
-  assert.ok(more, 'the row carries a menu button, not a delete');
+  const css = (el) => el.getAttribute('style') || '';
+  const keys = [...row.querySelectorAll('button')];
+  assert.equal(keys.length, 3, 'edit, copy, remove');
+  assert.deepEqual(keys.map(b => b._icon.className),
+    ['ph ph-pencil-simple', 'ph ph-copy', 'ph ph-trash']);
+  assert.match(keys[2].style.color, /#dc2626|rgb\(220, 38, 38\)/,
+    'remove is a single tap now, so it is tinted for what it does');
   assert.equal(row.textContent.includes('×'), false, 'and no bare × beside it');
-
-  more.dispatchEvent(new window.Event('click', { bubbles: true }));
-  const menu = S.ui.querySelector('div[data-annotate-menu]');
-  assert.ok(menu, 'the menu opens on the row it belongs to');
-  assert.deepEqual([...menu.querySelectorAll('button')].map(b => b.textContent), ['Edit', 'Remove']);
+  const cluster = keys[0].parentNode;
+  assert.match(css(cluster), /position:\s*absolute/,
+    'the keys float rather than taking a column off every row');
+  assert.match(css(row), /position:\s*relative/, 'and float against the row, not the list');
+  assert.match(css(row.firstChild.firstChild), /padding-right:\s*84px/,
+    'the caption alone reserves room, so the note and the address run full width');
 
   // Edit stages the SAME note: same target, its text loaded, nothing recording,
   // and saving updates rather than adding a second one.
-  menu.querySelectorAll('button')[0].dispatchEvent(new window.Event('click', { bubbles: true }));
+  keys[0].dispatchEvent(new window.Event('click', { bubbles: true }));
   assert.equal(S.draft.editId, it.id);
   assert.equal(S.draft.target, it.target, 'an edit never re-aims the anchor');
   assert.equal(S.dict.text, 'the ref bar wraps', 'the note is loaded to be revised, not retyped');
@@ -1407,16 +1461,22 @@ test('a note row opens a menu, and Edit reopens it in the composer', () => {
   assert.equal(A.items[0].note, 'the ref bar wraps under 380px');
   assert.ok(A.items[0].editedAt, 'and the edit is dated');
 
-  // Remove is the other half, and closing is a click anywhere else.
-  S.listEl.querySelector('[data-annotate-menu]')
-    .dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(A._state.menuId, it.id, 'the same tap toggles it back open');
-  doc.body.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(A._state.menuId, null, 'a click off the menu closes it');
+  // Copy takes the WORDS and nothing else: no heading, no quote, no address.
+  // The markdown serialization is the other errand and has its own button.
+  // The kit runs in the NODE realm (bootstrap's loadKit hands it `window` as a
+  // parameter, not as the global), so a bare `navigator` in the source resolves
+  // here rather than on the jsdom window. Stub the one it actually reads.
+  let copied = null;
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true, value: { clipboard: { writeText: async (t) => { copied = t; } } },
+  });
+  const rowNow = S.listEl.firstChild;
+  [...rowNow.querySelectorAll('button')][1].dispatchEvent(new window.Event('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(copied, 'the ref bar wraps under 380px');
 
-  S.listEl.querySelector('[data-annotate-menu]')
-    .dispatchEvent(new window.Event('click', { bubbles: true }));
-  S.ui.querySelector('div[data-annotate-menu]').querySelectorAll('button')[1]
+  // And remove is one tap, on the row rather than through a menu.
+  [...S.listEl.firstChild.querySelectorAll('button')][2]
     .dispatchEvent(new window.Event('click', { bubbles: true }));
   assert.equal(A.items.length, 0);
   A.disable();

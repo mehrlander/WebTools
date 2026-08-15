@@ -1361,6 +1361,48 @@ test('the pad shows three marks and a shift, and a shifted mark drops it', async
   data.dictCancel();
 });
 
+test('a caret in a sentence gap turns the period key into the stitch', async () => {
+  // The same swap the annotator's card makes, off the same kit verb: a pause
+  // the reader did not mean as an ending writes a full stop and the engine
+  // capitalizes behind it. One key, not three, because the aim is the caret
+  // rather than a word and `,` and `?` must not move under the thumb.
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  FakeSR.last.say('I went to the store', true);
+  await tick();
+  data._dict.text = 'I went to the store. And then I came back';
+  assert.deepEqual(plain_(data.dictMarks), ['.', ',', '?'], 'at rest it is the marks');
+
+  data._dict.caretAt(20);                 // the gap
+  data.dictPaint();
+  assert.equal(data.dictStitch, true);
+  assert.deepEqual(plain_(data.dictMarks), ['stitch', ',', '?']);
+
+  data.dictMark('stitch');
+  assert.equal(data.dictText, 'I went to the store and then I came back',
+    'one tap: the mark goes and the capital comes down with it');
+  assert.deepEqual(plain_(data.dictMarks), ['.', ',', '?'], 'and the marks are back');
+  data.dictCancel();
+});
+
+test('the pad face follows the caret, which nothing reactive otherwise tracks', async () => {
+  // The range lives in the kit, so moving the caret assigns dictText the same
+  // string and a reactive set to an equal value notifies nobody. dictPaint
+  // bumps a counter the pad's getters read, which is why they can turn on
+  // where the caret IS rather than only on what the buffer holds.
+  reset();
+  window.SpeechRecognition = FakeSR;
+  await data.dictStart();
+  data._dict.text = 'one sentence. Two sentences';
+  const before = data.dictBeat;
+  data._dict.caretAt(13);
+  data.dictPaint();
+  assert.ok(data.dictBeat > before, 'a caret move beats, though the text did not change');
+  assert.equal(data.dictStitch, true);
+  data.dictCancel();
+});
+
 test('the stage paints through the kit and its pad turns into casing keys', async () => {
   reset();
   window.SpeechRecognition = FakeSR;
