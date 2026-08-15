@@ -221,16 +221,31 @@ test('the pdf mode is exclusive: it beats a host blanket default of raw', () => 
   assert.equal(resolve('budget.pdf', '%PDF-1.4', () => 'code'), 'pdf');
 });
 
-test('the pdf pane hides its bar and canvas until something is read', () => {
+test('the pdf pane starts as a message and nothing else', () => {
   // The bar is revealed only when it has a pager or an address to carry, and
-  // the canvas only once a page is painted, so a failed fetch leaves the
-  // message visible rather than an empty frame that looks like a blank page.
+  // the page track is appended by `after` once the document opens, so a failed
+  // fetch leaves the message visible rather than an empty frame that reads as
+  // a blank page.
   const mod = VR.modules.find(m => m.id === 'pdf');
   const doc = new window.DOMParser().parseFromString(mod.render(), 'text/html');
   assert.match(doc.getElementById('viewer-pdf-bar').className, /hidden/);
-  assert.match(doc.getElementById('viewer-pdf-canvas').className, /hidden/);
   assert.match(doc.getElementById('viewer-pdf-open').className, /hidden/,
     'the inspect link stays hidden until there is an address behind it');
   assert.ok(doc.getElementById('viewer-pdf-msg').textContent.trim().length,
     'and the pane says what it is doing meanwhile');
+  assert.equal(doc.querySelectorAll('canvas').length, 0,
+    'no canvas is authored: one per page is built lazily by the deck');
+});
+
+test('the pdf stage can host a flex track, which needs min-h-0', () => {
+  // A flex child defaults to min-height auto, so a track dropped into the
+  // stage would be floored at its content height and grow the pane instead of
+  // scrolling inside it. Same class of trap swipe-deck documents for min-w-0
+  // on the horizontal axis, and it fails the same quiet way: it looks like a
+  // styling slip rather than a broken pager.
+  const mod = VR.modules.find(m => m.id === 'pdf');
+  const doc = new window.DOMParser().parseFromString(mod.render(), 'text/html');
+  const stage = doc.getElementById('viewer-pdf-stage');
+  assert.match(stage.className, /flex-1/);
+  assert.match(stage.className, /min-h-0/);
 });

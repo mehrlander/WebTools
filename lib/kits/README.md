@@ -752,6 +752,18 @@ a pager, and `#pdf=<the same file>` is the WORKBENCH, this page with its
 layers, trim and two table readings. One decision, spelled two ways, so the
 link says which one was meant. Both are in [`docs/routes.json`](../../docs/routes.json).
 
+**The first look pages on [`swipe-deck.js`](swipe-deck.js), and that is the
+alignment rather than a detail.** The estate already pages branches, then a
+branch's files, one card at a time; a PDF is the case that makes the pattern
+three levels deep, because a file can have pages of its own. Nothing about the
+third level is special, so it does not get a gesture of its own. `core()` is
+what an inline pane wants (the track without the takeover chrome), and it
+brings the part that matters most for a big document for free: slides build
+lazily and drop once the reader is two away, so a 200-page submittal rasterizes
+three canvases rather than 200. The arrows drive the track rather than keeping a
+page number beside it, so the pager and a thumb cannot disagree: there is one
+position, the track's scroll offset.
+
 ### xlsx.js
 
 OOXML (`.xlsx`) structural inspector: unzip, walk every XML/rels part, and

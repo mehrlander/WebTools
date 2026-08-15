@@ -3301,7 +3301,7 @@
       "path": "tools/test/viewer.test.mjs",
       "kind": "component",
       "protects": "Mode resolution always lands somewhere: every form of the option falls back to raw when it cannot resolve, and a delimited parse pads short rows and names blank or duplicate headers so no column or record is dropped.",
-      "assertions": 22,
+      "assertions": 23,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -3327,7 +3327,8 @@
         "isPdf and isImage stay separate questions",
         "a PDF offers the pdf mode, with raw still one tap away",
         "the pdf mode is exclusive: it beats a host blanket default of raw",
-        "the pdf pane hides its bar and canvas until something is read"
+        "the pdf pane starts as a message and nothing else",
+        "the pdf stage can host a flex track, which needs min-h-0"
       ]
     },
     {

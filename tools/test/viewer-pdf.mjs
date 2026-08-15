@@ -133,10 +133,15 @@ page.on('pageerror', e => console.log(`  [pageerror] ${e.message}`));
 const state = () => page.evaluate(() => {
   const host = document.getElementById('dv-viewer');
   const v = host && Alpine.$data(host);
-  const canvas = document.getElementById('viewer-pdf-canvas');
+  const root = document.getElementById('viewer-pdf');
+  const deck = root?.__deck || null;
   const msg = document.getElementById('viewer-pdf-msg');
   const bar = document.getElementById('viewer-pdf-bar');
   const open = document.getElementById('viewer-pdf-open');
+  const at = deck ? deck.active() : -1;
+  // The ACTIVE slide's canvas, not "the canvas": there is one per page now,
+  // and only the ones near the reader exist at all.
+  const canvas = document.querySelector(`.viewer-pdf-page[data-page="${at + 1}"]`);
   let ink = 0;
   if (canvas && canvas.width) {
     const d = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
@@ -151,8 +156,13 @@ const state = () => page.evaluate(() => {
     mode: v?.mode || null,
     modes: (v?.availableModes || []).map(m => m.id),
     stats: v?.stats || '',
-    w: canvas?.width || 0,
-    shown: canvas ? !canvas.classList.contains('hidden') : false,
+    active: at,
+    slides: deck ? deck.count : 0,
+    built: deck ? deck.builtCount : 0,
+    // A snap track is only swipeable if it can actually scroll horizontally.
+    scrollable: deck ? deck.track.scrollWidth > deck.track.clientWidth + 10 : false,
+    snap: deck ? getComputedStyle(deck.track).scrollSnapType : '',
+    shown: !!canvas,
     msg: msg && !msg.classList.contains('hidden') ? msg.textContent.trim() : '(gone)',
     barShown: bar ? !bar.classList.contains('hidden') : false,
     label: document.getElementById('viewer-pdf-page')?.textContent || '',
@@ -188,10 +198,32 @@ try {
 
   const inkOne = s.ink;
   await page.click('#viewer-pdf-next');
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(1500);
   s = await state();
   ok('next moves the pager', s.label.replace(/\s/g, '') === '2/2', s.label);
-  ok('and repaints the canvas', s.ink > 200 && s.ink !== inkOne, `${inkOne} -> ${s.ink}`);
+  ok('and lands on the other page', s.active === 1 && s.ink > 200 && s.ink !== inkOne,
+     `${inkOne} -> ${s.ink} at ${s.active}`);
+
+  console.log('the pages are a swipe track, not just two buttons:');
+  // The gesture itself cannot be synthesized faithfully here, so this asserts
+  // the three properties that make one work: a track wider than its box, snap
+  // points on it, and a pager that follows the SCROLL rather than only driving
+  // it. Drag the track directly and see whether the rest of the pane agrees.
+  ok('the track scrolls horizontally', s.scrollable === true, JSON.stringify(s));
+  ok('with mandatory snap points', /mandatory/.test(s.snap), s.snap);
+  await page.evaluate(() => {
+    const t = document.getElementById('viewer-pdf').__deck.track;
+    t.scrollTo({ left: 0, behavior: 'auto' });
+    t.dispatchEvent(new Event('scroll'));
+  });
+  await page.waitForTimeout(900);
+  s = await state();
+  ok('a scroll of the track moves the pager back', s.label.replace(/\s/g, '') === '1/2', s.label);
+  ok('and the reader is on page 1 again', s.active === 0, String(s.active));
+
+  console.log('a long document does not rasterize itself:');
+  ok('only the reader\'s neighbourhood is built', s.built <= 3 && s.built >= 1,
+     `${s.built} of ${s.slides} slides built`);
 
   console.log('a text file is untouched by any of this:');
   await page.goto(`${origin}/pages/data-view.html?src=${encodeURIComponent(`${REPO}@main:docs/tools.json`)}`,
