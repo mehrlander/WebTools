@@ -2434,7 +2434,7 @@ fields sit at the top level, not under a `showRepo` key, because they describe t
 repo in ways any web-tools page may read, not just this shell. The shell probes
 the file once per `repo@ref` (a 404 means no config) and parses it as **data**,
 never executed. It is the only name read: the legacy `.show-repo.json` fallback
-was removed on its 2026-08-15 sunset, once the config sweep showed every
+was removed on its 2026-08-15 sunset, once the config cache showed every
 configured repo already on the new name. Fields:
 
 ```json

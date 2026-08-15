@@ -206,7 +206,7 @@ Top-level fields, not namespaced by consumer, so any web-tools page can read the
 Full field semantics for the show-repo fields are in [`docs/show-repo.md`](show-repo.md).
 The file was formerly `.show-repo.json`, and readers fell back to that name
 under a sunset marker (see Sunset markers below) dated 2026-08-15 while repos
-migrated. They did: the estate's config sweep showed every configured repo on
+migrated. They did: the config cache showed every configured repo on
 the new name well before the date, so the fallback was removed on it and
 `.web-tools.json` is now the only name read. That is the marker working as
 designed, and the reason this sentence spells the date out rather than writing
