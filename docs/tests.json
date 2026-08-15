@@ -1170,6 +1170,31 @@
       ]
     },
     {
+      "path": "tools/test/estate-unfiled.test.mjs",
+      "kind": "component",
+      "protects": "Account repos that are not on the estate render as rows split three ways (undecided, set aside, archived), both membership writes land in the repo's own config rather than a registry list, and an optimistic move survives the reload its write triggers instead of bouncing back and reading as a failed write.",
+      "assertions": 12,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [
+        0
+      ],
+      "assertion_names": [
+        "mounts with no startup warnings or errors",
+        "the three groups: undecided first, both settled groups after, empty ones dropped",
+        "a member holds a card, never also a row",
+        "only the undecided group is open; the settled two fold away",
+        "archived outranks the config read: a repo can be both, and reads as Retired",
+        "set aside writes conventions:optout to the REPO, and moves the row at once",
+        "set aside merges into an existing config rather than replacing it",
+        "the optimistic move survives the reload it triggers, then retires itself",
+        "adopt prefills the one add form rather than writing a second way",
+        "adopting from a row clears it, and the clear retires itself too",
+        "the GitHub route is a link out, not a call",
+        "signed out there is no account to ask about"
+      ]
+    },
+    {
       "path": "tools/test/fab-capture.test.mjs",
       "kind": "component",
       "protects": "Capture serializes the state the fab has collected with honest fidelity.",
