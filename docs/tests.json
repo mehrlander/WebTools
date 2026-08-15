@@ -3373,7 +3373,7 @@
       "path": "tools/test/xlsx.test.mjs",
       "kind": "kit",
       "protects": "A workbook is read without losing shape or failing whole: a sparse row keeps its gap rather than compacting, shared strings resolve regardless of part order, and one malformed XML part is skipped rather than fatal.",
-      "assertions": 19,
+      "assertions": 26,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [],
@@ -3396,6 +3396,13 @@
         "views.files: shared-strings row lists the sheets that actually used a string",
         "views.unconnected: an orphan XML part with no recognized structure",
         "summary: total/connected/unconnected add up",
+        "mashupPayload: reads the header and hands back the inner zip bytes",
+        "mashupPayload: trailing bytes past the declared length are cut off",
+        "mashupPayload: an impossible declared length falls back to the rest",
+        "mashupPayload: no DataMashup element, and junk, both return null",
+        "readMashup: recovers the M source from inside the two containers",
+        "readZip: a workbook carrying queries reports them under xl.powerQuery",
+        "readZip: a workbook without queries leaves xl.powerQuery undefined",
         "analyze: malformed XML in one part is skipped, not fatal"
       ]
     }

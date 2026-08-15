@@ -259,6 +259,87 @@ test('summary: total/connected/unconnected add up', () => {
   assert.equal(s.connected, result.connectedPaths.size);
 });
 
+// ---- Power Query --------------------------------------------------------
+//
+// Built rather than committed: a real .xlsx with queries is a binary the tree
+// does not need, and the interesting part is the header-plus-inner-zip layout,
+// which is cheap to construct exactly. JSZip is vendored through bootstrap's
+// KIT_IMPORTS, so this exercises the same lazy import the browser takes.
+
+import JSZip from 'jszip';
+
+const M_CODE = 'section Section1;\nshared Budget = let Source = Excel.CurrentWorkbook() in Source;';
+
+// version (uint32 LE) + parts-zip length (uint32 LE) + the zip, base64'd into
+// a <DataMashup> element, which is the shape Excel writes.
+async function makeMashupXml({ declaredLength = null, trailing = 0 } = {}) {
+  const inner = new JSZip();
+  inner.file('Formulas/Section1.m', M_CODE);
+  inner.file('Config/Package.xml', '<Package/>');
+  const zipBytes = await inner.generateAsync({ type: 'uint8array' });
+  const out = new Uint8Array(8 + zipBytes.length + trailing);
+  const view = new DataView(out.buffer);
+  view.setUint32(0, 3, true);
+  view.setUint32(4, declaredLength ?? zipBytes.length, true);
+  out.set(zipBytes, 8);
+  let bin = '';
+  for (const b of out) bin += String.fromCharCode(b);
+  return `<?xml version="1.0"?><DataMashup xmlns="http://schemas.microsoft.com/DataMashup">${btoa(bin)}</DataMashup>`;
+}
+
+test('mashupPayload: reads the header and hands back the inner zip bytes', async () => {
+  const xml = await makeMashupXml();
+  const p = xlsxKit.mashupPayload(xml);
+  assert.equal(p.version, 3);
+  assert.equal(p.zip.length, p.declaredLength);
+  assert.deepEqual([...p.zip.subarray(0, 2)], [0x50, 0x4b]); // "PK"
+});
+
+test('mashupPayload: trailing bytes past the declared length are cut off', async () => {
+  const xml = await makeMashupXml({ trailing: 64 });
+  const p = xlsxKit.mashupPayload(xml);
+  assert.equal(p.zip.length, p.declaredLength); // not declaredLength + 64
+});
+
+test('mashupPayload: an impossible declared length falls back to the rest', async () => {
+  const xml = await makeMashupXml({ declaredLength: 10 ** 7 });
+  const p = xlsxKit.mashupPayload(xml);
+  assert.ok(p.zip.length > 0);
+  assert.notEqual(p.zip.length, 10 ** 7);
+});
+
+test('mashupPayload: no DataMashup element, and junk, both return null', () => {
+  assert.equal(xlsxKit.mashupPayload('<root/>'), null);
+  assert.equal(xlsxKit.mashupPayload('<DataMashup>!!!not base64!!!</DataMashup>'), null);
+  assert.equal(xlsxKit.mashupPayload('<DataMashup>QUJD</DataMashup>'), null); // 3 bytes, no header
+});
+
+test('readMashup: recovers the M source from inside the two containers', async () => {
+  const got = await xlsxKit.readMashup(await makeMashupXml());
+  assert.equal(got.version, 3);
+  assert.deepEqual(got.sections.map(s => s.path), ['Formulas/Section1.m']);
+  assert.equal(got.sections[0].m, M_CODE);
+});
+
+test('readZip: a workbook carrying queries reports them under xl.powerQuery', async () => {
+  const wb = new JSZip();
+  for (const [path, xml] of buildParts()) wb.file(path, xml);
+  wb.file('customXml/item1.xml', await makeMashupXml());
+  const bytes = await wb.generateAsync({ type: 'uint8array' });
+  const { xl } = await xlsxKit.readZip(bytes);
+  assert.equal(xl.powerQuery.part, 'customXml/item1.xml');
+  assert.equal(xl.powerQuery.sections[0].m, M_CODE);
+  // The rest of the analysis is unaffected by the extra part.
+  assert.equal(xl.sheets.sheet1.name, 'Data');
+});
+
+test('readZip: a workbook without queries leaves xl.powerQuery undefined', async () => {
+  const wb = new JSZip();
+  for (const [path, xml] of buildParts()) wb.file(path, xml);
+  const { xl } = await xlsxKit.readZip(await wb.generateAsync({ type: 'uint8array' }));
+  assert.equal(xl.powerQuery, undefined);
+});
+
 test('analyze: malformed XML in one part is skipped, not fatal', () => {
   const parts = [...buildParts(), ['xl/broken.xml', '<not><valid'] ];
   assert.doesNotThrow(() => xlsxKit.analyze(parts));
