@@ -53,7 +53,7 @@ import json
 import sys
 from pathlib import Path
 
-CONFIG_NAMES = (".web-tools.json", ".show-repo.json")   # the legacy name still resolves
+CONFIG_NAMES = (".web-tools.json",)   # the legacy .show-repo.json sunset 2026-08-15
 
 
 def sibling_root(root: Path, repo: str) -> Path:

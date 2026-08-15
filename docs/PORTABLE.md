@@ -204,10 +204,13 @@ Top-level fields, not namespaced by consumer, so any web-tools page can read the
 | `sessions` | the plugin's `Stop` hook | path to the directory holding this repo's session records and their `tools/`, which makes this repo the store the recorder writes to. Declaring it is what turns recording on; at most one checkout in a session should carry it |
 
 Full field semantics for the show-repo fields are in [`docs/show-repo.md`](show-repo.md).
-The file was formerly `.show-repo.json`; readers fall back to that name so an
-unconverted repo keeps working. That fallback is a back-compat shim tagged
-`SUNSET(2026-08-15)` (see Sunset markers below); it is removed once repos are
-migrated, after which only `.web-tools.json` is read.
+The file was formerly `.show-repo.json`, and readers fell back to that name
+under a sunset marker (see Sunset markers below) dated 2026-08-15 while repos
+migrated. They did: the estate's config sweep showed every configured repo on
+the new name well before the date, so the fallback was removed on it and
+`.web-tools.json` is now the only name read. That is the marker working as
+designed, and the reason this sentence spells the date out rather than writing
+the token: a record of a retired marker would otherwise scan as a live one.
 
 ## Staying current on the fetch fallback: refresh at session start
 
@@ -457,8 +460,8 @@ migration shim) is tagged with a dated marker so it gets removed rather than
 lingering:
 
 ```js
-// SUNSET(2026-08-15): reads the legacy .show-repo.json name. Remove once
-// consumer repos are migrated to .web-tools.json.
+// SUNSET(2027-01-01): reads the old manifest name too. Remove once consumer
+// repos are migrated to the new one.
 ```
 
 The marker is one greppable token, `SUNSET(YYYY-MM-DD)`, with the date it can

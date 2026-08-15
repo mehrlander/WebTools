@@ -1922,10 +1922,9 @@ function app(){ return {
   // consider — a landing page, pinned folders/files, a staged-files list with
   // transfer targets — and its top-level fields are the repo's config for any
   // web-tools page, not just this shell. One GET per repo@ref; 404 means no
-  // config. Parsed as data, never executed, so probing any repo is safe. Reads
-  // .web-tools.json, falling back to the legacy .show-repo.json during the
-  // rename's deprecation window. Consumers: the sidebar's Landing and Pages
-  // rows (landing, pages), its Pinned block (pins), and the Stage view (stage).
+  // config. Parsed as data, never executed, so probing any repo is safe.
+  // Consumers: the sidebar's Landing and Pages rows (landing, pages), its
+  // Pinned block (pins), and the Stage view (stage).
   _configKey: '',
   async loadConfig(){
     const s = Alpine.store('browser');
@@ -1935,16 +1934,10 @@ function app(){ return {
     s.config = null;
     s.configName = null;
     let cfg = null, name = null;
-    // SUNSET(2026-08-15): the '.show-repo.json' entry is the legacy-name read
-    // fallback. Drop it (read '.web-tools.json' only) once consumer repos are
-    // migrated. See docs/PORTABLE.md "Sunset markers". The config editor writes
-    // the new name on save, so editing a legacy repo migrates it in place.
-    for (const n of ['.web-tools.json', '.show-repo.json']) {
-      try {
-        const parsed = JSON.parse((await s.gh.get(n)).text);
-        if (typeof parsed === 'object' && !Array.isArray(parsed)) { cfg = parsed; name = n; break; }
-      } catch {}
-    }
+    try {
+      const parsed = JSON.parse((await s.gh.get('.web-tools.json')).text);
+      if (typeof parsed === 'object' && !Array.isArray(parsed)) { cfg = parsed; name = '.web-tools.json'; }
+    } catch {}
     if (this._configKey === key) { s.config = cfg; s.configName = name; this.runChecks(key); }
   },
 
@@ -2245,17 +2238,15 @@ function app(){ return {
     const t0 = Date.now();   // for the run record, appended below if this commits
     try {
       // One GH per repo (the shared store.gh is bound to the open repo). Read
-      // the current manifest for each participant, legacy name as fallback.
+      // the current manifest for each participant.
       const fetched = {};
       await Promise.all(repos.map(async (repo) => {
         const g = new window.GH({ token: window.TOKEN, repo, ref: 'main' });
         let entry = { config: null, configName: null };
-        for (const name of ['.web-tools.json', '.show-repo.json']){
-          try {
-            const parsed = JSON.parse((await g.get(name)).text);
-            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)){ entry = { config: parsed, configName: name }; break; }
-          } catch {}
-        }
+        try {
+          const parsed = JSON.parse((await g.get('.web-tools.json')).text);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)){ entry = { config: parsed, configName: '.web-tools.json' }; }
+        } catch {}
         // The alignment grade rides this crawl. Two extra reads while already
         // standing in front of the repo, against three live reads per member on
         // every estate load, which is what putting the grade on the Repos cards
