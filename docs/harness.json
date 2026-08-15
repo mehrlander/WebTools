@@ -1190,6 +1190,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/repos-abandoned-badge.mjs",
+      "role": "the repo card's abandoned-branch badge, beside stranded and open PRs",
+      "layer": "tools/render/scenarios",
+      "lines": 12,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/routed-subject.mjs",
       "role": "the drawer over a routed subject, the file as the reported identity",
       "layer": "tools/render/scenarios",

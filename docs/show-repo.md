@@ -908,8 +908,12 @@ index: the read is capped at 100 PRs per repo, and the oldest `updated_at` it
 reached is what lets a row distinguish "no PR" from "past what this can see". Landed and
 stranded older branches are the per-repo branch review's job, not this "what's in
 flight" read. The Repos view borrows the same cache for a **freshness rollup** on
-each card (branch count, stranded count, open-PR count, the branch count a one-tap
-route into the branch review). The crawl is forced from the State view through the
+each card (branch count, stranded count, abandoned count, open-PR count, with the
+branch count a one-tap route into the branch review and the abandoned count a
+one-tap route into the Abandoned scope). That last badge is computed in the view
+from the same rows the pane's chip counts, not counted in the crawl over the full
+branch list: one word, one derivation, or the card would report a larger number
+than the chip and make a reader distrust both. The crawl is forced from the State view through the
 shell (`refreshActivity`); a normal visit kicks it throttled. The internal view
 key stays `activity` (and `?view=activity`), so existing links resolve.
 

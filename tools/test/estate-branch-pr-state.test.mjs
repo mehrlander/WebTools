@@ -298,6 +298,38 @@ test('Abandoned is a chip with its own count, beside the survey groups', () => {
   assert.equal(data.branchScopes.find(s => s.key === 'stranded').count, 1);
 });
 
+test('the card badge counts what the chip counts, from one derivation', () => {
+  // The trap this avoids: counting abandoned branches in the crawl, over the
+  // full branch list, would give the card a larger number than the pane's chip
+  // for the same word, and a card saying 5 beside a chip saying 2 makes a
+  // reader distrust both.
+  seed({
+    branches: [{ name: 'claude/dropped', group: 'stranded' },
+               { name: 'claude/also-dropped', group: 'active' },
+               { name: 'claude/merged', group: 'active' }],
+    branchPRs: [{ head: 'claude/dropped', number: 300, state: 'closed', draft: false, count: 1 },
+                { head: 'claude/also-dropped', number: 301, state: 'closed', draft: false, count: 1 },
+                { head: 'claude/merged', number: 425, state: 'merged', draft: false, count: 1 }],
+  });
+  assert.equal(data.cardAbandoned('acme/widget'), 2);
+  assert.equal(data.branchScopes.find(s => s.key === 'abandoned').count, 2);
+  // A repo with none gets no badge at all, rather than a zero.
+  assert.equal(data.cardAbandoned('acme/other'), 0);
+});
+
+test('the badge opens the pane already narrowed to what it counted', () => {
+  seed({
+    branches: [{ name: 'claude/dropped', group: 'stranded' }],
+    branchPRs: [{ head: 'claude/dropped', number: 300, state: 'closed', draft: false, count: 1 }],
+  });
+  const went = [];
+  window.__shell.goActivity = () => went.push('activity');
+  data.openAbandoned('acme/widget');
+  assert.equal(data.branchScope, 'abandoned');
+  assert.equal(data.openRepoFilter, 'acme/widget');
+  assert.deepEqual(went, ['activity']);
+});
+
 test('the row menu reaches a merged PR, and still offers a new one', () => {
   seed({
     branches: [{ name: 'claude/merged', group: 'active' }],

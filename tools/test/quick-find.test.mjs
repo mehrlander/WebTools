@@ -38,10 +38,18 @@ const ACTIVITY = {
     'me/tools': {
       defaultBranch: 'main',
       openPRs: [{ number: 12, title: 'Fix the header', draft: true, head: 'claude/header-fix' }],
+      // The any-state index the crawl stores beside the open list: a merged PR
+      // and a closed-unmerged one, neither of which the open read can see.
+      branchPRs: [
+        { head: 'claude/header-fix', number: 12, title: 'Fix the header', state: 'open', draft: true, count: 1 },
+        { head: 'claude/shipped', number: 9, title: 'Ship the thing', state: 'merged', draft: false, count: 2 },
+        { head: 'claude/dropped', number: 7, title: 'A road not taken', state: 'closed', draft: false, count: 1 },
+      ],
     },
     'me/home': {
       defaultBranch: 'main',
       openPRs: [{ number: 120, title: 'Drain the pile', draft: false, head: 'claude/drain' }],
+      branchPRs: [{ head: 'claude/drain', number: 120, title: 'Drain the pile', state: 'open', draft: false, count: 1 }],
     },
   },
 };
@@ -101,6 +109,47 @@ test('#digits finds PRs by number prefix; bare digits work; # alone lists all', 
   assert.deepEqual(j(hits.map(h => h.repo)), ['me/home']);
   data.q = '#';
   assert.equal(data.rows.filter(r => r.kind === 'branch').length, 2);
+});
+
+test('a number finds a MERGED PR, which the open-PR read could not', () => {
+  // The gap this lane had: #9 merged last week, its branch is still there, and
+  // typing its number used to come back with nothing at all.
+  data.q = '#9';
+  const [hit] = data.rows.filter(r => r.kind === 'branch');
+  assert.equal(hit.label, '#9 Ship the thing');
+  assert.equal(hit.sub, 'tools \u00b7 merged');
+  assert.equal(hit.icon, 'ph-git-merge');
+  // It opens the BRANCH, which is why finding a merged PR is worth anything.
+  assert.equal(hit.name, 'claude/shipped');
+});
+
+test('a closed-unmerged PR is marked as itself, not as merged', () => {
+  data.q = '#7';
+  const [hit] = data.rows.filter(r => r.kind === 'branch');
+  assert.equal(hit.sub, 'tools \u00b7 closed');
+  assert.equal(hit.icon, 'ph-x-circle');
+});
+
+test('# alone still lists only what is OPEN', () => {
+  // Bare # asks what is in flight. Answering it with every PR the estate ever
+  // had would bury the two that are open under the history.
+  data.q = '#';
+  const hits = data.rows.filter(r => r.kind === 'branch');
+  assert.deepEqual(j(hits.map(h => h.label.split(' ')[0]).sort()), ['#12', '#120']);
+});
+
+test('an open PR in both lists appears once, from the open row', () => {
+  data.q = '#12';
+  const hits = data.rows.filter(r => r.kind === 'branch' && r.label.startsWith('#12 '));
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].sub, 'tools \u00b7 draft');
+});
+
+test('the text lane keeps to open PRs, where three slots compete', () => {
+  data.q = 'the';
+  const labels = j(data.rows.filter(r => r.kind === 'branch').map(r => r.label));
+  assert.ok(labels.includes('#12 Fix the header'));
+  assert.ok(!labels.some(l => l.startsWith('#9 ')), 'a merged PR must not crowd the text lane');
 });
 
 test('@ lists repos; @frag filters them; picking completes to @repo/', () => {

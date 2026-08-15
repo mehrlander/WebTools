@@ -890,7 +890,7 @@
       "path": "tools/test/estate-branch-pr-state.test.mjs",
       "kind": "behavior",
       "protects": "A branch row says what became of its pull request (merged, closed unmerged, open, never proposed, or past the index's reach) rather than only whether one is open, across the fetch, the cache, and the row.",
-      "assertions": 21,
+      "assertions": 23,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -915,6 +915,8 @@
         "an uncapped read speaks for every branch, however old",
         "the Abandoned scope collects closed-unmerged branches at any age",
         "Abandoned is a chip with its own count, beside the survey groups",
+        "the card badge counts what the chip counts, from one derivation",
+        "the badge opens the pane already narrowed to what it counted",
         "the row menu reaches a merged PR, and still offers a new one"
       ]
     },
@@ -2049,7 +2051,7 @@
       "path": "tools/test/quick-find.test.mjs",
       "kind": "component",
       "protects": "The sidebar finder's lanes each resolve to their documented destination, so a typed prefix cannot quietly start matching something else.",
-      "assertions": 15,
+      "assertions": 20,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
@@ -2058,6 +2060,11 @@
       "assertion_names": [
         "mounts with no startup warnings or errors",
         "#digits finds PRs by number prefix; bare digits work; # alone lists all",
+        "a number finds a MERGED PR, which the open-PR read could not",
+        "a closed-unmerged PR is marked as itself, not as merged",
+        "# alone still lists only what is OPEN",
+        "an open PR in both lists appears once, from the open row",
+        "the text lane keeps to open PRs, where three slots compete",
         "@ lists repos; @frag filters them; picking completes to @repo/",
         "@repo/ walks the tree: folders first and completing, files opening, remainder filtering",
         "@repo/frag fuzzy-matches the whole tree without a walk",
