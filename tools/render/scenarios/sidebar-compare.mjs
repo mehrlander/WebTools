@@ -149,6 +149,11 @@ export default async function (page, ctx) {
       const fab = window.Alpine.$data([...document.querySelectorAll('[x-data]')]
         .find(e => (e.getAttribute('x-data') || '').startsWith('fab')));
       if (which === 'menu') { fab.compareMenu = true; return; }
+      // The deck was left at main, where the merge base is the same commit and
+      // there is nothing to compare. Point it at a ref that differs, so the
+      // shot shows the pane rather than the identical-content note.
+      fab.compareWith('claude/elsewhere');
+      await new Promise(r => setTimeout(r, 1200));
       fab.open = false;
       const d = window.swipeDeck.top();
       const el = d.deck.track.children[d.deck.active()].querySelector('[x-data^="fileReview"]');
