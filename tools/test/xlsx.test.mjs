@@ -20,20 +20,32 @@ const { xlsxKit } = loadKit('xlsx');
 const CONTENT_TYPES = `<?xml version="1.0"?>
 <Types xmlns="ct"><Override PartName="/xl/workbook.xml"/></Types>`;
 
+// Workbook order is DELIBERATELY not part-file order: the first sheet in the
+// workbook is Calc, which lives in sheet2.xml. That is what a workbook looks
+// like once its tabs have been dragged around, and it is the only arrangement
+// under which the index assertions below can fail. sheetId is likewise not the
+// file number, since Excel never reuses one after a delete.
+//
+// The two defined names are each chosen to discriminate: the local one sits on
+// workbook index 0 (Calc, part sheet2), which the old file-number comparison
+// could not match, and the global one is found only by the sheet's DISPLAY
+// name, which the kit did not know before the workbook <sheets> join.
 const WORKBOOK = `<?xml version="1.0"?>
-<workbook xmlns="wb">
+<workbook xmlns="wb" xmlns:r="rel">
   <sheets>
-    <sheet name="Data" sheetId="1"/>
-    <sheet name="Calc" sheetId="2"/>
+    <sheet name="Calc" sheetId="9" r:id="rId1"/>
+    <sheet name="Data" sheetId="7" r:id="rId2"/>
   </sheets>
   <definedNames>
-    <definedName name="MyRange" localSheetId="0">Data!$A$1:$A$2</definedName>
+    <definedName name="CalcLocal" localSheetId="0">Calc!$A$1</definedName>
+    <definedName name="MyRange">Data!$A$1:$A$2</definedName>
   </definedNames>
 </workbook>`;
 
 const WORKBOOK_RELS = `<?xml version="1.0"?>
 <Relationships xmlns="rel">
-  <Relationship Id="rId1" Type=".../worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId1" Type=".../worksheet" Target="worksheets/sheet2.xml"/>
+  <Relationship Id="rId2" Type=".../worksheet" Target="worksheets/sheet1.xml"/>
 </Relationships>`;
 
 // Sparse row: column A ("r=A1", shared string 0) then column C ("r=C1", inline "42").
@@ -62,9 +74,11 @@ const SHARED_STRINGS = `<?xml version="1.0"?>
 
 const STYLES = `<?xml version="1.0"?><styleSheet xmlns="s"><cellXfs count="4"/></styleSheet>`;
 
-// sheet2's calc-chain cell references workbook-order sheet index 1 (zero-based Calc).
+// i is a ZERO-based workbook index, so i="0" is Calc, which is part sheet2.xml
+// and holds the only formula. Under the old file-number arithmetic this looked
+// for "1" and found nothing.
 const CALC_CHAIN = `<?xml version="1.0"?>
-<calcChain xmlns="cc"><c r="A1" i="1"/></calcChain>`;
+<calcChain xmlns="cc"><c r="A1" i="0"/></calcChain>`;
 
 function buildParts({ order = 'natural' } = {}) {
   const base = {
@@ -150,7 +164,66 @@ test('views.connections: one row per sheet with resource usage', () => {
   const sheet2 = rows.find(r => r.Sheet === 'sheet2');
   assert.equal(sheet2.Formulas, 1);
   assert.equal(sheet2['Merged Cells'], 1);
-  assert.equal(sheet2['Calc Chain'], 1); // i="1" -> zero-based sheet index for sheet2
+  assert.equal(sheet2['Calc Chain'], 1); // i="0" -> workbook index 0 -> Calc -> sheet2.xml
+});
+
+test('sheet identity: display name and workbook order come from workbook.xml', () => {
+  const { xl } = xlsxKit.analyze(buildParts());
+  // Part sheet1.xml is the SECOND sheet in the workbook, and it is called Data.
+  assert.equal(xl.sheets.sheet1.name, 'Data');
+  assert.equal(xl.sheets.sheet1.index, 1);
+  assert.equal(xl.sheets.sheet1.sheetId, '7');
+  assert.equal(xl.sheets.sheet2.name, 'Calc');
+  assert.equal(xl.sheets.sheet2.index, 0);
+});
+
+test('sheet identity: resolution does not depend on part order', () => {
+  const a = xlsxKit.analyze(buildParts({ order: 'natural' })).xl.sheets;
+  const b = xlsxKit.analyze(buildParts({ order: 'reversed' })).xl.sheets;
+  for (const key of ['sheet1', 'sheet2']) {
+    assert.equal(a[key].name, b[key].name, key);
+    assert.equal(a[key].index, b[key].index, key);
+  }
+});
+
+test('sheet identity: a sheet part the workbook never claims gets a null name', () => {
+  const parts = [...buildParts(), ['xl/worksheets/sheet9.xml', SHEET1]];
+  const { xl } = xlsxKit.analyze(parts);
+  assert.equal(xl.sheets.sheet9.name, null);
+  assert.equal(xl.sheets.sheet9.index, null);
+});
+
+test('sheet identity: no <sheets> element at all falls back to part order', () => {
+  const parts = buildParts().filter(([p]) => p !== 'xl/workbook.xml');
+  const { xl } = xlsxKit.analyze(parts);
+  assert.equal(xl.sheets.sheet1.index, 0);
+  assert.equal(xl.sheets.sheet2.index, 1);
+  assert.equal(xl.sheets.sheet1.name, null); // fallback names nothing it cannot read
+});
+
+test('views.connections: named ranges resolve by workbook index and display name', () => {
+  const rows = xlsxKit.views.connections(xlsxKit.analyze(buildParts()));
+  const data = rows.find(r => r.Sheet === 'sheet1');
+  const calc = rows.find(r => r.Sheet === 'sheet2');
+  // Data is found only through its display name, via the global defined name.
+  assert.equal(data['Named Ranges'], 1);
+  assert.equal(data.Name, 'Data');
+  assert.equal(data.Order, 2);
+  // Calc is found through localSheetId="0", the zero-based workbook index.
+  assert.equal(calc['Named Ranges'], 1);
+  assert.equal(calc.Order, 1);
+});
+
+test('analyze: an inlineStr cell keeps its text instead of resolving empty', () => {
+  const INLINE = `<?xml version="1.0"?>
+<worksheet xmlns="ws"><sheetData><row r="1">
+  <c r="A1" t="inlineStr"><is><t>plain</t></is></c>
+  <c r="B1" t="inlineStr"><is><r><t>rich </t></r><r><t>runs</t></r></is></c>
+  <c r="C1"><v>5</v></c>
+</row></sheetData></worksheet>`;
+  const parts = buildParts().map(([p, x]) => p === 'xl/worksheets/sheet1.xml' ? [p, INLINE] : [p, x]);
+  const [row] = xlsxKit.sheetRows(xlsxKit.analyze(parts).xl.sheets.sheet1);
+  assert.deepEqual(row, { Row: 1, A: 'plain', B: 'rich runs', C: '5' });
 });
 
 test('views.files: Shared Strings and Calc Chain categorize despite mixed-case filenames', () => {
