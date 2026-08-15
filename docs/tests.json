@@ -2782,7 +2782,7 @@
       "path": "tools/test/stage.test.mjs",
       "kind": "component",
       "protects": "The stage: membership, grouping, the diff lens, saving, and the cross-repo address grammar.",
-      "assertions": 96,
+      "assertions": 97,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [
@@ -2812,7 +2812,8 @@
         "an offer already on the stage under that name is not offered again",
         "a local image previews from its own bytes, with no repo behind it",
         "the data URI keys on the extension, so a rename changes what it renders as",
-        "a non-image binary is still refused, and says which",
+        "a binary with no mode to draw it is still refused, and says which",
+        "a dropped workbook previews rather than being refused",
         "a rename reaches both fields a local item is read through",
         "a renamed local file deposits under its new name",
         "a name that cleans to nothing leaves the item alone, and so does Escape",
@@ -3288,10 +3289,20 @@
       "assertion_names": null
     },
     {
+      "path": "tools/test/viewer-xlsx.mjs",
+      "kind": "behavior",
+      "protects": "The viewer's workbook module: an .xlsx is unzipped and drawn as a table rather than as replacement characters, it opens over a host's blanket defaultMode, the sheet tabs carry display names in workbook order (not part-file order), and a date cell reads as a date rather than as a serial.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:viewer-xlsx",
+      "boot_smoke": null,
+      "assertion_names": null
+    },
+    {
       "path": "tools/test/viewer.test.mjs",
       "kind": "component",
       "protects": "Mode resolution always lands somewhere: every form of the option falls back to raw when it cannot resolve, and a delimited parse pads short rows and names blank or duplicate headers so no column or record is dropped.",
-      "assertions": 17,
+      "assertions": 20,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -3312,7 +3323,10 @@
         "a short row pads rather than dropping the record",
         "tableRows passes a JSON array through, and names the shape it wanted",
         "no stray warnings or errors after the resolves",
-        "the markdown preview scrolls on its pane, not on its text column"
+        "the markdown preview scrolls on its pane, not on its text column",
+        "a workbook opens in the sheets mode, whatever the host asked for",
+        "isWorkbook and mimeFor agree on which extensions are workbooks",
+        "the sheets mode is exclusive, and the image mode still is too"
       ]
     },
     {

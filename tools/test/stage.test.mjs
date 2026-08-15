@@ -397,16 +397,34 @@ test('the data URI keys on the extension, so a rename changes what it renders as
   const bytes = Uint8Array.from([1, 2, 3]);
   assert.match(data.dataUri({ name: 'a.png', bytes }), /^data:image\/png;/);
   assert.match(data.dataUri({ name: 'a.svg', bytes }), /^data:image\/svg\+xml;/);
-  assert.equal(data.dataUri({ name: 'a.xlsx', bytes }), '', 'a binary the viewer cannot render still says so');
+  // A workbook carried a data URI from 2026-08-15, when the viewer gained a
+  // mode that can draw one. This assertion read the other way until then, which
+  // is the point of keying on `mimeFor`: the set that previews here is the set
+  // the viewer can render, and it moves when that does.
+  assert.match(data.dataUri({ name: 'a.xlsx', bytes }), /^data:application\/vnd\.openxml/);
+  assert.equal(data.dataUri({ name: 'a.zip', bytes }), '', 'a binary the viewer cannot render still says so');
   assert.equal(data.dataUri({ name: 'a.png' }), '', 'no bytes, no URI');
 });
 
-test('a non-image binary is still refused, and says which', async () => {
+test('a binary with no mode to draw it is still refused, and says which', async () => {
   reset();
-  store.stage = [{ local: true, id: 211, name: 'book.xlsx', path: 'book.xlsx', size: 2048, type: '', isText: false, bytes: Uint8Array.from([1, 2]) }];
+  store.stage = [{ local: true, id: 211, name: 'bundle.zip', path: 'bundle.zip', size: 2048, type: '', isText: false, bytes: Uint8Array.from([1, 2]) }];
   await data.view(data.localItems[0]);
   await tick(3);
   assert.match(data.preview.note, /^Binary/);
+  data.preview = null;
+});
+
+test('a dropped workbook previews rather than being refused', async () => {
+  // The case the refusal above used to cover. A .xlsx reaching the stage as
+  // local bytes now goes to the viewer, which is what makes naming a paste
+  // `.xlsx` do something.
+  reset();
+  store.stage = [{ local: true, id: 212, name: 'book.xlsx', path: 'book.xlsx', size: 2048, type: '', isText: false, bytes: Uint8Array.from([1, 2]) }];
+  await data.view(data.localItems[0]);
+  await tick(3);
+  assert.equal(data.preview.note, '', 'not refused as a binary');
+  assert.match(previewViewer().content, /^data:application\/vnd\.openxml/);
   data.preview = null;
 });
 
