@@ -51,6 +51,38 @@ For a large tracked corpus, commit it in slices (by year, by prefix) and push
 per slice; the branch and any draft PR come up on the first small push, and the
 rest stream in behind it.
 
+## Git transport: a fetched ref can be stale, and the merge that follows lies
+
+*(measured 2026-08-14, PR #416: three merge attempts refused)*
+
+`git fetch origin main` through the proxy can return a ref **behind** what
+GitHub has. Not an error, not a warning: `origin/main` simply names an older
+commit, and everything downstream reasons from it. `git merge-tree --write-tree
+origin/main HEAD` then certifies a merge that GitHub refuses with **405 `Pull
+Request has merge conflicts`**, and `PUT .../update-branch` refuses the same way
+with 422.
+
+The failure impersonates a GitHub bug, which is what makes it expensive. Local
+git says the branch already contains main (`git merge-base --is-ancestor
+origin/main HEAD` passes, so the merge is a fast-forward and cannot conflict)
+while the API insists on a conflict. **That contradiction is the tell, and the
+API is the one telling the truth.** Reading the PR through
+`pull_request_read` returned a base SHA the fetch had never shown; closing and
+reopening the PR forced a recompute and surfaced a base two commits further on.
+
+The corrected move, in order:
+
+1. Read the base SHA from the API (`pull_request_read` → `base.sha`), not from
+   `origin/main`.
+2. Fetch **that SHA explicitly** (`git fetch origin <sha>`), which defeats
+   whatever is caching the ref name.
+3. Merge, resolve, push, and only then check mergeability again.
+
+A busy `main` makes this worse rather than causing it: five PRs landed under one
+branch in an hour, and each stale read cost a full merge, suite run, and CI
+round before the refusal. When the base is moving, re-read it from the API
+immediately before every merge attempt rather than once at the start.
+
 ## Toolchain: `check-tools`, and what it omits
 
 *(verified 2026-05-30)*
