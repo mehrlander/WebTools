@@ -2370,6 +2370,14 @@ function app(){ return {
   ACTIVITY_CACHE_INTERVAL_MS: 12 * 3600 * 1000,
   ACTIVITY_SURVEY_CAP: 30,       // older branches surveyed per repo (view's SURVEY_CAP)
   ACTIVITY_RECENT_COMMITS: 12,   // newest commits fetched per repo per crawl
+  // How deep the any-state PR read goes per repo (gh.branchPulls). 100 is the
+  // API's page maximum, and it has to clear the branch survey's recent window
+  // (BranchSurvey.RECENT_DAYS, 14 days) or a fresh branch's merged PR would sit
+  // past the reach and read as unknown. The busiest repo in the estate opens
+  // roughly five PRs a day, so 100 covers about three weeks there and the whole
+  // history everywhere else; anything past it is reported as unknown rather
+  // than as "no PR", which is what `prReach` below is for.
+  ACTIVITY_PR_REACH: 100,
   ACTIVITY_REPO_POOL: 2,         // repos crawled at once (each runs its own survey pool)
   _activityCheckKey: 'wt:activityCacheCheckedAt',
   // Returns a summary of the run for the caller to report: {total, changed,
@@ -2642,9 +2650,14 @@ function app(){ return {
     const checkFacts = (Array.isArray(cfg?.checks) && cfg.checks.length && window.RepoChecks)
       ? await window.RepoChecks.probe(cfg.checks, this._checkReader(g, def)).catch(() => [])
       : [];
-    const [recentCommits, openPRs, branchSessions] = await Promise.all([
+    const [recentCommits, openPRs, branchPulls, branchSessions] = await Promise.all([
       g.commits(this.ACTIVITY_RECENT_COMMITS).catch(() => []),
       g.pulls('open', 30).catch(() => []),
+      // The PR each branch last had, in ANY state (gh.branchPulls). One call per
+      // repo per crawl, and the one that makes a branch row able to say merged
+      // rather than "no PR": the open read above cannot see a PR that merged,
+      // which is the state most branches in the recent window are actually in.
+      g.branchPulls(this.ACTIVITY_PR_REACH).catch(() => ({ rows: [], reach: '' })),
       // Optional by design: the session links are a nicety, so a failure here
       // leaves them blank rather than costing the repo its activity row.
       g.branchSessions().catch(() => ({})),
@@ -2718,6 +2731,12 @@ function app(){ return {
       defaultBranch: def,
       recentCommits,
       openPRs,
+      // The any-state PR per branch, and how far back that read reached. Stored
+      // beside openPRs rather than folded into it: the open rows carry the
+      // guide body and the session, and this is a lean index whose only job is
+      // to tell a branch row what became of its PR.
+      branchPRs: branchPulls.rows || [],
+      prReach: branchPulls.reach || '',
       counts,
       // Read by mergeRepo and dropped there: it describes THIS PASS, not the
       // repo, so it must never reach the stored entry or the hash.

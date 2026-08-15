@@ -887,6 +887,36 @@
       ]
     },
     {
+      "path": "tools/test/estate-branch-pr-state.test.mjs",
+      "kind": "behavior",
+      "protects": "A branch row says what became of its pull request (merged, closed unmerged, open, never proposed, or past the index's reach) rather than only whether one is open, across the fetch, the cache, and the row.",
+      "assertions": 19,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "branchPulls asks for every state, newest activity first",
+        "a merged PR is its own state, not just closed",
+        "a head with several PRs keeps the newest and counts the rest",
+        "the newest wins even when the page arrives out of order",
+        "reach is empty when the read was not capped, and dated when it was",
+        "a PR from a deleted fork with no head ref is skipped, not counted",
+        "a PR merging changes the entry hash",
+        "PR activity that the row does not show does not restamp the cache",
+        "a crawl that could not read the index keeps the prior one",
+        "a crawl that read it replaces it whole, reach included",
+        "a merged branch reads merged, not \"no PR\"",
+        "a closed-unmerged branch is a state of its own",
+        "an open PR still outranks the index, draft and ready alike",
+        "a merged branch does not count as open work",
+        "inside the index reach an unmatched branch really has no PR",
+        "past the reach it says it does not know, rather than \"no PR\"",
+        "a cache written before the index existed claims nothing either way",
+        "an uncapped read speaks for every branch, however old",
+        "the row menu reaches a merged PR, and still offers a new one"
+      ]
+    },
+    {
       "path": "tools/test/estate-branch-sessions.test.mjs",
       "kind": "behavior",
       "protects": "The session trailer is pulled out of a commit or PR body rather than guessed from the branch name.",
