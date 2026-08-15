@@ -490,6 +490,32 @@ test('the pad becomes casing keys, and they act on the selection alone', () => {
   assert.equal(d.text, 'the Quick brown fox');
 });
 
+test('a phrase spoken into a mid-buffer caret is separated on BOTH sides', () => {
+  // The join was one-sided for as long as speaking meant appending: at the end
+  // there is nothing to run into. Once a caret could be placed, the phrase
+  // glued itself to the word after it. Reported from the stitch work, 2026-08-15.
+  const d = withText('I paused here then carried on');
+  d.caretAt(14);                          // between "here " and "then"
+  d.insert('and kept going');
+  assert.equal(d.text, 'I paused here and kept going then carried on');
+  assert.deepEqual(d.range, { start: 29, end: 29 },
+    'and the caret lands past the separator, so the next phrase adds no second one');
+  d.insert('quite a way');
+  assert.equal(d.text, 'I paused here and kept going quite a way then carried on');
+
+  // Punctuation clings leftward, so it takes no separator of its own.
+  const p = withText('one. two.');
+  p.caretAt(3);
+  p.insert('and a half');
+  assert.equal(p.text, 'one and a half. two.');
+
+  // Replacing a selection is usually already spaced on that side.
+  const s = withText('the quick brown fox');
+  s.select(4, 9);
+  s.insert('slow');
+  assert.equal(s.text, 'the slow brown fox');
+});
+
 // ── The stitch ──────────────────────────────────────────────────────────────
 // The correction a pause period costs most often: the reader stopped to think,
 // the engine read the silence as an ending, and the sentence came back broken

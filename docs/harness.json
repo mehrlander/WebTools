@@ -1350,6 +1350,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/stage-stitch.mjs",
+      "role": "the stage composer's stitch key: a caret in a sentence gap turns the full-stop cell into the cell that takes one back, the same swap the annotator's card makes off the same kit verb",
+      "layer": "tools/render/scenarios",
+      "lines": 52,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/state-view.mjs",
       "role": "Populate the State view for a screenshot: stub the registry reads with a current cache, a stale one, an unchecked one, and the buttonless entity index",
       "layer": "tools/render/scenarios",
