@@ -151,7 +151,7 @@
       "path": "tools/test/branch-brief-groups.test.mjs",
       "kind": "component",
       "protects": "The branch review's Files pane groups by creation mode where a content registry is declared, mounts no cards inside a collapsed group, and stays the flat unlabeled list where no registry exists.",
-      "assertions": 4,
+      "assertions": 8,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -159,14 +159,46 @@
         "with a registry, files group by creation mode and mechanical trails collapsed",
         "a collapsed group mounts no cards until its header is toggled",
         "without a registry the pane is the flat unlabeled list it always was",
-        "the GitHub exits are labeled menu rows, and the plus aims the stage at this branch"
+        "the GitHub exits are labeled menu rows, and the plus aims the stage at this branch",
+        "standalone: the document is left alone and nothing is pinned",
+        "the deck pages what the pane is showing, in the order it shows it",
+        "with every group shut there is nothing to read, and no control offering to",
+        "a card carries the deck action, aimed at its own path"
+      ]
+    },
+    {
+      "path": "tools/test/branch-brief-hosted.test.mjs",
+      "kind": "behavior",
+      "protects": "What a host is owed by the branch view it mounts directly: `framed` chrome, `warm` neighbours, and `onMeta` reporting the PR number for a branch whose PR merged, which the activity crawl never sees; plus the framed layout, where the head holds its place and the pane takes the scroll.",
+      "assertions": 17,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "a host mounts it at a branch and is told what the read found",
+        "opening Files is what asks for the compare, and it asks once",
+        "a branch with no PR leads with Files, so it reads the compare at once",
+        "the merged PR is reported, which is the whole point of onMeta",
+        "a host lends its row, and the compare corrects it",
+        "a branch with no PR reports none rather than the last one",
+        "the neighbours a host names are warmed, and arriving at one is free",
+        "a reader who is looking at diffs gets the diffs warmed too",
+        "the registry is read once per ref, not once per mount",
+        "framed: the head holds its place and the pane takes the scroll",
+        "framed: the document itself is left alone",
+        "a read that is overtaken does not land on top of the newer one",
+        "the deck opens from a branch that has not read its diff",
+        "with nothing lending the head, the compare is not deferred",
+        "a compare that lands after a step does not overwrite the newer branch",
+        "the strip is two tabs, and Guide is always one of them",
+        "with no PR, the Guide pane is the commits, and asking is what fetches them"
       ]
     },
     {
       "path": "tools/test/branch-brief.test.mjs",
       "kind": "behavior",
       "protects": "Branch state classification: ahead, behind, merged, and stranded.",
-      "assertions": 26,
+      "assertions": 36,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -179,7 +211,10 @@
         "commits come back newest first, the order a reader scans",
         "sessions come off the compare, deduped",
         "past the commit cap the counts are a floor and say so",
-        "a branch with no compare still assembles, as unrelated",
+        "a 404 compare assembles as unrelated, which is an answer",
+        "an unread compare assembles as pending, which is a gap",
+        "a host lends what it knows, and only until the compare answers",
+        "a lent ahead of zero is landed, not a missing fact",
         "an open PR attaches; its absence is not an error",
         "prs carries them newest-first, and a merged PR says merged",
         "prs falls back to the single pull, so an old caller still renders",
@@ -196,7 +231,14 @@
         "fetchBrief asks for the compare and the branch PR",
         "a 404 compare is a finding, not a failure",
         "a failed PR lookup leaves the page otherwise intact",
-        "a non-404 compare error propagates rather than reading as unrelated"
+        "a non-404 compare error propagates rather than reading as unrelated",
+        "the compare and the PR list are in flight at the same time",
+        "each side keeps its own failure rule when they run together",
+        "readBrief: a second read inside the window does not touch GitHub",
+        "readBrief: a warm still in flight is joined, not re-issued",
+        "readBrief: the base is part of the identity",
+        "readBrief: a failure is not the answer for a minute",
+        "forget: one branch, or all of them"
       ]
     },
     {
@@ -878,25 +920,6 @@
       ]
     },
     {
-      "path": "tools/test/estate-branch-swipe.test.mjs",
-      "kind": "component",
-      "protects": "A horizontal drag moves the branch surface and owns the axis, so vertical scroll is not stolen.",
-      "assertions": 8,
-      "method": "alpine",
-      "runner": "suite",
-      "boot_smoke": [],
-      "assertion_names": [
-        "a horizontal drag moves the surface with the finger and owns the axis",
-        "a vertical drag is left alone: no transform, no preventDefault",
-        "a drag under the axis threshold decides nothing yet",
-        "past the threshold commits one step; short of it, none",
-        "a commit resets the ready flag, so the row facts cover the incoming page",
-        "an end with no neighbour rubber-bands and cannot step",
-        "a horizontally-scrollable target keeps its own scroll",
-        "with the takeover closed the handlers are inert"
-      ]
-    },
-    {
       "path": "tools/test/estate-chats-retry.test.mjs",
       "kind": "behavior",
       "protects": "The Chats pane's loader attempts once per failure. Guarding on success rather than on the attempt makes a failed load relaunch itself forever, pegging the main thread with no network traffic to explain it; that shipped and froze a phone.",
@@ -986,7 +1009,7 @@
       "path": "tools/test/estate-open-branches.test.mjs",
       "kind": "component",
       "protects": "The open-branches list shows open PRs and stranded branches only, freshest first.",
-      "assertions": 22,
+      "assertions": 17,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -1001,18 +1024,13 @@
         "branchMenuItems: a PR row offers its tabs, a bare branch offers New PR",
         "openBranchMenu anchors through the shell and closes on a pick",
         "runBranchMenu builds the GitHub destinations",
-        "tapping a row takes over: frozen sequence, position, clamped stepping",
-        "keyboard: arrows step, Escape closes, all dead when nothing is open",
-        "dropFileUrl: the new-file form on the branch, filename in the inbox",
-        "allBranchRows: everything the cache knows, landed included",
-        "the default scope is Recent and it leads the row",
-        "Open still selects the old list exactly, at any age",
-        "the window is disjoint from stranded and landed, so it cannot narrow them",
-        "each scope shows its own group",
-        "branchScopes: counts off the FULL list, not the current scope",
-        "the repo chips follow the scope",
-        "a row carries the survey evidence, and an unsurveyed one carries zeros",
-        "the finder's open-branch-detail event opens the takeover like a deep link"
+        "tapping a row takes over: the frozen list is the deck, opened at the row",
+        "the header names the branch, its repo and an open PR",
+        "a merged PR reaches the header from the slide, since the cache never saw it",
+        "a slide that settles while the reader is elsewhere is ignored",
+        "the header follows the reader from slide to slide",
+        "opening while one is open replaces it rather than stacking a second",
+        "closing clears the shell at once, whatever the deck does next"
       ]
     },
     {
@@ -1266,7 +1284,7 @@
       "path": "tools/test/fab-toss.test.mjs",
       "kind": "component",
       "protects": "The fab keeps shell identity when mounted inside a toss.",
-      "assertions": 12,
+      "assertions": 25,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [
@@ -1284,14 +1302,56 @@
         "the width bar is reachable through a frame, or an address that can make one",
         "off the renderer, a preset addresses it with ?w= on the query",
         "on the renderer, a preset moves the frame in place",
-        "no startup warnings or errors"
+        "no startup warnings or errors",
+        "a deck subject retargets the drawer without pretending to be a frame",
+        "a framed subject still reads as framed",
+        "a swipe keeps the guide and drops only the per-file survey",
+        "ahead/behind is remembered per branch pair, not re-asked per file",
+        "the survey is remembered per path, so swiping back is free",
+        "the picker is handed a real component, not Alpine's scope proxy",
+        "the drawer template carries no backtick, being a template literal",
+        "the compare bar exists only for a subject that announced a base",
+        "picking, and turning it off, publish a pair the file surface can act on",
+        "the comparison survives a swipe and not a change of branch",
+        "a file is not offered as its own comparison",
+        "a ref pick over a deck slide is handed to the deck, not to the address bar",
+        "the address grammar splits three ways, and refuses what is not one"
+      ]
+    },
+    {
+      "path": "tools/test/file-deck.test.mjs",
+      "kind": "behavior",
+      "protects": "The contract between the Files pane and the file deck: the deck pages what the pane is showing, its header names the file the reader is on rather than the one they opened at, and a card is handed its options by reference rather than through an x-data expression.",
+      "assertions": 18,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "the filename is the title and its directory is the crumb",
+        "start opens on a named file, which is what \"read from here\" needs",
+        "the header follows the reader rather than the file they opened at",
+        "a deep directory keeps both its ends and elides the middle",
+        "a file with no directory keeps its whole name",
+        "nothing to read opens nothing",
+        "a card is handed its options by reference, not through the x-data expression",
+        "it drills when given a parent and roots when not",
+        "back: true earns the chevron without a parent deck to drill from",
+        "the crumb does not say the same thing twice",
+        "the deck says what the reader is on, and keeps saying it",
+        "a deck opened over a toss puts the toss back, rather than clearing it",
+        "announce: false leaves the sidebar where it was",
+        "hosted in a toss, the deck announces to the shell as well",
+        "the header offers a door to the sidebar, and only where it announces",
+        "the deck answers a re-address in place, and stops speaking for the compare",
+        "a file the deck does not hold is a real navigation, and it says so",
+        "a deck that does not announce does not claim the handle either"
       ]
     },
     {
       "path": "tools/test/file-review-card.test.mjs",
       "kind": "component",
       "protects": "What opening a changed-file row costs: a card handed a patch shows it without fetching, and only a tab that needs the bytes triggers a contents call. Plus the collapsed row's formatting, including the path elision that replaced a CSS rtl trick bidi reordering turned into a path that does not exist.",
-      "assertions": 8,
+      "assertions": 25,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -1303,7 +1363,24 @@
         "the path splits, and a long directory elides from the left",
         "the size bar is proportional, and never empty on a real change",
         "the row carries one action, routed by file type through the guide table",
-        "mounting the cards is quiet"
+        "mounting the cards is quiet",
+        "kind is read from the name, and each kind has its own pane",
+        "the surface decides whether a document opens read or diffed",
+        "an image offers no source panes, because there is nothing there to read",
+        "a reading surface loads a presentation rather than settling on the patch",
+        "a binary keeps its bytes to itself",
+        "bare drops the collapsed row, for a host that names the file itself",
+        "a client too old to have bytes() still yields an image",
+        "copy takes what is showing, and offers nothing when there is nothing",
+        "a document copies its source, not the rendered markup",
+        "the controls sit on the tab row, not on a strip above it",
+        "the two classifiers agree about what markdown is",
+        "frontmatter is fenced before rendering, not read as a paragraph",
+        "a reading surface shows the file and one comparison, not four readings of it",
+        "the sidebar can turn the comparison off, and the file stands alone",
+        "moving the base drops the patch, since the patch was only true of the old one",
+        "a pair addressed to another branch is not applied to this file",
+        "a list card is not listening: its four tabs are its own"
       ]
     },
     {
@@ -2859,6 +2936,27 @@
         "the primitives section parses and both sides are non-trivial",
         "every SURFACING.md primitive has a manifest row",
         "every manifest row points at a real SURFACING.md primitive"
+      ]
+    },
+    {
+      "path": "tools/test/swipe-deck-stack.test.mjs",
+      "kind": "behavior",
+      "protects": "The deck stack that drilling rests on: only the top deck answers a key or a Back, so a child does not close its parent with it or step it invisibly underneath; plus drill’s two conventions, the back chevron and the parent as the head of the crumb.",
+      "assertions": 10,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "opening pushes onto the stack; the last one opened is the top",
+        "one Back pops one deck, and the parent is still there underneath",
+        "only the top deck answers a key",
+        "leaving a deck leaves everything stacked on it",
+        "drill: the dismiss button becomes a back chevron, since it returns",
+        "drill: the parent is the head of the child’s breadcrumb",
+        "a slide the reader has left is emptied, and rebuilt on return",
+        "one slide of hysteresis, so a step back does not rebuild",
+        "closing lets every slide go, not just the far ones",
+        "the header is writable, which is how a deck follows its own slides"
       ]
     },
     {

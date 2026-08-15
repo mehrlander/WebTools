@@ -89,6 +89,29 @@ Sizing a summary below the text it summarizes ranks them for the reader, and tha
 ranking is nearly always an accident of how the layout was assembled rather than a
 judgment anyone made.
 
+**A markdown document renders through the guide renderer.**
+[`kits/guide-render.js`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/guide-render.js)
+is the house answer: it injects its own `.guide-body` CSS, so it needs nothing
+of the host page, and it carries a phone override that lifts prose to 17px
+because 14px read small in a full-viewport takeover (measured twice). It also
+re-aims every blob link at whatever can render it, which is the behaviour a
+reader wants from a document sitting inside this estate rather than on
+github.com. Fence the frontmatter first, through
+[`SourcePeek.fenceFrontmatter`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/source-peek.js):
+half these docs open with a `---` block and marked renders a bare one as a run
+of prose, so the document opens on "status: living date: ..." as its first
+paragraph.
+
+The alternative, Tailwind's typography plugin (`prose prose-sm`), is what three
+older surfaces use and is not wrong; it needs the plugin on the host page and
+carries one trap worth knowing. Tailwind v4 emits utilities into
+`@layer utilities` while the typography stylesheet is unlayered, so
+`.prose{max-width:65ch}` beats `.max-w-none` on the cascade-layer rule rather
+than on specificity, and nothing in the class list looks wrong. Two surfaces
+work around it with `!max-w-none`; the shell viewer keeps the 65ch measure on
+purpose and centres the column instead. Prefer the guide renderer for anything
+new, and do not convert a working surface just for symmetry.
+
 **One accent, and it means something.** Pick a semantic colour per role and hold it
 across the page, so colour carries information rather than decoration. Where two
 things are compared, give each a fixed treatment and never swap them between views.
