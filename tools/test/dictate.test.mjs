@@ -490,6 +490,140 @@ test('the pad becomes casing keys, and they act on the selection alone', () => {
   assert.equal(d.text, 'the Quick brown fox');
 });
 
+test('a phrase spoken into a mid-buffer caret is separated on BOTH sides', () => {
+  // The join was one-sided for as long as speaking meant appending: at the end
+  // there is nothing to run into. Once a caret could be placed, the phrase
+  // glued itself to the word after it. Reported from the stitch work, 2026-08-15.
+  const d = withText('I paused here then carried on');
+  d.caretAt(14);                          // between "here " and "then"
+  d.insert('and kept going');
+  assert.equal(d.text, 'I paused here and kept going then carried on');
+  assert.deepEqual(d.range, { start: 29, end: 29 },
+    'and the caret lands past the separator, so the next phrase adds no second one');
+  d.insert('quite a way');
+  assert.equal(d.text, 'I paused here and kept going quite a way then carried on');
+
+  // Punctuation clings leftward, so it takes no separator of its own.
+  const p = withText('one. two.');
+  p.caretAt(3);
+  p.insert('and a half');
+  assert.equal(p.text, 'one and a half. two.');
+
+  // Replacing a selection is usually already spaced on that side.
+  const s = withText('the quick brown fox');
+  s.select(4, 9);
+  s.insert('slow');
+  assert.equal(s.text, 'the slow brown fox');
+});
+
+// ── The stitch ──────────────────────────────────────────────────────────────
+// The correction a pause period costs most often: the reader stopped to think,
+// the engine read the silence as an ending, and the sentence came back broken
+// in two with a capital in the middle of it. A caret in the gap is the whole
+// gesture.
+
+test('a caret in the gap joins the sentence and brings the capital down', () => {
+  const d = withText('so I went to the store. and then I came back');
+  d.caretAt(23);                          // the space after the full stop
+  assert.equal(d.canStitch, true);
+  assert.equal(d.stitch(), true);
+  assert.equal(d.text, 'so I went to the store and then I came back');
+  assert.deepEqual(d.range, { start: 23, end: 23 }, 'the caret stays at the seam it closed');
+
+  const e = withText('so I went to the store. And then I came back');
+  e.caretAt(23);
+  e.stitch();
+  assert.equal(e.text, 'so I went to the store and then I came back',
+    'the capital the engine wrote after the pause comes down with the mark');
+});
+
+test('the whole gap is one target, since a thumb cannot aim at one offset', () => {
+  // Before the mark, after it, inside the whitespace, and on the first letter
+  // of the next word all mean the same thing to the reader.
+  for (const at of [22, 23, 24]) {
+    const d = withText('so I went to the store. And then I came back');
+    d.caretAt(at);
+    assert.equal(d.canStitch, true, 'offset ' + at + ' is in the gap');
+    d.stitch();
+    assert.equal(d.text, 'so I went to the store and then I came back');
+  }
+  const wide = withText('one sentence.   Two sentences');
+  wide.caretAt(15);                       // in the middle of a three-space gap
+  wide.stitch();
+  assert.equal(wide.text, 'one sentence two sentences',
+    'whatever the gap held, the join is one space');
+});
+
+test('the stitch declines where there is no seam to close', () => {
+  const away = withText('so I went to the store. And then I came back');
+  away.caretAt(10);
+  assert.equal(away.canStitch, false, 'a caret four words off reaches nothing');
+  assert.equal(away.stitch(), false);
+  assert.equal(away.text, 'so I went to the store. And then I came back');
+
+  const end = withText('this sentence ends here.');
+  end.caretAt(24);
+  assert.equal(end.canStitch, false, 'a mark at the end of the buffer joins to nothing');
+
+  const resting = withText('this sentence ends here.');
+  assert.equal(resting.canStitch, false, 'and neither does the resting null range');
+
+  const tight = withText('nasa.gov is a site');
+  tight.caretAt(5);
+  assert.equal(tight.canStitch, false, 'no gap means the join is already tight');
+
+  const bare = withText('. A stray mark');
+  bare.caretAt(1);
+  assert.equal(bare.canStitch, false, 'a mark with no sentence in front of it is not an ending');
+});
+
+test('a live selection is not a stitch: the pad is showing casing keys then', () => {
+  const d = withText('so I went to the store. And then I came back');
+  d.select(24, 27);                       // "And"
+  assert.equal(d.canStitch, false);
+  assert.equal(d.stitch(), false);
+  assert.equal(d.text, 'so I went to the store. And then I came back');
+});
+
+test('the stitch is one undo step, and it un-ends the sentence for what comes next', () => {
+  const d = withText('I paused here. Then carried on');
+  d.caretAt(14);
+  d.stitch();
+  assert.equal(d.text, 'I paused here then carried on');
+  assert.equal(d.canUndo, true);
+  d.undo();
+  assert.equal(d.text, 'I paused here. Then carried on', 'one tap puts the break back');
+
+  const e = withText('I paused here. Then carried on');
+  e.caretAt(14);
+  e.stitch();
+  e.start();
+  FakeSR.last.say([{ t: 'And kept going', final: true }]);
+  assert.match(e.text, /and kept going/,
+    'the sentence is running again, so the next utterance is a continuation');
+  assert.doesNotMatch(e.text, /And kept going/);
+});
+
+test('a word that is not a plain capital keeps its case, the way normalize() leaves it', () => {
+  const acronym = withText('we filed it. NASA had the rest');
+  acronym.caretAt(13);
+  acronym.stitch();
+  assert.equal(acronym.text, 'we filed it NASA had the rest');
+
+  const me = withText('she asked. I said yes');
+  me.caretAt(10);
+  me.stitch();
+  assert.equal(me.text, 'she asked I said yes');
+});
+
+test('a paragraph break is a gap too, so the caret closes it the same way', () => {
+  const d = withText('first thought.\n\nSecond thought');
+  d.caretAt(14);
+  assert.equal(d.canStitch, true);
+  d.stitch();
+  assert.equal(d.text, 'first thought second thought');
+});
+
 test('delete takes the selection when there is one, and the word before a caret otherwise', () => {
   const d = withText('the quick brown fox');
   d.select(4, 10);                       // "quick "

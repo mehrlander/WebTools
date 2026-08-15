@@ -109,6 +109,18 @@ test('editing writes through to the kit, and selection is shared both ways', asy
   await tick();
   assert.equal(A.selected.id, it.id, 'a focus never toggles off');
 
+  // Copying ONE note takes its words alone. The two buttons below the list
+  // carry the whole set with each note's quote and address; this row is one
+  // note being taken somewhere else, which those cannot do.
+  let copied = null;
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true, value: { clipboard: { writeText: async (t) => { copied = t; } } },
+  });
+  await d.annCopyOne(it.id);
+  assert.equal(copied, 'first, rewritten in the drawer');
+  assert.equal(d.annMsg, 'Note copied', 'and the drawer says so where it was asked');
+  assert.equal(d.annErr, false);
+
   d.annRemove(it.id);
   await tick();
   assert.equal(d.annItems.length, 0);
