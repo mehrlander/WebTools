@@ -44,6 +44,10 @@ import { resolveCdn, typeFor } from '../render/cdn.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const REPO = 'mehrlander/web-tools';
 const FIXTURE = 'docs/fixtures/two-page.pdf';   // never on disk; intercepted below
+// The same bytes at a REALISTIC address. Every path in the estate that anyone
+// actually opens a PDF from looks like this, and the header bugs the phone
+// found were all length bugs: nothing misbehaves at `docs/fixtures/x.pdf`.
+const LONG = 'docs/fixtures/2026-06-04-drs-budget-submittals/2023-25/R1/DP-ML-RH-Adding Roth Option to DCP.pdf';
 
 const failures = [];
 const ok = (name, cond, detail = '') => {
@@ -112,7 +116,8 @@ await page.route('**/*', route => {
   // Our two intercepts sit ahead of the working-tree stand-in: the fixture has
   // no file behind it, and the kit needs its CDN pins moved.
   const api = `https://api.github.com/repos/${REPO}/contents/`;
-  if (url.startsWith(api + FIXTURE)) {
+  const want = decodeURIComponent(url.split('?')[0]);
+  if (want.startsWith(api + FIXTURE) || want.startsWith(api + LONG)) {
     return route.fulfill({ status: 200, contentType: 'application/json', body: contentsJson(FIXTURE_BYTES) });
   }
   if (url.startsWith(api + 'lib/kits/pdf.js')) {
@@ -225,6 +230,80 @@ try {
   ok('only the reader\'s neighbourhood is built', s.built <= 3 && s.built >= 1,
      `${s.built} of ${s.slides} slides built`);
 
+  // ── the header at phone width, with a real address ───────────────────────
+  //
+  // Reported from a phone and invisible at every width this file had tested.
+  // Two separate faults, one shape: the header assumed its text was short.
+  // The address sat in a daisyUI badge, a FIXED-HEIGHT pill, so it wrapped
+  // inside a box that could not grow and drew its tail through the badge
+  // below it; and the file path truncated from the RIGHT, so a 390px screen
+  // read "docs/…" for a file whose name was the entire point.
+  //
+  // What is asserted is the geometry rather than the classes, because both
+  // faults were produced by class lists that read perfectly well.
+  console.log('the header holds together at 390px with a real path:');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${origin}/pages/data-view.html?src=${encodeURIComponent(`${REPO}@main:${LONG}`)}`,
+                  { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(5000);
+
+  const layout = await page.evaluate(() => {
+    const vw = document.documentElement.clientWidth;
+    const boxes = [];
+    document.querySelectorAll('header span, header h1, #viewer-pdf-bar *').forEach(el => {
+      const t = (el.textContent || '').trim();
+      if (!t || el.children.length) return;
+      // The FAB's drawer is parked OFF-SCREEN to the right while closed, and
+      // it has a header of its own, so an unscoped query reports its tab
+      // labels as overflow. They are supposed to be out there.
+      if (el.closest('[x-data*="fab"]')) return;
+      const r = el.getBoundingClientRect();
+      if (r.width === 0) return;
+      boxes.push({
+        t: t.slice(0, 24), l: r.left, r: r.right, top: r.top, bot: r.bottom,
+        // SPILL is the one that actually catches the badge, and the collision
+        // check below does not: a fixed-height pill keeps a 20px bounding box
+        // however many lines of text it holds, so the boxes never intersect
+        // while the glyphs plainly do. What gives it away is the element's own
+        // content being taller than the box drawn for it, with nothing
+        // clipping the difference.
+        spill: getComputedStyle(el).overflow === 'visible'
+               && el.scrollHeight > el.clientHeight + 2,
+      });
+    });
+    // Any two text boxes sharing space, which is what "drawn through each
+    // other" looks like to a machine.
+    const collisions = [];
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i], b = boxes[j];
+        const overlapX = Math.min(a.r, b.r) - Math.max(a.l, b.l);
+        const overlapY = Math.min(a.bot, b.bot) - Math.max(a.top, b.top);
+        if (overlapX > 2 && overlapY > 2) collisions.push(`${a.t} × ${b.t}`);
+      }
+    }
+    return {
+      vw,
+      collisions,
+      spills: boxes.filter(b => b.spill).map(b => b.t),
+      widest: Math.max(...boxes.map(b => b.r)),
+      pageScroll: document.documentElement.scrollWidth,
+      name: document.querySelector('[x-text="namePart"]')?.textContent || '',
+    };
+  });
+
+  ok('no header item overflows the box drawn for it',
+     layout.spills.length === 0, layout.spills.join(', '));
+  ok('no two header items are drawn through each other',
+     layout.collisions.length === 0, layout.collisions.join(', '));
+  ok('nothing runs past the right edge', layout.widest <= layout.vw + 2,
+     `${Math.round(layout.widest)} > ${layout.vw}`);
+  ok('and the page does not scroll sideways',
+     layout.pageScroll <= layout.vw + 2, `${layout.pageScroll} > ${layout.vw}`);
+  ok('the filename survives, not just its directory',
+     layout.name.startsWith('DP-ML-RH-Adding'), layout.name);
+
+  await page.setViewportSize({ width: 1100, height: 800 });
   console.log('a text file is untouched by any of this:');
   await page.goto(`${origin}/pages/data-view.html?src=${encodeURIComponent(`${REPO}@main:docs/tools.json`)}`,
                   { waitUntil: 'domcontentloaded' });

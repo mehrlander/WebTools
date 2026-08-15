@@ -260,7 +260,17 @@
       <header class="shrink-0" x-show="!bleed && (payload.title || payload.note || srcSpec)">
         <div class="flex items-baseline gap-2 flex-wrap">
           <h1 class="text-lg font-semibold" x-text="title"></h1>
-          <span x-show="srcSpec" class="badge badge-ghost badge-sm font-mono" x-text="srcSpec"></span>
+          <!-- NOT a badge, and it took two tries to see why. A badge is a
+               fixed-height pill that CENTRES its content, so a long address
+               first wrapped inside a box that would not grow (drawing its tail
+               through the `data` badge below), and then, once truncation was
+               added, overflowed both edges at once and showed the middle of
+               the path. Every real repo address is this long at phone width.
+               A plain span truncates the way a path should: keep the head,
+               which is the half the h1 does not carry, since the h1 names the
+               file and this names the repo it came from. -->
+          <span x-show="srcSpec" class="font-mono text-xs opacity-60 truncate min-w-0 max-w-full"
+                x-text="srcSpec" :title="srcSpec"></span>
           <span class="badge badge-sm" :class="payload.kind === 'envelope' ? 'badge-primary' : 'badge-ghost'"
                 x-text="payload.kind === 'envelope' ? 'envelope' : 'data'"></span>
           <div class="grow"></div>

@@ -249,3 +249,37 @@ test('the pdf stage can host a flex track, which needs min-h-0', () => {
   assert.match(stage.className, /flex-1/);
   assert.match(stage.className, /min-h-0/);
 });
+
+// ── the header's path split ─────────────────────────────────────────────────
+//
+// Reported from a phone: the header read "docs/…" for a file whose NAME was
+// the whole point, because a path truncated from the right loses its
+// identifying end. The split is what lets the directory go first.
+
+test('dirPart and namePart divide a path, slash riding with the directory', () => {
+  data.file = 'projects/budget-drs/data/source/DP-ML-RH-Adding Roth Option to DCP.pdf';
+  assert.equal(data.dirPart, 'projects/budget-drs/data/source/');
+  assert.equal(data.namePart, 'DP-ML-RH-Adding Roth Option to DCP.pdf');
+  assert.equal(data.dirPart + data.namePart, data.file, 'the two halves are the whole path');
+});
+
+test('a bare filename is all name and no directory', () => {
+  data.file = 'rows.csv';
+  assert.equal(data.dirPart, '');
+  assert.equal(data.namePart, 'rows.csv');
+});
+
+test('the name can still be truncated once the directory is gone', () => {
+  // The first fix gave the name shrink-0, which stopped it truncating at all:
+  // a 38-character filename then ran straight through the buttons beside it.
+  // The directory carries the weight instead, so it disappears first and the
+  // name only gives way when it is the last thing left.
+  data.file = 'a/b.md';
+  const doc = new window.DOMParser().parseFromString(data.template, 'text/html');
+  const name = [...doc.querySelectorAll('span')].find(s => s.getAttribute('x-text') === 'namePart');
+  const dir = [...doc.querySelectorAll('span')].find(s => s.getAttribute('x-text') === 'dirPart');
+  assert.ok(name && dir, 'both halves are rendered');
+  assert.match(name.className, /truncate/, 'the name ellipsises rather than overflowing');
+  assert.doesNotMatch(name.className, /shrink-0/, 'and it is allowed to give way at all');
+  assert.match(dir.className, /shrink-\[9999\]/, 'the directory absorbs the shrinking first');
+});
