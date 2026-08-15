@@ -259,7 +259,16 @@
            phone chrome while every control cost under 5%. -->
       <header class="shrink-0" x-show="!bleed && (payload.title || payload.note || srcSpec)">
         <div class="flex items-baseline gap-2 flex-wrap">
-          <h1 class="text-lg font-semibold" x-text="title"></h1>
+          <!-- Only when the payload NAMES ITSELF. For a bare addressed file
+               `title` is "Data · " plus the basename, which is the same
+               filename the viewer prints directly below and a third copy of
+               what the address beside it already ends with: three rows of
+               chrome for one fact, on the screen with the least room for it.
+               The rule this header already stated for its notes ("a bare
+               payload usually says everything in the viewer's own header")
+               was simply never applied to its own heading. An envelope, or
+               anything carrying a real title, still gets one. -->
+          <h1 x-show="payload.title" class="text-lg font-semibold" x-text="title"></h1>
           <!-- NOT a badge, and it took two tries to see why. A badge is a
                fixed-height pill that CENTRES its content, so a long address
                first wrapped inside a box that would not grow (drawing its tail
@@ -269,11 +278,20 @@
                A plain span truncates the way a path should: keep the head,
                which is the half the h1 does not carry, since the h1 names the
                file and this names the repo it came from. -->
-          <span x-show="srcSpec" class="font-mono text-xs opacity-60 truncate min-w-0 max-w-full"
+          <!-- `flex-1 min-w-0` rather than `max-w-full`: the address is the
+               one elastic thing in this row, so it should absorb the width
+               and let the kind badge sit beside it. Under max-w-full it took
+               the whole line and pushed the badge onto a row of its own. -->
+          <span x-show="srcSpec" class="font-mono text-xs opacity-60 truncate flex-1 min-w-0"
                 x-text="srcSpec" :title="srcSpec"></span>
-          <span class="badge badge-sm" :class="payload.kind === 'envelope' ? 'badge-primary' : 'badge-ghost'"
-                x-text="payload.kind === 'envelope' ? 'envelope' : 'data'"></span>
-          <div class="grow"></div>
+          <!-- Only the informative half of this label survives. "envelope"
+               tells a reader the payload holds several files and that the
+               strip below is theirs; "data" told them the page they are on is
+               the data page, which they can see, and it took a slot beside a
+               path that needed the room. Same rule as the h1 above: a row
+               earns its space by saying something. -->
+          <span x-show="payload.kind === 'envelope'"
+                class="badge badge-sm badge-primary shrink-0">envelope</span>
           <button x-show="hasNotes" @click="notesOpen = !notesOpen"
                   class="sm:hidden btn btn-ghost btn-xs btn-circle self-center" :class="notesOpen && 'text-primary'"
                   :title="notesOpen ? 'Tuck the notes away' : 'Show the notes'">

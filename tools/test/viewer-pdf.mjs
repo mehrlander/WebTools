@@ -289,6 +289,15 @@ try {
       widest: Math.max(...boxes.map(b => b.r)),
       pageScroll: document.documentElement.scrollWidth,
       name: document.querySelector('[x-text="namePart"]')?.textContent || '',
+      // Where the document itself starts. The honest measure of "too much
+      // going on at the top", and the only one that keeps rising as rows are
+      // added one reasonable-looking row at a time.
+      stageTop: Math.round(document.getElementById('viewer-pdf-stage')?.getBoundingClientRect().top ?? 9999),
+      // A heading here would be a third copy of the filename: the address
+      // ends with it and the viewer prints it. Only a payload that names
+      // itself gets one, and a bare addressed file does not.
+      headings: [...document.querySelectorAll('h1')]
+        .filter(h => h.offsetParent !== null && !h.closest('[x-data*="fab"]')).length,
     };
   });
 
@@ -302,6 +311,10 @@ try {
      layout.pageScroll <= layout.vw + 2, `${layout.pageScroll} > ${layout.vw}`);
   ok('the filename survives, not just its directory',
      layout.name.startsWith('DP-ML-RH-Adding'), layout.name);
+  ok('no heading repeats a filename the viewer already prints',
+     layout.headings === 0, `${layout.headings} heading(s) over a bare payload`);
+  ok('and the document starts near the top of the screen',
+     layout.stageTop < 200, `chrome pushes it to ${layout.stageTop}px of 844`);
 
   await page.setViewportSize({ width: 1100, height: 800 });
   console.log('a text file is untouched by any of this:');
