@@ -593,6 +593,60 @@ test('a keyboard writes into the draft, without asking for a textarea first', ()
   A.disable();
 });
 
+test('the card follows the input in use, not the device it thinks it is on', () => {
+  // A media query is the wrong instrument here: `(pointer: fine)` is true of an
+  // iPad with a keyboard case while the reader is still touching the screen,
+  // and that reader would lose the affordances they are actively using. The
+  // event is the evidence, which is the rule that let typing work with no
+  // detection at all, and it follows a reader who switches hands mid-note.
+  window.SpeechRecognition = FakeSR;
+  loadKit('dictate.js', { window });
+  const realPaint = window.Dictate.paint;
+  const seen = [];
+  window.Dictate.paint = (host, o) => { seen.push(o); return realPaint(host, o); };
+  try {
+    A.enable({ doc, subject: { title: 'x', url: '' } });
+    const S = A._state;
+    A.notePage({ listen: false });
+    S.dict.text = 'the quick brown fox';
+    S.precise = false;
+    A._paintDraft();
+    assert.notEqual(S.compPad.style.display, 'none', 'a thumb keeps the pad');
+    assert.equal(S.compPunct.style.display, 'grid', 'and the marks');
+    assert.equal(seen[seen.length - 1].handles, true, 'and the pins it taps to arm');
+
+    // A physical keyboard: the soft one lives inside the textarea, which this
+    // handler returns on, so a key reaching it is a real one.
+    const e = new window.Event('keydown', { bubbles: true, cancelable: true });
+    Object.assign(e, { key: 'x' });
+    doc.dispatchEvent(e);
+    assert.equal(S.precise, true);
+    assert.equal(S.compPad.style.display, 'none', 'a click places a caret, so the pad goes');
+    assert.equal(S.compPunct.style.display, 'none', 'and every mark is a keystroke away');
+    assert.equal(seen[seen.length - 1].handles, false, 'and the pins go with them');
+    assert.equal(S.compSave.style.gridColumn, '5 / 7',
+      'save takes the corner, or the empty cell shows as a grey stripe');
+
+    // THE CASING KEYS ARE THE EXCEPTION, and the column already swaps to them
+    // when a selection is live: there is no key for "capitalise this".
+    S.dict.select(4, 9);
+    A._paintDraft();
+    assert.equal(S.compPunct.style.display, 'grid',
+      'the column comes back as the casing pad, which a keyboard cannot replace');
+    assert.equal(seen[seen.length - 1].handles, false, 'the pins do not come back with it');
+
+    // A finger takes it all back.
+    const t = new window.MouseEvent('pointerdown', { clientX: 20, clientY: 20, bubbles: true });
+    t.pointerType = 'touch';
+    S.compView.dispatchEvent(t);
+    A._paintDraft();
+    assert.equal(S.precise, false);
+    assert.notEqual(S.compPad.style.display, 'none');
+    assert.equal(S.compSave.style.gridColumn, '5');
+    A.disable();
+  } finally { window.Dictate.paint = realPaint; }
+});
+
 test('shift extends from a fixed anchor, and anything else drops it', () => {
   // Which END of a selection is moving is a fact about the gesture, not about
   // the text, so the buffer holds {start, end} and the anchor lives in the
