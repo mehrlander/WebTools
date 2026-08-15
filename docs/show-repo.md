@@ -833,9 +833,10 @@ derived caches only.
 **every** branch of the estate in one cross-repo list, freshest first, narrowed
 by two axes: **scope** and **repo**.
 
-**Scope** picks which of the survey's `group` values to show, and the chips
-carry their counts off the full list, so the row doubles as the estate's branch
-census:
+**Scope** picks which branches to show, and the chips carry their counts off the
+full list, so the row doubles as the estate's branch census. Four scopes read
+the survey's `group` values; **Abandoned** reads the PR index instead, which is
+why it is a chip rather than a fifth group:
 
 | Scope | Shows | For |
 | --- | --- | --- |
@@ -843,7 +844,18 @@ census:
 | **Recent** | `active` | what was touched lately, unjudged |
 | **Stranded** | `stranded` | content that exists nowhere on the default branch |
 | **Landed** | `landed` | the cleanup pass: content already on the default branch |
+| **Abandoned** | a PR closed unmerged | work decided against, still in the list |
 | **All** | everything surveyed | the census |
+
+**Abandoned is the scope the content survey could not have.** Its verdict is
+landed-or-not, and abandoned work is landed nowhere, so a closed-unmerged branch
+sat among the stranded looking exactly like work still waiting to be finished.
+The two answers are opposite: stranded asks to be rescued, abandoned asks to be
+deleted. It is appended to the chip row rather than slotted beside Stranded,
+where it reads better: the row scrolls sideways on a phone, so a chip inserted
+mid-row pushes Landed and All off the screen and moves every position a reader
+had learned. Like Open, it ignores the window, since a branch abandoned in May
+is as abandoned as one abandoned yesterday.
 
 Open is not "recent", which is why it is its own scope rather than a date sort:
 a branch merged via a merge commit is an ancestor of the default, so it holds
@@ -859,9 +871,25 @@ at a time. Exposing `group` as a control is what turns this into the estate's
 one branch list; see "The branch review" for what stays repo-scoped (the live
 uncapped survey, a repo outside the estate, the in-app compare).
 
-Each row is **highlighted by PR state** (a colored left rail plus
-faint tint: green for a ready PR, amber for a draft, muted for a branch with no
-PR yet) and carries a **caption-style link cluster**. The row's **primary action
+Each row is **highlighted by PR state** (a colored left rail plus faint tint)
+and carries a **caption-style link cluster**. The state is what became of the
+branch, in six answers rather than two: green for a ready open PR, amber for a
+draft, blue for one that **merged**, red for one **closed unmerged**, and muted
+for a branch never proposed at all. The sixth is the honest one, `PR ?`: the
+crawl's PR index reaches back only so far (below), and a branch older than that
+gets no claim either way.
+
+Until 2026-08-15 the row read the open-PR list alone, so "no PR" meant "no OPEN
+PR" and every merged branch, which is most of the Recent window since branches
+are not deleted here, was reported as though it had never been proposed. Two
+readings of the same branch disagreed inside one app: the row said no PR while
+the detail takeover, which reads `state=all` per branch, showed the merged one.
+The list now reads a per-repo index of the same shape (`gh.branchPulls`), so the
+answer costs one call per repo instead of one per branch. The `#`-number links
+whichever PR the row is about, merged included, and its mark carries the state,
+with the word beside it where the width allows and a `+N` when a head has had
+several PRs over its life. `New pull request` in the row menu is gated on the
+absence of an **open** PR, so a merged branch that kept going can still open one. The row's **primary action
 (the branch name, and the leading Stage link) stages the files this branch
 changed** against its default (one `compare` call, removed paths skipped) and
 jumps to the Stage: navigating a whole branch tree is rarely the point, its diff
@@ -927,12 +955,20 @@ read.
 
 It reads the registry's **activity cache**
 (`state/activity.json`, below) in one GET, so the whole estate renders without a
-per-repo API fanout: the branch join to its open PR is `pr.head === branch`, and
-the session link rides the cached PR, so nothing is fetched per visit. Landed and
+per-repo API fanout: the branch join to its PR is `pr.head === branch`, against
+two stored lists (the open PRs, which carry the guide body, and `branchPRs`, the
+lean any-state index that says what became of each head), and the session link
+rides the cached PR, so nothing is fetched per visit. `prReach` travels with the
+index: the read is capped at 100 PRs per repo, and the oldest `updated_at` it
+reached is what lets a row distinguish "no PR" from "past what this can see". Landed and
 stranded older branches are the per-repo branch review's job, not this "what's in
 flight" read. The Repos view borrows the same cache for a **freshness rollup** on
-each card (branch count, stranded count, open-PR count, the branch count a one-tap
-route into the branch review). The crawl is forced from the State view through the
+each card (branch count, stranded count, abandoned count, open-PR count, with the
+branch count a one-tap route into the branch review and the abandoned count a
+one-tap route into the Abandoned scope). That last badge is computed in the view
+from the same rows the pane's chip counts, not counted in the crawl over the full
+branch list: one word, one derivation, or the card would report a larger number
+than the chip and make a reader distrust both. The crawl is forced from the State view through the
 shell (`refreshActivity`); a normal visit kicks it throttled. The internal view
 key stays `activity` (and `?view=activity`), so existing links resolve.
 
