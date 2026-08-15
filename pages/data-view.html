@@ -226,7 +226,7 @@
      layered beside the static px-4 would leave the winner to Tailwind's
      stylesheet order, and an inline style wins outright. The static classes
      stay, so nothing flashes unpadded before Alpine starts. -->
-<div x-data="app()" x-init="init()" class="h-full flex flex-col mx-auto px-4 py-4 gap-3 max-w-6xl"
+<div x-data="app()" x-init="init()" class="h-full flex flex-col mx-auto px-2 py-2 gap-2 sm:px-4 sm:py-4 sm:gap-3 max-w-6xl"
      :style="bleed ? 'padding:0; gap:0; max-width:none' : ''">
 
   <!-- error. GitHub answers 404 (not 401) for a private repo fetched with no
@@ -249,7 +249,7 @@
   </div>
 
   <template x-if="payload">
-    <div class="flex flex-col flex-1 min-h-0 gap-3">
+    <div class="flex flex-col flex-1 min-h-0 gap-2 sm:gap-3">
 
       <!-- header: the envelope's title and note, or the addressed file's name.
            A bare payload usually says everything in the viewer's own header,

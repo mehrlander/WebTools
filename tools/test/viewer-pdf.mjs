@@ -301,6 +301,11 @@ try {
       // going on at the top", and the only one that keeps rising as rows are
       // added one reasonable-looking row at a time.
       stageTop: Math.round(document.getElementById('viewer-pdf-stage')?.getBoundingClientRect().top ?? 9999),
+      // How much of its pane the page actually covers. Four separate paddings
+      // used to stack between the viewport and the canvas (the page shell, two
+      // flex gaps, and the slide's own), and each was defensible alone.
+      stageWidth: Math.round(document.getElementById('viewer-pdf-stage')?.clientWidth ?? 0),
+      pageWidth: Math.round(document.querySelector('.viewer-pdf-page')?.getBoundingClientRect().width ?? 0),
       // A heading here would be a third copy of the filename: the address
       // ends with it and the viewer prints it. Only a payload that names
       // itself gets one, and a bare addressed file does not.
@@ -322,7 +327,10 @@ try {
   ok('no heading repeats a filename the viewer already prints',
      layout.headings === 0, `${layout.headings} heading(s) over a bare payload`);
   ok('and the document starts near the top of the screen',
-     layout.stageTop < 200, `chrome pushes it to ${layout.stageTop}px of 844`);
+     layout.stageTop < 160, `chrome pushes it to ${layout.stageTop}px of 844`);
+  ok('the page fills the pane it was given',
+     layout.pageWidth >= layout.stageWidth - 4,
+     `page ${layout.pageWidth} inside pane ${layout.stageWidth}`);
 
   await page.setViewportSize({ width: 1100, height: 800 });
   console.log('a text file is untouched by any of this:');
