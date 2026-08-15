@@ -2707,6 +2707,16 @@
       ]
     },
     {
+      "path": "tools/test/stage-preview-height.mjs",
+      "kind": "behavior",
+      "protects": "The stage's preview modal is one height whatever it holds, and a long file scrolls inside it rather than being clipped by it; measured in a real browser, since jsdom has no layout and a screenshot shows neither.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:preview-height",
+      "boot_smoke": null,
+      "assertion_names": null
+    },
+    {
       "path": "tools/test/stage.test.mjs",
       "kind": "component",
       "protects": "The stage: membership, grouping, the diff lens, saving, and the cross-repo address grammar.",

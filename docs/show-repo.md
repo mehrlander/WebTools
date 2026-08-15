@@ -1778,8 +1778,24 @@ Stage-view actions:
   header arrows and the arrow keys anywhere. Same gesture and constants as the
   estate's branch takeover, so a horizontal drag reads alike in both and a
   vertical one still scrolls the file. Every position opens: a binary local
-  file and a failed fetch render a note in place of the viewer rather than
-  refusing, so `2 / 3` always means the second of three and a step never skips.
+  file renders as an image (its bytes ride to the viewer as a data URI, since
+  the image mode's usual fetch needs a repo and a pasted file has none) and a
+  failed fetch renders a note in place of the viewer rather than refusing, so
+  `2 / 3` always means the second of three and a step never skips.
+
+  **The modal is a fixed height at every width**, `h-full` on a phone and
+  `85vh` above it. It was `h-auto` under a `max-h` cap until 2026-08-15, and
+  the two complaints that produced were one bug: the dialog resized as you
+  stepped through the staged set, and long files would not scroll. An
+  auto-height box gives its children no definite height to divide, so the
+  viewer's `fill` body never became a scroll container and the box's own
+  `overflow-hidden` clipped whatever passed the cap with no scrollbar
+  anywhere. Pinning the height fixes both, and
+  [`tools/test/stage-preview-height.mjs`](../tools/test/stage-preview-height.mjs)
+  (`npm run test:preview-height`) holds it: neither claim is visible in a
+  screenshot or reachable from jsdom, which has no layout, so the check
+  measures the box on a 2-line file and a 4,000-line file and then scrolls the
+  long one.
 
   **The preview also holds the diff**, because the position already names a
   pair: what you are on and what is next to it, so nothing is selected and
