@@ -68,6 +68,19 @@ for (const [i, word] of ['FIRST', 'SECOND'].entries()) {
 }
 const FIXTURE_BYTES = Buffer.from(await doc.save());
 
+// Eight pages, for the teardown case. swipe-deck keeps the reader's slide and
+// two either side, so nothing is ever released in a two-page document and the
+// bug this guards against cannot appear.
+const long = await PDFDocument.create();
+const longFont = await long.embedFont(StandardFonts.Helvetica);
+for (let i = 1; i <= 8; i++) {
+  const pg = long.addPage([400, 300]);
+  pg.drawRectangle({ x: 0, y: 0, width: 400, height: 300, color: rgb(1, 1, 1) });
+  pg.drawText(`p${i}`, { x: 40, y: 150, size: 48, font: longFont, color: rgb(0, 0, 0) });
+}
+const LONG_BYTES = Buffer.from(await long.save());
+const EIGHT = 'docs/fixtures/eight.pdf';
+
 // pdf.js, re-pointed at this origin so the worker is same-origin.
 const vendored = {
   '/vendor/pdf.min.js': path.join(root, 'node_modules', 'pdfjs-dist', 'build', 'pdf.min.js'),
@@ -117,6 +130,9 @@ await page.route('**/*', route => {
   // no file behind it, and the kit needs its CDN pins moved.
   const api = `https://api.github.com/repos/${REPO}/contents/`;
   const want = decodeURIComponent(url.split('?')[0]);
+  if (want.startsWith(api + EIGHT)) {
+    return route.fulfill({ status: 200, contentType: 'application/json', body: contentsJson(LONG_BYTES) });
+  }
   if (want.startsWith(api + FIXTURE) || want.startsWith(api + LONG)) {
     return route.fulfill({ status: 200, contentType: 'application/json', body: contentsJson(FIXTURE_BYTES) });
   }
@@ -129,7 +145,9 @@ await page.route('**/*', route => {
   if (r.kind === 'empty') return route.fulfill({ status: 200, contentType: r.contentType, body: '' });
   return route.fulfill({ status: 200, contentType: r.contentType, body: r.body });
 });
-page.on('pageerror', e => console.log(`  [pageerror] ${e.message}`));
+const thrown = [];
+page.on('pageerror', e => { thrown.push(e.message); console.log(`  [pageerror] ${e.message}`); });
+page.on('console', m => { if (m.type() === 'warning' && /Alpine Expression Error/.test(m.text())) thrown.push(m.text()); });
 
 // What the viewer settled on, and what the canvas actually holds. `ink` counts
 // non-white pixels: the only proof that a page was rasterized rather than a
@@ -333,6 +351,33 @@ try {
      `page ${layout.pageWidth} inside pane ${layout.stageWidth}`);
 
   await page.setViewportSize({ width: 1100, height: 800 });
+  // ── paging a long document ───────────────────────────────────────────────
+  //
+  // NOT a check on the detached-initTree guard, though it was written as one
+  // and that was wrong. A slide here holds a plain canvas, not an Alpine
+  // component, so releasing one destroys nothing that could be re-inited and
+  // the bug cannot arise on this path. Removing the guard from viewer.js
+  // leaves every assertion below green, which is how the mistake surfaced.
+  //
+  // It earns its place as what it actually is: proof that walking to the end
+  // of a document releases the slides behind it and throws nothing on the way,
+  // which is the property the lazy deck exists for and the one a regression
+  // would most likely break.
+  console.log('paging a long document releases slides without throwing:');
+  await page.setViewportSize({ width: 1100, height: 800 });
+  thrown.length = 0;
+  await page.goto(`${origin}/pages/data-view.html?src=${encodeURIComponent(`${REPO}@main:${EIGHT}`)}`,
+                  { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(5000);
+  for (let i = 0; i < 7; i++) { await page.click('#viewer-pdf-next'); await page.waitForTimeout(450); }
+  await page.waitForTimeout(1200);
+  const paged = await state();
+  ok('it reached the last page', paged.label.replace(/\s/g, '') === '8/8', paged.label);
+  ok('and released the ones behind it', paged.built <= 5, `${paged.built} of ${paged.slides} still built`);
+  ok('with nothing thrown on the way',
+     thrown.filter(t => /is not defined|Expression Error/.test(t)).length === 0,
+     thrown.slice(0, 2).join(' | '));
+
   console.log('a text file is untouched by any of this:');
   await page.goto(`${origin}/pages/data-view.html?src=${encodeURIComponent(`${REPO}@main:docs/tools.json`)}`,
                   { waitUntil: 'domcontentloaded' });
