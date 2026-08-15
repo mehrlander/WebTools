@@ -372,3 +372,43 @@ test('a compare that lands after a step does not overwrite the newer branch', as
     'the held read belonged to a branch nobody is looking at any more');
   await slow;
 });
+
+
+// ── two panes, and where the third one went ─────────────────────────────────
+//
+// Commits was a third tab. Its count restated the strip's own ahead figure (a
+// compare's total_commits IS its ahead_by), and its twelve subjects sat beside
+// a PR body describing the same work in prose. The one thing it carried alone
+// is a branch with NO pull request, where the subjects are the only account
+// there is, so that case moved into the Guide pane and the tab went.
+
+test('the strip is two tabs, and Guide is always one of them', async () => {
+  window.BranchBrief.forget();
+  reset();
+  const d = await mount('feat/a');
+  await tick(4);
+  const labels = [...d.$el.querySelector('[role="tablist"]').children]
+    .map(a => a.textContent.replace(/\s+/g, ' ').trim());
+  assert.equal(labels.length, 2);
+  assert.equal(labels[0], 'Guide');
+  assert.ok(labels[1].startsWith('Files'));
+  assert.ok(!labels.some(l => l.startsWith('Commits')));
+});
+
+test('with no PR, the Guide pane is the commits, and asking is what fetches them', async () => {
+  window.BranchBrief.forget();
+  reset();
+  const d = await mount('feat/c');
+  await tick(4);
+  assert.equal(d.hasGuide, false);
+  assert.equal(d.pane, 'files', 'the account of last resort is not the first thing to read');
+
+  d.pane = 'guide';
+  await d.ensureCompare();
+  await tick(4);
+  const shown = d.$el.textContent.replace(/\s+/g, ' ');
+  assert.ok(shown.includes('What this branch did'),
+    'the pane says what it is standing in for rather than printing bare shas');
+  assert.ok(shown.includes('no pull request describes it'));
+  assert.ok(shown.includes('feat/c'), 'and the commit subjects are the account');
+});

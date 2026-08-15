@@ -620,6 +620,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/branch-panes.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 103,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/branch-takeover.mjs",
       "role": "show-repo's branch-detail takeover with the embedded branch page fully rendered",
       "layer": "tools/render/scenarios",

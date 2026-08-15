@@ -1957,12 +1957,25 @@ reached only by tapping. A link naming a branch the current list no longer holds
 (a filter hides it, or it landed) still opens, as a list of one, since a link
 that resolves to nothing is worse than one with nowhere to swipe.
 
-**Its three sections are panes, not a scroll.** Guide, Files and Commits switch
-on a segmented control under the facts strip, with the counts on the labels, so
+**Its sections are panes, not a scroll.** Guide and Files switch on a
+segmented control under the facts strip, with the count on the Files label, so
 the changed files are one tap from the top instead of below a screen of guide.
 Guide leads when the branch has one; Files leads when it does not. On a narrow
 viewport the file rows also start collapsed, since four open cards is most of a
 phone screen and the dense row list is what is worth seeing first there.
+
+There were three panes until 2026-08-15, and **Commits** was the third. It
+earned its place nowhere: its count restated the strip's own ahead figure (a
+compare's `total_commits` is its `ahead_by`), and twelve commit subjects beside
+a PR body describing the same work in prose is the body's job done worse. What
+it did carry alone is a branch with **no pull request**, where the subjects are
+the only account of what the branch did, so that case moved into the Guide
+pane, which is where a reader looks for an account: the card names itself
+("what this branch did, no pull request describes it") rather than printing
+bare shas under a tab. The tab now always shows, since there is always
+something to say about a branch, and tapping it asks for the compare when the
+commits are what it will have to say. The deferral is unchanged for a branch
+that has a guide: it still renders on the pulls call alone.
 
 Since 2026-08-06 the embedded page carries the branch's **guide** as well: the
 PR body, rendered through `kits/guide-render.js`, the renderer the FAB drawer
