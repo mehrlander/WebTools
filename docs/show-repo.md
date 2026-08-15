@@ -489,6 +489,61 @@ repo's own config through the viewer's token (candidates come from the header
 picker's account list, minus current members). So both add and edit write the
 **repo**, never a registry list.
 
+**Unfiled: the rest of the account**, below a rule at the foot of the grid. The
+membership filter above discards most of what the load already fetched, since
+`gh.repos()` returns every repo you own and the cards keep only the opt-ins, so a
+repo you own but have not filed was visible nowhere except the Add form's
+`datalist`. That models non-membership as "not yet added" and leaves the decision
+itself unrepresented: there was no way to say *I looked at this one and it does
+not belong here*.
+
+The rows split three ways, on **two independent axes**, so neither subsumes the
+other:
+
+| State | Set by | Asks | Group |
+| --- | --- | --- | --- |
+| archived | GitHub | is this finished? | Retired |
+| `conventions: 'optout'` | the repo's `.web-tools.json` | is it on my dashboard? | Set aside |
+| neither | | undecided | Unfiled |
+
+A live repo can be off the dashboard, which is why both exist. `archived` is the
+cheaper of the two and the only one needing no file in the repo, which is what
+makes it reachable for a 2018 repo that will never carry a `.web-tools.json`; it
+also rides in free on the list call already being made. Undecided sorts newest
+push first and stays open; the two settled groups fold, because an undecided list
+that never empties is a second inventory and one that drains is a work surface.
+
+Each row carries the three outcomes it actually has. **Adopt** routes into the
+existing Add form prefilled, so membership keeps one implementation and `group` /
+`note` stay available. **Set aside** writes `conventions: 'optout'`, the field
+[`kits/portable-align.js`](../lib/kits/portable-align.js) has graded since PR #222
+and which until now had a schema entry, a reader, and no way to set it. Both go
+through one `patchRepoConfig`, so both write the **repo**.
+
+**Retire is a link out, and deliberately not a write.** Deleting needs a
+`delete_repo`-scoped token and this one is `repo`-scoped on purpose (the view's own
+"Get a token" link says so), so widening it for a twice-a-year action would put a
+delete-capable credential in `localStorage` and into every tossed page. GitHub's
+danger zone also offers Archive above Delete and demands the name typed, which is
+better space in front of the decision than a dialog here would be. So the page
+names the destination, GitHub performs the act, and the next load tells the truth
+on its own: because `archived` arrives in the list call, a repo archived on GitHub
+moves itself into Retired with nothing stored here. An archived row is muted, keeps
+its browse jump (the point of archiving rather than deleting is that it stays a
+reference shelf), and drops both write actions rather than offering what the API
+will refuse. The foot of the section carries the other end of the same errand, a
+link to `github.com/new`: create there, adopt on the row, it gets a card.
+
+One wrinkle the writes share: a config lands in the repo instantly but reaches
+these rows only through the config cache, which rebuilds asynchronously. A local
+override carries the row in the meantime and **retires itself once the cache
+agrees**, rather than being cleared per load, which would bounce a just-filed row
+back to Unfiled for a pass and read as a failed write.
+
+The same population is what the tracker's *session-start nudge for unconfigured
+repos* addresses from the agent side. Both read `conventions: 'optout'`, so keep
+them on that one field rather than growing a second vocabulary.
+
 **Saved surfaces** (the Stage's Saved pane) come from two places,
 stacked in one scroll: the surface format
 either way (a `manifest` block and an `items` array). The contract is
