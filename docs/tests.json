@@ -2856,7 +2856,7 @@
       "path": "tools/test/stage.test.mjs",
       "kind": "component",
       "protects": "The stage: membership, grouping, the diff lens, saving, and the cross-repo address grammar.",
-      "assertions": 98,
+      "assertions": 99,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [
@@ -2886,7 +2886,8 @@
         "an offer already on the stage under that name is not offered again",
         "a local image previews from its own bytes, with no repo behind it",
         "the data URI keys on the extension, so a rename changes what it renders as",
-        "a non-image binary is still refused, and says which",
+        "a binary with no mode to draw it is still refused, and says which",
+        "a dropped workbook previews rather than being refused",
         "a rename reaches both fields a local item is read through",
         "a renamed local file deposits under its new name",
         "a name that cleans to nothing leaves the item alone, and so does Escape",
@@ -3364,10 +3365,20 @@
       "assertion_names": null
     },
     {
+      "path": "tools/test/viewer-xlsx.mjs",
+      "kind": "behavior",
+      "protects": "The viewer's workbook module: an .xlsx is unzipped and drawn as a table rather than as replacement characters, it opens over a host's blanket defaultMode, the sheet tabs carry display names in workbook order (not part-file order), and a date cell reads as a date rather than as a serial.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:viewer-xlsx",
+      "boot_smoke": null,
+      "assertion_names": null
+    },
+    {
       "path": "tools/test/viewer.test.mjs",
       "kind": "component",
       "protects": "Mode resolution always lands somewhere: every form of the option falls back to raw when it cannot resolve, and a delimited parse pads short rows and names blank or duplicate headers so no column or record is dropped.",
-      "assertions": 17,
+      "assertions": 20,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -3388,7 +3399,10 @@
         "a short row pads rather than dropping the record",
         "tableRows passes a JSON array through, and names the shape it wanted",
         "no stray warnings or errors after the resolves",
-        "the markdown preview scrolls on its pane, not on its text column"
+        "the markdown preview scrolls on its pane, not on its text column",
+        "a workbook opens in the sheets mode, whatever the host asked for",
+        "isWorkbook and mimeFor agree on which extensions are workbooks",
+        "the sheets mode is exclusive, and the image mode still is too"
       ]
     },
     {
@@ -3449,7 +3463,7 @@
       "path": "tools/test/xlsx.test.mjs",
       "kind": "kit",
       "protects": "A workbook is read without losing shape or failing whole: a sparse row keeps its gap rather than compacting, shared strings resolve regardless of part order, and one malformed XML part is skipped rather than fatal.",
-      "assertions": 13,
+      "assertions": 33,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [],
@@ -3462,10 +3476,30 @@
         "analyze: connectedPaths marks every path in a file that had any hit",
         "views.paths: File/Path/Count/Connected shape",
         "views.connections: one row per sheet with resource usage",
+        "sheet identity: display name and workbook order come from workbook.xml",
+        "sheet identity: resolution does not depend on part order",
+        "sheet identity: a sheet part the workbook never claims gets a null name",
+        "sheet identity: no <sheets> element at all falls back to part order",
+        "views.connections: named ranges resolve by workbook index and display name",
+        "analyze: an inlineStr cell keeps its text instead of resolving empty",
         "views.files: Shared Strings and Calc Chain categorize despite mixed-case filenames",
         "views.files: shared-strings row lists the sheets that actually used a string",
         "views.unconnected: an orphan XML part with no recognized structure",
         "summary: total/connected/unconnected add up",
+        "mashupPayload: reads the header and hands back the inner zip bytes",
+        "mashupPayload: trailing bytes past the declared length are cut off",
+        "mashupPayload: an impossible declared length falls back to the rest",
+        "mashupPayload: no DataMashup element, and junk, both return null",
+        "readMashup: recovers the M source from inside the two containers",
+        "readZip: a workbook carrying queries reports them under xl.powerQuery",
+        "readZip: a workbook without queries leaves xl.powerQuery undefined",
+        "formatKind: classifies a code by what it makes a value mean",
+        "formatKind: literal text cannot be mistaken for a date token",
+        "serialToDate: the 1900 leap-year bug, on both sides of the phantom day",
+        "serialToDate: the 1904 epoch shifts everything by four years and a day",
+        "cellFormat: a cell style resolves through cellXfs to a code and a kind",
+        "sheetRows: formats are applied only when the workbook is passed",
+        "formatValue: a non-numeric value under a date format is left alone",
         "analyze: malformed XML in one part is skipped, not fatal"
       ]
     }
