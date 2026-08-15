@@ -520,10 +520,10 @@
       "tested": false
     },
     {
-      "path": "tools/render/scenarios/annotate-row-menu.mjs",
-      "role": "a note row's menu and the edit behind it: the kebab that replaced the bare delete, the menu flipping above the row when the card has no room below, and the note reopened in the composer with its text loaded",
+      "path": "tools/render/scenarios/annotate-row-keys.mjs",
+      "role": "a note row's three floating keys and the edit one of them leads to: edit, copy and remove sitting over the note where a kebab menu used to open, and the note reopened in the composer with its text loaded",
       "layer": "tools/render/scenarios",
-      "lines": 27,
+      "lines": 35,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -544,6 +544,16 @@
       "role": "a note selected by clicking its highlight in the document rather than its row",
       "layer": "tools/render/scenarios",
       "lines": 63,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/annotate-stitch.mjs",
+      "role": "the composer pad's stitch key: a caret dropped in a sentence gap turns the full-stop cell into the cell that takes one back, and one tap drops the mark and the capital the pause invented",
+      "layer": "tools/render/scenarios",
+      "lines": 38,
       "invocation": "driver",
       "emits": false,
       "named": false,
