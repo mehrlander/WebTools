@@ -551,3 +551,4 @@ one. Until the page is aligned or the exception recorded where links are
 minted, the honest lib-change view for it is the 🥏 address toss at the SHA.
 *(seen: 2026-08-11)*
 → [loader.md](loader.md); the page-boot alignment is an open thread on PR #406
+- **Alpine's x-data scope proxy binds `this`, not just bare names** (2026-08-14): a callback built in an x-data expression and invoked bare runs with `this` bound to the scope proxy, so a method reading `this.repo` gets the registered `repo` component rather than the string. The path picker died on "repo.split is not a function" on every page with a fab. `$data` is the same proxy and does not help; hand the callback a real component reference. Third sighting of this collision, first on `this` → [docs/HTML-STYLE.md](HTML-STYLE.md)

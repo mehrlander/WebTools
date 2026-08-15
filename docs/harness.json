@@ -600,10 +600,30 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/branch-deck.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 131,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/branch-guide.mjs",
       "role": "the branch page showing a branch with its guide PR body rendered in place",
       "layer": "tools/render/scenarios",
       "lines": 88,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/branch-panes.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 103,
       "invocation": "driver",
       "emits": false,
       "named": false,
@@ -1197,6 +1217,16 @@
       "invocation": "driver",
       "emits": false,
       "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/sidebar-compare.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 166,
+      "invocation": "driver",
+      "emits": false,
+      "named": true,
       "tested": false
     },
     {

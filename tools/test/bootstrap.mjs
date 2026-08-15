@@ -53,6 +53,27 @@ export const KIT_IMPORTS = {
 // kit that wraps console methods (kits/console.js) can't touch the real one.
 // An async kit body (gh.load shape: `return (async () => …)()`) finishes
 // registering after its awaits; callers await `w.__kitReturn` for that.
+// jsdom has no layout and no Element.scrollTo, and kits/swipe-deck.js counts
+// slides in units of its track's width and pages by scrolling. Give every
+// element a scrollLeft that sticks and a scrollTo that fires the event the deck
+// listens on. The deck's width probe falls back to 1 when clientWidth is 0, so
+// a slide index and a pixel offset coincide and go(2) lands on slide 2, which
+// is all a logic test needs; the real geometry is covered by the headless
+// scenarios under tools/render.
+export function deckGeometry(window) {
+  const at = new WeakMap();
+  Object.defineProperty(window.Element.prototype, 'scrollLeft', {
+    configurable: true,
+    get() { return at.get(this) || 0; },
+    set(v) { at.set(this, v); },
+  });
+  window.Element.prototype.scrollTo = function ({ left } = {}) {
+    at.set(this, left || 0);
+    this.dispatchEvent(new window.Event('scroll'));
+  };
+  return window;
+}
+
 export function loadKit(name, { window: w = {}, imports = KIT_IMPORTS, console: cons = console } = {}) {
   const file = path.join(repoRoot, 'lib', 'kits', name.endsWith('.js') ? name : `${name}.js`);
   let src = readFileSync(file, 'utf8');

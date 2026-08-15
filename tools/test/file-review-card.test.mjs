@@ -12,6 +12,14 @@
 // the string to the bidi algorithm and rendered `.claude/skills/caption/` as
 // `/claude/skills/caption.`, a path that does not exist, displayed as though it
 // did. That is a wrong answer rather than an ugly one, so it gets a test.
+//
+// The second subject is WHAT a file is shown as, added 2026-08-14. The card had
+// four tabs and all four were source, which produced a wrong answer of the same
+// kind: a `.gz` printed a notice saying its content could not be shown and then
+// printed the content, mojibake and all, because the notice and the New pane
+// were gated on different conditions. `kind` and `panes` are the fix and the
+// cases below pin the routing, the default landing, and the one thing the card
+// must never do again, which is hand a reader the bytes of a binary.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,13 +34,39 @@ const { window, problems } = makeWindow({
          patch: '@@ -1 +1 @@', open: true })"></div>
     <div id="noPatch" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
          path: 'lib/b.js', status: 'modified', open: true })"></div>
+    <div id="doc" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
+         path: 'docs/note.md', status: 'modified', patch: '@@ -1 +1 @@' })"></div>
+    <div id="docRead" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
+         path: 'docs/note.md', status: 'modified', patch: '@@ -1 +1 @@', read: true })"></div>
+    <div id="png" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
+         path: 'pages/thumbs/a.png', status: 'modified', patch: '@@ -1 +1 @@',
+         read: true, open: true })"></div>
+    <div id="arch" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
+         path: 'data/urls.txt.gz', status: 'modified', read: true })"></div>
+    <div id="bare" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
+         path: 'lib/c.js', status: 'modified', patch: '@@ -1 +1 @@', bare: true })"></div>
+    <div id="blob" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
+         path: 'data/x.dat', status: 'modified' })"></div>
+    <div id="srcRead" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'mb-sha',
+         baseName: 'main', path: 'lib/d.js', status: 'modified', patch: '@@ -1 +1 @@',
+         read: true, bare: true, open: true })"></div>
   </body></html>`,
 });
 
 const fetched = [];
 window.GH = class {
   constructor(c = {}) { this.repo = c.repo || ''; this.ref = c.ref || ''; }
-  async get(p) { fetched.push(this.ref + ':' + p); return { text: 'x' }; }
+  async get(p) {
+    fetched.push(this.ref + ':' + p);
+    // x.dat is the unknown-extension binary: nothing in its name says so, and
+    // the NUL in its decode is the only thing that can. d.js is the one file
+    // whose content depends on the ref, which is what gives the compare cases
+    // below something to actually differ about.
+    return { text: /x\.dat$/.test(p) ? 'ab\u0000cd'
+                 : /d\.js$/.test(p) ? 'body at ' + this.ref : 'x', size: 8 };
+  }
+  async bytes(p) { fetched.push(this.ref + ':bytes:' + p);
+                   return { bytes: new Uint8Array([1, 2, 3]), size: 3 }; }
   async req() { return []; }
 };
 window.TOKEN = 't';
@@ -41,7 +75,8 @@ const { default: Alpine } = await import('alpinejs/dist/module.esm.js');
 const { default: collapse } = await import('@alpinejs/collapse/dist/module.esm.js');
 window.Alpine = Alpine;
 Alpine.plugin(collapse);
-for (const p of ['lib/kits/guide-render.js', 'lib/alpineComponents/file-review.js']) {
+for (const p of ['lib/kits/guide-render.js', 'lib/kits/source-peek.js',
+                 'lib/alpineComponents/file-review.js']) {
   new window.Function('window', readFileSync(path.join(repoRoot, p), 'utf8'))(window);
 }
 Alpine.start();
@@ -130,4 +165,278 @@ test('the row carries one action, routed by file type through the guide table', 
 
 test('mounting the cards is quiet', () => {
   assert.deepEqual(problems, []);
+});
+
+
+// ── what a file is shown as ─────────────────────────────────────────────────
+
+test('kind is read from the name, and each kind has its own pane', () => {
+  assert.equal(data('doc').kind, 'markdown');
+  assert.equal(data('png').kind, 'image');
+  assert.equal(data('arch').kind, 'gzip');
+  assert.equal(data('withPatch').kind, '', 'source has no presentation but itself');
+  assert.equal(data('doc').shownPane, 'read');
+  assert.equal(data('png').shownPane, 'image');
+  assert.equal(data('arch').shownPane, 'inside');
+  assert.equal(data('withPatch').shownPane, '');
+});
+
+// Markdown is the one judgement call, and the SURFACE makes it: a deck exists
+// to read a file and passes `read`, a changed-file list exists to review one
+// and does not. An image and an archive have no useful diff either way.
+test('the surface decides whether a document opens read or diffed', () => {
+  assert.equal(data('docRead')._defaultTab(), 'read', 'in the deck, the document is the subject');
+  assert.notEqual(data('doc')._defaultTab(), 'read',
+    'in a review list the change is, so the same file lands on its diff or its patch');
+  assert.equal(data('png')._defaultTab(), 'image');
+  assert.equal(data('arch')._defaultTab(), 'inside');
+});
+
+test('an image offers no source panes, because there is nothing there to read', () => {
+  // A reading surface, so there is no Patch tab to fall back to either: the
+  // sidebar owns the comparison there, and an image has none worth showing.
+  assert.equal(data('png').panes.map(p => p.label).join('|'), 'Image');
+  assert.equal(data('doc').panes.map(p => p.label).join('|'), 'Read|Diff|Patch|New|Base');
+});
+
+test('a reading surface loads a presentation rather than settling on the patch', async () => {
+  await tick(4);
+  assert.ok(fetched.some(f => f.includes('bytes:pages/thumbs/a.png')),
+    'the deck fetched the image on mount; the old card sat on a diff of its bytes');
+  assert.equal(data('png').tab, 'image');
+  // The list card's own restraint is the first case in this file; it is not
+  // re-asserted here, because the tab test above has since driven that card.
+  assert.equal(fetched.filter(f => f.includes('bytes:')).length, 1,
+    'and only the reading surface paid for bytes');
+});
+
+test('a binary keeps its bytes to itself', async () => {
+  const d = data('blob');
+  d.open = true;
+  await d.load();
+  assert.equal(d.kind, 'binary');
+  assert.equal(d.tab, 'binary');
+  assert.equal(d.newText, null,
+    'the decode is dropped, so no pane can reach it: this is the exact bug, ' +
+    'where a notice said the content could not be shown above the content');
+  assert.equal(d.panes.map(p => p.label).join('|'), 'File');
+});
+
+test('bare drops the collapsed row, for a host that names the file itself', () => {
+  const row = (id) => window.document.getElementById(id)
+    .querySelector('[class*="hover:bg-base-200"]');
+  assert.ok(row('withPatch'), 'a list card names its own file');
+  assert.equal(window.getComputedStyle(row('bare')).display, 'none',
+    'a deck slide does not, since the deck header already did');
+});
+
+
+// gh-api.js and this component are two separate jsDelivr cache entries, so
+// after a merge the CDN can serve a new component against an old client for as
+// long as it takes the two to agree. `gh.bytes is not a function` would take
+// out the image and archive panes with nothing on screen saying why, so the
+// component carries the same two calls itself and uses them when the client
+// cannot. The case drives that path directly, because by construction it
+// cannot arise in this repo: the client here always has the method.
+test('a client too old to have bytes() still yields an image', async () => {
+  const seen = [];
+  const Old = class {
+    constructor(c = {}) { this.ref = c.ref || ''; }
+    async req(p) {
+      seen.push(p);
+      if (/^contents\//.test(p)) return { content: btoa('PNGDATA'), sha: 's1', size: 7 };
+      return [];
+    }
+    async get() { return { text: 'x' }; }
+  };
+  assert.equal(typeof Old.prototype.bytes, 'undefined', 'the client this simulates');
+  const real = window.GH;
+  window.GH = Old;
+  try {
+    const d = data('png');
+    d.loaded = false; d.mediaUrl = '';
+    await d._loadShown();
+    assert.ok(d.mediaUrl.startsWith('data:image/png;base64,'), 'the pane still has its image');
+    assert.equal(atob(d.mediaUrl.split(',')[1]), 'PNGDATA');
+    assert.ok(seen.some(p => p.startsWith('contents/pages/thumbs/a.png')),
+      'fetched by hand, through the one call every client has had all along');
+  } finally { window.GH = real; }
+});
+
+
+// ── one copy button, and one row ────────────────────────────────────────────
+//
+// There were two, labelled "content" and "patch", on a strip of their own above
+// the tabs. That asked the reader to map a label onto the tab they were looking
+// at, offered "content" for a PNG, and put two rows of chrome between the
+// card's header and what it was showing. One button that takes whatever is on
+// screen, on the same row as the tabs that decide it.
+
+test('copy takes what is showing, and offers nothing when there is nothing', () => {
+  const d = data('withPatch');
+  const was = d.tab;
+  d.tab = 'patch';  assert.equal(d.copyable, d.patchDump);
+  d.tab = 'diff';   assert.equal(d.copyable, d.patchDump, 'a CM6 editor is not text; its patch is');
+  d.tab = 'new';    assert.equal(d.copyable, d.newText);
+  d.tab = 'base';   assert.equal(d.copyable, d.baseText);
+  d.tab = was;
+
+  const img = data('png');
+  assert.equal(img.copyable, null, 'an image pane has nothing a clipboard can take');
+  assert.equal(img.panes.some(p => p.id === 'image'), true);
+});
+
+test('a document copies its source, not the rendered markup', () => {
+  const d = data('docRead');
+  d.newText = '# Title\n\ntext';
+  d.tab = 'read';
+  assert.equal(d.copyable, '# Title\n\ntext');
+  assert.equal(d.copyTitle, 'Copy note.md', 'the tooltip names it, since the glyph cannot');
+});
+
+test('the controls sit on the tab row, not on a strip above it', () => {
+  const card = window.document.getElementById('withPatch');
+  const row = card.querySelector('[role="tablist"]').parentElement;
+  assert.ok(row.querySelector('details[x-ref="ghMenu"]'), 'the github menu came down to the tabs');
+  assert.ok(row.querySelector('.ph-copy'), 'and so did the one copy button');
+  assert.equal(card.querySelectorAll('.ph-copy').length, 1, 'one, not two');
+  assert.equal(card.querySelectorAll('details[x-ref="ghMenu"]').length, 1,
+    'and the strip it used to live on is gone rather than emptied');
+});
+
+
+// ── the classifier, and why there are two of them ───────────────────────────
+//
+// kits/source-peek.js already decides what a path IS, and map.js's renderDoc
+// borrows that decision, so the peek card and the Docs deck cannot disagree
+// about a file. This component repeats the markdown row rather than calling it,
+// and the repeat is a judgement rather than an oversight: source-peek is a kit
+// this card does not otherwise need, it may not have loaded when a card mounts,
+// and a card that called a `.md` plain source because a kit was late would be a
+// worse failure than the duplication. So they are held together by assertion,
+// the shape the estate already uses for docs.json's reach and surfacing.json's
+// membership.
+
+// A probe card per path, left mounted. Tearing one down is what caused
+// trouble: removing the node (by innerHTML or by destroyTree) leaves the
+// component's own queued work running against a dead scope, and it surfaces as
+// "bare is not defined" attributed to whichever test the tick landed in. The
+// probes are inert (closed, no patch, so nothing fetches), so leaving them is
+// cheaper than teaching the test to unwind Alpine correctly.
+const kindOfPath = async (path) => {
+  window.__k = { repo: 'acme/w', ref: 'feat/x', base: 'main', path };
+  const el = window.document.createElement('div');
+  el.setAttribute('x-data', 'fileReview(window.__k)');
+  window.document.getElementById('m2').append(el);
+  Alpine.initTree(el);
+  await tick(2);
+  return Alpine.$data(el).kind;
+};
+
+test('the two classifiers agree about what markdown is', async () => {
+  window.document.body.insertAdjacentHTML('beforeend', '<div id="m2"></div>');
+  const peek = window.SourcePeek.kindOf;
+  for (const path of ['README.md', 'docs/a.markdown', 'docs/A.MD',
+                      'lib/a.js', 'data/a.json', 'a', 'weird.mdx']) {
+    assert.equal((await kindOfPath(path)) === 'markdown', peek(path) === 'markdown',
+      path + ': the card and the peek must call it the same thing');
+  }
+  // And the rows source-peek has no opinion on, which is why the copy exists.
+  assert.equal(await kindOfPath('a.png'), 'image');
+  assert.equal(peek('a.png'), 'source', 'a peek card cannot show a PNG, so it does not try');
+});
+
+test('frontmatter is fenced before rendering, not read as a paragraph', async () => {
+  // Assert on what marked is HANDED rather than on what it emits: the fencing
+  // is the change, and a real markdown parse would drag a CDN fetch into a
+  // jsdom test to prove something the input already shows.
+  let seen = '';
+  window.marked = { parse: (md) => { seen = md; return '<h1>Title</h1>'; } };
+  const d = data('docRead');
+  d.readHtml = '';
+  d.newText = '---\nstatus: living\ndate: 2026-08-14\n---\n\n# Title\n\nBody.';
+  await d._renderRead();
+  // Half this estate's docs open with a `---` block, and marked renders a bare
+  // one as a run of prose: the doc opened on "status: living date: 2026-08-14"
+  // as though that were its first paragraph. source-peek hit this first, and
+  // this is the third reader of its fix rather than a third copy of it.
+  assert.ok(seen.startsWith('```'), 'the block reached marked already fenced');
+  assert.ok(seen.includes('status: living'));
+  assert.ok(seen.includes('# Title'), 'and the document behind it is intact');
+  assert.equal(window.SourcePeek.fenceFrontmatter(d.newText), seen,
+    'byte for byte what source-peek would have produced');
+});
+
+
+// ── who owns the comparison ─────────────────────────────────────────────────
+//
+// In a list this card owns it: Diff, Patch, New and Base are four readings of
+// one fixed pair. On a reading surface the honest question is "against what",
+// and the answer is a ref the card has no business choosing, so from
+// 2026-08-14 the strip collapses to the file plus one Compare pane and the
+// pair arrives on `web-tools:compare-ref` from the FAB sidebar.
+//
+// The two traps are both about believing something that is only true of the
+// announced base: the API patch, and the file's status.
+
+const publish = (detail) => window.dispatchEvent(
+  new window.CustomEvent('web-tools:compare-ref', { detail }));
+
+test('a reading surface shows the file and one comparison, not four readings of it', async () => {
+  const d = data('srcRead');
+  await tick(4);
+  assert.equal(d.panes.map(p => p.label).join('|'), 'File|Compare');
+  assert.equal(d.panes.map(p => p.id).join('|'), 'new|diff',
+    'the source IS the file pane where the file has no presentation of its own');
+  assert.ok(fetched.some(f => f.endsWith('lib/d.js')),
+    'and it loads on open rather than settling on a patch it has no tab for');
+});
+
+test('the sidebar can turn the comparison off, and the file stands alone', async () => {
+  const d = data('srcRead');
+  publish({ repo: 'acme/w', ref: 'feat/x', off: true });
+  await tick(2);
+  assert.equal(d.compareOff, true);
+  assert.equal(d.panes.map(p => p.label).join('|'), 'File');
+  assert.equal(d.tab, 'new', 'and the reader is not left on a pane that no longer exists');
+
+  publish({ repo: 'acme/w', ref: 'feat/x', off: false, base: 'mb-sha', baseName: 'main' });
+  await tick(2);
+  assert.equal(d.compareOff, false);
+  assert.equal(d.panes.map(p => p.label).join('|'), 'File|Compare');
+});
+
+test('moving the base drops the patch, since the patch was only true of the old one', async () => {
+  const d = data('srcRead');
+  assert.equal(d.patch, '@@ -1 +1 @@');
+  const before = fetched.length;
+  publish({ repo: 'acme/w', ref: 'feat/x', off: false, base: 'claude/other',
+            baseName: 'claude/other' });
+  await tick(4);
+  assert.equal(d.base, 'claude/other');
+  assert.equal(d.baseName, 'claude/other');
+  assert.equal(d.patch, '', 'the API patch is a fact about the merge base and nothing else');
+  const calls = fetched.slice(before);
+  assert.ok(calls.some(f => f.startsWith('claude/other:')), 'the base side is refetched');
+  assert.ok(!calls.some(f => f.startsWith('feat/x:')),
+    'and the new side is not, because it did not move');
+});
+
+test('a pair addressed to another branch is not applied to this file', async () => {
+  const d = data('srcRead');
+  const was = d.base;
+  publish({ repo: 'acme/w', ref: 'some/other-branch', off: false, base: 'nope' });
+  await tick(2);
+  assert.equal(d.base, was, 'the channel is a global, so a card has to check who is being spoken to');
+  publish({ repo: 'other/repo', ref: 'feat/x', off: false, base: 'nope' });
+  await tick(2);
+  assert.equal(d.base, was);
+});
+
+test('a list card is not listening: its four tabs are its own', async () => {
+  const d = data('withPatch');
+  publish({ repo: 'acme/w', ref: 'feat/x', off: true });
+  await tick(2);
+  assert.equal(d.compareOff, false, 'the sidebar drives reading surfaces, not review lists');
+  assert.ok(d.panes.some(p => p.id === 'patch'));
 });
