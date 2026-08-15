@@ -1300,10 +1300,40 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/stage-image-preview.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 32,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/stage-keyboard-mode.mjs",
       "role": "the stage's dictation card with the keyboard open, which is where the recording misreading was reported",
       "layer": "tools/render/scenarios",
       "lines": 53,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/stage-paste-flavors.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 46,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
+      "path": "tools/render/scenarios/stage-rename-local.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 23,
       "invocation": "driver",
       "emits": false,
       "named": false,

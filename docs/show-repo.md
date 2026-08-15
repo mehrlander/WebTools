@@ -1692,6 +1692,32 @@ business. The line is whether a field is still true a year later with no tool
 running. `stage.targets` stays in the repo manifest for the same reason: where
 a repo *accepts* files is a fact about that repo.
 
+**A paste carries several formats, and the stage reads all of them.** One copy
+out of a spreadsheet puts three things on the clipboard at once: the cells as
+tab-separated text, the same cells as an HTML table, and a picture of the range.
+The handler used to read one and return, so which one you got depended on where
+the caret was (the page took the image, a form field took the text) and the rest
+was gone. Neither behavior was the platform's: `clipboardData.types` had always
+listed all three.
+
+Now the flavor that was always taken is still taken, and the rest appear on an
+**offer bar** above the staged list, one tap each. A bar rather than a dialog,
+since the common case is "take the obvious one and carry on," and the bar is
+also the only place that says what a copy actually put on your clipboard. A form
+field keeps its native paste untouched and contributes what it cannot hold. Each
+flavor is named for what it is, which is load-bearing rather than cosmetic:
+tab-separated text is detected and named `.tsv` (at least two lines, every line
+carrying the same nonzero number of tabs, so prose with a stray tab is not a
+grid), and the preview opens `.tsv` as a **table**. The button path reads
+`io.pasteItems()`, so it sees the same set the keyboard path does; on iOS, where
+Safari fires no paste event unless an editable is focused, it is the only intake
+and used to be text-only.
+
+The preview opens a staged file through `ViewRegistry.READ_MODE`, the same
+policy the Files view uses: markdown rendered, JSON as a tree, delimited data as
+a table, everything else highlighted, raw past 300 KB. It was the Files view's
+private constant until 2026-08-15; the stage wanting it is what made it shared.
+
 Takes from:
 
 1. upload: the drop-zone (a file, or pasted text; pasted ref lines stage as refs),
@@ -1732,6 +1758,22 @@ Stage-view actions:
   search. Browse has no text input at all, which is the tap-through picker's
   own rule and its reason. Local files are the one source that is not a repo
   file, so they stay a header action (the paperclip) belonging to no pane;
+- **rename** a **local** item: the pencil on its row turns the name into an
+  input with the stem preselected, Enter or a blur commits, Escape drops it. A
+  local name is authored nowhere (a drop takes the file's own, a paste and a
+  dictation get one sniffed from the first few characters), and it is read in
+  four places: the row, the bundle header, the `name` a local item rides on a
+  `#gz=` link, and the deposited path. The **extension** is the whole of what
+  the preview reads to pick a mode and what the destination blob renders as, so
+  a wrong sniff used to mean deleting the item and pasting it again. A slash is
+  allowed and means a subpath under the destination (`docs/notes.md` lands at
+  `<dir>/docs/notes.md`); `..` and empty segments are dropped. Two locals with
+  one name is warned about, not refused, since the deposit writes one over the
+  other and nothing else on screen would say so. **Ref items do not rename:**
+  a ref's `path` is its identity at its source, which the row states, the
+  jump-over resolves, and `copyTo` reads back, so editing it would either lie
+  about the origin or silently mean "land it elsewhere", which is a destination
+  override and a different feature;
 - **view** a staged file inline (a preview panel in the stage itself, with a
   GitHub jump-over to the file's true home; it never routes through a repo's
   Files view). **The preview is a position in the stage, not one file:** it
@@ -1739,8 +1781,24 @@ Stage-view actions:
   header arrows and the arrow keys anywhere. Same gesture and constants as the
   estate's branch takeover, so a horizontal drag reads alike in both and a
   vertical one still scrolls the file. Every position opens: a binary local
-  file and a failed fetch render a note in place of the viewer rather than
-  refusing, so `2 / 3` always means the second of three and a step never skips.
+  file renders as an image (its bytes ride to the viewer as a data URI, since
+  the image mode's usual fetch needs a repo and a pasted file has none) and a
+  failed fetch renders a note in place of the viewer rather than refusing, so
+  `2 / 3` always means the second of three and a step never skips.
+
+  **The modal is a fixed height at every width**, `h-full` on a phone and
+  `85vh` above it. It was `h-auto` under a `max-h` cap until 2026-08-15, and
+  the two complaints that produced were one bug: the dialog resized as you
+  stepped through the staged set, and long files would not scroll. An
+  auto-height box gives its children no definite height to divide, so the
+  viewer's `fill` body never became a scroll container and the box's own
+  `overflow-hidden` clipped whatever passed the cap with no scrollbar
+  anywhere. Pinning the height fixes both, and
+  [`tools/test/stage-preview-height.mjs`](../tools/test/stage-preview-height.mjs)
+  (`npm run test:preview-height`) holds it: neither claim is visible in a
+  screenshot or reachable from jsdom, which has no layout, so the check
+  measures the box on a 2-line file and a 4,000-line file and then scrolls the
+  long one.
 
   **The preview also holds the diff**, because the position already names a
   pair: what you are on and what is next to it, so nothing is selected and
