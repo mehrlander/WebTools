@@ -1420,20 +1420,10 @@
       "tested": false
     },
     {
-      "path": "tools/render/scenarios/state-crawl-progress.mjs",
-      "role": "",
-      "layer": "tools/render/scenarios",
-      "lines": 27,
-      "invocation": "driver",
-      "emits": false,
-      "named": false,
-      "tested": false
-    },
-    {
       "path": "tools/render/scenarios/state-view.mjs",
       "role": "Populate the State view for a screenshot: stub the registry reads with a current cache, a stale one, an unchecked one, and the buttonless entity index",
       "layer": "tools/render/scenarios",
-      "lines": 153,
+      "lines": 185,
       "invocation": "driver",
       "emits": false,
       "named": false,
