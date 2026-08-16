@@ -710,8 +710,8 @@
    "size": "M",
    "file": "retire-shell-name-the-parts-r152bt.md",
    "href": "tasks/retire-shell-name-the-parts-r152bt.md",
-   "lastActivity": "2026-08-15",
-   "logEntries": 1
+   "lastActivity": "2026-08-16",
+   "logEntries": 2
   },
   {
    "id": "session-link-from-commit-trailer-7a407c",
@@ -809,13 +809,15 @@
   {
    "id": "skillify-orphan-docs-izv20p",
    "title": "Route the orphan docs by cause, per the 2026-08-05 classification",
-   "status": "backlog",
+   "status": "done",
    "opened": "2026-07-30",
+   "closed": "2026-08-16",
+   "session": "claude/web-tools-docs-assessment-dc9bqv",
    "size": "S",
    "file": "skillify-orphan-docs-izv20p.md",
    "href": "tasks/skillify-orphan-docs-izv20p.md",
-   "lastActivity": "2026-08-07",
-   "logEntries": 4
+   "lastActivity": "2026-08-16",
+   "logEntries": 5
   },
   {
    "id": "speed-up-show-repo-cold-load-u3846j",
@@ -842,6 +844,31 @@
    "file": "spike-snags-log-gobdyq.md",
    "href": "tasks/spike-snags-log-gobdyq.md",
    "lastActivity": "2026-08-05",
+   "logEntries": 1
+  },
+  {
+   "id": "split-show-repo-doc-3zh8xw",
+   "title": "Split docs/show-repo.md along the app's structure",
+   "status": "done",
+   "project": "show-repo",
+   "opened": "2026-08-16",
+   "closed": "2026-08-16",
+   "session": "claude/web-tools-app-concept-crg8sl",
+   "size": "L",
+   "file": "split-show-repo-doc-3zh8xw.md",
+   "href": "tasks/split-show-repo-doc-3zh8xw.md",
+   "lastActivity": "2026-08-16",
+   "logEntries": 3
+  },
+  {
+   "id": "split-stage-contract-74a7vh",
+   "title": "Split the stage contract out of show-repo.md",
+   "status": "backlog",
+   "opened": "2026-08-16",
+   "size": "M",
+   "file": "split-stage-contract-74a7vh.md",
+   "href": "tasks/split-stage-contract-74a7vh.md",
+   "lastActivity": "2026-08-16",
    "logEntries": 1
   },
   {

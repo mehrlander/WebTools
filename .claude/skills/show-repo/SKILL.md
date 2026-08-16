@@ -45,9 +45,16 @@ bundle and `SendUserFile` it instead of sending a link.
 curl -fsSL https://raw.githubusercontent.com/mehrlander/web-tools/main/docs/show-repo.md
 ```
 
+For stage work (the bench, the preview and its diff, save-as-surface, the
+`#stage=` grammar), fetch the stage's own reference the same way:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mehrlander/web-tools/main/docs/stage.md
+```
+
 `raw.githubusercontent.com` is on the Claude Code web sandbox allowlist, and the
-repo is public, so this needs no auth. In `mehrlander/web-tools` itself the file
-is local; read `docs/show-repo.md` directly.
+repo is public, so this needs no auth. In `mehrlander/web-tools` itself the files
+are local; read `docs/show-repo.md` and `docs/stage.md` directly.
 
 ## Fallbacks
 

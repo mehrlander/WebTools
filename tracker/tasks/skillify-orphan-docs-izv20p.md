@@ -1,7 +1,9 @@
 ---
 id: skillify-orphan-docs-izv20p
 title: Route the orphan docs by cause, per the 2026-08-05 classification
-status: backlog
+status: done
+closed: 2026-08-16
+session: claude/web-tools-docs-assessment-dc9bqv
 opened: 2026-07-30
 size: S
 ---
@@ -93,3 +95,17 @@ tab drops accordingly. No net new prose. `npm test` green.
   with the residual routing work instead of the disproved skillification
   framing, the original measurement tables having been superseded by the
   derived `reach` field they cited. Dropped the stale `next:` tag.
+- 2026-08-16 done on `claude/web-tools-docs-assessment-dc9bqv`; lands via PR
+  #437's branch (commit e6c3ac0). Every class routed by its named move:
+  pdf-structure.md, surface.md, chat-results.md, and
+  post-merge-branch-mutation.md are now named from SURFACING.md (project
+  reach); shorter.html and chat-results.html link their contracts from their
+  own headers (app reach); sandbox-traps absorbed the added-repo compare-URL
+  insight and names github-surfacing.md (skill reach). Orphans 20 -> 14 files,
+  15% -> 8% of the folder's words. The two schema profiles stay orphan,
+  re-arguing the class per the definition of done: they are surface.md's
+  declared siblings, reachable through its prose, and neither is loaded by
+  anything, so a channel of their own would be filling rows to satisfy a
+  number. The open derivation question (should a link from an injected doc
+  count as a channel) was answered in practice: it counts as `project`, and
+  the routing above leans on it.

@@ -51,9 +51,10 @@ three-segment mode bar becomes two toggles.
 **2. Replace the other five senses** with words already in the same sentences:
 `window.__app` (the house pattern is `__<componentName>` and the body is
 `x-data="app()"` at `:169`, so `__shell` is the only back-pointer not named for
-its component), **show-repo** for the application, **native** versus
-**embedded** views, **the page file** for a page's own inline code, and
-**nested/top-level document** for showing.md's pair.
+its component), the application's name per docs/APP.md's split (**Web Tools**
+where a reader is addressed, **show-repo** on files, routes, and internals),
+**native** versus **embedded** views, **the page file** for a page's own inline
+code, and **nested/top-level document** for showing.md's pair.
 
 **3. A handful of definitional `chrome` sentences**, not a sweep of all of them.
 `HTML-STYLE.md:51` and `showing.md:25`/`:58` are *defining* things and should
@@ -89,6 +90,10 @@ Open, and the user's call: whether the parameter values read `?header=0|1` or
 omission or by a third value.
 
 ## Progress log
+- 2026-08-16: step 2's word for the application aligned with docs/APP.md,
+  which named the product Web Tools and kept show-repo for files, routes, and
+  this tracker's project tag; the step's line had said "show-repo for the
+  application" a day before that split existed. No build work done.
 - 2026-08-15: filed from the session that shipped PR #425, where the analysis
   was done. Origin was a term-squatting problem in that PR's own writing
   (`docs/SNAGS.md`, `live-term-wider-referent`); auditing it surfaced how many

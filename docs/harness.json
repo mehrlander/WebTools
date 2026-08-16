@@ -1443,7 +1443,7 @@
       "path": "tools/render/scenarios/toss-fragment.mjs",
       "role": "prove toss-render hands a trailing #frag to the rendered page in both trust postures",
       "layer": "tools/render/scenarios",
-      "lines": 73,
+      "lines": 96,
       "invocation": "driver",
       "emits": false,
       "named": false,
