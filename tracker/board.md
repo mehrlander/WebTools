@@ -20,7 +20,6 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Session-start nudge for unconfigured or legacy-manifest repos](tasks/session-start-nudge-unconfigured-z0g4zn.md) (`claude/skills-portable-conventions-8x1lua`)
 - 🎫 [Carry real session titles from the Dispatch export, without depending on it](tasks/session-titles-from-export-4vgu4x.md) · M
 - 🎫 [Spike the snags log (friction learned the hard way)](tasks/spike-snags-log-gobdyq.md) (`claude/pr-219-review-22csrh`)
-- 🎫 [Split the stage contract out of show-repo.md](tasks/split-stage-contract-74a7vh.md) · M
 - 🎫 [Give the stage a way to carry part of a file](tasks/stage-partial-file-selection-k8mtou.md)
 - 🎫 [Make the cache-to-surface dependency checkable, not prose](tasks/surface-census-feeds-relation-anle6b.md) · M (awaiting: nothing; PR #387 landed `feeds` as routed view keys, which retires this task's interim step)
 - 🎫 [Make the take-away menu work inside a toss](tasks/take-away-inside-a-toss-k73cjq.md)
@@ -79,6 +78,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Route the orphan docs by cause, per the 2026-08-05 classification](tasks/skillify-orphan-docs-izv20p.md) (`claude/web-tools-docs-assessment-dc9bqv`)
 - 🎫 [Speed up show-repo's cold load](tasks/speed-up-show-repo-cold-load-u3846j.md) (`claude/speed-up-show-repo-load-3cdvl0`)
 - 🎫 [Split docs/show-repo.md along the app's structure](tasks/split-show-repo-doc-3zh8xw.md) (`claude/web-tools-app-concept-crg8sl`)
+- 🎫 [Split the stage contract out of show-repo.md](tasks/split-stage-contract-74a7vh.md)
 - 🎫 [Fix the stage Diff lens B-select display desync](tasks/stage-diff-b-select-desync-v554kn.md) (`claude/web-tools-diff-review-s0nrq7`)
 - 🎫 [Propagate the stage link's new grammar to the portable docs](tasks/stage-link-grammar-portable-docs-jukn37.md) (`claude/stage-link-grammar-docs-jukn37`)
 - 🎫 [Move StageLink.read onto the shared fragment-first param read](tasks/stage-link-onto-url-params-u9o7ny.md) (`claude/web-tools-project-tracker-reo5qo`)
