@@ -54,7 +54,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 947,
+      "words": 967,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -78,7 +78,7 @@
       "subject": "the surfacing system: primitives plus the guide-PR course",
       "status": "living",
       "reach": "injected",
-      "words": 4384,
+      "words": 4389,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -118,7 +118,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2433,
+      "words": 2483,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -371,11 +371,19 @@
     },
     {
       "path": "docs/show-repo.md",
-      "subject": "the show-repo shell: views, stage, transfer, and the .web-tools.json manifest",
+      "subject": "the show-repo shell: views, transfer, and the .web-tools.json manifest",
       "status": "living",
       "reach": "project",
-      "words": 35826,
-      "maintenance": "authored, edited in place; the corpus's largest document, and the buried home of the stage contract"
+      "words": 33428,
+      "maintenance": "authored, edited in place; still the corpus's largest document, shedding sections to their own references (the stage went to stage.md 2026-08-16)"
+    },
+    {
+      "path": "docs/stage.md",
+      "subject": "the stage: bench and Saved, intake, the walkable preview and diff, Out, save-as-surface, and the #stage= link grammar",
+      "status": "living",
+      "reach": "project",
+      "words": 2582,
+      "maintenance": "authored, edited in place; split from show-repo.md 2026-08-16, which keeps the boundary statement and points here"
     },
     {
       "path": "docs/showing.md",

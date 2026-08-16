@@ -13,7 +13,7 @@ observations and is corrected by re-probing; everything else is living and
 must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
-2 arrive in every session's context, 21 are named by CLAUDE.md,
+2 arrive in every session's context, 22 are named by CLAUDE.md,
 4 by a skill, 6 by a page or component. The remaining 21 are
 marked *(orphan)* below: nothing points at them except this index.
 
@@ -46,7 +46,8 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`properties.json`](properties.json) — the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement
 - [`registries.md`](registries.md) — the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction
 - [`routes.json`](routes.json) — how content moves, renders, and gets looked at: grammar, modes, routes, and the showing block
-- [`show-repo.md`](show-repo.md) — the show-repo shell: views, stage, transfer, and the .web-tools.json manifest
+- [`show-repo.md`](show-repo.md) — the show-repo shell: views, transfer, and the .web-tools.json manifest
+- [`stage.md`](stage.md) — the stage: bench and Saved, intake, the walkable preview and diff, Out, save-as-surface, and the #stage= link grammar
 - [`showing.md`](showing.md) — why the showing boundaries sit where they are: the frame and the record behind routes.json
 - [`surfacing.json`](surfacing.json) — the machine index of the surfacing primitives
 - [`tests.json`](tests.json) — the test registry: every check's kind, what it protects, and its derived counts

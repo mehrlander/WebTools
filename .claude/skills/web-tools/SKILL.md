@@ -29,6 +29,13 @@ files in the public repo `mehrlander/web-tools`, loaded together as one set:
 This skill fetches both fresh so any session in any repo follows the same
 conventions without keeping a stale copy.
 
+One frame rides beside them without a fetch: the estate's front door is the
+**Web Tools app** (the show-repo shell), and
+[`docs/APP.md`](https://github.com/mehrlander/web-tools/blob/main/docs/APP.md)
+in the hub states its mission and the name split (Web Tools where a reader is
+addressed; show-repo on files and routes). Read it when a task turns on what
+the app is for or what it should be called.
+
 ## Fetch (primary path)
 
 ```bash
