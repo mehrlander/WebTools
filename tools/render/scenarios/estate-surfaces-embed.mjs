@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the estate's Surfaces view rendering a
 // kind:embed item (the chat-results live embed), collapsed.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/estate-surfaces-embed.mjs \
 //     --out tools/.preview/estate-surfaces-embed.png
 //

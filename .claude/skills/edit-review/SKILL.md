@@ -38,7 +38,7 @@ Mint a `#stage=` link with the same path at both refs, and append `&mode=diff`
 so the stage opens on the Diff tab and runs the diff itself, no click:
 
 ```
-https://mehrlander.github.io/web-tools/pages/show-repo/show-repo.html#stage=owner/repo@<base-ref>:path/to/file.md;owner/repo@<head-ref>:path/to/file.md&mode=diff
+https://mehrlander.github.io/web-tools/app/#stage=owner/repo@<base-ref>:path/to/file.md;owner/repo@<head-ref>:path/to/file.md&mode=diff
 ```
 
 The Diff lens auto-pairs the two staged items into A/B (first stage item to

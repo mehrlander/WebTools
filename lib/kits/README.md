@@ -523,7 +523,7 @@ await window.brief.copy(opts)      // assemble + io.copy (iOS-safe)
 window.brief.stageUrl({ path?, prompts? })  // the same closure as a #stage= link
 ```
 
-`pages/show-repo/show-repo.html` is the one page this cannot serve whole: it
+`app/index.html` is the one page this cannot serve whole: it
 imports the 918K pre-build, so its closure is the entire library (~262K
 tokens). `assemble` refuses it unless `opts.force`, and points at
 per-component scope instead.

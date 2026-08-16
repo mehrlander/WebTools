@@ -132,7 +132,7 @@ test('a stage group still splits its comma list, through the shared parser', () 
 // a thrown error at first parse, so the order is checked rather than trusted.
 test('every page loading a delegating module loads repo-address.js first', () => {
   const DELEGATES = ['kits/data-payload.js', 'kits/shorter-payload.js', 'alpineComponents/stage.js'];
-  const pages = ['pages/data-view.html', 'pages/shorter.html', 'pages/show-repo/show-repo.html'];
+  const pages = ['pages/data-view.html', 'pages/shorter.html', 'app/index.html'];
   for (const rel of pages) {
     const src = readFileSync(path.join(repoRoot, rel), 'utf8');
     const at = needle => src.indexOf(`gh.load('${needle}')`);

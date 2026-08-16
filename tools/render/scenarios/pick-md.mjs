@@ -3,7 +3,7 @@
 // choose a file and report what the frame actually did.
 //
 //   npm run shot -- pages/toss-render.html \
-//     --hash 'gh=mehrlander/web-tools:pages/show-repo/show-repo.html' \
+//     --hash 'gh=mehrlander/web-tools:app/index.html' \
 //     --script tools/render/scenarios/pick-md.mjs
 //
 // SHELL_MODE=branch  the working tree's toss-render, which has __tossRoute (default)

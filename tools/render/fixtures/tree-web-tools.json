@@ -3087,7 +3087,7 @@
    "sha": "7ebef86db4396f3ba19da17aaaf4602821cc7657"
   },
   {
-   "path": "pages/show-repo/show-repo.html",
+   "path": "app/index.html",
    "mode": "100644",
    "type": "blob",
    "sha": "1edc64066a47c34d1a566ac0691b8ff94f0724ab"

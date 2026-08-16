@@ -9,7 +9,7 @@
 // with a result saying "unsupported kind: ask" and nothing on screen. The
 // channel would look implemented and deliver nothing.
 //
-// The shell's app() lives inline in show-repo.html, so this evaluates the plain
+// The shell's app() lives inline in app/index.html, so this evaluates the plain
 // <script> block against stubs via the shared show-repo-shell.mjs harness.
 
 import test from 'node:test';

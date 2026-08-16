@@ -134,10 +134,15 @@ defensible prose in the estate. It is also entirely undeclared.
 
 ### The outlier, and it is a document
 
-[`pages/show-repo/show-repo.html`](../pages/show-repo/show-repo.html) is 295 KB,
-of which **153,676 bytes (52%) are comments**: 23,665 words in 327 blocks. One
-block, at line 4370, runs **5,962 words** under the heading "Design notes: the
-estate, the landing mechanism, the views, the stage."
+[`app/index.html`](../app/index.html) is 295 KB, of which **153,676 bytes
+(52%) are comments**: 23,665 words in 327 blocks. One block, at line 4370, runs
+**5,962 words** under the heading "Design notes: the estate, the landing
+mechanism, the views, the stage."
+
+**Moved 2026-08-16:** the file was at `pages/show-repo/show-repo.html` when
+these figures were taken. The link is retargeted so the numbers stay attached
+to a reachable file; the figures themselves are as measured and are not
+restated for the move.
 
 The page also has a companion doc, [`docs/show-repo.md`](show-repo.md), at
 23,920 words, overlapping 4.5% by 8-gram. This document has now been wrong

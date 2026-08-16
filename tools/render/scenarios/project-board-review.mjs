@@ -6,7 +6,7 @@
 // its twelve open tasks plus a sample of Done, so the review line and the size
 // and awaiting chips carry real values rather than lorem.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/project-board-review.mjs
+//   npm run shot -- app/index.html --script tools/render/scenarios/project-board-review.mjs
 //
 // DONE=1 additionally expands the collapsed Done section.
 

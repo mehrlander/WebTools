@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { makeWindow, startAlpine } from './bootstrap.mjs';
 
 const MANIFEST = {
-  shell: 'pages/show-repo/show-repo.html',
+  shell: 'app/index.html',
   shellNote: 'every route’s file, so no route’s signal',
   groups: [{ key: 'estate', label: 'Estate', gloss: 'above any repo' }],
   routes: [
@@ -35,7 +35,7 @@ const COMMITS = {
   'lib/kits/guide-index.js':     { sha: 'bbbbbbb2', date: '2026-08-02T10:00:00Z', msg: 'guides: derive the session' },
   // estate.js and the shell deliberately have no entry: one exercises the
   // no-commits path, the other must not date anything even when it does.
-  'pages/show-repo/show-repo.html': { sha: 'ccccccc3', date: '2026-08-14T23:00:00Z', msg: 'shell: route table' },
+  'app/index.html': { sha: 'ccccccc3', date: '2026-08-14T23:00:00Z', msg: 'shell: route table' },
 };
 
 let asked = [];
@@ -119,11 +119,13 @@ const plain_ = (v) => JSON.parse(JSON.stringify(v));
 test('the loader asks for exactly the declared carriers plus the shell', async () => {
   asked = [];
   await data.loadRoutes(true);
+  // Sorted, so the shell leads: it moved from pages/show-repo/show-repo.html
+  // to app/index.html on 2026-08-16 and now sorts ahead of every lib/ carrier.
   assert.deepEqual(plain_(asked).sort(), [
+    'app/index.html',
     'lib/alpineComponents/estate.js',
     'lib/alpineComponents/map.js',
     'lib/kits/guide-index.js',
-    'pages/show-repo/show-repo.html',
   ]);
 });
 

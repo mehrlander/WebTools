@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the Map view's Docs tab WITH the
 // readership column, the half map-docs.mjs cannot show.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/map-docs-reads.mjs \
 //     --out tools/.preview/map-docs-reads.png --full
 //

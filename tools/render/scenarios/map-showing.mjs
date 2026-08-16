@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the Map view's Showing tab (named
 // Transport until 2026-08-04), how content moves, renders, and gets looked at.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/map-showing.mjs \
 //     --out tools/.preview/map-showing.png --full
 //

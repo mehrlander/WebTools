@@ -564,14 +564,6 @@
         "note": "",
         "thumb": "thumbs/show-repo/repo-drag.png",
         "code": "https://github.com/mehrlander/web-tools/blob/main/pages/show-repo/repo-drag.html"
-      },
-      {
-        "href": "show-repo/show-repo.html",
-        "label": "show-repo",
-        "title": "Web Tools",
-        "note": "",
-        "thumb": "thumbs/show-repo/show-repo.png",
-        "code": "https://github.com/mehrlander/web-tools/blob/main/pages/show-repo/show-repo.html"
       }
     ]
   },

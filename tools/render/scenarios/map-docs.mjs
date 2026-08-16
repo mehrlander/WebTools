@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the Map view's Docs tab, the
 // documentation registry (docs/docs.json) rendered live.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/map-docs.mjs \
 //     --out tools/.preview/map-docs.png --full
 //

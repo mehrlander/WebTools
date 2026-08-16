@@ -3,7 +3,7 @@
 // the component, its resolve-against-the-target step, and the confirm gate are
 // the page's own code.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/proposals-demo.mjs
+//   npm run shot -- app/index.html --script tools/render/scenarios/proposals-demo.mjs
 export default async (page) => {
   await page.evaluate(() => {
     const REG = 'mehrlander/web-tools-private';

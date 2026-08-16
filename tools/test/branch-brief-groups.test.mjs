@@ -123,7 +123,7 @@ test('the GitHub exits are labeled menu rows, and the plus aims the stage at thi
   assert.equal(u.searchParams.get('view'), 'stage');
   assert.equal(u.searchParams.get('dest'), REPO + '@feat/x:dump',
     'no declared inbox means dump/, the convention default');
-  assert.ok(u.pathname.endsWith('/show-repo/show-repo.html'));
+  assert.ok(u.pathname.endsWith('/app/'));
 });
 
 // The unframed counterpart to the layout case in branch-brief-embedded: a page

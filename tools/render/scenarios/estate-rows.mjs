@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the estate's grouped-grid Repos view
 // with a nested companion card.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/estate-rows.mjs --out tools/.preview/estate-rows.png
 //
 // The sandbox blocks api.github.com and the real registry is private, so the

@@ -207,7 +207,7 @@ component with `/` left readable. The link carries **refs only**; file content
 stays behind the viewer's token. Full base:
 
 ```
-https://mehrlander.github.io/web-tools/pages/show-repo/show-repo.html#stage=owner/repo@ref:path1,path2
+https://mehrlander.github.io/web-tools/app/#stage=owner/repo@ref:path1,path2
 ```
 
 Mint one by hand by grouping items by `repo@ref` and joining. Example: two files

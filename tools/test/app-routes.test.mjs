@@ -1,7 +1,7 @@
 // docs/app-routes.json: the show-repo app's own destinations stated as data,
 // and lib/kits/route-activity.js, the fold that ranks them. Two things to hold.
 //
-// The MANIFEST has to agree with the router. show-repo.html's VIEWS table is
+// The MANIFEST has to agree with the router. app/index.html's VIEWS table is
 // the authority on which addresses exist (it dispatches and stamps them); the
 // manifest is the authority on what each one is for and which files draw it.
 // A route in one and not the other is exactly the drift that made three

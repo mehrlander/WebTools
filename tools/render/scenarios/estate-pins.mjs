@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the estate's Lists pane with the Pin
 // block populated above To-do and Jot.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/estate-pins.mjs \
 //     --out tools/.preview/estate-pins.png
 //

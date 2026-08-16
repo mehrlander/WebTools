@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the Search view's scope controls, with
 // the ref picker open.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/search-controls.mjs \
 //     --out tools/.preview/search-controls.png --full
 //

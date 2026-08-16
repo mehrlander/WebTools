@@ -112,8 +112,7 @@
       "gate": "tools/test/artifacts-lockstep.test.mjs",
       "renders_in": [
         "lib/alpineComponents/fab.js",
-        "lib/alpineComponents/tools.js",
-        "pages/show-repo/show-repo.html"
+        "lib/alpineComponents/tools.js"
       ]
     },
     {

@@ -1,6 +1,6 @@
 # show-repo: the shell of the Web Tools app
 
-⭐ **Open it:** [Web Tools](https://mehrlander.github.io/web-tools/pages/show-repo/show-repo.html) (the hosted shell; append `?repo=owner/repo` to open a repo)
+⭐ **Open it:** [Web Tools](https://mehrlander.github.io/web-tools/app/) (the hosted shell; append `?repo=owner/repo` to open a repo)
 
 show-repo is the one hosted page behind the **Web Tools app**, the front door
 to the estate. It began as a repo browser and file mover, and that trunk still
@@ -686,7 +686,7 @@ which is what the first diagnosis lacked.
 **The join is files, and files are coarser than routes.** That is the pane's one
 real limit and it is shown rather than filed:
 
-- **The shell is excluded.** `pages/show-repo/show-repo.html` holds the router,
+- **The shell is excluded.** `app/index.html` holds the router,
   the header, the sidebar, and every pane's outer markup, so a commit to it
   would date every route at once. It gets a row of its own at the foot instead,
   because leaving it silently out would leave a reader wondering why the busiest

@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the Map view's Tests tab, the test
 // census (docs/tests.json) rendered live with the assertion names expanded.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/map-tests.mjs \
 //     --out tools/.preview/map-tests.png --full
 //

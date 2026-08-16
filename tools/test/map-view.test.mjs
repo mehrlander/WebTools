@@ -286,7 +286,7 @@ test('openConfig opens the repo dialog on the Config tab without throwing', () =
 // URL and validates the param, map() renders whichever tab is set and fetches
 // its manifest. Both halves are asserted here, since a passing half is exactly
 // the failure mode (a stamped URL nothing reads, or a rendered tab with no
-// address). The shell's app() lives inline in show-repo.html, hence the
+// address). The shell's app() lives inline in app/index.html, hence the
 // show-repo-shell.mjs harness.
 const { page, makeShell } = await import('./show-repo-shell.mjs');
 

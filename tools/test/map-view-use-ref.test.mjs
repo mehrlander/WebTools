@@ -20,7 +20,7 @@ const BRANCH = 'claude/some-branch';
 
 const { window } = makeWindow({
   html: '<!doctype html><html><body><div id="map" x-data="map()"></div></body></html>',
-  url: `https://localhost/pages/show-repo/show-repo.html?use=${encodeURIComponent(BRANCH)}&view=map`,
+  url: `https://localhost/app/index.html?use=${encodeURIComponent(BRANCH)}&view=map`,
 });
 
 const { default: Alpine } = await import('alpinejs/dist/module.esm.js');

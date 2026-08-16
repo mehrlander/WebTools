@@ -4,7 +4,7 @@
 // x-data that no longer existed.) The third tab has its own scenario,
 // map-showing.mjs, since it loads a different manifest.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/map-set-adoption.mjs \
 //     --out tools/.preview/map-set-adoption.png
 //

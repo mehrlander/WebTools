@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the Map view's Registries tab, the
 // declaration table of docs/registries.md rendered as cards.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/map-registries.mjs \
 //     --out tools/.preview/map-registries.png --full
 //

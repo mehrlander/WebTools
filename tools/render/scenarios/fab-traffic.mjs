@@ -5,7 +5,7 @@
 // here and no GitHub reachable), so it is seeded with a crawl of the shape
 // show-repo's activity pass produces.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/fab-traffic.mjs
+//   npm run shot -- app/index.html --script tools/render/scenarios/fab-traffic.mjs
 //
 // STATE=bands    the three bands, resource list collapsed        (the default)
 // STATE=rows     the per-resource list expanded

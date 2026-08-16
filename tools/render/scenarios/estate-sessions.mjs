@@ -7,7 +7,7 @@
 // which is enough to render the layout truthfully: the markup, the classes, and
 // the scroll containers are the page's, only the data is ours.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --query view=sessions \
+//   npm run shot -- app/index.html --query view=sessions \
 //     --script tools/render/scenarios/estate-sessions.mjs --height 900
 
 const SESSIONS = [

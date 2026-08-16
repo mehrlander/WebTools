@@ -5,7 +5,7 @@
 // page in a preview by adopting a toss subject, which is how a real preview
 // reaches the drawer.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/fab-guide.mjs
+//   npm run shot -- app/index.html --script tools/render/scenarios/fab-guide.mjs
 //
 // STATE=guide  the guide pane, PR body rendered            (the default)
 // STATE=menu   the ref bar's dropdown, open over the guide
@@ -21,11 +21,11 @@
 
 const BODY = `Promotes the fab's ref readout into show-repo's header, where it can be seen without opening anything.
 
-**Look:** [show-repo at this ref](https://github.com/mehrlander/web-tools/blob/claude/show-repo-branch-nav-xzttnt/pages/show-repo/show-repo.html)
+**Look:** [show-repo at this ref](https://github.com/mehrlander/web-tools/blob/claude/show-repo-branch-nav-xzttnt/app/index.html)
 
 **Changed:**
 - [lib/alpineComponents/ref-switch.js](https://github.com/mehrlander/web-tools/blob/claude/show-repo-branch-nav-xzttnt/lib/alpineComponents/ref-switch.js) the control itself
-- [pages/show-repo/show-repo.html](https://github.com/mehrlander/web-tools/blob/claude/show-repo-branch-nav-xzttnt/pages/show-repo/show-repo.html) one mount in the header
+- [app/index.html](https://github.com/mehrlander/web-tools/blob/claude/show-repo-branch-nav-xzttnt/app/index.html) one mount in the header
 - [docs/show-repo.md](https://github.com/mehrlander/web-tools/blob/claude/show-repo-branch-nav-xzttnt/docs/show-repo.md) a section for it
 
 **Notes:** the switch pins the ref on both halves of the address, since ?use= alone would leave the shell at the deployed version.`;
@@ -73,7 +73,7 @@ export default async (page) => {
     // Stand in a preview: the ref bar keys on the adopted subject's ref.
     d.viaToss = true;
     d.repo = 'mehrlander/web-tools';
-    d.path = 'pages/show-repo/show-repo.html';
+    d.path = 'app/index.html';
     d.ref = state === 'nopr' ? 'claude/branch-page-lifespan-9k2xd'
                              : 'claude/show-repo-branch-nav-xzttnt';
     window.GithubLinks = { rows: (repo, o) => {

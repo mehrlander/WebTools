@@ -100,6 +100,12 @@ async function walk(baseDir, dir = baseDir) {
 
 const titleOf = src => (src.match(/<title>([^<]*)<\/title>/i)?.[1] ?? '').trim();
 
+// Redirect stubs left behind by a move. They are addresses, not pages: a stub
+// carries no screen to shoot and nothing to read, so a gallery tile for one is
+// a promise it cannot keep. Listed by path rather than sniffed, since "has a
+// location.replace" would also catch a real page that routes on boot.
+const SKIP = new Set(['show-repo/show-repo.html']);
+
 // Read title once per page; carry the metadata both outputs need. Each entry's
 // `rel` is its virtual path (grouping/thumb key); href/viewUrl/codeUrl resolve
 // to the real file regardless of which source root it came from.
@@ -109,6 +115,7 @@ for (const src of SOURCES) {
   const files = (await walk(base)).sort((a, b) => a.localeCompare(b));
   for (const f of files) {
     if (src.virt && path.basename(f) === 'index.html') continue; // skip a source's own catalog
+    if (!src.virt && SKIP.has(f)) continue;                      // redirect stub, not a page
     const html = await readFile(path.join(base, f), 'utf8');
     const rel = src.virt ? `${src.virt}/${f}` : f;
     meta.push({
@@ -235,10 +242,10 @@ function buildHtml() {
       <img src="../lib/favicon.svg" alt="" width="28" height="28" class="w-7 h-7">web-tools
     </h1>
     <div class="flex items-center gap-4">
-      <a href="show-repo/show-repo.html"
+      <a href="../app/"
          class="text-xs text-base-content/40 hover:text-base-content/70 flex items-center gap-1 transition-colors"
-         title="Browse the raw files of any repo — the file-level companion to this page index">
-        <i class="ph ph-tree-structure"></i> show-repo
+         title="The Web Tools app: browse any repo, move files between them, read cross-repo activity">
+        <i class="ph ph-tree-structure"></i> Web Tools
       </a>
       <a href="https://github.com/${REPO}"
          class="text-xs text-base-content/40 hover:text-base-content/70 flex items-center gap-1 transition-colors">

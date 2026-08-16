@@ -6,7 +6,7 @@
       "subject": "the Web Tools app: mission, durable goals, and the name split",
       "status": "living",
       "reach": "project",
-      "words": 500,
+      "words": 621,
       "maintenance": "authored; revised on deliberate reframing, not per feature"
     },
     {
@@ -366,7 +366,7 @@
       "subject": "the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement",
       "status": "living",
       "reach": "project",
-      "words": 4525,
+      "words": 4524,
       "maintenance": "authored by hand; held both ways to the carriers it governs by tools/test/properties-registry.test.mjs"
     },
     {
@@ -430,7 +430,7 @@
       "subject": "the estate's authored text: whether the carriers holding it are organized, and how much never reached one",
       "status": "measured",
       "reach": "orphan",
-      "words": 4440,
+      "words": 4478,
       "maintenance": "re-derive with scripts/text-census.py and scripts/text-carriers.py; every figure is a command away, and the date in the opening line is what the numbers are as of"
     },
     {

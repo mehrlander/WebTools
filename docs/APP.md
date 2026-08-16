@@ -1,6 +1,6 @@
 # The Web Tools app
 
-⭐ **Open it:** [Web Tools](https://mehrlander.github.io/web-tools/pages/show-repo/show-repo.html)
+⭐ **Open it:** [Web Tools](https://mehrlander.github.io/web-tools/app/)
 
 One hosted page is the front door to the whole development estate. GitHub stays
 the system of record; the app is the operating surface over it, bringing the
@@ -13,15 +13,28 @@ problem it serves: something exists somewhere, and someone needs to look at it.
 ## The name split
 
 **Web Tools** is the product name, used wherever a reader is addressed: the
-page title, the README's front door, prose introducing the app. **show-repo**
-is the shell's internal name and stays on everything that keys by it: the page
-file (`pages/show-repo/show-repo.html`), the route registry
-([app-routes.json](app-routes.json)), the reference doc, and the tracker
-project tag. The old name records the app's origin as a repo viewer; the scope
-outgrew it, the addresses did not. Renaming the internals would break every
-saved deep link and buy nothing the prose split does not, the same finding the
-`shell` rename task recorded: a name is expensive to change in registries and
-gates, cheap to change where people read.
+page title, the README's front door, the app's own address. **show-repo** is
+the shell's internal name and stays on everything that keys by it: the route
+registry ([app-routes.json](app-routes.json)), the reference doc, the component
+and harness filenames, and the tracker project tag. The old name records the
+app's origin as a repo viewer; the scope outgrew it.
+
+**The address moved on 2026-08-16, the identifiers did not,** and the
+distinction is the whole of the decision. This doc first ruled that renaming
+"would break every saved deep link and buy nothing the prose split does not."
+That holds for **identifiers**: a `?view=` key, a registry key, a component
+name, and the project tag are read by gates, and changing one is expensive and
+invisible to a reader. It does not hold for the **address**. The app served
+from `pages/show-repo/show-repo.html` filed the product inside the catalog of
+the workshop's outputs, which it was never a member of, and made its front door
+the longest URL in the estate.
+
+So the page file moved to `app/index.html`, served at
+`https://mehrlander.github.io/web-tools/app/`, and the old path keeps a
+redirect stub that preserves the query and the fragment. The stub is
+load-bearing and permanent: 151 files in other repos name the old address and
+cannot be reached from here, and neither can a link already saved on someone's
+phone.
 
 ## Durable goals
 

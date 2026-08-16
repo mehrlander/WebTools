@@ -11,7 +11,7 @@
 // edge cases ("no log" is not "old") are the whole reason a review surface is
 // more than a renderer.
 //
-// The shell's app() lives inline in show-repo.html, so this drives it through
+// The shell's app() lives inline in app/index.html, so this drives it through
 // the shared show-repo-shell.mjs harness.
 
 import test from 'node:test';

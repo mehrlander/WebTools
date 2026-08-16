@@ -3,7 +3,7 @@
 // what it is), and the destination field carries the branch, so the only
 // thing left is the send.
 //
-//   npm run shot -- pages/show-repo/show-repo.html \
+//   npm run shot -- app/index.html \
 //     --query "view=stage&dest=mehrlander%2Fweb-tools%40claude%2Fbranch%3Adump" \
 //     --script tools/render/scenarios/stage-aimed-deposit.mjs
 export default async (page) => {

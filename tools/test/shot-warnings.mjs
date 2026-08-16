@@ -83,7 +83,7 @@ try {
   // boots the pre-build. Assert the discrimination rather than the warning.
   ok('a gh.load page is not warned about the pre-build', !/BEHIND lib/.test(block), block.slice(0, 200));
 
-  const preBuildPage = 'pages/show-repo/show-repo.html';
+  const preBuildPage = 'app/index.html';
   const r = spawnSync(process.execPath, [SHOT, preBuildPage, '--wait', '4000', '--out', OUT],
                       { cwd: root, encoding: 'utf8', timeout: 180000 });
   block = warningBlock((r.stdout || '') + (r.stderr || ''));

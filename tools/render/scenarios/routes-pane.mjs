@@ -40,7 +40,7 @@ const PRS = [
     title: 'Activity: a Routes pane over the app’s own destinations', draft: true,
     url: 'https://github.com/mehrlander/web-tools/pull/416', session: '',
     files: ['lib/alpineComponents/estate.js', 'lib/kits/route-activity.js',
-            'docs/app-routes.json', 'pages/show-repo/show-repo.html'] },
+            'docs/app-routes.json', 'app/index.html'] },
   { repo: 'mehrlander/web-tools', name: 'claude/map-registries-area', pr: 415,
     title: 'Give the registries an identity', draft: false,
     url: 'https://github.com/mehrlander/web-tools/pull/415', session: '',

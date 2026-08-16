@@ -22,7 +22,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeWindow, startAlpine, tick } from './bootstrap.mjs';
 
-const PATH = 'pages/show-repo/show-repo.html';
+const PATH = 'app/index.html';
 const REPO = 'mehrlander/web-tools';
 const LIVE = 'https://mehrlander.github.io/web-tools/' + PATH;
 

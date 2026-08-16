@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the Map view's Harness tab, the harness
 // census (docs/harness.json) rendered live.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/map-harness.mjs \
 //     --out tools/.preview/map-harness.png --full
 //

@@ -4,7 +4,7 @@
 // button appears without a reload because stage.js reads availability as a
 // getter rather than caching it at init.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --query view=stage \
+//   npm run shot -- app/index.html --query view=stage \
 //     --script tools/render/scenarios/stage-dictate.mjs
 export default async (page) => {
   await page.evaluate(() => {
