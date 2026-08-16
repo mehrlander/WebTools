@@ -469,6 +469,41 @@ is going to become anyway, and let the reader copy it; or reach for a form that
 survives, a `#gz=` toss or a `[new]` blob link, keeping the honesty gate in mind
 (a blob is a view, not a render).
 
+### The caption's own habits, isolated
+
+*(measured 2026-08-08, PR #372, probe lines written and read back)*
+
+Three of the shapes the surfacing caption writes by default were separated from
+the toss findings above by their own probes. A `](url)/[` pair joined by a bare
+slash wraps **even with clean URLs on both sides**, which pins the 2026-07-29
+caption-pair row above on the joining slash rather than on either link. A
+compare URL carrying a `#diff-<hex>` per-file anchor wraps, while the plain
+compare URL survives. And the toss form carrying both `?use=` and `#gh=` wraps
+while the `#gh=`-only form passes; under `#gh` a page's relative dependencies
+already load from the addressed ref, so dropping `?use=` loses nothing. The
+substitutions (`, ` between links, plain compare URLs, no `?use=` on a body's
+toss) are rules in [SURFACING.md](../SURFACING.md)'s caption primitive; this
+entry is their evidence.
+
+### Path depth: at most one slash, and the SHA fix does not clear it
+
+*(measured 2026-08-10, PR #385, eight probes over two comments)*
+
+On a `#gh=` address the `:path` may carry **at most one slash**.
+`:pages/annotate.html` passes and `:pages/show-repo/show-repo.html` is wrapped,
+on the same SHA ref; so is `:docs/envelopes/data-view.md`, which shares no name
+with anything, so the trigger is depth and not a repeated segment. The query is
+not involved, and was ruled out first: the same address passed and failed
+identically with and without `?view=stage`, while a plain deployed URL carrying
+a query passed.
+
+This trigger and the slash-in-ref trigger above **compound rather than
+substitute**, which is the trap: switching a wrapped link to the SHA fixes a
+one-slash path and leaves a two-slash one exactly as broken, so the fix appears
+not to have worked. A nested page therefore cannot be tossed from a body at
+all; link the branch page, which carries no `:path` and passed clean, or hand
+the reader a `#gz=`.
+
 ## MCP: two servers can share a tool name, and only one may work
 
 *(measured 2026-07-29)*

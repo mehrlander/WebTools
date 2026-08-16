@@ -245,7 +245,7 @@ test('modes are coherent: computed names a real deriver, recorded names none', (
 // vocabulary a person picks from, so the seam ran through the group.
 const AREAS = ['files', 'names'];
 const REGISTRY_FIELDS = new Set(['id', 'area', 'title', 'gloss', 'carrier', 'format', 'key',
-  'identity', 'rows', 'kind', 'target', 'scope', 'gate', 'fields', 'why']);
+  'identity', 'rows', 'kind', 'target', 'scope', 'gate', 'fields', 'why', 'renders_in']);
 
 test('every registry declares its area, and leads with a title and a gloss', () => {
   for (const r of reg.registries) {
@@ -265,6 +265,24 @@ test('every registry declares its area, and leads with a title and a gloss', () 
   // Every declaration already glossed its property; no registry did, and that
   // asymmetry is what this pair of fields closes.
   for (const d of decls) assert.ok(d.gloss, `${d.registry}.${d.property}: no gloss`);
+});
+
+// `renders_in` is the registry row's one derived field: the app files that
+// name the carrier in code, stamped by registries-reach.mjs the way docs-reach
+// stamps the docs census's `reach` and `words`. Held to a re-derivation here
+// for the same reason those are: a cached copy of a derivation is only worth
+// keeping while something proves it current. An EMPTY list is legal and is the
+// field's point: it is the Registries tab's warning state, a carrier no app
+// surface reads.
+import { deriveRendersIn } from '../build/registries-reach.mjs';
+
+test('renders_in matches its derivation on every registry', () => {
+  const derived = deriveRendersIn(repoRoot, reg.registries.map(r => r.carrier));
+  for (const r of reg.registries) {
+    assert.deepEqual(r.renders_in, derived.get(r.carrier),
+      `${r.id}: renders_in is stale against the app corpus; run \`npm run registries-reach\` ` +
+      `and commit docs/properties.json`);
+  }
 });
 
 // THE OWNERSHIP GATE. docs/registries.md: "Any applicable target x property

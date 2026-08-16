@@ -80,6 +80,18 @@ traffic goes through a separate proxy scoped to the authorized repo, which
 answers `Proxy error: repository not authorized` (502). Different failure, same
 appearance.
 
+**No create-PR button on an added repo.** A repository attached mid-session
+with `add_repo` has full git access through the proxy but no web-interface
+branch or pull-request controls, so the platform's PR button never appears for
+it. This is a missing affordance, not a failure: commit to a branch (a PR needs
+a source branch distinct from its target, so never straight to the default),
+push, and hand the owner the compare URL,
+`https://github.com/<owner>/<repo>/compare/<default-branch>...<branch>`, whose
+page carries the Create pull request control and stamps the owner's identity on
+the result. The MCP write path can open it instead, but authored by the
+integration identity, so that route follows an explicit request. Fuller
+account: `docs/github/github-surfacing.md`.
+
 **A hook that never fired.** `.claude/settings.json` is read only when the
 session's project root is the repository. In a multi-repo session the root sits
 above it, so every hook it declares silently never runs: no build-on-commit, no

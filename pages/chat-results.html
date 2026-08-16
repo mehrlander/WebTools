@@ -240,7 +240,13 @@
     <div>
       <!-- header: the question, then the filter bar -->
       <header class="mb-5">
-        <p class="font-mono text-[10px] tracking-widest uppercase opacity-40 mb-1">Chat search</p>
+        <!-- The eyebrow doubles as the contract link: docs/envelopes/chat-results.md
+             was named only from comments, which the docs census refuses to
+             count, so the page that renders the envelope links its contract
+             where a reader can tap it. -->
+        <p class="font-mono text-[10px] tracking-widest uppercase opacity-40 mb-1">Chat search
+          <a href="https://github.com/mehrlander/web-tools/blob/main/docs/envelopes/chat-results.md"
+             target="_blank" rel="noopener" class="link link-hover normal-case tracking-normal">contract</a></p>
         <h1 class="text-[1.35rem] leading-tight font-bold tracking-tight" x-text="env.query || 'Results'"></h1>
         <p class="text-xs opacity-50 mt-1" x-show="env.generated" x-text="env.generated"></p>
       </header>

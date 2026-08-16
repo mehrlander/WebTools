@@ -200,19 +200,22 @@ in a renderer's source is exactly the unaccounted kind.
   *registry* did, and closing that asymmetry is what these two fields are.
 - **area**: which side of one question the registry falls on.
 
-| Area | The membership question | Count |
-| --- | --- | --- |
-| **files** | Does the target have a path in this tree? | 9 |
-| **names** | Everything else: a name something declared, the registry being what declares it | 7 |
+| Area | The membership question |
+| --- | --- |
+| **files** | Does the target have a path in this tree? |
+| **names** | Everything else: a name something declared, the registry being what declares it |
 
 The question is the point, not the label. Without a stated rule the grouping is
 re-litigated on every addition, so the rule has to be answerable by someone who
 has never read this file. "Does it have a path" is; a topical judgment is not.
+(The per-area counts this table used to carry are the tab's to derive; the
+hand-carried pair went stale within days, which is this document's own lesson
+applied to itself.)
 
-Files takes 9 of 16, so the split does little sorting. That is accepted rather
-than fixed: a rule anyone can apply is worth more than a balanced one that needs
-a judgment call, and if `names` ever earns a subdivision it can be split then,
-from a boundary that already holds.
+Files takes over half the rows, so the split does little sorting. That is
+accepted rather than fixed: a rule anyone can apply is worth more than a
+balanced one that needs a judgment call, and if `names` ever earns a
+subdivision it can be split then, from a boundary that already holds.
 
 **The first attempt was three areas and it did not survive contact.** Files were
 `contents`, and the seven names were split into `conventions` and a
@@ -236,6 +239,30 @@ document. `family` was the second and is already `owners.kind`'s value for a row
 that declares a rule over a scope. `title` was preferred to `label` because five
 registries already use `title` for a display name while `pages-catalog.label` is
 the slug.
+
+### Where a registry renders, derived
+
+A fourth reader-facing field joined the three on 2026-08-16, and unlike them it
+is derived: `renders_in`, the files under `lib/` and `pages/` that name the
+registry's carrier in code, stamped by `tools/build/registries-reach.mjs` over
+the same comment-stripped corpus as the docs census's `reach` and held to the
+derivation by the gate. The Registries tab shows the list per row and wears a
+warning badge, with a strip figure, where it is empty.
+
+The field exists because the audits above keep converging on one law: an
+authored claim nothing reads goes wrong. A registry no surface renders is that
+exposure at the registry grain, committed and gated and met by nobody, and the
+docs census's reach column already proved that making such a gap visible gets
+it closed. The first stamp found four carriers with no app surface, and one of
+those four is a judgment rather than a defect: the tracker board renders as
+`board.md` on GitHub, a projection the scan rightly does not count. The badge
+asks the question; it does not settle it.
+
+The first run also caught a real defect in the shared scanner itself: a `/*`
+inside a `//` line comment opened a phantom block that swallowed hundreds of
+code lines, which had been silently mis-filing `docs/app-routes.json` as an
+orphan in the docs census. An instrument built to find unread carriers found a
+bug in the instrument it was copied from, which is the pattern working.
 
 ## Storage rules
 

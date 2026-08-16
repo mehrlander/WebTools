@@ -54,7 +54,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 1002,
+      "words": 995,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -78,7 +78,7 @@
       "subject": "the surfacing system: primitives plus the guide-PR course",
       "status": "living",
       "reach": "injected",
-      "words": 4427,
+      "words": 4211,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -93,7 +93,7 @@
       "path": "docs/app-routes.json",
       "subject": "the show-repo app's own destinations: every address, what it is for, and which files draw it",
       "status": "living",
-      "reach": "orphan",
+      "reach": "app",
       "words": 1315,
       "maintenance": "authored; held to show-repo.html's VIEWS table, and its declared files to disk, by app-routes.test.mjs"
     },
@@ -126,7 +126,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2581,
+      "words": 2586,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -141,9 +141,9 @@
       "path": "docs/envelopes/chat-results.md",
       "subject": "the chat-results envelope contract",
       "status": "living",
-      "reach": "orphan",
+      "reach": "project",
       "words": 860,
-      "maintenance": "authored; prose contract for pages/chat-results.html, which names it only in a comment; no schema beside it as surface.md has"
+      "maintenance": "authored; prose contract for pages/chat-results.html, which links it from its header, and named by the envelope primitive; no schema beside it as surface.md has"
     },
     {
       "path": "docs/envelopes/data-view.md",
@@ -181,17 +181,17 @@
       "path": "docs/envelopes/shorter.md",
       "subject": "the shorter envelope contract: a document and a shortening to adjudicate",
       "status": "living",
-      "reach": "orphan",
+      "reach": "app",
       "words": 704,
-      "maintenance": "authored; prose contract for pages/shorter.html, which names it only in a comment; no schema beside it"
+      "maintenance": "authored; prose contract for pages/shorter.html, which links it from its header"
     },
     {
       "path": "docs/envelopes/surface.md",
       "subject": "the surface format contract",
       "status": "living",
-      "reach": "orphan",
+      "reach": "project",
       "words": 2326,
-      "maintenance": "authored; declares the sibling schemas the validation source of truth and carries a Stale banner saying nothing validates against them, which is the honest state rather than the intended one"
+      "maintenance": "authored; named by the envelope primitive; declares the sibling schemas the validation source of truth and carries a Stale banner saying nothing validates against them, which is the honest state rather than the intended one"
     },
     {
       "path": "docs/environment/README.md",
@@ -206,7 +206,7 @@
       "subject": "what the sandbox can run and reach",
       "status": "measured",
       "reach": "project",
-      "words": 5602,
+      "words": 5911,
       "maintenance": "authored; per-claim verification dates, edited in place and re-dated, probes preferred over assertions"
     },
     {
@@ -253,7 +253,7 @@
       "path": "docs/github/github-surfacing.md",
       "subject": "GitHub-native surfaces for exposing work: branches, compares, drafts, permalinks",
       "status": "living",
-      "reach": "orphan",
+      "reach": "skill",
       "words": 468,
       "maintenance": "authored; mechanical reference for GitHub's native surfaces, stable enough not to need dating"
     },
@@ -277,7 +277,7 @@
       "path": "docs/github/post-merge-branch-mutation.md",
       "subject": "why a merged branch stops being a live workspace: merged means closed",
       "status": "living",
-      "reach": "orphan",
+      "reach": "project",
       "words": 592,
       "maintenance": "authored; a conceptual argument with no repo-specific inventory to age"
     },
@@ -286,7 +286,7 @@
       "subject": "the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting",
       "status": "living",
       "reach": "app",
-      "words": 4743,
+      "words": 4819,
       "maintenance": "authored role and layer glossary; layer, lines, invocation, emits, named and tested stamped by tools/build/tools-index.mjs, held in lockstep by artifacts-lockstep.test.mjs; blank roles are counted, not hidden"
     },
     {
@@ -349,9 +349,9 @@
       "path": "docs/pdf-structure.md",
       "subject": "recovering structure from a PDF in the browser: what the kit does and honestly does not",
       "status": "living",
-      "reach": "orphan",
+      "reach": "project",
       "words": 4003,
-      "maintenance": "authored, edited in place; the reference half of lib/kits/pdf.js, which names it only in a comment; its tolerances are empirical and undated"
+      "maintenance": "authored, edited in place; the reference half of lib/kits/pdf.js, linked from the surfacing primitives' PDF entry; its tolerances are empirical and undated"
     },
     {
       "path": "docs/portable.json",
@@ -366,7 +366,7 @@
       "subject": "the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement",
       "status": "living",
       "reach": "project",
-      "words": 4338,
+      "words": 4525,
       "maintenance": "authored by hand; held both ways to the carriers it governs by tools/test/properties-registry.test.mjs"
     },
     {
@@ -374,7 +374,7 @@
       "subject": "the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction",
       "status": "living",
       "reach": "project",
-      "words": 4493,
+      "words": 4760,
       "maintenance": "the doctrine behind properties.json; written to travel, origin budget-drs properties.csv"
     },
     {
@@ -422,7 +422,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 25667,
+      "words": 25674,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {
