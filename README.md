@@ -65,7 +65,8 @@ A few durable entries by name:
 [compression-helper](https://mehrlander.github.io/web-tools/pages/compression-helper.html)
 turns pasted text into a compact blob or a self-decompressing bookmarklet;
 [show-repo](https://mehrlander.github.io/web-tools/pages/show-repo/)
-browses any GitHub repo as a sidebar tree with a viewer pane;
+is the Web Tools app's shell: the estate dashboard, the stage, activity,
+and the per-repo views;
 [toss-render](https://mehrlander.github.io/web-tools/pages/toss-render.html)
 renders HTML carried in the URL fragment (the 🥏 primitive);
 [launcher](https://mehrlander.github.io/web-tools/pages/launcher.html)
