@@ -1,7 +1,9 @@
 ---
 id: split-stage-contract-74a7vh
 title: Split the stage contract out of show-repo.md
-status: backlog
+status: done
+closed: 2026-08-16
+resolution: duplicate
 opened: 2026-08-16
 size: M
 ---
@@ -30,3 +32,9 @@ carries the contract text; docs.json rows updated; `npm test` green.
 ## Progress log
 - 2026-08-16: filed from the docs-organization assessment session
   (`claude/web-tools-docs-assessment-dc9bqv`), user-named in the go list.
+- 2026-08-16: refinement close, resolution duplicate. `split-show-repo-doc`
+  (closed the same day, PR #435) had already delivered this and more: the
+  stage, the manifest, and the branch overlay each got their own doc. This
+  task was filed from a scratch branch cut from the very commit that closed
+  that one, without re-reading the board first; the duplicate survived under
+  an hour because the merge surfaced it.
