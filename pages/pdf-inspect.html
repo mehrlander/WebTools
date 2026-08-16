@@ -141,6 +141,15 @@
 
     <span class="text-xs opacity-55 font-mono truncate hidden xl:inline" x-text="status"></span>
 
+    <!-- Where an addressed document came from, linked to the file on GitHub.
+         Absent for the sample and for a drop, which have no address to state. -->
+    <a x-show="address" x-cloak :href="addressUrl" target="_blank"
+       class="text-xs font-mono truncate hidden lg:inline opacity-55 hover:opacity-100 hover:text-primary transition-opacity"
+       :title="address && (address.repo + (address.ref ? '@' + address.ref : '') + ':' + address.path)">
+      <i class="ph ph-git-branch align-[-0.1em]"></i>
+      <span x-text="address && address.path.split('/').pop()"></span>
+    </a>
+
     <button class="btn btn-sm btn-ghost ml-auto lg:hidden gap-1 shrink-0" @click="panel = !panel">
       <i class="ph" :class="panel ? 'ph-x' : 'ph-sliders-horizontal'"></i>
       <span class="hidden sm:inline" x-text="panel ? 'Close' : 'Controls'"></span>
@@ -459,6 +468,7 @@
 
   await gh.load('kits/pdf.js');
   await gh.load('kits/persistence.js');
+  await gh.load('kits/repo-address.js');
   await gh.load('alpine-bundle.js');
 </script>
 
@@ -518,6 +528,10 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     spread: { min: 4,    max: 70,  step: 1, nudge: 4,  unit: '' },
   },
   busy: false, error: '', dropping: false, probe: null, toast: '',
+  // The address this document came from, when it came from one. Null for the
+  // sample and for anything dropped, which is what keeps the header honest:
+  // a local file has no address and must not be shown wearing one.
+  address: null,
 
   async init() {
     let t;
@@ -544,8 +558,62 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
       } else return;
       e.preventDefault();
     });
-    await this.loadSample();
+    // An address in the hash wins over the sample: someone who linked a
+    // document meant that document. hashchange keeps the page addressable
+    // after boot, which is what lets the drawer re-aim it in place rather
+    // than reloading, and what makes a second link land where it says.
+    addEventListener('hashchange', () => this.loadHash());
+    if (!await this.loadHash()) await this.loadSample();
     await this.loadViews();
+  },
+
+  // --- addressed documents -------------------------------------------------
+  //
+  // `#gh=owner/repo[@ref]:path`, the estate's one address grammar, so a PDF
+  // anywhere in any repo is a link rather than a download-and-drag. Until
+  // 2026-08-15 this page had no entrance but the file picker and the drop
+  // zone, which made it the one tool in the estate that could not be pointed
+  // at the estate's own files: the DRS budget submittals it was built to read
+  // sit in a repo it had no way to name.
+  //
+  // Token-gated like every #gh= address, and honest when the token is missing:
+  // a 404 here usually means "not signed in", not "no such file".
+  // The addressed file on GitHub. Blob rather than raw, since the point of the
+  // header link is to reach the file where it lives, with its history beside it.
+  get addressUrl() {
+    const a = this.address;
+    return a ? `https://github.com/${a.repo}/blob/${a.ref || 'HEAD'}/${a.path}` : '';
+  },
+
+  // TWO SPELLINGS, because two callers write them and neither is wrong.
+  // `#gh=` is the estate's address form, what a person links and what the
+  // drawer re-aims. `?src=` is what toss-render hands a registered renderer
+  // (docs/routes.json), so `#pdf=owner/repo:file.pdf` lands here without the
+  // router learning anything about this page. The hash wins when both are
+  // present: it is the one a reader can see and edit.
+  addressInHash() {
+    const m = /[#&]gh=([^&]+)/.exec(location.hash || '');
+    const spec = m ? decodeURIComponent(m[1])
+                   : new URLSearchParams(location.search).get('src') || '';
+    return spec ? (window.RepoAddress?.parse(spec) || null) : null;
+  },
+
+  async loadHash() {
+    const a = this.addressInHash();
+    if (!a) return false;
+    if (!/\.pdf$/i.test(a.path)) {
+      this.error = `${a.path} is not a PDF`;
+      return true;
+    }
+    this.address = a;
+    // A fresh GH rather than the page's own: this address names another repo.
+    // gh-auth patches the prototype's headers getter, so the stored token
+    // reaches every instance and a private repo resolves without passing it.
+    await this.open(async () => {
+      const { bytes } = await new GH({ repo: a.repo, ref: a.ref }).bytes(a.path);
+      return bytes;
+    }, `fetching ${a.path.split('/').pop()}`);
+    return true;
   },
 
   // --- orientation ---------------------------------------------------------
@@ -715,7 +783,10 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     return doc.save();
   },
 
-  async loadSample() { await this.open(() => this.sampleBytes(), 'building sample'); },
+  async loadSample() {
+    this.address = null;
+    await this.open(() => this.sampleBytes(), 'building sample');
+  },
 
   async loadFile(f) {
     if (!f) return;
@@ -723,6 +794,9 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
       this.error = `${f.name} is not a PDF`;
       return;
     }
+    // A dropped file replaces whatever the hash named, so the address goes
+    // with it. Leaving it set would caption local bytes with a repo path.
+    this.address = null;
     await this.open(() => f.arrayBuffer(), `reading ${f.name}`);
   },
 

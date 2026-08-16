@@ -14,7 +14,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { makeWindow, tick, repoRoot } from './bootstrap.mjs';
+import { makeWindow, tick, repoRoot, captureAlpineErrors } from './bootstrap.mjs';
 
 const BRANCH = 'claude/some-branch';
 
@@ -24,6 +24,7 @@ const { window } = makeWindow({
 });
 
 const { default: Alpine } = await import('alpinejs/dist/module.esm.js');
+captureAlpineErrors(Alpine);
 window.Alpine = Alpine;
 
 // Record every (repo, ref, path) the view asks for, and answer from disk so the

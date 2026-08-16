@@ -105,6 +105,15 @@
       "example": "#data=mehrlander/home@main:projects/budget-drs/data/rows.csv"
     },
     {
+      "key": "pdf",
+      "repo": "mehrlander/web-tools",
+      "ref": "main",
+      "path": "pages/pdf-inspect.html",
+      "renders": "A PDF as a document you can take apart: the page drawn, with text containers, characters, vector rules, detected columns and lattice cells as toggleable layers over it, and the table read two independent ways so agreement is visible. The data route shows a PDF too, as a first look; this one is the workbench.",
+      "doc": "docs/pdf-structure.md",
+      "example": "#pdf=mehrlander/home@main:projects/budget-drs/data/source/2026-06-04-drs-budget-submittals/2025-27/R1/DP-PL-FR-Fraud%20Prevention.pdf"
+    },
+    {
       "key": "shorter",
       "repo": "mehrlander/web-tools",
       "ref": "main",

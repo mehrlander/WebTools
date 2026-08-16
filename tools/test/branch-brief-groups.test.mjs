@@ -9,7 +9,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { makeWindow, repoRoot } from './bootstrap.mjs';
+import { makeWindow, repoRoot, captureAlpineErrors } from './bootstrap.mjs';
 
 const REPO = 'me/tools';
 const tick = (n = 1) => new Promise(r => setTimeout(r, n * 10));
@@ -54,6 +54,7 @@ window.GH = FakeGH;
 window.TOKEN = 'tkn';
 
 const { default: Alpine } = await import('alpinejs/dist/module.esm.js');
+captureAlpineErrors(Alpine);
 const { default: collapse } = await import('@alpinejs/collapse/dist/module.esm.js');
 window.Alpine = Alpine;
 Alpine.plugin(collapse);

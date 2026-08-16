@@ -10,7 +10,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { makeWindow, tick, repoRoot } from './bootstrap.mjs';
+import { makeWindow, tick, repoRoot, captureAlpineErrors } from './bootstrap.mjs';
 
 const { window, problems } = makeWindow({
   html: `<!doctype html><html><body>
@@ -19,6 +19,7 @@ const { window, problems } = makeWindow({
 });
 
 const { default: Alpine } = await import('alpinejs/dist/module.esm.js');
+captureAlpineErrors(Alpine);
 window.Alpine = Alpine;
 
 const manifest = {
