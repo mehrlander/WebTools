@@ -847,15 +847,16 @@
   {
    "id": "split-show-repo-doc-3zh8xw",
    "title": "Split docs/show-repo.md along the app's structure",
-   "status": "in-progress",
+   "status": "done",
    "project": "show-repo",
    "opened": "2026-08-16",
+   "closed": "2026-08-16",
    "session": "claude/web-tools-app-concept-crg8sl",
    "size": "L",
    "file": "split-show-repo-doc-3zh8xw.md",
    "href": "tasks/split-show-repo-doc-3zh8xw.md",
    "lastActivity": "2026-08-16",
-   "logEntries": 2
+   "logEntries": 3
   },
   {
    "id": "stage-diff-b-select-desync-v554kn",

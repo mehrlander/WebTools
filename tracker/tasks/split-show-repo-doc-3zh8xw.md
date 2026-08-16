@@ -1,7 +1,8 @@
 ---
 id: split-show-repo-doc-3zh8xw
 title: Split docs/show-repo.md along the app's structure
-status: in-progress
+status: done
+closed: 2026-08-16
 opened: 2026-08-16
 project: show-repo
 size: L
@@ -28,6 +29,16 @@ prose, every split doc has a docs.json row and a reach channel, and no
 inbound anchor 404s.
 
 ## Progress log
+- 2026-08-16: third cut and close, same branch: the branch overlay (about 500
+  lines, no inbound anchors) moved to docs/branch-overlay.md. Done on
+  claude/web-tools-app-concept-crg8sl; lands via PR #435. The done-when holds:
+  show-repo.md is about 21,000 words of the shell's own material (views and
+  transfer), each split doc (stage.md, manifest.md, branch-overlay.md) has a
+  docs.json row and a stated reach, and every inbound anchor resolves through
+  a kept heading. The estate's view-by-view material stays by judgment: those
+  sections are the shell's screens, which is what the doc is for under the
+  split; revisit only if a screen's contract outgrows its section the way the
+  stage did.
 - 2026-08-16: second cut, same branch: the manifest section (about 690 lines)
   moved verbatim to docs/manifest.md beside manifest.json's field registry;
   show-repo.md keeps the heading and the consumer's boundary, and the two lib

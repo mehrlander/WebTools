@@ -26,7 +26,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Make the take-away menu work inside a toss](tasks/take-away-inside-a-toss-k73cjq.md)
 
 ## In progress
-- 🎫 [Split docs/show-repo.md along the app's structure](tasks/split-show-repo-doc-3zh8xw.md) · L (`claude/web-tools-app-concept-crg8sl`)
+- (none)
 
 ## Blocked
 - (none)
@@ -77,6 +77,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Give the sidebar a compare-against ref, and collapse the card's source tabs](tasks/sidebar-compare-view-lkjang.md) (`claude/pr-file-swiping-jgj0kc`)
 - 🎫 [Singleton fab with toss-render integration](tasks/singleton-fab-toss-render-gticvb.md) (`claude/fab-render-toss-render-ua6p3p`)
 - 🎫 [Speed up show-repo's cold load](tasks/speed-up-show-repo-cold-load-u3846j.md) (`claude/speed-up-show-repo-load-3cdvl0`)
+- 🎫 [Split docs/show-repo.md along the app's structure](tasks/split-show-repo-doc-3zh8xw.md) (`claude/web-tools-app-concept-crg8sl`)
 - 🎫 [Fix the stage Diff lens B-select display desync](tasks/stage-diff-b-select-desync-v554kn.md) (`claude/web-tools-diff-review-s0nrq7`)
 - 🎫 [Propagate the stage link's new grammar to the portable docs](tasks/stage-link-grammar-portable-docs-jukn37.md) (`claude/stage-link-grammar-docs-jukn37`)
 - 🎫 [Move StageLink.read onto the shared fragment-first param read](tasks/stage-link-onto-url-params-u9o7ny.md) (`claude/web-tools-project-tracker-reo5qo`)
