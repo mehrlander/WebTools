@@ -863,7 +863,7 @@
       "path": "tools/test/estate-activity-progress.test.mjs",
       "kind": "component",
       "protects": "The activity progress indicator reports idle, running, and finished states honestly.",
-      "assertions": 6,
+      "assertions": 7,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -873,6 +873,7 @@
         "mid-crawl: finished repos over total, every in-flight repo named",
         "the survey pass of a split refresh names itself",
         "the bar counts finished repos only, never the ones in flight",
+        "the Sessions pane reads its own slot, in its own unit",
         "activityBusy tracks the shell, and the header swaps on it"
       ]
     },

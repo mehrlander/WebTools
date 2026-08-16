@@ -830,10 +830,10 @@
       "tested": false
     },
     {
-      "path": "tools/render/scenarios/estate-activity-progress.mjs",
-      "role": "the Activity header in its mid-crawl state",
+      "path": "tools/render/scenarios/estate-crawl-progress.mjs",
+      "role": "Branches or Sessions mid-crawl: the pane seeded, then the shell's progress slot written by hand",
       "layer": "tools/render/scenarios",
-      "lines": 35,
+      "lines": 61,
       "invocation": "driver",
       "emits": false,
       "named": false,

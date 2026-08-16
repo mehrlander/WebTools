@@ -985,9 +985,13 @@ after it (the pool runs two at once, so it is a list), over a determinate bar
 whose only input is repos finished over repos total. Nothing finer is counted
 and no in-flight fraction is estimated: per-repo cost varies by an order of
 magnitude, and a sub-counter ticking several times a second is the churn this
-replaces. The numbers come off the shell's **progress channel**, which all three
-crawls write and both this pane and the State view read, so pressing Refresh in
-either place lights both and neither holds a second copy of the reading. The crawl **commits only when something materially changed**, which
+replaces. The numbers come off the shell's **progress channel**, a slot per cache
+key, which all three crawls write and every reader draws: this pane, the
+Sessions pane, and the State view's rows. Pressing Refresh in any of them lights
+the others, and nothing holds a second copy of the reading. The verb and the
+unit ride in the slot rather than being inferred by whoever draws it, since only
+the crawl knows whether it is on the quick pass or the survey true-up, or
+counting repos rather than session records. The crawl **commits only when something materially changed**, which
 used to make a productive refresh and a no-op refresh end identically, so the
 run closes with a toast, `Activity refreshed · 3 repos changed` or `No activity
 changes · 11 repos checked`, and names any repo the crawl failed on (previously
@@ -1019,6 +1023,15 @@ opening ask, and a count row: user turns, tool calls, failures, distinct files,
 and output tokens. The rail goes amber where the session hit failures and stays
 muted otherwise, deliberately not green-for-clean, since a clean session is the
 normal case and a page of green rails says nothing.
+
+The sessions crawl reports the same way Branches does, off the same channel:
+while it runs, the pane's age pill is joined by `Reading records · 18 of 120
+records` over a determinate bar above the list. It is the lighter of the two
+crawls (a tree read, then up to 120 record blobs six at a time, against a branch
+survey per repo), but a cold pass is still tens of seconds, and it had a spinner
+and one word. The Guides shelf gets neither line nor bar: it is assembled in
+memory from one listing per repo, with no denominator worth drawing, so its pill
+says `Reading…` and that is the honest whole of it.
 
 Two axes, the same shape as Branches. **Scope** is time (`Week`, `Month`, `All`)
 plus **Snagged**, which is not a time window at all: it is every session that hit
@@ -1583,8 +1596,8 @@ bar moves with it. Under the ages line each row draws `Reading configs · 31 of 
 repos`, `Surveying branches · 4 of 11 repos · chat-histories, home`, or `Reading
 records · 18 of 120 records`, over a bar whose only input is items finished over
 items total. All three read the shell's one progress channel
-(`crawlProgress`, a slot per cache key), and **the crawl names its own verb and
-unit**, since only it knows whether it is on the quick pass or the survey
+(`crawlProgress`, a slot per cache key), the same one the Branches and Sessions
+panes draw, and **the crawl names its own verb and unit**, since only it knows whether it is on the quick pass or the survey
 true-up, and whether it is counting repos or session records. A crawl that fans
 out unpooled (configs) names nothing in flight, because "every repo" is not a
 reading. Nothing is smoothed between two ticks, for the same reason the pane's
