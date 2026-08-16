@@ -15,6 +15,8 @@
     "pages-index": "node tools/build/pages-index.mjs",
     "docs-readme": "node tools/build/docs-readme.mjs",
     "docs-reach": "node tools/build/docs-reach.mjs",
+    "registries-reach": "node tools/build/registries-reach.mjs",
+    "claims-survey": "python3 scripts/duplicated-claims-survey.py",
     "snags-index": "node tools/build/snags-index.mjs",
     "pages": "npm run pages-shots && npm run pages-index",
     "wsl-fetch": "node pages/wsl-sync/fetch-data.mjs",

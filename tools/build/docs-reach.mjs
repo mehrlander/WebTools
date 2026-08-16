@@ -103,9 +103,11 @@ export const INJECTED = ['docs/CONVENTIONS.md', 'docs/SURFACING.md'];
 // in every repo that installs the set.
 const PROJECT_FILES = ['CLAUDE.md', 'AGENTS.md', ...INJECTED];
 const SKILL_DIRS = ['.claude/skills', 'skills'];
-const APP_DIRS = ['lib', 'pages'];
+// The app corpus's boundary and extensions are exported with the scanners
+// above: registries-reach.mjs must mean the same thing by "the app".
+export const APP_DIRS = ['lib', 'pages'];
 const SKILL_EXT = new Set(['.md', '.py', '.json', '.mjs']);
-const APP_EXT = new Set(['.js', '.html', '.mjs']);
+export const APP_EXT = new Set(['.js', '.html', '.mjs']);
 
 // A path named in a comment is documentation of the code, not a channel to the
 // doc: nothing loads or links it, and a reader of docs/ never sees the mention.
@@ -114,14 +116,28 @@ const APP_EXT = new Set(['.js', '.html', '.mjs']);
 // mentioned docs/README.md in prose, silently moved that file from orphan to
 // app until the gate caught it. Skill markdown is NOT stripped: prose in a
 // skill is instruction an agent follows, which is exactly the channel.
-function stripComments(text) {
+// Exported (with readCorpus) because registries-reach.mjs derives its
+// renders_in field over the same app corpus under the same comment rule; two
+// scanners with different rules would disagree about what "the app names it"
+// means, which is the drift a single owner exists to prevent.
+//
+// Block and line comments are stripped in ONE alternation, not two passes.
+// The two-pass version (blocks first, then lines) had a real defect found by
+// registries-reach's first run: a `/*` INSIDE a line comment (estate.js writes
+// `surfaces/*.surface` in one) opened a phantom block that swallowed
+// everything to the next `*/`, hundreds of code lines, so paths named in that
+// span read as unreferenced. One pass fixes it by leftmost-match: the `//`
+// sits earlier on its line than the `/*` it contains, so the line branch
+// consumes it before the block branch can start. The `[^:]` guard keeps a
+// URL's `//` from reading as a comment, as before.
+export function stripComments(text) {
   return text
     .replace(/<!--[\s\S]*?-->/g, ' ')
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+    .replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/.*$/gm,
+      (m, pre) => (pre === undefined ? ' ' : pre));
 }
 
-function readCorpus(repoRoot, dirs, exts, strip = false) {
+export function readCorpus(repoRoot, dirs, exts, strip = false) {
   const texts = [];
   const walk = (abs) => {
     for (const entry of readdirSync(abs, { withFileTypes: true })) {

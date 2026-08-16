@@ -1,5 +1,5 @@
 {
-  "note": "The properties registry: the declaration table of docs/registries.md, binding scope x property to its one authoritative registry. Registries name their carrier, key field (structural identity, exempt from declaration), target grain, scope, gate, the `area` that groups them for a reader with a `title` and a `gloss`, an optional `identity` giving the space their key resolves into for the ownership gate, and whether their per-row fields are `governed` (held to the declarations below) or `ungoverned` (declared and counted, with a written `why` naming what about the carrier the field check cannot reach). Declarations carry mode (recorded or computed, with the deriver for computed), required (what the gates enforce today: value, counted, or none), and the value domain where one is closed. Governed carriers are held both ways by tools/test/properties-registry.test.mjs: an undeclared row field fails, a declared property missing from the carrier fails, a value outside a declared closed domain fails, and a required:value property blank on any row fails (2,304 presence assertions across 52 declarations; both added after audits found the same rot, that a field nothing reads goes wrong: eight domains declared and none read, then 54 value grades unchecked and three false), a computed declaration whose deriver does not exist fails, and the ungoverned count is asserted so it can only move deliberately. Expanded 2026-08-09 from six registries to thirteen by the reconciliation recorded in docs/registries.md, which walked the estate against the model rather than the model against itself; sixteen since. All sixteen are field-governed. Five were initially declared ungoverned with written reasons and all five reasons proved wrong on inspection, so the assertion now reads zero rather than a count: `fields: ungoverned` survives only so that adding one has to change a test. Origin: budget-drs data/design/properties.csv in mehrlander/home. Three checks were added 2026-08-13. The registry row is now held to a named field set, since the index governs the carriers and nothing governed the index. The ownership rule (`target x property` resolves to at most one registry) finally has the gate its own prose promised, deciding on assertions rather than declarations so a crosswalk may declare a property it fills only where no census owns it; it found two live violations on its first run, nine `role` pairs and four `title`/`note` pairs, both resolved by inheritance rather than by renaming, which would have hidden the duplication from the gate without removing it. And tools-gallery, reshaped into a crosswalk over pages-catalog, must resolve every row to a page, since dropping a field makes a blank card possible where a stale one used to be.",
+  "note": "The properties registry: the declaration table of docs/registries.md, binding scope x property to its one authoritative registry. Registries name their carrier, key field (structural identity, exempt from declaration), target grain, scope, gate, the `area` that groups them for a reader with a `title` and a `gloss`, an optional `identity` giving the space their key resolves into for the ownership gate, and whether their per-row fields are `governed` (held to the declarations below) or `ungoverned` (declared and counted, with a written `why` naming what about the carrier the field check cannot reach). One row field is derived rather than authored: `renders_in`, the lib/ and pages/ files that name the carrier in code (comments stripped), stamped by tools/build/registries-reach.mjs and held to a re-derivation by the gate, exactly as docs.json's reach and words are. An empty list is the field's point, not a gap: it marks a registry no app surface reads, which the audits below say is where authored claims rot, and the Registries tab renders it as the warning state. Declarations carry mode (recorded or computed, with the deriver for computed), required (what the gates enforce today: value, counted, or none), and the value domain where one is closed. Governed carriers are held both ways by tools/test/properties-registry.test.mjs: an undeclared row field fails, a declared property missing from the carrier fails, a value outside a declared closed domain fails, and a required:value property blank on any row fails (2,304 presence assertions across 52 declarations; both added after audits found the same rot, that a field nothing reads goes wrong: eight domains declared and none read, then 54 value grades unchecked and three false), a computed declaration whose deriver does not exist fails, and the ungoverned count is asserted so it can only move deliberately. Expanded 2026-08-09 from six registries to thirteen by the reconciliation recorded in docs/registries.md, which walked the estate against the model rather than the model against itself, and grown since. The row count is deliberately not stated here or in any prose: two hand-carried copies (this note and CLAUDE.md) read sixteen while the table held seventeen, the exact rot this file documents, so the count is the Registries tab's to derive. All are field-governed. Five were initially declared ungoverned with written reasons and all five reasons proved wrong on inspection, so the assertion now reads zero rather than a count: `fields: ungoverned` survives only so that adding one has to change a test. Origin: budget-drs data/design/properties.csv in mehrlander/home. Three checks were added 2026-08-13. The registry row is now held to a named field set, since the index governs the carriers and nothing governed the index. The ownership rule (`target x property` resolves to at most one registry) finally has the gate its own prose promised, deciding on assertions rather than declarations so a crosswalk may declare a property it fills only where no census owns it; it found two live violations on its first run, nine `role` pairs and four `title`/`note` pairs, both resolved by inheritance rather than by renaming, which would have hidden the duplication from the gate without removing it. And tools-gallery, reshaped into a crosswalk over pages-catalog, must resolve every row to a page, since dropping a field makes a blank card possible where a stale one used to be.",
   "registries": [
     {
       "id": "content-registry",
@@ -14,7 +14,12 @@
       "scope": "artifacts the registry curates; authoritative for what it covers, undeclared is a normal state",
       "gate": null,
       "target": "an artifact, by locator (may refine below a file)",
-      "fields": "governed"
+      "fields": "governed",
+      "renders_in": [
+        "lib/alpineComponents/branch-brief.js",
+        "lib/kits/content-registry.js",
+        "pages/entities.html"
+      ]
     },
     {
       "id": "docs-census",
@@ -30,7 +35,11 @@
       "scope": "every .md and .json file under docs/ (the gate walks those two extensions; docs/examples/, docs/prototypes/ and docs/favicons/ hold four other files, out of scope and deliberately so)",
       "gate": "tools/test/docs-registry.test.mjs",
       "target": "a file under docs/",
-      "fields": "governed"
+      "fields": "governed",
+      "renders_in": [
+        "lib/alpineComponents/fab.js",
+        "lib/alpineComponents/map.js"
+      ]
     },
     {
       "id": "harness-census",
@@ -46,7 +55,11 @@
       "scope": "code files under tools/ and scripts/, except tools/test/, which the tests census owns",
       "gate": "tools/test/artifacts-lockstep.test.mjs",
       "target": "a harness code file",
-      "fields": "governed"
+      "fields": "governed",
+      "renders_in": [
+        "lib/alpineComponents/fab.js",
+        "lib/alpineComponents/map.js"
+      ]
     },
     {
       "id": "manifest-fields",
@@ -61,7 +74,8 @@
       "target": "a .web-tools.json manifest key",
       "scope": "every key in use across the estate's repo manifests",
       "fields": "governed",
-      "gate": "tools/test/manifest-registry.test.mjs"
+      "gate": "tools/test/manifest-registry.test.mjs",
+      "renders_in": []
     },
     {
       "id": "owners",
@@ -76,7 +90,10 @@
       "target": "a repeated statement, or a scope for a family rule",
       "scope": "statements the hub's coordination layer repeats; curated against the written scope in the carrier, not complete over the estate",
       "fields": "governed",
-      "gate": "tools/test/owners-registry.test.mjs"
+      "gate": "tools/test/owners-registry.test.mjs",
+      "renders_in": [
+        "lib/alpineComponents/map.js"
+      ]
     },
     {
       "id": "pages-catalog",
@@ -92,7 +109,12 @@
       "target": "a page",
       "scope": "every .html page under pages/, arranged into groups; the group wrapper (label, top) is structure rather than assertions about a page, the same standing as a carrier note block",
       "fields": "governed",
-      "gate": "tools/test/artifacts-lockstep.test.mjs"
+      "gate": "tools/test/artifacts-lockstep.test.mjs",
+      "renders_in": [
+        "lib/alpineComponents/fab.js",
+        "lib/alpineComponents/tools.js",
+        "pages/show-repo/show-repo.html"
+      ]
     },
     {
       "id": "portable-catalog",
@@ -108,7 +130,11 @@
       "scope": "files curated to travel to other repos; an authored selection crosswalk over the censuses that own each target, so intrinsic description is inherited rather than restated",
       "gate": "tools/test/portable-manifest.test.mjs",
       "target": "a shipped file",
-      "fields": "governed"
+      "fields": "governed",
+      "renders_in": [
+        "lib/alpineComponents/fab.js",
+        "lib/alpineComponents/map.js"
+      ]
     },
     {
       "id": "routes-modes",
@@ -123,7 +149,10 @@
       "target": "a delivery mode toss-render accepts",
       "scope": "the ways toss-render.html is handed a payload or a reference, and the trust posture each buys",
       "fields": "governed",
-      "gate": "tools/test/routes-manifest.test.mjs"
+      "gate": "tools/test/routes-manifest.test.mjs",
+      "renders_in": [
+        "lib/alpineComponents/map.js"
+      ]
     },
     {
       "id": "routes-routes",
@@ -138,7 +167,10 @@
       "target": "a toss route",
       "scope": "the content types that map to a renderer page; owner of toss-render.html's inlined TOSS_ROUTES literal",
       "fields": "governed",
-      "gate": "tools/test/routes-manifest.test.mjs"
+      "gate": "tools/test/routes-manifest.test.mjs",
+      "renders_in": [
+        "lib/alpineComponents/map.js"
+      ]
     },
     {
       "id": "showing-mechanisms",
@@ -153,7 +185,10 @@
       "target": "a showing mechanism",
       "scope": "the links that can show a change, what each reaches and misses; rendered as the Map view Showing tab",
       "fields": "governed",
-      "gate": "tools/test/routes-manifest.test.mjs"
+      "gate": "tools/test/routes-manifest.test.mjs",
+      "renders_in": [
+        "lib/alpineComponents/map.js"
+      ]
     },
     {
       "id": "skills-catalog",
@@ -168,7 +203,8 @@
       "target": "a skill",
       "scope": "every directory under skills/",
       "fields": "governed",
-      "gate": "tools/test/skills-registry.test.mjs"
+      "gate": "tools/test/skills-registry.test.mjs",
+      "renders_in": []
     },
     {
       "id": "surfacing-index",
@@ -183,7 +219,10 @@
       "target": "a surfacing primitive",
       "scope": "the primitives SURFACING.md defines. The PROSE stays authoritative and this is its gated index, so ownership runs opposite to every other registry here; declaring its fields governs the INDEX, not the definitions",
       "fields": "governed",
-      "gate": "tools/test/surfacing-manifest.test.mjs"
+      "gate": "tools/test/surfacing-manifest.test.mjs",
+      "renders_in": [
+        "lib/alpineComponents/map.js"
+      ]
     },
     {
       "id": "tests-census",
@@ -199,7 +238,11 @@
       "scope": "every .mjs under tools/test/ except the declared shared helpers",
       "gate": "tools/test/tests-registry.test.mjs",
       "target": "a test file",
-      "fields": "governed"
+      "fields": "governed",
+      "renders_in": [
+        "lib/alpineComponents/fab.js",
+        "lib/alpineComponents/map.js"
+      ]
     },
     {
       "id": "text-field-vocabulary",
@@ -213,7 +256,8 @@
       "scope": "the names a prose-bearing CSV column or JSON key may carry, estate-wide; portable, since a concept named once should be the same concept in every repo",
       "gate": "tools/test/text-fields-registry.test.mjs",
       "target": "a prose field name",
-      "fields": "governed"
+      "fields": "governed",
+      "renders_in": []
     },
     {
       "id": "tools-gallery",
@@ -229,7 +273,10 @@
       "scope": "pages the Tools view shelves; a crosswalk over pages-catalog, which owns each page's title and description. Every bare hub path must resolve to a row in pages/pages.json",
       "gate": "tools/test/properties-registry.test.mjs",
       "target": "a utility page",
-      "fields": "governed"
+      "fields": "governed",
+      "renders_in": [
+        "lib/alpineComponents/tools.js"
+      ]
     },
     {
       "id": "tracker-board",
@@ -244,7 +291,8 @@
       "target": "a tracker task",
       "scope": "every task file under tracker/tasks/",
       "fields": "governed",
-      "gate": "tools/test/artifacts-lockstep.test.mjs"
+      "gate": "tools/test/artifacts-lockstep.test.mjs",
+      "renders_in": []
     },
     {
       "id": "app-routes",
@@ -260,7 +308,10 @@
       "target": "a show-repo address",
       "scope": "the ?view= keys show-repo.html's VIEWS table dispatches, and the files that render each; not toss routes, which are a content type mapped to a renderer page and answer to routes-routes",
       "fields": "governed",
-      "gate": "tools/test/app-routes.test.mjs"
+      "gate": "tools/test/app-routes.test.mjs",
+      "renders_in": [
+        "lib/alpineComponents/estate.js"
+      ]
     }
   ],
   "declarations": [

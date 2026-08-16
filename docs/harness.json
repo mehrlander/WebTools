@@ -50,6 +50,16 @@
       "tested": false
     },
     {
+      "path": "scripts/duplicated-claims-survey.py",
+      "role": "report file pairs sharing near-duplicated prose, the quiet failure where a claim is restated and the copies age apart (advisory; ported from home)",
+      "layer": "scripts",
+      "lines": 138,
+      "invocation": "npm:claims-survey",
+      "emits": false,
+      "named": true,
+      "tested": true
+    },
+    {
       "path": "scripts/link-survey.py",
       "role": "report markdown links that no longer resolve, in three classes (internal, cross-repo, github)",
       "layer": "scripts",
@@ -163,7 +173,7 @@
       "path": "tools/build/docs-reach.mjs",
       "role": "restamp the derived reach and words fields of docs/docs.json",
       "layer": "tools/build",
-      "lines": 249,
+      "lines": 265,
       "invocation": "npm:docs-reach",
       "emits": true,
       "named": true,
@@ -228,6 +238,16 @@
       "emits": false,
       "named": true,
       "tested": false
+    },
+    {
+      "path": "tools/build/registries-reach.mjs",
+      "role": "stamp renders_in into docs/properties.json: the app files that name each registry's carrier, empty being the Registries tab's warning state",
+      "layer": "tools/build",
+      "lines": 88,
+      "invocation": "npm:registries-reach",
+      "emits": true,
+      "named": true,
+      "tested": true
     },
     {
       "path": "tools/build/repo-pages-shots.mjs",

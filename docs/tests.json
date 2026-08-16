@@ -2051,7 +2051,7 @@
       "path": "tools/test/properties-registry.test.mjs",
       "kind": "gate",
       "protects": "The declaration table of docs/registries.md: every governed carrier holds exactly its key plus declared properties, computed declarations name real derivers, and no target x property pair has two owners within a registry.",
-      "assertions": 10,
+      "assertions": 11,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -2063,6 +2063,7 @@
         "every required:value property is present on every row",
         "modes are coherent: computed names a real deriver, recorded names none",
         "every registry declares its area, and leads with a title and a gloss",
+        "renders_in matches its derivation on every registry",
         "no target answers to two registries for the same property",
         "the ownership gate still fires when two registries do claim one pair",
         "every tools-gallery row resolves to a page the gallery owns"
