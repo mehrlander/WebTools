@@ -54,7 +54,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 967,
+      "words": 985,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -118,7 +118,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2483,
+      "words": 2540,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -311,7 +311,15 @@
       "status": "living",
       "reach": "orphan",
       "words": 1803,
-      "maintenance": "authored; the structured stage under show-repo.md's former prose field list, held to the estate's real manifests by tools/test/manifest-registry.test.mjs: a key live in a manifest with no row here fails the suite"
+      "maintenance": "authored; the structured stage under the manifest prose (manifest.md, formerly a show-repo.md section), held to the estate's real manifests by tools/test/manifest-registry.test.mjs: a key live in a manifest with no row here fails the suite"
+    },
+    {
+      "path": "docs/manifest.md",
+      "subject": "the .web-tools.json manifest: the file's contract and the registry machinery (config cache, mailbox, proposals, editing from the shell)",
+      "status": "living",
+      "reach": "app",
+      "words": 7332,
+      "maintenance": "authored, edited in place; split from show-repo.md 2026-08-16, which keeps the consumer's boundary and points here; the field list stays in manifest.json"
     },
     {
       "path": "docs/markdown-in-chat.md",
@@ -371,11 +379,11 @@
     },
     {
       "path": "docs/show-repo.md",
-      "subject": "the show-repo shell: views, transfer, and the .web-tools.json manifest",
+      "subject": "the show-repo shell: views and transfer",
       "status": "living",
       "reach": "project",
-      "words": 33428,
-      "maintenance": "authored, edited in place; still the corpus's largest document, shedding sections to their own references (the stage went to stage.md 2026-08-16)"
+      "words": 26272,
+      "maintenance": "authored, edited in place; still the corpus's largest document, shedding sections to their own references (the stage and the manifest went to stage.md and manifest.md 2026-08-16)"
     },
     {
       "path": "docs/stage.md",
