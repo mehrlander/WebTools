@@ -76,7 +76,11 @@ captureAlpineErrors(Alpine);
 const { default: collapse } = await import('@alpinejs/collapse/dist/module.esm.js');
 window.Alpine = Alpine;
 Alpine.plugin(collapse);
+// viewer.js rides along for the three-way classifier check at the end: its
+// ViewRegistry is the third thing in this estate with an opinion about what a
+// file IS, and it was the one not held to the other two.
 for (const p of ['lib/kits/guide-render.js', 'lib/kits/source-peek.js',
+                 'lib/alpineComponents/viewer.js',
                  'lib/alpineComponents/file-review.js']) {
   new window.Function('window', readFileSync(path.join(repoRoot, p), 'utf8'))(window);
 }
@@ -440,4 +444,99 @@ test('a list card is not listening: its four tabs are its own', async () => {
   await tick(2);
   assert.equal(d.compareOff, false, 'the sidebar drives reading surfaces, not review lists');
   assert.ok(d.panes.some(p => p.id === 'patch'));
+});
+
+// ── a PDF is a document, not a lump of bytes ────────────────────────────────
+//
+// It used to fall past every named extension to the NUL sniff and report
+// itself as 'binary': true, and the least useful true thing the card could
+// say. The estate learned to render PDFs everywhere else first, which left
+// the review surface the last place one was unreadable.
+
+test('a PDF classifies as pdf and takes the page pane', async () => {
+  assert.equal(await kindOfPath('docs/report.pdf'), 'pdf');
+  assert.equal(await kindOfPath('a/B.PDF'), 'pdf', 'the extension match is case-blind');
+});
+
+test('the page pane leads the strip, and no source pane is offered beside it', async () => {
+  window.__k = { repo: 'acme/w', ref: 'feat/x', base: 'main', path: 'docs/report.pdf' };
+  const el = window.document.createElement('div');
+  el.setAttribute('x-data', 'fileReview(window.__k)');
+  window.document.getElementById('m2').append(el);
+  Alpine.initTree(el);
+  await tick(2);
+  const d = Alpine.$data(el);
+
+  assert.equal(d.shownPane, 'page');
+  const ids = d.panes.map(p => p.id);
+  assert.equal(ids[0], 'page', 'what the file IS comes first');
+  // Same reasoning as an image: New and Base would hand back a UTF-8 decode of
+  // a binary, which is the mojibake this whole change exists to stop showing.
+  for (const dead of ['new', 'base', 'diff']) {
+    assert.ok(!ids.includes(dead), `${dead} is not a reading of a PDF`);
+  }
+  assert.equal(d.comparable, false, 'and there is nothing to compare as text');
+});
+
+test('the handoff carries the file\'s own address', async () => {
+  window.__k = { repo: 'acme/w', ref: 'feat/x', base: 'main', path: 'docs/report.pdf' };
+  const el = window.document.createElement('div');
+  el.setAttribute('x-data', 'fileReview(window.__k)');
+  window.document.getElementById('m2').append(el);
+  Alpine.initTree(el);
+  await tick(2);
+  const url = Alpine.$data(el).pdfInspectUrl;
+  assert.ok(url.includes('/pages/pdf-inspect.html'), url);
+  assert.ok(url.endsWith('#gh=acme/w@feat/x:docs/report.pdf'), url);
+});
+
+// ── three classifiers, one question ─────────────────────────────────────────
+//
+// The card, source-peek and ViewRegistry each decide what a file IS, from its
+// extension, for three different surfaces. The first two have agreed by
+// assertion since the markdown row was deliberately duplicated; ViewRegistry
+// was never brought into that pact, and it is the one that grew two new media
+// kinds this month (pdf, then xlsx). A disagreement here is not cosmetic: it
+// means the same file is a document on one surface and a lump of bytes on
+// another, which is exactly the state this month's work existed to end.
+
+test('the card and ViewRegistry agree about which files are media', async () => {
+  const VR = window.ViewRegistry;
+  // Only the kinds all three can hold an opinion on. gzip is the card's alone
+  // (nothing else inflates), and that asymmetry is deliberate, not drift.
+  const cases = [
+    ['a.png',  'image', () => VR.isImage('png')],
+    ['a.jpeg', 'image', () => VR.isImage('jpeg')],
+    ['a.svg',  'svg',   () => VR.isImage('svg')],
+    ['a.pdf',  'pdf',   () => VR.isPdf('pdf')],
+  ];
+  for (const [path, kind, vrSaysMedia] of cases) {
+    assert.equal(await kindOfPath(path), kind, path + ': the card');
+    assert.ok(vrSaysMedia(), path + ': and ViewRegistry, which must not disagree');
+    assert.ok(VR.mimeFor(path.split('.').pop()),
+      path + ': a media kind carries a mime, which is what a local drop travels under');
+  }
+});
+
+test('a file no one calls media is media to no one', async () => {
+  const VR = window.ViewRegistry;
+  for (const [path, ext] of [['a.md', 'md'], ['a.js', 'js'], ['a.json', 'json']]) {
+    assert.notEqual(await kindOfPath(path), 'image');
+    assert.notEqual(await kindOfPath(path), 'pdf');
+    assert.ok(!VR.isImage(ext) && !VR.isPdf(ext) && !VR.isWorkbook(ext), ext);
+    assert.equal(VR.mimeFor(ext), '', ext + ': text carries no data: URI mime');
+  }
+});
+
+test('the kinds ViewRegistry knows and the card does not are named, not silent', async () => {
+  // xlsx arrived in the viewer (PR #433) and has no card kind yet, so a
+  // workbook in a changeset still reports as a binary. That is a real gap and
+  // this is where it is written down rather than discovered again later.
+  const VR = window.ViewRegistry;
+  assert.ok(VR.isWorkbook('xlsx'), 'the viewer reads workbooks');
+  // '' rather than 'binary': the card's extension table has no row for it, and
+  // 'binary' is what the NUL sniff decides later, at load. These probe cards
+  // never fetch, so this reads the classifier itself rather than its fallback.
+  assert.equal(await kindOfPath('a.xlsx'), '',
+    'the card has no workbook kind yet, which is the next one of these to close');
 });
