@@ -46,7 +46,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 932,
+      "words": 926,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -70,7 +70,7 @@
       "subject": "the surfacing system: primitives plus the guide-PR course",
       "status": "living",
       "reach": "injected",
-      "words": 4384,
+      "words": 4168,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -110,7 +110,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2402,
+      "words": 2407,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -125,9 +125,9 @@
       "path": "docs/envelopes/chat-results.md",
       "subject": "the chat-results envelope contract",
       "status": "living",
-      "reach": "orphan",
+      "reach": "project",
       "words": 860,
-      "maintenance": "authored; prose contract for pages/chat-results.html, which names it only in a comment; no schema beside it as surface.md has"
+      "maintenance": "authored; prose contract for pages/chat-results.html, which links it from its header, and named by the envelope primitive; no schema beside it as surface.md has"
     },
     {
       "path": "docs/envelopes/data-view.md",
@@ -165,17 +165,17 @@
       "path": "docs/envelopes/shorter.md",
       "subject": "the shorter envelope contract: a document and a shortening to adjudicate",
       "status": "living",
-      "reach": "orphan",
+      "reach": "app",
       "words": 704,
-      "maintenance": "authored; prose contract for pages/shorter.html, which names it only in a comment; no schema beside it"
+      "maintenance": "authored; prose contract for pages/shorter.html, which links it from its header"
     },
     {
       "path": "docs/envelopes/surface.md",
       "subject": "the surface format contract",
       "status": "living",
-      "reach": "orphan",
+      "reach": "project",
       "words": 2326,
-      "maintenance": "authored; declares the sibling schemas the validation source of truth and carries a Stale banner saying nothing validates against them, which is the honest state rather than the intended one"
+      "maintenance": "authored; named by the envelope primitive; declares the sibling schemas the validation source of truth and carries a Stale banner saying nothing validates against them, which is the honest state rather than the intended one"
     },
     {
       "path": "docs/environment/README.md",
@@ -190,7 +190,7 @@
       "subject": "what the sandbox can run and reach",
       "status": "measured",
       "reach": "project",
-      "words": 5602,
+      "words": 5911,
       "maintenance": "authored; per-claim verification dates, edited in place and re-dated, probes preferred over assertions"
     },
     {
@@ -237,7 +237,7 @@
       "path": "docs/github/github-surfacing.md",
       "subject": "GitHub-native surfaces for exposing work: branches, compares, drafts, permalinks",
       "status": "living",
-      "reach": "orphan",
+      "reach": "skill",
       "words": 468,
       "maintenance": "authored; mechanical reference for GitHub's native surfaces, stable enough not to need dating"
     },
@@ -261,7 +261,7 @@
       "path": "docs/github/post-merge-branch-mutation.md",
       "subject": "why a merged branch stops being a live workspace: merged means closed",
       "status": "living",
-      "reach": "orphan",
+      "reach": "project",
       "words": 592,
       "maintenance": "authored; a conceptual argument with no repo-specific inventory to age"
     },
@@ -325,9 +325,9 @@
       "path": "docs/pdf-structure.md",
       "subject": "recovering structure from a PDF in the browser: what the kit does and honestly does not",
       "status": "living",
-      "reach": "orphan",
+      "reach": "project",
       "words": 4003,
-      "maintenance": "authored, edited in place; the reference half of lib/kits/pdf.js, which names it only in a comment; its tolerances are empirical and undated"
+      "maintenance": "authored, edited in place; the reference half of lib/kits/pdf.js, linked from the surfacing primitives' PDF entry; its tolerances are empirical and undated"
     },
     {
       "path": "docs/portable.json",

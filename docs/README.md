@@ -13,8 +13,8 @@ observations and is corrected by re-probing; everything else is living and
 must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
-2 arrive in every session's context, 20 are named by CLAUDE.md,
-4 by a skill, 7 by a page or component. The remaining 20 are
+2 arrive in every session's context, 24 are named by CLAUDE.md,
+5 by a skill, 8 by a page or component. The remaining 14 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -40,7 +40,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`manifest.json`](manifest.json) *(orphan)* — the field registry for root .web-tools.json: every field's type, consumer, and effect
 - [`markdown-in-chat.md`](markdown-in-chat.md) *(measured)* — working visually with markdown in a chat client on a phone
 - [`owners.json`](owners.json) — the owners registry: for a statement the coordination layer repeats, its one authoritative carrier and every typed repetition
-- [`pdf-structure.md`](pdf-structure.md) *(orphan)* — recovering structure from a PDF in the browser: what the kit does and honestly does not
+- [`pdf-structure.md`](pdf-structure.md) — recovering structure from a PDF in the browser: what the kit does and honestly does not
 - [`portable.json`](portable.json) — the machine index of the portable set
 - [`properties.json`](properties.json) — the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement
 - [`registries.md`](registries.md) — the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction
@@ -57,10 +57,10 @@ marked *(orphan)* below: nothing points at them except this index.
 ## docs/envelopes/
 
 - [`README.md`](envelopes/README.md) *(orphan)* — the content-envelope family: members, shared grammar, and the sibling decision
-- [`chat-results.md`](envelopes/chat-results.md) *(orphan)* — the chat-results envelope contract
+- [`chat-results.md`](envelopes/chat-results.md) — the chat-results envelope contract
 - [`data-view.md`](envelopes/data-view.md) — the data-view envelope contract
-- [`shorter.md`](envelopes/shorter.md) *(orphan)* — the shorter envelope contract: a document and a shortening to adjudicate
-- [`surface.md`](envelopes/surface.md) *(orphan)* — the surface format contract
+- [`shorter.md`](envelopes/shorter.md) — the shorter envelope contract: a document and a shortening to adjudicate
+- [`surface.md`](envelopes/surface.md) — the surface format contract
 
 ## docs/envelopes/schemas/
 
@@ -86,10 +86,10 @@ marked *(orphan)* below: nothing points at them except this index.
 ## docs/github/
 
 - [`README.md`](github/README.md) *(orphan)* — the github folder's front door: renderer, git treatment, MCP routing, surfacing
-- [`github-surfacing.md`](github/github-surfacing.md) *(orphan)* — GitHub-native surfaces for exposing work: branches, compares, drafts, permalinks
+- [`github-surfacing.md`](github/github-surfacing.md) — GitHub-native surfaces for exposing work: branches, compares, drafts, permalinks
 - [`markdown.md`](github/markdown.md) *(orphan)* — what GitHub's static renderer turns markdown into
 - [`mcp-server-routing.md`](github/mcp-server-routing.md) *(record, orphan)* — two GitHub MCP servers at once: the 2026-07-15 observation, superseded
-- [`post-merge-branch-mutation.md`](github/post-merge-branch-mutation.md) *(orphan)* — why a merged branch stops being a live workspace: merged means closed
+- [`post-merge-branch-mutation.md`](github/post-merge-branch-mutation.md) — why a merged branch stops being a live workspace: merged means closed
 
 12 shared statements are registered in
 [`owners.json`](owners.json), which carries its own scope and schema.

@@ -111,7 +111,13 @@
           <path d="M9 9 L12 20 L15 9"/>
         </svg> Shorter
       </h1>
-      <p class="mt-1 text-sm text-base-content/60">Line up a shorter draft against your text and accept it piece by piece.</p>
+      <!-- The contract link is a reader affordance and a reach channel at
+           once: docs/envelopes/shorter.md was named only from comments, which
+           the docs census rightly refuses to count, so the page it serves now
+           links it where a reader can tap it. -->
+      <p class="mt-1 text-sm text-base-content/60">Line up a shorter draft against your text and accept it piece by piece.
+        <a href="https://github.com/mehrlander/web-tools/blob/main/docs/envelopes/shorter.md"
+           target="_blank" rel="noopener" class="link link-hover text-base-content/40">contract</a></p>
     </div>
     <button class="badge badge-sm gap-1 shrink-0 mt-1 cursor-default"
             :class="{'badge-ghost':model.status==='idle','badge-warning':model.status==='loading','badge-success':model.status==='ready','badge-error':model.status==='error'}"
