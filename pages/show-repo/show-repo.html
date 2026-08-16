@@ -66,7 +66,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>web-tools · browse</title>
+<title>Web Tools</title>
 <link rel="icon" type="image/svg+xml" href="../../lib/favicon.svg">
 <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5,npm/@tailwindcss/typography/dist/typography.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
@@ -3991,6 +3991,13 @@ function app(){ return {
     // needs a double press and popstate restoration doesn't re-push.
     if (this._restoring || next === cur) history.replaceState(null, '', next);
     else history.pushState(null, '', next);
+    // The tab names what the address names: the product, plus the open repo
+    // exactly when deepLinkParams stamps `repo` (off the default only), owner
+    // dropped the way the sidebar crumb drops it. Stamped here rather than in
+    // a watcher so the title and the address cannot disagree.
+    const repo = Alpine.store('browser').repo;
+    document.title = repo && repo !== this.DEFAULT_REPO
+      ? `Web Tools · ${repo.split('/')[1] || repo}` : 'Web Tools';
   },
 
   // Browser Back/Forward: re-derive the shell state from the URL through the
