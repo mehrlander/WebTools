@@ -42,6 +42,12 @@ export const KIT_IMPORTS = {
   'https://unpkg.com/acorn@8.11.3/dist/acorn.mjs': () => import('acorn'),
   'https://cdn.jsdelivr.net/npm/fast-xml-parser@4.5.1/+esm': () => import('fast-xml-parser'),
   'https://cdn.jsdelivr.net/npm/flat@6.0.0/+esm': () => import('flat'),
+  // JSZip's package has no ESM entry, so `import('jszip')` in Node lands on the
+  // CJS interop object whose `.default` is the constructor. That is the same
+  // shape the kit's `.then(m => m.default)` expects from the CDN's +esm build,
+  // so no wrapper is needed. Vendored so kits/xlsx.js's readZip and readMashup
+  // can be tested here rather than browser-side only.
+  'https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm': () => import('jszip'),
 };
 
 // Run lib/kits/<name>.js against `window` (a plain object is fine for kits —

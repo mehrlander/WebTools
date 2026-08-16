@@ -283,3 +283,40 @@ test('the name can still be truncated once the directory is gone', () => {
   assert.doesNotMatch(name.className, /shrink-0/, 'and it is allowed to give way at all');
   assert.match(dir.className, /shrink-\[9999\]/, 'the directory absorbs the shrinking first');
 });
+
+test('a workbook opens in the sheets mode, whatever the host asked for', () => {
+  // The registry mounted above sets defaultMode { md, json, '*': 'raw' }, so a
+  // workbook would fall to 'raw' by that map. It must not: raw for a ZIP is a
+  // screen of replacement characters, which is what every surface here showed
+  // before this mode existed.
+  const R = window.ViewRegistry;
+  const f = { name: 'book.xlsx', ext: 'xlsx', content: '', repo: 'o/r' };
+  const modes = R.getModes(f);
+  // Spread into a node-realm literal: getModes builds its array inside jsdom,
+  // and assert/strict compares prototypes, so a cross-realm Array never matches.
+  assert.deepEqual([...modes.map(m => m.id)], ['raw', 'xlsx'], 'raw stays available, one tap away');
+
+  const v = window.Alpine.$data(window.document.getElementById('v'));
+  assert.equal(v.resolveDefaultMode(f, modes).id, 'xlsx');
+});
+
+test('isWorkbook and mimeFor agree on which extensions are workbooks', () => {
+  const R = window.ViewRegistry;
+  assert.ok(R.isWorkbook('xlsx'));
+  assert.ok(R.isWorkbook('xlsm'), 'a macro workbook is the same ZIP');
+  assert.ok(!R.isWorkbook('xls'), 'the pre-2007 binary format is not a ZIP and is not read here');
+  assert.ok(!R.isWorkbook('csv'), 'a csv is text and belongs to the table mode');
+  for (const ext of ['xlsx', 'xlsm']) {
+    assert.match(R.mimeFor(ext), /spreadsheet|ms-excel/, ext);
+  }
+  assert.equal(R.mimeFor('txt'), '', 'a type the viewer cannot render carries no mime');
+  assert.equal(R.mimeFor('png'), 'image/png', 'and the image map still answers');
+});
+
+test('the sheets mode is exclusive, and the image mode still is too', () => {
+  // Both make the same argument about a host's blanket defaultMode, so if one
+  // ever loses the flag the other's reasoning has quietly changed as well.
+  const byId = Object.fromEntries(window.ViewRegistry.modules.map(m => [m.id, m]));
+  assert.equal(byId.xlsx.exclusive, true);
+  assert.equal(byId.image.exclusive, true);
+});
