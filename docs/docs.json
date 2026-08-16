@@ -54,7 +54,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 985,
+      "words": 1002,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -106,6 +106,14 @@
       "maintenance": "authored; distilled from official docs plus a dated publish trial"
     },
     {
+      "path": "docs/branch-overlay.md",
+      "subject": "the branch overlay: the takeover, file substitution, the sidebar's second ref, and drop-on-a-branch",
+      "status": "living",
+      "reach": "orphan",
+      "words": 5546,
+      "maintenance": "authored, edited in place; split from show-repo.md 2026-08-16, which keeps the boundary statement and points here"
+    },
+    {
       "path": "docs/code-layers.md",
       "subject": "the code layers and the admission rule that sorts a new file into one of them",
       "status": "living",
@@ -118,7 +126,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2540,
+      "words": 2581,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -382,7 +390,7 @@
       "subject": "the show-repo shell: views and transfer",
       "status": "living",
       "reach": "project",
-      "words": 26272,
+      "words": 20874,
       "maintenance": "authored, edited in place; still the corpus's largest document, shedding sections to their own references (the stage and the manifest went to stage.md and manifest.md 2026-08-16)"
     },
     {

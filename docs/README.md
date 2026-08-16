@@ -14,7 +14,7 @@ must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
 2 arrive in every session's context, 22 are named by CLAUDE.md,
-4 by a skill, 7 by a page or component. The remaining 21 are
+4 by a skill, 7 by a page or component. The remaining 22 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -32,6 +32,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`TRACKER.md`](TRACKER.md) — the opt-in cross-session project tracker: schema, ids, board
 - [`app-routes.json`](app-routes.json) *(orphan)* — the show-repo app's own destinations: every address, what it is for, and which files draw it
 - [`artifacts.md`](artifacts.md) — Claude Code artifacts and the link-choice matrix
+- [`branch-overlay.md`](branch-overlay.md) *(orphan)* — the branch overlay: the takeover, file substitution, the sidebar's second ref, and drop-on-a-branch
 - [`code-layers.md`](code-layers.md) — the code layers and the admission rule that sorts a new file into one of them
 - [`docs.json`](docs.json) — this registry: the documents census and the shared-claims table
 - [`harness.json`](harness.json) — the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting
