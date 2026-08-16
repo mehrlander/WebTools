@@ -36,8 +36,10 @@
     A payload toss takes the same suffix: #gz=<base64>#frag.
   Fetches the file via the GitHub API (using the stored token, so private
   repos and un-deployed branches work) and renders it same-origin, with a
-  <base> stamped in so relative URLs resolve and a shim so the page's own
-  ?use= read returns <ref> (the rewrite recipe from alpineComponents/fab.js).
+  <base> stamped in so relative URLs resolve, a shim that keeps fragment-only
+  links on the rendered blob rather than resolving them against that base, and
+  a shim so the page's own ?use= read returns <ref> (the rewrite recipe from
+  alpineComponents/fab.js).
   Same-origin rendering means the page could read the stored token — which
   is exactly why this mode only accepts repos owned by the OWNERS allowlist
   below. A crafted link to someone else's repo is refused outright, so the
@@ -741,6 +743,31 @@ window.fetch=function(input,init){try{
 })();<\/script>`;
   }
 
+  // A stamped <base> is necessary for repo-relative assets, but it also changes
+  // what an ordinary href="#section" means: the browser resolves it against the
+  // GitHub Pages base and navigates the full-viewport frame away from its blob.
+  // That is especially deceptive for a private repo, where the frame becomes a
+  // GitHub Pages 404 while the shell's address bar remains unchanged. Handle
+  // unmodified, same-frame fragment links through location.hash instead. The
+  // setter operates on the blob document itself, so native ID scrolling and a
+  // page's own hashchange router both keep working. Raw attributes matter here;
+  // a.href has already been poisoned by <base> resolution.
+  function hashNavigationShim() {
+    return `<script>(function(){
+document.addEventListener('click',function(e){
+  if(e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+  var a=e.target&&e.target.closest&&e.target.closest('a[href]');
+  if(!a)return;
+  var h=a.getAttribute('href');
+  if(!h||h.charAt(0)!=='#'||(a.target&&a.target.toLowerCase()!=='_self'))return;
+  e.preventDefault();
+  if(h==='#'){
+    if(location.hash)location.hash='';else scrollTo(0,0);
+  }else location.hash=h;
+},false);
+})();<\/script>`;
+  }
+
   // The address-render recipe (toss-render is now the one renderer; the fab
   // navigates here rather than carrying its own overlay copy): <base> so
   // relative URLs resolve on github.io, plus (when a ref was addressed) a shim
@@ -762,6 +789,7 @@ window.fetch=function(input,init){try{
       'H.replaceState=function(){try{return rs.apply(H,arguments)}catch(e){}};' +
       'H.pushState=function(){try{return ps.apply(H,arguments)}catch(e){}};' +
       '})();<\/script>';
+    prelude += hashNavigationShim();
     // Params shim: the srcdoc iframe has no location.search, so answer
     // URLSearchParams lookups for the addressed ?query keys (the page's own
     // deep links, e.g. ?view=stage) plus use=<ref> (the lib-chain pin, the
