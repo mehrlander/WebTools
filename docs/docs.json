@@ -2,6 +2,14 @@
   "note": "The documentation registry, in two tables. `documents` describes what each file under docs/ is, on four axes. `subject`: what it covers. `status`: `living` claims current truth and is wrong when stale, `record` preserves a moment and is wrong when rewritten, `measured` carries dated observations and is corrected by re-probing rather than by rewriting (the third value was added 2026-08-05, when five rows were found describing that genre in prose while their status said living). `reach`: how a reader gets to the file, DERIVED from the repo by tools/build/docs-reach.mjs and gated against this declaration, never hand-set. Strongest channel first: `injected` arrives in every session's context unasked, `project` is named by the repo's own CLAUDE.md so every session is one hop away, `skill` is named by a skill so invoking it pulls the doc, `app` is named in lib/ or pages/ CODE so a page reads or opens it (a mention in a comment does not count and is stripped), `orphan` means no automated channel puts it in front of anyone not already browsing docs/. `maintenance`: the discipline that keeps it true, and where none exists the row says so plainly rather than saying 'authored' (a bare row is barred by test, since the census gate otherwise invites filling rows instead of thinking about them). The census is complete by construction: tools/test/docs-registry.test.mjs holds every .md/.json under docs/ to exactly one row, so a file cannot sit in the folder unaccounted for. The shared-ownership table that lived here as a second `claims` block moved to docs/owners.json on 2026-08-09: a registry does not live inside another registry's carrier, and the reconciliation against docs/registries.md is where that showed. Rendered by show-repo's Map view, Docs tab. Genre precedents: budget-drs DOCS.md (three genres, three rules) and properties.csv (one authoritative carrier, gated copies, unchecked declared honestly).",
   "documents": [
     {
+      "path": "docs/APP.md",
+      "subject": "the Web Tools app: mission, durable goals, and the name split",
+      "status": "living",
+      "reach": "project",
+      "words": 500,
+      "maintenance": "authored; revised on deliberate reframing, not per feature"
+    },
+    {
       "path": "docs/CONSTELLATION.md",
       "subject": "the portable kernel of the what-goes-where doctrine",
       "status": "living",
@@ -46,7 +54,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 933,
+      "words": 947,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -110,7 +118,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2402,
+      "words": 2433,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -366,7 +374,7 @@
       "subject": "the show-repo shell: views, stage, transfer, and the .web-tools.json manifest",
       "status": "living",
       "reach": "project",
-      "words": 35752,
+      "words": 35826,
       "maintenance": "authored, edited in place; the corpus's largest document, and the buried home of the stage contract"
     },
     {

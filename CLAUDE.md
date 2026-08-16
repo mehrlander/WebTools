@@ -7,6 +7,10 @@ The two imports above are the portable half: conventions that apply in any repo.
 
 CONVENTIONS.md is one of several docs written to travel; the full to-go bag (conventions, scripts, the headless-vendoring recipe, the sandbox notes) is catalogued in [docs/PORTABLE.md](docs/PORTABLE.md), which the loader skill points at and which points back. When adding a doc or script meant for reuse elsewhere, list it there.
 
+## The Web Tools app
+
+[docs/APP.md](docs/APP.md) is the product frame: mission, goals, and the name split (**Web Tools** where a reader is addressed; **show-repo** on files, routes, and the tracker project).
+
 ## Showing: which link shows what
 
 The mechanisms, what each reaches and misses, and the rule for picking one are **not restated here**. They live as data in [`docs/routes.json`](docs/routes.json) under `showing` and render live in show-repo's **Map view, Showing tab**; the frame and the record are in [`docs/showing.md`](docs/showing.md). This section used to be 1,589 words, 63% of this file, and it still did not stop a session with all of it in context from handing over the wrong link. The app holds it now.
@@ -80,16 +84,13 @@ Root-level `tracker/` scoped to repo-wide work (conventions, build tooling, docs
 
 A committed JSON or CSV that inventories or classifies part of the tree is a
 **registry**; adding one means adding a row to
-[`docs/properties.json`](docs/properties.json) in the same commit. Sixteen are
-declared, each leading with what it is for. The model, the rules, and what its
-audits found are in [`docs/registries.md`](docs/registries.md); read it before
-inventing a carrier, since the answer is usually a row in one that exists.
-
-The one trap worth carrying: **one property about one target answers to one
-registry**, gated since 2026-08-13. Never resolve a collision by renaming a
-side, which satisfies the gate and keeps the duplicate. Curating targets a
-census already describes makes a **crosswalk**, inheriting the description
-rather than restating it.
+[`docs/properties.json`](docs/properties.json) in the same commit. The model,
+the rules, and what its audits found are in
+[`docs/registries.md`](docs/registries.md); read it before inventing a carrier,
+since the answer is usually a row in one that exists. The one trap: **one
+property about one target answers to one registry** (gated); resolve a
+collision with a **crosswalk** (curation inheriting a census's description),
+never by renaming a side, which keeps the duplicate.
 
 
 ## Snags

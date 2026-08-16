@@ -13,12 +13,13 @@ observations and is corrected by re-probing; everything else is living and
 must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
-2 arrive in every session's context, 20 are named by CLAUDE.md,
+2 arrive in every session's context, 21 are named by CLAUDE.md,
 4 by a skill, 6 by a page or component. The remaining 21 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
 
+- [`APP.md`](APP.md) — the Web Tools app: mission, durable goals, and the name split
 - [`CONSTELLATION.md`](CONSTELLATION.md) — the portable kernel of the what-goes-where doctrine
 - [`CONVENTIONS.md`](CONVENTIONS.md) — the portable working conventions: the general-behavior hub
 - [`HTML-STYLE.md`](HTML-STYLE.md) — the house style for pages: what to build, as against how

@@ -568,7 +568,7 @@
       {
         "href": "show-repo/show-repo.html",
         "label": "show-repo",
-        "title": "web-tools · browse",
+        "title": "Web Tools",
         "note": "",
         "thumb": "thumbs/show-repo/show-repo.png",
         "code": "https://github.com/mehrlander/web-tools/blob/main/pages/show-repo/show-repo.html"

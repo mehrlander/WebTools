@@ -1,8 +1,8 @@
 # web-tools
 
-A workshop for browser-based tools with a focus on working with data.
+Two things live here: the **Web Tools app**, the front door to the development estate, and the workshop that builds it, browser-based tools with a focus on working with data.
 
-⭐ **[Open show-repo, the dashboard →](https://mehrlander.github.io/web-tools/pages/show-repo/)** — browse any repo, stage and move files across repos, read cross-repo activity, and reach the tools. The [pages index](https://mehrlander.github.io/web-tools/pages/) lists every page with screenshots, live previews, and source links.
+⭐ **[Open the Web Tools app →](https://mehrlander.github.io/web-tools/pages/show-repo/)**: browse any repo, stage and move files between repos, read cross-repo activity, and reach the tools. [docs/APP.md](docs/APP.md) states the mission; show-repo is the shell's internal name, and [docs/show-repo.md](docs/show-repo.md) is its reference. The [pages index](https://mehrlander.github.io/web-tools/pages/) lists every page with screenshots, live previews, and source links.
 
 [Pages](#pages), [bookmarklets](#bookmarklets), [popups](#popups), [console snippets](#console-snippets), plus the parts used to build them.
 

@@ -1,12 +1,18 @@
-# show-repo: browse, stage, and move files across repos
+# show-repo: the shell of the Web Tools app
 
-⭐ **Open it:** [show-repo](https://mehrlander.github.io/web-tools/pages/show-repo/show-repo.html) (the hosted shell; append `?repo=owner/repo` to open a repo)
+⭐ **Open it:** [Web Tools](https://mehrlander.github.io/web-tools/pages/show-repo/show-repo.html) (the hosted shell; append `?repo=owner/repo` to open a repo)
 
-show-repo is one hosted page that browses **any** GitHub repo and moves files
-**between** repos. It is the cross-repo instrument: a session hands the user a
-link into it, or configures a repo so the shell presents it well. Rendering a
-page is a different job (that is `toss-render`, see the boundary below); show-repo
-shows and moves files.
+show-repo is the one hosted page behind the **Web Tools app**, the front door
+to the estate. It began as a repo browser and file mover, and that trunk still
+organizes this doc, but the scope is wider now: the estate dashboard and its
+activity, session, guide, and chat readings, the stage, the lists, the map,
+and the tools, every destination declared in
+[app-routes.json](app-routes.json). [APP.md](APP.md) states the mission and
+the name split (Web Tools where a reader is addressed; show-repo for the file,
+the routes, and this doc). It is the cross-repo instrument: a session hands
+the user a link into it, or configures a repo so the shell presents it well.
+Rendering a page is a different job (that is `toss-render`, see the boundary
+below); show-repo shows, moves, and operates.
 
 This doc is the reference. The `#stage=` link is also a surfacing primitive in
 [`SURFACING.md`](SURFACING.md) ("Stage a fileset 🗂️"), the transfer-side
