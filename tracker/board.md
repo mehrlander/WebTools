@@ -26,7 +26,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Make the take-away menu work inside a toss](tasks/take-away-inside-a-toss-k73cjq.md)
 
 ## In progress
-- (none)
+- 🎫 [Split docs/show-repo.md along the app's structure](tasks/split-show-repo-doc-3zh8xw.md) · L (`claude/web-tools-app-concept-crg8sl`)
 
 ## Blocked
 - (none)
