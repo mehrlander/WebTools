@@ -28,6 +28,13 @@ prose, every split doc has a docs.json row and a reach channel, and no
 inbound anchor 404s.
 
 ## Progress log
+- 2026-08-16: second cut, same branch: the manifest section (about 690 lines)
+  moved verbatim to docs/manifest.md beside manifest.json's field registry;
+  show-repo.md keeps the heading and the consumer's boundary, and the two lib
+  components' docs links (repo.js, config.js) now aim at the new reference,
+  putting it on the app reach channel. show-repo.md is down from about 35,800
+  to about 26,300 words. Remaining candidates: the estate's view-by-view
+  material, the branch overlay.
 - 2026-08-16: filed from the Web Tools app reframing session and claimed on
   claude/web-tools-app-concept-crg8sl, which made the first cut: the stage
   contract moved to docs/stage.md (reach: skill, via the show-repo skill),
