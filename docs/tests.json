@@ -3179,7 +3179,7 @@
       "path": "tools/test/toss-fragment.test.mjs",
       "kind": "behavior",
       "protects": "An address, its page query, and a trailing fragment survive the toss intact.",
-      "assertions": 10,
+      "assertions": 11,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -3193,7 +3193,8 @@
         "every route key the page registers is readable as a fragment key",
         "no key, an empty fragment, and a bare value read as nothing",
         "an empty value reads as empty, so the page falls through to the panel",
-        "the page reads its fragment by slice, not URLSearchParams"
+        "the page reads its fragment by slice, not URLSearchParams",
+        "address mode keeps fragment-only links on the rendered blob"
       ]
     },
     {
