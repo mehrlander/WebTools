@@ -441,3 +441,47 @@ test('a list card is not listening: its four tabs are its own', async () => {
   assert.equal(d.compareOff, false, 'the sidebar drives reading surfaces, not review lists');
   assert.ok(d.panes.some(p => p.id === 'patch'));
 });
+
+// ── a PDF is a document, not a lump of bytes ────────────────────────────────
+//
+// It used to fall past every named extension to the NUL sniff and report
+// itself as 'binary': true, and the least useful true thing the card could
+// say. The estate learned to render PDFs everywhere else first, which left
+// the review surface the last place one was unreadable.
+
+test('a PDF classifies as pdf and takes the page pane', async () => {
+  assert.equal(await kindOfPath('docs/report.pdf'), 'pdf');
+  assert.equal(await kindOfPath('a/B.PDF'), 'pdf', 'the extension match is case-blind');
+});
+
+test('the page pane leads the strip, and no source pane is offered beside it', async () => {
+  window.__k = { repo: 'acme/w', ref: 'feat/x', base: 'main', path: 'docs/report.pdf' };
+  const el = window.document.createElement('div');
+  el.setAttribute('x-data', 'fileReview(window.__k)');
+  window.document.getElementById('m2').append(el);
+  Alpine.initTree(el);
+  await tick(2);
+  const d = Alpine.$data(el);
+
+  assert.equal(d.shownPane, 'page');
+  const ids = d.panes.map(p => p.id);
+  assert.equal(ids[0], 'page', 'what the file IS comes first');
+  // Same reasoning as an image: New and Base would hand back a UTF-8 decode of
+  // a binary, which is the mojibake this whole change exists to stop showing.
+  for (const dead of ['new', 'base', 'diff']) {
+    assert.ok(!ids.includes(dead), `${dead} is not a reading of a PDF`);
+  }
+  assert.equal(d.comparable, false, 'and there is nothing to compare as text');
+});
+
+test('the handoff carries the file\'s own address', async () => {
+  window.__k = { repo: 'acme/w', ref: 'feat/x', base: 'main', path: 'docs/report.pdf' };
+  const el = window.document.createElement('div');
+  el.setAttribute('x-data', 'fileReview(window.__k)');
+  window.document.getElementById('m2').append(el);
+  Alpine.initTree(el);
+  await tick(2);
+  const url = Alpine.$data(el).pdfInspectUrl;
+  assert.ok(url.includes('/pages/pdf-inspect.html'), url);
+  assert.ok(url.endsWith('#gh=acme/w@feat/x:docs/report.pdf'), url);
+});

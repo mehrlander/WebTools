@@ -34,6 +34,7 @@
     "test:toss-paste": "node tools/test/toss-paste.mjs",
     "test:viewer-image": "node tools/test/viewer-image.mjs",
     "test:viewer-pdf": "node tools/test/viewer-pdf.mjs",
+    "test:card-pdf": "node tools/test/card-pdf.mjs",
     "test:viewer-xlsx": "node tools/test/viewer-xlsx.mjs",
     "test:alpine-teardown": "node tools/test/alpine-teardown.mjs",
     "test:preview-height": "node tools/test/stage-preview-height.mjs",
