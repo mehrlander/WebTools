@@ -1857,7 +1857,7 @@ the registry repo is the only private name this public page carries.
 
 ## Using it from a Claude session
 
-- **Hand the user a browse link:** `…/show-repo.html?repo=owner/repo` (add
+- **Hand the user a browse link:** `…/app/?repo=owner/repo` (add
   `&ref=` for a branch, `&view=files&path=<dir>` to land in a folder). The
   bare page URL is the estate (the all-repo dashboard).
 - **Hand the user a stage link (🗂️):** mint `#stage=…` per the grammar above.

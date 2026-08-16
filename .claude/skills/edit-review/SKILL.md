@@ -16,7 +16,7 @@ description: >-
 
 # edit-review
 
-Hands an edited file to show-repo's stage for review, rather than generating
+Hands an edited file to the Web Tools app's stage for review, rather than generating
 a bespoke page. The Diff lens (`lib/alpineComponents/stage.js`) already does
 the diff, the copy, and a general-purpose review-prompts panel; this skill's
 job is staging the right two things and handing over the link.

@@ -57,7 +57,7 @@
       "title": "Stage a fileset",
       "glyph": "🗂️",
       "use": "Move a fileset across repos for viewing, bundle download, copying, or review diff.",
-      "form": "show-repo.html#stage=owner/repo[@ref]:p1,p2;owner2/repo2:p3",
+      "form": "app/#stage=owner/repo[@ref]:p1,p2;owner2/repo2:p3",
       "boundary": "Token-gated like #gh=; an inline handoff, not a surfacing-caption row."
     },
     {

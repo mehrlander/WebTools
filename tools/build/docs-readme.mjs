@@ -43,7 +43,7 @@ function render(reg, owners) {
   lines.push('');
   lines.push('Reference docs that don\'t belong at the repo root. This index is generated');
   lines.push('from [`docs.json`](docs.json), the documentation registry, which also renders');
-  lines.push('live in [show-repo\'s Map view, Docs tab](https://mehrlander.github.io/web-tools/app/?view=map)');
+  lines.push('live in [the Web Tools app\'s Map view, Docs tab](https://mehrlander.github.io/web-tools/app/?view=map)');
   lines.push('alongside the shared-claims table (statements that live in more than one');
   lines.push('place, each with its one authoritative carrier and the check that holds each');
   lines.push('copy, or the honest absence of one). A **record** preserves a moment and is');

@@ -4,7 +4,7 @@
 
 Reference docs that don't belong at the repo root. This index is generated
 from [`docs.json`](docs.json), the documentation registry, which also renders
-live in [show-repo's Map view, Docs tab](https://mehrlander.github.io/web-tools/app/?view=map)
+live in [the Web Tools app's Map view, Docs tab](https://mehrlander.github.io/web-tools/app/?view=map)
 alongside the shared-claims table (statements that live in more than one
 place, each with its one authoritative carrier and the check that holds each
 copy, or the honest absence of one). A **record** preserves a moment and is

@@ -14,7 +14,7 @@
       "subject": "the portable kernel of the what-goes-where doctrine",
       "status": "living",
       "reach": "app",
-      "words": 832,
+      "words": 835,
       "maintenance": "authored; the argument is the content, so no data carrier applies"
     },
     {
@@ -46,7 +46,7 @@
       "subject": "the portable set: what travels, and how to adopt it",
       "status": "living",
       "reach": "project",
-      "words": 6258,
+      "words": 6262,
       "maintenance": "authored, edited in place; the roster tables are census-gated against portable.json and disk (portable-manifest.test.mjs)"
     },
     {
@@ -54,7 +54,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 995,
+      "words": 998,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -78,7 +78,7 @@
       "subject": "the surfacing system: primitives plus the guide-PR course",
       "status": "living",
       "reach": "injected",
-      "words": 4211,
+      "words": 4218,
       "maintenance": "authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
     },
     {
@@ -118,7 +118,7 @@
       "subject": "the code layers and the admission rule that sorts a new file into one of them",
       "status": "living",
       "reach": "project",
-      "words": 1267,
+      "words": 1270,
       "maintenance": "authored; the layer counts behind it are re-derived by scripts/unclaimed-code-survey.py rather than restated here, and lib/kits/README.md's former three-category list was reduced to the kit rule plus a pointer when this landed"
     },
     {

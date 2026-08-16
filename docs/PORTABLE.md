@@ -13,7 +13,7 @@ raw-URL fetch recipes below remain the no-install fallback for environments wher
 plugins are unavailable.
 
 The machine-readable index of this catalog is [`docs/portable.json`](portable.json):
-show-repo's **Portable view** renders the set from it (each piece openable in
+The Web Tools app's **Portable view** renders the set from it (each piece openable in
 the shell's viewer) beside a live per-repo adoption matrix, and
 `tools/test/portable-manifest.test.mjs` holds the manifest and this file's
 tables consistent so neither drifts.
@@ -48,7 +48,7 @@ start): add the `extraKnownMarketplaces` and `enabledPlugins` block to
 | `/portable:content-registry` | the epistemic content registry: classify a repo's artifacts (supplied, mechanical, human-, model-, or hybrid-authored) and their corpus membership in a curated `data/design/content.csv`; scaffold, verify, extract. Bundles `registry.py` the way `tasks` bundles its board generator |
 | `/portable:concept-index` | build a repo's declared vocabulary and check a piece of writing against it: which repo files it names without a link, and which terms of art it uses as though the reader already knows them |
 | `/portable:drop-link` | mint a link that opens GitHub's new-file form on the working branch with the filename prefilled, so long content lands on the branch without riding through chat context |
-| `/portable:edit-review` | hand over an edited file for second-opinion review: stage its before and after into show-repo's Diff lens, bespoke review prompts riding the link |
+| `/portable:edit-review` | hand over an edited file for second-opinion review: stage its before and after into the app's Diff lens, bespoke review prompts riding the link |
 | `/portable:file-retrieval` | retrieve files from a configured corpus through a fixed-behavior tool (ranked snippet search, whole-document reads), so retrieval reads the same every run |
 | `/portable:scour` | acquisition fan-out: point many agents at the open web to bring back what is said and where, as a corpus rather than a report. Carries the measured constraints (search is the only metered input; lead yield saturates near `n^0.6` within a task; hub pages beat article pages 10x to 93x, predicted by organisational form; naming the null result in the prompt moved unsourced-claim disclosure from 0 of 49 to 32 of 42) and the prior art behind them in a companion `PRIOR-ART.md` (HITS, focused crawling, snowball sampling). Environment numbers live in `docs/environment/capabilities.md` so the two age separately |
 | the session recorder | a `Stop` hook that records the session where a checkout declares a `"sessions"` store, and does nothing at all where none does |
