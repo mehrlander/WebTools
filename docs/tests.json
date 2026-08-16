@@ -871,7 +871,7 @@
         "idle: no progress, empty label, zero bar",
         "before the member list resolves there is no denominator",
         "mid-crawl: finished repos over total, every in-flight repo named",
-        "the survey phase of a split refresh names itself",
+        "the survey pass of a split refresh names itself",
         "the bar counts finished repos only, never the ones in flight",
         "activityBusy tracks the shell, and the header swaps on it"
       ]
@@ -3018,6 +3018,24 @@
         "the probe carries the Refresh weight, and the clock only where it cannot",
         "the probe says what its figure is worth, in both directions",
         "a probe that cannot read leaves the rows exactly as they were",
+        "teardown clears the tick and the listeners"
+      ]
+    },
+    {
+      "path": "tools/test/state-view-progress.test.mjs",
+      "kind": "component",
+      "protects": "The State view draws a crawl's live progress per row, in that crawl's own verb and unit, and says nothing when no crawl it started is running.",
+      "assertions": 7,
+      "method": "alpine",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "idle: no slot, nothing to say, and a bar at zero",
+        "a slot with no denominator yet states the verb and nothing else",
+        "mid-crawl: finished over total, in its own unit, everything in flight named",
+        "each row reads its own slot, and one crawl running lights one row",
+        "an unpooled fan-out counts without naming: the line ends after the count",
+        "busy tracks the row's own shell flag, which is what shows the bar",
         "teardown clears the tick and the listeners"
       ]
     },

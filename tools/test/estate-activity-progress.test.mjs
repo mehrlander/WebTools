@@ -1,11 +1,17 @@
 // alpineComponents/estate.js — the Activity header's crawl progress: the
-// getters that turn the shell's activityProgress into what the header renders
+// getters that turn the shell's progress channel into what the header renders
 // (activityProgressLabel / activityProgressActive / activityProgressPct).
 //
 // The shell owns the crawl and writes the progress; the view only reads it, so
 // __shell is a plain stub here and the assertions are about the projection:
 // repos finished over repos total, every repo in flight named (the pool runs
 // two at once), and no denominator before the member list resolves.
+//
+// One channel, one slot per crawl (`crawlProgress.activity` here), and the verb
+// and unit ride WITH the numbers: the crawl names its own phase, so the header
+// prints what it is handed rather than decoding a state it cannot see. The
+// State view draws the same slots for all three crawls; see
+// state-view-progress.test.mjs.
 //
 // No network, no pixels.
 
@@ -33,7 +39,7 @@ const shell = {
   hasToken: () => true,
   _authState: 'auth',
   activityRefreshing: false,
-  activityProgress: null,
+  crawlProgress: { configs: null, activity: null, sessions: null },
   anchorMenu: (ev, rows, opts = {}) => ({ x: 10, y: 20, rows, ...opts }),
   menuStyle: () => 'left:-9999px;top:-9999px',
 };
@@ -47,9 +53,12 @@ const Alpine = await startAlpine(window, [
   'lib/alpineComponents/estate.js',
 ]);
 const data = Alpine.$data(window.document.getElementById('es'));
+// A slot as the shell publishes it: the quick pass's verb and unit unless a
+// test names others.
+const P = (o) => ({ verb: 'Refreshing activity', unit: 'repos', active: [], ...o });
 
 test('idle: no progress, empty label, zero bar', () => {
-  shell.activityProgress = null;
+  shell.crawlProgress = { activity: null };
   assert.equal(data.activityProgress, null);
   assert.equal(data.activityProgressLabel, '');
   assert.equal(data.activityProgressActive, '');
@@ -59,13 +68,13 @@ test('idle: no progress, empty label, zero bar', () => {
 test('before the member list resolves there is no denominator', () => {
   // refreshActivity seeds {0,0,[]} at the click, and the estate list takes a
   // read or two to arrive. "0 of 0 repos" would be worse than saying nothing.
-  shell.activityProgress = { done: 0, total: 0, active: [] };
+  shell.crawlProgress = { activity: P({ done: 0, total: 0 }) };
   assert.equal(data.activityProgressLabel, 'Refreshing activity');
   assert.equal(data.activityProgressPct, 0);
 });
 
 test('mid-crawl: finished repos over total, every in-flight repo named', () => {
-  shell.activityProgress = { done: 4, total: 11, active: ['me/chat-histories', 'me/home'] };
+  shell.crawlProgress = { activity: P({ done: 4, total: 11, active: ['me/chat-histories', 'me/home'] }) };
   assert.equal(data.activityProgressLabel, 'Refreshing activity · 4 of 11 repos');
   // Short names, and BOTH of them: ACTIVITY_REPO_POOL is 2, so naming only one
   // would describe the crawl wrongly.
@@ -73,19 +82,20 @@ test('mid-crawl: finished repos over total, every in-flight repo named', () => {
   assert.equal(data.activityProgressPct, 36); // 4/11, rounded — no in-flight fraction
 });
 
-test('the survey phase of a split refresh names itself', () => {
-  // The quick pass and the true-up behind it report through one bar; the
-  // phase tag is what keeps the second reading from claiming to be the first.
-  shell.activityProgress = { done: 1, total: 3, active: ['me/a'], phase: 'survey' };
+test('the survey pass of a split refresh names itself', () => {
+  // The quick pass and the true-up behind it report through one bar, and the
+  // second opens the slot again under its own verb, which is what keeps that
+  // reading from claiming to be the first.
+  shell.crawlProgress = { activity: P({ verb: 'Surveying branches', done: 1, total: 3, active: ['me/a'] }) };
   assert.equal(data.activityProgressLabel, 'Surveying branches · 1 of 3 repos');
 });
 
 test('the bar counts finished repos only, never the ones in flight', () => {
-  shell.activityProgress = { done: 0, total: 4, active: ['me/a', 'me/b'] };
+  shell.crawlProgress = { activity: P({ done: 0, total: 4, active: ['me/a', 'me/b'] }) };
   assert.equal(data.activityProgressPct, 0);  // two running is not progress yet
-  shell.activityProgress = { done: 2, total: 4, active: ['me/c', 'me/d'] };
+  shell.crawlProgress = { activity: P({ done: 2, total: 4, active: ['me/c', 'me/d'] }) };
   assert.equal(data.activityProgressPct, 50);
-  shell.activityProgress = { done: 4, total: 4, active: [] };
+  shell.crawlProgress = { activity: P({ done: 4, total: 4 }) };
   assert.equal(data.activityProgressPct, 100);
 });
 

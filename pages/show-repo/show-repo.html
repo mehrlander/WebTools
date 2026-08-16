@@ -1767,16 +1767,28 @@ function app(){ return {
   guidesBusy: false,   // mirrored the same way, so the State row can spin
   configRefreshing: false,  // the estate refresh button is mid-crawl
   activityRefreshing: false, // the activity crawl (heavier: per-repo survey) is running
-  // Live progress for the Activity header while that crawl runs, or null when
-  // idle. The unit is the ESTATE REPO: it is the only quantity known before the
-  // fanout starts, and it is what a reader watching the button is counting. The
-  // per-repo work (branches surveyed, PR compares) is deliberately NOT counted:
-  // those tick several times a second, read as churn rather than progress, and
-  // would suggest a precision the crawl does not have, since one repo can cost
-  // an order of magnitude more than the next. `active` carries every repo in
-  // flight rather than the newest, because ACTIVITY_REPO_POOL runs two at once
-  // and naming one of them would describe the crawl wrongly.
-  activityProgress: null, // { done, total, active: [repo, …] }
+  // ── Live crawl progress, one channel for all three crawls ──────────────
+  // A slot per cache key, null when that crawl is idle, and the shape is the
+  // same in every slot: { verb, done, total, unit, active: [name, …] }. One
+  // channel rather than three props because the readers are generic: the State
+  // view draws a bar per row without knowing which crawl it is watching, and
+  // the Activity pane draws the same bar for its own row.
+  //
+  // THE CRAWL NAMES ITS OWN VERB AND UNIT. Only the crawl knows it is on the
+  // survey pass rather than the quick one, or counting session records rather
+  // than repos, so the words ride with the numbers instead of being inferred
+  // by whoever draws them.
+  //
+  // The unit is always the WHOLE thing the crawl was given to do (an account
+  // repo, an estate repo, a session record), never the sub-work inside one.
+  // Per-repo work ticks several times a second, reads as churn rather than
+  // progress, and would suggest a precision the crawl does not have, since one
+  // repo can cost an order of magnitude more than the next. `active` carries
+  // every item in flight rather than the newest, because the pools run several
+  // at once and naming one of them would describe the crawl wrongly. A crawl
+  // that fans out all at once (configs) reports no `active` at all: "every
+  // repo" is not a reading.
+  crawlProgress: { configs: null, activity: null, sessions: null },
   // Recently-committed files for the current repo@ref, shown in the sidebar.
   // Generated artifacts a build hook writes on every commit are noise here,
   // not real edits, so they're filtered out for web-tools specifically.
@@ -2193,11 +2205,12 @@ function app(){ return {
   async refreshConfigs(){
     if (this.configRefreshing || !this.hasToken()) return;
     this.configRefreshing = true;
+    this.openCrawl('configs', 'Reading configs', 'repos');
     try {
       await this.refreshConfigCache(true);
       await this.loadEstateSidebar();
       document.dispatchEvent(new CustomEvent('web-tools:configs-refreshed'));
-    } finally { this.configRefreshing = false; }
+    } finally { this.configRefreshing = false; this.closeCrawl('configs'); }
   },
 
   // ── Config aggregate: crawl each participating repo's .web-tools.json and
@@ -2239,7 +2252,12 @@ function app(){ return {
     try {
       // One GH per repo (the shared store.gh is bound to the open repo). Read
       // the current manifest for each participant.
+      // This fan-out is unpooled, so every repo is in flight from the first
+      // moment: the count of finished repos is the only honest reading, and
+      // `active` stays empty rather than listing the whole account back.
       const fetched = {};
+      let cdone = 0;
+      this.tickCrawl('configs', { total: repos.length, done: 0, active: [] });
       await Promise.all(repos.map(async (repo) => {
         const g = new window.GH({ token: window.TOKEN, repo, ref: 'main' });
         let entry = { config: null, configName: null };
@@ -2268,6 +2286,7 @@ function app(){ return {
           } catch {}
         }
         fetched[repo] = entry;
+        this.tickCrawl('configs', { done: ++cdone, total: repos.length });
       }));
       const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
       let prev = null;
@@ -2317,17 +2336,20 @@ function app(){ return {
   async refreshActivity(){
     if (this.activityRefreshing || !this.hasToken()) return;
     this.activityRefreshing = true;
-    this.activityProgress = { done: 0, total: 0, active: [] };
+    this.openCrawl('activity', 'Refreshing activity', 'repos');
     try {
       const quick = await this.refreshActivityCache(true, { deep: false });
       document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
       this.reportActivityRefresh(quick);
       if (quick?.skipped || quick?.error) return;
-      this.activityProgress = { done: 0, total: 0, active: [], phase: 'survey' };
+      // The second pass gets its own verb rather than a phase tag a reader
+      // would have to decode: the survey is what the long half of this crawl
+      // is actually doing, and saying so is the whole point of the line.
+      this.openCrawl('activity', 'Surveying branches', 'repos');
       const deep = await this.refreshActivityCache(true, { deep: true });
       document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
       this.reportActivityRefresh(deep, ' (survey)');
-    } finally { this.activityRefreshing = false; this.activityProgress = null; }
+    } finally { this.activityRefreshing = false; this.closeCrawl('activity'); }
   },
 
   // The crawl's one moment of feedback, and the reason the toast belongs at the
@@ -2421,7 +2443,7 @@ function app(){ return {
       cfgByName = new Map(entries.map(([n, e]) => [n, e?.config || null]));
     } catch {}
     if (!members.length) return { skipped: true, reason: 'no estate members in the config cache yet' };
-    this.tickActivityProgress(0, members.length, []);
+    this.tickCrawl('activity', { total: members.length, done: 0, active: [] });
 
     // One account-repos read for pushed-at / default-branch, matched by name.
     let metaByName = new Map();
@@ -2462,11 +2484,11 @@ function app(){ return {
         while (mi < members.length){
           const repo = members[mi++];
           active.push(repo);
-          this.tickActivityProgress(done, members.length, active);
+          this.tickCrawl('activity', { done, total: members.length, active });
           try { fetched[repo] = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep && needsSurvey(repo)); }
           catch(e){ failed.push(repo); console.warn('activity crawl', repo, e?.message || e); }
           active.splice(active.indexOf(repo), 1);
-          this.tickActivityProgress(++done, members.length, active);
+          this.tickCrawl('activity', { done: ++done, total: members.length, active });
         }
       };
       await Promise.all(Array.from({ length: Math.min(this.ACTIVITY_REPO_POOL, members.length) }, crawlOne));
@@ -2560,16 +2582,26 @@ function app(){ return {
       const shaByPath = new Map(listing.map(e => [e.path, e.sha]));
 
       const fetched = {};
-      let i = 0;
+      let i = 0, sdone = 0;
+      const sactive = [];
+      // The unit turns over here: the denominator is the records this pass will
+      // read, not the whole store, since the cap defers the rest and counting
+      // against a total the crawl has no intention of reaching would leave the
+      // bar short at the end of a complete run.
+      this.tickCrawl('sessions', { verb: 'Reading records', total: take.length, done: 0, active: [] });
       const readOne = async () => {
         while (i < take.length){
           const path = take[i++];
+          sactive.push(path);
+          this.tickCrawl('sessions', { done: sdone, total: take.length, active: sactive });
           try {
             // By blob sha, not by path: the sha is already in hand from the
             // tree, and a blob read cannot race a push that moves the path.
             const blob = await reg.req('git/blobs/' + shaByPath.get(path));
             fetched[path] = { record: JSON.parse(reg.decode(blob.content)), sha: shaByPath.get(path) };
           } catch(e){ console.warn('sessions crawl', path, e?.message || e); }
+          sactive.splice(sactive.indexOf(path), 1);
+          this.tickCrawl('sessions', { done: ++sdone, total: take.length, active: sactive });
         }
       };
       await Promise.all(Array.from({ length: Math.min(this.SESSIONS_FETCH_POOL, take.length) }, readOne));
@@ -2606,6 +2638,10 @@ function app(){ return {
   async refreshSessions(){
     if (this.sessionsRefreshing || !this.hasToken()) return;
     this.sessionsRefreshing = true;
+    // "Listing" until the tree read comes back, because that read is the one
+    // stretch of this crawl with no denominator: the number of stale records
+    // is not known until the listing is in hand.
+    this.openCrawl('sessions', 'Listing records', 'records');
     try {
       const r = await this.refreshSessionsCache(true);
       document.dispatchEvent(new CustomEvent('web-tools:sessions-refreshed'));
@@ -2617,16 +2653,26 @@ function app(){ return {
       else if (r.skipped) { if (r.reason) toast('warning', 'Sessions refresh skipped: ' + r.reason, 'alert-warning', 4000); }
       else if (r.committed) toast('arrows-clockwise', 'Sessions refreshed · ' + plural(r.read, 'record') + ' read' + tail, 'alert-success', 4000);
       else toast('check', 'No new sessions · ' + plural(r.total, 'record') + ' on file' + tail, 'alert-info', 3000);
-    } finally { this.sessionsRefreshing = false; }
+    } finally { this.sessionsRefreshing = false; this.closeCrawl('sessions'); }
   },
 
-  // Publish crawl progress for the Activity header. A no-op unless the run was
-  // started by the Refresh button: the throttled background pass sets no
-  // activityProgress, and has no header to report into. Reassigns rather than
-  // mutating so the whole shape lands on the view in one reactive step.
-  tickActivityProgress(done, total, active){
-    // Spread first so the phase tag a split refresh set survives the tick.
-    if (this.activityProgress) this.activityProgress = { ...this.activityProgress, done, total, active: [...active] };
+  // ── The progress channel's two writers ─────────────────────────────────
+  // openCrawl opens a slot (a Refresh button pressed), tickCrawl fills it.
+  // Both reassign rather than mutate, so the whole shape lands on every reader
+  // in one reactive step.
+  //
+  // A tick into a CLOSED slot is a no-op, and that is the mechanism that keeps
+  // the throttled background passes silent: they run the same crawl code and
+  // hit the same ticks, but nobody opened a slot for them, so no bar appears
+  // over a list the reader did not ask to have refreshed.
+  openCrawl(key, verb, unit){
+    this.crawlProgress = { ...this.crawlProgress, [key]: { verb, unit, done: 0, total: 0, active: [] } };
+  },
+  closeCrawl(key){ this.crawlProgress = { ...this.crawlProgress, [key]: null }; },
+  tickCrawl(key, patch){
+    const p = this.crawlProgress[key];
+    if (!p) return;
+    this.crawlProgress = { ...this.crawlProgress, [key]: { ...p, ...patch, active: [...(patch.active ?? p.active)] } };
   },
 
   // Crawl one repo's activity: the cheap summary (pushed-at, recent commits,

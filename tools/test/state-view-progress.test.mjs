@@ -1,0 +1,109 @@
+// alpineComponents/state-view.js — the bar a row draws while its own crawl runs.
+//
+// The State view holds the Refresh controls for all three registry caches, and
+// a crawl started here runs for the same tens of seconds it always did. It reads
+// the shell's one progress channel, a slot per cache key, and knows nothing
+// about which crawl it is watching: the verb, the unit and the names in flight
+// all ride in the slot. So the assertions here are about the projection, and
+// about the two shapes that must not print alike, a slot with no denominator yet
+// and no slot at all.
+//
+// The Branches pane draws the same channel for its own row; see
+// estate-activity-progress.test.mjs.
+//
+// No network, no pixels.
+
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { makeWindow, startAlpine } from './bootstrap.mjs';
+
+class FakeGH {
+  constructor(conf = {}) { this.repo = conf.repo || ''; this.ref = conf.ref || 'main'; }
+  ago() { return 'a while ago'; }
+  async ls() { return []; }
+  async repos() { return []; }
+  async history() { return []; }
+  async get() { throw new Error('404'); }
+  async req() { throw new Error('404'); }
+}
+
+const { window } = makeWindow({
+  html: `<!doctype html><html><body><div id="sv" x-data="stateView()"></div></body></html>`,
+});
+window.TOKEN = 'tkn';
+window.GH = FakeGH;
+const shell = {
+  REGISTRY_REPO: 'me/registry',
+  hasToken: () => true,
+  configRefreshing: false, activityRefreshing: false, sessionsRefreshing: false,
+  crawlProgress: { configs: null, activity: null, sessions: null },
+};
+window.__shell = shell;
+
+const Alpine = await startAlpine(window, [
+  'lib/alpine-bundle.js',
+  'lib/kits/crawl-runs.js',
+  'lib/alpineComponents/state-view.js',
+]);
+const data = Alpine.$data(window.document.getElementById('sv'));
+const row = (key) => data.rows.find(r => r.key === key);
+const put = (key, slot) => { shell.crawlProgress = { ...shell.crawlProgress, [key]: slot }; };
+
+test('idle: no slot, nothing to say, and a bar at zero', () => {
+  assert.equal(data.prog(row('activity')), null);
+  assert.equal(data.progLabel(row('activity')), '');
+  assert.equal(data.progActive(row('activity')), '');
+  assert.equal(data.progPct(row('activity')), 0);
+});
+
+test('a slot with no denominator yet states the verb and nothing else', () => {
+  // The click opens the slot; the estate list takes a read or two to arrive.
+  // "0 of 0 repos" would be worse than saying nothing.
+  put('activity', { verb: 'Refreshing activity', unit: 'repos', done: 0, total: 0, active: [] });
+  assert.equal(data.progLabel(row('activity')), 'Refreshing activity');
+  assert.equal(data.progPct(row('activity')), 0);
+});
+
+test('mid-crawl: finished over total, in its own unit, everything in flight named', () => {
+  put('activity', { verb: 'Surveying branches', unit: 'repos', done: 4, total: 11,
+                    active: ['mehrlander/chat-histories', 'mehrlander/home'] });
+  assert.equal(data.progLabel(row('activity')), 'Surveying branches · 4 of 11 repos');
+  // Both of them: the repo pool runs two at once, so naming one would describe
+  // the crawl wrongly. Short-named through the view's own chip rule.
+  assert.equal(data.progActive(row('activity')), 'chat-histories, home');
+  assert.equal(data.progPct(row('activity')), 36);   // 4/11, no in-flight fraction
+});
+
+test('each row reads its own slot, and one crawl running lights one row', () => {
+  put('sessions', { verb: 'Reading records', unit: 'records', done: 3, total: 12,
+                    active: ['sessions/2026/08/2026-08-09-aaaa1111.json'] });
+  assert.equal(data.progLabel(row('sessions')), 'Reading records · 3 of 12 records');
+  // The store's path scaffolding is noise in a line this narrow.
+  assert.equal(data.progActive(row('sessions')), '2026-08-09-aaaa1111');
+  // The configs row is untouched by either.
+  assert.equal(data.progLabel(row('configs')), '');
+  assert.equal(data.progPct(row('configs')), 0);
+});
+
+test('an unpooled fan-out counts without naming: the line ends after the count', () => {
+  // The config crawl puts every repo in flight at once, so "every repo" is not
+  // a reading and `active` stays empty.
+  put('configs', { verb: 'Reading configs', unit: 'repos', done: 9, total: 40, active: [] });
+  assert.equal(data.progLabel(row('configs')), 'Reading configs · 9 of 40 repos');
+  assert.equal(data.progActive(row('configs')), '');
+  assert.equal(data.progPct(row('configs')), 23);
+});
+
+test('busy tracks the row\'s own shell flag, which is what shows the bar', () => {
+  assert.equal(data.busy(row('sessions')), false);
+  shell.sessionsRefreshing = true;
+  assert.equal(data.busy(row('sessions')), true);
+  assert.equal(data.busy(row('configs')), false);
+  shell.sessionsRefreshing = false;
+});
+
+// The view ticks a minute timer so its ages move without a reload, which would
+// hold the event loop open past the last assertion.
+test('teardown clears the tick and the listeners', () => {
+  data.destroy();
+});

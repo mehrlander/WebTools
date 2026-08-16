@@ -985,7 +985,9 @@ after it (the pool runs two at once, so it is a list), over a determinate bar
 whose only input is repos finished over repos total. Nothing finer is counted
 and no in-flight fraction is estimated: per-repo cost varies by an order of
 magnitude, and a sub-counter ticking several times a second is the churn this
-replaces. The crawl **commits only when something materially changed**, which
+replaces. The numbers come off the shell's **progress channel**, which all three
+crawls write and both this pane and the State view read, so pressing Refresh in
+either place lights both and neither holds a second copy of the reading. The crawl **commits only when something materially changed**, which
 used to make a productive refresh and a no-op refresh end identically, so the
 run closes with a toast, `Activity refreshed · 3 repos changed` or `No activity
 changes · 11 repos checked`, and names any repo the crawl failed on (previously
@@ -1570,6 +1572,26 @@ the entity index's repo check already uses. The whole view costs one `ls state`
 plus one commit read per file, regardless of estate size, and it kicks no crawl
 on arrival: a view that ran a crawl to show you how old things were would answer
 its own question before you read it.
+
+**A crawl started here draws its own bar.** Taking the Refresh controls off the
+panes moved the button to the reading that says whether to press it, and for one
+release left behind the reading the crawl was already producing: the Branches
+pane has had a determinate per-repo bar since the split refresh, and the same
+crawl pressed here ran for the same tens of seconds behind a spinner saying only
+`Running…`. A control moved without its progress is a control made worse, so the
+bar moves with it. Under the ages line each row draws `Reading configs · 31 of 44
+repos`, `Surveying branches · 4 of 11 repos · chat-histories, home`, or `Reading
+records · 18 of 120 records`, over a bar whose only input is items finished over
+items total. All three read the shell's one progress channel
+(`crawlProgress`, a slot per cache key), and **the crawl names its own verb and
+unit**, since only it knows whether it is on the quick pass or the survey
+true-up, and whether it is counting repos or session records. A crawl that fans
+out unpooled (configs) names nothing in flight, because "every repo" is not a
+reading. Nothing is smoothed between two ticks, for the same reason the pane's
+bar smooths nothing. The throttled background passes publish into no slot and so
+draw no bar, which is the point: a list refreshing on its own schedule must not
+grow a progress bar nobody asked for. The guides row has no bar either, having
+nothing to count.
 
 **The probe answers the question the age was standing in for.** An age says how
 old a file is; the question anyone opens this view with is whether there is
