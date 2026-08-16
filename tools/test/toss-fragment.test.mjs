@@ -22,9 +22,13 @@ const src = readFileSync(path.join(repoRoot, PAGE), 'utf8');
 
 // Lift the function by its declaration, up to the closing brace at its own
 // indentation. A reformat past this reads back nothing and fails here loudly.
-const block = src.match(/\n {2}function readFragment\(hash\) \{[\s\S]*?\n {2}\}\n/);
+const block = src.match(/\r?\n {2}function readFragment\(hash\) \{[\s\S]*?\r?\n {2}\}\r?\n/);
 assert.ok(block, 'readFragment not found in ' + PAGE);
 const readFragment = new Function(block[0] + '\n  return readFragment;')();
+
+const hashShimBlock = src.match(/\r?\n {2}function hashNavigationShim\(\) \{[\s\S]*?\r?\n {2}\}\r?\n/);
+assert.ok(hashShimBlock, 'hashNavigationShim not found in ' + PAGE);
+const hashNavigationShim = new Function(hashShimBlock[0] + '\n  return hashNavigationShim;')();
 
 test('the address, its whole page query, and a trailing frag come back intact', () => {
   const addr = 'mehrlander/web-tools@br:pages/show-repo/show-repo.html?view=app&appRepo=X&appPath=Y';
@@ -81,4 +85,16 @@ test('the page reads its fragment by slice, not URLSearchParams', () => {
   assert.match(src, /const \[hashKey, hashValue\] = readFragment\(location\.hash\)/);
   assert.match(src, /const queryParams = new URLSearchParams\(location\.search\)/,
     'the query string keeps URLSearchParams, where "&" really does delimit');
+});
+
+test('address mode keeps fragment-only links on the rendered blob', () => {
+  const shim = hashNavigationShim();
+  assert.match(src, /prelude \+= hashNavigationShim\(\)/,
+    'addressHtml must install the fragment-link shim');
+  assert.match(shim, /getAttribute\('href'\)/,
+    'the shim must inspect the raw href before <base> resolves it');
+  assert.doesNotMatch(shim, /\ba\.href\b/,
+    'the resolved href would already point at the GitHub Pages base');
+  assert.match(shim, /location\.hash=h/,
+    'fragment navigation must target the blob document itself');
 });
