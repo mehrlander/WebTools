@@ -390,7 +390,7 @@
       "subject": "the show-repo shell: views and transfer",
       "status": "living",
       "reach": "project",
-      "words": 23223,
+      "words": 23320,
       "maintenance": "authored, edited in place; still the corpus's largest document, shedding sections to their own references (the stage and the manifest went to stage.md and manifest.md 2026-08-16)"
     },
     {
@@ -398,7 +398,7 @@
       "subject": "the stage: bench and Saved, intake, the walkable preview and diff, Out, save-as-surface, and the #stage= link grammar",
       "status": "living",
       "reach": "project",
-      "words": 2582,
+      "words": 2959,
       "maintenance": "authored, edited in place; split from show-repo.md 2026-08-16, which keeps the boundary statement and points here"
     },
     {
@@ -422,7 +422,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 26288,
+      "words": 26398,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {

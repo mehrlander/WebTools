@@ -69,7 +69,7 @@ const data = Alpine.$data(window.document.getElementById('st'));
 const store = Alpine.store('browser');
 store.gh = new FakeGH({ token: 't', repo: 'me/open' });
 const plain_ = (v) => JSON.parse(JSON.stringify(v));
-const reset = () => { store.stage = []; data.diffA = 0; data.diffB = 0; data._diffTouched = false; data.diffRows = null; };
+const reset = () => { store.stage = []; store.stageFocus = ''; data.preview = null; data.diffA = 0; data.diffB = 0; data._diffTouched = false; data.diffRows = null; };
 
 // navigator.clipboard isn't polyfilled by makeWindow (see its header note).
 // Component code runs in the jsdom window realm (new window.Function(src)()),
@@ -261,6 +261,62 @@ test('a dropped file becomes a local stage item holding its bytes', () => {
   assert.equal(it.bytes[0], 1);
 });
 
+// A DROPPED TEXT FILE IS TEXT. Every file intake arrives as bytes, and the
+// item was stamped binary on that basis, so a dropped .md previewed as "Not
+// text" while the same characters pasted opened rendered. The decision is a
+// strict UTF-8 decode, so it holds for any text extension, not a list of them.
+test('a dropped markdown file is held as text, not as bytes', () => {
+  reset();
+  const md = '# Notes\n\nA paragraph.\n';
+  const bytes = new TextEncoder().encode(md);
+  data.onDropped({ file: {}, name: 'notes.md', size: bytes.length, type: 'text/markdown', bytes, buf: bytes.buffer });
+  assert.equal(data.localItems.length, 1);
+  const it = data.localItems[0];
+  assert.equal(it.isText, true, 'it decodes as UTF-8, so it is text');
+  assert.equal(it.text, md);
+});
+
+// End to end, which is the report this fixes: drop the file, open the row,
+// and get the file rather than a note about it. The pane's own mode is
+// READ_MODE's (markdown renders, raw one tap away); what is asserted here is
+// that the viewer is driven at all.
+test('a dropped markdown file previews rather than reporting itself binary', async () => {
+  reset();
+  const md = '# Notes\n\nA paragraph.\n';
+  const bytes = new TextEncoder().encode(md);
+  data.onDropped({ file: {}, name: 'notes.md', size: bytes.length, type: 'text/markdown', bytes, buf: bytes.buffer });
+  await data.view(data.localItems[0]);
+  await tick(3);
+  assert.equal(data.preview.note, '', 'no "Binary … staged for copy, not preview" note');
+  assert.equal(previewViewer().content, md);
+});
+
+// The one form a file can arrive in with no `bytes` beside it. Reading the
+// buffer here is what keeps the two intake shapes on one answer.
+test('a dropped text file with only a buffer still decodes', () => {
+  reset();
+  const bytes = new TextEncoder().encode('name,qty\na,1\n');
+  data.onDropped({ file: {}, name: 'rows.csv', size: bytes.length, type: 'text/csv', buf: bytes.buffer });
+  assert.equal(data.localItems[0].isText, true);
+  assert.equal(data.localItems[0].text, 'name,qty\na,1\n');
+});
+
+// The two ways bytes stay bytes: a type the viewer renders from a data: URI
+// (the .png above), and anything that fails the decode.
+test('bytes that are not UTF-8 stay bytes', () => {
+  reset();
+  data.onDropped({ file: {}, name: 'archive.zip', size: 4, type: '',
+                   bytes: Uint8Array.from([0x50, 0x4b, 0x03, 0xff]), buf: new ArrayBuffer(4) });
+  assert.equal(data.localItems[0].isText, false);
+});
+
+test('an svg keeps its bytes, so it still previews as an image', () => {
+  reset();
+  const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"></svg>');
+  data.onDropped({ file: {}, name: 'mark.svg', size: svg.length, type: 'image/svg+xml', bytes: svg, buf: svg.buffer });
+  assert.equal(data.localItems[0].isText, false, 'the viewer renders it from its own bytes');
+});
+
 test('pasted text that reads as refs stages those refs, not a text file', () => {
   reset();
   data.onDropped({ text: 'me/a:lib/x.js\nme/b@dev:docs/y.md', size: 30, type: 'text/plain' });
@@ -278,6 +334,73 @@ test('pasted prose is held as a local text item', () => {
   assert.equal(data.localItems[0].isText, true);
   assert.equal(data.localItems[0].text, 'just some notes, not a ref');
   assert.match(data.localItems[0].name, /^\d{4}-\d{2}-\d{2}-paste\.txt$/);
+});
+
+// ---- intake without the view --------------------------------------------
+// The fold lives on window.StageIntake rather than inside the component, which
+// is what lets a host stage a drop before the bench has ever mounted: the app
+// shell takes a drop on any view and calls these. Nothing here touches a
+// component method, which is the point of the tests.
+
+const textFile = (name, text, type = '') => {
+  const bytes = new TextEncoder().encode(text);
+  return { name, type, size: bytes.length, arrayBuffer: async () => bytes.buffer };
+};
+const dropOf = ({ types = [], files = [], text = '' }) => ({ types, files, getData: () => text });
+
+test('takeDrop stages a dropped file and reports what it added', async () => {
+  reset();
+  const added = await window.StageIntake.takeDrop(
+    dropOf({ types: ['Files'], files: [textFile('notes.md', '# Hi\n', 'text/markdown')] }));
+  assert.equal(added.length, 1, 'the caller learns what landed, so it can open it');
+  assert.equal(added[0].name, 'notes.md');
+  assert.equal(added[0].isText, true);
+  assert.equal(store.stage.length, 1, 'and it landed on the one stage');
+});
+
+test('takeDrop with no files falls to the dragged text, refs and all', async () => {
+  reset();
+  const added = await window.StageIntake.takeDrop(
+    dropOf({ types: ['text/plain'], text: 'me/a:lib/x.js' }));
+  assert.equal(added.length, 1);
+  assert.deepEqual(plain_(data.refItems), [{ repo: 'me/a', ref: '', path: 'lib/x.js' }]);
+});
+
+// The id counter is module-scope for this: two creators (the bench's drop-zone
+// and the app-wide drop) minting from per-mount counters would collide, and
+// `local:<id>` is the key dedupe and the preview address by.
+test('every local item takes its own key', () => {
+  reset();
+  const a = window.StageIntake.take({ text: 'one' })[0];
+  const b = window.StageIntake.take({ text: 'two' })[0];
+  assert.notEqual(window.StageIntake.keyOf(a), window.StageIntake.keyOf(b));
+});
+
+// focus is a REQUEST, not a selection: a host stages from another view, names
+// the item, and the bench opens on it whenever it gets there.
+test('focus names an item and the stage opens its preview, then forgets it', async () => {
+  reset();
+  const it = window.StageIntake.take({ text: 'just some prose' })[0];
+  window.StageIntake.focus(it);
+  assert.equal(store.stageFocus, 'local:' + it.id);
+  await tick(5);
+  assert.equal(store.stageFocus, '', 'reading the request clears it, so a later mount does not reopen');
+  assert.ok(data.preview, 'the preview opened');
+  assert.equal(data.preview.name, it.name);
+});
+
+test('a drop on the view itself opens one file, and stays out of the way for a batch', async () => {
+  reset();
+  await data.onPageDrop({ dataTransfer: dropOf({ types: ['Files'], files: [textFile('one.md', '# One\n')] }) });
+  await tick(4);
+  assert.equal(data.preview?.name, 'one.md');
+
+  reset();
+  await data.onPageDrop({ dataTransfer: dropOf({ types: ['Files'],
+    files: [textFile('a.md', 'a'), textFile('b.md', 'b')] }) });
+  await tick(4);
+  assert.equal(data.preview, null, 'two arrivals stay listed rather than opening one of them');
+  assert.equal(data.localItems.length, 2);
 });
 
 // ---- every flavor a paste carried ---------------------------------------

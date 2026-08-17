@@ -1941,6 +1941,14 @@ surface ([envelopes/surface.md](envelopes/surface.md), the `stage/1`
 profile), which is why the Stage view holds the bench and the shelf as one
 nav stop.
 
+The other thing that stays here is the **app-wide drop**, because it is the
+shell's gesture rather than the stage's: a file dropped on any view is staged,
+routes to the Stage, and opens in the preview when it is the only one. The
+shell owns the listeners, the drag cue, and the routing (`wireAppDrop`); what a
+dropped thing becomes is `window.StageIntake`'s, one answer shared with the
+bench's own drop-zone and with a paste. The gesture used to work only on the
+Stage, which meant you had to already be where you were trying to get to.
+
 
 ## The branch review: landed / stranded per branch
 
