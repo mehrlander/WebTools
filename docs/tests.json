@@ -885,7 +885,7 @@
         "idle: no progress, empty label, zero bar",
         "before the member list resolves there is no denominator",
         "mid-crawl: finished repos over total, every in-flight repo named",
-        "the survey pass of a split refresh names itself",
+        "the verb is the crawl's own, whatever it is doing",
         "the bar counts finished repos only, never the ones in flight",
         "the Sessions pane reads its own slot, in its own unit",
         "activityBusy tracks the shell, and the header swaps on it"
@@ -3077,7 +3077,7 @@
         "an unpooled fan-out counts without naming: the line ends after the count",
         "the wire tail reads the newest GitHub call, verbatim past the host",
         "a write and a failure are the two rows that say more than GET 200",
-        "a two-pass run never reads complete until both passes are",
+        "the bar is items finished over items total, and the run is one pass",
         "the shape is the path with the parts that vary taken out",
         "the calls tab groups by shape, commonest first, with its time",
         "busy tracks the row's own shell flag, which is what shows the bar",

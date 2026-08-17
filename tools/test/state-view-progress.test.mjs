@@ -130,20 +130,13 @@ test('a write and a failure are the two rows that say more than GET 200', () => 
   assert.equal(data.wireLine(row('activity')), '');
 });
 
-test('a two-pass run never reads complete until both passes are', () => {
-  // The activity refresh is a quick pass and a survey behind it. The bar used
-  // to fill and start over, which said the run had finished when it had not.
-  put('activity', { verb: 'Refreshing activity', unit: 'repos', done: 11, total: 11,
-                    active: [], pass: 1, passes: 2 });
-  assert.equal(data.progPct(row('activity')), 50);          // pass 1 done is half the run
-  assert.equal(data.progLabel(row('activity')),
-               'Refreshing activity · pass 1/2 · 11 of 11 repos');
-  put('activity', { verb: 'Surveying branches', unit: 'repos', done: 11, total: 11,
-                    active: [], pass: 2, passes: 2 });
-  assert.equal(data.progPct(row('activity')), 100);         // and only both passes are 100
-  assert.equal(data.progLabel(row('activity')),
-               'Surveying branches · pass 2/2 · 11 of 11 repos');
-  // A single-pass crawl is unchanged, and says nothing about passes.
+test('the bar is items finished over items total, and the run is one pass', () => {
+  // The activity refresh ran quick-then-survey for a day, and the bar spanned
+  // both so it could not fill and start over. One pass now: the second was
+  // re-fetching the first's cheap reads, so the plain reading is honest again.
+  put('activity', { verb: 'Refreshing activity', unit: 'repos', done: 11, total: 11, active: [] });
+  assert.equal(data.progPct(row('activity')), 100);
+  assert.equal(data.progLabel(row('activity')), 'Refreshing activity · 11 of 11 repos');
   put('sessions', { verb: 'Reading records', unit: 'records', done: 6, total: 12, active: [] });
   assert.equal(data.progPct(row('sessions')), 50);
   assert.equal(data.progLabel(row('sessions')), 'Reading records · 6 of 12 records');

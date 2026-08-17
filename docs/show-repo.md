@@ -990,8 +990,22 @@ key, which all three crawls write and every reader draws: this pane, the
 Sessions pane, and the State view's rows. Pressing Refresh in any of them lights
 the others, and nothing holds a second copy of the reading. The verb and the
 unit ride in the slot rather than being inferred by whoever draws it, since only
-the crawl knows whether it is on the quick pass or the survey true-up, or
-counting repos rather than session records. **Every cache read that feeds the commit is FRESH** (`gh.get(path, GH.FRESH)`),
+the crawl knows whether it is counting repos or session records.
+
+**One pass, and it was two.** The refresh shipped split, a quick pass (commits,
+PRs, branch dates) so the list landed in seconds and a survey true-up behind it.
+The call log priced that: `deep` gates the **survey alone**, so the second pass
+re-fetched every cheap read the first had just made, and a refresh of 11 repos
+spent 66 calls, a fifth of the run, asking for the same commits and the same two
+PR lists twice inside a minute. The seconds it bought back were real and did not
+cover that, so the Refresh button and the arrival kick each run one crawl,
+survey included. The quick shape stays supported because one caller still wants
+it: `goGuides` warms this cache for a pane that needs the repo list and the open
+PRs and no branch verdicts at all. Retired 2026-08-17; the run record still
+carries `pass: 'quick' | 'survey'`, since those two differ by an order of
+magnitude in cost and averaging them would mean nothing.
+
+**Every cache read that feeds the commit is FRESH** (`gh.get(path, GH.FRESH)`),
 and the split refresh is what forced it. GitHub answers an API read with
 `Cache-Control: private, max-age=60`, so the survey pass, running seconds behind
 the quick pass, was handed the very copy the quick pass had just replaced: it
@@ -1634,25 +1648,25 @@ its own question before you read it.
 **A crawl started here draws its own bar.** Taking the Refresh controls off the
 panes moved the button to the reading that says whether to press it, and for one
 release left behind the reading the crawl was already producing: the Branches
-pane has had a determinate per-repo bar since the split refresh, and the same
-crawl pressed here ran for the same tens of seconds behind a spinner saying only
+pane has had a determinate per-repo bar since the crawl learned to report, and
+the same crawl pressed here ran for the same tens of seconds behind a spinner saying only
 `Running…`. A control moved without its progress is a control made worse, so the
 bar moves with it. Under the ages line each row draws `Reading configs · 31 of 44
 repos`, `Surveying branches · 4 of 11 repos · chat-histories, home`, or `Reading
 records · 18 of 120 records`, over a bar whose only input is items finished over
 items total. All three read the shell's one progress channel
 (`crawlProgress`, a slot per cache key), the same one the Branches and Sessions
-panes draw, and **the crawl names its own verb and unit**, since only it knows whether it is on the quick pass or the survey
-true-up, and whether it is counting repos or session records. A crawl that fans
+panes draw, and **the crawl names its own verb and unit**, since only it knows
+whether it is counting repos or session records, and whether the survey is
+running. A crawl that fans
 out unpooled (configs) names nothing in flight, because "every repo" is not a
 reading. Nothing is smoothed between two ticks, for the same reason the pane's
-bar smooths nothing. **The bar spans the whole run, passes included:** the
-activity refresh is a quick pass and a survey behind it, and a bar that filled,
-reached the end and started over said the run had finished when it had not,
-which is the one thing a progress bar must never say. Each pass takes an equal
-share of the length because each covers the same items, and the label names the
-pass (`pass 2/2`) since the passes do not cost the same. It counts item-passes,
-not time. The throttled background passes publish into no slot and so
+bar smooths nothing. The bar spanned **two passes** for a day, since the activity
+refresh ran quick-then-survey and a bar that filled, reached the end and started
+over says the run has finished when it has not, which is the one thing a
+progress bar must never say. The refresh is one pass now (the second was
+re-fetching the first's cheap reads), so items finished over items total is
+again the whole measure. The throttled background passes publish into no slot and so
 draw no bar, which is the point: a list refreshing on its own schedule must not
 grow a progress bar nobody asked for. The guides row has no bar either, having
 nothing to count.

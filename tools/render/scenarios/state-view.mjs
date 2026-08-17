@@ -94,7 +94,7 @@ export default async (page) => {
                     s: 201, ms: 420, b: 512 });
         return { text: JSON.stringify({ generatedAt: iso(0), runs: {
           activity: { at: iso(0.02), ms: 21000, verb: 'Surveying branches', unit: 'repos',
-                      passes: 2, calls: rows.length, rows, truncated: false },
+                      calls: rows.length, rows, truncated: false },
         } }, null, 2) };
       }
       const v = /^c(\d)/.test(this.ref) ? +this.ref[1] : 0;   // which committed version
@@ -195,11 +195,8 @@ export default async (page) => {
     s.crawlProgress = {
       configs:  { verb: 'Reading configs',    unit: 'repos',   done: 31, total: 44, active: [],
                   calls0: 341 },
-      // The survey pass of the split refresh, which is why the bar sits past
-      // halfway on a count of 4 of 11: pass 1 is the first half of the run.
       activity: { verb: 'Surveying branches', unit: 'repos',   done: 4,  total: 11,
-                  active: ['mehrlander/chat-histories', 'mehrlander/home'], calls0: 313,
-                  pass: 2, passes: 2 },
+                  active: ['mehrlander/chat-histories', 'mehrlander/home'], calls0: 313 },
       sessions: { verb: 'Reading records',    unit: 'records', done: 18, total: 120,
                   active: ['sessions/2026/08/2026-08-16-aaaa1111.json',
                            'sessions/2026/08/2026-08-16-bbbb2222.json'],

@@ -2335,29 +2335,28 @@ function app(){ return {
   // Refresh button and the estate refresh flow route here). Separate from the
   // config refresh because the activity crawl is much heavier (a capped branch
   // survey per repo), so it is not folded into every config refresh.
-  // Two passes, quick then deep, so the reader stops paying the survey's price
-  // up front. The quick pass (commits, PRs, recent branch dates) is complete
-  // for the recent window by construction and lands in seconds; the view
-  // re-reads on its event, so the list is current almost immediately. The
-  // survey true-up runs behind it, and the pushed-at gate inside the crawl
-  // keeps it to repos that actually took a push since their last survey, which
-  // most days is a small fraction of the estate.
+  //
+  // ONE PASS, and it shipped as two. The split ran the crawl quick-first
+  // (commits, PRs, branch dates) so the list landed in seconds, then a survey
+  // true-up behind it. What the call log showed (2026-08-17) is what that
+  // actually cost: the deep pass repeats every cheap read the quick pass just
+  // made, because `deep` gates the survey ALONE, so a two-pass refresh of 11
+  // repos spent 66 calls, a fifth of the run, fetching the same commits and the
+  // same two PR lists twice within a minute. The seconds it bought back were
+  // real and the price was not worth them, and the reader watching the bar was
+  // also being told a run had finished when it had not.
+  //
+  // The quick pass keeps its caller: `goGuides` warms this cache for a pane that
+  // needs the repo list and the open PRs and no branch verdicts at all, so
+  // `deep: false` stays a supported shape rather than dead weight.
   async refreshActivity(){
     if (this.activityRefreshing || !this.hasToken()) return;
     this.activityRefreshing = true;
-    this.openCrawl('activity', 'Refreshing activity', 'repos', 1, 2);
+    this.openCrawl('activity', 'Refreshing activity', 'repos');
     try {
-      const quick = await this.refreshActivityCache(true, { deep: false });
-      this.announceActivity(quick);
-      this.reportActivityRefresh(quick);
-      if (quick?.skipped || quick?.error) return;
-      // The second pass gets its own verb rather than a phase tag a reader
-      // would have to decode: the survey is what the long half of this crawl
-      // is actually doing, and saying so is the whole point of the line.
-      this.openCrawl('activity', 'Surveying branches', 'repos', 2, 2);
-      const deep = await this.refreshActivityCache(true, { deep: true });
-      this.announceActivity(deep);
-      this.reportActivityRefresh(deep, ' (survey)');
+      const r = await this.refreshActivityCache(true, { deep: true });
+      this.announceActivity(r);
+      this.reportActivityRefresh(r);
     } finally { this.activityRefreshing = false; this.closeCrawl('activity'); }
   },
 
@@ -2377,9 +2376,10 @@ function app(){ return {
   // productive refresh and a no-op refresh used to end identically, with the
   // spinner stopping and nothing saying which happened). Per-repo failures are
   // surfaced here too; they were previously a console.warn and nothing else.
-  // `label` distinguishes the two passes of the split refresh in the toast
-  // (' (survey)' on the true-up), since they report seconds apart.
-  reportActivityRefresh(r, label = ''){
+  // It took a `label` while the refresh ran in two passes, to tell their two
+  // toasts apart; one pass reports once.
+  reportActivityRefresh(r){
+    const label = '';
     if (!r) return;
     const toast = Alpine.store('toast');
     if (!toast) return;
@@ -2528,10 +2528,11 @@ function app(){ return {
       try { localStorage.setItem(this._activityCheckKey, String(Date.now())); } catch {}
       const changed = A.changedRepos(prev, next);
       if (changed.length){
-        // The run record rides this commit (lib/kits/crawl-runs.js). `deep`
-        // distinguishes the two passes of a split refresh, which differ by an
-        // order of magnitude in cost and would otherwise average into one
-        // meaningless duration.
+        // The run record rides this commit (lib/kits/crawl-runs.js). `pass` says
+        // whether the survey ran, which is an order-of-magnitude difference in
+        // cost: the Refresh button always surveys, and `goGuides` warms this
+        // cache without one, so two entries with the same shape would otherwise
+        // average into a meaningless duration.
         next.runs = window.CrawlRuns?.push(prev?.runs, {
           at: new Date().toISOString(), ms: Date.now() - t0,
           checked: members.length, changed: changed.length, failed: failed.length,
@@ -2705,18 +2706,15 @@ function app(){ return {
   // wrapper) counts every request the page makes, and the crawl is not the only
   // thing making them, so a bare total would answer a question nobody asked.
   //
-  // A RUN CAN HAVE SEVERAL PASSES, and they are one run to everyone watching.
-  // The activity refresh is a quick pass and a survey true-up behind it; opening
-  // pass 2 keeps pass 1's baselines, so the count and the log cover the whole
-  // refresh, and `pass`/`passes` let the bar span both. A bar that filled, hit
-  // the end, and started over said the run had finished when it had not, which
-  // is the one thing a progress bar must never say.
-  openCrawl(key, verb, unit, pass = 1, passes = 1){
-    const prev = pass > 1 ? this.crawlProgress[key] : null;
+  // The activity refresh ran in two passes until 2026-08-17, so a slot carried
+  // `pass`/`passes` and the bar spanned both rather than filling and starting
+  // over. One pass now (the second was re-fetching the first's cheap reads), so
+  // the slot is a plain run again: a bar that spans one pass IS the run.
+  openCrawl(key, verb, unit){
     this.crawlProgress = { ...this.crawlProgress, [key]: {
-      verb, unit, pass, passes, done: 0, total: 0, active: [],
-      calls0: prev?.calls0 ?? (window.__trafficTotals?.calls || 0),
-      t0: prev?.t0 ?? Date.now(),
+      verb, unit, done: 0, total: 0, active: [],
+      calls0: window.__trafficTotals?.calls || 0,
+      t0: Date.now(),
     } };
   },
   // Closing writes the run's call log, then clears the slot. Unawaited on
@@ -2790,7 +2788,7 @@ function app(){ return {
     const kept = rows.slice(-this.CALLS_CAP);
     const run = {
       at: new Date(slot.t0).toISOString(), ms: Date.now() - slot.t0,
-      verb: slot.verb, unit: slot.unit, passes: slot.passes || 1,
+      verb: slot.verb, unit: slot.unit,
       // `calls` is the run's own count off the ledger's totals, which survive
       // trimming; `rows` is what could still be shown. They differ exactly when
       // the run outran the ledger, and saying both is what keeps a truncated
@@ -4475,19 +4473,17 @@ function app(){ return {
     return m ? +m[1] / (m[2] ? 24 : 1) : 0;
   },
   goActivity(){ this.estateSeen = true; this.view = 'activity'; this.arrivalActivityRefresh?.(); this.syncUrl(); },
-  // Arrival kick: the throttled quick pass and, when it actually ran, the
-  // survey true-up behind it. Un-awaited by design; there is no progress UI on
-  // this path, and the view re-reads on the events. The true-up here is what
-  // keeps the branch verdicts current without anyone pressing Refresh: the
-  // pushed-at gate inside the crawl reduces it to the repos that took a push,
-  // so it can afford to ride every unthrottled arrival.
+  // Arrival kick: one throttled crawl, survey included. Un-awaited by design;
+  // there is no progress UI on this path, and the view re-reads on the event.
+  // The survey is what keeps the branch verdicts current without anyone
+  // pressing Refresh, and the pushed-at gate inside the crawl reduces it to the
+  // repos that took a push, so it can afford to ride every arrival past the
+  // throttle. It was two passes here as well until 2026-08-17, for the same
+  // reason and at the same price: the second repeated the first's cheap reads.
   async arrivalActivityRefresh(){
     try {
-      const quick = await this.refreshActivityCache(false, { deep: false });
-      if (!quick || quick.skipped || quick.error) return;
-      if (quick.committed) this.announceActivity(quick);
-      const deep = await this.refreshActivityCache(true, { deep: true });
-      if (deep?.committed) this.announceActivity(deep);
+      const r = await this.refreshActivityCache(false, { deep: true });
+      if (r?.committed) this.announceActivity(r);
     } catch(e){ console.warn('arrival activity refresh:', e?.message || e); }
   },
   // Activity's other pill: the sessions that made the branches. Kicks its own

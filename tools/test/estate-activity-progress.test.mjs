@@ -83,10 +83,9 @@ test('mid-crawl: finished repos over total, every in-flight repo named', () => {
   assert.equal(data.crawlPct('activity'), 36); // 4/11, rounded — no in-flight fraction
 });
 
-test('the survey pass of a split refresh names itself', () => {
-  // The quick pass and the true-up behind it report through one bar, and the
-  // second opens the slot again under its own verb, which is what keeps that
-  // reading from claiming to be the first.
+test('the verb is the crawl\'s own, whatever it is doing', () => {
+  // The refresh named two verbs while it ran in two passes; it runs as one now
+  // and still names its own, since only the crawl knows what it is doing.
   shell.crawlProgress = { activity: P({ verb: 'Surveying branches', done: 1, total: 3, active: ['me/a'] }) };
   assert.equal(data.crawlLabel('activity'), 'Surveying branches · 1 of 3 repos');
 });
