@@ -249,9 +249,14 @@ test('needsSurvey: a no-base row is carried while its tip holds', () => {
   assert.equal(B.needsSurvey({ name: 'ancient', sha: 's2' }, prior, true), true);
 });
 
-test('needsSurvey: a failed row is not an answer', () => {
+test('needsSurvey: an errored row is carried, not retried on sight', () => {
+  // It read the other way for a day. The log settled it: retrying every failed
+  // row every crawl is what made one repo's dead branches the largest line in
+  // the bill, and the failures were the same failures each time. Healing is
+  // bounded instead, through surveyOlder's errorRetry below.
   const prior = priorOf([row('flaky', 's1', { state: 'error' })]);
-  assert.equal(B.needsSurvey({ name: 'flaky', sha: 's1' }, prior, false), true);
+  assert.equal(B.needsSurvey({ name: 'flaky', sha: 's1' }, prior, true), false);
+  assert.equal(B.needsSurvey({ name: 'flaky', sha: 's2' }, prior, true), true, 'until it moves');
 });
 
 test('surveyOlder carries every row it can, and then makes no calls at all', async () => {
@@ -295,4 +300,25 @@ test('with no prior at all, everything is surveyed, as before', async () => {
   assert.equal(out.surveyed, 1);
   assert.equal(out.carried, 0);
   assert.ok(calls.some(c => c.startsWith('git/trees/main')), 'the default tree is read once');
+});
+
+test('an errored row is carried, and healed a few at a time', async () => {
+  // A branch whose survey failed fails again for the same reason, so retrying
+  // all of them every crawl is pure cost: one repo spent 93 calls of a 183-call
+  // run that way, 56 of them failing. `errorRetry` heals a bounded few, so a
+  // transient failure is not frozen forever and a permanent one is not paid for
+  // forever either.
+  const seen = [];
+  const gh = { req: async () => ({ tree: [] }),
+               compare: async () => ({ files: [], ahead_by: 0, behind_by: 0, commits: [] }),
+               ago: () => 'a while ago' };
+  const older = ['a', 'b', 'c', 'd'].map(n => ({ name: n, sha: 's' + n, date: '2026-07-01T00:00:00Z' }));
+  const prior = priorOf(older.map(b => row(b.name, b.sha, { state: 'error' })));
+  const out = await B.surveyOlder(gh, { older, prior, mainSha: 'm1', priorMainSha: 'm1',
+                                        errorRetry: 2, now: Date.now(), onRow: r => seen.push(r) });
+  assert.equal(out.surveyed, 2, 'two healed this pass');
+  assert.equal(out.carried, 2, 'the rest carried, errors and all');
+  // With no retry allowance at all, nothing is re-derived.
+  const quiet = await B.surveyOlder(gh, { older, prior, mainSha: 'm1', priorMainSha: 'm1', now: Date.now() });
+  assert.equal(quiet.surveyed, 0);
 });

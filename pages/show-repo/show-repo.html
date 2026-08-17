@@ -2410,6 +2410,13 @@ function app(){ return {
   // it occasional and commits sparse. See web-tools-private/DESIGN.md.
   ACTIVITY_CACHE_INTERVAL_MS: 12 * 3600 * 1000,
   ACTIVITY_SURVEY_CAP: 30,       // older branches surveyed per repo (view's SURVEY_CAP)
+  // Errored survey rows retried per repo per crawl. A branch whose survey
+  // failed usually fails again for the same reason (a rewritten history, a ref
+  // the token cannot reach), so retrying every one on every crawl is how a
+  // single repo came to spend 93 calls of a 183-call run with 56 of them
+  // failing (2026-08-17, wa-bills). Three a run heals a transient failure
+  // within a few crawls and caps what a permanent one can cost.
+  ACTIVITY_ERROR_RETRY: 3,
   ACTIVITY_RECENT_COMMITS: 12,   // newest commits fetched per repo per crawl
   // How deep the any-state PR read goes per repo (gh.branchPulls). 100 is the
   // API's page maximum, and it has to clear the branch survey's recent window
@@ -2782,6 +2789,13 @@ function app(){ return {
       .map(e => ({
         m: e.method, u: String(e.url).replace(/^https?:\/\/api\.github\.com\//, ''),
         s: e.status || 0, ms: e.ms || 0, b: e.wire ?? null,
+        // The quota AT THIS CALL, kept only where it can explain something: a
+        // failure. A run that comes back full of 404s reads as a broken crawl
+        // until this says whether the answer was "gone" or "not allowed right
+        // now" (2026-08-17, 86 of 183 calls 404 across every repo, with no way
+        // to tell the two apart afterwards).
+        ...(e.status >= 400 && e.rate != null ? { rate: e.rate } : {}),
+        ...(e.status >= 400 && e.msg ? { msg: e.msg } : {}),
       }));
     if (!rows.length) return;
     const calls = Math.max(0, (window.__trafficTotals?.calls || 0) - (slot.calls0 || 0));
@@ -2799,6 +2813,10 @@ function app(){ return {
       // sitting in front of it: a complete log reported itself incomplete on the
       // first real run (2026-08-17, 373 of 373 rows, flagged).
       calls, rows: kept, truncated: kept.length < calls,
+      // The run's own header line for failures: how many, and the lowest quota
+      // seen while they happened.
+      failed: rows.filter(r => r.s >= 400).length,
+      rateLow: rows.reduce((lo, r) => (r.rate != null && (lo == null || r.rate < lo) ? r.rate : lo), null),
     };
     const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
     const base = await this.readForFold(reg, this.CALLS_PATH);
@@ -2916,7 +2934,8 @@ function app(){ return {
       const prior = new Map((prev?.repos?.[repo]?.survey?.branches || []).map(r => [r.name, r]));
       const surveyed = deep
         ? await B.surveyOlder(g, { defaultRef: def, older, cap: this.ACTIVITY_SURVEY_CAP, pool: 3, now,
-                                   prior, mainSha, priorMainSha: prev?.repos?.[repo]?.survey?.mainSha || '' })
+                                   prior, mainSha, priorMainSha: prev?.repos?.[repo]?.survey?.mainSha || '',
+                                   errorRetry: this.ACTIVITY_ERROR_RETRY })
         : { truncated: false, rows: [] };
       truncated = surveyed.truncated;
       const prSessions = Object.fromEntries(openPRs.filter(p => p.head && p.sessions?.length).map(p => [p.head, p.sessions]));

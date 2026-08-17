@@ -274,7 +274,7 @@
       "path": "tools/test/branch-survey.test.mjs",
       "kind": "behavior",
       "protects": "Landed-versus-stranded is judged on blob content, since squashes make ref-level merge status meaningless.",
-      "assertions": 27,
+      "assertions": 28,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -302,10 +302,11 @@
         "dropFileUrl: inbox dir when plain, dump/ against cross-repo specs, stamped name",
         "needsSurvey: nothing moved, nothing to do",
         "needsSurvey: a no-base row is carried while its tip holds",
-        "needsSurvey: a failed row is not an answer",
+        "needsSurvey: an errored row is carried, not retried on sight",
         "surveyOlder carries every row it can, and then makes no calls at all",
         "a carried row keeps the fresh branch facts and the stored judgment",
-        "with no prior at all, everything is surveyed, as before"
+        "with no prior at all, everything is surveyed, as before",
+        "an errored row is carried, and healed a few at a time"
       ]
     },
     {

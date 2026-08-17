@@ -1060,6 +1060,25 @@ history, times thirty branches, on every crawl. Those rows carry `noBase`, and a
 `noBase` row is now carried while its tip holds even when main moved. Measured
 2026-08-17: 98 of one refresh's 145 calls were that one repo's dead branches.
 
+**And the reading that is still open.** The run after the carry rule landed came
+back with **86 of its 183 calls at 404**, spread across every repo and mostly on
+`compare`, including one repo (wa-bills) paying 93 calls of the run to re-derive
+branches that answer 404 every time. Two of those calls are the same shape and
+mean opposite things: GitHub answers `compare` with 404 both when there is **no
+common ancestor** (a real verdict about two histories, which the survey handles)
+and when a ref or a permission is missing (a fault). The log could not tell them
+apart, because the traffic ledger never touches a response body. It does now, by
+one narrow route: `gh.req` already parses the error message, so it hands it to
+the ledger through `window.__noteApiError`, and a failed row in the call log
+carries `msg` and the rate-limit remaining at that moment. The next run says
+which kind of 404 it hit; until then the shape of the failure is recorded and
+its meaning is not.
+
+Beside it, the same cost lesson one level down: an **errored survey row is
+carried** like a `noBase` one, and a bounded few (`ACTIVITY_ERROR_RETRY`, three
+per repo per crawl) are retried, so a transient failure heals within a few
+crawls while a permanent one stops costing the estate anything.
+
 **What the call log bought, in its first three readings.** The crawl's own log is
 the instrument for its cost, and the first run it recorded (2026-08-17, 373
 calls, 58s) named three things prose had not. Its top row was 79 GraphQL posts
