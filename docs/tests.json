@@ -920,7 +920,7 @@
       "path": "tools/test/estate-branch-pr-state.test.mjs",
       "kind": "behavior",
       "protects": "A branch row says what became of its pull request (merged, closed unmerged, open, never proposed, or past the index's reach) rather than only whether one is open, across the fetch, the cache, and the row.",
-      "assertions": 23,
+      "assertions": 24,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -941,6 +941,7 @@
         "a merged branch does not count as open work",
         "inside the index reach an unmatched branch really has no PR",
         "past the reach it says it does not know, rather than \"no PR\"",
+        "nopr and unknown do not render as the same row",
         "a cache written before the index existed claims nothing either way",
         "an uncapped read speaks for every branch, however old",
         "the Abandoned scope collects closed-unmerged branches at any age",
@@ -3175,6 +3176,16 @@
         "cards inherit the page identity and carry the resolved URLs",
         "the identity join does not leak across repos"
       ]
+    },
+    {
+      "path": "tools/test/toss-charset.mjs",
+      "kind": "behavior",
+      "protects": "A payload toss declares utf-8 on the blob it mounts, so a page with no <meta charset> of its own renders its emoji, accents, and non-latin scripts rather than the locale default's mojibake.",
+      "assertions": null,
+      "method": "pure",
+      "runner": "npm run test:toss-charset",
+      "boot_smoke": null,
+      "assertion_names": null
     },
     {
       "path": "tools/test/toss-fragment.test.mjs",

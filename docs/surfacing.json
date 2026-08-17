@@ -147,8 +147,8 @@
       "lead": "Closing state",
       "title": "Closing state",
       "glyph": "🟢",
-      "use": "Every reply that finishes work or proposes more ends with one of six labeled states (🟢 ready to continue, 🟡 decision needed, ⚪ natural stopping point, 🟠 attention, 🟣 merged, ⚫ closed), so the cheapest useful answer is one word.",
-      "boundary": "Exactly one state per reply; go authorizes only what the 🟢 list names; orange is a real problem, and there is deliberately no red. 🟣 and ⚫ mark the branch, not a task."
+      "use": "Every reply that finishes work or proposes more ends with one of six labeled states (🟢 ready to continue, 🟡 decision needed, ⚪ natural stopping point, 🟠 attention, 🟣 merged, 🔴 closed), so the cheapest useful answer is one word.",
+      "boundary": "Exactly one state per reply; go authorizes only what the 🟢 list names; orange is a real problem, and red marks a terminal state rather than a louder alarm. 🟣 and 🔴 mark the branch, not a task."
     },
     {
       "key": "no-proxies",

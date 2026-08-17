@@ -196,7 +196,9 @@ test('a merged branch reads merged, not "no PR"', () => {
   const r = row('claude/centralize');
   assert.equal(data.branchState(r), 'merged');
   assert.equal(data.rowPR(r).number, 425);
-  assert.match(data.branchAccent(r), /primary/);
+  // Secondary, not primary: merged is violet as of 2026-08-16, matching Claude
+  // Code's session list, GitHub, and the conventions' 🟣 closing state.
+  assert.match(data.branchAccent(r), /secondary/);
 });
 
 test('a closed-unmerged branch is a state of its own', () => {
@@ -248,6 +250,24 @@ test('past the reach it says it does not know, rather than "no PR"', () => {
     prReach: '2026-08-01T00:00:00Z',
   });
   assert.equal(data.branchState(row('ancient')), 'unknown');
+});
+
+test('nopr and unknown do not render as the same row', () => {
+  // Both rails are plain, which is right: neither state is an outcome. But
+  // they are different CLAIMS, and until 2026-08-16 branchAccent collapsed
+  // them into one string, so the distinction the two tests above defend died
+  // at the last step before the reader. The dashed rail is what carries it.
+  seed({
+    branches: [{ name: 'scratch', group: 'active', date: '2026-08-14T00:00:00Z' },
+               { name: 'ancient', group: 'landed', date: '2026-05-01T00:00:00Z' }],
+    branchPRs: [{ head: 'other', number: 1, state: 'merged', draft: false, count: 1 }],
+    prReach: '2026-08-01T00:00:00Z',
+  });
+  const nopr = data.branchAccent(row('scratch'));
+  const unknown = data.branchAccent(row('ancient'));
+  assert.notEqual(nopr, unknown);
+  assert.match(unknown, /border-dashed/);
+  assert.doesNotMatch(nopr, /border-dashed/);
 });
 
 test('a cache written before the index existed claims nothing either way', () => {
