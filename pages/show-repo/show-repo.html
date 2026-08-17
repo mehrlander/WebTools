@@ -2507,7 +2507,7 @@ function app(){ return {
           const repo = members[mi++];
           active.push(repo);
           this.tickCrawl('activity', { done, total: members.length, active });
-          try { fetched[repo] = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep && needsSurvey(repo)); }
+          try { fetched[repo] = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep && needsSurvey(repo), prev); }
           catch(e){ failed.push(repo); console.warn('activity crawl', repo, e?.message || e); }
           active.splice(active.indexOf(repo), 1);
           this.tickCrawl('activity', { done: ++done, total: members.length, active });
@@ -2824,7 +2824,7 @@ function app(){ return {
   // `survey` key entirely rather than sending an empty one, because
   // RepoActivityCache.mergeRepo keeps the prior survey when the field is
   // undefined and clears it when present. That affordance already existed.
-  async crawlRepoActivity(repo, meta, now, A, B, cfg, deep = true){
+  async crawlRepoActivity(repo, meta, now, A, B, cfg, deep = true, prev = null){
     const def = meta?.default_branch || 'main';
     const g = new window.GH({ token: window.TOKEN, repo, ref: def });
     // Probe the repo's declared checks in the same pass. Cheap when declared
@@ -2853,17 +2853,36 @@ function app(){ return {
       g.branchesDatedSessions().catch(() => null),
     ]);
     const branchSessions = branchWalk?.sessions || {};
+    // The default branch's tip, this pass and last. Every verdict below is a
+    // function of it and of one branch tip, so these two comparisons are what
+    // let the crawl skip work rather than redo it.
+    const mainSha = recentCommits[0]?.sha || '';
+    const prevMainSha = prev?.repos?.[repo]?.recentCommits?.[0]?.sha || '';
     // Ahead/behind for each open PR head, so the Open view can show it without a
     // per-visit compare. The same response carries the branch's oldest unique
     // commit (BranchSurvey.firstCommitDate), which is what lets the Open row
     // show a lifespan for a PR head the survey never reached. Bounded pool,
     // best-effort: a failure leaves it null.
+    // Same two inputs as the survey, so the same gate: a compare of `main` to a
+    // PR head cannot have moved while the PR has not been updated and the
+    // default branch's tip is where it was. The stored row already holds the
+    // answer, so this skips the call and carries it. (`updatedAt` moves on a
+    // push to the head, so a branch that gained commits is never carried.)
     {
+      const priorPR = new Map((prev?.repos?.[repo]?.openPRs || []).map(r => [r.number, r]));
+      const mainHeld = prevMainSha && mainSha && prevMainSha === mainSha;
       let pi = 0;
       const prAheadBehind = async () => {
         while (pi < openPRs.length){
           const p = openPRs[pi++];
           if (!p.head) continue;
+          const was = priorPR.get(p.number);
+          if (mainHeld && was && was.updatedAt === p.updatedAt && was.aheadBy != null) {
+            p.aheadBy = was.aheadBy; p.behindBy = was.behindBy;
+            p.firstDate = was.firstDate || '';
+            if (was.sessions) { p.sessions = was.sessions; p.sessionsExact = !!was.sessionsExact; }
+            continue;
+          }
           try {
             const d = await g.compare(def, p.head);
             p.aheadBy = d.ahead_by ?? null; p.behindBy = d.behind_by ?? null;
@@ -2890,8 +2909,14 @@ function app(){ return {
         .map(b => ({ ...b, daysAgo: b.date ? B.daysAgo(b.date, now) : Infinity }));
       const recent = dated.filter(b => b.daysAgo <= B.RECENT_DAYS).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       const older = dated.filter(b => b.daysAgo > B.RECENT_DAYS).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      // What the last survey saw, so a branch whose tip has not moved since is
+      // carried rather than re-derived. `mainSha` is the default branch's tip
+      // from the commits read above, and it is the survey's other input: while
+      // both hold, a verdict cannot have changed. See BranchSurvey.needsSurvey.
+      const prior = new Map((prev?.repos?.[repo]?.survey?.branches || []).map(r => [r.name, r]));
       const surveyed = deep
-        ? await B.surveyOlder(g, { defaultRef: def, older, cap: this.ACTIVITY_SURVEY_CAP, pool: 3, now })
+        ? await B.surveyOlder(g, { defaultRef: def, older, cap: this.ACTIVITY_SURVEY_CAP, pool: 3, now,
+                                   prior, mainSha, priorMainSha: prev?.repos?.[repo]?.survey?.mainSha || '' })
         : { truncated: false, rows: [] };
       truncated = surveyed.truncated;
       const prSessions = Object.fromEntries(openPRs.filter(p => p.head && p.sessions?.length).map(p => [p.head, p.sessions]));
@@ -2937,7 +2962,11 @@ function app(){ return {
       // Omitted on a quick pass, so mergeRepo carries the prior survey
       // forward. Sending { branches: [] } here would silently delete every
       // content verdict the estate has, which is the trap this guards.
+      // `mainSha` is what makes the next pass able to skip: it names the default
+      // branch this survey judged against, the other half of the pair (with
+      // each row's own `sha`) that decides whether a verdict can have moved.
       ...(deep ? { survey: { surveyedAt: new Date(now).toISOString(), cap: this.ACTIVITY_SURVEY_CAP,
+                             mainSha: recentCommits[0]?.sha || '',
                              surveyed: counts.surveyed, older: counts.older, truncated, branches } } : {}),
       // Declared checks, PROBED not judged: the stored fact is time-independent
       // so the cache hash stays stable across crawls, and the card computes the

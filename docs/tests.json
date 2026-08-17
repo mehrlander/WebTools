@@ -274,7 +274,7 @@
       "path": "tools/test/branch-survey.test.mjs",
       "kind": "behavior",
       "protects": "Landed-versus-stranded is judged on blob content, since squashes make ref-level merge status meaningless.",
-      "assertions": 21,
+      "assertions": 27,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -299,7 +299,13 @@
         "surveyBranchLive reports firstDate from the compare it already runs",
         "surveyBranchLive: no merge base means no honest start",
         "lifespan display rules: the start collapses when unknowable or same-label",
-        "dropFileUrl: inbox dir when plain, dump/ against cross-repo specs, stamped name"
+        "dropFileUrl: inbox dir when plain, dump/ against cross-repo specs, stamped name",
+        "needsSurvey: nothing moved, nothing to do",
+        "needsSurvey: a no-base row is carried while its tip holds",
+        "needsSurvey: a failed row is not an answer",
+        "surveyOlder carries every row it can, and then makes no calls at all",
+        "a carried row keeps the fresh branch facts and the stored judgment",
+        "with no prior at all, everything is surveyed, as before"
       ]
     },
     {

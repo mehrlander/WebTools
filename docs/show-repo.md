@@ -1041,7 +1041,26 @@ a `console.warn` and nothing else). The count comes from
 `RepoActivityCache.changedRepos`, which `cacheChanged` is defined in terms of,
 so the number reported and the gate that skipped the commit cannot disagree.
 
-**What the call log bought, in its first two readings.** The crawl's own log is
+**A verdict is carried when neither of its inputs moved.** A branch's
+landed-or-stranded call is a function of exactly two things, its own tip and the
+default branch, so a pass where neither moved is re-deriving an answer it
+already has. The crawl now hands the survey the previous rows and the default
+tip it judged against (`survey.mainSha`), and `BranchSurvey.needsSurvey` decides
+per branch: the branch moved, or main moved, or there is no stored row, or the
+stored row is an error. When nothing needs surveying the default tree is not
+read either, so an untouched repo costs nothing. The same pair gates the open-PR
+compares, since `main...head` cannot move while the PR's `updated_at` and main's
+tip both hold.
+
+One case trades exactness for cost on purpose, and it is the one the log made
+impossible to ignore. web-tools' history was rewritten, so every branch older
+than the rewrite **404s** on compare and falls into the fallback: a 50-commit
+read plus a second compare, three calls to re-derive a verdict about dead
+history, times thirty branches, on every crawl. Those rows carry `noBase`, and a
+`noBase` row is now carried while its tip holds even when main moved. Measured
+2026-08-17: 98 of one refresh's 145 calls were that one repo's dead branches.
+
+**What the call log bought, in its first three readings.** The crawl's own log is
 the instrument for its cost, and the first run it recorded (2026-08-17, 373
 calls, 58s) named three things prose had not. Its top row was 79 GraphQL posts
 for 75s of request time, three per repo where two were `branchesDated` and
@@ -1052,9 +1071,11 @@ both. Its heaviest row by bytes was eleven reads of `state/activity.json` for
 listing) and the views' share is gone too: the crawl hands its document along on
 the `web-tools:activity-refreshed` event, so a listener that used to re-read
 370 KB now reads nothing and a detail-less event still falls back to reading.
-And a run that died on a phone at `Load failed` after 300-odd successful calls
-bought one retry for a **dropped connection**, reads only, in both `GH.req` and
-`gh.graphql`: a rejected fetch is the network rather than GitHub, an HTTP error
+Its third reading was the survey itself: with the split gone, 69 compares and 30
+commit reads stood out as one repo re-deriving verdicts nobody had asked it to
+re-derive, which is the carry rule above. And a run that died on a phone at
+`Load failed` after 300-odd successful calls bought one retry for a **dropped
+connection**, reads only, in both `GH.req` and `gh.graphql`: a rejected fetch is the network rather than GitHub, an HTTP error
 is not retried because the answer will not change in 600ms, and a write is never
 retried because it may have landed.
 
