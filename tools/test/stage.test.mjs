@@ -261,6 +261,62 @@ test('a dropped file becomes a local stage item holding its bytes', () => {
   assert.equal(it.bytes[0], 1);
 });
 
+// A DROPPED TEXT FILE IS TEXT. Every file intake arrives as bytes, and the
+// item was stamped binary on that basis, so a dropped .md previewed as "Not
+// text" while the same characters pasted opened rendered. The decision is a
+// strict UTF-8 decode, so it holds for any text extension, not a list of them.
+test('a dropped markdown file is held as text, not as bytes', () => {
+  reset();
+  const md = '# Notes\n\nA paragraph.\n';
+  const bytes = new TextEncoder().encode(md);
+  data.onDropped({ file: {}, name: 'notes.md', size: bytes.length, type: 'text/markdown', bytes, buf: bytes.buffer });
+  assert.equal(data.localItems.length, 1);
+  const it = data.localItems[0];
+  assert.equal(it.isText, true, 'it decodes as UTF-8, so it is text');
+  assert.equal(it.text, md);
+});
+
+// End to end, which is the report this fixes: drop the file, open the row,
+// and get the file rather than a note about it. The pane's own mode is
+// READ_MODE's (markdown renders, raw one tap away); what is asserted here is
+// that the viewer is driven at all.
+test('a dropped markdown file previews rather than reporting itself binary', async () => {
+  reset();
+  const md = '# Notes\n\nA paragraph.\n';
+  const bytes = new TextEncoder().encode(md);
+  data.onDropped({ file: {}, name: 'notes.md', size: bytes.length, type: 'text/markdown', bytes, buf: bytes.buffer });
+  await data.view(data.localItems[0]);
+  await tick(3);
+  assert.equal(data.preview.note, '', 'no "Binary … staged for copy, not preview" note');
+  assert.equal(previewViewer().content, md);
+});
+
+// The one form a file can arrive in with no `bytes` beside it. Reading the
+// buffer here is what keeps the two intake shapes on one answer.
+test('a dropped text file with only a buffer still decodes', () => {
+  reset();
+  const bytes = new TextEncoder().encode('name,qty\na,1\n');
+  data.onDropped({ file: {}, name: 'rows.csv', size: bytes.length, type: 'text/csv', buf: bytes.buffer });
+  assert.equal(data.localItems[0].isText, true);
+  assert.equal(data.localItems[0].text, 'name,qty\na,1\n');
+});
+
+// The two ways bytes stay bytes: a type the viewer renders from a data: URI
+// (the .png above), and anything that fails the decode.
+test('bytes that are not UTF-8 stay bytes', () => {
+  reset();
+  data.onDropped({ file: {}, name: 'archive.zip', size: 4, type: '',
+                   bytes: Uint8Array.from([0x50, 0x4b, 0x03, 0xff]), buf: new ArrayBuffer(4) });
+  assert.equal(data.localItems[0].isText, false);
+});
+
+test('an svg keeps its bytes, so it still previews as an image', () => {
+  reset();
+  const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"></svg>');
+  data.onDropped({ file: {}, name: 'mark.svg', size: svg.length, type: 'image/svg+xml', bytes: svg, buf: svg.buffer });
+  assert.equal(data.localItems[0].isText, false, 'the viewer renders it from its own bytes');
+});
+
 test('pasted text that reads as refs stages those refs, not a text file', () => {
   reset();
   data.onDropped({ text: 'me/a:lib/x.js\nme/b@dev:docs/y.md', size: 30, type: 'text/plain' });
