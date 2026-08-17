@@ -2493,8 +2493,16 @@ function app(){ return {
     // clock that stamped surveyedAt; anything unmeasurable surveys.
     const SURVEY_SKEW_MS = 10 * 60 * 1000;
     const needsSurvey = (repo) => {
+      const stored = prev?.repos?.[repo]?.survey;
+      // A stamp with no rows behind it is not a survey, and the gate must not
+      // read it as one. That is how a repo stayed empty after the failed-read
+      // wipe of 2026-08-17: the bad pass left `surveyedAt` current and
+      // `branches` empty, so "not pushed since the last survey" skipped it
+      // forever. Costs nothing where it fires wrongly: a repo with no older
+      // branches surveys an empty queue and makes no calls at all.
+      if (!stored?.branches?.length) return true;
       const pushed = Date.parse(metaByName.get(repo)?.pushed_at || '');
-      const seen = Date.parse(prev?.repos?.[repo]?.survey?.surveyedAt || '');
+      const seen = Date.parse(stored.surveyedAt || '');
       if (!Number.isFinite(pushed) || !Number.isFinite(seen)) return true;
       return pushed >= seen - SURVEY_SKEW_MS;
     };
