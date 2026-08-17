@@ -391,7 +391,17 @@
   function mountFrame(html, sandbox, frag) {
     frame.setAttribute('sandbox', sandbox);
     frame.removeAttribute('srcdoc');
-    const next = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    // charset=utf-8 is load-bearing, not decoration. A blob: document takes its
+    // encoding from the Blob's type, and with none declared the browser sniffs,
+    // finds no <meta charset> in a page that never had one, and falls back to
+    // the locale default (windows-1252). The Blob is built from a JS string, so
+    // its bytes are always UTF-8, and every non-ASCII character then renders as
+    // its mojibake: 🎉 as ðŸŽ‰. The data: URL this replaced said
+    // ;charset=utf-8 in the URL itself and was silently carrying every page
+    // that omits the meta tag, which is most HTML arriving from a chat.
+    // Reported 2026-08-17 from a phone, reproduced headless in
+    // tools/test/toss-charset.mjs.
+    const next = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
     // Revoke the previous render's URL only after the new one is committed, so
     // a rapid re-toss can't pull the document out from under a pending load.
     const prev = frameBlobUrl;
