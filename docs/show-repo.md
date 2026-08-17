@@ -1002,6 +1002,23 @@ same rule now covers the config and sessions crawls, which read a cache and
 write it back the same way. Measured 2026-08-16; the first bite of this is on
 `GH.FRESH` in lib/gh-api.js.
 
+**FRESH was not enough, because the layer under it is the API's own lag.** The
+409 came back on the next run with the browser cache out of the picture, and the
+crawl's own call log named it: six PUTs to `state/activity.json` in one refresh,
+`422, 409, 409, 409`, each retry carrying a sha a fresh read had just supplied.
+GitHub's contents API is read-after-write **eventual**, so a read seconds after a
+commit can be answered by a replica that has not seen it, and no cache header
+reaches that. The answer is not a longer retry but a better source: this page
+knows what it wrote and what sha the write returned, so
+[`lib/kits/last-write.js`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/last-write.js)
+notes each committed document and `readForFold` reconciles the next read against
+it, newest **document stamp** winning rather than the clock. The sha then rides
+into `save(path, doc, msg, { sha })` and no read is consulted at all. The retry
+behind it got more patient too (six attempts, backoff to seconds), and its
+recovery read got cheaper: it buys the sha from the parent directory's listing,
+about a kilobyte, rather than re-reading a 370 KB cache to look at forty
+characters.
+
 The crawl **commits only when something materially changed**, which
 used to make a productive refresh and a no-op refresh end identically, so the
 run closes with a toast, `Activity refreshed · 3 repos changed` or `No activity

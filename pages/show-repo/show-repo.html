@@ -102,6 +102,10 @@
   // the commit the crawl was making anyway. Loaded before the three caches
   // because each writes one.
   await gh.load('kits/crawl-runs.js');
+  // The answer to the API's read-after-write lag: what this page last committed,
+  // reconciled against what a read hands back. Loaded before the crawls because
+  // each one folds a read into a write.
+  await gh.load('kits/last-write.js');
   // Config-aggregate builders for the private cache (state/configs.json).
   await gh.load('kits/repo-config-cache.js');
   // The pure survey math + shared fetch orchestrators behind the branches view
@@ -2289,13 +2293,12 @@ function app(){ return {
         this.tickCrawl('configs', { done: ++cdone, total: repos.length });
       }));
       const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
-      let prev = null;
-      // FRESH, because this read feeds a write. GitHub answers an API read with
-      // `Cache-Control: private, max-age=60`, so a crawl inside that minute is
-      // handed the pre-commit bytes AND the pre-commit sha out of the browser's
-      // cache: it folds onto a stale base and PUTs a dead sha. See GH.FRESH in
-      // lib/gh-api.js for what that cost to learn the first time.
-      try { prev = JSON.parse((await reg.get(window.RepoConfigCache.CACHE_PATH, window.GH.FRESH)).text); } catch {}
+      // FRESH against the browser's 60-second cache, and reconciled against what
+      // this page last wrote, against the API's own read-after-write lag. Both
+      // failures look identical from here: a fold onto a base that is not
+      // current. See readForFold above.
+      const base = await this.readForFold(reg, window.RepoConfigCache.CACHE_PATH);
+      const prev = base?.doc || null;
       // Every repo the cache already knew rides forward, whether or not this
       // crawl could see it. The enumeration above is this client's view of the
       // account, not the world's: a narrowly-scoped token, or an account past
@@ -2322,7 +2325,8 @@ function app(){ return {
           at: new Date().toISOString(), ms: Date.now() - t0,
           checked: repos.length, changed: moved.length,
         }) ?? prev?.runs;
-        await reg.save(window.RepoConfigCache.CACHE_PATH, next, 'Update config cache (state/configs.json) via show-repo');
+        await this.saveFold(reg, window.RepoConfigCache.CACHE_PATH, next,
+                            'Update config cache (state/configs.json) via show-repo', base);
       }
     } catch(e){ console.warn('config cache refresh:', e?.message || e); }
   },
@@ -2454,12 +2458,12 @@ function app(){ return {
     let metaByName = new Map();
     try { metaByName = new Map((await new window.GH({ token: window.TOKEN }).repos()).map(r => [r.full_name, r])); } catch {}
 
-    // The prior cache, read up front for the survey gate below. FRESH for the
-    // same reason the fold below is: this crawl runs twice in a row (quick, then
-    // survey), and the second pass inside GitHub's 60-second cache window would
-    // otherwise be served the version the first pass replaced.
-    let prev = null;
-    try { prev = JSON.parse((await reg.get(A.CACHE_PATH, window.GH.FRESH)).text); } catch {}
+    // The prior cache, read up front for the survey gate below, through the same
+    // reconcile the fold uses: this crawl runs twice in a row (quick, then
+    // survey), which is precisely the window in which a read can be answered
+    // with the copy the pass before it replaced.
+    let base = await this.readForFold(reg, A.CACHE_PATH);
+    let prev = base?.doc || null;
 
     // The survey gate: a repo not pushed since its last survey cannot have
     // changed any branch verdict (landed/stranded read git state alone, and a
@@ -2502,12 +2506,11 @@ function app(){ return {
       await Promise.all(Array.from({ length: Math.min(this.ACTIVITY_REPO_POOL, members.length) }, crawlOne));
 
       // Re-read the cache just before folding: the crawl can run for a while,
-      // and folding over the copy read before it would silently revert
-      // whatever another writer committed in between. FRESH, or the re-read is
-      // answered from the browser's cache by the very copy it is meant to
-      // replace, which is how the split refresh's survey pass came to fold onto
-      // the quick pass's base and then 409 on its sha (seen 2026-08-16).
-      try { prev = JSON.parse((await reg.get(A.CACHE_PATH, window.GH.FRESH)).text); } catch {}
+      // and folding over the copy read before it would silently revert whatever
+      // another writer committed in between. Reconciled, so the one writer it
+      // cannot be made to revert is this page itself.
+      base = await this.readForFold(reg, A.CACHE_PATH);
+      prev = base?.doc || null;
       // `members` is the scope, so a repo whose crawl threw (it is in `failed`,
       // not in `fetched`) keeps its previous entry instead of being deleted by
       // a pass that never reached it.
@@ -2524,7 +2527,8 @@ function app(){ return {
           checked: members.length, changed: changed.length, failed: failed.length,
           pass: deep ? 'survey' : 'quick',
         }) ?? prev?.runs;
-        await reg.save(A.CACHE_PATH, next, 'Update activity cache (state/activity.json) via show-repo');
+        await this.saveFold(reg, A.CACHE_PATH, next,
+                            'Update activity cache (state/activity.json) via show-repo', base);
       }
       return { total: members.length, changed, failed, committed: changed.length > 0 };
     } catch(e){
@@ -2583,11 +2587,11 @@ function app(){ return {
         .map(e => ({ path: e.path, sha: e.sha }));
       if (!listing.length) return { skipped: true, reason: 'no session records in the registry' };
 
-      let prev = null;
-      // FRESH: this read decides which records are stale AND supplies the sha
-      // the save rides on, so a cached answer both under-reads the store and
-      // writes with a dead sha.
-      try { prev = JSON.parse((await reg.get(S.CACHE_PATH, window.GH.FRESH)).text); } catch {}
+      // This read decides which records are stale AND supplies the sha the save
+      // rides on, so a copy that is behind both under-reads the store and writes
+      // with a dead sha.
+      const base = await this.readForFold(reg, S.CACHE_PATH);
+      const prev = base?.doc || null;
 
       // Newest first, so a capped pass reads the records a reader is most
       // likely to want and the older tail catches up on later crawls.
@@ -2636,7 +2640,8 @@ function app(){ return {
           checked: listing.length, read: Object.keys(fetched).length,
           deferred: Math.max(0, stale.length - take.length),
         }) ?? prev?.runs;
-        await reg.save(S.CACHE_PATH, next, 'Update sessions cache (state/sessions.json) via show-repo');
+        await this.saveFold(reg, S.CACHE_PATH, next,
+                            'Update sessions cache (state/sessions.json) via show-repo', base);
       }
       return { total: listing.length, read: Object.keys(fetched).length,
                deferred: Math.max(0, stale.length - take.length), committed: changed };
@@ -2697,7 +2702,6 @@ function app(){ return {
     this.crawlProgress = { ...this.crawlProgress, [key]: {
       verb, unit, pass, passes, done: 0, total: 0, active: [],
       calls0: prev?.calls0 ?? (window.__trafficTotals?.calls || 0),
-      trimmed0: prev?.trimmed0 ?? (window.__trafficTotals?.trimmed || 0),
       t0: prev?.t0 ?? Date.now(),
     } };
   },
@@ -2709,6 +2713,32 @@ function app(){ return {
     this.crawlProgress = { ...this.crawlProgress, [key]: null };
     if (slot) this.saveCrawlCalls(key, slot).catch(e => console.warn('call log:', e?.message || e));
   },
+  // ── Folding onto the newest copy, not merely the fetched one ────────────
+  // Every crawl here reads a registry file, folds into it, and writes it back.
+  // GitHub's contents API is read-after-write eventual, so seconds after a
+  // commit a read can still be answered with the version it replaced, sha and
+  // all: the split refresh's survey pass hit exactly that and 409'd four times
+  // (2026-08-16). `GH.FRESH` removed the browser's 60-second cache from the
+  // picture; this removes the API's own lag, by preferring the copy this page
+  // committed when the read comes back older than it. lib/kits/last-write.js
+  // carries the argument.
+  async readForFold(reg, path){
+    let read = null;
+    try {
+      const r = await reg.get(path, window.GH.FRESH);
+      read = { doc: JSON.parse(r.text), sha: r.sha };
+    } catch {}
+    return window.LastWrite?.reconcile(this.REGISTRY_REPO, path, read) || read;
+  },
+  // Save a fold, then remember what was written. The sha rides in rather than
+  // being re-read, which is the whole point: it is the one fact a lagging read
+  // cannot supply.
+  async saveFold(reg, path, doc, message, base){
+    const res = await reg.save(path, doc, message, { sha: base?.sha });
+    window.LastWrite?.note(this.REGISTRY_REPO, path, doc, res?.content?.sha);
+    return res;
+  },
+
   // ── The call log: the last run of each crawl, as the calls it made ──────
   //
   // The bar says how far along and the wire says what is in flight, and both
@@ -2742,8 +2772,8 @@ function app(){ return {
         s: e.status || 0, ms: e.ms || 0, b: e.wire ?? null,
       }));
     if (!rows.length) return;
-    const trimmed = Math.max(0, (window.__trafficTotals?.trimmed || 0) - (slot.trimmed0 || 0));
     const calls = Math.max(0, (window.__trafficTotals?.calls || 0) - (slot.calls0 || 0));
+    const kept = rows.slice(-this.CALLS_CAP);
     const run = {
       at: new Date(slot.t0).toISOString(), ms: Date.now() - slot.t0,
       verb: slot.verb, unit: slot.unit, passes: slot.passes || 1,
@@ -2751,13 +2781,19 @@ function app(){ return {
       // trimming; `rows` is what could still be shown. They differ exactly when
       // the run outran the ledger, and saying both is what keeps a truncated
       // list from reading as a complete one.
-      calls, rows: rows.slice(-this.CALLS_CAP), truncated: trimmed > 0 || rows.length > this.CALLS_CAP,
+      // Truncated means THIS RUN lost rows, which is `rows` short of `calls`.
+      // It first read `trimmed > 0`, and that fired whenever the ledger dropped
+      // anything since the run began, including the page's own boot traffic
+      // sitting in front of it: a complete log reported itself incomplete on the
+      // first real run (2026-08-17, 373 of 373 rows, flagged).
+      calls, rows: kept, truncated: kept.length < calls,
     };
     const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
-    let prev = {};
-    try { prev = JSON.parse((await reg.get(this.CALLS_PATH, window.GH.FRESH)).text) || {}; } catch {}
-    const next = { generatedAt: new Date().toISOString(), runs: { ...(prev.runs || {}), [key]: run } };
-    await reg.save(this.CALLS_PATH, next, 'Log ' + key + ' crawl calls (state/calls.json) via show-repo');
+    const base = await this.readForFold(reg, this.CALLS_PATH);
+    const next = { generatedAt: new Date().toISOString(),
+                   runs: { ...(base?.doc?.runs || {}), [key]: run } };
+    await this.saveFold(reg, this.CALLS_PATH, next,
+                        'Log ' + key + ' crawl calls (state/calls.json) via show-repo', base);
   },
 
   tickCrawl(key, patch){

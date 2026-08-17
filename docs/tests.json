@@ -1533,7 +1533,7 @@
       "path": "tools/test/gh-store.test.mjs",
       "kind": "behavior",
       "protects": "saveBytes writes byte-exact content, so a binary round-trip cannot be silently re-encoded.",
-      "assertions": 11,
+      "assertions": 14,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -1546,6 +1546,9 @@
         "the instance ref rides the PUT as branch; empty ref stays default",
         "repeated conflicts keep retrying, backing off, until one lands",
         "a branch that never stops conflicting gets a bounded number of attempts",
+        "the conflict recovery buys the sha from a listing, not the file",
+        "no listing, or no row in it, and the file read still answers",
+        "an explicit sha rides the first PUT, with no read at all",
         "the conflict refetch reads past the HTTP cache",
         "del reads its sha past the HTTP cache",
         "a successful write leaves the new sha on the instance for the next one"
@@ -1690,6 +1693,24 @@
       "assertion_names": [
         "${file} registers window.${globalName}",
         "wsl.js (async gh.load shape) registers window.wsl once awaited"
+      ]
+    },
+    {
+      "path": "tools/test/last-write.test.mjs",
+      "kind": "kit",
+      "protects": "A page prefers the copy it just committed when a lagging API read hands back the version that commit replaced.",
+      "assertions": 7,
+      "method": "read",
+      "runner": "suite",
+      "boot_smoke": [],
+      "assertion_names": [
+        "with nothing noted, the read is the answer",
+        "a read that caught up wins, since it may carry another writer’s work",
+        "a read that is behind loses to the copy this page wrote, sha included",
+        "a 404 after a write is the same lag wearing a different hat",
+        "paths and repos are separate keys, and a note can be dropped",
+        "a document with no stamp cannot be judged, so the read stands",
+        "the stamp field is nameable, for a store that dates itself differently"
       ]
     },
     {
