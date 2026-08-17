@@ -172,13 +172,29 @@ export default async (page) => {
     s.activityRefreshing = true;
     s.sessionsRefreshing = true;
     s.crawlProgress = {
-      configs:  { verb: 'Reading configs',    unit: 'repos',   done: 31, total: 44, active: [] },
+      configs:  { verb: 'Reading configs',    unit: 'repos',   done: 31, total: 44, active: [],
+                  calls0: 341 },
       activity: { verb: 'Surveying branches', unit: 'repos',   done: 4,  total: 11,
-                  active: ['mehrlander/chat-histories', 'mehrlander/home'] },
+                  active: ['mehrlander/chat-histories', 'mehrlander/home'], calls0: 313 },
       sessions: { verb: 'Reading records',    unit: 'records', done: 18, total: 120,
                   active: ['sessions/2026/08/2026-08-16-aaaa1111.json',
-                           'sessions/2026/08/2026-08-16-bbbb2222.json'] },
+                           'sessions/2026/08/2026-08-16-bbbb2222.json'],
+                  calls0: 402 },
     };
+    // The wire tail reads gh-boot's traffic ledger, which in the sandbox holds
+    // the page's own boot rather than a crawl. These are the calls each crawl
+    // really makes, so the line shows what a reader would see mid-run; the
+    // ledger is a plain array on the window, so writing it is the whole stub.
+    window.__traffic = [
+      { url: 'https://api.github.com/repos/mehrlander/home/git/trees/main?recursive=1',
+        method: 'GET', status: 200, t: Date.now() },
+    ];
+    window.__trafficTotals = { calls: 468 };
+  });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    if (!window.__STATE_CRAWL) return;
+    window.dispatchEvent(new CustomEvent('traffic'));
   });
   await page.waitForTimeout(400);
 };

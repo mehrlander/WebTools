@@ -2290,7 +2290,12 @@ function app(){ return {
       }));
       const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
       let prev = null;
-      try { prev = JSON.parse((await reg.get(window.RepoConfigCache.CACHE_PATH)).text); } catch {}
+      // FRESH, because this read feeds a write. GitHub answers an API read with
+      // `Cache-Control: private, max-age=60`, so a crawl inside that minute is
+      // handed the pre-commit bytes AND the pre-commit sha out of the browser's
+      // cache: it folds onto a stale base and PUTs a dead sha. See GH.FRESH in
+      // lib/gh-api.js for what that cost to learn the first time.
+      try { prev = JSON.parse((await reg.get(window.RepoConfigCache.CACHE_PATH, window.GH.FRESH)).text); } catch {}
       // Every repo the cache already knew rides forward, whether or not this
       // crawl could see it. The enumeration above is this client's view of the
       // account, not the world's: a narrowly-scoped token, or an account past
@@ -2449,9 +2454,12 @@ function app(){ return {
     let metaByName = new Map();
     try { metaByName = new Map((await new window.GH({ token: window.TOKEN }).repos()).map(r => [r.full_name, r])); } catch {}
 
-    // The prior cache, read up front for the survey gate below.
+    // The prior cache, read up front for the survey gate below. FRESH for the
+    // same reason the fold below is: this crawl runs twice in a row (quick, then
+    // survey), and the second pass inside GitHub's 60-second cache window would
+    // otherwise be served the version the first pass replaced.
     let prev = null;
-    try { prev = JSON.parse((await reg.get(A.CACHE_PATH)).text); } catch {}
+    try { prev = JSON.parse((await reg.get(A.CACHE_PATH, window.GH.FRESH)).text); } catch {}
 
     // The survey gate: a repo not pushed since its last survey cannot have
     // changed any branch verdict (landed/stranded read git state alone, and a
@@ -2495,8 +2503,11 @@ function app(){ return {
 
       // Re-read the cache just before folding: the crawl can run for a while,
       // and folding over the copy read before it would silently revert
-      // whatever another writer committed in between.
-      try { prev = JSON.parse((await reg.get(A.CACHE_PATH)).text); } catch {}
+      // whatever another writer committed in between. FRESH, or the re-read is
+      // answered from the browser's cache by the very copy it is meant to
+      // replace, which is how the split refresh's survey pass came to fold onto
+      // the quick pass's base and then 409 on its sha (seen 2026-08-16).
+      try { prev = JSON.parse((await reg.get(A.CACHE_PATH, window.GH.FRESH)).text); } catch {}
       // `members` is the scope, so a repo whose crawl threw (it is in `failed`,
       // not in `fetched`) keeps its previous entry instead of being deleted by
       // a pass that never reached it.
@@ -2573,7 +2584,10 @@ function app(){ return {
       if (!listing.length) return { skipped: true, reason: 'no session records in the registry' };
 
       let prev = null;
-      try { prev = JSON.parse((await reg.get(S.CACHE_PATH)).text); } catch {}
+      // FRESH: this read decides which records are stale AND supplies the sha
+      // the save rides on, so a cached answer both under-reads the store and
+      // writes with a dead sha.
+      try { prev = JSON.parse((await reg.get(S.CACHE_PATH, window.GH.FRESH)).text); } catch {}
 
       // Newest first, so a capped pass reads the records a reader is most
       // likely to want and the older tail catches up on later crawls.
@@ -2665,8 +2679,16 @@ function app(){ return {
   // the throttled background passes silent: they run the same crawl code and
   // hit the same ticks, but nobody opened a slot for them, so no bar appears
   // over a list the reader did not ask to have refreshed.
+  // `calls0` is the traffic ledger's call count at the moment the slot opened,
+  // so a reader can be told what THIS crawl has spent rather than what the page
+  // has spent since it loaded. The ledger (gh-boot's fetch wrapper) counts every
+  // request the page makes, and the crawl is not the only thing making them, so
+  // a bare total would answer a question nobody asked.
   openCrawl(key, verb, unit){
-    this.crawlProgress = { ...this.crawlProgress, [key]: { verb, unit, done: 0, total: 0, active: [] } };
+    this.crawlProgress = { ...this.crawlProgress, [key]: {
+      verb, unit, done: 0, total: 0, active: [],
+      calls0: window.__trafficTotals?.calls || 0,
+    } };
   },
   closeCrawl(key){ this.crawlProgress = { ...this.crawlProgress, [key]: null }; },
   tickCrawl(key, patch){

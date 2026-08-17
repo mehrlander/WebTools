@@ -991,7 +991,18 @@ Sessions pane, and the State view's rows. Pressing Refresh in any of them lights
 the others, and nothing holds a second copy of the reading. The verb and the
 unit ride in the slot rather than being inferred by whoever draws it, since only
 the crawl knows whether it is on the quick pass or the survey true-up, or
-counting repos rather than session records. The crawl **commits only when something materially changed**, which
+counting repos rather than session records. **Every cache read that feeds the commit is FRESH** (`gh.get(path, GH.FRESH)`),
+and the split refresh is what forced it. GitHub answers an API read with
+`Cache-Control: private, max-age=60`, so the survey pass, running seconds behind
+the quick pass, was handed the very copy the quick pass had just replaced: it
+folded onto a stale base and then failed `409 does not match …` on the dead sha
+it had been given along with it. The 409 was the guardrail rather than the bug,
+since a matching sha would have meant one pass silently reverting the other. The
+same rule now covers the config and sessions crawls, which read a cache and
+write it back the same way. Measured 2026-08-16; the first bite of this is on
+`GH.FRESH` in lib/gh-api.js.
+
+The crawl **commits only when something materially changed**, which
 used to make a productive refresh and a no-op refresh end identically, so the
 run closes with a toast, `Activity refreshed · 3 repos changed` or `No activity
 changes · 11 repos checked`, and names any repo the crawl failed on (previously
@@ -1605,6 +1616,25 @@ bar smooths nothing. The throttled background passes publish into no slot and so
 draw no bar, which is the point: a list refreshing on its own schedule must not
 grow a progress bar nobody asked for. The guides row has no bar either, having
 nothing to count.
+
+**Under the bar, the wire.** The bar says how far along; the line beneath it
+says what the crawl is doing right now, as the request itself: `GET
+repos/mehrlander/home/git/trees/main?recursive=1`, with this crawl's call count
+at the right. It comes off gh-boot's traffic ledger, the same capped ring of
+every request the page makes that the FAB's Traffic tab reads, tailed here
+through its coalesced `traffic` event (one per 250ms, which is what makes a
+per-request readout affordable on a crawl that fires hundreds). Three decisions
+in it are the honesty: the path is **verbatim** past the host, since a
+prettified path stops being the thing being reported and the host is the only
+part that repeats on every line; the **method leads**, because a PUT here is the
+commit, the one request in a run that changes anything, and it read as an
+ordinary row without it; and the count is **this crawl's**, off a baseline the
+slot stamps when it opens, since the page makes requests the crawl did not. A
+status appears only when it is a failure, because 200 on every line is furniture
+and a 409 is the whole story. Only api.github.com rows are shown: a font or a
+CDN module arriving mid-crawl is a true row and a misleading one. This is the
+one place the reading goes, rather than onto the panes: those show a list being
+filled, and this view's subject is the refresh itself.
 
 **The probe answers the question the age was standing in for.** An age says how
 old a file is; the question anyone opens this view with is whether there is

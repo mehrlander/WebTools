@@ -1423,7 +1423,7 @@
       "path": "tools/render/scenarios/state-view.mjs",
       "role": "Populate the State view for a screenshot: stub the registry reads with a current cache, a stale one, an unchecked one, and the buttonless entity index",
       "layer": "tools/render/scenarios",
-      "lines": 185,
+      "lines": 201,
       "invocation": "driver",
       "emits": false,
       "named": false,

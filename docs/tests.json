@@ -3026,7 +3026,7 @@
       "path": "tools/test/state-view-progress.test.mjs",
       "kind": "component",
       "protects": "The State view draws a crawl's live progress per row, in that crawl's own verb and unit, and says nothing when no crawl it started is running.",
-      "assertions": 7,
+      "assertions": 9,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -3036,6 +3036,8 @@
         "mid-crawl: finished over total, in its own unit, everything in flight named",
         "each row reads its own slot, and one crawl running lights one row",
         "an unpooled fan-out counts without naming: the line ends after the count",
+        "the wire tail reads the newest GitHub call, verbatim past the host",
+        "a write and a failure are the two rows that say more than GET 200",
         "busy tracks the row's own shell flag, which is what shows the bar",
         "teardown clears the tick and the listeners"
       ]

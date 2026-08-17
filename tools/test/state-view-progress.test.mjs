@@ -94,6 +94,42 @@ test('an unpooled fan-out counts without naming: the line ends after the count',
   assert.equal(data.progPct(row('configs')), 23);
 });
 
+test('the wire tail reads the newest GitHub call, verbatim past the host', () => {
+  shell.activityRefreshing = true;
+  put('activity', { verb: 'Surveying branches', unit: 'repos', done: 4, total: 11,
+                    active: [], calls0: 12 });
+  window.__traffic = [
+    { url: 'https://api.github.com/repos/me/home/commits?sha=main', method: 'GET', status: 200 },
+    // A font arriving mid-crawl is a true row and a misleading one: this row is
+    // about the crawl, so only the API counts.
+    { url: 'https://cdn.jsdelivr.net/npm/phosphor.woff2', method: 'GET', status: 200 },
+    { url: 'https://api.github.com/repos/me/home/git/trees/main?recursive=1', method: 'GET', status: 200 },
+  ];
+  window.__trafficTotals = { calls: 41 };
+  data.wireAt = 1;                       // the traffic event's tick
+  assert.equal(data.wireLine(row('activity')), 'GET repos/me/home/git/trees/main?recursive=1');
+  assert.equal(data.wireFull(row('activity')), 'https://api.github.com/repos/me/home/git/trees/main?recursive=1');
+  // This crawl's calls, off its own baseline, never the page's running total.
+  assert.equal(data.wireCount(row('activity')), 29);
+});
+
+test('a write and a failure are the two rows that say more than GET 200', () => {
+  shell.activityRefreshing = true;
+  window.__traffic = [{ url: 'https://api.github.com/repos/me/registry/contents/state/activity.json',
+                        method: 'PUT', status: 409 }];
+  data.wireAt = 2;
+  // The method leads because a PUT is the commit, the one request in the run
+  // that changes anything; the status shows only when it is a failure.
+  assert.equal(data.wireLine(row('activity')),
+               'PUT repos/me/registry/contents/state/activity.json 409');
+  window.__traffic = [{ url: 'https://api.github.com/rate_limit', method: 'GET', status: 200 }];
+  data.wireAt = 3;
+  assert.equal(data.wireLine(row('activity')), 'GET rate_limit');
+  shell.activityRefreshing = false;
+  // An idle row shows no wire at all, whatever the page is doing elsewhere.
+  assert.equal(data.wireLine(row('activity')), '');
+});
+
 test('busy tracks the row\'s own shell flag, which is what shows the bar', () => {
   assert.equal(data.busy(row('sessions')), false);
   shell.sessionsRefreshing = true;
