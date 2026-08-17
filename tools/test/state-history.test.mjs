@@ -160,7 +160,7 @@ test('a full window says so, since its span is a floor and not a history', async
 test('a repo cache diffs on hash, and an alignment grade counts as a change', async () => {
   await show('activity');
   await data.diffAt(row('activity'), 0);       // v3 against v2
-  assert.equal(data.histDiff[0].line, '2 of 9 repos · 22%');
+  assert.equal(data.histDiff[0].line, '2 of 9 repos changed · 22%');
   assert.deepEqual(plain(data.histDiff[0].records),
     [{ key: 'c', kind: 'changed' }, { key: 'i', kind: 'changed' }]);
 });
@@ -171,7 +171,7 @@ test('a record that joined or left is named as such, not silently counted', asyn
   assert.equal(r.find(x => x.key === 'gone').kind, 'removed');
   assert.equal(r.find(x => x.key === 'd').kind, 'added');
   // The denominator is the NEWER version's record count: nine now, four before.
-  assert.equal(data.histDiff[1].line, '7 of 9 repos · 78%');
+  assert.equal(data.histDiff[1].line, '7 of 9 repos changed · 78%');
 });
 
 test('a second tap closes the interval; a committed version is read once', async () => {
@@ -180,13 +180,13 @@ test('a second tap closes the interval; a committed version is read once', async
   assert.equal(data.histDiff[0], undefined);
   await data.diffAt(row('activity'), 0);       // reopens, both versions cached
   assert.equal(reads, before);
-  assert.equal(data.histDiff[0].line, '2 of 9 repos · 22%');
+  assert.equal(data.histDiff[0].line, '2 of 9 repos changed · 22%');
 });
 
 test('the sessions cache diffs on the record blob sha, at its own grain', async () => {
   await show('sessions');
   await data.diffAt(row('sessions'), 0);
-  assert.equal(data.histDiff[0].line, '1 of 4 sessions · 25%');
+  assert.equal(data.histDiff[0].line, '1 of 4 sessions changed · 25%');
   // The store path is scaffolding; the record is the session.
   assert.deepEqual(plain(data.histDiff[0].records), [{ key: '2026-08-09-aaaa1111', kind: 'changed' }]);
 });
@@ -194,7 +194,7 @@ test('the sessions cache diffs on the record blob sha, at its own grain', async 
 test('a store with no fingerprint falls back to comparing the record itself', async () => {
   await show('entities');
   await data.diffAt(row('entities'), 0);
-  assert.equal(data.histDiff[0].line, '1 of 2 repos · 50%');
+  assert.equal(data.histDiff[0].line, '1 of 2 repos changed · 50%');
   assert.deepEqual(plain(data.histDiff[0].records), [{ key: 'wt', kind: 'changed' }]);
 });
 
@@ -202,7 +202,7 @@ test('nothing changed and nothing to count do not print alike', async () => {
   VERSIONS.e0 = VERSIONS.e1;                   // identical versions
   await data.diffAt(row('entities'), 0);       // close
   await data.diffAt(row('entities'), 0);       // reopen: cached, still 1 of 2
-  assert.equal(data.histDiff[0].line, '1 of 2 repos · 50%');
+  assert.equal(data.histDiff[0].line, '1 of 2 repos changed · 50%');
 
   VERSIONS.z1 = { repos: {} }; VERSIONS.z0 = { repos: {} };
   HISTORY['state/entities.json'] = [

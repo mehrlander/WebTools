@@ -1612,7 +1612,13 @@ panes draw, and **the crawl names its own verb and unit**, since only it knows w
 true-up, and whether it is counting repos or session records. A crawl that fans
 out unpooled (configs) names nothing in flight, because "every repo" is not a
 reading. Nothing is smoothed between two ticks, for the same reason the pane's
-bar smooths nothing. The throttled background passes publish into no slot and so
+bar smooths nothing. **The bar spans the whole run, passes included:** the
+activity refresh is a quick pass and a survey behind it, and a bar that filled,
+reached the end and started over said the run had finished when it had not,
+which is the one thing a progress bar must never say. Each pass takes an equal
+share of the length because each covers the same items, and the label names the
+pass (`pass 2/2`) since the passes do not cost the same. It counts item-passes,
+not time. The throttled background passes publish into no slot and so
 draw no bar, which is the point: a list refreshing on its own schedule must not
 grow a progress bar nobody asked for. The guides row has no bar either, having
 nothing to count.
@@ -1662,6 +1668,32 @@ a row the probe cannot answer. The entity index gets no probe, because its
 source is the content of ~4,000 files across seven checkouts and the honest
 probe is the rebuild.
 
+**Calls answers what the other two readings cannot: what the run SPENT.** The
+bar and the wire are live and gone when the crawl ends; the same traffic is kept
+in `state/calls.json`, one run per cache key, written by the crawl as it closes
+and overwritten by the next. The tab opens on the run: its verb, when, how long,
+how many calls, how many bytes disclosed, and how many passes. Then **by shape**,
+which is the reading the list cannot give: the path with the parts that vary
+between one call and the next taken out (owner and repo, shas, numbers, and a
+query's values but not its keys), counted and timed, commonest first. That is
+what turns 214 rows into `×167 GET repos/…/…/git/trees/<sha>?recursive`, which
+is a fact about the crawl's design rather than about one call. The full list sits
+underneath, since a shape can hide the one call that failed; a non-GET method and
+a status past 399 are the two things marked, for the same reason they are marked
+on the wire.
+
+Three things it does not do, each on purpose. **Only the last run per crawl**, so
+the file stays small: the `runs` ring beside the caches already carries the
+history at four numbers a run, and twenty runs of two hundred rows would be a
+projection nobody reads. **It costs a commit per run**, including a run that
+changed nothing, which is exactly what the caches' material-change gate avoids
+for them; that is why the log is a separate file, so the gate still holds where
+it matters and a log whose whole subject is the run has nothing to compare
+against. And **a run that outran the ledger says so**: gh-boot trims its traffic
+ring at 400 entries, so the stored rows are the tail, the run's own call count
+comes off the totals (which survive trimming), and the tab prints the warning
+rather than presenting a short list as complete.
+
 **History answers what an age cannot: how often this really changes.** Beside
 Expand, every registry row carries a **History** caret that opens the file's
 change log, and the two share one slot, since a row is being read one way or the
@@ -1679,7 +1711,13 @@ does not re-pick it on every row, and each tab loads on its first showing and
 then holds. The list is the registry's own commits touching that path, one call
 per open (the same `history` the row already makes for `built`, asked for twenty
 rows rather than one), each with its stamp, its age, and the gap to the change
-before it. The header folds that into the reading worth having, a count, a span,
+before it. An interval's magnitude reads `6 of 11 repos changed · 55%`: the verb is
+there because the count alone left the reader to supply one, and "changed" is
+the honest superset of the chips below it, which split added from removed from
+moved. The expanding row says what it is reading while it reads (`reading
+activity.json at both commits…`), since the two versions of the cache itself are
+the source and nothing here reads a log. The header folds the list into the
+reading worth having, a count, a span,
 and a **median** gap, set beside the throttle that governs when the file is
 checked. Two measured numbers side by side, not a verdict: a store that changes
 every 3h under a 12h throttle is a fact about the estate the schedule has to

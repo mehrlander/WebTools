@@ -76,6 +76,27 @@ export default async (page) => {
     const realGet = window.GH.prototype.get;
     window.GH.prototype.get = async function (p) {
       if (!String(p).startsWith('state/')) return realGet.call(this, p);
+      // The call log the crawls write as they close, last run per key. Shaped
+      // like a real activity run: a tree read per surveyed branch is what makes
+      // the count what it is, which is the reading the tab exists for.
+      if (p === 'state/calls.json') {
+        const rows = [];
+        const push = (m, u, ms, b) => rows.push({ m, u, s: 200, ms, b });
+        push('GET', 'user/repos?sort=updated&per_page=100', 240, 66120);
+        for (const repo of ['web-tools', 'home', 'web-tools-private', 'chat-histories', 'wps']) {
+          push('GET', `repos/mehrlander/${repo}/branches?per_page=100`, 90 + repo.length, 4210);
+          push('GET', `repos/mehrlander/${repo}/commits?sha=main&per_page=12`, 110, 8800);
+          push('GET', `repos/mehrlander/${repo}/pulls?state=all&per_page=100`, 130, 12400);
+          for (let i = 0; i < 6; i++)
+            push('GET', `repos/mehrlander/${repo}/git/trees/${'a1b2c3d4e5f6'.repeat(3).slice(0, 40)}?recursive=1`, 70 + i, 31000);
+        }
+        rows.push({ m: 'PUT', u: 'repos/mehrlander/web-tools-private/contents/state/activity.json',
+                    s: 201, ms: 420, b: 512 });
+        return { text: JSON.stringify({ generatedAt: iso(0), runs: {
+          activity: { at: iso(0.02), ms: 21000, verb: 'Surveying branches', unit: 'repos',
+                      passes: 2, calls: rows.length, rows, truncated: false },
+        } }, null, 2) };
+      }
       const v = /^c(\d)/.test(this.ref) ? +this.ref[1] : 0;   // which committed version
       const repos = {};
       MEMBERS.forEach((repo, i) => {
@@ -174,8 +195,11 @@ export default async (page) => {
     s.crawlProgress = {
       configs:  { verb: 'Reading configs',    unit: 'repos',   done: 31, total: 44, active: [],
                   calls0: 341 },
+      // The survey pass of the split refresh, which is why the bar sits past
+      // halfway on a count of 4 of 11: pass 1 is the first half of the run.
       activity: { verb: 'Surveying branches', unit: 'repos',   done: 4,  total: 11,
-                  active: ['mehrlander/chat-histories', 'mehrlander/home'], calls0: 313 },
+                  active: ['mehrlander/chat-histories', 'mehrlander/home'], calls0: 313,
+                  pass: 2, passes: 2 },
       sessions: { verb: 'Reading records',    unit: 'records', done: 18, total: 120,
                   active: ['sessions/2026/08/2026-08-16-aaaa1111.json',
                            'sessions/2026/08/2026-08-16-bbbb2222.json'],

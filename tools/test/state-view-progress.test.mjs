@@ -130,6 +130,63 @@ test('a write and a failure are the two rows that say more than GET 200', () => 
   assert.equal(data.wireLine(row('activity')), '');
 });
 
+test('a two-pass run never reads complete until both passes are', () => {
+  // The activity refresh is a quick pass and a survey behind it. The bar used
+  // to fill and start over, which said the run had finished when it had not.
+  put('activity', { verb: 'Refreshing activity', unit: 'repos', done: 11, total: 11,
+                    active: [], pass: 1, passes: 2 });
+  assert.equal(data.progPct(row('activity')), 50);          // pass 1 done is half the run
+  assert.equal(data.progLabel(row('activity')),
+               'Refreshing activity · pass 1/2 · 11 of 11 repos');
+  put('activity', { verb: 'Surveying branches', unit: 'repos', done: 11, total: 11,
+                    active: [], pass: 2, passes: 2 });
+  assert.equal(data.progPct(row('activity')), 100);         // and only both passes are 100
+  assert.equal(data.progLabel(row('activity')),
+               'Surveying branches · pass 2/2 · 11 of 11 repos');
+  // A single-pass crawl is unchanged, and says nothing about passes.
+  put('sessions', { verb: 'Reading records', unit: 'records', done: 6, total: 12, active: [] });
+  assert.equal(data.progPct(row('sessions')), 50);
+  assert.equal(data.progLabel(row('sessions')), 'Reading records · 6 of 12 records');
+});
+
+test('the shape is the path with the parts that vary taken out', () => {
+  // What turns 214 rows into a reading: the repo names, the shas and the query
+  // VALUES are what differ between one call and the next of the same call.
+  const shape = (u) => data.callShape(u);
+  assert.equal(shape('repos/mehrlander/home/git/trees/abc123def4567890abcdef1234567890abcdef12?recursive=1'),
+               'repos/…/…/git/trees/<sha>?recursive');
+  assert.equal(shape('repos/mehrlander/web-tools/commits?sha=main&per_page=24'),
+               'repos/…/…/commits?sha&per_page');
+  assert.equal(shape('repos/mehrlander/wps/pulls/412'), 'repos/…/…/pulls/<n>');
+  assert.equal(shape('user/repos?per_page=100'), 'user/repos?per_page');
+});
+
+test('the calls tab groups by shape, commonest first, with its time', () => {
+  data.callsRun = { at: '2026-08-17T01:39:00Z', ms: 21000, calls: 5, verb: 'Surveying branches',
+    rows: [
+      { m: 'GET', u: 'repos/me/a/git/trees/main?recursive=1', s: 200, ms: 100, b: 1000 },
+      { m: 'GET', u: 'repos/me/b/git/trees/main?recursive=1', s: 200, ms: 140, b: 2000 },
+      { m: 'GET', u: 'repos/me/a/commits?sha=main', s: 200, ms: 90, b: null },
+      { m: 'PUT', u: 'repos/me/registry/contents/state/activity.json', s: 201, ms: 300, b: 40 },
+    ] };
+  // Alpine hands back reactive proxies, which deepEqual treats as unequal to a
+  // plain literal of the same shape; the assertions are about the values.
+  const g = JSON.parse(JSON.stringify(data.callShapes()));
+  // Commonest first, and a tie goes to the slower one, which is the order a
+  // reader hunting cost wants rather than the order the calls happened in.
+  assert.deepEqual(g.map(x => [x.shape, x.n]), [
+    ['GET repos/…/…/git/trees/main?recursive', 2],
+    ['PUT repos/…/…/contents/state/activity.json', 1],
+    ['GET repos/…/…/commits?sha', 1],
+  ]);
+  assert.equal(g[0].ms, 240);
+  // A row that disclosed no content-length is left out rather than counted as
+  // zero, so the figure is a floor and never a false total.
+  assert.equal(data.callsBytes(), '3 KB');
+  data.callsRun = null;
+  assert.equal(data.callsBytes(), '');
+});
+
 test('busy tracks the row\'s own shell flag, which is what shows the bar', () => {
   assert.equal(data.busy(row('sessions')), false);
   shell.sessionsRefreshing = true;

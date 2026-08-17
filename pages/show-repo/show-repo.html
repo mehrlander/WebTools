@@ -2341,7 +2341,7 @@ function app(){ return {
   async refreshActivity(){
     if (this.activityRefreshing || !this.hasToken()) return;
     this.activityRefreshing = true;
-    this.openCrawl('activity', 'Refreshing activity', 'repos');
+    this.openCrawl('activity', 'Refreshing activity', 'repos', 1, 2);
     try {
       const quick = await this.refreshActivityCache(true, { deep: false });
       document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
@@ -2350,7 +2350,7 @@ function app(){ return {
       // The second pass gets its own verb rather than a phase tag a reader
       // would have to decode: the survey is what the long half of this crawl
       // is actually doing, and saying so is the whole point of the line.
-      this.openCrawl('activity', 'Surveying branches', 'repos');
+      this.openCrawl('activity', 'Surveying branches', 'repos', 2, 2);
       const deep = await this.refreshActivityCache(true, { deep: true });
       document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
       this.reportActivityRefresh(deep, ' (survey)');
@@ -2679,18 +2679,87 @@ function app(){ return {
   // the throttled background passes silent: they run the same crawl code and
   // hit the same ticks, but nobody opened a slot for them, so no bar appears
   // over a list the reader did not ask to have refreshed.
-  // `calls0` is the traffic ledger's call count at the moment the slot opened,
-  // so a reader can be told what THIS crawl has spent rather than what the page
-  // has spent since it loaded. The ledger (gh-boot's fetch wrapper) counts every
-  // request the page makes, and the crawl is not the only thing making them, so
-  // a bare total would answer a question nobody asked.
-  openCrawl(key, verb, unit){
+  // `calls0` and `t0` are the traffic ledger's call count and the clock at the
+  // moment the RUN opened, so a reader can be told what this crawl has spent
+  // rather than what the page has spent since it loaded, and so the call log
+  // written at the end knows where the run began. The ledger (gh-boot's fetch
+  // wrapper) counts every request the page makes, and the crawl is not the only
+  // thing making them, so a bare total would answer a question nobody asked.
+  //
+  // A RUN CAN HAVE SEVERAL PASSES, and they are one run to everyone watching.
+  // The activity refresh is a quick pass and a survey true-up behind it; opening
+  // pass 2 keeps pass 1's baselines, so the count and the log cover the whole
+  // refresh, and `pass`/`passes` let the bar span both. A bar that filled, hit
+  // the end, and started over said the run had finished when it had not, which
+  // is the one thing a progress bar must never say.
+  openCrawl(key, verb, unit, pass = 1, passes = 1){
+    const prev = pass > 1 ? this.crawlProgress[key] : null;
     this.crawlProgress = { ...this.crawlProgress, [key]: {
-      verb, unit, done: 0, total: 0, active: [],
-      calls0: window.__trafficTotals?.calls || 0,
+      verb, unit, pass, passes, done: 0, total: 0, active: [],
+      calls0: prev?.calls0 ?? (window.__trafficTotals?.calls || 0),
+      trimmed0: prev?.trimmed0 ?? (window.__trafficTotals?.trimmed || 0),
+      t0: prev?.t0 ?? Date.now(),
     } };
   },
-  closeCrawl(key){ this.crawlProgress = { ...this.crawlProgress, [key]: null }; },
+  // Closing writes the run's call log, then clears the slot. Unawaited on
+  // purpose: the log is a reading about a run that is already over, and nothing
+  // the reader is waiting for may sit behind it.
+  closeCrawl(key){
+    const slot = this.crawlProgress[key];
+    this.crawlProgress = { ...this.crawlProgress, [key]: null };
+    if (slot) this.saveCrawlCalls(key, slot).catch(e => console.warn('call log:', e?.message || e));
+  },
+  // ── The call log: the last run of each crawl, as the calls it made ──────
+  //
+  // The bar says how far along and the wire says what is in flight, and both
+  // are gone the moment the run ends. This is the same traffic kept: every
+  // GitHub call the run made, committed beside the caches, so the run can be
+  // read after the fact by whoever opens the page and by anyone reading the
+  // repo. It is the first thing here that makes the crawl's COST inspectable
+  // rather than merely visible, which is what turns "it took 38 seconds" into
+  // "167 of these 214 calls were one tree read per branch".
+  //
+  // ONLY THE LAST RUN, per crawl, overwritten. A ring of runs would be hundreds
+  // of rows times twenty, for a reading whose value is almost entirely in the
+  // most recent one; the `runs` ring beside it already carries the shape of the
+  // history (when, how long, how much changed) at four numbers a run.
+  //
+  // THE PRICE, stated because it is real: this is a commit per run, including a
+  // run that changed nothing, which is exactly what the caches' material-change
+  // gate exists to avoid for THEM. It is a separate file for that reason: the
+  // gate still holds where it matters, and a log whose whole subject is the run
+  // has nothing to compare against. A run's rows are capped at what the ledger
+  // holds (gh-boot trims at 400), and a run that outran it says so rather than
+  // reporting a short list as complete.
+  CALLS_PATH: 'state/calls.json',
+  CALLS_CAP: 400,
+  async saveCrawlCalls(key, slot){
+    if (!this.hasToken() || !slot?.t0) return;
+    const T = Array.isArray(window.__traffic) ? window.__traffic : [];
+    const rows = T.filter(e => e.t >= slot.t0 && String(e.url || '').includes('api.github.com'))
+      .map(e => ({
+        m: e.method, u: String(e.url).replace(/^https?:\/\/api\.github\.com\//, ''),
+        s: e.status || 0, ms: e.ms || 0, b: e.wire ?? null,
+      }));
+    if (!rows.length) return;
+    const trimmed = Math.max(0, (window.__trafficTotals?.trimmed || 0) - (slot.trimmed0 || 0));
+    const calls = Math.max(0, (window.__trafficTotals?.calls || 0) - (slot.calls0 || 0));
+    const run = {
+      at: new Date(slot.t0).toISOString(), ms: Date.now() - slot.t0,
+      verb: slot.verb, unit: slot.unit, passes: slot.passes || 1,
+      // `calls` is the run's own count off the ledger's totals, which survive
+      // trimming; `rows` is what could still be shown. They differ exactly when
+      // the run outran the ledger, and saying both is what keeps a truncated
+      // list from reading as a complete one.
+      calls, rows: rows.slice(-this.CALLS_CAP), truncated: trimmed > 0 || rows.length > this.CALLS_CAP,
+    };
+    const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
+    let prev = {};
+    try { prev = JSON.parse((await reg.get(this.CALLS_PATH, window.GH.FRESH)).text) || {}; } catch {}
+    const next = { generatedAt: new Date().toISOString(), runs: { ...(prev.runs || {}), [key]: run } };
+    await reg.save(this.CALLS_PATH, next, 'Log ' + key + ' crawl calls (state/calls.json) via show-repo');
+  },
+
   tickCrawl(key, patch){
     const p = this.crawlProgress[key];
     if (!p) return;
