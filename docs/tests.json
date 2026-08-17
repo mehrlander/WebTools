@@ -2244,7 +2244,7 @@
       "path": "tools/test/repo-activity-cache.test.mjs",
       "kind": "behavior",
       "protects": "The cache hash ignores timestamps and tracks material fields, so a crawl does not commit on every run.",
-      "assertions": 18,
+      "assertions": 19,
       "method": "read",
       "runner": "suite",
       "boot_smoke": [],
@@ -2266,7 +2266,8 @@
         "a crawl that ran checks and found none CLEARS them; one that skipped keeps them",
         "a quick pass keeps the survey AND the counts that describe it",
         "an entry that simply has no survey is NOT treated as partial",
-        "a deep pass replaces the survey and its counts together"
+        "a deep pass replaces the survey and its counts together",
+        "an empty survey CLEARS, which is why a failed read must omit the key"
       ]
     },
     {

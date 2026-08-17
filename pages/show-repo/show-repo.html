@@ -2514,7 +2514,15 @@ function app(){ return {
           const repo = members[mi++];
           active.push(repo);
           this.tickCrawl('activity', { done, total: members.length, active });
-          try { fetched[repo] = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep && needsSurvey(repo), prev); }
+          try {
+            const f = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep && needsSurvey(repo), prev);
+            fetched[repo] = f;
+            // A deep pass that came back partial could not read the repo's
+            // branches. It keeps what is stored (see the guard in
+            // crawlRepoActivity) and says so, rather than reporting a clean run
+            // over a repo it never saw.
+            if (deep && needsSurvey(repo) && f?.partial) failed.push(repo);
+          }
           catch(e){ failed.push(repo); console.warn('activity crawl', repo, e?.message || e); }
           active.splice(active.indexOf(repo), 1);
           this.tickCrawl('activity', { done: ++done, total: members.length, active });
@@ -2917,12 +2925,17 @@ function app(){ return {
     // active; older = surveyed, capped), through the shared orchestrator.
     let branches = [], counts = { branches: 0, active: 0, landed: 0, stranded: 0, surveyed: 0, older: 0, openPRs: openPRs.length };
     let truncated = false;
+    // Whether this pass actually READ the branch list. Everything below is
+    // derived from it, so a failure here means the numbers are absent rather
+    // than zero, and the difference is the whole of the guard at the bottom.
+    let listOk = false;
     try {
       // The walk above already fetched this; REST is the fallback for a repo
       // whose GraphQL read failed, and it carries no dates, which is why the
       // classifier treats a dateless branch as older rather than guessing.
       let list = branchWalk?.branches;
       if (!list) list = (await g.branches()).map(b => ({ name: b.name, date: '', ago: '', sha: b.commit?.sha || '', subject: '' }));
+      listOk = true;
       const dated = list.filter(b => b.name !== def)
         .map(b => ({ ...b, daysAgo: b.date ? B.daysAgo(b.date, now) : Infinity }));
       const recent = dated.filter(b => b.daysAgo <= B.RECENT_DAYS).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -2974,17 +2987,29 @@ function app(){ return {
       // to tell a branch row what became of its PR.
       branchPRs: branchPulls.rows || [],
       prReach: branchPulls.reach || '',
-      counts,
       // Read by mergeRepo and dropped there: it describes THIS PASS, not the
-      // repo, so it must never reach the stored entry or the hash.
-      ...(deep ? {} : { partial: true }),
+      // repo, so it must never reach the stored entry or the hash. A pass whose
+      // branch list would not read is partial in exactly the same sense as a
+      // quick pass: it knows less than the stored entry does.
+      ...(deep && listOk ? {} : { partial: true }),
+      // Counts describe the branch list, so a pass that never read one has no
+      // counts to give. Omitting them entirely is what makes mergeRepo carry
+      // the stored ones; sending zeros would report an empty repo.
+      ...(listOk ? { counts } : {}),
       // Omitted on a quick pass, so mergeRepo carries the prior survey
       // forward. Sending { branches: [] } here would silently delete every
       // content verdict the estate has, which is the trap this guards.
+      //
+      // IT GUARDED ONLY HALF THE TRAP UNTIL 2026-08-17. The quick pass was
+      // handled; a DEEP pass whose branch read failed still wrote
+      // `{ branches: [] }` over the stored rows, because the try/catch above
+      // leaves `branches` empty and carries on. Three repos were emptied that
+      // way in one run (home 89 rows, web-tools-private 25, fn-data 22) while
+      // the crawl reported success. `listOk` is the missing half.
       // `mainSha` is what makes the next pass able to skip: it names the default
       // branch this survey judged against, the other half of the pair (with
       // each row's own `sha`) that decides whether a verdict can have moved.
-      ...(deep ? { survey: { surveyedAt: new Date(now).toISOString(), cap: this.ACTIVITY_SURVEY_CAP,
+      ...(deep && listOk ? { survey: { surveyedAt: new Date(now).toISOString(), cap: this.ACTIVITY_SURVEY_CAP,
                              mainSha: recentCommits[0]?.sha || '',
                              surveyed: counts.surveyed, older: counts.older, truncated, branches } } : {}),
       // Declared checks, PROBED not judged: the stored fact is time-independent
