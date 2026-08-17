@@ -2348,7 +2348,7 @@ function app(){ return {
     this.openCrawl('activity', 'Refreshing activity', 'repos', 1, 2);
     try {
       const quick = await this.refreshActivityCache(true, { deep: false });
-      document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
+      this.announceActivity(quick);
       this.reportActivityRefresh(quick);
       if (quick?.skipped || quick?.error) return;
       // The second pass gets its own verb rather than a phase tag a reader
@@ -2356,9 +2356,19 @@ function app(){ return {
       // is actually doing, and saying so is the whole point of the line.
       this.openCrawl('activity', 'Surveying branches', 'repos', 2, 2);
       const deep = await this.refreshActivityCache(true, { deep: true });
-      document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
+      this.announceActivity(deep);
       this.reportActivityRefresh(deep, ' (survey)');
     } finally { this.activityRefreshing = false; this.closeCrawl('activity'); }
+  },
+
+  // Announce a finished activity crawl, handing the document along. A listener
+  // that re-reads the cache on this event is re-fetching a file the crawl still
+  // holds, so the detail carries it; a listener that gets no detail (the
+  // throttled background path, or one that never looks) falls back to reading,
+  // which is why this is an addition and not a change of contract.
+  announceActivity(r){
+    document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed',
+      { detail: r?.doc ? { cache: r.doc } : null }));
   },
 
   // The crawl's one moment of feedback, and the reason the toast belongs at the
@@ -2530,7 +2540,11 @@ function app(){ return {
         await this.saveFold(reg, A.CACHE_PATH, next,
                             'Update activity cache (state/activity.json) via show-repo', base);
       }
-      return { total: members.length, changed, failed, committed: changed.length > 0 };
+      // `doc` rides the summary so a view that re-reads this file on the refresh
+      // event does not have to: it is 370 KB and the crawl is holding it
+      // already. Measured 2026-08-17, one refresh read state/activity.json
+      // eleven times for 7.2 MB, and two of those reads were exactly this.
+      return { total: members.length, changed, failed, committed: changed.length > 0, doc: next };
     } catch(e){
       console.warn('activity cache refresh:', e?.message || e);
       return { total: members.length, changed: [], failed, error: e?.message || String(e) };
@@ -2823,7 +2837,7 @@ function app(){ return {
     const checkFacts = (Array.isArray(cfg?.checks) && cfg.checks.length && window.RepoChecks)
       ? await window.RepoChecks.probe(cfg.checks, this._checkReader(g, def)).catch(() => [])
       : [];
-    const [recentCommits, openPRs, branchPulls, branchSessions] = await Promise.all([
+    const [recentCommits, openPRs, branchPulls, branchWalk] = await Promise.all([
       g.commits(this.ACTIVITY_RECENT_COMMITS).catch(() => []),
       g.pulls('open', 30).catch(() => []),
       // The PR each branch last had, in ANY state (gh.branchPulls). One call per
@@ -2831,10 +2845,16 @@ function app(){ return {
       // rather than "no PR": the open read above cannot see a PR that merged,
       // which is the state most branches in the recent window are actually in.
       g.branchPulls(this.ACTIVITY_PR_REACH).catch(() => ({ rows: [], reach: '' })),
-      // Optional by design: the session links are a nicety, so a failure here
-      // leaves them blank rather than costing the repo its activity row.
-      g.branchSessions().catch(() => ({})),
+      // The dated branch list AND the authoring session per branch, from one
+      // walk of one refs connection (gh.branchesDatedSessions). They used to be
+      // two GraphQL calls paying twice for the same pagination; the crawl's own
+      // call log put that pair at the top of the bill (2026-08-17: 79 posts,
+      // 75s of request time across 22 repos). Still optional by design: a
+      // failure here leaves the survey to fall back to the REST branch list and
+      // the session links blank, rather than costing the repo its row.
+      g.branchesDatedSessions().catch(() => null),
     ]);
+    const branchSessions = branchWalk?.sessions || {};
     // Ahead/behind for each open PR head, so the Open view can show it without a
     // per-visit compare. The same response carries the branch's oldest unique
     // commit (BranchSurvey.firstCommitDate), which is what lets the Open row
@@ -2863,9 +2883,11 @@ function app(){ return {
     let branches = [], counts = { branches: 0, active: 0, landed: 0, stranded: 0, surveyed: 0, older: 0, openPRs: openPRs.length };
     let truncated = false;
     try {
-      let list;
-      try { list = await g.branchesDated(); }
-      catch { list = (await g.branches()).map(b => ({ name: b.name, date: '', ago: '', sha: b.commit?.sha || '', subject: '' })); }
+      // The walk above already fetched this; REST is the fallback for a repo
+      // whose GraphQL read failed, and it carries no dates, which is why the
+      // classifier treats a dateless branch as older rather than guessing.
+      let list = branchWalk?.branches;
+      if (!list) list = (await g.branches()).map(b => ({ name: b.name, date: '', ago: '', sha: b.commit?.sha || '', subject: '' }));
       const dated = list.filter(b => b.name !== def)
         .map(b => ({ ...b, daysAgo: b.date ? B.daysAgo(b.date, now) : Infinity }));
       const recent = dated.filter(b => b.daysAgo <= B.RECENT_DAYS).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -4463,9 +4485,9 @@ function app(){ return {
     try {
       const quick = await this.refreshActivityCache(false, { deep: false });
       if (!quick || quick.skipped || quick.error) return;
-      if (quick.committed) document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
+      if (quick.committed) this.announceActivity(quick);
       const deep = await this.refreshActivityCache(true, { deep: true });
-      if (deep?.committed) document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
+      if (deep?.committed) this.announceActivity(deep);
     } catch(e){ console.warn('arrival activity refresh:', e?.message || e); }
   },
   // Activity's other pill: the sessions that made the branches. Kicks its own

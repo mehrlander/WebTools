@@ -1027,6 +1027,23 @@ a `console.warn` and nothing else). The count comes from
 `RepoActivityCache.changedRepos`, which `cacheChanged` is defined in terms of,
 so the number reported and the gate that skipped the commit cannot disagree.
 
+**What the call log bought, in its first two readings.** The crawl's own log is
+the instrument for its cost, and the first run it recorded (2026-08-17, 373
+calls, 58s) named three things prose had not. Its top row was 79 GraphQL posts
+for 75s of request time, three per repo where two were `branchesDated` and
+`branchSessions` walking the same refs connection with the same page size: they
+are one call now (`gh.branchesDatedSessions`), since the crawl has always wanted
+both. Its heaviest row by bytes was eleven reads of `state/activity.json` for
+7.2 MB, of which the conflict recovery's share is gone (it buys the sha from a
+listing) and the views' share is gone too: the crawl hands its document along on
+the `web-tools:activity-refreshed` event, so a listener that used to re-read
+370 KB now reads nothing and a detail-less event still falls back to reading.
+And a run that died on a phone at `Load failed` after 300-odd successful calls
+bought one retry for a **dropped connection**, reads only, in both `GH.req` and
+`gh.graphql`: a rejected fetch is the network rather than GitHub, an HTTP error
+is not retried because the answer will not change in 600ms, and a write is never
+retried because it may have landed.
+
 The cache is what makes this affordable. The branch review costs ~2 + 2N calls to
 survey N branches, so surveying every repo live on a dashboard is a flood.
 Instead `refreshActivityCache` crawls each estate repo on a ~12h per-browser
