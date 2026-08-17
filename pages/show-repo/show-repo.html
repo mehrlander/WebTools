@@ -185,7 +185,7 @@
       <i class="ph ph-tray-arrow-down text-3xl"></i>
       <div class="text-left leading-tight">
         Drop to stage
-        <div class="text-sm font-normal text-base-content/60">Opens on the Stage</div>
+        <div class="text-sm font-normal text-base-content/60" x-text="_dragNote"></div>
       </div>
     </div>
   </div>
@@ -1679,8 +1679,10 @@ function app(){ return {
   },
   view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'stage' | 'config' | 'app' | 'public'
   // Window-level drag counter for the app-wide drop (init wires the listeners;
-  // nested enter/leave is why it counts rather than flips).
+  // nested enter/leave is why it counts rather than flips), and what the cue
+  // says about the drag in flight (dragNote).
   _appDrag: 0,
+  _dragNote: '',
 
   // ── The shell mode: how much of the app is drawn around the view ──────────
   //
@@ -4657,14 +4659,29 @@ function app(){ return {
       if (!mine(e)) return;
       e.preventDefault();
       this._appDrag++;
+      this._dragNote = this.dragNote(e.dataTransfer);
     });
     // Without a prevented dragover there is no drop event at all: this line is
     // what makes the window a drop target rather than the browser navigating
-    // to the file.
-    window.addEventListener('dragover', (e) => { if (mine(e)) e.preventDefault(); });
-    window.addEventListener('dragleave', () => { this._appDrag = Math.max(0, this._appDrag - 1); });
+    // to the file. The note is refreshed only when it is missing, since
+    // dragover fires continuously and re-deriving it on every frame would be
+    // work nobody sees.
+    window.addEventListener('dragover', (e) => {
+      if (!mine(e)) return;
+      e.preventDefault();
+      if (!this._dragNote) this._dragNote = this.dragNote(e.dataTransfer);
+    });
+    // A null relatedTarget means the pointer left the WINDOW, not a child, and
+    // the counter must clear rather than decrement: an enter/leave pair that
+    // does not balance (dragging out over a scrollbar, say) otherwise leaves
+    // the cue standing over an app nobody is dragging onto.
+    window.addEventListener('dragleave', (e) => {
+      this._appDrag = e.relatedTarget ? Math.max(0, this._appDrag - 1) : 0;
+      if (!this._appDrag) this._dragNote = '';
+    });
     window.addEventListener('drop', async (e) => {
       this._appDrag = 0;
+      this._dragNote = '';
       if (e.defaultPrevented || !mine(e)) return;
       e.preventDefault();
       const added = await window.StageIntake.takeDrop(e.dataTransfer);
@@ -4675,6 +4692,34 @@ function app(){ return {
       // is the wrong first look at it.
       if (added.length === 1) window.StageIntake.focus(added[0]);
     });
+  },
+
+  // WHAT THE CUE CAN HONESTLY SAY MID-DRAG, which is less than it looks.
+  // A drag in flight exposes `items` (a kind and a MIME type each) and nothing
+  // else: `getAsFile()` returns null and `getData()` returns '' until the drop,
+  // deliberately, so the browser does not leak a filename to a page you are
+  // merely dragging over. "Drop release-notes.md to stage" is therefore not
+  // writable from here at any effort. The count and the kind ARE answered
+  // during the gesture, and so is what will happen to them, which is the part
+  // worth saying: one file opens, several land.
+  dragNote(dt){
+    const files = Array.from(dt?.items || []).filter(i => i.kind === 'file');
+    if (files.length > 1) return files.length + ' files, landing on the Stage';
+    if (files.length === 1) return this.dragKind(files[0].type) + ', opening on the Stage';
+    return 'Text, landing on the Stage';
+  },
+  // A dragged file's MIME as a short label. An empty type is common and is
+  // reported as the plain "A file" rather than guessed at: a .md dragged out of
+  // a file manager often carries no type at all, and the extension that would
+  // settle it rides with the name the drag is withholding.
+  dragKind(type){
+    const t = String(type || '');
+    if (t.startsWith('image/')) return 'An image';
+    if (t === 'application/pdf') return 'A PDF';
+    if (/spreadsheet|excel|csv/.test(t)) return 'A spreadsheet';
+    if (/zip|compressed|tar/.test(t)) return 'An archive';
+    if (t.startsWith('text/') || t === 'application/json') return 'A text file';
+    return 'A file';
   },
   // Public browse: the estate-level no-token file browser (lazy mount). An
   // optional repo (from an estate card) seeds it via the reactive publicSeed the
