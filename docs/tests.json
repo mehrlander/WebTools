@@ -3179,7 +3179,7 @@
     {
       "path": "tools/test/toss-charset.mjs",
       "kind": "behavior",
-      "protects": "",
+      "protects": "A payload toss declares utf-8 on the blob it mounts, so a page with no <meta charset> of its own renders its emoji, accents, and non-latin scripts rather than the locale default's mojibake.",
       "assertions": null,
       "method": "pure",
       "runner": "npm run test:toss-charset",
