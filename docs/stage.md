@@ -98,9 +98,27 @@ list of them, and a `.md` now previews rendered with raw one tap away.
 Takes from:
 
 1. upload: the drop-zone (a file, or pasted text; pasted ref lines stage as refs),
-2. a repo: the **Add box** on the bench (below),
-3. a repo manifest's `stage.files` (seeds an empty stage when that repo opens),
-4. a `#stage=` link.
+2. **a drop anywhere in the host app** (below),
+3. a repo: the **Add box** on the bench (below),
+4. a repo manifest's `stage.files` (seeds an empty stage when that repo opens),
+5. a `#stage=` link.
+
+**A drop anywhere in the app stages, and the intake is why it can.** Until
+2026-08-17 the fold lived inside the component, so nothing could stage anything
+before the bench had mounted, and the bench mounts on your first visit to the
+Stage: a file dragged onto Repos, a file view, or the Map had nowhere to land
+and nothing on screen said so. The decisions now sit on `window.StageIntake`
+(`take`, `takeFile`, `takeDrop`) with no view attached, and the host owns the
+gesture: show-repo's shell takes a window drop on any view, stages it, routes to
+the Stage, and, when exactly one file arrived, opens it in the preview. A batch
+lands and stays listed, since a modal over a set nobody has seen listed is the
+wrong first look at it. `StageIntake.focus(item)` is how the opening is asked
+for: it names the item on `store.stageFocus` rather than calling the bench,
+because at drop time the bench may not exist yet; the stager reads the key when
+it mounts, or on the spot when it is already up, and clears it. Two drops the
+shell leaves alone: one over a form field, which keeps its native drop the way
+the paste path leaves a field's own paste alone, and one the Stage view's own
+root already handled, which it can tell by `defaultPrevented`.
 
 Stage-view actions:
 

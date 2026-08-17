@@ -172,6 +172,25 @@
      opens with. See the design notes at the end of this file. -->
 <body class="h-dvh flex flex-col overflow-hidden bg-base-100 text-base-content" x-data="app()" x-cloak>
 
+<!-- App-wide drag cue. Purely visual (pointer-events-none), so the drop still
+     lands on the window handler wireAppDrop() registered. It stands down on the
+     Stage, where the bench draws its own cue over the thing being aimed at: two
+     overlays for one gesture is one too many, and the specific one is better. -->
+<div x-show="_appDrag > 0 && view !== 'stage'" x-cloak
+     class="pointer-events-none fixed inset-0 z-[70] p-3 bg-base-300/60">
+  <div class="w-full h-full rounded-2xl border-2 border-dashed border-primary bg-primary/5
+              flex items-center justify-center">
+    <div class="flex items-center gap-3 rounded-xl bg-base-100 shadow-xl px-6 py-4
+                text-primary text-lg font-medium">
+      <i class="ph ph-tray-arrow-down text-3xl"></i>
+      <div class="text-left leading-tight">
+        Drop to stage
+        <div class="text-sm font-normal text-base-content/60">Opens on the Stage</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast toast-top toast-end z-[60]" x-data x-show="$store.toasts && $store.toasts.length">
   <template x-for="t in ($store.toasts || [])" :key="t.id">
   <div class="alert text-base gap-2" :class="t.cls">
@@ -1659,6 +1678,9 @@ function app(){ return {
               run: () => ({ nav: href }) }];
   },
   view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'stage' | 'config' | 'app' | 'public'
+  // Window-level drag counter for the app-wide drop (init wires the listeners;
+  // nested enter/leave is why it counts rather than flips).
+  _appDrag: 0,
 
   // ── The shell mode: how much of the app is drawn around the view ──────────
   //
@@ -1885,6 +1907,8 @@ function app(){ return {
     // A bare open (no repo, file, view, or stage addressed) lands on the
     // estate: the all-repo view is the page's front door.
     else if (!url) this.goDashboard();
+
+    this.wireAppDrop();
 
     // Browser Back/Forward restores state from the URL (syncUrl pushes an entry
     // per distinct URL, so the history has real steps to walk).
@@ -4604,6 +4628,54 @@ function app(){ return {
   // routed here (the explorer's "+", a #stage= link, a saved surface's Load),
   // and all of them mean "show me what is staged", which is this pill.
   goStage(){ this.estateSeen = true; this.view = 'stage'; this.syncUrl(); },
+
+  // ── A DROP ANYWHERE STAGES ────────────────────────────────────────────────
+  // The Stage's own view has always taken a drop, which meant the gesture
+  // worked only once you had gone there: a file dragged onto Repos, a file, the
+  // Map or the Activity list had nowhere to land, and nothing on screen said
+  // so. The APP takes it now, from any view, and routes to the Stage with the
+  // file already on the bench, opened in the preview when it is the only one.
+  //
+  // The split is deliberate: what a dropped thing BECOMES is stage.js's
+  // (window.StageIntake, one answer for the bench's drop-zone, a paste, and
+  // this), and this owns the gesture and where it goes afterwards. The bench
+  // mounts lazily, so there is nothing to call at drop time: the intake names
+  // the staged item on the store and the stager opens it when it mounts.
+  //
+  // Two drops it deliberately does not take. A drag over a form field keeps its
+  // native drop, the way the paste path leaves a field's own paste alone, since
+  // dropping a path into the destination box is a real thing to do. And a drop
+  // the Stage view's own root already handled is left to it: that handler
+  // preventDefaults on the way up, so `defaultPrevented` is the tell, and the
+  // alternative is staging the same file twice.
+  wireAppDrop(){
+    const worthy = (dt) => !!dt && Array.from(dt.types || [])
+      .some(t => t === 'Files' || /^text\//.test(t) || t === 'application/json');
+    const editable = (t) => !!t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || '') || t.isContentEditable);
+    const mine = (e) => worthy(e.dataTransfer) && !editable(e.target);
+    window.addEventListener('dragenter', (e) => {
+      if (!mine(e)) return;
+      e.preventDefault();
+      this._appDrag++;
+    });
+    // Without a prevented dragover there is no drop event at all: this line is
+    // what makes the window a drop target rather than the browser navigating
+    // to the file.
+    window.addEventListener('dragover', (e) => { if (mine(e)) e.preventDefault(); });
+    window.addEventListener('dragleave', () => { this._appDrag = Math.max(0, this._appDrag - 1); });
+    window.addEventListener('drop', async (e) => {
+      this._appDrag = 0;
+      if (e.defaultPrevented || !mine(e)) return;
+      e.preventDefault();
+      const added = await window.StageIntake.takeDrop(e.dataTransfer);
+      if (!added.length) return;
+      this.goStage();
+      // One file opens on itself, since seeing it is the reason to drop it. A
+      // batch lands and stays listed: a modal over a set nobody has seen listed
+      // is the wrong first look at it.
+      if (added.length === 1) window.StageIntake.focus(added[0]);
+    });
+  },
   // Public browse: the estate-level no-token file browser (lazy mount). An
   // optional repo (from an estate card) seeds it via the reactive publicSeed the
   // component watches; the bare sidebar entry passes none and keeps the default.
