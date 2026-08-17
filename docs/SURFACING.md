@@ -106,9 +106,11 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
   - 🟢 **Ready to continue:** named work available on "go", listed as bullets, one line each. "Go" authorizes only what the list names, and "go 1, 3" takes a subset. Work the session conceives belongs here as a proposal (Keep focus), never done unprompted.
   - 🟡 **Decision needed:** continuation depends on the user's call, and the state names the decision.
   - ⚪ **Natural stopping point:** no further work proposed; the wrap-up offer lives here.
-  - 🟠 **Attention:** something concrete needs addressing before proceeding. Reserved for an actual problem or risk, not routine uncertainty; there is deliberately no red.
+  - 🟠 **Attention:** something concrete needs addressing before proceeding. Reserved for an actual problem or risk, not routine uncertainty. Amber is the alarm here, and red is not a louder version of it.
   - 🟣 **Merged:** this workstream's branch merged. One line on what shipped.
-  - ⚫ **Closed:** this workstream's branch abandoned, its PR closed unmerged. Say why in one line.
+  - 🔴 **Closed:** this workstream's branch abandoned, its PR closed unmerged. Say why in one line.
+
+  **Red marks a terminal state, not an alarm.** That is the whole rule, and it is why the escalating state is amber while the finished one is red: a closed branch is usually a decision rather than a failure, and nothing follows it. Red was banned outright until 2026-08-16, on the reading that it could only ever mean panic. Adopting it here settles a split instead, since show-repo's Activity list has always painted a closed branch's rail red, matching Claude Code's own session list and GitHub. A closing state and a branch rail now say the same thing in the same color. ⚫ is retired; a reply written before the change keeps it.
 
   The last two mark the branch, not a task: a task dropped inside a live branch is ⚪.
 * **External proxies:** prohibited. Third-party GitHub renderers such as `htmlpreview.github.io`, `raw.githack.com`, and `gitcdn.link` fetch server-side, fail on private repos, and route content through another host. Use `[new]` for canonical source and 🥏 for a private or un-deployed render.
