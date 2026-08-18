@@ -910,11 +910,22 @@ pulling the two controls after it out of column.
 **Files** is the route the row was missing. The branch name opens the detail
 too, but on the Guide where there is one, so "show me what changed" cost a tap,
 a read, and a second tap; this is that destination on its own glyph, the one the
-detail's file deck already wears. Bare, it carries the changed-file **count**,
-free from the compare the crawl already runs for each open PR's ahead/behind
-pair. Where the survey reached the branch it grows into the content verdict
-below rather than standing beside a second files icon saying the same number.
-No count on a no-merge-base row, where it would span more than the branch.
+detail's file deck already wears. It carries **one number, and the same one on
+every row**: how many files this branch changed. That is free, from the compare
+the crawl already runs for each open PR's ahead/behind pair, and from the
+survey's own touched-path set where it reached the branch. A row with stranded
+content adds one more thing, the **missing** count in amber, which opens the
+pane already filtered to those files.
+
+The landed **ratio** rode here until 2026-08-18, so a surveyed row read
+`28/80 landed 11 missing *` while an unsurveyed row read nothing at all: four
+mono elements on the busy rows, none on the quiet ones, and no column a reader
+could scan down. A ratio is a verdict and this is a route, so the verdict moved
+to where there is room to state it whole (the hover, and the Files pane's own
+strip, which names all three classes) and the row kept the count every row can
+carry plus the one flag worth raising unasked. A no-merge-base row keeps its
+count rather than blanking, since the asterisk already says that every number on
+that row spans more than the branch.
 
 **Stage** sends the files this branch changed to the Stage (one `compare` call,
 removed paths skipped), appended and deduped onto any working stage at
@@ -941,12 +952,12 @@ merge base has no unique-commit list, and a compare past GitHub's 250-commit cap
 reports a total larger than the list it returns, so the oldest entry present is
 not the first. Those rows show the tip age alone.
 
-Where the survey reached a branch, the row also states its **content verdict**:
-of the paths the branch uniquely touched, how many hold content the default
-branch has now (`6/6 landed`, or `1/5 landed` plus `4 missing`). It is what
-makes a Landed row actionable rather than a claim, and it costs nothing, since
-the crawl stored it. An unsurveyed row shows nothing rather than `0/0`, since
-"not measured" and "measured zero" are different answers.
+Where the survey reached a branch it also measures a **content verdict**: of the
+paths the branch uniquely touched, how many hold content the default branch has
+now. It is what makes a Landed row actionable rather than a claim, and it costs
+nothing, since the crawl stored it. The row shows the verdict's one urgent half,
+the missing count; the whole of it is one hover away and lives fully in the
+branch view's Files pane.
 
 **Three classes, and the third one had no name.** A touched path is **landed**
 (those bytes are on the default branch, at this path or moved anywhere in the
@@ -960,10 +971,10 @@ named nothing else, so a reader could only read the pair as a failed
 subtraction. `landed` now rides the ratio, since a bare `28/80` does not say
 which direction is good, and the full partition is in the hover.
 
-**Both halves are routes into the files.** Tapping the ratio opens the branch
+**Both halves are routes into the files.** Tapping the count opens the branch
 detail on its **Files** pane; tapping `11 missing` opens it filtered to those
-eleven, as diffs a reader can actually read. What the chip replaced was a
-tooltip that pasted up to twelve missing paths under a sentence describing the
+eleven, as diffs a reader can actually read. What they replaced was inert text
+whose tooltip pasted up to twelve missing paths under a sentence describing the
 paths that were *present*, so the wrong list sat under the wrong clause and
 nothing in it could be opened. The counts and the filter live on in the pane
 itself, which re-measures them rather than only rendering what it was handed;

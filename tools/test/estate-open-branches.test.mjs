@@ -186,6 +186,24 @@ test('branchMenuItems: a PR row offers its tabs, a bare branch offers New PR', (
 // the one row that stays without opening github.com, because a branch name is
 // the ADDRESS of what every other row opens and there is no address bar here to
 // lift it from. A new row that is neither belongs somewhere else.
+// The row shows ONE number, and where it comes from is the whole rule: the
+// crawl's stored count when a PR compare produced one, the survey's touched-path
+// set otherwise, and nothing at all when neither knows, since 0 would be a claim.
+test('fileCount prefers the crawled count, falls back to the survey, and stays null otherwise', () => {
+  assert.equal(data.fileCount({ nFiles: 9, nUnique: 80 }), 9, 'a stored count wins');
+  assert.equal(data.fileCount({ nFiles: null, nUnique: 80 }), 80, 'the survey answers for a row with no PR compare');
+  assert.equal(data.fileCount({ nFiles: null, nUnique: 0 }), null, 'not measured is not zero');
+  assert.equal(data.fileCount({ nFiles: 0, nUnique: 0 }), 0, 'a measured zero is reported as one');
+  assert.equal(data.fileCount(null), null);
+});
+
+// A no-merge-base row keeps its number. It spans more than the branch, which is
+// what the row's asterisk says; blanking it left the row that most needs a route
+// into its files as the one row whose glyph stood bare.
+test('fileCount keeps a no-merge-base count, which the asterisk qualifies', () => {
+  assert.equal(data.fileCount({ nFiles: null, nUnique: 80, noBase: true }), 80);
+});
+
 test('the GitHub menu holds GitHub destinations, and one documented exception', () => {
   for (const row of [data.openBranches[0], data.openBranches[1]]) {
     data.menuBranch = row;
