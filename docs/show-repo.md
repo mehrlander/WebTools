@@ -985,13 +985,118 @@ after it (the pool runs two at once, so it is a list), over a determinate bar
 whose only input is repos finished over repos total. Nothing finer is counted
 and no in-flight fraction is estimated: per-repo cost varies by an order of
 magnitude, and a sub-counter ticking several times a second is the churn this
-replaces. The crawl **commits only when something materially changed**, which
+replaces. The numbers come off the shell's **progress channel**, a slot per cache
+key, which all three crawls write and every reader draws: this pane, the
+Sessions pane, and the State view's rows. Pressing Refresh in any of them lights
+the others, and nothing holds a second copy of the reading. The verb and the
+unit ride in the slot rather than being inferred by whoever draws it, since only
+the crawl knows whether it is counting repos or session records.
+
+**One pass, and it was two.** The refresh shipped split, a quick pass (commits,
+PRs, branch dates) so the list landed in seconds and a survey true-up behind it.
+The call log priced that: `deep` gates the **survey alone**, so the second pass
+re-fetched every cheap read the first had just made, and a refresh of 11 repos
+spent 66 calls, a fifth of the run, asking for the same commits and the same two
+PR lists twice inside a minute. The seconds it bought back were real and did not
+cover that, so the Refresh button and the arrival kick each run one crawl,
+survey included. The quick shape stays supported because one caller still wants
+it: `goGuides` warms this cache for a pane that needs the repo list and the open
+PRs and no branch verdicts at all. Retired 2026-08-17; the run record still
+carries `pass: 'quick' | 'survey'`, since those two differ by an order of
+magnitude in cost and averaging them would mean nothing.
+
+**Every cache read that feeds the commit is FRESH** (`gh.get(path, GH.FRESH)`),
+and the split refresh is what forced it. GitHub answers an API read with
+`Cache-Control: private, max-age=60`, so the survey pass, running seconds behind
+the quick pass, was handed the very copy the quick pass had just replaced: it
+folded onto a stale base and then failed `409 does not match …` on the dead sha
+it had been given along with it. The 409 was the guardrail rather than the bug,
+since a matching sha would have meant one pass silently reverting the other. The
+same rule now covers the config and sessions crawls, which read a cache and
+write it back the same way. Measured 2026-08-16; the first bite of this is on
+`GH.FRESH` in lib/gh-api.js.
+
+**FRESH was not enough, because the layer under it is the API's own lag.** The
+409 came back on the next run with the browser cache out of the picture, and the
+crawl's own call log named it: six PUTs to `state/activity.json` in one refresh,
+`422, 409, 409, 409`, each retry carrying a sha a fresh read had just supplied.
+GitHub's contents API is read-after-write **eventual**, so a read seconds after a
+commit can be answered by a replica that has not seen it, and no cache header
+reaches that. The answer is not a longer retry but a better source: this page
+knows what it wrote and what sha the write returned, so
+[`lib/kits/last-write.js`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/last-write.js)
+notes each committed document and `readForFold` reconciles the next read against
+it, newest **document stamp** winning rather than the clock. The sha then rides
+into `save(path, doc, msg, { sha })` and no read is consulted at all. The retry
+behind it got more patient too (six attempts, backoff to seconds), and its
+recovery read got cheaper: it buys the sha from the parent directory's listing,
+about a kilobyte, rather than re-reading a 370 KB cache to look at forty
+characters.
+
+The crawl **commits only when something materially changed**, which
 used to make a productive refresh and a no-op refresh end identically, so the
 run closes with a toast, `Activity refreshed · 3 repos changed` or `No activity
 changes · 11 repos checked`, and names any repo the crawl failed on (previously
 a `console.warn` and nothing else). The count comes from
 `RepoActivityCache.changedRepos`, which `cacheChanged` is defined in terms of,
 so the number reported and the gate that skipped the commit cannot disagree.
+
+**A verdict is carried when neither of its inputs moved.** A branch's
+landed-or-stranded call is a function of exactly two things, its own tip and the
+default branch, so a pass where neither moved is re-deriving an answer it
+already has. The crawl now hands the survey the previous rows and the default
+tip it judged against (`survey.mainSha`), and `BranchSurvey.needsSurvey` decides
+per branch: the branch moved, or main moved, or there is no stored row, or the
+stored row is an error. When nothing needs surveying the default tree is not
+read either, so an untouched repo costs nothing. The same pair gates the open-PR
+compares, since `main...head` cannot move while the PR's `updated_at` and main's
+tip both hold.
+
+One case trades exactness for cost on purpose, and it is the one the log made
+impossible to ignore. web-tools' history was rewritten, so every branch older
+than the rewrite **404s** on compare and falls into the fallback: a 50-commit
+read plus a second compare, three calls to re-derive a verdict about dead
+history, times thirty branches, on every crawl. Those rows carry `noBase`, and a
+`noBase` row is now carried while its tip holds even when main moved. Measured
+2026-08-17: 98 of one refresh's 145 calls were that one repo's dead branches.
+
+**And the reading that is still open.** The run after the carry rule landed came
+back with **86 of its 183 calls at 404**, spread across every repo and mostly on
+`compare`, including one repo (wa-bills) paying 93 calls of the run to re-derive
+branches that answer 404 every time. Two of those calls are the same shape and
+mean opposite things: GitHub answers `compare` with 404 both when there is **no
+common ancestor** (a real verdict about two histories, which the survey handles)
+and when a ref or a permission is missing (a fault). The log could not tell them
+apart, because the traffic ledger never touches a response body. It does now, by
+one narrow route: `gh.req` already parses the error message, so it hands it to
+the ledger through `window.__noteApiError`, and a failed row in the call log
+carries `msg` and the rate-limit remaining at that moment. The next run says
+which kind of 404 it hit; until then the shape of the failure is recorded and
+its meaning is not.
+
+Beside it, the same cost lesson one level down: an **errored survey row is
+carried** like a `noBase` one, and a bounded few (`ACTIVITY_ERROR_RETRY`, three
+per repo per crawl) are retried, so a transient failure heals within a few
+crawls while a permanent one stops costing the estate anything.
+
+**What the call log bought, in its first three readings.** The crawl's own log is
+the instrument for its cost, and the first run it recorded (2026-08-17, 373
+calls, 58s) named three things prose had not. Its top row was 79 GraphQL posts
+for 75s of request time, three per repo where two were `branchesDated` and
+`branchSessions` walking the same refs connection with the same page size: they
+are one call now (`gh.branchesDatedSessions`), since the crawl has always wanted
+both. Its heaviest row by bytes was eleven reads of `state/activity.json` for
+7.2 MB, of which the conflict recovery's share is gone (it buys the sha from a
+listing) and the views' share is gone too: the crawl hands its document along on
+the `web-tools:activity-refreshed` event, so a listener that used to re-read
+370 KB now reads nothing and a detail-less event still falls back to reading.
+Its third reading was the survey itself: with the split gone, 69 compares and 30
+commit reads stood out as one repo re-deriving verdicts nobody had asked it to
+re-derive, which is the carry rule above. And a run that died on a phone at
+`Load failed` after 300-odd successful calls bought one retry for a **dropped
+connection**, reads only, in both `GH.req` and `gh.graphql`: a rejected fetch is the network rather than GitHub, an HTTP error
+is not retried because the answer will not change in 600ms, and a write is never
+retried because it may have landed.
 
 The cache is what makes this affordable. The branch review costs ~2 + 2N calls to
 survey N branches, so surveying every repo live on a dashboard is a flood.
@@ -1017,6 +1122,15 @@ opening ask, and a count row: user turns, tool calls, failures, distinct files,
 and output tokens. The rail goes amber where the session hit failures and stays
 muted otherwise, deliberately not green-for-clean, since a clean session is the
 normal case and a page of green rails says nothing.
+
+The sessions crawl reports the same way Branches does, off the same channel:
+while it runs, the pane's age pill is joined by `Reading records · 18 of 120
+records` over a determinate bar above the list. It is the lighter of the two
+crawls (a tree read, then up to 120 record blobs six at a time, against a branch
+survey per repo), but a cold pass is still tens of seconds, and it had a spinner
+and one word. The Guides shelf gets neither line nor bar: it is assembled in
+memory from one listing per repo, with no denominator worth drawing, so its pill
+says `Reading…` and that is the honest whole of it.
 
 Two axes, the same shape as Branches. **Scope** is time (`Week`, `Month`, `All`)
 plus **Snagged**, which is not a time window at all: it is every session that hit
@@ -1571,6 +1685,51 @@ plus one commit read per file, regardless of estate size, and it kicks no crawl
 on arrival: a view that ran a crawl to show you how old things were would answer
 its own question before you read it.
 
+**A crawl started here draws its own bar.** Taking the Refresh controls off the
+panes moved the button to the reading that says whether to press it, and for one
+release left behind the reading the crawl was already producing: the Branches
+pane has had a determinate per-repo bar since the crawl learned to report, and
+the same crawl pressed here ran for the same tens of seconds behind a spinner saying only
+`Running…`. A control moved without its progress is a control made worse, so the
+bar moves with it. Under the ages line each row draws `Reading configs · 31 of 44
+repos`, `Surveying branches · 4 of 11 repos · chat-histories, home`, or `Reading
+records · 18 of 120 records`, over a bar whose only input is items finished over
+items total. All three read the shell's one progress channel
+(`crawlProgress`, a slot per cache key), the same one the Branches and Sessions
+panes draw, and **the crawl names its own verb and unit**, since only it knows
+whether it is counting repos or session records, and whether the survey is
+running. A crawl that fans
+out unpooled (configs) names nothing in flight, because "every repo" is not a
+reading. Nothing is smoothed between two ticks, for the same reason the pane's
+bar smooths nothing. The bar spanned **two passes** for a day, since the activity
+refresh ran quick-then-survey and a bar that filled, reached the end and started
+over says the run has finished when it has not, which is the one thing a
+progress bar must never say. The refresh is one pass now (the second was
+re-fetching the first's cheap reads), so items finished over items total is
+again the whole measure. The throttled background passes publish into no slot and so
+draw no bar, which is the point: a list refreshing on its own schedule must not
+grow a progress bar nobody asked for. The guides row has no bar either, having
+nothing to count.
+
+**Under the bar, the wire.** The bar says how far along; the line beneath it
+says what the crawl is doing right now, as the request itself: `GET
+repos/mehrlander/home/git/trees/main?recursive=1`, with this crawl's call count
+at the right. It comes off gh-boot's traffic ledger, the same capped ring of
+every request the page makes that the FAB's Traffic tab reads, tailed here
+through its coalesced `traffic` event (one per 250ms, which is what makes a
+per-request readout affordable on a crawl that fires hundreds). Three decisions
+in it are the honesty: the path is **verbatim** past the host, since a
+prettified path stops being the thing being reported and the host is the only
+part that repeats on every line; the **method leads**, because a PUT here is the
+commit, the one request in a run that changes anything, and it read as an
+ordinary row without it; and the count is **this crawl's**, off a baseline the
+slot stamps when it opens, since the page makes requests the crawl did not. A
+status appears only when it is a failure, because 200 on every line is furniture
+and a 409 is the whole story. Only api.github.com rows are shown: a font or a
+CDN module arriving mid-crawl is a true row and a misleading one. This is the
+one place the reading goes, rather than onto the panes: those show a list being
+filled, and this view's subject is the refresh itself.
+
 **The probe answers the question the age was standing in for.** An age says how
 old a file is; the question anyone opens this view with is whether there is
 anything to fetch, and until the probe the only proxy was the clock (a row went
@@ -1597,6 +1756,32 @@ a row the probe cannot answer. The entity index gets no probe, because its
 source is the content of ~4,000 files across seven checkouts and the honest
 probe is the rebuild.
 
+**Calls answers what the other two readings cannot: what the run SPENT.** The
+bar and the wire are live and gone when the crawl ends; the same traffic is kept
+in `state/calls.json`, one run per cache key, written by the crawl as it closes
+and overwritten by the next. The tab opens on the run: its verb, when, how long,
+how many calls, how many bytes disclosed, and how many passes. Then **by shape**,
+which is the reading the list cannot give: the path with the parts that vary
+between one call and the next taken out (owner and repo, shas, numbers, and a
+query's values but not its keys), counted and timed, commonest first. That is
+what turns 214 rows into `×167 GET repos/…/…/git/trees/<sha>?recursive`, which
+is a fact about the crawl's design rather than about one call. The full list sits
+underneath, since a shape can hide the one call that failed; a non-GET method and
+a status past 399 are the two things marked, for the same reason they are marked
+on the wire.
+
+Three things it does not do, each on purpose. **Only the last run per crawl**, so
+the file stays small: the `runs` ring beside the caches already carries the
+history at four numbers a run, and twenty runs of two hundred rows would be a
+projection nobody reads. **It costs a commit per run**, including a run that
+changed nothing, which is exactly what the caches' material-change gate avoids
+for them; that is why the log is a separate file, so the gate still holds where
+it matters and a log whose whole subject is the run has nothing to compare
+against. And **a run that outran the ledger says so**: gh-boot trims its traffic
+ring at 400 entries, so the stored rows are the tail, the run's own call count
+comes off the totals (which survive trimming), and the tab prints the warning
+rather than presenting a short list as complete.
+
 **History answers what an age cannot: how often this really changes.** Beside
 Expand, every registry row carries a **History** caret that opens the file's
 change log, and the two share one slot, since a row is being read one way or the
@@ -1614,7 +1799,13 @@ does not re-pick it on every row, and each tab loads on its first showing and
 then holds. The list is the registry's own commits touching that path, one call
 per open (the same `history` the row already makes for `built`, asked for twenty
 rows rather than one), each with its stamp, its age, and the gap to the change
-before it. The header folds that into the reading worth having, a count, a span,
+before it. An interval's magnitude reads `6 of 11 repos changed · 55%`: the verb is
+there because the count alone left the reader to supply one, and "changed" is
+the honest superset of the chips below it, which split added from removed from
+moved. The expanding row says what it is reading while it reads (`reading
+activity.json at both commits…`), since the two versions of the cache itself are
+the source and nothing here reads a log. The header folds the list into the
+reading worth having, a count, a span,
 and a **median** gap, set beside the throttle that governs when the file is
 checked. Two measured numbers side by side, not a verdict: a store that changes
 every 3h under a 12h throttle is a fact about the estate the schedule has to
@@ -1749,6 +1940,14 @@ refs (plus local items) sitting above any repo, and a staged fileset *is* a
 surface ([envelopes/surface.md](envelopes/surface.md), the `stage/1`
 profile), which is why the Stage view holds the bench and the shelf as one
 nav stop.
+
+The other thing that stays here is the **app-wide drop**, because it is the
+shell's gesture rather than the stage's: a file dropped on any view is staged,
+routes to the Stage, and opens in the preview when it is the only one. The
+shell owns the listeners, the drag cue, and the routing (`wireAppDrop`); what a
+dropped thing becomes is `window.StageIntake`'s, one answer shared with the
+bench's own drop-zone and with a paste. The gesture used to work only on the
+Stage, which meant you had to already be where you were trying to get to.
 
 
 ## The branch review: landed / stranded per branch

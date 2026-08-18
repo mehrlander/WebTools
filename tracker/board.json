@@ -214,6 +214,17 @@
    }
   },
   {
+   "id": "consolidate-escape-helpers-gxverk",
+   "title": "Consolidate the HTML-escape helpers and move entity-decoding to ingestion",
+   "status": "backlog",
+   "opened": "2026-08-18",
+   "size": "S",
+   "file": "consolidate-escape-helpers-gxverk.md",
+   "href": "tasks/consolidate-escape-helpers-gxverk.md",
+   "lastActivity": "2026-08-18",
+   "logEntries": 1
+  },
+  {
    "id": "cross-repo-edit-proposals-evo1ml",
    "title": "Confirm-gated cross-repo edit proposals via a web-tools-private channel",
    "status": "done",
@@ -641,6 +652,17 @@
    "href": "tasks/proposals-diff-and-removal-w1y9lk.md",
    "lastActivity": "2026-08-02",
    "logEntries": 4
+  },
+  {
+   "id": "registry-authored-derived-split-v3qm2x",
+   "title": "Separate authored from derived data across the registries",
+   "status": "backlog",
+   "opened": "2026-08-18",
+   "size": "L",
+   "file": "registry-authored-derived-split-v3qm2x.md",
+   "href": "tasks/registry-authored-derived-split-v3qm2x.md",
+   "lastActivity": "2026-08-18",
+   "logEntries": 1
   },
   {
    "id": "render-copy-runtime-cdn-refs-p4m2wq",

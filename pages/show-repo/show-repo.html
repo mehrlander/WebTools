@@ -102,6 +102,10 @@
   // the commit the crawl was making anyway. Loaded before the three caches
   // because each writes one.
   await gh.load('kits/crawl-runs.js');
+  // The answer to the API's read-after-write lag: what this page last committed,
+  // reconciled against what a read hands back. Loaded before the crawls because
+  // each one folds a read into a write.
+  await gh.load('kits/last-write.js');
   // Config-aggregate builders for the private cache (state/configs.json).
   await gh.load('kits/repo-config-cache.js');
   // The pure survey math + shared fetch orchestrators behind the branches view
@@ -167,6 +171,25 @@
      wide screen and away on a phone; ?shell= sets how much of this frame a link
      opens with. See the design notes at the end of this file. -->
 <body class="h-dvh flex flex-col overflow-hidden bg-base-100 text-base-content" x-data="app()" x-cloak>
+
+<!-- App-wide drag cue. Purely visual (pointer-events-none), so the drop still
+     lands on the window handler wireAppDrop() registered. It stands down on the
+     Stage, where the bench draws its own cue over the thing being aimed at: two
+     overlays for one gesture is one too many, and the specific one is better. -->
+<div x-show="_appDrag > 0 && view !== 'stage'" x-cloak
+     class="pointer-events-none fixed inset-0 z-[70] p-3 bg-base-300/60">
+  <div class="w-full h-full rounded-2xl border-2 border-dashed border-primary bg-primary/5
+              flex items-center justify-center">
+    <div class="flex items-center gap-3 rounded-xl bg-base-100 shadow-xl px-6 py-4
+                text-primary text-lg font-medium">
+      <i class="ph ph-tray-arrow-down text-3xl"></i>
+      <div class="text-left leading-tight">
+        Drop to stage
+        <div class="text-sm font-normal text-base-content/60" x-text="_dragNote"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="toast toast-top toast-end z-[60]" x-data x-show="$store.toasts && $store.toasts.length">
   <template x-for="t in ($store.toasts || [])" :key="t.id">
@@ -1655,6 +1678,11 @@ function app(){ return {
               run: () => ({ nav: href }) }];
   },
   view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'stage' | 'config' | 'app' | 'public'
+  // Window-level drag counter for the app-wide drop (init wires the listeners;
+  // nested enter/leave is why it counts rather than flips), and what the cue
+  // says about the drag in flight (dragNote).
+  _appDrag: 0,
+  _dragNote: '',
 
   // ── The shell mode: how much of the app is drawn around the view ──────────
   //
@@ -1767,16 +1795,28 @@ function app(){ return {
   guidesBusy: false,   // mirrored the same way, so the State row can spin
   configRefreshing: false,  // the estate refresh button is mid-crawl
   activityRefreshing: false, // the activity crawl (heavier: per-repo survey) is running
-  // Live progress for the Activity header while that crawl runs, or null when
-  // idle. The unit is the ESTATE REPO: it is the only quantity known before the
-  // fanout starts, and it is what a reader watching the button is counting. The
-  // per-repo work (branches surveyed, PR compares) is deliberately NOT counted:
-  // those tick several times a second, read as churn rather than progress, and
-  // would suggest a precision the crawl does not have, since one repo can cost
-  // an order of magnitude more than the next. `active` carries every repo in
-  // flight rather than the newest, because ACTIVITY_REPO_POOL runs two at once
-  // and naming one of them would describe the crawl wrongly.
-  activityProgress: null, // { done, total, active: [repo, …] }
+  // ── Live crawl progress, one channel for all three crawls ──────────────
+  // A slot per cache key, null when that crawl is idle, and the shape is the
+  // same in every slot: { verb, done, total, unit, active: [name, …] }. One
+  // channel rather than three props because the readers are generic: the State
+  // view draws a bar per row without knowing which crawl it is watching, and
+  // the Activity pane draws the same bar for its own row.
+  //
+  // THE CRAWL NAMES ITS OWN VERB AND UNIT. Only the crawl knows it is on the
+  // survey pass rather than the quick one, or counting session records rather
+  // than repos, so the words ride with the numbers instead of being inferred
+  // by whoever draws them.
+  //
+  // The unit is always the WHOLE thing the crawl was given to do (an account
+  // repo, an estate repo, a session record), never the sub-work inside one.
+  // Per-repo work ticks several times a second, reads as churn rather than
+  // progress, and would suggest a precision the crawl does not have, since one
+  // repo can cost an order of magnitude more than the next. `active` carries
+  // every item in flight rather than the newest, because the pools run several
+  // at once and naming one of them would describe the crawl wrongly. A crawl
+  // that fans out all at once (configs) reports no `active` at all: "every
+  // repo" is not a reading.
+  crawlProgress: { configs: null, activity: null, sessions: null },
   // Recently-committed files for the current repo@ref, shown in the sidebar.
   // Generated artifacts a build hook writes on every commit are noise here,
   // not real edits, so they're filtered out for web-tools specifically.
@@ -1869,6 +1909,8 @@ function app(){ return {
     // A bare open (no repo, file, view, or stage addressed) lands on the
     // estate: the all-repo view is the page's front door.
     else if (!url) this.goDashboard();
+
+    this.wireAppDrop();
 
     // Browser Back/Forward restores state from the URL (syncUrl pushes an entry
     // per distinct URL, so the history has real steps to walk).
@@ -2193,11 +2235,12 @@ function app(){ return {
   async refreshConfigs(){
     if (this.configRefreshing || !this.hasToken()) return;
     this.configRefreshing = true;
+    this.openCrawl('configs', 'Reading configs', 'repos');
     try {
       await this.refreshConfigCache(true);
       await this.loadEstateSidebar();
       document.dispatchEvent(new CustomEvent('web-tools:configs-refreshed'));
-    } finally { this.configRefreshing = false; }
+    } finally { this.configRefreshing = false; this.closeCrawl('configs'); }
   },
 
   // ── Config aggregate: crawl each participating repo's .web-tools.json and
@@ -2239,7 +2282,12 @@ function app(){ return {
     try {
       // One GH per repo (the shared store.gh is bound to the open repo). Read
       // the current manifest for each participant.
+      // This fan-out is unpooled, so every repo is in flight from the first
+      // moment: the count of finished repos is the only honest reading, and
+      // `active` stays empty rather than listing the whole account back.
       const fetched = {};
+      let cdone = 0;
+      this.tickCrawl('configs', { total: repos.length, done: 0, active: [] });
       await Promise.all(repos.map(async (repo) => {
         const g = new window.GH({ token: window.TOKEN, repo, ref: 'main' });
         let entry = { config: null, configName: null };
@@ -2268,10 +2316,15 @@ function app(){ return {
           } catch {}
         }
         fetched[repo] = entry;
+        this.tickCrawl('configs', { done: ++cdone, total: repos.length });
       }));
       const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
-      let prev = null;
-      try { prev = JSON.parse((await reg.get(window.RepoConfigCache.CACHE_PATH)).text); } catch {}
+      // FRESH against the browser's 60-second cache, and reconciled against what
+      // this page last wrote, against the API's own read-after-write lag. Both
+      // failures look identical from here: a fold onto a base that is not
+      // current. See readForFold above.
+      const base = await this.readForFold(reg, window.RepoConfigCache.CACHE_PATH);
+      const prev = base?.doc || null;
       // Every repo the cache already knew rides forward, whether or not this
       // crawl could see it. The enumeration above is this client's view of the
       // account, not the world's: a narrowly-scoped token, or an account past
@@ -2298,7 +2351,8 @@ function app(){ return {
           at: new Date().toISOString(), ms: Date.now() - t0,
           checked: repos.length, changed: moved.length,
         }) ?? prev?.runs;
-        await reg.save(window.RepoConfigCache.CACHE_PATH, next, 'Update config cache (state/configs.json) via show-repo');
+        await this.saveFold(reg, window.RepoConfigCache.CACHE_PATH, next,
+                            'Update config cache (state/configs.json) via show-repo', base);
       }
     } catch(e){ console.warn('config cache refresh:', e?.message || e); }
   },
@@ -2307,27 +2361,39 @@ function app(){ return {
   // Refresh button and the estate refresh flow route here). Separate from the
   // config refresh because the activity crawl is much heavier (a capped branch
   // survey per repo), so it is not folded into every config refresh.
-  // Two passes, quick then deep, so the reader stops paying the survey's price
-  // up front. The quick pass (commits, PRs, recent branch dates) is complete
-  // for the recent window by construction and lands in seconds; the view
-  // re-reads on its event, so the list is current almost immediately. The
-  // survey true-up runs behind it, and the pushed-at gate inside the crawl
-  // keeps it to repos that actually took a push since their last survey, which
-  // most days is a small fraction of the estate.
+  //
+  // ONE PASS, and it shipped as two. The split ran the crawl quick-first
+  // (commits, PRs, branch dates) so the list landed in seconds, then a survey
+  // true-up behind it. What the call log showed (2026-08-17) is what that
+  // actually cost: the deep pass repeats every cheap read the quick pass just
+  // made, because `deep` gates the survey ALONE, so a two-pass refresh of 11
+  // repos spent 66 calls, a fifth of the run, fetching the same commits and the
+  // same two PR lists twice within a minute. The seconds it bought back were
+  // real and the price was not worth them, and the reader watching the bar was
+  // also being told a run had finished when it had not.
+  //
+  // The quick pass keeps its caller: `goGuides` warms this cache for a pane that
+  // needs the repo list and the open PRs and no branch verdicts at all, so
+  // `deep: false` stays a supported shape rather than dead weight.
   async refreshActivity(){
     if (this.activityRefreshing || !this.hasToken()) return;
     this.activityRefreshing = true;
-    this.activityProgress = { done: 0, total: 0, active: [] };
+    this.openCrawl('activity', 'Refreshing activity', 'repos');
     try {
-      const quick = await this.refreshActivityCache(true, { deep: false });
-      document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
-      this.reportActivityRefresh(quick);
-      if (quick?.skipped || quick?.error) return;
-      this.activityProgress = { done: 0, total: 0, active: [], phase: 'survey' };
-      const deep = await this.refreshActivityCache(true, { deep: true });
-      document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
-      this.reportActivityRefresh(deep, ' (survey)');
-    } finally { this.activityRefreshing = false; this.activityProgress = null; }
+      const r = await this.refreshActivityCache(true, { deep: true });
+      this.announceActivity(r);
+      this.reportActivityRefresh(r);
+    } finally { this.activityRefreshing = false; this.closeCrawl('activity'); }
+  },
+
+  // Announce a finished activity crawl, handing the document along. A listener
+  // that re-reads the cache on this event is re-fetching a file the crawl still
+  // holds, so the detail carries it; a listener that gets no detail (the
+  // throttled background path, or one that never looks) falls back to reading,
+  // which is why this is an addition and not a change of contract.
+  announceActivity(r){
+    document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed',
+      { detail: r?.doc ? { cache: r.doc } : null }));
   },
 
   // The crawl's one moment of feedback, and the reason the toast belongs at the
@@ -2336,9 +2402,10 @@ function app(){ return {
   // productive refresh and a no-op refresh used to end identically, with the
   // spinner stopping and nothing saying which happened). Per-repo failures are
   // surfaced here too; they were previously a console.warn and nothing else.
-  // `label` distinguishes the two passes of the split refresh in the toast
-  // (' (survey)' on the true-up), since they report seconds apart.
-  reportActivityRefresh(r, label = ''){
+  // It took a `label` while the refresh ran in two passes, to tell their two
+  // toasts apart; one pass reports once.
+  reportActivityRefresh(r){
+    const label = '';
     if (!r) return;
     const toast = Alpine.store('toast');
     if (!toast) return;
@@ -2369,6 +2436,13 @@ function app(){ return {
   // it occasional and commits sparse. See web-tools-private/DESIGN.md.
   ACTIVITY_CACHE_INTERVAL_MS: 12 * 3600 * 1000,
   ACTIVITY_SURVEY_CAP: 30,       // older branches surveyed per repo (view's SURVEY_CAP)
+  // Errored survey rows retried per repo per crawl. A branch whose survey
+  // failed usually fails again for the same reason (a rewritten history, a ref
+  // the token cannot reach), so retrying every one on every crawl is how a
+  // single repo came to spend 93 calls of a 183-call run with 56 of them
+  // failing (2026-08-17, wa-bills). Three a run heals a transient failure
+  // within a few crawls and caps what a permanent one can cost.
+  ACTIVITY_ERROR_RETRY: 3,
   ACTIVITY_RECENT_COMMITS: 12,   // newest commits fetched per repo per crawl
   // How deep the any-state PR read goes per repo (gh.branchPulls). 100 is the
   // API's page maximum, and it has to clear the branch survey's recent window
@@ -2421,15 +2495,18 @@ function app(){ return {
       cfgByName = new Map(entries.map(([n, e]) => [n, e?.config || null]));
     } catch {}
     if (!members.length) return { skipped: true, reason: 'no estate members in the config cache yet' };
-    this.tickActivityProgress(0, members.length, []);
+    this.tickCrawl('activity', { total: members.length, done: 0, active: [] });
 
     // One account-repos read for pushed-at / default-branch, matched by name.
     let metaByName = new Map();
     try { metaByName = new Map((await new window.GH({ token: window.TOKEN }).repos()).map(r => [r.full_name, r])); } catch {}
 
-    // The prior cache, read up front for the survey gate below.
-    let prev = null;
-    try { prev = JSON.parse((await reg.get(A.CACHE_PATH)).text); } catch {}
+    // The prior cache, read up front for the survey gate below, through the same
+    // reconcile the fold uses: this crawl runs twice in a row (quick, then
+    // survey), which is precisely the window in which a read can be answered
+    // with the copy the pass before it replaced.
+    let base = await this.readForFold(reg, A.CACHE_PATH);
+    let prev = base?.doc || null;
 
     // The survey gate: a repo not pushed since its last survey cannot have
     // changed any branch verdict (landed/stranded read git state alone, and a
@@ -2442,8 +2519,16 @@ function app(){ return {
     // clock that stamped surveyedAt; anything unmeasurable surveys.
     const SURVEY_SKEW_MS = 10 * 60 * 1000;
     const needsSurvey = (repo) => {
+      const stored = prev?.repos?.[repo]?.survey;
+      // A stamp with no rows behind it is not a survey, and the gate must not
+      // read it as one. That is how a repo stayed empty after the failed-read
+      // wipe of 2026-08-17: the bad pass left `surveyedAt` current and
+      // `branches` empty, so "not pushed since the last survey" skipped it
+      // forever. Costs nothing where it fires wrongly: a repo with no older
+      // branches surveys an empty queue and makes no calls at all.
+      if (!stored?.branches?.length) return true;
       const pushed = Date.parse(metaByName.get(repo)?.pushed_at || '');
-      const seen = Date.parse(prev?.repos?.[repo]?.survey?.surveyedAt || '');
+      const seen = Date.parse(stored.surveyedAt || '');
       if (!Number.isFinite(pushed) || !Number.isFinite(seen)) return true;
       return pushed >= seen - SURVEY_SKEW_MS;
     };
@@ -2462,19 +2547,29 @@ function app(){ return {
         while (mi < members.length){
           const repo = members[mi++];
           active.push(repo);
-          this.tickActivityProgress(done, members.length, active);
-          try { fetched[repo] = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep && needsSurvey(repo)); }
+          this.tickCrawl('activity', { done, total: members.length, active });
+          try {
+            const f = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep && needsSurvey(repo), prev);
+            fetched[repo] = f;
+            // A deep pass that came back partial could not read the repo's
+            // branches. It keeps what is stored (see the guard in
+            // crawlRepoActivity) and says so, rather than reporting a clean run
+            // over a repo it never saw.
+            if (deep && needsSurvey(repo) && f?.partial) failed.push(repo);
+          }
           catch(e){ failed.push(repo); console.warn('activity crawl', repo, e?.message || e); }
           active.splice(active.indexOf(repo), 1);
-          this.tickActivityProgress(++done, members.length, active);
+          this.tickCrawl('activity', { done: ++done, total: members.length, active });
         }
       };
       await Promise.all(Array.from({ length: Math.min(this.ACTIVITY_REPO_POOL, members.length) }, crawlOne));
 
       // Re-read the cache just before folding: the crawl can run for a while,
-      // and folding over the copy read before it would silently revert
-      // whatever another writer committed in between.
-      try { prev = JSON.parse((await reg.get(A.CACHE_PATH)).text); } catch {}
+      // and folding over the copy read before it would silently revert whatever
+      // another writer committed in between. Reconciled, so the one writer it
+      // cannot be made to revert is this page itself.
+      base = await this.readForFold(reg, A.CACHE_PATH);
+      prev = base?.doc || null;
       // `members` is the scope, so a repo whose crawl threw (it is in `failed`,
       // not in `fetched`) keeps its previous entry instead of being deleted by
       // a pass that never reached it.
@@ -2482,18 +2577,24 @@ function app(){ return {
       try { localStorage.setItem(this._activityCheckKey, String(Date.now())); } catch {}
       const changed = A.changedRepos(prev, next);
       if (changed.length){
-        // The run record rides this commit (lib/kits/crawl-runs.js). `deep`
-        // distinguishes the two passes of a split refresh, which differ by an
-        // order of magnitude in cost and would otherwise average into one
-        // meaningless duration.
+        // The run record rides this commit (lib/kits/crawl-runs.js). `pass` says
+        // whether the survey ran, which is an order-of-magnitude difference in
+        // cost: the Refresh button always surveys, and `goGuides` warms this
+        // cache without one, so two entries with the same shape would otherwise
+        // average into a meaningless duration.
         next.runs = window.CrawlRuns?.push(prev?.runs, {
           at: new Date().toISOString(), ms: Date.now() - t0,
           checked: members.length, changed: changed.length, failed: failed.length,
           pass: deep ? 'survey' : 'quick',
         }) ?? prev?.runs;
-        await reg.save(A.CACHE_PATH, next, 'Update activity cache (state/activity.json) via show-repo');
+        await this.saveFold(reg, A.CACHE_PATH, next,
+                            'Update activity cache (state/activity.json) via show-repo', base);
       }
-      return { total: members.length, changed, failed, committed: changed.length > 0 };
+      // `doc` rides the summary so a view that re-reads this file on the refresh
+      // event does not have to: it is 370 KB and the crawl is holding it
+      // already. Measured 2026-08-17, one refresh read state/activity.json
+      // eleven times for 7.2 MB, and two of those reads were exactly this.
+      return { total: members.length, changed, failed, committed: changed.length > 0, doc: next };
     } catch(e){
       console.warn('activity cache refresh:', e?.message || e);
       return { total: members.length, changed: [], failed, error: e?.message || String(e) };
@@ -2550,8 +2651,11 @@ function app(){ return {
         .map(e => ({ path: e.path, sha: e.sha }));
       if (!listing.length) return { skipped: true, reason: 'no session records in the registry' };
 
-      let prev = null;
-      try { prev = JSON.parse((await reg.get(S.CACHE_PATH)).text); } catch {}
+      // This read decides which records are stale AND supplies the sha the save
+      // rides on, so a copy that is behind both under-reads the store and writes
+      // with a dead sha.
+      const base = await this.readForFold(reg, S.CACHE_PATH);
+      const prev = base?.doc || null;
 
       // Newest first, so a capped pass reads the records a reader is most
       // likely to want and the older tail catches up on later crawls.
@@ -2560,16 +2664,26 @@ function app(){ return {
       const shaByPath = new Map(listing.map(e => [e.path, e.sha]));
 
       const fetched = {};
-      let i = 0;
+      let i = 0, sdone = 0;
+      const sactive = [];
+      // The unit turns over here: the denominator is the records this pass will
+      // read, not the whole store, since the cap defers the rest and counting
+      // against a total the crawl has no intention of reaching would leave the
+      // bar short at the end of a complete run.
+      this.tickCrawl('sessions', { verb: 'Reading records', total: take.length, done: 0, active: [] });
       const readOne = async () => {
         while (i < take.length){
           const path = take[i++];
+          sactive.push(path);
+          this.tickCrawl('sessions', { done: sdone, total: take.length, active: sactive });
           try {
             // By blob sha, not by path: the sha is already in hand from the
             // tree, and a blob read cannot race a push that moves the path.
             const blob = await reg.req('git/blobs/' + shaByPath.get(path));
             fetched[path] = { record: JSON.parse(reg.decode(blob.content)), sha: shaByPath.get(path) };
           } catch(e){ console.warn('sessions crawl', path, e?.message || e); }
+          sactive.splice(sactive.indexOf(path), 1);
+          this.tickCrawl('sessions', { done: ++sdone, total: take.length, active: sactive });
         }
       };
       await Promise.all(Array.from({ length: Math.min(this.SESSIONS_FETCH_POOL, take.length) }, readOne));
@@ -2590,7 +2704,8 @@ function app(){ return {
           checked: listing.length, read: Object.keys(fetched).length,
           deferred: Math.max(0, stale.length - take.length),
         }) ?? prev?.runs;
-        await reg.save(S.CACHE_PATH, next, 'Update sessions cache (state/sessions.json) via show-repo');
+        await this.saveFold(reg, S.CACHE_PATH, next,
+                            'Update sessions cache (state/sessions.json) via show-repo', base);
       }
       return { total: listing.length, read: Object.keys(fetched).length,
                deferred: Math.max(0, stale.length - take.length), committed: changed };
@@ -2606,6 +2721,10 @@ function app(){ return {
   async refreshSessions(){
     if (this.sessionsRefreshing || !this.hasToken()) return;
     this.sessionsRefreshing = true;
+    // "Listing" until the tree read comes back, because that read is the one
+    // stretch of this crawl with no denominator: the number of stale records
+    // is not known until the listing is in hand.
+    this.openCrawl('sessions', 'Listing records', 'records');
     try {
       const r = await this.refreshSessionsCache(true);
       document.dispatchEvent(new CustomEvent('web-tools:sessions-refreshed'));
@@ -2617,16 +2736,142 @@ function app(){ return {
       else if (r.skipped) { if (r.reason) toast('warning', 'Sessions refresh skipped: ' + r.reason, 'alert-warning', 4000); }
       else if (r.committed) toast('arrows-clockwise', 'Sessions refreshed · ' + plural(r.read, 'record') + ' read' + tail, 'alert-success', 4000);
       else toast('check', 'No new sessions · ' + plural(r.total, 'record') + ' on file' + tail, 'alert-info', 3000);
-    } finally { this.sessionsRefreshing = false; }
+    } finally { this.sessionsRefreshing = false; this.closeCrawl('sessions'); }
   },
 
-  // Publish crawl progress for the Activity header. A no-op unless the run was
-  // started by the Refresh button: the throttled background pass sets no
-  // activityProgress, and has no header to report into. Reassigns rather than
-  // mutating so the whole shape lands on the view in one reactive step.
-  tickActivityProgress(done, total, active){
-    // Spread first so the phase tag a split refresh set survives the tick.
-    if (this.activityProgress) this.activityProgress = { ...this.activityProgress, done, total, active: [...active] };
+  // ── The progress channel's two writers ─────────────────────────────────
+  // openCrawl opens a slot (a Refresh button pressed), tickCrawl fills it.
+  // Both reassign rather than mutate, so the whole shape lands on every reader
+  // in one reactive step.
+  //
+  // A tick into a CLOSED slot is a no-op, and that is the mechanism that keeps
+  // the throttled background passes silent: they run the same crawl code and
+  // hit the same ticks, but nobody opened a slot for them, so no bar appears
+  // over a list the reader did not ask to have refreshed.
+  // `calls0` and `t0` are the traffic ledger's call count and the clock at the
+  // moment the RUN opened, so a reader can be told what this crawl has spent
+  // rather than what the page has spent since it loaded, and so the call log
+  // written at the end knows where the run began. The ledger (gh-boot's fetch
+  // wrapper) counts every request the page makes, and the crawl is not the only
+  // thing making them, so a bare total would answer a question nobody asked.
+  //
+  // The activity refresh ran in two passes until 2026-08-17, so a slot carried
+  // `pass`/`passes` and the bar spanned both rather than filling and starting
+  // over. One pass now (the second was re-fetching the first's cheap reads), so
+  // the slot is a plain run again: a bar that spans one pass IS the run.
+  openCrawl(key, verb, unit){
+    this.crawlProgress = { ...this.crawlProgress, [key]: {
+      verb, unit, done: 0, total: 0, active: [],
+      calls0: window.__trafficTotals?.calls || 0,
+      t0: Date.now(),
+    } };
+  },
+  // Closing writes the run's call log, then clears the slot. Unawaited on
+  // purpose: the log is a reading about a run that is already over, and nothing
+  // the reader is waiting for may sit behind it.
+  closeCrawl(key){
+    const slot = this.crawlProgress[key];
+    this.crawlProgress = { ...this.crawlProgress, [key]: null };
+    if (slot) this.saveCrawlCalls(key, slot).catch(e => console.warn('call log:', e?.message || e));
+  },
+  // ── Folding onto the newest copy, not merely the fetched one ────────────
+  // Every crawl here reads a registry file, folds into it, and writes it back.
+  // GitHub's contents API is read-after-write eventual, so seconds after a
+  // commit a read can still be answered with the version it replaced, sha and
+  // all: the split refresh's survey pass hit exactly that and 409'd four times
+  // (2026-08-16). `GH.FRESH` removed the browser's 60-second cache from the
+  // picture; this removes the API's own lag, by preferring the copy this page
+  // committed when the read comes back older than it. lib/kits/last-write.js
+  // carries the argument.
+  async readForFold(reg, path){
+    let read = null;
+    try {
+      const r = await reg.get(path, window.GH.FRESH);
+      read = { doc: JSON.parse(r.text), sha: r.sha };
+    } catch {}
+    return window.LastWrite?.reconcile(this.REGISTRY_REPO, path, read) || read;
+  },
+  // Save a fold, then remember what was written. The sha rides in rather than
+  // being re-read, which is the whole point: it is the one fact a lagging read
+  // cannot supply.
+  async saveFold(reg, path, doc, message, base){
+    const res = await reg.save(path, doc, message, { sha: base?.sha });
+    window.LastWrite?.note(this.REGISTRY_REPO, path, doc, res?.content?.sha);
+    return res;
+  },
+
+  // ── The call log: the last run of each crawl, as the calls it made ──────
+  //
+  // The bar says how far along and the wire says what is in flight, and both
+  // are gone the moment the run ends. This is the same traffic kept: every
+  // GitHub call the run made, committed beside the caches, so the run can be
+  // read after the fact by whoever opens the page and by anyone reading the
+  // repo. It is the first thing here that makes the crawl's COST inspectable
+  // rather than merely visible, which is what turns "it took 38 seconds" into
+  // "167 of these 214 calls were one tree read per branch".
+  //
+  // ONLY THE LAST RUN, per crawl, overwritten. A ring of runs would be hundreds
+  // of rows times twenty, for a reading whose value is almost entirely in the
+  // most recent one; the `runs` ring beside it already carries the shape of the
+  // history (when, how long, how much changed) at four numbers a run.
+  //
+  // THE PRICE, stated because it is real: this is a commit per run, including a
+  // run that changed nothing, which is exactly what the caches' material-change
+  // gate exists to avoid for THEM. It is a separate file for that reason: the
+  // gate still holds where it matters, and a log whose whole subject is the run
+  // has nothing to compare against. A run's rows are capped at what the ledger
+  // holds (gh-boot trims at 400), and a run that outran it says so rather than
+  // reporting a short list as complete.
+  CALLS_PATH: 'state/calls.json',
+  CALLS_CAP: 400,
+  async saveCrawlCalls(key, slot){
+    if (!this.hasToken() || !slot?.t0) return;
+    const T = Array.isArray(window.__traffic) ? window.__traffic : [];
+    const rows = T.filter(e => e.t >= slot.t0 && String(e.url || '').includes('api.github.com'))
+      .map(e => ({
+        m: e.method, u: String(e.url).replace(/^https?:\/\/api\.github\.com\//, ''),
+        s: e.status || 0, ms: e.ms || 0, b: e.wire ?? null,
+        // The quota AT THIS CALL, kept only where it can explain something: a
+        // failure. A run that comes back full of 404s reads as a broken crawl
+        // until this says whether the answer was "gone" or "not allowed right
+        // now" (2026-08-17, 86 of 183 calls 404 across every repo, with no way
+        // to tell the two apart afterwards).
+        ...(e.status >= 400 && e.rate != null ? { rate: e.rate } : {}),
+        ...(e.status >= 400 && e.msg ? { msg: e.msg } : {}),
+      }));
+    if (!rows.length) return;
+    const calls = Math.max(0, (window.__trafficTotals?.calls || 0) - (slot.calls0 || 0));
+    const kept = rows.slice(-this.CALLS_CAP);
+    const run = {
+      at: new Date(slot.t0).toISOString(), ms: Date.now() - slot.t0,
+      verb: slot.verb, unit: slot.unit,
+      // `calls` is the run's own count off the ledger's totals, which survive
+      // trimming; `rows` is what could still be shown. They differ exactly when
+      // the run outran the ledger, and saying both is what keeps a truncated
+      // list from reading as a complete one.
+      // Truncated means THIS RUN lost rows, which is `rows` short of `calls`.
+      // It first read `trimmed > 0`, and that fired whenever the ledger dropped
+      // anything since the run began, including the page's own boot traffic
+      // sitting in front of it: a complete log reported itself incomplete on the
+      // first real run (2026-08-17, 373 of 373 rows, flagged).
+      calls, rows: kept, truncated: kept.length < calls,
+      // The run's own header line for failures: how many, and the lowest quota
+      // seen while they happened.
+      failed: rows.filter(r => r.s >= 400).length,
+      rateLow: rows.reduce((lo, r) => (r.rate != null && (lo == null || r.rate < lo) ? r.rate : lo), null),
+    };
+    const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
+    const base = await this.readForFold(reg, this.CALLS_PATH);
+    const next = { generatedAt: new Date().toISOString(),
+                   runs: { ...(base?.doc?.runs || {}), [key]: run } };
+    await this.saveFold(reg, this.CALLS_PATH, next,
+                        'Log ' + key + ' crawl calls (state/calls.json) via show-repo', base);
+  },
+
+  tickCrawl(key, patch){
+    const p = this.crawlProgress[key];
+    if (!p) return;
+    this.crawlProgress = { ...this.crawlProgress, [key]: { ...p, ...patch, active: [...(patch.active ?? p.active)] } };
   },
 
   // Crawl one repo's activity: the cheap summary (pushed-at, recent commits,
@@ -2639,7 +2884,7 @@ function app(){ return {
   // `survey` key entirely rather than sending an empty one, because
   // RepoActivityCache.mergeRepo keeps the prior survey when the field is
   // undefined and clears it when present. That affordance already existed.
-  async crawlRepoActivity(repo, meta, now, A, B, cfg, deep = true){
+  async crawlRepoActivity(repo, meta, now, A, B, cfg, deep = true, prev = null){
     const def = meta?.default_branch || 'main';
     const g = new window.GH({ token: window.TOKEN, repo, ref: def });
     // Probe the repo's declared checks in the same pass. Cheap when declared
@@ -2650,7 +2895,7 @@ function app(){ return {
     const checkFacts = (Array.isArray(cfg?.checks) && cfg.checks.length && window.RepoChecks)
       ? await window.RepoChecks.probe(cfg.checks, this._checkReader(g, def)).catch(() => [])
       : [];
-    const [recentCommits, openPRs, branchPulls, branchSessions] = await Promise.all([
+    const [recentCommits, openPRs, branchPulls, branchWalk] = await Promise.all([
       g.commits(this.ACTIVITY_RECENT_COMMITS).catch(() => []),
       g.pulls('open', 30).catch(() => []),
       // The PR each branch last had, in ANY state (gh.branchPulls). One call per
@@ -2658,21 +2903,46 @@ function app(){ return {
       // rather than "no PR": the open read above cannot see a PR that merged,
       // which is the state most branches in the recent window are actually in.
       g.branchPulls(this.ACTIVITY_PR_REACH).catch(() => ({ rows: [], reach: '' })),
-      // Optional by design: the session links are a nicety, so a failure here
-      // leaves them blank rather than costing the repo its activity row.
-      g.branchSessions().catch(() => ({})),
+      // The dated branch list AND the authoring session per branch, from one
+      // walk of one refs connection (gh.branchesDatedSessions). They used to be
+      // two GraphQL calls paying twice for the same pagination; the crawl's own
+      // call log put that pair at the top of the bill (2026-08-17: 79 posts,
+      // 75s of request time across 22 repos). Still optional by design: a
+      // failure here leaves the survey to fall back to the REST branch list and
+      // the session links blank, rather than costing the repo its row.
+      g.branchesDatedSessions().catch(() => null),
     ]);
+    const branchSessions = branchWalk?.sessions || {};
+    // The default branch's tip, this pass and last. Every verdict below is a
+    // function of it and of one branch tip, so these two comparisons are what
+    // let the crawl skip work rather than redo it.
+    const mainSha = recentCommits[0]?.sha || '';
+    const prevMainSha = prev?.repos?.[repo]?.recentCommits?.[0]?.sha || '';
     // Ahead/behind for each open PR head, so the Open view can show it without a
     // per-visit compare. The same response carries the branch's oldest unique
     // commit (BranchSurvey.firstCommitDate), which is what lets the Open row
     // show a lifespan for a PR head the survey never reached. Bounded pool,
     // best-effort: a failure leaves it null.
+    // Same two inputs as the survey, so the same gate: a compare of `main` to a
+    // PR head cannot have moved while the PR has not been updated and the
+    // default branch's tip is where it was. The stored row already holds the
+    // answer, so this skips the call and carries it. (`updatedAt` moves on a
+    // push to the head, so a branch that gained commits is never carried.)
     {
+      const priorPR = new Map((prev?.repos?.[repo]?.openPRs || []).map(r => [r.number, r]));
+      const mainHeld = prevMainSha && mainSha && prevMainSha === mainSha;
       let pi = 0;
       const prAheadBehind = async () => {
         while (pi < openPRs.length){
           const p = openPRs[pi++];
           if (!p.head) continue;
+          const was = priorPR.get(p.number);
+          if (mainHeld && was && was.updatedAt === p.updatedAt && was.aheadBy != null) {
+            p.aheadBy = was.aheadBy; p.behindBy = was.behindBy;
+            p.firstDate = was.firstDate || '';
+            if (was.sessions) { p.sessions = was.sessions; p.sessionsExact = !!was.sessionsExact; }
+            continue;
+          }
           try {
             const d = await g.compare(def, p.head);
             p.aheadBy = d.ahead_by ?? null; p.behindBy = d.behind_by ?? null;
@@ -2689,16 +2959,30 @@ function app(){ return {
     // active; older = surveyed, capped), through the shared orchestrator.
     let branches = [], counts = { branches: 0, active: 0, landed: 0, stranded: 0, surveyed: 0, older: 0, openPRs: openPRs.length };
     let truncated = false;
+    // Whether this pass actually READ the branch list. Everything below is
+    // derived from it, so a failure here means the numbers are absent rather
+    // than zero, and the difference is the whole of the guard at the bottom.
+    let listOk = false;
     try {
-      let list;
-      try { list = await g.branchesDated(); }
-      catch { list = (await g.branches()).map(b => ({ name: b.name, date: '', ago: '', sha: b.commit?.sha || '', subject: '' })); }
+      // The walk above already fetched this; REST is the fallback for a repo
+      // whose GraphQL read failed, and it carries no dates, which is why the
+      // classifier treats a dateless branch as older rather than guessing.
+      let list = branchWalk?.branches;
+      if (!list) list = (await g.branches()).map(b => ({ name: b.name, date: '', ago: '', sha: b.commit?.sha || '', subject: '' }));
+      listOk = true;
       const dated = list.filter(b => b.name !== def)
         .map(b => ({ ...b, daysAgo: b.date ? B.daysAgo(b.date, now) : Infinity }));
       const recent = dated.filter(b => b.daysAgo <= B.RECENT_DAYS).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       const older = dated.filter(b => b.daysAgo > B.RECENT_DAYS).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      // What the last survey saw, so a branch whose tip has not moved since is
+      // carried rather than re-derived. `mainSha` is the default branch's tip
+      // from the commits read above, and it is the survey's other input: while
+      // both hold, a verdict cannot have changed. See BranchSurvey.needsSurvey.
+      const prior = new Map((prev?.repos?.[repo]?.survey?.branches || []).map(r => [r.name, r]));
       const surveyed = deep
-        ? await B.surveyOlder(g, { defaultRef: def, older, cap: this.ACTIVITY_SURVEY_CAP, pool: 3, now })
+        ? await B.surveyOlder(g, { defaultRef: def, older, cap: this.ACTIVITY_SURVEY_CAP, pool: 3, now,
+                                   prior, mainSha, priorMainSha: prev?.repos?.[repo]?.survey?.mainSha || '',
+                                   errorRetry: this.ACTIVITY_ERROR_RETRY })
         : { truncated: false, rows: [] };
       truncated = surveyed.truncated;
       const prSessions = Object.fromEntries(openPRs.filter(p => p.head && p.sessions?.length).map(p => [p.head, p.sessions]));
@@ -2737,14 +3021,30 @@ function app(){ return {
       // to tell a branch row what became of its PR.
       branchPRs: branchPulls.rows || [],
       prReach: branchPulls.reach || '',
-      counts,
       // Read by mergeRepo and dropped there: it describes THIS PASS, not the
-      // repo, so it must never reach the stored entry or the hash.
-      ...(deep ? {} : { partial: true }),
+      // repo, so it must never reach the stored entry or the hash. A pass whose
+      // branch list would not read is partial in exactly the same sense as a
+      // quick pass: it knows less than the stored entry does.
+      ...(deep && listOk ? {} : { partial: true }),
+      // Counts describe the branch list, so a pass that never read one has no
+      // counts to give. Omitting them entirely is what makes mergeRepo carry
+      // the stored ones; sending zeros would report an empty repo.
+      ...(listOk ? { counts } : {}),
       // Omitted on a quick pass, so mergeRepo carries the prior survey
       // forward. Sending { branches: [] } here would silently delete every
       // content verdict the estate has, which is the trap this guards.
-      ...(deep ? { survey: { surveyedAt: new Date(now).toISOString(), cap: this.ACTIVITY_SURVEY_CAP,
+      //
+      // IT GUARDED ONLY HALF THE TRAP UNTIL 2026-08-17. The quick pass was
+      // handled; a DEEP pass whose branch read failed still wrote
+      // `{ branches: [] }` over the stored rows, because the try/catch above
+      // leaves `branches` empty and carries on. Three repos were emptied that
+      // way in one run (home 89 rows, web-tools-private 25, fn-data 22) while
+      // the crawl reported success. `listOk` is the missing half.
+      // `mainSha` is what makes the next pass able to skip: it names the default
+      // branch this survey judged against, the other half of the pair (with
+      // each row's own `sha`) that decides whether a verdict can have moved.
+      ...(deep && listOk ? { survey: { surveyedAt: new Date(now).toISOString(), cap: this.ACTIVITY_SURVEY_CAP,
+                             mainSha: recentCommits[0]?.sha || '',
                              surveyed: counts.surveyed, older: counts.older, truncated, branches } } : {}),
       // Declared checks, PROBED not judged: the stored fact is time-independent
       // so the cache hash stays stable across crawls, and the card computes the
@@ -4280,19 +4580,17 @@ function app(){ return {
     return m ? +m[1] / (m[2] ? 24 : 1) : 0;
   },
   goActivity(){ this.estateSeen = true; this.view = 'activity'; this.arrivalActivityRefresh?.(); this.syncUrl(); },
-  // Arrival kick: the throttled quick pass and, when it actually ran, the
-  // survey true-up behind it. Un-awaited by design; there is no progress UI on
-  // this path, and the view re-reads on the events. The true-up here is what
-  // keeps the branch verdicts current without anyone pressing Refresh: the
-  // pushed-at gate inside the crawl reduces it to the repos that took a push,
-  // so it can afford to ride every unthrottled arrival.
+  // Arrival kick: one throttled crawl, survey included. Un-awaited by design;
+  // there is no progress UI on this path, and the view re-reads on the event.
+  // The survey is what keeps the branch verdicts current without anyone
+  // pressing Refresh, and the pushed-at gate inside the crawl reduces it to the
+  // repos that took a push, so it can afford to ride every arrival past the
+  // throttle. It was two passes here as well until 2026-08-17, for the same
+  // reason and at the same price: the second repeated the first's cheap reads.
   async arrivalActivityRefresh(){
     try {
-      const quick = await this.refreshActivityCache(false, { deep: false });
-      if (!quick || quick.skipped || quick.error) return;
-      if (quick.committed) document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
-      const deep = await this.refreshActivityCache(true, { deep: true });
-      if (deep?.committed) document.dispatchEvent(new CustomEvent('web-tools:activity-refreshed'));
+      const r = await this.refreshActivityCache(false, { deep: true });
+      if (r?.committed) this.announceActivity(r);
     } catch(e){ console.warn('arrival activity refresh:', e?.message || e); }
   },
   // Activity's other pill: the sessions that made the branches. Kicks its own
@@ -4332,6 +4630,97 @@ function app(){ return {
   // routed here (the explorer's "+", a #stage= link, a saved surface's Load),
   // and all of them mean "show me what is staged", which is this pill.
   goStage(){ this.estateSeen = true; this.view = 'stage'; this.syncUrl(); },
+
+  // ── A DROP ANYWHERE STAGES ────────────────────────────────────────────────
+  // The Stage's own view has always taken a drop, which meant the gesture
+  // worked only once you had gone there: a file dragged onto Repos, a file, the
+  // Map or the Activity list had nowhere to land, and nothing on screen said
+  // so. The APP takes it now, from any view, and routes to the Stage with the
+  // file already on the bench, opened in the preview when it is the only one.
+  //
+  // The split is deliberate: what a dropped thing BECOMES is stage.js's
+  // (window.StageIntake, one answer for the bench's drop-zone, a paste, and
+  // this), and this owns the gesture and where it goes afterwards. The bench
+  // mounts lazily, so there is nothing to call at drop time: the intake names
+  // the staged item on the store and the stager opens it when it mounts.
+  //
+  // Two drops it deliberately does not take. A drag over a form field keeps its
+  // native drop, the way the paste path leaves a field's own paste alone, since
+  // dropping a path into the destination box is a real thing to do. And a drop
+  // the Stage view's own root already handled is left to it: that handler
+  // preventDefaults on the way up, so `defaultPrevented` is the tell, and the
+  // alternative is staging the same file twice.
+  wireAppDrop(){
+    const worthy = (dt) => !!dt && Array.from(dt.types || [])
+      .some(t => t === 'Files' || /^text\//.test(t) || t === 'application/json');
+    const editable = (t) => !!t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || '') || t.isContentEditable);
+    const mine = (e) => worthy(e.dataTransfer) && !editable(e.target);
+    window.addEventListener('dragenter', (e) => {
+      if (!mine(e)) return;
+      e.preventDefault();
+      this._appDrag++;
+      this._dragNote = this.dragNote(e.dataTransfer);
+    });
+    // Without a prevented dragover there is no drop event at all: this line is
+    // what makes the window a drop target rather than the browser navigating
+    // to the file. The note is refreshed only when it is missing, since
+    // dragover fires continuously and re-deriving it on every frame would be
+    // work nobody sees.
+    window.addEventListener('dragover', (e) => {
+      if (!mine(e)) return;
+      e.preventDefault();
+      if (!this._dragNote) this._dragNote = this.dragNote(e.dataTransfer);
+    });
+    // A null relatedTarget means the pointer left the WINDOW, not a child, and
+    // the counter must clear rather than decrement: an enter/leave pair that
+    // does not balance (dragging out over a scrollbar, say) otherwise leaves
+    // the cue standing over an app nobody is dragging onto.
+    window.addEventListener('dragleave', (e) => {
+      this._appDrag = e.relatedTarget ? Math.max(0, this._appDrag - 1) : 0;
+      if (!this._appDrag) this._dragNote = '';
+    });
+    window.addEventListener('drop', async (e) => {
+      this._appDrag = 0;
+      this._dragNote = '';
+      if (e.defaultPrevented || !mine(e)) return;
+      e.preventDefault();
+      const added = await window.StageIntake.takeDrop(e.dataTransfer);
+      if (!added.length) return;
+      this.goStage();
+      // One file opens on itself, since seeing it is the reason to drop it. A
+      // batch lands and stays listed: a modal over a set nobody has seen listed
+      // is the wrong first look at it.
+      if (added.length === 1) window.StageIntake.focus(added[0]);
+    });
+  },
+
+  // WHAT THE CUE CAN HONESTLY SAY MID-DRAG, which is less than it looks.
+  // A drag in flight exposes `items` (a kind and a MIME type each) and nothing
+  // else: `getAsFile()` returns null and `getData()` returns '' until the drop,
+  // deliberately, so the browser does not leak a filename to a page you are
+  // merely dragging over. "Drop release-notes.md to stage" is therefore not
+  // writable from here at any effort. The count and the kind ARE answered
+  // during the gesture, and so is what will happen to them, which is the part
+  // worth saying: one file opens, several land.
+  dragNote(dt){
+    const files = Array.from(dt?.items || []).filter(i => i.kind === 'file');
+    if (files.length > 1) return files.length + ' files, landing on the Stage';
+    if (files.length === 1) return this.dragKind(files[0].type) + ', opening on the Stage';
+    return 'Text, landing on the Stage';
+  },
+  // A dragged file's MIME as a short label. An empty type is common and is
+  // reported as the plain "A file" rather than guessed at: a .md dragged out of
+  // a file manager often carries no type at all, and the extension that would
+  // settle it rides with the name the drag is withholding.
+  dragKind(type){
+    const t = String(type || '');
+    if (t.startsWith('image/')) return 'An image';
+    if (t === 'application/pdf') return 'A PDF';
+    if (/spreadsheet|excel|csv/.test(t)) return 'A spreadsheet';
+    if (/zip|compressed|tar/.test(t)) return 'An archive';
+    if (t.startsWith('text/') || t === 'application/json') return 'A text file';
+    return 'A file';
+  },
   // Public browse: the estate-level no-token file browser (lazy mount). An
   // optional repo (from an estate card) seeds it via the reactive publicSeed the
   // component watches; the bare sidebar entry passes none and keeps the default.

@@ -4,6 +4,7 @@
 # covering exactly the types and fields these queries in lib/gh-fetch.js reach:
 #   branchesDated
 #   branchesForPath
+#   branchesDatedSessions
 #   branchSessions
 #
 # Kept fields carry their full argument list, so a missing required argument
