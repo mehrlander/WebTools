@@ -103,13 +103,13 @@ not become a component, it gets a component wrapper.
 ## tools/, which is the weak layer
 
 Since 2026-08-08 the accounting below has a carrier:
-[`docs/harness.csv`](harness.csv), the harness census, one row per code file
+[`docs/harness.csv`](harness.csv), the harness registry, one row per code file
 under `tools/` and `scripts/` (`tools/test/` stays with the test registry).
 `role` is authored and a blank role is counted rather than hidden;
 invocation, named, and tested are stamped by
 [`tools/build/tools-index.mjs`](../tools/build/tools-index.mjs) and held in
 lockstep by the suite. It renders in the Web Tools app's Map view, Harness tab. The
-census does not change the judgment below; it makes the gap it describes
+registry does not change the judgment below; it makes the gap it describes
 visible per file rather than per column.
 
 [`tools/README.md`](../tools/README.md) states the folder split

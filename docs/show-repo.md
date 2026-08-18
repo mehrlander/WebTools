@@ -1423,7 +1423,7 @@ its unit. Public.
 **Tools** (`?view=tools`) is a curated gallery of the utility pages the owner
 reaches for (the text-diff tool, the transform/compress round-trip, and so on),
 an estate-level peer beside Repos / Surfaces / Stage / Map. It reuses the
-pages-catalog card (thumbnail or live preview, an open link, a source link),
+pages card (thumbnail or live preview, an open link, a source link),
 fed from a hand-curated manifest, [`docs/tools.csv`](tools.csv), rather than a
 repo scan. Each entry is `{ path, title, note, icon }`, where `path` is a bare
 hub path (`pages/diff-tool.html`, the hub at main) or a qualified cross-repo ref

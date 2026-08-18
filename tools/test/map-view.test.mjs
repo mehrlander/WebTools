@@ -437,10 +437,15 @@ test('Registries groups declarations under the registry that governs them', asyn
     'every declaration lands under exactly one registry row');
 
   const t = data.registryTotals;
-  // A crosswalk is a kind of catalog, so the two still partition the set.
-  assert.equal(t.census + t.catalog, t.registries, 'every registry is a census or a catalog');
-  assert.ok(t.crosswalk > 0 && t.crosswalk < t.catalog,
-    'crosswalk is a value some registry holds, and fewer than all catalogs');
+  // `membership` is one question with two answers, so it partitions cleanly. It
+  // needed a union to do that before 2026-08-18, when `crosswalk` was a third
+  // value of the same column while being an answer to a different question.
+  assert.equal(t.computed + t.curated, t.registries,
+    'every registry is computed or curated, with nothing left over');
+  // Inheritance is the other question, and it cuts across the first rather than
+  // partitioning it: some curated registries borrow descriptions, most do not.
+  assert.ok(t.inheriting > 0 && t.inheriting < t.curated,
+    'some registries inherit descriptions, and not every curated one does');
   assert.equal(t.decls, grouped);
   assert.ok(t.closed > 0 && t.closed <= t.decls);
 });

@@ -221,7 +221,7 @@ Component-test lessons that generalize:
   expects, so it cannot notice when the real file stops having that shape. Four
   readers broke this way in one session (2026-08-18) when eleven registries
   went from JSON to CSV: the FAB's Match lane, the page gallery, the Tools
-  view, and the harness census strip all kept parsing JSON against a CSV file,
+  view, and the harness registry's strip all kept parsing JSON against a CSV file,
   and all four of their tests stayed green because each stub was still handing
   over JSON. Read the fixture the way the reader will: give it CSV text, or a
   string built by the same writer the generator uses, and let the reader's own

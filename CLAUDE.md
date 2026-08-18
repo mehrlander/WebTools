@@ -89,7 +89,7 @@ the rules, and what its audits found are in
 [`docs/registries.md`](docs/registries.md); read it before inventing a carrier,
 since the answer is usually a row in one that exists. The one trap: **one
 property about one target answers to one registry** (gated); resolve a
-collision with a **crosswalk** (curation inheriting a census's description),
+collision by declaring that one registry **inherits** the other's descriptions,
 never by renaming a side, which keeps the duplicate.
 
 

@@ -57,7 +57,7 @@ function domainFromSkill(prop) {
 test('the content registry domains match the skill that defines them', () => {
   const declared = Object.fromEntries(
     reg.properties
-      .filter(d => d.registry === 'content-registry' && Array.isArray(d.values))
+      .filter(d => d.registry === 'content' && Array.isArray(d.values))
       .map(d => [d.property, d.values]));
 
   assert.deepEqual(Object.keys(declared).sort(), ['analysis_use', 'creation_mode'],

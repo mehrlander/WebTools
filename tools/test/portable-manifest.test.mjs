@@ -44,11 +44,11 @@ test('the set is typed and non-empty, and the plugins match the marketplace', ()
     assert.ok(['skill', 'doc', 'dir', 'script'].includes(it.kind), it.path + ': kind');
     assert.ok(it.path && it.title, it.path + ': path/title');
     // `role` is required only where no census already describes the file. The
-    // set is a crosswalk: on the nine scripts docs/harness.csv describes, a
+    // set inherits from `harness`: on the nine scripts docs/harness.csv describes, a
     // role here would be a second copy of one claim, which is what the
     // ownership gate in properties-registry.test.mjs now forbids. The Map view
     // joins the census value for display, so the row is not left blank to a
-    // reader. See docs/registries.md, "the crosswalk shape".
+    // reader. See docs/registries.md, "the inheritance shape".
     assert.ok(it.role || harnessPaths.has(it.path),
       it.path + ': needs a role, since no census carries a description for it');
   }

@@ -182,10 +182,10 @@ test('every value in a closed domain is in that domain', () => {
 
 // `required` was the next unchecked claim after `why`, and the same audit found
 // the same shape of rot: 54 declarations said `value`, nothing read any of
-// them, and three were false. Two were tests-census fields that are blank on
+// them, and three were false. Two were tests fields that are blank on
 // the ten browser-driven checks (blank, never zero, because test() is not their
 // unit), which is a `counted` figure wearing a `value` grade. The third was
-// pages-catalog.title, blank on one page that genuinely had no <title>; there
+// pages.title, blank on one page that genuinely had no <title>; there
 // the data was wrong rather than the grade, and the page got a title.
 //
 // So `value` now means what it says on every governed property, not only on the
@@ -278,15 +278,15 @@ test('renders_in matches its derivation on every registry', () => {
 // resolves to at most one authoritative registry ... Two registries claiming
 // the same pair is an invalid configuration, surfaced by the gate, never
 // resolved by precedence." That rule was written on 2026-08-08 and nothing read
-// it, so it was false in two places when this gate first ran: harness-census
-// and portable-catalog both asserted `role` over nine scripts (paraphrases, one
-// already stale on .mjs and .py), and pages-catalog and tools-gallery both
+// it, so it was false in two places when this gate first ran: harness
+// and portable both asserted `role` over nine scripts (paraphrases, one
+// already stale on .mjs and .py), and pages and tools both
 // asserted `title` and `note` over four pages (note differed on all four).
 // Both are resolved by inheritance, not by renaming: a rename would defuse this
 // gate while leaving one claim stored twice, which is worse than the collision.
 //
 // It decides on ASSERTIONS, not declarations. A blank is not an assertion, so a
-// crosswalk may declare a property it fills only where no census owns it. And
+// an inheriting registry may declare a property it fills only where no computed set owns it. And
 // it compares only registries whose key resolves to a shared identity space,
 // declared as `identity`: "path" where the key is a repo-relative path,
 // "path:<prefix>" where it is relative to one. Absent means opaque, and an
@@ -302,7 +302,15 @@ function identityOf(r, row) {
   // A qualified cross-repo ref (owner/repo[@ref]:path) addresses another repo
   // and shares no identity space with a bare path here.
   if (raw.includes(':')) return null;
-  return (r.identity.startsWith('path:') ? r.identity.slice(5) : '') + raw;
+  // Namespaced by the DECLARED identity space, not just by the `path:` prefix.
+  // Two registries collide only when they describe the same thing, and a
+  // registry id is not a filesystem path even when both read `skills`. Before
+  // 2026-08-18 every space but `path:<root>` collapsed into one, so the gate
+  // was comparing strings across incomparable spaces; renaming the skills
+  // catalog to `skills` made it fire against the portable set's `skills/` row.
+  const root = r.identity.startsWith('path:') ? r.identity.slice(5) : '';
+  const space = r.identity.startsWith('path:') ? 'path' : r.identity;
+  return space + '\u0000' + root + raw;
 }
 
 function assertionOwners() {
@@ -342,23 +350,33 @@ test('no target answers to two registries for the same property', () => {
 // This drives the same normalizer with a synthetic pair to prove it can still
 // bring two spellings of one target together.
 test('the ownership gate still fires when two registries do claim one pair', () => {
+  // Two spellings of ONE file must normalize together, or the gate stops
+  // catching real duplicates. Asserted as equality rather than against a
+  // literal key, so the normalizer's internal format is free to change.
   const a = { id: 'a', identity: 'path', key: 'path' };
   const b = { id: 'b', identity: 'path:pages/', key: 'href' };
-  const owners = new Map();
-  for (const [r, row] of [[a, { path: 'pages/x.html' }], [b, { href: 'x.html' }]]) {
-    const id = identityOf(r, row);
-    owners.set(id, [...(owners.get(id) ?? []), r.id]);
-  }
-  assert.deepEqual(owners.get('pages/x.html'), ['a', 'b'],
+  assert.equal(identityOf(a, { path: 'pages/x.html' }), identityOf(b, { href: 'x.html' }),
     'the identity normalizer no longer brings two spellings of one target together');
 });
 
-// A crosswalk earns its shape only if the inheritance resolves. A Tools row
+// The other direction, and the one that was missing: two registries keyed in
+// DIFFERENT spaces must not collide just because a string matches. Renaming the
+// skills catalog to `skills` on 2026-08-18 put a registry id beside the portable
+// set's `skills/` directory row, and the gate reported a `kind` conflict between
+// two things that are not the same thing.
+test('the ownership gate does not fire across two identity spaces', () => {
+  const path = { id: 'portable', identity: 'path', key: 'path' };
+  const regId = { id: 'registries', identity: 'registry-id', key: 'id' };
+  assert.notEqual(identityOf(path, { path: 'skills' }), identityOf(regId, { id: 'skills' }),
+    'a filesystem path and a registry id share a spelling, not an identity');
+});
+
+// An inheriting registry earns its shape only if the inheritance resolves. A Tools row
 // whose page is gone renders with no title and no description, the silent-blank
 // failure that dropping those fields makes possible.
-test('every tools-gallery row resolves to a page the gallery owns', () => {
-  const tools = reg.registries.find(r => r.id === 'tools-gallery');
-  const pages = reg.registries.find(r => r.id === 'pages-catalog');
+test('every tools row resolves to a page the gallery owns', () => {
+  const tools = reg.registries.find(r => r.id === 'tools');
+  const pages = reg.registries.find(r => r.id === 'pages');
   const known = new Set(carrierRows(pages).map(row => 'pages/' + row[pages.key]));
   for (const row of carrierRows(tools)) {
     const p = row[tools.key];

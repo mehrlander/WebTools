@@ -30,7 +30,7 @@ import { parseCsv, splitList } from '../build/registries-load.mjs';
 // imported below from tests-index.mjs, which already had the domain.
 const VOCAB = parseCsv(readFileSync(path.join(repoRoot, 'docs', 'vocabularies.csv'), 'utf8'));
 const glossOf = (v) => VOCAB.find(r =>
-  r.registry === 'tests-census' && r.property === 'kind' && r.value === v)?.gloss;
+  r.registry === 'tests' && r.property === 'kind' && r.value === v)?.gloss;
 import { deriveTests, KINDS, METHODS } from '../build/tests-index.mjs';
 
 const registry = { tests: parseCsv(readFileSync(path.join(repoRoot, 'docs', 'tests.csv'), 'utf8')).map(t => ({
