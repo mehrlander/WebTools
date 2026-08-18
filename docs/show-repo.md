@@ -1295,7 +1295,7 @@ That last case is the reason the caveats are on screen instead of in this file:
 estate and are precisely the two no file tool can see, so a bare count would rank
 them last.
 
-*Tests* is the same census one axis over, from [`docs/tests.json`](tests.json):
+*Tests* is the same census one axis over, from [`docs/tests.csv`](tests.json):
 every file in the suite with its kind (gate, lockstep, tool, kit, behavior,
 component, guard) and what breaks if it is deleted, its assertions, method,
 runner and boot-smoke count all derived from the files and gated against the

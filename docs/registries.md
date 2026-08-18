@@ -515,7 +515,7 @@ In budget-drs, every one of the twenty properties is defined by a separate
 design document, because that repo has a design-doc layer: `SCHEMA.md`,
 `GRAINS.md`, `SOURCES.md`, `LAYERS.md`. In the hub, almost every domain is
 defined in its own carrier's `note` or in a glossary block beside the rows
-(`kinds` in `docs/tests.json`, `layers` in `docs/harness.json`), because here
+(`kinds` in `docs/tests.csv`, `layers` in `docs/harness.csv`), because here
 the carrier's note *is* the design document. The field would have been populated
 on a handful of rows and blank on the rest, and a field that is blank by
 construction teaches a reader nothing.

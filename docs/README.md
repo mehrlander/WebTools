@@ -14,7 +14,7 @@ must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
 2 arrive in every session's context, 24 are named by CLAUDE.md,
-5 by a skill, 13 by a page or component. The remaining 16 are
+5 by a skill, 13 by a page or component. The remaining 17 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -35,7 +35,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`branch-overlay.md`](branch-overlay.md) *(orphan)* — the branch overlay: the takeover, file substitution, the sidebar's second ref, and drop-on-a-branch
 - [`code-layers.md`](code-layers.md) — the code layers and the admission rule that sorts a new file into one of them
 - [`docs.csv`](docs.csv) — the documents census: what each file under docs/ is, on four axes
-- [`harness.json`](harness.json) — the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting
+- [`harness.csv`](harness.csv) — the harness census: every tools/ and scripts/ file, its role, and how it is invoked
 - [`headless-vendoring.md`](headless-vendoring.md) — building with CDN libraries and rendering headless where the CDNs are blocked
 - [`ios-sheet-drags.md`](ios-sheet-drags.md) — why a drag inside a sheet-presented in-app browser dismisses the sheet, and the two fixes, measured on device
 - [`loader.md`](loader.md) — the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality
@@ -54,12 +54,13 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`showing.md`](showing.md) — why the showing boundaries sit where they are: the frame and the record behind routes.json
 - [`stage.md`](stage.md) — the stage: bench and Saved, intake, the walkable preview and diff, Out, save-as-surface, and the #stage= link grammar
 - [`surfacing.csv`](surfacing.csv) — the gated index of the surfacing primitives SURFACING.md defines
-- [`tests.json`](tests.json) — the test registry: every check's kind, what it protects, and its derived counts
+- [`tests.csv`](tests.csv) — the test registry: every check, its kind, and what breaks if it is deleted
 - [`text-content.md`](text-content.md) *(measured, orphan)* — the estate's authored text: whether the carriers holding it are organized, and how much never reached one
 - [`text-fields.csv`](text-fields.csv) *(orphan)* — the names a prose-bearing CSV column or JSON key may take
 - [`text-tools.md`](text-tools.md) *(orphan)* — the FAB's Text tab: why it exists, why the join is the path rather than a term, and an assessment of what it is not
 - [`tools.csv`](tools.csv) — which pages the Tools view shelves, and the icon each is given
 - [`venues.md`](venues.md) *(measured)* — the venue map: where work can run besides the session reading it, what each reaches, and the attended-versus-unattended split
+- [`vocabularies.csv`](vocabularies.csv) *(orphan)* — what each value of a closed domain means, one row per value
 
 ## docs/envelopes/
 

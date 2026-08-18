@@ -26,7 +26,7 @@ const tableSet = new Set([...tablePaths(portableMd, '### Docs'), ...tablePaths(p
 const manifestPaths = new Set(manifest.items.map(i => i.path));
 // The harness census owns the description of anything it carries.
 const harnessPaths = new Set(
-  JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'harness.json'), 'utf8')).tools.map(t => t.path));
+  parseCsv(readFileSync(path.join(repoRoot, 'docs', 'harness.csv'), 'utf8')).map(t => t.path));
 
 // The catalog used to carry `hub` and a `plugin` block, and this test asserted
 // them. Both were copies: .claude-plugin/marketplace.json is the file the
@@ -44,7 +44,7 @@ test('the set is typed and non-empty, and the plugins match the marketplace', ()
     assert.ok(['skill', 'doc', 'dir', 'script'].includes(it.kind), it.path + ': kind');
     assert.ok(it.path && it.title, it.path + ': path/title');
     // `role` is required only where no census already describes the file. The
-    // set is a crosswalk: on the nine scripts docs/harness.json describes, a
+    // set is a crosswalk: on the nine scripts docs/harness.csv describes, a
     // role here would be a second copy of one claim, which is what the
     // ownership gate in properties-registry.test.mjs now forbids. The Map view
     // joins the census value for display, so the row is not left blank to a

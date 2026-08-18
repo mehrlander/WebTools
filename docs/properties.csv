@@ -120,3 +120,4 @@ repetitions,where,recorded,,value,column,yes,,"the file, or the surface, carryin
 repetitions,relation,recorded,,value,column,yes,copy;paraphrase;pointer;live read,how the repetition stands to the authoritative version
 repetitions,kept,recorded,,counted,column,yes,,who keeps a copy current; applies only when the relation is copy
 repetitions,check,recorded,,counted,column,yes,,"the test holding this repetition to its owner; blank where nothing does, which is the honest state the table exists to show"
+vocabularies,gloss,recorded,,value,column,yes,,"what this one value means, in the terms a reader picking among them needs"

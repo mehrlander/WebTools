@@ -103,7 +103,7 @@ not become a component, it gets a component wrapper.
 ## tools/, which is the weak layer
 
 Since 2026-08-08 the accounting below has a carrier:
-[`docs/harness.json`](harness.json), the harness census, one row per code file
+[`docs/harness.csv`](harness.json), the harness census, one row per code file
 under `tools/` and `scripts/` (`tools/test/` stays with the test registry).
 `role` is authored and a blank role is counted rather than hidden;
 invocation, named, and tested are stamped by

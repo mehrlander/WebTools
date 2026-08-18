@@ -21,11 +21,11 @@ const REG = {
     { path: 'CLAUDE.md', status: 'living',
       subject: 'the repo instructions, injected into every session' },
   ] },
-  'docs/tests.json': { tests: [
+  'docs/tests.csv': { tests: [
     { path: 'tools/test/fab-text.test.mjs', kind: 'behavior',
       protects: "The drawer's fifth tab reports only what it can stand behind." },
   ] },
-  'docs/harness.json': { tools: [] },
+  'docs/harness.csv': { tools: [] },
   'docs/portable.csv': { items: [] },
   'pages/pages.json': [
     { label: '', items: [{ href: 'shorter.html', title: 'Shorter', note: 'line up a shorter draft beside the original' }] },

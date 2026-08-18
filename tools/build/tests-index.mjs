@@ -1,4 +1,4 @@
-// The derived half of docs/tests.json, the test registry.
+// The derived half of docs/tests.csv, the test registry.
 //
 // The suite reports a pass count and nothing else, and a pass count is the
 // weakest thing it knows. "1,098 pass" says nothing about what is being
@@ -68,6 +68,10 @@
 
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import { parseCsv, writeCsv, splitList } from './registries-load.mjs';
+
+// Fixed here so a restamp cannot reorder the file.
+const TEST_COLS = ['path', 'kind', 'protects', 'assertions', 'method', 'runner', 'boot_smoke', 'assertion_names'];
 import { fileURLToPath } from 'node:url';
 
 export const KINDS = ['behavior', 'component', 'kit', 'tool', 'gate', 'lockstep', 'guard'];
@@ -165,12 +169,27 @@ export function deriveTests(repoRoot) {
   return out;
 }
 
-// ── CLI: restamp docs/tests.json ────────────────────────────────────────────
+// ── CLI: restamp docs/tests.csv ────────────────────────────────────────────
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-  const file = path.join(repoRoot, 'docs', 'tests.json');
-  const registry = JSON.parse(readFileSync(file, 'utf8'));
+  const file = path.join(repoRoot, 'docs', 'tests.csv');
+  const registry = { tests: parseCsv(readFileSync(file, 'utf8')).map(t => ({
+    ...t,
+    // A blank means NOT ASSERTED, so it reads back as null rather than 0: a browser
+  // check reports no assertion count because test() is not its unit, which is a
+  // different claim from a suite that ran zero.
+  assertions: t.assertions === '' ? null : +t.assertions,
+    // Three states, two spellings. A blank cell cannot tell null (not applicable:
+    // test() is not this check's unit) from [] (a suite that declares none), and
+    // both write blank. They are not independent: a check with no assertion count
+    // has no assertions to smoke, so the dependency decides it. Same shape as
+    // deriver-when-computed, and the reason no token is needed here.
+    boot_smoke: t.assertions === '' ? null
+      : t.boot_smoke === '' ? [] : splitList(t.boot_smoke).map(Number),
+    assertion_names: t.assertions === '' ? null
+      : t.assertion_names === '' ? [] : splitList(t.assertion_names),
+  })) };
   const derived = deriveTests(repoRoot);
 
   const byPath = new Map(registry.tests.map(t => [t.path, t]));
@@ -200,7 +219,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     Object.assign(t, ordered);
   }
   registry.tests.sort((a, b) => a.path.localeCompare(b.path));
-  writeFileSync(file, JSON.stringify(registry, null, 2) + '\n');
+  writeFileSync(file, writeCsv(registry.tests, TEST_COLS));
 
   const total = registry.tests.reduce((s, t) => s + t.assertions, 0);
   const smoke = registry.tests.reduce((s, t) => s + (t.boot_smoke?.length || 0), 0);

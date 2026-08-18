@@ -267,10 +267,10 @@ const REG = {
     { path: 'docs/loader.md', subject: 'the loader contract', status: 'living' },
     { path: 'CLAUDE.md', subject: 'the repo instructions', status: 'living' },
   ] },
-  'docs/tests.json': { tests: [
+  'docs/tests.csv': { tests: [
     { path: 'tools/test/fab-text.test.mjs', protects: 'the fifth tab', kind: 'behavior' },
   ] },
-  'docs/harness.json': { tools: [] },
+  'docs/harness.csv': { tools: [] },
   'docs/portable.csv': { items: [
     { path: '.claude/skills/web-tools/SKILL.md', role: 'loads the conventions', kind: 'skill' },
   ] },

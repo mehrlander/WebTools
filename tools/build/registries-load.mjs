@@ -52,7 +52,7 @@ export function parseCsv(text) {
 // the answer is none" from "not checked", its value domain carries an explicit
 // token (`gate` uses `none`), so no column here rests on empty-string versus
 // null. That rule is why these splits are safe.
-const list = (s) => (s ? s.split(';').map(x => x.trim()).filter(Boolean) : []);
+const list = (s) => (s ? splitList(s).map(x => x.trim()).filter(Boolean) : []);
 
 export function loadRegistries(root = repoRoot) {
   const read = (f) => parseCsv(readFileSync(path.join(root, 'docs', f), 'utf8'));
@@ -73,9 +73,17 @@ export function loadRegistries(root = repoRoot) {
 
 // Serialize back, quoting only what needs it. Column order is passed in rather
 // than taken from the rows, so a restamp cannot reorder the file.
+// A list rides in one cell, semicolon separated. Values can contain semicolons
+// (an assertion name did, and split it in half), so the delimiter is escaped on
+// the way out and honoured on the way back. Backslash escapes itself.
+export const joinList = (xs) =>
+  xs.map(x => String(x).replace(/\\/g, '\\\\').replace(/;/g, '\\;')).join(';');
+export const splitList = (s) =>
+  String(s).split(/(?<!\\);/).map(x => x.replace(/\\;/g, ';').replace(/\\\\/g, '\\'));
+
 export function writeCsv(rows, cols) {
   const cell = (v) => {
-    const s = Array.isArray(v) ? v.join(';') : (v ?? '');
+    const s = Array.isArray(v) ? joinList(v) : (v ?? '');
     return /[",\n]/.test(s) ? '"' + String(s).replace(/"/g, '""') + '"' : String(s);
   };
   return [cols.join(','), ...rows.map(r => cols.map(c => cell(r[c])).join(','))].join('\n') + '\n';

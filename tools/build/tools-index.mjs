@@ -1,4 +1,4 @@
-// The derived half of docs/harness.json, the harness census.
+// The derived half of docs/harness.csv, the harness census.
 // (docs/tools.csv was taken: it is the curated Tools gallery manifest,
 // show-repo's Tools view, and has nothing to do with the tools/ folder.)
 //
@@ -7,7 +7,7 @@
 // files were scenario drivers of which prose named 9. This module derives the
 // part a machine can see, so the registry only has to author the part it
 // cannot: what each file is FOR (`role`), scaffolded blank and counted, the
-// same ledger discipline docs/tests.json applies to `protects`.
+// same ledger discipline docs/tests.csv applies to `protects`.
 //
 // Derived here, never authored:
 //
@@ -25,7 +25,7 @@
 //   tested      its basename appears in a file under tools/test/
 //   layer, lines
 //
-// tools/test/ is deliberately absent: docs/tests.json is that folder's census,
+// tools/test/ is deliberately absent: docs/tests.csv is that folder's census,
 // and one file must not answer to two registries.
 //
 // Run `npm run tools-index` to restamp; `--check` compares instead of writing.
@@ -33,6 +33,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
+import { parseCsv, writeCsv } from './registries-load.mjs';
+
+// Fixed here so a restamp cannot reorder the file.
+const HARNESS_COLS = ['path', 'role', 'layer', 'lines', 'invocation', 'emits', 'named', 'tested'];
 import { fileURLToPath } from 'node:url';
 
 const CODE_EXT = ['.mjs', '.js', '.cjs', '.py', '.sh'];
@@ -111,11 +115,11 @@ export function deriveTools(repoRoot) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-  const file = path.join(repoRoot, 'docs', 'harness.json');
+  const file = path.join(repoRoot, 'docs', 'harness.csv');
   const checkOnly = process.argv.includes('--check');
   let registry;
-  try { registry = JSON.parse(readFileSync(file, 'utf8')); }
-  catch { registry = { note: '', layers: {}, tools: [] }; }
+  try { registry = { tools: parseCsv(readFileSync(file, 'utf8')) }; }
+  catch { registry = { tools: [] }; }
   const derived = deriveTools(repoRoot);
 
   const byPath = new Map((registry.tools || []).map(t => [t.path, t]));
@@ -139,12 +143,12 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   rows.sort((a, b) => a.path.localeCompare(b.path));
   registry.tools = rows;
 
-  const bytes = JSON.stringify(registry, null, 2) + '\n';
+  const bytes = writeCsv(registry.tools, HARNESS_COLS);
   if (checkOnly) {
     let current = null;
     try { current = readFileSync(file, 'utf8'); } catch { /* absent counts as stale */ }
     if (current !== bytes) {
-      console.error('docs/harness.json is behind its sources; run: npm run tools-index');
+      console.error('docs/harness.csv is behind its sources; run: npm run tools-index');
       process.exit(1);
     }
     process.exit(0);

@@ -50,7 +50,7 @@ const ownersCsv = readFileSync(path.join(repoRoot, 'docs', 'owners.csv'), 'utf8'
 const repsCsv = readFileSync(path.join(repoRoot, 'docs', 'repetitions.csv'), 'utf8');
 const propsRegCsv = readFileSync(path.join(repoRoot, 'docs', 'registries.csv'), 'utf8');
 const propsDeclCsv = readFileSync(path.join(repoRoot, 'docs', 'properties.csv'), 'utf8');
-const testsJson = readFileSync(path.join(repoRoot, 'docs', 'tests.json'), 'utf8');
+const testsCsv = readFileSync(path.join(repoRoot, 'docs', 'tests.csv'), 'utf8');
 // The private registry's sessions cache, trimmed to the rollup the Docs tab
 // reads. Paths are repo-qualified there and hub-relative in the registry, which
 // is the join the readership column has to get right.
@@ -75,7 +75,7 @@ window.GH = class {
     if (p === 'docs/repetitions.csv') return { text: repsCsv };
     if (p === 'docs/registries.csv') return { text: propsRegCsv };
     if (p === 'docs/properties.csv') return { text: propsDeclCsv };
-    if (p === 'docs/tests.json') return { text: testsJson };
+    if (p === 'docs/tests.csv') return { text: testsCsv };
     if (p === 'state/sessions.json') return { text: JSON.stringify(sessions) };
     return { text: toCsv(manifest.items) };
   }
