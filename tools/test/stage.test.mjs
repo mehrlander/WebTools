@@ -456,6 +456,78 @@ test('a text/plain grid is named .tsv, so it opens as a table', async () => {
   assert.equal(data.offers.length, 0, 'one flavor offers nothing');
 });
 
+// ---- what a paste is NAMED is what it routes to ----------------------------
+//
+// READ_MODE keys on the extension, so nameForText is the routing decision and
+// these are mode tests wearing a naming test's clothes. Measured before the
+// change (tools/render/scenarios/paste-kinds-probe.mjs): a CSV and a rows
+// function both fell through to .txt.
+
+const CSV = 'code,label,jul,aug\nAA,Salaries,186927,186927\nBA,Social Security,9448,9448';
+
+test('a pasted CSV is named .csv, so it opens as a table like its TSV twin', async () => {
+  reset();
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': CSV } }));
+  assert.match(data.localItems[0].name, /\.csv$/);
+});
+
+test('a quoted comma is a value, not a field separator', () => {
+  const csv = 'code,label,jul\nAA,"Social Security, OASI",9448\nBA,"Salaries, all",186927';
+  assert.equal(window.StageIntake.delimiterOf(csv), ',',
+    'counting quoted commas would make the field counts disagree and lose the grid');
+});
+
+test('an escaped doubled quote does not reopen the field', () => {
+  const csv = 'a,b\n"he said ""hi, there""",2\n"plain",3';
+  assert.equal(window.StageIntake.delimiterOf(csv), ',');
+});
+
+test('tab wins over comma, so a TSV carrying prose commas stays a TSV', () => {
+  const tsv = 'code\tlabel\nAA\tSalaries, all funds\nBA\tSocial Security, OASI';
+  assert.equal(window.StageIntake.delimiterOf(tsv), '\t');
+});
+
+test('prose with commas is not a grid', () => {
+  assert.equal(window.StageIntake.delimiterOf('one, two, three\nand a second line'), '',
+    'the counts differ, so it is prose');
+});
+
+test('a rows function is named .js, since pasting one is how work resumes', async () => {
+  reset();
+  const fn = 'rows => rows.filter(r => r.jul > 10000)';
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': fn } }));
+  assert.match(data.localItems[0].name, /\.js$/);
+});
+
+test('isRowsFn takes the shapes the workbench accepts, and not bare JavaScript', () => {
+  const yes = ['rows => rows', '(rows) => rows.map(r => r)', '(rows, meta) => rows',
+               'function (rows) { return rows }', 'function tidy(rows) { return rows }',
+               'async function (rows) { return rows }'];
+  const no = ['x => x * 2', 'function add(a, b) { return a + b }',
+              'const rows = 1', 'rowsPerPage => 10'];
+  for (const src of yes) assert.equal(window.StageIntake.isRowsFn(src), true, src);
+  for (const src of no) assert.equal(window.StageIntake.isRowsFn(src), false, src);
+});
+
+test('a multi-line function body is a function, not a comma grid', async () => {
+  reset();
+  const fn = 'rows => rows.map(r => ({\n  code: r.code,\n  jul: r.jul,\n}))';
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': fn } }));
+  assert.match(data.localItems[0].name, /\.js$/,
+    'the grid test runs after this one precisely so this cannot be renamed .csv');
+});
+
+test('a JSON array of records opens as a table; any other JSON stays a tree', () => {
+  const rowsJson = JSON.stringify([{ a: 1, b: 2 }, { a: 3, b: 4 }]);
+  const bundle = JSON.stringify({ fn: 'H4sI', data: 'H4sI' });
+  const m = (content) => window.ViewRegistry.READ_MODE({ ext: 'json', content });
+  assert.equal(m(rowsJson), 'table');
+  assert.equal(m(bundle), 'tree', 'a workbench bundle is an object, not rows');
+  assert.equal(m('[1,2,3]'), 'tree', 'scalars have no columns to lay out');
+  assert.equal(m('[]'), 'tree', 'an empty array has nothing to show as a table');
+  assert.equal(m('{ not json'), 'tree', 'invalid JSON is not where a parse error is reported');
+});
+
 test('prose with a stray tab is not a grid', async () => {
   reset();
   await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': 'a note\twith a tab\nand a second line' } }));

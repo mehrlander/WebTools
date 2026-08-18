@@ -1111,7 +1111,7 @@
     },
     {
       "path": "tools/render/scenarios/paste-anywhere.mjs",
-      "role": "",
+      "role": "dispatches a real two-flavor ClipboardEvent on a non-Stage view and reports where the app-wide paste routed it",
       "layer": "tools/render/scenarios",
       "lines": 42,
       "invocation": "driver",
@@ -1121,13 +1121,13 @@
     },
     {
       "path": "tools/render/scenarios/paste-kinds-probe.mjs",
-      "role": "",
+      "role": "puts four transform-shaped payloads through the paste intake and reports the name and preview mode each gets",
       "layer": "tools/render/scenarios",
       "lines": 54,
       "invocation": "driver",
       "emits": false,
       "named": false,
-      "tested": false
+      "tested": true
     },
     {
       "path": "tools/render/scenarios/pick-md.mjs",
