@@ -2940,17 +2940,27 @@ function app(){ return {
           if (mainHeld && was && was.updatedAt === p.updatedAt && was.aheadBy != null) {
             p.aheadBy = was.aheadBy; p.behindBy = was.behindBy;
             p.firstDate = was.firstDate || '';
+            // Carried with the pair it was read beside. A cache written before
+            // 2026-08-18 has no count, and the row shows its files glyph
+            // without one until the next real compare rather than showing a 0.
+            p.nFiles = was.nFiles ?? null;
             if (was.sessions) { p.sessions = was.sessions; p.sessionsExact = !!was.sessionsExact; }
             continue;
           }
           try {
             const d = await g.compare(def, p.head);
             p.aheadBy = d.ahead_by ?? null; p.behindBy = d.behind_by ?? null;
+            // How many files the branch changed, free from a response already
+            // in hand: this is the compare the ahead/behind pair comes from.
+            // Deduped, since a rename can put a path in the list twice, and a
+            // floor rather than a total on a sweeping branch, since GitHub caps
+            // a compare's file list at 300.
+            p.nFiles = new Set((d.files || []).map(f => f.filename)).size;
             // One compare, every field it can answer, through the one reader
             // that knows what each field does past GitHub's commit cap.
             Object.assign(p, B.compareFields(d));
           }
-          catch { p.aheadBy = null; p.behindBy = null; p.firstDate = ''; }
+          catch { p.aheadBy = null; p.behindBy = null; p.firstDate = ''; p.nFiles = null; }
         }
       };
       await Promise.all(Array.from({ length: Math.min(4, openPRs.length) }, prAheadBehind));

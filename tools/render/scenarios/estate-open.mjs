@@ -10,6 +10,13 @@
 // the pill to one of them. They share the pane with Open at every width (the
 // lg+ right rail went 2026-08-03), so this is how either one gets a shot.
 //
+// Pass ROUTES=1 to fake the hub's route chips onto the first row, which is how
+// the row's ORDER gets a shot: the session mark and the files control sit left
+// of the chips, so a row carrying them lines up with every row that does not.
+// Faked rather than seeded because the chips need the route manifest, the
+// per-branch file lists and a kit, none of which the sandbox can fetch, and the
+// thing under test is the layout.
+//
 // Pass MENU=1 in the environment to open one row's branch menu for the shot,
 // REPOCHIP=1 to open a row's repo chip (the repo's whole grouped menu, in the
 // shell's panel), or CHIP=1 to narrow the list to one repo through its filter
@@ -24,10 +31,10 @@ const ACTIVITY = {
     defaultBranch: 'main',
     openPRs: [
       { number: 298, head: 'claude/show-repo-activity-filters', draft: true, title: 'Open view: repo chips, lifespan, GitHub menu',
-        updatedAt: iso(2), aheadBy: 6, behindBy: 0, firstDate: iso(52),
+        updatedAt: iso(2), aheadBy: 6, behindBy: 0, firstDate: iso(52), nFiles: 9,
         session: 'https://claude.ai/code/session_x' },
       { number: 296, head: 'claude/fab-render-toss', draft: false, title: 'Singleton fab with toss-render',
-        updatedAt: iso(30), aheadBy: 12, behindBy: 3, firstDate: iso(500) },
+        updatedAt: iso(30), aheadBy: 12, behindBy: 3, firstDate: iso(500), nFiles: 23 },
     ],
     survey: { branches: [
       { name: 'claude/show-repo-activity-filters', sha: 'a1', group: 'active', date: iso(2), subject: 'Open view: repo chips, lifespan, GitHub menu' },
@@ -59,7 +66,7 @@ const ACTIVITY = {
     defaultBranch: 'main',
     openPRs: [
       { number: 44, head: 'claude/news-view-refresh', draft: true, title: 'News view refresh',
-        updatedAt: iso(9), aheadBy: 2, behindBy: 1, firstDate: iso(11) },
+        updatedAt: iso(9), aheadBy: 2, behindBy: 1, firstDate: iso(11), nFiles: 4 },
     ],
     survey: { branches: [
       { name: 'claude/news-view-refresh', sha: 'd1', group: 'active', date: iso(9), subject: 'News view refresh' },
@@ -128,6 +135,18 @@ export default async (page) => {
       window.Alpine.$data(document.querySelector('[x-data^="estate"]')).goSub(t);
     }, process.env.TAB);
     await page.waitForTimeout(400);
+  }
+  if (process.env.ROUTES) {
+    await page.evaluate(() => {
+      const d = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));
+      const first = d.openRows[0];
+      d.branchRoutes = (row) => (row.repo === first.repo && row.name === first.name)
+        ? { on: [{ key: 'a', label: 'Branches', hits: ['lib/alpineComponents/estate.js'] },
+                 { key: 'b', label: 'Guides', hits: ['lib/alpineComponents/estate.js'] }],
+            near: [{ key: 'c', label: 'Map', hits: ['dist/web-tools.js'] }] }
+        : null;
+    });
+    await page.waitForTimeout(300);
   }
   if (process.env.CHIP) {
     await page.locator('button:has-text("home")').first().click();

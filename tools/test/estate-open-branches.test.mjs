@@ -171,14 +171,44 @@ test('branchMenuItems: a PR row offers its tabs, a bare branch offers New PR', (
   const withPr = data.openBranches[0], noPr = data.openBranches[1];
   data.menuBranch = withPr;
   let keys = plain_(data.branchMenuItems.map(i => i.key));
-  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'stageDiff', 'prFiles', 'prChecks', 'copyName']);
+  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'prFiles', 'prChecks', 'copyName']);
   assert.equal(data.branchMenuItems.find(i => i.key === 'prFiles').label, 'Files changed (#12)');
   assert.equal(data.branchMenuItems.find(i => i.key === 'compare').label, 'Compare to main');
 
   data.menuBranch = noPr;
   keys = plain_(data.branchMenuItems.map(i => i.key));
-  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'stageDiff', 'newPr', 'copyName']);
+  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'newPr', 'copyName']);
   assert.ok(!keys.includes('prFiles'));
+});
+
+// The menu is GitHub DESTINATIONS. Staging sends files to this app's own Stage,
+// so it left on 2026-08-18 for a control on the row's action line; `copyName` is
+// the one row that stays without opening github.com, because a branch name is
+// the ADDRESS of what every other row opens and there is no address bar here to
+// lift it from. A new row that is neither belongs somewhere else.
+test('the GitHub menu holds GitHub destinations, and one documented exception', () => {
+  for (const row of [data.openBranches[0], data.openBranches[1]]) {
+    data.menuBranch = row;
+    for (const item of plain_(data.branchMenuItems)) {
+      if (item.key === 'copyName') continue;
+      assert.equal(item.external, true,
+        item.key + ' is in the GitHub menu but does not leave for github.com');
+    }
+  }
+});
+
+test('staging is a row control, not a menu row', () => {
+  data.menuBranch = data.openBranches[0];
+  assert.ok(!plain_(data.branchMenuItems.map(i => i.key)).includes('stageDiff'));
+  // And the key is gone from the RUNNER too, rather than left as a branch that
+  // nothing dispatches: the row's button calls stageBranchDiff directly.
+  const calls = [];
+  const real = data.stageBranchDiff;
+  data.stageBranchDiff = (...a) => { calls.push(a); };
+  try {
+    data.runBranchMenu('stageDiff');
+    assert.deepEqual(calls, [], 'a retired key must not still stage');
+  } finally { data.stageBranchDiff = real; }
 });
 
 test('openBranchMenu anchors through the shell and closes on a pick', () => {

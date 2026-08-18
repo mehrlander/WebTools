@@ -895,16 +895,40 @@ answer costs one call per repo instead of one per branch. The `#`-number links
 whichever PR the row is about, merged included, and its mark carries the state,
 with the word beside it where the width allows and a `+N` when a head has had
 several PRs over its life. `New pull request` in the row menu is gated on the
-absence of an **open** PR, so a merged branch that kept going can still open one. The row's **primary action
-(the branch name, and the leading Stage link) stages the files this branch
-changed** against its default (one `compare` call, removed paths skipped) and
-jumps to the Stage: navigating a whole branch tree is rarely the point, its diff
-is. The staged set is appended and deduped onto any working stage, at `ref=branch`
-so an item reads the branch's version and the Stage's Diff tab compares it back.
-The rest of the cluster is a **GitHub menu** (below), the guide **PR**, and the
-**Session** that authored it (the `claude.ai/code/session_…` link lifted from the
-PR body's footer, shown only when present); a per-repo **Branches** drill-down
-sits at the row's right (whole-tree browse lives there).
+absence of an **open** PR, so a merged branch that kept going can still open one.
+
+**The action line runs GitHub menu, session, files, Stage, then route chips, and
+that order is load-bearing.** The three middle controls are the row's own and
+they sit to the LEFT of the chips, because the chips are hub-only and variable
+width: with the session mark after them, the one repo that has chips carried it
+halfway across the row while every other row carried it at the left, and a mark
+a reader scans down a column for cannot move with a neighbour's width. The
+session slot is **reserved rather than collapsed** for the same reason, so a
+branch with no resolvable session costs one glyph of empty space instead of
+pulling the two controls after it out of column.
+
+**Files** is the route the row was missing. The branch name opens the detail
+too, but on the Guide where there is one, so "show me what changed" cost a tap,
+a read, and a second tap; this is that destination on its own glyph, the one the
+detail's file deck already wears. Bare, it carries the changed-file **count**,
+free from the compare the crawl already runs for each open PR's ahead/behind
+pair. Where the survey reached the branch it grows into the content verdict
+below rather than standing beside a second files icon saying the same number.
+No count on a no-merge-base row, where it would span more than the branch.
+
+**Stage** sends the files this branch changed to the Stage (one `compare` call,
+removed paths skipped), appended and deduped onto any working stage at
+`ref=branch`, so an item reads the branch's version and the Stage's Diff tab
+compares it back. It was the row's original name-tap action, then a row in the
+GitHub menu, and a control of its own since 2026-08-18: it acts on this app's
+own Stage, so a menu whose every other row opens `github.com` was the wrong
+place for it. Its spinner rides in the button that was pressed rather than in a
+separate label at the head of the line.
+
+The **Session** that authored the branch is the `claude.ai/code/session_…` link
+read from the branch's own commit trailer, with the PR body's footer as
+fallback; a per-repo **Branches** drill-down sits at the row's right (whole-tree
+browse lives there).
 
 Each row's right edge states the branch's **lifespan**, first commit then latest,
 as `15 days → 2 hours`, which answers "how long has this been open" beside "when
@@ -969,9 +993,15 @@ beside that one until 2026-07-30 and was cut: `Compare to <default>` opens the
 page the URL names, and the browser copies it from there. It shares the sidebar repo menu's
 geometry (`shell.anchorMenu` / `menuStyle`: fixed, aligned to the trigger's own
 edge, flipped above near the viewport bottom), its row spec (`.wt-menu-row`,
-flat, an out-arrow on anything leaving the app), and its hover behavior. The
-`#`-number and the session mark stay outside it: neither is GitHub navigation,
-and the session mark has no other route.
+flat, an out-arrow on anything leaving the app), and its hover behavior.
+
+**Every row in it opens `github.com`, with one exception, and the rule is what
+put Stage on the action line.** The `#`-number, the session mark, the files
+route and the Stage all stay outside: none is GitHub navigation. `Copy branch
+name` is the exception that earns its place, since a branch name is long,
+hyphenated, and typed into git commands and `#gh=` addresses with no address bar
+to lift it from, which makes it the ADDRESS of what the other rows open rather
+than an action somewhere else.
 
 Each row opens with its **repo chip**, the repo's own declared icon plus its
 short name. It is a control, not a label: it opens the repo's whole grouped

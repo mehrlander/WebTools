@@ -873,7 +873,7 @@
       "path": "tools/render/scenarios/estate-open.mjs",
       "role": "Activity's Open view seeded token-free so the list renders headlessly",
       "layer": "tools/render/scenarios",
-      "lines": 157,
+      "lines": 176,
       "invocation": "driver",
       "emits": false,
       "named": false,
