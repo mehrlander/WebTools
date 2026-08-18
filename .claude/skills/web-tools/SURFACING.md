@@ -33,6 +33,15 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   Either form also takes `?w=<px>` on the **renderer's** own query (`toss-render.html?w=390#gh=…`), which renders the subject in a frame that wide instead of the device's. A frame is a viewport, so the page really is laid out at that width: media queries match and a boot-time `innerWidth` read agrees, and a width wider than the screen is scaled down to fit rather than scrolled. Use it to hand over a phone view from a desktop, or the reverse. It cannot move `pointer` or `hover`, so it shows another device's layout, not its interaction model. The drawer's Render tab drives the same thing with four presets.
 
+  **A `@ref` that is a SHA is copied from `git rev-parse`, never typed.** The toss
+  wants the full forty characters and `git log --oneline` prints nine, and the
+  thirty-one missing ones cannot be reasoned out: a SHA assembled from memory is
+  well-formed, so it reads as correct to every eye and every check, and the first
+  thing to disagree is the renderer finding no such commit. `git rev-parse HEAD`
+  for the value, `git rev-parse origin/<branch>` to confirm it is pushed, since
+  an unpushed SHA fails the same way. This is the one place in the address where
+  being approximately right is being wrong.
+
   Encode `#gz=` with:
 
   ```bash
