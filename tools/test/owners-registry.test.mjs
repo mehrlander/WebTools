@@ -77,7 +77,7 @@ test('rows are keyed by a unique subject and typed by kind', () => {
 // the table held two different objects: a family row is a DECLARATION in
 // registries.md's sense (scope x property -> the carrier that owns it), not an
 // assertion about one statement. It stays here rather than moving to
-// properties.json because its carrier is DISTRIBUTED (every skill's own
+// the registry pair because its file is DISTRIBUTED (every skill's own
 // SKILL.md), and the declaration table's registries name a single carrier path.
 // See docs/registries.md, "What reconciliation found".
 test('a family row scopes itself; a statement row does not pretend to', () => {

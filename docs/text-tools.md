@@ -51,7 +51,7 @@ The tab was asked for as *terms* connected to registered data. It matches
 Nothing in the estate is keyed by the words prose actually uses.
 [`surfacing.json`](surfacing.json) is keyed by sentence-shaped titles
 (*Reference is a link*) that never occur in running text.
-[`text-fields.csv`](text-fields.csv) and [`properties.json`](properties.json)
+[`text-fields.csv`](text-fields.csv) and [`properties.csv`](properties.csv)
 are keyed by ordinary English words: note, open, scope, role.
 [`board.json`](../tracker/board.json) is keyed by task titles. No committed
 vocabulary keyed by surface form exists, and that is a decision: `vocab.py`

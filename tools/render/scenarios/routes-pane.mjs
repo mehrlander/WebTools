@@ -44,7 +44,7 @@ const PRS = [
   { repo: 'mehrlander/web-tools', name: 'claude/map-registries-area', pr: 415,
     title: 'Give the registries an identity', draft: false,
     url: 'https://github.com/mehrlander/web-tools/pull/415', session: '',
-    files: ['lib/alpineComponents/map.js', 'docs/properties.json'] },
+    files: ['lib/alpineComponents/map.js', 'docs/registries.csv'] },
   { repo: 'mehrlander/web-tools', name: 'claude/stage-diff-lens', pr: 412,
     title: 'Stage: a diff lens over the bench', draft: true,
     url: 'https://github.com/mehrlander/web-tools/pull/412', session: '',

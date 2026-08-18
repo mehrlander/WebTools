@@ -603,7 +603,7 @@
     {
       "path": "tools/test/content-domain-lockstep.test.mjs",
       "kind": "lockstep",
-      "protects": "docs/properties.json's copy of the content registry's value domains, against the skill that owns them: a convenience copy that can drift is what this registry model exists to catch.",
+      "protects": "docs/properties.csv's copy of the content registry's value domains, against the skill that owns them: a convenience copy that can drift is what this registry model exists to catch.",
       "assertions": 1,
       "method": "read",
       "runner": "suite",

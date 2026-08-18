@@ -6,7 +6,7 @@ budget-drs had already built as its controlled-property registry. This document
 states the model once so the next accounting is an instance of it rather than a
 third invention. It is written to travel; the origin instrument is budget-drs's
 `properties.csv` in `mehrlander/home`, and this repo's declaration table is
-[`properties.json`](properties.json), gated by
+[`registries.csv`](registries.csv) and [`properties.csv`](properties.csv), gated by
 [`properties-registry.test.mjs`](../tools/test/properties-registry.test.mjs).
 
 ## The model
@@ -33,18 +33,20 @@ integrity layer: gates are this system's foreign keys, because git has none.
 | --- | --- | --- |
 | **target** | the thing a registry asserts about; not always a file | a docs path, a page, a manifest key, a prose field name, a task |
 | **property** | a recognized attribute that may be asserted about a target | role, protects, reach, creation_mode |
+| **property definition** | one row of properties.csv: what one column of one registry means, how it arises, whether every row must fill it, and what it may hold | `docs-census . status` |
 | **assertion** | one target's value for one property; a blank is not an assertion | `docs/venues.md . status = living` |
-| **scope** | the population a declaration covers | the docs shelf, the harness shelf, a project |
-| **registry** | the authoritative committed record of assertions | docs.json, tests.json, harness.json, portable.json |
-| **carrier** | the committed file a registry is stored in; not one to one, since one file may carry several registries | docs/routes.json carries three |
-| **gate** | the test that fails when a carrier and the repo disagree; this system's foreign keys, because git has none | properties-registry.test.mjs |
-| **declaration** | binds `scope × property → registry`: which registry owns a property, and how hard | a row in properties.json's `declarations` |
-| **census** | a registry whose scope is intensional: a predicate over the tree; coverage gated, blanks counted | docs.json, tests.json, harness.json |
-| **catalog** | a registry whose scope is extensional: the rows are the membership, curation is the definition | portable.json, tools.json, content.csv |
-| **crosswalk** | a catalog that curates *which* targets belong and leaves their description to the census that owns them | tools.json over pages.json |
-| **properties registry** | the declaration table: every property's registry, mode, and enforcement | properties.json |
+| **value domain** | the permissible values a property may take, carried by its `values` column; **closed** when enumerated, **open** otherwise. The relational sense, not the function sense: the *targets* are the scope, not the domain | living;record;measured |
+| **scope** | the population a registry covers | every .md/.json/.csv under docs/, every route the router dispatches, files curated to travel |
+| **registry** | the authoritative committed record of assertions. One registry is one file | docs.json, tests.json, harness.json, portable.json |
+| **path** | the file a registry lives in, plus a `#fragment` where one file still holds several. Replaced `carrier`, `rows` and `format` on 2026-08-16 | `docs/routes.json#showing.mechanisms` |
+| **key** | the column that identifies a row, exempt from having a property definition of its own. May name several columns joined with `+` | `path`, `registry+property` |
+| **gate** | the test that fails when a registry and the repo disagree; this system's foreign keys, because git has none. `none` where nothing holds it | properties-registry.test.mjs |
+| **kind** | how the scope is given: **census** when something outside the list decides membership, **catalog** when curation does | census, catalog, crosswalk |
+| **census** | a registry whose membership is decided outside it, by the tree or by the code. Because the rule can be run, coverage is gated and blanks are counted | docs.json, tests.json, harness.json |
+| **catalog** | a registry whose rows *are* its membership: curation is the definition. Nothing independent to check it against, so no coverage gate is possible | portable.json, content.csv |
+| **crosswalk** | a catalog that curates *which* targets belong and leaves their description to the census that owns them. A kind of catalog, so a filter for catalogs matches it | tools.json over pages.json |
+| **the registry pair** | registries.csv (one row per registry) and properties.csv (one row per column of one registry) | docs/registries.csv, docs/properties.csv |
 | **area** | which side of one question a registry falls on, the reader's grouping | files, names |
-| **shelf** | a tree-defined population, the usual way a census scope is written | docs/, tools/test/, tools/ + scripts/ |
 | **projection** | a generated view of registry data, never authoritative, never edited | tracker board.md, docs/README.md |
 
 **Carrier, gate and target were used from the start and defined nowhere**, which
@@ -62,9 +64,18 @@ Two of the rows above are new mechanisms rather than back-filled words.
 is the grouping the Registries tab renders. Both are gated.
 
 Census and catalog are not two species of registry; they are two ways of
-giving the scope. That is also why a catalog can never carry a coverage gate:
-there is no independent population to check it against, only
-promise-to-implementation gates like the portable catalog's.
+giving the scope, and the difference is whether the membership rule can be
+**run**. A census's rule is executable (a folder, a file extension, the router's
+own table), so the answer can be recomputed and compared to the rows. A
+catalog's is a judgment, so there is nothing to recompute, which is why a
+catalog can never carry a coverage gate and only ever a
+promise-to-implementation gate like the portable catalog's.
+
+This was written as intensional against extensional until 2026-08-16. Both
+words are correct and neither is legible, and a definition row exists to let a
+reader classify a registry in five seconds rather than to show that the
+classification is principled. `shelf` went in the same pass: it named a folder,
+and folders already have a name.
 
 ## The integrity rule: ownership, not overlay
 
@@ -72,7 +83,7 @@ Any applicable `target × property` resolves to **at most one** authoritative
 registry, exactly one where the declaration requires it. Two registries
 claiming the same pair is an **invalid configuration**, surfaced by the gate,
 never resolved by precedence. Where nesting is intended, the subtraction is
-written into the scope definition (the harness shelf is "code under `tools/`
+written into the scope definition (the harness scope is "code under `tools/`
 and `scripts/`, *except* `tools/test/`, which the tests census owns"), so
 disjointness stays explicit and the check stays simple.
 
@@ -112,7 +123,7 @@ present on the seventeen skills, whose `skills-catalog` row carries a
 model-facing trigger description rather than a reader's one-liner.
 
 Comparison needs an identity space, since the same page is `annotate.html` to
-the pages catalog and `pages/annotate.html` to the tools shelf. A registry
+the pages catalog and `pages/annotate.html` to the tools gallery. A registry
 declares `identity`: `path` where its key is a repo-relative path,
 `path:<prefix>` where it is relative to one, absent where the key is opaque. An
 opaque target never collides, which is honest rather than lax: a route key and a
@@ -179,7 +190,7 @@ declaring it `exclude`, which is an honest accounting rather than a fix;
 carrier for it.
 
 **The index governs the carriers and nothing governed the index.** A registry
-row in `properties.json` was itself an unaccounted classification: the field
+row in the registry index was itself an unaccounted classification: the field
 check above reaches into the carriers and cannot reach the file it reads them
 from, because that file is the index rather than a peer among the sixteen. So
 the gate now applies the same rule to itself, holding the registry row to a
@@ -263,6 +274,46 @@ inside a `//` line comment opened a phantom block that swallowed hundreds of
 code lines, which had been silently mis-filing `docs/app-routes.json` as an
 orphan in the docs census. An instrument built to find unread carriers found a
 bug in the instrument it was copied from, which is the pattern working.
+
+## The registry pair, and the day it started governing itself
+
+Until 2026-08-16 the index was one file, `docs/properties.json`, holding two
+tables and a 544-word prose note. Three things were wrong with that and all
+three had the same cause.
+
+**It carried two registries.** A registry row and a property definition are
+different targets, so a file holding both is exactly what the model tells
+everyone else not to build. They are now `docs/registries.csv` and
+`docs/properties.csv`.
+
+**It governed everything except itself.** Its declarations covered seventeen
+registries and neither of its own tables, so its own columns had no property
+definitions, no value domains, and no gate. That is why `kind`, `format`, `rows`
+and `id` were used constantly and defined nowhere, and why `skills-catalog`
+could carry `kind: census` unchallenged while its id says the opposite. Both
+halves now have a row in `registries.csv` and a property definition per column,
+so `kind` carries a declared domain like any other closed column rather than a
+hand-kept list inside a test. The self-reference terminates the same way
+`docs/README.md`'s does, being generated from the registry it is a row in: one
+more pass settles it, and the gate asserts convergence rather than assuming it.
+
+**Its definitions lived in a JSON string.** `key`, `identity`, `fields` and
+`renders_in` were defined in the note, which is the one place a reader looking
+for documentation does not go. They are glosses on property-definition rows now,
+beside the columns they describe, and the note is gone rather than relocated.
+
+CSV is the format for one reason that is not readability: **a CSV cannot hold
+two tables.** That is what makes "a registry is a file" true by construction
+instead of by convention, and it is what let `carrier`, `rows` and `format`
+collapse into a single `path`. `carrier` existed only to name a file that might
+hold several registries; with one table per file the word had nothing left to
+mean. Three registries still share `docs/routes.json`, so `path` carries a
+`#fragment` for those; the fragment goes when each is its own file.
+
+The one thing CSV costs is the null. A blank cell cannot be told from an empty
+string, so **a blank means NOT ASSERTED**, and any property that has to
+distinguish "checked, and the answer is none" carries an explicit token for it.
+`gate` is the first: `none` where nothing holds a registry, never a blank.
 
 ## Storage rules
 
@@ -433,7 +484,7 @@ The integrity rule spans levels unchanged: no pair, anywhere, has two owners.
 
 *(2026-08-09, from walking the origin instrument against this document)*
 
-budget-drs's `properties.csv` and this repo's `properties.json` express the same
+budget-drs's `properties.csv` and this repo's registry pair express the same
 model in different normal forms, and neither should convert to the other.
 
 This repo factors a **registries** object out of its declarations, because

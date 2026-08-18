@@ -1,5 +1,5 @@
 // docs/docs.json — the documentation registry: the documents census. Complete
-// by construction: every .md/.json file under docs/ has exactly one row, so a
+// by construction: every .md/.json/.csv file under docs/ has exactly one row, so a
 // file cannot sit in the folder unaccounted for (the same completeness gate
 // build-census.py runs for budget-drs's data files).
 //
@@ -34,7 +34,7 @@ function docsFiles(dir, out = []) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
     if (e.isDirectory()) docsFiles(p, out);
-    else if (/\.(md|json)$/.test(e.name)) out.push(path.relative(repoRoot, p));
+    else if (/\.(md|json|csv)$/.test(e.name)) out.push(path.relative(repoRoot, p));
   }
   return out;
 }

@@ -240,10 +240,20 @@
       "tested": false
     },
     {
-      "path": "tools/build/registries-reach.mjs",
-      "role": "stamp renders_in into docs/properties.json: the app files that name each registry's carrier, empty being the Registries tab's warning state",
+      "path": "tools/build/registries-load.mjs",
+      "role": "read and write the registry pair (docs/registries.csv, docs/properties.csv): the CSV parse, the path/fragment split, and the column order a restamp must preserve",
       "layer": "tools/build",
-      "lines": 88,
+      "lines": 85,
+      "invocation": "none found",
+      "emits": false,
+      "named": false,
+      "tested": true
+    },
+    {
+      "path": "tools/build/registries-reach.mjs",
+      "role": "stamp renders_in into docs/registries.csv: the app files that name each registry's path, empty being the Registries tab's warning state",
+      "layer": "tools/build",
+      "lines": 91,
       "invocation": "npm:registries-reach",
       "emits": true,
       "named": true,
@@ -1041,9 +1051,9 @@
     },
     {
       "path": "tools/render/scenarios/map-registries.mjs",
-      "role": "drive the Map view's Registries tab for a screenshot, serving the real docs/properties.json through a stubbed GH so a tokenless render still shows the three areas and the cards",
+      "role": "drive the Map view's Registries tab for a screenshot, serving the real docs/registries.csv through a stubbed GH so a tokenless render still shows the three areas and the cards",
       "layer": "tools/render/scenarios",
-      "lines": 53,
+      "lines": 55,
       "invocation": "driver",
       "emits": false,
       "named": false,

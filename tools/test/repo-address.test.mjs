@@ -152,7 +152,7 @@ test('the pre-build boots url-params.js and repo-address.js before the component
   // carry the grammar and the param read in its boot list, not just in its
   // source cache: stage.js reads a stage link during init through both.
   const boot = readFileSync(path.join(repoRoot, 'tools/build/build-lib.mjs'), 'utf8');
-  assert.match(boot, /extraBoot\s*=\s*\['kits\/url-params\.js',\s*'kits\/repo-address\.js',\s*\.\.\.components/);
+  assert.match(boot, /extraBoot\s*=\s*\['kits\/url-params\.js',\s*'kits\/repo-address\.js',\s*'kits\/csv\.js',\s*\.\.\.components/);
   // The boot list, not the source cache: the cache is alphabetical and says
   // nothing about order of execution.
   const dist = readFileSync(path.join(repoRoot, 'dist/web-tools.js'), 'utf8');

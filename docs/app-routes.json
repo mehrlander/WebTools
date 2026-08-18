@@ -217,10 +217,11 @@
       "group": "estate",
       "what": "The coordination layer made inspectable: the portable set, surfacing, showing, docs, claims, tests, harness, registries.",
       "files": [
-        "lib/alpineComponents/map.js",
+        "docs/properties.csv",
+        "docs/registries.csv",
         "docs/routes.json",
         "docs/surfacing.json",
-        "docs/properties.json"
+        "lib/alpineComponents/map.js"
       ],
       "tabs": [
         "set",

@@ -356,7 +356,7 @@ that, which is why `use_when` is required rather than optional:
 | `quoted` | reader | verbatim from a source |
 
 It is portable, because a concept named once should be the same concept in every
-repo, and it is declared in [`docs/properties.json`](properties.json) with
+repo, and it is declared in [`docs/properties.csv`](properties.csv) with
 [`tools/test/text-fields-registry.test.mjs`](../tools/test/text-fields-registry.test.mjs)
 as its gate. That test holds the size (a vocabulary that grows a name whenever a
 carrier wants one is not a vocabulary), the typing, and two properties that are

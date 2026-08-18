@@ -1,5 +1,5 @@
 // The content registry's value domains are defined by the content-registry
-// SKILL, and copied into docs/properties.json. This holds the copy to the
+// SKILL, and copied into docs/properties.csv. This holds the copy to the
 // original.
 //
 // Filed 2026-08-09 as an owners row saying the check was "none: the two domains
@@ -9,7 +9,7 @@
 // Why the skill is authoritative and not the declaration table: CLAUDE.md says
 // the content-registry skill owns that convention, the skill is what a session
 // reads before classifying anything, and the domains travel to other repos with
-// the plugin while docs/properties.json does not. The copy here exists so the
+// the plugin while docs/properties.csv does not. The copy here exists so the
 // properties gate can check content.csv's values without parsing markdown at
 // every run; it is a convenience, and a convenience that can drift is exactly
 // what this registry model exists to catch.
@@ -19,10 +19,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
+import { loadRegistries } from '../build/registries-load.mjs';
 
 const SKILL = '.claude/skills/content-registry/SKILL.md';
 const skill = readFileSync(path.join(repoRoot, SKILL), 'utf8');
-const reg = JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'properties.json'), 'utf8'));
+const reg = loadRegistries(repoRoot);
 
 // The skill states each domain as a bullet that opens with the property in
 // backticks and then lists backticked values separated by pipes, wrapping
@@ -55,7 +56,7 @@ function domainFromSkill(prop) {
 
 test('the content registry domains match the skill that defines them', () => {
   const declared = Object.fromEntries(
-    reg.declarations
+    reg.properties
       .filter(d => d.registry === 'content-registry' && Array.isArray(d.values))
       .map(d => [d.property, d.values]));
 
@@ -64,7 +65,7 @@ test('the content registry domains match the skill that defines them', () => {
 
   for (const [prop, values] of Object.entries(declared)) {
     assert.deepEqual(values, domainFromSkill(prop),
-      `docs/properties.json's ${prop} domain has drifted from ${SKILL}, which owns it. ` +
+      `docs/properties.csv's ${prop} domain has drifted from ${SKILL}, which owns it. ` +
       `The skill is authoritative: change it there and copy, never the other way.`);
   }
 });

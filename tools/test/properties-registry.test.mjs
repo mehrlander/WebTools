@@ -1,5 +1,9 @@
-// properties-registry.test.mjs — holds docs/properties.json, the declaration
-// table of docs/registries.md, to the carriers it governs.
+// properties-registry.test.mjs — holds docs/registries.csv and docs/properties.csv,
+// the registry pair behind docs/registries.md, to the files they govern.
+//
+// Since 2026-08-16 the pair governs ITSELF: both have a row in registries.csv and
+// every one of their columns has a property definition, which is how `kind` finally
+// carries a value domain instead of a special rule.
 //
 // The model's integrity rules, as checks: every governed carrier exists and
 // parses; within one, row fields are exactly the declared key plus declared
@@ -34,11 +38,12 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadRegistries } from '../build/registries-load.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const reg = JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'properties.json'), 'utf8'));
+const reg = loadRegistries(repoRoot);
 
-const decls = reg.declarations;
+const decls = reg.properties;
 const byRegistry = new Map(reg.registries.map(r => [r.id, r]));
 
 // A `rows` spec addresses the row array inside a JSON carrier. Two shapes are
@@ -81,22 +86,23 @@ function parseCsv(raw) {
 }
 
 function carrierRows(r) {
-  const raw = readFileSync(path.join(repoRoot, r.carrier), 'utf8');
-  const rows = r.format === 'csv' ? parseCsv(raw) : rowsAt(JSON.parse(raw), r.rows);
-  assert.ok(rows.length > 0, `${r.carrier}: no rows at "${r.rows ?? 'the CSV body'}"`);
+  const raw = readFileSync(path.join(repoRoot, r.file), 'utf8');
+  const rows = r.file.endsWith('.csv') ? parseCsv(raw) : rowsAt(JSON.parse(raw), r.fragment);
+  assert.ok(rows.length > 0, `${r.file}: no rows at "${r.fragment ?? 'the CSV body'}"`);
   return rows;
 }
 
 function carrierFields(r) {
-  if (r.format === 'csv') {
+  if (r.file.endsWith('.csv')) {
     // The header row carries the column set; quoting never appears in headers.
-    const raw = readFileSync(path.join(repoRoot, r.carrier), 'utf8');
+    const raw = readFileSync(path.join(repoRoot, r.file), 'utf8');
     return new Set(raw.split('\n')[0].trim().split(','));
   }
   const fields = new Set();
   for (const row of carrierRows(r)) {
-    assert.ok(row[r.key] !== undefined && row[r.key] !== '',
-      `${r.carrier}: a row is missing its key field "${r.key}"`);
+    for (const k of r.key.split('+'))
+      assert.ok(row[k] !== undefined && row[k] !== '',
+        `${r.file}: a row is missing its key field "${k}"`);
     for (const k of Object.keys(row)) fields.add(k);
   }
   return fields;
@@ -106,11 +112,17 @@ test('registries are well-formed: unique ids, carriers and gates exist', () => {
   const ids = reg.registries.map(r => r.id);
   assert.equal(new Set(ids).size, ids.length, 'duplicate registry id');
   for (const r of reg.registries) {
-    assert.ok(existsSync(path.join(repoRoot, r.carrier)), `${r.id}: carrier ${r.carrier} does not exist`);
-    if (r.gate) assert.ok(existsSync(path.join(repoRoot, r.gate)), `${r.id}: gate ${r.gate} does not exist`);
+    assert.ok(existsSync(path.join(repoRoot, r.file)), `${r.id}: file ${r.file} does not exist`);
+    // `none` is the token for "nothing holds this registry", distinct from a
+    // blank, which in CSV can only mean not asserted. Every gate is a path or
+    // that word.
+    if (r.gate && r.gate !== 'none')
+      assert.ok(existsSync(path.join(repoRoot, r.gate)), `${r.id}: gate ${r.gate} does not exist`);
     assert.ok(r.target, `${r.id}: no target grain; the model's targets are not all files, and a ` +
       `registry that does not say what it asserts about cannot be checked against a population`);
-    assert.ok(['census', 'catalog'].includes(r.kind), `${r.id}: kind must be census or catalog`);
+    // `kind`'s domain is no longer a list in this file. It is declared in
+    // properties.csv like every other closed domain, and enforced by the domain
+    // check below, which is the whole point of the index governing itself.
   }
   for (const d of decls) {
     assert.ok(byRegistry.has(d.registry), `declaration ${d.property}: unknown registry ${d.registry}`);
@@ -131,7 +143,7 @@ test('every ungoverned registry says why, and the count is the one on the books'
       assert.ok(!r.why, `${r.id}: why belongs to an ungoverned registry`);
       assert.ok(r.key, `${r.id}: a governed registry names its key field`);
       // A CSV carrier has one implicit row set, so only JSON needs the pointer.
-      if (r.format === 'json') assert.ok(r.rows, `${r.id}: a governed JSON carrier names its row array`);
+      if (r.file.endsWith('.json')) assert.ok(r.fragment, `${r.id}: a governed JSON carrier names its row array`);
     }
   }
   assert.equal(ungoverned.length, 0,
@@ -146,13 +158,13 @@ test('each governed carrier holds exactly its key plus its declared properties',
     const declared = new Set(decls.filter(d => d.registry === r.id).map(d => d.property));
     const fields = carrierFields(r);
     for (const f of fields) {
-      assert.ok(f === r.key || declared.has(f),
-        `${r.carrier}: field "${f}" carries no declaration in docs/properties.json; ` +
+      assert.ok(r.key.split('+').includes(f) || declared.has(f),
+        `${r.file}: field "${f}" carries no declaration in docs/properties.csv; ` +
         `declare the property or it is an unaccounted classification`);
     }
     for (const p of declared) {
       assert.ok(fields.has(p),
-        `${r.carrier}: declared property "${p}" appears in no row; retire the declaration or fix the carrier`);
+        `${r.file}: declared property "${p}" appears in no row; retire the declaration or fix the carrier`);
     }
   }
 });
@@ -174,11 +186,11 @@ test('every value in a closed domain is in that domain', () => {
         const v = row[d.property];
         if (v === undefined || v === '') {
           assert.notEqual(d.required, 'value',
-            `${r.carrier}: ${d.property} is blank on a row but declared required:value`);
+            `${r.file}: ${d.property} is blank on a row but declared required:value`);
           continue;
         }
         assert.ok(allowed.has(v),
-          `${r.carrier}: ${d.property}="${v}" is outside its declared domain ` +
+          `${r.file}: ${d.property}="${v}" is outside its declared domain ` +
           `[${d.values.join(', ')}]. Widen the declaration or fix the row.`);
       }
     }
@@ -207,7 +219,7 @@ test('every required:value property is present on every row', () => {
           (Array.isArray(v) && v.length === 0);
       });
       assert.equal(blank.length, 0,
-        `${r.carrier}: ${d.property} is declared required:value but is blank on ` +
+        `${r.file}: ${d.property} is declared required:value but is blank on ` +
         `${blank.length} of ${rows.length} rows. Either fill them, or grade it "counted" ` +
         `(a blank that means something and is worth a ledger figure) or "none".`);
     }
@@ -236,17 +248,16 @@ test('modes are coherent: computed names a real deriver, recorded names none', (
 });
 
 // A registry row is itself an unaccounted classification unless something holds
-// its shape. properties.json is the index rather than a peer, so no declaration
-// governs it and the field check above cannot reach it. This is that check,
-// self-applied. `area` is the reader's grouping and its rule is one question,
+// its shape. The index used to be exempt: nothing declared its own columns, so
+// a hand-kept REGISTRY_FIELDS set stood in for the check the carriers get. Since
+// 2026-08-16 both halves of the pair have a row in registries.csv and a property
+// definition per column, so the ordinary check above reaches them and the stand-in
+// is gone. What is left here is content rather than schema. `area` is the reader's grouping and its rule is one question,
 // stated in docs/registries.md: does the target have a path in this tree? Nine
 // files, seven names. The first cut was three, splitting the names by topic,
 // which did not survive: two of them were names a program parses and two were
 // vocabulary a person picks from, so the seam ran through the group.
 const AREAS = ['files', 'names'];
-const REGISTRY_FIELDS = new Set(['id', 'area', 'title', 'gloss', 'carrier', 'format', 'key',
-  'identity', 'rows', 'kind', 'target', 'scope', 'gate', 'fields', 'why', 'renders_in']);
-
 test('every registry declares its area, and leads with a title and a gloss', () => {
   for (const r of reg.registries) {
     assert.ok(AREAS.includes(r.area),
@@ -256,14 +267,9 @@ test('every registry declares its area, and leads with a title and a gloss', () 
     assert.ok(r.gloss && r.gloss.length > 40,
       `${r.id}: needs a gloss, one sentence on what it governs for someone who does not know`);
     assert.notEqual(r.title, r.gloss, `${r.id}: title and gloss are doing the same job`);
-    for (const f of Object.keys(r)) {
-      assert.ok(REGISTRY_FIELDS.has(f),
-        `${r.id}: registry field "${f}" is not accounted for. The index governs the carriers and ` +
-        `nothing governs the index, so add it to REGISTRY_FIELDS deliberately or drop it.`);
-    }
   }
-  // Every declaration already glossed its property; no registry did, and that
-  // asymmetry is what this pair of fields closes.
+  // Every property already glossed itself; no registry did, and that asymmetry
+  // is what this pair of fields closes.
   for (const d of decls) assert.ok(d.gloss, `${d.registry}.${d.property}: no gloss`);
 });
 
@@ -277,11 +283,11 @@ test('every registry declares its area, and leads with a title and a gloss', () 
 import { deriveRendersIn } from '../build/registries-reach.mjs';
 
 test('renders_in matches its derivation on every registry', () => {
-  const derived = deriveRendersIn(repoRoot, reg.registries.map(r => r.carrier));
+  const derived = deriveRendersIn(repoRoot, reg.registries.map(r => r.file));
   for (const r of reg.registries) {
-    assert.deepEqual(r.renders_in, derived.get(r.carrier),
+    assert.deepEqual(r.renders_in, derived.get(r.file),
       `${r.id}: renders_in is stale against the app corpus; run \`npm run registries-reach\` ` +
-      `and commit docs/properties.json`);
+      `and commit docs/properties.csv`);
   }
 });
 

@@ -126,13 +126,13 @@ if git status --porcelain -- tools scripts package.json tools/build/tools-index.
 fi
 
 # --- leg 2d: lib/ or pages/ -> the registries' renders_in field ---------------
-# docs/properties.json is authored everywhere except `renders_in`, the app
+# docs/registries.csv is authored everywhere except `renders_in`, the app
 # files that name each carrier, stamped the way leg 3a stamps reach. Must
-# precede 3a: this writes docs/properties.json, which is a docs/ file whose
+# precede 3a: this writes docs/registries.csv, which is a docs/ file whose
 # word count 3a measures. properties-registry.test.mjs is the backstop.
-if git status --porcelain -- lib pages docs/properties.json tools/build/registries-reach.mjs | grep -q .; then
+if git status --porcelain -- lib pages docs/registries.csv tools/build/registries-reach.mjs | grep -q .; then
   if npm run registries-reach --silent >/dev/null 2>&1; then
-    git add docs/properties.json 2>/dev/null || true
+    git add docs/registries.csv 2>/dev/null || true
   else
     echo "build hook: 'npm run registries-reach' failed — renders_in may be stale" >&2
   fi

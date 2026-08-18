@@ -38,7 +38,8 @@ const routesJson = readFileSync(path.join(repoRoot, 'docs', 'routes.json'), 'utf
 const docsJson = readFileSync(path.join(repoRoot, 'docs', 'docs.json'), 'utf8');
 const surfJson = readFileSync(path.join(repoRoot, 'docs', 'surfacing.json'), 'utf8');
 const ownersJson = readFileSync(path.join(repoRoot, 'docs', 'owners.json'), 'utf8');
-const propsJson = readFileSync(path.join(repoRoot, 'docs', 'properties.json'), 'utf8');
+const propsRegCsv = readFileSync(path.join(repoRoot, 'docs', 'registries.csv'), 'utf8');
+const propsDeclCsv = readFileSync(path.join(repoRoot, 'docs', 'properties.csv'), 'utf8');
 const testsJson = readFileSync(path.join(repoRoot, 'docs', 'tests.json'), 'utf8');
 // The private registry's sessions cache, trimmed to the rollup the Docs tab
 // reads. Paths are repo-qualified there and hub-relative in the registry, which
@@ -61,7 +62,8 @@ window.GH = class {
     if (p === 'docs/docs.json') return { text: docsJson };
     if (p === 'docs/surfacing.json') return { text: surfJson };
     if (p === 'docs/owners.json') return { text: ownersJson };
-    if (p === 'docs/properties.json') return { text: propsJson };
+    if (p === 'docs/registries.csv') return { text: propsRegCsv };
+    if (p === 'docs/properties.csv') return { text: propsDeclCsv };
     if (p === 'docs/tests.json') return { text: testsJson };
     if (p === 'state/sessions.json') return { text: JSON.stringify(sessions) };
     return { text: JSON.stringify(manifest) };
@@ -70,6 +72,9 @@ window.GH = class {
 // No window.__shell in the test, so hasToken() is falsy and the token-gated
 // adoption probe never runs; only the public set half loads.
 
+// The Registries tab reads two CSVs, so the kit that parses them has to be in
+// the window the same way the pre-build puts it there.
+new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8'))();
 new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/map.js'), 'utf8'))();
 Alpine.start();
 await tick(3);
@@ -400,11 +405,14 @@ test('Registries groups declarations under the registry that governs them', asyn
   }
   // The join must not drop or duplicate a declaration.
   const grouped = rows.reduce((n, r) => n + r.decls.length, 0);
-  assert.equal(grouped, data.propsReg.declarations.length,
+  assert.equal(grouped, data.propsReg.properties.length,
     'every declaration lands under exactly one registry row');
 
   const t = data.registryTotals;
+  // A crosswalk is a kind of catalog, so the two still partition the set.
   assert.equal(t.census + t.catalog, t.registries, 'every registry is a census or a catalog');
+  assert.ok(t.crosswalk > 0 && t.crosswalk < t.catalog,
+    'crosswalk is a value some registry holds, and fewer than all catalogs');
   assert.equal(t.decls, grouped);
   assert.ok(t.closed > 0 && t.closed <= t.decls);
 });

@@ -1,5 +1,5 @@
-// The derived field of docs/properties.json: `renders_in`, the app files that
-// name each registry's carrier. Restamped by `npm run registries-reach` and
+// The derived field of docs/registries.csv: `renders_in`, the app files that
+// name each registry's path. Restamped by `npm run registries-reach` and
 // gated by properties-registry.test.mjs, the way docs-reach.mjs and the docs
 // census hold `reach` and `words`.
 //
@@ -54,18 +54,21 @@ export function deriveRendersIn(repoRoot, carriers) {
   return out;
 }
 
-// ── CLI: restamp docs/properties.json (--check compares instead) ────────────
+// ── CLI: restamp docs/registries.csv (--check compares instead) ─────────────
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-  const file = path.join(repoRoot, 'docs', 'properties.json');
-  const registry = JSON.parse(readFileSync(file, 'utf8'));
-  const derived = deriveRendersIn(repoRoot, registry.registries.map(r => r.carrier));
+  const { loadRegistries, writeCsv, REGISTRY_COLS } = await import('./registries-load.mjs');
+  const file = path.join(repoRoot, 'docs', 'registries.csv');
+  const { registries } = loadRegistries(repoRoot);
+  // Keyed on `file`, not `path`: three registries still share docs/routes.json,
+  // so the fragment has to come off before asking which app files name it.
+  const derived = deriveRendersIn(repoRoot, registries.map(r => r.file));
   const checkOnly = process.argv.includes('--check');
 
   const stale = [];
-  for (const r of registry.registries) {
-    const next = derived.get(r.carrier);
+  for (const r of registries) {
+    const next = derived.get(r.file);
     if (JSON.stringify(r.renders_in) !== JSON.stringify(next)) stale.push(r.id);
     r.renders_in = next;
   }
@@ -73,15 +76,15 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   if (checkOnly) {
     if (stale.length) {
       console.error(`registries-reach --check: renders_in is stale on ${stale.join(', ')}; ` +
-        'run `npm run registries-reach` and commit docs/properties.json');
+        'run `npm run registries-reach` and commit docs/registries.csv');
       process.exit(1);
     }
   } else {
-    writeFileSync(file, JSON.stringify(registry, null, 2) + '\n');
+    writeFileSync(file, writeCsv(registries, REGISTRY_COLS));
   }
 
-  const empty = registry.registries.filter(r => !r.renders_in.length);
-  console.log(`registries-reach: ${registry.registries.length} registries, ` +
-    `${registry.registries.length - empty.length} with an app surface` +
+  const empty = registries.filter(r => !r.renders_in.length);
+  console.log(`registries-reach: ${registries.length} registries, ` +
+    `${registries.length - empty.length} with an app surface` +
     (empty.length ? `; no app surface: ${empty.map(r => r.id).join(', ')}` : ''));
 }

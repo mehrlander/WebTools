@@ -54,7 +54,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 998,
+      "words": 1025,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -94,7 +94,7 @@
       "subject": "the show-repo app's own destinations: every address, what it is for, and which files draw it",
       "status": "living",
       "reach": "app",
-      "words": 1315,
+      "words": 1316,
       "maintenance": "authored; held to show-repo.html's VIEWS table, and its declared files to disk, by app-routes.test.mjs"
     },
     {
@@ -126,7 +126,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2586,
+      "words": 2671,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -286,7 +286,7 @@
       "subject": "the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting",
       "status": "living",
       "reach": "app",
-      "words": 4819,
+      "words": 4859,
       "maintenance": "authored role and layer glossary; layer, lines, invocation, emits, named and tested stamped by tools/build/tools-index.mjs, held in lockstep by artifacts-lockstep.test.mjs; blank roles are counted, not hidden"
     },
     {
@@ -362,19 +362,27 @@
       "maintenance": "authored; held to PORTABLE.md and to the skill directories on disk by portable-manifest.test.mjs"
     },
     {
-      "path": "docs/properties.json",
-      "subject": "the properties registry: the declaration table binding each metadata property to its one authoritative registry, mode, and enforcement",
+      "path": "docs/properties.csv",
+      "subject": "every column of every registry: what it means, how it arises, and what it may hold",
+      "status": "living",
+      "reach": "app",
+      "words": 1541,
+      "maintenance": "authored; the same gate, both ways: an undeclared column fails, and a declared property missing from its file fails"
+    },
+    {
+      "path": "docs/registries.csv",
+      "subject": "every registry the estate declares: its file, target, scope, and gate",
       "status": "living",
       "reach": "project",
-      "words": 4524,
-      "maintenance": "authored by hand; held both ways to the carriers it governs by tools/test/properties-registry.test.mjs"
+      "words": 742,
+      "maintenance": "authored; held to the files it governs by tools/test/properties-registry.test.mjs, which since 2026-08-16 reaches this file too"
     },
     {
       "path": "docs/registries.md",
       "subject": "the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction",
       "status": "living",
       "reach": "project",
-      "words": 4760,
+      "words": 5395,
       "maintenance": "the doctrine behind properties.json; written to travel, origin budget-drs properties.csv"
     },
     {
@@ -394,20 +402,20 @@
       "maintenance": "authored, edited in place; still the corpus's largest document, shedding sections to their own references (the stage and the manifest went to stage.md and manifest.md 2026-08-16)"
     },
     {
-      "path": "docs/stage.md",
-      "subject": "the stage: bench and Saved, intake, the walkable preview and diff, Out, save-as-surface, and the #stage= link grammar",
-      "status": "living",
-      "reach": "project",
-      "words": 2582,
-      "maintenance": "authored, edited in place; split from show-repo.md 2026-08-16, which keeps the boundary statement and points here"
-    },
-    {
       "path": "docs/showing.md",
       "subject": "why the showing boundaries sit where they are: the frame and the record behind routes.json",
       "status": "living",
       "reach": "project",
       "words": 1957,
       "maintenance": "authored; defers its reference layer to routes.json by design and says so"
+    },
+    {
+      "path": "docs/stage.md",
+      "subject": "the stage: bench and Saved, intake, the walkable preview and diff, Out, save-as-surface, and the #stage= link grammar",
+      "status": "living",
+      "reach": "project",
+      "words": 2582,
+      "maintenance": "authored, edited in place; split from show-repo.md 2026-08-16, which keeps the boundary statement and points here"
     },
     {
       "path": "docs/surfacing.json",
@@ -432,6 +440,14 @@
       "reach": "orphan",
       "words": 4478,
       "maintenance": "re-derive with scripts/text-census.py and scripts/text-carriers.py; every figure is a command away, and the date in the opening line is what the numbers are as of"
+    },
+    {
+      "path": "docs/text-fields.csv",
+      "subject": "the names a prose-bearing CSV column or JSON key may take",
+      "status": "living",
+      "reach": "orphan",
+      "words": 574,
+      "maintenance": "authored; held to the carriers by tools/test/properties-registry.test.mjs. Uncounted until 2026-08-16, when the census widened to .csv and found it"
     },
     {
       "path": "docs/text-tools.md",
