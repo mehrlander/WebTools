@@ -32,7 +32,8 @@ test('landedSignal: identical bytes at the same path land', () => {
   const main = tree([{ path: 'a', type: 'blob', sha: 'x' }]);
   const tip = tree([{ path: 'a', type: 'blob', sha: 'x' }]);
   const s = B.landedSignal(['a'], tip, main);
-  assert.deepEqual(s, { nUnique: 1, nLanded: 1, nMissing: 0, missingPaths: [] });
+  assert.deepEqual(s, { nUnique: 1, nLanded: 1, nMissing: 0, nDiffers: 0,
+                        missingPaths: [], differsPaths: [] });
 });
 
 test('landedSignal: a moved blob lands (bytes anywhere on main)', () => {
@@ -50,11 +51,12 @@ test('landedSignal: a path deleted at the branch tip counts landed', () => {
   assert.equal(s.nLanded, 1);
 });
 
-test('landedSignal: churn (path on main, bytes differ) is unlanded but not missing', () => {
+test('landedSignal: differs (path on main, bytes differ) is unlanded but not missing', () => {
   const main = tree([{ path: 'a', type: 'blob', sha: 'mainv' }]);
   const tip = tree([{ path: 'a', type: 'blob', sha: 'tipv' }]);
   const s = B.landedSignal(['a'], tip, main);
-  assert.deepEqual(s, { nUnique: 1, nLanded: 0, nMissing: 0, missingPaths: [] });
+  assert.deepEqual(s, { nUnique: 1, nLanded: 0, nMissing: 0, nDiffers: 1,
+                        missingPaths: [], differsPaths: ['a'] });
 });
 
 test('landedSignal: path and bytes both absent from main is missing', () => {
@@ -70,6 +72,66 @@ test('landedSignal dedupes the unique-path list', () => {
   const tip = tree([{ path: 'a', type: 'blob', sha: 'x' }]);
   const s = B.landedSignal(['a', 'a', 'a'], tip, main);
   assert.equal(s.nUnique, 1);
+});
+
+// ── the three-way partition ─────────────────────────────────────────────────
+//
+// The estate chip read `28/80` beside `11 missing` and the two did not add up,
+// because forty-one paths sat in a class nothing named. These hold the fix:
+// every touched path lands in exactly one state, and the three counts sum to
+// the total. A regression here is a chip that lies again.
+
+test('pathStates answers every touched path with exactly one state', () => {
+  const main = tree([
+    { path: 'same', type: 'blob', sha: 'x' },
+    { path: 'moved/now-here', type: 'blob', sha: 'm' },
+    { path: 'edited', type: 'blob', sha: 'mainv' },
+    { path: 'deleted', type: 'blob', sha: 'd' },
+  ]);
+  const tip = tree([
+    { path: 'same', type: 'blob', sha: 'x' },
+    { path: 'moved/was-here', type: 'blob', sha: 'm' },
+    { path: 'edited', type: 'blob', sha: 'tipv' },
+    { path: 'only/here', type: 'blob', sha: 'new' },
+  ]);
+  const paths = ['same', 'moved/was-here', 'edited', 'deleted', 'only/here'];
+  const st = B.pathStates(paths, tip, main);
+  assert.deepEqual([...st], [
+    ['same', 'landed'],            // identical bytes at the same path
+    ['moved/was-here', 'landed'],  // same bytes, moved on main
+    ['edited', 'differs'],         // main holds the path, with other bytes
+    ['deleted', 'landed'],         // gone at the tip, so nothing is stranded
+    ['only/here', 'missing'],      // neither the path nor the bytes on main
+  ]);
+});
+
+test('the three counts partition the touched set', () => {
+  const main = tree([{ path: 'a', type: 'blob', sha: 'x' }, { path: 'b', type: 'blob', sha: 'mainv' }]);
+  const tip = tree([{ path: 'a', type: 'blob', sha: 'x' }, { path: 'b', type: 'blob', sha: 'tipv' },
+                    { path: 'c', type: 'blob', sha: 'q' }]);
+  const s = B.landedSignal(['a', 'b', 'c'], tip, main);
+  assert.equal(s.nLanded + s.nDiffers + s.nMissing, s.nUnique,
+    'landed + differs + missing must equal the touched total, which is what the chip claims');
+  assert.deepEqual(s.differsPaths, ['b']);
+  assert.deepEqual(s.missingPaths, ['c']);
+});
+
+test('countStates reads a map the caller already holds', () => {
+  const st = new Map([['a', 'landed'], ['b', 'differs'], ['c', 'missing'], ['d', 'missing']]);
+  assert.deepEqual(B.countStates(st), {
+    nUnique: 4, nLanded: 1, nMissing: 2, nDiffers: 1,
+    missingPaths: ['c', 'd'], differsPaths: ['b'],
+  });
+});
+
+test('PATH_STATES names exactly the states pathStates can return', () => {
+  const main = tree([{ path: 'a', type: 'blob', sha: 'x' }, { path: 'b', type: 'blob', sha: 'v' }]);
+  const tip = tree([{ path: 'a', type: 'blob', sha: 'x' }, { path: 'b', type: 'blob', sha: 'w' },
+                    { path: 'c', type: 'blob', sha: 'q' }]);
+  const produced = new Set(B.pathStates(['a', 'b', 'c'], tip, main).values());
+  const declared = new Set(B.PATH_STATES.map(s => s.key));
+  assert.deepEqual([...produced].sort(), [...declared].sort());
+  for (const s of B.PATH_STATES) assert.ok(s.label && s.hint, s.key + ' needs a label and a hint');
 });
 
 test('classify: fresh work is active regardless of signal', () => {

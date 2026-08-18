@@ -2995,7 +2995,8 @@ function app(){ return {
       const trim = b => ({ name: b.name, date: b.date || '', firstDate: b.firstDate || '',
                            sha: b.sha || '', subject: b.subject || '', ago: b.ago || '',
                            group: b.group, noBase: !!b.noBase, nUnique: b.nUnique || 0, nLanded: b.nLanded || 0,
-                           nMissing: b.nMissing || 0, missingPaths: b.missingPaths || [],
+                           nMissing: b.nMissing || 0, nDiffers: b.nDiffers || 0,
+                           missingPaths: b.missingPaths || [],
                            ...sessionsFor(b),
                            aheadBy: b.aheadBy ?? null, behindBy: b.behindBy ?? null });
       branches = [...recent.map(b => trim({ ...b, group: 'active' })), ...surveyed.rows.map(trim)];

@@ -918,11 +918,32 @@ reports a total larger than the list it returns, so the oldest entry present is
 not the first. Those rows show the tip age alone.
 
 Where the survey reached a branch, the row also states its **content verdict**:
-of the paths the branch uniquely touched, how many are present on the default
-branch now (`6/6`, or `1/5` plus `4 missing` with the paths on hover). It is
-what makes a Landed row actionable rather than a claim, and it costs nothing:
+of the paths the branch uniquely touched, how many hold content the default
+branch has now (`6/6 landed`, or `1/5 landed` plus `4 missing`). It is what
+makes a Landed row actionable rather than a claim, and it costs nothing, since
 the crawl stored it. An unsurveyed row shows nothing rather than `0/0`, since
 "not measured" and "measured zero" are different answers.
+
+**Three classes, and the third one had no name.** A touched path is **landed**
+(those bytes are on the default branch, at this path or moved anywhere in the
+tree, or the branch deleted the path and so stranded nothing), **differs** (the
+default branch holds the path with other bytes, which is either unlanded edits
+or the default's own drift since, and separating those costs a history walk the
+survey does not make), or **missing** (neither the path nor the bytes, the only
+class that says deleting the branch would lose something). The three sum to the
+touched total. Until 2026-08-18 the row showed `28/80` beside `11 missing` and
+named nothing else, so a reader could only read the pair as a failed
+subtraction. `landed` now rides the ratio, since a bare `28/80` does not say
+which direction is good, and the full partition is in the hover.
+
+**Both halves are routes into the files.** Tapping the ratio opens the branch
+detail on its **Files** pane; tapping `11 missing` opens it filtered to those
+eleven, as diffs a reader can actually read. What the chip replaced was a
+tooltip that pasted up to twelve missing paths under a sentence describing the
+paths that were *present*, so the wrong list sat under the wrong clause and
+nothing in it could be opened. The counts and the filter live on in the pane
+itself, which re-measures them rather than only rendering what it was handed;
+see [branch-overlay.md](branch-overlay.md).
 
 **Repo chips** below the scope chips narrow the list to one repo, `All` first
 and a count on each. The row's own **repo chip menu** contributes **Only

@@ -34,7 +34,18 @@ const ACTIVITY = {
       { name: 'claude/fab-render-toss', sha: 'b1', group: 'stranded', date: iso(30), firstDate: iso(500),
         subject: 'Confirm branchesForPath against a live token', aheadBy: 12, behindBy: 3 },
       { name: 'claude/pdf-ink-alignment', sha: 'c1', group: 'stranded', date: iso(200), firstDate: iso(230),
-        subject: 'Align ink strokes to the page box', aheadBy: 3, behindBy: 9 },
+        subject: 'Align ink strokes to the page box', aheadBy: 3, behindBy: 9,
+        nUnique: 12, nLanded: 9, nMissing: 2, nDiffers: 1,
+        missingPaths: ['lib/kits/ink-align.js', 'pages/pdf-ink.html'] },
+      // The verdict chip's own case, and the one that made it unreadable before
+      // 2026-08-18: a three-way split whose two VISIBLE numbers do not add up
+      // (28 landed + 41 differs + 11 missing = 80), on a branch with no merge
+      // base, so the asterisk is showing too. Both halves of the chip are
+      // routes into the detail's Files pane from here.
+      { name: 'claude/budget-drs-tracker-6jsaz8', sha: 'f1', group: 'stranded', date: iso(60), firstDate: iso(400),
+        subject: 'Merge origin/main into claude/budget-drs-tracker-6jsaz8', noBase: true,
+        nUnique: 80, nLanded: 28, nMissing: 11, nDiffers: 41,
+        missingPaths: ['tracker/tasks/0031-fund-splits.md', 'projects/budget-drs/data/design/LAYERS.md'] },
       // Landed rows: invisible at the default scope, and the whole point of the
       // Landed one. Two of them, so the chip count is not mistakable for a
       // rounding of the stranded set.

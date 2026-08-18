@@ -690,6 +690,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/branch-verdict.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 80,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/branches-window.mjs",
       "role": "the Branches window pill: the reader's time slice over the Recent scope",
       "layer": "tools/render/scenarios",
@@ -863,7 +873,7 @@
       "path": "tools/render/scenarios/estate-open.mjs",
       "role": "Activity's Open view seeded token-free so the list renders headlessly",
       "layer": "tools/render/scenarios",
-      "lines": 146,
+      "lines": 157,
       "invocation": "driver",
       "emits": false,
       "named": false,
