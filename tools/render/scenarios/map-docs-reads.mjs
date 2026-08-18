@@ -7,7 +7,7 @@
 //
 // Two scenarios rather than one, because they prove opposite things and a
 // single shot would prove neither cleanly. map-docs.mjs holds a tokenless
-// reader and shows the census rendering without the column; this one holds a
+// reader and shows the registry rendering without the column; this one holds a
 // token and shows the column. The real counts live in a private registry the
 // sandbox cannot reach, so the cache here is synthetic, chosen to put both
 // empty states on screen beside a populated row: a doc nobody opened reads a

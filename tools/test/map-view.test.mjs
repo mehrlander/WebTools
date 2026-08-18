@@ -149,7 +149,7 @@ test('Surfacing loads on demand and names its authoritative doc', async () => {
   assert.equal(data.SURF_DOC, 'docs/SURFACING.md');
 });
 
-test('Docs loads on demand and carries the census', async () => {
+test('Docs loads on demand and carries the registry', async () => {
   assert.equal(data.docsReg, null, 'the registry is not fetched until the tab is opened');
   await data.loadDocsReg();
   assert.equal(data.docsErr, '');
@@ -176,7 +176,7 @@ test('the Docs folder rail rolls up, nests, and prunes by reach without changing
   assert.equal(folders[0].dir, 'docs', 'the root folder leads the rail');
   assert.ok(folders.length > 3, 'subfolders get their own rows');
   for (const f of folders) assert.equal(f.depth, f.dir.split('/').length - 1, f.dir);
-  assert.equal(folders[0].n, data.docsReg.documents.length, 'the root rolls up the whole census');
+  assert.equal(folders[0].n, data.docsReg.documents.length, 'the root rolls up the whole registry');
   assert.equal(folders[0].words, data.docWordTotal, 'and the whole mass');
 
   assert.equal(data.docDir, 'docs', 'the root folder opens selected');
@@ -235,10 +235,10 @@ test('a row title opens the doc deck: full folder, tapped row first, rendered by
 // are asserted: absent without a token, and never a bare zero on an injected
 // doc, which is the case where the number would be exactly backwards.
 
-test('without a token the census renders and the readership column does not', () => {
+test('without a token the registry renders and the readership column does not', () => {
   assert.equal(data.hasToken(), false);
   assert.equal(data.docReads, null, 'no token, no column, no error');
-  assert.equal(data.docsErr, '', 'the census is public and must not fail with it');
+  assert.equal(data.docsErr, '', 'the registry is public and must not fail with it');
 });
 
 test('readership joins the repo-qualified cache path to the hub-relative registry row', async () => {

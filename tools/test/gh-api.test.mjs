@@ -70,7 +70,7 @@ test('returns fewer than n when commits run out', async () => {
   assert.deepEqual(out.map(f => f.path), ['a']);
 });
 
-test('load() keeps an in-flight census on the class for the boot guard', async () => {
+test('load() keeps an in-flight tally on the class for the boot guard', async () => {
   // gh-boot's load-race guard reads GH._loading / GH._loadQuietAt to tell a
   // chain still in flight from a page that loads nothing, so the counter has
   // to rise while a load is pending, pool across instances, and stamp the

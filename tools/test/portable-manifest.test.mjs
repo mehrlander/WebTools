@@ -24,7 +24,7 @@ function tablePaths(md, heading) {
 
 const tableSet = new Set([...tablePaths(portableMd, '### Docs'), ...tablePaths(portableMd, '### Scripts')]);
 const manifestPaths = new Set(manifest.items.map(i => i.path));
-// The harness census owns the description of anything it carries.
+// The harness registry owns the description of anything it carries.
 const harnessPaths = new Set(
   parseCsv(readFileSync(path.join(repoRoot, 'docs', 'harness.csv'), 'utf8')).map(t => t.path));
 
@@ -43,14 +43,14 @@ test('the set is typed and non-empty, and the plugins match the marketplace', ()
   for (const it of manifest.items) {
     assert.ok(['skill', 'doc', 'dir', 'script'].includes(it.kind), it.path + ': kind');
     assert.ok(it.path && it.title, it.path + ': path/title');
-    // `role` is required only where no census already describes the file. The
+    // `role` is required only where no registry already describes the file. The
     // set inherits from `harness`: on the nine scripts docs/harness.csv describes, a
     // role here would be a second copy of one claim, which is what the
     // ownership gate in properties-registry.test.mjs now forbids. The Map view
-    // joins the census value for display, so the row is not left blank to a
+    // joins the registry value for display, so the row is not left blank to a
     // reader. See docs/registries.md, "the inheritance shape".
     assert.ok(it.role || harnessPaths.has(it.path),
-      it.path + ': needs a role, since no census carries a description for it');
+      it.path + ': needs a role, since no registry carries a description for it');
   }
 });
 
@@ -74,7 +74,7 @@ test("every PORTABLE.md Docs/Scripts table row is in the manifest", () => {
   }
 });
 
-// The census. The plugin's source boundary is ./.claude/skills (see
+// The registry. The plugin's source boundary is ./.claude/skills (see
 // .claude-plugin/marketplace.json), so every skill directory on disk SHIPS,
 // catalogued or not. Four shipped uncatalogued for a while (measured
 // 2026-08-04: disk 15, manifest 9, MARKETPLACE.md 5), because the tests above

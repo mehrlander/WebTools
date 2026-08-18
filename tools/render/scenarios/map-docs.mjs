@@ -8,7 +8,7 @@
 // Same stub shape as map-showing.mjs: the sandbox blocks api.github.com, so
 // the scenario serves the REAL committed docs/docs.csv through GH.get, with
 // no token, proving the tab renders for a tokenless reader. What the pixels
-// prove: the documents census grouped by folder with status badges, and the
+// prove: the documents registry grouped by folder with status badges, and the
 // shared-claims cards where an unchecked copy renders in the warning tone.
 export default async function (page) {
   const reg = await page.evaluate(() => fetch('../../docs/docs.csv').then(r => r.text()));

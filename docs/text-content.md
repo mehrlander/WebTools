@@ -6,7 +6,7 @@ Measured 2026-08-10 across `mehrlander/web-tools` and `mehrlander/home`, with
 two instruments that make every figure below one command away:
 
 ```bash
-python3 scripts/text-census.py . pages lib --weight   # text with no carrier
+python3 scripts/text-survey.py . pages lib --weight   # text with no carrier
 python3 scripts/text-carriers.py . --fields           # the carriers we have
 ```
 
@@ -21,7 +21,7 @@ Two questions, and they needed different work:
    words. [`docs/text-fields.csv`](text-fields.csv) now states twelve names with
    the rule for picking among them, and every prose field name in budget-DRS
    maps to one of them.
-2. **What never reached a carrier?** Widening the census from `.js`/`.html` to
+2. **What never reached a carrier?** Widening the survey from `.js`/`.html` to
    `.py` roughly doubled the commentary found in budget-DRS's app and took its
    uncarried text tables from 2 to 10. Six registry rows moved another 53,115
    words from "no carrier" to correctly declared as supplied or generated, and
@@ -38,7 +38,7 @@ that decides where each belongs.
 | **Commentary** | whoever edits the file | the source file | grows into a document with no registry row |
 | **Inline prose** | the app's reader | rendered from a carrier | a sentence with no owner, category, or check |
 
-The census names them `text-table`, `commentary`, and `inline`. None is an
+The survey names them `text-table`, `commentary`, and `inline`. None is an
 error and the script never says otherwise. A comment is supposed to exist, and
 a three-row gloss table is not worth a CSV.
 
@@ -97,7 +97,7 @@ means somewhere else.
 
 # Part 2: text that never reached a carrier
 
-[`scripts/text-census.py`](../scripts/text-census.py) reads `.js`, `.mjs`,
+[`scripts/text-survey.py`](../scripts/text-survey.py) reads `.js`, `.mjs`,
 `.html`, and `.py`, splits what it finds into the three kinds, and separates
 generated payloads and supplied files, whose text has a carrier somewhere else.
 It reads the repo's `data/design/content.csv` where one exists, so it reports
@@ -260,7 +260,7 @@ reaches a reader exactly as one in a view module does, and until this pass the
 two could not be counted by the same means: the 113 builder literals in the
 first version of this document had to be counted by hand.
 
-The census separates the guard messages, which are legitimately code. The
+The survey separates the guard messages, which are legitimately code. The
 distinction is mechanical: a string inside a `raise`, `assert`, `sys.exit`, or
 `print` is addressed to whoever ran the build.
 
@@ -456,7 +456,7 @@ misfire.
 - A prose field whose name is not in the stated vocabulary.
 - An authored carrier nothing in the repo names. `text-carriers.py --check`
   exits 1 on one; both repos pass today except for a single web-tools file.
-- A comment block over N words. `text-census.py --check N` names the offenders.
+- A comment block over N words. `text-survey.py --check N` names the offenders.
 - Drift between a declared `rows` count and the carrier's actual row count, the
   same shape as the registry gates already running.
 
@@ -520,7 +520,7 @@ What remains:
    it, at a fraction of the cost.
 
 
-# What the census cannot see
+# What the survey cannot see
 
 Stated so the numbers are not read as more than they are.
 
@@ -532,7 +532,7 @@ Stated so the numbers are not read as more than they are.
 - **"Generated" is detected from a banner** in the first 800 bytes, or from a
   `mechanical`/`supplied` row in `content.csv`. A payload built without either
   reports as having no carrier, which is how the blog twin was found.
-- **The field-name census counts names, not meanings.** Two carriers using
+- **The field-name tally counts names, not meanings.** Two carriers using
   `note` for genuinely different things read as agreement here.
 - **Consistency is not correctness.** Neither instrument says whether any of
   this text is true or current.

@@ -47,7 +47,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`portable.csv`](portable.csv) — the portable set: what travels to another repo, and how a consumer takes it
 - [`properties.csv`](properties.csv) — every column of every registry: what it means, how it arises, and what it may hold
 - [`registries.csv`](registries.csv) — every registry the estate declares: its file, target, scope, and gate
-- [`registries.md`](registries.md) — the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction
+- [`registries.md`](registries.md) — the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the registry and catalog reduction
 - [`repetitions.csv`](repetitions.csv) — where each registered statement is said again, how it relates, and what holds it
 - [`routes-modes.csv`](routes-modes.csv) — the delivery modes toss-render accepts, and the trust posture each buys
 - [`routes-routes.csv`](routes-routes.csv) — the toss routes: which content type opens in which renderer page

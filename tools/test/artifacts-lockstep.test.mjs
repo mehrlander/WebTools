@@ -40,7 +40,7 @@ test('docs/README.md is in lockstep with the documentation registry', () => {
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'docs-readme --check failed');
 });
 
-test('the harness census is in lockstep with tools/ and scripts/', () => {
+test('the harness registry is in lockstep with tools/ and scripts/', () => {
   const r = check(['tools/build/tools-index.mjs', '--check']);
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'tools-index --check failed');
 });

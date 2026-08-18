@@ -214,7 +214,7 @@ On top of that, two collections by convention:
 - **Components** in `lib/alpineComponents/` are reusable UI pieces registered
   as `Alpine.data(...)`.
 - **Kits** in `lib/kits/` are logic libraries, not dependent on Alpine.
-  [kits/README.md](lib/kits/README.md) is the census.
+  [kits/README.md](lib/kits/README.md) is the full list.
 
 The same handful of concerns drove every piece of it:
 
@@ -252,7 +252,7 @@ Three docs go deeper:
   chain into a standalone offline artifact, with a byte-identical `verify-build`
   check).
 - **[lib/kits/README.md](lib/kits/README.md)**: the logic libraries. What
-  each kit exposes on `window`, with usage examples; the census lives
+  each kit exposes on `window`, with usage examples; the full list lives
   there, not here.
 
 The shape of a loaded page in one block:

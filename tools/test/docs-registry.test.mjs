@@ -1,13 +1,13 @@
-// docs/docs.csv — the documentation registry: the documents census. Complete
+// docs/docs.csv — the documentation registry: the documents registry. Complete
 // by construction: every .md/.json/.csv file under docs/ has exactly one row, so a
 // file cannot sit in the folder unaccounted for (the same completeness gate
-// build-census.py runs for budget-drs's data files).
+// build-registry.py runs for budget-drs's data files).
 //
 // The shared-ownership table used to ride along here as a second `claims`
 // block, checked by a shape test at the bottom of this file. It moved to
 // docs/owners.json on 2026-08-09, with tools/test/owners-registry.test.mjs as
 // its own gate: a registry does not live inside another registry's carrier, and
-// a census and a curated catalog do not want the same checks.
+// a registry and a curated catalog do not want the same checks.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -98,8 +98,8 @@ test('the declared words of every document matches the derivation', () => {
 });
 
 // Not a ban, a ledger. A bare "authored" row is a file nothing holds true, and
-// the point of the census is that such a file is visible rather than dressed.
-// If this number climbs, rows are being filled to satisfy the census gate
+// the point of the registry is that such a file is visible rather than dressed.
+// If this number climbs, rows are being filled to satisfy the registry gate
 // instead of being thought about, which is what happened the first time.
 test('no document row has been filled in with a bare "authored"', () => {
   const bare = registry.documents.filter(d => BARE.test(d.maintenance.trim()));

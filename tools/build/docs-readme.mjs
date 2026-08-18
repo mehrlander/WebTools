@@ -5,7 +5,7 @@
 //   node tools/build/docs-readme.mjs --check -> exit 1 if stale (CI-friendly)
 //
 // The README used to be hand-kept and indexed well under half the folder; the
-// registry's census is complete by construction (docs-registry.test.mjs), so
+// registry's registry is complete by construction (docs-registry.test.mjs), so
 // the index is now a projection of it. Subjects, statuses, and maintenance
 // live in the registry: edit docs/docs.csv, never this file's output.
 

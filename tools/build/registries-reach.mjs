@@ -1,7 +1,7 @@
 // The derived field of docs/registries.csv: `renders_in`, the app files that
 // name each registry's path. Restamped by `npm run registries-reach` and
 // gated by properties-registry.test.mjs, the way docs-reach.mjs and the docs
-// census hold `reach` and `words`.
+// registry hold `reach` and `words`.
 //
 // The question it answers is the registry model's own audit rule turned on the
 // registries themselves. The audits recorded in docs/registries.md kept finding

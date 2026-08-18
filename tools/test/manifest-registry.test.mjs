@@ -1,7 +1,7 @@
 // docs/manifest-fields.csv — the field registry for root `.web-tools.json`.
 //
 // Flat since 2026-08-16. Members of an array or object key used to be nested
-// inside their parent row as `subfields`, which meant the census counted 20 rows
+// inside their parent row as `subfields`, which meant the registry counted 20 rows
 // while its own scope claimed "every key in use". There were 46. They are rows
 // now, addressed pages[].path and stage.files, and the parent/child split is
 // derived from the key rather than from the shape of the file.

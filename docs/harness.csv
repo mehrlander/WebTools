@@ -8,8 +8,8 @@ scripts/link-survey.py,"report markdown links that no longer resolve, in three c
 scripts/ocr-pdf.py,"OCR a scanned PDF into text, and say how much to trust the result",scripts,187,argv,no,yes,no
 scripts/page-strips.py,"render a PDF page as overlapping horizontal strips a vision model can read, since the binding constraint is the display cap rather than scan resolution",scripts,97,argv,no,yes,no
 scripts/sunset-scan.py,scan a repo for SUNSET(YYYY-MM-DD) markers and report the ones now due,scripts,111,npm:sunset,no,yes,yes
-scripts/text-carriers.py,"inventory the CSV and JSON carriers that already hold authored prose, and census their field names to show how much vocabulary the carriers share",scripts,539,argv,no,yes,yes
-scripts/text-census.py,"count the prose inside .js, .mjs, .html and .py, split into commentary, text tables, and inline reader-facing text; --check gates a comment-length budget",scripts,759,argv,no,yes,no
+scripts/text-carriers.py,"inventory the CSV and JSON carriers that already hold authored prose, and registry their field names to show how much vocabulary the carriers share",scripts,539,argv,no,yes,yes
+scripts/text-survey.py,"count the prose inside .js, .mjs, .html and .py, split into commentary, text tables, and inline reader-facing text; --check gates a comment-length budget",scripts,759,argv,no,yes,no
 scripts/unclaimed-code-survey.py,"per-layer counts of files, files prose names, and files a test exercises; the code-survey behind code-layers.md",scripts,187,npm:code-survey,no,yes,no
 tools/build/bake.mjs,emit dist/<page>.html: the page's chain inlined into a standalone file,tools/build,53,npm:bake,no,yes,no
 tools/build/build-lib.mjs,"emit dist/web-tools.js, the pre-build: the whole lib/ as one self-booting offline artifact",tools/build,108,npm:build:lib,yes,yes,yes
@@ -22,12 +22,12 @@ tools/build/graphql-schema.mjs,regenerate the pruned GitHub GraphQL schema the s
 tools/build/kit-shim.mjs,run a browser-shaped gh.load kit inside Node; the bridge build.mjs and the suite share,tools/build,19,imported,no,yes,no
 tools/build/pages-index.mjs,regenerate both page catalogs: pages/README.md and pages/index.html,tools/build,455,npm:pages-index,no,yes,yes
 tools/build/pages-shots.mjs,"regenerate pages/thumbs/*.png, one screenshot per page for the visual index",tools/build,85,npm:pages-shots,no,yes,no
-tools/build/registries-load.mjs,"read and write the registry pair (docs/registries.csv, docs/properties.csv): the CSV parse, the path/fragment split, and the column order a restamp must preserve",tools/build,96,imported,no,no,yes
+tools/build/registries-load.mjs,"read and write the registry pair (docs/registries.csv, docs/properties.csv): the CSV parse, the path/fragment split, and the column order a restamp must preserve",tools/build,103,imported,no,no,yes
 tools/build/registries-reach.mjs,"stamp renders_in into docs/registries.csv: the app files that name each registry's path, empty being the Registries tab's warning state",tools/build,91,npm:registries-reach,yes,yes,yes
 tools/build/repo-pages-shots.mjs,regenerate pages-gallery thumbnails for another repo's pages catalog,tools/build,167,argv,no,yes,no
 tools/build/snags-index.mjs,generates the index at the top of docs/SNAGS.md and warns about likely repeats,tools/build,169,npm:snags-index,no,no,yes
 tools/build/tests-index.mjs,"restamp the derived half of docs/tests.csv, the test registry",tools/build,235,npm:tests-index,yes,no,yes
-tools/build/tools-index.mjs,restamp the derived half of this census,tools/build,175,npm:tools-index,yes,yes,yes
+tools/build/tools-index.mjs,restamp the derived half of this registry,tools/build,175,npm:tools-index,yes,yes,yes
 tools/build/verify-build.mjs,prove a page's dist build renders byte-identical to its live gh.load chain,tools/build,86,npm:verify-build,no,yes,no
 tools/concept-lab/build-entity-index.py,build the committed entity index end to end in one command,tools/concept-lab,200,argv,no,yes,no
 tools/concept-lab/entitylab.py,entity lab: where a repo's entity layer exists and where it is only implied,tools/concept-lab,572,argv,no,yes,no
@@ -102,12 +102,12 @@ tools/render/scenarios/inbox-demo.mjs,the inbox resolution with the armed redire
 tools/render/scenarios/jumpover-coverage.mjs,the exact-file jump-overs rendered headlessly with seeded rows,tools/render/scenarios,67,driver,no,no,no
 tools/render/scenarios/map-docs-reads.mjs,the Map's Docs tab with the readership column,tools/render/scenarios,69,driver,no,no,no
 tools/render/scenarios/map-docs.mjs,"the Map's Docs tab, the documentation registry rendered live",tools/render/scenarios,52,driver,no,no,no
-tools/render/scenarios/map-harness.mjs,drive show-repo's Map view onto the Harness tab with the committed census served through GH.get,tools/render/scenarios,52,driver,no,no,no
+tools/render/scenarios/map-harness.mjs,drive show-repo's Map view onto the Harness tab with the committed registry served through GH.get,tools/render/scenarios,52,driver,no,no,no
 tools/render/scenarios/map-registries.mjs,"drive the Map view's Registries tab for a screenshot, serving the real docs/registries.csv through a stubbed GH so a tokenless render still shows the three areas and the cards",tools/render/scenarios,55,driver,no,no,no
 tools/render/scenarios/map-set-adoption.mjs,"the Map's first two tabs, both halves populated",tools/render/scenarios,72,driver,no,no,no
 tools/render/scenarios/map-showing-peek.mjs,the Showing tab with a pointer held over an exact-file jump-over so the peek renders,tools/render/scenarios,50,driver,no,no,yes
 tools/render/scenarios/map-showing.mjs,"the Map's Showing tab: how content moves, renders, and gets looked at",tools/render/scenarios,60,driver,no,no,no
-tools/render/scenarios/map-tests.mjs,the Map view's Tests tab: the test census rendered live with assertion names expanded,tools/render/scenarios,63,driver,no,no,no
+tools/render/scenarios/map-tests.mjs,the Map view's Tests tab: the test registry rendered live with assertion names expanded,tools/render/scenarios,63,driver,no,no,no
 tools/render/scenarios/nest-probe.mjs,"probe: a nested self-toss's address bar, and the FAB's actions at depth two",tools/render/scenarios,44,driver,no,no,no
 tools/render/scenarios/open-drawer.mjs,the FAB drawer open with the take grid scrolled into view,tools/render/scenarios,20,driver,no,no,no
 tools/render/scenarios/pick-md.mjs,"end-to-end reproduction of pick-a-file-in-the-fab, reporting what the frame did",tools/render/scenarios,76,driver,no,no,no

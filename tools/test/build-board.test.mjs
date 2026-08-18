@@ -343,9 +343,9 @@ test('an unmet dependency reaches the projection as a resolved phrase', () => {
 // one would shift every later column by one without any parser complaining.
 test('a cell holding a comma or a quote survives the round trip', () => {
   const { rows } = both({
-    'a-000001': { title: 'Split the census, keep the "gate"', status: 'backlog' },
+    'a-000001': { title: 'Split the registry, keep the "gate"', status: 'backlog' },
   });
-  assert.equal(rows[0].title, 'Split the census, keep the "gate"');
+  assert.equal(rows[0].title, 'Split the registry, keep the "gate"');
 });
 
 // No timestamp anywhere in the artifact: the lockstep checks re-run the

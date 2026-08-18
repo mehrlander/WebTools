@@ -1,5 +1,5 @@
 // screenshot.mjs interaction scenario: the Map view's Tests tab, the test
-// census (docs/tests.csv) rendered live with the assertion names expanded.
+// registry (docs/tests.csv) rendered live with the assertion names expanded.
 //
 //   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/map-tests.mjs \
@@ -12,7 +12,7 @@
 // `protects` sitting above a list rather than absorbing it.
 //
 // Scoped to the `kit` kind so the shot stays legible: the toggle is deliberately
-// census-wide, and 119 expanded files is a page nobody reads. That pairing, a
+// registry-wide, and 119 expanded files is a page nobody reads. That pairing, a
 // global expansion plus a kind filter, is the interaction worth showing.
 export default async function (page) {
   const reg = await page.evaluate(() => fetch('../../docs/tests.csv').then(r => r.text()));

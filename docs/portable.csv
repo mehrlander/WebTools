@@ -37,7 +37,7 @@ script,,scripts/sunset-scan.py,sunset-scan.py,,on-demand
 script,,scripts/unclaimed-code-survey.py,unclaimed-code-survey.py,,on-demand
 script,,scripts/declared-paths.py,declared-paths.py,,on-demand
 script,,scripts/link-survey.py,link-survey.py,,on-demand
-script,,scripts/text-census.py,text-census.py,,on-demand
+script,,scripts/text-survey.py,text-survey.py,,on-demand
 script,,scripts/text-carriers.py,text-carriers.py,,on-demand
 script,,scripts/build-tree.py,build-tree.py,,on-demand
 script,,scripts/ocr-pdf.py,ocr-pdf.py,,on-demand

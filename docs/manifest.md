@@ -19,7 +19,7 @@ the axis the prose kept muddling by saying "not a show-repo field" in passing:
 the file is shared, and which tool reads a key is a property of the key.
 
 It went flat on 2026-08-16. The members of an array or object key used to sit
-nested inside their parent's row, which meant the census counted **20 rows while
+nested inside their parent's row, which meant the registry counted **20 rows while
 its own scope claimed every key in use**. There are 46. They are rows now,
 addressed `pages[].path` and `stage.files`, and a `required` column says whether
 a member has to be present, blank on a top-level key because that was never

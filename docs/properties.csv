@@ -3,7 +3,7 @@ docs,subject,recorded,,none,column,yes,,"what the document is about, one line"
 docs,status,recorded,,none,column,yes,living;record;measured,"whether the document is kept true, preserved as written, or derived from measurement"
 docs,reach,computed,tools/build/docs-reach.mjs,value,column,yes,injected;project;skill;app;orphan,"who can get to the document: injected at session start, reachable from project instructions, a skill, the app, or nothing"
 docs,words,computed,tools/build/docs-reach.mjs,value,column,yes,,"the document's size, and its share of the folder"
-docs,maintenance,recorded,,counted,column,yes,,who keeps the document true; a bare row is counted by the census rather than hidden
+docs,maintenance,recorded,,counted,column,yes,,who keeps the document true; a bare row is counted by the registry rather than hidden
 tests,kind,recorded,,value,column,yes,behavior;component;kit;tool;gate;lockstep;guard,the genre of check; the vocabulary is closed and the gate holds rows to it
 tests,protects,recorded,,counted,column,yes,,the one thing that breaks if the test is deleted; blanks are counted
 tests,assertions,computed,tools/build/tests-index.mjs,counted,column,yes,,"how many assertions the file makes. Blank, never zero, on the 10 browser-driven checks that are not node:test files, because test() is not their unit; the blank is the honest reading and the count is the ledger figure"
@@ -24,7 +24,7 @@ content,description,recorded,,none,column,yes,,one line on the artifact
 portable,kind,recorded,,value,column,yes,skill;doc;script;dir,what species of thing travels
 portable,command,recorded,,none,column,yes,,the invocation name; present on kind:skill rows only
 portable,title,recorded,,none,column,yes,,display name
-portable,role,recorded,,counted,column,yes,,"what the item does for an adopting repo. NOT asserted where a census already owns the claim: blank on the nine scripts harness describes, joined at render time. Kept on the skills, whose skills row carries a model-facing trigger description rather than a reader's one-liner"
+portable,role,recorded,,counted,column,yes,,"what the item does for an adopting repo. NOT asserted where a registry already owns the claim: blank on the nine scripts harness describes, joined at render time. Kept on the skills, whose skills row carries a model-facing trigger description rather than a reader's one-liner"
 portable,use,recorded,,none,column,yes,plugin;live;reference;adopt;on-demand,"how a consumer takes the item: installed by the plugin, read live, referenced, adopted once, or fetched on demand"
 tools,icon,recorded,,none,column,yes,,phosphor icon name
 owners,kind,recorded,,value,column,yes,statement;family,"whether the row owns one repeated statement or declares a rule over a scope; a family row is a DECLARATION in this model, carried here because its carrier is distributed"

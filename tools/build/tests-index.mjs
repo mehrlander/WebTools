@@ -51,7 +51,7 @@
 //
 // Authored in the registry, because no derivation can supply it: `kind` (what
 // genre of check this is) and `protects` (the one thing that breaks if it is
-// deleted). `protects` is held to the same standard as the documents census's
+// deleted). `protects` is held to the same standard as the documents registry's
 // `maintenance`: a row that cannot say what it protects is a test nobody has
 // examined, and the gate counts those rather than banning them.
 //

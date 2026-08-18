@@ -1,4 +1,4 @@
-// The derived half of docs/harness.csv, the harness census.
+// The derived half of docs/harness.csv, the harness registry.
 // (docs/tools.csv was taken: it is the curated Tools gallery manifest,
 // show-repo's Tools view, and has nothing to do with the tools/ folder.)
 //
@@ -25,7 +25,7 @@
 //   tested      its basename appears in a file under tools/test/
 //   layer, lines
 //
-// tools/test/ is deliberately absent: docs/tests.csv is that folder's census,
+// tools/test/ is deliberately absent: docs/tests.csv is that folder's registry,
 // and one file must not answer to two registries.
 //
 // Run `npm run tools-index` to restamp; `--check` compares instead of writing.

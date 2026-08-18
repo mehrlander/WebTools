@@ -840,7 +840,7 @@ derived caches only.
 by two axes: **scope** and **repo**.
 
 **Scope** picks which branches to show, and the chips carry their counts off the
-full list, so the row doubles as the estate's branch census. Four scopes read
+full list, so the row doubles as a running count of the estate's branches. Four scopes read
 the survey's `group` values; **Abandoned** reads the PR index instead, which is
 why it is a chip rather than a fifth group:
 
@@ -851,7 +851,7 @@ why it is a chip rather than a fifth group:
 | **Stranded** | `stranded` | content that exists nowhere on the default branch |
 | **Landed** | `landed` | the cleanup pass: content already on the default branch |
 | **Abandoned** | a PR closed unmerged | work decided against, still in the list |
-| **All** | everything surveyed | the census |
+| **All** | everything surveyed | the whole list |
 
 **Abandoned is the scope the content survey could not have.** Its verdict is
 landed-or-not, and abandoned work is landed nowhere, so a closed-unmerged branch
@@ -1359,14 +1359,14 @@ set, and loaded on first open of the tab rather than at mount.
 
 *Docs* renders the documentation registry,
 [`docs/docs.csv`](docs.csv), in the same lazy shape. Two tables. The
-**documents census**: every `.md`/`.json` under `docs/`, each with its subject,
+**documents table**: every `.md`/`.json` under `docs/`, each with its subject,
 its status (**living** claims current truth and is wrong when stale; **record**
 preserves a moment and is wrong when rewritten; **measured** carries dated
 observations and is corrected by re-probing), its **reach** and **words** (both
 derived, see below), and its maintenance (authored or generated, with the
 discipline that keeps it true); complete by construction, since
 `tools/test/docs-registry.test.mjs` holds the folder and the table to exactly one
-row per file. The census is navigated from a folder rail
+row per file. The table is navigated from a folder rail
 (2026-08-07): each directory is a row with rolled-up file count and word mass
 and its own GitHub link, the selected folder shows its direct files beside it
 with that folder's README subject as the gloss, and a reach filter moves the
@@ -1385,11 +1385,12 @@ hand or by a named builder), where an absent check renders in the warning tone
 rather than being omitted, because an unchecked copy should look unchecked every
 time the tab opens. The claims table renders on its own **Claims** tab
 (2026-08-07), off [`docs/owners.csv`](owners.csv); the `?tab=claims` key is
-unchanged, the way `?tab=set` outlived "The set". It keys on claims rather than files, so trailing the census it
+unchanged, the way `?tab=set` outlived "The set". It keys on claims rather than files, so trailing the documents it
 read as an appendix, first open, then folded behind a count; a tab keeps the
-census on one viewport and gives the table its own. The registry is authoritative for the claims it covers and
-owes the repo no inventory of them; the census, by contrast, is complete.
-The census half is public, like the other two tabs.
+documents on one viewport and gives the claims their own. The two registries differ in
+how membership is decided, which is the whole reason they cannot share a pane: the claims are
+curated and authoritative only for what they cover, while the documents are computed from the
+folder and therefore complete. The documents half is public, like the other two tabs.
 
 Three numbers sit on a row, and they answer three different questions. **Reach**
 (derived by `tools/build/docs-reach.mjs`, gated against the registry) says who
@@ -1411,7 +1412,7 @@ That last case is the reason the caveats are on screen instead of in this file:
 estate and are precisely the two no file tool can see, so a bare count would rank
 them last.
 
-*Tests* is the same census one axis over, from [`docs/tests.csv`](tests.csv):
+*Tests* is the same shape one axis over, from [`docs/tests.csv`](tests.csv):
 every file in the suite with its kind (gate, lockstep, tool, kit, behavior,
 component, guard) and what breaks if it is deleted, its assertions, method,
 runner and boot-smoke count all derived from the files and gated against the

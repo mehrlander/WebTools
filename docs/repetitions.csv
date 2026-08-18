@@ -1,5 +1,5 @@
 subject,where,relation,kept,check
-the skill roster,docs/portable.csv skill items,copy,by hand,"census, both directions (portable-manifest.test.mjs)"
+the skill roster,docs/portable.csv skill items,copy,by hand,"registry, both directions (portable-manifest.test.mjs)"
 the skill roster,docs/PORTABLE.md Docs table,copy,by hand,two-way table test (portable-manifest.test.mjs)
 the skill roster,docs/PORTABLE.md bag table,paraphrase,,membership held via path mentions only; the prose is unchecked
 the skill roster,docs/MARKETPLACE.md; .claude-plugin/marketplace.json description,pointer,,

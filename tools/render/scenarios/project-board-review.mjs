@@ -151,7 +151,7 @@ const TASKS = [
     "logEntries": 3
   },
   {
-    "title": "Chart exposure with app_ring, and census the outer rings",
+    "title": "Chart exposure with app_ring, and registry the outer rings",
     "status": "done",
     "session": "claude/data-view-search-owweqe",
     "file": "app-ring-exposure-21784c.md",

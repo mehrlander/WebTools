@@ -22,7 +22,7 @@
 // the plugin rather than this repo, four sibling blocks in one file, an index of
 // prose, a target that is a manifest key. Declaring them `ungoverned` with a
 // written `why` counts them instead of omitting them, which is the same
-// count-rather-than-ban posture the censuses run for authored judgment. The
+// count-rather-than-ban posture the registries run for authored judgment. The
 // number is asserted below so it can only move deliberately.
 //
 // It moved four times in two days, always down, and ended at zero: all five
@@ -38,7 +38,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadRegistries } from '../build/registries-load.mjs';
+import { loadRegistries, REGISTRY_COLS } from '../build/registries-load.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const reg = loadRegistries(repoRoot);
@@ -87,6 +87,19 @@ function carrierFields(r) {
   const raw = readFileSync(path.join(repoRoot, r.file), 'utf8');
   return new Set(raw.split('\n')[0].trim().split(','));
 }
+
+// REGISTRY_COLS is what registries-reach writes the file back in, so a column
+// absent from it is dropped on the next restamp with nothing to say so. That is
+// not hypothetical: the 2026-08-18 kind/membership split landed with a green
+// suite and was reverted an hour later by the commit hook running the restamp
+// from a stale list. The test ran before the hook; nothing ran after it.
+test('the writer\'s column list matches the file it writes', () => {
+  const header = readFileSync(path.join(repoRoot, 'docs/registries.csv'), 'utf8')
+    .split('\n')[0].trim().split(',');
+  assert.deepEqual(REGISTRY_COLS, header,
+    'docs/registries.csv and REGISTRY_COLS have parted, so the next registries-reach ' +
+    'run will silently drop or reorder a column. Update tools/build/registries-load.mjs.');
+});
 
 test('registries are well-formed: unique ids, carriers and gates exist', () => {
   const ids = reg.registries.map(r => r.id);
@@ -157,7 +170,7 @@ test('each governed carrier holds exactly its key plus its declared properties',
 // value outside the declared set, and that hard-fail is most of what makes its
 // registry load-bearing. This gate declared eight closed domains and read none
 // of them until 2026-08-09. A blank is legal wherever `required` is not
-// `value`, since the censuses count blanks rather than banning them.
+// `value`, since the registries count blanks rather than banning them.
 test('every value in a closed domain is in that domain', () => {
   for (const r of reg.registries.filter(r => r.fields === 'governed')) {
     const closed = decls.filter(d => d.registry === r.id && Array.isArray(d.values));
@@ -258,7 +271,7 @@ test('every registry declares its area, and leads with a title and a gloss', () 
 
 // `renders_in` is the registry row's one derived field: the app files that
 // name the carrier in code, stamped by registries-reach.mjs the way docs-reach
-// stamps the docs census's `reach` and `words`. Held to a re-derivation here
+// stamps the docs registry's `reach` and `words`. Held to a re-derivation here
 // for the same reason those are: a cached copy of a derivation is only worth
 // keeping while something proves it current. An EMPTY list is legal and is the
 // field's point: it is the Registries tab's warning state, a carrier no app

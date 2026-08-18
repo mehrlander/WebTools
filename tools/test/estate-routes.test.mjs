@@ -176,7 +176,7 @@ test('open PRs join on the files they touch, and only those', () => {
   assert.ok(data.routeRows.every(r => r.branches.every(b => b.pr !== 8)));
 });
 
-test('the census counts the routes with no code of their own', () => {
+test('the registry counts the routes with no code of their own', () => {
   assert.equal(data.routeRows.length, 3);
   assert.equal(data.routesWithoutCode, 1);
   assert.equal(data.routesInFlight, 1);

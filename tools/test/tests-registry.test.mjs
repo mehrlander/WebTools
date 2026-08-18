@@ -1,7 +1,7 @@
 // docs/tests.csv — the test registry, and the gate that keeps it honest.
 //
-// This is the documents census pointed at the suite instead of at docs/. The
-// census answers "what is this file and what keeps it true"; this answers
+// This is the documents registry pointed at the suite instead of at docs/. The
+// registry answers "what is this file and what keeps it true"; this answers
 // "what does this check and what breaks without it". Both exist because a
 // count is not an inventory: `npm test` reports a pass total that cannot tell
 // a boot smoke check from an adversarial gate, and 96 files is already past
@@ -75,7 +75,7 @@ test('every row is typed, and the kind vocabulary is closed', () => {
 });
 
 // The derived half, held the same way reach and words are held in the
-// documents census: the registry carries a copy so the app can render it
+// documents registry: the registry carries a copy so the app can render it
 // without walking the repo, and this keeps the copy true.
 test('the declared derivation matches the files on disk', () => {
   const derived = deriveTests(repoRoot);

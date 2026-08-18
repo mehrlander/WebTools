@@ -22,13 +22,13 @@ property's declared mode must match which file its column lives in. That turns
 
 They are different problems and want different fixes.
 
-**A census mixes exactly when its subject has no home for its own metadata.**
+**A registry ends up holding authored judgment when its subject has no home for its own metadata.**
 `tracker-board` and `tracker-tags` are 100% computed with zero authored columns,
 because their source is `tracker/tasks/*.md`, files that carry frontmatter and
 prose for their own sake. The board is a pure projection nobody hand-edits. The
-four mixed censuses are the ones whose subjects say nothing about themselves:
+four mixed registries are the ones whose subjects say nothing about themselves:
 **zero of the 63 files under `docs/` carry frontmatter**, and a `.mjs` carries
-none either. The authored judgment was homeless, the census row was the only
+none either. The authored judgment was homeless, the registry row was the only
 place with a slot for that file, and the two merged.
 
 **Per-value prose went to app code because the model had no table for it.**
@@ -48,13 +48,13 @@ authored beside 14 computed):
 | registry | authored | computed |
 | --- | --- | --- |
 | registries | path, key, identity, kind, target, scope, fields, gate, area, title, gloss | renders_in |
-| tests-census | kind, protects | assertions, assertion_names, method, runner, boot_smoke |
-| docs-census | subject, status, maintenance | reach, words |
-| harness-census | role | layer, lines, invocation, emits, named, tested |
+| tests | kind, protects | assertions, assertion_names, method, runner, boot_smoke |
+| docs | subject, status, maintenance | reach, words |
+| harness | role | layer, lines, invocation, emits, named, tested |
 
 Layer 2, authored values inside generator source (2 sites): `NOTES` in
 `tools/build/pages-index.mjs` holds 26 hand-written page blurbs, and
-`pages-catalog.note` is declared `computed` while a human writes it, so the
+`pages.note` is declared `computed` while a human writes it, so the
 `mode` declaration is currently false. `INJECTED` / `PROJECT_FILES` in
 `tools/build/docs-reach.mjs` is the authored decision about which docs are
 injected, and the computed `reach` column derives from it.
@@ -75,7 +75,7 @@ Where does an authored half live: a sibling CSV keyed the same way, or the
 subject file itself? Frontmatter is the estate's own working precedent
 (`tracker-board` runs on it) and is clearly right for `docs/*.md`. It is clearly
 wrong for `role` across 147 harness files, which would mean editing 147 files to
-change a convention. Decide per census, not globally.
+change a convention. Decide per registry, not globally.
 
 Second, smaller: suffix (`docs.csv` + `docs-derived.csv`) or folder
 (`authored/`, `derived/`). The folder is the stronger signal, since the boundary

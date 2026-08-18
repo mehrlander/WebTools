@@ -8,7 +8,7 @@
 // script name predates `words` and is kept, since renaming it would ripple
 // through the commit hook, package.json, and CLAUDE.md for no gain.
 //
-// The documents census in docs/docs.csv says what each doc IS and how it is
+// The documents registry in docs/docs.csv says what each doc IS and how it is
 // kept true. Neither answers the question that decides whether a doc does any
 // work: can anyone reach it. Measured 2026-07-30 by hand, 22 of the folder's
 // markdown files were reachable only by a session that already knew they
@@ -74,7 +74,7 @@
 // all counted, so a schema's number is not comparable to an essay's.
 //
 // The registry describes itself, so stamping the field changes the file being
-// measured: writing 42 words values adds 84 tokens to the census, and its
+// measured: writing 42 words values adds 84 tokens to the registry, and its
 // own row would be stale the moment it was written. The stamp therefore runs
 // to a fixpoint. It converges in two passes, because the digits of a value do
 // not change the token count, and it asserts convergence rather than assuming
@@ -204,7 +204,7 @@ export function deriveWords(repoRoot, paths) {
   for (const p of paths) {
     let n = 0;
     try { n = readFileSync(path.join(repoRoot, p), 'utf8').split(/\s+/).filter(Boolean).length; }
-    catch { /* an unreadable file counts as nothing; the census test owns its absence */ }
+    catch { /* an unreadable file counts as nothing; the registry test owns its absence */ }
     out.set(p, n);
   }
   return out;

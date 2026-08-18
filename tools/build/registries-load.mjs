@@ -89,7 +89,14 @@ export function writeCsv(rows, cols) {
   return [cols.join(','), ...rows.map(r => cols.map(c => cell(r[c])).join(','))].join('\n') + '\n';
 }
 
-export const REGISTRY_COLS = ['id','path','key','identity','kind','target','scope',
+// The column order registries-reach writes the file back in. It is a SCHEMA,
+// not a formatting preference: a column missing from this list is dropped on
+// the next restamp, silently, because the writer emits exactly these. That is
+// how the 2026-08-18 kind/membership split was reverted by a commit hook an
+// hour after it landed and a green suite: the test ran before the hook, the
+// hook rewrote the file from a stale list, and nothing re-ran. Change this list
+// in the same commit as any column change to docs/registries.csv.
+export const REGISTRY_COLS = ['id','path','key','identity','membership','inherits','target','scope',
                               'fields','gate','area','title','gloss','renders_in'];
 export const PROPERTY_COLS = ['registry','property','mode','deriver','required','form',
                               'exclusive','values','gloss'];

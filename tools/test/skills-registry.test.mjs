@@ -1,7 +1,7 @@
-// skills/manifest.csv — the skills census, held to the folder both ways.
+// skills/manifest.csv — the skills registry, held to the folder both ways.
 //
 // Found undeclared by the 2026-08-09 reconciliation, and it was the clearest
-// case of the class: a real census, exact coverage (34 of 34 on the day it was
+// case of the class: a real registry, exact coverage (34 of 34 on the day it was
 // checked), a `meta.snapshot_date` implying someone refreshes it, and no gate
 // and no builder anywhere in the repo. Its accuracy rested entirely on whoever
 // last added a skill remembering to add a row. This is the check that was
