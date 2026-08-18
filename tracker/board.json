@@ -214,6 +214,17 @@
    }
   },
   {
+   "id": "consolidate-escape-helpers-gxverk",
+   "title": "Consolidate the HTML-escape helpers and move entity-decoding to ingestion",
+   "status": "backlog",
+   "opened": "2026-08-18",
+   "size": "S",
+   "file": "consolidate-escape-helpers-gxverk.md",
+   "href": "tasks/consolidate-escape-helpers-gxverk.md",
+   "lastActivity": "2026-08-18",
+   "logEntries": 1
+  },
+  {
    "id": "cross-repo-edit-proposals-evo1ml",
    "title": "Confirm-gated cross-repo edit proposals via a web-tools-private channel",
    "status": "done",
