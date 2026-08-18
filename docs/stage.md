@@ -149,6 +149,50 @@ deduped flavors have to survive until a bench exists to draw them. Naming and
 dedupe are `StageIntake.offerable`'s, so a host gets the same answer the bench
 would.
 
+**A pasted grid is a grid whichever delimiter it uses,** and the naming is
+where that is decided: `nameForText` picks an extension from the first
+characters and `ViewRegistry.READ_MODE` keys on the extension alone, so what a
+paste is CALLED is the whole of what the reader then sees. Until 2026-08-18
+`isDelimited` counted tabs only, so a spreadsheet range (which reaches the
+clipboard as TSV) opened as a table while the same data pasted as CSV opened as
+a wall of text. `delimiterOf` reads tab or comma at the same strictness the tab
+test always had, counting separators outside double quotes so a quoted comma
+stays a value; tab is tried first, so a TSV whose cells carry prose commas is
+still a TSV. A `rows => rows` function is named `.js` in the same pass, and a
+JSON array of records now opens as a table rather than a tree, which is what
+this policy's sibling on the data-view page (`AUTO_VIEW`) always did by reading
+the content.
+
+**The stage is also the transform workbench's door.** The workbench
+(`lib/alpineComponents/transform-workbench.js`) has shipped inside show-repo
+since the pre-build began globbing `lib/alpineComponents`, booting on every load
+with nothing ever mounting it: reachable only as a Tools-shelf card opening the
+standalone page in another tab. `StageIntake.transformKindOf(item)` names what
+the tool could do with a staged item, and the bench offers it as a chip.
+
+Three kinds, and they are not equally certain. A **bundle** is the tool's own
+`{fn, data}` output, recognized by the same `fn`/`fn_<tab>` key the workbench
+tests itself for, so it is exact. **rows** is the data it eats: a `.csv`, a
+`.tsv`, or a JSON array of records. A **transform** is a `rows => rows` function,
+the loosest of the three and the most interesting, since pasting one is how work
+RESUMES in the tool rather than starts. Recognition rides the name the intake
+already chose rather than sniffing again, which is why the naming fix above is
+what makes it trustworthy: before it, a pasted CSV was called `.txt` and nothing
+could tell it from prose.
+
+The chip is a sibling of the flavors bar, not part of it: that bar offers other
+readings of one paste, this offers another TOOL for what was already read.
+Tapping it mounts the workbench once over the Stage and hands it the item's text
+through `processText`, the tool's own sniff chain, so a bundle rehydrates whole
+and a CSV parses, with one reader of those shapes rather than two. Mounting is
+once and then shown or hidden, never rebuilt, since the workbench holds tab
+sources and run output in its own state; the tool addresses its viewer and table
+by document id, so there can be exactly one. **The host has to bring the
+libraries:** PapaParse, which the parse path calls unguarded, and Tabulator,
+whose absence is worse than an error, because the table's render hook reads
+`typeof Tabulator === "undefined"` and returns, drawing the whole chrome around
+an empty pane in silence.
+
 **The one platform limit worth stating plainly: iOS Safari fires no `paste`
 event unless an editable is focused.** A window listener therefore has no intake
 at all on an iPhone, which is why the bench keeps its explicit Paste button

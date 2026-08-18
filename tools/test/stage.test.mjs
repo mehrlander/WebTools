@@ -528,6 +528,69 @@ test('a JSON array of records opens as a table; any other JSON stays a tree', ()
   assert.equal(m('{ not json'), 'tree', 'invalid JSON is not where a parse error is reported');
 });
 
+// ---- the transform door: what the workbench could take ---------------------
+//
+// Recognition rides the NAME the intake already chose, so these lean on the
+// naming tests above rather than re-sniffing. The pixels and the mount live in
+// tools/render/scenarios/stage-transform-chip.mjs, which is where a missing
+// Tabulator shows up (the tool's table hook returns silently without it).
+
+const BUNDLE = JSON.stringify({ fn: 'H4sIAAAA', data: 'H4sIAAAB', meta: { combine: true } });
+
+const kindOfPaste = (text) => {
+  reset();
+  window.StageIntake.take({ text, size: text.length });
+  return window.StageIntake.transformKindOf(data.localItems[0]);
+};
+
+test('a workbench bundle is recognized exactly, by the key that defines one', () => {
+  assert.equal(kindOfPaste(BUNDLE), 'bundle');
+  assert.equal(kindOfPaste(JSON.stringify({ fn_tidy: 'H4sI', data_tidy: 'H4sI' })), 'bundle',
+    'a multi-tab bundle names its functions fn_<tab>');
+  assert.equal(kindOfPaste(JSON.stringify({ fn: 42 })), '',
+    'the key has to hold a source string, not merely exist');
+  assert.equal(kindOfPaste(JSON.stringify({ name: 'x', size: 2 })), '',
+    'an ordinary JSON object is not a bundle');
+});
+
+test('rows are recognized in all three shapes the workbench eats', () => {
+  assert.equal(kindOfPaste('a,b\n1,2\n3,4'), 'rows', 'CSV');
+  assert.equal(kindOfPaste('a\tb\n1\t2\n3\t4'), 'rows', 'TSV');
+  assert.equal(kindOfPaste(JSON.stringify([{ a: 1 }, { a: 2 }])), 'rows', 'a JSON row array');
+});
+
+test('a rows function is a transform, and other JavaScript is not', () => {
+  assert.equal(kindOfPaste('rows => rows.filter(r => r.a)'), 'fn');
+  assert.equal(kindOfPaste('function tidy(rows) { return rows }'), 'fn');
+});
+
+test('prose, markdown and an empty stage offer nothing', () => {
+  assert.equal(kindOfPaste('# A note\n\nJust some prose.'), '');
+  assert.equal(kindOfPaste('one, two, three\nand a second line'), '');
+  reset();
+  assert.deepEqual(plain_(data.transformables), []);
+});
+
+test('a ref is never transform-shaped, since it has no text to hand over', () => {
+  reset();
+  window.StageIntake.take({ text: 'me/a:data/rows.csv', size: 18 });
+  assert.equal(data.refItems.length, 1, 'it staged as a ref, not a local file');
+  assert.deepEqual(plain_(data.transformables), [],
+    'the chip hands over held text, and a ref holds none until it is fetched');
+});
+
+test('the chip row names one item per qualifying local, and skips the rest', () => {
+  reset();
+  for (const t of ['a,b\n1,2\n3,4', 'rows => rows', '# just a note']) {
+    window.StageIntake.take({ text: t, size: t.length });
+  }
+  const chips = data.transformables;
+  assert.equal(chips.length, 2, 'the note is not offered');
+  assert.deepEqual(plain_(chips.map(c => c.label).sort()), ['a transform', 'rows']);
+  assert.ok(chips.every(c => c.key && c.title.includes(c.item.name)),
+    'each chip carries a stable key and says what it would open');
+});
+
 test('prose with a stray tab is not a grid', async () => {
   reset();
   await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': 'a note\twith a tab\nand a second line' } }));
