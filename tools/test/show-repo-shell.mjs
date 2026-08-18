@@ -38,6 +38,10 @@ export function makeShell({ browserStore, search = '', win = {} } = {}) {
   const loc = { search, href: 'https://localhost/', pathname: '/app/index.html', hash: '' };
   const hist = { pushState: () => {}, replaceState: () => {} };
   const exports = {};
+  // kits/csv.js rides in the pre-build's boot list, so the real shell always
+  // has window.Csv by the time any method runs; the harness installs it for the
+  // same reason, and the board pane's typed read depends on it.
+  new Function('window', readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8'))(win);
   new Function('window', 'document', 'Alpine', 'location', 'history', '__exports',
     shellScript(page) + '\n;__exports.app = app;__exports.gallery = gallery;')(
     win, doc, alpine, loc, hist, exports);

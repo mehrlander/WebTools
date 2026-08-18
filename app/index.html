@@ -1261,7 +1261,7 @@
                   <span class="loading loading-dots loading-md opacity-30"></span>
                 </div>
 
-                <!-- The typed read, when board.json exists on this ref. -->
+                <!-- The typed read, when board.csv exists on this ref. -->
                 <div x-show="!projectBoardLoading && projectBoardTasks" class="space-y-5">
                   <!-- The review line: what a grooming pass asks before it
                        reads any row. Each count states its own subject, so a
@@ -1319,7 +1319,7 @@
                 </div>
 
                 <!-- The markdown fallback, for a ref whose generator predates
-                     board.json or that has not regenerated since. -->
+                     board.csv or that has not regenerated since. -->
                 <article x-show="!projectBoardLoading && !projectBoardTasks && projectBoardHtml"
                          @click="onBoardClick($event)"
                          class="prose prose-sm !max-w-none prose-pre:bg-base-200 prose-pre:text-base-content"
@@ -1781,7 +1781,8 @@ function app(){ return {
   // Generated artifacts a build hook writes on every commit are noise here,
   // not real edits, so they're filtered out for web-tools specifically.
   GENERATED: ['dist/web-tools.js', 'pages/README.md', 'pages/index.html',
-              'pages/pages.csv', 'tracker/board.md'],
+              'pages/pages.csv', 'tracker/board.md', 'tracker/board.csv',
+              'tracker/board-tags.csv'],
   recent: [],
   recentLoading: false,
   _recentKey: '',
@@ -2981,7 +2982,7 @@ function app(){ return {
   projectLoading: false,
   _projectKey: '',
   projectBoardHtml: '',
-  projectBoardTasks: null,  // board.json's records; null = no projection on this ref
+  projectBoardTasks: null,  // board.csv's rows; null = no projection on this ref
   projectBoardShowDone: false,
   projectBoardLoading: false,
   _projectBoardKey: '',
@@ -3082,14 +3083,16 @@ function app(){ return {
     const b = this.project?.board;
     return b && this.pinIsFile(b) ? b : '';
   },
-  // board.json is the TYPED projection, written by the same generator run as
+  // board.csv is the TYPED projection, written by the same generator run as
   // board.md (docs/TRACKER.md). Reading it is what lets this pane answer
   // questions about a tracker rather than only display it; recovering the same
   // fields by parsing the rendered markdown would be the display-before-data
-  // inversion. The convention fixes it as a sibling of the board file.
-  get projectBoardJsonFile(){
+  // inversion. The convention fixes it as a sibling of the board file. The open
+  // tags ride in a second file, board-tags.csv, which this pane does not read:
+  // nothing here selects on an undeclared key.
+  get projectBoardCsvFile(){
     const f = this.projectBoardFile;
-    return f ? f.replace(/\.md$/, '.json') : '';
+    return f ? f.replace(/\.md$/, '.csv') : '';
   },
   async loadProjectBoard(force){
     const s = Alpine.store('browser');
@@ -3101,14 +3104,15 @@ function app(){ return {
     this.projectBoardLoading = true;
     this.projectBoardHtml = ''; this.projectBoardTasks = null;
     // Projection first, markdown second. A repo whose generator predates
-    // board.json, or one that has not regenerated since, has no projection and
+    // board.csv, or one that has not regenerated since, has no projection and
     // must still get its board, so the fallback is not a nicety: it is what
     // lets this ship before every tracker in the estate has caught up.
     let tasks = null;
     try {
-      const j = await s.gh.get(this.projectBoardJsonFile);
-      const parsed = JSON.parse(j.text);
-      if (Array.isArray(parsed?.tasks)) tasks = parsed.tasks;
+      const j = await s.gh.get(this.projectBoardCsvFile);
+      const rows = window.Csv.rows(j.text);
+      // logEntries is the one numeric column, and a CSV hands back strings.
+      if (rows.length) tasks = rows.map(r => ({ ...r, logEntries: Number(r.logEntries) || 0 }));
     } catch { /* no projection on this ref: fall through to the markdown */ }
     if (key !== this._projectBoardKey) return;
     if (tasks){

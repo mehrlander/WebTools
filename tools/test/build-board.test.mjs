@@ -12,6 +12,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { parseCsv } from '../build/registries-load.mjs';
 
 const GENERATOR = '.claude/skills/tasks/build-board.py';
 
@@ -227,12 +228,14 @@ test('awaiting survives a colon in its value', () => {
   assert.match(md, /\(awaiting: OFM ruling: candidate 1\)$/m);
 });
 
-// ── board.json, the typed projection ───────────────────────────────────────
-// Emitted from the same run as board.md so the two cannot drift. It exists so
-// show-repo never has to parse the rendered board to recover a field it could
-// have been handed.
+// ── board.csv and board-tags.csv, the typed projection ─────────────────────
+// Emitted from the same run as board.md so the three cannot drift. They exist
+// so show-repo never has to parse the rendered board to recover a field it
+// could have been handed. Two files because a task carries two grains: the
+// recognized keys are one row per task, the open tags one row per pair, and a
+// CSV holds one table.
 
-// Render both projections and return {md, json}.
+// Render all three projections and return {md, rows, tags}.
 function both(tasks, bodies = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'board-'));
   try {
@@ -245,43 +248,67 @@ function both(tasks, bodies = {}) {
     }
     const out = join(dir, 'board.md');
     execFileSync('python3', [GENERATOR, tasksDir, out]);
+    const csv = readFileSync(join(dir, 'board.csv'), 'utf8');
+    const tagsCsv = readFileSync(join(dir, 'board-tags.csv'), 'utf8');
     return {
       md: readFileSync(out, 'utf8'),
-      json: JSON.parse(readFileSync(join(dir, 'board.json'), 'utf8')),
+      csv, tagsCsv,
+      rows: parseCsv(csv),
+      tags: parseCsv(tagsCsv),
     };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 }
 
-test('board.json lands beside board.md with one record per task', () => {
-  const { json } = both({
+test('board.csv lands beside board.md with one row per task', () => {
+  const { rows } = both({
     'a-000001': { title: 'First', status: 'backlog' },
     'b-000002': { title: 'Second', status: 'done', closed: '2026-08-01' },
   });
-  assert.equal(json.tasks.length, 2);
-  assert.deepEqual(json.tasks.map((t) => t.title), ['First', 'Second']);
-  assert.equal(json.tasks[0].href, 'tasks/a-000001.md');
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows.map((t) => t.title), ['First', 'Second']);
+  assert.equal(rows[0].href, 'tasks/a-000001.md');
 });
 
-// The two-layer split survives into the projection: a consumer must not be able
-// to mistake an unpromoted tag for part of the contract.
-test('recognized keys sit at the top level, open tags under tags', () => {
-  const { json } = both({
+// Every row carries every column, in the order the generator fixes, so a
+// reader can address a field by position and a diff shows a changed value
+// rather than a reshuffled schema.
+test('the columns are fixed and complete, whatever the tasks carry', () => {
+  const { csv } = both({ 'a-000001': { title: 'T', status: 'backlog' } });
+  const [head, first] = csv.trim().split('\n');
+  assert.equal(head, 'id,title,status,project,track,opened,closed,session,size,' +
+                     'awaiting,blockedBy,file,href,lastActivity,logEntries');
+  assert.equal(first.split(',').length, head.split(',').length);
+});
+
+// The two-layer split survives into the projection as two files: a consumer
+// must not be able to mistake an unpromoted tag for part of the contract.
+test('recognized keys are columns, open tags are rows in the second file', () => {
+  const { rows, tags } = both({
     'a-000001': { title: 'T', status: 'backlog', size: 'M', awaiting: 'your call', priority: 'high' },
   });
-  const t = json.tasks[0];
+  const t = rows[0];
   assert.equal(t.size, 'M');
   assert.equal(t.awaiting, 'your call');
   assert.equal(t.priority, undefined);
-  assert.deepEqual(t.tags, { priority: 'high' });
+  assert.deepEqual(tags, [{ task: 'a-000001', tag: 'priority', value: 'high' }]);
+});
+
+// The tag file exists even when nothing is tagged. An absent file and an empty
+// one read the same to a consumer only if the empty one is guaranteed, and the
+// lockstep check compares bytes, so it has to be written either way.
+test('the tag file is written with its header even when no task is tagged', () => {
+  const { tagsCsv, tags } = both({ 'a-000001': { title: 'T', status: 'backlog' } });
+  assert.equal(tagsCsv, 'task,tag,value\n');
+  assert.deepEqual(tags, []);
 });
 
 // The signal nothing surfaced before: a task's real freshness is the newest
 // date in its progress log, not `opened:`. It is what separates a live task
 // from one that has only been refined.
 test('lastActivity is the newest progress-log date, with an entry count', () => {
-  const { json } = both(
+  const { rows } = both(
     { 'a-000001': { title: 'T', status: 'backlog', opened: '2026-06-01' } },
     {
       'a-000001': [
@@ -291,33 +318,43 @@ test('lastActivity is the newest progress-log date, with an entry count', () => 
         '- 2026-07-10: scouted (out of order on purpose)',
       ].join('\n'),
     });
-  assert.equal(json.tasks[0].lastActivity, '2026-07-28');
-  assert.equal(json.tasks[0].logEntries, 3);
+  assert.equal(rows[0].lastActivity, '2026-07-28');
+  assert.equal(rows[0].logEntries, '3');
 });
 
 test('a task with no progress log reports empty rather than guessing', () => {
-  const { json } = both({ 'a-000001': { title: 'T', status: 'backlog', opened: '2026-06-01' } });
-  assert.equal(json.tasks[0].lastActivity, '');
-  assert.equal(json.tasks[0].logEntries, 0);
+  const { rows } = both({ 'a-000001': { title: 'T', status: 'backlog', opened: '2026-06-01' } });
+  assert.equal(rows[0].lastActivity, '');
+  assert.equal(rows[0].logEntries, '0');
 });
 
 test('an unmet dependency reaches the projection as a resolved phrase', () => {
-  const { json } = both({
+  const { rows } = both({
     'waiter-000001': { title: 'Waiter', status: 'backlog', track: 'depends-on:blocker-000002' },
     'blocker-000002': { title: 'Blocker', status: 'backlog' },
   });
-  const w = json.tasks.find((t) => t.title === 'Waiter');
+  const w = rows.find((t) => t.title === 'Waiter');
   assert.equal(w.blockedBy, 'needs: Blocker');
-  const b = json.tasks.find((t) => t.title === 'Blocker');
-  assert.equal(b.blockedBy, undefined);
+  const b = rows.find((t) => t.title === 'Blocker');
+  assert.equal(b.blockedBy, '');
+});
+
+// A comma in a title is the ordinary case, not an edge one, and an unquoted
+// one would shift every later column by one without any parser complaining.
+test('a cell holding a comma or a quote survives the round trip', () => {
+  const { rows } = both({
+    'a-000001': { title: 'Split the census, keep the "gate"', status: 'backlog' },
+  });
+  assert.equal(rows[0].title, 'Split the census, keep the "gate"');
 });
 
 // No timestamp anywhere in the artifact: the lockstep checks re-run the
 // generator against a clean tree and compare, so a clock in the output would
 // fail on every run.
-test('board.json is byte-identical for the same input', () => {
-  const a = both({ 'a-000001': { title: 'T', status: 'backlog' } }).json;
-  const b = both({ 'a-000001': { title: 'T', status: 'backlog' } }).json;
-  assert.deepEqual(a, b);
-  assert.doesNotMatch(JSON.stringify(a), /generated|timestamp/i);
+test('the projection is byte-identical for the same input', () => {
+  const a = both({ 'a-000001': { title: 'T', status: 'backlog' } });
+  const b = both({ 'a-000001': { title: 'T', status: 'backlog' } });
+  assert.equal(a.csv, b.csv);
+  assert.equal(a.tagsCsv, b.tagsCsv);
+  assert.doesNotMatch(a.csv, /generated|timestamp/i);
 });

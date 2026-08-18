@@ -24,7 +24,7 @@
 //
 // An empty list is the warning state the field exists to surface, and it is a
 // fact, not an accusation: a carrier read only by its gate, or projected only
-// to GitHub-rendered markdown (tracker/board.json's board.md), has no app
+// to GitHub-rendered markdown (tracker/board.csv's board.md), has no app
 // surface, and whether that is fine is a judgment for the reader of the
 // Registries tab. At introduction three registries were empty: manifest-fields
 // (docs/manifest.json), skills-catalog (skills/manifest.csv), and

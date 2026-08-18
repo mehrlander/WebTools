@@ -261,15 +261,16 @@ changes touch:
 | `pages/**/*.html` | `npm run pages-index` | `pages/README.md`, `pages/index.html`, `pages/pages.csv` |
 | skills, `lib/`, `pages/`, `docs/` | `npm run docs-reach` | `reach` and `words` in `docs/docs.json` |
 | `docs/docs.json` | `npm run docs-readme` | `docs/README.md` |
-| `tracker/tasks/` | `npm run tracker-board` | `tracker/board.md`, `tracker/board.json` |
+| `tracker/tasks/` | `npm run tracker-board` | `tracker/board.md`, `tracker/board.csv`, `tracker/board-tags.csv` |
 
 Every generator is byte-deterministic, so the hook can fire on every commit and
 no-op invisibly when nothing real changed. It's non-blocking: a generator failure
 warns and the commit proceeds.
 
 The tracker board was the last to get an owner there, on 2026-08-05, and the gap
-was not theoretical: `board.json` emitted its per-task keys by iterating a set,
-so hash randomization reordered them on every run. Same input, different bytes,
+was not theoretical: `board.json`, the projection's shape until 2026-08-18,
+emitted its per-task keys by iterating a set, so hash randomization reordered
+them on every run. Same input, different bytes,
 in an artifact whose own closing comment promises the opposite, unnoticed
 because it is read by machines and diffed by no one. The suite now asserts
 determinism directly rather than inferring it from one passing run, since a

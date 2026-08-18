@@ -1,8 +1,8 @@
 // Drive show-repo's project Board pane to a seeded, token-free state so the
-// TYPED read renders headlessly (the pane normally fetches board.json over the
+// TYPED read renders headlessly (the pane normally fetches board.csv over the
 // viewer's token, which the sandbox has neither of). Same tactic as
 // sidebar-projects.mjs: fill the shell's state directly, so the shot proves the
-// rendering, not the load. The seeded records are budget-drs's real board.json,
+// rendering, not the load. The seeded records are budget-drs's real board,
 // its twelve open tasks plus a sample of Done, so the review line and the size
 // and awaiting chips carry real values rather than lorem.
 //

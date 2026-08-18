@@ -49,11 +49,12 @@ The tab was asked for as *terms* connected to registered data. It matches
 *filenames*, and the retreat is structural rather than a shortcut.
 
 Nothing in the estate is keyed by the words prose actually uses.
-[`surfacing.json`](surfacing.json) is keyed by sentence-shaped titles
+[`surfacing.csv`](surfacing.csv) is keyed by sentence-shaped titles
 (*Reference is a link*) that never occur in running text.
 [`text-fields.csv`](text-fields.csv) and [`properties.csv`](properties.csv)
 are keyed by ordinary English words: note, open, scope, role.
-[`board.json`](../tracker/board.json) is keyed by task titles. No committed
+[`board.csv`](../tracker/board.csv) is keyed by task ids, whose only human
+handle is the title. No committed
 vocabulary keyed by surface form exists, and that is a decision: `vocab.py`
 builds one in 1.7 seconds and the `concept-index` skill declines to commit the
 result, on the rule that retired the merge guide.

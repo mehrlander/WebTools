@@ -20,7 +20,7 @@ pages[].order,number,show-repo,,no,"Sort weight within the catalog; undeclared r
 pins,array,show-repo,,,Folders and files surfaced in the sidebar Pinned block. A last segment with an extension opens as a file; otherwise it opens the Files view at that folder.
 checks,array,show-repo,,,"Declared staleness checks, filling the sidebar's Needs attention block and badging the estate cards. Only what is not passing shows on either. Every kind is answerable from the API alone; the boundary is that a check asks about data and never runs code."
 checks[].kind,string,show-repo,,yes,"One of content-date, file-age, newer-than, absent, dir-count, tracker."
-checks[].path,string,show-repo,,yes,"What the check asks about. A glob for `absent`, a board.json for `tracker`."
+checks[].path,string,show-repo,,yes,"What the check asks about. A glob for `absent`, a board.csv for `tracker`."
 checks[].label,string,show-repo,,no,Row label. Accepted by every kind.
 checks[].pattern,string,show-repo,,no,content-date: a regex with one capture group holding the date.
 checks[].staleAfterDays,number,show-repo,,no,"content-date, file-age, tracker: the age at which the check fails."
