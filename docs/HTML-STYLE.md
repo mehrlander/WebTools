@@ -13,15 +13,20 @@ relitigating it per page
 
 **No stat cards.** They spend the page’s best space and the reader’s first attention on numbers stripped of meaning: no comparison, baseline, denominator, or movement.
 
-**No explanatory prose.** Gmail doesn't explain and neither should we. Use structure, labels, and controls to show relationships. A choice documents scope implicitly. A tooltip can define.
+**No explanatory prose.** GitHub doesn't explain and neither should we. Use structure, labels, and controls to show relationships. A range control starting at 2015 says the data starts in 2015. Explanatory prose is unfinished work: unused ideas, loitering.
+
+**Don't narrow text to a reading column.** The pattern is `max-w-*` plus `mx-auto`, usually
+`max-w-2xl` through `max-w-4xl`, or `max-w-prose` at 65ch; `container mx-auto` is the same
+move. What you'll usually find is that the text does not belong on the page at all: see
+explanatory prose.
 
 **Browsing takes the viewport.** Decks, galleries, diffs, and result sets use
 `fixed inset-0 grid grid-rows-[auto_1fr_auto]`: thin header, content, thin footer.
 The content gets the screen; chrome gets the bars. An embedded deck is small on a
 desktop and useless on a phone.
 
-**Tenants use normal flow.** Any page that may be embedded—an appendix, toss
-render, or stage preview—uses `min-h-dvh`, sticky chrome, and document scrolling.
+**Tenants use normal flow.** Any page that may be embedded, whether an appendix, a
+toss render, or a stage preview, uses `min-h-dvh`, sticky chrome, and document scrolling.
 Reserve `fixed inset-0` for known top-level pages. On iOS, fixed children can
 measure against the outer viewport and clip inside a narrower iframe; headless
 Chromium will not reveal it.
@@ -30,8 +35,10 @@ Sticky chrome has two costs. Save and restore document scroll when a detail view
 replaces a long list. Drop `viewport-fit=cover` unless the page is genuinely
 edge-to-edge.
 
-**Type is for reading, not fitting.** Use `text-xl` or larger with `leading-8`.
-If the type must shrink, the layout is wrong. On a phone, test it at arm’s length.
+**Type is for reading, not fitting.** If type must shrink to fit, the layout is wrong.
+On a phone, test it at arm’s length. Decks and documents run `text-xl` with `leading-8`;
+dense working surfaces run smaller, kept honest by one size per tier rather than by a
+number.
 
 **Content has one size.** The page has two tiers: content and chrome. Everything
 the reader came to read shares a size; reserve `text-xs` and monospace for labels,
@@ -45,9 +52,7 @@ renderer. First pass the source through
 or `marked` turns opening metadata into the first paragraph.
 
 Existing `prose prose-sm` surfaces may stay. For new work, prefer the guide
-renderer. Tailwind v4 puts utilities in a layer, so unlayered
-`.prose{max-width:65ch}` beats `.max-w-none`; use `!max-w-none` or keep the 65ch
-measure deliberately. Do not convert working pages for symmetry.
+renderer. Do not convert working pages for symmetry.
 
 **One accent, one meaning.** Assign colour by semantic role, not decoration. In a
 comparison, lock each side’s treatment across every view.
@@ -72,23 +77,6 @@ scannable.
 **Put `min-w-0` on the scroll track.** Flex and grid items default to
 `min-width:auto`; a track of `min-w-full` slides can claim one viewport per slide
 and push the header offscreen. Pair it with `min-h-0` on the `1fr` content row.
-
-**Controls get `w-full`.** DaisyUI inputs and textareas default to `width:20rem`
-capped at 100%, so they stop short in wider columns. Put `w-full` on every input,
-textarea, and select; flex stretch does not override an explicit width.
-
-**Size forms to their container.** Viewport breakpoints can put six columns inside
-a 360px split pane. Mark the pane `@container` and use `@md:` and `@xl:`. Without
-container-query support, one column is the safe failure.
-
-**Unescape, then escape.** Source text may already contain entities. Escaping it
-again prints `teachers&apos;`. Route every data-derived string through one helper
-that decodes first and escapes once.
-
-**Measure overflow.** Screenshots hide whatever falls beyond the viewport. At phone
-width, compare `documentElement.scrollWidth` with `clientWidth`. Ignore elements
-inside a horizontally scrollable ancestor, or every carousel slide becomes a false
-alarm.
 
 ## Where the numbers went
 
