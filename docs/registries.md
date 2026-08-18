@@ -308,7 +308,11 @@ instead of by convention, and it is what let `carrier`, `rows` and `format`
 collapse into a single `path`. `carrier` existed only to name a file that might
 hold several registries; with one table per file the word had nothing left to
 mean. Three registries still share `docs/routes.json`, so `path` carries a
-`#fragment` for those; the fragment goes when each is its own file.
+`#fragment` for those. But the fragment is **not** a sharing artifact, and saying
+so was wrong when this section was first written: thirteen of the twenty
+registries carry one, because every JSON carrier needs a fragment to name the key
+that holds its rows. It is `rows` under a new name, and it disappears for a
+registry only when that registry's file is a CSV, where the file is the table.
 
 The one thing CSV costs is the null. A blank cell cannot be told from an empty
 string, so **a blank means NOT ASSERTED**, and any property that has to

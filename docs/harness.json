@@ -243,7 +243,7 @@
       "path": "tools/build/registries-load.mjs",
       "role": "read and write the registry pair (docs/registries.csv, docs/properties.csv): the CSV parse, the path/fragment split, and the column order a restamp must preserve",
       "layer": "tools/build",
-      "lines": 85,
+      "lines": 88,
       "invocation": "imported",
       "emits": false,
       "named": false,

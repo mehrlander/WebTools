@@ -7,9 +7,12 @@
 // registry is a file" true by construction rather than by convention, and it is
 // what retired `carrier`, `rows` and `format` in one move.
 //
-// `path` replaces all three. It is a file path, plus a `#fragment` for the
-// registries that still share docs/routes.json. The fragment goes when every
-// registry is its own file.
+// `path` replaces all three. It is a file path, plus a `#fragment` naming the
+// key that holds the rows. The fragment is not a sharing artifact: only three
+// registries share a file (docs/routes.json), while THIRTEEN carry a fragment,
+// because every JSON carrier needs one to say which key is the table. It is
+// doing `rows`' old job under a new name, and it goes only when a registry's
+// file is a CSV, where the file IS the table.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from '../test/bootstrap.mjs';
