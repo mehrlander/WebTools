@@ -1680,7 +1680,9 @@ function app(){ return {
   view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'stage' | 'config' | 'app' | 'public'
   // Window-level drag counter for the app-wide drop (init wires the listeners;
   // nested enter/leave is why it counts rather than flips), and what the cue
-  // says about the drag in flight (dragNote).
+  // says about the drag in flight (dragNote). The app-wide PASTE beside it
+  // needs no state at all: a paste is instantaneous, so there is no in-flight
+  // moment for a cue to describe.
   _appDrag: 0,
   _dragNote: '',
 
@@ -1911,6 +1913,7 @@ function app(){ return {
     else if (!url) this.goDashboard();
 
     this.wireAppDrop();
+    this.wireAppPaste();
 
     // Browser Back/Forward restores state from the URL (syncUrl pushes an entry
     // per distinct URL, so the history has real steps to walk).
@@ -4708,6 +4711,58 @@ function app(){ return {
     if (files.length === 1) return this.dragKind(files[0].type) + ', opening on the Stage';
     return 'Text, landing on the Stage';
   },
+  // ── A PASTE ANYWHERE STAGES ───────────────────────────────────────────────
+  // The same gesture as the drop above, over the same intake, and it had the
+  // same defect for the same reason: the Stage has taken a paste since
+  // 2026-08-15, but through a window listener the STAGER registered and gated
+  // on `view === 'stage'`, so the gesture was reachable only from the view it
+  // was staging into, and only once the bench had mounted. A block of refs
+  // copied while reading a repo's files, or a screenshot pasted on the Map,
+  // had nowhere to land and nothing on screen said so.
+  //
+  // Two things differ from the drop, both forced rather than chosen.
+  //
+  // There is no `defaultPrevented` tell to lean on, because ordering runs the
+  // other way. A drop on the Stage view hits that view's own ELEMENT handler
+  // first and the window handler second, so the window can see it was taken.
+  // Window listeners, by contrast, fire in registration order: init() runs at
+  // boot and the stager mounts on the first visit to an estate view, so this
+  // is always first and would read `defaultPrevented` as false every time. So
+  // the stage's listener is gone rather than coordinated with, and this is the
+  // only one. Being the only one is also what keeps the multi-flavor contract
+  // whole: one reader of the clipboard, so nothing takes text/plain out from
+  // under the bar that would have offered the HTML table beside it.
+  //
+  // And the flavors a form field cannot hold are only worth reading when there
+  // is somewhere to show them. On the Stage that is the offer bar, unchanged.
+  // Anywhere else the bar is off screen, so a paste into a field is left
+  // entirely alone: silently recording an offer nobody was told about is worse
+  // than not reading the clipboard at all.
+  wireAppPaste(){
+    window.addEventListener('paste', async (e) => {
+      const cd = e.clipboardData;
+      if (!cd || !window.StageIntake) return;
+      const t = e.target;
+      const editable = !!t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || '') || t.isContentEditable);
+      const onStage = this.view === 'stage';
+      // A FIELD KEEPS ITS PASTE. Nothing is preventDefault'ed on this path, so
+      // the field pastes natively; what it cannot hold goes to the bar when
+      // the bar is on screen to receive it.
+      if (editable) {
+        if (onStage) await window.StageIntake.takePaste(cd, { editable: true });
+        return;
+      }
+      e.preventDefault();
+      const { added } = await window.StageIntake.takePaste(cd);
+      if (!added.length || onStage) return;
+      // Off the Stage the paste is also a navigation, the way a drop is: it
+      // went somewhere, and the somewhere is worth being shown. One item opens
+      // on itself; a block of refs lands and stays listed.
+      this.goStage();
+      if (added.length === 1) window.StageIntake.focus(added[0]);
+    });
+  },
+
   // A dragged file's MIME as a short label. An empty type is common and is
   // reported as the plain "A file" rather than guessed at: a .md dragged out of
   // a file manager often carries no type at all, and the extension that would

@@ -1941,13 +1941,24 @@ surface ([envelopes/surface.md](envelopes/surface.md), the `stage/1`
 profile), which is why the Stage view holds the bench and the shelf as one
 nav stop.
 
-The other thing that stays here is the **app-wide drop**, because it is the
-shell's gesture rather than the stage's: a file dropped on any view is staged,
-routes to the Stage, and opens in the preview when it is the only one. The
-shell owns the listeners, the drag cue, and the routing (`wireAppDrop`); what a
-dropped thing becomes is `window.StageIntake`'s, one answer shared with the
-bench's own drop-zone and with a paste. The gesture used to work only on the
-Stage, which meant you had to already be where you were trying to get to.
+The other things that stay here are the **app-wide drop and paste**, because
+they are the shell's gestures rather than the stage's: a file dropped, or
+anything pasted, on any view is staged, routes to the Stage, and opens in the
+preview when it is the only one. The shell owns the listeners, the drag cue,
+and the routing (`wireAppDrop`, `wireAppPaste`); what an arriving thing becomes
+is `window.StageIntake`'s, one answer shared with the bench's own drop-zone.
+Both gestures used to work only on the Stage, which meant you had to already be
+where you were trying to get to.
+
+The paste is the shell's **only** window paste listener, and that is a
+constraint rather than a tidiness note. Window listeners fire in registration
+order and `init()` runs before any component mounts, so a second listener in the
+stage could not use `defaultPrevented` to tell that this one had already acted;
+one reader is also what keeps a paste's several flavors from being split between
+two handlers. The stage's own listener was removed when this one arrived
+(2026-08-18). Note the platform floor underneath all of it: iOS Safari fires no
+`paste` event unless an editable is focused, so on a phone the bench's explicit
+Paste button is the intake, not a shortcut beside one.
 
 
 ## The branch review: landed / stranded per branch

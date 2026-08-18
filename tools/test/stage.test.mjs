@@ -69,7 +69,7 @@ const data = Alpine.$data(window.document.getElementById('st'));
 const store = Alpine.store('browser');
 store.gh = new FakeGH({ token: 't', repo: 'me/open' });
 const plain_ = (v) => JSON.parse(JSON.stringify(v));
-const reset = () => { store.stage = []; store.stageFocus = ''; data.preview = null; data.diffA = 0; data.diffB = 0; data._diffTouched = false; data.diffRows = null; };
+const reset = () => { store.stage = []; store.stageFocus = ''; store.stageOffers = []; data.preview = null; data.diffA = 0; data.diffB = 0; data._diffTouched = false; data.diffRows = null; };
 
 // navigator.clipboard isn't polyfilled by makeWindow (see its header note).
 // Component code runs in the jsdom window realm (new window.Function(src)()),
@@ -424,10 +424,16 @@ const fakeCd = ({ types = [], data = {}, files = [] }) => ({
 });
 const fakeFile = (name, type, size) => ({ name, type, size, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer });
 
+// The paste fold is window.StageIntake's, and the host reads its own event
+// target: these drive the intake directly, the way the shell does. The
+// `editable` flag is what a form-field target means to it.
 const paste = async (cd, target) => {
   data.offers = [];
-  data._onPaste({ clipboardData: cd, target: target || { tagName: 'DIV' }, preventDefault() {} });
+  const t = target || { tagName: 'DIV' };
+  const editable = /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || '') || !!t.isContentEditable;
+  const r = await window.StageIntake.takePaste(cd, { editable });
   await tick(2);
+  return r;
 };
 
 test('a spreadsheet paste stages one flavor and offers the rest', async () => {
@@ -497,6 +503,77 @@ test('an offer already on the stage under that name is not offered again', async
   await data.stageFlavor(data.offers[0]);
   await paste(cd);
   assert.equal(data.offers.length, 0, 'the same paste twice is quiet, not cumulative');
+});
+
+// ---- the paste fold is the intake's, so it works with no bench mounted ----
+//
+// The point of the move (2026-08-18): a paste on any view has to reach the
+// stage, and the bench mounts on the first visit to the Stage. These drive
+// window.StageIntake directly rather than the component, which is what a host
+// on another view can actually call.
+
+test('takePaste reports what landed and what the paste also carried', async () => {
+  reset();
+  const r = await window.StageIntake.takePaste(fakeCd({
+    types: ['text/plain', 'text/html'],
+    data: { 'text/plain': TSV, 'text/html': HTML },
+  }));
+  assert.equal(r.added.length, 1, 'the primary flavor lands');
+  assert.match(r.added[0].name, /\.tsv$/);
+  assert.equal(r.offers.length, 1, 'and the caller learns what it did not take');
+  assert.match(r.offers[0].name, /\.html$/, 'an offer is named on the way out, not by the bench');
+});
+
+test('the offers a paste leaves ride the store, so a bench that mounts later finds them', async () => {
+  reset();
+  await window.StageIntake.takePaste(fakeCd({
+    types: ['text/plain', 'text/html'],
+    data: { 'text/plain': TSV, 'text/html': HTML },
+  }));
+  assert.equal(store.stageOffers.length, 1, 'the store holds the bar, not the component');
+  assert.equal(data.offers.length, 1, 'and the component reads it through');
+  data.dismissOffers();
+  assert.equal(store.stageOffers.length, 0, 'clearing the bar clears the store');
+});
+
+test('a paste into a field stages nothing, and says so rather than silently taking', async () => {
+  reset();
+  const r = await window.StageIntake.takePaste(fakeCd({
+    types: ['text/plain', 'text/html'],
+    data: { 'text/plain': TSV, 'text/html': HTML },
+  }), { editable: true });
+  assert.equal(r.added.length, 0, 'the field keeps its own paste');
+  assert.equal(r.native, true, 'and the caller is told to leave the event alone');
+  assert.equal(r.offers.length, 1, 'only what the field cannot hold is offered');
+  assert.match(r.offers[0].name, /\.html$/, 'text/plain is what the field just pasted, so it is not offered back');
+});
+
+test('offer: false reads the clipboard without touching the bar', async () => {
+  reset();
+  store.stageOffers = [];
+  const r = await window.StageIntake.takePaste(fakeCd({
+    types: ['text/plain', 'text/html'],
+    data: { 'text/plain': TSV, 'text/html': HTML },
+  }), { offer: false });
+  assert.equal(r.offers.length, 1, 'the caller still learns what was carried');
+  assert.equal(store.stageOffers.length, 0, 'but nothing was written where a bar would draw it');
+});
+
+test('an empty clipboard folds to nothing rather than staging a blank', async () => {
+  reset();
+  const r = await window.StageIntake.takePaste(fakeCd({ types: [], data: {} }));
+  assert.equal(r.added.length, 0);
+  assert.equal(r.offers.length, 0);
+  assert.equal(store.stage.length, 0);
+});
+
+test('takeFlavor stages one flavor under its own name, refs included', async () => {
+  reset();
+  await window.StageIntake.takeFlavor({ kind: 'text', type: 'text/html', text: HTML, size: HTML.length, name: 'x.html' });
+  assert.match(data.localItems[0].name, /\.html$/, 'a named flavor keeps its name');
+  reset();
+  await window.StageIntake.takeFlavor({ kind: 'text', type: 'text/plain', text: 'me/a:lib/x.js', size: 13 });
+  assert.equal(data.refItems.length, 1, 'plain text still parses as refs');
 });
 
 // ---- a pasted image is a file, not an unviewable binary -----------------
