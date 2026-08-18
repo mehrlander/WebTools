@@ -150,6 +150,24 @@ Open the branch's PR as a draft at first push, automatically where configured or
 
 Keep the body under one screen. **Next steps / open threads** is its heart and must remain current.
 
+**One screen is a shape, not a word budget, and the shape is an outline.** A body
+that overruns is rarely carrying too many facts; it is carrying each fact fused
+to its own justification. Four habits do the damage, and cutting them leaves the
+facts intact:
+
+| habit | cut it to |
+| --- | --- |
+| a fact and its reason in one sentence | the fact; keep the reason only where it changes what someone would do |
+| defending a decision nobody questioned | nothing |
+| self-commentary (*worth knowing*, *the point is*, *deliberately*) | nothing |
+| a section opening by restating its own heading | the next sentence |
+
+Prefer a table or a line per fact to a paragraph, and let the number carry the
+weight: "27 of 54 sheets" says what two sentences of explanation were going to.
+Measurements belong in **Notes / Risk** as a list, never narrated. Added
+2026-08-18 after a body reached 1,650 words and lost nothing on the way back down
+to 480.
+
 ```markdown
 <One sentence: what this branch is doing and why.> [Follow-up to #N.]
 
