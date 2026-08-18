@@ -4720,21 +4720,26 @@ function gallery(){
       if (!isDefault && !Array.isArray(s.config?.pages)) return;
       this.loaded = false;
       if (isDefault){
-        // web-tools: the generated, grouped pages.json. Live preview is the
-        // deployed page at ?use=main; thumbnails are the committed shots.
+        // web-tools: the generated page catalog. Live preview is the deployed
+        // page at ?use=main; thumbnails are the committed shots. Flat since
+        // 2026-08-16, so the grouping the gallery renders is rebuilt here from
+        // each row's own `top` and `group` rather than arriving as nesting.
         try {
-          const raw = await (await fetch('../pages/pages.csv')).json();
-          this.groups = raw.map(g => ({
-            ...g,
-            items: g.items.map(p => ({
+          const rows = window.Csv.rows(await (await fetch('../pages/pages.csv')).text());
+          const byGroup = new Map();
+          for (const p of rows){
+            const g = byGroup.get(p.group) ?? { label: p.group, top: p.top, items: [] };
+            byGroup.set(p.group, g);
+            g.items.push({
               ...p,
               href: REBASE + p.href,
               thumb: REBASE + p.thumb,
               live: REBASE + p.href + '?use=main',
               repo, path: null,
               view: 'shot', source: '', shotMissing: false,
-            })),
-          }));
+            });
+          }
+          this.groups = [...byGroup.values()];
         } catch(e){
           this._loadKey = null;
           notify('Could not load the pages catalog: ' + (e?.message || e));
