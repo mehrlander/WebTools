@@ -153,7 +153,7 @@ duplication, which is the better win and worth naming as itself.
 A crosswalk pays for its shape with a gate of its own, because dropping a field
 makes a new silent failure possible: a shelved row whose page is gone renders
 with no title and no description at all. So every `tools.json` row must resolve
-to a row in `pages/pages.json`, checked.
+to a row in `pages/pages.csv`, checked.
 
 ## Declarations
 

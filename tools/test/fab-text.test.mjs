@@ -274,7 +274,7 @@ const REG = {
   'docs/portable.csv': { items: [
     { path: '.claude/skills/web-tools/SKILL.md', role: 'loads the conventions', kind: 'skill' },
   ] },
-  'pages/pages.json': [
+  'pages/pages.csv': [
     { label: '', items: [{ href: 'shorter.html', title: 'Shorter', note: 'line up a shorter draft' }] },
   ],
 };

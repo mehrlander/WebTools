@@ -19,7 +19,7 @@ harness-census,emits,computed,tools/build/tools-index.mjs,value,column,yes,,writ
 harness-census,named,computed,tools/build/tools-index.mjs,value,column,yes,,its path or basename appears in tracked prose
 harness-census,tested,computed,tools/build/tools-index.mjs,value,column,yes,,a file under tools/test/ exercises it
 content-registry,creation_mode,recorded,,none,column,yes,supplied;mechanical;human-authored;model-authored;hybrid-authored;mixed,what the artifact IS epistemically; the portable content-registry skill owns the convention
-content-registry,analysis_use,recorded,,none,column,yes,concept-vocabulary;prose-review;semantic-search;source-corpus;exclude,"what the artifact is good for downstream. The domain is closed and is owned by the content-registry skill, not here; docs/owners.json records the copy"
+content-registry,analysis_use,recorded,,none,column,yes,concept-vocabulary;prose-review;semantic-search;source-corpus;exclude,"what the artifact is good for downstream. The domain is closed and is owned by the content-registry skill, not here; docs/owners.csv records the copy"
 content-registry,description,recorded,,none,column,yes,,one line on the artifact
 portable-catalog,kind,recorded,,value,column,yes,skill;doc;script;dir,what species of thing travels
 portable-catalog,command,recorded,,none,column,yes,,the invocation name; present on kind:skill rows only
@@ -30,10 +30,12 @@ tools-gallery,icon,recorded,,none,column,yes,,phosphor icon name
 owners,kind,recorded,,value,column,yes,statement;family,"whether the row owns one repeated statement or declares a rule over a scope; a family row is a DECLARATION in this model, carried here because its carrier is distributed"
 owners,applies_to,recorded,,none,column,yes,,the population a family rule covers; absent on a statement row
 owners,authoritative,recorded,,value,column,yes,,the one carrier that owns the statement; every other mention is a repetition
-skills-catalog,description,recorded,,value,column,yes,,"the skill's trigger description. A COPY: the authoritative carrier is the skill's own SKILL.md, per the family rule in docs/owners.json"
+skills-catalog,description,recorded,,value,column,yes,,"the skill's trigger description. A COPY: the authoritative carrier is the skill's own SKILL.md, per the family rule in docs/owners.csv"
+pages-catalog,top,computed,tools/build/pages-index.mjs,value,column,yes,,"the top-level segment under pages/ the page sits in, which drives the gallery's location chips; every page below drop/ scopes to one drop chip. A root page reads main"
+pages-catalog,group,computed,tools/build/pages-index.mjs,counted,column,yes,,"the page's own directory, as the gallery labels it; blank for a root page. Was a nesting level until 2026-08-16, when flattening it onto the row is what let the catalog become a CSV"
 pages-catalog,label,computed,tools/build/pages-index.mjs,value,column,yes,,the short name the catalog card and the picker show
 pages-catalog,title,computed,tools/build/pages-index.mjs,value,column,yes,,"the page's own <title>, read from the file"
-pages-catalog,note,computed,tools/build/pages-index.mjs,counted,column,yes,,"the one-line blurb. Authored in the NOTES map inside the deriver, not here, and blank on 42 of 69 pages: a counted figure, the honest measure of how much of the gallery is unexplained"
+pages-catalog,note,computed,tools/build/pages-index.mjs,counted,column,yes,,"the one-line blurb. Authored in the NOTES map inside the deriver, not here, and blank on 40 of 66 pages: a counted figure, the honest measure of how much of the gallery is unexplained"
 pages-catalog,thumb,computed,tools/build/pages-index.mjs,value,column,yes,,"the committed screenshot path; refreshed once per session, never by the commit hook"
 pages-catalog,code,computed,tools/build/pages-index.mjs,value,column,yes,,the GitHub blob URL for the page source
 tracker-board,title,computed,.claude/skills/tasks/build-board.py,value,column,yes,,"the task's short imperative, read from its frontmatter"

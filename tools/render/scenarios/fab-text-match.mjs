@@ -27,7 +27,7 @@ const REG = {
   ] },
   'docs/harness.csv': { tools: [] },
   'docs/portable.csv': { items: [] },
-  'pages/pages.json': [
+  'pages/pages.csv': [
     { label: '', items: [{ href: 'shorter.html', title: 'Shorter', note: 'line up a shorter draft beside the original' }] },
   ],
 };

@@ -258,7 +258,7 @@ changes touch:
 |---|---|---|
 | `lib/` | `npm run build:lib` | `dist/web-tools.js` |
 | `console/` | `npm run build:console` | `console/suite.js` |
-| `pages/**/*.html` | `npm run pages-index` | `pages/README.md`, `pages/index.html`, `pages/pages.json` |
+| `pages/**/*.html` | `npm run pages-index` | `pages/README.md`, `pages/index.html`, `pages/pages.csv` |
 | skills, `lib/`, `pages/`, `docs/` | `npm run docs-reach` | `reach` and `words` in `docs/docs.json` |
 | `docs/docs.json` | `npm run docs-readme` | `docs/README.md` |
 | `tracker/tasks/` | `npm run tracker-board` | `tracker/board.md`, `tracker/board.json` |

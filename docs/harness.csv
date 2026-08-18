@@ -20,7 +20,7 @@ tools/build/docs-readme.mjs,regenerate docs/README.md from docs/docs.csv,tools/b
 tools/build/graph.mjs,the static resolver for a page's gh.load chain; feeds build.mjs its cache,tools/build,86,imported,false,true,false
 tools/build/graphql-schema.mjs,regenerate the pruned GitHub GraphQL schema the suite typechecks queries against,tools/build,230,npm:graphql-schema,true,false,false
 tools/build/kit-shim.mjs,run a browser-shaped gh.load kit inside Node; the bridge build.mjs and the suite share,tools/build,19,imported,false,true,false
-tools/build/pages-index.mjs,regenerate both page catalogs: pages/README.md and pages/index.html,tools/build,449,npm:pages-index,false,true,true
+tools/build/pages-index.mjs,regenerate both page catalogs: pages/README.md and pages/index.html,tools/build,455,npm:pages-index,false,true,true
 tools/build/pages-shots.mjs,"regenerate pages/thumbs/*.png, one screenshot per page for the visual index",tools/build,85,npm:pages-shots,false,true,false
 tools/build/registries-load.mjs,"read and write the registry pair (docs/registries.csv, docs/properties.csv): the CSV parse, the path/fragment split, and the column order a restamp must preserve",tools/build,96,imported,false,false,true
 tools/build/registries-reach.mjs,"stamp renders_in into docs/registries.csv: the app files that name each registry's path, empty being the Registries tab's warning state",tools/build,91,npm:registries-reach,true,true,true

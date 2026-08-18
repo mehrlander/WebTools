@@ -1781,7 +1781,7 @@ function app(){ return {
   // Generated artifacts a build hook writes on every commit are noise here,
   // not real edits, so they're filtered out for web-tools specifically.
   GENERATED: ['dist/web-tools.js', 'pages/README.md', 'pages/index.html',
-              'pages/pages.json', 'tracker/board.md'],
+              'pages/pages.csv', 'tracker/board.md'],
   recent: [],
   recentLoading: false,
   _recentKey: '',
@@ -4719,7 +4719,7 @@ function gallery(){
         // web-tools: the generated, grouped pages.json. Live preview is the
         // deployed page at ?use=main; thumbnails are the committed shots.
         try {
-          const raw = await (await fetch('../pages/pages.json')).json();
+          const raw = await (await fetch('../pages/pages.csv')).json();
           this.groups = raw.map(g => ({
             ...g,
             items: g.items.map(p => ({

@@ -23,7 +23,7 @@ window.Alpine = Alpine;
 // The curated shelf the component fetches, served by a stubbed GH (no token,
 // public hub). Mirrors docs/tools.csv's shape, which since 2026-08-13 carries
 // only { path, icon }: the title and the description belong to the page and are
-// joined from pages/pages.json, so a shelved row cannot drift from the gallery.
+// joined from pages/pages.csv, so a shelved row cannot drift from the gallery.
 const manifest = {
   items: [
     { path: 'pages/diff-tool.html', icon: 'ph-git-diff' },
@@ -42,7 +42,7 @@ window.GH = class {
   constructor(opts) { this.opts = opts; }
   async get(p) {
     getLog.push([this.opts.repo, this.opts.ref, p]);
-    if (p === 'pages/pages.json') return { text: JSON.stringify(pages) };
+    if (p === 'pages/pages.csv') return { text: JSON.stringify(pages) };
     return { text: JSON.stringify(manifest) };
   }
 };
@@ -59,7 +59,7 @@ test('mounts and loads the curated manifest with no startup warnings', () => {
   assert.ok(data.description.length > 0);
   assert.deepEqual(getLog.sort(), [
     ['mehrlander/web-tools', 'main', 'docs/tools.csv'],
-    ['mehrlander/web-tools', 'main', 'pages/pages.json'],
+    ['mehrlander/web-tools', 'main', 'pages/pages.csv'],
   ]);
   assert.equal(data.items.length, 3);
 });

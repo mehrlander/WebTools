@@ -48,7 +48,7 @@ const byRegistry = new Map(reg.registries.map(r => [r.id, r]));
 
 // A `rows` spec addresses the row array inside a JSON carrier. Two shapes are
 // in use. A named key ("documents") is the common one. A group walk
-// ("[].items") is what pages/pages.json needs: its top level is the GROUPING,
+// ("[].items") is what pages/pages.csv needs: its top level is the GROUPING,
 // and the rows that carry per-page properties sit one level down. The carrier
 // was left alone rather than reshaped into { groups: [...] }, because its
 // layout is a published contract that show-repo reads for this repo and for
@@ -381,7 +381,7 @@ test('every tools-gallery row resolves to a page the gallery owns', () => {
     const p = row[tools.key];
     if (p.includes(':')) continue;   // a cross-repo ref is not this repo's to check
     assert.ok(known.has(p),
-      `docs/tools.csv: "${p}" is not a row in pages/pages.json, so the Tools view has no title ` +
+      `docs/tools.csv: "${p}" is not a row in pages/pages.csv, so the Tools view has no title ` +
       `or description to inherit for it`);
   }
 });
