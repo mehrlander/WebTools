@@ -1,4 +1,4 @@
-// docs/app-routes.json: the show-repo app's own destinations stated as data,
+// docs/app-routes.csv: the show-repo app's own destinations stated as data,
 // and lib/kits/route-activity.js, the fold that ranks them. Two things to hold.
 //
 // The MANIFEST has to agree with the router. app/index.html's VIEWS table is
@@ -15,8 +15,23 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
+import { parseCsv, splitList } from '../build/registries-load.mjs';
 
-const manifest = JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'app-routes.json'), 'utf8'));
+// Assembled from two CSVs since 2026-08-16, the same way estate.js does it. The
+// shell is a row keyed `shell`, which is what it always was: a path plus a note.
+// The group glosses live in the shared value-gloss table.
+const allRoutes = parseCsv(readFileSync(path.join(repoRoot, 'docs', 'app-routes.csv'), 'utf8'))
+  .map(r => ({ ...r, files: splitList(r.files).filter(Boolean), tabs: splitList(r.tabs).filter(Boolean) }));
+const shellRow = allRoutes.find(r => r.key === 'shell');
+const manifest = {
+  app: shellRow.files[0],
+  shell: shellRow.files[0],
+  shellNote: shellRow.what,
+  groups: parseCsv(readFileSync(path.join(repoRoot, 'docs', 'vocabularies.csv'), 'utf8'))
+    .filter(v => v.registry === 'app-routes' && v.property === 'group')
+    .map(v => ({ key: v.value, label: v.label, gloss: v.gloss })),
+  routes: allRoutes.filter(r => r.key !== 'shell'),
+};
 const shellSrc = readFileSync(path.join(repoRoot, manifest.app), 'utf8');
 
 // The VIEWS keys, read out of the shell. Deliberately strict about the block
@@ -35,8 +50,8 @@ function viewKeys(src) {
 test('every route the router dispatches is described, and nothing else is', () => {
   const inRouter = new Set(viewKeys(shellSrc));
   const inManifest = new Set(manifest.routes.map(r => r.key));
-  for (const k of inRouter) assert.ok(inManifest.has(k), `VIEWS key '${k}' has no row in docs/app-routes.json`);
-  for (const k of inManifest) assert.ok(inRouter.has(k), `docs/app-routes.json describes '${k}', which VIEWS does not dispatch`);
+  for (const k of inRouter) assert.ok(inManifest.has(k), `VIEWS key '${k}' has no row in docs/app-routes.csv`);
+  for (const k of inManifest) assert.ok(inRouter.has(k), `docs/app-routes.csv describes '${k}', which VIEWS does not dispatch`);
 });
 
 test('every row says what it is, where it is, and what draws it', () => {

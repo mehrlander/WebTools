@@ -13,7 +13,7 @@ At session start, only `web-tools` and `load-skill` are registered from web-tool
 
 ## The library
 
-`manifest.json` lists every available skill. Each entry has:
+`manifest.csv` lists every available skill. Each entry has:
 
 - `name`: the slug that matches the folder name (`arriving-together`, `xlsx`, etc.)
 - `description`: the same description text the skill's own `SKILL.md` carries in its frontmatter, provided so consumers can decide relevance without fetching every body.

@@ -271,7 +271,7 @@ asks the question; it does not settle it.
 
 The first run also caught a real defect in the shared scanner itself: a `/*`
 inside a `//` line comment opened a phantom block that swallowed hundreds of
-code lines, which had been silently mis-filing `docs/app-routes.json` as an
+code lines, which had been silently mis-filing `docs/app-routes.csv` as an
 orphan in the docs census. An instrument built to find unread carriers found a
 bug in the instrument it was copied from, which is the pattern working.
 

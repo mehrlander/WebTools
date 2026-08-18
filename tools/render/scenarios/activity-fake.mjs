@@ -87,7 +87,7 @@ export default async (page) => {
   // branch touching nothing any route declares.
   await page.evaluate(async () => {
     const d = window.Alpine.$data(document.querySelector('[x-data="estate()"]'));
-    d.routeManifest = await (await fetch('/docs/app-routes.json')).json();
+    d.routeManifest = await (await fetch('/docs/app-routes.csv')).json();
     d.routeJoinTried = true;
     d.routeBranchFiles = [
       { repo: 'mehrlander/web-tools', name: 'claude/open-view-live-branches-yk24d9', pr: 271,

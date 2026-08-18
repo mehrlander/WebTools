@@ -29,6 +29,24 @@ const MANIFEST = {
   ],
 };
 
+// The manifest is two CSVs on disk since 2026-08-16: the shell is a row keyed
+// `shell` rather than a sibling key, and the group glosses live in the shared
+// value-gloss table. The fixture emits both, so the loader is exercised through
+// the same assembly the app does.
+const csv = (cols, rows) => [cols.join(','),
+  ...rows.map(r => cols.map(c => {
+    const v = Array.isArray(r[c]) ? r[c].join(';') : (r[c] ?? '');
+    return /[",]/.test(v) ? '"' + String(v).replace(/"/g, '""') + '"' : v;
+  }).join(','))].join('\n') + '\n';
+
+const ROUTES_CSV = csv(['key', 'address', 'label', 'group', 'what', 'files', 'note'], [
+  { key: 'shell', what: MANIFEST.shellNote, group: 'shell', files: [MANIFEST.shell] },
+  ...MANIFEST.routes,
+]);
+const VOCAB_CSV = csv(['registry', 'property', 'value', 'label', 'gloss'],
+  MANIFEST.groups.map(g => ({ registry: 'app-routes', property: 'group',
+                              value: g.key, label: g.label, gloss: g.gloss })));
+
 // Newest first per path, so the ranking has something to order by.
 const COMMITS = {
   'lib/alpineComponents/map.js': { sha: 'aaaaaaa1', date: '2026-08-14T10:00:00Z', msg: 'map: registries tab' },
@@ -54,11 +72,12 @@ class FakeGH {
     // The manifest exists only at the ref the code came from, which is the
     // whole point: reading it at main while running branch code is the bug
     // this fixture reproduces.
-    if (path === 'docs/app-routes.json') {
+    if (path === 'docs/app-routes.csv') {
       manifestRef = this.ref;
       if (this.ref !== 'main' && this.ref !== 'claude/branch') throw new Error('GitHub Error 404: Not Found');
-      return { text: JSON.stringify(MANIFEST) };
+      return { text: ROUTES_CSV };
     }
+    if (path === 'docs/vocabularies.csv') return { text: VOCAB_CSV };
     throw new Error('404');
   }
   async req(path) {
@@ -106,6 +125,7 @@ window.__shell = {
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
+  'lib/kits/csv.js',
   'lib/kits/surface.js',
   'lib/kits/route-activity.js',
   'lib/alpineComponents/estate.js',
@@ -194,7 +214,7 @@ test('the pane reads at the running ref, so a preview is not pinned to main', as
 test('a failed load names the address it could not read', async () => {
   failNext = true;
   await data.loadRoutes(true);
-  assert.match(data.routesError, /mehrlander\/web-tools@main:docs\/app-routes\.json/);
+  assert.match(data.routesError, /mehrlander\/web-tools@main:docs\/app-routes\.csv/);
   assert.match(data.routesError, /404/);
   assert.equal(data.routesBusy, false);
   // The x-effect fires again on the next render; the attempt-once guard is

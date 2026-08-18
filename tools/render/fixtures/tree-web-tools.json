@@ -4521,7 +4521,7 @@
    "sha": "7a7e1c345054b66547a6c8e1e18aa1fe5ee04a25"
   },
   {
-   "path": "skills/manifest.json",
+   "path": "skills/manifest.csv",
    "mode": "100644",
    "type": "blob",
    "sha": "fd624f249143054df54eec296fe8198eefadf791"

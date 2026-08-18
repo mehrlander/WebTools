@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 function touchesFromGit() {
-  const m = JSON.parse(readFileSync(path.join(repoRoot, 'docs/app-routes.json'), 'utf8'));
+  const m = JSON.parse(readFileSync(path.join(repoRoot, 'docs/app-routes.csv'), 'utf8'));
   const paths = [...new Set([...m.routes.flatMap(r => r.files || []), m.shell])];
   const out = {};
   for (const p of paths) {
@@ -40,7 +40,7 @@ const PRS = [
     title: 'Activity: a Routes pane over the app’s own destinations', draft: true,
     url: 'https://github.com/mehrlander/web-tools/pull/416', session: '',
     files: ['lib/alpineComponents/estate.js', 'lib/kits/route-activity.js',
-            'docs/app-routes.json', 'app/index.html'] },
+            'docs/app-routes.csv', 'app/index.html'] },
   { repo: 'mehrlander/web-tools', name: 'claude/map-registries-area', pr: 415,
     title: 'Give the registries an identity', draft: false,
     url: 'https://github.com/mehrlander/web-tools/pull/415', session: '',
@@ -66,7 +66,7 @@ export default async (page) => {
   await page.evaluate(async ({ touches, prs }) => {
     const d = window.Alpine.$data(document.querySelector('[x-data="estate()"]'));
     d.authed = true; d.loading = false;
-    d.routeManifest = await (await fetch('/docs/app-routes.json')).json();
+    d.routeManifest = await (await fetch('/docs/app-routes.csv')).json();
     d.routeTouches = touches;
     d.routeBranchFiles = prs;
     d.routesTried = true;            // keep the x-effect from launching a real load

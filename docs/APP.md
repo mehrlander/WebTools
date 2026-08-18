@@ -15,7 +15,7 @@ problem it serves: something exists somewhere, and someone needs to look at it.
 **Web Tools** is the product name, used wherever a reader is addressed: the
 page title, the README's front door, the app's own address. **show-repo** is
 the shell's internal name and stays on everything that keys by it: the route
-registry ([app-routes.json](app-routes.json)), the reference doc, the component
+registry ([app-routes.csv](app-routes.csv)), the reference doc, the component
 and harness filenames, and the tracker project tag. The old name records the
 app's origin as a repo viewer; the scope outgrew it.
 

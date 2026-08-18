@@ -27,7 +27,7 @@
 // to GitHub-rendered markdown (tracker/board.json's board.md), has no app
 // surface, and whether that is fine is a judgment for the reader of the
 // Registries tab. At introduction three registries were empty: manifest-fields
-// (docs/manifest.json), skills-catalog (skills/manifest.json), and
+// (docs/manifest.json), skills-catalog (skills/manifest.csv), and
 // text-field-vocabulary (docs/text-fields.csv).
 //
 // No fixpoint is needed, unlike docs-reach: the stamp writes docs/, the scan

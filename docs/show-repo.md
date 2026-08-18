@@ -7,7 +7,7 @@ to the estate. It began as a repo browser and file mover, and that trunk still
 organizes this doc, but the scope is wider now: the estate dashboard and its
 activity, session, guide, and chat readings, the stage, the lists, the map,
 and the tools, every destination declared in
-[app-routes.json](app-routes.json). [APP.md](APP.md) states the mission and
+[app-routes.csv](app-routes.csv). [APP.md](APP.md) states the mission and
 the name split (Web Tools where a reader is addressed; show-repo for the file,
 the routes, and this doc). It is the cross-repo instrument: a session hands
 the user a link into it, or configures a repo so the shell presents it well.
@@ -653,7 +653,7 @@ most of the work lands, and the app could not previously say what its own
 destinations were: `VIEWS` in `show-repo.html` dispatches and stamps them and
 carries no label, no gloss, and no idea which code draws the screen.
 
-[`docs/app-routes.json`](app-routes.json) is that statement, one row per
+[`docs/app-routes.csv`](app-routes.csv) is that statement, one row per
 address: what it is for, which group it is reached from, and the files that
 render it. `tools/test/app-routes.test.mjs` holds it to the `VIEWS` table both
 ways, so a route cannot exist in the router and not the manifest, and every

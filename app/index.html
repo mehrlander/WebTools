@@ -4312,7 +4312,7 @@ function app(){ return {
   // instead of offering a refresh that would do nothing.
   goChats(){ this.estateSeen = true; this.view = 'chats'; this.syncUrl(); },
   // Activity's fifth pill: the app's own destinations, dated by the code behind
-  // them. It reads docs/app-routes.json and one last-commit call per declared
+  // them. It reads docs/app-routes.csv and one last-commit call per declared
   // carrier against THIS repo, so it warms nothing shared: the other four panes
   // are cross-repo and ride the estate's caches, while this one is a read of
   // the hub's own history and is cheap enough to take live.

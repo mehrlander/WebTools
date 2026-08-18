@@ -1,14 +1,17 @@
-registry,property,value,gloss
-tests-census,kind,behavior,calls the subject's own functions and asserts what comes back
-tests-census,kind,component,boots an Alpine component in jsdom and drives it
-tests-census,kind,kit,loads a lib/kits file through the bootstrap and exercises its surface
-tests-census,kind,tool,runs a CLI script as a process and asserts its output
-tests-census,kind,gate,"holds committed data to the repo, so documentation cannot drift from what it describes"
-tests-census,kind,lockstep,holds a generated artifact to its source
-tests-census,kind,guard,asserts a convention or policy rather than a behavior
-harness-census,layer,scripts,"standalone and portable: argv-driven, runs from any repo root, travels via the hub"
-harness-census,layer,tools,repo-root harness files that fit no folder below
-harness-census,layer,tools/build,"generators: snapshot a page or the lib into an offline artifact, or restamp a committed registry"
-harness-census,layer,tools/concept-lab,"experimental ground, read-only prototypes that have not earned a place (its README states the admission rule)"
-harness-census,layer,tools/render,"exercise a page headlessly: the jsdom logic render, the Chromium pixel render, and their shared CDN resolver"
-harness-census,layer,tools/render/scenarios,interaction drivers for npm run shot --script: each steers one page into one state before the pixels are taken
+registry,property,value,label,gloss
+tests-census,kind,behavior,,calls the subject's own functions and asserts what comes back
+tests-census,kind,component,,boots an Alpine component in jsdom and drives it
+tests-census,kind,kit,,loads a lib/kits file through the bootstrap and exercises its surface
+tests-census,kind,tool,,runs a CLI script as a process and asserts its output
+tests-census,kind,gate,,"holds committed data to the repo, so documentation cannot drift from what it describes"
+tests-census,kind,lockstep,,holds a generated artifact to its source
+tests-census,kind,guard,,asserts a convention or policy rather than a behavior
+harness-census,layer,scripts,,"standalone and portable: argv-driven, runs from any repo root, travels via the hub"
+harness-census,layer,tools,,repo-root harness files that fit no folder below
+harness-census,layer,tools/build,,"generators: snapshot a page or the lib into an offline artifact, or restamp a committed registry"
+harness-census,layer,tools/concept-lab,,"experimental ground, read-only prototypes that have not earned a place (its README states the admission rule)"
+harness-census,layer,tools/render,,"exercise a page headlessly: the jsdom logic render, the Chromium pixel render, and their shared CDN resolver"
+harness-census,layer,tools/render/scenarios,,interaction drivers for npm run shot --script: each steers one page into one state before the pixels are taken
+app-routes,group,repo,Repo,Reached with a repo open: the browser over one repository.
+app-routes,group,estate,Estate,Above any repo: the constellation's own dashboard.
+app-routes,group,shell,Shell,Addresses that are not a screen of their own.

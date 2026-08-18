@@ -87,7 +87,7 @@ text-field-vocabulary,audience,recorded,,value,column,yes,reader;editor,who the 
 text-field-vocabulary,gloss,recorded,,value,column,yes,,"what this field name means, in a sentence"
 text-field-vocabulary,use_when,recorded,,value,column,yes,,"the rule for picking this name over its neighbours, which is the part a definition alone never settles"
 text-field-vocabulary,instead_of,recorded,,none,column,yes,,"the names already in use that this one accounts for; the survey resolves them rather than reporting them as violations, so an existing carrier conforms by declaration rather than by rename"
-app-routes,address,recorded,,value,column,yes,,"the URL shape that opens it, e.g. ?view=map"
+app-routes,address,recorded,,counted,column,yes,,"the URL shape that opens it, e.g. ?view=map; blank on the shell row, which draws every route and is addressable as none of them"
 app-routes,label,recorded,,value,column,yes,,its name in the nav and on the row
 app-routes,group,recorded,,value,column,yes,repo;estate;shell,which context it is reached from
 app-routes,what,recorded,,value,column,yes,,"what the destination is for, one line"
@@ -95,7 +95,7 @@ app-routes,files,recorded,,counted,column,no,,"the files that render it, shell e
 app-routes,note,recorded,,none,column,yes,,"why a row has no files, or what qualifies the row"
 app-routes,alias,recorded,,none,column,yes,,a retired key that still resolves
 app-routes,tabs,recorded,,none,column,no,,the sub-tabs addressable within it
-app-routes,stop,recorded,,value,column,yes,,"the nav destination it is reached as. Six sub-tabs are addressed as their own ?view= key while twelve are addressed as ?view=<parent>&tab=, so this is the level the router flattens away; the gate holds every estate route's value to estateNav"
+app-routes,stop,recorded,,counted,column,yes,,"the nav destination it is reached as. Six sub-tabs are addressed as their own ?view= key while twelve are addressed as ?view=<parent>&tab=, so this is the level the router flattens away; the gate holds every estate route's value to estateNav; blank on the shell row, which draws every route and is addressable as none of them"
 registries,path,recorded,,value,column,yes,,"the file the registry lives in, plus a #fragment where one file still holds several; the fragment goes when every registry is its own file"
 registries,key,recorded,,value,column,yes,,"the column that identifies a row, exempt from having a property definition of its own"
 registries,identity,recorded,,none,column,yes,,"the space the key resolves into, where the ownership gate needs one"
@@ -121,3 +121,4 @@ repetitions,relation,recorded,,value,column,yes,copy;paraphrase;pointer;live rea
 repetitions,kept,recorded,,counted,column,yes,,who keeps a copy current; applies only when the relation is copy
 repetitions,check,recorded,,counted,column,yes,,"the test holding this repetition to its owner; blank where nothing does, which is the honest state the table exists to show"
 vocabularies,gloss,recorded,,value,column,yes,,"what this one value means, in the terms a reader picking among them needs"
+vocabularies,label,recorded,,counted,column,yes,,"the display name for this value, where it differs from the value itself"
