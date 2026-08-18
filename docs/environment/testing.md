@@ -114,6 +114,18 @@ npm run shot -- pages/repo-atlas.html --query "repo=mehrlander/web-tools"
   URL until it merges. For branch HTML on a live origin, use toss-render's
   `#gh=` address mode or the FAB's Render tab.
 
+### Measuring horizontal overflow, not looking for it
+
+A viewport screenshot crops whatever sits past the frame, so horizontal overflow
+is invisible to the exact check most likely to be run. At phone width, compare
+`documentElement.scrollWidth` against `clientWidth`. When listing offending
+elements, skip any inside a horizontally scrollable ancestor, or every carousel
+slide reports as a fault.
+
+This is what catches the two failures `docs/HTML-STYLE.md` prescribes against:
+a scroll track without `min-w-0` claiming one viewport per slide, and a form
+control that stops short of its column.
+
 ### Measuring the rendered ink (2026-08-10)
 
 A screenshot answers "does it look right" only if you can see it, and precise
