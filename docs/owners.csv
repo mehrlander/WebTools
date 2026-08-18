@@ -1,6 +1,6 @@
 subject,kind,applies_to,authoritative
 the skill roster,statement,,.claude/skills/ on disk (the plugin's source boundary ships whatever is there)
-the doc and script membership of the portable set,statement,,docs/portable.json (curation decides; docs/ holds non-portable files too)
+the doc and script membership of the portable set,statement,,docs/portable.csv (curation decides; docs/ holds non-portable files too)
 what each skill does,family,every skill in the set,the skill's own SKILL.md description (it is what triggers invocation)
 the surfacing primitives,statement,,docs/SURFACING.md (sessions load and follow the prose; the ownership runs opposite to routes.json)
 the working conventions text,statement,,docs/CONVENTIONS.md and docs/SURFACING.md

@@ -21,7 +21,7 @@ captureAlpineErrors(Alpine);
 window.Alpine = Alpine;
 
 // The curated shelf the component fetches, served by a stubbed GH (no token,
-// public hub). Mirrors docs/tools.json's shape, which since 2026-08-13 carries
+// public hub). Mirrors docs/tools.csv's shape, which since 2026-08-13 carries
 // only { path, icon }: the title and the description belong to the page and are
 // joined from pages/pages.json, so a shelved row cannot drift from the gallery.
 const manifest = {
@@ -58,7 +58,7 @@ test('mounts and loads the curated manifest with no startup warnings', () => {
   assert.deepEqual(problems, []);
   assert.ok(data.description.length > 0);
   assert.deepEqual(getLog.sort(), [
-    ['mehrlander/web-tools', 'main', 'docs/tools.json'],
+    ['mehrlander/web-tools', 'main', 'docs/tools.csv'],
     ['mehrlander/web-tools', 'main', 'pages/pages.json'],
   ]);
   assert.equal(data.items.length, 3);

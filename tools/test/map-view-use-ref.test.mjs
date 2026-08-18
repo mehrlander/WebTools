@@ -40,6 +40,9 @@ window.GH = class {
   }
 };
 
+// The registries are CSV now, so the parse kit has to be in the window the same
+// way the pre-build puts it there.
+new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8'))();
 new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/map.js'), 'utf8'))();
 Alpine.start();
 await tick(3);
@@ -48,7 +51,7 @@ const data = Alpine.$data(window.document.getElementById('map'));
 await data.loadRoutes();
 
 test('the set manifest is fetched at the ?use= ref, not main', () => {
-  const hit = asked.find(a => a.path === 'docs/portable.json');
+  const hit = asked.find(a => a.path === 'docs/portable.csv');
   assert.ok(hit, 'the set manifest was requested');
   assert.equal(hit.ref, BRANCH);
 });

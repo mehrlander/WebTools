@@ -381,7 +381,7 @@ test('every tools-gallery row resolves to a page the gallery owns', () => {
     const p = row[tools.key];
     if (p.includes(':')) continue;   // a cross-repo ref is not this repo's to check
     assert.ok(known.has(p),
-      `docs/tools.json: "${p}" is not a row in pages/pages.json, so the Tools view has no title ` +
+      `docs/tools.csv: "${p}" is not a row in pages/pages.json, so the Tools view has no title ` +
       `or description to inherit for it`);
   }
 });

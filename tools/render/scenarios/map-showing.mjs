@@ -21,7 +21,7 @@ export default async function (page) {
     window.GH.prototype.get = async function (name) {
       if (name === 'docs/routes.json') return { text: routesText };
       if (name === '.claude/settings.json' || name === 'CLAUDE.md' || name === '.web-tools.json'
-          || name === 'docs/portable.json' || name === 'state/configs.json' || name === 'state/activity.json'
+          || name === 'docs/portable.csv' || name === 'state/configs.json' || name === 'state/activity.json'
           || name === 'lists/todo.json' || name === 'lists/jots.json')
         throw Object.assign(new Error('404'), { status: 404 });
       return origGet.call(this, name);

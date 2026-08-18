@@ -1,5 +1,5 @@
 {
-  "note": "The harness census: one row per code file under tools/ (tools/test/ excluded, docs/tests.json is that folder's census) and scripts/, saying what each file is FOR. `role` is authored because no derivation supplies it; layer, lines, invocation, emits, named, and tested are stamped by tools/build/tools-index.mjs, whose --check mode runs in the lockstep suite. A blank role is a ledger entry, not a violation: it marks a file nobody has yet accounted for, the same discipline docs/tests.json applies to protects. Filed after the 2026-08-08 lib-kits migration showed what an unaccounted shelf costs; docs/code-layers.md names tools/ as the weak layer and this census is its accounting. (docs/tools.json is a different thing: the curated Tools gallery manifest.)",
+  "note": "The harness census: one row per code file under tools/ (tools/test/ excluded, docs/tests.json is that folder's census) and scripts/, saying what each file is FOR. `role` is authored because no derivation supplies it; layer, lines, invocation, emits, named, and tested are stamped by tools/build/tools-index.mjs, whose --check mode runs in the lockstep suite. A blank role is a ledger entry, not a violation: it marks a file nobody has yet accounted for, the same discipline docs/tests.json applies to protects. Filed after the 2026-08-08 lib-kits migration showed what an unaccounted shelf costs; docs/code-layers.md names tools/ as the weak layer and this census is its accounting. (docs/tools.csv is a different thing: the curated Tools gallery manifest.)",
   "layers": {
     "scripts": "standalone and portable: argv-driven, runs from any repo root, travels via the hub",
     "tools": "repo-root harness files that fit no folder below",
@@ -171,9 +171,9 @@
     },
     {
       "path": "tools/build/docs-reach.mjs",
-      "role": "restamp the derived reach and words fields of docs/docs.json",
+      "role": "restamp the derived reach and words fields of docs/docs.csv",
       "layer": "tools/build",
-      "lines": 265,
+      "lines": 269,
       "invocation": "npm:docs-reach",
       "emits": true,
       "named": true,
@@ -181,7 +181,7 @@
     },
     {
       "path": "tools/build/docs-readme.mjs",
-      "role": "regenerate docs/README.md from docs/docs.json",
+      "role": "regenerate docs/README.md from docs/docs.csv",
       "layer": "tools/build",
       "lines": 98,
       "invocation": "npm:docs-readme",

@@ -2055,7 +2055,7 @@
       "runner": "suite",
       "boot_smoke": [],
       "assertion_names": [
-        "manifest shape: hub, plugin block, and non-empty typed items",
+        "the set is typed and non-empty, and the plugins match the marketplace",
         "every manifest path exists in the repo",
         "every manifest path is named in PORTABLE.md",
         "every PORTABLE.md Docs/Scripts table row is in the manifest",

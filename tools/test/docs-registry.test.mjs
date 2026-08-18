@@ -1,4 +1,4 @@
-// docs/docs.json — the documentation registry: the documents census. Complete
+// docs/docs.csv — the documentation registry: the documents census. Complete
 // by construction: every .md/.json/.csv file under docs/ has exactly one row, so a
 // file cannot sit in the folder unaccounted for (the same completeness gate
 // build-census.py runs for budget-drs's data files).
@@ -14,9 +14,11 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
+import { parseCsv } from '../build/registries-load.mjs';
 import { deriveReach, deriveWords, CHANNELS } from '../build/docs-reach.mjs';
 
-const registry = JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'docs.json'), 'utf8'));
+const registry = { documents: parseCsv(readFileSync(path.join(repoRoot, 'docs', 'docs.csv'), 'utf8'))
+  .map(d => ({ ...d, words: +d.words })) };
 
 // `measured` was added 2026-08-05. Five rows were describing that genre in
 // their maintenance prose ("per-claim verification dates", "re-probe on a new

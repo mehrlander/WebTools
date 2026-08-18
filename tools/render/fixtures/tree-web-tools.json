@@ -2109,7 +2109,7 @@
    "sha": "4e72083f48c0a3bc49c58d6077eb9dda46199973"
   },
   {
-   "path": "docs/portable.json",
+   "path": "docs/portable.csv",
    "mode": "100644",
    "type": "blob",
    "sha": "d1a93d4d5c0ae4d78b83a68ddd64e09f59c3cf56"
@@ -2139,7 +2139,7 @@
    "sha": "6e5f5adf97aef2d1e6ed664bf7628d5ead271397"
   },
   {
-   "path": "docs/tools.json",
+   "path": "docs/tools.csv",
    "mode": "100644",
    "type": "blob",
    "sha": "ae0b594d90da26b12197b27a03cbc27500ada787"

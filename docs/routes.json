@@ -21,7 +21,7 @@
       },
       {
         "where": "the curated Tools gallery",
-        "path": "docs/tools.json"
+        "path": "docs/tools.csv"
       },
       {
         "where": "a repo's pages catalog and stage.files",

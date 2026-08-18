@@ -22,7 +22,7 @@ export default async function (page) {
       if (name === 'docs/registries.csv') return { text: propsText };
       if (name === 'docs/properties.csv') return { text: declsText };
       if (name === '.claude/settings.json' || name === 'CLAUDE.md' || name === '.web-tools.json'
-          || name === 'docs/portable.json' || name === 'state/configs.json' || name === 'state/activity.json'
+          || name === 'docs/portable.csv' || name === 'state/configs.json' || name === 'state/activity.json'
           || name === 'lists/todo.json' || name === 'lists/jots.json')
         throw Object.assign(new Error('404'), { status: 404 });
       return origGet.call(this, name);

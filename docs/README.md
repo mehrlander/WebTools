@@ -1,9 +1,9 @@
 # docs
 
-<!-- GENERATED from docs/docs.json by tools/build/docs-readme.mjs; do not hand-edit. -->
+<!-- GENERATED from docs/docs.csv by tools/build/docs-readme.mjs; do not hand-edit. -->
 
 Reference docs that don't belong at the repo root. This index is generated
-from [`docs.json`](docs.json), the documentation registry, which also renders
+from [`docs.csv`](docs.csv), the documentation registry, which also renders
 live in [the Web Tools app's Map view, Docs tab](https://mehrlander.github.io/web-tools/app/?view=map)
 alongside the shared-claims table (statements that live in more than one
 place, each with its one authoritative carrier and the check that holds each
@@ -13,8 +13,8 @@ observations and is corrected by re-probing; everything else is living and
 must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
-2 arrive in every session's context, 26 are named by CLAUDE.md,
-5 by a skill, 11 by a page or component. The remaining 16 are
+2 arrive in every session's context, 24 are named by CLAUDE.md,
+5 by a skill, 13 by a page or component. The remaining 16 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -34,7 +34,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`artifacts.md`](artifacts.md) — Claude Code artifacts and the link-choice matrix
 - [`branch-overlay.md`](branch-overlay.md) *(orphan)* — the branch overlay: the takeover, file substitution, the sidebar's second ref, and drop-on-a-branch
 - [`code-layers.md`](code-layers.md) — the code layers and the admission rule that sorts a new file into one of them
-- [`docs.json`](docs.json) — this registry: the documents census and the shared-claims table
+- [`docs.csv`](docs.csv) — the documents census: what each file under docs/ is, on four axes
 - [`harness.json`](harness.json) — the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting
 - [`headless-vendoring.md`](headless-vendoring.md) — building with CDN libraries and rendering headless where the CDNs are blocked
 - [`ios-sheet-drags.md`](ios-sheet-drags.md) — why a drag inside a sheet-presented in-app browser dismisses the sheet, and the two fixes, measured on device
@@ -44,7 +44,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`markdown-in-chat.md`](markdown-in-chat.md) *(measured)* — working visually with markdown in a chat client on a phone
 - [`owners.csv`](owners.csv) — for a statement the coordination layer repeats, its one authoritative carrier
 - [`pdf-structure.md`](pdf-structure.md) — recovering structure from a PDF in the browser: what the kit does and honestly does not
-- [`portable.json`](portable.json) — the machine index of the portable set
+- [`portable.csv`](portable.csv) — the portable set: what travels to another repo, and how a consumer takes it
 - [`properties.csv`](properties.csv) — every column of every registry: what it means, how it arises, and what it may hold
 - [`registries.csv`](registries.csv) — every registry the estate declares: its file, target, scope, and gate
 - [`registries.md`](registries.md) — the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction
@@ -53,12 +53,12 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`show-repo.md`](show-repo.md) — the show-repo shell: views and transfer
 - [`showing.md`](showing.md) — why the showing boundaries sit where they are: the frame and the record behind routes.json
 - [`stage.md`](stage.md) — the stage: bench and Saved, intake, the walkable preview and diff, Out, save-as-surface, and the #stage= link grammar
-- [`surfacing.json`](surfacing.json) — the machine index of the surfacing primitives
+- [`surfacing.csv`](surfacing.csv) — the gated index of the surfacing primitives SURFACING.md defines
 - [`tests.json`](tests.json) — the test registry: every check's kind, what it protects, and its derived counts
 - [`text-content.md`](text-content.md) *(measured, orphan)* — the estate's authored text: whether the carriers holding it are organized, and how much never reached one
 - [`text-fields.csv`](text-fields.csv) *(orphan)* — the names a prose-bearing CSV column or JSON key may take
 - [`text-tools.md`](text-tools.md) *(orphan)* — the FAB's Text tab: why it exists, why the join is the path rather than a term, and an assessment of what it is not
-- [`tools.json`](tools.json) — the curated Tools gallery manifest
+- [`tools.csv`](tools.csv) — which pages the Tools view shelves, and the icon each is given
 - [`venues.md`](venues.md) *(measured)* — the venue map: where work can run besides the session reading it, what each reaches, and the attended-versus-unattended split
 
 ## docs/envelopes/

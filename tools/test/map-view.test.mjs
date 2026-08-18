@@ -22,21 +22,30 @@ const { default: Alpine } = await import('alpinejs/dist/module.esm.js');
 captureAlpineErrors(Alpine);
 window.Alpine = Alpine;
 
+// The stub serves CSV for the CSV-backed registries, so it has to emit some.
+const toCsv = (rows) => {
+  const cols = [...new Set(rows.flatMap(r => Object.keys(r)))];
+  const cell = v => /[",\n]/.test(v ?? '') ? '"' + String(v).replace(/"/g, '""') + '"' : (v ?? '');
+  return [cols.join(','), ...rows.map(r => cols.map(c => cell(r[c])).join(','))].join('\n') + '\n';
+};
+
+// A CSV fixture since 2026-08-16, because that is what the tab now parses. The
+// hub and plugin keys went with the format: a CSV holds rows, and both were
+// copies of .claude-plugin/marketplace.json anyway.
 const manifest = {
-  hub: 'mehrlander/web-tools',
   items: [
     { kind: 'skill', command: '/portable:caption', path: '.claude/skills/caption/SKILL.md', title: 'caption', role: 'the caption', use: 'plugin' },
     { kind: 'doc', path: 'docs/CONVENTIONS.md', title: 'Working conventions', role: 'the conventions', use: 'live' },
     { kind: 'script', path: 'scripts/sunset-scan.py', title: 'sunset-scan.py', role: 'sunset markers', use: 'on-demand' },
   ],
 };
-// The Showing and Docs tabs read the real docs/routes.json and docs/docs.json,
+// The Showing and Docs tabs read the real docs/routes.json and docs/docs.csv,
 // so the stub serves by path: the set gets the fixture above, the other two
 // tabs get the committed manifests (routes-manifest.test.mjs and
 // docs-registry.test.mjs are what hold those files to their own shapes).
 const routesJson = readFileSync(path.join(repoRoot, 'docs', 'routes.json'), 'utf8');
-const docsJson = readFileSync(path.join(repoRoot, 'docs', 'docs.json'), 'utf8');
-const surfJson = readFileSync(path.join(repoRoot, 'docs', 'surfacing.json'), 'utf8');
+const docsCsv = readFileSync(path.join(repoRoot, 'docs', 'docs.csv'), 'utf8');
+const surfCsv = readFileSync(path.join(repoRoot, 'docs', 'surfacing.csv'), 'utf8');
 const ownersCsv = readFileSync(path.join(repoRoot, 'docs', 'owners.csv'), 'utf8');
 const repsCsv = readFileSync(path.join(repoRoot, 'docs', 'repetitions.csv'), 'utf8');
 const propsRegCsv = readFileSync(path.join(repoRoot, 'docs', 'registries.csv'), 'utf8');
@@ -60,15 +69,15 @@ window.GH = class {
   async get(p) {
     asked.push({ ref: this.opts.ref, path: p });
     if (p === 'docs/routes.json') return { text: routesJson };
-    if (p === 'docs/docs.json') return { text: docsJson };
-    if (p === 'docs/surfacing.json') return { text: surfJson };
+    if (p === 'docs/docs.csv') return { text: docsCsv };
+    if (p === 'docs/surfacing.csv') return { text: surfCsv };
     if (p === 'docs/owners.csv') return { text: ownersCsv };
     if (p === 'docs/repetitions.csv') return { text: repsCsv };
     if (p === 'docs/registries.csv') return { text: propsRegCsv };
     if (p === 'docs/properties.csv') return { text: propsDeclCsv };
     if (p === 'docs/tests.json') return { text: testsJson };
     if (p === 'state/sessions.json') return { text: JSON.stringify(sessions) };
-    return { text: JSON.stringify(manifest) };
+    return { text: toCsv(manifest.items) };
   }
 };
 // No window.__shell in the test, so hasToken() is falsy and the token-gated
@@ -139,7 +148,7 @@ test('Docs loads on demand and carries the census', async () => {
 });
 
 // The two tabs shared a fetch while the owners table was a second block inside
-// docs.json. Since 2026-08-09 each loads its own carrier, and the point of the
+// docs.csv. Since 2026-08-09 each loads its own file, and the point of the
 // split is that opening Docs does not pull owners and the reverse.
 test('Owners loads its own carrier, separately from Docs', async () => {
   assert.equal(data.ownersReg, null, 'the registry is not fetched until the tab is opened');
@@ -186,7 +195,7 @@ test('a row title opens the doc deck: full folder, tapped row first, rendered by
 
   const fetchesBefore = asked.length;
   assert.match(await data.docDeckRead('docs/CONVENTIONS.md'), /prose/, 'markdown renders as prose');
-  assert.ok((await data.docDeckRead('docs/docs.json')).startsWith('<pre'),
+  assert.ok((await data.docDeckRead('docs/docs.csv')).startsWith('<pre'),
     'a JSON doc renders as source, not prose');
   const fetchesAfter = asked.length;
   await data.docDeckRead('docs/CONVENTIONS.md');

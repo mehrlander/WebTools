@@ -263,7 +263,7 @@ test('named paths include code spans; bare paths do not', async () => {
 // reader that only handled flat rows would drop 68 paths and nobody would see
 // it happen.
 const REG = {
-  'docs/docs.json': { documents: [
+  'docs/docs.csv': { documents: [
     { path: 'docs/loader.md', subject: 'the loader contract', status: 'living' },
     { path: 'CLAUDE.md', subject: 'the repo instructions', status: 'living' },
   ] },
@@ -271,7 +271,7 @@ const REG = {
     { path: 'tools/test/fab-text.test.mjs', protects: 'the fifth tab', kind: 'behavior' },
   ] },
   'docs/harness.json': { tools: [] },
-  'docs/portable.json': { items: [
+  'docs/portable.csv': { items: [
     { path: '.claude/skills/web-tools/SKILL.md', role: 'loads the conventions', kind: 'skill' },
   ] },
   'pages/pages.json': [
@@ -405,13 +405,13 @@ test('a registry that will not read costs descriptions, not rows', async () => {
   const d = await mountFab();
   d.repo = 'mehrlander/web-tools';
   d.textStats = d._textRead(docWith('<p>See docs/loader.md and CLAUDE.md.</p>'));
-  stubReads(d, { drop: ['docs/docs.json'] });
+  stubReads(d, { drop: ['docs/docs.csv'] });
   await d.textMatchRun();
 
   assert.equal(d.textMatchState, 'done');
   assert.equal([...d.textMatch.hits].length, 0,
     'those two rows lived in the registry that failed, so they are simply not known');
-  assert.equal([...d.textMatch.failed].join('|'), 'docs/docs.json',
+  assert.equal([...d.textMatch.failed].join('|'), 'docs/docs.csv',
     'and the failure is reported, because an absent gloss and a broken registry ' +
     'used to render identically');
 });

@@ -13,7 +13,7 @@
 // split as tools/render/scenarios/fab-traffic.mjs, and for the same reason.
 
 const REG = {
-  'docs/docs.json': { documents: [
+  'docs/docs.csv': { documents: [
     { path: 'docs/loader.md', status: 'living',
       subject: 'the contract a file must honor to be loadable, and the boot timing invariants' },
     { path: 'docs/text-tools.md', status: 'living',
@@ -26,7 +26,7 @@ const REG = {
       protects: "The drawer's fifth tab reports only what it can stand behind." },
   ] },
   'docs/harness.json': { tools: [] },
-  'docs/portable.json': { items: [] },
+  'docs/portable.csv': { items: [] },
   'pages/pages.json': [
     { label: '', items: [{ href: 'shorter.html', title: 'Shorter', note: 'line up a shorter draft beside the original' }] },
   ],

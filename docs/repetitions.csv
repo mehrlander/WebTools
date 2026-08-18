@@ -1,11 +1,11 @@
 subject,where,relation,kept,check
-the skill roster,docs/portable.json skill items,copy,by hand,"census, both directions (portable-manifest.test.mjs)"
+the skill roster,docs/portable.csv skill items,copy,by hand,"census, both directions (portable-manifest.test.mjs)"
 the skill roster,docs/PORTABLE.md Docs table,copy,by hand,two-way table test (portable-manifest.test.mjs)
 the skill roster,docs/PORTABLE.md bag table,paraphrase,,membership held via path mentions only; the prose is unchecked
 the skill roster,docs/MARKETPLACE.md; .claude-plugin/marketplace.json description,pointer,,
 the doc and script membership of the portable set,docs/PORTABLE.md Docs and Scripts tables,copy,by hand,two-way table test (portable-manifest.test.mjs)
-what each skill does,docs/portable.json role; docs/PORTABLE.md table cells,paraphrase,,"none; deliberately shorter per surface, honest while the owner is named"
-the surfacing primitives,docs/surfacing.json,paraphrase,,"membership two-way on the bullet lead-ins (surfacing-manifest.test.mjs); the summaries themselves unchecked, honest while the doc is named authoritative"
+what each skill does,docs/portable.csv role; docs/PORTABLE.md table cells,paraphrase,,"none; deliberately shorter per surface, honest while the owner is named"
+the surfacing primitives,docs/surfacing.csv,paraphrase,,"membership two-way on the bullet lead-ins (surfacing-manifest.test.mjs); the summaries themselves unchecked, honest while the doc is named authoritative"
 the surfacing primitives,"other repos' CLAUDE.md restatements (home, chat-histories adaptations)",paraphrase,,none; each declares itself an adaptation and names this doc as source
 the working conventions text,.claude/skills/web-tools/CONVENTIONS.md and SURFACING.md,copy,by hand,byte equality (portable-manifest.test.mjs)
 the working conventions text,the web-tools skill's runtime fetch,live read,,none needed; reads main at use

@@ -49,8 +49,8 @@
       "group": "repo",
       "what": "The whole-repo treemap, rendered by a separate page the view frames.",
       "files": [
-        "pages/repo-atlas.html",
-        "lib/kits/treemap.js"
+        "lib/kits/treemap.js",
+        "pages/repo-atlas.html"
       ]
     },
     {
@@ -126,11 +126,11 @@
       "group": "estate",
       "what": "The cross-repo live branches: what the estate is working on, freshest first, with the landed/stranded signal. `?view=branches` aliases here from the retired per-repo review.",
       "files": [
-        "lib/alpineComponents/estate.js",
-        "lib/kits/repo-activity-cache.js",
-        "lib/kits/branch-survey.js",
         "lib/alpineComponents/branch-brief.js",
-        "lib/kits/branch-brief.js"
+        "lib/alpineComponents/estate.js",
+        "lib/kits/branch-brief.js",
+        "lib/kits/branch-survey.js",
+        "lib/kits/repo-activity-cache.js"
       ]
     },
     {
@@ -143,8 +143,8 @@
       "files": [
         "lib/alpineComponents/estate.js",
         "lib/kits/repo-sessions-cache.js",
-        "lib/kits/session-render.js",
-        "lib/kits/session-export.js"
+        "lib/kits/session-export.js",
+        "lib/kits/session-render.js"
       ]
     },
     {
@@ -181,9 +181,9 @@
       "group": "estate",
       "what": "This pane: the app's own destinations, ranked by when the code behind each last moved.",
       "files": [
+        "docs/app-routes.json",
         "lib/alpineComponents/estate.js",
-        "lib/kits/route-activity.js",
-        "docs/app-routes.json"
+        "lib/kits/route-activity.js"
       ]
     },
     {
@@ -220,7 +220,7 @@
         "docs/properties.csv",
         "docs/registries.csv",
         "docs/routes.json",
-        "docs/surfacing.json",
+        "docs/surfacing.csv",
         "lib/alpineComponents/map.js"
       ],
       "tabs": [
@@ -242,8 +242,8 @@
       "group": "estate",
       "what": "The curated gallery of utility pages.",
       "files": [
-        "lib/alpineComponents/tools.js",
-        "docs/tools.json"
+        "docs/tools.csv",
+        "lib/alpineComponents/tools.js"
       ]
     },
     {
@@ -254,11 +254,11 @@
       "group": "estate",
       "what": "The central file surface: walk a repo's tree, search names at any ref under any folder, search contents, grep the session records, and read the file in place.",
       "files": [
-        "lib/alpineComponents/search-view.js",
-        "lib/kits/estate-search.js",
-        "lib/alpineComponents/ref-picker.js",
         "lib/alpineComponents/path-picker.js",
-        "lib/alpineComponents/viewer.js"
+        "lib/alpineComponents/ref-picker.js",
+        "lib/alpineComponents/search-view.js",
+        "lib/alpineComponents/viewer.js",
+        "lib/kits/estate-search.js"
       ],
       "note": "The ?view= key stays `search`, its name since the view was a results list: an address is not a label. `?view=files` and a bare `?file=` alias here, from the per-repo tree walk this replaced."
     },

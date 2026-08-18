@@ -1,5 +1,5 @@
 // The derived half of docs/harness.json, the harness census.
-// (docs/tools.json was taken: it is the curated Tools gallery manifest,
+// (docs/tools.csv was taken: it is the curated Tools gallery manifest,
 // show-repo's Tools view, and has nothing to do with the tools/ folder.)
 //
 // tools/ and scripts/ are the two code layers docs/code-layers.md could name
@@ -107,7 +107,7 @@ export function deriveTools(repoRoot) {
   return out;
 }
 
-// ── CLI: restamp (or --check) docs/tools.json ───────────────────────────────
+// ── CLI: restamp (or --check) docs/tools.csv ───────────────────────────────
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');

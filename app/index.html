@@ -1458,7 +1458,7 @@
          those two, so every old link and every #stage= transport lands. -->
 
     <!-- The Map view: the coordination layer made inspectable — the portable
-         to-go bag (docs/portable.json), and a per-repo card carrying the
+         to-go bag (docs/portable.csv), and a per-repo card carrying the
          repo-owned scope story plus a live adoption read. The operational face
          of the constellation doctrine. Estate-level, its own component and lazy
          mount. (Formerly "Portable"; ?view=portable still resolves here.) -->
@@ -1483,7 +1483,7 @@
     </div>
 
     <!-- The Tools view: a curated gallery of the owner's utility pages (the
-         text-diff tool and the like), fed from the hub's docs/tools.json.
+         text-diff tool and the like), fed from the hub's docs/tools.csv.
          Estate-level, public (no token), its own component and lazy mount. -->
     <div x-show="view==='tools'" data-pane="tools" class="h-full overflow-y-auto">
       <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 !max-w-none">
@@ -4233,7 +4233,7 @@ function app(){ return {
     this.mapTab = tab; this.syncUrl();
   },
   goPortable(){ this.goMap(); },
-  // The Tools view: the curated utility-page gallery (docs/tools.json), public.
+  // The Tools view: the curated utility-page gallery (docs/tools.csv), public.
   goTools(){ this.toolsSeen = true; this.view = 'tools'; this.syncUrl(); },
   // Open the Search view, optionally seeded ({ q, mode, repo, ref, path, file }).
   // A seed reaches a mounted view by event (the component mounts once and
