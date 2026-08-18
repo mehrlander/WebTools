@@ -13,7 +13,7 @@ CONVENTIONS.md is one of several docs written to travel; the full to-go bag (con
 
 ## Showing: which link shows what
 
-The mechanisms, what each reaches and misses, and the rule for picking one are **not restated here**. They live as data in [`docs/routes.json`](docs/routes.json) under `showing` and render in the app's **Map view, Showing tab**; the frame and the record are in [`docs/showing.md`](docs/showing.md). This section used to be 1,589 words, 63% of this file, and it still did not stop a session with all of it in context from handing over the wrong link. The app holds it now.
+The mechanisms, what each reaches and misses, and the rule for picking one are **not restated here**. They live as data in [`docs/showing-mechanisms.csv`](docs/showing-mechanisms.csv) and render in the app's **Map view, Showing tab**; the frame and the record are in [`docs/showing.md`](docs/showing.md). This section used to be 1,589 words, 63% of this file, and it still did not stop a session with all of it in context from handing over the wrong link. The app holds it now.
 
 The one thing worth carrying in your head, because it is the trap:
 

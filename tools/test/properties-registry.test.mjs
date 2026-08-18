@@ -46,26 +46,10 @@ const reg = loadRegistries(repoRoot);
 const decls = reg.properties;
 const byRegistry = new Map(reg.registries.map(r => [r.id, r]));
 
-// A `rows` spec addresses the row array inside a JSON carrier. Two shapes are
-// in use. A named key ("documents") is the common one. A group walk
-// ("[].items") is what pages/pages.csv needs: its top level is the GROUPING,
-// and the rows that carry per-page properties sit one level down. The carrier
-// was left alone rather than reshaped into { groups: [...] }, because its
-// layout is a published contract that show-repo reads for this repo and for
-// every other repo's pages catalog; the limitation was the gate assuming one
-// flat named array, so the gate is what moved.
-function rowsAt(doc, spec) {
-  let vals = [doc];
-  for (const seg of spec.split('.')) {
-    vals = seg === '[]'
-      ? vals.flatMap(v => (Array.isArray(v) ? v : []))
-      : vals.map(v => (v == null ? undefined : v[seg])).filter(v => v !== undefined);
-  }
-  return vals.flatMap(v => (Array.isArray(v) ? v : [v]));
-}
-
-// CSV parsing good enough for these carriers: quoted fields may contain commas
-// and doubled quotes, which content.csv's prose notes do.
+// A second CSV reader, deliberately not the one under tools/build/. This gate
+// asserts what the carriers hold, so borrowing the loader's parser would let a
+// parser bug agree with itself. Quoted fields may contain commas and doubled
+// quotes, which the prose notes do.
 function parseCsv(raw) {
   const rows = [];
   let row = [], cell = '', q = false;
@@ -75,7 +59,8 @@ function parseCsv(raw) {
       if (c === '"' && raw[i + 1] === '"') { cell += '"'; i++; }
       else if (c === '"') q = false;
       else cell += c;
-    } else if (c === '"') q = true;
+    }
+    else if (c === '"') q = true;
     else if (c === ',') { row.push(cell); cell = ''; }
     else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
     else if (c !== '\r') cell += c;
@@ -86,26 +71,21 @@ function parseCsv(raw) {
 }
 
 function carrierRows(r) {
-  const raw = readFileSync(path.join(repoRoot, r.file), 'utf8');
-  const rows = r.file.endsWith('.csv') ? parseCsv(raw) : rowsAt(JSON.parse(raw), r.fragment);
-  assert.ok(rows.length > 0, `${r.file}: no rows at "${r.fragment ?? 'the CSV body'}"`);
-  return rows;
-}
-
-function carrierFields(r) {
-  if (r.file.endsWith('.csv')) {
-    // The header row carries the column set; quoting never appears in headers.
-    const raw = readFileSync(path.join(repoRoot, r.file), 'utf8');
-    return new Set(raw.split('\n')[0].trim().split(','));
-  }
-  const fields = new Set();
-  for (const row of carrierRows(r)) {
+  const rows = parseCsv(readFileSync(path.join(repoRoot, r.file), 'utf8'));
+  assert.ok(rows.length > 0, `${r.file}: no rows`);
+  for (const row of rows)
     for (const k of r.key.split('+'))
       assert.ok(row[k] !== undefined && row[k] !== '',
         `${r.file}: a row is missing its key field "${k}"`);
-    for (const k of Object.keys(row)) fields.add(k);
-  }
-  return fields;
+  return rows;
+}
+
+// The column set is the header row, which never carries quoting. Read from the
+// bytes rather than from the parsed rows, so a column that is blank on every
+// row is still declared rather than silently absent.
+function carrierFields(r) {
+  const raw = readFileSync(path.join(repoRoot, r.file), 'utf8');
+  return new Set(raw.split('\n')[0].trim().split(','));
 }
 
 test('registries are well-formed: unique ids, carriers and gates exist', () => {
@@ -142,8 +122,11 @@ test('every ungoverned registry says why, and the count is the one on the books'
     } else {
       assert.ok(!r.why, `${r.id}: why belongs to an ungoverned registry`);
       assert.ok(r.key, `${r.id}: a governed registry names its key field`);
-      // A CSV carrier has one implicit row set, so only JSON needs the pointer.
-      if (r.file.endsWith('.json')) assert.ok(r.fragment, `${r.id}: a governed JSON carrier names its row array`);
+      // Every registry is a CSV as of 2026-08-18, which is what makes "a
+      // registry is a file" true by construction: a CSV cannot hold two tables,
+      // so no carrier needs a pointer saying which key holds the rows, and no
+      // two registries can quietly share one file again.
+      assert.ok(r.file.endsWith('.csv'), `${r.id}: a registry carrier is a CSV`);
     }
   }
   assert.equal(ungoverned.length, 0,

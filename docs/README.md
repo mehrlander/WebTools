@@ -14,7 +14,7 @@ must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
 2 arrive in every session's context, 24 are named by CLAUDE.md,
-5 by a skill, 14 by a page or component. The remaining 16 are
+5 by a skill, 17 by a page or component. The remaining 16 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -49,7 +49,10 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`registries.csv`](registries.csv) — every registry the estate declares: its file, target, scope, and gate
 - [`registries.md`](registries.md) — the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction
 - [`repetitions.csv`](repetitions.csv) — where each registered statement is said again, how it relates, and what holds it
-- [`routes.json`](routes.json) — how content moves, renders, and gets looked at: grammar, modes, routes, and the showing block
+- [`routes-modes.csv`](routes-modes.csv) — the delivery modes toss-render accepts, and the trust posture each buys
+- [`routes-routes.csv`](routes-routes.csv) — the toss routes: which content type opens in which renderer page
+- [`routes.json`](routes.json) — what is left of the transport manifest once its three tables became CSVs: the address grammar, the parameter precedence, and the showing frame
+- [`showing-mechanisms.csv`](showing-mechanisms.csv) — which link reaches which kind of change, and what each one silently misses
 - [`show-repo.md`](show-repo.md) — the show-repo shell: views and transfer
 - [`showing.md`](showing.md) — why the showing boundaries sit where they are: the frame and the record behind routes.json
 - [`stage.md`](stage.md) — the stage: bench and Saved, intake, the walkable preview and diff, Out, save-as-surface, and the #stage= link grammar

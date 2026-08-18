@@ -1,9 +1,13 @@
-// docs/routes.json: the manifest of how content moves and renders (address
-// grammar, delivery modes, toss routes), rendered by show-repo's Map view in
-// its Transport tab. This test is what lets the routes live in two places
-// without drifting: the manifest owns the table, toss-render.html keeps an
-// inlined literal so its critical render path takes no fetch, and adding a
-// route to one without the other fails here.
+// How content moves and renders (address grammar, delivery modes, toss
+// routes), rendered by show-repo's Map view in its Transport tab. This test is
+// what lets the routes live in two places without drifting: docs/routes-routes.csv
+// owns the table, toss-render.html keeps an inlined literal so its critical
+// render path takes no fetch, and adding a route to one without the other fails
+// here.
+//
+// Four carriers since 2026-08-18. The three tables (modes, routes, showing
+// mechanisms) are CSV registries of their own; docs/routes.json keeps what is
+// not a table: the grammar, the parameter precedence, and the showing frame.
 //
 // Also checks the two claims a reader would otherwise have to trust: every
 // renderer and doc the manifest names exists on disk, and every delivery mode
@@ -15,7 +19,37 @@ import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
-const manifest = JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'routes.json'), 'utf8'));
+// An independent CSV reader, not the loader under tools/build/: this file is a
+// gate on what the carriers hold, so borrowing the parser it checks against
+// would let a parser bug agree with itself.
+function parseCsv(raw) {
+  const rows = [];
+  let row = [], cell = '', q = false;
+  for (let i = 0; i < raw.length; i++) {
+    const c = raw[i];
+    if (q) {
+      if (c === '"' && raw[i + 1] === '"') { cell += '"'; i++; }
+      else if (c === '"') q = false;
+      else cell += c;
+    }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(cell); cell = ''; }
+    else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if (c !== '\r') cell += c;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  const [head, ...body] = rows.filter(r => r.length > 1);
+  return body.map(r => Object.fromEntries(head.map((h, i) => [h, r[i] ?? ''])));
+}
+
+const read = (f) => readFileSync(path.join(repoRoot, 'docs', f), 'utf8');
+const manifest = JSON.parse(read('routes.json'));
+// The three tables read back onto the manifest object, which is the same shape
+// the Map view assembles at load, so every assertion below is written against
+// what a reader actually sees.
+manifest.modes = parseCsv(read('routes-modes.csv'));
+manifest.routes = parseCsv(read('routes-routes.csv'));
+manifest.showing.mechanisms = parseCsv(read('showing-mechanisms.csv'));
 const tossRender = readFileSync(path.join(repoRoot, manifest.renderer), 'utf8');
 
 // Pull the TOSS_ROUTES literal out of the page source. Deliberately strict
@@ -56,7 +90,7 @@ test('the manifest routes and the inlined TOSS_ROUTES literal agree', () => {
     manifest.routes.map(r => [r.key, { repo: r.repo, ref: r.ref, path: r.path }]),
   );
   assert.deepEqual(inlined, fromManifest,
-    'docs/routes.json and the TOSS_ROUTES literal have drifted; the manifest is the owner');
+    'docs/routes-routes.csv and the TOSS_ROUTES literal have drifted; the CSV is the owner');
 });
 
 test('every renderer and doc the manifest names exists in the repo', () => {

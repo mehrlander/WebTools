@@ -44,6 +44,12 @@ const manifest = {
 // tabs get the committed manifests (routes-manifest.test.mjs and
 // docs-registry.test.mjs are what hold those files to their own shapes).
 const routesJson = readFileSync(path.join(repoRoot, 'docs', 'routes.json'), 'utf8');
+// The Showing tab assembles one object from four carriers, so all four are
+// served; a stub that answered only routes.json would leave the tables empty
+// and every row assertion below would pass on nothing.
+const routesModesCsv = readFileSync(path.join(repoRoot, 'docs', 'routes-modes.csv'), 'utf8');
+const routesRoutesCsv = readFileSync(path.join(repoRoot, 'docs', 'routes-routes.csv'), 'utf8');
+const mechanismsCsv = readFileSync(path.join(repoRoot, 'docs', 'showing-mechanisms.csv'), 'utf8');
 const docsCsv = readFileSync(path.join(repoRoot, 'docs', 'docs.csv'), 'utf8');
 const surfCsv = readFileSync(path.join(repoRoot, 'docs', 'surfacing.csv'), 'utf8');
 const ownersCsv = readFileSync(path.join(repoRoot, 'docs', 'owners.csv'), 'utf8');
@@ -69,6 +75,9 @@ window.GH = class {
   async get(p) {
     asked.push({ ref: this.opts.ref, path: p });
     if (p === 'docs/routes.json') return { text: routesJson };
+    if (p === 'docs/routes-modes.csv') return { text: routesModesCsv };
+    if (p === 'docs/routes-routes.csv') return { text: routesRoutesCsv };
+    if (p === 'docs/showing-mechanisms.csv') return { text: mechanismsCsv };
     if (p === 'docs/docs.csv') return { text: docsCsv };
     if (p === 'docs/surfacing.csv') return { text: surfCsv };
     if (p === 'docs/owners.csv') return { text: ownersCsv };
@@ -277,7 +286,9 @@ test('Showing rows resolve their icons and GitHub links', () => {
     'https://github.com/me/proj/blob/main/pages/x.html', 'a missing ref reads as main');
 });
 
-test('a routes manifest missing its routes block surfaces an error, not a blank tab', async () => {
+// The grammar is the load-bearing half of routes.json now that the three tables
+// have moved out, so it is what the loader checks before trusting the object.
+test('a routes manifest missing its grammar block surfaces an error, not a blank tab', async () => {
   const el2 = window.document.createElement('div');
   el2.setAttribute('x-data', 'map()');
   window.document.body.appendChild(el2);
@@ -290,7 +301,7 @@ test('a routes manifest missing its routes block surfaces an error, not a blank 
   await d2.loadRoutes();
   window.GH = realGH;
   assert.equal(d2.routes, null);
-  assert.match(d2.routesErr, /no routes block/);
+  assert.match(d2.routesErr, /no grammar block/);
 });
 
 test('openConfig opens the repo dialog on the Config tab without throwing', () => {

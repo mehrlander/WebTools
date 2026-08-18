@@ -61,8 +61,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   const { loadRegistries, writeCsv, REGISTRY_COLS } = await import('./registries-load.mjs');
   const file = path.join(repoRoot, 'docs', 'registries.csv');
   const { registries } = loadRegistries(repoRoot);
-  // Keyed on `file`, not `path`: three registries still share docs/routes.json,
-  // so the fragment has to come off before asking which app files name it.
+  // Keyed on `file`, which is the carrier path: what is asked here is which app
+  // files name it in code.
   const derived = deriveRendersIn(repoRoot, registries.map(r => r.file));
   const checkOnly = process.argv.includes('--check');
 

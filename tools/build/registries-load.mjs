@@ -7,12 +7,12 @@
 // registry is a file" true by construction rather than by convention, and it is
 // what retired `carrier`, `rows` and `format` in one move.
 //
-// `path` replaces all three. It is a file path, plus a `#fragment` naming the
-// key that holds the rows. The fragment is not a sharing artifact: only three
-// registries share a file (docs/routes.json), while THIRTEEN carry a fragment,
-// because every JSON carrier needs one to say which key is the table. It is
-// doing `rows`' old job under a new name, and it goes only when a registry's
-// file is a CSV, where the file IS the table.
+// `path` replaces all three, and it is now a plain file path. It briefly also
+// took a `#fragment` naming the key that held the rows, which every JSON
+// carrier needed and thirteen of twenty-one carried; that was `rows`' old job
+// under a new name. It went when the last JSON carrier became a CSV on
+// 2026-08-18, because a CSV's file IS its table. `file` survives as an alias of
+// `path` so consumers written against the split still read.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from '../test/bootstrap.mjs';
@@ -58,10 +58,10 @@ export function loadRegistries(root = repoRoot) {
   const read = (f) => parseCsv(readFileSync(path.join(root, 'docs', f), 'utf8'));
   const registries = read('registries.csv').map(r => ({
     ...r,
-    // The fragment half of `path`, split out so a consumer that wants to open
-    // the file does not have to know the syntax.
-    file: r.path.split('#')[0],
-    fragment: r.path.includes('#') ? r.path.split('#')[1] : '',
+    // `file` is `path`. Kept as its own key because a consumer asking "which
+    // file is this?" should not have to know whether the syntax ever grew
+    // anything after the path.
+    file: r.path,
     renders_in: list(r.renders_in),
   }));
   const properties = read('properties.csv').map(p => ({

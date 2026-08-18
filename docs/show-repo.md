@@ -659,7 +659,7 @@ render it. `tools/test/app-routes.test.mjs` holds it to the `VIEWS` table both
 ways, so a route cannot exist in the router and not the manifest, and every
 declared file has to exist. The word is overloaded on purpose-free grounds and
 worth stating once: these are **app routes**, addresses in this page;
-[`docs/routes.json`](routes.json)'s "routes" are **toss routes**, a content type
+[`docs/routes-routes.csv`](routes-routes.csv)'s rows are **toss routes**, a content type
 mapped to a renderer page. Different targets, so neither describes the other.
 
 The pane reads the manifest and one `commits?path=` call per declared carrier
@@ -1214,7 +1214,9 @@ Surfacing decides what to hand over; Showing is what makes it openable.
 [`SURFACING.md`](SURFACING.md) already uses "transport" for the stage link, and
 the lead section here was titled Showing all along) answers how content moves,
 renders, and gets looked at, from the
-hub's committed [`docs/routes.json`](routes.json). It opens with **Showing**,
+hub's committed [`docs/showing-mechanisms.csv`](showing-mechanisms.csv),
+[`docs/routes-modes.csv`](routes-modes.csv), [`docs/routes-routes.csv`](routes-routes.csv)
+and the frame in [`docs/routes.json`](routes.json). It opens with **Showing**,
 the mechanism table: given a subject at a version and a viewer, which link
 reaches it and, more usefully, what each one cannot show. That table is the
 reason `CLAUDE.md` no longer carries 1,589 words on the subject and

@@ -37,13 +37,13 @@ integrity layer: gates are this system's foreign keys, because git has none.
 | **assertion** | one target's value for one property; a blank is not an assertion | `docs/venues.md . status = living` |
 | **value domain** | the permissible values a property may take, carried by its `values` column; **closed** when enumerated, **open** otherwise. The relational sense, not the function sense: the *targets* are the scope, not the domain | living;record;measured |
 | **scope** | the population a registry covers | every .md/.json/.csv under docs/, every route the router dispatches, files curated to travel |
-| **registry** | the authoritative committed record of assertions. One registry is one file | docs.json, tests.json, harness.json, portable.json |
-| **path** | the file a registry lives in, plus a `#fragment` where one file still holds several. Replaced `carrier`, `rows` and `format` on 2026-08-16 | `docs/routes.json#showing.mechanisms` |
+| **registry** | the authoritative committed record of assertions. One registry is one file | docs.csv, tests.csv, harness.csv, portable.csv |
+| **path** | the file a registry lives in. Replaced `carrier`, `rows` and `format` on 2026-08-16, and shed its `#fragment` half on 2026-08-18 | `docs/showing-mechanisms.csv` |
 | **key** | the column that identifies a row, exempt from having a property definition of its own. May name several columns joined with `+` | `path`, `registry+property` |
 | **gate** | the test that fails when a registry and the repo disagree; this system's foreign keys, because git has none. `none` where nothing holds it | properties-registry.test.mjs |
 | **kind** | how the scope is given: **census** when something outside the list decides membership, **catalog** when curation does | census, catalog, crosswalk |
-| **census** | a registry whose membership is decided outside it, by the tree or by the code. Because the rule can be run, coverage is gated and blanks are counted | docs.json, tests.json, harness.json |
-| **catalog** | a registry whose rows *are* its membership: curation is the definition. Nothing independent to check it against, so no coverage gate is possible | portable.json, content.csv |
+| **census** | a registry whose membership is decided outside it, by the tree or by the code. Because the rule can be run, coverage is gated and blanks are counted | docs.csv, tests.csv, harness.csv |
+| **catalog** | a registry whose rows *are* its membership: curation is the definition. Nothing independent to check it against, so no coverage gate is possible | portable.csv, content.csv |
 | **crosswalk** | a catalog that curates *which* targets belong and leaves their description to the census that owns them. A kind of catalog, so a filter for catalogs matches it | tools.json over pages.json |
 | **the registry pair** | registries.csv (one row per registry) and properties.csv (one row per column of one registry) | docs/registries.csv, docs/properties.csv |
 | **area** | which side of one question a registry falls on, the reader's grouping | files, names |
@@ -307,12 +307,15 @@ two tables.** That is what makes "a registry is a file" true by construction
 instead of by convention, and it is what let `carrier`, `rows` and `format`
 collapse into a single `path`. `carrier` existed only to name a file that might
 hold several registries; with one table per file the word had nothing left to
-mean. Three registries still share `docs/routes.json`, so `path` carries a
-`#fragment` for those. But the fragment is **not** a sharing artifact, and saying
-so was wrong when this section was first written: thirteen of the twenty
-registries carry one, because every JSON carrier needs a fragment to name the key
-that holds its rows. It is `rows` under a new name, and it disappears for a
-registry only when that registry's file is a CSV, where the file is the table.
+mean.
+
+`path` briefly carried a `#fragment` half as well, and the first version of this
+section explained it as a sharing artifact for the three registries inside
+`docs/routes.json`. That was wrong: thirteen of the twenty carried a fragment,
+because every JSON carrier needs one to name the key holding its rows. It was
+`rows` under a new name. It went on 2026-08-18 with the last JSON carrier, and a
+`path` is now a plain file path with nothing after it. The gate asserts that
+directly, so two registries cannot quietly move back into one file.
 
 The one thing CSV costs is the null. A blank cell cannot be told from an empty
 string, so **a blank means NOT ASSERTED**, and any property that has to

@@ -750,7 +750,7 @@ anywhere in any repo is a link rather than a download-and-drag; it accepts
 `#data=<a pdf>` is the FIRST LOOK, the viewer's `pdf` mode drawing a page with
 a pager, and `#pdf=<the same file>` is the WORKBENCH, this page with its
 layers, trim and two table readings. One decision, spelled two ways, so the
-link says which one was meant. Both are in [`docs/routes.json`](../../docs/routes.json).
+link says which one was meant. Both are in [`docs/routes-routes.csv`](../../docs/routes-routes.csv).
 
 **The first look pages on [`swipe-deck.js`](swipe-deck.js), and that is the
 alignment rather than a detail.** The estate already pages branches, then a
