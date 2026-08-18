@@ -31,10 +31,12 @@ const ACTIVITY = {
     defaultBranch: 'main',
     openPRs: [
       { number: 298, head: 'claude/show-repo-activity-filters', draft: true, title: 'Open view: repo chips, lifespan, GitHub menu',
-        updatedAt: iso(2), aheadBy: 6, behindBy: 0, firstDate: iso(52), nFiles: 9,
+        updatedAt: iso(2), aheadBy: 6, behindBy: 0, firstDate: iso(52),
+        stats: { n: 9, changed: 6, added: 2, removed: 1, renamed: 1, additions: 431, deletions: 88 },
         session: 'https://claude.ai/code/session_x' },
       { number: 296, head: 'claude/fab-render-toss', draft: false, title: 'Singleton fab with toss-render',
-        updatedAt: iso(30), aheadBy: 12, behindBy: 3, firstDate: iso(500), nFiles: 23 },
+        updatedAt: iso(30), aheadBy: 12, behindBy: 3, firstDate: iso(500),
+        stats: { n: 23, changed: 23, added: 0, removed: 0, renamed: 0, additions: 1204, deletions: 977 } },
     ],
     survey: { branches: [
       { name: 'claude/show-repo-activity-filters', sha: 'a1', group: 'active', date: iso(2), subject: 'Open view: repo chips, lifespan, GitHub menu' },
@@ -43,6 +45,7 @@ const ACTIVITY = {
       { name: 'claude/pdf-ink-alignment', sha: 'c1', group: 'stranded', date: iso(200), firstDate: iso(230),
         subject: 'Align ink strokes to the page box', aheadBy: 3, behindBy: 9,
         nUnique: 12, nLanded: 9, nMissing: 2, nDiffers: 1,
+        stats: { n: 12, changed: 10, added: 2, removed: 0, renamed: 0, additions: 318, deletions: 140 },
         missingPaths: ['lib/kits/ink-align.js', 'pages/pdf-ink.html'] },
       // The verdict chip's own case, and the one that made it unreadable before
       // 2026-08-18: a three-way split whose two VISIBLE numbers do not add up
@@ -52,6 +55,7 @@ const ACTIVITY = {
       { name: 'claude/budget-drs-tracker-6jsaz8', sha: 'f1', group: 'stranded', date: iso(60), firstDate: iso(400),
         subject: 'Merge origin/main into claude/budget-drs-tracker-6jsaz8', noBase: true,
         nUnique: 80, nLanded: 28, nMissing: 11, nDiffers: 41,
+        stats: { n: 80, changed: 62, added: 14, removed: 4, renamed: 2, additions: 5310, deletions: 2044 },
         missingPaths: ['tracker/tasks/0031-fund-splits.md', 'projects/budget-drs/data/design/LAYERS.md'] },
       // Landed rows: invisible at the default scope, and the whole point of the
       // Landed one. Two of them, so the chip count is not mistakable for a
@@ -66,7 +70,8 @@ const ACTIVITY = {
     defaultBranch: 'main',
     openPRs: [
       { number: 44, head: 'claude/news-view-refresh', draft: true, title: 'News view refresh',
-        updatedAt: iso(9), aheadBy: 2, behindBy: 1, firstDate: iso(11), nFiles: 4 },
+        updatedAt: iso(9), aheadBy: 2, behindBy: 1, firstDate: iso(11),
+        stats: { n: 4, changed: 1, added: 3, removed: 0, renamed: 0, additions: 212, deletions: 6 } },
     ],
     survey: { branches: [
       { name: 'claude/news-view-refresh', sha: 'd1', group: 'active', date: iso(9), subject: 'News view refresh' },

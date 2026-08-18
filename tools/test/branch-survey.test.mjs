@@ -74,6 +74,45 @@ test('landedSignal dedupes the unique-path list', () => {
   assert.equal(s.nUnique, 1);
 });
 
+// ── fileStats: what a compare's own file list says about itself ─────────────
+//
+// Free from a response the caller already holds, and the reason a branch row can
+// say "62 changed, 14 new" instead of "76 files". `added` + `changed` +
+// `removed` partitions the list, with renames counted inside `changed` since a
+// renamed file both moved and still exists.
+
+test('fileStats partitions a compare file list by status', () => {
+  const s = B.fileStats([
+    { filename: 'new.js', status: 'added', additions: 40, deletions: 0 },
+    { filename: 'copy.js', status: 'copied', additions: 12, deletions: 0 },
+    { filename: 'edit.js', status: 'modified', additions: 5, deletions: 3 },
+    { filename: 'moved.js', status: 'renamed', additions: 1, deletions: 1 },
+    { filename: 'gone.js', status: 'removed', additions: 0, deletions: 30 },
+  ]);
+  assert.deepEqual(s, { n: 5, added: 2, changed: 2, removed: 1, renamed: 1,
+                        additions: 58, deletions: 34 });
+  assert.equal(s.added + s.changed + s.removed, s.n, 'the three classes partition the list');
+});
+
+test('fileStats dedupes by path and reads either spelling', () => {
+  const s = B.fileStats([
+    { filename: 'a', status: 'modified', additions: 1, deletions: 1 },
+    { filename: 'a', status: 'modified', additions: 1, deletions: 1 },
+    { path: 'b', status: 'added', additions: 2, deletions: 0 },
+    { status: 'added' },                       // no path at all
+  ]);
+  assert.equal(s.n, 2);
+  assert.equal(s.added, 1);
+  assert.equal(s.additions, 3);
+});
+
+test('fileStats treats a status-less entry as changed, and an empty list as zero', () => {
+  assert.equal(B.fileStats([{ filename: 'a' }]).changed, 1);
+  assert.deepEqual(B.fileStats([]), { n: 0, added: 0, changed: 0, removed: 0, renamed: 0,
+                                      additions: 0, deletions: 0 });
+  assert.equal(B.fileStats(null).n, 0);
+});
+
 // ── the three-way partition ─────────────────────────────────────────────────
 //
 // The estate chip read `28/80` beside `11 missing` and the two did not add up,

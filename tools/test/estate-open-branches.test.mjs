@@ -186,22 +186,59 @@ test('branchMenuItems: a PR row offers its tabs, a bare branch offers New PR', (
 // the one row that stays without opening github.com, because a branch name is
 // the ADDRESS of what every other row opens and there is no address bar here to
 // lift it from. A new row that is neither belongs somewhere else.
-// The row shows ONE number, and where it comes from is the whole rule: the
-// crawl's stored count when a PR compare produced one, the survey's touched-path
-// set otherwise, and nothing at all when neither knows, since 0 would be a claim.
-test('fileCount prefers the crawled count, falls back to the survey, and stays null otherwise', () => {
-  assert.equal(data.fileCount({ nFiles: 9, nUnique: 80 }), 9, 'a stored count wins');
-  assert.equal(data.fileCount({ nFiles: null, nUnique: 80 }), 80, 'the survey answers for a row with no PR compare');
-  assert.equal(data.fileCount({ nFiles: null, nUnique: 0 }), null, 'not measured is not zero');
-  assert.equal(data.fileCount({ nFiles: 0, nUnique: 0 }), 0, 'a measured zero is reported as one');
-  assert.equal(data.fileCount(null), null);
+// Three cache generations answer "what did this branch do to its files", and the
+// row reads whichever is newest: the per-status breakdown, the bare count that
+// preceded it, and the survey's touched-path set. Nothing at all when none does,
+// since 0 would be a claim and the glyph alone is an honest route.
+test('fileStats reads the newest answer a cache carries', () => {
+  const full = { n: 9, added: 2, changed: 6, removed: 1, renamed: 1, additions: 431, deletions: 88 };
+  assert.deepEqual(data.fileStats({ stats: full, nFiles: 99, nUnique: 99 }), full, 'the breakdown wins');
+  assert.equal(data.fileStats({ nFiles: 9, nUnique: 80 }).n, 9, 'then the bare count');
+  assert.equal(data.fileStats({ nUnique: 80 }).n, 80, 'then the survey');
+  assert.equal(data.fileStats({ nFiles: null, nUnique: 0 }), null, 'not measured is not zero');
+  assert.equal(data.fileStats(null), null);
+  assert.equal(data.fileCount({ stats: full }), 9);
 });
 
-// A no-merge-base row keeps its number. It spans more than the branch, which is
-// what the row's asterisk says; blanking it left the row that most needs a route
-// into its files as the one row whose glyph stood bare.
+// A row whose cache knows only a total shows it as ONE number rather than
+// splitting a number it does not have.
+test('fileParts splits where the breakdown exists and leads with the total where it does not', () => {
+  // plain_: a value built inside the component comes back as Alpine's reactive
+  // proxy, which deepEqual reports as same-structure-but-not-reference-equal.
+  assert.deepEqual(plain_(data.fileParts({ stats: { n: 9, added: 2, changed: 6, removed: 1 } })),
+    { lead: 6, added: 2 });
+  assert.deepEqual(plain_(data.fileParts({ nFiles: 9 })), { lead: 9, added: 0 },
+    'an older cache leads with its total and claims no split');
+  assert.equal(data.fileParts({ nUnique: 0 }), null);
+});
+
+// A no-merge-base row keeps its numbers. They span more than the branch, which
+// is what the row's asterisk says; blanking them left the row that most needs a
+// route into its files as the one row whose glyph stood bare.
 test('fileCount keeps a no-merge-base count, which the asterisk qualifies', () => {
   assert.equal(data.fileCount({ nFiles: null, nUnique: 80, noBase: true }), 80);
+});
+
+// The hover is where everything the row has no room for goes, so it is checked
+// for the things that are ONLY there: renames, removals and the line totals.
+test('filesTitle states the split, the removals, the renames and the lines', () => {
+  const t = data.filesTitle({ def: 'main',
+    stats: { n: 9, added: 2, changed: 6, removed: 1, renamed: 1, additions: 431, deletions: 88 } });
+  const lines = t.split('\n');
+  assert.equal(lines[0], '9 files changed against main');
+  assert.equal(lines[1], '  6 changed (1 renamed), 2 new, 1 removed');
+  assert.equal(lines[2], '  +431 -88 lines');
+  assert.equal(lines[3], 'Open the files on this branch.');
+});
+
+test('filesTitle appends the survey verdict where there is one, and claims no split otherwise', () => {
+  const surveyed = data.filesTitle({ def: 'main', nUnique: 80, nLanded: 28, nMissing: 11, nDiffers: 41,
+    stats: { n: 80, added: 14, changed: 62, removed: 4, renamed: 2, additions: 5310, deletions: 2044 } });
+  assert.match(surveyed, /28 landed on main, 41 differ, 11 missing/);
+  // An older cache knows a total and nothing else, so the hover says the total
+  // and stops rather than printing a split of zeroes.
+  const bare = data.filesTitle({ def: 'main', nFiles: 9 });
+  assert.equal(bare, '9 files changed against main\nOpen the files on this branch.');
 });
 
 test('the GitHub menu holds GitHub destinations, and one documented exception', () => {

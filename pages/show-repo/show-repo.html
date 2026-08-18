@@ -2941,26 +2941,26 @@ function app(){ return {
             p.aheadBy = was.aheadBy; p.behindBy = was.behindBy;
             p.firstDate = was.firstDate || '';
             // Carried with the pair it was read beside. A cache written before
-            // 2026-08-18 has no count, and the row shows its files glyph
+            // 2026-08-18 has no breakdown, and the row shows its files glyph
             // without one until the next real compare rather than showing a 0.
-            p.nFiles = was.nFiles ?? null;
+            p.stats = was.stats ?? null;
             if (was.sessions) { p.sessions = was.sessions; p.sessionsExact = !!was.sessionsExact; }
             continue;
           }
           try {
             const d = await g.compare(def, p.head);
             p.aheadBy = d.ahead_by ?? null; p.behindBy = d.behind_by ?? null;
-            // How many files the branch changed, free from a response already
-            // in hand: this is the compare the ahead/behind pair comes from.
-            // Deduped, since a rename can put a path in the list twice, and a
-            // floor rather than a total on a sweeping branch, since GitHub caps
-            // a compare's file list at 300.
-            p.nFiles = new Set((d.files || []).map(f => f.filename)).size;
+            // What the branch changed and in what way, free from a response
+            // already in hand: this is the compare the ahead/behind pair comes
+            // from, and every file in it carries a status and a line count.
+            // A floor rather than a total on a sweeping branch, since GitHub
+            // caps a compare's file list at 300 and reports no total.
+            p.stats = B.fileStats(d.files);
             // One compare, every field it can answer, through the one reader
             // that knows what each field does past GitHub's commit cap.
             Object.assign(p, B.compareFields(d));
           }
-          catch { p.aheadBy = null; p.behindBy = null; p.firstDate = ''; p.nFiles = null; }
+          catch { p.aheadBy = null; p.behindBy = null; p.firstDate = ''; p.stats = null; }
         }
       };
       await Promise.all(Array.from({ length: Math.min(4, openPRs.length) }, prAheadBehind));
@@ -3006,7 +3006,7 @@ function app(){ return {
                            sha: b.sha || '', subject: b.subject || '', ago: b.ago || '',
                            group: b.group, noBase: !!b.noBase, nUnique: b.nUnique || 0, nLanded: b.nLanded || 0,
                            nMissing: b.nMissing || 0, nDiffers: b.nDiffers || 0,
-                           missingPaths: b.missingPaths || [],
+                           missingPaths: b.missingPaths || [], stats: b.stats || null,
                            ...sessionsFor(b),
                            aheadBy: b.aheadBy ?? null, behindBy: b.behindBy ?? null });
       branches = [...recent.map(b => trim({ ...b, group: 'active' })), ...surveyed.rows.map(trim)];

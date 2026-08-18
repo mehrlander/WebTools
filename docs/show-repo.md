@@ -910,22 +910,41 @@ pulling the two controls after it out of column.
 **Files** is the route the row was missing. The branch name opens the detail
 too, but on the Guide where there is one, so "show me what changed" cost a tap,
 a read, and a second tap; this is that destination on its own glyph, the one the
-detail's file deck already wears. It carries **one number, and the same one on
-every row**: how many files this branch changed. That is free, from the compare
-the crawl already runs for each open PR's ahead/behind pair, and from the
-survey's own touched-path set where it reached the branch. A row with stranded
-content adds one more thing, the **missing** count in amber, which opens the
-pane already filtered to those files.
+detail's file deck already wears. It carries **two numbers, and the same two on
+every row**: how many files this branch changed, and how many of them are new.
+Both are free, from the compare the crawl already runs for each open PR's
+ahead/behind pair, and from the survey's own compare where it reached the
+branch: every file in either response carries a status and a line count, and
+`BranchSurvey.fileStats` reads them. A row with stranded content adds one more
+thing, the **missing** count in amber, which opens the pane already filtered to
+those files.
+
+Two is the row's budget, so **removals, renames and the line totals live in the
+hover**, which is a small table rather than a sentence: the total, the split
+including what was removed and how many of the changed files moved, the `+/-`
+lines, and the survey's three-way verdict where there is one. Those are numbers
+a reader wants once, not ones they scan a list for.
+
+**The palette says one thing each.** Neutral is changed, green is added, amber
+is stranded. Green used to tint the whole control when the survey found nothing
+missing, a signal the absent missing count and the Landed chip were already
+carrying twice over; freeing it is what lets a file-plus glyph read as a
+different thing from a files glyph at eighteen pixels. Spacing carries the
+grouping: four pixels binds a glyph to its number, eight separates the two pairs
+inside the control, twelve separates controls, without which a row with two new
+files and two missing ones read as `2 2`.
 
 The landed **ratio** rode here until 2026-08-18, so a surveyed row read
 `28/80 landed 11 missing *` while an unsurveyed row read nothing at all: four
 mono elements on the busy rows, none on the quiet ones, and no column a reader
 could scan down. A ratio is a verdict and this is a route, so the verdict moved
 to where there is room to state it whole (the hover, and the Files pane's own
-strip, which names all three classes) and the row kept the count every row can
+strip, which names all three classes) and the row kept the counts every row can
 carry plus the one flag worth raising unasked. A no-merge-base row keeps its
-count rather than blanking, since the asterisk already says that every number on
-that row spans more than the branch.
+numbers rather than blanking, since the asterisk already says that every number
+on that row spans more than the branch. A cache written before the breakdown
+existed shows its total as one number and claims no split, rather than printing
+a split of zeroes.
 
 **Stage** sends the files this branch changed to the Stage (one `compare` call,
 removed paths skipped), appended and deduped onto any working stage at
