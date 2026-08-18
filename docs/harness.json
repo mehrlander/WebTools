@@ -1120,6 +1120,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/paste-kinds-probe.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 54,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/pick-md.mjs",
       "role": "end-to-end reproduction of pick-a-file-in-the-fab, reporting what the frame did",
       "layer": "tools/render/scenarios",
