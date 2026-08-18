@@ -39,7 +39,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`headless-vendoring.md`](headless-vendoring.md) — building with CDN libraries and rendering headless where the CDNs are blocked
 - [`ios-sheet-drags.md`](ios-sheet-drags.md) — why a drag inside a sheet-presented in-app browser dismisses the sheet, and the two fixes, measured on device
 - [`loader.md`](loader.md) — the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality
-- [`manifest.json`](manifest.json) *(orphan)* — the field registry for root .web-tools.json: every field's type, consumer, and effect
+- [`manifest-fields.csv`](manifest-fields.csv) *(orphan)* — the field registry for root .web-tools.json: every key's type, consumer, and effect
 - [`manifest.md`](manifest.md) — the .web-tools.json manifest: the file's contract and the registry machinery (config cache, mailbox, proposals, editing from the shell)
 - [`markdown-in-chat.md`](markdown-in-chat.md) *(measured)* — working visually with markdown in a chat client on a phone
 - [`owners.json`](owners.json) — the owners registry: for a statement the coordination layer repeats, its one authoritative carrier and every typed repetition

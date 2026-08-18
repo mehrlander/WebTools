@@ -5,9 +5,25 @@ web-tools page, how to present it. This is its reference, split out of
 [show-repo.md](show-repo.md) on 2026-08-16: the file's contract, the
 membership rule, the config cache, the mailbox, inbox and outbox, proposals,
 the repo menu, and editing the manifest from the shell. The field list itself
-stays data, one row per field in [manifest.json](manifest.json), held to the
-estate's real manifests by `tools/test/manifest-registry.test.mjs`; this doc
-is the prose around that registry, not a second copy of it.
+stays data, one row per key in [manifest-fields.csv](manifest-fields.csv), held
+to the estate's real manifests by `tools/test/manifest-registry.test.mjs`; this
+doc is the prose around that registry, not a second copy of it.
+
+That registry is the structured stage under what was 3,000 words of prose field
+reference in show-repo.md: one row per key, with its type, the tool that reads
+it, and what it does. What stays in prose is the part a registry cannot carry,
+design rationale and cross-field behaviour. The gate checks every key present in
+a real manifest against a row, so a field that gets used without being written
+down is a test failure rather than a discovery three months later. `consumer` is
+the axis the prose kept muddling by saying "not a show-repo field" in passing:
+the file is shared, and which tool reads a key is a property of the key.
+
+It went flat on 2026-08-16. The members of an array or object key used to sit
+nested inside their parent's row, which meant the census counted **20 rows while
+its own scope claimed every key in use**. There are 46. They are rows now,
+addressed `pages[].path` and `stage.files`, and a `required` column says whether
+a member has to be present, blank on a top-level key because that was never
+recorded.
 
 Root `.web-tools.json` is the repo's **web-tools config file** (canonical location
 documented in [PORTABLE.md](PORTABLE.md)). show-repo is one consumer: it reads the

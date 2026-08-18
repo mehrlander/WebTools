@@ -126,7 +126,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2671,
+      "words": 2675,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -314,19 +314,19 @@
       "maintenance": "authored, edited in place; the only statement of the gh.load contract that 36 page files depend on, and CLAUDE.md now sends a reader here before they touch lib/ or a page's boot"
     },
     {
-      "path": "docs/manifest.json",
-      "subject": "the field registry for root .web-tools.json: every field's type, consumer, and effect",
+      "path": "docs/manifest-fields.csv",
+      "subject": "the field registry for root .web-tools.json: every key's type, consumer, and effect",
       "status": "living",
       "reach": "orphan",
-      "words": 1803,
-      "maintenance": "authored; the structured stage under the manifest prose (manifest.md, formerly a show-repo.md section), held to the estate's real manifests by tools/test/manifest-registry.test.mjs: a key live in a manifest with no row here fails the suite"
+      "words": 1237,
+      "maintenance": "authored; held to the estate's real manifests by tools/test/manifest-registry.test.mjs, both ways. Flattened from nested subfields to 46 rows on 2026-08-16, when the nesting was found to be hiding 26 keys from a census that claimed all of them"
     },
     {
       "path": "docs/manifest.md",
       "subject": "the .web-tools.json manifest: the file's contract and the registry machinery (config cache, mailbox, proposals, editing from the shell)",
       "status": "living",
       "reach": "app",
-      "words": 7332,
+      "words": 7517,
       "maintenance": "authored, edited in place; split from show-repo.md 2026-08-16, which keeps the consumer's boundary and points here; the field list stays in manifest.json"
     },
     {
@@ -366,7 +366,7 @@
       "subject": "every column of every registry: what it means, how it arises, and what it may hold",
       "status": "living",
       "reach": "app",
-      "words": 1541,
+      "words": 1569,
       "maintenance": "authored; the same gate, both ways: an undeclared column fails, and a declared property missing from its file fails"
     },
     {
@@ -374,7 +374,7 @@
       "subject": "every registry the estate declares: its file, target, scope, and gate",
       "status": "living",
       "reach": "project",
-      "words": 742,
+      "words": 779,
       "maintenance": "authored; held to the files it governs by tools/test/properties-registry.test.mjs, which since 2026-08-16 reaches this file too"
     },
     {

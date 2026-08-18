@@ -80,11 +80,10 @@ surfacing-index,glyph,recorded,,counted,column,yes,,"the caption marker; blank o
 surfacing-index,use,recorded,,value,column,yes,,"what the primitive is for, in one line"
 surfacing-index,boundary,recorded,,none,column,yes,,where it stops working; carried on 14 of 20
 surfacing-index,form,recorded,,none,column,yes,,"the concrete shape, where the primitive has one"
-manifest-fields,type,recorded,,value,column,yes,string;number;boolean;object;array;boolean|object;string|array,the JSON type the key takes
-manifest-fields,consumer,recorded,,value,column,yes,show-repo;portable;session-hook,which reader acts on the key. Domain owned by the carrier's own consumers block
+manifest-fields,type,recorded,,value,column,yes,string;number;boolean;object;array;boolean|object;string|array;string|boolean,the JSON type the key takes
+manifest-fields,consumer,recorded,,value,column,yes,show-repo;portable;session-hook,"which tool reads the key: show-repo (the shell presents the repo), portable (the conventions read it and show-repo ignores it), session-hook (a plugin hook reads it outside any page)"
 manifest-fields,summary,recorded,,value,column,yes,,what the key does and who owns its value
 manifest-fields,status,recorded,,none,column,yes,deprecated,set only where a key is superseded but still parsed
-manifest-fields,subfields,recorded,,none,column,no,,the shape of a nested object or array key
 text-field-vocabulary,audience,recorded,,value,column,yes,reader;editor,who the text under this field name is addressed to; the split that decides whether it belongs in a carrier or in source
 text-field-vocabulary,gloss,recorded,,value,column,yes,,"what this field name means, in a sentence"
 text-field-vocabulary,use_when,recorded,,value,column,yes,,"the rule for picking this name over its neighbours, which is the part a definition alone never settles"
@@ -117,3 +116,4 @@ properties,form,recorded,,value,column,yes,column;list,column reserves a slot on
 properties,exclusive,recorded,,value,column,yes,yes;no,whether one row may hold more than one value from the domain
 properties,values,recorded,,none,column,yes,,"the value domain, semicolon separated, where it is closed; blank means open"
 properties,gloss,recorded,,value,column,yes,,one line on what the property means
+manifest-fields,required,recorded,,none,column,yes,yes;no,"whether a member of an array or object key must be present; blank on a top-level key, whose requiredness was never recorded"

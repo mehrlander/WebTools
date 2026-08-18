@@ -1,4 +1,10 @@
-// docs/manifest.json — the field registry for root `.web-tools.json`.
+// docs/manifest-fields.csv — the field registry for root `.web-tools.json`.
+//
+// Flat since 2026-08-16. Members of an array or object key used to be nested
+// inside their parent row as `subfields`, which meant the census counted 20 rows
+// while its own scope claimed "every key in use". There were 46. They are rows
+// now, addressed pages[].path and stage.files, and the parent/child split is
+// derived from the key rather than from the shape of the file.
 //
 // The registry replaces a 3,000-word prose field reference that sat inside
 // docs/show-repo.md. Prose could not be checked against anything, and the cost
@@ -24,9 +30,20 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
+import { loadRegistries, parseCsv } from '../build/registries-load.mjs';
 
-const registry = JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'manifest.json'), 'utf8'));
-const CONSUMERS = new Set(Object.keys(registry.consumers));
+const rowsAll = parseCsv(readFileSync(path.join(repoRoot, 'docs', 'manifest-fields.csv'), 'utf8'));
+// A member row carries its parent in its key; a top-level row does not.
+const isMember = k => k.includes('[].') || k.includes('.');
+const parentOf = k => k.split(/\[\]\.|\./)[0];
+const childOf = k => k.split(/\[\]\.|\./).slice(1).join('.');
+const topRows = rowsAll.filter(r => !isMember(r.key));
+const memberRows = rowsAll.filter(r => isMember(r.key));
+// The consumer domain is declared once, in properties.csv, rather than kept a
+// second time here. It used to live in manifest.json's own `consumers` block.
+const CONSUMERS = new Set(
+  loadRegistries(repoRoot).properties
+    .find(p => p.registry === 'manifest-fields' && p.property === 'consumer').values);
 const MANIFEST = '.web-tools.json';
 
 // The estate as it sits on disk beside this checkout. Names rather than a glob,
@@ -48,9 +65,9 @@ function manifests() {
 }
 
 test('every registry row is typed, and names a consumer the registry declares', () => {
-  assert.ok(Array.isArray(registry.fields) && registry.fields.length > 10, 'the registry has fields');
+  assert.ok(topRows.length > 10, 'the registry has fields');
   const seen = new Set();
-  for (const f of registry.fields) {
+  for (const f of topRows) {
     assert.ok(f.key, 'a field row names itself');
     assert.ok(!seen.has(f.key), f.key + ': appears in two rows');
     seen.add(f.key);
@@ -58,11 +75,11 @@ test('every registry row is typed, and names a consumer the registry declares', 
     assert.ok(CONSUMERS.has(f.consumer),
       `${f.key}: consumer must be one of ${[...CONSUMERS]}, got ${f.consumer}`);
     assert.ok(f.summary && f.summary.length > 20, f.key + ': summary says what the field does');
-    for (const s of (f.subfields || [])) {
-      assert.ok(s.key, f.key + ': a subfield row names itself');
-      assert.ok(s.type, `${f.key}.${s.key}: type`);
-      assert.ok(s.summary && s.summary.length > 10, `${f.key}.${s.key}: summary`);
-    }
+  }
+  for (const s of memberRows) {
+    assert.ok(s.type, `${s.key}: type`);
+    assert.ok(s.summary && s.summary.length > 10, `${s.key}: summary`);
+    assert.ok(seen.has(parentOf(s.key)), `${s.key}: names a parent with no row of its own`);
   }
 });
 
@@ -76,20 +93,21 @@ test('a manifest on disk parses', () => {
 // registry is a field somebody added without writing it down, and the reader
 // who meets it next has nowhere to look.
 test('every key used by a real manifest has a registry row', () => {
-  const known = new Set(registry.fields.map(f => f.key));
+  const known = new Set(topRows.map(f => f.key));
   const unknown = [];
   for (const [repo, m] of manifests()) {
     if (m.__unparsable) continue;
     for (const k of Object.keys(m)) if (!known.has(k)) unknown.push(`${repo}: ${k}`);
   }
   assert.deepEqual(unknown, [],
-    'these keys are live in a manifest but have no row in docs/manifest.json; ' +
+    'these keys are live in a manifest but have no row in docs/manifest-fields.csv; ' +
     'add the row (mark it status: deprecated if it is on the way out) rather than ' +
     'leaving the next reader to guess');
 });
 
 test('every declared subfield key used by a real manifest has a subfield row', () => {
-  const rows = new Map(registry.fields.map(f => [f.key, new Set((f.subfields || []).map(s => s.key))]));
+  const rows = new Map(topRows.map(f => [f.key, new Set()]));
+  for (const m of memberRows) rows.get(parentOf(m.key))?.add(childOf(m.key));
   const unknown = [];
   for (const [repo, m] of manifests()) {
     if (m.__unparsable) continue;
@@ -104,11 +122,11 @@ test('every declared subfield key used by a real manifest has a subfield row', (
     }
   }
   assert.deepEqual([...new Set(unknown)], [],
-    'these nested keys are live in a manifest but have no subfield row in docs/manifest.json');
+    'these member keys are live in a manifest but have no row in docs/manifest-fields.csv');
 });
 
 test('a manifest value matches its declared type', () => {
-  const declared = new Map(registry.fields.map(f => [f.key, f.type]));
+  const declared = new Map(topRows.map(f => [f.key, f.type]));
   const actual = v => Array.isArray(v) ? 'array' : v === null ? 'null' : typeof v;
   const wrong = [];
   for (const [repo, m] of manifests()) {

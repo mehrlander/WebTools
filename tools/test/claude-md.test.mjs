@@ -39,7 +39,7 @@ test('CLAUDE.md delegates the showing material to its manifest and frame', () =>
 //
 // The remedy when this fires is extraction, never shaving. Move a section into
 // a doc or into data and link it, the way the showing material went to
-// routes.json and the manifest field list went to docs/manifest.json. Trimming
+// routes.json and the manifest field list went to docs/manifest-fields.csv. Trimming
 // adjectives off unrelated paragraphs buys a few words, teaches the next
 // session that the number is the goal, and leaves the file just as long.
 //
