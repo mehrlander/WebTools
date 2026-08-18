@@ -14,7 +14,7 @@ must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
 2 arrive in every session's context, 26 are named by CLAUDE.md,
-5 by a skill, 10 by a page or component. The remaining 16 are
+5 by a skill, 11 by a page or component. The remaining 16 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -42,12 +42,13 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`manifest-fields.csv`](manifest-fields.csv) *(orphan)* — the field registry for root .web-tools.json: every key's type, consumer, and effect
 - [`manifest.md`](manifest.md) — the .web-tools.json manifest: the file's contract and the registry machinery (config cache, mailbox, proposals, editing from the shell)
 - [`markdown-in-chat.md`](markdown-in-chat.md) *(measured)* — working visually with markdown in a chat client on a phone
-- [`owners.json`](owners.json) — the owners registry: for a statement the coordination layer repeats, its one authoritative carrier and every typed repetition
+- [`owners.csv`](owners.csv) — for a statement the coordination layer repeats, its one authoritative carrier
 - [`pdf-structure.md`](pdf-structure.md) — recovering structure from a PDF in the browser: what the kit does and honestly does not
 - [`portable.json`](portable.json) — the machine index of the portable set
 - [`properties.csv`](properties.csv) — every column of every registry: what it means, how it arises, and what it may hold
 - [`registries.csv`](registries.csv) — every registry the estate declares: its file, target, scope, and gate
 - [`registries.md`](registries.md) — the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the census and catalog reduction
+- [`repetitions.csv`](repetitions.csv) — where each registered statement is said again, how it relates, and what holds it
 - [`routes.json`](routes.json) — how content moves, renders, and gets looked at: grammar, modes, routes, and the showing block
 - [`show-repo.md`](show-repo.md) — the show-repo shell: views and transfer
 - [`showing.md`](showing.md) — why the showing boundaries sit where they are: the frame and the record behind routes.json
@@ -98,4 +99,4 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`post-merge-branch-mutation.md`](github/post-merge-branch-mutation.md) — why a merged branch stops being a live workspace: merged means closed
 
 12 shared statements are registered in
-[`owners.json`](owners.json), which carries its own scope and schema.
+[`owners.csv`](owners.csv), with each repetition in [`repetitions.csv`](repetitions.csv).

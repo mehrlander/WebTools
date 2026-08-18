@@ -54,7 +54,7 @@
       "subject": "the docs folder's front door: the generated index of this registry",
       "status": "living",
       "reach": "project",
-      "words": 1025,
+      "words": 1033,
       "maintenance": "generated from docs.json by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
     },
     {
@@ -126,7 +126,7 @@
       "subject": "this registry: the documents census and the shared-claims table",
       "status": "living",
       "reach": "project",
-      "words": 2675,
+      "words": 2705,
       "maintenance": "authored; the census half is gated complete by tools/test/docs-registry.test.mjs, and the registry lists itself"
     },
     {
@@ -286,7 +286,7 @@
       "subject": "the harness census: every tools/ and scripts/ file's role, invocation route, and derived accounting",
       "status": "living",
       "reach": "app",
-      "words": 4859,
+      "words": 4858,
       "maintenance": "authored role and layer glossary; layer, lines, invocation, emits, named and tested stamped by tools/build/tools-index.mjs, held in lockstep by artifacts-lockstep.test.mjs; blank roles are counted, not hidden"
     },
     {
@@ -338,12 +338,12 @@
       "maintenance": "authored; findings established empirically, re-probe on a new client"
     },
     {
-      "path": "docs/owners.json",
-      "subject": "the owners registry: for a statement the coordination layer repeats, its one authoritative carrier and every typed repetition",
+      "path": "docs/owners.csv",
+      "subject": "for a statement the coordination layer repeats, its one authoritative carrier",
       "status": "living",
       "reach": "app",
-      "words": 926,
-      "maintenance": "tools/test/owners-registry.test.mjs holds shape, subject uniqueness, and locator resolution; coverage is curated against the written scope, not gated"
+      "words": 160,
+      "maintenance": "authored; held by tools/test/owners-registry.test.mjs, which checks every locator still resolves"
     },
     {
       "path": "docs/pdf-structure.md",
@@ -366,7 +366,7 @@
       "subject": "every column of every registry: what it means, how it arises, and what it may hold",
       "status": "living",
       "reach": "app",
-      "words": 1569,
+      "words": 1590,
       "maintenance": "authored; the same gate, both ways: an undeclared column fails, and a declared property missing from its file fails"
     },
     {
@@ -374,7 +374,7 @@
       "subject": "every registry the estate declares: its file, target, scope, and gate",
       "status": "living",
       "reach": "project",
-      "words": 779,
+      "words": 858,
       "maintenance": "authored; held to the files it governs by tools/test/properties-registry.test.mjs, which since 2026-08-16 reaches this file too"
     },
     {
@@ -384,6 +384,14 @@
       "reach": "project",
       "words": 5395,
       "maintenance": "the doctrine behind properties.json; written to travel, origin budget-drs properties.csv"
+    },
+    {
+      "path": "docs/repetitions.csv",
+      "subject": "where each registered statement is said again, how it relates, and what holds it",
+      "status": "living",
+      "reach": "app",
+      "words": 412,
+      "maintenance": "authored; the same gate. Split from owners.csv on 2026-08-16, a repetition being a different target from the statement"
     },
     {
       "path": "docs/routes.json",

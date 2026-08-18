@@ -1,0 +1,13 @@
+subject,kind,applies_to,authoritative
+the skill roster,statement,,.claude/skills/ on disk (the plugin's source boundary ships whatever is there)
+the doc and script membership of the portable set,statement,,docs/portable.json (curation decides; docs/ holds non-portable files too)
+what each skill does,family,every skill in the set,the skill's own SKILL.md description (it is what triggers invocation)
+the surfacing primitives,statement,,docs/SURFACING.md (sessions load and follow the prose; the ownership runs opposite to routes.json)
+the working conventions text,statement,,docs/CONVENTIONS.md and docs/SURFACING.md
+the adoption commands,statement,,docs/MARKETPLACE.md (PORTABLE.md names it the how to its what)
+the toss routes (content type to renderer),statement,,docs/routes.json routes block
+"the showing mechanisms: which link reaches which change, and what each misses",statement,,docs/routes.json showing block
+the MCP readback strips HTML from PR bodies,statement,,"docs/environment/capabilities.md (measured, dated)"
+"the GitHub MCP routing rule: on an unexpected approval wall, call the built-in server's equivalent",statement,,"docs/environment/capabilities.md, ""MCP: two servers can share a tool name"" (2026-07-29; logs, controls, upstream issues)"
+the code layers and their admission rules,statement,,docs/code-layers.md
+the content registry classification vocabulary,statement,,.claude/skills/content-registry/SKILL.md (the skill owns the convention; CLAUDE.md says so)

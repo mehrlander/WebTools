@@ -11,14 +11,17 @@
 
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { parseCsv } from './registries-load.mjs';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const REG_PATH = path.join(repoRoot, 'docs', 'docs.json');
-// The owners table moved out of docs.json on 2026-08-09 into its own carrier.
+// The owners table moved out of docs.json on 2026-08-09 into its own file, and
+// split again on 2026-08-16: a repetition is a different target from the
+// statement it repeats, so it is its own registry.
 // The closing line of this index still counts it, because a reader of the docs
 // folder wants to know the table exists; it is read from where it now lives.
-const OWNERS_PATH = path.join(repoRoot, 'docs', 'owners.json');
+const OWNERS_PATH = path.join(repoRoot, 'docs', 'owners.csv');
 const OUT_PATH = path.join(repoRoot, 'docs', 'README.md');
 
 // Group order: the root first, then subfolders alphabetically; within a group
@@ -72,14 +75,14 @@ function render(reg, owners) {
     }
     lines.push('');
   }
-  lines.push(`${owners.owners.length} shared statements are registered in`);
-  lines.push('[`owners.json`](owners.json), which carries its own scope and schema.');
+  lines.push(`${owners.length} shared statements are registered in`);
+  lines.push('[`owners.csv`](owners.csv), with each repetition in [`repetitions.csv`](repetitions.csv).');
   lines.push('');
   return lines.join('\n');
 }
 
 const reg = JSON.parse(await readFile(REG_PATH, 'utf8'));
-const owners = JSON.parse(await readFile(OWNERS_PATH, 'utf8'));
+const owners = parseCsv(await readFile(OWNERS_PATH, 'utf8'));
 const want = render(reg, owners);
 
 if (process.argv.includes('--check')) {

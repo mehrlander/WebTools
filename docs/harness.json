@@ -183,7 +183,7 @@
       "path": "tools/build/docs-readme.mjs",
       "role": "regenerate docs/README.md from docs/docs.json",
       "layer": "tools/build",
-      "lines": 95,
+      "lines": 98,
       "invocation": "npm:docs-readme",
       "emits": false,
       "named": true,
@@ -244,7 +244,7 @@
       "role": "read and write the registry pair (docs/registries.csv, docs/properties.csv): the CSV parse, the path/fragment split, and the column order a restamp must preserve",
       "layer": "tools/build",
       "lines": 85,
-      "invocation": "none found",
+      "invocation": "imported",
       "emits": false,
       "named": false,
       "tested": true

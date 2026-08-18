@@ -37,7 +37,8 @@ const manifest = {
 const routesJson = readFileSync(path.join(repoRoot, 'docs', 'routes.json'), 'utf8');
 const docsJson = readFileSync(path.join(repoRoot, 'docs', 'docs.json'), 'utf8');
 const surfJson = readFileSync(path.join(repoRoot, 'docs', 'surfacing.json'), 'utf8');
-const ownersJson = readFileSync(path.join(repoRoot, 'docs', 'owners.json'), 'utf8');
+const ownersCsv = readFileSync(path.join(repoRoot, 'docs', 'owners.csv'), 'utf8');
+const repsCsv = readFileSync(path.join(repoRoot, 'docs', 'repetitions.csv'), 'utf8');
 const propsRegCsv = readFileSync(path.join(repoRoot, 'docs', 'registries.csv'), 'utf8');
 const propsDeclCsv = readFileSync(path.join(repoRoot, 'docs', 'properties.csv'), 'utf8');
 const testsJson = readFileSync(path.join(repoRoot, 'docs', 'tests.json'), 'utf8');
@@ -61,7 +62,8 @@ window.GH = class {
     if (p === 'docs/routes.json') return { text: routesJson };
     if (p === 'docs/docs.json') return { text: docsJson };
     if (p === 'docs/surfacing.json') return { text: surfJson };
-    if (p === 'docs/owners.json') return { text: ownersJson };
+    if (p === 'docs/owners.csv') return { text: ownersCsv };
+    if (p === 'docs/repetitions.csv') return { text: repsCsv };
     if (p === 'docs/registries.csv') return { text: propsRegCsv };
     if (p === 'docs/properties.csv') return { text: propsDeclCsv };
     if (p === 'docs/tests.json') return { text: testsJson };
@@ -144,8 +146,11 @@ test('Owners loads its own carrier, separately from Docs', async () => {
   await data.loadOwnersReg();
   assert.equal(data.ownersErr, '');
   assert.ok(data.ownersReg.owners.length > 3);
-  assert.ok(data.ownersReg.scope, 'the tab reads the scope from the carrier, not from its own prose');
-  assert.equal(data.OWNERS_MANIFEST, 'docs/owners.json');
+  // The scope moved to the registry row on 2026-08-16, where every other
+  // registry's scope already lived; owners.csv used to carry a second copy.
+  assert.ok(data.ownersReg.scope, 'the tab reads the scope from the registry row');
+  assert.equal(data.OWNERS_MANIFEST, 'docs/owners.csv');
+  assert.equal(data.OWNERS_REPS, 'docs/repetitions.csv');
 });
 
 test('the Docs folder rail rolls up, nests, and prunes by reach without changing shape', () => {
@@ -393,7 +398,10 @@ test('the shell and the component agree on the tab set', () => {
 // assertions are about the JOIN (declarations grouped under their registry),
 // not about any one manifest.
 test('Registries groups declarations under the registry that governs them', async () => {
-  assert.equal(data.propsReg, null, 'the table is not fetched until the tab is opened');
+  // Not asserted null here any more: the Owners tab reads its scope from the
+  // registry row, so opening Owners loads the pair too. That coupling is the
+  // price of the scope having one owner instead of a copy in each file.
+  data.propsReg = null;
   await data.loadPropsReg();
   assert.equal(data.propsErr, '');
 

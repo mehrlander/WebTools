@@ -30,7 +30,6 @@ tools-gallery,icon,recorded,,none,column,yes,,phosphor icon name
 owners,kind,recorded,,value,column,yes,statement;family,"whether the row owns one repeated statement or declares a rule over a scope; a family row is a DECLARATION in this model, carried here because its carrier is distributed"
 owners,applies_to,recorded,,none,column,yes,,the population a family rule covers; absent on a statement row
 owners,authoritative,recorded,,value,column,yes,,the one carrier that owns the statement; every other mention is a repetition
-owners,repetitions,recorded,,value,column,no,,"each other place the statement appears, with its relation (copy, paraphrase, pointer, live read), who keeps a copy, and the check that holds it or the honest absence of one"
 skills-catalog,description,recorded,,value,column,yes,,"the skill's trigger description. A COPY: the authoritative carrier is the skill's own SKILL.md, per the family rule in docs/owners.json"
 pages-catalog,label,computed,tools/build/pages-index.mjs,value,column,yes,,the short name the catalog card and the picker show
 pages-catalog,title,computed,tools/build/pages-index.mjs,value,column,yes,,"the page's own <title>, read from the file"
@@ -117,3 +116,7 @@ properties,exclusive,recorded,,value,column,yes,yes;no,whether one row may hold 
 properties,values,recorded,,none,column,yes,,"the value domain, semicolon separated, where it is closed; blank means open"
 properties,gloss,recorded,,value,column,yes,,one line on what the property means
 manifest-fields,required,recorded,,none,column,yes,yes;no,"whether a member of an array or object key must be present; blank on a top-level key, whose requiredness was never recorded"
+repetitions,where,recorded,,value,column,yes,,"the file, or the surface, carrying the repetition"
+repetitions,relation,recorded,,value,column,yes,copy;paraphrase;pointer;live read,how the repetition stands to the authoritative version
+repetitions,kept,recorded,,counted,column,yes,,who keeps a copy current; applies only when the relation is copy
+repetitions,check,recorded,,counted,column,yes,,"the test holding this repetition to its owner; blank where nothing does, which is the honest state the table exists to show"
