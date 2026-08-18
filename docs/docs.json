@@ -30,7 +30,7 @@
       "subject": "the house style for pages: what to build, as against how",
       "status": "living",
       "reach": "skill",
-      "words": 720,
+      "words": 653,
       "maintenance": "authored, edited in place; paired with the daisy-alpine skill, which carries the mechanics and points here for composition; the split is convention, unchecked"
     },
     {
@@ -230,7 +230,7 @@
       "subject": "how to test HTML and JS in the sandbox",
       "status": "measured",
       "reach": "project",
-      "words": 2663,
+      "words": 2750,
       "maintenance": "authored; per-claim verification dates, edited in place"
     },
     {
@@ -398,7 +398,7 @@
       "subject": "the stage: bench and Saved, intake, the walkable preview and diff, Out, save-as-surface, and the #stage= link grammar",
       "status": "living",
       "reach": "project",
-      "words": 3854,
+      "words": 3952,
       "maintenance": "authored, edited in place; split from show-repo.md 2026-08-16, which keeps the boundary statement and points here"
     },
     {
@@ -422,7 +422,7 @@
       "subject": "the test registry: every check's kind, what it protects, and its derived counts",
       "status": "living",
       "reach": "app",
-      "words": 26861,
+      "words": 26885,
       "maintenance": "authored kind and protects; assertions, method, runner and boot_smoke stamped by tools/build/tests-index.mjs and gated both ways by tools/test/tests-registry.test.mjs, which also counts rows that do not say what they protect"
     },
     {

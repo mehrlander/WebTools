@@ -30,9 +30,9 @@ export default async function (page) {
     const csv = data.localItems.find(it => /\.csv$/.test(it.name));
     await data.openTransform(csv);
     await new Promise(r => setTimeout(r, 1500));
-    const wb = data.$refs.tfHost?.querySelector('.tf-root')?.__workbench;
+    const wb = document.querySelector('.tf-root')?.__workbench;
     return {
-      open: data.tfOpen,
+      open: !!data._tfDeck,
       mounted: !!wb,
       // What the workbench actually holds: the parsed rows, and the columns it
       // read off them. An empty set here would mean the door opened onto nothing.

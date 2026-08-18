@@ -654,6 +654,17 @@
    "logEntries": 4
   },
   {
+   "id": "registry-authored-derived-split-v3qm2x",
+   "title": "Separate authored from derived data across the registries",
+   "status": "backlog",
+   "opened": "2026-08-18",
+   "size": "L",
+   "file": "registry-authored-derived-split-v3qm2x.md",
+   "href": "tasks/registry-authored-derived-split-v3qm2x.md",
+   "lastActivity": "2026-08-18",
+   "logEntries": 1
+  },
+  {
    "id": "render-copy-runtime-cdn-refs-p4m2wq",
    "title": "Inline the run-time CDN references a rendering copy still carries",
    "status": "backlog",

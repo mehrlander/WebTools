@@ -3203,7 +3203,7 @@
       "path": "tools/test/swipe-deck-stack.test.mjs",
       "kind": "behavior",
       "protects": "The deck stack that drilling rests on: only the top deck answers a key or a Back, so a child does not close its parent with it or step it invisibly underneath; plus drill’s two conventions, the back chevron and the parent as the head of the crumb.",
-      "assertions": 10,
+      "assertions": 12,
       "method": "alpine",
       "runner": "suite",
       "boot_smoke": [],
@@ -3217,7 +3217,9 @@
         "a slide the reader has left is emptied, and rebuilt on return",
         "one slide of hysteresis, so a step back does not rebuild",
         "closing lets every slide go, not just the far ones",
-        "the header is writable, which is how a deck follows its own slides"
+        "the header is writable, which is how a deck follows its own slides",
+        "a click on the ground beside the panel dismisses, a click inside does not",
+        "only the topmost deck answers a click on the ground"
       ]
     },
     {

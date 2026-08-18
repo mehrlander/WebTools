@@ -182,16 +182,26 @@ could tell it from prose.
 
 The chip is a sibling of the flavors bar, not part of it: that bar offers other
 readings of one paste, this offers another TOOL for what was already read.
-Tapping it mounts the workbench once over the Stage and hands it the item's text
-through `processText`, the tool's own sniff chain, so a bundle rehydrates whole
-and a CSV parses, with one reader of those shapes rather than two. Mounting is
-once and then shown or hidden, never rebuilt, since the workbench holds tab
-sources and run output in its own state; the tool addresses its viewer and table
-by document id, so there can be exactly one. **The host has to bring the
-libraries:** PapaParse, which the parse path calls unguarded, and Tabulator,
-whose absence is worse than an error, because the table's render hook reads
-`typeof Tabulator === "undefined"` and returns, drawing the whole chrome around
-an empty pane in silence.
+Tapping it opens the workbench as a **swipe-deck takeover**, the same kit the
+preview moved onto the same day, so the header, Escape, the phone Back button,
+history-backed dismissal and correct nesting all come for free and opening the
+workbench from an open preview drills rather than stacking two scrims. A deck of
+one, since a workbench is not a set to walk. The item's text goes over through
+`processText`, the tool's own sniff chain, so a bundle rehydrates whole and a
+CSV parses, with one reader of those shapes rather than two.
+
+It mounts **fresh on each open**, which is right rather than a compromise: the
+tool persists its tab sources in localStorage and deliberately never persists
+data, and every open here arrives carrying an item to load. That is also what
+keeps the one-instance rule true, since the tool addresses its viewer and table
+by document id rather than through its root.
+
+**The host has to bring the libraries:** PapaParse, which the parse path calls
+unguarded, and Tabulator, whose absence is worse than an error, because the
+table's render hook reads `typeof Tabulator === "undefined"` and returns,
+drawing the whole chrome around an empty pane in silence. That is what the first
+mount here actually did, which is why the scenario asserts the drawn rows rather
+than the parsed ones.
 
 **The one platform limit worth stating plainly: iOS Safari fires no `paste`
 event unless an editable is focused.** A window listener therefore has no intake
