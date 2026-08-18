@@ -8,7 +8,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeWindow, startAlpine, tick } from './bootstrap.mjs';
+import { makeWindow, startAlpine, tick, deckGeometry } from './bootstrap.mjs';
 
 const calls = [];
 
@@ -40,6 +40,11 @@ const { window, problems } = makeWindow({
     <div id="st" x-data="stager()"></div>
   </body></html>`,
 });
+// The preview is a swipe-deck takeover now, and the deck pages by scrolling a
+// track it measures. jsdom has neither layout nor scrollTo, so give it the
+// shared shim: with clientWidth falling back to 1, a slide index and a pixel
+// offset coincide and go(2) lands on slide 2, which is what a logic test needs.
+deckGeometry(window);
 
 // alpine-bundle.js defines the browser store; the stager composes dropZone and
 // pathPicker, and its inline preview mounts a viewer, so all three must be
@@ -59,6 +64,9 @@ const Alpine = await startAlpine(window, [
   'lib/kits/repo-mailbox.js',
   'lib/kits/surface.js',
   'lib/kits/text-diff.js',
+  // The preview's shell. stage.js gh.loads it on demand in a browser; here it
+  // is present up front, since there is no loader in this realm.
+  'lib/kits/swipe-deck.js',
   'lib/alpineComponents/drop-zone.js',
   'lib/alpineComponents/path-picker.js',
   'lib/alpineComponents/viewer.js',
@@ -69,7 +77,15 @@ const data = Alpine.$data(window.document.getElementById('st'));
 const store = Alpine.store('browser');
 store.gh = new FakeGH({ token: 't', repo: 'me/open' });
 const plain_ = (v) => JSON.parse(JSON.stringify(v));
-const reset = () => { store.stage = []; store.stageFocus = ''; data.preview = null; data.diffA = 0; data.diffB = 0; data._diffTouched = false; data.diffRows = null; };
+// The preview is a deck mounted on document.body, so it outlives a store reset
+// and would be seeked rather than reopened by the next test's view(). Close it
+// first, which is also what a reader does between two readings.
+const reset = () => {
+  if (data._pDeck) { data._pDeck.drop(); data._pDeck = null; }
+  data._pNotes = {};
+  store.stage = []; store.stageFocus = ''; data.preview = null;
+  data.diffA = 0; data.diffB = 0; data._diffTouched = false; data.diffRows = null;
+};
 
 // navigator.clipboard isn't polyfilled by makeWindow (see its header note).
 // Component code runs in the jsdom window realm (new window.Function(src)()),
@@ -166,10 +182,19 @@ test('grab stages the picked ref once, deduped by key', () => {
   ]);
 });
 
-// The preview opens the modal ({ name } is the bare path) and drives the file's
-// content + origin into the embedded viewer (#stage-preview-viewer.__viewer), so
-// the assertions read the viewer's state, not preview fields it no longer holds.
-const previewViewer = () => window.document.getElementById('stage-preview-viewer').__viewer;
+// The preview is a swipe-deck takeover, one slide per staged item, each slide
+// mounting its own viewer. `data-preview-slide` carries the index, so a test can
+// read the viewer for the position it means rather than the only one there used
+// to be. `preview.note` still says why a position rendered nothing.
+const previewViewer = (i) => window.document
+  .querySelector(`[data-preview-slide="${i ?? data.preview.i}"]`)?.__viewer;
+
+// The deck builds a slide from its scroll handler, on a real animation frame,
+// and the slide then resolves its content asynchronously. `tick` only turns the
+// microtask queue, so it lands before the frame and sees an empty slide. Wall
+// clock rather than requestAnimationFrame: awaiting a frame hangs rather than
+// fails when jsdom's frame clock is not running. Same idiom as file-deck's.
+const shown = async () => { await new Promise(r => setTimeout(r, 50)); await tick(3); };
 
 test('view loads a ref into the inline preview, not the shared activeFile', async () => {
   reset();
@@ -177,7 +202,7 @@ test('view loads a ref into the inline preview, not the shared activeFile', asyn
   // The preview is a position in the stage, so the row it opens from is staged.
   store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
   await data.view({ repo: 'me/a', ref: '', path: 'lib/x.js' });
-  await tick(3);
+  await shown();
   assert.equal(data.preview.name, 'lib/x.js');
   assert.equal(data.preview.i, 0, 'and it knows where it is');
   assert.equal(store.activeFile, null, 'stage preview never routes through Files');
@@ -200,20 +225,20 @@ test('the preview walks the staged set, and every position opens', async () => {
     { repo: 'me/a', ref: '', path: 'three.js' },
   ];
   await data.view({ repo: 'me/a', ref: '', path: 'one.js' });
-  await tick(3);
+  await shown();
   assert.equal(data.preview.i, 0);
   assert.equal(data.preview.note, '', 'a text file renders');
 
   // A binary local file is a position like any other: it opens with a note
   // instead of a viewer, so stepping past it never skips or dead-ends.
   await data.previewStep(1);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.i, 1);
   assert.match(data.preview.note, /Binary/);
   assert.equal(data.preview.name, 'bin.png');
 
   await data.previewStep(1);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.i, 2);
   assert.equal(data.preview.note, '');
 
@@ -221,7 +246,7 @@ test('the preview walks the staged set, and every position opens', async () => {
   await data.previewStep(1);
   assert.equal(data.preview.i, 2, 'past the last is a no-op');
   await data.previewStep(-1); await data.previewStep(-1); await data.previewStep(-1);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.i, 0, 'before the first is a no-op');
 });
 
@@ -229,7 +254,7 @@ test('a fetch that fails still opens, as a note rather than a closed modal', asy
   reset();
   store.stage = [{ repo: 'me/missing', ref: '', path: 'gone.js' }];
   await data.view({ repo: 'me/missing', ref: '', path: 'gone.js' });
-  await tick(3);
+  await shown();
   assert.ok(data.preview, 'the modal is open');
   assert.match(data.preview.note, /Could not load it/);
 });
@@ -238,7 +263,7 @@ test('view shows a local text item inline', async () => {
   const loc = { local: true, id: 90, name: 'n.txt', path: 'n.txt', size: 2, isText: true, text: 'hi' };
   store.stage = [loc];
   await data.view(loc);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.name, 'n.txt');
   const vwr = previewViewer();
   assert.equal(vwr.file, 'n.txt');
@@ -286,7 +311,7 @@ test('a dropped markdown file previews rather than reporting itself binary', asy
   const bytes = new TextEncoder().encode(md);
   data.onDropped({ file: {}, name: 'notes.md', size: bytes.length, type: 'text/markdown', bytes, buf: bytes.buffer });
   await data.view(data.localItems[0]);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.note, '', 'no "Binary … staged for copy, not preview" note');
   assert.equal(previewViewer().content, md);
 });
@@ -509,7 +534,7 @@ test('a local image previews from its own bytes, with no repo behind it', async 
   ), c => c.charCodeAt(0));
   store.stage = [{ local: true, id: 210, name: 'image.png', path: 'image.png', size: png.length, type: 'image/png', isText: false, bytes: png }];
   await data.view(data.localItems[0]);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.note, '', 'an image is not refused as a binary');
   const vwr = previewViewer();
   assert.match(vwr.content, /^data:image\/png;base64,/, 'the bytes ride as a data URI, the one form a repo-less file can supply');
@@ -533,7 +558,7 @@ test('a binary with no mode to draw it is still refused, and says which', async 
   reset();
   store.stage = [{ local: true, id: 211, name: 'bundle.zip', path: 'bundle.zip', size: 2048, type: '', isText: false, bytes: Uint8Array.from([1, 2]) }];
   await data.view(data.localItems[0]);
-  await tick(3);
+  await shown();
   assert.match(data.preview.note, /^Binary/);
   data.preview = null;
 });
@@ -545,7 +570,7 @@ test('a dropped workbook previews rather than being refused', async () => {
   reset();
   store.stage = [{ local: true, id: 212, name: 'book.xlsx', path: 'book.xlsx', size: 2048, type: '', isText: false, bytes: Uint8Array.from([1, 2]) }];
   await data.view(data.localItems[0]);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.note, '', 'not refused as a binary');
   assert.match(previewViewer().content, /^data:application\/vnd\.openxml/);
   data.preview = null;
@@ -623,7 +648,7 @@ test('renaming under an open preview re-labels it', async () => {
   const it = { local: true, id: 204, name: 'n.txt', path: 'n.txt', size: 2, isText: true, text: 'hi' };
   store.stage = [it];
   await data.view(data.localItems[0]);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.name, 'n.txt');
   data.startRename(data.localItems[0]);
   data.renameDraft = 'renamed.md';
@@ -1066,13 +1091,13 @@ test('the preview toggles into a diff over that pair, and back to the file', asy
     { local: true, id: 401, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\ntwo\n' },
     { local: true, id: 402, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'one\nTWO\n' },
   ];
-  await tick(3);
+  await shown();
   await data.view(data.items[0]);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.mode, 'file');
 
   await data.togglePreviewDiff();
-  await tick(3);
+  await shown();
   assert.equal(data.preview.mode, 'diff', 'same modal, different mode');
   assert.equal(data.diffA, 0);
   assert.equal(data.diffB, 1, 'the pair came from the position, not a select');
@@ -1080,7 +1105,7 @@ test('the preview toggles into a diff over that pair, and back to the file', asy
   assert.match(data.previewPairLabel(), /a\.md .* b\.md/);
 
   await data.togglePreviewDiff();
-  await tick(3);
+  await shown();
   assert.equal(data.preview.mode, 'file', 'and back');
   data.preview = null;
 });
@@ -1253,7 +1278,7 @@ test('a diff-mode link opens the preview on its diff, once', async () => {
     { local: true, id: 301, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\ntwo\n' },
     { local: true, id: 302, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'one\nTWO\nthree\n' },
   ];
-  await tick(4);
+  await shown();
   // The link's intent is "look at this comparison", so it puts the reader in
   // front of one rather than selecting a control on the page.
   assert.equal(data.preview?.mode, 'diff', 'the preview opens, in diff mode');

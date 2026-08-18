@@ -22,9 +22,12 @@ by hand. Full statement and reasoning: `docs/HTML-STYLE.md` in `mehrlander/web-t
    like rigor. Put a headline figure in the header as one compact line or behind a
    control, and where figures deserve room give them a form that holds a comparison.
    Treat any `stats`, `stat-value`, or KPI-tile grid as a defect.
-2. **No explanatory prose on the page.** Caveats and methodology go in the README, the
-   PR body, or behind an info control. Where a qualifier is needed, label the thing
-   (`brief only` as a column header) rather than writing a sentence about it.
+2. **No explanatory prose.** GitHub doesn't explain and neither should we. Use structure,
+   labels, and controls to show relationships: a range control starting at 2015 says the
+   data starts in 2015. Explanatory prose is unfinished work: unused ideas, loitering.
+   Its tell is text narrowed to a reading column (`max-w-*` plus `mx-auto`, `max-w-prose`,
+   `container mx-auto`); what you will usually find is that the text does not belong on
+   the page at all.
 3. **Browsing is a full-viewport takeover.** A deck, gallery, diff, or result set is
    `fixed inset-0` with `grid-rows-[auto_1fr_auto]`: thin header, content, thin
    footer. Not a boxed widget with page furniture around it. **A page another
@@ -32,10 +35,10 @@ by hand. Full statement and reasoning: `docs/HTML-STYLE.md` in `mehrlander/web-t
    plus `sticky top-0`/`sticky bottom-0` chrome over normal flow, because a
    fixed root inside an iframe measures against the outer viewport on Safari and
    its right-hand column is cut off in any host narrower than the window.
-4. **Type is for reading, not for fitting.** Content at `text-xl`+ with `leading-8`.
-   Two tiers only, content and chrome: everything the reader came to read gets the
-   same size, and `text-xs` belongs to counters, timestamps, and labels. If content
-   shrank to fit, the layout is wrong, not the type.
+4. **Type is for reading, not for fitting.** If type shrank to fit, the layout is wrong,
+   not the type. Decks and documents run `text-xl`+ with `leading-8`; dense working
+   surfaces run smaller. Two tiers only, content and chrome: everything the reader came
+   to read gets the same size, and `text-xs` belongs to counters, timestamps, and labels.
 5. **Content starts at the top.** Never vertically centre a slide because it looks
    balanced when short; across a deck it moves the first line on every card.
 6. **One accent, and it means something.** Colour carries information, not decoration.
@@ -69,6 +72,12 @@ by hand. Full statement and reasoning: `docs/HTML-STYLE.md` in `mehrlander/web-t
    So `first:` matches nothing at all, `last:` matches only when the loop is the last thing in its parent (add a footer under it and that silently stops too), and `[&>*+*]:border-t` puts a border on **every** row including the first, because the first clone's preceding sibling is the template. All three compile and all three are real CSS, so nothing warns; the rule just lands on the wrong element or on none.
 
    Take the position from the loop, which is the one source that knows it: `x-for="(row, i) in rows"` then `:class="{ 'border-t border-base-200': i }"`. Or separate with `gap` on a flex/grid parent, which is ordinal-free. Reserve `first:`/`last:`/`[&>*+*]:` for static markup.
+
+9. **A daisyUI control does not fill its parent, and a phone is where you find out.** `.input` and `.textarea` compute to `width: clamp(3rem, 20rem, 100%)`, so in a column narrower than 20rem they look correct and in a wider one they stop short while their label runs on. Measured at a 390px viewport: the label 342px, the field 320px, a ragged right edge down the whole form. Put `w-full` on every input, textarea, and select rather than relying on the flex parent to stretch it, since `align-self: stretch` does not apply to an item with an explicit width.
+
+10. **Size a pane by its container, not by the viewport.** A pane that is half a screen on desktop and the whole screen on a phone cannot be laid out with `sm:`/`lg:`, which ask how wide the *window* is: the same `lg:grid-cols-6` that reads well full-width puts six columns in a 360px column when the pane is split. Put `@container` on the column and use `@md:`/`@xl:`, which ask how wide the *column* is. The variants degrade to one column where they are unsupported, which is the safe direction.
+
+11. **Tailwind v4 layers its utilities; the typography stylesheet is unlayered, and unlayered wins.** `.prose{max-width:65ch}` therefore beats `.max-w-none` on the cascade-layer rule rather than on specificity, and nothing in the class list looks wrong. Reach for `!max-w-none`, or keep the 65ch measure on purpose and centre the column. Prefer `lib/kits/guide-render.js` for anything new, which brings its own CSS and sidesteps this; do not convert a working surface just for symmetry.
 
 ## CDN Patterns
 
