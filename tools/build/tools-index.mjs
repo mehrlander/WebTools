@@ -103,9 +103,14 @@ export function deriveTools(repoRoot) {
       layer: path.posix.dirname(rel),
       lines: src ? src.split('\n').length : 0,
       invocation,
-      emits: /writeFileSync|open\([^)]*['"][wa]/.test(src),
-      named: prose.includes(rel) || prose.includes(base),
-      tested: tests.includes(base),
+      // yes/no rather than a raw boolean, which is the estate's CSV spelling
+      // (manifest-fields.required, properties.exclusive) and is declared as a
+      // closed domain so the gate holds it. Letting a JS boolean stringify
+      // itself was how this column came out `true` while its one reader tested
+      // for 'yes', and the Harness strip read 0 named of 147 for two days.
+      emits: /writeFileSync|open\([^)]*['"][wa]/.test(src) ? 'yes' : 'no',
+      named: (prose.includes(rel) || prose.includes(base)) ? 'yes' : 'no',
+      tested: tests.includes(base) ? 'yes' : 'no',
     });
   }
   return out;
@@ -157,8 +162,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
 
   const layers = {};
   for (const t of rows) layers[t.layer] = (layers[t.layer] || 0) + 1;
-  const named = rows.filter(t => t.named).length;
-  const tested = rows.filter(t => t.tested).length;
+  const named = rows.filter(t => t.named === 'yes').length;
+  const tested = rows.filter(t => t.tested === 'yes').length;
   const blank = rows.filter(t => !t.role).length;
   console.log(`tools-index: ${rows.length} files (` +
               Object.entries(layers).map(([l, n]) => `${n} ${l}`).join(', ') + `); ` +

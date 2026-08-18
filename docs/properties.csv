@@ -15,9 +15,9 @@ harness-census,role,recorded,,counted,column,yes,,what the file is for; blanks a
 harness-census,layer,computed,tools/build/tools-index.mjs,value,column,yes,scripts;tools;tools/build;tools/concept-lab;tools/render;tools/render/scenarios,"which shelf the file sits on. The domain is closed and owned by the carrier's own layers glossary block, the same arrangement as manifest-fields.consumer; docs/code-layers.md is the prose behind it"
 harness-census,lines,computed,tools/build/tools-index.mjs,value,column,yes,,file length
 harness-census,invocation,computed,tools/build/tools-index.mjs,value,column,yes,,"how the file gets run: argv, imported, driver, 'none found' (the warning state), or npm:<script> naming the script. Deliberately OPEN, because the npm form is a grammar rather than an enumeration and a new script must not need a declaration edit"
-harness-census,emits,computed,tools/build/tools-index.mjs,value,column,yes,,writes a file: a generator rather than a reader
-harness-census,named,computed,tools/build/tools-index.mjs,value,column,yes,,its path or basename appears in tracked prose
-harness-census,tested,computed,tools/build/tools-index.mjs,value,column,yes,,a file under tools/test/ exercises it
+harness-census,emits,computed,tools/build/tools-index.mjs,value,column,yes,yes;no,writes a file: a generator rather than a reader
+harness-census,named,computed,tools/build/tools-index.mjs,value,column,yes,yes;no,its path or basename appears in tracked prose
+harness-census,tested,computed,tools/build/tools-index.mjs,value,column,yes,yes;no,a file under tools/test/ exercises it
 content-registry,creation_mode,recorded,,none,column,yes,supplied;mechanical;human-authored;model-authored;hybrid-authored;mixed,what the artifact IS epistemically; the portable content-registry skill owns the convention
 content-registry,analysis_use,recorded,,none,column,yes,concept-vocabulary;prose-review;semantic-search;source-corpus;exclude,"what the artifact is good for downstream. The domain is closed and is owned by the content-registry skill, not here; docs/owners.csv records the copy"
 content-registry,description,recorded,,none,column,yes,,one line on the artifact
