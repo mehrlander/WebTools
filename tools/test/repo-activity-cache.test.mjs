@@ -236,3 +236,24 @@ test('a deep pass replaces the survey and its counts together', () => {
   assert.equal(merged.counts.landed, 40);
   assert.deepEqual(merged.survey, deep.survey);
 });
+
+// The other half of the same trap, and it took a live estate to find it. The
+// guard above covers a crawl that OMITS the survey; a crawl that read no branch
+// list and sent `{ branches: [] }` walked straight through it, because an empty
+// survey is a survey. Three repos lost their stored verdicts that way in one run
+// (2026-08-17: home 89 rows, web-tools-private 25, fn-data 22) while the run
+// reported success. The crawl's fix is to omit the key and mark the pass
+// partial; these assertions pin what mergeRepo does with each shape, so the two
+// halves cannot drift.
+test('an empty survey CLEARS, which is why a failed read must omit the key', () => {
+  const withSurvey = A.mergeRepo(undefined, {
+    counts: { branches: 9, stranded: 2 },
+    recentCommits: [], survey: { surveyedAt: 't0', branches: [{ name: 'x', sha: 'S', group: 'stranded' }] },
+  }, 't0');
+  const wiped = A.mergeRepo(withSurvey, { recentCommits: [], survey: { branches: [] } }, 't1');
+  assert.deepEqual(wiped.survey.branches, [], 'an empty survey is taken at its word');
+  // The shape a failed read sends instead: no survey key, no counts, partial.
+  const kept = A.mergeRepo(withSurvey, { recentCommits: [], partial: true }, 't2');
+  assert.equal(kept.survey.branches[0].name, 'x', 'the stored verdicts survive');
+  assert.equal(kept.counts.branches, 9, 'and so do the counts describing them');
+});

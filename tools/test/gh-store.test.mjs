@@ -18,7 +18,7 @@ const b64ToBytes = (b64) => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
 // A GH whose req() records each PUT; `failPuts` makes the first N PUTs throw a
 // conflict (a stale SHA, or the branch advancing mid-commit) so the retry path
 // is exercised, after which get() supplies the current SHA.
-function makeGH({ failPuts = 0 } = {}) {
+function makeGH({ failPuts = 0, lsRows = [{ name: 'todo.json', sha: 'cursha' }] } = {}) {
   const puts = [];
   const reads = [];   // every sha refetch: the opts it was made with
   let failed = 0;
@@ -32,7 +32,15 @@ function makeGH({ failPuts = 0 } = {}) {
     if (failed < failPuts) { failed++; const e = new Error('conflict'); e.status = 409; throw e; }
     return { content: { sha: 'newsha' } };
   };
-  GH.prototype.get = async function (p, opts) { reads.push({ path: p, opts }); return { sha: 'cursha' }; };
+  GH.prototype.get = async function (p, opts) { reads.push({ path: p, opts, kind: 'file' }); return { sha: 'cursha' }; };
+  // The recovery prefers the parent directory's listing, which carries every
+  // entry's sha and none of their bytes; `lsRows` lets a test withhold the row
+  // and prove the fall-back to the file read still works.
+  GH.prototype.ls = async function (p, opts) {
+    reads.push({ path: p, opts, kind: 'dir' });
+    if (lsRows === null) throw Object.assign(new Error('not a directory'), { status: 415 });
+    return lsRows;
+  };
   const window = { GH };
   new Function('window', src)(window);
   return { gh: new GH(), puts, reads };
@@ -96,7 +104,43 @@ test('repeated conflicts keep retrying, backing off, until one lands', async () 
 test('a branch that never stops conflicting gets a bounded number of attempts', async () => {
   const { gh, puts } = makeGH({ failPuts: 99 });
   await assert.rejects(() => gh.saveBytes('p', new Uint8Array([7])), /conflict/);
-  assert.equal(puts.length, 4, 'gives up after PUT_TRIES attempts');
+  // Six rather than four since 2026-08-16: the layer under the HTTP cache is
+  // GitHub's own read-after-write lag, where the recovery re-read can be
+  // answered by a replica that has not seen the commit, and two seconds of
+  // patience was not enough to outlast it.
+  assert.equal(puts.length, 6, 'gives up after PUT_TRIES attempts');
+});
+
+// The sha is 40 characters and the file can be 370 KB. Measured 2026-08-17 off
+// the activity crawl's own call log: one refresh read state/activity.json eleven
+// times for 7.2 MB, five of those reads being this recovery buying one fact with
+// a whole file.
+test('the conflict recovery buys the sha from a listing, not the file', async () => {
+  const { gh, puts, reads } = makeGH({ failPuts: 1, lsRows: [{ name: 'activity.json', sha: 'listsha' }] });
+  await gh.save('state/activity.json', { a: 1 });
+  assert.deepEqual(reads.map(r => [r.kind, r.path]), [['dir', 'state']]);
+  assert.equal(puts[1].body.sha, 'listsha', 'the retry carries the sha the listing named');
+});
+
+test('no listing, or no row in it, and the file read still answers', async () => {
+  // A path at the repo root has no directory to list, and a listing that does
+  // not name the file is not an answer either.
+  const { gh, reads } = makeGH({ failPuts: 1, lsRows: null });
+  await gh.save('state/activity.json', { a: 1 });
+  assert.deepEqual(reads.map(r => r.kind), ['dir', 'file']);
+  const { gh: gh2, reads: r2 } = makeGH({ failPuts: 1 });
+  await gh2.save('root.json', { a: 1 });
+  assert.deepEqual(r2.map(r => r.kind), ['file'], 'no slash, no listing to try');
+});
+
+// An explicit sha is for a caller that knows what it wrote (lib/kits/
+// last-write.js): it skips the guess a read would make, which is the only thing
+// that helps when the API's own read is behind its own write.
+test('an explicit sha rides the first PUT, with no read at all', async () => {
+  const { gh, puts, reads } = makeGH();
+  await gh.save('state/activity.json', { a: 1 }, 'msg', { sha: 'mine' });
+  assert.equal(puts[0].body.sha, 'mine');
+  assert.equal(reads.length, 0);
 });
 
 // The recovery's re-read must not come from the HTTP cache, which is where this
@@ -110,6 +154,7 @@ test('the conflict refetch reads past the HTTP cache', async () => {
   assert.equal(reads.length, 1, 'the conflict refetched the sha');
   assert.equal(reads[0].opts?.cache, 'no-store',
     'a refetch through the cache re-reads the sha it was rejected for');
+  assert.equal(reads[0].kind, 'dir', 'and it buys the sha from the listing');
 });
 
 // del() reads the sha with no retry behind it, so a cached read is fatal rather

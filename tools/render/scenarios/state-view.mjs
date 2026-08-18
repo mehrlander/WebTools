@@ -5,6 +5,10 @@
 // browser rows are seeded so every row type renders: a current cache, a stale
 // one, a cache this browser has never checked, and the entity index with no
 // button at all.
+//
+// `?crawl=1` adds the mid-refresh posture: the busy flags and the shell's
+// progress channel, which no stub of the reads can produce, since the bars draw
+// from a running crawl.
 export default async (page) => {
   await page.evaluate(() => {
     window.TOKEN = 'FAKE';
@@ -72,6 +76,27 @@ export default async (page) => {
     const realGet = window.GH.prototype.get;
     window.GH.prototype.get = async function (p) {
       if (!String(p).startsWith('state/')) return realGet.call(this, p);
+      // The call log the crawls write as they close, last run per key. Shaped
+      // like a real activity run: a tree read per surveyed branch is what makes
+      // the count what it is, which is the reading the tab exists for.
+      if (p === 'state/calls.json') {
+        const rows = [];
+        const push = (m, u, ms, b) => rows.push({ m, u, s: 200, ms, b });
+        push('GET', 'user/repos?sort=updated&per_page=100', 240, 66120);
+        for (const repo of ['web-tools', 'home', 'web-tools-private', 'chat-histories', 'wps']) {
+          push('GET', `repos/mehrlander/${repo}/branches?per_page=100`, 90 + repo.length, 4210);
+          push('GET', `repos/mehrlander/${repo}/commits?sha=main&per_page=12`, 110, 8800);
+          push('GET', `repos/mehrlander/${repo}/pulls?state=all&per_page=100`, 130, 12400);
+          for (let i = 0; i < 6; i++)
+            push('GET', `repos/mehrlander/${repo}/git/trees/${'a1b2c3d4e5f6'.repeat(3).slice(0, 40)}?recursive=1`, 70 + i, 31000);
+        }
+        rows.push({ m: 'PUT', u: 'repos/mehrlander/web-tools-private/contents/state/activity.json',
+                    s: 201, ms: 420, b: 512 });
+        return { text: JSON.stringify({ generatedAt: iso(0), runs: {
+          activity: { at: iso(0.02), ms: 21000, verb: 'Surveying branches', unit: 'repos',
+                      calls: rows.length, rows, truncated: false },
+        } }, null, 2) };
+      }
       const v = /^c(\d)/.test(this.ref) ? +this.ref[1] : 0;   // which committed version
       const repos = {};
       MEMBERS.forEach((repo, i) => {
@@ -126,6 +151,11 @@ export default async (page) => {
     window.__STATE_OPEN = new URLSearchParams(location.search).get('open') || '';
     window.__STATE_TAB = new URLSearchParams(location.search).get('read') || 'contents';
     window.__STATE_DIFF = new URLSearchParams(location.search).get('diff') || '';
+    // `?crawl=1` freezes the view mid-refresh, which no stub of the reads can
+    // produce: the bars draw from the shell's progress channel, which only a
+    // running crawl fills. Read here with the others, before syncUrl rewrites
+    // the query.
+    window.__STATE_CRAWL = new URLSearchParams(location.search).get('crawl') || '';
 
     // Honor an `?item=` on the address so the scenario can shoot an aimed link
     // (what an age pill opens) as well as the bare view.
@@ -149,4 +179,43 @@ export default async (page) => {
     for (const i of window.__STATE_DIFF.split(',').filter(s => s !== '')) await d.diffAt(row, +i);
   });
   await page.waitForTimeout(1500);
+
+  // The mid-crawl posture, on top of everything above: the row a crawl was
+  // started from draws its progress under the ages. The shapes are the ones the
+  // three crawls publish, so the screenshot shows what each actually says: the
+  // activity crawl on its survey pass with two repos in flight, the sessions
+  // crawl reading record blobs six at a time, and the unpooled config fan-out
+  // counting with nothing to name.
+  await page.evaluate(() => {
+    if (!window.__STATE_CRAWL) return;
+    const s = window.__shell;
+    s.configRefreshing = true;
+    s.activityRefreshing = true;
+    s.sessionsRefreshing = true;
+    s.crawlProgress = {
+      configs:  { verb: 'Reading configs',    unit: 'repos',   done: 31, total: 44, active: [],
+                  calls0: 341 },
+      activity: { verb: 'Surveying branches', unit: 'repos',   done: 4,  total: 11,
+                  active: ['mehrlander/chat-histories', 'mehrlander/home'], calls0: 313 },
+      sessions: { verb: 'Reading records',    unit: 'records', done: 18, total: 120,
+                  active: ['sessions/2026/08/2026-08-16-aaaa1111.json',
+                           'sessions/2026/08/2026-08-16-bbbb2222.json'],
+                  calls0: 402 },
+    };
+    // The wire tail reads gh-boot's traffic ledger, which in the sandbox holds
+    // the page's own boot rather than a crawl. These are the calls each crawl
+    // really makes, so the line shows what a reader would see mid-run; the
+    // ledger is a plain array on the window, so writing it is the whole stub.
+    window.__traffic = [
+      { url: 'https://api.github.com/repos/mehrlander/home/git/trees/main?recursive=1',
+        method: 'GET', status: 200, t: Date.now() },
+    ];
+    window.__trafficTotals = { calls: 468 };
+  });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    if (!window.__STATE_CRAWL) return;
+    window.dispatchEvent(new CustomEvent('traffic'));
+  });
+  await page.waitForTimeout(400);
 };
