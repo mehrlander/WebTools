@@ -171,7 +171,7 @@ two halves want opposite treatments:
 
 The contract half checks out as redundant on every probe run against it: all
 ten `.web-tools.json` fields in its table are in the doc, and
-[`manifest.json`](manifest.json) governs twenty; the federation account is in
+[`manifest-fields.csv`](manifest-fields.csv) governs forty-six; the federation account is in
 the doc's Roadmap with the same reasoning; the branch overlay section is longer
 and carries a "why this needs to exist" analysis the block lacks; the boundary
 covers four channels where the block covers two.
@@ -189,7 +189,7 @@ would lose them.
 **Done 2026-08-10.** The contract half is retired, the rationale half sits at
 the code it explains, and three facts that were in the block and in neither the
 doc nor `estate.js` were salvaged into the doc first: the `?view=app&appRepo&appPath`
-address for a promoted app view, `docs/owners.json` behind the Map's Claims tab,
+address for a promoted app view, `docs/owners.csv` behind the Map's Claims tab,
 and `lists/pins.json` with the Pin item shape. The page went from 294,628 to
 255,545 bytes and from 91,970 to 76,894 gzipped, and its comment count rose from
 327 blocks to 335, which is the shape of the change: fewer words, more sites.

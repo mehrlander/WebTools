@@ -339,7 +339,7 @@ The per-repo views in the sidebar:
   else, and the overview's own carve-out went with them: it had skipped the
   README fetch on the hub, since the hub was the one repo that never rendered
   one.
-- **pages**: the gallery, from web-tools' `pages.json` or any repo's `pages`
+- **pages**: the gallery, from web-tools' `pages/pages.csv` or any repo's `pages`
   catalog. A standing row now, wherever there is a catalog; it used to appear
   only when a custom `landing` had taken the front door from it.
 - **Landing** *(a repo declaring one)*: the repo's own declared front page,
@@ -1157,7 +1157,7 @@ tapped had nothing to render.
 
 *Portable* (labelled The set until 2026-08-07; the `?tab=set` URL key is
 unchanged) renders the to-go bag from the hub's committed manifest,
-[`docs/portable.json`](portable.json), whose prose parent is
+[`docs/portable.csv`](portable.csv), whose prose parent is
 [`docs/PORTABLE.md`](PORTABLE.md) (a test,
 `tools/test/portable-manifest.test.mjs`, holds the two consistent, so the UI
 never drifts from the catalog). Grouped as plugin skills, docs, and scripts;
@@ -1201,7 +1201,7 @@ since adoption changes when someone edits a settings file. The State view's
 config row re-crawls when the answer matters now. A repo the crawl has not reached shows no
 verdict and no chips: absent means not read, never not aligned.
 
-*Surfacing* indexes the primitives from [`docs/surfacing.json`](surfacing.json),
+*Surfacing* indexes the primitives from [`docs/surfacing.csv`](surfacing.csv),
 one card each (glyph, use, form, boundary). The ownership runs opposite to
 every other tab, and the header says so: [`SURFACING.md`](SURFACING.md) is the
 authoritative carrier, since it is what sessions load and follow, and the
@@ -1242,7 +1242,7 @@ same builder-plus-drift-check shape as the set's manifest test. Public, like the
 set, and loaded on first open of the tab rather than at mount.
 
 *Docs* renders the documentation registry,
-[`docs/docs.json`](docs.json), in the same lazy shape. Two tables. The
+[`docs/docs.csv`](docs.csv), in the same lazy shape. Two tables. The
 **documents census**: every `.md`/`.json` under `docs/`, each with its subject,
 its status (**living** claims current truth and is wrong when stale; **record**
 preserves a moment and is wrong when rewritten; **measured** carries dated
@@ -1268,7 +1268,7 @@ repetitions (copy, paraphrase, pointer, live read; a copy says who keeps it, by
 hand or by a named builder), where an absent check renders in the warning tone
 rather than being omitted, because an unchecked copy should look unchecked every
 time the tab opens. The claims table renders on its own **Claims** tab
-(2026-08-07), off [`docs/owners.json`](owners.json); the `?tab=claims` key is
+(2026-08-07), off [`docs/owners.csv`](owners.csv); the `?tab=claims` key is
 unchanged, the way `?tab=set` outlived "The set". It keys on claims rather than files, so trailing the census it
 read as an appendix, first open, then folded behind a count; a tab keeps the
 census on one viewport and gives the table its own. The registry is authoritative for the claims it covers and
@@ -1295,7 +1295,7 @@ That last case is the reason the caveats are on screen instead of in this file:
 estate and are precisely the two no file tool can see, so a bare count would rank
 them last.
 
-*Tests* is the same census one axis over, from [`docs/tests.csv`](tests.json):
+*Tests* is the same census one axis over, from [`docs/tests.csv`](tests.csv):
 every file in the suite with its kind (gate, lockstep, tool, kit, behavior,
 component, guard) and what breaks if it is deleted, its assertions, method,
 runner and boot-smoke count all derived from the files and gated against the
@@ -1308,7 +1308,7 @@ its unit. Public.
 reaches for (the text-diff tool, the transform/compress round-trip, and so on),
 an estate-level peer beside Repos / Surfaces / Stage / Map. It reuses the
 pages-catalog card (thumbnail or live preview, an open link, a source link),
-fed from a hand-curated manifest, [`docs/tools.json`](tools.json), rather than a
+fed from a hand-curated manifest, [`docs/tools.csv`](tools.csv), rather than a
 repo scan. Each entry is `{ path, title, note, icon }`, where `path` is a bare
 hub path (`pages/diff-tool.html`, the hub at main) or a qualified cross-repo ref
 (`owner/repo[@ref]:path`), the same grammar as a pages catalog entry. Public: the
@@ -1797,7 +1797,7 @@ The manifest's contract lives in its own reference now,
 [manifest.md](manifest.md): the file's shape, the membership rule, the config
 cache, the mailbox, inbox and outbox, proposals, the repo menu, and editing
 the manifest from the shell, with the field list as data in
-[manifest.json](manifest.json). What stays here is the consumer's boundary:
+[manifest-fields.csv](manifest-fields.csv). What stays here is the consumer's boundary:
 show-repo reads `landing`, `pages`, `pins`, and `stage` to decide how to
 present a repo, probes the file once per `repo@ref`, and parses it as data,
 never executed; a 404 means no config.

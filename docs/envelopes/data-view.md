@@ -72,7 +72,7 @@ A payload is read by [`lib/kits/data-payload.js`](../../lib/kits/data-payload.js
 
 An object is an envelope when it declares `kind: "data-view/1"`, **or** its `items` entries each carry at least one of `content`, `src`, or `name`. Everything else is bare data.
 
-The second half of that rule is what keeps a legitimate payload safe. `{"items": [1, 2, 3], "total": 6}` is data, not an envelope, and so is a config file whose top-level key happens to be `items`: [`docs/tools.json`](../tools.json) is exactly that shape and reads as data. When a payload really is ambiguous, `kind` settles it.
+The second half of that rule is what keeps a legitimate payload safe. `{"items": [1, 2, 3], "total": 6}` is data, not an envelope, and so is any config file whose top-level key happens to be `items` while its entries carry none of `content`, `src`, or `name`. The estate used to have one, `docs/tools.json`, and it was the example this paragraph named until that registry became a CSV on 2026-08-18; the rule outlives the illustration, because the shape is ordinary and will recur. When a payload really is ambiguous, `kind` settles it.
 
 ## Views
 

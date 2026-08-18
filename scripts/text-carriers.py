@@ -392,7 +392,7 @@ def main(argv):
     # A .md is exempt from the naming check. The question "does anything name
     # this carrier" is about a data file that could be filed and forgotten; a
     # document is its own thing, needs no second file to vouch for it, and in
-    # this estate docs/docs.json already governs whether docs/ is fully claimed.
+    # this estate docs/docs.csv already governs whether docs/ is fully claimed.
     undeclared = [c for c in authored
                   if not c["declared"] and not c["carrier"].endswith(".md")]
 

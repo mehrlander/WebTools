@@ -32,6 +32,9 @@ const { window } = makeWindow({
 });
 const doc = window.document;
 const Alpine = await startAlpine(window, [
+  // kits/csv.js first: Match's registry lane parses five CSV carriers through
+  // it, the same way the pre-build's boot list supplies it on a real page.
+  'lib/kits/csv.js',
   'lib/kits/guide-render.js', 'lib/alpineComponents/path-picker.js', 'lib/alpineComponents/fab.js',
 ]);
 
@@ -258,25 +261,25 @@ test('named paths include code spans; bare paths do not', async () => {
     'every path named anywhere is a candidate, sorted and deduplicated');
 });
 
-// The registry stubs, in the shape each carrier really has. pages.json is the
-// nested one, and it is in the set precisely because its shape differs: a
-// reader that only handled flat rows would drop 68 paths and nobody would see
-// it happen.
+// The registry stubs, as the CSV text each carrier really holds, so the reader
+// is exercised through its parser rather than around it. All five are CSV since
+// 2026-08-18; the page catalog is keyed by `href` under a `pages/` prefix
+// rather than by a full path, which is the one shape difference left.
 const REG = {
-  'docs/docs.csv': { documents: [
-    { path: 'docs/loader.md', subject: 'the loader contract', status: 'living' },
-    { path: 'CLAUDE.md', subject: 'the repo instructions', status: 'living' },
-  ] },
-  'docs/tests.csv': { tests: [
-    { path: 'tools/test/fab-text.test.mjs', protects: 'the fifth tab', kind: 'behavior' },
-  ] },
-  'docs/harness.csv': { tools: [] },
-  'docs/portable.csv': { items: [
-    { path: '.claude/skills/web-tools/SKILL.md', role: 'loads the conventions', kind: 'skill' },
-  ] },
-  'pages/pages.csv': [
-    { label: '', items: [{ href: 'shorter.html', title: 'Shorter', note: 'line up a shorter draft' }] },
-  ],
+  'docs/docs.csv':
+    'path,subject,status\n' +
+    'docs/loader.md,the loader contract,living\n' +
+    'CLAUDE.md,the repo instructions,living\n',
+  'docs/tests.csv':
+    'path,protects,kind\n' +
+    'tools/test/fab-text.test.mjs,the fifth tab,behavior\n',
+  'docs/harness.csv': 'path,role,layer\n',
+  'docs/portable.csv':
+    'path,role,kind\n' +
+    '.claude/skills/web-tools/SKILL.md,loads the conventions,skill\n',
+  'pages/pages.csv':
+    'href,title,note\n' +
+    'shorter.html,Shorter,line up a shorter draft\n',
 };
 
 // Stub the two reads Match makes. `calls` records what was asked for, so a
@@ -289,7 +292,7 @@ function stubReads(d, { tree = null, treeThrows = null, drop = [] } = {}) {
       calls.registries.push(p);
       if (drop.includes(p)) throw new Error('unreadable');
       if (!REG[p]) throw new Error('no such registry');
-      return { text: JSON.stringify(REG[p]) };
+      return { text: REG[p] };
     };
   };
   window.EstateSearch = {

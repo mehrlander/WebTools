@@ -26,7 +26,7 @@ tools/build/registries-load.mjs,"read and write the registry pair (docs/registri
 tools/build/registries-reach.mjs,"stamp renders_in into docs/registries.csv: the app files that name each registry's path, empty being the Registries tab's warning state",tools/build,91,npm:registries-reach,true,true,true
 tools/build/repo-pages-shots.mjs,regenerate pages-gallery thumbnails for another repo's pages catalog,tools/build,167,argv,false,true,false
 tools/build/snags-index.mjs,generates the index at the top of docs/SNAGS.md and warns about likely repeats,tools/build,169,npm:snags-index,false,false,true
-tools/build/tests-index.mjs,"restamp the derived half of docs/tests.json, the test registry",tools/build,235,npm:tests-index,true,false,true
+tools/build/tests-index.mjs,"restamp the derived half of docs/tests.csv, the test registry",tools/build,235,npm:tests-index,true,false,true
 tools/build/tools-index.mjs,restamp the derived half of this census,tools/build,170,npm:tools-index,true,true,true
 tools/build/verify-build.mjs,prove a page's dist build renders byte-identical to its live gh.load chain,tools/build,86,npm:verify-build,false,true,false
 tools/concept-lab/build-entity-index.py,build the committed entity index end to end in one command,tools/concept-lab,200,argv,false,true,false
@@ -93,7 +93,7 @@ tools/render/scenarios/estate-surfaces-embed.mjs,"the Surfaces view rendering a 
 tools/render/scenarios/estate-unfiled.mjs,,tools/render/scenarios,99,driver,false,false,false
 tools/render/scenarios/fab-export.mjs,the FAB's Export controls,tools/render/scenarios,31,driver,false,true,false
 tools/render/scenarios/fab-guide.mjs,the fab's Render tab seeded token-free so the guide pane renders,tools/render/scenarios,144,driver,false,false,false
-tools/render/scenarios/fab-text-match.mjs,"drive the Text tab for a shot: the read is real, the tree and registry reads are seeded, and STATE picks the un-run pane, the resolved match, or a selection-scoped read",tools/render/scenarios,91,driver,false,false,false
+tools/render/scenarios/fab-text-match.mjs,"drive the Text tab for a shot: the read is real, the tree and registry reads are seeded, and STATE picks the un-run pane, the resolved match, or a selection-scoped read",tools/render/scenarios,89,driver,false,false,false
 tools/render/scenarios/fab-toss.mjs,toss-render address mode with the fab's toss integration and singleton guard,tools/render/scenarios,49,driver,false,false,false
 tools/render/scenarios/fab-traffic-toss.mjs,"the Traffic tab inside a toss: the bands describe the tossed page, not the shell",tools/render/scenarios,56,driver,false,false,false
 tools/render/scenarios/fab-traffic.mjs,the fab's Traffic tab with a real BOOT band from the loopback render,tools/render/scenarios,78,driver,false,false,false

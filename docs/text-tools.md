@@ -65,11 +65,11 @@ for about 400 exact strings:
 
 | Registry | Covers | Says | Rows |
 | --- | --- | --- | --- |
-| [`docs.json`](docs.json) | `docs/`, `.md` and `.json` | subject, status | 52 |
-| [`tests.json`](tests.json) | `tools/test/` | protects, kind | 137 |
-| [`harness.json`](harness.json) | `tools/`, `scripts/` | role, layer | 124 |
-| [`portable.json`](portable.json) | the portable set | role, kind | 42 |
-| [`pages.json`](../pages/pages.csv) | `pages/` | note, live address | 68 |
+| [`docs.csv`](docs.csv) | `docs/`, `.md` and `.json` | subject, status | 52 |
+| [`tests.csv`](tests.csv) | `tools/test/` | protects, kind | 137 |
+| [`harness.csv`](harness.csv) | `tools/`, `scripts/` | role, layer | 124 |
+| [`portable.csv`](portable.csv) | the portable set | role, kind | 42 |
+| [`pages.csv`](../pages/pages.csv) | `pages/` | note, live address | 68 |
 
 The first build ran the other way: a regex for path-shaped strings, then a tree
 read to validate each guess, with the registry consulted last. Inverting it made
