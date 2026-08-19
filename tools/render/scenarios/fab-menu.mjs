@@ -1,6 +1,6 @@
 // The launcher's long-press menu on the app, showing both rows: the built-in
 // "Take a note" (now one line, no prose under it) and the page-contributed
-// "Paste onto the Stage".
+// "Paste to Stage".
 //
 // Driven by calling openFabMenu() rather than by synthesising a 450ms pointer
 // hold: the gesture is covered by the fab's own tests, and what a screenshot
