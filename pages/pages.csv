@@ -58,6 +58,7 @@ scratch,pages/scratch/,define-test,x-define — isolated test,scratch/define-tes
 scratch,pages/scratch/,demo-spacex,SpaceX Viewer Demo,scratch/demo-spacex.html,thumbs/scratch/demo-spacex.png,https://github.com/mehrlander/web-tools/blob/main/pages/scratch/demo-spacex.html,
 scratch,pages/scratch/,fab-sidebar-test,FAB sidebar test,scratch/fab-sidebar-test.html,thumbs/scratch/fab-sidebar-test.png,https://github.com/mehrlander/web-tools/blob/main/pages/scratch/fab-sidebar-test.html,
 scratch,pages/scratch/,review-proto,Review · styling prototype,scratch/review-proto.html,thumbs/scratch/review-proto.png,https://github.com/mehrlander/web-tools/blob/main/pages/scratch/review-proto.html,
+scratch,pages/scratch/,session-graph,Sessions and branches as nodes,scratch/session-graph.html,thumbs/scratch/session-graph.png,https://github.com/mehrlander/web-tools/blob/main/pages/scratch/session-graph.html,
 scratch,pages/scratch/,sidebar-drawer-mwe,Sidebar Drawer MWE,scratch/sidebar-drawer-mwe.html,thumbs/scratch/sidebar-drawer-mwe.png,https://github.com/mehrlander/web-tools/blob/main/pages/scratch/sidebar-drawer-mwe.html,
 show-repo,pages/show-repo/,demo-viewer,Assembled Viewer Demo,show-repo/demo-viewer.html,thumbs/show-repo/demo-viewer.png,https://github.com/mehrlander/web-tools/blob/main/pages/show-repo/demo-viewer.html,
 show-repo,pages/show-repo/,repo-drag,Repo drag explorer,show-repo/repo-drag.html,thumbs/show-repo/repo-drag.png,https://github.com/mehrlander/web-tools/blob/main/pages/show-repo/repo-drag.html,
