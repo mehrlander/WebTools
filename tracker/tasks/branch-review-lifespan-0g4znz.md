@@ -13,7 +13,7 @@ The estate's Open view now states each branch's lifespan, first commit then late
 
 ## Why
 
-The data is already there. `BranchSurvey.surveyBranchLive` returns `firstDate` for every surveyed branch, and the branch review is one of its two callers, so the field arrives in `older[]` whether the view reads it live or from the activity cache. What is missing is the render: `lib/alpineComponents/branches.js` prints `r.ago` in the row's right-hand cell.
+The data is already there. `BranchStatus.surveyBranchLive` returns `firstDate` for every surveyed branch, and the branch review is one of its two callers, so the field arrives in `older[]` whether the view reads it live or from the activity cache. What is missing is the render: `lib/alpineComponents/branches.js` prints `r.ago` in the row's right-hand cell.
 
 The gap matters more here than in the Open view. The branch review's whole subject is older branches, where "last touched 4 months ago" says nothing about whether the branch represents a week of work or one commit.
 
@@ -30,7 +30,7 @@ Small and self-contained. The one judgment call is the table cell: the review is
 ## Progress log
 - 2026-07-26 filed at PR #298 wrap-up, from the follow-on the lifespan work exposed
 - 2026-07-31 done on `claude/project-pages-docs-udzi51`; lands via PR #331. The
-  collapse rules moved to lib/branch-survey.js (lifespanStart / lifespanTitle),
+  collapse rules moved to lib/branch-status.js (lifespanStart / lifespanTitle),
   the estate delegates to them, and the review's Age cell states the span in
   the Open view's one-cell arrow form (the two-column alternative was not
   needed at the table's density). The cached render carries firstDate through

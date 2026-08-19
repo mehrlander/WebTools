@@ -77,7 +77,7 @@ export default async (page) => {
     window.GH.prototype.get = async function (p) {
       if (!String(p).startsWith('state/')) return realGet.call(this, p);
       // The call log the crawls write as they close, last run per key. Shaped
-      // like a real activity run: a tree read per surveyed branch is what makes
+      // like a real activity run: a tree read per scanned branch is what makes
       // the count what it is, which is the reading the tab exists for.
       if (p === 'state/calls.json') {
         const rows = [];
@@ -93,7 +93,7 @@ export default async (page) => {
         rows.push({ m: 'PUT', u: 'repos/mehrlander/web-tools-private/contents/state/activity.json',
                     s: 201, ms: 420, b: 512 });
         return { text: JSON.stringify({ generatedAt: iso(0), runs: {
-          activity: { at: iso(0.02), ms: 21000, verb: 'Surveying branches', unit: 'repos',
+          activity: { at: iso(0.02), ms: 21000, verb: 'Scanning branches', unit: 'repos',
                       calls: rows.length, rows, truncated: false },
         } }, null, 2) };
       }
@@ -183,7 +183,7 @@ export default async (page) => {
   // The mid-crawl posture, on top of everything above: the row a crawl was
   // started from draws its progress under the ages. The shapes are the ones the
   // three crawls publish, so the screenshot shows what each actually says: the
-  // activity crawl on its survey pass with two repos in flight, the sessions
+  // activity crawl on its scan pass with two repos in flight, the sessions
   // crawl reading record blobs six at a time, and the unpooled config fan-out
   // counting with nothing to name.
   await page.evaluate(() => {
@@ -195,7 +195,7 @@ export default async (page) => {
     s.crawlProgress = {
       configs:  { verb: 'Reading configs',    unit: 'repos',   done: 31, total: 44, active: [],
                   calls0: 341 },
-      activity: { verb: 'Surveying branches', unit: 'repos',   done: 4,  total: 11,
+      activity: { verb: 'Scanning branches', unit: 'repos',   done: 4,  total: 11,
                   active: ['mehrlander/chat-histories', 'mehrlander/home'], calls0: 313 },
       sessions: { verb: 'Reading records',    unit: 'records', done: 18, total: 120,
                   active: ['sessions/2026/08/2026-08-16-aaaa1111.json',

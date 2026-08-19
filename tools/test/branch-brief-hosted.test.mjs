@@ -60,7 +60,7 @@ const { window } = makeWindow({
   html: '<!doctype html><html><body><div id="m"></div></body></html>',
 });
 
-for (const f of ['lib/kits/branch-survey.js', 'lib/kits/branch-brief.js']) {
+for (const f of ['lib/kits/branch-status.js', 'lib/kits/branch-brief.js']) {
   new window.Function('window', readFileSync(path.join(repoRoot, f), 'utf8'))(window);
 }
 

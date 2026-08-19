@@ -6,7 +6,7 @@ Measured 2026-08-10 across `mehrlander/web-tools` and `mehrlander/home`, with
 two instruments that make every figure below one command away:
 
 ```bash
-python3 scripts/text-survey.py . pages lib --weight   # text with no carrier
+python3 scripts/embedded-prose.py . pages lib --weight   # text with no carrier
 python3 scripts/text-carriers.py . --fields           # the carriers we have
 ```
 
@@ -21,7 +21,7 @@ Two questions, and they needed different work:
    words. [`docs/text-fields.csv`](text-fields.csv) now states twelve names with
    the rule for picking among them, and every prose field name in budget-DRS
    maps to one of them.
-2. **What never reached a carrier?** Widening the survey from `.js`/`.html` to
+2. **What never reached a carrier?** Widening the scan from `.js`/`.html` to
    `.py` roughly doubled the commentary found in budget-DRS's app and took its
    uncarried text tables from 2 to 10. Six registry rows moved another 53,115
    words from "no carrier" to correctly declared as supplied or generated, and
@@ -38,7 +38,7 @@ that decides where each belongs.
 | **Commentary** | whoever edits the file | the source file | grows into a document with no registry row |
 | **Inline prose** | the app's reader | rendered from a carrier | a sentence with no owner, category, or check |
 
-The survey names them `text-table`, `commentary`, and `inline`. None is an
+The scan names them `text-table`, `commentary`, and `inline`. None is an
 error and the script never says otherwise. A comment is supposed to exist, and
 a three-row gloss table is not worth a CSV.
 
@@ -97,7 +97,7 @@ means somewhere else.
 
 # Part 2: text that never reached a carrier
 
-[`scripts/text-survey.py`](../scripts/text-survey.py) reads `.js`, `.mjs`,
+[`scripts/embedded-prose.py`](../scripts/embedded-prose.py) reads `.js`, `.mjs`,
 `.html`, and `.py`, splits what it finds into the three kinds, and separates
 generated payloads and supplied files, whose text has a carrier somewhere else.
 It reads the repo's `data/design/content.csv` where one exists, so it reports
@@ -214,7 +214,7 @@ same subjects. It needs the same substance check the manifest table got.
 commit message:** a token comparison is the right first instrument and the wrong
 last one. It found the coverage gap in minutes and would have authorized
 deleting 2,760 words of unique judgment, because the judgments that matter most
-are exactly the ones phrased without an identifier to match on. Every survey in
+are exactly the ones phrased without an identifier to match on. Every scan in
 this document has that shape. They are worth running and not worth obeying.
 
 The transfer cost is real and separable. Stripping comments takes the page from
@@ -260,7 +260,7 @@ reaches a reader exactly as one in a view module does, and until this pass the
 two could not be counted by the same means: the 113 builder literals in the
 first version of this document had to be counted by hand.
 
-The survey separates the guard messages, which are legitimately code. The
+The scan separates the guard messages, which are legitimately code. The
 distinction is mechanical: a string inside a `raise`, `assert`, `sys.exit`, or
 `print` is addressed to whoever ran the build.
 
@@ -330,7 +330,7 @@ row count, and the word count on every run; committing them would add a refresh
 obligation and a way to be out of date, which is exactly the argument that
 retired `docs/MERGE-GUIDE.md`.
 
-What a survey cannot derive is what a name *means*. That is the whole finding of
+What a scan cannot derive is what a name *means*. That is the whole finding of
 Part 1, and it needs one row per **name**, not one per carrier.
 
 ## The carrier: docs/text-fields.csv
@@ -456,7 +456,7 @@ misfire.
 - A prose field whose name is not in the stated vocabulary.
 - An authored carrier nothing in the repo names. `text-carriers.py --check`
   exits 1 on one; both repos pass today except for a single web-tools file.
-- A comment block over N words. `text-survey.py --check N` names the offenders.
+- A comment block over N words. `embedded-prose.py --check N` names the offenders.
 - Drift between a declared `rows` count and the carrier's actual row count, the
   same shape as the registry gates already running.
 
@@ -472,9 +472,9 @@ misfire.
 
 So the recommended gate is narrow: fail on an undeclared text table and on an
 off-vocabulary field name, and report everything else. Same posture as
-[`scripts/link-survey.py`](../scripts/link-survey.py), which gates the
+[`scripts/dead-links.py`](../scripts/dead-links.py), which gates the
 cross-repo classes and never gates the internal one, and
-[`unclaimed-code-survey.py`](../scripts/unclaimed-code-survey.py), which never
+[`unclaimed-code.py`](../scripts/unclaimed-code.py), which never
 gates at all.
 
 Placement follows the estate's existing owner split:
@@ -520,11 +520,11 @@ What remains:
    it, at a fraction of the cost.
 
 
-# What the survey cannot see
+# What the scan cannot see
 
 Stated so the numbers are not read as more than they are.
 
-- **Markdown prose outside a table is uncovered.** The carrier survey reads GFM
+- **Markdown prose outside a table is uncovered.** The carrier scan reads GFM
   tables under `--markdown`; body prose in a document is not a carrier and
   nothing here counts it.
 - **A template literal that emits JavaScript** reads as prose to a word

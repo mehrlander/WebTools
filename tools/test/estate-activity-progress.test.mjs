@@ -86,8 +86,8 @@ test('mid-crawl: finished repos over total, every in-flight repo named', () => {
 test('the verb is the crawl\'s own, whatever it is doing', () => {
   // The refresh named two verbs while it ran in two passes; it runs as one now
   // and still names its own, since only the crawl knows what it is doing.
-  shell.crawlProgress = { activity: P({ verb: 'Surveying branches', done: 1, total: 3, active: ['me/a'] }) };
-  assert.equal(data.crawlLabel('activity'), 'Surveying branches · 1 of 3 repos');
+  shell.crawlProgress = { activity: P({ verb: 'Scanning branches', done: 1, total: 3, active: ['me/a'] }) };
+  assert.equal(data.crawlLabel('activity'), 'Scanning branches · 1 of 3 repos');
 });
 
 test('the bar counts finished repos only, never the ones in flight', () => {

@@ -34,11 +34,11 @@ dir,,skills,Skill library,"the personal skill library load-skill pulls from, pub
 script,,.claude/skills/tasks/build-board.py,build-board.py,regenerate a tracker's board.md from task frontmatter; ships inside the plugin,plugin
 script,,.claude/skills/in-flight/in-flight.py,in-flight.py,classify a branch estate into live / merged / unrelated and reconcile tracker claims against it; ships inside the plugin,plugin
 script,,scripts/sunset-scan.py,sunset-scan.py,,on-demand
-script,,scripts/unclaimed-code-survey.py,unclaimed-code-survey.py,,on-demand
+script,,scripts/unclaimed-code.py,unclaimed-code.py,,on-demand
 script,,scripts/declared-paths.py,declared-paths.py,,on-demand
-script,,scripts/link-survey.py,link-survey.py,,on-demand
-script,,scripts/text-survey.py,text-survey.py,,on-demand
-script,,scripts/title-survey.py,title-survey.py,,on-demand
+script,,scripts/dead-links.py,dead-links.py,,on-demand
+script,,scripts/embedded-prose.py,embedded-prose.py,,on-demand
+script,,scripts/stranded-titles.py,stranded-titles.py,,on-demand
 script,,scripts/text-carriers.py,text-carriers.py,,on-demand
 script,,scripts/build-tree.py,build-tree.py,,on-demand
 script,,scripts/ocr-pdf.py,ocr-pdf.py,,on-demand

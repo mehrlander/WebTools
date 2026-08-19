@@ -8,7 +8,7 @@
 // obvious from reading the file:
 //
 //   The alias map has to be a FUNCTION. One old name maps to one new name, or
-//   the survey's arrow lies: `scripts/text-carriers.py` resolves an
+//   the scan's arrow lies: `scripts/text-carriers.py` resolves an
 //   off-vocabulary name through `instead_of`, and a name listed under two
 //   fields would resolve to whichever row it read last.
 //
@@ -91,7 +91,7 @@ test('the alias map is a function: no name maps to two fields', () => {
     for (const a of aliasesOf(r)) {
       const prior = seen.get(a);
       assert.ok(!prior,
-        `alias "${a}" is claimed by both ${prior} and ${r.field}; the survey would ` +
+        `alias "${a}" is claimed by both ${prior} and ${r.field}; the scan would ` +
         'resolve it to whichever row it read last');
       seen.set(a, r.field);
     }
@@ -109,7 +109,7 @@ test('no alias is also a sanctioned name', () => {
 });
 
 test('every sanctioned name is prose about a row, not a row identifier', () => {
-  // The survey skips identifier-shaped columns (title, name, id, path) before it
+  // The scan skips identifier-shaped columns (title, name, id, path) before it
   // ever checks the vocabulary, so sanctioning one would create a name that can
   // never match anything.
   const IDENTIFIERS = new Set(['title', 'name', 'id', 'key', 'path', 'label', 'url']);

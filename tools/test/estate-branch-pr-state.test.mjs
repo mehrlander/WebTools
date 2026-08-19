@@ -166,17 +166,17 @@ window.__shell = { REGISTRY_REPO: 'me/registry', DEFAULT_REPO: 'me/tools',
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
-  'lib/kits/branch-survey.js',
+  'lib/kits/branch-status.js',
   'lib/kits/surface.js',
   'lib/alpineComponents/estate.js',
 ]);
 const data = Alpine.$data(window.document.getElementById('es'));
 
-// One repo's cached activity. `branches` are survey rows, `openPRs` the open
+// One repo's cached activity. `branches` are scan rows, `openPRs` the open
 // list, `branchPRs` the any-state index the crawl now stores beside it.
 const seed = ({ branches = [], openPRs = [], branchPRs = [], prReach = '' }) => {
   data.activity = { 'acme/widget': {
-    defaultBranch: 'main', openPRs, branchPRs, prReach, survey: { branches },
+    defaultBranch: 'main', openPRs, branchPRs, prReach, scan: { branches },
   } };
   // All, not Recent: these rows carry no dates, and the scope axis is not what
   // is under test here.
@@ -185,7 +185,7 @@ const seed = ({ branches = [], openPRs = [], branchPRs = [], prReach = '' }) => 
 const row = (name) => data.openRows.find(r => r.name === name);
 
 test('a merged branch reads merged, not "no PR"', () => {
-  // The reported bug, at row level: the branch is in the survey, its PR is
+  // The reported bug, at row level: the branch is in the scan, its PR is
   // gone from the open list because it merged, and the row used to say the
   // branch had never had one.
   seed({
@@ -305,7 +305,7 @@ test('the Abandoned scope collects closed-unmerged branches at any age', () => {
                    ['claude/also-dropped', 'claude/dropped']);
 });
 
-test('Abandoned is a chip with its own count, beside the survey groups', () => {
+test('Abandoned is a chip with its own count, beside the scan groups', () => {
   seed({
     branches: [{ name: 'claude/dropped', group: 'stranded' }, { name: 'claude/merged', group: 'active' }],
     branchPRs: [{ head: 'claude/dropped', number: 300, state: 'closed', draft: false, count: 1 },
@@ -314,7 +314,7 @@ test('Abandoned is a chip with its own count, beside the survey groups', () => {
   const chip = data.branchScopes.find(s => s.key === 'abandoned');
   assert.equal(chip.count, 1);
   // A stranded branch that was abandoned is in both scopes, which is the point:
-  // the content survey says its bytes are nowhere, the PR says nobody wants them.
+  // the content scan says its bytes are nowhere, the PR says nobody wants them.
   assert.equal(data.branchScopes.find(s => s.key === 'stranded').count, 1);
 });
 

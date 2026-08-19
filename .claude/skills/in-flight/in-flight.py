@@ -28,7 +28,7 @@
 # Usage:
 #   python3 .claude/skills/in-flight/in-flight.py [REPO ...] [options]
 #
-#   REPO ...          repo paths to survey (default: the current directory)
+#   REPO ...          repo paths to scan (default: the current directory)
 #   --paths P [P ...] report which live branches touch these files or folders
 #   --prs FILE        overlay open PRs from a JSON array of objects carrying
 #                     number, title, head (branch name), draft, url; lets a
@@ -113,8 +113,8 @@ def repo_slug(repo):
 
 
 def fetch_age(repo):
-    """Seconds since the last fetch, or None when never fetched. A survey of
-    stale refs is a survey of the past, so the age is part of the finding."""
+    """Seconds since the last fetch, or None when never fetched. A scan of
+    stale refs is a reading of the past, so the age is part of the finding."""
     gitdir = git(repo, 'rev-parse', '--git-dir').strip()
     if not gitdir:
         return None
@@ -398,7 +398,7 @@ def reconcile(claims, index, quiet_days):
     return claims
 
 
-def survey(repo, args, all_prs):
+def scan(repo, args, all_prs):
     base = args.base or default_base(repo)
     slug = repo_slug(repo)
     prs_by_head = prs_for(all_prs, slug)
@@ -609,7 +609,7 @@ def render(results, args):
             out.append(f'**Clear on {tgt}.** No live branch touches them. '
                        'Safe to start.')
     elif not any_live:
-        out.append('Nothing is live in any surveyed repo. Any branch you find is history.')
+        out.append('Nothing is live in any scanned repo. Any branch you find is history.')
     else:
         out.append('Live work is listed above. Only those branches can conflict with '
                    'new work; everything else in the estate is merged or orphaned.')
@@ -647,7 +647,7 @@ def load_prs(path):
         if not head:
             continue
         head = head[len('origin/'):] if head.startswith('origin/') else head
-        # Which repo the PR belongs to, so a branch name common to two surveyed
+        # Which repo the PR belongs to, so a branch name common to two scanned
         # repos does not pick up the other's PR. Taken from an explicit `repo`,
         # else inferred from the URL. Absent, the PR matches any repo.
         slug = pr.get('repo')
@@ -687,7 +687,7 @@ def main():
     ap = argparse.ArgumentParser(
         description='Report which branches are live and whether any touch your work.')
     ap.add_argument('repos', nargs='*', default=None,
-                    help='repo paths to survey (default: current directory)')
+                    help='repo paths to scan (default: current directory)')
     ap.add_argument('--paths', nargs='+', default=[],
                     help='files or folders the coming work will touch')
     ap.add_argument('--prs', help='JSON file of open PRs to overlay')
@@ -715,10 +715,10 @@ def main():
         if args.fetch:
             subprocess.run(['git', '-C', repo, 'fetch', 'origin', '--prune'],
                            capture_output=True, text=True, timeout=300)
-        results.append(survey(repo, args, prs_by_head))
+        results.append(scan(repo, args, prs_by_head))
 
     if not results:
-        print('in-flight: no repos surveyed', file=sys.stderr)
+        print('in-flight: no repos scanned', file=sys.stderr)
         return 2
 
     if args.json:

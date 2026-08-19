@@ -3,7 +3,7 @@
 
 Scans the Markdown prose of one or more repos and looks for the estate's key
 terms and the ways they wobble. Dependency-free by design, like the other
-advisory surveys in this constellation. Signals, each with its own section in
+advisory scans in this constellation. Signals, each with its own section in
 the report:
 
   keyness       log-odds with an informative Dirichlet prior (Monroe et al.

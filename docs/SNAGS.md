@@ -114,8 +114,8 @@ the result. When that read failed, the derivation ran anyway over an empty list,
 and the crawl wrote `{ branches: [] }` over the stored rows: three repos lost
 their branch data in one run (home 89 rows, web-tools-private 25, fn-data 22)
 while the toast reported a clean refresh. The code had a guard for exactly this
-and it covered half the case, the quick pass that OMITS the survey; a deep pass
-whose read failed still sent an empty one, and an empty survey is a survey. The
+and it covered half the case, the quick pass that OMITS the scan; a deep pass
+whose read failed still sent an empty one, and an empty scan is a scan. The
 corrected move is the shape of the guard, not more try/catch: **a pass that
 could not read its input sends no field at all**, so the merge carries what is
 stored, and it marks itself partial so the run can report the repo as failed.
@@ -135,7 +135,7 @@ Lists pane committed, and every write to that path for the rest of the minute
 failed `409 does not match db348d1…`, including gh-store's own recovery, which
 was re-reading through the cache it was recovering from. Second bite
 (2026-08-16): the activity crawl's split refresh commits twice in a row, and the
-survey pass read the cache the quick pass had just replaced, so it folded onto a
+scan pass read the cache the quick pass had just replaced, so it folded onto a
 stale base and then 409'd on the dead sha. The 409 is the guardrail, not the
 bug: had the sha matched, the pass would have silently reverted the one before
 it. The corrected move is mechanical, so it is worth stating as a rule: every

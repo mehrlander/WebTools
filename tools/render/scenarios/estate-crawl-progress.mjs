@@ -22,7 +22,7 @@ import seedSessions from './estate-sessions.mjs';
 
 const SLOTS = {
   activity: { seed: seedOpen, busy: 'activityRefreshing',
-              slot: { verb: 'Surveying branches', unit: 'repos', done: 4, total: 11,
+              slot: { verb: 'Scanning branches', unit: 'repos', done: 4, total: 11,
                       active: ['me/chat-histories', 'me/home'] } },
   sessions: { seed: seedSessions, busy: 'sessionsRefreshing',
               slot: { verb: 'Reading records', unit: 'records', done: 18, total: 120,

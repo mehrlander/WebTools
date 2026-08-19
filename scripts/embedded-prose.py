@@ -24,8 +24,8 @@ visible is the shape of the estate's undeclared prose: which files carry a
 document, which content has no carrier, and how much text ships to the browser
 on every load.
 
-Advisory, in the idiom of scripts/unclaimed-code-survey.py and the internal
-class of scripts/link-survey.py: heuristic, WILL surface false positives, and
+Advisory, in the idiom of scripts/unclaimed-code.py and the internal
+class of scripts/dead-links.py: heuristic, WILL surface false positives, and
 exits 0 unless --check is given a budget to hold.
 
 Portable: python3 stdlib only, argv-driven, runs from any repo root.
@@ -35,7 +35,7 @@ vendored shelves and generated payloads whose prose is nobody's to move. Pass
 the prefixes you maintain.
 
 Usage:
-    python3 text-survey.py [ROOT] [prefix ...] [options]
+    python3 embedded-prose.py [ROOT] [prefix ...] [options]
 
     --blocks         list every comment block, largest first
     --tables         list every text table
@@ -231,7 +231,7 @@ def is_generated(src):
 
 
 # The repo's own content registry, where it has one, is the authority on what a
-# file is. Reading it here means the survey reports against the declaration
+# file is. Reading it here means the scan reports against the declaration
 # rather than beside it, and a file the registry gets wrong shows up as a misfit
 # instead of being silently averaged in.
 
@@ -441,7 +441,7 @@ def text_tables(src):
                 span += len(m.group(0))
         # Either the entries are most of the literal, or there are simply a lot
         # of them: a registry carrying structure alongside its prose (an app's
-        # VIEWS object, a survey's row array) is still a text table, while a
+        # VIEWS object, a scan's row array) is still a text table, while a
         # function body with three loose strings in it is not.
         if len(ents) >= MIN_TABLE_ROWS and (span >= 0.4 * len(blob) or len(ents) >= 8):
             out.append((
@@ -579,7 +579,7 @@ def strip_comments(path, src):
 
 # Options that take a value. Without this the value is read as a path prefix,
 # which silently scopes the run to a directory that does not exist and reports
-# a clean zero: the most misleading possible failure for a survey.
+# a clean zero: the most misleading possible failure for a scan.
 VALUED = {"--min", "--check", "--vocab"}
 
 
@@ -693,7 +693,7 @@ def main(argv):
     tb = sum(r["bytes"] for r in rows)
     cw = sum(r["comment_words"] for r in rows)
     cb = sum(r["comment_bytes"] for r in rows)
-    print("Text survey over %d files (%s)\n" % (len(rows), ", ".join(prefixes) or "whole repo"))
+    print("Text scan over %d files (%s)\n" % (len(rows), ", ".join(prefixes) or "whole repo"))
     print("  commentary  %s words in %s blocks, %s of %s bytes (%d%%)" % (
         f"{cw:,}", f"{sum(r['blocks'] for r in rows):,}", f"{cb:,}", f"{tb:,}",
         (cb / tb * 100) if tb else 0))

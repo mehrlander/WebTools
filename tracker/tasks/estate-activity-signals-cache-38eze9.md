@@ -34,7 +34,7 @@ it, and a cold public load is unaffected.
   accumulating-capped recent commits, open PRs; plus the capped landed/stranded
   branch survey stored whole); show-repo's refreshActivityCache crawl on a ~12h
   throttle, sharing one survey path with the branches view via new orchestrators
-  in lib/branch-survey.js (surveyBranchLive / surveyOlder). Reads: the branches
+  in lib/branch-status.js (surveyBranchLive / surveyOlder). Reads: the branches
   view renders cache-first (live fanout only on Refresh); the estate gains an
   Activity view (?view=activity, cross-repo commits + per-repo rollups), a
   landing activity strip and per-card freshness rollups on the Repos view. Also
