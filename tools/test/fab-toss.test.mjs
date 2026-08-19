@@ -287,7 +287,7 @@ test('a deck subject retargets the drawer without pretending to be a frame', asy
   window.__tossSubject = { repo: 'mehrlander/web-tools', ref: 'claude/some-branch',
                            path: 'docs/SNAGS.md', route: 'deck' };
   window.__tossFrame = null;
-  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/show-repo/show-repo.html"');
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="app/index.html"');
   const d = Alpine.$data(el);
   try {
     assert.equal(d.repo, 'mehrlander/web-tools');
@@ -302,7 +302,7 @@ test('a deck subject retargets the drawer without pretending to be a frame', asy
     // And the fab fills in the app, since it recorded its own page before any
     // subject arrived and the announcer should not have to know what it is
     // inside of.
-    assert.equal(d.subjectVia.path, 'pages/show-repo/show-repo.html');
+    assert.equal(d.subjectVia.path, 'app/index.html');
   } finally {
     window.__tossSubject = null;
     window.dispatchEvent(new window.CustomEvent('toss-subject'));
@@ -341,7 +341,7 @@ const announce = (win, s) => {
 test('a swipe keeps the guide and drops only the per-file survey', async () => {
   window.__tossSubject = { repo: 'mehrlander/web-tools', ref: 'claude/b',
                            path: 'docs/one.md', route: 'deck' };
-  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/show-repo/show-repo.html"');
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="app/index.html"');
   const d = Alpine.$data(el);
   try {
     // Stand in for a survey and a guide that have already landed.
@@ -511,7 +511,7 @@ test('the compare bar exists only for a subject that announced a base', async ()
 test('picking, and turning it off, publish a pair the file surface can act on', async () => {
   window.__tossSubject = { repo: 'mehrlander/web-tools', ref: 'claude/b', path: 'docs/one.md',
                            route: 'deck', base: 'abc123', baseName: 'main' };
-  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/show-repo/show-repo.html"');
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="app/index.html"');
   const d = Alpine.$data(el);
   const heard = [];
   const on = (e) => heard.push(e.detail);
@@ -544,7 +544,7 @@ test('picking, and turning it off, publish a pair the file surface can act on', 
 test('the comparison survives a swipe and not a change of branch', async () => {
   window.__tossSubject = { repo: 'mehrlander/web-tools', ref: 'claude/b', path: 'docs/one.md',
                            route: 'deck', base: 'abc123', baseName: 'main' };
-  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/show-repo/show-repo.html"');
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="app/index.html"');
   const d = Alpine.$data(el);
   try {
     d.compareWith('claude/other');
@@ -592,7 +592,7 @@ test('a file is not offered as its own comparison', async () => {
 test('a ref pick over a deck slide is handed to the deck, not to the address bar', async () => {
   window.__tossSubject = { repo: 'mehrlander/web-tools', ref: 'claude/b', path: 'docs/one.md',
                            route: 'deck', base: 'abc123', baseName: 'main' };
-  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="pages/show-repo/show-repo.html"');
+  const { el } = await mountFab('data-repo="mehrlander/web-tools" data-path="app/index.html"');
   const d = Alpine.$data(el);
   const asked = [], went = [];
   d._go = (u) => went.push(u);
@@ -617,10 +617,10 @@ test('a ref pick over a deck slide is handed to the deck, not to the address bar
 
 test('the address grammar splits three ways, and refuses what is not one', async () => {
   const d = Alpine.$data(doc.getElementById('f'));
-  const a = d._addrParts('mehrlander/web-tools@claude/b:pages/show-repo/show-repo.html');
+  const a = d._addrParts('mehrlander/web-tools@claude/b:app/index.html');
   assert.equal(a.repo, 'mehrlander/web-tools');
   assert.equal(a.ref, 'claude/b', 'a slashed ref is the normal case here');
-  assert.equal(a.path, 'pages/show-repo/show-repo.html');
+  assert.equal(a.path, 'app/index.html');
   assert.equal(d._addrParts('mehrlander/web-tools:README.md').ref, '',
     'no @ref means the default branch, which is a real answer');
   assert.equal(d._addrParts('nonsense'), null);

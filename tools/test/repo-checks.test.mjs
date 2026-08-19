@@ -13,6 +13,9 @@ import { repoRoot } from './bootstrap.mjs';
 
 const src = readFileSync(path.join(repoRoot, 'lib/kits/repo-checks.js'), 'utf8');
 const window = {};
+// kits/csv.js first: the tracker kind delegates its row parsing to it, the same
+// way every page that loads repo-checks gets it from the pre-build's boot list.
+new Function('window', readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8'))(window);
 new Function('window', src)(window);
 const C = window.RepoChecks;
 
@@ -252,16 +255,18 @@ test('verdict on an unprobed or errored entry is null, never a pass', () => {
 });
 
 // ── tracker ────────────────────────────────────────────────────────────────
-// The one CONTENT-typed kind: it reads a tracker's board.json (the typed
+// The one CONTENT-typed kind: it reads a tracker's board.csv (the typed
 // projection, docs/TRACKER.md) rather than a path's shape or age. What it makes
 // visible from a card is how many of a workspace's open tasks wait on somebody.
 
-const TRACKER = { kind: 'tracker', path: 'w/tracker/board.json', label: 'budget-drs' };
-const board = (...tasks) => JSON.stringify({ tasks });
+const TRACKER = { kind: 'tracker', path: 'w/tracker/board.csv', label: 'budget-drs' };
+const COLS = ['status', 'awaiting', 'lastActivity'];
+const board = (...tasks) => [COLS.join(','),
+  ...tasks.map(t => COLS.map(c => t[c] ?? '').join(','))].join('\n') + '\n';
 const task = (o = {}) => ({ status: 'backlog', lastActivity: '2026-07-30', ...o });
 
 test('tracker counts the open set and fails when a task awaits somebody', async () => {
-  const r = await only(TRACKER, reader({ files: { 'w/tracker/board.json': board(
+  const r = await only(TRACKER, reader({ files: { 'w/tracker/board.csv': board(
     task(), task({ awaiting: 'your ratification' }), task({ status: 'done', lastActivity: '2020-01-01' }),
   ) } }));
   assert.equal(r.ok, false);
@@ -271,7 +276,7 @@ test('tracker counts the open set and fails when a task awaits somebody', async 
 });
 
 test('tracker passes when nothing awaits anyone', async () => {
-  const r = await only(TRACKER, reader({ files: { 'w/tracker/board.json': board(task(), task()) } }));
+  const r = await only(TRACKER, reader({ files: { 'w/tracker/board.csv': board(task(), task()) } }));
   assert.equal(r.ok, true);
   assert.equal(r.detail, '2 open, oldest quiet 1d');
 });
@@ -280,12 +285,12 @@ test('tracker passes when nothing awaits anyone', async () => {
 // raises the bar rather than dropping the check.
 test('awaitingOver raises the bar without silencing the count', async () => {
   const check = { ...TRACKER, awaitingOver: 2 };
-  const files = { 'w/tracker/board.json': board(
+  const files = { 'w/tracker/board.csv': board(
     task({ awaiting: 'a' }), task({ awaiting: 'b' })) };
   const r = await only(check, reader({ files }));
   assert.equal(r.ok, true, '2 is not over 2');
   assert.match(r.detail, /2 awaiting/, 'the fact is still reported');
-  const over = await only(check, reader({ files: { 'w/tracker/board.json': board(
+  const over = await only(check, reader({ files: { 'w/tracker/board.csv': board(
     task({ awaiting: 'a' }), task({ awaiting: 'b' }), task({ awaiting: 'c' })) } }));
   assert.equal(over.ok, false);
 });
@@ -293,7 +298,7 @@ test('awaitingOver raises the bar without silencing the count', async () => {
 // Quiet is measured from the OLDEST open task, and only when declared: how long
 // a backlog may sit is a per-workspace judgment, not a default.
 test('staleAfterDays fires on the oldest open task, and is off unless declared', async () => {
-  const files = { 'w/tracker/board.json': board(
+  const files = { 'w/tracker/board.csv': board(
     task({ lastActivity: '2026-07-30' }), task({ lastActivity: '2026-06-01' })) };
   const off = await only(TRACKER, reader({ files }));
   assert.equal(off.ok, true, 'no staleAfterDays, no staleness verdict');
@@ -306,7 +311,7 @@ test('staleAfterDays fires on the oldest open task, and is off unless declared',
 // the oldest date were taken across every row.
 test('done tasks are excluded from every count and from oldest', async () => {
   const r = await only({ ...TRACKER, staleAfterDays: 30 }, reader({ files: {
-    'w/tracker/board.json': board(task(), task({ status: 'done', lastActivity: '2019-01-01' })),
+    'w/tracker/board.csv': board(task(), task({ status: 'done', lastActivity: '2019-01-01' })),
   } }));
   assert.equal(r.ok, true);
   assert.match(r.detail, /1 open, oldest quiet 1d/);
@@ -316,7 +321,7 @@ test('done tasks are excluded from every count and from oldest', async () => {
 // fact: it has not aged, it never started.
 test('a never-logged task is counted separately and does not become oldest', async () => {
   const r = await only(TRACKER, reader({ files: {
-    'w/tracker/board.json': board(task(), task({ lastActivity: '' })),
+    'w/tracker/board.csv': board(task(), task({ lastActivity: '' })),
   } }));
   assert.match(r.detail, /1 never logged/);
   assert.match(r.detail, /oldest quiet 1d/, 'the dated task still supplies oldest');
@@ -324,7 +329,7 @@ test('a never-logged task is counted separately and does not become oldest', asy
 
 test('a tracker with no open tasks reports so without an oldest', async () => {
   const r = await only(TRACKER, reader({ files: {
-    'w/tracker/board.json': board(task({ status: 'done' })),
+    'w/tracker/board.csv': board(task({ status: 'done' })),
   } }));
   assert.equal(r.ok, true);
   assert.equal(r.detail, '0 open');
@@ -337,13 +342,16 @@ test('a missing, unparseable, or wrong-shaped projection is unevaluable', async 
   assert.equal(missing.ok, null);
   assert.match(missing.detail, /not found/);
 
-  const bad = await only(TRACKER, reader({ files: { 'w/tracker/board.json': '{ not json' } }));
-  assert.equal(bad.ok, null);
-  assert.match(bad.detail, /not valid JSON/);
+  // A CSV parser accepts nearly any bytes, so the shape check is what catches a
+  // file that is not a projection: a header with no `status` column, and a file
+  // with no rows at all.
+  const wrongCols = await only(TRACKER, reader({ files: { 'w/tracker/board.csv': 'a,b\n1,2\n' } }));
+  assert.equal(wrongCols.ok, null);
+  assert.match(wrongCols.detail, /no task rows/);
 
-  const wrong = await only(TRACKER, reader({ files: { 'w/tracker/board.json': '{"notTasks":[]}' } }));
-  assert.equal(wrong.ok, null);
-  assert.match(wrong.detail, /no tasks array/);
+  const empty = await only(TRACKER, reader({ files: { 'w/tracker/board.csv': 'status,awaiting\n' } }));
+  assert.equal(empty.ok, null);
+  assert.match(empty.detail, /no task rows/);
 });
 
 // The two-phase rule: a fact must be time-independent, or the activity cache
@@ -351,7 +359,7 @@ test('a missing, unparseable, or wrong-shaped projection is unevaluable', async 
 // an age, so the same tracker probes identically at any clock.
 test('the probed fact carries no age, only counts and a date', async () => {
   const [p] = await C.probe([TRACKER], reader({ files: {
-    'w/tracker/board.json': board(task(), task({ awaiting: 'x' })),
+    'w/tracker/board.csv': board(task(), task({ awaiting: 'x' })),
   } }));
   assert.deepEqual(p.fact, { open: 2, awaiting: 1, untouched: 0, oldest: '2026-07-30' });
   const later = C.verdict([p], new Date('2027-01-01T00:00:00Z'))[0];

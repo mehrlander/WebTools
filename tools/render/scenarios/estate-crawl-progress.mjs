@@ -5,8 +5,8 @@
 // of which the sandbox has, and what the shot is judging is the rendering, not
 // the fanout.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/estate-crawl-progress.mjs
-//   CRAWL=sessions npm run shot -- pages/show-repo/show-repo.html --query view=sessions \
+//   npm run shot -- app/index.html --script tools/render/scenarios/estate-crawl-progress.mjs
+//   CRAWL=sessions npm run shot -- app/index.html --query view=sessions \
 //     --script tools/render/scenarios/estate-crawl-progress.mjs --height 900
 //
 // CRAWL=activity|sessions picks the pane (default activity). DONE / TOTAL

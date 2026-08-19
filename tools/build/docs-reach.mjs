@@ -1,4 +1,4 @@
-// The derived fields of docs/docs.json: `reach` (who can get to a document)
+// The derived fields of docs/docs.csv: `reach` (who can get to a document)
 // and `words` (how much of the folder it is). Both are computed from disk
 // rather than declared by hand, both are restamped by `npm run docs-reach`,
 // and both are gated by docs-registry.test.mjs.
@@ -8,7 +8,7 @@
 // script name predates `words` and is kept, since renaming it would ripple
 // through the commit hook, package.json, and CLAUDE.md for no gain.
 //
-// The documents census in docs/docs.json says what each doc IS and how it is
+// The documents registry in docs/docs.csv says what each doc IS and how it is
 // kept true. Neither answers the question that decides whether a doc does any
 // work: can anyone reach it. Measured 2026-07-30 by hand, 22 of the folder's
 // markdown files were reachable only by a session that already knew they
@@ -74,20 +74,24 @@
 // all counted, so a schema's number is not comparable to an essay's.
 //
 // The registry describes itself, so stamping the field changes the file being
-// measured: writing 42 `"words": N` lines adds 84 tokens to docs.json, and its
+// measured: writing 42 words values adds 84 tokens to the registry, and its
 // own row would be stale the moment it was written. The stamp therefore runs
 // to a fixpoint. It converges in two passes, because the digits of a value do
 // not change the token count, and it asserts convergence rather than assuming
 // it: a derivation that silently failed to settle would produce a file that
 // fails its own test on every other run.
 
-// Run it directly (`npm run docs-reach`) to restamp docs/docs.json after adding
+// Run it directly (`npm run docs-reach`) to restamp docs/docs.csv after adding
 // a doc, pointing a skill or page at one, or editing any doc's length. Both
 // fields are cached copies of the derivation, held to it by
 // docs-registry.test.mjs.
 
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import path from 'node:path';
+import { parseCsv, writeCsv } from './registries-load.mjs';
+
+// Column order is fixed here so a restamp cannot reorder the file.
+const DOC_COLS = ['path', 'subject', 'status', 'reach', 'words', 'maintenance'];
 import { fileURLToPath } from 'node:url';
 
 export const CHANNELS = ['injected', 'project', 'skill', 'app', 'orphan'];
@@ -200,22 +204,22 @@ export function deriveWords(repoRoot, paths) {
   for (const p of paths) {
     let n = 0;
     try { n = readFileSync(path.join(repoRoot, p), 'utf8').split(/\s+/).filter(Boolean).length; }
-    catch { /* an unreadable file counts as nothing; the census test owns its absence */ }
+    catch { /* an unreadable file counts as nothing; the registry test owns its absence */ }
     out.set(p, n);
   }
   return out;
 }
 
-// ── CLI: restamp docs/docs.json ─────────────────────────────────────────────
+// ── CLI: restamp docs/docs.csv ──────────────────────────────────────────────
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-  const file = path.join(repoRoot, 'docs', 'docs.json');
-  const registry = JSON.parse(readFileSync(file, 'utf8'));
+  const file = path.join(repoRoot, 'docs', 'docs.csv');
+  const registry = { documents: parseCsv(readFileSync(file, 'utf8')) };
   const paths = registry.documents.map(d => d.path);
   const before = new Map(registry.documents.map(d => [d.path, d.reach]));
 
-  // Stamp to a fixpoint: writing `words` changes the size of docs.json, which
+  // Stamp to a fixpoint: writing `words` changes the size of docs.csv, which
   // is itself a row. Two passes settle it, five is a generous ceiling, and
   // failing loudly beats emitting a file that fails its own test.
   const MAX_PASSES = 5;
@@ -236,7 +240,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
       for (const k of Object.keys(d)) delete d[k];
       Object.assign(d, ordered);
     }
-    writeFileSync(file, JSON.stringify(registry, null, 2) + '\n');
+    writeFileSync(file, writeCsv(registry.documents, DOC_COLS));
     passes++;
     if (!changed) break;
     if (passes >= MAX_PASSES) {

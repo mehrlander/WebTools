@@ -30,7 +30,7 @@
     Neither suffix reaches the API; both are handed to the PAGE. An optional
     ?query arrives via the params shim (the frame has no location.search of
     its own), so a page's own deep links work tossed:
-    ...:pages/show-repo/show-repo.html?view=stage. An optional #frag rides on
+    ...:app/index.html?view=stage. An optional #frag rides on
     the frame's blob: URL as a real location.hash, so a page that routes on
     its own hash opens where the link says: ...:pages/data-view.html#item=2.
     A payload toss takes the same suffix: #gz=<base64>#frag.
@@ -126,7 +126,7 @@
 
   One key per fragment, and it is read by slice (see readFragment below), so a
   multi-param page query survives with bare '&'s:
-  #gh=…:pages/show-repo/show-repo.html?view=app&appRepo=X&appPath=Y hands all
+  #gh=…:app/index.html?view=app&appRepo=X&appPath=Y hands all
   three params to the page. The same address in the QUERY string does not: '&'
   delimits there, so past the first one the params are the renderer's, not the
   page's. Put a multi-param address on the fragment, or encode its '&' as %26.
@@ -207,7 +207,7 @@
   //
   // The fragment is read by SLICE, not URLSearchParams. A toss fragment carries
   // exactly one key, and that key's value routinely contains a page query of its
-  // own (#gh=…:show-repo.html?view=app&appRepo=X&appPath=Y). URLSearchParams
+  // own (#gh=…:app/index.html?view=app&appRepo=X&appPath=Y). URLSearchParams
   // splits the whole fragment on '&' before it looks at any key, so everything
   // past the first '&' was torn off the address and became sibling fragment
   // params nothing here reads: the page got ?view=app and its other two params

@@ -275,7 +275,7 @@ Worked example:
     },
     {
       "id": "shell",
-      "title": "pages/show-repo/show-repo.html",
+      "title": "app/index.html",
       "type": "file",
       "role": "context",
       "target": {
@@ -283,7 +283,7 @@ Worked example:
           "repository": "mehrlander/web-tools",
           "ref": "claude/stage-rework-x1y2z3",
           "revision": "a81c3f2",
-          "path": "pages/show-repo/show-repo.html"
+          "path": "app/index.html"
         },
         "line_ranges": [ { "start": 40, "end": 115, "label": "stage mount" } ]
       },

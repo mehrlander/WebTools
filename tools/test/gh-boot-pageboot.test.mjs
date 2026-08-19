@@ -34,13 +34,13 @@ test('the canonical boot block publishes window.__pageBoot', () => {
 
 test('gh-boot also waits for loader quiescence, so unguarded pages are covered', () => {
   // The second layer: pages that publish no __pageBoot (all of them, today)
-  // are protected by the in-flight census gh-api.js keeps on the GH class.
+  // are protected by the in-flight tally gh-api.js keeps on the GH class.
   // The wait must sit between the __pageBoot await and the Alpine fallback.
   const guard = boot.indexOf('await window.__pageBoot');
-  const census = boot.indexOf('_loadQuietAt');
+  const tally = boot.indexOf('_loadQuietAt');
   const fallback = boot.indexOf('gh.load(FAB_BOOT.alpine)');
-  assert.ok(census !== -1, 'the quiescence wait exists');
-  assert.ok(guard < census && census < fallback, 'ordered: __pageBoot, quiescence, fallback');
+  assert.ok(tally !== -1, 'the quiescence wait exists');
+  assert.ok(guard < tally && tally < fallback, 'ordered: __pageBoot, quiescence, fallback');
   assert.match(boot, /_loading > 0/, 'reads the in-flight count');
   const api = readFileSync(path.join(repoRoot, 'lib/gh-api.js'), 'utf8');
   assert.match(api, /C\._loading = \(C\._loading \|\| 0\) \+ 1/, 'the loader counts up');

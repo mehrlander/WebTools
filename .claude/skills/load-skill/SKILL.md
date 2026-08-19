@@ -20,7 +20,7 @@ That URL is publicly accessible; the web-tools repo is public and `raw.githubuse
 A catalog of available skills is at:
 
 ```
-https://raw.githubusercontent.com/mehrlander/web-tools/main/skills/manifest.json
+https://raw.githubusercontent.com/mehrlander/web-tools/main/skills/manifest.csv
 ```
 
 Shape:

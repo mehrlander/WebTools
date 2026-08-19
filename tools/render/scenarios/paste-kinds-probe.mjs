@@ -12,7 +12,7 @@
 // the table. The naming IS the routing, since READ_MODE keys on extension
 // alone, so any change to what these become is a change to nameForText.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/paste-kinds-probe.mjs
+//   npm run shot -- app/index.html --script tools/render/scenarios/paste-kinds-probe.mjs
 
 export default async function (page) {
   const out = await page.evaluate(async () => {

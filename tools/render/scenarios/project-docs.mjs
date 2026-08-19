@@ -2,7 +2,7 @@
 // workspace's markdown surfaced from one recursive tree read, root files first,
 // then one group per folder, with the curated DOCS.md lead and the path filter.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/project-docs.mjs \
 //     --out tools/.preview/project-docs.png
 //

@@ -3,7 +3,7 @@
 // image formats the viewer has a mode for, so a pasted screenshot could be
 // deposited but never looked at.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --query "view=stage" \
+//   npm run shot -- app/index.html --query "view=stage" \
 //     --script tools/render/scenarios/stage-image-preview.mjs --width 390
 //
 // The bytes go in through onDropped rather than through a synthetic paste

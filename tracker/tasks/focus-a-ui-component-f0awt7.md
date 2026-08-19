@@ -53,7 +53,7 @@ does not, and a wrong answer is worse than none: a brief that claims to cover a
 region while omitting the module that renders it is misleading in a way the
 whole-page brief cannot be.
 
-`pages/show-repo/show-repo.html` is the page that most needs this and the one
+`app/index.html` is the page that most needs this and the one
 that most resists it: it boots the whole pre-build (~262K tokens), so
 `brief.assemble` refuses it outright. Any answer here should make show-repo
 briefable a piece at a time, which is a good test of whether the answer is real.

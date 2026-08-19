@@ -8,28 +8,26 @@
 // THE READ IS REAL: the figures come from walking this page's own DOM, which
 // the sandbox renders for real. THE TWO REGISTRY-AND-TREE READS ARE SEEDED,
 // because there is no GitHub here and no token. The seeds carry the shape each
-// carrier really has, pages.json's nested groups included, so the rows exercise
+// carrier really has, CSV text rather than objects, so the rows exercise
 // the real lookup rather than being written into the component's state. Same
 // split as tools/render/scenarios/fab-traffic.mjs, and for the same reason.
 
 const REG = {
-  'docs/docs.json': { documents: [
-    { path: 'docs/loader.md', status: 'living',
-      subject: 'the contract a file must honor to be loadable, and the boot timing invariants' },
-    { path: 'docs/text-tools.md', status: 'living',
-      subject: "the FAB's text surface, and what the measurements rule out" },
-    { path: 'CLAUDE.md', status: 'living',
-      subject: 'the repo instructions, injected into every session' },
-  ] },
-  'docs/tests.json': { tests: [
-    { path: 'tools/test/fab-text.test.mjs', kind: 'behavior',
-      protects: "The drawer's fifth tab reports only what it can stand behind." },
-  ] },
-  'docs/harness.json': { tools: [] },
-  'docs/portable.json': { items: [] },
-  'pages/pages.json': [
-    { label: '', items: [{ href: 'shorter.html', title: 'Shorter', note: 'line up a shorter draft beside the original' }] },
-  ],
+  'docs/docs.csv': [
+    'path,subject,status',
+    'docs/loader.md,"the contract a file must honor to be loadable, and the boot timing invariants",living',
+    'docs/text-tools.md,"the FAB\'s text surface, and what the measurements rule out",living',
+    'CLAUDE.md,"the repo instructions, injected into every session",living',
+  ].join('\n') + '\n',
+  'docs/tests.csv': [
+    'path,protects,kind',
+    "tools/test/fab-text.test.mjs,The drawer's fifth tab reports only what it can stand behind.,behavior",
+  ].join('\n') + '\n',
+  'docs/harness.csv': 'path,role,layer\n',
+  'docs/portable.csv': 'path,role,kind\n',
+  'pages/pages.csv':
+    'href,title,note\n' +
+    'shorter.html,Shorter,line up a shorter draft beside the original\n',
 };
 
 const TREE = ['lib/kits/annotate.js', 'pages/shorter.html', 'docs/loader.md'];
@@ -77,7 +75,7 @@ export default async (page) => {
     d._regCache = {};
     window.GH = function () {
       this.get = async (p) => {
-        if (reg[p]) return { text: JSON.stringify(reg[p]) };
+        if (reg[p]) return { text: reg[p] };
         throw new Error('no registry at ' + p);
       };
     };

@@ -40,18 +40,19 @@ test('docs/README.md is in lockstep with the documentation registry', () => {
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'docs-readme --check failed');
 });
 
-test('the harness census is in lockstep with tools/ and scripts/', () => {
+test('the harness registry is in lockstep with tools/ and scripts/', () => {
   const r = check(['tools/build/tools-index.mjs', '--check']);
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'tools-index --check failed');
 });
 
 // The third hook-owned artifact, and it had no owner here until 2026-08-05.
-// That gap hid a real defect rather than a merely theoretical one: board.json's
-// per-task keys were emitted by iterating a set, so Python's per-process string
-// hash randomization reordered them on every run. Same input, different bytes,
-// which is exactly the property the generator's own closing comment claims. It
-// went unnoticed because board.json is read by machines and diffed by nobody,
-// and because the estate had only one board carrying it. It now has ten.
+// That gap hid a real defect rather than a merely theoretical one: the JSON
+// projection the board carried until 2026-08-18 emitted its per-task keys by
+// iterating a set, so Python's per-process string hash randomization reordered
+// them on every run. Same input, different bytes, which is exactly the property
+// the generator's own closing comment claims. It went unnoticed because the
+// projection is read by machines and diffed by nobody, and because the estate
+// had only one board carrying it. It now has ten.
 test('the snags index is in lockstep with docs/SNAGS.md', () => {
   const r = check(['tools/build/snags-index.mjs', '--check']);
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'snags-index --check failed');
@@ -72,7 +73,10 @@ test('the board generator is byte-deterministic', () => {
   const run = () => spawnSync('python3',
     ['.claude/skills/tasks/build-board.py', 'tracker/tasks', 'tracker/board.md'],
     { cwd: repoRoot, encoding: 'utf8', env: { ...process.env, PYTHONHASHSEED: 'random' } });
-  const read = () => readFileSync(join(repoRoot, 'tracker/board.json'), 'utf8');
+  // Both CSV projections, since the fixed column order and the tag sort are
+  // separate guarantees and either could drift alone.
+  const read = () => ['tracker/board.csv', 'tracker/board-tags.csv']
+    .map(f => readFileSync(join(repoRoot, f), 'utf8')).join('\n\0\n');
   run(); const first = read();
   run(); const second = read();
   assert.equal(second, first, 'build-board.py emitted different bytes for identical input');

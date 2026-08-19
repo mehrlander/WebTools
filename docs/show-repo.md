@@ -1,13 +1,13 @@
 # show-repo: the shell of the Web Tools app
 
-⭐ **Open it:** [Web Tools](https://mehrlander.github.io/web-tools/pages/show-repo/show-repo.html) (the hosted shell; append `?repo=owner/repo` to open a repo)
+⭐ **Open it:** [Web Tools](https://mehrlander.github.io/web-tools/app/) (the hosted shell; append `?repo=owner/repo` to open a repo)
 
 show-repo is the one hosted page behind the **Web Tools app**, the front door
 to the estate. It began as a repo browser and file mover, and that trunk still
 organizes this doc, but the scope is wider now: the estate dashboard and its
 activity, session, guide, and chat readings, the stage, the lists, the map,
 and the tools, every destination declared in
-[app-routes.json](app-routes.json). [APP.md](APP.md) states the mission and
+[app-routes.csv](app-routes.csv). [APP.md](APP.md) states the mission and
 the name split (Web Tools where a reader is addressed; show-repo for the file,
 the routes, and this doc). It is the cross-repo instrument: a session hands
 the user a link into it, or configures a repo so the shell presents it well.
@@ -339,7 +339,7 @@ The per-repo views in the sidebar:
   else, and the overview's own carve-out went with them: it had skipped the
   README fetch on the hub, since the hub was the one repo that never rendered
   one.
-- **pages**: the gallery, from web-tools' `pages.json` or any repo's `pages`
+- **pages**: the gallery, from web-tools' `pages/pages.csv` or any repo's `pages`
   catalog. A standing row now, wherever there is a catalog; it used to appear
   only when a custom `landing` had taken the front door from it.
 - **Landing** *(a repo declaring one)*: the repo's own declared front page,
@@ -653,13 +653,13 @@ most of the work lands, and the app could not previously say what its own
 destinations were: `VIEWS` in `show-repo.html` dispatches and stamps them and
 carries no label, no gloss, and no idea which code draws the screen.
 
-[`docs/app-routes.json`](app-routes.json) is that statement, one row per
+[`docs/app-routes.csv`](app-routes.csv) is that statement, one row per
 address: what it is for, which group it is reached from, and the files that
 render it. `tools/test/app-routes.test.mjs` holds it to the `VIEWS` table both
 ways, so a route cannot exist in the router and not the manifest, and every
 declared file has to exist. The word is overloaded on purpose-free grounds and
 worth stating once: these are **app routes**, addresses in this page;
-[`docs/routes.json`](routes.json)'s "routes" are **toss routes**, a content type
+[`docs/routes-routes.csv`](routes-routes.csv)'s rows are **toss routes**, a content type
 mapped to a renderer page. Different targets, so neither describes the other.
 
 The pane reads the manifest and one `commits?path=` call per declared carrier
@@ -686,7 +686,7 @@ which is what the first diagnosis lacked.
 **The join is files, and files are coarser than routes.** That is the pane's one
 real limit and it is shown rather than filed:
 
-- **The shell is excluded.** `pages/show-repo/show-repo.html` holds the router,
+- **The shell is excluded.** `app/index.html` holds the router,
   the header, the sidebar, and every pane's outer markup, so a commit to it
   would date every route at once. It gets a row of its own at the foot instead,
   because leaving it silently out would leave a reader wondering why the busiest
@@ -840,7 +840,7 @@ derived caches only.
 by two axes: **scope** and **repo**.
 
 **Scope** picks which branches to show, and the chips carry their counts off the
-full list, so the row doubles as the estate's branch census. Four scopes read
+full list, so the row doubles as a running count of the estate's branches. Four scopes read
 the survey's `group` values; **Abandoned** reads the PR index instead, which is
 why it is a chip rather than a fifth group:
 
@@ -851,7 +851,7 @@ why it is a chip rather than a fifth group:
 | **Stranded** | `stranded` | content that exists nowhere on the default branch |
 | **Landed** | `landed` | the cleanup pass: content already on the default branch |
 | **Abandoned** | a PR closed unmerged | work decided against, still in the list |
-| **All** | everything surveyed | the census |
+| **All** | everything surveyed | the whole list |
 
 **Abandoned is the scope the content survey could not have.** Its verdict is
 landed-or-not, and abandoned work is landed nowhere, so a closed-unmerged branch
@@ -1271,7 +1271,7 @@ tapped had nothing to render.
 
 *Portable* (labelled The set until 2026-08-07; the `?tab=set` URL key is
 unchanged) renders the to-go bag from the hub's committed manifest,
-[`docs/portable.json`](portable.json), whose prose parent is
+[`docs/portable.csv`](portable.csv), whose prose parent is
 [`docs/PORTABLE.md`](PORTABLE.md) (a test,
 `tools/test/portable-manifest.test.mjs`, holds the two consistent, so the UI
 never drifts from the catalog). Grouped as plugin skills, docs, and scripts;
@@ -1315,7 +1315,7 @@ since adoption changes when someone edits a settings file. The State view's
 config row re-crawls when the answer matters now. A repo the crawl has not reached shows no
 verdict and no chips: absent means not read, never not aligned.
 
-*Surfacing* indexes the primitives from [`docs/surfacing.json`](surfacing.json),
+*Surfacing* indexes the primitives from [`docs/surfacing.csv`](surfacing.csv),
 one card each (glyph, use, form, boundary). The ownership runs opposite to
 every other tab, and the header says so: [`SURFACING.md`](SURFACING.md) is the
 authoritative carrier, since it is what sessions load and follow, and the
@@ -1328,7 +1328,9 @@ Surfacing decides what to hand over; Showing is what makes it openable.
 [`SURFACING.md`](SURFACING.md) already uses "transport" for the stage link, and
 the lead section here was titled Showing all along) answers how content moves,
 renders, and gets looked at, from the
-hub's committed [`docs/routes.json`](routes.json). It opens with **Showing**,
+hub's committed [`docs/showing-mechanisms.csv`](showing-mechanisms.csv),
+[`docs/routes-modes.csv`](routes-modes.csv), [`docs/routes-routes.csv`](routes-routes.csv)
+and the frame in [`docs/routes.json`](routes.json). It opens with **Showing**,
 the mechanism table: given a subject at a version and a viewer, which link
 reaches it and, more usefully, what each one cannot show. That table is the
 reason `CLAUDE.md` no longer carries 1,589 words on the subject and
@@ -1356,15 +1358,15 @@ same builder-plus-drift-check shape as the set's manifest test. Public, like the
 set, and loaded on first open of the tab rather than at mount.
 
 *Docs* renders the documentation registry,
-[`docs/docs.json`](docs.json), in the same lazy shape. Two tables. The
-**documents census**: every `.md`/`.json` under `docs/`, each with its subject,
+[`docs/docs.csv`](docs.csv), in the same lazy shape. Two tables. The
+**documents table**: every `.md`/`.json` under `docs/`, each with its subject,
 its status (**living** claims current truth and is wrong when stale; **record**
 preserves a moment and is wrong when rewritten; **measured** carries dated
 observations and is corrected by re-probing), its **reach** and **words** (both
 derived, see below), and its maintenance (authored or generated, with the
 discipline that keeps it true); complete by construction, since
 `tools/test/docs-registry.test.mjs` holds the folder and the table to exactly one
-row per file. The census is navigated from a folder rail
+row per file. The table is navigated from a folder rail
 (2026-08-07): each directory is a row with rolled-up file count and word mass
 and its own GitHub link, the selected folder shows its direct files beside it
 with that folder's README subject as the gloss, and a reach filter moves the
@@ -1382,12 +1384,13 @@ repetitions (copy, paraphrase, pointer, live read; a copy says who keeps it, by
 hand or by a named builder), where an absent check renders in the warning tone
 rather than being omitted, because an unchecked copy should look unchecked every
 time the tab opens. The claims table renders on its own **Claims** tab
-(2026-08-07), off [`docs/owners.json`](owners.json); the `?tab=claims` key is
-unchanged, the way `?tab=set` outlived "The set". It keys on claims rather than files, so trailing the census it
+(2026-08-07), off [`docs/owners.csv`](owners.csv); the `?tab=claims` key is
+unchanged, the way `?tab=set` outlived "The set". It keys on claims rather than files, so trailing the documents it
 read as an appendix, first open, then folded behind a count; a tab keeps the
-census on one viewport and gives the table its own. The registry is authoritative for the claims it covers and
-owes the repo no inventory of them; the census, by contrast, is complete.
-The census half is public, like the other two tabs.
+documents on one viewport and gives the claims their own. The two registries differ in
+how membership is decided, which is the whole reason they cannot share a pane: the claims are
+curated and authoritative only for what they cover, while the documents are computed from the
+folder and therefore complete. The documents half is public, like the other two tabs.
 
 Three numbers sit on a row, and they answer three different questions. **Reach**
 (derived by `tools/build/docs-reach.mjs`, gated against the registry) says who
@@ -1409,7 +1412,7 @@ That last case is the reason the caveats are on screen instead of in this file:
 estate and are precisely the two no file tool can see, so a bare count would rank
 them last.
 
-*Tests* is the same census one axis over, from [`docs/tests.json`](tests.json):
+*Tests* is the same shape one axis over, from [`docs/tests.csv`](tests.csv):
 every file in the suite with its kind (gate, lockstep, tool, kit, behavior,
 component, guard) and what breaks if it is deleted, its assertions, method,
 runner and boot-smoke count all derived from the files and gated against the
@@ -1421,8 +1424,8 @@ its unit. Public.
 **Tools** (`?view=tools`) is a curated gallery of the utility pages the owner
 reaches for (the text-diff tool, the transform/compress round-trip, and so on),
 an estate-level peer beside Repos / Surfaces / Stage / Map. It reuses the
-pages-catalog card (thumbnail or live preview, an open link, a source link),
-fed from a hand-curated manifest, [`docs/tools.json`](tools.json), rather than a
+pages card (thumbnail or live preview, an open link, a source link),
+fed from a hand-curated manifest, [`docs/tools.csv`](tools.csv), rather than a
 repo scan. Each entry is `{ path, title, note, icon }`, where `path` is a bare
 hub path (`pages/diff-tool.html`, the hub at main) or a qualified cross-repo ref
 (`owner/repo[@ref]:path`), the same grammar as a pages catalog entry. Public: the
@@ -2055,7 +2058,7 @@ The manifest's contract lives in its own reference now,
 [manifest.md](manifest.md): the file's shape, the membership rule, the config
 cache, the mailbox, inbox and outbox, proposals, the repo menu, and editing
 the manifest from the shell, with the field list as data in
-[manifest.json](manifest.json). What stays here is the consumer's boundary:
+[manifest-fields.csv](manifest-fields.csv). What stays here is the consumer's boundary:
 show-repo reads `landing`, `pages`, `pins`, and `stage` to decide how to
 present a repo, probes the file once per `repo@ref`, and parses it as data,
 never executed; a 404 means no config.
@@ -2115,7 +2118,7 @@ the registry repo is the only private name this public page carries.
 
 ## Using it from a Claude session
 
-- **Hand the user a browse link:** `…/show-repo.html?repo=owner/repo` (add
+- **Hand the user a browse link:** `…/app/?repo=owner/repo` (add
   `&ref=` for a branch, `&view=files&path=<dir>` to land in a folder). The
   bare page URL is the estate (the all-repo dashboard).
 - **Hand the user a stage link (🗂️):** mint `#stage=…` per the grammar above.

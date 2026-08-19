@@ -3,7 +3,7 @@
 // composer: the glyph on the way out, its fill, and whether the mic still
 // holds its slot.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --query view=stage \
+//   npm run shot -- app/index.html --query view=stage \
 //     --script tools/render/scenarios/stage-keyboard-mode.mjs
 export default async (page) => {
   await page.evaluate(() => {

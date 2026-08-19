@@ -338,14 +338,14 @@ component with `/` left readable. The link carries **refs only**; file content
 stays behind the viewer's token. Full base:
 
 ```
-https://mehrlander.github.io/web-tools/pages/show-repo/show-repo.html#stage=owner/repo@ref:path1,path2
+https://mehrlander.github.io/web-tools/app/#stage=owner/repo@ref:path1,path2
 ```
 
 Mint one by hand by grouping items by `repo@ref` and joining. Example: two files
 from a branch of this repo plus one from another repo →
 
 ```
-…/show-repo.html#stage=mehrlander/web-tools@my-branch:lib/gh-api.js,lib/stage.js;mehrlander/home:inbox/note.md
+…/app/#stage=mehrlander/web-tools@my-branch:lib/gh-api.js,lib/stage.js;mehrlander/home:inbox/note.md
 ```
 
 ### Commentary: the `&prompts=` param
@@ -356,7 +356,7 @@ content stays behind the token; the prompts are authored text, so they ride the
 link. `prompts=` is a base64url'd JSON list of `{label, ask}` review asks:
 
 ```
-…/show-repo.html#stage=owner/repo@ref:before.md;owner/repo@head:before.md&prompts=<base64url(JSON)>
+…/app/#stage=owner/repo@ref:before.md;owner/repo@head:before.md&prompts=<base64url(JSON)>
 ```
 
 The Diff lens shows those bespoke asks first (a sparkle marks them), above its

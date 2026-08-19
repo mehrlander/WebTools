@@ -7,7 +7,7 @@
 // component with entries and an activity map instead, which is enough for a
 // layout read: the card's markup does not care where its entry came from.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/estate-card-demo.mjs
+//   npm run shot -- app/index.html --script tools/render/estate-card-demo.mjs
 //
 // Not a test. It proves nothing about live data, only about how a populated
 // card stacks.

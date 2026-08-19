@@ -15,7 +15,7 @@ Short-lived branches and sessions cannot see each other. Without a durable list 
 Three kinds of file, all on `main`:
 
 - `tasks/<id>.md`: one file per task, the source of truth.
-- `board.md`, and `board.json` beside it: rollups generated from the task files, never hand-edited.
+- `board.md`, with `board.csv` and `board-tags.csv` beside it: rollups generated from the task files, never hand-edited.
 - `assessments/YYYY-MM-DD.json`: optional dated assessment records, authored judgment about the tracker as a whole (see Assessment and refinement below).
 
 Feature work rides its branch as usual. Tracker changes do not: task files, assessment records, and the generated rollups are committed directly to `main`, which is what makes the tracker shared. Where a session carries a blanket instruction to keep its commits on its feature branch (some environments inject one), these two paths are the standing exception, not a violation. Nothing else about a repo's branch or PR flow changes. The skill carries the push recipe and the scope of the permission.
@@ -72,7 +72,7 @@ Bring existing tasks aboard the new form at first opportunity. The generator key
 
 ### Two conventional open tags: `runner` and `action`
 
-Both are open tags in the sense above, unrecognized by the generator and carried into `board.json` under `tags`, so a consumer can select on either today without the generator learning anything. They are written down here because they answer two questions the recognized set does not, and because a convention only works if everyone spells it the same way. Promote either when grouping the board by it is worth the code, not before.
+Both are open tags in the sense above, unrecognized by the generator and carried into `board-tags.csv`, so a consumer can select on either today without the generator learning anything. They are written down here because they answer two questions the recognized set does not, and because a convention only works if everyone spells it the same way. Promote either when grouping the board by it is worth the code, not before.
 
 **`runner: <machine>` says where the session happens.** A task is parked for a machine when the work needs something only that machine has: data that must not leave it, a local model, a runtime, or simply an hour of unattended time. Absent means anywhere. It is a routing hint and nothing more: a parked task is still claimed, discussed, and closed exactly like any other, by a session that reads it and talks it through. The body carries one line naming which constraint parked it, because the constraints have different lifespans and the tag cannot tell them apart. A task parked for token cost can migrate back the moment tokens are cheap; one parked because the data stays on the machine never can.
 
@@ -119,22 +119,25 @@ One line per task, each prefixed with the 🎫 task marker ([SURFACING.md](SURFA
 
 ### The typed projection
 
-The same run writes **`board.json`** beside `board.md`. Two projections of one source, so they cannot drift, and each is shaped for a reader the other cannot serve.
+The same run writes **`board.csv`** and **`board-tags.csv`** beside `board.md`. Three projections of one source, so they cannot drift, and each is shaped for a reader the others cannot serve.
 
 | | Reader | Carries |
 | --- | --- | --- |
 | `board.md` | a session reading files, GitHub, a diff, a clone, chat | the human list, portable, no token needed |
-| `board.json` | show-repo, and anything else machine-side | every field per task, unrendered |
+| `board.csv` | show-repo, and anything else machine-side | every recognized field per task, unrendered |
+| `board-tags.csv` | the same, for anything selecting on an unpromoted key | one row per (task, tag) pair |
 
 `board.md` is not optional and does not go away. A session reads files rather than apps, and a session is the tracker's primary consumer; an app view is also token-gated. The projection exists so that a consumer never has to parse the rendered board to recover a field it could have been handed, which is the display-before-data inversion.
 
-Each record carries the recognized keys at the top level and open tags under `tags`, so the two-layer split survives and a consumer cannot mistake an unpromoted tag for part of the contract. It adds three derived values the task file does not state:
+The two-layer split survives as the file split: `board.csv` holds one row per task with a fixed column for each recognized key, and `board-tags.csv` holds one row per (task, tag) pair, joined on the task's `id`. A consumer therefore cannot mistake an unpromoted tag for part of the contract, and it cannot silently lose one either. Two files rather than one encoded column because the tag layer is open by design, so its keys can never be a schema, and a CSV holds one table. Promoting a tag means giving it a column in `board.csv` and taking it out of the bag, which is the same promotion the paragraph above describes.
+
+The board adds three derived values the task file does not state:
 
 - **`href`**, the same board-relative link the markdown row uses.
 - **`lastActivity`**, the newest date in the progress log. A task's real freshness, and the one signal that separates a live task from one that has only been refined; `opened:` cannot say it and neither can `board.md`. Empty when a task has no log rather than falling back to `opened:`, since a guess here reads as a fact.
 - **`logEntries`**, the count beside it. A task drawing progress-log entries that never become work is telling you review will not move it. The count is mechanical; classifying an entry as work or maintenance is judgment and stays out.
 
-The artifact carries no timestamp, so the same input produces the same bytes and the lockstep checks that re-run the generator against a clean tree do not fail on every run.
+No artifact carries a timestamp, so the same input produces the same bytes and the lockstep checks that re-run the generator against a clean tree do not fail on every run. `board-tags.csv` is written even when nothing is tagged, header and no rows, since a check that compares bytes needs the file to exist either way.
 
 The generator ships with the `portable` plugin as `tasks/build-board.py` (python3, stdlib only, zero dependencies). It is one canonical implementation, so every tracker's board comes out the same shape and a repo does not write its own. A repo running without the plugin fetches that same script by raw URL into a gitignored path (see [PORTABLE.md](PORTABLE.md)); it is the same file reached by a different transport, not a reimplementation. The skill carries the invocation.
 
@@ -166,7 +169,7 @@ The record is **authored judgment anchored to a repository state, and it is a hi
 
 Everything else is an open, authored section, the record-level analogue of an open tag. The sections in use so far: `workstreams` (task groupings, each with an assessment and a next move), `hygiene` (per-task scope-truth findings, each naming an action and a reason; refinement's natural worklist), `decisions` (rulings tasks are waiting on), `dispatch` (ready-to-launch session briefs, each with a why and a full prompt; converting backlog into launchable work is much of an assessment's point), and `watch` (tasks noted without action). These are conventions, not contract: a reader tolerates their absence and their variation, and a key hardens into the contract only when a consumer earns it. Judgment stays prose inside whatever structure a section needs; do not add fields because JSON permits them.
 
-**Do not copy what the task files and `board.json` already carry.** Titles, statuses, sizes, and logs live in the tasks; the record cites ids and states judgment about them. `basis` may carry the open counts as read (`onDeck`, `inProgress`, `blocked`) to fix the scale of what was assessed; that is an anchor, not data for a consumer.
+**Do not copy what the task files and `board.csv` already carry.** Titles, statuses, sizes, and logs live in the tasks; the record cites ids and states judgment about them. `basis` may carry the open counts as read (`onDeck`, `inProgress`, `blocked`) to fix the scale of what was assessed; that is an anchor, not data for a consumer.
 
 The board generator does not read `assessments/`, the board does not render them, and no lockstep check owns them: an authored record has no source to be in lockstep with. What is checked is only the identity and the four required keys (web-tools: `tools/test/tracker-assessments.test.mjs`).
 

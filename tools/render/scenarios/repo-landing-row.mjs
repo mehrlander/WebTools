@@ -2,7 +2,7 @@
 // declares a `landing`, which is the one shape of that sidebar no repo in the
 // estate produces today.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/repo-landing-row.mjs \
 //     --out tools/.preview/repo-landing-row.png --full
 //
@@ -22,7 +22,7 @@ const CONFIG = {
   estate: true,
   landing: 'pages/index.html',
   pages: [
-    { path: 'pages/show-repo/show-repo.html', label: 'show-repo' },
+    { path: 'app/index.html', label: 'show-repo' },
     { path: 'pages/annotate.html', label: 'annotate' },
   ],
   pins: ['docs/show-repo.md', 'lib/kits/'],

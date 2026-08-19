@@ -6,7 +6,7 @@
 // on the clipboard, so the shot shows both halves at once: the .tsv staged and
 // opened as a table, and the .html left on the offer bar.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/paste-anywhere.mjs --wait 4000
+//   npm run shot -- app/index.html --script tools/render/scenarios/paste-anywhere.mjs --wait 4000
 
 export default async function (page) {
   // Land on the Map, a view with no intake of its own and no bench mounted.

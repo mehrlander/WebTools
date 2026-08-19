@@ -34,7 +34,7 @@ import { chromium } from 'playwright';
 import { resolveCdn, typeFor } from '../render/cdn.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const PAGE = 'pages/show-repo/show-repo.html';
+const PAGE = 'app/index.html';
 
 const server = http.createServer(async (req, res) => {
   const rel = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || PAGE;

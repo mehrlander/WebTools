@@ -250,7 +250,7 @@ test('hosted in a toss, the deck announces to the shell as well', async () => {
   const heard = [];
   const listeners = [];
   const parent = {
-    __tossSubject: { repo: 'me/tools', ref: 'main', path: 'pages/show-repo/show-repo.html' },
+    __tossSubject: { repo: 'me/tools', ref: 'main', path: 'app/index.html' },
     __tossFrame: { name: 'frame' },
     document: {},
     CustomEvent: window.CustomEvent,
@@ -291,7 +291,7 @@ test('hosted in a toss, the deck announces to the shell as well', async () => {
     parent.dispatchEvent(new window.CustomEvent('web-tools:compare-ref',
       { detail: { base: 'other' } }));
     assert.equal(seen.length, 1, 'and the bridge is gone, not left listening on the shell');
-    assert.equal(parent.__tossSubject.path, 'pages/show-repo/show-repo.html',
+    assert.equal(parent.__tossSubject.path, 'app/index.html',
       'leaving hands the tossed page back');
     assert.equal(parent.__tossFrame.name, 'frame');
   } finally {

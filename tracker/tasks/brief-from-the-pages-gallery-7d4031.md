@@ -7,7 +7,7 @@ track: depends-on:focus-a-ui-component-f0awt7
 ---
 # Reach the take-away menu from show-repo's Pages gallery
 
-The Pages gallery (the inline `gallery()` in `pages/show-repo/show-repo.html`)
+The Pages gallery (the inline `gallery()` in `app/index.html`)
 is where a person is already looking at pages, so it is the natural place to
 say "take that one."
 The take-away menu that does it lives in the FAB on the page itself (PR #295).

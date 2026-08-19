@@ -3,7 +3,7 @@
 // picture of the range on the clipboard at once; the stage used to read one
 // and return. The bar lists what it did not take.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --query "view=stage" \
+//   npm run shot -- app/index.html --query "view=stage" \
 //     --script tools/render/scenarios/stage-paste-flavors.mjs --width 390
 //
 // The event is synthesized rather than driven through a real clipboard: the

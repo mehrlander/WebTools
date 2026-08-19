@@ -124,8 +124,8 @@ def main(argv):
 
     prose_corpus, test_corpus = [], []
     for f in files:
-        if f.endswith(PROSE_EXT) or (f.endswith(".json") and "/docs/" in "/" + f) \
-                or os.path.basename(f) in ("CLAUDE.md", "docs.json", "tests.json"):
+        if f.endswith(PROSE_EXT) or (f.endswith((".json", ".csv")) and "/docs/" in "/" + f) \
+                or os.path.basename(f) in ("CLAUDE.md", "docs.csv", "tests.csv"):
             prose_corpus.append(read(root, f))
         elif is_test(f):
             test_corpus.append(read(root, f))

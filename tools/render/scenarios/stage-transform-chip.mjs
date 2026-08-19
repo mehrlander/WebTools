@@ -7,7 +7,7 @@
 // function) so the chip row shows all three kinds, then opens the CSV, which is
 // the one whose rows the workbench can actually run.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --query "view=stage" \
+//   npm run shot -- app/index.html --query "view=stage" \
 //     --script tools/render/scenarios/stage-transform-chip.mjs --wait 4000
 
 export default async function (page) {
