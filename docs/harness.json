@@ -663,7 +663,7 @@
       "path": "tools/render/scenarios/branch-file-card.mjs",
       "role": "",
       "layer": "tools/render/scenarios",
-      "lines": 112,
+      "lines": 140,
       "invocation": "driver",
       "emits": false,
       "named": false,

@@ -919,8 +919,9 @@ branch: every file in either response carries a status and a line count, and
 thing, the **missing** count in amber, which opens the pane already filtered to
 those files.
 
-Each count opens a **file card**: one for new files, one for changed, one for
-missing. The card is the reason the row can afford to show so few numbers. It is a real
+Each count opens a **card**: one for new files, one for changed, one for missing,
+and one for each of the ahead/behind arrows. The card is the reason the row can
+afford to show so few numbers. It is a real
 panel rather than a `title` attribute, which is what a title cannot be: one
 string, in the browser's own type, at the browser's own delay, with nothing in
 it a reader can open. Three bands:
@@ -1030,6 +1031,29 @@ The **Session** that authored the branch is the `claude.ai/code/session_…` lin
 read from the branch's own commit trailer, with the PR body's footer as
 fallback; a per-repo **Branches** drill-down sits at the row's right (whole-tree
 browse lives there).
+
+**The arrows are commits, and both of their cards are free.** They state how
+many commits the branch has that the default branch does not (green, muted at
+zero, which flags a branch with nothing left to stage) and how many the default
+has that the branch does not. Neither is lines and neither is files, a thing they
+said only in a `title` attribute, which never appears on a phone, so the pair read
+as two bare numbers a reader could reasonably take for either.
+
+The **ahead** list is the compare's own `commits`, which is exactly the set and
+which the file cards already fetch. The **behind** list is the newest commits on
+the default branch, which the crawl has always fetched once per repo for its own
+moved-or-not gate (`recentCommits`) and never read for anything else: main's side
+was sitting in the cache unread the whole time. That is why both arrows became
+cards at once rather than one now and one when someone paid for it.
+
+Behind is answered twice, and sharpens: before the compare lands it takes the
+newest `behind_by` of the cached log, which is exact while the default branch is
+linear and costs nothing; once the compare is in hand it takes everything newer
+than `merge_base_commit`, which is exact regardless. A branch that forked before
+the cached window gets a card that says so and keeps its count, rather than an
+empty list under a number. `ACTIVITY_RECENT_COMMITS` rose from 12 to 40 on
+2026-08-19 for exactly this: the estate routinely runs branches 20 to 40 behind,
+and the wider page is the same call and about 5 KB per repo.
 
 Each row's right edge states the branch's **lifespan**, first commit then latest,
 as `15 days → 2 hours`, which answers "how long has this been open" beside "when

@@ -2443,7 +2443,14 @@ function app(){ return {
   // failing (2026-08-17, wa-bills). Three a run heals a transient failure
   // within a few crawls and caps what a permanent one can cost.
   ACTIVITY_ERROR_RETRY: 3,
-  ACTIVITY_RECENT_COMMITS: 12,   // newest commits fetched per repo per crawl
+  // Newest commits fetched per repo per crawl, and STORED. Raised from 12 on
+  // 2026-08-19, when the behind arrow became a card: the crawl has always
+  // fetched these for its own moved-or-not gate and read only [0].sha, so the
+  // list was already paid for and already in the cache. 40 covers the estate's
+  // usual spread (branches sit 20 to 40 behind) at one page of the same call
+  // and about 5 KB per repo; past it the card says the count is right and the
+  // list is not here, rather than showing a short list under a long number.
+  ACTIVITY_RECENT_COMMITS: 40,
   // How deep the any-state PR read goes per repo (gh.branchPulls). 100 is the
   // API's page maximum, and it has to clear the branch survey's recent window
   // (BranchSurvey.RECENT_DAYS, 14 days) or a fresh branch's merged PR would sit
