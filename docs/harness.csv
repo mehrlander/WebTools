@@ -111,6 +111,7 @@ tools/render/scenarios/map-tests.mjs,the Map view's Tests tab: the test registry
 tools/render/scenarios/nest-probe.mjs,"probe: a nested self-toss's address bar, and the FAB's actions at depth two",tools/render/scenarios,44,driver,no,no,no
 tools/render/scenarios/open-drawer.mjs,the FAB drawer open with the take grid scrolled into view,tools/render/scenarios,20,driver,no,no,no
 tools/render/scenarios/paste-anywhere.mjs,dispatches a real two-flavor ClipboardEvent on a non-Stage view and reports where the app-wide paste routed it,tools/render/scenarios,42,driver,no,no,no
+tools/render/scenarios/paste-button.mjs,"drives the header Paste button from a non-Stage view with window.io stubbed, and reports where it routed",tools/render/scenarios,46,driver,no,no,no
 tools/render/scenarios/paste-kinds-probe.mjs,puts four transform-shaped payloads through the paste intake and reports the name and preview mode each gets,tools/render/scenarios,54,driver,no,no,yes
 tools/render/scenarios/pick-md.mjs,"end-to-end reproduction of pick-a-file-in-the-fab, reporting what the frame did",tools/render/scenarios,76,driver,no,no,no
 tools/render/scenarios/project-board-review.mjs,"the project Board pane's typed read, seeded token-free",tools/render/scenarios,198,driver,no,yes,no

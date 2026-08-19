@@ -406,6 +406,25 @@
            says there is nothing to show (a signed-out estate), since a control
            that opens an empty panel is worse than no control; the phone keeps
            it, where the sidebar is also the route back out of the view. -->
+      <!-- PASTE, AT THE END OF THE HEADER AND AT EVERY WIDTH. The window
+           listener wireAppPaste installs is the desktop's whole story and is
+           worth nothing on a phone: iOS Safari raises a paste event only when
+           an editable is focused, so there was no app-wide intake there at
+           all, and the only Paste button lived on the Stage, which is the view
+           you were trying to reach. A tap is the gesture the platform does
+           give, so this is the phone's version of the same thing.
+
+           Beside the hamburger rather than in the nav, because the nav scrolls
+           at phone widths and this has to stay reachable; and outside the rail,
+           which is desktop-only and is a list of destinations rather than an
+           action. Kept on desktop too: the same act, and cheaper than
+           explaining that one viewport has a button the other does not. -->
+      <button @click="pasteAnywhere()" :disabled="pasteBusy"
+              class="shrink-0 p-1 rounded-lg transition-colors hover:bg-base-200 disabled:opacity-40"
+              title="Paste the clipboard onto the Stage">
+        <i class="ph text-lg leading-none"
+           :class="pasteBusy ? 'ph-circle-notch animate-spin' : 'ph-clipboard-text'"></i>
+      </button>
       <button @click="toggleSidebar()"
               class="shrink-0 p-1 rounded-lg transition-colors"
               :class="[sidebarOpen ? 'text-primary bg-primary/10' : 'hover:bg-base-200',
@@ -1941,6 +1960,13 @@ function app(){ return {
 
     this.wireAppDrop();
     this.wireAppPaste();
+    // PRELOAD THE CLIPBOARD KIT, because the header's Paste button cannot
+    // afford to fetch it. Reading the clipboard needs the tap's own user
+    // activation, and an await inside the handler spends it, so a lazy load
+    // there fails as "clipboard unavailable" rather than as "still loading".
+    // Not awaited: nothing else waits on it, and the button reports honestly
+    // if it is tapped in the first moments.
+    if (window.gh?.load) window.gh.load('kits/io.js').catch(() => {});
     this.syncDeckFrame();
     this.$watch('sidebarOpen', () => this.syncDeckFrame());
     this.$watch('showSidebar', () => this.syncDeckFrame());
@@ -4668,6 +4694,35 @@ function app(){ return {
   // routed here (the explorer's "+", a #stage= link, a saved surface's Load),
   // and all of them mean "show me what is staged", which is this pill.
   goStage(){ this.estateSeen = true; this.view = 'stage'; this.syncUrl(); },
+
+  // THE HEADER'S PASTE, which is the phone's whole intake. Same destination as
+  // the window listener above: stage it, and if we are not already there, route
+  // to the Stage and open the one thing that arrived. The read and the fold are
+  // StageIntake.takeClipboard's, shared with the bench's own Paste button, so
+  // there is one implementation behind two triggers.
+  //
+  // Nothing is awaited before takeClipboard: see the preload in init() for why.
+  pasteBusy: false,
+  async pasteAnywhere(){
+    if (this.pasteBusy) return;
+    const toast = Alpine.store('toast');
+    this.pasteBusy = true;
+    try {
+      const { added } = await window.StageIntake.takeClipboard();
+      if (!added.length) {
+        toast('warning', 'Clipboard is empty or unreadable', 'alert-error', 4000);
+      } else if (this.view !== 'stage') {
+        this.goStage();
+        if (added.length === 1) window.StageIntake.focus(added[0]);
+      } else {
+        toast('success', added.length > 1 ? 'Staged ' + added.length + ' refs'
+                                          : 'Staged ' + (added[0]?.name || 'the paste'), '', 3000);
+      }
+    } catch (e) {
+      toast('warning', 'Paste: ' + (e?.message || e), 'alert-error', 5000);
+    }
+    this.pasteBusy = false;
+  },
 
   // LEAVING THE VIEW LEAVES THE TAKEOVER OVER IT. Newly reachable, and newly a
   // problem, because the deck stopped covering the chrome: the sidebar and the

@@ -218,9 +218,24 @@ makes skipping the offer defensible here and nowhere else.
 
 **The one platform limit worth stating plainly: iOS Safari fires no `paste`
 event unless an editable is focused.** A window listener therefore has no intake
-at all on an iPhone, which is why the bench keeps its explicit Paste button
-(`pasteIn`, reading the clipboard through `kits/io.js`). On a phone that button
-is the paste path, not a convenience beside one.
+at all on an iPhone, so the gesture there is a TAP: the app header carries a
+Paste button at every width, beside the sidebar toggle and outside the nav,
+which scrolls on a phone. It routes exactly as the window listener does, staging
+and then opening on the Stage, and the bench keeps its own Paste button for the
+same act in place. All three run one implementation,
+`StageIntake.takeClipboard`, which reads through `kits/io.js`.
+
+Two things that path has to get right, and both were wrong until 2026-08-19.
+**Reading the clipboard needs the tap's own user activation,** so nothing may be
+awaited before the read; the button used to lazy-load the io kit inside its own
+handler, which spends the gesture and then reports the loss as a clipboard
+failure. The kit is preloaded at boot instead. And **the textarea fallback must
+read its value rather than ask `execCommand('paste')` whether it worked**: on
+iOS that returns false and pastes anyway, because the real read happens behind
+the edit-menu pill the platform puts up, so gating on the return value made
+every iOS paste resolve null and surface as "Paste unavailable in this context",
+a sentence about the browser rather than about what happened. The recipe is the
+`ios-clipboard` skill's, measured on a device.
 
 Stage-view actions:
 
