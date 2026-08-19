@@ -108,8 +108,8 @@
   }
   try {
     await gh.load('kits/review-target.js');
-    // branch-brief reads compareFields from BranchSurvey, so it loads first.
-    await gh.load('kits/branch-survey.js');
+    // branch-brief reads compareFields from BranchStatus, so it loads first.
+    await gh.load('kits/branch-status.js');
     await gh.load('kits/guide-render.js');
     // The content-registry reader: the Files pane groups changed files by
     // creation mode where the repo declares data/design/content.csv.

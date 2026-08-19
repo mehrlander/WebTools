@@ -1,7 +1,7 @@
 // Scenario: toss-render address mode with the fab's toss integration.
 // Tosses pages/index.html (which mounts its own fab) through __tossNavigate,
 // proves the singleton guard suppressed the inner fab, then opens the shell
-// fab's Render tab over a canned branchesForPath so the branch survey renders
+// fab's Render tab over a canned branchesForPath so the branch scan renders
 // deterministically (differs / same / no-file rows) for the screenshot.
 export default async (page) => {
   // @main, not the working branch: the local resolver serves every ref from
@@ -26,7 +26,7 @@ export default async (page) => {
   if (guard.fabButtons !== 0) throw new Error('inner fab mounted despite the guard');
   console.log('guard ok: inner fab.js loaded, __fabHosted set, 0 inner fab buttons');
 
-  // Canned survey, so the render tab shows every row state without network.
+  // Canned scan, so the render tab shows every row state without network.
   await page.evaluate(() => {
     window.GH.prototype.branchesForPath = async () => ({
       defaultBranch: 'main', defaultOid: 'A',

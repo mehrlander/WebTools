@@ -4,7 +4,7 @@
 A repo's .web-tools.json names the artifacts it publishes: its landing page, the
 pages on its estate card, the filesets a stage link carries. Those are addresses,
 and an address in JSON has the same problem as one in prose, with one difference
-that matters: nothing reads it. link-survey.py enumerates a repo with
+that matters: nothing reads it. dead-links.py enumerates a repo with
 `git ls-files *.md`, so a declared path is invisible to it, and so is a path
 string in a JavaScript registry.
 
@@ -34,7 +34,7 @@ Two address forms, both accepted anywhere a path is taken:
   path/in/this/repo.html          resolved against ROOT
   owner/repo[@ref]:path/in/it     resolved against a SIBLING CHECKOUT of repo
 
-Verdicts are ok, dead, or unverifiable, with the same rule link-survey.py uses: a
+Verdicts are ok, dead, or unverifiable, with the same rule dead-links.py uses: a
 cross-repo address whose sibling checkout is absent is *unverifiable*, never dead,
 because a missing clone is not evidence of a bad path and a one-repo machine must
 not fail on it. A non-main @ref is unverifiable too: the working tree is one ref

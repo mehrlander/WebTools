@@ -1,4 +1,4 @@
-// scripts/title-survey.py — the advisory detector for meaning that lives only
+// scripts/stranded-titles.py — the advisory detector for meaning that lives only
 // in a `title` attribute (HTML-STYLE.md: "a tooltip worth having is worth building").
 //
 // What is worth pinning is the CLASSIFIER, not the report. The audit behind
@@ -19,11 +19,11 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-const SCRIPT = 'scripts/title-survey.py';
+const SCRIPT = 'scripts/stranded-titles.py';
 
-// Run the survey over one snippet and return { counts, stranded: [values] }.
-function survey(html) {
-  const dir = mkdtempSync(join(tmpdir(), 'title-survey-'));
+// Run the scan over one snippet and return { counts, stranded: [values] }.
+function scan(html) {
+  const dir = mkdtempSync(join(tmpdir(), 'stranded-titles-'));
   try {
     const file = join(dir, 'probe.html');
     writeFileSync(file, html);
@@ -41,7 +41,7 @@ function survey(html) {
 }
 
 test('a title on a bare span, with nothing to tap, is stranded', () => {
-  const r = survey('<div><span title="the only place this fact lives">*</span></div>');
+  const r = scan('<div><span title="the only place this fact lives">*</span></div>');
   assert.equal(r.total, 1);
   assert.equal(r.stranded, 1);
   assert.deepEqual(r.values, ['the only place this fact lives']);
@@ -51,13 +51,13 @@ test('a title on a bare span, with nothing to tap, is stranded', () => {
 // hand pass at 37: a label inside a button reads as unreachable when you only
 // look at the element carrying the attribute.
 test('a title inside a button is reachable, since tapping the button reaches it', () => {
-  const r = survey('<button @click="open()"><span title="what this opens">6</span></button>');
+  const r = scan('<button @click="open()"><span title="what this opens">6</span></button>');
   assert.equal(r.reachable, 1);
   assert.equal(r.stranded, 0);
 });
 
 test('an ancestor several levels up still counts as reachable', () => {
-  const r = survey('<a href="#x"><span><i></i><span title="deep label">go</span></span></a>');
+  const r = scan('<a href="#x"><span><i></i><span title="deep label">go</span></span></a>');
   assert.equal(r.reachable, 1);
 });
 
@@ -65,7 +65,7 @@ test('an ancestor several levels up still counts as reachable', () => {
 // otherwise make every later title in the file look like its child, and in a
 // UI file full of icon glyphs that silently marks the whole file reachable.
 test('a void element does not swallow the titles that follow it', () => {
-  const r = survey('<button><i class="ph"></i></button><div><span title="after the icon">x</span></div>');
+  const r = scan('<button><i class="ph"></i></button><div><span title="after the icon">x</span></div>');
   assert.equal(r.stranded, 1, 'the span after the button is not inside it');
   assert.deepEqual(r.values, ['after the icon']);
 });
@@ -74,13 +74,13 @@ test('a void element does not swallow the titles that follow it', () => {
 // pass at 88: walking back to the nearest `<` lands inside `guideIdx <= 0`
 // rather than at the tag that opens the element, so the ancestor is never seen.
 test('a "<" inside an attribute value does not break the tag walk', () => {
-  const r = survey('<button :disabled="i <= 0" @click="step()" title="newer PR"><i></i></button>');
+  const r = scan('<button :disabled="i <= 0" @click="step()" title="newer PR"><i></i></button>');
   assert.equal(r.reachable, 1, 'the button is still recognised as a button');
   assert.equal(r.stranded, 0);
 });
 
 test('a title that only repeats the element\'s own x-text is an echo, not a finding', () => {
-  const r = survey('<div><span :title="row.subject" x-text="row.subject"></span></div>');
+  const r = scan('<div><span :title="row.subject" x-text="row.subject"></span></div>');
   assert.equal(r.echo, 1);
   assert.equal(r.stranded, 0);
 });
@@ -90,17 +90,17 @@ test('a title that only repeats the element\'s own x-text is an echo, not a find
 // title containing an `n` look like a repetition of itself. Three real findings
 // were hiding behind it, which is how a true 33 got reported as 32.
 test('a title that says MORE than the visible text is stranded, not an echo', () => {
-  const r = survey('<div><span :title="n + \' files: \' + list" x-text="n"></span></div>');
+  const r = scan('<div><span :title="n + \' files: \' + list" x-text="n"></span></div>');
   assert.equal(r.stranded, 1);
 });
 
 test('a comment holding title= markup is not counted', () => {
-  const r = survey('<div><!-- <span title="an example in prose">x</span> --><p>live</p></div>');
+  const r = scan('<div><!-- <span title="an example in prose">x</span> --><p>live</p></div>');
   assert.equal(r.total, 0);
 });
 
 test('both title and :title are read', () => {
-  const r = survey('<div><span title="static"></span><span :title="bound"></span></div>');
+  const r = scan('<div><span title="static"></span><span :title="bound"></span></div>');
   assert.equal(r.total, 2);
   assert.equal(r.stranded, 2);
 });
@@ -109,7 +109,7 @@ test('both title and :title are read', () => {
 // a list of line numbers with no statement of what is wrong is the tooltip
 // problem one level up.
 test('the report names the rule when it finds something', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'title-survey-'));
+  const dir = mkdtempSync(join(tmpdir(), 'stranded-titles-'));
   try {
     const file = join(dir, 'probe.html');
     writeFileSync(file, '<div><span title="stranded fact">*</span></div>');
@@ -121,7 +121,7 @@ test('the report names the rule when it finds something', () => {
 });
 
 test('a clean file says so and reports nothing to fix', () => {
-  const r = survey('<div><button title="Open on GitHub"><i></i></button></div>');
+  const r = scan('<div><button title="Open on GitHub"><i></i></button></div>');
   assert.equal(r.stranded, 0);
   assert.equal(r.reachable, 1);
 });

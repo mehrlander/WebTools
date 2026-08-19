@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// check-branch-survey.mjs — the stated agreement check for the branches view:
-// does the browser port (lib/kits/branch-survey.js) classify a repo's branches the
-// same way home's CLI instrument (tools/branch-survey.sh) does?
+// check-branch-status.mjs — the stated agreement check for the branches view:
+// does the browser port (lib/kits/branch-status.js) classify a repo's branches the
+// same way home's CLI instrument (tools/unmerged-branches.sh) does?
 //
-//   node scripts/check-branch-survey.mjs <path-to-clone> [--script <sh>] [--limit N]
+//   node scripts/check-branch-status.mjs <path-to-clone> [--script <sh>] [--limit N]
 //
 // Runs the CLI script against the clone and parses its groups, then classifies
-// every surveyed branch twice through the ported module, from two input
+// every scanned branch twice through the ported module, from two input
 // shapes:
 //
 //   cli  uniquely-touched paths from `git log --no-merges -n 50 <ref> --not
@@ -42,16 +42,16 @@ import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
 const clone = args.find(a => !a.startsWith('--'));
-if (!clone) { console.error('usage: check-branch-survey.mjs <path-to-clone> [--script <sh>] [--limit N]'); process.exit(2); }
+if (!clone) { console.error('usage: check-branch-status.mjs <path-to-clone> [--script <sh>] [--limit N]'); process.exit(2); }
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
-const script = opt('--script') || path.join(clone, 'tools/branch-survey.sh');
+const script = opt('--script') || path.join(clone, 'tools/unmerged-branches.sh');
 const limit = +(opt('--limit') || 0);
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const src = readFileSync(path.join(repoRoot, 'lib/kits/branch-survey.js'), 'utf8');
+const src = readFileSync(path.join(repoRoot, 'lib/kits/branch-status.js'), 'utf8');
 const window = {};
 new Function('window', src)(window);
-const B = window.BranchSurvey;
+const B = window.BranchStatus;
 
 const git = (...a) => execFileSync('git', ['-C', clone, ...a], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
 const BASE = 'origin/main';
@@ -89,7 +89,7 @@ const rows = git('for-each-ref', 'refs/remotes/origin', '--sort=-committerdate',
 const results = [];
 for (const { date, ref } of rows) {
   const branch = ref.replace(/^origin\//, '');
-  if (!cliGroups.has(branch)) continue; // merged (or outside --limit): the CLI didn't survey it
+  if (!cliGroups.has(branch)) continue; // merged (or outside --limit): the CLI didn't scan it
 
   const tip = B.treeSets(lsTree(ref));
   const daysAgo = B.daysAgo(date, now);

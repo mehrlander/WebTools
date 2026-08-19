@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Advisory survey: near-duplicated prose across the repo's markdown.
+"""Advisory scan: near-duplicated prose across the repo's markdown.
 
 The one-owner-per-claim principle (a claim lives in one document; others
 link, and docs/owners.csv records who owns a statement the coordination
 layer repeats) fails quietly: the same paragraph gets restated across
 README layers and the copies age at different rates. This detector is
-mechanical, advisory, and never blocking, in the idiom of link-survey.py
-and unclaimed-code-survey.py: run it, read the pairs, assign an owner or
+mechanical, advisory, and never blocking, in the idiom of dead-links.py
+and unclaimed-code.py: run it, read the pairs, assign an owner or
 shrug. It reports candidates, not findings.
 
-Ported 2026-08-16 from mehrlander/home's tools/duplicated-claims-survey.py
+Ported 2026-08-16 from mehrlander/home's tools/duplicated-claims.py
 (born there from PR #295's two hand-fixed duplicate rounds), promoted to the
 hub because the hub's own doc pairs (show-repo.md against its page's
 commentary, CONVENTIONS.md against its restatements) were being overlap-
@@ -28,8 +28,8 @@ the plugin's vendored copies of the conventions (byte-identical by a hook,
 gated elsewhere, and they would drown the report).
 
 Usage:
-  python3 scripts/duplicated-claims-survey.py [PATH]   # default: whole repo
-  npm run claims-survey
+  python3 scripts/duplicated-claims.py [PATH]   # default: whole repo
+  npm run claims-scan
 """
 
 import csv
@@ -121,7 +121,7 @@ def main(argv):
 
     hits = sorted(((len(v), k, v) for k, v in pairs.items() if len(v) >= SHARED_MIN),
                   reverse=True)
-    print(f"duplicated-claims survey: {len(files)} files scanned "
+    print(f"duplicated-claims scan: {len(files)} files scanned "
           f"({len(records)} record-status docs excluded via docs.csv), "
           f"{len(hits)} pair(s) at >= {SHARED_MIN} shared {SHINGLE}-word windows "
           f"(advisory; expect false positives; top {TOP} shown)")

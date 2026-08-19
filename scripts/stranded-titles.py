@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Advisory survey: meaning that lives only in a `title` attribute.
+"""Advisory scan: meaning that lives only in a `title` attribute.
 
 HTML-STYLE.md's rule is that a tooltip worth having is worth building: a native
 `title` reaches no phone and opens nothing, so a fact that earns a hover earns a
 real panel. The failure is quiet, because on the machine where the UI is built
 the tooltip does appear, so a fact parked there looks shipped. This detector is
-mechanical, advisory, and never blocking, in the idiom of link-survey.py,
-unclaimed-code-survey.py and duplicated-claims-survey.py: run it, read the
+mechanical, advisory, and never blocking, in the idiom of dead-links.py,
+unclaimed-code.py and duplicated-claims.py: run it, read the
 list, fix or shrug. It reports candidates, not findings.
 
 Born 2026-08-19 from the audit behind PR #447, which ran THREE times by hand
@@ -43,9 +43,9 @@ whose title is genuinely a nicety reports the same as a caveat nobody can
 reach, and the difference is judgment the tool cannot supply.
 
 Usage:
-  python3 scripts/title-survey.py [PATH...]      # default: lib/ app/ pages/
-  python3 scripts/title-survey.py --all          # every verdict, not just stranded
-  npm run title-survey
+  python3 scripts/stranded-titles.py [PATH...]      # default: lib/ app/ pages/
+  python3 scripts/stranded-titles.py --all          # every verdict, not just stranded
+  npm run stranded-titles
 """
 
 import re
@@ -101,7 +101,7 @@ def tags(src):
         i = j + 1
 
 
-def survey(path):
+def scan(path):
     """Classify every title in one file. Returns a list of dicts."""
     src = path.read_text(encoding='utf8', errors='replace')
     out, stack = [], []
@@ -154,11 +154,11 @@ def main(argv):
     roots = [a for a in argv[1:] if not a.startswith('-')] or list(DEFAULT_ROOTS)
     rows, counts = [], Counter()
     for f in files_under(roots):
-        for r in survey(f):
+        for r in scan(f):
             counts[r['verdict']] += 1
             rows.append(r)
     if not rows:
-        print('title-survey: no title attributes found under ' + ', '.join(roots))
+        print('stranded-titles: no title attributes found under ' + ', '.join(roots))
         return 0
 
     wanted = [r for r in rows if show_all or r['verdict'] == 'stranded']
@@ -172,7 +172,7 @@ def main(argv):
             print(f"  {r['line']:>6}  <{r['tag']}>  {mark}{r['value'][:96]}")
 
     total = len(rows)
-    print(f"\ntitle-survey: {total} titles; "
+    print(f"\nstranded-titles: {total} titles; "
           f"{counts['reachable']} reachable by tap, {counts['echo']} echo visible text, "
           f"{counts['stranded']} stranded")
     if counts['stranded']:

@@ -3,8 +3,8 @@
 Experimental ground for the term-and-ambiguity work: what should eventually
 feed a concept index (PR #336) and a response-time jargon check, prototyped
 against the real estate corpora until the signals earn their keep. Sibling
-of the advisory surveys in `home` (`duplicated-claims-survey.py`,
-`data-provenance-survey.sh`): heuristic, read-only, evidence not verdicts.
+of the advisory scans in `home` (`duplicated-claims.py`,
+`data-provenance-scan.sh`): heuristic, read-only, evidence not verdicts.
 
 ## A sibling ran the same problem from the other end
 

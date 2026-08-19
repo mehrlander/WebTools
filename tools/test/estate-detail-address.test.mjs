@@ -43,10 +43,10 @@ window.__shell = {
   setDetail: (spec) => stamped.push(spec),
 };
 
-// branch-survey.js first: the takeover's header reads lifespanTitle from it,
+// branch-status.js first: the takeover's header reads lifespanTitle from it,
 // unguarded, the way the shell's own load chain guarantees it.
 const Alpine = await startAlpine(window, [
-  'lib/kits/branch-survey.js',
+  'lib/kits/branch-status.js',
   // The takeover is a swipe-deck now, so the kit has to be present or
   // mountDeck falls back to gh.load, which is not wired in a unit harness.
   'lib/kits/swipe-deck.js',
@@ -68,14 +68,14 @@ data.activity = {
   'me/tools': {
     defaultBranch: 'main',
     // A PR per branch: the default scope is what is IN FLIGHT, and a bare
-    // surveyed branch does not qualify (inScope), so a fixture without these
+    // scanned branch does not qualify (inScope), so a fixture without these
     // yields an empty list and every assertion below reads as a stepping bug.
     openPRs: ['a', 'b', 'c'].map((n, i) => ({
       number: 300 + i, head: 'claude/feat-' + n, draft: true, title: 'work on ' + n,
       updatedAt: '2026-08-06T00:00:00Z', aheadBy: 2, behindBy: 0,
       firstDate: '2026-08-04T00:00:00Z',
     })),
-    survey: { branches: ['a', 'b', 'c'].map(n => ({
+    scan: { branches: ['a', 'b', 'c'].map(n => ({
       name: 'claude/feat-' + n, sha: n, group: 'active',
       date: '2026-08-06T00:00:00Z', firstDate: '2026-08-04T00:00:00Z',
       subject: 'work on ' + n, aheadBy: 2, behindBy: 0,

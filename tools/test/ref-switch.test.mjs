@@ -238,7 +238,7 @@ test('when the newest branch is the default one, the button retires itself', asy
   stubGH([{ name: 'main', date: '2026-08-01T00:00:00Z', ago: '1h', fileOid: 'd0' }]);
   const { data } = await mount();
 
-  assert.equal(data.showNewest, true, 'before the survey there is no way to know');
+  assert.equal(data.showNewest, true, 'before the scan there is no way to know');
   await data.load();
   assert.equal(data.newest, null);
   assert.equal(data.showNewest, false);
@@ -256,15 +256,15 @@ test('when the newest branch is the default one, the button retires itself', asy
 // session riding its own newest branch, which is most of the time this control
 // gets used. go() short-circuits on the ref it is already at and revert() only
 // closes the panel, so the tap read as a dead button. Both halves are held: the
-// affordance retires once the survey knows, AND the handler refuses, because
-// before the survey lands the button is deliberately still up.
+// affordance retires once the scan knows, AND the handler refuses, because
+// before the scan lands the button is deliberately still up.
 test('when the newest branch is the one being ridden, there is nowhere to jump', async () => {
   setSearch('?use=claude/newest-thing');
   stubGH();
   const { data } = await mount();
   assert.equal(data.riding, true);
 
-  assert.equal(data.showNewest, true, 'before the survey there is no way to know');
+  assert.equal(data.showNewest, true, 'before the scan there is no way to know');
   assert.equal(data.onNewest, false, 'and the dot claims nothing until it does');
   await data.load();
   assert.equal(data.newest.name, 'claude/newest-thing', 'still the newest, as a fact');

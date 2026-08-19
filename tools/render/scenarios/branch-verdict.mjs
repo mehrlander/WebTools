@@ -15,7 +15,7 @@
 import openList from '/home/user/web-tools/tools/render/scenarios/estate-open.mjs';
 
 export default async function (page, ctx) {
-  process.env.SCOPE = 'stranded';           // the surveyed rows live here
+  process.env.SCOPE = 'stranded';           // the scanned rows live here
   await openList(page, ctx);
   await page.waitForTimeout(600);
 
@@ -25,8 +25,8 @@ export default async function (page, ctx) {
     // Three landed, three differing, two missing. The tip and the base agree on
     // the first three, hold different bytes for the next three, and the base
     // has never seen the last two.
-    const landed  = ['docs/show-repo.md', 'lib/kits/branch-survey.js', 'pages/branch.html'];
-    const differs = ['lib/alpineComponents/estate.js', 'docs/branch-overlay.md', 'tools/test/branch-survey.test.mjs'];
+    const landed  = ['docs/show-repo.md', 'lib/kits/branch-status.js', 'pages/branch.html'];
+    const differs = ['lib/alpineComponents/estate.js', 'docs/branch-overlay.md', 'tools/test/branch-status.test.mjs'];
     const missing = ['tracker/tasks/0031-fund-splits.md', 'projects/budget-drs/data/design/LAYERS.md'];
     const all = [...landed, ...differs, ...missing];
     const blob = (path, sha) => ({ path, type: 'blob', sha });
@@ -62,7 +62,7 @@ export default async function (page, ctx) {
     const d = window.swipeDeck.top();
     const slide = d.deck.track.children[d.deck.active()];
     const bb = window.Alpine.$data(slide.querySelector('[x-data^="branchBrief"]'));
-    return { pane: bb.pane, fileState: bb.fileState, measured: !!bb.survey,
+    return { pane: bb.pane, fileState: bb.fileState, measured: !!bb.scan,
              counts: bb.pathStateChips.map(c => c.n + ' ' + c.label).join(', '),
              total: bb.verdict?.nUnique, showing: bb.filteredFiles.length,
              sums: bb.verdict ? bb.verdict.nLanded + bb.verdict.nDiffers + bb.verdict.nMissing : null };

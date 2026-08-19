@@ -108,9 +108,9 @@
   await gh.load('kits/last-write.js');
   // Config-aggregate builders for the private cache (state/configs.json).
   await gh.load('kits/repo-config-cache.js');
-  // The pure survey math + shared fetch orchestrators behind the branches view
-  // and the activity crawl (window.BranchSurvey).
-  await gh.load('kits/branch-survey.js');
+  // The pure scan math + shared fetch orchestrators behind the branches view
+  // and the activity crawl (window.BranchStatus).
+  await gh.load('kits/branch-status.js');
   // Activity-aggregate builders for the private cache (state/activity.json).
   await gh.load('kits/repo-activity-cache.js');
   // Sessions-aggregate builders for the private cache (state/sessions.json).
@@ -1861,7 +1861,7 @@ function app(){ return {
   guidesLoadedAt: '',
   guidesBusy: false,   // mirrored the same way, so the State row can spin
   configRefreshing: false,  // the estate refresh button is mid-crawl
-  activityRefreshing: false, // the activity crawl (heavier: per-repo survey) is running
+  activityRefreshing: false, // the activity crawl (heavier: per-repo scan) is running
   // ── Live crawl progress, one channel for all three crawls ──────────────
   // A slot per cache key, null when that crawl is idle, and the shape is the
   // same in every slot: { verb, done, total, unit, active: [name, …] }. One
@@ -1870,7 +1870,7 @@ function app(){ return {
   // the Activity pane draws the same bar for its own row.
   //
   // THE CRAWL NAMES ITS OWN VERB AND UNIT. Only the crawl knows it is on the
-  // survey pass rather than the quick one, or counting session records rather
+  // scan pass rather than the quick one, or counting session records rather
   // than repos, so the words ride with the numbers instead of being inferred
   // by whoever draws them.
   //
@@ -2440,13 +2440,13 @@ function app(){ return {
   // Force the activity crawl and tell the estate to re-read (the Activity view's
   // Refresh button and the estate refresh flow route here). Separate from the
   // config refresh because the activity crawl is much heavier (a capped branch
-  // survey per repo), so it is not folded into every config refresh.
+  // scan per repo), so it is not folded into every config refresh.
   //
   // ONE PASS, and it shipped as two. The split ran the crawl quick-first
-  // (commits, PRs, branch dates) so the list landed in seconds, then a survey
+  // (commits, PRs, branch dates) so the list landed in seconds, then a scan
   // true-up behind it. What the call log showed (2026-08-17) is what that
   // actually cost: the deep pass repeats every cheap read the quick pass just
-  // made, because `deep` gates the survey ALONE, so a two-pass refresh of 11
+  // made, because `deep` gates the scan ALONE, so a two-pass refresh of 11
   // repos spent 66 calls, a fifth of the run, fetching the same commits and the
   // same two PR lists twice within a minute. The seconds it bought back were
   // real and the price was not worth them, and the reader watching the bar was
@@ -2510,13 +2510,13 @@ function app(){ return {
   // cache (state/activity.json) in the registry. This is the sibling of the
   // config crawl above, but heavier: besides cheap summary signals (pushed-at,
   // recent commits, open PRs, counts) it runs the capped landed/stranded branch
-  // survey (lib/kits/branch-survey.js) once and stores it, so the branches view and
+  // scan (lib/kits/branch-status.js) once and stores it, so the branches view and
   // the cross-repo Activity view render from the cache instead of a per-visit
   // fanout. A longer per-browser throttle and the same material-change gate keep
   // it occasional and commits sparse. See web-tools-private/DESIGN.md.
   ACTIVITY_CACHE_INTERVAL_MS: 12 * 3600 * 1000,
-  ACTIVITY_SURVEY_CAP: 30,       // older branches surveyed per repo (view's SURVEY_CAP)
-  // Errored survey rows retried per repo per crawl. A branch whose survey
+  ACTIVITY_SCAN_CAP: 30,       // older branches scanned per repo (view's SCAN_CAP)
+  // Errored scan rows retried per repo per crawl. A branch whose scan
   // failed usually fails again for the same reason (a rewritten history, a ref
   // the token cannot reach), so retrying every one on every crawl is how a
   // single repo came to spend 93 calls of a 183-call run with 56 of them
@@ -2532,25 +2532,25 @@ function app(){ return {
   // list is not here, rather than showing a short list under a long number.
   ACTIVITY_RECENT_COMMITS: 40,
   // How deep the any-state PR read goes per repo (gh.branchPulls). 100 is the
-  // API's page maximum, and it has to clear the branch survey's recent window
-  // (BranchSurvey.RECENT_DAYS, 14 days) or a fresh branch's merged PR would sit
+  // API's page maximum, and it has to clear the branch scan's recent window
+  // (BranchStatus.RECENT_DAYS, 14 days) or a fresh branch's merged PR would sit
   // past the reach and read as unknown. The busiest repo in the estate opens
   // roughly five PRs a day, so 100 covers about three weeks there and the whole
   // history everywhere else; anything past it is reported as unknown rather
   // than as "no PR", which is what `prReach` below is for.
   ACTIVITY_PR_REACH: 100,
-  ACTIVITY_REPO_POOL: 2,         // repos crawled at once (each runs its own survey pool)
+  ACTIVITY_REPO_POOL: 2,         // repos crawled at once (each runs its own scan pool)
   _activityCheckKey: 'wt:activityCacheCheckedAt',
   // Returns a summary of the run for the caller to report: {total, changed,
   // failed, committed}, or {skipped, reason} when there was nothing to do. The
   // background (unforced) caller ignores it; refreshActivity turns it into the
   // closing toast.
   // deep=false is the arrival path: current commits, PRs, branch dates and
-  // sessions, no content survey. Complete for the recent window by
+  // sessions, no content scan. Complete for the recent window by
   // construction, since anything inside it is classified on date alone and
-  // is never surveyed even on a deep pass.
+  // is never scanned even on a deep pass.
   async refreshActivityCache(force, { deep = true } = {}){
-    if (!this.hasToken() || !window.RepoActivityCache || !window.BranchSurvey) return { skipped: true };
+    if (!this.hasToken() || !window.RepoActivityCache || !window.BranchStatus) return { skipped: true };
     // Single-flight: the tab-arrival kick and the Refresh button could run two
     // crawls at once, and the loser of that race saved a cache built on a
     // pre-commit read. A call that finds a crawl in flight joins it and gets
@@ -2566,11 +2566,11 @@ function app(){ return {
     try { return await this._activityCrawl; } finally { this._activityCrawl = null; }
   },
   async _crawlActivity(deep){
-    const A = window.RepoActivityCache, B = window.BranchSurvey;
+    const A = window.RepoActivityCache, B = window.BranchStatus;
     const t0 = Date.now();   // for the run record, appended below if this commits
     // Estate membership from the config cache (estate:true). The activity crawl
     // is estate-scoped, not account-wide: only repos on the dashboard need the
-    // survey. No cache yet means nothing to crawl (the config crawl seeds it).
+    // scan. No cache yet means nothing to crawl (the config crawl seeds it).
     const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
     let members = [], cfgByName = new Map();
     try {
@@ -2588,43 +2588,43 @@ function app(){ return {
     let metaByName = new Map();
     try { metaByName = new Map((await new window.GH({ token: window.TOKEN }).repos()).map(r => [r.full_name, r])); } catch {}
 
-    // The prior cache, read up front for the survey gate below, through the same
+    // The prior cache, read up front for the scan gate below, through the same
     // reconcile the fold uses: this crawl runs twice in a row (quick, then
-    // survey), which is precisely the window in which a read can be answered
+    // scan), which is precisely the window in which a read can be answered
     // with the copy the pass before it replaced.
     let base = await this.readForFold(reg, A.CACHE_PATH);
     let prev = base?.doc || null;
 
-    // The survey gate: a repo not pushed since its last survey cannot have
+    // The scan gate: a repo not pushed since its last scan cannot have
     // changed any branch verdict (landed/stranded read git state alone, and a
     // branch delete counts as a push), so its stored rows carry forward
     // through mergeRepo and the tree reads go where something actually moved.
     // This is what makes the deep pass affordable enough to run routinely:
-    // measured 2026-08-08, the estate held 167 surveyed branches at two API
+    // measured 2026-08-08, the estate held 167 scanned branches at two API
     // calls each, nearly all of them re-verifying repos that had not moved.
     // The margin absorbs clock skew between GitHub's pushed-at and the client
-    // clock that stamped surveyedAt; anything unmeasurable surveys.
-    const SURVEY_SKEW_MS = 10 * 60 * 1000;
-    const needsSurvey = (repo) => {
-      const stored = prev?.repos?.[repo]?.survey;
-      // A stamp with no rows behind it is not a survey, and the gate must not
+    // clock that stamped scannedAt; anything unmeasurable scans.
+    const SCAN_SKEW_MS = 10 * 60 * 1000;
+    const needsScan = (repo) => {
+      const stored = prev?.repos?.[repo]?.scan;
+      // A stamp with no rows behind it is not a scan, and the gate must not
       // read it as one. That is how a repo stayed empty after the failed-read
-      // wipe of 2026-08-17: the bad pass left `surveyedAt` current and
-      // `branches` empty, so "not pushed since the last survey" skipped it
+      // wipe of 2026-08-17: the bad pass left `scannedAt` current and
+      // `branches` empty, so "not pushed since the last scan" skipped it
       // forever. Costs nothing where it fires wrongly: a repo with no older
-      // branches surveys an empty queue and makes no calls at all.
+      // branches scans an empty queue and makes no calls at all.
       if (!stored?.branches?.length) return true;
       const pushed = Date.parse(metaByName.get(repo)?.pushed_at || '');
-      const seen = Date.parse(stored.surveyedAt || '');
+      const seen = Date.parse(stored.scannedAt || '');
       if (!Number.isFinite(pushed) || !Number.isFinite(seen)) return true;
-      return pushed >= seen - SURVEY_SKEW_MS;
+      return pushed >= seen - SCAN_SKEW_MS;
     };
 
     const failed = [];
     try {
       const now = Date.now(), nowISO = new Date().toISOString();
       const fetched = {};
-      // Bounded outer concurrency: each repo runs its own inner survey pool, so
+      // Bounded outer concurrency: each repo runs its own inner scan pool, so
       // a small repo pool keeps total in-flight GitHub calls reasonable. The
       // two progress ticks bracket exactly one repo's work, which is what makes
       // done/total a count of finished repos rather than an estimate.
@@ -2636,13 +2636,13 @@ function app(){ return {
           active.push(repo);
           this.tickCrawl('activity', { done, total: members.length, active });
           try {
-            const f = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep && needsSurvey(repo), prev);
+            const f = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep && needsScan(repo), prev);
             fetched[repo] = f;
             // A deep pass that came back partial could not read the repo's
             // branches. It keeps what is stored (see the guard in
             // crawlRepoActivity) and says so, rather than reporting a clean run
             // over a repo it never saw.
-            if (deep && needsSurvey(repo) && f?.partial) failed.push(repo);
+            if (deep && needsScan(repo) && f?.partial) failed.push(repo);
           }
           catch(e){ failed.push(repo); console.warn('activity crawl', repo, e?.message || e); }
           active.splice(active.indexOf(repo), 1);
@@ -2665,14 +2665,14 @@ function app(){ return {
       const changed = A.changedRepos(prev, next);
       if (changed.length){
         // The run record rides this commit (lib/kits/crawl-runs.js). `pass` says
-        // whether the survey ran, which is an order-of-magnitude difference in
-        // cost: the Refresh button always surveys, and `goGuides` warms this
+        // whether the scan ran, which is an order-of-magnitude difference in
+        // cost: the Refresh button always scans, and `goGuides` warms this
         // cache without one, so two entries with the same shape would otherwise
         // average into a meaningless duration.
         next.runs = window.CrawlRuns?.push(prev?.runs, {
           at: new Date().toISOString(), ms: Date.now() - t0,
           checked: members.length, changed: changed.length, failed: failed.length,
-          pass: deep ? 'survey' : 'quick',
+          pass: deep ? 'scan' : 'quick',
         }) ?? prev?.runs;
         await this.saveFold(reg, A.CACHE_PATH, next,
                             'Update activity cache (state/activity.json) via show-repo', base);
@@ -2700,7 +2700,7 @@ function app(){ return {
   // Stop and so is always stale by design.
   //
   // Throttled shorter than the activity crawl (that one runs a per-repo branch
-  // survey; this one is a tree read and a few blobs) and longer than nothing,
+  // scan; this one is a tree read and a few blobs) and longer than nothing,
   // since sessions accrue while you are not looking. See
   // web-tools-private/DESIGN.md and its sessions/README.md.
   SESSIONS_CACHE_INTERVAL_MS: 3 * 3600 * 1000,
@@ -2865,7 +2865,7 @@ function app(){ return {
   // Every crawl here reads a registry file, folds into it, and writes it back.
   // GitHub's contents API is read-after-write eventual, so seconds after a
   // commit a read can still be answered with the version it replaced, sha and
-  // all: the split refresh's survey pass hit exactly that and 409'd four times
+  // all: the split refresh's scan pass hit exactly that and 409'd four times
   // (2026-08-16). `GH.FRESH` removed the browser's 60-second cache from the
   // picture; this removes the API's own lag, by preferring the copy this page
   // committed when the read comes back older than it. lib/kits/last-write.js
@@ -2962,14 +2962,14 @@ function app(){ return {
   },
 
   // Crawl one repo's activity: the cheap summary (pushed-at, recent commits,
-  // open PRs) plus the capped branch survey. Returns the <fetched> shape
+  // open PRs) plus the capped branch scan. Returns the <fetched> shape
   // repo-activity-cache.mergeRepo folds. Failures on a sub-read degrade to an
   // empty piece rather than dropping the whole repo.
-  // `deep` decides whether the content survey runs. It is the whole cost
-  // difference: the survey is one tree read per branch, up to 30, against
+  // `deep` decides whether the content scan runs. It is the whole cost
+  // difference: the scan is one tree read per branch, up to 30, against
   // roughly a dozen requests for everything else. A quick pass omits the
-  // `survey` key entirely rather than sending an empty one, because
-  // RepoActivityCache.mergeRepo keeps the prior survey when the field is
+  // `scan` key entirely rather than sending an empty one, because
+  // RepoActivityCache.mergeRepo keeps the prior scan when the field is
   // undefined and clears it when present. That affordance already existed.
   async crawlRepoActivity(repo, meta, now, A, B, cfg, deep = true, prev = null){
     const def = meta?.default_branch || 'main';
@@ -2995,7 +2995,7 @@ function app(){ return {
       // two GraphQL calls paying twice for the same pagination; the crawl's own
       // call log put that pair at the top of the bill (2026-08-17: 79 posts,
       // 75s of request time across 22 repos). Still optional by design: a
-      // failure here leaves the survey to fall back to the REST branch list and
+      // failure here leaves the scan to fall back to the REST branch list and
       // the session links blank, rather than costing the repo its row.
       g.branchesDatedSessions().catch(() => null),
     ]);
@@ -3007,10 +3007,10 @@ function app(){ return {
     const prevMainSha = prev?.repos?.[repo]?.recentCommits?.[0]?.sha || '';
     // Ahead/behind for each open PR head, so the Open view can show it without a
     // per-visit compare. The same response carries the branch's oldest unique
-    // commit (BranchSurvey.firstCommitDate), which is what lets the Open row
-    // show a lifespan for a PR head the survey never reached. Bounded pool,
+    // commit (BranchStatus.firstCommitDate), which is what lets the Open row
+    // show a lifespan for a PR head the scan never reached. Bounded pool,
     // best-effort: a failure leaves it null.
-    // Same two inputs as the survey, so the same gate: a compare of `main` to a
+    // Same two inputs as the scan, so the same gate: a compare of `main` to a
     // PR head cannot have moved while the PR has not been updated and the
     // default branch's tip is where it was. The stored row already holds the
     // answer, so this skips the call and carries it. (`updatedAt` moves on a
@@ -3052,9 +3052,9 @@ function app(){ return {
       };
       await Promise.all(Array.from({ length: Math.min(4, openPRs.length) }, prAheadBehind));
     }
-    // Branch survey: the same split the branches view runs (recent = date-only
-    // active; older = surveyed, capped), through the shared orchestrator.
-    let branches = [], counts = { branches: 0, active: 0, landed: 0, stranded: 0, surveyed: 0, older: 0, openPRs: openPRs.length };
+    // Branch scan: the same split the branches view runs (recent = date-only
+    // active; older = scanned, capped), through the shared orchestrator.
+    let branches = [], counts = { branches: 0, active: 0, landed: 0, stranded: 0, scanned: 0, older: 0, openPRs: openPRs.length };
     let truncated = false;
     // Whether this pass actually READ the branch list. Everything below is
     // derived from it, so a failure here means the numbers are absent rather
@@ -3071,17 +3071,17 @@ function app(){ return {
         .map(b => ({ ...b, daysAgo: b.date ? B.daysAgo(b.date, now) : Infinity }));
       const recent = dated.filter(b => b.daysAgo <= B.RECENT_DAYS).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       const older = dated.filter(b => b.daysAgo > B.RECENT_DAYS).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-      // What the last survey saw, so a branch whose tip has not moved since is
+      // What the last scan saw, so a branch whose tip has not moved since is
       // carried rather than re-derived. `mainSha` is the default branch's tip
-      // from the commits read above, and it is the survey's other input: while
-      // both hold, a verdict cannot have changed. See BranchSurvey.needsSurvey.
-      const prior = new Map((prev?.repos?.[repo]?.survey?.branches || []).map(r => [r.name, r]));
-      const surveyed = deep
-        ? await B.surveyOlder(g, { defaultRef: def, older, cap: this.ACTIVITY_SURVEY_CAP, pool: 3, now,
-                                   prior, mainSha, priorMainSha: prev?.repos?.[repo]?.survey?.mainSha || '',
+      // from the commits read above, and it is the scan's other input: while
+      // both hold, a verdict cannot have changed. See BranchStatus.needsScan.
+      const prior = new Map((prev?.repos?.[repo]?.scan?.branches || []).map(r => [r.name, r]));
+      const scanned = deep
+        ? await B.scanOlder(g, { defaultRef: def, older, cap: this.ACTIVITY_SCAN_CAP, pool: 3, now,
+                                   prior, mainSha, priorMainSha: prev?.repos?.[repo]?.scan?.mainSha || '',
                                    errorRetry: this.ACTIVITY_ERROR_RETRY })
         : { truncated: false, rows: [] };
-      truncated = surveyed.truncated;
+      truncated = scanned.truncated;
       const prSessions = Object.fromEntries(openPRs.filter(p => p.head && p.sessions?.length).map(p => [p.head, p.sessions]));
       const sessionsFor = b => {
         if (b.sessions?.length) return { sessions: b.sessions, sessionsExact: !!b.sessionsExact };
@@ -3096,17 +3096,17 @@ function app(){ return {
                            missingPaths: b.missingPaths || [], stats: b.stats || null,
                            ...sessionsFor(b),
                            aheadBy: b.aheadBy ?? null, behindBy: b.behindBy ?? null });
-      branches = [...recent.map(b => trim({ ...b, group: 'active' })), ...surveyed.rows.map(trim)];
+      branches = [...recent.map(b => trim({ ...b, group: 'active' })), ...scanned.rows.map(trim)];
       counts = {
         branches: list.length,
         active: recent.length,
-        landed: surveyed.rows.filter(r => r.group === 'landed').length,
-        stranded: surveyed.rows.filter(r => r.group === 'stranded').length,
-        surveyed: surveyed.rows.length,
+        landed: scanned.rows.filter(r => r.group === 'landed').length,
+        stranded: scanned.rows.filter(r => r.group === 'stranded').length,
+        scanned: scanned.rows.length,
         older: older.length,
         openPRs: openPRs.length,
       };
-    } catch(e){ console.warn('activity survey', repo, e?.message || e); }
+    } catch(e){ console.warn('activity scan', repo, e?.message || e); }
 
     return {
       pushedAt: meta?.pushed_at || '',
@@ -3128,7 +3128,7 @@ function app(){ return {
       // counts to give. Omitting them entirely is what makes mergeRepo carry
       // the stored ones; sending zeros would report an empty repo.
       ...(listOk ? { counts } : {}),
-      // Omitted on a quick pass, so mergeRepo carries the prior survey
+      // Omitted on a quick pass, so mergeRepo carries the prior scan
       // forward. Sending { branches: [] } here would silently delete every
       // content verdict the estate has, which is the trap this guards.
       //
@@ -3139,11 +3139,11 @@ function app(){ return {
       // way in one run (home 89 rows, web-tools-private 25, fn-data 22) while
       // the crawl reported success. `listOk` is the missing half.
       // `mainSha` is what makes the next pass able to skip: it names the default
-      // branch this survey judged against, the other half of the pair (with
+      // branch this scan judged against, the other half of the pair (with
       // each row's own `sha`) that decides whether a verdict can have moved.
-      ...(deep && listOk ? { survey: { surveyedAt: new Date(now).toISOString(), cap: this.ACTIVITY_SURVEY_CAP,
+      ...(deep && listOk ? { scan: { scannedAt: new Date(now).toISOString(), cap: this.ACTIVITY_SCAN_CAP,
                              mainSha: recentCommits[0]?.sha || '',
-                             surveyed: counts.surveyed, older: counts.older, truncated, branches } } : {}),
+                             scanned: counts.scanned, older: counts.older, truncated, branches } } : {}),
       // Declared checks, PROBED not judged: the stored fact is time-independent
       // so the cache hash stays stable across crawls, and the card computes the
       // verdict against its own clock at render. Always an array, never
@@ -4682,9 +4682,9 @@ function app(){ return {
     return m ? +m[1] / (m[2] ? 24 : 1) : 0;
   },
   goActivity(){ this.estateSeen = true; this.view = 'activity'; this.arrivalActivityRefresh?.(); this.syncUrl(); },
-  // Arrival kick: one throttled crawl, survey included. Un-awaited by design;
+  // Arrival kick: one throttled crawl, scan included. Un-awaited by design;
   // there is no progress UI on this path, and the view re-reads on the event.
-  // The survey is what keeps the branch verdicts current without anyone
+  // The scan is what keeps the branch verdicts current without anyone
   // pressing Refresh, and the pushed-at gate inside the crawl reduces it to the
   // repos that took a push, so it can afford to ride every arrival past the
   // throttle. It was two passes here as well until 2026-08-17, for the same

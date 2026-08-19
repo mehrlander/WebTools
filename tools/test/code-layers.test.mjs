@@ -1,6 +1,6 @@
 // code-layers.test.mjs — holds the lib/ boundary of docs/code-layers.md against
-// the tree, in all three directions, off scripts/code-shape-survey.py (the same
-// instrument the rule was decided with, so the test and the survey cannot
+// the tree, in all three directions, off scripts/code-shape.py (the same
+// instrument the rule was decided with, so the test and the scan cannot
 // disagree about what a file attaches to).
 //
 // The rule (settled 2026-08-07, migrated 2026-08-08): every file registering a
@@ -24,7 +24,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const out = execFileSync('python3', [path.join(root, 'scripts', 'code-shape-survey.py'), '--json', 'lib'],
+const out = execFileSync('python3', [path.join(root, 'scripts', 'code-shape.py'), '--json', 'lib'],
   { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 const rows = JSON.parse(out).rows.filter(r => r.side === 'browser');
 

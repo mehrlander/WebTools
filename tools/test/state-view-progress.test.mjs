@@ -65,9 +65,9 @@ test('a slot with no denominator yet states the verb and nothing else', () => {
 });
 
 test('mid-crawl: finished over total, in its own unit, everything in flight named', () => {
-  put('activity', { verb: 'Surveying branches', unit: 'repos', done: 4, total: 11,
+  put('activity', { verb: 'Scanning branches', unit: 'repos', done: 4, total: 11,
                     active: ['mehrlander/chat-histories', 'mehrlander/home'] });
-  assert.equal(data.progLabel(row('activity')), 'Surveying branches · 4 of 11 repos');
+  assert.equal(data.progLabel(row('activity')), 'Scanning branches · 4 of 11 repos');
   // Both of them: the repo pool runs two at once, so naming one would describe
   // the crawl wrongly. Short-named through the view's own chip rule.
   assert.equal(data.progActive(row('activity')), 'chat-histories, home');
@@ -96,7 +96,7 @@ test('an unpooled fan-out counts without naming: the line ends after the count',
 
 test('the wire tail reads the newest GitHub call, verbatim past the host', () => {
   shell.activityRefreshing = true;
-  put('activity', { verb: 'Surveying branches', unit: 'repos', done: 4, total: 11,
+  put('activity', { verb: 'Scanning branches', unit: 'repos', done: 4, total: 11,
                     active: [], calls0: 12 });
   window.__traffic = [
     { url: 'https://api.github.com/repos/me/home/commits?sha=main', method: 'GET', status: 200 },
@@ -131,7 +131,7 @@ test('a write and a failure are the two rows that say more than GET 200', () => 
 });
 
 test('the bar is items finished over items total, and the run is one pass', () => {
-  // The activity refresh ran quick-then-survey for a day, and the bar spanned
+  // The activity refresh ran quick-then-scan for a day, and the bar spanned
   // both so it could not fill and start over. One pass now: the second was
   // re-fetching the first's cheap reads, so the plain reading is honest again.
   put('activity', { verb: 'Refreshing activity', unit: 'repos', done: 11, total: 11, active: [] });
@@ -155,7 +155,7 @@ test('the shape is the path with the parts that vary taken out', () => {
 });
 
 test('the calls tab groups by shape, commonest first, with its time', () => {
-  data.callsRun = { at: '2026-08-17T01:39:00Z', ms: 21000, calls: 5, verb: 'Surveying branches',
+  data.callsRun = { at: '2026-08-17T01:39:00Z', ms: 21000, calls: 5, verb: 'Scanning branches',
     rows: [
       { m: 'GET', u: 'repos/me/a/git/trees/main?recursive=1', s: 200, ms: 100, b: 1000 },
       { m: 'GET', u: 'repos/me/b/git/trees/main?recursive=1', s: 200, ms: 140, b: 2000 },

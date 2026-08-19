@@ -1,5 +1,5 @@
 // Drive the fab's Render tab to a seeded, token-free state so the guide pane
-// renders headlessly: the branch survey and the PR body normally come from the
+// renders headlessly: the branch scan and the PR body normally come from the
 // viewer's token, which the sandbox has neither of. Seeds `pageBranches` (rows
 // and their PRs are plain data; every getter above them is pure) and stands the
 // page in a preview by adopting a toss subject, which is how a real preview
@@ -94,7 +94,7 @@ export default async (page) => {
     d.showAllBranches = true;
     d.open = true;
     d.activeTab = 'render';
-    // The branch's full PR history, which the survey's open-PR list cannot
+    // The branch's full PR history, which the scan's open-PR list cannot
     // hold: #332 merged, #333 open, both on the same branch.
     if (state !== 'nopr') d.prHistory = [
       { number: 333, title: "Put the ref box in show-repo's header; make the fab's render tab a guide",

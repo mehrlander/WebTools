@@ -36,7 +36,7 @@ export default async (page) => {
     d.adoptSubject();
     d.open = true;
     d.activeTab = 'render';
-    // The branch survey and the guide come from the viewer's token, which the
+    // The branch scan and the guide come from the viewer's token, which the
     // sandbox has none of; seed enough that the pane is about the identity
     // block rather than about a spinner.
     d.defaultBranch = 'main';

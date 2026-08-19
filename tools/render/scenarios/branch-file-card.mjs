@@ -5,7 +5,7 @@
 //     --out tools/.preview/file-card.png
 //
 // CLS=changed or CLS=missing opens another pair; the missing one needs
-// SCOPE=stranded, since only a surveyed row has a verdict. PATCH=<path>
+// SCOPE=stranded, since only a scanned row has a verdict. PATCH=<path>
 // expands that file's diff in place.
 //
 // The card paints its first two bands from the crawl's own digest and then
@@ -59,7 +59,7 @@ export default async function (page, ctx) {
         mk('docs/branch-overlay.md', 'added', 96, 0),
         mk('lib/kits/file-card.js', 'added', 212, 0),
         mk('lib/alpineComponents/estate.js', 'modified', 148, 41),
-        mk('lib/kits/branch-survey.js', 'modified', 74, 12),
+        mk('lib/kits/branch-status.js', 'modified', 74, 12),
         mk('docs/show-repo.md', 'modified', 43, 13),
         mk('app/index.html', 'modified', 9, 4),
         mk('tools/test/estate-open-branches.test.mjs', 'modified', 38, 6),

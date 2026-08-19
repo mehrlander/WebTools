@@ -1,6 +1,6 @@
 // alpineComponents/estate.js — the Activity view's branch list: the projection
 // from the activity cache to rows (allBranchRows), the SCOPE axis over the
-// survey's groups (branchScope / inScope / branchScopes, with openBranches the
+// scan's groups (branchScope / inScope / branchScopes, with openBranches the
 // scoped list), the repo filter chips (openRepos / activeRepoFilter /
 // openRows), the lifespan pair each row shows (branchStart), and the per-row
 // GitHub menu (branchMenuItems / runBranchMenu).
@@ -54,7 +54,7 @@ window.gh = { load: async () => {} };
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
-  'lib/kits/branch-survey.js',      // the lifespan display rules live here, shared
+  'lib/kits/branch-status.js',      // the lifespan display rules live here, shared
   'lib/kits/swipe-deck.js',         // the takeover IS one
   // The shelf reads every surface through the shared envelope model, which
   // gh-boot loads ahead of the components for exactly this reason.
@@ -67,16 +67,16 @@ Alpine.data('branchBrief', (opts) => ({ opts, init(){ this.$el.textContent = opt
 const data = Alpine.$data(window.document.getElementById('es'));
 const tick = (n = 1) => new Promise(r => setTimeout(r, n * 10));
 
-// A cache entry: `branches` are survey rows, `prs` are open pull requests.
+// A cache entry: `branches` are scan rows, `prs` are open pull requests.
 const entry = (branches, prs, def = 'main') => ({
   defaultBranch: def,
   openPRs: prs,
-  survey: { branches },
+  scan: { branches },
 });
 
 // Two repos with work in flight and one with none, exercising every way a row
 // reaches the list: a stranded branch with a draft PR, a stranded branch with
-// none, an open PR the survey never reached, and a landed branch (never shown).
+// none, an open PR the scan never reached, and a landed branch (never shown).
 const seed = () => {
   data.activity = {
     'me/tools': entry(
@@ -123,8 +123,8 @@ test('openBranches: open PRs and stranded branches only, freshest first', () => 
 test('a row takes its start from whichever compare the crawl ran', () => {
   const [a, b, fresh] = data.openBranches;
   assert.equal(a.first, '2026-07-05T00:00:00Z');      // the PR head's compare
-  assert.equal(b.first, '2026-07-17T20:00:00Z');      // the survey's
-  assert.equal(fresh.first, '2026-07-10T00:00:00Z');  // a PR the survey never reached
+  assert.equal(b.first, '2026-07-17T20:00:00Z');      // the scan's
+  assert.equal(fresh.first, '2026-07-10T00:00:00Z');  // a PR the scan never reached
 });
 
 test('branchStart: the lifespan reads "15 days → 2 hours", collapsed when equal', () => {
@@ -188,13 +188,13 @@ test('branchMenuItems: a PR row offers its tabs, a bare branch offers New PR', (
 // lift it from. A new row that is neither belongs somewhere else.
 // Three cache generations answer "what did this branch do to its files", and the
 // row reads whichever is newest: the per-status breakdown, the bare count that
-// preceded it, and the survey's touched-path set. Nothing at all when none does,
+// preceded it, and the scan's touched-path set. Nothing at all when none does,
 // since 0 would be a claim and the glyph alone is an honest route.
 test('fileStats reads the newest answer a cache carries', () => {
   const full = { n: 9, added: 2, changed: 6, removed: 1, renamed: 1, additions: 431, deletions: 88 };
   assert.deepEqual(data.fileStats({ stats: full, nFiles: 99, nUnique: 99 }), full, 'the breakdown wins');
   assert.equal(data.fileStats({ nFiles: 9, nUnique: 80 }).n, 9, 'then the bare count');
-  assert.equal(data.fileStats({ nUnique: 80 }).n, 80, 'then the survey');
+  assert.equal(data.fileStats({ nUnique: 80 }).n, 80, 'then the scan');
   assert.equal(data.fileStats({ nFiles: null, nUnique: 0 }), null, 'not measured is not zero');
   assert.equal(data.fileStats(null), null);
   assert.equal(data.fileCount({ stats: full }), 9);
@@ -231,10 +231,10 @@ test('filesTitle states the split, the removals, the renames and the lines', () 
   assert.equal(lines[3], 'Open the files on this branch.');
 });
 
-test('filesTitle appends the survey verdict where there is one, and claims no split otherwise', () => {
-  const surveyed = data.filesTitle({ def: 'main', nUnique: 80, nLanded: 28, nMissing: 11, nDiffers: 41,
+test('filesTitle appends the scan verdict where there is one, and claims no split otherwise', () => {
+  const scanned = data.filesTitle({ def: 'main', nUnique: 80, nLanded: 28, nMissing: 11, nDiffers: 41,
     stats: { n: 80, added: 14, changed: 62, removed: 4, renamed: 2, additions: 5310, deletions: 2044 } });
-  assert.match(surveyed, /28 landed on main, 41 differ, 11 missing/);
+  assert.match(scanned, /28 landed on main, 41 differ, 11 missing/);
   // An older cache knows a total and nothing else, so the hover says the total
   // and stops rather than printing a split of zeroes.
   const bare = data.filesTitle({ def: 'main', nFiles: 9 });
@@ -326,10 +326,10 @@ test('a read for another branch is not this card-s', () => {
   data.rowCard = null; data.rowCardRead = null;
 });
 
-// `missing` is the survey's class, not a status in a diff, so it arrives from
+// `missing` is the scan's class, not a status in a diff, so it arrives from
 // the crawl's own path list and needs no read to be complete. The diff, when it
 // lands, only adds line counts and a patch to the rows it recognises.
-test('the missing card lists the survey-s own paths before any diff is read', () => {
+test('the missing card lists the scan-s own paths before any diff is read', () => {
   data.rowCard = { repo: 'me/tools', name: 'feat/a', base: 'main', cls: 'missing',
                     paths: ['docs/gone.md', 'lib/only-here.js'], count: 2,
                     shape: { exts: [], dirs: [] }, split: true };
@@ -401,15 +401,15 @@ test('a card-s live read is written back into the row it was opened from', () =>
   // Both carriers, since which one a row reads from turns on whether it has an
   // open PR and this must land either way.
   assert.equal(plain_(data.activity['me/tools'].openPRs[0]).aheadBy, 9);
-  assert.equal(plain_(data.activity['me/tools'].survey.branches[0]).aheadBy, 9);
+  assert.equal(plain_(data.activity['me/tools'].scan.branches[0]).aheadBy, 9);
   seed(); data.freshRows = {};
 });
 
 // The verdict needs two trees, which a compare cannot supply. Refreshing the
 // counts around it and leaving it alone is the honest half-update.
-test('absorbCompare leaves the survey verdict alone, and ignores a branch it cannot find', () => {
-  data.activity['me/tools'].survey.branches[0].nUnique = 80;
-  data.activity['me/tools'].survey.branches[0].nMissing = 11;
+test('absorbCompare leaves the scan verdict alone, and ignores a branch it cannot find', () => {
+  data.activity['me/tools'].scan.branches[0].nUnique = 80;
+  data.activity['me/tools'].scan.branches[0].nMissing = 11;
   data.absorbCompare({ repo: 'me/tools', name: 'feat/a' },
     { ahead_by: 1, behind_by: 0, files: [{ filename: 'x', status: 'modified' }] });
   const row = data.openBranches.find(r => r.name === 'feat/a');
@@ -503,8 +503,8 @@ test('openRowCard routes by class, so one control opens either kind', () => {
 });
 
 test('the card splits a path so a truncation cannot eat the filename', () => {
-  assert.equal(data.rowCardDir('lib/kits/branch-survey.js'), 'lib/kits/');
-  assert.equal(data.rowCardName('lib/kits/branch-survey.js'), 'branch-survey.js');
+  assert.equal(data.rowCardDir('lib/kits/branch-status.js'), 'lib/kits/');
+  assert.equal(data.rowCardName('lib/kits/branch-status.js'), 'branch-status.js');
   assert.equal(data.rowCardDir('README.md'), '');
   assert.equal(data.rowCardName('README.md'), 'README.md');
 });

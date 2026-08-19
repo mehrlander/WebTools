@@ -5,7 +5,7 @@
 // vocabulary that has stopped being coherent, this catches a carrier that has
 // grown a name nobody has accounted for.
 //
-// Only the UNCLAIMED class is gated, which is the same posture link-survey.py
+// Only the UNCLAIMED class is gated, which is the same posture dead-links.py
 // takes with its internal class. An alias passes: the vocabulary states what
 // the old name means, so a carrier using it conforms by declaration, and gating
 // on aliases would turn every existing carrier red with a rename across the
