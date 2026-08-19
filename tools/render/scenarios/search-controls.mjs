@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the Search view's scope controls, with
 // the ref picker open.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/search-controls.mjs \
 //     --out tools/.preview/search-controls.png --full
 //
@@ -11,7 +11,7 @@
 // newest-first list whose box filters rather than leads, the folder as the
 // tap-through picker, and no explanatory prose above any of them.
 //
-// The sandbox blocks the API, so the listing and the branch survey are stubbed.
+// The sandbox blocks the API, so the listing and the branch scan are stubbed.
 export default async function (page) {
   const ok = await page.evaluate(() => {
     if (!window.Alpine || !window.__shell || !window.GH) return 'no shell';
@@ -29,7 +29,7 @@ export default async function (page) {
                  total: paths.length, truncated: false, errors: [] };
       },
     };
-    // The branch survey behind the ref picker.
+    // The branch scan behind the ref picker.
     window.GH.prototype.branchesDated = async function () {
       return [
         { name: 'claude/centralize-file-viewer-search-en30ye', ago: '4m', subject: 'the branch in hand' },

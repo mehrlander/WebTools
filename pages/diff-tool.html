@@ -30,6 +30,12 @@
   await gh.load('kits/url-params.js');
   await gh.load('kits/repo-address.js');
   await gh.load('kits/text-diff.js');
+  // The clipboard, with its legacy fallback. pasteInto used navigator.clipboard
+  // bare, which is fine where it exists and is nothing where it does not; the
+  // kit adds the hidden-textarea path an insecure context and an older Safari
+  // still need, and carries the fix for the iOS case where execCommand('paste')
+  // returns false and pastes anyway (web-tools #448).
+  await gh.load('kits/io.js');
   // The grab row's component. Caught, because an uncaught gh.load rejection
   // aborts this module and Alpine then never starts: a missing file browser
   // would take the whole page with it. Flag it instead and let the row say so.
@@ -164,6 +170,71 @@
      survives whatever the size tokens do next. */
   .lctl { height: 1.75rem; min-height: 1.75rem; }
   .lctl.select { padding-top: 0; padding-bottom: 0; }
+
+  /* TOUCH READS BIGGER, and the page was built for a pointer. iOS ZOOMS THE
+     WHOLE PAGE whenever a focused input is under 16px, so every tap on an
+     address field threw the layout sideways. The floor here is that 16px,
+     which is why the rule is stated in px rather than rem.
+
+     Scoped to `pointer: coarse` rather than a width query on purpose: the
+     trigger is the input device, not the window. A narrow desktop window has a
+     mouse and does not want 16px controls; a large tablet has a finger and
+     does.
+
+     !important because these override Tailwind utilities written into the
+     markup, and the browser build injects its sheet at a position this file
+     cannot depend on.
+
+     WHAT THIS BLOCK NO LONGER HAS TO PAPER OVER. The page ran on 22 hand-typed
+     text-[11px] and text-[10px] declarations, and this block bumped them by
+     matching the escaped bracket values, which works only for the sizes someone
+     happened to have typed and silently misses the next one. Those are retired
+     (2026-08-19) for the two tiers docs/HTML-STYLE.md names: text-xs for
+     chrome, meaning labels, counters and control text, and text-sm for the
+     messages, which is the part the old scheme got wrong rather than merely
+     untidy. An error a reader has to act on was rendering a notch smaller than
+     the label above it, which is precisely the demotion that file warns about:
+     "a smaller summary quietly demotes what may matter most." */
+  @media (pointer: coarse) {
+    input, select, textarea, .lctl { font-size: 16px !important; }
+    .lctl { height: 2.25rem !important; min-height: 2.25rem !important; }
+    /* The source picker holds "GitHub"; at the 16px floor it needs the room. */
+    .lctl.select { width: 7rem !important; }
+    /* Chrome reads one notch up, stated on the tier's own token rather than on
+       two escaped bracket values that only ever matched what someone happened
+       to type. */
+    .text-xs { font-size: 0.8125rem !important; }
+    /* The diff body has its own control (fontStep); this moves its floor, and
+       a reader who sets a size still wins, since applySize writes the variable. */
+    .dbody { font-size: var(--dsz, 15px); }
+    /* The file header holds two filenames and is the thing most likely to be
+       truncated on a phone, so it stops shouting: uppercasing destroys the
+       camelCase that carries meaning in a name like fetchUser.js, and the
+       tracking spends width on a line that has none to spare. Desktop keeps the
+       label treatment, where the names fit and the row reads as chrome. */
+    .dhead { font-size: 12px; text-transform: none; letter-spacing: 0; }
+    /* The gap row is a TAP TARGET with words in it ("Expand 3 unchanged
+       lines"), not a caption, so it takes the chrome size and a row height a
+       finger can find. It sits inside the diff grid rather than among the
+       buttons, which is why the .btn-xs rule above does not reach it. */
+    .dgap { font-size: 0.8125rem; padding: .5em .8em; }
+
+    /* TOUCH TARGETS. daisyUI's -xs button is 1.5rem, which is a 24px target: a
+       fingertip covers it and most of its neighbours. 2rem is the compromise
+       rather than the 44px the platform guidelines ask for, because the app bar
+       is 2.75rem and the control bar holds a dozen of these in a row, so a 44px
+       button would either burst the bar or push the diff body off a phone. It
+       is stated on the CLASS rather than on each button so the next icon added
+       to this page inherits it instead of being a 24px exception nobody spots.
+       The loader row's .lctl is taller still and wins, which is correct: those
+       sit beside 16px text fields. */
+    .btn-xs { height: 2rem; min-height: 2rem; }
+    .btn-xs.btn-square { width: 2rem; }
+    /* The glyph grows with its button. Left alone it stays at the -xs font
+       size and reads as a small mark floating in a large target, which is the
+       tell that a control was scaled rather than designed. */
+    .btn-xs .ph { font-size: 1.05rem; }
+  }
 </style>
 </head>
 
@@ -188,9 +259,9 @@
 
   <!-- Where the two sides came from. Truncates rather than pushing anything off
        the bar, which is what keeps the header intact at 390px. -->
-  <div class="grow min-w-0 hidden sm:flex items-baseline gap-1.5 font-mono text-[11px] opacity-70 px-1">
+  <div class="grow min-w-0 hidden sm:flex items-baseline gap-1.5 font-mono text-xs opacity-70 px-1">
     <span class="truncate" x-text="slots.A.name || 'A'"></span>
-    <i class="ph ph-arrow-right text-[10px] shrink-0"></i>
+    <i class="ph ph-arrow-right text-xs shrink-0"></i>
     <span class="truncate" x-text="slots.B.name || 'B'"></span>
   </div>
   <div class="grow sm:hidden"></div>
@@ -273,13 +344,13 @@
 
         <span class="badge badge-sm badge-success badge-soft font-mono" x-text="'+' + stats.add"></span>
         <span class="badge badge-sm badge-error badge-soft font-mono" x-text="'−' + stats.del"></span>
-        <span class="text-[11px] opacity-60 font-mono whitespace-nowrap" x-text="stats.sim + '% match'"></span>
+        <span class="text-xs opacity-60 font-mono whitespace-nowrap" x-text="stats.sim + '% match'"></span>
       </div>
     </template>
 
     <template x-if="tab === 'patch'">
       <div class="flex items-center gap-1.5">
-        <span class="text-[11px] font-semibold uppercase opacity-60 tracking-wide">Context</span>
+        <span class="text-xs font-semibold uppercase opacity-60 tracking-wide">Context</span>
         <div class="join">
           <template x-for="c in [1, 3, 8, 999]" :key="c">
             <button class="btn btn-xs join-item" :class="patchContext === c ? 'btn-primary' : 'btn-ghost border border-base-300'"
@@ -293,7 +364,7 @@
           <i class="ph ph-markdown-logo"></i><span class="hidden sm:inline ml-1">Markdown</span></button>
         <button class="btn btn-xs btn-ghost border border-base-300" @click="downloadPatch()">
           <i class="ph ph-download-simple"></i><span class="hidden sm:inline ml-1">.patch</span></button>
-        <span class="text-[11px] opacity-60 font-mono whitespace-nowrap"
+        <span class="text-xs opacity-60 font-mono whitespace-nowrap"
               x-text="patchLines.length + ' lines · ' + patch.length + ' bytes'"></span>
       </div>
     </template>
@@ -307,13 +378,21 @@
           <i class="ph ph-funnel"></i><span class="ml-1">Normalize</span>
           <span class="badge badge-xs badge-neutral" x-show="activeRuleCount" x-text="activeRuleCount"></span>
         </button>
-        <span class="text-[11px] opacity-60 font-mono whitespace-nowrap" x-text="normSummary"></span>
+        <span class="text-xs opacity-60 font-mono whitespace-nowrap" x-text="normSummary"></span>
       </div>
     </template>
 
-    <div class="grow"></div>
-    <span class="text-[11px] text-warning font-medium whitespace-nowrap" x-show="notice" x-text="notice"></span>
   </div>
+
+  <!-- THE NOTICE GETS ITS OWN ROW, and it is a correctness fix rather than a
+       style one. It used to sit at the end of the bar above, past a grow
+       spacer and under whitespace-nowrap, which on a phone put it off the
+       right edge of a sideways-scrolling strip: "Showing the first 5,000
+       rows." is a caveat about what you are looking at, and the reader never
+       saw it. Here it wraps, and the row exists only when there is something
+       to say. -->
+  <p class="px-2 pb-1.5 text-sm text-warning font-medium leading-snug"
+     x-show="notice" x-cloak x-text="notice"></p>
 </div>
 
 <!-- ── Normalization strip ──────────────────────────────────────────────── -->
@@ -325,7 +404,7 @@
       <span class="text-xs">Strip HTML to text</span>
     </label>
     <span class="vrule"></span>
-    <span class="text-[11px] font-semibold uppercase opacity-60 tracking-wide">Preset</span>
+    <span class="text-xs font-semibold uppercase opacity-60 tracking-wide">Preset</span>
     <template x-for="p in PRESETS" :key="p.id">
       <button class="btn btn-xs btn-ghost border border-base-300" @click="applyPreset(p.id)"
               :title="p.hint" x-text="p.label"></button>
@@ -334,7 +413,7 @@
 
   <!-- Tags found in either side; clicking one adds a rule that strips it. -->
   <div class="flex items-start gap-2" x-show="tags.length">
-    <span class="text-[11px] font-semibold uppercase opacity-60 tracking-wide pt-1 shrink-0">Tags</span>
+    <span class="text-xs font-semibold uppercase opacity-60 tracking-wide pt-1 shrink-0">Tags</span>
     <div class="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
       <template x-for="t in tags" :key="t">
         <button class="badge badge-sm badge-ghost font-mono hover:badge-primary" @click="stripTag(t)" x-text="t"></button>
@@ -350,13 +429,13 @@
           <i class="ph" :class="r.on ? 'ph-check' : 'ph-minus'"></i>
         </button>
         <input x-model="r.find" @input.debounce.400="onRules()" placeholder="find (regex)"
-               class="input input-xs join-item w-28 sm:w-40 font-mono text-[11px]"
+               class="input input-xs join-item w-28 sm:w-40 font-mono text-xs"
                :class="r.bad ? 'input-error' : 'input-bordered'"
                :title="r.bad ? 'Not a valid regular expression' : 'Regular expression, applied to both sides'">
         <span class="btn btn-xs join-item no-animation pointer-events-none border border-base-300 border-x-0 px-1">
           <i class="ph ph-arrow-right"></i></span>
         <input x-model="r.replace" @input.debounce.400="onRules()" placeholder="replace"
-               class="input input-xs input-bordered join-item w-20 sm:w-28 font-mono text-[11px]">
+               class="input input-xs input-bordered join-item w-20 sm:w-28 font-mono text-xs">
         <button class="btn btn-xs btn-ghost border border-base-300 join-item text-error px-1.5"
                 @click="rules.splice(i, 1); onRules()"><i class="ph ph-x"></i></button>
       </div>
@@ -366,7 +445,7 @@
       <i class="ph ph-plus"></i>Rule</button>
   </div>
 
-  <p class="text-[11px] opacity-55 leading-snug">
+  <p class="text-sm opacity-55 leading-snug">
     Rules run in order on both sides before the diff. In the replacement,
     <code>\n</code> and <code>\t</code> become a real newline and tab, and <code>$1</code> refers to a capture group.
     Breaking on sentence ends is what makes two prose drafts diff sentence by sentence rather than as one
@@ -386,14 +465,27 @@
           <span class="badge badge-sm font-mono shrink-0"
                 :class="id === 'A' ? 'badge-error badge-soft' : 'badge-success badge-soft'" x-text="id"></span>
           <input x-model="slots[id].name" :placeholder="id === 'A' ? 'original' : 'modified'"
-                 class="input input-xs input-ghost grow min-w-0 font-mono text-[11px]">
-          <span class="text-[11px] opacity-55 font-mono shrink-0 whitespace-nowrap" x-text="lineCount(id)"></span>
+                 class="input input-xs input-ghost grow min-w-0 font-mono text-xs">
+          <span class="text-xs opacity-55 font-mono shrink-0 whitespace-nowrap" x-text="lineCount(id)"></span>
+          <!-- PASTE, ON THE SLOT RATHER THAN INSIDE THE SOURCE PICKER. It was
+               only ever reachable by first choosing "Paste" in the select
+               below, which meant that on a phone, where pasting is the whole
+               way most content arrives, the page appeared to have no paste
+               button at all (reported 2026-08-19). It is an intake action ON
+               the slot, the same class of thing as clearing it, so it belongs
+               beside the clear button where it cannot move; pasteInto writes
+               the content directly and does not care which source is selected.
+               The select keeps its Paste option, which is the mode where the
+               textarea below is the input. -->
+          <button class="btn btn-ghost btn-xs btn-square shrink-0" @click="pasteInto(id)"
+                  title="Paste the clipboard into this side">
+            <i class="ph ph-clipboard-text"></i></button>
           <button class="btn btn-ghost btn-xs btn-square shrink-0" @click="resetSlot(id)" title="Clear this side">
             <i class="ph ph-x"></i></button>
         </div>
 
         <div class="shrink-0 flex items-center gap-1 px-2 py-1.5 border-b border-base-300 bg-base-200/60">
-          <select x-model="slots[id].src" class="select select-xs select-bordered lctl shrink-0 w-[5.5rem] font-mono text-[11px]">
+          <select x-model="slots[id].src" class="select select-xs select-bordered lctl shrink-0 w-[5.5rem] font-mono text-xs">
             <option value="url">URL</option>
             <option value="gh">GitHub</option>
             <option value="file">File</option>
@@ -404,7 +496,7 @@
             <div class="join grow min-w-0">
               <input x-model="slots[id].value" @input="onAddrInput(id)" @keydown="onAddrKey(id, $event)"
                      :placeholder="slots[id].src === 'gh' ? 'owner/repo[@ref]:path, or @ to browse' : 'https://…'"
-                     class="input input-xs input-bordered lctl join-item grow min-w-0 font-mono text-[11px]">
+                     class="input input-xs input-bordered lctl join-item grow min-w-0 font-mono text-xs">
               <button class="btn btn-xs btn-primary lctl join-item px-3" @click="fill(id)" :disabled="slots[id].loading">
                 <span x-show="slots[id].loading" class="loading loading-spinner loading-xs"></span>
                 <span x-show="!slots[id].loading">Get</span>
@@ -447,13 +539,13 @@
                  @path-pick="onGrab(id, $event.detail)" @path-descend="onDescend(id)"></div>
           </template>
           <template x-if="!pickerReady">
-            <p class="text-[11px] text-warning flex items-center gap-1 py-1">
+            <p class="text-sm text-warning flex items-center gap-1 py-1">
               <i class="ph ph-warning"></i>The file browser did not load; paste an address instead.
             </p>
           </template>
         </div>
 
-        <p class="shrink-0 px-2 py-1 text-[11px] text-error leading-snug" x-show="slots[id].error"
+        <p class="shrink-0 px-2 py-1 text-sm text-error leading-snug" x-show="slots[id].error"
            x-text="slots[id].error"></p>
 
         <textarea class="slot grow basis-0 min-h-0 w-full resize-none p-3 bg-base-100 border-0 outline-none focus:outline-none"
@@ -540,7 +632,7 @@
     <div class="grow basis-0 min-h-0 flex flex-col md:flex-row gap-px">
       <div class="grow basis-0 min-h-0 md:min-w-0 flex flex-col bg-base-100">
         <div class="shrink-0 flex items-center gap-2 px-2 py-1.5 border-b border-base-300">
-          <span class="text-[11px] font-semibold uppercase opacity-60 tracking-wide grow">Source</span>
+          <span class="text-xs font-semibold uppercase opacity-60 tracking-wide grow">Source</span>
           <button class="btn btn-xs btn-ghost border border-base-300" @click="applySource = slots.A.content">
             <i class="ph ph-arrow-line-down"></i>Use A</button>
         </div>
@@ -549,7 +641,7 @@
       </div>
       <div class="grow basis-0 min-h-0 md:min-w-0 flex flex-col bg-base-100">
         <div class="shrink-0 flex items-center gap-2 px-2 py-1.5 border-b border-base-300">
-          <span class="text-[11px] font-semibold uppercase opacity-60 tracking-wide grow">Unified patch</span>
+          <span class="text-xs font-semibold uppercase opacity-60 tracking-wide grow">Unified patch</span>
           <button class="btn btn-xs btn-ghost border border-base-300" @click="applyPatchText = patch">
             <i class="ph ph-arrow-line-down"></i>Use generated</button>
         </div>
@@ -561,8 +653,8 @@
       <button class="btn btn-xs btn-primary" @click="doApply()"><i class="ph ph-play"></i>Apply</button>
       <button class="btn btn-xs btn-ghost border border-base-300" :disabled="applyResult === null" @click="useResult()">
         <i class="ph ph-arrow-right"></i>Load result into B</button>
-      <span class="text-[11px] text-error" x-show="applyError" x-text="applyError"></span>
-      <span class="text-[11px] text-success" x-show="applyResult !== null && !applyError">
+      <span class="text-sm text-error" x-show="applyError" x-text="applyError"></span>
+      <span class="text-sm text-success" x-show="applyResult !== null && !applyError">
         Applied cleanly, <span x-text="(applyResult || '').split('\n').length"></span> lines out.</span>
     </div>
   </section>
@@ -909,9 +1001,16 @@ function diffApp() {
       inp.click();
     },
 
+    // Nothing is awaited before the read: a clipboard read has to ride the
+    // user activation of the tap that asked for it, and an await here spends
+    // it, after which the failure looks like a clipboard problem rather than a
+    // sequencing one. So the kit is loaded at boot and merely reached for here.
     async pasteInto(id) {
       try {
-        this.slots[id].content = await navigator.clipboard.readText();
+        const text = window.io?.paste ? await window.io.paste()
+                                      : await navigator.clipboard.readText();
+        if (text == null) throw new Error('nothing came back');
+        this.slots[id].content = text;
         this.slots[id].error = '';
         this.onEdit();
       } catch {

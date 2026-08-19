@@ -1,0 +1,30 @@
+task,tag,value
+agent-file-retrieval-skill-c5u2jy,next,"build corpus_search.py (find) with a sources config and a file-per-document default, plus read_doc.py (read) and a SKILL.md that fixes the search-and-present flow; dogfood on this repo's content"
+app-views-estate-level-btp6m4,next,landed; News goes live in the estate switcher when home#314 reaches main
+backfill-guide-regions-merge-guide-bkk4xv,resolution,superseded
+branch-review-view-show-repo-rwwmrj,next,"session refreshes (show-repo thumbnail) at wrap-up, then review via PR #236"
+code-layer-taxonomy-q15jp2,next,"done on claude/web-tools-tracker-review-ij4pjj; the taxonomy is docs/code-layers.md, the survey is scripts/unclaimed-code.py"
+collapse-quicklinks-projection-80oprp,next,done; landing via web-tools PR #302 and web-tools-private PR #8 (merge #302 first)
+cross-repo-edit-proposals-evo1ml,next,done as a first cut; the four scope drafts are staged as pending proposals for the user to apply
+data-view-consume-fragment-nxlpbs,next,"done on claude/web-tools-tracker-review-ij4pjj; the vocabulary is `item`, index or name, and it is written back"
+fab-declared-embeds-1jtpll,next,Build only when a real composite page (multiple interactive embeds) exists; nothing schedules this.
+fab-declared-embeds-1jtpll,priority,someday
+fab-declared-embeds-1jtpll,resolution,dropped
+generalize-gallery-pages-catalog-m3b8pa,next,landed; live gallery for home needs home#314 on main (config cache reads main)
+github-jumpover-coverage-7bkgmk,next,none; the named views all carry their jump-over
+graphql-schema-contract-check-cpuvb5,next,done on claude/web-tools-tracker-review-bw48ga; the live-confirm task is unchanged and still open
+history-safe-toss-render-shim-hkih5m,next,done; hash-routing pages now switch views inside toss #gh= renders
+one-repo-address-parser-5gtv92,next,"done on claude/web-tools-tracker-review-bw48ga; stage-link-onto-url-params-u9o7ny, which depended on this, is now unblocked"
+own-json-tree-retire-vje-i0lcj2,next,"user was leaning toward replacing it outright; the recommendation is the split below, so confirm the split before building"
+private-repo-landing-federation-u50nns,next,"closed as superseded; the goal shipped per-repo, not federated"
+private-repo-landing-federation-u50nns,resolution,superseded
+render-large-files-toss-render-xm9ex7,next,"done — raw media type with git-blobs fallback landed in toss-render (ghText, showAddress, fetchShim) and gh-api.js get(); A/B headless test confirms the 5.9 MB DRS bundle is delivered where the old path returned blank"
+repo-inbox-outbox-manifest-0g6c8s,next,"done as a first cut; folder-vs-branch settled as a per-repo choice, both fields wired"
+repo-level-github-links-shield-9aufgx,priority,low
+repo-level-github-links-shield-9aufgx,resolution,superseded
+session-start-nudge-unconfigured-z0g4zn,next,write a global SessionStart hook that checks repo state and injects a nudge; wire its install into the Claude Code web account setup script
+split-stage-contract-74a7vh,resolution,duplicate
+stranded-titles-panel-or-drop-o6hqom,priority,low
+toss-fragment-passthrough-558xcw,next,done on claude/toss-render-data-formats-4t55x7; lands via PR #288. Follow-on: have data-view consume the fragment for item selection
+toss-render-decode-errors-xu3c6d,next,done; renders survive every media-type labeling and the error panel names the failing stage
+toss-render-multiparam-query-encoding-n9lbcp,next,"done on claude/web-tools-tracker-review-bw48ga; both fixes taken, the slice read and the documentation"

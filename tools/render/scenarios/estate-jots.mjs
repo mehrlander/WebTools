@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the estate's Jots view with a
 // populated pile.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/estate-jots.mjs \
 //     --out tools/.preview/estate-jots.png
 //

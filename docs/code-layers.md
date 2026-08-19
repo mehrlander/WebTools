@@ -13,8 +13,8 @@ at the task that owns the decision. The `lib/` root versus `lib/kits/` boundary
 was in that state from 2026-07-26, was settled on 2026-08-07, and the tree was
 migrated onto the rule on 2026-08-08; the section below states the rule.
 
-Measured with [`scripts/unclaimed-code-survey.py`](../scripts/unclaimed-code-survey.py)
-(`npm run code-survey`), which reports per-layer counts of files, files any
+Measured with [`scripts/unclaimed-code.py`](../scripts/unclaimed-code.py)
+(`npm run code-scan`), which reports per-layer counts of files, files any
 prose names, and files a test exercises. It is advisory and heuristic. Its use
 here is the layer column, not the individual row: one unnamed file is noise, a
 column of them is a category nobody has stated.
@@ -46,7 +46,7 @@ before it landed, which is the rule demonstrating its own necessity),
 `build.js` moved out of `lib/kits/` to `lib/` root, and
 `diagnostic-vanilla-bundle.js` was deleted with zero consumers.
 [`tools/test/code-layers.test.mjs`](../tools/test/code-layers.test.mjs) holds
-the boundary in all three directions, off the same survey, so the next misfiled
+the boundary in all three directions, off the same scan, so the next misfiled
 file fails the suite instead of accumulating.
 
 **Why this rule and not a better-sounding one.** Two rules were written down
@@ -65,7 +65,7 @@ property nothing could check:
   file would change folders without changing.
 
 Attachment is the only property that is mechanical, stable under unrelated
-change, and already satisfied by the code. [`npm run code-shape`](../scripts/code-shape-survey.py)
+change, and already satisfied by the code. [`npm run code-shape`](../scripts/code-shape.py)
 reads it, so the boundary can be held by a test rather than by anyone
 remembering.
 
@@ -103,19 +103,19 @@ not become a component, it gets a component wrapper.
 ## tools/, which is the weak layer
 
 Since 2026-08-08 the accounting below has a carrier:
-[`docs/harness.json`](harness.json), the harness census, one row per code file
+[`docs/harness.csv`](harness.csv), the harness registry, one row per code file
 under `tools/` and `scripts/` (`tools/test/` stays with the test registry).
 `role` is authored and a blank role is counted rather than hidden;
 invocation, named, and tested are stamped by
 [`tools/build/tools-index.mjs`](../tools/build/tools-index.mjs) and held in
-lockstep by the suite. It renders in show-repo's Map view, Harness tab. The
-census does not change the judgment below; it makes the gap it describes
+lockstep by the suite. It renders in the Web Tools app's Map view, Harness tab. The
+registry does not change the judgment below; it makes the gap it describes
 visible per file rather than per column.
 
 [`tools/README.md`](../tools/README.md) states the folder split
 (`render/`, `build/`, `test/`, `graphql/`) and names the files that carry the
 contract between them. Below that line most files are named nowhere, and the
-survey shows the gap is not spread evenly: it is concentrated in the two folders
+scan shows the gap is not spread evenly: it is concentrated in the two folders
 of `--script` interaction drivers.
 
 **Every `--script` driver lives in [`tools/render/scenarios/`](../tools/render/scenarios/).**
@@ -137,7 +137,7 @@ permanent prototypes.
 ## What this document does not do
 
 It does not claim the layers are clean. It claims they are *named*, which is
-the condition under which a wrong placement can be argued about. The survey
+the condition under which a wrong placement can be argued about. The scan
 reports the drift; nothing gates it, and nothing should: a gate on "is this file
 mentioned in prose" would be satisfied by mentioning it, which is not the same
 as accounting for it.

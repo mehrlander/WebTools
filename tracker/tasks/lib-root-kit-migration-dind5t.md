@@ -25,7 +25,7 @@ Kit-shaped already (own `window` namespace, zero DOM or Alpine references), misf
 
 | File | Namespace |
 |---|---|
-| `branch-survey.js` | `window.BranchSurvey` |
+| `branch-status.js` | `window.BranchStatus` |
 | `data-payload.js` | `window.DataPayload` |
 | `portable-align.js` | `window.PortableAlign` |
 | `repo-activity-cache.js` | `window.RepoActivityCache` |
@@ -44,7 +44,7 @@ Dead: `diagnostic-vanilla-bundle.js` has zero consumers anywhere in `pages/`, `l
 
 ## Definition of done
 
-- The eight kit-shaped files move to `lib/kits/`, with their `gh.load()` call sites updated (`branch-survey.js` has 8 consumers, the others fewer).
+- The eight kit-shaped files move to `lib/kits/`, with their `gh.load()` call sites updated (`branch-status.js` has 8 consumers, the others fewer).
 - `lib/kits/README.md` gains an entry per moved kit and its scaffolding list stops being a partial account of `lib/` root.
 - `diagnostic-vanilla-bundle.js` deleted, or its consumer found.
 - `npm run build:lib` still produces a working `dist/web-tools.js`; the bundle enumerates `lib/`, so check the build script's globs before moving anything.
@@ -79,7 +79,7 @@ Mechanical but wide: the move itself is trivial and the risk is entirely in the 
   | stays: defines GH | 1 | `gh-api.js` |
   | stays: extends the prototype | 5 | `gh-auth.js`, `gh-boot.js`, `gh-fetch.js`, `gh-store.js`, `gh-transfer.js` |
   | stays: boot bundle | 2 | `alpine-bundle.js`, `vanilla-bundle.js` |
-  | **moves to `lib/kits/`** | **20** | `branch-survey.js`, `chat-render.js`, `data-payload.js`, `github-links.js`, `portable-align.js`, `repo-activity-cache.js`, `repo-address.js`, `repo-checks.js`, `repo-config-cache.js`, `repo-mailbox.js`, `repo-proposals.js`, `repo-sessions-cache.js`, `session-render.js`, `shorter-payload.js`, `source-peek.js`, `surface.js`, `swipe-deck.js`, `traffic.js`, `url-params.js`, `vanilla-demo.js` |
+  | **moves to `lib/kits/`** | **20** | `branch-status.js`, `chat-render.js`, `data-payload.js`, `github-links.js`, `portable-align.js`, `repo-activity-cache.js`, `repo-address.js`, `repo-checks.js`, `repo-config-cache.js`, `repo-mailbox.js`, `repo-proposals.js`, `repo-sessions-cache.js`, `session-render.js`, `shorter-payload.js`, `source-peek.js`, `surface.js`, `swipe-deck.js`, `traffic.js`, `url-params.js`, `vanilla-demo.js` |
   | **moves to `lib/` root** | 1 | `kits/build.js`, which extends the prototype |
   | deleted | 1 | `diagnostic-vanilla-bundle.js`, zero consumers, and a console-paste snippet rather than a bundle |
 
@@ -105,7 +105,7 @@ Mechanical but wide: the move itself is trivial and the risk is entirely in the 
   direct form and an alias off the class, there is an alias off an *instance*
   (`const p = window.gh.constructor.prototype`), which is how `gh-boot.js` wraps
   `.load`. A detector reading only the first two calls the repo's own boot file
-  a kit. `scripts/code-shape-survey.py` was fixed, and the fix strengthens A:
+  a kit. `scripts/code-shape.py` was fixed, and the fix strengthens A:
   the rule is one grep, not one grep plus a carve-out for the boot file.
 
   **Cost, measured rather than estimated.** 31 files carry a runtime
@@ -123,7 +123,7 @@ Mechanical but wide: the move itself is trivial and the risk is entirely in the 
     list and both move).
   - `gh-boot.js`'s 11 `gh.load` calls become a declared boot manifest.
   - A test asserting the rule in all three directions, off
-    `scripts/code-shape-survey.py`: nothing in `kits/` extends the prototype,
+    `scripts/code-shape.py`: nothing in `kits/` extends the prototype,
     nothing in root registers a namespace without extending it or being a
     bundle, everything in `alpineComponents/` registers `Alpine.data`.
   - The 23 prose references corrected.
@@ -137,7 +137,7 @@ Mechanical but wide: the move itself is trivial and the risk is entirely in the 
   Delivered on `claude/lib-kits-consolidation-pdhf41`, PR #367. Nothing under
   `lib/` moved.
 
-  - `scripts/code-shape-survey.py` (`npm run code-shape`) emits per-file
+  - `scripts/code-shape.py` (`npm run code-shape`) emits per-file
     observable properties: what a file attaches to, whether it is boot-loaded,
     whether it touches the hub chain, the DOM, or Alpine. Re-runnable, so the
     next session argues from a current reading rather than from this log.
@@ -229,7 +229,7 @@ Mechanical but wide: the move itself is trivial and the risk is entirely in the 
     | stays, scaffolding | 6 | `gh-auth.js`, `gh-boot.js`, `gh-fetch.js`, `gh-store.js`, `gh-transfer.js`, `traffic.js` |
     | stays, defines GH | 1 | `gh-api.js` |
     | stays, bundle | 3 | `alpine-bundle.js`, `vanilla-bundle.js`, `diagnostic-vanilla-bundle.js` (delete this one, zero consumers) |
-    | **moves to `lib/kits/`** | **14** | `branch-survey.js`, `data-payload.js`, `github-links.js`, `portable-align.js`, `repo-activity-cache.js`, `repo-address.js`, `repo-checks.js`, `repo-config-cache.js`, `repo-mailbox.js`, `repo-proposals.js`, `repo-sessions-cache.js`, `shorter-payload.js`, `surface.js`, `url-params.js` |
+    | **moves to `lib/kits/`** | **14** | `branch-status.js`, `data-payload.js`, `github-links.js`, `portable-align.js`, `repo-activity-cache.js`, `repo-address.js`, `repo-checks.js`, `repo-config-cache.js`, `repo-mailbox.js`, `repo-proposals.js`, `repo-sessions-cache.js`, `shorter-payload.js`, `surface.js`, `url-params.js` |
     | read first | 4 | `chat-render.js`, `source-peek.js`, `swipe-deck.js`, `vanilla-demo.js`, all DOM-touching |
 
     The four are not blocked, only unautomated. `lib/kits/README.md` already
@@ -238,7 +238,7 @@ Mechanical but wide: the move itself is trivial and the risk is entirely in the 
     decides where it lives or takes a host it is handed. Answer it by reading,
     and record the answer rather than the verdict.
 
-    Cost is in the `gh.load` chains, not the moves: `branch-survey.js` alone has
+    Cost is in the `gh.load` chains, not the moves: `branch-status.js` alone has
     8 consumers. `npm run build:lib` enumerates `lib/`, so check the build
     script's globs before moving anything, and `dist/web-tools.js` has to come
     out working.

@@ -37,7 +37,7 @@ const { window } = makeWindow({
            x-data="branchBrief({ repo: '${REPO}', branch: 'feat/x', base: 'main' })"></div></body></html>`,
 });
 
-for (const f of ['lib/kits/branch-survey.js', 'lib/kits/branch-brief.js', 'lib/kits/content-registry.js']) {
+for (const f of ['lib/kits/csv.js', 'lib/kits/branch-status.js', 'lib/kits/branch-brief.js', 'lib/kits/content-registry.js']) {
   new window.Function('window', readFileSync(path.join(repoRoot, f), 'utf8'))(window);
 }
 
@@ -123,7 +123,7 @@ test('the GitHub exits are labeled menu rows, and the plus aims the stage at thi
   assert.equal(u.searchParams.get('view'), 'stage');
   assert.equal(u.searchParams.get('dest'), REPO + '@feat/x:dump',
     'no declared inbox means dump/, the convention default');
-  assert.ok(u.pathname.endsWith('/show-repo/show-repo.html'));
+  assert.ok(u.pathname.endsWith('/app/'));
 });
 
 // The unframed counterpart to the layout case in branch-brief-embedded: a page

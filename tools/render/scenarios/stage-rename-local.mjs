@@ -3,7 +3,7 @@
 // name into an input with the stem selected, which is the whole of the fix for
 // a sniff that guessed wrong.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --query "view=stage" \
+//   npm run shot -- app/index.html --query "view=stage" \
 //     --script tools/render/scenarios/stage-rename-local.mjs --width 390
 export default async (page) => {
   await page.waitForSelector('[x-data*="stager"]', { timeout: 15000 });

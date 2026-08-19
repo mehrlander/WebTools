@@ -31,7 +31,7 @@ Three findings, in descending reliability:
 python3 "${CLAUDE_PLUGIN_ROOT}/in-flight/in-flight.py" <repo> [<repo> ...] --fetch
 ```
 
-Pass every repo the session touches. Use `--fetch` unless refs were fetched in this session; a survey of stale refs is a survey of the past, and the report says how old they are.
+Pass every repo the session touches. Use `--fetch` unless refs were fetched in this session; a scan of stale refs is a reading of the past, and the report says how old they are.
 
 **2. Scope it when the work is known.** If the coming work has a subject, name the paths:
 
@@ -85,4 +85,4 @@ The repair step is deliberately manual. If closing stale claims becomes routine 
 
 ## Bundled
 
-- `in-flight.py`: the survey. Read it when changing what counts as live, or when adding a signal; the classification comments carry the measurements behind each rule.
+- `in-flight.py`: the scan. Read it when changing what counts as live, or when adding a signal; the classification comments carry the measurements behind each rule.

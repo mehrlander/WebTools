@@ -19,7 +19,7 @@ frobnicator") that the corpus has never seen; new coinage or hallucinated
 jargon, either way worth a look.
 
 Exit code 0 always; this is advisory, in the idiom of the estate's other
-surveys. Intended to sit behind a Stop-hook someday; runs standalone now.
+scans. Intended to sit behind a Stop-hook someday; runs standalone now.
 
 Usage:
   python3 flag_reply.py --index index.json [--file reply.md] [--max 20]

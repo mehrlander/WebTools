@@ -1,11 +1,11 @@
 // Drive the fab's Render tab to a seeded, token-free state so the guide pane
-// renders headlessly: the branch survey and the PR body normally come from the
+// renders headlessly: the branch scan and the PR body normally come from the
 // viewer's token, which the sandbox has neither of. Seeds `pageBranches` (rows
 // and their PRs are plain data; every getter above them is pure) and stands the
 // page in a preview by adopting a toss subject, which is how a real preview
 // reaches the drawer.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/fab-guide.mjs
+//   npm run shot -- app/index.html --script tools/render/scenarios/fab-guide.mjs
 //
 // STATE=guide  the guide pane, PR body rendered            (the default)
 // STATE=menu   the ref bar's dropdown, open over the guide
@@ -21,11 +21,11 @@
 
 const BODY = `Promotes the fab's ref readout into show-repo's header, where it can be seen without opening anything.
 
-**Look:** [show-repo at this ref](https://github.com/mehrlander/web-tools/blob/claude/show-repo-branch-nav-xzttnt/pages/show-repo/show-repo.html)
+**Look:** [show-repo at this ref](https://github.com/mehrlander/web-tools/blob/claude/show-repo-branch-nav-xzttnt/app/index.html)
 
 **Changed:**
 - [lib/alpineComponents/ref-switch.js](https://github.com/mehrlander/web-tools/blob/claude/show-repo-branch-nav-xzttnt/lib/alpineComponents/ref-switch.js) the control itself
-- [pages/show-repo/show-repo.html](https://github.com/mehrlander/web-tools/blob/claude/show-repo-branch-nav-xzttnt/pages/show-repo/show-repo.html) one mount in the header
+- [app/index.html](https://github.com/mehrlander/web-tools/blob/claude/show-repo-branch-nav-xzttnt/app/index.html) one mount in the header
 - [docs/show-repo.md](https://github.com/mehrlander/web-tools/blob/claude/show-repo-branch-nav-xzttnt/docs/show-repo.md) a section for it
 
 **Notes:** the switch pins the ref on both halves of the address, since ?use= alone would leave the shell at the deployed version.`;
@@ -73,7 +73,7 @@ export default async (page) => {
     // Stand in a preview: the ref bar keys on the adopted subject's ref.
     d.viaToss = true;
     d.repo = 'mehrlander/web-tools';
-    d.path = 'pages/show-repo/show-repo.html';
+    d.path = 'app/index.html';
     d.ref = state === 'nopr' ? 'claude/branch-page-lifespan-9k2xd'
                              : 'claude/show-repo-branch-nav-xzttnt';
     window.GithubLinks = { rows: (repo, o) => {
@@ -94,7 +94,7 @@ export default async (page) => {
     d.showAllBranches = true;
     d.open = true;
     d.activeTab = 'render';
-    // The branch's full PR history, which the survey's open-PR list cannot
+    // The branch's full PR history, which the scan's open-PR list cannot
     // hold: #332 merged, #333 open, both on the same branch.
     if (state !== 'nopr') d.prHistory = [
       { number: 333, title: "Put the ref box in show-repo's header; make the fab's render tab a guide",

@@ -13,7 +13,7 @@ CONVENTIONS.md is one of several docs written to travel; the full to-go bag (con
 
 ## Showing: which link shows what
 
-The mechanisms, what each reaches and misses, and the rule for picking one are **not restated here**. They live as data in [`docs/routes.json`](docs/routes.json) under `showing` and render live in show-repo's **Map view, Showing tab**; the frame and the record are in [`docs/showing.md`](docs/showing.md). This section used to be 1,589 words, 63% of this file, and it still did not stop a session with all of it in context from handing over the wrong link. The app holds it now.
+The mechanisms, what each reaches and misses, and the rule for picking one are **not restated here**. They live as data in [`docs/showing-mechanisms.csv`](docs/showing-mechanisms.csv) and render in the app's **Map view, Showing tab**; the frame and the record are in [`docs/showing.md`](docs/showing.md). This section used to be 1,589 words, 63% of this file, and it still did not stop a session with all of it in context from handing over the wrong link. The app holds it now.
 
 The one thing worth carrying in your head, because it is the trap:
 
@@ -39,7 +39,7 @@ Any turn that modifies `lib/gh-api.js` must end with the jsDelivr purge link so 
 
 `dist/web-tools.js` is **the pre-build**: the whole `lib/` frozen into one self-booting offline artifact, so a page can adopt the entire library with one import instead of a `gh.load` chain. It's generated (`npm run build:lib`) and it's the one tracked file under the otherwise-gitignored `dist/`. Full story in [`tools/README.md`](tools/README.md#the-pre-build).
 
-The `gh.load` chain it replaces is the repo's default, not a legacy path: 36 page files use it, and [`docs/loader.md`](docs/loader.md) is the only statement of the contract a file must honor to be loadable that way, plus the timing invariants the boot sequence depends on. Read it before adding a file to `lib/` or changing how a page boots. Which folder the file belongs in at all is the prior question, answered once in [`docs/code-layers.md`](docs/code-layers.md) and measured by `npm run code-survey`. It is also the argument that load and build are two readings of one set of rules, which is why the pre-build works at all.
+The `gh.load` chain it replaces is the repo's default, not a legacy path: 36 page files use it, and [`docs/loader.md`](docs/loader.md) is the only statement of the contract a file must honor to be loadable that way, plus the timing invariants the boot sequence depends on. Read it before adding a file to `lib/` or changing how a page boots. Which folder the file belongs in at all is the prior question, answered once in [`docs/code-layers.md`](docs/code-layers.md) and measured by `npm run code-scan`. It is also the argument that load and build are two readings of one set of rules, which is why the pre-build works at all.
 
 Every **deterministic** derived artifact is owned by one commit-time hook, [`.githooks/pre-commit`](.githooks/pre-commit). Before a `git commit` it regenerates and stages, in the same commit, whatever the pending changes touch:
 
@@ -84,12 +84,12 @@ Root-level `tracker/` scoped to repo-wide work (conventions, build tooling, docs
 
 A committed JSON or CSV that inventories or classifies part of the tree is a
 **registry**; adding one means adding a row to
-[`docs/properties.json`](docs/properties.json) in the same commit. The model,
+[`docs/registries.csv`](docs/registries.csv) in the same commit. The model,
 the rules, and what its audits found are in
 [`docs/registries.md`](docs/registries.md); read it before inventing a carrier,
 since the answer is usually a row in one that exists. The one trap: **one
 property about one target answers to one registry** (gated); resolve a
-collision with a **crosswalk** (curation inheriting a census's description),
+collision by declaring that one registry **inherits** the other's descriptions,
 never by renaming a side, which keeps the duplicate.
 
 

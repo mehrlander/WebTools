@@ -9,7 +9,7 @@ size: M
 
 `lib/alpineComponents/estate.js` carries 8,783 words of comments in 194 blocks,
 21% of its bytes. It is the second-heaviest commentary in the estate after
-`pages/show-repo/show-repo.html`, and the only other file large enough to be
+`app/index.html`, and the only other file large enough to be
 hiding a document rather than carrying rationale.
 
 PR #403 split show-repo's 5,962-word block: its contract half restated

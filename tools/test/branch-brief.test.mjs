@@ -14,10 +14,10 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-// The kit reads window.BranchSurvey for compareFields, so both load into one
+// The kit reads window.BranchStatus for compareFields, so both load into one
 // stub window, exactly as the page's gh.load chain arranges them.
 const win = {};
-for (const f of ['lib/kits/branch-survey.js', 'lib/kits/branch-brief.js']) {
+for (const f of ['lib/kits/branch-status.js', 'lib/kits/branch-brief.js']) {
   new Function('window', readFileSync(path.join(repoRoot, f), 'utf8'))(win);
 }
 const BB = win.BranchBrief;

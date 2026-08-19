@@ -49,11 +49,12 @@ The tab was asked for as *terms* connected to registered data. It matches
 *filenames*, and the retreat is structural rather than a shortcut.
 
 Nothing in the estate is keyed by the words prose actually uses.
-[`surfacing.json`](surfacing.json) is keyed by sentence-shaped titles
+[`surfacing.csv`](surfacing.csv) is keyed by sentence-shaped titles
 (*Reference is a link*) that never occur in running text.
-[`text-fields.csv`](text-fields.csv) and [`properties.json`](properties.json)
+[`text-fields.csv`](text-fields.csv) and [`properties.csv`](properties.csv)
 are keyed by ordinary English words: note, open, scope, role.
-[`board.json`](../tracker/board.json) is keyed by task titles. No committed
+[`board.csv`](../tracker/board.csv) is keyed by task ids, whose only human
+handle is the title. No committed
 vocabulary keyed by surface form exists, and that is a decision: `vocab.py`
 builds one in 1.7 seconds and the `concept-index` skill declines to commit the
 result, on the rule that retired the merge guide.
@@ -64,11 +65,11 @@ for about 400 exact strings:
 
 | Registry | Covers | Says | Rows |
 | --- | --- | --- | --- |
-| [`docs.json`](docs.json) | `docs/`, `.md` and `.json` | subject, status | 52 |
-| [`tests.json`](tests.json) | `tools/test/` | protects, kind | 137 |
-| [`harness.json`](harness.json) | `tools/`, `scripts/` | role, layer | 124 |
-| [`portable.json`](portable.json) | the portable set | role, kind | 42 |
-| [`pages.json`](../pages/pages.json) | `pages/` | note, live address | 68 |
+| [`docs.csv`](docs.csv) | `docs/`, `.md` and `.json` | subject, status | 52 |
+| [`tests.csv`](tests.csv) | `tools/test/` | protects, kind | 137 |
+| [`harness.csv`](harness.csv) | `tools/`, `scripts/` | role, layer | 124 |
+| [`portable.csv`](portable.csv) | the portable set | role, kind | 42 |
+| [`pages.csv`](../pages/pages.csv) | `pages/` | note, live address | 68 |
 
 The first build ran the other way: a regex for path-shaped strings, then a tree
 read to validate each guess, with the registry consulted last. Inverting it made

@@ -65,7 +65,7 @@ fi
 # its source rather than drifting until someone notices.
 #
 # The copies sit at a different depth than docs/, so every relative link inside
-# them resolves against the wrong directory: link-survey.py reports 11 dead
+# them resolves against the wrong directory: dead-links.py reports 11 dead
 # links across the pair, and they are not repairable here. Editing the copies is
 # worse than leaving them, because the cp below silently reverts the edit on the
 # next commit that touches docs/. The files exist to be read as injected context,
@@ -100,39 +100,39 @@ if [ -n "$changed_pages" ]; then
 fi
 
 # --- leg 2b: tools/test/ -> the test registry's derived fields ----------------
-# Must precede leg 3a, not follow it. This writes docs/tests.json, and
-# docs/tests.json is a row in docs/docs.json, so a restamp here invalidates any
+# Must precede leg 3a, not follow it. This writes docs/tests.csv, and
+# docs/tests.csv is a row in docs/docs.json, so a restamp here invalidates any
 # word count 3a had already taken. Running it after 3a leaves the suite failing
 # on exactly one row, which is how the ordering was found.
 if git status --porcelain -- tools/test package.json tools/build/tests-index.mjs | grep -q .; then
   if npm run tests-index --silent >/dev/null 2>&1; then
-    git add docs/tests.json 2>/dev/null || true
+    git add docs/tests.csv 2>/dev/null || true
   else
-    echo "build hook: 'npm run tests-index' failed — docs/tests.json may be stale" >&2
+    echo "build hook: 'npm run tests-index' failed — docs/tests.csv may be stale" >&2
   fi
 fi
 
 # --- leg 2c: tools/ or scripts/ -> the harness census's derived fields --------
-# docs/harness.json is authored only in `role` and the layer glossary; layer,
+# docs/harness.csv is authored only in `role` and the layer glossary; layer,
 # lines, invocation, emits, named, and tested are stamped from the tree, and a
 # rename or a new npm script moves them without touching the registry.
 # artifacts-lockstep runs the generator's --check as the backstop.
-if git status --porcelain -- tools scripts package.json tools/build/tools-index.mjs docs/harness.json | grep -q .; then
+if git status --porcelain -- tools scripts package.json tools/build/tools-index.mjs docs/harness.csv | grep -q .; then
   if npm run tools-index --silent >/dev/null 2>&1; then
-    git add docs/harness.json 2>/dev/null || true
+    git add docs/harness.csv 2>/dev/null || true
   else
-    echo "build hook: 'npm run tools-index' failed — docs/harness.json may be stale" >&2
+    echo "build hook: 'npm run tools-index' failed — docs/harness.csv may be stale" >&2
   fi
 fi
 
 # --- leg 2d: lib/ or pages/ -> the registries' renders_in field ---------------
-# docs/properties.json is authored everywhere except `renders_in`, the app
+# docs/registries.csv is authored everywhere except `renders_in`, the app
 # files that name each carrier, stamped the way leg 3a stamps reach. Must
-# precede 3a: this writes docs/properties.json, which is a docs/ file whose
+# precede 3a: this writes docs/registries.csv, which is a docs/ file whose
 # word count 3a measures. properties-registry.test.mjs is the backstop.
-if git status --porcelain -- lib pages docs/properties.json tools/build/registries-reach.mjs | grep -q .; then
+if git status --porcelain -- lib pages docs/registries.csv tools/build/registries-reach.mjs | grep -q .; then
   if npm run registries-reach --silent >/dev/null 2>&1; then
-    git add docs/properties.json 2>/dev/null || true
+    git add docs/registries.csv 2>/dev/null || true
   else
     echo "build hook: 'npm run registries-reach' failed — renders_in may be stale" >&2
   fi

@@ -1,6 +1,6 @@
 // The Branches window pill: the reader's time slice over the Recent scope.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/branches-window.mjs
+//   npm run shot -- app/index.html --script tools/render/scenarios/branches-window.mjs
 //
 // WINDOW=1|3|7|14 picks the slice (default 3). The fixture seeds branch rows at
 // known ages so the count beside the pill is checkable rather than incidental.
@@ -17,7 +17,7 @@ export default async function (page) {
     const CONFIGS = { repos: { 'mehrlander/web-tools': { config: { estate: true, group: 'core', order: 1 } } } };
     const ACTIVITY = { generatedAt: new Date(now).toISOString(), repos: {
       'mehrlander/web-tools': { defaultBranch: 'main', counts: { openPRs: 0 }, recentCommits: [], openPRs: [],
-        survey: { branches: [at(0.2,'claude/today-a'), at(0.5,'claude/today-b'), at(2,'claude/two-days'),
+        scan: { branches: [at(0.2,'claude/today-a'), at(0.5,'claude/today-b'), at(2,'claude/two-days'),
                              at(5,'claude/five-days'), at(9,'claude/nine-days'), at(13,'claude/thirteen-days')] } } } };
     const origGet = window.GH.prototype.get, origReq = window.GH.prototype.req, origLs = window.GH.prototype.ls;
     window.GH.prototype.get = async function (n) {

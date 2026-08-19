@@ -2,7 +2,7 @@
 // browser because the claim is about the platform's gesture and not about our
 // arithmetic.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/branch-deck.mjs \
 //     --out tools/.preview/two-decks.png --width 390 --height 844
 //

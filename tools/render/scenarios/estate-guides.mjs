@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the estate's Guides pane, Activity's
 // third sub-view.
 //
-//   npm run shot -- pages/show-repo/show-repo.html \
+//   npm run shot -- app/index.html \
 //     --script tools/render/scenarios/estate-guides.mjs
 //
 // The sandbox blocks api.github.com and the registry is private, so the fixture
@@ -39,7 +39,7 @@ export default async function (page) {
     // branch and session links come from with nothing declared.
     const ACTIVITY = { generatedAt: '2026-08-07T03:00:00Z', repos: {
       'mehrlander/web-tools': {
-        defaultBranch: 'main', counts: { openPRs: 1 }, recentCommits: [], survey: { branches: [] },
+        defaultBranch: 'main', counts: { openPRs: 1 }, recentCommits: [], scan: { branches: [] },
         // STALE ON PURPOSE: the crawl ran before #367 opened, which is the
         // exact state that made the pane report no guides while one was in
         // flight. The pane must find it anyway, from the live pulls() read.
@@ -48,7 +48,7 @@ export default async function (page) {
                     sessions: ['https://claude.ai/code/session_01XG5'] }],
       },
       'mehrlander/home': {
-        defaultBranch: 'main', counts: {}, recentCommits: [], survey: { branches: [] }, openPRs: [],
+        defaultBranch: 'main', counts: {}, recentCommits: [], scan: { branches: [] }, openPRs: [],
       },
     } };
 

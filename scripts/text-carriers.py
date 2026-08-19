@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Inventory the carriers that already hold authored text, and how organized they are.
 
-The companion to scripts/text-census.py, which finds text with no carrier. This
+The companion to scripts/embedded-prose.py, which finds text with no carrier. This
 one looks at the text that DID make it into a data file and asks whether the
 carrier is in any shape to be relied on.
 
@@ -18,13 +18,13 @@ reports three things about each:
                 move.
     field name  what the column is called.
 
-The field-name census is the point of the run. One concept called `note` in one
+The field-name tally is the point of the run. One concept called `note` in one
 carrier, `comment` in the next, `rationale` in a third and `why` in a fourth is
 not a naming quibble: it means no reader and no tool can ask "show me the
 authored rationale in this repo" and get an answer. A vocabulary that has never
 been stated is the honest measure of how organized the carriers are.
 
-Advisory and heuristic, like scripts/text-census.py: it WILL surface false
+Advisory and heuristic, like scripts/embedded-prose.py: it WILL surface false
 positives, and it exits 0 unless --check is given.
 
 Portable: python3 stdlib only, argv-driven, runs from any repo root.
@@ -35,7 +35,7 @@ Usage:
     --markdown   also read GFM tables in .md as carriers. Their headers report as
                  `label` and are never gated: a table header is a phrase for a
                  reader, not a field name a tool reads
-    --fields     the field-name census: every prose field name, with how many
+    --fields     the field-name tally: every prose field name, with how many
                  carriers use it and how much text it holds
     --carriers   one row per carrier file
     --undeclared only carriers nothing in the repo names
@@ -301,7 +301,7 @@ def registry_mode(reg, rel):
 
 # Options that take a value. Without this the value is read as a path prefix,
 # which silently scopes the run to a directory that does not exist and reports
-# a clean zero: the most misleading possible failure for a survey.
+# a clean zero: the most misleading possible failure for a scan.
 VALUED = {"--min", "--check", "--vocab"}
 
 
@@ -392,7 +392,7 @@ def main(argv):
     # A .md is exempt from the naming check. The question "does anything name
     # this carrier" is about a data file that could be filed and forgotten; a
     # document is its own thing, needs no second file to vouch for it, and in
-    # this estate docs/docs.json already governs whether docs/ is fully claimed.
+    # this estate docs/docs.csv already governs whether docs/ is fully claimed.
     undeclared = [c for c in authored
                   if not c["declared"] and not c["carrier"].endswith(".md")]
 

@@ -194,7 +194,7 @@ Shape and reasoning in `TRACKER.md`.
 grep -rl 'runner: <machine>' */tracker/tasks/ */*/tracker/tasks/
 ```
 
-Both tags ride into `board.json` under `tags`, so anything machine-side can
+Both tags ride into `board-tags.csv`, so anything machine-side can
 select on them without the generator changing.
 
 ## Claim, update, close

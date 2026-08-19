@@ -2,7 +2,7 @@
 // repo carrying PROJECT rows under it, the block this session's header/project
 // changes act on.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/sidebar-projects.mjs \
 //     --out tools/.preview/sidebar-projects.png
 //

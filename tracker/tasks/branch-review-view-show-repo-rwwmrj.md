@@ -21,7 +21,7 @@ point on the home side. This puts the read where the user already lands and
 turns the per-branch reconcile judgment into a click instead of a re-run.
 
 The reference implementation already exists at the CLI: home's
-`tools/branch-survey.sh` (home tracker, "Branch survey instrument", done
+`tools/unmerged-branches.sh` (home tracker, "Branch survey instrument", done
 2026-07-06). It classifies every unmerged branch into recently-active /
 likely-landed / likely-stranded and links each row out to GitHub. This task
 ports that read into the browser, where it works across any repo the
@@ -94,27 +94,27 @@ renders the rollup, slotting in beside Landing and Atlas via the same
   the view frames it and decides nothing, matching the CLI instrument's
   reserved-decision posture.
 - A stated check that the browser classification agrees with
-  `branch-survey.sh` on a sample of home branches, so the port does not
+  `unmerged-branches.sh` on a sample of home branches, so the port does not
   silently regress the content signal.
 
 ## Progress log
 - 2026-07-16: opened, from a cross-repo branch-review synthesis session.
-  Origin material: home's `tools/branch-survey.sh` and its "Branch survey
+  Origin material: home's `tools/unmerged-branches.sh` and its "Branch survey
   instrument" task (the CLI instrument and its baseline); home's 2026-07-06
   branch-survey handoff and the June 14 reconcile memo (the hand-done
   predecessor). Architectural read confirmed show-repo already holds every
   primitive (`branchesDated`, `compare`, `compare.js`/`buildDump`). Not yet
   claimed.
 - 2026-07-17: Claimed on branch claude/web-tools-branch-tracking-n1zawm. Plan:
-  port the CLI's content-level signal into a pure module (lib/branch-survey.js,
-  unit-tested, checked for agreement against home's branch-survey.sh), extend
+  port the CLI's content-level signal into a pure module (lib/branch-status.js,
+  unit-tested, checked for agreement against home's unmerged-branches.sh), extend
   branchesDated with tip sha and subject, and build the branches view on top
   (compare + recursive-tree per branch against one default-branch tree read).
 - 2026-07-17: Built and pushed on the session branch; PR #236 (draft) carries
-  the guide. lib/branch-survey.js (pure math) + lib/alpineComponents/branches.js
+  the guide. lib/branch-status.js (pure math) + lib/alpineComponents/branches.js
   (the view) + branchesDated pagination/tip-sha/subject; 18 new tests, suite
   222/222. The stated check ran against home's 56-branch estate via
-  scripts/check-branch-survey.mjs: 52 exact, 4 divergent only where the CLI's
+  scripts/check-branch-status.mjs: 52 exact, 4 divergent only where the CLI's
   git rename detection credits moved-and-evolved content (conservative
   direction), API-shaped input drift 0. Flips to done on merge.
 - 2026-07-18: Closed. Delivered via PR #236 (merged 2026-07-17); status was left in-progress after the merge and is flipped now in a tracker sweep.

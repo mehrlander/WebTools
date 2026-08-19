@@ -1,0 +1,47 @@
+key,type,consumer,status,required,summary
+icon,string,show-repo,,,Phosphor icon class for the repo's estate card and header quick-link button. The repo owns it.
+estate,boolean,show-repo,,,true to appear on the all-repo estate. Membership is a repo property; there is no central registry of repos.
+group,string,show-repo,,,"The estate section this card sits in, e.g. 'core', 'data'."
+note,string,show-repo,,,The card's one-line description. Overrides the GitHub description.
+order,number,show-repo,,,Arrangement weight. Group order (a group sorts by its lowest member's order) and within-group order both derive from it.
+inbox,string,show-repo,,,"Where an unaddressed deposit lands: 'inbox', '@ref:dir', or a full 'owner/repo[@ref]:dir'. Absent means the repo root. This is the repo's DEFAULT, and there is exactly one, because it answers a deposit addressed only to `owner/repo`, which carries nothing to discriminate on. A workspace's own tray is an `inbox` on its `projects` entry: many per repo, never automatic, reached by choosing it. The repo is its own root project, which is why that default lives here as a top-level key rather than as a synthetic entry in `projects`."
+outbox,string,show-repo,,,Where this repo stages material for others to pull. Same shape as inbox; adds an 'Open outbox' row to the repo menu.
+landing,string,show-repo,,,"Path to the repo's own landing page, rendered live via toss-render #gh=. Takes the front-door slot ahead of `pages`; the catalog then moves to a standalone Pages sidebar view rather than disappearing."
+pages,array,show-repo,,,"A hand-declared page catalog. A repo with a non-empty `pages` gets the gallery: the same card grid web-tools gets from its generated pages/pages.csv, fed from this instead. Surfaces as the landing when there is no `landing` field, otherwise as a standalone Pages view."
+pages[].path,string,show-repo,,yes,"A bare repo-relative path, or a qualified 'owner/repo[@ref]:path' cross-repo ref. The cross-repo form lets a repo promote a page whose file lives elsewhere."
+pages[].title,string,show-repo,,no,The card's heading. Defaults to the filename.
+pages[].note,string,show-repo,,no,The card's one-line description.
+pages[].icon,string,show-repo,,no,"Phosphor class, used as the app-view icon when promoted."
+pages[].thumb,string,show-repo,,no,"Path to a committed thumbnail. A private repo has none, so tiles render live instead."
+pages[].project,string,show-repo,,no,The workspace this page belongs to (a `projects` entry's path). Only needed for a page that lives outside the workspace folder; the project view derives the rest by path prefix.
+pages[].appView,boolean,show-repo,,no,"true to promote this page to its own estate-level view, a peer of Repos and Stage. Collected across every repo through the config cache and token-gated. Additive: the page still appears in its repo's gallery."
+pages[].viewLabel,string,show-repo,,no,"Sidebar label for the promoted view. Defaults to title, then the filename."
+pages[].order,number,show-repo,,no,"Sort weight within the catalog; undeclared reads as 0, and the tiebreak is the entry's position in the list. It has always ordered app views (loadEstateSidebar sorts on it); it was ignored by the gallery until 2026-08-05, which is why web-tools-private's order:40 on a non-appView entry did nothing while chat-histories' order:30 on an app view worked. Both surfaces honor it now."
+pins,array,show-repo,,,Folders and files surfaced in the sidebar Pinned block. A last segment with an extension opens as a file; otherwise it opens the Files view at that folder.
+checks,array,show-repo,,,"Declared staleness checks, filling the sidebar's Needs attention block and badging the estate cards. Only what is not passing shows on either. Every kind is answerable from the API alone; the boundary is that a check asks about data and never runs code."
+checks[].kind,string,show-repo,,yes,"One of content-date, file-age, newer-than, absent, dir-count, tracker."
+checks[].path,string,show-repo,,yes,"What the check asks about. A glob for `absent`, a board.csv for `tracker`."
+checks[].label,string,show-repo,,no,Row label. Accepted by every kind.
+checks[].pattern,string,show-repo,,no,content-date: a regex with one capture group holding the date.
+checks[].staleAfterDays,number,show-repo,,no,"content-date, file-age, tracker: the age at which the check fails."
+checks[].sources,array,show-repo,,no,newer-than: the paths the target must not fall behind.
+checks[].staleOver,number,show-repo,,no,dir-count: the count above which a folder meant to stay empty fails.
+checks[].ignore,array,show-repo,,no,dir-count: names not counted. Defaults to .gitkeep.
+checks[].awaitingOver,number,show-repo,,no,tracker: the number of tasks awaiting someone above which the check fails. Default 0.
+links,string,show-repo,,,Path to the repo's links board (the store pages/links.html renders). The shell surfaces items flagged `rail: true` as the rail. Which board is this field; what is on the rail is the board itself.
+projects,array,show-repo,,,"The repo's workspaces, as bare folder paths or { path, label, tracker, landing, inbox } objects. An entry's `inbox` is the repo-level field one level down, same grammar, naming where a deposit aimed at that workspace lands; unlike `tracker` it is declared rather than derived, because a board is a link whose wrong guess costs a 404 while an inbox is a write target whose wrong guess misfiles a deposit into a folder nothing drains. Rendered in three lists with one destination: the estate sidebar's Repos index, the repo's own sidebar, and the repo's Repos-grid card. The defining convention is that a workspace running a tracker is a project, so no separate registry says what counts. Edited in the Config view's Projects section, whose Scan reads the tree for that same convention (a folder carrying tracker/tasks/) and offers whatever this field does not yet declare."
+projects[].path,string,show-repo,,yes,The workspace folder.
+projects[].label,string,show-repo,,no,Display name. Defaults to the path's last segment.
+projects[].tracker,string|boolean,show-repo,,no,A repo-root-relative file or folder naming a tracker elsewhere than the default <workspace>/tracker/board.md. false drops the task-board button.
+projects[].landing,string,show-repo,,no,"The workspace's own front page, repo-root-relative. Takes the project view's Overview slot ahead of the README."
+projects[].inbox,string,show-repo,,no,"Where a deposit aimed at this workspace lands, in the repo-level `inbox` grammar: a bare folder is repo-root-relative like `tracker` and `landing`, '@ref:dir' names a branch, and a full 'owner/repo[@ref]:dir' a box elsewhere. Optional, and unlike `tracker` it is declared rather than derived: a board is a link whose wrong guess costs a 404, while an inbox is a write target whose wrong guess files a deposit into a plausible folder nothing drains. Surfaces as a destination pill in the stage; a project that declares nothing offers none."
+projects[].icon,string,show-repo,,no,Accepted and ignored. The rows draw no leading glyph.
+tracker,string,show-repo,,,"Where the repo keeps its task board. Adds a Task board row to the repo's GitHub menu, the one row in that menu GitHub cannot name for itself. A path with an extension links the blob, a bare path the tree."
+scope,string,show-repo,,,"The repo's own account of what it holds and why, headlining its card in the Map view. Either inline prose or a repo path ending in .md. The Map view stacks per-repo statements rather than keeping a central list."
+surface,string|array,show-repo,,,"Path or paths to .surface files in this repo, surfaced under a per-repo section of the Stage's Saved pane and as a chip on the repo's card. Read-only in the estate."
+stage,object,show-repo,,,A staged-files list and default transfer destinations the repo declares for itself.
+stage.files,array,show-repo,,no,"Bare paths or qualified 'owner/repo[@ref]:path' refs. Seeded into the stage only when it is otherwise empty, so a working set the user built always wins. Read-only from show-repo since 2026-08-03; saving writes a .surface to the registry instead."
+stage.targets,array,show-repo,,no,"Default transfer destinations as 'owner/repo:dir' strings, offered in the Copy-to-repo field."
+conventions,string,portable,,,"'optout' marks a repo that has deliberately not adopted the portable conventions, so a session-start nudge stops asking. Absent means unset."
+sessions,string,session-hook,,,"Path to the directory where this repo keeps its session records. Declaring it makes the repo the store for the portable plugin's Stop hook, which finds the store by reading this field rather than by knowing a repo name. At most one checkout per session should declare it; the first found wins."
+quickLink,boolean|object,show-repo,deprecated,,"Superseded by `icon` plus `estate`, which the header quick-link strip now projects from. Still present in home's and chat-histories' manifests and still parsed, but it declares nothing the roster does not already carry. Documented here because it is in use: a registry that omitted it would report those two repos as clean while a live key went unexplained."

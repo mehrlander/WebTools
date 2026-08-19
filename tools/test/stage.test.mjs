@@ -8,7 +8,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeWindow, startAlpine, tick } from './bootstrap.mjs';
+import { makeWindow, startAlpine, tick, deckGeometry } from './bootstrap.mjs';
 
 const calls = [];
 
@@ -40,6 +40,11 @@ const { window, problems } = makeWindow({
     <div id="st" x-data="stager()"></div>
   </body></html>`,
 });
+// The preview is a swipe-deck takeover now, and the deck pages by scrolling a
+// track it measures. jsdom has neither layout nor scrollTo, so give it the
+// shared shim: with clientWidth falling back to 1, a slide index and a pixel
+// offset coincide and go(2) lands on slide 2, which is what a logic test needs.
+deckGeometry(window);
 
 // alpine-bundle.js defines the browser store; the stager composes dropZone and
 // pathPicker, and its inline preview mounts a viewer, so all three must be
@@ -59,6 +64,9 @@ const Alpine = await startAlpine(window, [
   'lib/kits/repo-mailbox.js',
   'lib/kits/surface.js',
   'lib/kits/text-diff.js',
+  // The preview's shell. stage.js gh.loads it on demand in a browser; here it
+  // is present up front, since there is no loader in this realm.
+  'lib/kits/swipe-deck.js',
   'lib/alpineComponents/drop-zone.js',
   'lib/alpineComponents/path-picker.js',
   'lib/alpineComponents/viewer.js',
@@ -69,7 +77,17 @@ const data = Alpine.$data(window.document.getElementById('st'));
 const store = Alpine.store('browser');
 store.gh = new FakeGH({ token: 't', repo: 'me/open' });
 const plain_ = (v) => JSON.parse(JSON.stringify(v));
-const reset = () => { store.stage = []; data.diffA = 0; data.diffB = 0; data._diffTouched = false; data.diffRows = null; };
+// The preview is a deck mounted on document.body, so it outlives a store reset
+// and would be seeked rather than reopened by the next test's view(). Close it
+// first, which is also what a reader does between two readings; the transform
+// takeover is the same kit and gets the same treatment.
+const reset = () => {
+  if (data._pDeck) { data._pDeck.drop(); data._pDeck = null; }
+  if (data._tfDeck) { data._tfDeck.drop?.(); data._tfDeck = null; }
+  data._pNotes = {};
+  store.stage = []; store.stageFocus = ''; store.stageOffers = []; data.preview = null;
+  data.diffA = 0; data.diffB = 0; data._diffTouched = false; data.diffRows = null;
+};
 
 // navigator.clipboard isn't polyfilled by makeWindow (see its header note).
 // Component code runs in the jsdom window realm (new window.Function(src)()),
@@ -166,10 +184,19 @@ test('grab stages the picked ref once, deduped by key', () => {
   ]);
 });
 
-// The preview opens the modal ({ name } is the bare path) and drives the file's
-// content + origin into the embedded viewer (#stage-preview-viewer.__viewer), so
-// the assertions read the viewer's state, not preview fields it no longer holds.
-const previewViewer = () => window.document.getElementById('stage-preview-viewer').__viewer;
+// The preview is a swipe-deck takeover, one slide per staged item, each slide
+// mounting its own viewer. `data-preview-slide` carries the index, so a test can
+// read the viewer for the position it means rather than the only one there used
+// to be. `preview.note` still says why a position rendered nothing.
+const previewViewer = (i) => window.document
+  .querySelector(`[data-preview-slide="${i ?? data.preview.i}"]`)?.__viewer;
+
+// The deck builds a slide from its scroll handler, on a real animation frame,
+// and the slide then resolves its content asynchronously. `tick` only turns the
+// microtask queue, so it lands before the frame and sees an empty slide. Wall
+// clock rather than requestAnimationFrame: awaiting a frame hangs rather than
+// fails when jsdom's frame clock is not running. Same idiom as file-deck's.
+const shown = async () => { await new Promise(r => setTimeout(r, 50)); await tick(3); };
 
 test('view loads a ref into the inline preview, not the shared activeFile', async () => {
   reset();
@@ -177,7 +204,7 @@ test('view loads a ref into the inline preview, not the shared activeFile', asyn
   // The preview is a position in the stage, so the row it opens from is staged.
   store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
   await data.view({ repo: 'me/a', ref: '', path: 'lib/x.js' });
-  await tick(3);
+  await shown();
   assert.equal(data.preview.name, 'lib/x.js');
   assert.equal(data.preview.i, 0, 'and it knows where it is');
   assert.equal(store.activeFile, null, 'stage preview never routes through Files');
@@ -200,20 +227,20 @@ test('the preview walks the staged set, and every position opens', async () => {
     { repo: 'me/a', ref: '', path: 'three.js' },
   ];
   await data.view({ repo: 'me/a', ref: '', path: 'one.js' });
-  await tick(3);
+  await shown();
   assert.equal(data.preview.i, 0);
   assert.equal(data.preview.note, '', 'a text file renders');
 
   // A binary local file is a position like any other: it opens with a note
   // instead of a viewer, so stepping past it never skips or dead-ends.
   await data.previewStep(1);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.i, 1);
   assert.match(data.preview.note, /Binary/);
   assert.equal(data.preview.name, 'bin.png');
 
   await data.previewStep(1);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.i, 2);
   assert.equal(data.preview.note, '');
 
@@ -221,7 +248,7 @@ test('the preview walks the staged set, and every position opens', async () => {
   await data.previewStep(1);
   assert.equal(data.preview.i, 2, 'past the last is a no-op');
   await data.previewStep(-1); await data.previewStep(-1); await data.previewStep(-1);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.i, 0, 'before the first is a no-op');
 });
 
@@ -229,7 +256,7 @@ test('a fetch that fails still opens, as a note rather than a closed modal', asy
   reset();
   store.stage = [{ repo: 'me/missing', ref: '', path: 'gone.js' }];
   await data.view({ repo: 'me/missing', ref: '', path: 'gone.js' });
-  await tick(3);
+  await shown();
   assert.ok(data.preview, 'the modal is open');
   assert.match(data.preview.note, /Could not load it/);
 });
@@ -238,7 +265,7 @@ test('view shows a local text item inline', async () => {
   const loc = { local: true, id: 90, name: 'n.txt', path: 'n.txt', size: 2, isText: true, text: 'hi' };
   store.stage = [loc];
   await data.view(loc);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.name, 'n.txt');
   const vwr = previewViewer();
   assert.equal(vwr.file, 'n.txt');
@@ -261,6 +288,62 @@ test('a dropped file becomes a local stage item holding its bytes', () => {
   assert.equal(it.bytes[0], 1);
 });
 
+// A DROPPED TEXT FILE IS TEXT. Every file intake arrives as bytes, and the
+// item was stamped binary on that basis, so a dropped .md previewed as "Not
+// text" while the same characters pasted opened rendered. The decision is a
+// strict UTF-8 decode, so it holds for any text extension, not a list of them.
+test('a dropped markdown file is held as text, not as bytes', () => {
+  reset();
+  const md = '# Notes\n\nA paragraph.\n';
+  const bytes = new TextEncoder().encode(md);
+  data.onDropped({ file: {}, name: 'notes.md', size: bytes.length, type: 'text/markdown', bytes, buf: bytes.buffer });
+  assert.equal(data.localItems.length, 1);
+  const it = data.localItems[0];
+  assert.equal(it.isText, true, 'it decodes as UTF-8, so it is text');
+  assert.equal(it.text, md);
+});
+
+// End to end, which is the report this fixes: drop the file, open the row,
+// and get the file rather than a note about it. The pane's own mode is
+// READ_MODE's (markdown renders, raw one tap away); what is asserted here is
+// that the viewer is driven at all.
+test('a dropped markdown file previews rather than reporting itself binary', async () => {
+  reset();
+  const md = '# Notes\n\nA paragraph.\n';
+  const bytes = new TextEncoder().encode(md);
+  data.onDropped({ file: {}, name: 'notes.md', size: bytes.length, type: 'text/markdown', bytes, buf: bytes.buffer });
+  await data.view(data.localItems[0]);
+  await shown();
+  assert.equal(data.preview.note, '', 'no "Binary … staged for copy, not preview" note');
+  assert.equal(previewViewer().content, md);
+});
+
+// The one form a file can arrive in with no `bytes` beside it. Reading the
+// buffer here is what keeps the two intake shapes on one answer.
+test('a dropped text file with only a buffer still decodes', () => {
+  reset();
+  const bytes = new TextEncoder().encode('name,qty\na,1\n');
+  data.onDropped({ file: {}, name: 'rows.csv', size: bytes.length, type: 'text/csv', buf: bytes.buffer });
+  assert.equal(data.localItems[0].isText, true);
+  assert.equal(data.localItems[0].text, 'name,qty\na,1\n');
+});
+
+// The two ways bytes stay bytes: a type the viewer renders from a data: URI
+// (the .png above), and anything that fails the decode.
+test('bytes that are not UTF-8 stay bytes', () => {
+  reset();
+  data.onDropped({ file: {}, name: 'archive.zip', size: 4, type: '',
+                   bytes: Uint8Array.from([0x50, 0x4b, 0x03, 0xff]), buf: new ArrayBuffer(4) });
+  assert.equal(data.localItems[0].isText, false);
+});
+
+test('an svg keeps its bytes, so it still previews as an image', () => {
+  reset();
+  const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"></svg>');
+  data.onDropped({ file: {}, name: 'mark.svg', size: svg.length, type: 'image/svg+xml', bytes: svg, buf: svg.buffer });
+  assert.equal(data.localItems[0].isText, false, 'the viewer renders it from its own bytes');
+});
+
 test('pasted text that reads as refs stages those refs, not a text file', () => {
   reset();
   data.onDropped({ text: 'me/a:lib/x.js\nme/b@dev:docs/y.md', size: 30, type: 'text/plain' });
@@ -278,6 +361,73 @@ test('pasted prose is held as a local text item', () => {
   assert.equal(data.localItems[0].isText, true);
   assert.equal(data.localItems[0].text, 'just some notes, not a ref');
   assert.match(data.localItems[0].name, /^\d{4}-\d{2}-\d{2}-paste\.txt$/);
+});
+
+// ---- intake without the view --------------------------------------------
+// The fold lives on window.StageIntake rather than inside the component, which
+// is what lets a host stage a drop before the bench has ever mounted: the app
+// shell takes a drop on any view and calls these. Nothing here touches a
+// component method, which is the point of the tests.
+
+const textFile = (name, text, type = '') => {
+  const bytes = new TextEncoder().encode(text);
+  return { name, type, size: bytes.length, arrayBuffer: async () => bytes.buffer };
+};
+const dropOf = ({ types = [], files = [], text = '' }) => ({ types, files, getData: () => text });
+
+test('takeDrop stages a dropped file and reports what it added', async () => {
+  reset();
+  const added = await window.StageIntake.takeDrop(
+    dropOf({ types: ['Files'], files: [textFile('notes.md', '# Hi\n', 'text/markdown')] }));
+  assert.equal(added.length, 1, 'the caller learns what landed, so it can open it');
+  assert.equal(added[0].name, 'notes.md');
+  assert.equal(added[0].isText, true);
+  assert.equal(store.stage.length, 1, 'and it landed on the one stage');
+});
+
+test('takeDrop with no files falls to the dragged text, refs and all', async () => {
+  reset();
+  const added = await window.StageIntake.takeDrop(
+    dropOf({ types: ['text/plain'], text: 'me/a:lib/x.js' }));
+  assert.equal(added.length, 1);
+  assert.deepEqual(plain_(data.refItems), [{ repo: 'me/a', ref: '', path: 'lib/x.js' }]);
+});
+
+// The id counter is module-scope for this: two creators (the bench's drop-zone
+// and the app-wide drop) minting from per-mount counters would collide, and
+// `local:<id>` is the key dedupe and the preview address by.
+test('every local item takes its own key', () => {
+  reset();
+  const a = window.StageIntake.take({ text: 'one' })[0];
+  const b = window.StageIntake.take({ text: 'two' })[0];
+  assert.notEqual(window.StageIntake.keyOf(a), window.StageIntake.keyOf(b));
+});
+
+// focus is a REQUEST, not a selection: a host stages from another view, names
+// the item, and the bench opens on it whenever it gets there.
+test('focus names an item and the stage opens its preview, then forgets it', async () => {
+  reset();
+  const it = window.StageIntake.take({ text: 'just some prose' })[0];
+  window.StageIntake.focus(it);
+  assert.equal(store.stageFocus, 'local:' + it.id);
+  await tick(5);
+  assert.equal(store.stageFocus, '', 'reading the request clears it, so a later mount does not reopen');
+  assert.ok(data.preview, 'the preview opened');
+  assert.equal(data.preview.name, it.name);
+});
+
+test('a drop on the view itself opens one file, and stays out of the way for a batch', async () => {
+  reset();
+  await data.onPageDrop({ dataTransfer: dropOf({ types: ['Files'], files: [textFile('one.md', '# One\n')] }) });
+  await tick(4);
+  assert.equal(data.preview?.name, 'one.md');
+
+  reset();
+  await data.onPageDrop({ dataTransfer: dropOf({ types: ['Files'],
+    files: [textFile('a.md', 'a'), textFile('b.md', 'b')] }) });
+  await tick(4);
+  assert.equal(data.preview, null, 'two arrivals stay listed rather than opening one of them');
+  assert.equal(data.localItems.length, 2);
 });
 
 // ---- every flavor a paste carried ---------------------------------------
@@ -301,10 +451,16 @@ const fakeCd = ({ types = [], data = {}, files = [] }) => ({
 });
 const fakeFile = (name, type, size) => ({ name, type, size, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer });
 
+// The paste fold is window.StageIntake's, and the host reads its own event
+// target: these drive the intake directly, the way the shell does. The
+// `editable` flag is what a form-field target means to it.
 const paste = async (cd, target) => {
   data.offers = [];
-  data._onPaste({ clipboardData: cd, target: target || { tagName: 'DIV' }, preventDefault() {} });
+  const t = target || { tagName: 'DIV' };
+  const editable = /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || '') || !!t.isContentEditable;
+  const r = await window.StageIntake.takePaste(cd, { editable });
   await tick(2);
+  return r;
 };
 
 test('a spreadsheet paste stages one flavor and offers the rest', async () => {
@@ -325,6 +481,169 @@ test('a text/plain grid is named .tsv, so it opens as a table', async () => {
   await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': TSV } }));
   assert.match(data.localItems[0].name, /\.tsv$/);
   assert.equal(data.offers.length, 0, 'one flavor offers nothing');
+});
+
+// ---- what a paste is NAMED is what it routes to ----------------------------
+//
+// READ_MODE keys on the extension, so nameForText is the routing decision and
+// these are mode tests wearing a naming test's clothes. Measured before the
+// change (tools/render/scenarios/paste-kinds-probe.mjs): a CSV and a rows
+// function both fell through to .txt.
+
+const CSV = 'code,label,jul,aug\nAA,Salaries,186927,186927\nBA,Social Security,9448,9448';
+
+test('a pasted CSV is named .csv, so it opens as a table like its TSV twin', async () => {
+  reset();
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': CSV } }));
+  assert.match(data.localItems[0].name, /\.csv$/);
+});
+
+test('a quoted comma is a value, not a field separator', () => {
+  const csv = 'code,label,jul\nAA,"Social Security, OASI",9448\nBA,"Salaries, all",186927';
+  assert.equal(window.StageIntake.delimiterOf(csv), ',',
+    'counting quoted commas would make the field counts disagree and lose the grid');
+});
+
+test('an escaped doubled quote does not reopen the field', () => {
+  const csv = 'a,b\n"he said ""hi, there""",2\n"plain",3';
+  assert.equal(window.StageIntake.delimiterOf(csv), ',');
+});
+
+test('tab wins over comma, so a TSV carrying prose commas stays a TSV', () => {
+  const tsv = 'code\tlabel\nAA\tSalaries, all funds\nBA\tSocial Security, OASI';
+  assert.equal(window.StageIntake.delimiterOf(tsv), '\t');
+});
+
+test('prose with commas is not a grid', () => {
+  assert.equal(window.StageIntake.delimiterOf('one, two, three\nand a second line'), '',
+    'the counts differ, so it is prose');
+});
+
+test('a rows function is named .js, since pasting one is how work resumes', async () => {
+  reset();
+  const fn = 'rows => rows.filter(r => r.jul > 10000)';
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': fn } }));
+  assert.match(data.localItems[0].name, /\.js$/);
+});
+
+test('isRowsFn takes the shapes the workbench accepts, and not bare JavaScript', () => {
+  const yes = ['rows => rows', '(rows) => rows.map(r => r)', '(rows, meta) => rows',
+               'function (rows) { return rows }', 'function tidy(rows) { return rows }',
+               'async function (rows) { return rows }'];
+  const no = ['x => x * 2', 'function add(a, b) { return a + b }',
+              'const rows = 1', 'rowsPerPage => 10'];
+  for (const src of yes) assert.equal(window.StageIntake.isRowsFn(src), true, src);
+  for (const src of no) assert.equal(window.StageIntake.isRowsFn(src), false, src);
+});
+
+test('a multi-line function body is a function, not a comma grid', async () => {
+  reset();
+  const fn = 'rows => rows.map(r => ({\n  code: r.code,\n  jul: r.jul,\n}))';
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': fn } }));
+  assert.match(data.localItems[0].name, /\.js$/,
+    'the grid test runs after this one precisely so this cannot be renamed .csv');
+});
+
+test('a JSON array of records opens as a table; any other JSON stays a tree', () => {
+  const rowsJson = JSON.stringify([{ a: 1, b: 2 }, { a: 3, b: 4 }]);
+  const bundle = JSON.stringify({ fn: 'H4sI', data: 'H4sI' });
+  const m = (content) => window.ViewRegistry.READ_MODE({ ext: 'json', content });
+  assert.equal(m(rowsJson), 'table');
+  assert.equal(m(bundle), 'tree', 'a workbench bundle is an object, not rows');
+  assert.equal(m('[1,2,3]'), 'tree', 'scalars have no columns to lay out');
+  assert.equal(m('[]'), 'tree', 'an empty array has nothing to show as a table');
+  assert.equal(m('{ not json'), 'tree', 'invalid JSON is not where a parse error is reported');
+});
+
+// ---- the transform door: what the workbench could take ---------------------
+//
+// Recognition rides the NAME the intake already chose, so these lean on the
+// naming tests above rather than re-sniffing. The pixels and the mount live in
+// tools/render/scenarios/stage-transform-chip.mjs, which is where a missing
+// Tabulator shows up (the tool's table hook returns silently without it).
+
+const BUNDLE = JSON.stringify({ fn: 'H4sIAAAA', data: 'H4sIAAAB', meta: { combine: true } });
+
+const kindOfPaste = (text) => {
+  reset();
+  window.StageIntake.take({ text, size: text.length });
+  return window.StageIntake.transformKindOf(data.localItems[0]);
+};
+
+test('a workbench bundle is recognized exactly, by the key that defines one', () => {
+  assert.equal(kindOfPaste(BUNDLE), 'bundle');
+  assert.equal(kindOfPaste(JSON.stringify({ fn_tidy: 'H4sI', data_tidy: 'H4sI' })), 'bundle',
+    'a multi-tab bundle names its functions fn_<tab>');
+  assert.equal(kindOfPaste(JSON.stringify({ fn: 42 })), '',
+    'the key has to hold a source string, not merely exist');
+  assert.equal(kindOfPaste(JSON.stringify({ name: 'x', size: 2 })), '',
+    'an ordinary JSON object is not a bundle');
+});
+
+test('rows are recognized in all three shapes the workbench eats', () => {
+  assert.equal(kindOfPaste('a,b\n1,2\n3,4'), 'rows', 'CSV');
+  assert.equal(kindOfPaste('a\tb\n1\t2\n3\t4'), 'rows', 'TSV');
+  assert.equal(kindOfPaste(JSON.stringify([{ a: 1 }, { a: 2 }])), 'rows', 'a JSON row array');
+});
+
+test('a rows function is a transform, and other JavaScript is not', () => {
+  assert.equal(kindOfPaste('rows => rows.filter(r => r.a)'), 'fn');
+  assert.equal(kindOfPaste('function tidy(rows) { return rows }'), 'fn');
+});
+
+test('a pasted bundle opens in the tool, since its preview would be gzip strings', async () => {
+  reset();
+  let opened = null;
+  const real = data.openTransform.bind(data);
+  data.openTransform = async (it) => { opened = it; };
+  window.StageIntake.take({ text: BUNDLE, size: BUNDLE.length });
+  window.StageIntake.focus(data.localItems[0]);
+  await tick(3);
+  assert.ok(opened, 'focus routed it to the workbench');
+  assert.match(opened.name, /\.json$/);
+  assert.equal(data.preview, null, 'and did not also open the preview on it');
+  data.openTransform = real;
+});
+
+test('every other arrival still opens on its own content', async () => {
+  reset();
+  let opened = null;
+  const real = data.openTransform.bind(data);
+  data.openTransform = async (it) => { opened = it; };
+  const csv = 'a,b\n1,2\n3,4';
+  window.StageIntake.take({ text: csv, size: csv.length });
+  window.StageIntake.focus(data.localItems[0]);
+  await tick(3);
+  assert.equal(opened, null, 'rows are worth looking at, so the preview is the right first look');
+  assert.ok(data.preview, 'the preview opened instead');
+  data.openTransform = real;
+});
+
+test('prose, markdown and an empty stage offer nothing', () => {
+  assert.equal(kindOfPaste('# A note\n\nJust some prose.'), '');
+  assert.equal(kindOfPaste('one, two, three\nand a second line'), '');
+  reset();
+  assert.deepEqual(plain_(data.transformables), []);
+});
+
+test('a ref is never transform-shaped, since it has no text to hand over', () => {
+  reset();
+  window.StageIntake.take({ text: 'me/a:data/rows.csv', size: 18 });
+  assert.equal(data.refItems.length, 1, 'it staged as a ref, not a local file');
+  assert.deepEqual(plain_(data.transformables), [],
+    'the chip hands over held text, and a ref holds none until it is fetched');
+});
+
+test('the chip row names one item per qualifying local, and skips the rest', () => {
+  reset();
+  for (const t of ['a,b\n1,2\n3,4', 'rows => rows', '# just a note']) {
+    window.StageIntake.take({ text: t, size: t.length });
+  }
+  const chips = data.transformables;
+  assert.equal(chips.length, 2, 'the note is not offered');
+  assert.deepEqual(plain_(chips.map(c => c.label).sort()), ['a transform', 'rows']);
+  assert.ok(chips.every(c => c.key && c.title.includes(c.item.name)),
+    'each chip carries a stable key and says what it would open');
 });
 
 test('prose with a stray tab is not a grid', async () => {
@@ -376,6 +695,77 @@ test('an offer already on the stage under that name is not offered again', async
   assert.equal(data.offers.length, 0, 'the same paste twice is quiet, not cumulative');
 });
 
+// ---- the paste fold is the intake's, so it works with no bench mounted ----
+//
+// The point of the move (2026-08-18): a paste on any view has to reach the
+// stage, and the bench mounts on the first visit to the Stage. These drive
+// window.StageIntake directly rather than the component, which is what a host
+// on another view can actually call.
+
+test('takePaste reports what landed and what the paste also carried', async () => {
+  reset();
+  const r = await window.StageIntake.takePaste(fakeCd({
+    types: ['text/plain', 'text/html'],
+    data: { 'text/plain': TSV, 'text/html': HTML },
+  }));
+  assert.equal(r.added.length, 1, 'the primary flavor lands');
+  assert.match(r.added[0].name, /\.tsv$/);
+  assert.equal(r.offers.length, 1, 'and the caller learns what it did not take');
+  assert.match(r.offers[0].name, /\.html$/, 'an offer is named on the way out, not by the bench');
+});
+
+test('the offers a paste leaves ride the store, so a bench that mounts later finds them', async () => {
+  reset();
+  await window.StageIntake.takePaste(fakeCd({
+    types: ['text/plain', 'text/html'],
+    data: { 'text/plain': TSV, 'text/html': HTML },
+  }));
+  assert.equal(store.stageOffers.length, 1, 'the store holds the bar, not the component');
+  assert.equal(data.offers.length, 1, 'and the component reads it through');
+  data.dismissOffers();
+  assert.equal(store.stageOffers.length, 0, 'clearing the bar clears the store');
+});
+
+test('a paste into a field stages nothing, and says so rather than silently taking', async () => {
+  reset();
+  const r = await window.StageIntake.takePaste(fakeCd({
+    types: ['text/plain', 'text/html'],
+    data: { 'text/plain': TSV, 'text/html': HTML },
+  }), { editable: true });
+  assert.equal(r.added.length, 0, 'the field keeps its own paste');
+  assert.equal(r.native, true, 'and the caller is told to leave the event alone');
+  assert.equal(r.offers.length, 1, 'only what the field cannot hold is offered');
+  assert.match(r.offers[0].name, /\.html$/, 'text/plain is what the field just pasted, so it is not offered back');
+});
+
+test('offer: false reads the clipboard without touching the bar', async () => {
+  reset();
+  store.stageOffers = [];
+  const r = await window.StageIntake.takePaste(fakeCd({
+    types: ['text/plain', 'text/html'],
+    data: { 'text/plain': TSV, 'text/html': HTML },
+  }), { offer: false });
+  assert.equal(r.offers.length, 1, 'the caller still learns what was carried');
+  assert.equal(store.stageOffers.length, 0, 'but nothing was written where a bar would draw it');
+});
+
+test('an empty clipboard folds to nothing rather than staging a blank', async () => {
+  reset();
+  const r = await window.StageIntake.takePaste(fakeCd({ types: [], data: {} }));
+  assert.equal(r.added.length, 0);
+  assert.equal(r.offers.length, 0);
+  assert.equal(store.stage.length, 0);
+});
+
+test('takeFlavor stages one flavor under its own name, refs included', async () => {
+  reset();
+  await window.StageIntake.takeFlavor({ kind: 'text', type: 'text/html', text: HTML, size: HTML.length, name: 'x.html' });
+  assert.match(data.localItems[0].name, /\.html$/, 'a named flavor keeps its name');
+  reset();
+  await window.StageIntake.takeFlavor({ kind: 'text', type: 'text/plain', text: 'me/a:lib/x.js', size: 13 });
+  assert.equal(data.refItems.length, 1, 'plain text still parses as refs');
+});
+
 // ---- a pasted image is a file, not an unviewable binary -----------------
 
 test('a local image previews from its own bytes, with no repo behind it', async () => {
@@ -386,7 +776,7 @@ test('a local image previews from its own bytes, with no repo behind it', async 
   ), c => c.charCodeAt(0));
   store.stage = [{ local: true, id: 210, name: 'image.png', path: 'image.png', size: png.length, type: 'image/png', isText: false, bytes: png }];
   await data.view(data.localItems[0]);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.note, '', 'an image is not refused as a binary');
   const vwr = previewViewer();
   assert.match(vwr.content, /^data:image\/png;base64,/, 'the bytes ride as a data URI, the one form a repo-less file can supply');
@@ -410,7 +800,7 @@ test('a binary with no mode to draw it is still refused, and says which', async 
   reset();
   store.stage = [{ local: true, id: 211, name: 'bundle.zip', path: 'bundle.zip', size: 2048, type: '', isText: false, bytes: Uint8Array.from([1, 2]) }];
   await data.view(data.localItems[0]);
-  await tick(3);
+  await shown();
   assert.match(data.preview.note, /^Binary/);
   data.preview = null;
 });
@@ -422,7 +812,7 @@ test('a dropped workbook previews rather than being refused', async () => {
   reset();
   store.stage = [{ local: true, id: 212, name: 'book.xlsx', path: 'book.xlsx', size: 2048, type: '', isText: false, bytes: Uint8Array.from([1, 2]) }];
   await data.view(data.localItems[0]);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.note, '', 'not refused as a binary');
   assert.match(previewViewer().content, /^data:application\/vnd\.openxml/);
   data.preview = null;
@@ -500,7 +890,7 @@ test('renaming under an open preview re-labels it', async () => {
   const it = { local: true, id: 204, name: 'n.txt', path: 'n.txt', size: 2, isText: true, text: 'hi' };
   store.stage = [it];
   await data.view(data.localItems[0]);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.name, 'n.txt');
   data.startRename(data.localItems[0]);
   data.renameDraft = 'renamed.md';
@@ -943,13 +1333,13 @@ test('the preview toggles into a diff over that pair, and back to the file', asy
     { local: true, id: 401, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\ntwo\n' },
     { local: true, id: 402, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'one\nTWO\n' },
   ];
-  await tick(3);
+  await shown();
   await data.view(data.items[0]);
-  await tick(3);
+  await shown();
   assert.equal(data.preview.mode, 'file');
 
   await data.togglePreviewDiff();
-  await tick(3);
+  await shown();
   assert.equal(data.preview.mode, 'diff', 'same modal, different mode');
   assert.equal(data.diffA, 0);
   assert.equal(data.diffB, 1, 'the pair came from the position, not a select');
@@ -957,7 +1347,7 @@ test('the preview toggles into a diff over that pair, and back to the file', asy
   assert.match(data.previewPairLabel(), /a\.md .* b\.md/);
 
   await data.togglePreviewDiff();
-  await tick(3);
+  await shown();
   assert.equal(data.preview.mode, 'file', 'and back');
   data.preview = null;
 });
@@ -1130,7 +1520,7 @@ test('a diff-mode link opens the preview on its diff, once', async () => {
     { local: true, id: 301, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\ntwo\n' },
     { local: true, id: 302, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'one\nTWO\nthree\n' },
   ];
-  await tick(4);
+  await shown();
   // The link's intent is "look at this comparison", so it puts the reader in
   // front of one rather than selecting a control on the page.
   assert.equal(data.preview?.mode, 'diff', 'the preview opens, in diff mode');
@@ -1696,4 +2086,50 @@ test('resolveAsk refuses a decline with no reason, and leaves the row standing',
 
   delete data.srcGh;
   delete window.__shell;
+});
+
+// ── The bench's Paste button, and what it says when it takes nothing ────────
+//
+// One question only: an empty clipboard must not be reported in the error
+// colour. Tapping Paste before copying anything is the ordinary outcome, and
+// red there reads as "this button is broken" rather than "there was nothing to
+// take" (reported from a phone, 2026-08-19).
+//
+// The read is the real one: io.pasteItems is stubbed, and everything from
+// takeClipboard down runs as it ships. That matters because pasteItems returns
+// an empty list for BOTH a genuinely empty clipboard and a read the platform
+// refused without throwing, which is why the message says what happened rather
+// than guessing why.
+
+const toastLog = [];
+window.Alpine.store('toast', (icon, msg, cls = 'alert-info', ms = 3000) =>
+  toastLog.push({ icon, msg, cls, ms }));
+
+test('paste: an empty clipboard is information, not an error', async () => {
+  toastLog.length = 0;
+  window.io = { pasteItems: async () => [] };
+  await data.pasteIn();
+  assert.equal(toastLog.length, 1);
+  assert.equal(toastLog[0].cls, 'alert-info');
+  assert.doesNotMatch(toastLog[0].msg, /is empty/i,
+    'the read cannot tell an empty clipboard from a refused one, so it must not claim either');
+});
+
+test('paste: a read that throws keeps the error colour', async () => {
+  toastLog.length = 0;
+  window.io = null;   // takeClipboard throws rather than lazily fetching the kit
+  await data.pasteIn();
+  assert.equal(toastLog.length, 1);
+  assert.equal(toastLog[0].cls, 'alert-error',
+    'a failure a fix could remove is what the error colour is for');
+});
+
+test('paste: something arriving is staged and reported as a success', async () => {
+  toastLog.length = 0;
+  store.stage = [];
+  const CSV = 'code,jul\nAA,186927\nBA,9448';
+  window.io = { pasteItems: async () => [{ kind: 'text', type: 'text/plain', text: CSV, size: CSV.length }] };
+  await data.pasteIn();
+  assert.equal(store.stage.length, 1);
+  assert.match(toastLog[0].msg, /^Staged /);
 });

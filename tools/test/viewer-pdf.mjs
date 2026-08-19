@@ -379,7 +379,7 @@ try {
      thrown.slice(0, 2).join(' | '));
 
   console.log('a text file is untouched by any of this:');
-  await page.goto(`${origin}/pages/data-view.html?src=${encodeURIComponent(`${REPO}@main:docs/tools.json`)}`,
+  await page.goto(`${origin}/pages/data-view.html?src=${encodeURIComponent(`${REPO}@main:docs/tools.csv`)}`,
                   { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(3000);
   s = await state();

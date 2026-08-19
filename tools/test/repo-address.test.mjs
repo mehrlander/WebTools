@@ -132,7 +132,7 @@ test('a stage group still splits its comma list, through the shared parser', () 
 // a thrown error at first parse, so the order is checked rather than trusted.
 test('every page loading a delegating module loads repo-address.js first', () => {
   const DELEGATES = ['kits/data-payload.js', 'kits/shorter-payload.js', 'alpineComponents/stage.js'];
-  const pages = ['pages/data-view.html', 'pages/shorter.html', 'pages/show-repo/show-repo.html'];
+  const pages = ['pages/data-view.html', 'pages/shorter.html', 'app/index.html'];
   for (const rel of pages) {
     const src = readFileSync(path.join(repoRoot, rel), 'utf8');
     const at = needle => src.indexOf(`gh.load('${needle}')`);
@@ -152,7 +152,7 @@ test('the pre-build boots url-params.js and repo-address.js before the component
   // carry the grammar and the param read in its boot list, not just in its
   // source cache: stage.js reads a stage link during init through both.
   const boot = readFileSync(path.join(repoRoot, 'tools/build/build-lib.mjs'), 'utf8');
-  assert.match(boot, /extraBoot\s*=\s*\['kits\/url-params\.js',\s*'kits\/repo-address\.js',\s*\.\.\.components/);
+  assert.match(boot, /extraBoot\s*=\s*\['kits\/url-params\.js',\s*'kits\/repo-address\.js',\s*'kits\/csv\.js',\s*\.\.\.components/);
   // The boot list, not the source cache: the cache is alphabetical and says
   // nothing about order of execution.
   const dist = readFileSync(path.join(repoRoot, 'dist/web-tools.js'), 'utf8');

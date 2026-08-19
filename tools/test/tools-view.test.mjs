@@ -21,32 +21,38 @@ captureAlpineErrors(Alpine);
 window.Alpine = Alpine;
 
 // The curated shelf the component fetches, served by a stubbed GH (no token,
-// public hub). Mirrors docs/tools.json's shape, which since 2026-08-13 carries
+// public hub). Mirrors docs/tools.csv's shape, which since 2026-08-13 carries
 // only { path, icon }: the title and the description belong to the page and are
-// joined from pages/pages.json, so a shelved row cannot drift from the gallery.
-const manifest = {
-  items: [
-    { path: 'pages/diff-tool.html', icon: 'ph-git-diff' },
-    { path: 'mehrlander/home@dev:projects/x/app.html', icon: 'ph-cube' },
-    { path: 'other/repo:tool.html' },
-  ],
-};
-// The pages catalog the identities are joined from: grouped, keyed by href.
-const pages = [{ label: '', items: [
-  { href: 'diff-tool.html', title: 'Diff', note: 'Side-by-side text diff tool.' },
-  { href: 'annotate.html', title: 'Annotate', note: '' },
-] }];
+// joined from pages/pages.csv, so a shelved row cannot drift from the gallery.
+const manifest = [
+  'path,icon',
+  'pages/diff-tool.html,ph-git-diff',
+  'mehrlander/home@dev:projects/x/app.html,ph-cube',
+  'other/repo:tool.html,',
+].join('\n') + '\n';
+// The pages catalog the identities are joined from, keyed by href. CSV text
+// rather than objects, so the component's own parse runs: it JSON-parsed both
+// carriers until 2026-08-18, and a stub that handed it objects agreed with the
+// bug instead of catching it.
+const pages = [
+  'href,title,note',
+  'diff-tool.html,Diff,Side-by-side text diff tool.',
+  'annotate.html,Annotate,',
+].join('\n') + '\n';
 const getLog = [];
 window.TOKEN = 'ignored-in-test';
 window.GH = class {
   constructor(opts) { this.opts = opts; }
   async get(p) {
     getLog.push([this.opts.repo, this.opts.ref, p]);
-    if (p === 'pages/pages.json') return { text: JSON.stringify(pages) };
-    return { text: JSON.stringify(manifest) };
+    if (p === 'pages/pages.csv') return { text: pages };
+    return { text: manifest };
   }
 };
 
+// kits/csv.js first: the view parses both carriers through it, the same way
+// the pre-build's boot list supplies it on a real page.
+new window.Function('window', readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8'))(window);
 new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/tools.js'), 'utf8'))();
 Alpine.start();
 await tick(3);
@@ -58,8 +64,8 @@ test('mounts and loads the curated manifest with no startup warnings', () => {
   assert.deepEqual(problems, []);
   assert.ok(data.description.length > 0);
   assert.deepEqual(getLog.sort(), [
-    ['mehrlander/web-tools', 'main', 'docs/tools.json'],
-    ['mehrlander/web-tools', 'main', 'pages/pages.json'],
+    ['mehrlander/web-tools', 'main', 'docs/tools.csv'],
+    ['mehrlander/web-tools', 'main', 'pages/pages.csv'],
   ]);
   assert.equal(data.items.length, 3);
 });
@@ -74,7 +80,7 @@ test('resolve: bare path means the hub at main; qualified ref overrides', () => 
     { repo: 'other/repo', ref: 'main', path: 'tool.html' });
 });
 
-test('render/thumb/source URLs follow the pages-catalog conventions', () => {
+test('render/thumb/source URLs follow the page catalog\'s conventions', () => {
   // Bare hub path at main: hosted github.io + jsDelivr thumb + blob source.
   assert.equal(data.renderUrl('pages/diff-tool.html'),
     'https://mehrlander.github.io/web-tools/pages/diff-tool.html');

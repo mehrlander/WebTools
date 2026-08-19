@@ -7,8 +7,12 @@
 // which is enough to render the layout truthfully: the markup, the classes, and
 // the scroll containers are the page's, only the data is ours.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --query view=sessions \
+//   npm run shot -- app/index.html --query view=sessions \
 //     --script tools/render/scenarios/estate-sessions.mjs --height 900
+//
+// CARD=turns|tools|files|tokens opens that pair's card on the first row. Those
+// four numbers said what they counted only in a title, so the card is the only
+// way a phone reader learns that 206 is tool calls and which tools they were.
 
 const SESSIONS = [
   {
@@ -27,7 +31,7 @@ const SESSIONS = [
   {
     id: 'ae761f5d', agent: 'https://claude.ai/code/session_011jJdgM', day: '2026-08-05',
     started: '2026-08-05T09:12:00Z', ended: '2026-08-05T11:40:00Z', mins: 148,
-    ask: 'Take a look at the tracker board generator and figure out why board.json keeps changing when nothing changed.',
+    ask: 'Take a look at the tracker board generator and figure out why board.csv keeps changing when nothing changed.',
     repos: [{ name: 'web-tools', branch: 'claude/board-determinism-k2p1x', lines: 210 }],
     branches: ['claude/board-determinism-k2p1x'],
     exchanges: 6, messages: 190, calls: 118, failures: 0,
@@ -64,7 +68,7 @@ const TODOS = [
   { id: 't4', text: 'Read back the docs registry reach field after the skill rename', done: false },
   { id: 't5', text: 'Work out whether the sessions cache should carry attention or derive it', done: false },
   { id: 't6', text: 'Check the wsl-fetch cron is still landing its errand', done: false },
-  { id: 't7', text: 'Follow up on the branch survey cap: 30 is dropping merged branches', done: false },
+  { id: 't7', text: 'Follow up on the branch scan cap: 30 is dropping merged branches', done: false },
   { id: 't8', text: 'Pin the OFM fund crosswalk to the thirteen-bill corpus', done: true },
 ];
 
@@ -97,4 +101,22 @@ export default async function (page) {
     window.__shell.hasToken = () => true;
   }, { SESSIONS, ATTENTION, TODOS, JOTS });
   await page.waitForTimeout(600);
+
+  const card = process.env.CARD;
+  if (card) {
+    // Anchored off the real trigger, so the panel lands where a reader's tap
+    // would put it rather than at an invented coordinate.
+    const sel = { turns: 'ph-chats-circle', tools: 'ph-wrench',
+                  files: 'ph-files', tokens: null }[card];
+    await page.evaluate(({ card, sel }) => {
+      const host = document.querySelector('[x-data^="estate"]');
+      const st = window.Alpine.$data(host);
+      const row = st.sessionRows[0];
+      const btn = sel
+        ? document.querySelector(`.ph.${sel}`)?.closest('button')
+        : [...document.querySelectorAll('button')].find(b => /^\s*\d+k?\s*$/.test(b.textContent));
+      st.openSessionCard(row, card, btn || null);
+    }, { card, sel });
+    await page.waitForTimeout(400);
+  }
 }

@@ -3,8 +3,21 @@
 Experimental ground for the term-and-ambiguity work: what should eventually
 feed a concept index (PR #336) and a response-time jargon check, prototyped
 against the real estate corpora until the signals earn their keep. Sibling
-of the advisory surveys in `home` (`duplicated-claims-survey.py`,
-`data-provenance-survey.sh`): heuristic, read-only, evidence not verdicts.
+of the advisory scans in `home` (`duplicated-claims.py`,
+`data-provenance-scan.sh`): heuristic, read-only, evidence not verdicts.
+
+## A sibling ran the same problem from the other end
+
+On 2026-08-18 a claim-strength run in the private `home` estate built lexical measures of
+vagueness and breadth without knowing this folder existed. It attempted sense detection
+from WordNet polysemy and measured at chance, where this folder's sense-splits signal
+detects the same thing from corpus context and produces `board`, `stage`, `surface`, `arc`.
+It also proposed as unbuilt a per-sentence surprisal measure and an ungrounded-reference
+detector, both of which already existed here and in `doc-audit`.
+
+That estate now keeps a cross-repo register of text instruments, `INSTRUMENTS.md` under its
+local-models project, which indexes this folder's tools alongside its own. The register is
+private; this note is the pointer from the public side.
 
 ## termlab.py
 

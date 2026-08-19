@@ -49,7 +49,7 @@ docs/,hybrid-authored,exclude,The docs
 dist/,mechanical,exclude,The pre-build
 `;
 
-const libs = ['lib/kits/branch-survey.js','lib/kits/branch-brief.js','lib/kits/content-registry.js',
+const libs = ['lib/kits/csv.js','lib/kits/branch-status.js','lib/kits/branch-brief.js','lib/kits/content-registry.js',
               'lib/alpineComponents/file-review.js','lib/alpineComponents/branch-brief.js'];
 const GUARD = 'this.$nextTick(() => { if (this.$el.isConnected) Alpine.initTree(this.$el); });';
 const BARE  = 'this.$nextTick(() => Alpine.initTree(this.$el));';

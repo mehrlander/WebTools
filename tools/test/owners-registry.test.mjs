@@ -1,4 +1,4 @@
-// docs/owners.json — the owners registry: for a statement repeated across the
+// docs/owners.csv + docs/repetitions.csv — the owners registry: for a statement repeated across the
 // hub's coordination layer, which carrier is authoritative and how every other
 // mention relates to it.
 //
@@ -13,8 +13,8 @@
 // What is deliberately NOT checked: coverage. The registry is curated against a
 // written scope (the `scope` field), and whether some fourth document has begun
 // repeating a statement nobody has filed is not decidable from the carrier. The
-// detectors answer that question (home's tools/duplicated-claims-survey.py,
-// tools/concept-lab/termlab.py); a census gate here would only assert that the
+// detectors answer that question (home's tools/duplicated-claims.py,
+// tools/concept-lab/termlab.py); a registry gate here would only assert that the
 // file agrees with itself.
 
 import test from 'node:test';
@@ -23,12 +23,24 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
+import { loadRegistries, parseCsv } from '../build/registries-load.mjs';
 
-const registry = JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'owners.json'), 'utf8'));
-const rows = registry.owners;
+const read = (f) => parseCsv(readFileSync(path.join(repoRoot, 'docs', f), 'utf8'));
+// Rejoined for the assertions that read a statement with its repetitions. The
+// files stay split because a repetition is a different target from a statement.
+const reps = read('repetitions.csv');
+const rows = read('owners.csv').map(r => ({
+  ...r, repetitions: reps.filter(p => p.subject === r.subject),
+}));
 
-const RELATIONS = new Set(['copy', 'paraphrase', 'pointer', 'live read']);
-const KINDS = new Set(['statement', 'family']);
+// Both domains are declared in properties.csv now, not kept a second time here.
+// The repetitions table split out of owners.json on 2026-08-16: a repetition is a
+// different target from the statement it repeats, so it is its own registry.
+const domain = (registry, property) =>
+  new Set(loadRegistries(repoRoot).properties
+    .find(p => p.registry === registry && p.property === property).values);
+const RELATIONS = domain('repetitions', 'relation');
+const KINDS = domain('owners', 'kind');
 
 // A locator is prose that names files. Pull the path-shaped tokens out of it
 // rather than demanding a structured field: the prose says WHICH PART of the
@@ -58,8 +70,9 @@ function locators(row) {
 }
 
 test('the registry states its own scope', () => {
-  assert.ok(registry.scope && registry.scope.length > 80,
-    'owners.json must carry a written scope: eleven rows against an unstated denominator ' +
+  const scope = loadRegistries(repoRoot).registries.find(r => r.id === 'owners').scope;
+  assert.ok(scope && scope.length > 80,
+    'the owners registry must carry a written scope: a dozen rows against an unstated denominator ' +
     'reads as a sample of the estate rather than a population of the coordination layer');
 });
 
@@ -77,7 +90,7 @@ test('rows are keyed by a unique subject and typed by kind', () => {
 // the table held two different objects: a family row is a DECLARATION in
 // registries.md's sense (scope x property -> the carrier that owns it), not an
 // assertion about one statement. It stays here rather than moving to
-// properties.json because its carrier is DISTRIBUTED (every skill's own
+// the registry pair because its file is DISTRIBUTED (every skill's own
 // SKILL.md), and the declaration table's registries name a single carrier path.
 // See docs/registries.md, "What reconciliation found".
 test('a family row scopes itself; a statement row does not pretend to', () => {

@@ -1,6 +1,6 @@
 // alpineComponents/ref-picker.js — pick a ref of a GIVEN repo: the repo is
 // read fresh on every access (a host's scope moves under a mounted picker), the
-// survey runs once per repo and re-runs when the repo changes, a GraphQL
+// scan runs once per repo and re-runs when the repo changes, a GraphQL
 // failure degrades to the REST list and says so rather than reporting an error,
 // the default branch is handed back as '' rather than by name, and a typed
 // value is offered only when the list does not already hold it. GH is stubbed;
@@ -68,7 +68,7 @@ test('an unset ref reads as what unset MEANS, and off-default is marked', () => 
   host.ref = '';
 });
 
-test('the survey runs once per repo, and again when the repo changes', async () => {
+test('the scan runs once per repo, and again when the repo changes', async () => {
   CALLS = [];
   await p.load();
   await p.load();
@@ -82,7 +82,7 @@ test('the survey runs once per repo, and again when the repo changes', async () 
 test('the default branch is not repeated in the list; it has its own row', async () => {
   p.loadedFor = ''; await p.load();
   assert.deepEqual([...p.matches.map(b => b.name)], ['claude/newer', 'claude/older']);
-  assert.ok(p.rows.some(b => b.name === 'main'), 'the survey still carries it');
+  assert.ok(p.rows.some(b => b.name === 'main'), 'the scan still carries it');
 });
 
 test('the filter narrows the list; a name it holds is not also offered as typed', async () => {
@@ -91,7 +91,7 @@ test('the filter narrows the list; a name it holds is not also offered as typed'
   assert.equal(p.typedIsNew, false, 'offering "Use claude/newer" one line above the row itself is noise');
   p.typed = 'v2.1.0';
   assert.equal(p.matches.length, 0);
-  assert.equal(p.typedIsNew, true, 'a tag the survey cannot see is exactly what the box is for');
+  assert.equal(p.typedIsNew, true, 'a tag the scan cannot see is exactly what the box is for');
   p.typed = '';
 });
 

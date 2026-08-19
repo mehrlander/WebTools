@@ -64,7 +64,7 @@ folder deliberately no longer encodes.
 
 | Kit | Namespace | Role |
 |---|---|---|
-| `branch-survey.js` | `BranchSurvey` | branch-estate survey math: the content-level landed/stranded signal |
+| `branch-status.js` | `BranchStatus` | branch-estate scan math: the content-level landed/stranded signal |
 | `chat-render.js` | `chatRender` | chat transcript renderer; fenced code promoted to live artifacts |
 | `content-registry.js` | `ContentRegistry` | the epistemic content registry (`data/design/content.csv`), read in the browser |
 | `data-payload.js` | `DataPayload` | reading a data toss: one rule for what a payload is |
@@ -523,7 +523,7 @@ await window.brief.copy(opts)      // assemble + io.copy (iOS-safe)
 window.brief.stageUrl({ path?, prompts? })  // the same closure as a #stage= link
 ```
 
-`pages/show-repo/show-repo.html` is the one page this cannot serve whole: it
+`app/index.html` is the one page this cannot serve whole: it
 imports the 918K pre-build, so its closure is the entire library (~262K
 tokens). `assemble` refuses it unless `opts.force`, and points at
 per-component scope instead.
@@ -750,7 +750,7 @@ anywhere in any repo is a link rather than a download-and-drag; it accepts
 `#data=<a pdf>` is the FIRST LOOK, the viewer's `pdf` mode drawing a page with
 a pager, and `#pdf=<the same file>` is the WORKBENCH, this page with its
 layers, trim and two table readings. One decision, spelled two ways, so the
-link says which one was meant. Both are in [`docs/routes.json`](../../docs/routes.json).
+link says which one was meant. Both are in [`docs/routes-routes.csv`](../../docs/routes-routes.csv).
 
 **The first look pages on [`swipe-deck.js`](swipe-deck.js), and that is the
 alignment rather than a detail.** The estate already pages branches, then a

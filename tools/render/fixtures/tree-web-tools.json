@@ -2109,7 +2109,7 @@
    "sha": "4e72083f48c0a3bc49c58d6077eb9dda46199973"
   },
   {
-   "path": "docs/portable.json",
+   "path": "docs/portable.csv",
    "mode": "100644",
    "type": "blob",
    "sha": "d1a93d4d5c0ae4d78b83a68ddd64e09f59c3cf56"
@@ -2139,7 +2139,7 @@
    "sha": "6e5f5adf97aef2d1e6ed664bf7628d5ead271397"
   },
   {
-   "path": "docs/tools.json",
+   "path": "docs/tools.csv",
    "mode": "100644",
    "type": "blob",
    "sha": "ae0b594d90da26b12197b27a03cbc27500ada787"
@@ -2343,7 +2343,7 @@
    "sha": "d0487507d996c8ecc6d690bf0a24e77f17441e64"
   },
   {
-   "path": "lib/branch-survey.js",
+   "path": "lib/branch-status.js",
    "mode": "100644",
    "type": "blob",
    "sha": "4ede11a9cb55e62a6c934a4487f7284fd6ab59da"
@@ -2997,7 +2997,7 @@
    "sha": "bd47596535d904069cb4dd212834efe9536105a1"
   },
   {
-   "path": "pages/pages.json",
+   "path": "pages/pages.csv",
    "mode": "100644",
    "type": "blob",
    "sha": "f467bc5b8f8bec98c74f47d1fba6e3af1246e097"
@@ -3087,7 +3087,7 @@
    "sha": "7ebef86db4396f3ba19da17aaaf4602821cc7657"
   },
   {
-   "path": "pages/show-repo/show-repo.html",
+   "path": "app/index.html",
    "mode": "100644",
    "type": "blob",
    "sha": "1edc64066a47c34d1a566ac0691b8ff94f0724ab"
@@ -3783,7 +3783,7 @@
    "sha": "082e9fd0d2921a58540a38dbf7c5f5a4243d2124"
   },
   {
-   "path": "scripts/check-branch-survey.mjs",
+   "path": "scripts/check-branch-status.mjs",
    "mode": "100644",
    "type": "blob",
    "sha": "152dfdc6880d149332d03cf95cdb14d43cbfad30"
@@ -4521,7 +4521,7 @@
    "sha": "7a7e1c345054b66547a6c8e1e18aa1fe5ee04a25"
   },
   {
-   "path": "skills/manifest.json",
+   "path": "skills/manifest.csv",
    "mode": "100644",
    "type": "blob",
    "sha": "fd624f249143054df54eec296fe8198eefadf791"
@@ -5937,7 +5937,7 @@
    "sha": "f61a58c300d9ea3090cd4265430e8e793cec58f7"
   },
   {
-   "path": "tools/render/scenarios/branches-survey.mjs",
+   "path": "tools/render/scenarios/branches-scan.mjs",
    "mode": "100644",
    "type": "blob",
    "sha": "22405cf182adae28d959c42f4049bb21244633f3"
@@ -6135,7 +6135,7 @@
    "sha": "cdd9b986d6db7db85d3baca0871afa2d3182defc"
   },
   {
-   "path": "tools/test/branch-survey.test.mjs",
+   "path": "tools/test/branch-status.test.mjs",
    "mode": "100644",
    "type": "blob",
    "sha": "09524683f2a1095861ec2cae3673a009e2572815"

@@ -1,6 +1,6 @@
 // The sidebar owns the second ref, and the file surface does what it is told.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/sidebar-compare.mjs \
 //     --out tools/.preview/sidebar-compare.png --width 430 --height 932
 //
@@ -122,8 +122,11 @@ export default async function (page, ctx) {
       stillOpen: window.swipeDeck.stack.length > 0,
       navigated: location.href !== href,
       ref: c && c.ref, path: c && c.path, patch: !!(c && c.patch),
-      // The TOP deck's crumb: the first .fixed.inset-0 is the branch deck
-      // underneath, which still says what it always said.
+      // The TOP deck's crumb, read through the kit's stack rather than off the
+      // DOM: the deck underneath is the branch one, which still says what it
+      // always said. (This named .fixed.inset-0 until the takeover moved into
+      // the app's view pane and those classes became variables; the code was
+      // already going through the handle, so only the comment was wrong.)
       crumb: window.swipeDeck.top()?.el.querySelector('h1 + p')?.textContent || '',
     };
 
