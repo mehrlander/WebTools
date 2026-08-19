@@ -23,6 +23,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Carry real session titles from the Dispatch export, without depending on it](tasks/session-titles-from-export-4vgu4x.md) · M
 - 🎫 [Spike the snags log (friction learned the hard way)](tasks/spike-snags-log-gobdyq.md) (`claude/pr-219-review-22csrh`)
 - 🎫 [Give the stage a way to carry part of a file](tasks/stage-partial-file-selection-k8mtou.md)
+- 🎫 [Decide the remaining stranded title attributes, panel or leave](tasks/stranded-titles-panel-or-drop-o6hqom.md) · M
 - 🎫 [Make the cache-to-surface dependency checkable, not prose](tasks/surface-census-feeds-relation-anle6b.md) · M (awaiting: nothing; PR #387 landed `feeds` as routed view keys, which retires this task's interim step)
 - 🎫 [Make the take-away menu work inside a toss](tasks/take-away-inside-a-toss-k73cjq.md)
 

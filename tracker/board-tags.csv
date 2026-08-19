@@ -24,6 +24,7 @@ repo-level-github-links-shield-9aufgx,priority,low
 repo-level-github-links-shield-9aufgx,resolution,superseded
 session-start-nudge-unconfigured-z0g4zn,next,write a global SessionStart hook that checks repo state and injects a nudge; wire its install into the Claude Code web account setup script
 split-stage-contract-74a7vh,resolution,duplicate
+stranded-titles-panel-or-drop-o6hqom,priority,low
 toss-fragment-passthrough-558xcw,next,done on claude/toss-render-data-formats-4t55x7; lands via PR #288. Follow-on: have data-view consume the fragment for item selection
 toss-render-decode-errors-xu3c6d,next,done; renders survive every media-type labeling and the error panel names the failing stage
 toss-render-multiparam-query-encoding-n9lbcp,next,"done on claude/web-tools-tracker-review-bw48ga; both fixes taken, the slice read and the documentation"
