@@ -73,6 +73,26 @@ and why the mechanisms behind them are shaped the way they are.
 **Membership is a repo property.** There is no registry list of repos. All
 fields are optional, and a repo with no config is simply off the estate.
 
+**`hidden` is the one field about the viewer, and it lives in one file.** Every
+other key here describes the repo it sits in, which is why membership needs no
+central list. "I would rather not look at this one" describes the person
+looking, so it is a key in the **private registry's own** manifest, an array of
+`owner/repo` strings, and it is the single exception to the no-registry-list
+rule rather than a crack in it: it does not decide membership, grouping, order,
+or anything else about a repo, and a hidden repo keeps `estate: true` and every
+field it declared. It goes off the sidebar Repos index, the app-view nav (its
+promoted pages with it), the Repos grid, and the activity crawl, which is the
+whole of the effect; opening it by address still works, and the Repos view's
+folded **Hidden** section is the way back.
+
+It sits beside `conventions: 'optout'` without overlapping it, and the pair is
+worth keeping straight because the two questions sound alike: optout is the
+repo saying it is not part of this estate, so the session-start nudge stops
+asking; `hidden` is the dashboard being told what to draw. A repo can be a full
+member and hidden, which is exactly the case that has no other answer: setting
+`estate: false` would drop its group, note, icon and order on the way out and
+make coming back an act of reconstruction rather than a toggle.
+
 **`landing` and `pages` are not mutually exclusive.** A repo setting both gets
 the custom page as its front door and the catalog as a standalone Pages view;
 setting only `pages` gets the gallery as the landing. Neither arrangement hides
