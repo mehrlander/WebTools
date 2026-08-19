@@ -897,15 +897,32 @@ with the word beside it where the width allows and a `+N` when a head has had
 several PRs over its life. `New pull request` in the row menu is gated on the
 absence of an **open** PR, so a merged branch that kept going can still open one.
 
-**The action line runs GitHub menu, session, files, Stage, then route chips, and
-that order is load-bearing.** The three middle controls are the row's own and
-they sit to the LEFT of the chips, because the chips are hub-only and variable
-width: with the session mark after them, the one repo that has chips carried it
-halfway across the row while every other row carried it at the left, and a mark
-a reader scans down a column for cannot move with a neighbour's width. The
-session slot is **reserved rather than collapsed** for the same reason, so a
-branch with no resolvable session costs one glyph of empty space instead of
-pulling the two controls after it out of column.
+**The action line is two columns, not one wrapping row**, and that is what keeps
+the arrows out of trouble. They used to be the last item in a wrapping flex with
+`ml-auto`, so the moment anything ahead of them overflowed (the route chips, on
+the one repo that has them) they dropped to a line of their own and sat there
+right-aligned against nothing: a reader loses a row's shape when its rightmost
+fact moves. The left box wraps within itself and the right box never shrinks, so
+the **arrows hold the right edge of the first line at every width**.
+
+That also settles the chips without a breakpoint. They stay inline on a desktop,
+where the left box has room to spare and the alternative was more of the empty
+space this layout already has too much of, and they fall to a second line on a
+phone, where they do not. One rule, two behaviours.
+
+**Inside the left box the order runs GitHub, session, files, Stage, then the
+chips, and that order is load-bearing.** The three middle controls are the row's
+own and sit to the LEFT of the chips: with the session mark after them, the one
+repo that has chips carried it halfway across the row while every other row
+carried it at the left, and a mark a reader scans down a column for cannot move
+with a neighbour's width. The session slot is **reserved rather than collapsed**
+for the same reason, so a branch with no resolvable session costs one glyph of
+empty space instead of pulling the two controls after it out of column.
+
+The GitHub button is **the mark alone**. The word "GitHub" beside a GitHub logo
+said nothing the logo had not and cost about fifty pixels on the row where pixels
+are scarce. The caret stays, since that is what says "menu" rather than "link",
+and the title carries the sentence.
 
 **Files** is the route the row was missing. The branch name opens the detail
 too, but on the Guide where there is one, so "show me what changed" cost a tap,
