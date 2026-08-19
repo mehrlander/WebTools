@@ -1475,6 +1475,38 @@ test('patch is a real unified diff, with hunk headers and file lines', async () 
   data.preview = null;
 });
 
+test('patch context is a control, and only Patch shows it', async () => {
+  const { el } = await threeUp('patch');
+  const labels = [...el.querySelectorAll('button')].map(b => b.textContent.trim());
+  assert.ok(labels.includes('0') && labels.includes('3') && labels.includes('8') && labels.includes('all'),
+    'the four steps are offered');
+
+  // Tighter context drops the unchanged lines further from a change.
+  data.setCmpContext(0);
+  await shown();
+  const at0 = data._cmpDeck.deck.track.children[0].textContent;
+  data.setCmpContext(999);
+  await shown();
+  const atAll = data._cmpDeck.deck.track.children[0].textContent;
+  assert.ok(atAll.length > at0.length, 'all-context carries more than none');
+  assert.match(at0, /@@ /, 'and both are still real patches');
+  assert.match(atAll, /@@ /);
+
+  // The copy follows the control, so what you hand over is what you read.
+  clipWrites.length = 0;
+  data.setCmpContext(0);
+  await shown();
+  await data.copyDiff();
+  assert.ok(clipWrites.at(-1).length < atAll.length);
+
+  data.setCmpView('unified');
+  await shown();
+  const unified = data._cmpDeck.deck.track.children[0].textContent;
+  assert.doesNotMatch(unified, /Context/, 'no context control where it would change nothing');
+  data.setCmpContext(3);
+  data.preview = null;
+});
+
 test('copy hands over the patch in Patch view, and the tagged block otherwise', async () => {
   await threeUp('patch');
   clipWrites.length = 0;
@@ -1971,6 +2003,106 @@ test('a diff-mode link opens the preview on its diff, once', async () => {
   data.linkMode = '';
   data._cmpDrop();
   data.preview = null;
+});
+
+// ── The link carries the reading, not just the refs ────────────────────────
+//
+// A `mode=diff` link used to reopen the recipient on the DEFAULT pair in the
+// DEFAULT view, so a link sent while looking at "first against last, as a
+// patch" showed them "first against second, split". The refs were right and the
+// thing being pointed at was not.
+
+test('mint round-trips the compare pick and the view', () => {
+  const refs = [{ repo: 'me/a', ref: 'main', path: 'first.md' },
+                { repo: 'me/a', ref: 'main', path: 'last.md' }];
+  const url = window.StageLink.mint(refs, 'https://h/app/',
+    { mode: 'diff', cmp: 'me/a@main:last.md', view: 'patch' });
+  // The address stays readable: a person can see what it points at.
+  assert.match(url, /&cmp=me\/a@main:last\.md/);
+  assert.match(url, /&view=patch/);
+  const back = window.StageLink.parseLink(url.split('#')[1]);
+  assert.equal(back.cmp, 'me/a@main:last.md');
+  assert.equal(back.view, 'patch');
+  assert.equal(back.mode, 'diff');
+});
+
+test('a local pick cannot ride, since its key is an in-page id', () => {
+  const refs = [{ repo: 'me/a', ref: '', path: 'x.md' }];
+  assert.doesNotMatch(window.StageLink.mint(refs, '', { cmp: 'local:7' }), /cmp=/);
+});
+
+test('a view the picker does not offer is refused rather than carried', () => {
+  const refs = [{ repo: 'me/a', ref: '', path: 'x.md' }];
+  assert.doesNotMatch(window.StageLink.mint(refs, '', { view: 'wat' }), /view=/);
+  assert.equal(window.StageLink.parseLink('#stage=me/a:x.md&view=wat').view, '');
+});
+
+test('the grammar and the picker read one list, so neither can grow alone', () => {
+  reset();
+  assert.deepEqual(plain_(data.cmpViews.map(v => v.key)), plain_(window.StageLink.VIEWS));
+});
+
+test('read takes the reading from the query too, when a context ate the hash', () => {
+  const r = window.StageLink.read({
+    hash: '',
+    search: '?stage=me/a@main:first.md,last.md&mode=diff&cmp=me/a@main:last.md&view=split',
+  });
+  assert.equal(r.items.length, 2);
+  assert.equal(r.cmp, 'me/a@main:last.md');
+  assert.equal(r.view, 'split');
+});
+
+test('an opening link applies its view at once and its pick when the item lands', async () => {
+  reset();
+  data.cmpView = 'unified';
+  data._linkCmp = '';
+  // What init() does with a link, without needing a real location.
+  const lk = window.StageLink.read({
+    hash: '#stage=me/a:first.md,me/a:last.md&cmp=me/a:last.md&view=patch',
+    search: '',
+  });
+  data.cmpView = lk.view;
+  data._linkCmp = lk.cmp;
+  assert.equal(data.cmpView, 'patch', 'the view needs no set to resolve against');
+  assert.equal(data.compareKey, '', 'and the pick waits for its item');
+
+  store.stage = [{ repo: 'me/a', ref: '', path: 'first.md' },
+                 { repo: 'me/a', ref: '', path: 'last.md' }];
+  await tick(2);
+  assert.equal(data.compareKey, 'me/a:last.md', 'taken once the item is staged');
+  assert.equal(data._linkCmp, '', 'and forgotten, so a later removal falls back');
+  data.compareKey = '';
+});
+
+test('a pick naming something the link did not carry never resolves', async () => {
+  reset();
+  data._linkCmp = 'me/a:absent.md';
+  store.stage = [{ repo: 'me/a', ref: '', path: 'first.md' },
+                 { repo: 'me/a', ref: '', path: 'last.md' }];
+  await tick(2);
+  assert.equal(data.compareKey, '', 'no pick');
+  data.preview = { i: 0, name: 'first.md' };
+  assert.equal(data.previewPair().join(','), '0,1', 'so the neighbour default stands');
+  data.preview = null;
+  data._linkCmp = '';
+});
+
+test('copyLink carries the reading back out', async () => {
+  reset();
+  store.stage = [{ repo: 'me/a', ref: 'main', path: 'first.md' },
+                 { repo: 'me/a', ref: 'main', path: 'mid.md' },
+                 { repo: 'me/a', ref: 'main', path: 'last.md' }];
+  await tick(2);
+  data.compareKey = data.itemKey(data.items[2]);
+  data.cmpView = 'patch';
+  data.diffRows = [{ t: 'ctx', line: 'x' }];
+  clipWrites.length = 0;
+  await data.copyLink();
+  const url = clipWrites.at(-1);
+  assert.match(url, /&mode=diff/);
+  assert.match(url, /&cmp=me\/a@main:last\.md/);
+  assert.match(url, /&view=patch/);
+  data.compareKey = ''; data.diffRows = null;
 });
 
 test('diffPrompts shows link-carried bespoke asks first, then the fixed set', () => {
