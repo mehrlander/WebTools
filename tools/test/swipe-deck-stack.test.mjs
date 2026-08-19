@@ -203,3 +203,40 @@ test('the header is writable, which is how a deck follows its own slides', async
   assert.equal(d.el.querySelector('h1 + p').textContent, 'a · b');
   d.close(); await tick(3);
 });
+
+const fire = (el) => el.dispatchEvent(new window.Event('click', { bubbles: true }));
+
+// The desktop margin is the only part of the overlay a reader can hit, and it
+// used to do nothing. The stage's dialog dismissed on an outside click before
+// it moved onto this kit, so the affordance is a restoration rather than an
+// invention; making it the kit's means every deck has it.
+test('a click on the ground beside the panel dismisses, a click inside does not', async () => {
+  const d = deck('one');
+  await tick(3);
+
+  fire(d.el.querySelector('h1'));
+  await tick(3);
+  assert.ok(d.el.isConnected, 'a click on the header is a click in the deck, not out of it');
+
+  fire(d.el);
+  await tick(5);
+  assert.ok(!d.el.isConnected, 'a click on the overlay itself leaves');
+});
+
+// A click that STARTS inside and is released on the ground is a drag or a
+// selection, not a dismissal, and `e.target === overlay` is what tells them
+// apart: the event's target is the element it was dispatched on.
+test('only the topmost deck answers a click on the ground', async () => {
+  const under = deck('under');
+  await tick(3);
+  const over = sd.drill(under, { count: 2, title: 'over', render: (i, el) => { el.textContent = String(i); } });
+  await tick(3);
+
+  fire(under.el);
+  await tick(5);
+  assert.ok(under.el.isConnected, 'the deck beneath does not leave while another is on top');
+
+  over.close(); await tick(3);
+  under.close(); await tick(3);
+});
+

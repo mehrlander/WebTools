@@ -1,5 +1,5 @@
 ---
-id: surface-census-feeds-relation-anle6b
+id: surface-registry-feeds-relation-anle6b
 title: Make the cache-to-surface dependency checkable, not prose
 status: backlog
 opened: 2026-08-09
@@ -31,7 +31,7 @@ the sessions kit's, and `PATH`/`REG_PATH` on the two entities pages), not
 scattered fetches, so:
 
 - `cache -> module` derives by scanning those constants. Nobody authors it.
-- `module -> view` is one authored field on a surface census, saying which
+- `module -> view` is one authored field on a surface registry, saying which
   component backs each view key. Small and stable.
 - `cache -> view` is the composition. Never stored, never authored, and so
   structurally unable to disagree with either input.
@@ -42,11 +42,11 @@ prose, because estate.js reads three of the four caches and backs several views.
 The authored middle hop is what recovers the resolution, and it is why a pure
 scanner does not solve this.
 
-**Scope the census to routed view keys**, the 22 the shell validates before
-mount. That vocabulary is closed and already enforced in code, so a census over
+**Scope the registry to routed view keys**, the 22 the shell validates before
+mount. That vocabulary is closed and already enforced in code, so a registry over
 it is checkable against something. Chrome regions (the sidebar, quick links, the
 app-view mechanism) have no closed vocabulary anywhere; inventorying them means
-inventing the vocabulary and the census in one move, with nothing to hold either
+inventing the vocabulary and the registry in one move, with nothing to hold either
 to. Leave them prose until a second consumer needs them named.
 
 **Sub-view cases stay prose and get counted.** "The Repos cards' rollups", "the
@@ -56,8 +56,8 @@ locator refinement for them. The content registry's refinement earns its keep
 across many rows, one field's prose does not.
 
 **No overlap with `pages-catalog`.** A routed view is not a page:
-`show-repo.html` is one page carrying all 22 views. Disjoint, but the census
-scope must say so, the way `harness-census` subtracts `tools/test/`.
+`show-repo.html` is one page carrying all 22 views. Disjoint, but the registry
+scope must say so, the way `harness` subtracts `tools/test/`.
 
 ## Scoped list
 - ~~The cheap interim: a locator gate extracting view-name tokens from each
@@ -67,7 +67,7 @@ scope must say so, the way `harness-census` subtracts `tools/test/`.
   routed key. Still worth doing first, still about twenty lines, still the
   `owners-registry.test.mjs` pattern, but it covers the field completely instead
   of roughly half.
-- The surface census itself: carrier, `target: a routed view`, the `component`
+- The surface registry itself: carrier, `target: a routed view`, the `component`
   field, a scope naming the 22 keys and their disjointness from `pages-catalog`,
   and a row in `docs/properties.json`.
 - The `cache -> module` scanner, and the composition that replaces `feeds`.
@@ -88,3 +88,6 @@ string.
   chrome regions stayed prose, and the sub-view cases went to `docs/show-repo.md`
   rather than growing a locator. The interim gate shrank accordingly. Unblocked;
   the derivation-granularity finding is still the part worth not rediscovering.
+- 2026-08-18: prose updated for the vocabulary retirement (web-tools PR #441): what this task
+  proposes is a registry, and `census` is no longer a word the estate uses for one. The id keeps
+  its original slug, since the board links by filename and a reader's handle is the title.

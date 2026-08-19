@@ -120,3 +120,8 @@ read.
   registry in a CSV and made the mixing legible for the first time. The survey
   above is measured against that branch's tip. Next step is the sibling-versus-
   frontmatter decision, which nothing else can proceed without.
+- 2026-08-18: corrected after the vocabulary pass. The finding was stated as a rule about
+  censuses and was mis-scoped: `pages` is a curated registry with exactly the same defect, its
+  26 page blurbs living in the generator. The rule is about any registry whose rows describe
+  files, not about one kind. Ids and the `kind` column changed in the same pass, so the tables
+  above use the current names.
