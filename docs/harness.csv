@@ -148,5 +148,5 @@ tools/render/scenarios/stage-transform-chip.mjs,"stages three transform-shaped i
 tools/render/scenarios/state-view.mjs,"Populate the State view for a screenshot: stub the registry reads with a current cache, a stale one, an unchecked one, and the buttonless entity index",tools/render/scenarios,222,driver,no,no,no
 tools/render/scenarios/subject-action-probe.mjs,"probe: can the shell invoke a toss subject's action closure, or only reach it",tools/render/scenarios,124,driver,no,no,no
 tools/render/scenarios/toss-fragment.mjs,prove toss-render hands a trailing #frag to the rendered page in both trust postures,tools/render/scenarios,96,driver,no,no,no
-tools/render/screenshot.mjs,the Chromium pixel render behind npm run shot; --script drives a scenario first,tools/render,244,npm:shot,no,yes,yes
+tools/render/screenshot.mjs,the Chromium pixel render behind npm run shot; --script drives a scenario first,tools/render,254,npm:shot,no,yes,yes
 tools/semsearch.py,"semantic search over the estate's prose, paragraph by paragraph",tools,117,argv,no,yes,no
