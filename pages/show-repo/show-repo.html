@@ -4315,6 +4315,7 @@ function app(){ return {
   },
 
   syncUrl(){
+    this.dropDecksOnNav();
     const qs = this.deepLinkParams(new URLSearchParams(location.search)).toString();
     const next = location.pathname + (qs ? '?' + qs : '') + location.hash;
     const cur = location.pathname + location.search + location.hash;
@@ -4663,6 +4664,29 @@ function app(){ return {
   // routed here (the explorer's "+", a #stage= link, a saved surface's Load),
   // and all of them mean "show me what is staged", which is this pill.
   goStage(){ this.estateSeen = true; this.view = 'stage'; this.syncUrl(); },
+
+  // LEAVING THE VIEW LEAVES THE TAKEOVER OVER IT. Newly reachable, and newly a
+  // problem, because the deck stopped covering the chrome: the sidebar and the
+  // header are live under an open takeover now, so a tap navigates while the
+  // deck keeps painting the view you just left. Measured before fixing: opening
+  // the workbench on the Stage and tapping Map left the workbench on screen with
+  // the rail and the URL both saying Map.
+  //
+  // It hangs off syncUrl rather than a $watch on `view`, and the reason is
+  // ordering rather than taste. Every go* method routes through here
+  // SYNCHRONOUSLY, so at the moment a paste calls goStage() no deck exists yet
+  // and this is a no-op; a queued watcher could just as easily have fired after
+  // the preview opened and closed the very thing the paste was routing to.
+  //
+  // drop() rather than close(): close() walks history back, and the navigation
+  // that got here is already the history event.
+  dropDecksOnNav(){
+    if (this._deckNavView === this.view) return;
+    this._deckNavView = this.view;
+    const sd = window.swipeDeck;
+    if (!sd) return;
+    while (sd.stack.length) sd.stack[sd.stack.length - 1].drop();
+  },
 
   // WHETHER A TAKEOVER IS INSET BY THE SIDEBAR, stamped on the root for the
   // --deck-left rules in <style> to key on. kits/swipe-deck.js frames itself

@@ -591,6 +591,34 @@ test('a rows function is a transform, and other JavaScript is not', () => {
   assert.equal(kindOfPaste('function tidy(rows) { return rows }'), 'fn');
 });
 
+test('a pasted bundle opens in the tool, since its preview would be gzip strings', async () => {
+  reset();
+  let opened = null;
+  const real = data.openTransform.bind(data);
+  data.openTransform = async (it) => { opened = it; };
+  window.StageIntake.take({ text: BUNDLE, size: BUNDLE.length });
+  window.StageIntake.focus(data.localItems[0]);
+  await tick(3);
+  assert.ok(opened, 'focus routed it to the workbench');
+  assert.match(opened.name, /\.json$/);
+  assert.equal(data.preview, null, 'and did not also open the preview on it');
+  data.openTransform = real;
+});
+
+test('every other arrival still opens on its own content', async () => {
+  reset();
+  let opened = null;
+  const real = data.openTransform.bind(data);
+  data.openTransform = async (it) => { opened = it; };
+  const csv = 'a,b\n1,2\n3,4';
+  window.StageIntake.take({ text: csv, size: csv.length });
+  window.StageIntake.focus(data.localItems[0]);
+  await tick(3);
+  assert.equal(opened, null, 'rows are worth looking at, so the preview is the right first look');
+  assert.ok(data.preview, 'the preview opened instead');
+  data.openTransform = real;
+});
+
 test('prose, markdown and an empty stage offer nothing', () => {
   assert.equal(kindOfPaste('# A note\n\nJust some prose.'), '');
   assert.equal(kindOfPaste('one, two, three\nand a second line'), '');

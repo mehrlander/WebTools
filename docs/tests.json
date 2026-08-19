@@ -2958,7 +2958,7 @@
       "path": "tools/test/stage.test.mjs",
       "kind": "component",
       "protects": "The stage: membership, grouping, the diff lens, saving, and the cross-repo address grammar.",
-      "assertions": 130,
+      "assertions": 132,
       "method": "kit",
       "runner": "suite",
       "boot_smoke": [
@@ -3003,6 +3003,8 @@
         "a workbench bundle is recognized exactly, by the key that defines one",
         "rows are recognized in all three shapes the workbench eats",
         "a rows function is a transform, and other JavaScript is not",
+        "a pasted bundle opens in the tool, since its preview would be gzip strings",
+        "every other arrival still opens on its own content",
         "prose, markdown and an empty stage offer nothing",
         "a ref is never transform-shaped, since it has no text to hand over",
         "the chip row names one item per qualifying local, and skips the rest",

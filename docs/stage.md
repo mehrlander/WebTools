@@ -203,6 +203,19 @@ drawing the whole chrome around an empty pane in silence. That is what the first
 mount here actually did, which is why the scenario asserts the drawn rows rather
 than the parsed ones.
 
+The offer also rides the **preview's header**, not only the bench, and that is
+where it matters most: a single arrival routes to the Stage and opens on itself,
+so the reader is looking at the file rather than at the row. It is recomputed
+per slide, since the compare is a property of the SET and holds across positions
+while the transform is a property of the ITEM and does not.
+
+**A bundle is the one kind that skips the offer and opens the tool directly.**
+Every other arrival opens on its content, which is the right first look at
+something you just pasted. A bundle's content is base64 gzip, so a tree of it
+shows a handful of unreadable strings and the only thing that can read it is the
+tool that wrote it. It is also the kind recognition is exact about, which is what
+makes skipping the offer defensible here and nowhere else.
+
 **The one platform limit worth stating plainly: iOS Safari fires no `paste`
 event unless an editable is focused.** A window listener therefore has no intake
 at all on an iPhone, which is why the bench keeps its explicit Paste button

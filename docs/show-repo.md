@@ -1989,6 +1989,18 @@ as they already did on a phone. And the sidebar is reachable during a takeover
 for the first time, so navigating while one is open changes the view underneath
 it rather than being blocked.
 
+**Leaving the view closes the takeover.** Newly reachable and newly a problem:
+the deck no longer covers the chrome, so a tap navigates while the deck keeps
+painting the view you left. Measured before fixing, opening the workbench on the
+Stage and tapping Map left the workbench on screen with the rail and the URL
+both saying Map. It hangs off `syncUrl()` rather than a watcher on `view`, for
+ordering rather than taste: every `go*` method routes through there
+synchronously, so at the moment a paste calls `goStage()` no deck exists yet and
+it is a no-op, where a queued watcher could as easily have fired after the
+preview opened and closed the very thing the paste was routing to. It uses the
+kit's `drop()` rather than `close()`, since the navigation is already the
+history event.
+
 **The breakpoint alone is not the condition,** which is the trap: the desktop
 sidebar is conditional (`showSidebar`, `sidebarOpen`, and the `lg:hidden` on the
 aside), so a signed-out dashboard or a put-away sidebar has no column there. A
