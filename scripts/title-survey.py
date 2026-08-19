@@ -9,10 +9,13 @@ mechanical, advisory, and never blocking, in the idiom of link-survey.py,
 unclaimed-code-survey.py and duplicated-claims-survey.py: run it, read the
 list, fix or shrug. It reports candidates, not findings.
 
-Born 2026-08-19 from the audit behind PR #447, which found 32 stranded titles
-across the app's three largest UI files after two hand-written passes reported
-88 and then 37. Both earlier passes were regex walks, and both were wrong for
-the same two reasons this script exists to get right.
+Born 2026-08-19 from the audit behind PR #447, which ran THREE times by hand
+over the app's three largest UI files and reported 88, then 37, then 32. The
+true answer is 33. Traps 1 and 2 below account for the first two; the third
+pass had the tag stack right and still carried the echo bug that this file's
+test caught, which was swallowing three real findings. Every one of the four
+was mechanical, and every one produced a plausible number rather than an error,
+which is the whole argument for a tested tool over a careful reading.
 
 Method, and the two traps:
 

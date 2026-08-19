@@ -2,10 +2,12 @@
 // in a `title` attribute (HTML-STYLE.md: "a tooltip worth having is worth building").
 //
 // What is worth pinning is the CLASSIFIER, not the report. The audit behind
-// PR #447 ran twice by hand before this script existed and was wrong both
-// times, at 88 and then 37 against a true 32, for exactly two reasons. Both are
-// the kind of mistake that reads as a finding rather than a bug: an
-// over-reporting audit sends someone to "fix" markup that was already fine.
+// PR #447 ran three times by hand before this script existed and was wrong all
+// three times, at 88, then 37, then 32 against a true 33. Each is the kind of
+// mistake that reads as a finding rather than a bug: an over-reporting audit
+// sends someone to "fix" markup that was already fine, and an under-reporting
+// one closes the question. The third pass is the cautionary one, since it had
+// the tag stack right and still shipped the echo bug caught below.
 //
 // The script is python3/stdlib, so this drives it the way a person does,
 // through the file system, and reads what it prints.
@@ -45,9 +47,9 @@ test('a title on a bare span, with nothing to tap, is stranded', () => {
   assert.deepEqual(r.values, ['the only place this fact lives']);
 });
 
-// TRAP 1. The element's own tag is not the answer. This is what took the
-// hand-audit from a true 32 up to 37: a label inside a button reads as
-// unreachable when you only look at the element carrying the attribute.
+// TRAP 1. The element's own tag is not the answer. This is what put the second
+// hand pass at 37: a label inside a button reads as unreachable when you only
+// look at the element carrying the attribute.
 test('a title inside a button is reachable, since tapping the button reaches it', () => {
   const r = survey('<button @click="open()"><span title="what this opens">6</span></button>');
   assert.equal(r.reachable, 1);
@@ -68,8 +70,8 @@ test('a void element does not swallow the titles that follow it', () => {
   assert.deepEqual(r.values, ['after the icon']);
 });
 
-// TRAP 2. `<` occurs inside attribute values. This is what made the hand-audit
-// report 88: walking back to the nearest `<` lands inside `guideIdx <= 0`
+// TRAP 2. `<` occurs inside attribute values. This is what put the first hand
+// pass at 88: walking back to the nearest `<` lands inside `guideIdx <= 0`
 // rather than at the tag that opens the element, so the ancestor is never seen.
 test('a "<" inside an attribute value does not break the tag walk', () => {
   const r = survey('<button :disabled="i <= 0" @click="step()" title="newer PR"><i></i></button>');
@@ -83,6 +85,10 @@ test('a title that only repeats the element\'s own x-text is an echo, not a find
   assert.equal(r.stranded, 0);
 });
 
+// The fourth bug, and the one this file caught on its first run: an echo rule
+// of `xtext in value` absorbs any short expression, so `x-text="n"` made every
+// title containing an `n` look like a repetition of itself. Three real findings
+// were hiding behind it, which is how a true 33 got reported as 32.
 test('a title that says MORE than the visible text is stranded, not an echo', () => {
   const r = survey('<div><span :title="n + \' files: \' + list" x-text="n"></span></div>');
   assert.equal(r.stranded, 1);
