@@ -32,7 +32,8 @@ test('landedSignal: identical bytes at the same path land', () => {
   const main = tree([{ path: 'a', type: 'blob', sha: 'x' }]);
   const tip = tree([{ path: 'a', type: 'blob', sha: 'x' }]);
   const s = B.landedSignal(['a'], tip, main);
-  assert.deepEqual(s, { nUnique: 1, nLanded: 1, nMissing: 0, missingPaths: [] });
+  assert.deepEqual(s, { nUnique: 1, nLanded: 1, nMissing: 0, nDiffers: 0,
+                        missingPaths: [], differsPaths: [] });
 });
 
 test('landedSignal: a moved blob lands (bytes anywhere on main)', () => {
@@ -50,11 +51,12 @@ test('landedSignal: a path deleted at the branch tip counts landed', () => {
   assert.equal(s.nLanded, 1);
 });
 
-test('landedSignal: churn (path on main, bytes differ) is unlanded but not missing', () => {
+test('landedSignal: differs (path on main, bytes differ) is unlanded but not missing', () => {
   const main = tree([{ path: 'a', type: 'blob', sha: 'mainv' }]);
   const tip = tree([{ path: 'a', type: 'blob', sha: 'tipv' }]);
   const s = B.landedSignal(['a'], tip, main);
-  assert.deepEqual(s, { nUnique: 1, nLanded: 0, nMissing: 0, missingPaths: [] });
+  assert.deepEqual(s, { nUnique: 1, nLanded: 0, nMissing: 0, nDiffers: 1,
+                        missingPaths: [], differsPaths: ['a'] });
 });
 
 test('landedSignal: path and bytes both absent from main is missing', () => {
@@ -70,6 +72,149 @@ test('landedSignal dedupes the unique-path list', () => {
   const tip = tree([{ path: 'a', type: 'blob', sha: 'x' }]);
   const s = B.landedSignal(['a', 'a', 'a'], tip, main);
   assert.equal(s.nUnique, 1);
+});
+
+// ── fileStats: what a compare's own file list says about itself ─────────────
+//
+// Free from a response the caller already holds, and the reason a branch row can
+// say "62 changed, 14 new" instead of "76 files". `added` + `changed` +
+// `removed` partitions the list, with renames counted inside `changed` since a
+// renamed file both moved and still exists.
+
+test('fileStats partitions a compare file list by status', () => {
+  const s = B.fileStats([
+    { filename: 'new.js', status: 'added', additions: 40, deletions: 0 },
+    { filename: 'copy.js', status: 'copied', additions: 12, deletions: 0 },
+    { filename: 'edit.js', status: 'modified', additions: 5, deletions: 3 },
+    { filename: 'moved.js', status: 'renamed', additions: 1, deletions: 1 },
+    { filename: 'gone.js', status: 'removed', additions: 0, deletions: 30 },
+  ]);
+  const { shape, ...counts } = s;      // the digest has its own tests below
+  assert.deepEqual(counts, { n: 5, added: 2, changed: 2, removed: 1, renamed: 1,
+                             additions: 58, deletions: 34 });
+  assert.equal(s.added + s.changed + s.removed, s.n, 'the three classes partition the list');
+});
+
+test('fileStats digests each class by extension and top folder, biggest first', () => {
+  const s = B.fileStats([
+    { filename: 'docs/a.md', status: 'added' },
+    { filename: 'docs/b.md', status: 'added' },
+    { filename: 'docs/c.json', status: 'added' },
+    { filename: 'lib/x.js', status: 'modified' },
+    { filename: 'README', status: 'added' },
+    { filename: '.gitignore', status: 'modified' },
+  ]);
+  assert.deepEqual(s.shape.added.exts, [['.md', 2], ['(none)', 1], ['.json', 1]]);
+  assert.deepEqual(s.shape.added.dirs, [['docs', 3], ['(root)', 1]]);
+  // A dotfile is extensionless, not an extension of one: it belongs with README
+  // and Makefile rather than adding a histogram bar of size one.
+  assert.deepEqual(s.shape.changed.exts, [['(none)', 1], ['.js', 1]]);
+  assert.deepEqual(s.shape.changed.dirs, [['(root)', 1], ['lib', 1]]);
+  assert.deepEqual(s.shape.removed, { exts: [], dirs: [] });
+});
+
+test('the shape digest caps its tail, and the counts it is built from do not', () => {
+  const files = Array.from({ length: 20 }, (_, i) => ({ filename: 'd' + i + '/f.e' + i, status: 'modified' }));
+  const s = B.fileStats(files);
+  assert.equal(s.changed, 20, 'the count is complete');
+  assert.equal(s.shape.changed.exts.length, 6, 'the histogram is capped');
+  assert.equal(s.shape.changed.dirs.length, 6);
+});
+
+test('fileClass is the one rule the counts, the digest and the card all read', () => {
+  assert.equal(B.fileClass({ status: 'added' }), 'added');
+  assert.equal(B.fileClass({ status: 'copied' }), 'added');
+  assert.equal(B.fileClass({ status: 'removed' }), 'removed');
+  assert.equal(B.fileClass({ status: 'renamed' }), 'changed');
+  assert.equal(B.fileClass({}), 'changed', 'no status reads as changed');
+});
+
+test('fileKind names the extensionless and the rootless rather than dropping them', () => {
+  assert.deepEqual(B.fileKind('lib/kits/a.js'), { ext: '.js', dir: 'lib' });
+  assert.deepEqual(B.fileKind('README'), { ext: '(none)', dir: '(root)' });
+  assert.deepEqual(B.fileKind('.gitignore'), { ext: '(none)', dir: '(root)' });
+  assert.deepEqual(B.fileKind('a/b/c/d.test.mjs'), { ext: '.mjs', dir: 'a' });
+});
+
+test('fileStats dedupes by path and reads either spelling', () => {
+  const s = B.fileStats([
+    { filename: 'a', status: 'modified', additions: 1, deletions: 1 },
+    { filename: 'a', status: 'modified', additions: 1, deletions: 1 },
+    { path: 'b', status: 'added', additions: 2, deletions: 0 },
+    { status: 'added' },                       // no path at all
+  ]);
+  assert.equal(s.n, 2);
+  assert.equal(s.added, 1);
+  assert.equal(s.additions, 3);
+});
+
+test('fileStats treats a status-less entry as changed, and an empty list as zero', () => {
+  assert.equal(B.fileStats([{ filename: 'a' }]).changed, 1);
+  const { shape, ...counts } = B.fileStats([]);
+  assert.deepEqual(counts, { n: 0, added: 0, changed: 0, removed: 0, renamed: 0,
+                             additions: 0, deletions: 0 });
+  assert.deepEqual(shape.added, { exts: [], dirs: [] });
+  assert.equal(B.fileStats(null).n, 0);
+});
+
+// ── the three-way partition ─────────────────────────────────────────────────
+//
+// The estate chip read `28/80` beside `11 missing` and the two did not add up,
+// because forty-one paths sat in a class nothing named. These hold the fix:
+// every touched path lands in exactly one state, and the three counts sum to
+// the total. A regression here is a chip that lies again.
+
+test('pathStates answers every touched path with exactly one state', () => {
+  const main = tree([
+    { path: 'same', type: 'blob', sha: 'x' },
+    { path: 'moved/now-here', type: 'blob', sha: 'm' },
+    { path: 'edited', type: 'blob', sha: 'mainv' },
+    { path: 'deleted', type: 'blob', sha: 'd' },
+  ]);
+  const tip = tree([
+    { path: 'same', type: 'blob', sha: 'x' },
+    { path: 'moved/was-here', type: 'blob', sha: 'm' },
+    { path: 'edited', type: 'blob', sha: 'tipv' },
+    { path: 'only/here', type: 'blob', sha: 'new' },
+  ]);
+  const paths = ['same', 'moved/was-here', 'edited', 'deleted', 'only/here'];
+  const st = B.pathStates(paths, tip, main);
+  assert.deepEqual([...st], [
+    ['same', 'landed'],            // identical bytes at the same path
+    ['moved/was-here', 'landed'],  // same bytes, moved on main
+    ['edited', 'differs'],         // main holds the path, with other bytes
+    ['deleted', 'landed'],         // gone at the tip, so nothing is stranded
+    ['only/here', 'missing'],      // neither the path nor the bytes on main
+  ]);
+});
+
+test('the three counts partition the touched set', () => {
+  const main = tree([{ path: 'a', type: 'blob', sha: 'x' }, { path: 'b', type: 'blob', sha: 'mainv' }]);
+  const tip = tree([{ path: 'a', type: 'blob', sha: 'x' }, { path: 'b', type: 'blob', sha: 'tipv' },
+                    { path: 'c', type: 'blob', sha: 'q' }]);
+  const s = B.landedSignal(['a', 'b', 'c'], tip, main);
+  assert.equal(s.nLanded + s.nDiffers + s.nMissing, s.nUnique,
+    'landed + differs + missing must equal the touched total, which is what the chip claims');
+  assert.deepEqual(s.differsPaths, ['b']);
+  assert.deepEqual(s.missingPaths, ['c']);
+});
+
+test('countStates reads a map the caller already holds', () => {
+  const st = new Map([['a', 'landed'], ['b', 'differs'], ['c', 'missing'], ['d', 'missing']]);
+  assert.deepEqual(B.countStates(st), {
+    nUnique: 4, nLanded: 1, nMissing: 2, nDiffers: 1,
+    missingPaths: ['c', 'd'], differsPaths: ['b'],
+  });
+});
+
+test('PATH_STATES names exactly the states pathStates can return', () => {
+  const main = tree([{ path: 'a', type: 'blob', sha: 'x' }, { path: 'b', type: 'blob', sha: 'v' }]);
+  const tip = tree([{ path: 'a', type: 'blob', sha: 'x' }, { path: 'b', type: 'blob', sha: 'w' },
+                    { path: 'c', type: 'blob', sha: 'q' }]);
+  const produced = new Set(B.pathStates(['a', 'b', 'c'], tip, main).values());
+  const declared = new Set(B.PATH_STATES.map(s => s.key));
+  assert.deepEqual([...produced].sort(), [...declared].sort());
+  for (const s of B.PATH_STATES) assert.ok(s.label && s.hint, s.key + ' needs a label and a hint');
 });
 
 test('classify: fresh work is active regardless of signal', () => {

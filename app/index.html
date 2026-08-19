@@ -2527,7 +2527,14 @@ function app(){ return {
   // failing (2026-08-17, wa-bills). Three a run heals a transient failure
   // within a few crawls and caps what a permanent one can cost.
   ACTIVITY_ERROR_RETRY: 3,
-  ACTIVITY_RECENT_COMMITS: 12,   // newest commits fetched per repo per crawl
+  // Newest commits fetched per repo per crawl, and STORED. Raised from 12 on
+  // 2026-08-19, when the behind arrow became a card: the crawl has always
+  // fetched these for its own moved-or-not gate and read only [0].sha, so the
+  // list was already paid for and already in the cache. 40 covers the estate's
+  // usual spread (branches sit 20 to 40 behind) at one page of the same call
+  // and about 5 KB per repo; past it the card says the count is right and the
+  // list is not here, rather than showing a short list under a long number.
+  ACTIVITY_RECENT_COMMITS: 40,
   // How deep the any-state PR read goes per repo (gh.branchPulls). 100 is the
   // API's page maximum, and it has to clear the branch survey's recent window
   // (BranchSurvey.RECENT_DAYS, 14 days) or a fresh branch's merged PR would sit
@@ -3024,17 +3031,27 @@ function app(){ return {
           if (mainHeld && was && was.updatedAt === p.updatedAt && was.aheadBy != null) {
             p.aheadBy = was.aheadBy; p.behindBy = was.behindBy;
             p.firstDate = was.firstDate || '';
+            // Carried with the pair it was read beside. A cache written before
+            // 2026-08-18 has no breakdown, and the row shows its files glyph
+            // without one until the next real compare rather than showing a 0.
+            p.stats = was.stats ?? null;
             if (was.sessions) { p.sessions = was.sessions; p.sessionsExact = !!was.sessionsExact; }
             continue;
           }
           try {
             const d = await g.compare(def, p.head);
             p.aheadBy = d.ahead_by ?? null; p.behindBy = d.behind_by ?? null;
+            // What the branch changed and in what way, free from a response
+            // already in hand: this is the compare the ahead/behind pair comes
+            // from, and every file in it carries a status and a line count.
+            // A floor rather than a total on a sweeping branch, since GitHub
+            // caps a compare's file list at 300 and reports no total.
+            p.stats = B.fileStats(d.files);
             // One compare, every field it can answer, through the one reader
             // that knows what each field does past GitHub's commit cap.
             Object.assign(p, B.compareFields(d));
           }
-          catch { p.aheadBy = null; p.behindBy = null; p.firstDate = ''; }
+          catch { p.aheadBy = null; p.behindBy = null; p.firstDate = ''; p.stats = null; }
         }
       };
       await Promise.all(Array.from({ length: Math.min(4, openPRs.length) }, prAheadBehind));
@@ -3079,7 +3096,8 @@ function app(){ return {
       const trim = b => ({ name: b.name, date: b.date || '', firstDate: b.firstDate || '',
                            sha: b.sha || '', subject: b.subject || '', ago: b.ago || '',
                            group: b.group, noBase: !!b.noBase, nUnique: b.nUnique || 0, nLanded: b.nLanded || 0,
-                           nMissing: b.nMissing || 0, missingPaths: b.missingPaths || [],
+                           nMissing: b.nMissing || 0, nDiffers: b.nDiffers || 0,
+                           missingPaths: b.missingPaths || [], stats: b.stats || null,
                            ...sessionsFor(b),
                            aheadBy: b.aheadBy ?? null, behindBy: b.behindBy ?? null });
       branches = [...recent.map(b => trim({ ...b, group: 'active' })), ...surveyed.rows.map(trim)];
