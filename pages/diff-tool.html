@@ -164,6 +164,36 @@
      survives whatever the size tokens do next. */
   .lctl { height: 1.75rem; min-height: 1.75rem; }
   .lctl.select { padding-top: 0; padding-bottom: 0; }
+
+  /* TOUCH READS BIGGER, and the page was built for a pointer. Its chrome runs
+     on text-[11px] and the xs control sizes, which is dense-but-fine with a
+     mouse and unreadable on a phone; worse, iOS ZOOMS THE WHOLE PAGE whenever a
+     focused input is under 16px, so every tap on an address field threw the
+     layout sideways. The floor here is that 16px, which is why the rule is
+     stated in px rather than rem.
+     
+     Scoped to `pointer: coarse` rather than a width query on purpose: the
+     trigger is the input device, not the window. A narrow desktop window has a
+     mouse and does not want 16px controls; a large tablet has a finger and
+     does.
+     
+     !important because these override Tailwind utilities written into the
+     markup, and the browser build injects its sheet at a position this file
+     cannot depend on. The deeper fix is retiring text-[11px] from the page
+     altogether (docs/HTML-STYLE.md: content has one size, and xs is for labels
+     and counters), which is a bigger pass than this one. */
+  @media (pointer: coarse) {
+    input, select, textarea, .lctl { font-size: 16px !important; }
+    .lctl { height: 2.25rem !important; min-height: 2.25rem !important; }
+    /* The source picker holds "GitHub" at 11px; at 16px it needs the room. */
+    .lctl.select { width: 7rem !important; }
+    .text-\[11px\] { font-size: 0.8125rem !important; }
+    .text-\[10px\] { font-size: 0.75rem !important; }
+    /* The diff body has its own control (fontStep); this moves its floor, and
+       a reader who sets a size still wins, since applySize writes the variable. */
+    .dbody { font-size: var(--dsz, 15px); }
+    .dhead { font-size: 12px; }
+  }
 </style>
 </head>
 

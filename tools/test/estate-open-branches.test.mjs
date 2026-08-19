@@ -651,3 +651,87 @@ test('closing clears the shell at once, whatever the deck does next', async () =
   assert.equal(data._deck, null);
   await tick(6);
 });
+
+// ── The SESSION row's cards ──────────────────────────────────────────────
+// The same panel as the branch row's, a third kind of body, and no read at
+// all: every number the strip shows is already in the session record. What is
+// pinned here is that the card says what the title used to and that the count
+// over the list agrees with the list under it.
+
+const SESSION_ROW = () => ({
+  id: 's1', exchanges: 12, messages: 48, calls: 431, failures: 3,
+  filesTotal: 62, tools: [['Bash', 210], ['Edit', 96], ['Read', 71]],
+  files: [['lib/alpineComponents/estate.js', 24], ['docs/show-repo.md', 9]],
+  tokens: { output: 84200, input: 1900, cache_read: 7400000, cache_write: 120000 },
+});
+
+test('the turns card separates the two halves the title used to hold', () => {
+  const row = SESSION_ROW();
+  data.openSessionCard(row, 'turns', null);
+  assert.equal(data.rowCard.kind, 'list');
+  assert.equal(data.rowCard.label, 'user turns');
+  assert.deepEqual(plain_(data.rowCard.rows),
+    [{ label: 'user turns', n: 12 }, { label: 'assistant messages', n: 48 }]);
+  assert.equal(data.rowCardSummary.count, 12,
+    'the head states the number the row showed, not the sum of the two');
+});
+
+test('the tools card lists the per-tool breakdown and owns the failure count', () => {
+  const row = SESSION_ROW();
+  data.openSessionCard(row, 'tools', null);
+  assert.equal(data.rowCardSummary.count, 431);
+  assert.deepEqual(plain_(data.rowCard.rows.map(r => r.label)), ['Bash', 'Edit', 'Read']);
+  // The failures pair opens THIS card, being a subset of these calls, so the
+  // number it stands for has to be stated here or that pair explains nothing.
+  assert.match(data.rowCard.note, /3 of these calls failed/);
+});
+
+test('a record with no breakdown says so rather than showing an empty card', () => {
+  data.openSessionCard({ id: 's2', calls: 7, tools: [] }, 'tools', null);
+  assert.deepEqual(plain_(data.rowCard.rows), []);
+  assert.match(data.rowCard.note, /kept no per-tool breakdown/);
+});
+
+test('the files card carries paths, and marks them as paths', () => {
+  const row = SESSION_ROW();
+  data.openSessionCard(row, 'files', null);
+  assert.equal(data.rowCardSummary.count, 62);
+  assert.deepEqual(plain_(data.rowCard.rows.map(r => r.label)),
+    ['lib/alpineComponents/estate.js', 'docs/show-repo.md']);
+  assert.ok(data.rowCard.rows.every(r => r.mono), 'a path is set in mono, like every other path');
+  // 62 opened, 2 listed: the head must not shrink to the list's length, which
+  // is what the branch row's cards had to be taught the hard way.
+  assert.notEqual(data.rowCardSummary.count, data.rowCard.rows.length);
+});
+
+test('the tokens card leads with output, the half that measures the work', () => {
+  const row = SESSION_ROW();
+  data.openSessionCard(row, 'tokens', null);
+  assert.equal(data.rowCardSummary.count, 84200, 'output, not the cache-read total');
+  assert.equal(plain_(data.rowCard.rows)[0].label, 'output');
+  assert.deepEqual(plain_(data.rowCard.rows.map(r => r.n)), [84200, 1900, 7400000, 120000]);
+});
+
+test('a list card is complete on open: no read can sharpen it', () => {
+  const row = SESSION_ROW();
+  data.openSessionCard(row, 'tools', null);
+  const before = plain_(data.rowCardSummary);
+  data.rowCardRead = { key: 'anything', loading: true, error: '', files: [] };
+  assert.deepEqual(plain_(data.rowCardSummary), before,
+    'the branch cards wait on a compare; this one never does');
+});
+
+test('an unknown class opens nothing rather than an empty panel', () => {
+  data.rowCard = null;
+  data.openSessionCard(SESSION_ROW(), 'nonsense', null);
+  assert.equal(data.rowCard, null);
+});
+
+test('each pair keys its own card, so hovering along the strip re-anchors', () => {
+  const row = SESSION_ROW();
+  data.openSessionCard(row, 'tools', null);
+  const first = data.rowCard.key;
+  data.openSessionCard(row, 'files', null);
+  assert.notEqual(data.rowCard.key, first);
+  assert.match(data.rowCard.key, /^session:s1:/);
+});

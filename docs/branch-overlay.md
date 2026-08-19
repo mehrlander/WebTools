@@ -139,7 +139,18 @@ provisional contract as `facts`, which makes the counts right in the first frame
 and the `missing` filter exact before any tree is read, since the crawl stored
 those paths themselves. Measuring anyway is what keeps a cold, unhosted
 `branch.html` able to show the same thing, and keeps one rule producing both
-readings. Where the branch has **no merge base** there is no compare and so no
+readings.
+
+**The two warnings beside the strip open their own line.** `tree truncated` says
+GitHub would not list a repo's whole tree, and `not measured` says the survey
+failed; both are statements that the counts above them may be wrong, and both
+carried the actual reason (which consequence, which error) only in a `title`,
+which is the one place a caveat about a number must never be the sole occupant.
+They are buttons now, and tapping one opens a line under the strip carrying the
+reason: for a truncated tree, that a path GitHub left out reads as missing here,
+so the missing count is a ceiling rather than an answer. See
+[HTML-STYLE.md](HTML-STYLE.md) for the rule and
+[`scripts/title-survey.py`](../scripts/title-survey.py) for what still breaks it. Where the branch has **no merge base** there is no compare and so no
 diff to render, and the pane falls back to listing the lent missing paths as
 links, which is the actionable half of a survey whose counts otherwise span more
 than the branch.

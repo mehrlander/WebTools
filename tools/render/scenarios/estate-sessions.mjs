@@ -9,6 +9,10 @@
 //
 //   npm run shot -- app/index.html --query view=sessions \
 //     --script tools/render/scenarios/estate-sessions.mjs --height 900
+//
+// CARD=turns|tools|files|tokens opens that pair's card on the first row. Those
+// four numbers said what they counted only in a title, so the card is the only
+// way a phone reader learns that 206 is tool calls and which tools they were.
 
 const SESSIONS = [
   {
@@ -97,4 +101,22 @@ export default async function (page) {
     window.__shell.hasToken = () => true;
   }, { SESSIONS, ATTENTION, TODOS, JOTS });
   await page.waitForTimeout(600);
+
+  const card = process.env.CARD;
+  if (card) {
+    // Anchored off the real trigger, so the panel lands where a reader's tap
+    // would put it rather than at an invented coordinate.
+    const sel = { turns: 'ph-chats-circle', tools: 'ph-wrench',
+                  files: 'ph-files', tokens: null }[card];
+    await page.evaluate(({ card, sel }) => {
+      const host = document.querySelector('[x-data^="estate"]');
+      const st = window.Alpine.$data(host);
+      const row = st.sessionRows[0];
+      const btn = sel
+        ? document.querySelector(`.ph.${sel}`)?.closest('button')
+        : [...document.querySelectorAll('button')].find(b => /^\s*\d+k?\s*$/.test(b.textContent));
+      st.openSessionCard(row, card, btn || null);
+    }, { card, sel });
+    await page.waitForTimeout(400);
+  }
 }

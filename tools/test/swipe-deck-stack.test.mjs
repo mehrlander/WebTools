@@ -33,7 +33,10 @@ const deck = (title, count = 3, extra = {}) =>
   sd.open({ count, title, render: (i, el) => { el.textContent = title + ' ' + i; }, ...extra });
 const key = (k) => window.dispatchEvent(Object.assign(new window.KeyboardEvent('keydown', { key: k })));
 const pop = () => window.dispatchEvent(new window.Event('popstate'));
-const overlays = () => window.document.body.querySelectorAll('.fixed.inset-0').length;
+// The kit's stable hook, not its Tailwind frame: the overlay's inset classes
+// became variables when the takeover moved into the app's view pane, and this
+// counted zero decks while two were on screen.
+const overlays = () => window.document.body.querySelectorAll('.sd-overlay').length;
 // The stack is built inside the jsdom realm, so an array off it has jsdom's
 // Array prototype and deepEqual fails on identity alone (the estate suites hit
 // the same wall). Compare the titles as one string.

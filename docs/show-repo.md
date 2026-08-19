@@ -1030,10 +1030,20 @@ could scan down. A ratio is a verdict and this is a route, so the verdict moved
 to where there is room to state it whole (the hover, and the Files pane's own
 strip, which names all three classes) and the row kept the counts every row can
 carry plus the one flag worth raising unasked. A no-merge-base row keeps its
-numbers rather than blanking, since the asterisk already says that every number
-on that row spans more than the branch. A cache written before the breakdown
-existed shows its total as one number and claims no split, rather than printing
-a split of zeroes.
+numbers rather than blanking, since the mark beside them already says that every
+number on that row spans more than the branch. A cache written before the
+breakdown existed shows its total as one number and claims no split, rather than
+printing a split of zeroes.
+
+**That mark reads `no merge base`, and until 2026-08-19 it was an asterisk.**
+One amber character, with its entire meaning in a `title` attribute, saying
+something a reader cannot afford to miss: that every number beside it is
+measuring something wider than the branch. A tooltip never appears on a phone,
+so on a phone it said nothing at all. Thirteen characters is a real cost on this
+row and it is the right trade, since the alternative was a caveat nobody could
+reach. The general rule it is a case of is now in
+[HTML-STYLE.md](HTML-STYLE.md), and [`scripts/title-survey.py`](../scripts/title-survey.py)
+counts the remaining cases.
 
 **Stage** sends the files this branch changed to the Stage (one `compare` call,
 removed paths skipped), appended and deduped onto any working stage at
@@ -1315,6 +1325,34 @@ opening ask, and a count row: user turns, tool calls, failures, distinct files,
 and output tokens. The rail goes amber where the session hit failures and stays
 muted otherwise, deliberately not green-for-clean, since a clean session is the
 normal case and a page of green rails says nothing.
+
+**Each count in that row opens a card**, the same panel the branch row's counts
+open, with a third kind of body: label and number, biggest first. This row is the
+branch row's twin and it had the branch row's old defect, which is why it got the
+same answer. Four glyph-and-number pairs stated their *unit* only in a `title`,
+and the breakdown behind each number had no other route at all, so on a phone the
+strip was four bare digits. Turns splits into user turns and assistant messages;
+tool calls into the per-tool histogram, which also owns the failure count, since
+the amber failures pair is a subset of those calls rather than a fifth axis;
+files into the busiest paths; and the token total into output, input, and the two
+cache halves, with output leading because cache reads run two orders of magnitude
+larger and measure the harness rather than the work.
+
+**These cards cost nothing.** Where the branch row's cards fetch a compare, every
+number here is already in the session record the pane is rendering, so the card
+is complete in its first frame and no read can sharpen it. `rowCardSummary`
+answers for this kind first and returns the stored count, which is also what
+keeps the head honest: 62 files opened over a list of the two busiest is the
+right reading, and a head that shrank to the list's length would be the mistake
+the branch cards had to be taught not to make.
+
+Two marks in that row are **dimmed twins**: a files glyph and a Claude star,
+shown greyed when the record *could not say* rather than when there was nothing
+to report. Each now carries a `&mdash;` beside it, the same dash this component
+uses everywhere for "unknown", because a grey icon alone is indistinguishable
+from a zero. Which of the two causes applies (a pre-schema-3 record, or a session
+that never committed) is still only in the title, and that is the honest
+remainder rather than a claim to have finished.
 
 The sessions crawl reports the same way Branches does, off the same channel:
 while it runs, the pane's age pill is joined by `Reading records · 18 of 120
@@ -2137,14 +2175,73 @@ surface ([envelopes/surface.md](envelopes/surface.md), the `stage/1`
 profile), which is why the Stage view holds the bench and the shelf as one
 nav stop.
 
-The other thing that stays here is the **app-wide drop**, because it is the
-shell's gesture rather than the stage's: a file dropped on any view is staged,
-routes to the Stage, and opens in the preview when it is the only one. The
-shell owns the listeners, the drag cue, and the routing (`wireAppDrop`); what a
-dropped thing becomes is `window.StageIntake`'s, one answer shared with the
-bench's own drop-zone and with a paste. The gesture used to work only on the
-Stage, which meant you had to already be where you were trying to get to.
+The other things that stay here are the **app-wide drop and paste**, because
+they are the shell's gestures rather than the stage's: a file dropped, or
+anything pasted, on any view is staged, routes to the Stage, and opens in the
+preview when it is the only one. The shell owns the listeners, the drag cue,
+and the routing (`wireAppDrop`, `wireAppPaste`); what an arriving thing becomes
+is `window.StageIntake`'s, one answer shared with the bench's own drop-zone.
+Both gestures used to work only on the Stage, which meant you had to already be
+where you were trying to get to.
 
+The paste is the shell's **only** window paste listener, and that is a
+constraint rather than a tidiness note. Window listeners fire in registration
+order and `init()` runs before any component mounts, so a second listener in the
+stage could not use `defaultPrevented` to tell that this one had already acted;
+one reader is also what keeps a paste's several flavors from being split between
+two handlers. The stage's own listener was removed when this one arrived
+(2026-08-18). Note the platform floor underneath all of it: iOS Safari fires no
+`paste` event unless an editable is focused, so on a phone the bench's explicit
+Paste button is the intake, not a shortcut beside one.
+
+
+### Where a takeover sits
+
+A swipe-deck takeover (the file preview, the branch reader, the Map's docs, the
+transform workbench) is framed by two CSS variables the kit reads and this app
+sets: `--deck-left` and `--deck-top`, both defaulting to zero, so a page with no
+chrome beside its content gets the whole viewport as every consumer always did.
+
+**At `lg` and up the takeover lives in the view pane; below it takes the
+window.** One breakpoint for both axes, and it is the sidebar's, because that is
+where the sidebar stops being an off-canvas drawer and starts taking layout
+space. Above it the deck starts after the sidebar and below the header, so both
+stay visible and usable while it is open. Below it the deck covers everything,
+which is what a phone always did and what a short screen wants.
+
+Until 2026-08-18 the panel was a centred `max-w-4xl` card with a margin, a
+rounded border and a shadow, over a full-viewport overlay. That reads as a
+dialog pasted on top of the app rather than part of it, and here it floated
+across the sidebar, so chrome you were still meant to use sat under something
+you had to dismiss first. The phone case was already right; this makes the
+desktop match it.
+
+Two things the change costs, both stated because they are silent. The overlay's
+desktop margin used to be the click-outside-to-dismiss target and a filled frame
+leaves none, so ✕, Escape and the Back button carry dismissal everywhere now,
+as they already did on a phone. And the sidebar is reachable during a takeover
+for the first time, so navigating while one is open changes the view underneath
+it rather than being blocked.
+
+**Leaving the view closes the takeover.** Newly reachable and newly a problem:
+the deck no longer covers the chrome, so a tap navigates while the deck keeps
+painting the view you left. Measured before fixing, opening the workbench on the
+Stage and tapping Map left the workbench on screen with the rail and the URL
+both saying Map. It hangs off `syncUrl()` rather than a watcher on `view`, for
+ordering rather than taste: every `go*` method routes through there
+synchronously, so at the moment a paste calls `goStage()` no deck exists yet and
+it is a no-op, where a queued watcher could as easily have fired after the
+preview opened and closed the very thing the paste was routing to. It uses the
+kit's `drop()` rather than `close()`, since the navigation is already the
+history event.
+
+**The breakpoint alone is not the condition,** which is the trap: the desktop
+sidebar is conditional (`showSidebar`, `sidebarOpen`, and the `lg:hidden` on the
+aside), so a signed-out dashboard or a put-away sidebar has no column there. A
+deck inset by a column that is not present clips the very view it is covering.
+CSS owns the widths, `syncDeckFrame()` owns whether they apply, and the header's
+height is measured rather than restated, since it is conditional too and a
+hidden header measures zero for free.
 
 ## The branch review: landed / stranded per branch
 
