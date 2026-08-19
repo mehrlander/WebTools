@@ -1,6 +1,7 @@
-// The header's Paste button, which is the phone's whole app-wide intake: iOS
-// Safari raises no paste event unless an editable is focused, so the window
-// listener that serves the desktop is worth nothing there.
+// The launcher menu's paste row, which is the phone's whole app-wide intake:
+// iOS Safari raises no paste event unless an editable is focused, so the window
+// listener that serves the desktop is worth nothing there. It was a header
+// button until 2026-08-19; the call behind it (pasteAnywhere) is unchanged.
 //
 // Drives it from a view that is NOT the Stage, with window.io stubbed, since
 // the sandbox has no clipboard and what is under test is the button's routing
@@ -26,20 +27,19 @@ export default async function (page) {
       ],
     };
 
-    const btn = [...document.querySelectorAll('header button')]
-      .find(b => b.title === 'Paste the clipboard onto the Stage');
-    if (!btn) return { error: 'no paste button in the header' };
-    btn.click();
+    const row = (shell.menu || []).find(m => /paste/i.test(m.label));
+    if (!row) return { error: 'the shell contributes no paste row to the fab menu' };
+    await row.run();
     await new Promise(r => setTimeout(r, 900));
 
     const s = Alpine.store('browser');
     return {
-      buttonFound: true,
+      rowFound: true,
       view: shell.view,
       staged: (s.stage || []).map(it => it.name),
       offers: (s.stageOffers || []).map(o => o.name),
       focusCleared: s.stageFocus === '',
     };
   });
-  console.log('\n--- the header paste button ---\n  ' + JSON.stringify(out) + '\n');
+  console.log('\n--- the launcher menu paste row ---\n  ' + JSON.stringify(out) + '\n');
 }

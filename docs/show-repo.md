@@ -2214,18 +2214,26 @@ two handlers. The stage's own listener was removed when this one arrived
 **The platform floor underneath all of it is that a phone has no paste event at
 all.** iOS Safari fires one only when an editable is focused, so the window
 listener that is the desktop's whole story is worth nothing there and the
-gesture the platform does give is a tap. So there are three triggers behind the
-one call (`pasteAnywhere` → `StageIntake.takeClipboard`), and they are three
-answers to "where would you reach for this", not three implementations:
+gesture the platform does give is a tap. So there are two tap triggers behind
+the one call (`pasteAnywhere` → `StageIntake.takeClipboard`), and they are two
+answers to "where would you reach for this", not two implementations:
 
-* the **header's Paste button**, at every width, beside the hamburger and
-  outside the nav, which scrolls at phone widths;
 * the **launcher's long-press menu**, which the shell fills through the FAB's
   `menu` contract (below), a gesture on a control already floating over every
   view;
 * the **bench's own Paste button**, for when you are already on the Stage.
 
-Each of them must read the clipboard on the tap's **own** user activation,
+**A header button was the third for one day** (shipped and removed 2026-08-19),
+and the fact that it went is the part worth recording. It was the discoverable
+route: visible without knowing a gesture exists, which the long press is not.
+It came out because the header is the app's scarcest row, holding identity, a
+nav that already scrolls at phone widths, and the sidebar toggle, and because
+the long press was confirmed working on a device first. That leaves the phone's
+only intake behind an undiscoverable gesture, which is a real cost knowingly
+taken rather than an oversight; if the menu proves too well hidden the button
+is twenty lines and comes back.
+
+Each trigger must read the clipboard on the tap's **own** user activation,
 which is why `pasteAnywhere` awaits nothing before `takeClipboard`, why
 `takeClipboard` throws rather than lazily fetching `kits/io.js`, and why the
 shell preloads that kit at boot. An `await` before the read spends the gesture,

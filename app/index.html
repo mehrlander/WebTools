@@ -406,25 +406,18 @@
            says there is nothing to show (a signed-out estate), since a control
            that opens an empty panel is worse than no control; the phone keeps
            it, where the sidebar is also the route back out of the view. -->
-      <!-- PASTE, AT THE END OF THE HEADER AND AT EVERY WIDTH. The window
-           listener wireAppPaste installs is the desktop's whole story and is
-           worth nothing on a phone: iOS Safari raises a paste event only when
-           an editable is focused, so there was no app-wide intake there at
-           all, and the only Paste button lived on the Stage, which is the view
-           you were trying to reach. A tap is the gesture the platform does
-           give, so this is the phone's version of the same thing.
-
-           Beside the hamburger rather than in the nav, because the nav scrolls
-           at phone widths and this has to stay reachable; and outside the rail,
-           which is desktop-only and is a list of destinations rather than an
-           action. Kept on desktop too: the same act, and cheaper than
-           explaining that one viewport has a button the other does not. -->
-      <button @click="pasteAnywhere()" :disabled="pasteBusy"
-              class="shrink-0 p-1 rounded-lg transition-colors hover:bg-base-200 disabled:opacity-40"
-              title="Paste the clipboard onto the Stage">
-        <i class="ph text-lg leading-none"
-           :class="pasteBusy ? 'ph-circle-notch animate-spin' : 'ph-clipboard-text'"></i>
-      </button>
+      <!-- NO PASTE BUTTON HERE, and it is worth saying where one stood.
+           2026-08-19 the header carried one, for a real reason: iOS Safari
+           raises a paste event only when an editable is focused, so the window
+           listener wireAppPaste installs is the desktop's whole story and the
+           phone had no app-wide intake at all. A tap was the answer. It is
+           gone because the launcher's long-press menu now carries the same
+           call (the `menu` contract below), confirmed working on a device, and
+           the header is the scarcest row in the app: it holds identity, the
+           nav that already scrolls at phone widths, and the sidebar toggle. A
+           second permanent control for a verb reachable by a gesture is the
+           kind of thing that accretes until nothing on the row is findable.
+           pasteAnywhere() is untouched and still the one implementation. -->
       <button @click="toggleSidebar()"
               class="shrink-0 p-1 rounded-lg transition-colors"
               :class="[sidebarOpen ? 'text-primary bg-primary/10' : 'hover:bg-base-200',
@@ -1731,11 +1724,14 @@ function app(){ return {
   // to ride the gesture that asked for it, which is why pasteAnywhere awaits
   // nothing before takeClipboard).
   //
-  // The header's Paste button stays. It is the DISCOVERABLE route, visible
-  // without knowing a gesture exists, and it is what was measured working on a
-  // phone; this is the second way to the same call, not a replacement for it.
-  // One implementation (pasteAnywhere) behind now three triggers, counting the
-  // bench's own button.
+  // IT IS ALSO THE PHONE'S ONLY INTAKE, since the header button that shipped
+  // beside it on 2026-08-19 came straight back out (see the header markup for
+  // where it stood). That is a real trade: a long press is not discoverable,
+  // and nothing on screen says the menu exists. It was taken because the
+  // header is the app's scarcest row and the gesture was confirmed working on
+  // a device; if the menu turns out to be too well hidden, the button is
+  // twenty lines and it comes back. One implementation (pasteAnywhere) behind
+  // two triggers now, counting the bench's own button.
   //
   // A long press is not a static condition, so the row is offered
   // unconditionally rather than hidden when the clipboard looks empty: nothing
@@ -4737,11 +4733,18 @@ function app(){ return {
   // and all of them mean "show me what is staged", which is this pill.
   goStage(){ this.estateSeen = true; this.view = 'stage'; this.syncUrl(); },
 
-  // THE HEADER'S PASTE, which is the phone's whole intake. Same destination as
-  // the window listener above: stage it, and if we are not already there, route
-  // to the Stage and open the one thing that arrived. The read and the fold are
+  // THE TAP-DRIVEN PASTE, which is the phone's whole intake: iOS Safari raises
+  // no paste event without a focused editable, so the window listener above is
+  // the desktop's story alone. Reached from the launcher's long-press menu (the
+  // `menu` contract above) and nowhere else in the chrome. Same destination as
+  // the listener: stage it, and if we are not already there, route to the Stage
+  // and open the one thing that arrived. The read and the fold are
   // StageIntake.takeClipboard's, shared with the bench's own Paste button, so
   // there is one implementation behind two triggers.
+  //
+  // pasteBusy survives the button it was written for: it guarded a :disabled
+  // binding, and it still guards a second menu tap landing on a read in
+  // flight, which would otherwise stage the clipboard twice.
   //
   // Nothing is awaited before takeClipboard: see the preload in init() for why.
   pasteBusy: false,
