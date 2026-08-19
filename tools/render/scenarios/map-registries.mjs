@@ -20,7 +20,8 @@ export default async function (page) {
   const props = await page.evaluate(() => fetch('../../docs/registries.csv').then(r => r.text()));
   const decls = await page.evaluate(() => fetch('../../docs/properties.csv').then(r => r.text()));
   const vocab = await page.evaluate(() => fetch('../../docs/vocabularies.csv').then(r => r.text()));
-  const ok = await page.evaluate(([propsText, declsText, vocabText]) => {
+  const text = await page.evaluate(() => fetch('../../docs/text-fields.csv').then(r => r.text()));
+  const ok = await page.evaluate(([propsText, declsText, vocabText, textText]) => {
     if (!window.Alpine || !window.__shell || !window.GH) return 'no shell';
 
     const origGet = window.GH.prototype.get;
@@ -28,6 +29,7 @@ export default async function (page) {
       if (name === 'docs/registries.csv') return { text: propsText };
       if (name === 'docs/properties.csv') return { text: declsText };
       if (name === 'docs/vocabularies.csv') return { text: vocabText };
+      if (name === 'docs/text-fields.csv') return { text: textText };
       if (name === '.claude/settings.json' || name === 'CLAUDE.md' || name === '.web-tools.json'
           || name === 'docs/portable.csv' || name === 'state/configs.json' || name === 'state/activity.json'
           || name === 'lists/todo.json' || name === 'lists/jots.json')
@@ -37,7 +39,7 @@ export default async function (page) {
 
     window.__shell.goMap();
     return true;
-  }, [props, decls, vocab]);
+  }, [props, decls, vocab, text]);
   if (ok !== true) throw new Error('map-registries scenario: ' + ok);
 
   const host = () => [...document.querySelectorAll('[x-data]')]

@@ -58,6 +58,7 @@ const propsRegCsv = readFileSync(path.join(repoRoot, 'docs', 'registries.csv'), 
 const propsDeclCsv = readFileSync(path.join(repoRoot, 'docs', 'properties.csv'), 'utf8');
 const propsVocabCsv = readFileSync(path.join(repoRoot, 'docs', 'vocabularies.csv'), 'utf8');
 const skillsCsv = readFileSync(path.join(repoRoot, 'skills', 'manifest.csv'), 'utf8');
+const textFieldsCsv = readFileSync(path.join(repoRoot, 'docs', 'text-fields.csv'), 'utf8');
 const testsCsv = readFileSync(path.join(repoRoot, 'docs', 'tests.csv'), 'utf8');
 // The private registry's sessions cache, trimmed to the rollup the Docs tab
 // reads. Paths are repo-qualified there and hub-relative in the registry, which
@@ -88,6 +89,7 @@ window.GH = class {
     if (p === 'docs/properties.csv') return { text: propsDeclCsv };
     if (p === 'docs/vocabularies.csv') return { text: propsVocabCsv };
     if (p === 'skills/manifest.csv') return { text: skillsCsv };
+    if (p === 'docs/text-fields.csv') return { text: textFieldsCsv };
     if (p === 'docs/tests.csv') return { text: testsCsv };
     if (p === 'state/sessions.json') return { text: JSON.stringify(sessions) };
     return { text: toCsv(manifest.items) };
@@ -469,6 +471,42 @@ test('Registries groups declarations under the registry that governs them', asyn
 // value loses its gloss, the tab silently shows a bare token and the document
 // that used to explain it is gone: the failure mode of moving prose into data
 // is that nothing notices when the data stops saying as much as the prose did.
+// A property's gloss moved out of a title attribute and onto the card on
+// 2026-08-19. The assertion is that every declaration reaches the markup with
+// its definition attached, since the failure being fixed was a definition that
+// was committed, joined, and reachable only by hovering one chip at a time.
+test('every property on a card carries its own definition', async () => {
+  await data.loadPropsReg();
+  for (const r of data.registryRows) {
+    assert.ok(r.decls.length, r.id + ': a registry declares at least one property');
+    for (const d of r.decls)
+      assert.ok(d.gloss, r.id + '.' + d.property + ': reaches the card with its gloss');
+  }
+});
+
+// The text-field vocabulary joined onto a property name, so a column says which
+// KIND of prose it holds. The assertion that matters is the one about aliases:
+// text-vocabulary-conformance.test.mjs gates only the unclaimed class and
+// passes an alias on purpose, so eighteen names here resolve through
+// `instead_of` and every one of them conforms. A tab that rendered those as
+// warnings would invent eighteen defects the gate deliberately does not raise.
+test('a property name resolves to its prose kind, aliases included', async () => {
+  await data.loadPropsReg();
+  const kinds = data.propsReg.kinds;
+
+  // Sanctioned names resolve to themselves.
+  assert.equal(kinds.get('gloss')?.kind, 'gloss');
+  // An alias resolves to the kind it is an alias OF, and conforms.
+  assert.equal(kinds.get('description')?.kind, 'gloss');
+  assert.equal(kinds.get('summary')?.kind, 'gloss');
+
+  const all = data.registryRows.flatMap(r => r.decls);
+  const resolved = all.filter(d => d.textKind);
+  assert.ok(resolved.length > 20, 'the join reaches a real share of the columns');
+  assert.ok(resolved.length < all.length,
+    'not every column is prose-bearing, so a blank kind is the normal state');
+});
+
 test('the Registries legend defines the tab\'s own columns from the pair', async () => {
   await data.loadPropsReg();
   const legend = data.registryLegend;
