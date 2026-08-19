@@ -167,7 +167,7 @@ const renderVersion = (store, b, latestDate) => {
                 </div>
                 <div class="flex-1 min-w-0">
                     <div class="flex flex-wrap gap-1 mb-2">
-                        ${labels.map(l => `<span class="text-xs px-1.5 py-0.5 bg-primary/15 text-primary font-semibold border border-primary/30 rounded">${l}</span>`).join('')}
+                        ${labels.map(l => `<span class="text-xs px-1.5 py-0.5 bg-primary/10 text-primary font-semibold border border-primary/30 rounded">${l}</span>`).join('')}
                         ${adjacent.map(l => `<span class="text-xs px-1.5 py-0.5 bg-amber-100/70 text-amber-800/80 font-medium border border-amber-300 rounded">${l}</span>`).join('')}
                     </div>
                     ${hist.length ? `
@@ -224,7 +224,7 @@ const renderClusters = (store, clusters) => {
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">
                             <span class="font-medium text-lg">${primary.ShortDescription || primary.LongDescription || '—'}</span>
-                            ${allLabels.map(l => `<span class="text-xs px-1.5 py-0.5 bg-primary/15 text-primary font-semibold border border-primary/30 rounded">${l}</span>`).join('')}
+                            ${allLabels.map(l => `<span class="text-xs px-1.5 py-0.5 bg-primary/10 text-primary font-semibold border border-primary/30 rounded">${l}</span>`).join('')}
                             ${allAdjacent.map(l => `<span class="text-xs px-1.5 py-0.5 bg-amber-100/70 text-amber-800/80 font-medium border border-amber-300 rounded">${l}</span>`).join('')}
                         </div>
                     </div>

@@ -204,7 +204,7 @@
      overlays for one gesture is one too many, and the specific one is better. -->
 <div x-show="_appDrag > 0 && view !== 'stage'" x-cloak
      class="pointer-events-none fixed inset-0 z-[70] p-3 bg-base-300/60">
-  <div class="w-full h-full rounded-2xl border-2 border-dashed border-primary bg-primary/5
+  <div class="w-full h-full rounded-2xl border-2 border-dashed border-primary bg-primary/10
               flex items-center justify-center">
     <div class="flex items-center gap-3 rounded-xl bg-base-100 shadow-xl px-6 py-4
                 text-primary text-lg font-medium">
@@ -347,7 +347,7 @@
           <a :href="it.url || null" :target="it.url ? '_blank' : null" :rel="it.url ? 'noopener' : null"
              @click="it.repo && (openPinned(it.repo), $event.preventDefault())"
              :title="it.title + (it.note ? ' — ' + it.note : '')"
-             class="shrink-0 p-1.5 rounded-lg text-base-content/45 hover:text-primary hover:bg-base-200 transition-colors">
+             class="shrink-0 p-1.5 rounded-lg text-base-content/40 hover:text-primary hover:bg-base-200 transition-colors">
             <i class="ph text-lg leading-none" :class="it.icon"></i>
           </a>
         </template>
@@ -584,7 +584,7 @@
                under ?overlay=; the tooltip names the branch and which repos
                carry it, and each overlaid row below gets a matching glyph. -->
           <span x-show="overlayBranch" x-cloak :title="overlayTip"
-                class="flex items-center gap-1 min-w-0 px-1.5 py-0.5 rounded bg-warning/15 text-warning text-sm font-mono">
+                class="flex items-center gap-1 min-w-0 px-1.5 py-0.5 rounded bg-warning/10 text-warning text-sm font-mono">
             <i class="ph ph-git-branch text-sm leading-none shrink-0"></i>
             <span class="truncate" x-text="overlayShort"></span>
           </span>
@@ -716,7 +716,7 @@
                      is now load-bearing rather than tidy. They were written at
                      /25, meaning to sit a shade below the repo's, and rendered
                      DARKER instead: this page's Tailwind browser build emits no
-                     rule for text-base-content/25, so the glyphs fell through to
+                     rule for text-base-content/20, so the glyphs fell through to
                      base-content at full strength while the repo's /30 above
                      them was honoured. Same family as the caret in
                      crumb-bar.js, where a utility that never appears in the
@@ -811,9 +811,9 @@
                  which is the other half of why the rail renders twice. -->
             <template x-for="(d, di) in it.doors" :key="d.url">
               <span class="flex items-baseline text-sm shrink-0">
-                <span x-show="di > 0" class="text-base-content/25 mr-1">·</span>
+                <span x-show="di > 0" class="text-base-content/20 mr-1">·</span>
                 <a :href="d.url" target="_blank" rel="noopener"
-                   class="text-base-content/45 hover:text-primary transition-colors" x-text="d.label"></a>
+                   class="text-base-content/40 hover:text-primary transition-colors" x-text="d.label"></a>
               </span>
             </template>
           </div>

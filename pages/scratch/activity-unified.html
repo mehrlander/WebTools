@@ -108,13 +108,13 @@
       <div class="flex flex-col gap-2">
         <template x-for="n in visibleSessions" :key="n.key">
           <div class="rounded-lg border-l-4 pl-3 pr-3 py-2 bg-base-100"
-               :class="n.fail ? 'border-warning bg-warning/5' : (n.kind==='stub' ? 'border-base-200' : 'border-base-300')">
+               :class="n.fail ? 'border-warning bg-warning/10' : (n.kind==='stub' ? 'border-base-200' : 'border-base-300')">
 
             <div class="flex items-center gap-2 min-w-0">
               <span class="font-mono text-sm text-base-content/50 shrink-0 tabular-nums" x-text="n.day"></span>
               <a :href="n.url" target="_blank" rel="noopener"
                  class="font-mono text-sm font-semibold shrink-0 hover:text-primary transition-colors"
-                 :class="n.kind==='stub' && 'text-base-content/45 font-normal'" x-text="n.id"></a>
+                 :class="n.kind==='stub' && 'text-base-content/40 font-normal'" x-text="n.id"></a>
               <span x-show="n.kind==='stub'" class="badge badge-xs badge-ghost shrink-0"
                     title="Named by a branch's Claude-Session commit trailer; no record in the sessions store">no record</span>
               <div class="grow"></div>
@@ -123,7 +123,7 @@
 
             <p x-show="n.ask" class="text-sm text-base-content/70 mt-0.5 line-clamp-2" x-text="n.ask"></p>
 
-            <div x-show="n.kind==='record'" class="flex items-center gap-x-4 gap-y-1 flex-wrap mt-1.5 text-sm text-base-content/55">
+            <div x-show="n.kind==='record'" class="flex items-center gap-x-4 gap-y-1 flex-wrap mt-1.5 text-sm text-base-content/50">
               <span class="flex items-center gap-1 font-mono tabular-nums" :title="n.ex + ' user turns'">
                 <i class="ph ph-chats-circle text-base opacity-60"></i><span x-text="n.ex"></span></span>
               <span class="flex items-center gap-1 font-mono tabular-nums" :title="n.calls + ' tool calls'">
@@ -160,7 +160,7 @@
               </template>
             </div>
 
-            <p x-show="!n.children.length" class="text-sm text-base-content/35 mt-1.5 italic">
+            <p x-show="!n.children.length" class="text-sm text-base-content/30 mt-1.5 italic">
               no branch in the survey window
             </p>
           </div>
@@ -204,7 +204,7 @@
                     :class="b.pr && b.pr.state === 'open' ? (b.pr.draft ? 'text-base-content/50' : 'text-success') : 'text-secondary'"
                     x-text="b.pr ? '#' + b.pr.n : ''"></span>
               <div class="grow"></div>
-              <span class="font-mono text-sm text-base-content/45 shrink-0 tabular-nums" x-text="b.date"></span>
+              <span class="font-mono text-sm text-base-content/40 shrink-0 tabular-nums" x-text="b.date"></span>
             </div>
             <p x-show="b.subject" class="text-sm text-base-content/60 truncate mt-0.5" x-text="b.subject"></p>
             <div class="mt-1.5 pl-2 border-l border-base-300/70 flex flex-col gap-1">
@@ -213,12 +213,12 @@
                   <i class="ph ph-user-focus text-base-content/40"></i>
                   <a :href="s.url" target="_blank" rel="noopener"
                      class="font-mono shrink-0 hover:text-primary transition-colors"
-                     :class="s.kind==='stub' && 'text-base-content/45'" x-text="s.id"></a>
-                  <span class="truncate min-w-0 text-base-content/55"
+                     :class="s.kind==='stub' && 'text-base-content/40'" x-text="s.id"></a>
+                  <span class="truncate min-w-0 text-base-content/50"
                         x-text="s.ask || (s.kind==='stub' ? 'no record in the store' : '')"></span>
                 </div>
               </template>
-              <div x-show="!b.owners.length" class="text-sm text-base-content/35 italic">no session names this branch</div>
+              <div x-show="!b.owners.length" class="text-sm text-base-content/30 italic">no session names this branch</div>
             </div>
           </div>
         </template>
