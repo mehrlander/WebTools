@@ -12,7 +12,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeShell } from './show-repo-shell.mjs';
+import { makeShell, page } from './show-repo-shell.mjs';
 
 // A shell with its window listeners captured by type, plus a StageIntake stand-in
 // recording what it was asked to do. The intake's real behavior is stage.test.mjs's
@@ -169,4 +169,105 @@ test('a drop anywhere else stages, routes, and opens the one file', async () => 
   assert.ok(calls.some(c => c.kind === 'takeDrop'));
   assert.equal(shell.view, 'stage');
   assert.ok(calls.some(c => c.kind === 'focus'));
+});
+
+// ---- the header's Paste button, which is the phone's whole intake ----
+//
+// wireAppPaste's window listener is worth nothing on iOS (Safari raises no
+// paste event without a focused editable), so this button is the only route
+// there, and its REPORTING is the part worth pinning: what it says when it
+// takes nothing has to distinguish "there was nothing to take" from "the read
+// failed", because the first is the ordinary case and the second is a bug.
+
+function withClipboard(result, { view = 'map' } = {}) {
+  const { shell, toasts, win } = makeShell({ browserStore: { repo: '' }, win: { addEventListener: () => {} } });
+  const focused = [];
+  win.StageIntake = {
+    takeClipboard: async () => {
+      if (result instanceof Error) throw result;
+      return { added: result, offers: [] };
+    },
+    focus: (it) => focused.push(it),
+  };
+  shell.view = view;
+  shell.syncUrl = () => {};
+  return { shell, toasts, focused };
+}
+
+test('an empty clipboard is reported as information, not as an error', async () => {
+  const { shell, toasts } = withClipboard([]);
+  await shell.pasteAnywhere();
+  assert.equal(toasts.length, 1);
+  assert.notEqual(toasts[0].cls, 'alert-error',
+    'tapping Paste before copying anything is the ordinary case, and red reads as a broken button');
+  assert.equal(toasts[0].cls, 'alert-info');
+  assert.equal(shell.view, 'map', 'and taking nothing is not a navigation');
+});
+
+test('the empty message says what happened, not why', async () => {
+  const { toasts, shell } = withClipboard([]);
+  await shell.pasteAnywhere();
+  assert.match(toasts[0].msg, /clipboard/i);
+  // io.pasteItems() returns an empty list both for an empty clipboard and for a
+  // read the platform refused without throwing, and from here the two are
+  // indistinguishable. So the wording must not claim the clipboard was empty.
+  assert.doesNotMatch(toasts[0].msg, /is empty/i);
+});
+
+test('a read that throws is still an error, and keeps the red', async () => {
+  const { shell, toasts } = withClipboard(new Error('the clipboard kit is not loaded yet'));
+  await shell.pasteAnywhere();
+  assert.equal(toasts[0].cls, 'alert-error',
+    'a failure that a fix could remove is exactly what the error colour is for');
+  assert.match(toasts[0].msg, /not loaded/);
+});
+
+test('a paste that lands routes to the Stage and opens the one item', async () => {
+  const { shell, focused } = withClipboard([{ name: 'one.csv' }]);
+  await shell.pasteAnywhere();
+  assert.equal(shell.view, 'stage');
+  assert.equal(focused.length, 1);
+});
+
+test('a second tap while the first is still reading is dropped', async () => {
+  const { shell } = withClipboard([{ name: 'one.csv' }]);
+  const a = shell.pasteAnywhere();
+  const b = shell.pasteAnywhere();
+  await Promise.all([a, b]);
+  assert.equal(shell.view, 'stage');
+});
+
+// ---- the FAB long-press menu contract ----
+//
+// The app fills the launcher's menu with the same paste. Held here rather than
+// in fab-menu.test.mjs because that file tests the fab's READ of the contract
+// and this tests the shell's DECLARATION of it: the two fail separately.
+
+test('the shell contributes one menu row, and it is the paste', () => {
+  const { shell } = makeShell({ browserStore: { repo: '' } });
+  const rows = shell.menu;
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].label, 'Paste onto the Stage');
+  assert.equal(typeof rows[0].run, 'function');
+});
+
+test('the menu row carries no prose, because a held-finger menu has no room for it', () => {
+  const { shell } = makeShell({ browserStore: { repo: '' } });
+  for (const r of shell.menu) {
+    assert.equal(r.desc, undefined, 'a row explains itself in its label or not at all');
+  }
+});
+
+test('the row runs the same call as the header button', async () => {
+  const { shell, toasts } = withClipboard([{ name: 'one.csv' }]);
+  await shell.menu[0].run();
+  assert.equal(shell.view, 'stage', 'one implementation, three triggers');
+  assert.equal(toasts.length, 0, 'a paste that lands and routes says so by arriving');
+});
+
+test('the header button survives the menu row: both routes stay', () => {
+  assert.match(page, /pasteAnywhere\(\)/,
+    'the visible header control is the discoverable route; the menu row is the second one');
+  const header = page.match(/<button @click="pasteAnywhere\(\)"/);
+  assert.ok(header, 'the header button is still in the markup');
 });

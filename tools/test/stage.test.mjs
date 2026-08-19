@@ -2087,3 +2087,49 @@ test('resolveAsk refuses a decline with no reason, and leaves the row standing',
   delete data.srcGh;
   delete window.__shell;
 });
+
+// ── The bench's Paste button, and what it says when it takes nothing ────────
+//
+// One question only: an empty clipboard must not be reported in the error
+// colour. Tapping Paste before copying anything is the ordinary outcome, and
+// red there reads as "this button is broken" rather than "there was nothing to
+// take" (reported from a phone, 2026-08-19).
+//
+// The read is the real one: io.pasteItems is stubbed, and everything from
+// takeClipboard down runs as it ships. That matters because pasteItems returns
+// an empty list for BOTH a genuinely empty clipboard and a read the platform
+// refused without throwing, which is why the message says what happened rather
+// than guessing why.
+
+const toastLog = [];
+window.Alpine.store('toast', (icon, msg, cls = 'alert-info', ms = 3000) =>
+  toastLog.push({ icon, msg, cls, ms }));
+
+test('paste: an empty clipboard is information, not an error', async () => {
+  toastLog.length = 0;
+  window.io = { pasteItems: async () => [] };
+  await data.pasteIn();
+  assert.equal(toastLog.length, 1);
+  assert.equal(toastLog[0].cls, 'alert-info');
+  assert.doesNotMatch(toastLog[0].msg, /is empty/i,
+    'the read cannot tell an empty clipboard from a refused one, so it must not claim either');
+});
+
+test('paste: a read that throws keeps the error colour', async () => {
+  toastLog.length = 0;
+  window.io = null;   // takeClipboard throws rather than lazily fetching the kit
+  await data.pasteIn();
+  assert.equal(toastLog.length, 1);
+  assert.equal(toastLog[0].cls, 'alert-error',
+    'a failure a fix could remove is what the error colour is for');
+});
+
+test('paste: something arriving is staged and reported as a success', async () => {
+  toastLog.length = 0;
+  store.stage = [];
+  const CSV = 'code,jul\nAA,186927\nBA,9448';
+  window.io = { pasteItems: async () => [{ kind: 'text', type: 'text/plain', text: CSV, size: CSV.length }] };
+  await data.pasteIn();
+  assert.equal(store.stage.length, 1);
+  assert.match(toastLog[0].msg, /^Staged /);
+});

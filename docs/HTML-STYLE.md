@@ -15,6 +15,8 @@ relitigating it per page
 
 **No explanatory prose.** GitHub doesn't explain and neither should we. Use structure, labels, and controls to show relationships. A range control starting at 2015 says the data starts in 2015. Explanatory prose is unfinished work: unused ideas, loitering.
 
+**A tooltip worth having is worth building.** A native `title` never reaches a phone and nothing in it can be opened, so do the work of a real panel: styled, tappable, carrying the list or the link the fact needs.
+
 **Don't narrow text to a reading column.** The pattern is `max-w-*` plus `mx-auto`, usually
 `max-w-2xl` through `max-w-4xl`, or `max-w-prose` at 65ch; `container mx-auto` is the same
 move. What you'll usually find is that the text does not belong on the page at all: see
