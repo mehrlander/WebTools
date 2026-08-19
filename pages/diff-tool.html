@@ -30,6 +30,12 @@
   await gh.load('kits/url-params.js');
   await gh.load('kits/repo-address.js');
   await gh.load('kits/text-diff.js');
+  // The clipboard, with its legacy fallback. pasteInto used navigator.clipboard
+  // bare, which is fine where it exists and is nothing where it does not; the
+  // kit adds the hidden-textarea path an insecure context and an older Safari
+  // still need, and carries the fix for the iOS case where execCommand('paste')
+  // returns false and pastes anyway (web-tools #448).
+  await gh.load('kits/io.js');
   // The grab row's component. Caught, because an uncaught gh.load rejection
   // aborts this module and Alpine then never starts: a missing file browser
   // would take the whole page with it. Flag it instead and let the row say so.
@@ -192,7 +198,28 @@
     /* The diff body has its own control (fontStep); this moves its floor, and
        a reader who sets a size still wins, since applySize writes the variable. */
     .dbody { font-size: var(--dsz, 15px); }
-    .dhead { font-size: 12px; }
+    /* The file header holds two filenames and is the thing most likely to be
+       truncated on a phone, so it stops shouting: uppercasing destroys the
+       camelCase that carries meaning in a name like fetchUser.js, and the
+       tracking spends width on a line that has none to spare. Desktop keeps the
+       label treatment, where the names fit and the row reads as chrome. */
+    .dhead { font-size: 12px; text-transform: none; letter-spacing: 0; }
+
+    /* TOUCH TARGETS. daisyUI's -xs button is 1.5rem, which is a 24px target: a
+       fingertip covers it and most of its neighbours. 2rem is the compromise
+       rather than the 44px the platform guidelines ask for, because the app bar
+       is 2.75rem and the control bar holds a dozen of these in a row, so a 44px
+       button would either burst the bar or push the diff body off a phone. It
+       is stated on the CLASS rather than on each button so the next icon added
+       to this page inherits it instead of being a 24px exception nobody spots.
+       The loader row's .lctl is taller still and wins, which is correct: those
+       sit beside 16px text fields. */
+    .btn-xs { height: 2rem; min-height: 2rem; }
+    .btn-xs.btn-square { width: 2rem; }
+    /* The glyph grows with its button. Left alone it stays at the -xs font
+       size and reads as a small mark floating in a large target, which is the
+       tell that a control was scaled rather than designed. */
+    .btn-xs .ph { font-size: 1.05rem; }
   }
 </style>
 </head>
@@ -418,6 +445,19 @@
           <input x-model="slots[id].name" :placeholder="id === 'A' ? 'original' : 'modified'"
                  class="input input-xs input-ghost grow min-w-0 font-mono text-[11px]">
           <span class="text-[11px] opacity-55 font-mono shrink-0 whitespace-nowrap" x-text="lineCount(id)"></span>
+          <!-- PASTE, ON THE SLOT RATHER THAN INSIDE THE SOURCE PICKER. It was
+               only ever reachable by first choosing "Paste" in the select
+               below, which meant that on a phone, where pasting is the whole
+               way most content arrives, the page appeared to have no paste
+               button at all (reported 2026-08-19). It is an intake action ON
+               the slot, the same class of thing as clearing it, so it belongs
+               beside the clear button where it cannot move; pasteInto writes
+               the content directly and does not care which source is selected.
+               The select keeps its Paste option, which is the mode where the
+               textarea below is the input. -->
+          <button class="btn btn-ghost btn-xs btn-square shrink-0" @click="pasteInto(id)"
+                  title="Paste the clipboard into this side">
+            <i class="ph ph-clipboard-text"></i></button>
           <button class="btn btn-ghost btn-xs btn-square shrink-0" @click="resetSlot(id)" title="Clear this side">
             <i class="ph ph-x"></i></button>
         </div>
@@ -939,9 +979,16 @@ function diffApp() {
       inp.click();
     },
 
+    // Nothing is awaited before the read: a clipboard read has to ride the
+    // user activation of the tap that asked for it, and an await here spends
+    // it, after which the failure looks like a clipboard problem rather than a
+    // sequencing one. So the kit is loaded at boot and merely reached for here.
     async pasteInto(id) {
       try {
-        this.slots[id].content = await navigator.clipboard.readText();
+        const text = window.io?.paste ? await window.io.paste()
+                                      : await navigator.clipboard.readText();
+        if (text == null) throw new Error('nothing came back');
+        this.slots[id].content = text;
         this.slots[id].error = '';
         this.onEdit();
       } catch {
