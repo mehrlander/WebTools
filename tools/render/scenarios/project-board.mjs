@@ -2,7 +2,7 @@
 // tracker board rendered in-pane, its relative task links resolved into the
 // shell's viewer (onBoardClick) rather than dangling off the pane's URL.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/project-board.mjs \
 //     --out tools/.preview/project-board.png
 //

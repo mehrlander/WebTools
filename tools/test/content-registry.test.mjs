@@ -13,6 +13,9 @@ import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
 const w = {};
+// kits/csv.js first: the registry delegates its line splitter to it, the same
+// order every runtime caller uses.
+new Function('window', readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8'))(w);
 new Function('window', readFileSync(path.join(repoRoot, 'lib/kits/content-registry.js'), 'utf8'))(w);
 const CR = w.ContentRegistry;
 

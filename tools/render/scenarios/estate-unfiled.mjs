@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the Repos view's Unfiled section, the
 // account repos that are NOT on the estate.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/estate-unfiled.mjs --out tools/.preview/estate-unfiled.png
 //
 // The sandbox blocks api.github.com and the real registry is private, so the

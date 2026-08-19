@@ -2,7 +2,7 @@
 // into summary / why / caution. Desktop shots hid the problem this exists to
 // fix: at 1280px a paragraph looks like a paragraph, at 390px it is a wall.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/proposals-phone-demo.mjs --width 390 --height 844
+//   npm run shot -- app/index.html --script tools/render/scenarios/proposals-phone-demo.mjs --width 390 --height 844
 export default async (page) => {
   await page.evaluate(() => {
     const REG = 'mehrlander/web-tools-private';

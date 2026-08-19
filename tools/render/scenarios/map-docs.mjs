@@ -1,25 +1,25 @@
 // screenshot.mjs interaction scenario: the Map view's Docs tab, the
-// documentation registry (docs/docs.json) rendered live.
+// documentation registry (docs/docs.csv) rendered live.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/map-docs.mjs \
 //     --out tools/.preview/map-docs.png --full
 //
 // Same stub shape as map-showing.mjs: the sandbox blocks api.github.com, so
-// the scenario serves the REAL committed docs/docs.json through GH.get, with
+// the scenario serves the REAL committed docs/docs.csv through GH.get, with
 // no token, proving the tab renders for a tokenless reader. What the pixels
-// prove: the documents census grouped by folder with status badges, and the
+// prove: the documents registry grouped by folder with status badges, and the
 // shared-claims cards where an unchecked copy renders in the warning tone.
 export default async function (page) {
-  const reg = await page.evaluate(() => fetch('../../docs/docs.json').then(r => r.text()));
+  const reg = await page.evaluate(() => fetch('../../docs/docs.csv').then(r => r.text()));
   const ok = await page.evaluate((regText) => {
     if (!window.Alpine || !window.__shell || !window.GH) return 'no shell';
 
     const origGet = window.GH.prototype.get;
     window.GH.prototype.get = async function (name) {
-      if (name === 'docs/docs.json') return { text: regText };
+      if (name === 'docs/docs.csv') return { text: regText };
       if (name === '.claude/settings.json' || name === 'CLAUDE.md' || name === '.web-tools.json'
-          || name === 'docs/portable.json' || name === 'state/configs.json' || name === 'state/activity.json'
+          || name === 'docs/portable.csv' || name === 'state/configs.json' || name === 'state/activity.json'
           || name === 'lists/todo.json' || name === 'lists/jots.json')
         throw Object.assign(new Error('404'), { status: 404 });
       return origGet.call(this, name);

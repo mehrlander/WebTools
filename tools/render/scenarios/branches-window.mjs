@@ -1,6 +1,6 @@
 // The Branches window pill: the reader's time slice over the Recent scope.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/branches-window.mjs
+//   npm run shot -- app/index.html --script tools/render/scenarios/branches-window.mjs
 //
 // WINDOW=1|3|7|14 picks the slice (default 3). The fixture seeds branch rows at
 // known ages so the count beside the pill is checkable rather than incidental.

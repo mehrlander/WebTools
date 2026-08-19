@@ -1,6 +1,6 @@
 // The file card: one of a branch row's two file pairs, opened.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/branch-file-card.mjs \
 //     --out tools/.preview/file-card.png
 //
@@ -61,14 +61,14 @@ export default async function (page, ctx) {
         mk('lib/alpineComponents/estate.js', 'modified', 148, 41),
         mk('lib/kits/branch-survey.js', 'modified', 74, 12),
         mk('docs/show-repo.md', 'modified', 43, 13),
-        mk('pages/show-repo/show-repo.html', 'modified', 9, 4),
+        mk('app/index.html', 'modified', 9, 4),
         mk('tools/test/estate-open-branches.test.mjs', 'modified', 38, 6),
-        mk('docs/docs.json', 'modified', 2, 2),
+        mk('docs/docs.csv', 'modified', 2, 2),
         // Past what the crawl stored, deliberately: a live read is newer than
         // the cache, so the card opens over a row it disagrees with. That gap
         // is the case this scenario exists to show being closed.
-        mk('docs/harness.json', 'modified', 3, 1),
-        mk('docs/tests.json', 'modified', 4, 1),
+        mk('docs/harness.csv', 'modified', 3, 1),
+        mk('docs/tests.csv', 'modified', 4, 1),
         mk('tools/render/scenarios/branch-file-card.mjs', 'added', 66, 0),
         mk('lib/kits/legacy-shape.js', 'removed', 0, 130),
       ],

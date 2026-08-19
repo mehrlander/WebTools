@@ -229,9 +229,9 @@ test('a lead that opens with chrome is skipped, not shown as the title', () => {
   // titles those cards with a URL.
   const rec = { ...REC, replies: [{ at: at(5),
     text: 'Working branch: [claude/some-branch](https://github.com/o/r/tree/b)\n\n'
-        + 'The registry now names every page, which is what the census was missing.' }] };
+        + 'The registry now names every page, which is what the registry was missing.' }] };
   const t = outline(rec).find(c => c.role === 'assistant');
-  assert.equal(t.title, 'The registry now names every page, which is what the census was missing.');
+  assert.equal(t.title, 'The registry now names every page, which is what the registry was missing.');
   assert.equal(t.source, 'lead-sentence');
 });
 

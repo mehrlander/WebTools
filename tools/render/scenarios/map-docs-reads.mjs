@@ -1,20 +1,20 @@
 // screenshot.mjs interaction scenario: the Map view's Docs tab WITH the
 // readership column, the half map-docs.mjs cannot show.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/map-docs-reads.mjs \
 //     --out tools/.preview/map-docs-reads.png --full
 //
 // Two scenarios rather than one, because they prove opposite things and a
 // single shot would prove neither cleanly. map-docs.mjs holds a tokenless
-// reader and shows the census rendering without the column; this one holds a
+// reader and shows the registry rendering without the column; this one holds a
 // token and shows the column. The real counts live in a private registry the
 // sandbox cannot reach, so the cache here is synthetic, chosen to put both
 // empty states on screen beside a populated row: a doc nobody opened reads a
 // dash, and an injected doc says "injected" rather than the zero no file tool
 // can avoid giving it.
 export default async function (page) {
-  const reg = await page.evaluate(() => fetch('../../docs/docs.json').then(r => r.text()));
+  const reg = await page.evaluate(() => fetch('../../docs/docs.csv').then(r => r.text()));
   const ok = await page.evaluate((regText) => {
     if (!window.Alpine || !window.__shell || !window.GH) return 'no shell';
 
@@ -35,10 +35,10 @@ export default async function (page) {
 
     const origGet = window.GH.prototype.get;
     window.GH.prototype.get = async function (name) {
-      if (name === 'docs/docs.json') return { text: regText };
+      if (name === 'docs/docs.csv') return { text: regText };
       if (name === 'state/sessions.json') return { text: JSON.stringify(cache) };
       if (name === '.claude/settings.json' || name === 'CLAUDE.md' || name === '.web-tools.json'
-          || name === 'docs/portable.json' || name === 'state/configs.json' || name === 'state/activity.json'
+          || name === 'docs/portable.csv' || name === 'state/configs.json' || name === 'state/activity.json'
           || name === 'lists/todo.json' || name === 'lists/jots.json')
         throw Object.assign(new Error('404'), { status: 404 });
       return origGet.call(this, name);

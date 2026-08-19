@@ -35,7 +35,7 @@ vendored shelves and generated payloads whose prose is nobody's to move. Pass
 the prefixes you maintain.
 
 Usage:
-    python3 text-census.py [ROOT] [prefix ...] [options]
+    python3 text-survey.py [ROOT] [prefix ...] [options]
 
     --blocks         list every comment block, largest first
     --tables         list every text table
@@ -231,7 +231,7 @@ def is_generated(src):
 
 
 # The repo's own content registry, where it has one, is the authority on what a
-# file is. Reading it here means the census reports against the declaration
+# file is. Reading it here means the survey reports against the declaration
 # rather than beside it, and a file the registry gets wrong shows up as a misfit
 # instead of being silently averaged in.
 
@@ -693,7 +693,7 @@ def main(argv):
     tb = sum(r["bytes"] for r in rows)
     cw = sum(r["comment_words"] for r in rows)
     cb = sum(r["comment_bytes"] for r in rows)
-    print("Text census over %d files (%s)\n" % (len(rows), ", ".join(prefixes) or "whole repo"))
+    print("Text survey over %d files (%s)\n" % (len(rows), ", ".join(prefixes) or "whole repo"))
     print("  commentary  %s words in %s blocks, %s of %s bytes (%d%%)" % (
         f"{cw:,}", f"{sum(r['blocks'] for r in rows):,}", f"{cb:,}", f"{tb:,}",
         (cb / tb * 100) if tb else 0))

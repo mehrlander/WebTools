@@ -14,7 +14,7 @@ The repo has two tiers of pages:
   then an inline `<script>` with the page's Alpine components (or, as
   `transform.html` does, one plain `<script src>` pulling a self-contained
   component file from `lib/`). They don't use the loader at all.
-- **Loader-based pages** (`show-repo/show-repo.html`,
+- **Loader-based pages** (`app/index.html`,
   `show-repo/demo-viewer.html`, `scratch/demo-spacex.html`,
   `lib/kits/demos/{persistence,messaging,io}.html`) —
   use `gh-api.js` (whose bootstrap chains `gh-boot.js` and its auto-loads;
@@ -285,7 +285,7 @@ anything we add:
    exist, and only then does Alpine walk the DOM and call `init()` on each
    `x-data` component. By that point `Alpine.store('browser')` is defined.
 4. **`x-init="init()"` on the body still races the module script.** That's
-   why `show-repo/show-repo.html`'s `app.init()` opens with
+   why `app/index.html`'s `app.init()` opens with
    `while(!window.GH) await new Promise(r => setTimeout(r, 50));`.
    Alpine can reach `init()` before the module script's final
    `gh.load(...)` resolves, because the two tasks (module script vs.
@@ -433,7 +433,7 @@ Cost: adds one line per page; fine for a handful of additions.
 Best for: things every loader-based page wants (retry/backoff for rate
 limits, a batch loader, a tiny pub-sub, a token-picker UI helper, a
 `persist(key, data)` helper that saves to the user's home repo the way
-`show-repo/show-repo.html` currently does).
+`app/index.html` currently does).
 
 Rules:
 - `gh-api.js` is the ESM root (default export `class GH`); `gh-fetch.js`

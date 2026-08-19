@@ -1,7 +1,7 @@
 // The content verdict in the branch view's Files pane: the three counts as a
 // filter strip, and the missing mark on the rows it applies to.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/branch-verdict.mjs \
 //     --out tools/.preview/branch-verdict.png --width 430 --height 932
 //

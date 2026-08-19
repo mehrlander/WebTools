@@ -8,7 +8,7 @@
 // markup wiring for both sidebar lists, the estate's nested one and the repo's
 // own.
 //
-// The shell's app() lives inline in show-repo.html, so the test evaluates the
+// The shell's app() lives inline in app/index.html, so the test evaluates the
 // plain <script> block against stubs via the shared show-repo-shell.mjs
 // harness (see its header for the tactic and its provenance).
 
@@ -234,13 +234,13 @@ test('the Board pill exists for a file board only, and renders the board keyed p
   shell.goProject('projects/a', 'board');
   assert.equal(shell.projectBoardFile, 'projects/a/tracker/board.md');
   await new Promise(r => setTimeout(r));
-  // The typed projection is tried first (docs/TRACKER.md, board.json). This
-  // stub answers every path with the same markdown, so the JSON parse fails
-  // and the loader falls through to the markdown board, which is exactly the
-  // path a tracker that has not regenerated yet takes. Both fetches are the
-  // correct trace for that case; the projection's own path is covered in
-  // show-repo-board-review.test.mjs.
-  assert.deepEqual(gets, ['projects/a/tracker/board.json', 'projects/a/tracker/board.md']);
+  // The typed projection is tried first (docs/TRACKER.md, board.csv). This
+  // stub answers every path with the same markdown, which reads as a CSV with a
+  // header and no rows, so the loader falls through to the markdown board:
+  // exactly the path a tracker that has not regenerated yet takes. Both fetches
+  // are the correct trace for that case; the projection's own path is covered
+  // in show-repo-board-review.test.mjs.
+  assert.deepEqual(gets, ['projects/a/tracker/board.csv', 'projects/a/tracker/board.md']);
   assert.equal(shell.projectBoardTasks, null, 'nothing parsed as a projection');
   assert.equal(shell.projectBoardLoading, false);
   // marked is unloadable under the harness, so the render falls back to the
@@ -391,13 +391,13 @@ test('a landing takes the Overview slot, rendered through toss-render at the bro
   shell.loadProjectReadme = async () => reads.push('readme');
   shell.loadProjectDocs = async () => reads.push('docs');
   shell.goProject('projects/a');
-  assert.equal(shell.projectLandingUrl, '../toss-render.html#gh=mehrlander/home:projects/a/app.html');
+  assert.equal(shell.projectLandingUrl, '../pages/toss-render.html#gh=mehrlander/home:projects/a/app.html');
   assert.deepEqual(reads, [], 'a landing Overview must not fetch the README it will not render');
   // Off the default branch the landing follows the browsed ref, like
   // projectGithubUrl: inside a repo the honest list is the one on the ref you
   // are standing on, and its landing is too.
   browserStore.ref = 'claude/b';
-  assert.equal(shell.projectLandingUrl, '../toss-render.html#gh=mehrlander/home@claude/b:projects/a/app.html');
+  assert.equal(shell.projectLandingUrl, '../pages/toss-render.html#gh=mehrlander/home@claude/b:projects/a/app.html');
   // The pills load only what they render: Docs fetches its listing, Pages
   // fetches nothing (a pure derivation off the manifest already in hand).
   shell.goProjectTab('docs');
@@ -445,14 +445,14 @@ test('projectPages is the workspace slice of the repo catalog, derived not decla
   // workspace's page and an unclaimed cross-repo page stay out.
   assert.deepEqual(items.map(i => i.label), ['Budget DRS', 'Claimed']);
   assert.equal(items[0].live,
-    '../toss-render.html#gh=mehrlander/home:projects/budget-drs/app/view/app.html');
+    '../pages/toss-render.html#gh=mehrlander/home:projects/budget-drs/app/view/app.html');
   assert.equal(items[0].code,
     'https://github.com/mehrlander/home/blob/main/projects/budget-drs/app/view/app.html');
   // Browsing off the default branch, the tiles follow the ref like the rest of
   // the project view.
   browserStore.ref = 'claude/branch';
   assert.equal(shell.projectPages[0].live,
-    '../toss-render.html#gh=mehrlander/home@claude/branch:projects/budget-drs/app/view/app.html');
+    '../pages/toss-render.html#gh=mehrlander/home@claude/branch:projects/budget-drs/app/view/app.html');
 });
 
 test('groupProjectDocs: root leads, folders alphabetical, READMEs lead their folder', () => {

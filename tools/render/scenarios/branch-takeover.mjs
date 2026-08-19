@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: show-repo's branch-detail takeover with
 // the embedded branch page fully rendered, guide and all.
 //
-//   DETAIL=1 node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   DETAIL=1 node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/branch-takeover.mjs \
 //     --out tools/.preview/branch-takeover.png --width 390 --height 844 --full
 //

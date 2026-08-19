@@ -131,7 +131,6 @@ the link-dense text twin of the visual index above.
 |---|---|---|
 | `demo-viewer` | Assembled Viewer Demo | [view](https://mehrlander.github.io/web-tools/pages/show-repo/demo-viewer.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/show-repo/demo-viewer.html) |
 | `repo-drag` | Repo drag explorer | [view](https://mehrlander.github.io/web-tools/pages/show-repo/repo-drag.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/show-repo/repo-drag.html) |
-| `show-repo` | Web Tools | [view](https://mehrlander.github.io/web-tools/pages/show-repo/show-repo.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/show-repo/show-repo.html) |
 
 ## pages/stories/
 

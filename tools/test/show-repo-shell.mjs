@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
-export const page = readFileSync(path.join(repoRoot, 'pages/show-repo/show-repo.html'), 'utf8');
+export const page = readFileSync(path.join(repoRoot, 'app/index.html'), 'utf8');
 
 // The one plain <script> block (the module boot loads lib and is not wanted
 // here). Anchored on the token seed so a reshuffle fails loudly.
@@ -35,9 +35,13 @@ export function makeShell({ browserStore, search = '', win = {} } = {}) {
   const toasts = [];
   const alpine = { store: (name) => (name === 'browser' ? store
     : name === 'toast' ? ((icon, msg, cls) => toasts.push({ icon, msg, cls })) : {}) };
-  const loc = { search, href: 'https://localhost/', pathname: '/pages/show-repo/show-repo.html', hash: '' };
+  const loc = { search, href: 'https://localhost/', pathname: '/app/index.html', hash: '' };
   const hist = { pushState: () => {}, replaceState: () => {} };
   const exports = {};
+  // kits/csv.js rides in the pre-build's boot list, so the real shell always
+  // has window.Csv by the time any method runs; the harness installs it for the
+  // same reason, and the board pane's typed read depends on it.
+  new Function('window', readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8'))(win);
   new Function('window', 'document', 'Alpine', 'location', 'history', '__exports',
     shellScript(page) + '\n;__exports.app = app;__exports.gallery = gallery;')(
     win, doc, alpine, loc, hist, exports);

@@ -42,7 +42,7 @@ const Alpine = await startAlpine(window, [
 ]);
 const doc = window.document;
 
-async function mountFab(attrs = 'data-repo="mehrlander/web-tools" data-path="pages/show-repo/show-repo.html"') {
+async function mountFab(attrs = 'data-repo="mehrlander/web-tools" data-path="app/index.html"') {
   const host = doc.createElement('div');
   host.innerHTML = `<div x-data="fab()" ${attrs}></div>`;
   doc.body.appendChild(host);
@@ -61,10 +61,10 @@ test('openTarget re-aims what can be rendered and leaves everything else alone',
   d.defaultBranch = 'main';
   d.pageBranches = [{ name: 'claude/thing' }, { name: 'claude/a-b-c' }];
 
-  const page = d.openTarget(blob('claude/thing', 'pages/show-repo/show-repo.html'));
+  const page = d.openTarget(blob('claude/thing', 'app/index.html'));
   assert.equal(page.kind, 'render');
-  assert.equal(page.url, RENDERER + '#gh=mehrlander/web-tools@claude/thing:pages/show-repo/show-repo.html');
-  assert.equal(page.label, 'show-repo.html');
+  assert.equal(page.url, RENDERER + '#gh=mehrlander/web-tools@claude/thing:app/index.html');
+  assert.equal(page.label, 'index.html');
 
   const md = d.openTarget(blob('claude/thing', 'docs/show-repo.md'));
   assert.equal(md.kind, 'read');
@@ -104,11 +104,11 @@ test('the guide renders the PR body, re-aims its links, and lifts the renderable
       number: 333, draft: true, title: 'A thing',
       body: [
         'Lead sentence.',
-        '- [new](' + blob('claude/thing', 'pages/show-repo/show-repo.html') + ')',
+        '- [new](' + blob('claude/thing', 'app/index.html') + ')',
         '- [doc](' + blob('claude/thing', 'docs/show-repo.md') + ')',
         // A guide names each file at BOTH refs by convention ([new] and [main]),
         // which is what made the strip list every file twice.
-        '- [main](' + blob('main', 'pages/show-repo/show-repo.html') + ')',
+        '- [main](' + blob('main', 'app/index.html') + ')',
         '- [source](' + blob('claude/thing', 'lib/fab.js') + ')',
       ].join('\n'),
     },
@@ -123,18 +123,18 @@ test('the guide renders the PR body, re-aims its links, and lifts the renderable
   // handed to a new tab.
   const doc2 = new window.DOMParser().parseFromString(d.prBodyHtml, 'text/html');
   const hrefs = [...doc2.querySelectorAll('a')].map(a => a.getAttribute('href'));
-  assert.equal(hrefs[0], RENDERER + '#gh=mehrlander/web-tools@claude/thing:pages/show-repo/show-repo.html');
+  assert.equal(hrefs[0], RENDERER + '#gh=mehrlander/web-tools@claude/thing:app/index.html');
   assert.equal(hrefs[1], RENDERER + '#data=mehrlander/web-tools@claude/thing:docs/show-repo.md');
-  assert.equal(hrefs[2], RENDERER + '#gh=mehrlander/web-tools@main:pages/show-repo/show-repo.html',
+  assert.equal(hrefs[2], RENDERER + '#gh=mehrlander/web-tools@main:app/index.html',
     'the prose re-aims both refs, since the sentence around each says which is which');
   assert.equal(hrefs[3], blob('claude/thing', 'lib/fab.js'), 'a source link is left as source');
   const links = [...doc2.querySelectorAll('a')];
   assert.deepEqual(links.map(a => a.getAttribute('target')), [null, null, null, '_blank'],
     'renderable links stay in place; the one that resolves nowhere opens away');
   assert.deepEqual(links.slice(0, 3).map(a => a.getAttribute('data-render-addr')), [
-    'mehrlander/web-tools@claude/thing:pages/show-repo/show-repo.html',
+    'mehrlander/web-tools@claude/thing:app/index.html',
     'mehrlander/web-tools@claude/thing:docs/show-repo.md',
-    'mehrlander/web-tools@main:pages/show-repo/show-repo.html',
+    'mehrlander/web-tools@main:app/index.html',
   ], 'each stamped with the address the delegated handler looks up');
 
   // A tap on one of them renders in place rather than following the href. The
@@ -150,7 +150,7 @@ test('the guide renders the PR body, re-aims its links, and lifts the renderable
   // The strip is deduped BY FILE, not by URL: one row per file, at the ref on
   // display. Spread first, since the component builds its arrays in the jsdom
   // realm and a bare deepEqual would compare two Array prototypes.
-  assert.deepEqual([...d.prTargets].map(t => t.label), ['show-repo.html', 'show-repo.md']);
+  assert.deepEqual([...d.prTargets].map(t => t.label), ['index.html', 'show-repo.md']);
   assert.equal(d.prTargets[0].ref, 'claude/thing', 'the ref on display wins the slot');
 
   // Rendering is keyed to the PR, so a second call is not a second parse.
@@ -237,9 +237,9 @@ test('the github mark is a menu over the ref on display, with the file rows firs
   const file = rows.find(r => r.key === 'file');
   // Segment-wise encoding: a slashed branch has to survive as path segments.
   assert.equal(file.url,
-    'https://github.com/mehrlander/web-tools/blob/claude/thing/pages/show-repo/show-repo.html');
+    'https://github.com/mehrlander/web-tools/blob/claude/thing/app/index.html');
   assert.equal(rows.find(r => r.key === 'fileCommits').url,
-    'https://github.com/mehrlander/web-tools/commits/claude/thing/pages/show-repo/show-repo.html');
+    'https://github.com/mehrlander/web-tools/commits/claude/thing/app/index.html');
 
   // With it, the repo rows come from the one list show-repo's sidebar uses.
   window.GithubLinks = {

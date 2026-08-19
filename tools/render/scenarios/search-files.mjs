@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the Files view walked down into a
 // folder, with a file from it open in the shared viewer beside the listing.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/search-files.mjs \
 //     --out tools/.preview/search-files.png --full
 //

@@ -473,7 +473,7 @@ def render_crosswalk(cw: dict, results: list[dict]) -> str:
 
 
 def render(results: list[dict]) -> str:
-    out = ["# Entity lab census", ""]
+    out = ["# Entity lab survey", ""]
     out.append("Per repo: the entity tables it already declares, the entity")
     out.append("references its prose makes, and the share of those references a")
     out.append("declared table can name. Heuristic throughout; evidence, not a verdict.")

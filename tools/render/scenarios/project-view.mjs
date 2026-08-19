@@ -2,7 +2,7 @@
 // sidebar's Projects section with one of them selected, and the pane rendering
 // that workspace's README.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/project-view.mjs \
 //     --out tools/.preview/project-view.png
 //

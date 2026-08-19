@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the Map view's Showing tab (named
 // Transport until 2026-08-04), how content moves, renders, and gets looked at.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/map-showing.mjs \
 //     --out tools/.preview/map-showing.png --full
 //
@@ -13,15 +13,21 @@
 // used-by chips, the delivery modes with a trust icon per row, and the toss
 // routes resolving each key to its renderer page.
 export default async function (page) {
-  const routes = await page.evaluate(() => fetch('../../docs/routes.json').then(r => r.text()));
+  // Four carriers, since the tab assembles one object from them; serving only
+  // routes.json would leave the three tables empty and the shot would prove
+  // the frame rather than the rows.
+  const FILES = ['docs/routes.json', 'docs/routes-modes.csv',
+                 'docs/routes-routes.csv', 'docs/showing-mechanisms.csv'];
+  const routes = Object.fromEntries(await Promise.all(FILES.map(async f =>
+    [f, await page.evaluate(p => fetch('../../' + p).then(r => r.text()), f)])));
   const ok = await page.evaluate((routesText) => {
     if (!window.Alpine || !window.__shell || !window.GH) return 'no shell';
 
     const origGet = window.GH.prototype.get;
     window.GH.prototype.get = async function (name) {
-      if (name === 'docs/routes.json') return { text: routesText };
+      if (routesText[name]) return { text: routesText[name] };
       if (name === '.claude/settings.json' || name === 'CLAUDE.md' || name === '.web-tools.json'
-          || name === 'docs/portable.json' || name === 'state/configs.json' || name === 'state/activity.json'
+          || name === 'docs/portable.csv' || name === 'state/configs.json' || name === 'state/activity.json'
           || name === 'lists/todo.json' || name === 'lists/jots.json')
         throw Object.assign(new Error('404'), { status: 404 });
       return origGet.call(this, name);

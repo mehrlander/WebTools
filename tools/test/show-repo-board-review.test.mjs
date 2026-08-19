@@ -2,7 +2,7 @@
 //
 // The pane used to fetch board.md and hand it to marked, so the app's
 // understanding of a tracker was a string: it could display the list and answer
-// nothing about it. It now reads board.json (docs/TRACKER.md, the typed
+// nothing about it. It now reads board.csv (docs/TRACKER.md, the typed
 // projection) and derives the review signals from it.
 //
 // Two things are worth pinning and neither is cosmetic. The FALLBACK, because
@@ -11,7 +11,7 @@
 // edge cases ("no log" is not "old") are the whole reason a review surface is
 // more than a renderer.
 //
-// The shell's app() lives inline in show-repo.html, so this drives it through
+// The shell's app() lives inline in app/index.html, so this drives it through
 // the shared show-repo-shell.mjs harness.
 
 import test from 'node:test';
@@ -26,11 +26,20 @@ const T = (over = {}) => ({
   href: 'tasks/a-000001.md', lastActivity: '2026-08-01', logEntries: 2, ...over,
 });
 
+// The projection as the generator writes it: a fixed header, every row filled.
+const COLS = ['title', 'status', 'size', 'session', 'awaiting', 'blockedBy',
+              'file', 'href', 'lastActivity', 'logEntries'];
+const csvOf = (...tasks) => [COLS.join(','),
+  ...tasks.map(t => COLS.map(c => {
+    const s = String(t[c] ?? '');
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }).join(','))].join('\n') + '\n';
+
 // `project` is derived from projectPath, so a test opens a workspace rather
 // than assigning the object; the derived board is <path>/tracker/board.md.
 const WS = 'projects/budget-drs';
 const BOARD = WS + '/tracker/board.md';
-const BOARD_JSON = WS + '/tracker/board.json';
+const BOARD_CSV = WS + '/tracker/board.csv';
 
 // Drive loadProjectBoard with a stubbed gh whose get() answers per path.
 function boardShell(files) {
@@ -47,7 +56,7 @@ test('the projection is preferred, and the markdown is never fetched for it', as
   const asked = [];
   const gh = { get: async (p) => {
     asked.push(p);
-    if (p === BOARD_JSON) return { text: JSON.stringify({ tasks: [T()] }) };
+    if (p === BOARD_CSV) return { text: csvOf(T()) };
     throw new Error('404');
   } };
   const { shell } = makeShell({ browserStore: { repo: 'o/r', ref: 'main', gh } });
@@ -55,7 +64,7 @@ test('the projection is preferred, and the markdown is never fetched for it', as
   await shell.loadProjectBoard();
   assert.equal(shell.projectBoardTasks.length, 1);
   assert.equal(shell.projectBoardHtml, '', 'the markdown path did not run');
-  assert.deepEqual(asked, [BOARD_JSON], 'one fetch, not two');
+  assert.deepEqual(asked, [BOARD_CSV], 'one fetch, not two');
 });
 
 // The fallback is load-bearing: it is what lets the pane ship before every
@@ -68,9 +77,12 @@ test('a ref with no projection still renders its markdown board', async () => {
   assert.match(shell.projectBoardHtml, /Board/);
 });
 
-test('malformed json falls back rather than blanking the pane', async () => {
+// A CSV parser accepts almost any bytes, so "unparseable" is not the failure
+// mode here; a header with no rows under it is. Accepting it would paint an
+// empty board over a tracker that has one.
+test('a header with no rows is not treated as a projection', async () => {
   const shell = boardShell({
-    [BOARD_JSON]: '{ not json',
+    [BOARD_CSV]: COLS.join(',') + '\n',
     [BOARD]: '# Board\n',
   });
   await shell.loadProjectBoard();
@@ -78,24 +90,20 @@ test('malformed json falls back rather than blanking the pane', async () => {
   assert.match(shell.projectBoardHtml, /Board/);
 });
 
-// A well-formed document of the wrong shape is not a projection. Accepting it
-// would paint an empty board over a tracker that has one.
-test('json without a tasks array is not treated as a projection', async () => {
-  const shell = boardShell({
-    [BOARD_JSON]: JSON.stringify({ notTasks: [] }),
-    [BOARD]: '# Board\n',
-  });
+// logEntries is the one numeric column and a CSV hands back strings, so the
+// read coerces it; the age line does arithmetic on the count beside it.
+test('logEntries arrives as a number, not the string the CSV carried', async () => {
+  const shell = boardShell({ [BOARD_CSV]: csvOf(T({ logEntries: 5 })) });
   await shell.loadProjectBoard();
-  assert.equal(shell.projectBoardTasks, null);
-  assert.match(shell.projectBoardHtml, /Board/);
+  assert.strictEqual(shell.projectBoardTasks[0].logEntries, 5);
 });
 
-test('the projection path is the board file with a json suffix', () => {
+test('the projection path is the board file with a csv suffix', () => {
   const { shell } = makeShell();
   shell.projectPath = WS;
-  assert.equal(shell.projectBoardJsonFile, BOARD_JSON);
+  assert.equal(shell.projectBoardCsvFile, BOARD_CSV);
   shell.projectPath = '';
-  assert.equal(shell.projectBoardJsonFile, '', 'no workspace, no projection path');
+  assert.equal(shell.projectBoardCsvFile, '', 'no workspace, no projection path');
 });
 
 test('groups follow the board sections in order, empty ones dropped', () => {

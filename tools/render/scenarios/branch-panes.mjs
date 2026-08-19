@@ -1,6 +1,6 @@
 // Two panes on a branch, and what the third one used to carry.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/branch-panes.mjs \
 //     --out tools/.preview/branch-panes.png --width 430 --height 932
 //

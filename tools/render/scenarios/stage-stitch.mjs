@@ -3,7 +3,7 @@
 // the cell that takes one back. Same swap as the annotator's card, same kit
 // verb (kits/dictate.js stitch()).
 //
-//   npm run shot -- pages/show-repo/show-repo.html --query view=stage \
+//   npm run shot -- app/index.html --query view=stage \
 //     --script tools/render/scenarios/stage-stitch.mjs
 //
 // STATE=gap       the caret in the gap, stitch key showing   (the default)

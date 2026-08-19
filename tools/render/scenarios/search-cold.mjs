@@ -2,7 +2,7 @@
 // nav's Search tapped with nothing seeded, which is what anyone opening the
 // central file surface for the first time gets.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/search-cold.mjs \
 //     --out tools/.preview/search-cold.png --full
 //
@@ -25,7 +25,7 @@ export default async function (page) {
       'docs/envelopes/surface.md', 'docs/environment/capabilities.md',
       'lib/gh-api.js', 'lib/gh-boot.js', 'lib/kits/estate-search.js',
       'lib/alpineComponents/search-view.js', 'lib/alpineComponents/ref-picker.js',
-      'pages/show-repo/show-repo.html', 'pages/toss-render.html',
+      'app/index.html', 'pages/toss-render.html',
       'tools/build/build-lib.mjs', 'tools/test/search-view.test.mjs',
     ];
     // The real level and names calls, over a stubbed tree: the walk is the

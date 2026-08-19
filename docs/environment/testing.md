@@ -114,6 +114,18 @@ npm run shot -- pages/repo-atlas.html --query "repo=mehrlander/web-tools"
   URL until it merges. For branch HTML on a live origin, use toss-render's
   `#gh=` address mode or the FAB's Render tab.
 
+### Measuring horizontal overflow, not looking for it
+
+A viewport screenshot crops whatever sits past the frame, so horizontal overflow
+is invisible to the exact check most likely to be run. At phone width, compare
+`documentElement.scrollWidth` against `clientWidth`. When listing offending
+elements, skip any inside a horizontally scrollable ancestor, or every carousel
+slide reports as a fault.
+
+This is what catches the two failures `docs/HTML-STYLE.md` prescribes against:
+a scroll track without `min-w-0` claiming one viewport per slide, and a form
+control that stops short of its column.
+
 ### Measuring the rendered ink (2026-08-10)
 
 A screenshot answers "does it look right" only if you can see it, and precise
@@ -216,6 +228,19 @@ Component-test lessons that generalize:
   render (`npm run shot`) caught the blank panel. Pair `x-collapse` with an
   `x-show`, or, when you only need presence toggling and not the height
   animation, mount with a plain `x-if` and no `x-collapse`.
+- **Stub a carrier with its bytes, never with an object.** A test that hands a
+  reader `JSON.stringify(fixture)` supplies the shape the reader already
+  expects, so it cannot notice when the real file stops having that shape. Four
+  readers broke this way in one session (2026-08-18) when eleven registries
+  went from JSON to CSV: the FAB's Match lane, the page gallery, the Tools
+  view, and the harness registry's strip all kept parsing JSON against a CSV file,
+  and all four of their tests stayed green because each stub was still handing
+  over JSON. Read the fixture the way the reader will: give it CSV text, or a
+  string built by the same writer the generator uses, and let the reader's own
+  parse run. The cousin failure is `stub-hides-the-wiring` in
+  [SNAGS.md](../SNAGS.md), where stubbing the product of a lazy load hides the
+  load; the family is a stub that supplies exactly what the thing under test
+  exists to obtain.
 - **Reactive values fail `deepStrictEqual`.** `Alpine.$data(el)` and anything
   read through it are `@vue/reactivity` proxies; a strict structural compare
   rejects the proxy prototype ("same structure but not reference-equal"). Strip

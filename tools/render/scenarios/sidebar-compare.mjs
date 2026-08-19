@@ -1,6 +1,6 @@
 // The sidebar owns the second ref, and the file surface does what it is told.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/sidebar-compare.mjs \
 //     --out tools/.preview/sidebar-compare.png --width 430 --height 932
 //

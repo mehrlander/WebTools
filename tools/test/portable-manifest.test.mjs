@@ -1,4 +1,4 @@
-// docs/portable.json — the machine-readable index of the portable set, whose
+// docs/portable.csv — the machine-readable index of the portable set, whose
 // prose parent is docs/PORTABLE.md. This test is the consistency check that
 // lets the two coexist without drifting: every manifest path must exist in the
 // repo and be named somewhere in PORTABLE.md, and every path linked from
@@ -10,8 +10,9 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
+import { parseCsv } from '../build/registries-load.mjs';
 
-const manifest = JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'portable.json'), 'utf8'));
+const manifest = { items: parseCsv(readFileSync(path.join(repoRoot, 'docs', 'portable.csv'), 'utf8')) };
 const portableMd = readFileSync(path.join(repoRoot, 'docs', 'PORTABLE.md'), 'utf8');
 
 // First-cell code-span paths from the Docs and Scripts tables:  | [`path`](…) | … |
@@ -23,25 +24,33 @@ function tablePaths(md, heading) {
 
 const tableSet = new Set([...tablePaths(portableMd, '### Docs'), ...tablePaths(portableMd, '### Scripts')]);
 const manifestPaths = new Set(manifest.items.map(i => i.path));
-// The harness census owns the description of anything it carries.
+// The harness registry owns the description of anything it carries.
 const harnessPaths = new Set(
-  JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'harness.json'), 'utf8')).tools.map(t => t.path));
+  parseCsv(readFileSync(path.join(repoRoot, 'docs', 'harness.csv'), 'utf8')).map(t => t.path));
 
-test('manifest shape: hub, plugin block, and non-empty typed items', () => {
-  assert.equal(manifest.hub, 'mehrlander/web-tools');
-  assert.ok(Array.isArray(manifest.plugin.plugins) && manifest.plugin.plugins.includes('portable'));
+// The catalog used to carry `hub` and a `plugin` block, and this test asserted
+// them. Both were copies: .claude-plugin/marketplace.json is the file the
+// platform actually reads, and it names the owner and every plugin. A CSV holds
+// rows and not config, so the split forced the question and the answer was the
+// one the owners table already gives, read the original.
+const marketplace = JSON.parse(
+  readFileSync(path.join(repoRoot, '.claude-plugin', 'marketplace.json'), 'utf8'));
+
+test('the set is typed and non-empty, and the plugins match the marketplace', () => {
+  assert.equal(`${marketplace.owner.name}/${marketplace.name}`, 'mehrlander/web-tools');
+  assert.ok(marketplace.plugins.map(p => p.name).includes('portable'));
   assert.ok(manifest.items.length > 10);
   for (const it of manifest.items) {
     assert.ok(['skill', 'doc', 'dir', 'script'].includes(it.kind), it.path + ': kind');
     assert.ok(it.path && it.title, it.path + ': path/title');
-    // `role` is required only where no census already describes the file. The
-    // set is a crosswalk: on the nine scripts docs/harness.json describes, a
+    // `role` is required only where no registry already describes the file. The
+    // set inherits from `harness`: on the nine scripts docs/harness.csv describes, a
     // role here would be a second copy of one claim, which is what the
     // ownership gate in properties-registry.test.mjs now forbids. The Map view
-    // joins the census value for display, so the row is not left blank to a
-    // reader. See docs/registries.md, "the crosswalk shape".
+    // joins the registry value for display, so the row is not left blank to a
+    // reader. See docs/registries.md, "the inheritance shape".
     assert.ok(it.role || harnessPaths.has(it.path),
-      it.path + ': needs a role, since no census carries a description for it');
+      it.path + ': needs a role, since no registry carries a description for it');
   }
 });
 
@@ -65,7 +74,7 @@ test("every PORTABLE.md Docs/Scripts table row is in the manifest", () => {
   }
 });
 
-// The census. The plugin's source boundary is ./.claude/skills (see
+// The registry. The plugin's source boundary is ./.claude/skills (see
 // .claude-plugin/marketplace.json), so every skill directory on disk SHIPS,
 // catalogued or not. Four shipped uncatalogued for a while (measured
 // 2026-08-04: disk 15, manifest 9, MARKETPLACE.md 5), because the tests above
