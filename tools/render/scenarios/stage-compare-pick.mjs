@@ -15,6 +15,10 @@
 //
 //   npm run shot -- app/index.html --query "view=stage" \
 //     --script tools/render/scenarios/stage-compare-pick.mjs --wait 4000
+//
+// CMP_VIEW=unified|split|patch picks which view the shot ends on (default
+// split); --out names the file, so three runs give three pictures of one
+// comparison.
 
 const DOCS = [
   ['q3-note-v1.md', `# Q3 Budget Note
@@ -105,13 +109,18 @@ export default async function (page) {
         hunks: (el.textContent.match(/@@ /g) || []).length,
       };
     }
-    // End on split, which is what a desktop shot should carry.
-    data.setCmpView('split');
+    return out;
+  });
+  // Which view the SHOT carries. Three runs give three pictures of one
+  // comparison, which is the only way to see that the views agree.
+  const end = process.env.CMP_VIEW || 'split';
+  await page.evaluate(async (v) => {
+    const data = Alpine.$data(document.querySelector('[x-data*="stager"]'));
+    data.setCmpView(v);
     data.compareOpen = false;
     data._cmpRebuild();
     await new Promise(r => setTimeout(r, 700));
-    return out;
-  });
+  }, end);
   await page.waitForTimeout(400);
 
   console.log('\n--- the compare picker ---');
