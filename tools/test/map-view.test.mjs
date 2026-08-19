@@ -57,6 +57,7 @@ const repsCsv = readFileSync(path.join(repoRoot, 'docs', 'repetitions.csv'), 'ut
 const propsRegCsv = readFileSync(path.join(repoRoot, 'docs', 'registries.csv'), 'utf8');
 const propsDeclCsv = readFileSync(path.join(repoRoot, 'docs', 'properties.csv'), 'utf8');
 const propsVocabCsv = readFileSync(path.join(repoRoot, 'docs', 'vocabularies.csv'), 'utf8');
+const skillsCsv = readFileSync(path.join(repoRoot, 'skills', 'manifest.csv'), 'utf8');
 const testsCsv = readFileSync(path.join(repoRoot, 'docs', 'tests.csv'), 'utf8');
 // The private registry's sessions cache, trimmed to the rollup the Docs tab
 // reads. Paths are repo-qualified there and hub-relative in the registry, which
@@ -86,6 +87,7 @@ window.GH = class {
     if (p === 'docs/registries.csv') return { text: propsRegCsv };
     if (p === 'docs/properties.csv') return { text: propsDeclCsv };
     if (p === 'docs/vocabularies.csv') return { text: propsVocabCsv };
+    if (p === 'skills/manifest.csv') return { text: skillsCsv };
     if (p === 'docs/tests.csv') return { text: testsCsv };
     if (p === 'state/sessions.json') return { text: JSON.stringify(sessions) };
     return { text: toCsv(manifest.items) };
@@ -515,6 +517,42 @@ test('the Map template holds no backtick', () => {
   // from the LAST tab instead, so the literal has to reach its real end.
   assert.ok(literal.includes(`x-show="mapTab==='registries'"`),
     'the template literal reaches its last section, so no stray backtick closed it early');
+});
+
+// The Skills tab, added 2026-08-19 for the one registry whose absence read as
+// coverage: the Portable tab renders the plugin's skills and this renders the
+// on-demand library, and the two sets share no member. The disjointness is the
+// assertion worth holding, because the moment they overlap the tab is a
+// duplicate rather than the only view of a population.
+test('Skills renders the library, which is disjoint from the plugin set', async () => {
+  assert.equal(data.skillsReg, null, 'the library is not fetched until the tab is opened');
+  await data.loadSkillsReg();
+  assert.equal(data.skillsErr, '');
+  assert.ok(data.skillsReg.length > 20, 'the library is the larger set');
+  for (const s of data.skillsReg)
+    assert.ok(s.name && s.description, s.name + ': a row carries its trigger description');
+
+  // The same parser the tab uses, already booted here, rather than a second
+  // one written for the test.
+  const plugin = new Set(window.Csv.rows(readFileSync(path.join(repoRoot, 'docs', 'portable.csv'), 'utf8'))
+    .filter(r => r.kind === 'skill').map(r => r.title));
+  const both = data.skillsReg.map(s => s.name).filter(n => plugin.has(n));
+  assert.equal(both.join(', '), '',
+    'a skill in both sets means this tab duplicates Portable: ' + both.join(', '));
+});
+
+test('the Skills search matches the trigger text, not only the slug', async () => {
+  await data.loadSkillsReg();
+  const all = data.skillRows.length;
+  assert.equal(all, data.skillsReg.length, 'an empty query filters nothing');
+
+  // A word that appears in a description and in no slug: the whole reason the
+  // description is held in the manifest rather than fetched per skill.
+  data.skillQ = 'spreadsheet';
+  const hits = data.skillRows;
+  data.skillQ = '';
+  assert.ok(hits.length > 0 && hits.length < all, 'a body word narrows the list');
+  assert.ok(hits.every(s => (s.name + ' ' + s.description).toLowerCase().includes('spreadsheet')));
 });
 
 test('every field the Registries markup reads exists on a registry row', async () => {
