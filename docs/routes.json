@@ -1,258 +1,77 @@
 {
-  "note": "How content moves, renders, and gets looked at: the address grammar a reference shares across the repo, the delivery modes pages/toss-render.html accepts, the toss routes that map a content type to the page that renders it, and the `showing` block, which answers the question those three do not: given a thing you changed and a person who will open the link, which mechanism reaches it. Read by show-repo's Map view (Showing tab), which is the live version of this file and the reason CLAUDE.md no longer restates any of it. The `routes` block is the owner of toss-render.html's TOSS_ROUTES literal, which stays inlined so the critical render path takes no fetch; tools/test/routes-manifest.test.mjs holds the two in step.",
-  "hub": "mehrlander/web-tools",
-  "renderer": "pages/toss-render.html",
-  "precedence": "Every parameter below is read fragment first, query as fallback: toss-render for its own params, and the renderer pages through lib/kits/url-params.js. Put a payload in the fragment, which never reaches a server and so escapes the roughly 8KB cap the Pages edge enforces with a 414 (PR #165). An address is short, so either form works, and a routed toss delivers ?src= through toss-render's params shim rather than over the wire.",
-  "grammar": {
-    "form": "owner/repo[@ref]:path",
-    "role": "One way to name a file in any repo, at any ref. The ':' before the path is unambiguous because git forbids ':' in ref names; no @ref means the repo's default branch.",
-    "usedBy": [
-      {
-        "where": "#gh= address mode",
-        "path": "pages/toss-render.html"
-      },
-      {
-        "where": "toss routes (the envelope address after #<route>=)",
-        "path": "pages/toss-render.html"
-      },
-      {
-        "where": "stage links (#stage=), groups ';'-separated and paths ','-separated",
-        "path": "docs/show-repo.md"
-      },
-      {
-        "where": "the curated Tools gallery",
-        "path": "docs/tools.json"
-      },
-      {
-        "where": "a repo's pages catalog and stage.files",
-        "path": "docs/show-repo.md"
-      }
-    ]
+ "note": "How content moves, renders, and gets looked at. The three tables live beside this file as CSVs: docs/routes-modes.csv (the delivery modes pages/toss-render.html accepts), docs/routes-routes.csv (the toss routes that map a content type to the page that renders it), and docs/showing-mechanisms.csv (which link reaches which kind of change, and what each one misses). What stays here is what is not a table: the address grammar, the parameter precedence, and the frame the showing block puts around the mechanisms. Split on 2026-08-18, when the last three registries sharing this file became CSVs of their own; nothing here is a registry any more.",
+ "hub": "mehrlander/web-tools",
+ "renderer": "pages/toss-render.html",
+ "precedence": "Every parameter below is read fragment first, query as fallback: toss-render for its own params, and the renderer pages through lib/kits/url-params.js. Put a payload in the fragment, which never reaches a server and so escapes the roughly 8KB cap the Pages edge enforces with a 414 (PR #165). An address is short, so either form works, and a routed toss delivers ?src= through toss-render's params shim rather than over the wire.",
+ "grammar": {
+  "form": "owner/repo[@ref]:path",
+  "role": "One way to name a file in any repo, at any ref. The ':' before the path is unambiguous because git forbids ':' in ref names; no @ref means the repo's default branch.",
+  "usedBy": [
+   {
+    "where": "#gh= address mode",
+    "path": "pages/toss-render.html"
+   },
+   {
+    "where": "toss routes (the envelope address after #<route>=)",
+    "path": "pages/toss-render.html"
+   },
+   {
+    "where": "stage links (#stage=), groups ';'-separated and paths ','-separated",
+    "path": "docs/show-repo.md"
+   },
+   {
+    "where": "the curated Tools gallery",
+    "path": "docs/tools.csv"
+   },
+   {
+    "where": "a repo's pages catalog and stage.files",
+    "path": "docs/show-repo.md"
+   }
+  ]
+ },
+ "showing": {
+  "note": "Getting a subject in front of a viewer. Three independent variables decide the mechanism, and conflating them is what made this hard to state: WHAT the subject is, WHICH version of it, and WHO is opening the link. `preview` is not a topic, it is one value of `version`.",
+  "axes": {
+   "subject": [
+    "a page (renders itself)",
+    "a file (needs a renderer)",
+    "a fileset (needs an envelope)",
+    "data (needs a viewer)",
+    "a repo (needs a browser)"
+   ],
+   "version": [
+    "deployed default branch",
+    "a branch",
+    "a private repo",
+    "carried in the link",
+    "a frozen snapshot"
+   ],
+   "viewer": [
+    "holds a GitHub token",
+    "signed into Claude",
+    "carries nothing"
+   ]
   },
-  "modes": [
+  "picker": {
+   "note": "The mechanism is derivable rather than remembered: it follows from which files a branch changed. show-repo knows a branch's changed files already.",
+   "rules": [
     {
-      "param": "gz",
-      "form": "#gz=<base64url of gzipped HTML>",
-      "carries": "inline",
-      "trust": "untrusted",
-      "sandbox": "opaque origin (no allow-same-origin)",
-      "reach": "any reader",
-      "note": "The page rides in the fragment, so nothing is hosted and nothing reaches a server. Absolute-URL CDN dependencies work; same-repo relative ones do not."
+     "when": "the page file itself changed",
+     "then": "toss-gh"
     },
     {
-      "param": "html",
-      "form": "#html=<base64 of HTML>",
-      "carries": "inline",
-      "trust": "untrusted",
-      "sandbox": "opaque origin (no allow-same-origin)",
-      "reach": "any reader",
-      "note": "The uncompressed sibling of #gz=. Same sandbox, longer URL."
+     "when": "only lib/ or dist/ changed",
+     "then": "use"
     },
     {
-      "param": "url",
-      "form": "#url=<base64 of an absolute URL>",
-      "carries": "inline",
-      "trust": "untrusted",
-      "sandbox": "opaque origin (no allow-same-origin)",
-      "reach": "any reader",
-      "note": "Points the frame at a URL rather than carrying the bytes. A site sending X-Frame-Options or CSP frame-ancestors will refuse to load."
+     "when": "the subject is pages/toss-render.html",
+     "then": "toss-nested"
     },
     {
-      "param": "gh",
-      "form": "#gh=owner/repo[@ref]:path[?query][#frag]",
-      "carries": "reference",
-      "trust": "trusted",
-      "sandbox": "same-origin, owner allowlist (mehrlander)",
-      "reach": "viewer holding the token",
-      "note": "Fetched live through the contents API, so private repos and un-deployed branches render. Same-origin means the frame could read this origin's stored token, which is why the allowlist refuses any other owner outright. The browser-local token means a fresh or in-app browser may 404; fall back to #gz= or a published artifact."
-    },
-    {
-      "param": "<route>",
-      "form": "#<route>=owner/repo[@ref]:path",
-      "carries": "reference",
-      "trust": "trusted",
-      "sandbox": "same-origin, owner allowlist (mehrlander)",
-      "reach": "viewer holding the token",
-      "note": "A typed toss: the key names a renderer from the routes below, the value addresses the content. Resolves onto address mode, so the caller addresses the CONTENT and toss-render stays a schema-blind router that never parses the envelope."
-    },
-    {
-      "param": "src",
-      "form": "?src=owner/repo[@ref]:path",
-      "carries": "reference",
-      "trust": "n/a",
-      "sandbox": "the renderer page's own fetch",
-      "reach": "viewer holding the token",
-      "note": "The renderer side of the split, not a toss-render param. A routed toss resolves into this: toss-render renders the renderer page and the params shim delivers ?src= to the page's own read. Reaching a renderer directly with ?src= works the same; the route is shorthand, not a gate. Renderer pages read it fragment first like everything else, so #src= is accepted too."
+     "when": "the reader has no token",
+     "then": "toss-gz or artifact"
     }
-  ],
-  "routes": [
-    {
-      "key": "chat-results",
-      "repo": "mehrlander/web-tools",
-      "ref": "main",
-      "path": "pages/chat-results.html",
-      "renders": "A chat or trawl results envelope: search hits across conversations, annotated and rendered together.",
-      "doc": "docs/envelopes/chat-results.md",
-      "example": "#chat-results=mehrlander/chat-histories:results/webi-drs-data.json"
-    },
-    {
-      "key": "data",
-      "repo": "mehrlander/web-tools",
-      "ref": "main",
-      "path": "pages/data-view.html",
-      "renders": "Data as something readable rather than a raw blob: a CSV, a JSON array, a log, in a multi-mode viewer (table, tree, preview, code, raw). Bare bytes need no wrapper; an items envelope adds several files with a default view each.",
-      "doc": "docs/envelopes/data-view.md",
-      "example": "#data=mehrlander/home@main:projects/budget-drs/data/rows.csv"
-    },
-    {
-      "key": "pdf",
-      "repo": "mehrlander/web-tools",
-      "ref": "main",
-      "path": "pages/pdf-inspect.html",
-      "renders": "A PDF as a document you can take apart: the page drawn, with text containers, characters, vector rules, detected columns and lattice cells as toggleable layers over it, and the table read two independent ways so agreement is visible. The data route shows a PDF too, as a first look; this one is the workbench.",
-      "doc": "docs/pdf-structure.md",
-      "example": "#pdf=mehrlander/home@main:projects/budget-drs/data/source/2026-06-04-drs-budget-submittals/2025-27/R1/DP-PL-FR-Fraud%20Prevention.pdf"
-    },
-    {
-      "key": "shorter",
-      "repo": "mehrlander/web-tools",
-      "ref": "main",
-      "path": "pages/shorter.html",
-      "renders": "A document to adjudicate a shortening against, word-diffed into accept-by-default edits. Bare text fills the left column and leaves the shorter version to you or the in-browser model; an envelope carrying both sides opens straight into review.",
-      "doc": "docs/envelopes/shorter.md",
-      "example": "#shorter=mehrlander/home@main:created/2026-07-03-favoring-the-mechanical.md"
-    }
-  ],
-  "showing": {
-    "note": "Getting a subject in front of a viewer. Three independent variables decide the mechanism, and conflating them is what made this hard to state: WHAT the subject is, WHICH version of it, and WHO is opening the link. `preview` is not a topic, it is one value of `version`.",
-    "axes": {
-      "subject": [
-        "a page (renders itself)",
-        "a file (needs a renderer)",
-        "a fileset (needs an envelope)",
-        "data (needs a viewer)",
-        "a repo (needs a browser)"
-      ],
-      "version": [
-        "deployed default branch",
-        "a branch",
-        "a private repo",
-        "carried in the link",
-        "a frozen snapshot"
-      ],
-      "viewer": [
-        "holds a GitHub token",
-        "signed into Claude",
-        "carries nothing"
-      ]
-    },
-    "mechanisms": [
-      {
-        "key": "hosted",
-        "glyph": "*",
-        "label": "Canonical URL",
-        "form": "https://<owner>.github.io/<repo>/pages/<page>.html",
-        "subject": "a deployed page",
-        "version": "default branch",
-        "viewer": "anyone",
-        "reaches": "the page as everyone else sees it",
-        "misses": "anything not yet merged",
-        "use": "The thing is already live. Always prefer it."
-      },
-      {
-        "key": "use",
-        "glyph": "*",
-        "label": "?use= lib pin",
-        "form": "pages/<page>.html?use=<ref>",
-        "subject": "a deployed page, its LIB only",
-        "version": "any ref",
-        "viewer": "anyone",
-        "reaches": "anything lib/ or dist/ does, including what it does to the tab itself",
-        "misses": "the page's own inline shell: its markup, and any x-data defined in the file",
-        "use": "The change lives in lib/ or dist/ and the page file itself is unchanged.",
-        "trap": "Pages serves the page FILE from the default branch, so a shell change shows the old shell wrapped around new lib, silently and with nothing reporting the mismatch."
-      },
-      {
-        "key": "toss-gh",
-        "glyph": "disc",
-        "label": "Toss, address mode",
-        "form": "pages/toss-render.html?use=<ref>#gh=owner/repo@<ref>:<path>",
-        "subject": "any file",
-        "version": "any ref, private included",
-        "viewer": "needs a token",
-        "reaches": "the branch's real page file, shell and all",
-        "misses": "anything the shell does to the TOP-LEVEL document: title, favicon, history, navigation",
-        "use": "The change is in a page's own shell. Put ?use= in the QUERY so the renderer around it matches too."
-      },
-      {
-        "key": "toss-nested",
-        "glyph": "disc",
-        "label": "Nested toss",
-        "form": "toss-render.html#gh=<ref>:pages/toss-render.html#gh=<ref>:<path>",
-        "subject": "toss-render itself",
-        "version": "any ref",
-        "viewer": "needs a token",
-        "reaches": "the renderer's own internals: routing, frame mounting, rendering, address parsing",
-        "misses": "the top-level document, same as above; a nested shell is never the tab",
-        "use": "The change IS toss-render. Address the branch's renderer, hand it the page as a trailing fragment."
-      },
-      {
-        "key": "toss-gz",
-        "glyph": "disc",
-        "label": "Toss, carried payload",
-        "form": "pages/toss-render.html#gz=<base64url>",
-        "subject": "a page",
-        "version": "carried in the link",
-        "viewer": "anyone",
-        "reaches": "any reader, no token, nothing hosted",
-        "misses": "same-repo relative dependencies; only absolute-URL CDN deps resolve",
-        "use": "The reader has no token, or you want the bytes pinned into the link itself."
-      },
-      {
-        "key": "artifact",
-        "glyph": "box",
-        "label": "Claude artifact",
-        "form": "a published claude.ai page",
-        "subject": "a self-contained page",
-        "version": "frozen, republishable",
-        "viewer": "Claude sign-in",
-        "reaches": "a reader in the Claude app, where the GitHub token may be absent",
-        "misses": "anything needing the network: artifact CSP blocks every external request",
-        "use": "The link will be opened in the Claude app AND the page can be baked self-contained."
-      },
-      {
-        "key": "none",
-        "glyph": "x",
-        "label": "No link reaches it",
-        "form": "",
-        "subject": "a page shell acting on the top-level document",
-        "version": "a branch",
-        "viewer": "n/a",
-        "reaches": "",
-        "misses": "everything: ?use= keeps the old shell, and a toss is never the top-level document",
-        "use": "Send an inspected headless screenshot and say plainly that no link can show it. The escape is not a better link but moving the code into lib, where ?use= reaches it."
-      }
-    ],
-    "picker": {
-      "note": "The mechanism is derivable rather than remembered: it follows from which files a branch changed. show-repo knows a branch's changed files already.",
-      "rules": [
-        {
-          "when": "the page file itself changed",
-          "then": "toss-gh"
-        },
-        {
-          "when": "only lib/ or dist/ changed",
-          "then": "use"
-        },
-        {
-          "when": "the subject is pages/toss-render.html",
-          "then": "toss-nested"
-        },
-        {
-          "when": "the reader has no token",
-          "then": "toss-gz or artifact"
-        }
-      ]
-    }
+   ]
   }
+ }
 }

@@ -4,7 +4,7 @@
 // token-gated headless, so the pixels show the card frame and metadata rather
 // than the rendered pages; the live composition is the deployed page's job.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/project-pages.mjs \
 //     --out tools/.preview/project-pages.png
 export default async function (page) {

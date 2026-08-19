@@ -23,12 +23,13 @@ import { repoRoot } from './bootstrap.mjs';
 const claude = readFileSync(path.join(repoRoot, 'CLAUDE.md'), 'utf8');
 
 // The structural half. This is the one that is genuinely about the showing
-// material: the 1,589-word section moved out to docs/routes.json on 2026-08-03,
-// and these two pointers are what keep it findable from the file that used to
-// hold it. Permanent, and carries no number.
-test('CLAUDE.md delegates the showing material to its manifest and frame', () => {
-  assert.match(claude, /docs\/routes\.json/,
-    'CLAUDE.md no longer points at the showing manifest (docs/routes.json)');
+// material: the 1,589-word section moved out to docs/routes.json on 2026-08-03
+// and to docs/showing-mechanisms.csv on 2026-08-18, and these two pointers are
+// what keep it findable from the file that used to hold it. Permanent, and
+// carries no number.
+test('CLAUDE.md delegates the showing material to its carrier and frame', () => {
+  assert.match(claude, /docs\/showing-mechanisms\.csv/,
+    'CLAUDE.md no longer points at the showing mechanisms (docs/showing-mechanisms.csv)');
   assert.match(claude, /docs\/showing\.md/,
     'CLAUDE.md no longer points at the showing frame (docs/showing.md)');
 });
@@ -39,7 +40,7 @@ test('CLAUDE.md delegates the showing material to its manifest and frame', () =>
 //
 // The remedy when this fires is extraction, never shaving. Move a section into
 // a doc or into data and link it, the way the showing material went to
-// routes.json and the manifest field list went to docs/manifest.json. Trimming
+// routes.json and the manifest field list went to docs/manifest-fields.csv. Trimming
 // adjectives off unrelated paragraphs buys a few words, teaches the next
 // session that the number is the goal, and leaves the file just as long.
 //

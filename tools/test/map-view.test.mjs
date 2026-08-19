@@ -22,24 +22,41 @@ const { default: Alpine } = await import('alpinejs/dist/module.esm.js');
 captureAlpineErrors(Alpine);
 window.Alpine = Alpine;
 
+// The stub serves CSV for the CSV-backed registries, so it has to emit some.
+const toCsv = (rows) => {
+  const cols = [...new Set(rows.flatMap(r => Object.keys(r)))];
+  const cell = v => /[",\n]/.test(v ?? '') ? '"' + String(v).replace(/"/g, '""') + '"' : (v ?? '');
+  return [cols.join(','), ...rows.map(r => cols.map(c => cell(r[c])).join(','))].join('\n') + '\n';
+};
+
+// A CSV fixture since 2026-08-16, because that is what the tab now parses. The
+// hub and plugin keys went with the format: a CSV holds rows, and both were
+// copies of .claude-plugin/marketplace.json anyway.
 const manifest = {
-  hub: 'mehrlander/web-tools',
   items: [
     { kind: 'skill', command: '/portable:caption', path: '.claude/skills/caption/SKILL.md', title: 'caption', role: 'the caption', use: 'plugin' },
     { kind: 'doc', path: 'docs/CONVENTIONS.md', title: 'Working conventions', role: 'the conventions', use: 'live' },
     { kind: 'script', path: 'scripts/sunset-scan.py', title: 'sunset-scan.py', role: 'sunset markers', use: 'on-demand' },
   ],
 };
-// The Showing and Docs tabs read the real docs/routes.json and docs/docs.json,
+// The Showing and Docs tabs read the real docs/routes.json and docs/docs.csv,
 // so the stub serves by path: the set gets the fixture above, the other two
 // tabs get the committed manifests (routes-manifest.test.mjs and
 // docs-registry.test.mjs are what hold those files to their own shapes).
 const routesJson = readFileSync(path.join(repoRoot, 'docs', 'routes.json'), 'utf8');
-const docsJson = readFileSync(path.join(repoRoot, 'docs', 'docs.json'), 'utf8');
-const surfJson = readFileSync(path.join(repoRoot, 'docs', 'surfacing.json'), 'utf8');
-const ownersJson = readFileSync(path.join(repoRoot, 'docs', 'owners.json'), 'utf8');
-const propsJson = readFileSync(path.join(repoRoot, 'docs', 'properties.json'), 'utf8');
-const testsJson = readFileSync(path.join(repoRoot, 'docs', 'tests.json'), 'utf8');
+// The Showing tab assembles one object from four carriers, so all four are
+// served; a stub that answered only routes.json would leave the tables empty
+// and every row assertion below would pass on nothing.
+const routesModesCsv = readFileSync(path.join(repoRoot, 'docs', 'routes-modes.csv'), 'utf8');
+const routesRoutesCsv = readFileSync(path.join(repoRoot, 'docs', 'routes-routes.csv'), 'utf8');
+const mechanismsCsv = readFileSync(path.join(repoRoot, 'docs', 'showing-mechanisms.csv'), 'utf8');
+const docsCsv = readFileSync(path.join(repoRoot, 'docs', 'docs.csv'), 'utf8');
+const surfCsv = readFileSync(path.join(repoRoot, 'docs', 'surfacing.csv'), 'utf8');
+const ownersCsv = readFileSync(path.join(repoRoot, 'docs', 'owners.csv'), 'utf8');
+const repsCsv = readFileSync(path.join(repoRoot, 'docs', 'repetitions.csv'), 'utf8');
+const propsRegCsv = readFileSync(path.join(repoRoot, 'docs', 'registries.csv'), 'utf8');
+const propsDeclCsv = readFileSync(path.join(repoRoot, 'docs', 'properties.csv'), 'utf8');
+const testsCsv = readFileSync(path.join(repoRoot, 'docs', 'tests.csv'), 'utf8');
 // The private registry's sessions cache, trimmed to the rollup the Docs tab
 // reads. Paths are repo-qualified there and hub-relative in the registry, which
 // is the join the readership column has to get right.
@@ -58,18 +75,26 @@ window.GH = class {
   async get(p) {
     asked.push({ ref: this.opts.ref, path: p });
     if (p === 'docs/routes.json') return { text: routesJson };
-    if (p === 'docs/docs.json') return { text: docsJson };
-    if (p === 'docs/surfacing.json') return { text: surfJson };
-    if (p === 'docs/owners.json') return { text: ownersJson };
-    if (p === 'docs/properties.json') return { text: propsJson };
-    if (p === 'docs/tests.json') return { text: testsJson };
+    if (p === 'docs/routes-modes.csv') return { text: routesModesCsv };
+    if (p === 'docs/routes-routes.csv') return { text: routesRoutesCsv };
+    if (p === 'docs/showing-mechanisms.csv') return { text: mechanismsCsv };
+    if (p === 'docs/docs.csv') return { text: docsCsv };
+    if (p === 'docs/surfacing.csv') return { text: surfCsv };
+    if (p === 'docs/owners.csv') return { text: ownersCsv };
+    if (p === 'docs/repetitions.csv') return { text: repsCsv };
+    if (p === 'docs/registries.csv') return { text: propsRegCsv };
+    if (p === 'docs/properties.csv') return { text: propsDeclCsv };
+    if (p === 'docs/tests.csv') return { text: testsCsv };
     if (p === 'state/sessions.json') return { text: JSON.stringify(sessions) };
-    return { text: JSON.stringify(manifest) };
+    return { text: toCsv(manifest.items) };
   }
 };
 // No window.__shell in the test, so hasToken() is falsy and the token-gated
 // adoption probe never runs; only the public set half loads.
 
+// The Registries tab reads two CSVs, so the kit that parses them has to be in
+// the window the same way the pre-build puts it there.
+new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8'))();
 new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/map.js'), 'utf8'))();
 Alpine.start();
 await tick(3);
@@ -124,7 +149,7 @@ test('Surfacing loads on demand and names its authoritative doc', async () => {
   assert.equal(data.SURF_DOC, 'docs/SURFACING.md');
 });
 
-test('Docs loads on demand and carries the census', async () => {
+test('Docs loads on demand and carries the registry', async () => {
   assert.equal(data.docsReg, null, 'the registry is not fetched until the tab is opened');
   await data.loadDocsReg();
   assert.equal(data.docsErr, '');
@@ -132,15 +157,18 @@ test('Docs loads on demand and carries the census', async () => {
 });
 
 // The two tabs shared a fetch while the owners table was a second block inside
-// docs.json. Since 2026-08-09 each loads its own carrier, and the point of the
+// docs.csv. Since 2026-08-09 each loads its own file, and the point of the
 // split is that opening Docs does not pull owners and the reverse.
 test('Owners loads its own carrier, separately from Docs', async () => {
   assert.equal(data.ownersReg, null, 'the registry is not fetched until the tab is opened');
   await data.loadOwnersReg();
   assert.equal(data.ownersErr, '');
   assert.ok(data.ownersReg.owners.length > 3);
-  assert.ok(data.ownersReg.scope, 'the tab reads the scope from the carrier, not from its own prose');
-  assert.equal(data.OWNERS_MANIFEST, 'docs/owners.json');
+  // The scope moved to the registry row on 2026-08-16, where every other
+  // registry's scope already lived; owners.csv used to carry a second copy.
+  assert.ok(data.ownersReg.scope, 'the tab reads the scope from the registry row');
+  assert.equal(data.OWNERS_MANIFEST, 'docs/owners.csv');
+  assert.equal(data.OWNERS_REPS, 'docs/repetitions.csv');
 });
 
 test('the Docs folder rail rolls up, nests, and prunes by reach without changing shape', () => {
@@ -148,7 +176,7 @@ test('the Docs folder rail rolls up, nests, and prunes by reach without changing
   assert.equal(folders[0].dir, 'docs', 'the root folder leads the rail');
   assert.ok(folders.length > 3, 'subfolders get their own rows');
   for (const f of folders) assert.equal(f.depth, f.dir.split('/').length - 1, f.dir);
-  assert.equal(folders[0].n, data.docsReg.documents.length, 'the root rolls up the whole census');
+  assert.equal(folders[0].n, data.docsReg.documents.length, 'the root rolls up the whole registry');
   assert.equal(folders[0].words, data.docWordTotal, 'and the whole mass');
 
   assert.equal(data.docDir, 'docs', 'the root folder opens selected');
@@ -176,7 +204,7 @@ test('a row title opens the doc deck: full folder, tapped row first, rendered by
 
   const fetchesBefore = asked.length;
   assert.match(await data.docDeckRead('docs/CONVENTIONS.md'), /prose/, 'markdown renders as prose');
-  assert.ok((await data.docDeckRead('docs/docs.json')).startsWith('<pre'),
+  assert.ok((await data.docDeckRead('docs/docs.csv')).startsWith('<pre'),
     'a JSON doc renders as source, not prose');
   const fetchesAfter = asked.length;
   await data.docDeckRead('docs/CONVENTIONS.md');
@@ -207,10 +235,10 @@ test('a row title opens the doc deck: full folder, tapped row first, rendered by
 // are asserted: absent without a token, and never a bare zero on an injected
 // doc, which is the case where the number would be exactly backwards.
 
-test('without a token the census renders and the readership column does not', () => {
+test('without a token the registry renders and the readership column does not', () => {
   assert.equal(data.hasToken(), false);
   assert.equal(data.docReads, null, 'no token, no column, no error');
-  assert.equal(data.docsErr, '', 'the census is public and must not fail with it');
+  assert.equal(data.docsErr, '', 'the registry is public and must not fail with it');
 });
 
 test('readership joins the repo-qualified cache path to the hub-relative registry row', async () => {
@@ -258,7 +286,9 @@ test('Showing rows resolve their icons and GitHub links', () => {
     'https://github.com/me/proj/blob/main/pages/x.html', 'a missing ref reads as main');
 });
 
-test('a routes manifest missing its routes block surfaces an error, not a blank tab', async () => {
+// The grammar is the load-bearing half of routes.json now that the three tables
+// have moved out, so it is what the loader checks before trusting the object.
+test('a routes manifest missing its grammar block surfaces an error, not a blank tab', async () => {
   const el2 = window.document.createElement('div');
   el2.setAttribute('x-data', 'map()');
   window.document.body.appendChild(el2);
@@ -271,7 +301,7 @@ test('a routes manifest missing its routes block surfaces an error, not a blank 
   await d2.loadRoutes();
   window.GH = realGH;
   assert.equal(d2.routes, null);
-  assert.match(d2.routesErr, /no routes block/);
+  assert.match(d2.routesErr, /no grammar block/);
 });
 
 test('openConfig opens the repo dialog on the Config tab without throwing', () => {
@@ -286,7 +316,7 @@ test('openConfig opens the repo dialog on the Config tab without throwing', () =
 // URL and validates the param, map() renders whichever tab is set and fetches
 // its manifest. Both halves are asserted here, since a passing half is exactly
 // the failure mode (a stamped URL nothing reads, or a rendered tab with no
-// address). The shell's app() lives inline in show-repo.html, hence the
+// address). The shell's app() lives inline in app/index.html, hence the
 // show-repo-shell.mjs harness.
 const { page, makeShell } = await import('./show-repo-shell.mjs');
 
@@ -388,7 +418,10 @@ test('the shell and the component agree on the tab set', () => {
 // assertions are about the JOIN (declarations grouped under their registry),
 // not about any one manifest.
 test('Registries groups declarations under the registry that governs them', async () => {
-  assert.equal(data.propsReg, null, 'the table is not fetched until the tab is opened');
+  // Not asserted null here any more: the Owners tab reads its scope from the
+  // registry row, so opening Owners loads the pair too. That coupling is the
+  // price of the scope having one owner instead of a copy in each file.
+  data.propsReg = null;
   await data.loadPropsReg();
   assert.equal(data.propsErr, '');
 
@@ -400,11 +433,19 @@ test('Registries groups declarations under the registry that governs them', asyn
   }
   // The join must not drop or duplicate a declaration.
   const grouped = rows.reduce((n, r) => n + r.decls.length, 0);
-  assert.equal(grouped, data.propsReg.declarations.length,
+  assert.equal(grouped, data.propsReg.properties.length,
     'every declaration lands under exactly one registry row');
 
   const t = data.registryTotals;
-  assert.equal(t.census + t.catalog, t.registries, 'every registry is a census or a catalog');
+  // `membership` is one question with two answers, so it partitions cleanly. It
+  // needed a union to do that before 2026-08-18, when `crosswalk` was a third
+  // value of the same column while being an answer to a different question.
+  assert.equal(t.computed + t.curated, t.registries,
+    'every registry is computed or curated, with nothing left over');
+  // Inheritance is the other question, and it cuts across the first rather than
+  // partitioning it: some curated registries borrow descriptions, most do not.
+  assert.ok(t.inheriting > 0 && t.inheriting < t.curated,
+    'some registries inherit descriptions, and not every curated one does');
   assert.equal(t.decls, grouped);
   assert.ok(t.closed > 0 && t.closed <= t.decls);
 });

@@ -61,7 +61,7 @@ for (const rel of allJs) cache['lib/' + rel] = readFileSync(path.join(libDir, re
 // the other, and a page's own gh.load chain runs AFTER this import, so a
 // component that read a stage link during init would find them undefined.
 const components = allJs.filter(p => p.startsWith('alpineComponents/'));
-const extraBoot = ['kits/url-params.js', 'kits/repo-address.js', ...components, 'alpine-bundle.js'];
+const extraBoot = ['kits/url-params.js', 'kits/repo-address.js', 'kits/csv.js', ...components, 'alpine-bundle.js'];
 
 const header = `// dist/web-tools.js — the pre-build: the whole web-tools lib/ frozen into one
 // self-booting, offline artifact (the gh-api.js loader + an inlined source cache

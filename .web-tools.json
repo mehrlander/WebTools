@@ -21,7 +21,7 @@
   "checks": [
     {
       "kind": "tracker",
-      "path": "tracker/board.json",
+      "path": "tracker/board.csv",
       "staleAfterDays": 45,
       "label": "tracker"
     }

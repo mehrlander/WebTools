@@ -1,25 +1,33 @@
 #!/usr/bin/env python3
-# Regenerate board.md and board.json from tasks/*.md. Frontmatter is flat
-# `key: value` pairs.
+# Regenerate board.md, board.csv and board-tags.csv from tasks/*.md.
+# Frontmatter is flat `key: value` pairs.
 # Portable: python3, stdlib only, zero dependencies.
 # Canonical source: mehrlander/web-tools at .claude/skills/tasks/build-board.py
 # (bundled in the portable plugin; /tasks runs it via ${CLAUDE_PLUGIN_ROOT})
 # Usage: python3 build-board.py <tasks_dir> <board_out> [--check]
-#   --check writes nothing and exits 1 if either artifact is behind its source,
+#   --check writes nothing and exits 1 if any artifact is behind its source,
 #   so a test or CI can own the lockstep where a commit hook may never fire.
 #
-# Two projections from one run, so they cannot drift:
-#   board.md   the human list: GitHub, a diff, a clone, a session reading files
-#   board.json the typed projection: show-repo and anything else machine-side
+# Three projections from one run, so they cannot drift:
+#   board.md        the human list: GitHub, a diff, a clone, a session reading files
+#   board.csv       the typed projection: show-repo and anything else machine-side
+#   board-tags.csv  the open tags, one row per (task, tag) pair
 # The app must never parse the rendered board to recover fields it could have
 # been handed (data before display).
-import json, os, pathlib, re, sys, urllib.parse
+#
+# Two files rather than one because a task carries two grains and a CSV holds
+# one table. The recognized keys are one row per task; the open tags are a bag
+# whose keys nobody declares, so they are one row per pair. Encoding the bag
+# into a cell would have kept one file and given up the tabular reading that is
+# the whole reason these are CSV (docs/registries.md).
+import os, pathlib, re, sys, urllib.parse
 
 argv = [a for a in sys.argv[1:] if a != "--check"]
 CHECK = "--check" in sys.argv
 tasks_dir = pathlib.Path(argv[0] if len(argv) > 0 else "tasks")
 out = pathlib.Path(argv[1] if len(argv) > 1 else "board.md")
-out_json = out.with_suffix(".json")
+out_csv = out.with_suffix(".csv")
+out_tags = out.with_name(out.stem + "-tags.csv")
 
 # Where a row's link points, as a path relative to the BOARD's folder rather
 # than to the cwd, so the same href resolves on GitHub (relative to board.md)
@@ -29,16 +37,36 @@ out_json = out.with_suffix(".json")
 task_href_base = os.path.relpath(tasks_dir, out.parent).replace(os.sep, "/")
 
 # Recognized keys act on the board; everything else is an open tag, preserved
-# and never rendered (TRACKER.md, the two-layer rule). Listed here so board.json
-# can keep the same split rather than flattening it away.
-# A tuple, not a set, and that is load-bearing rather than stylistic. `record()`
-# below builds board.json's per-task object by iterating this, so set iteration
-# order would leak Python's per-process string hash randomization into the key
-# order of the emitted JSON: same input, different bytes on every run, which is
-# exactly what the no-timestamp rule at the bottom of this file exists to
-# prevent. Membership tests against ten strings cost nothing.
+# and never rendered (TRACKER.md, the two-layer rule). The split survives into
+# the projection as two files rather than as a nested key.
+# A tuple, not a set, and that is load-bearing rather than stylistic: it fixes
+# which frontmatter keys are recognized AND, through BOARD_COLS below, the
+# column order of the emitted CSV. Set iteration would leak Python's
+# per-process string hash randomization into the byte layout, so the same input
+# would produce a different file on every run, which is exactly what the
+# no-timestamp rule at the bottom of this file exists to prevent. Membership
+# tests against ten strings cost nothing.
 RECOGNIZED = ("id", "title", "status", "project", "track",
               "opened", "closed", "session", "size", "awaiting")
+
+# The three derived values the task file does not state, plus the two locators.
+# Spelled out rather than appended dynamically, since a column that appears or
+# moves depending on which tasks happen to carry a field is not a schema.
+BOARD_COLS = RECOGNIZED + ("blockedBy", "file", "href", "lastActivity", "logEntries")
+TAG_COLS = ("task", "tag", "value")
+
+
+def csv_text(rows, cols):
+    # Same quoting as the estate's other CSV writers (tools/build/registries-load.mjs):
+    # quote only when the cell holds a comma, a quote, or a newline, and double
+    # an interior quote. Kept here rather than imported because this file is
+    # portable and stdlib-only, and `csv` would emit CRLF by default.
+    def cell(v):
+        s = "" if v is None else str(v)
+        return '"' + s.replace('"', '""') + '"' if any(c in s for c in ',"\n') else s
+    head = ",".join(cols)
+    body = [",".join(cell(r.get(c)) for c in cols) for r in rows]
+    return "\n".join([head] + body) + "\n"
 
 LOG_DATE = re.compile(r"^\s*[-*]\s*\**(\d{4}-\d{2}-\d{2})", re.M)
 
@@ -56,7 +84,7 @@ def meta(p):
     # The link targets the file on disk, not `id`, so a file whose `id:` drifted
     # from its name still links to something that exists.
     d["_file"] = p.name
-    # Derived, for board.json only. A task's real freshness is the newest date
+    # Derived, for board.csv only. A task's real freshness is the newest date
     # in its progress log, not `opened:`; nothing else surfaces it, and it is
     # what separates a live task from one that has only been refined.
     dates = LOG_DATE.findall(text.split("---", 2)[-1])
@@ -127,35 +155,47 @@ board_md = "\n".join(lines)
 
 
 def record(m):
-    # Recognized keys at the top level, open tags under `tags`, so the two-layer
-    # split survives into the projection and a consumer cannot mistake an
-    # unpromoted tag for part of the contract.
-    r = {k: m[k] for k in RECOGNIZED if m.get(k)}
+    # One row per task, recognized keys only. A blank cell is "not asserted",
+    # which is what an absent frontmatter key means, so nothing is written to
+    # stand in for it.
+    r = {k: m.get(k, "") for k in RECOGNIZED}
     r["file"] = m.get("_file", "")
     r["href"] = task_href_base + "/" + urllib.parse.quote(m.get("_file", ""))
     r["lastActivity"] = m.get("_last_activity", "")
     r["logEntries"] = m.get("_log_entries", 0)
     dep = blocker(m)
-    if dep:
-        r["blockedBy"] = dep.strip()[1:-1]      # the rendered phrase, parens off
-    tags = {k: v for k, v in m.items()
-            if not k.startswith("_") and k not in RECOGNIZED}
-    if tags:
-        r["tags"] = tags
+    r["blockedBy"] = dep.strip()[1:-1] if dep else ""   # the rendered phrase, parens off
     return r
+
+
+def tag_rows(m):
+    # The open layer, one row per pair, keyed by the task's id so it joins to
+    # board.csv. A task with no id cannot be joined to, so its tags are dropped
+    # rather than orphaned; that is the same reason the board keys on id.
+    tid = m.get("id", "")
+    if not tid:
+        return []
+    return [{"task": tid, "tag": k, "value": v} for k, v in m.items()
+            if not k.startswith("_") and k not in RECOGNIZED]
 
 
 # No timestamp: the artifact must be byte-identical for the same input, or the
 # lockstep checks that re-run the generator would fail on every clean tree.
-board_json = json.dumps(
-    {"tasks": [record(m) for m in tasks]}, indent=1, ensure_ascii=False) + "\n"
+board_csv = csv_text([record(m) for m in tasks], BOARD_COLS)
+# Sorted by (task, tag) so the file does not reorder when a task file's
+# frontmatter is reordered; the task order in board.csv follows the filename
+# sort that produced `tasks`, and this one has no such order to inherit.
+tags_csv = csv_text(sorted((r for m in tasks for r in tag_rows(m)),
+                           key=lambda r: (r["task"], r["tag"])), TAG_COLS)
+
+artifacts = ((out, board_md), (out_csv, board_csv), (out_tags, tags_csv))
 
 if CHECK:
-    stale = [str(f) for f, want in ((out, board_md), (out_json, board_json))
+    stale = [str(f) for f, want in artifacts
              if not f.exists() or f.read_text() != want]
     if stale:
         sys.exit(f"stale: {', '.join(stale)}\n"
                  f"  run: python3 {sys.argv[0]} {tasks_dir} {out}")
 else:
-    out.write_text(board_md)
-    out_json.write_text(board_json)
+    for f, want in artifacts:
+        f.write_text(want)

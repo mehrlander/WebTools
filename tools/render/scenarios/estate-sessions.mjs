@@ -7,7 +7,7 @@
 // which is enough to render the layout truthfully: the markup, the classes, and
 // the scroll containers are the page's, only the data is ours.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --query view=sessions \
+//   npm run shot -- app/index.html --query view=sessions \
 //     --script tools/render/scenarios/estate-sessions.mjs --height 900
 
 const SESSIONS = [
@@ -27,7 +27,7 @@ const SESSIONS = [
   {
     id: 'ae761f5d', agent: 'https://claude.ai/code/session_011jJdgM', day: '2026-08-05',
     started: '2026-08-05T09:12:00Z', ended: '2026-08-05T11:40:00Z', mins: 148,
-    ask: 'Take a look at the tracker board generator and figure out why board.json keeps changing when nothing changed.',
+    ask: 'Take a look at the tracker board generator and figure out why board.csv keeps changing when nothing changed.',
     repos: [{ name: 'web-tools', branch: 'claude/board-determinism-k2p1x', lines: 210 }],
     branches: ['claude/board-determinism-k2p1x'],
     exchanges: 6, messages: 190, calls: 118, failures: 0,

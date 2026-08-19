@@ -3,7 +3,7 @@
 // and that the srcdoc path could not have.
 //
 //   node tools/render/screenshot.mjs pages/toss-render.html \
-//     --hash "gh=mehrlander/web-tools:pages/data-view.html?src=docs/tools.json#item=probe" \
+//     --hash "gh=mehrlander/web-tools:pages/data-view.html?src=docs/tools.csv#item=probe" \
 //     --script tools/render/scenarios/toss-fragment.mjs
 //
 // The render harness impersonates the GitHub contents API for this repo from

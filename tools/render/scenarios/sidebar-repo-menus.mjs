@@ -5,7 +5,7 @@
 // directly (the groups and both item lists are pure getters over them), so what
 // the shot proves is the rendering, not the load.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/sidebar-repo-menus.mjs
+//   npm run shot -- app/index.html --script tools/render/scenarios/sidebar-repo-menus.mjs
 //
 // MENU=github opens a row's GitHub links menu (the default), MENU=actions its
 // actions menu, MENU=none leaves both closed for a shot of the rows alone.

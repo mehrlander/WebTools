@@ -4,7 +4,7 @@
 // window.GH so load() resolves against a fixed list. What the shot proves is
 // the rendering and the states, not the fetch.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/ref-switch.mjs
+//   npm run shot -- app/index.html --script tools/render/scenarios/ref-switch.mjs
 //
 // STATE=closed  the box alone in the header, nothing open
 // STATE=open    the box plus the branch list panel            (the default)
@@ -16,7 +16,7 @@
 // runs after the component has mounted and the chip's binding has already been
 // evaluated.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --ref claude/some-branch \
+//   npm run shot -- app/index.html --ref claude/some-branch \
 //     --script tools/render/scenarios/ref-switch.mjs
 
 const BRANCHES = [

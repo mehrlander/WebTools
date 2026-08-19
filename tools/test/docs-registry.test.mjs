@@ -1,22 +1,24 @@
-// docs/docs.json — the documentation registry: the documents census. Complete
-// by construction: every .md/.json file under docs/ has exactly one row, so a
+// docs/docs.csv — the documentation registry: the documents registry. Complete
+// by construction: every .md/.json/.csv file under docs/ has exactly one row, so a
 // file cannot sit in the folder unaccounted for (the same completeness gate
-// build-census.py runs for budget-drs's data files).
+// build-registry.py runs for budget-drs's data files).
 //
 // The shared-ownership table used to ride along here as a second `claims`
 // block, checked by a shape test at the bottom of this file. It moved to
 // docs/owners.json on 2026-08-09, with tools/test/owners-registry.test.mjs as
 // its own gate: a registry does not live inside another registry's carrier, and
-// a census and a curated catalog do not want the same checks.
+// a registry and a curated catalog do not want the same checks.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
+import { parseCsv } from '../build/registries-load.mjs';
 import { deriveReach, deriveWords, CHANNELS } from '../build/docs-reach.mjs';
 
-const registry = JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'docs.json'), 'utf8'));
+const registry = { documents: parseCsv(readFileSync(path.join(repoRoot, 'docs', 'docs.csv'), 'utf8'))
+  .map(d => ({ ...d, words: +d.words })) };
 
 // `measured` was added 2026-08-05. Five rows were describing that genre in
 // their maintenance prose ("per-claim verification dates", "re-probe on a new
@@ -34,7 +36,7 @@ function docsFiles(dir, out = []) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
     if (e.isDirectory()) docsFiles(p, out);
-    else if (/\.(md|json)$/.test(e.name)) out.push(path.relative(repoRoot, p));
+    else if (/\.(md|json|csv)$/.test(e.name)) out.push(path.relative(repoRoot, p));
   }
   return out;
 }
@@ -96,8 +98,8 @@ test('the declared words of every document matches the derivation', () => {
 });
 
 // Not a ban, a ledger. A bare "authored" row is a file nothing holds true, and
-// the point of the census is that such a file is visible rather than dressed.
-// If this number climbs, rows are being filled to satisfy the census gate
+// the point of the registry is that such a file is visible rather than dressed.
+// If this number climbs, rows are being filled to satisfy the registry gate
 // instead of being thought about, which is what happened the first time.
 test('no document row has been filled in with a bare "authored"', () => {
   const bare = registry.documents.filter(d => BARE.test(d.maintenance.trim()));

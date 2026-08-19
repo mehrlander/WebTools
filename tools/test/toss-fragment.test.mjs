@@ -31,7 +31,7 @@ assert.ok(hashShimBlock, 'hashNavigationShim not found in ' + PAGE);
 const hashNavigationShim = new Function(hashShimBlock[0] + '\n  return hashNavigationShim;')();
 
 test('the address, its whole page query, and a trailing frag come back intact', () => {
-  const addr = 'mehrlander/web-tools@br:pages/show-repo/show-repo.html?view=app&appRepo=X&appPath=Y';
+  const addr = 'mehrlander/web-tools@br:app/index.html?view=app&appRepo=X&appPath=Y';
   assert.deepEqual(readFragment('#gh=' + addr), ['gh', addr]);
 });
 

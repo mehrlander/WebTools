@@ -205,7 +205,7 @@ try {
   ok('and the tab strip followed', t.active === 1, String(t.active));
 
   console.log('a text file is untouched by any of this:');
-  await page.goto(`${origin}/pages/data-view.html?src=${encodeURIComponent('mehrlander/web-tools@main:docs/tools.json')}`,
+  await page.goto(`${origin}/pages/data-view.html?src=${encodeURIComponent('mehrlander/web-tools@main:docs/tools.csv')}`,
                   { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(3000);
   const u = await state();

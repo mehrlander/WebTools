@@ -49,7 +49,7 @@ in the form, so the prefill is a default, not a decision.
 
 ## Notes
 
-- The same affordance lives in show-repo's Activity view: each branch row's
+- The same affordance lives in the Web Tools app's Activity view: each branch row's
   menu has **Drop a file here**, minting this URL with the inbox-stamped
   default name. Offer that route to a user already in the app.
 - The link requires the user to be signed into GitHub in the browser that

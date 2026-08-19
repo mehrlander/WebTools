@@ -2,7 +2,7 @@
 """Advisory survey: near-duplicated prose across the repo's markdown.
 
 The one-owner-per-claim principle (a claim lives in one document; others
-link, and docs/owners.json records who owns a statement the coordination
+link, and docs/owners.csv records who owns a statement the coordination
 layer repeats) fails quietly: the same paragraph gets restated across
 README layers and the copies age at different rates. This detector is
 mechanical, advisory, and never blocking, in the idiom of link-survey.py
@@ -22,7 +22,7 @@ SHARED_MIN shingles, with one sample per pair. Expect false positives
 (boilerplate phrasing, quoted text, a contract quoting its own rule).
 
 Exclusions lean on the repo's own registries rather than a hand list where
-they can: any doc whose docs.json status is `record` is out (a record may
+they can: any doc whose docs.csv status is `record` is out (a record may
 legitimately restate what superseded it), as are generated projections and
 the plugin's vendored copies of the conventions (byte-identical by a hook,
 gated elsewhere, and they would drown the report).
@@ -32,7 +32,7 @@ Usage:
   npm run claims-survey
 """
 
-import json
+import csv
 import re
 import subprocess
 import sys
@@ -62,11 +62,11 @@ WORD = re.compile(r"[a-z0-9']+")
 
 def record_paths(root: Path) -> set:
     """Docs whose registry status is `record`: preserved moments, allowed to
-    restate. Read from docs.json so the exclusion cannot drift from the
-    registry; a missing or unparseable registry excludes nothing."""
+    restate. Read from docs.csv so the exclusion cannot drift from the
+    registry; a missing or unreadable registry excludes nothing."""
     try:
-        reg = json.loads((root / "docs" / "docs.json").read_text(encoding="utf-8"))
-        return {d["path"] for d in reg.get("documents", []) if d.get("status") == "record"}
+        with (root / "docs" / "docs.csv").open(encoding="utf-8", newline="") as fh:
+            return {r["path"] for r in csv.DictReader(fh) if r.get("status") == "record"}
     except (OSError, ValueError, KeyError):
         return set()
 
@@ -122,7 +122,7 @@ def main(argv):
     hits = sorted(((len(v), k, v) for k, v in pairs.items() if len(v) >= SHARED_MIN),
                   reverse=True)
     print(f"duplicated-claims survey: {len(files)} files scanned "
-          f"({len(records)} record-status docs excluded via docs.json), "
+          f"({len(records)} record-status docs excluded via docs.csv), "
           f"{len(hits)} pair(s) at >= {SHARED_MIN} shared {SHINGLE}-word windows "
           f"(advisory; expect false positives; top {TOP} shown)")
     for n, (a, b), shs in hits[:TOP]:

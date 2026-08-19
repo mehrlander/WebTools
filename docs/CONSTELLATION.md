@@ -8,7 +8,7 @@ mechanics) lives in the private `home` repo at
 `2026-06-27-constellation-mechanics.md` companion. This file is the public,
 reusable statement; that one is the instance.
 
-show-repo's **Map** view is the operational face of this doctrine: it renders the
+The Web Tools app's **Map** view is the operational face of this doctrine: it renders the
 portable set (below) and, per repo, the repo's own scope statement beside a live
 read of how far the repo carries the set. The theory here is what the per-repo
 scope stories apply.

@@ -1,7 +1,7 @@
 // screenshot.mjs interaction scenario: the estate's Guides pane, Activity's
 // third sub-view.
 //
-//   npm run shot -- pages/show-repo/show-repo.html \
+//   npm run shot -- app/index.html \
 //     --script tools/render/scenarios/estate-guides.mjs
 //
 // The sandbox blocks api.github.com and the registry is private, so the fixture

@@ -3,7 +3,7 @@
 // anyway), one ordinary set-json-field beside it. Stubbed registry, since the
 // real channel needs the viewer's token.
 //
-//   npm run shot -- pages/show-repo/show-repo.html --script tools/render/scenarios/proposals-stale-demo.mjs
+//   npm run shot -- app/index.html --script tools/render/scenarios/proposals-stale-demo.mjs
 export default async (page) => {
   await page.evaluate(() => {
     const REG = 'mehrlander/web-tools-private';

@@ -1,24 +1,27 @@
 #!/usr/bin/env node
-// Regenerate docs/README.md from docs/docs.json, the documentation registry.
+// Regenerate docs/README.md from docs/docs.csv, the documentation registry.
 //
 //   node tools/build/docs-readme.mjs         -> writes docs/README.md
 //   node tools/build/docs-readme.mjs --check -> exit 1 if stale (CI-friendly)
 //
 // The README used to be hand-kept and indexed well under half the folder; the
-// registry's census is complete by construction (docs-registry.test.mjs), so
+// registry's registry is complete by construction (docs-registry.test.mjs), so
 // the index is now a projection of it. Subjects, statuses, and maintenance
-// live in the registry: edit docs/docs.json, never this file's output.
+// live in the registry: edit docs/docs.csv, never this file's output.
 
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { parseCsv } from './registries-load.mjs';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const REG_PATH = path.join(repoRoot, 'docs', 'docs.json');
-// The owners table moved out of docs.json on 2026-08-09 into its own carrier.
+const REG_PATH = path.join(repoRoot, 'docs', 'docs.csv');
+// The owners table moved out of docs.json on 2026-08-09 into its own file, and
+// split again on 2026-08-16: a repetition is a different target from the
+// statement it repeats, so it is its own registry.
 // The closing line of this index still counts it, because a reader of the docs
 // folder wants to know the table exists; it is read from where it now lives.
-const OWNERS_PATH = path.join(repoRoot, 'docs', 'owners.json');
+const OWNERS_PATH = path.join(repoRoot, 'docs', 'owners.csv');
 const OUT_PATH = path.join(repoRoot, 'docs', 'README.md');
 
 // Group order: the root first, then subfolders alphabetically; within a group
@@ -39,11 +42,11 @@ function render(reg, owners) {
   const lines = [];
   lines.push('# docs');
   lines.push('');
-  lines.push('<!-- GENERATED from docs/docs.json by tools/build/docs-readme.mjs; do not hand-edit. -->');
+  lines.push('<!-- GENERATED from docs/docs.csv by tools/build/docs-readme.mjs; do not hand-edit. -->');
   lines.push('');
   lines.push('Reference docs that don\'t belong at the repo root. This index is generated');
-  lines.push('from [`docs.json`](docs.json), the documentation registry, which also renders');
-  lines.push('live in [show-repo\'s Map view, Docs tab](https://mehrlander.github.io/web-tools/pages/show-repo/show-repo.html?view=map)');
+  lines.push('from [`docs.csv`](docs.csv), the documentation registry, which also renders');
+  lines.push('live in [the Web Tools app\'s Map view, Docs tab](https://mehrlander.github.io/web-tools/app/?view=map)');
   lines.push('alongside the shared-claims table (statements that live in more than one');
   lines.push('place, each with its one authoritative carrier and the check that holds each');
   lines.push('copy, or the honest absence of one). A **record** preserves a moment and is');
@@ -72,20 +75,20 @@ function render(reg, owners) {
     }
     lines.push('');
   }
-  lines.push(`${owners.owners.length} shared statements are registered in`);
-  lines.push('[`owners.json`](owners.json), which carries its own scope and schema.');
+  lines.push(`${owners.length} shared statements are registered in`);
+  lines.push('[`owners.csv`](owners.csv), with each repetition in [`repetitions.csv`](repetitions.csv).');
   lines.push('');
   return lines.join('\n');
 }
 
-const reg = JSON.parse(await readFile(REG_PATH, 'utf8'));
-const owners = JSON.parse(await readFile(OWNERS_PATH, 'utf8'));
+const reg = { documents: parseCsv(await readFile(REG_PATH, 'utf8')) };
+const owners = parseCsv(await readFile(OWNERS_PATH, 'utf8'));
 const want = render(reg, owners);
 
 if (process.argv.includes('--check')) {
   const have = await readFile(OUT_PATH, 'utf8').catch(() => '');
   if (have !== want) {
-    console.error('docs/README.md is behind docs/docs.json — run: npm run docs-readme');
+    console.error('docs/README.md is behind docs/docs.csv - run: npm run docs-readme');
     process.exit(1);
   }
 } else {

@@ -62,7 +62,7 @@ subject's `?query`, a coordinated preview works **before any of it merges**,
 through main's deployed toss renderer:
 
 ```
-…/toss-render.html#gh=owner/web-tools@<branch>:pages/show-repo/show-repo.html?overlay=<branch>
+…/toss-render.html#gh=owner/web-tools@<branch>:app/index.html?overlay=<branch>
 ```
 
 The outer `@<branch>` pins the shell (the code half); `?overlay=` pins the

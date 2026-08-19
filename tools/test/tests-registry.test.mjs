@@ -1,7 +1,7 @@
-// docs/tests.json — the test registry, and the gate that keeps it honest.
+// docs/tests.csv — the test registry, and the gate that keeps it honest.
 //
-// This is the documents census pointed at the suite instead of at docs/. The
-// census answers "what is this file and what keeps it true"; this answers
+// This is the documents registry pointed at the suite instead of at docs/. The
+// registry answers "what is this file and what keeps it true"; this answers
 // "what does this check and what breaks without it". Both exist because a
 // count is not an inventory: `npm test` reports a pass total that cannot tell
 // a boot smoke check from an adversarial gate, and 96 files is already past
@@ -24,9 +24,31 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
+import { parseCsv, splitList } from '../build/registries-load.mjs';
+
+// The per-value glosses, read from the table that owns them. KINDS itself is
+// imported below from tests-index.mjs, which already had the domain.
+const VOCAB = parseCsv(readFileSync(path.join(repoRoot, 'docs', 'vocabularies.csv'), 'utf8'));
+const glossOf = (v) => VOCAB.find(r =>
+  r.registry === 'tests' && r.property === 'kind' && r.value === v)?.gloss;
 import { deriveTests, KINDS, METHODS } from '../build/tests-index.mjs';
 
-const registry = JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'tests.json'), 'utf8'));
+const registry = { tests: parseCsv(readFileSync(path.join(repoRoot, 'docs', 'tests.csv'), 'utf8')).map(t => ({
+  ...t,
+  // A blank means NOT ASSERTED, so it reads back as null rather than 0: a browser
+  // check reports no assertion count because test() is not its unit, which is a
+  // different claim from a suite that ran zero.
+  assertions: t.assertions === '' ? null : +t.assertions,
+  // Three states, two spellings. A blank cell cannot tell null (not applicable:
+  // test() is not this check's unit) from [] (a suite that declares none), and
+  // both write blank. They are not independent: a check with no assertion count
+  // has no assertions to smoke, so the dependency decides it. Same shape as
+  // deriver-when-computed, and the reason no token is needed here.
+  boot_smoke: t.assertions === '' ? null
+    : t.boot_smoke === '' ? [] : splitList(t.boot_smoke).map(Number),
+  assertion_names: t.assertions === '' ? null
+    : t.assertion_names === '' ? [] : splitList(t.assertion_names),
+})) };
 
 test('every test file has exactly one row, and every row exists', () => {
   const derived = deriveTests(repoRoot);
@@ -46,14 +68,14 @@ test('every row is typed, and the kind vocabulary is closed', () => {
       `${t.path}: method must be one of ${METHODS}, got ${t.method}`);
     assert.ok(typeof t.runner === 'string' && t.runner, t.path + ': runner');
   }
-  for (const k of Object.keys(registry.kinds))
+  for (const k of KINDS)
     assert.ok(KINDS.includes(k), 'the kinds gloss describes an unknown kind: ' + k);
   for (const k of KINDS)
-    assert.ok(registry.kinds[k], 'a kind with no gloss: ' + k);
+    assert.ok(glossOf(k), 'a kind with no gloss: ' + k);
 });
 
 // The derived half, held the same way reach and words are held in the
-// documents census: the registry carries a copy so the app can render it
+// documents registry: the registry carries a copy so the app can render it
 // without walking the repo, and this keeps the copy true.
 test('the declared derivation matches the files on disk', () => {
   const derived = deriveTests(repoRoot);
@@ -184,10 +206,15 @@ test('every browser check is owned by an npm script', () => {
     'nothing runs them: ' + orphans.join(', '));
 });
 
-test('the registry note and kind glosses are substantive', () => {
-  assert.ok(registry.note && registry.note.length > 100, 'the registry says what it is');
-  for (const [k, gloss] of Object.entries(registry.kinds))
-    assert.ok(gloss.length > 20, k + ': the gloss says what the kind means');
+// The per-kind glosses moved to docs/vocabularies.csv on 2026-08-16. A value
+// domain is a semicolon list in properties.csv and cannot carry a sentence per
+// value, so the sentences got a table of their own, keyed (registry, property,
+// value). The registry's own note went the way every other one did: to the prose
+// that already describes it.
+test('every kind of check carries a gloss that says what the kind means', () => {
+  assert.ok(KINDS.length > 3, 'the kind domain is declared');
+  for (const k of KINDS)
+    assert.ok((glossOf(k) || '').length > 20, k + ': the gloss says what the kind means');
 });
 
 // A sanity check on the corpus itself rather than on the registry: tools/test/

@@ -11,7 +11,7 @@
 //
 // So this asserts the join rather than either side: for every nav stop, the
 // pane key the shell computes exists in the markup. The shell's app() lives
-// inline in show-repo.html, hence the show-repo-shell.mjs harness.
+// inline in app/index.html, hence the show-repo-shell.mjs harness.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

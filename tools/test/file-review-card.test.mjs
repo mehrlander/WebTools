@@ -319,7 +319,7 @@ test('the controls sit on the tab row, not on a strip above it', () => {
 // this card does not otherwise need, it may not have loaded when a card mounts,
 // and a card that called a `.md` plain source because a kit was late would be a
 // worse failure than the duplication. So they are held together by assertion,
-// the shape the estate already uses for docs.json's reach and surfacing.json's
+// the shape the estate already uses for docs.csv's reach and surfacing.csv's
 // membership.
 
 // A probe card per path, left mounted. Tearing one down is what caused
