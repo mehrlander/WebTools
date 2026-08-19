@@ -1961,6 +1961,42 @@ two handlers. The stage's own listener was removed when this one arrived
 Paste button is the intake, not a shortcut beside one.
 
 
+### Where a takeover sits
+
+A swipe-deck takeover (the file preview, the branch reader, the Map's docs, the
+transform workbench) is framed by two CSS variables the kit reads and this app
+sets: `--deck-left` and `--deck-top`, both defaulting to zero, so a page with no
+chrome beside its content gets the whole viewport as every consumer always did.
+
+**At `lg` and up the takeover lives in the view pane; below it takes the
+window.** One breakpoint for both axes, and it is the sidebar's, because that is
+where the sidebar stops being an off-canvas drawer and starts taking layout
+space. Above it the deck starts after the sidebar and below the header, so both
+stay visible and usable while it is open. Below it the deck covers everything,
+which is what a phone always did and what a short screen wants.
+
+Until 2026-08-18 the panel was a centred `max-w-4xl` card with a margin, a
+rounded border and a shadow, over a full-viewport overlay. That reads as a
+dialog pasted on top of the app rather than part of it, and here it floated
+across the sidebar, so chrome you were still meant to use sat under something
+you had to dismiss first. The phone case was already right; this makes the
+desktop match it.
+
+Two things the change costs, both stated because they are silent. The overlay's
+desktop margin used to be the click-outside-to-dismiss target and a filled frame
+leaves none, so ✕, Escape and the Back button carry dismissal everywhere now,
+as they already did on a phone. And the sidebar is reachable during a takeover
+for the first time, so navigating while one is open changes the view underneath
+it rather than being blocked.
+
+**The breakpoint alone is not the condition,** which is the trap: the desktop
+sidebar is conditional (`showSidebar`, `sidebarOpen`, and the `lg:hidden` on the
+aside), so a signed-out dashboard or a put-away sidebar has no column there. A
+deck inset by a column that is not present clips the very view it is covering.
+CSS owns the widths, `syncDeckFrame()` owns whether they apply, and the header's
+height is measured rather than restated, since it is conditional too and a
+hidden header measures zero for free.
+
 ## The branch review: landed / stranded per branch
 
 **Retired as a per-repo view on 2026-08-14; the reading lives in Activity's

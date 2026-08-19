@@ -1313,7 +1313,7 @@
       "path": "tools/render/scenarios/sidebar-compare.mjs",
       "role": "",
       "layer": "tools/render/scenarios",
-      "lines": 166,
+      "lines": 169,
       "invocation": "driver",
       "emits": false,
       "named": true,

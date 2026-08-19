@@ -151,6 +151,32 @@
    below the trigger. */
 .wt-menu-row{min-height:1.625rem;font-size:.8125rem;line-height:1rem}
 @media (pointer:coarse){.wt-menu-row{min-height:2rem;font-size:.875rem}}
+/* WHERE A TAKEOVER STARTS. kits/swipe-deck.js frames itself with --deck-left,
+   defaulting to the whole viewport; this is the app saying it has chrome beside
+   its content. The widths track the sidebar's own (lg:w-80, xl:w-[22rem]) and
+   begin at lg for the same reason the sidebar does: below that it is an
+   off-canvas drawer taking no layout space, so a takeover should cover the
+   window as it always has. --deck-border draws the seam only where there is a
+   sidebar to draw it against. Keep these numbers in step with the aside.
+
+   The breakpoint alone is NOT the condition, which is the trap here: at lg and
+   up the sidebar is a static column, but a signed-out dashboard has none and a
+   viewer can put it away (showSidebar / sidebarOpen, and the lg:hidden on the
+   aside). Insetting the deck by a column that is not there clips the very view
+   it is covering. So CSS owns the widths and syncDeckFrame() owns whether they
+   apply, through data-deck-pane on the root.
+
+   ONE BREAKPOINT FOR BOTH AXES, and it is the sidebar's: at lg and up a
+   takeover lives in the view pane, below it takes the window. That is why
+   --deck-top is mapped from --deck-head inside a media query rather than set
+   directly. The phone was already right, a true fullscreen takeover, and
+   spending 3.5rem of a short screen on a nav row the reader is not using would
+   have been a regression dressed as consistency. syncDeckFrame() measures the
+   header rather than restating its h-14, since it is conditional (shellMode)
+   and a hidden header measures 0 for free. */
+@media (min-width:1024px){:root{--deck-top:var(--deck-head,0px)}}
+@media (min-width:1024px){:root[data-deck-pane="inset"]{--deck-left:20rem;--deck-border:1px}}
+@media (min-width:1280px){:root[data-deck-pane="inset"]{--deck-left:22rem}}
 /* The Repos row's two menu buttons. Narrow and chrome-free on a fine pointer,
    where they are a pair of glyphs at the row's edge and a hover background made
    each one read as a separate tile; the row's own hover tint is the feedback,
@@ -1914,6 +1940,10 @@ function app(){ return {
 
     this.wireAppDrop();
     this.wireAppPaste();
+    this.syncDeckFrame();
+    this.$watch('sidebarOpen', () => this.syncDeckFrame());
+    this.$watch('showSidebar', () => this.syncDeckFrame());
+    this.$watch('shellMode', () => this.syncDeckFrame());
 
     // Browser Back/Forward restores state from the URL (syncUrl pushes an entry
     // per distinct URL, so the history has real steps to walk).
@@ -4633,6 +4663,27 @@ function app(){ return {
   // routed here (the explorer's "+", a #stage= link, a saved surface's Load),
   // and all of them mean "show me what is staged", which is this pill.
   goStage(){ this.estateSeen = true; this.view = 'stage'; this.syncUrl(); },
+
+  // WHETHER A TAKEOVER IS INSET BY THE SIDEBAR, stamped on the root for the
+  // --deck-left rules in <style> to key on. kits/swipe-deck.js frames itself
+  // from that variable and defaults to the whole viewport, so a page with no
+  // chrome beside its content needs none of this. See the CSS for why the
+  // breakpoint alone will not do: the desktop sidebar is conditional, and a
+  // deck inset by a column that is not there clips the view under it.
+  syncDeckFrame(){
+    const root = document.documentElement;
+    root.dataset.deckPane = (this.showSidebar && this.sidebarOpen) ? 'inset' : 'full';
+    // MEASURED, not stated. The header is h-14 plus a border, but it is also
+    // conditional (shellMode) and a second copy of its height here would be a
+    // number to keep in step with a class nobody would think to look at. A
+    // hidden header measures 0, which is the right answer for free. This sets
+    // --deck-head; the CSS maps it into --deck-top only at lg and up, so a
+    // phone keeps the full-window takeover it already had.
+    this.$nextTick(() => {
+      const head = document.querySelector('header');
+      root.style.setProperty('--deck-head', ((head && head.offsetHeight) || 0) + 'px');
+    });
+  },
 
   // ── A DROP ANYWHERE STAGES ────────────────────────────────────────────────
   // The Stage's own view has always taken a drop, which meant the gesture
