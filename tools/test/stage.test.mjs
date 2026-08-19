@@ -1336,6 +1336,41 @@ test('the preview toggles into a diff over that pair, and back to the file', asy
   data.preview = null;
 });
 
+test('two taps open one comparison, not two stacked on each other', async () => {
+  reset();
+  store.stage = [
+    { local: true, id: 441, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\n' },
+    { local: true, id: 442, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'two\n' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  // THE LAZY-LOAD PATH IS THE WHOLE TEST. With the kit already present
+  // openCompare never awaits and runs to completion synchronously, so a second
+  // call sees the handle and returns: the race cannot happen and a test written
+  // against that realm passes whether the guard is there or not. So put the
+  // page that fetches the kit back: swipeDeck missing, gh.load supplying it.
+  const deck = window.swipeDeck;
+  const stack = deck.stack;
+  const before = stack.length;
+  delete window.swipeDeck;
+  const gh = window.gh;
+  window.gh = { load: async () => { await new Promise(r => setTimeout(r, 10)); window.swipeDeck = deck; } };
+  try {
+    // Both fired before either resolves, which is what a double tap is.
+    await Promise.all([data.openCompare(), data.openCompare()]);
+    await shown();
+    assert.equal(stack.length, before + 1, 'one level down, not two');
+    data._cmpDeck.close();
+    await shown();
+    assert.equal(stack.length, before, 'and one back out returns to the file');
+  } finally {
+    window.swipeDeck = deck;
+    if (gh === undefined) delete window.gh; else window.gh = gh;
+  }
+  data.preview = null;
+});
+
 test('backing out of the comparison lands where the walk got to', async () => {
   reset();
   store.stage = [
