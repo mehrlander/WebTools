@@ -118,7 +118,6 @@ the link-dense text twin of the visual index above.
 
 | Page | Title | Links |
 |---|---|---|
-| `activity-unified` | Activity, unified · prototype | [view](https://mehrlander.github.io/web-tools/pages/scratch/activity-unified.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/activity-unified.html) |
 | `base64-render-engine` | Base64 Render Engine | [view](https://mehrlander.github.io/web-tools/pages/scratch/base64-render-engine.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/base64-render-engine.html) |
 | `define-test` | x-define — isolated test | [view](https://mehrlander.github.io/web-tools/pages/scratch/define-test.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/define-test.html) |
 | `demo-spacex` | SpaceX Viewer Demo | [view](https://mehrlander.github.io/web-tools/pages/scratch/demo-spacex.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/demo-spacex.html) |
