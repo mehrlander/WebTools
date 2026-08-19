@@ -198,6 +198,25 @@ own. It arrived visible (fourteen identical bars, one per nested component) and
 had been sitting quietly in `description` and `actions`, whose values happened
 to be empty wherever anyone looked. The scan now reads the element's own scope.
 
+**A third half arrived on 2026-08-19: `menu`,** which fills the launcher's
+long-press menu rather than anything inside the drawer. A component exposing
+`[{ label, icon, run }]` gets one row per entry under the built-in "Take a
+note", and show-repo contributes exactly one, the app-wide paste. The contract
+exists because the drawer is the wrong place for a verb you want *before* the
+drawer: opening it is a tap and a tab, and for the paste specifically it would
+also spend the user activation a clipboard read has to ride.
+
+Two things are load-bearing about it. **Rows are read when the menu opens, not
+when the drawer scans.** `detect()` runs on drawer open, so a menu sourced from
+its output would be empty on the first long press of a page load, which is the
+press that matters; `readPageMenu()` does its own narrow pass over `[x-data]`,
+cheap enough to redo every time and therefore correct on a view that mounted
+late. And **every row is one line.** "Take a note" carried a two-line
+explanation until this change, and it went for the same reason the toggle bar's
+`hint` did: a menu raised by a held finger is read in the half-second before the
+finger lifts, so a paragraph there is something to get past rather than
+something to read. There is no `desc` field to put one in.
+
 ### The ref switch: which ref show-repo itself is running
 
 Past the rail, behind a hairline, sits the **ref switch**
@@ -1959,9 +1978,37 @@ order and `init()` runs before any component mounts, so a second listener in the
 stage could not use `defaultPrevented` to tell that this one had already acted;
 one reader is also what keeps a paste's several flavors from being split between
 two handlers. The stage's own listener was removed when this one arrived
-(2026-08-18). Note the platform floor underneath all of it: iOS Safari fires no
-`paste` event unless an editable is focused, so on a phone the bench's explicit
-Paste button is the intake, not a shortcut beside one.
+(2026-08-18).
+
+**The platform floor underneath all of it is that a phone has no paste event at
+all.** iOS Safari fires one only when an editable is focused, so the window
+listener that is the desktop's whole story is worth nothing there and the
+gesture the platform does give is a tap. So there are three triggers behind the
+one call (`pasteAnywhere` → `StageIntake.takeClipboard`), and they are three
+answers to "where would you reach for this", not three implementations:
+
+* the **header's Paste button**, at every width, beside the hamburger and
+  outside the nav, which scrolls at phone widths;
+* the **launcher's long-press menu**, which the shell fills through the FAB's
+  `menu` contract (below), a gesture on a control already floating over every
+  view;
+* the **bench's own Paste button**, for when you are already on the Stage.
+
+Each of them must read the clipboard on the tap's **own** user activation,
+which is why `pasteAnywhere` awaits nothing before `takeClipboard`, why
+`takeClipboard` throws rather than lazily fetching `kits/io.js`, and why the
+shell preloads that kit at boot. An `await` before the read spends the gesture,
+and the failure then looks like a clipboard problem rather than a sequencing
+one.
+
+**An empty clipboard is reported as information, not as an error** (changed
+2026-08-19, from a phone). `io.pasteItems()` returns an empty list both for a
+genuinely empty clipboard and for a read the platform refused without throwing,
+and nothing downstream can tell those apart, so the message says what happened
+("Nothing came off the clipboard") rather than guessing why. Tapping Paste
+before copying anything is the ordinary case, and the red alert it used to raise
+read as a broken button. A read that *throws* is a real failure and keeps the
+error colour.
 
 
 ### Where a takeover sits

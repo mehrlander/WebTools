@@ -93,6 +93,7 @@ tools/render/scenarios/estate-surfaces-embed.mjs,"the Surfaces view rendering a 
 tools/render/scenarios/estate-unfiled.mjs,,tools/render/scenarios,99,driver,no,no,no
 tools/render/scenarios/fab-export.mjs,the FAB's Export controls,tools/render/scenarios,31,driver,no,yes,no
 tools/render/scenarios/fab-guide.mjs,the fab's Render tab seeded token-free so the guide pane renders,tools/render/scenarios,144,driver,no,no,no
+tools/render/scenarios/fab-menu.mjs,"The launcher's long-press menu with both rows up: the built-in note row and the shell's contributed paste, each one line.",tools/render/scenarios,30,driver,no,no,no
 tools/render/scenarios/fab-text-match.mjs,"drive the Text tab for a shot: the read is real, the tree and registry reads are seeded, and STATE picks the un-run pane, the resolved match, or a selection-scoped read",tools/render/scenarios,89,driver,no,no,no
 tools/render/scenarios/fab-toss.mjs,toss-render address mode with the fab's toss integration and singleton guard,tools/render/scenarios,49,driver,no,no,no
 tools/render/scenarios/fab-traffic-toss.mjs,"the Traffic tab inside a toss: the bands describe the tossed page, not the shell",tools/render/scenarios,56,driver,no,no,no
@@ -112,6 +113,7 @@ tools/render/scenarios/nest-probe.mjs,"probe: a nested self-toss's address bar, 
 tools/render/scenarios/open-drawer.mjs,the FAB drawer open with the take grid scrolled into view,tools/render/scenarios,20,driver,no,no,no
 tools/render/scenarios/paste-anywhere.mjs,dispatches a real two-flavor ClipboardEvent on a non-Stage view and reports where the app-wide paste routed it,tools/render/scenarios,42,driver,no,no,no
 tools/render/scenarios/paste-button.mjs,"drives the header Paste button from a non-Stage view with window.io stubbed, and reports where it routed",tools/render/scenarios,46,driver,no,no,no
+tools/render/scenarios/paste-empty-toast.mjs,"What the header's Paste button says when the clipboard is empty: an info toast, never the error colour it used to raise.",tools/render/scenarios,30,driver,no,no,no
 tools/render/scenarios/paste-kinds-probe.mjs,puts four transform-shaped payloads through the paste intake and reports the name and preview mode each gets,tools/render/scenarios,54,driver,no,no,yes
 tools/render/scenarios/pick-md.mjs,"end-to-end reproduction of pick-a-file-in-the-fab, reporting what the frame did",tools/render/scenarios,76,driver,no,no,no
 tools/render/scenarios/project-board-review.mjs,"the project Board pane's typed read, seeded token-free",tools/render/scenarios,198,driver,no,yes,no
