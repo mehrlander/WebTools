@@ -1352,6 +1352,162 @@ test('the preview toggles into a diff over that pair, and back to the file', asy
   data.preview = null;
 });
 
+// THE THREE-SLIDE CASE, which two staged items cannot reach: previewPair
+// clamps at the end, so with two everything pairs 0,1 and three concurrent
+// builders agree by accident. With three they disagree, and the shared
+// diffA/diffB/diffRows fields used to let the last builder win.
+test('each diff slide holds its own pair, and the copy follows the reader', async () => {
+  reset();
+  store.stage = [
+    { local: true, id: 541, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\n' },
+    { local: true, id: 542, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'two\n' },
+    { local: true, id: 543, name: 'c.md', path: 'c.md', size: 6, isText: true, text: 'three\n' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  await data.togglePreviewDiff();
+  await shown();
+
+  const slides = () => [...data._pDeck.deck.track.children]
+    .map(el => el.textContent.replace(/\s+/g, ' ').trim());
+
+  // What the reader is on, and what every control outside the slide reads.
+  assert.equal(data.diffA, 0);
+  assert.equal(data.diffB, 1, 'the neighbour builders no longer win the pair');
+  assert.match(data.diffDump, /--- A: \(local\) a\.md\n\+\+\+ B: \(local\) b\.md/,
+    'so a copy names the pair the reader is looking at');
+
+  // And the neighbour drew ITS pair, with its own rows rather than none or
+  // someone else's under its heading.
+  assert.match(slides()[1], /b\.md .* c\.md/);
+  assert.match(slides()[1], /- two/, 'the neighbour ran its own compare');
+  assert.match(slides()[1], /\+ three/);
+  assert.doesNotMatch(slides()[1], /\+ two/, "and not the first pair's rows under its own name");
+
+  // Stepping re-aims the controls, not only the rows. The slide is already
+  // built, so nothing re-renders and only the publish can do this.
+  data.previewStep(1);
+  await shown();
+  assert.equal(data.diffA, 1);
+  assert.equal(data.diffB, 2);
+  assert.match(data.diffDump, /--- A: \(local\) b\.md\n\+\+\+ B: \(local\) c\.md/);
+  data.preview = null;
+});
+
+// ── Compare with the clipboard ───────────────────────────────────────────────
+//
+// The stage's pair is a POSITION, so where a paste lands decides whether it can
+// be the thing you asked to compare with. These hold the placement first and
+// the gesture on top of it.
+
+// takeClipboard reads through kits/io.js, which this realm has no loader for.
+const setClipboard = (text) => {
+  window.io = {
+    pasteItems: async () => text == null ? []
+      : [{ kind: 'text', type: 'text/plain', text, size: text.length }],
+  };
+};
+
+test('a paste lands where it was asked for, not at the end', () => {
+  reset();
+  window.StageIntake.take({ text: 'first' });
+  window.StageIntake.take({ text: 'third' });
+  window.StageIntake.take({ text: 'second' }, 1);
+  assert.deepEqual(plain_(data.items.map(it => it.text)), ['first', 'second', 'third']);
+});
+
+test('an out-of-range position clamps rather than tearing the list', () => {
+  reset();
+  window.StageIntake.take({ text: 'a' });
+  window.StageIntake.take({ text: 'b' }, 99);
+  window.StageIntake.take({ text: 'c' }, -4);
+  assert.deepEqual(plain_(data.items.map(it => it.text)), ['c', 'a', 'b']);
+});
+
+test('every other intake still appends, so building a set is unchanged', async () => {
+  reset();
+  window.StageIntake.take({ text: 'kept first' });
+  setClipboard('arrived second');
+  await window.StageIntake.takeClipboard();
+  assert.deepEqual(plain_(data.items.map(it => it.text)), ['kept first', 'arrived second']);
+});
+
+test('compare with the clipboard stages the paste next and opens the diff on it', async () => {
+  reset();
+  store.stage = [
+    { local: true, id: 501, name: 'a.md', path: 'a.md', size: 8, isText: true, text: 'one\ntwo\n' },
+    { local: true, id: 502, name: 'c.md', path: 'c.md', size: 9, isText: true, text: 'far\naway\n' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  assert.equal(data.preview.mode, 'file');
+
+  setClipboard('one\nTWO\n');
+  await data.compareWithPaste();
+  await shown();
+
+  assert.equal(data.items.length, 3);
+  assert.equal(data.items[1].text, 'one\nTWO\n',
+    'the paste sits beside the file it was brought in to be compared with');
+  assert.equal(data.preview.mode, 'diff');
+  assert.equal(data.diffA, 0);
+  assert.equal(data.diffB, 1, 'the pair is the file you were on and the paste');
+  assert.ok(data.diffRows.some(r => r.t === 'add'), 'and the compare ran on the way in');
+  data.preview = null;
+});
+
+test('an empty clipboard leaves the reader exactly where it was', async () => {
+  reset();
+  store.stage = [{ local: true, id: 511, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\n' }];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+
+  setClipboard(null);
+  await data.compareWithPaste();
+  await shown();
+
+  assert.equal(data.items.length, 1, 'nothing staged');
+  assert.equal(data.preview.mode, 'file', 'and no diff opened over a pair that does not exist');
+  data.preview = null;
+});
+
+test('the reader offers the clipboard compare even with one file staged', async () => {
+  reset();
+  store.stage = [{ local: true, id: 521, name: 'only.md', path: 'only.md', size: 4, isText: true, text: 'one\n' }];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+
+  const titles = data._pActions(0).map(a => a.title);
+  assert.equal(titles.filter(t => /^Compare [^w]/.test(t)).length, 0,
+    'the positional compare has no second position to offer');
+  assert.equal(titles.filter(t => /clipboard/.test(t)).length, 1,
+    'and the one case it cannot serve is the one the clipboard can');
+  data.preview = null;
+});
+
+test('the compare action names its pair, and names the way back from a diff', async () => {
+  reset();
+  store.stage = [
+    { local: true, id: 531, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\n' },
+    { local: true, id: 532, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'two\n' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  assert.match(data._pActions(0)[0].title, /^Compare a\.md .+ b\.md$/,
+    'which two files, not how the control is wired');
+
+  await data.togglePreviewDiff();
+  await shown();
+  assert.equal(data._pActions(0)[0].title, 'Back to a.md',
+    'and in diff mode the same button says what it returns to');
+  data.preview = null;
+});
+
 test('diffLabel names the item\'s own ref, or "default"', () => {
   assert.equal(data.diffLabel({ repo: 'me/a', ref: 'dev', path: 'x.js' }), 'me/a@dev:x.js');
   assert.equal(data.diffLabel({ repo: 'me/a', ref: '', path: 'x.js' }), 'me/a@default:x.js');

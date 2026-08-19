@@ -101,7 +101,9 @@ Takes from:
 2. **a drop or a paste anywhere in the host app** (below),
 3. a repo: the **Add box** on the bench (below),
 4. a repo manifest's `stage.files` (seeds an empty stage when that repo opens),
-5. a `#stage=` link.
+5. a `#stage=` link,
+6. **the reader's compare-with-the-clipboard** (below), the one intake that
+   names a position rather than appending.
 
 **A drop anywhere in the app stages, and the intake is why it can.** Until
 2026-08-17 the fold lived inside the component, so nothing could stage anything
@@ -322,7 +324,39 @@ Stage-view actions:
   **Open in Diff** for the Diff page's split view and real patch. Stepping with
   the diff open re-pairs and re-runs, so walking the set walks its comparisons.
   A `&mode=diff` link opens the preview on its diff rather than selecting a
-  control on the page;
+  control on the page. Both header buttons name what a tap does rather than how
+  it is wired: the compare reads `Compare a.md ↔ b.md`, and in diff mode the
+  same button reads `Back to a.md`;
+
+  **A slide's compare is the slide's own**, which took a fix on 2026-08-19. The
+  deck mounts the active slide and its two neighbours, each a diff of a
+  different pair, and all three used to write one set of component fields. The
+  last builder won, so on any stage of three or more the reader saw `a ↔ b`
+  while the copy header and the **Open in Diff** address named `b ↔ c`, the
+  neighbour drew no rows at all (its compare returned early on the busy flag),
+  and the slide past it drew the first pair's rows under its own heading. Two
+  staged items hid all three, since `min(i, n-2)` makes both slides pair 0,1,
+  which is why the coverage passed. Each slide now resolves its own pair and
+  holds the result; what the reader is ON is published to the fields every
+  control outside the slide reads, on render and again on every step, so
+  stepping re-aims the copy and the handoff and not only the rows;
+
+  **Compare with the clipboard.** The other side of a comparison is often not on
+  the stage at all, so the reader's header carries a second compare that takes
+  it from the clipboard: it stages the paste **in the next position** and turns
+  the diff on. Landing it next rather than at the end is what lets the existing
+  pair rule say what was asked, and it is why the intake's fold takes a
+  position (`put(fresh, at)`); the alternative was a pinned pair overriding
+  position, which would be the first thing here to select a pair without being
+  one. Unconditional, because the case the positional compare cannot serve is a
+  stage of **one**, which is exactly where a single pasted arrival lands you:
+  before this, a reader holding one file had no compare affordance at all and
+  the only route was to go find the other side, stage it, and come back. The
+  read is `StageIntake.takeClipboard`, the same call behind the bench's Paste
+  button and the app header's, so the iOS rules it carries (nothing awaited
+  before the read, the textarea fallback reading its own value) apply here
+  unchanged. An empty clipboard is reported as information and the reader is
+  left where they were;
 - **Out**: the deposit surface, and the only lens on this side now. It covers
   everything leaving the stage: the concatenated bundle (each file under a
   `// === owner/repo[@ref]:path ===` header; icon actions to refresh, copy,
