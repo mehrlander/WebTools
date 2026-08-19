@@ -56,6 +56,7 @@ const ownersCsv = readFileSync(path.join(repoRoot, 'docs', 'owners.csv'), 'utf8'
 const repsCsv = readFileSync(path.join(repoRoot, 'docs', 'repetitions.csv'), 'utf8');
 const propsRegCsv = readFileSync(path.join(repoRoot, 'docs', 'registries.csv'), 'utf8');
 const propsDeclCsv = readFileSync(path.join(repoRoot, 'docs', 'properties.csv'), 'utf8');
+const propsVocabCsv = readFileSync(path.join(repoRoot, 'docs', 'vocabularies.csv'), 'utf8');
 const testsCsv = readFileSync(path.join(repoRoot, 'docs', 'tests.csv'), 'utf8');
 // The private registry's sessions cache, trimmed to the rollup the Docs tab
 // reads. Paths are repo-qualified there and hub-relative in the registry, which
@@ -84,6 +85,7 @@ window.GH = class {
     if (p === 'docs/repetitions.csv') return { text: repsCsv };
     if (p === 'docs/registries.csv') return { text: propsRegCsv };
     if (p === 'docs/properties.csv') return { text: propsDeclCsv };
+    if (p === 'docs/vocabularies.csv') return { text: propsVocabCsv };
     if (p === 'docs/tests.csv') return { text: testsCsv };
     if (p === 'state/sessions.json') return { text: JSON.stringify(sessions) };
     return { text: toCsv(manifest.items) };
@@ -92,7 +94,7 @@ window.GH = class {
 // No window.__shell in the test, so hasToken() is falsy and the token-gated
 // adoption probe never runs; only the public set half loads.
 
-// The Registries tab reads two CSVs, so the kit that parses them has to be in
+// The Registries tab reads three CSVs, so the kit that parses them has to be in
 // the window the same way the pre-build puts it there.
 new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8'))();
 new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/map.js'), 'utf8'))();
@@ -460,6 +462,61 @@ test('Registries groups declarations under the registry that governs them', asyn
 // section must be a key the model actually puts on a row. It is deliberately
 // the row object's own keys rather than a written list, because a written list
 // is the same class of thing that broke: a second place to remember.
+// The legend replaced a prose vocabulary table on 2026-08-19, so these are the
+// checks that make the deletion safe. If the derivation breaks or a domain
+// value loses its gloss, the tab silently shows a bare token and the document
+// that used to explain it is gone: the failure mode of moving prose into data
+// is that nothing notices when the data stops saying as much as the prose did.
+test('the Registries legend defines the tab\'s own columns from the pair', async () => {
+  await data.loadPropsReg();
+  const legend = data.registryLegend;
+  assert.ok(legend.length >= 10, 'a registry row has its columns defined');
+  for (const d of legend) assert.ok(d.gloss, d.property + ': every legend row carries its gloss');
+
+  // The membership split is the load-bearing one, and it is the example of a
+  // definition that lived in prose: the value alone does not say why only a
+  // computed set can carry a coverage gate.
+  const membership = legend.find(d => d.property === 'membership');
+  assert.equal(membership.domain.map(v => v.value).join(','), 'computed,curated');
+  for (const v of membership.domain) assert.ok(v.gloss, v.value + ' is glossed, not just listed');
+
+  assert.ok(data.propertyLegend.find(d => d.property === 'required')?.domain.length === 3,
+    'the property grain defines its own required domain too');
+});
+
+test('every closed domain on the registry pair carries a value gloss', async () => {
+  await data.loadPropsReg();
+  const bare = [];
+  for (const id of ['registries', 'properties']) {
+    for (const d of data.legendFor(id)) {
+      for (const v of d.domain) if (!v.gloss) bare.push(id + '.' + d.property + '=' + v.value);
+    }
+  }
+  // Narrow to the pair on purpose: vocabularies.csv's own scope says a domain
+  // whose values speak for themselves needs no rows, and that stays true
+  // everywhere else. The pair is the exception because its legend is now the
+  // ONLY place these values are defined.
+  assert.equal(bare.join(', '), '', 'undefined values on the pair: ' + bare.join(', '));
+});
+
+// A JS template literal cannot hold a backtick, and the Registries section's
+// own header comment says so, which did not stop this pass from putting four
+// in a markup comment and taking the whole component down with a SyntaxError.
+// A warning that has already been ignored once is a check waiting to be
+// written.
+test('the Map template holds no backtick', () => {
+  const src = readFileSync(path.join(repoRoot, 'lib', 'alpineComponents', 'map.js'), 'utf8');
+  const start = src.indexOf('template: `');
+  const body = src.slice(start + 'template: `'.length);
+  const literal = body.slice(0, body.indexOf('`'));
+  // A length threshold is not the check: a stray backtick 660 lines in still
+  // leaves thousands of characters behind it, which is how the first version of
+  // this test passed while the component was failing to parse. Name a marker
+  // from the LAST tab instead, so the literal has to reach its real end.
+  assert.ok(literal.includes(`x-show="mapTab==='registries'"`),
+    'the template literal reaches its last section, so no stray backtick closed it early');
+});
+
 test('every field the Registries markup reads exists on a registry row', async () => {
   await data.loadPropsReg();
   const row = data.registryRows[0];
@@ -473,6 +530,6 @@ test('every field the Registries markup reads exists on a registry row', async (
   const read = [...new Set([...section.matchAll(/\br\.([A-Za-z_$][\w$]*)/g)].map(m => m[1]))];
   assert.ok(read.length > 5, 'the section reads several fields off the row');
   const missing = read.filter(f => !(f in row));
-  assert.deepEqual(missing, [], 'markup reads fields the row does not carry: ' + missing.join(', '));
+  assert.equal(missing.join(', '), '', 'markup reads fields the row does not carry: ' + missing.join(', '));
 });
 

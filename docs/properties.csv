@@ -97,19 +97,19 @@ app-routes,note,recorded,,none,column,yes,,"why a row has no files, or what qual
 app-routes,alias,recorded,,none,column,yes,,a retired key that still resolves
 app-routes,tabs,recorded,,none,column,no,,the sub-tabs addressable within it
 app-routes,stop,recorded,,counted,column,yes,,"the nav destination it is reached as. Six sub-tabs are addressed as their own ?view= key while twelve are addressed as ?view=<parent>&tab=, so this is the level the router flattens away; the gate holds every estate route's value to estateNav; blank on the shell row, which draws every route and is addressable as none of them"
-registries,path,recorded,,value,column,yes,,"the file the registry lives in, plus a #fragment where one file still holds several; the fragment goes when every registry is its own file"
-registries,key,recorded,,value,column,yes,,"the column that identifies a row, exempt from having a property definition of its own"
-registries,identity,recorded,,none,column,yes,,"the space the key resolves into, where the ownership gate needs one"
+registries,path,recorded,,value,column,yes,,"the file the registry lives in; one table per file, so a path is a plain file path with nothing after it"
+registries,key,recorded,,value,column,yes,,"the column that identifies a row, exempt from having a property definition of its own; several columns join with +"
+registries,identity,recorded,,none,column,yes,,"the name space the key resolves into, so two registries' keys can be compared: path for a repo-relative path, path:<prefix> for one relative to a prefix, blank for an opaque name that never collides"
 registries,membership,recorded,,value,column,yes,computed;curated,"whether the set of rows can be recomputed from the tree or the code, or is decided by curation. Only a computed set can be held to a coverage gate, because only it has something independent to be checked against"
 registries,inherits,recorded,,none,column,yes,,"another registry this one borrows descriptions from, by id, so a curated selection need not restate what a computed set already says. Blank is the normal state. Named the crosswalk kind until 2026-08-18, which said that a registry borrowed without saying from whom"
 registries,target,recorded,,value,column,yes,,the thing a row asserts about; not always a file
 registries,scope,recorded,,value,column,yes,,the population the registry covers
-registries,fields,recorded,,value,column,yes,governed;ungoverned,whether the columns are held to their property definitions
+registries,fields,recorded,,value,column,yes,governed;ungoverned,whether every non-key column of this carrier must be a declared property
 registries,gate,recorded,,value,column,yes,,the test that fails when the registry and the repo disagree; none when nothing holds it
 registries,area,recorded,,value,column,yes,files;names,the reader grouping in the Registries tab
 registries,title,recorded,,value,column,yes,,display name
 registries,gloss,recorded,,value,column,yes,,one line on what the registry is for
-registries,renders_in,computed,tools/build/registries-reach.mjs,counted,column,no,,the lib/ and pages/ files naming the path in code; empty marks a registry no app surface reads
+registries,renders_in,computed,tools/build/registries-reach.mjs,counted,column,no,,"the lib/, pages/ and app/ files naming the path in code; empty marks a registry no app surface reads"
 properties,mode,recorded,,value,column,yes,recorded;computed,whether the value is authored or derived
 properties,deriver,recorded,,counted,column,yes,,"the script that computes the value, required when mode is computed"
 properties,required,recorded,,value,column,yes,value;counted;none,"what the gate enforces: every row filled, blanks counted, or nothing"
