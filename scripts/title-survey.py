@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Advisory survey: meaning that lives only in a `title` attribute.
 
-HTML-STYLE.md's rule is that a `title` is not where meaning goes: it never
-appears on a phone, so a mark whose whole meaning is its tooltip is an
-unlabeled mark. The failure is quiet, because on the machine where the UI is
-built the tooltip does appear, so a fact parked there looks shipped. This detector is
+HTML-STYLE.md's rule is that a tooltip worth having is worth building: a native
+`title` reaches no phone and opens nothing, so a fact that earns a hover earns a
+real panel. The failure is quiet, because on the machine where the UI is built
+the tooltip does appear, so a fact parked there looks shipped. This detector is
 mechanical, advisory, and never blocking, in the idiom of link-survey.py,
 unclaimed-code-survey.py and duplicated-claims-survey.py: run it, read the
 list, fix or shrug. It reports candidates, not findings.
@@ -32,7 +32,8 @@ Three verdicts:
              click handler, so the title is a desktop convenience label
   echo       the title repeats the element's own `x-text`, so it expands a
              truncation and stands in for nothing
-  stranded   neither, so this is the only place the fact lives
+  stranded   neither, so this is the only place the fact lives and the panel
+             it wanted was never built
 
 Only `stranded` is worth reading. Expect false positives: a decorative mark
 whose title is genuinely a nicety reports the same as a caveat nobody can
@@ -173,7 +174,7 @@ def main(argv):
           f"{counts['stranded']} stranded")
     if counts['stranded']:
         print('A stranded title is the only place its fact lives. '
-              'HTML-STYLE.md: a title is not where meaning goes.')
+              'HTML-STYLE.md: a tooltip worth having is worth building.')
     return 0
 
 

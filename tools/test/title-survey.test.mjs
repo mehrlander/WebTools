@@ -1,5 +1,5 @@
 // scripts/title-survey.py — the advisory detector for meaning that lives only
-// in a `title` attribute (HTML-STYLE.md: "a title is not where meaning goes").
+// in a `title` attribute (HTML-STYLE.md: "a tooltip worth having is worth building").
 //
 // What is worth pinning is the CLASSIFIER, not the report. The audit behind
 // PR #447 ran twice by hand before this script existed and was wrong both
@@ -108,7 +108,7 @@ test('the report names the rule when it finds something', () => {
     const file = join(dir, 'probe.html');
     writeFileSync(file, '<div><span title="stranded fact">*</span></div>');
     const out = execFileSync('python3', [SCRIPT, file], { encoding: 'utf8' });
-    assert.match(out, /a title is not where meaning goes/);
+    assert.match(out, /a tooltip worth having is worth building/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
