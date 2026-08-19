@@ -109,7 +109,17 @@ const PROJECT_FILES = ['CLAUDE.md', 'AGENTS.md', ...INJECTED];
 const SKILL_DIRS = ['.claude/skills', 'skills'];
 // The app corpus's boundary and extensions are exported with the scanners
 // above: registries-reach.mjs must mean the same thing by "the app".
-export const APP_DIRS = ['lib', 'pages'];
+//
+// `app/` joined the list on 2026-08-19, and its absence is the shape of error
+// this constant will keep producing: PR #441 moved the show-repo shell from
+// pages/show-repo.html to app/index.html, and nothing here moved with it, so
+// for eleven days the scanners read the app without reading the app's own
+// shell. Two registries wore the `no app surface` warning while
+// app/index.html fetched them by name, and docs/text-content.md read `orphan`
+// on the same evidence. The lesson is not about this directory: a corpus
+// boundary written as a literal list cannot notice that the corpus moved, so
+// moving a top-level directory means coming here.
+export const APP_DIRS = ['lib', 'pages', 'app'];
 const SKILL_EXT = new Set(['.md', '.py', '.json', '.mjs']);
 export const APP_EXT = new Set(['.js', '.html', '.mjs']);
 

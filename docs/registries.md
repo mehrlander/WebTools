@@ -160,11 +160,11 @@ held to detecting.
 Both resolutions produced the same object, so it has a column. **`inherits`** marks a registry that is
 a catalog that curates *which* targets belong to something and leaves each
 target's description to the registry that owns it. `docs/tools.csv` asserts only
-which pages the Tools view shelves and what icon each gets; `docs/portable.json`
+which pages the Tools view shelves and what icon each gets; `docs/portable.csv`
 asserts only what travels, how a consumer takes it, and its invocation.
 
-The count does not fall when a registry becomes one. Reshaping tools
-leaves sixteen registries, not fifteen: an inheriting registry asserting `icon` about a
+The count does not fall when a registry becomes one. Reshaping tools leaves the
+count where it was: an inheriting registry asserting `icon` about a
 page is still a registry with a target and a property. What goes away is the
 duplication, which is the better win and worth naming as itself.
 
@@ -210,7 +210,8 @@ carrier for it.
 **The index governs the carriers and nothing governed the index.** A registry
 row in the registry index was itself an unaccounted classification: the field
 check above reaches into the carriers and cannot reach the file it reads them
-from, because that file is the index rather than a peer among the sixteen. So
+from, because that file is the index rather than a peer among the carriers it
+reads. So
 the gate now applies the same rule to itself, holding the registry row to a
 named field set. Adding a field to a registry row is a deliberate act that has
 to change a test, on the same reasoning as `fields: ungoverned`.

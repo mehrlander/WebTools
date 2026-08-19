@@ -449,3 +449,30 @@ test('Registries groups declarations under the registry that governs them', asyn
   assert.equal(t.decls, grouped);
   assert.ok(t.closed > 0 && t.closed <= t.decls);
 });
+
+// The gate the carrier/path rename walked straight through. `carrier` became
+// `path` on 2026-08-16 and the template kept reading `r.carrier`, so for three
+// days every card's file link rendered empty text pointing at
+// /blob/main/undefined, and the whole suite stayed green: the assertions above
+// hold the ROW to the model, and nothing held the TEMPLATE to the row.
+//
+// So this reads the markup as data. Every `r.<field>` inside the Registries
+// section must be a key the model actually puts on a row. It is deliberately
+// the row object's own keys rather than a written list, because a written list
+// is the same class of thing that broke: a second place to remember.
+test('every field the Registries markup reads exists on a registry row', async () => {
+  await data.loadPropsReg();
+  const row = data.registryRows[0];
+  assert.ok(row, 'a row to check the markup against');
+
+  const src = readFileSync(path.join(repoRoot, 'lib', 'alpineComponents', 'map.js'), 'utf8');
+  const start = src.indexOf(`x-show="mapTab==='registries'"`);
+  assert.ok(start > 0, 'the Registries section is findable in the template');
+  const section = src.slice(start, src.indexOf('</section>', start));
+
+  const read = [...new Set([...section.matchAll(/\br\.([A-Za-z_$][\w$]*)/g)].map(m => m[1]))];
+  assert.ok(read.length > 5, 'the section reads several fields off the row');
+  const missing = read.filter(f => !(f in row));
+  assert.deepEqual(missing, [], 'markup reads fields the row does not carry: ' + missing.join(', '));
+});
+
