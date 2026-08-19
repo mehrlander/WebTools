@@ -43,9 +43,23 @@ export default async function (page, ctx) {
         mk('pages/show-repo/show-repo.html', 'modified', 9, 4),
         mk('tools/test/estate-open-branches.test.mjs', 'modified', 38, 6),
         mk('docs/docs.json', 'modified', 2, 2),
+        // Past what the crawl stored, deliberately: a live read is newer than
+        // the cache, so the card opens over a row it disagrees with. That gap
+        // is the case this scenario exists to show being closed.
+        mk('docs/harness.json', 'modified', 3, 1),
+        mk('docs/tests.json', 'modified', 4, 1),
+        mk('tools/render/scenarios/branch-file-card.mjs', 'added', 66, 0),
         mk('lib/kits/legacy-shape.js', 'removed', 0, 130),
       ],
     });
+  });
+
+  // What the crawl stored, read BEFORE the card runs: the card's own compare is
+  // newer, and absorbing it should move these.
+  const was = await page.evaluate(() => {
+    const d = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));
+    const r = d.openRows[0];
+    return { parts: JSON.parse(JSON.stringify(d.fileParts(r) || {})), ahead: r.ahead, behind: r.behind };
   });
 
   const cls = ['changed', 'missing'].includes(process.env.CLS) ? process.env.CLS : 'added';
@@ -72,7 +86,12 @@ export default async function (page, ctx) {
              exts: (d.fileCard?.shape.exts || []).map(p => p.join(' ')).join(', '),
              dirs: (d.fileCard?.shape.dirs || []).map(p => p.join(' ')).join(', '),
              listed: d.fileCardList.length, open: d.fileCardOpen || '(none)',
-             loading: !!d.fileCardMine?.loading, error: d.fileCardMine?.error || '' };
+             loading: !!d.fileCardMine?.loading, error: d.fileCardMine?.error || '',
+             parts: JSON.parse(JSON.stringify(d.fileParts(d.openRows[0]) || {})),
+             ahead: d.openRows[0]?.ahead, behind: d.openRows[0]?.behind, fresh: d.freshCount,
+             wrote: JSON.stringify(d.activity['me/web-tools']?.openPRs?.[0]?.stats || null)?.slice(0, 120),
+             rowRepo: d.openRows[0]?.repo + '@' + d.openRows[0]?.name,
+             rowStats: JSON.stringify(d.openRows[0]?.stats || null)?.slice(0, 120) };
   });
   console.log('\n── the file card ' + '─'.repeat(43));
   console.log('   class / count : ' + out.cls + ' / ' + out.count);
@@ -81,6 +100,11 @@ export default async function (page, ctx) {
   console.log('   folders       : ' + out.dirs);
   console.log('   files listed  : ' + out.listed + (out.loading ? ' (still reading)' : ''));
   console.log('   opened in place: ' + out.open);
+  console.log('   row was        : ' + JSON.stringify(was.parts) + ' ahead ' + was.ahead + ' behind ' + was.behind);
+  console.log('   wrote to PR    : ' + out.wrote);
+  console.log('   row is         : ' + out.rowRepo + ' stats ' + out.rowStats);
+  console.log('   row now        : ' + JSON.stringify(out.parts) + ' ahead ' + out.ahead + ' behind ' + out.behind
+              + ' (' + out.fresh + ' re-read)');
   if (out.error) console.log('   error         : ' + out.error);
   console.log('─'.repeat(60) + '\n');
   await page.waitForTimeout(200);

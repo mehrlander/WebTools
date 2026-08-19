@@ -377,6 +377,53 @@ test('patchLines tints the diff and stops at the cap, which patchOverflow report
   assert.equal(data.patchLines('').length, 1);
 });
 
+// A card's read is seconds old against a crawl that may be hours old, so its
+// numbers are better and the list should take them. The reader saw the gap
+// first: a card opening over a row that said 62 and reporting 71 itself.
+test('a card-s live read is written back into the row it was opened from', () => {
+  const before = data.openBranches.find(r => r.name === 'feat/a');
+  assert.equal(before.ahead, 4);
+  assert.equal(data.fileCount(before), null, 'the fixture crawl measured no files');
+
+  data.absorbCompare({ repo: 'me/tools', name: 'feat/a' }, {
+    ahead_by: 9, behind_by: 3,
+    files: [{ filename: 'a.js', status: 'modified', additions: 5, deletions: 2 },
+            { filename: 'b.md', status: 'added', additions: 40, deletions: 0 }],
+  });
+
+  const after = data.openBranches.find(r => r.name === 'feat/a');
+  assert.equal(after.ahead, 9, 'the arrows take the live count');
+  assert.equal(after.behind, 3);
+  assert.equal(data.fileCount(after), 2);
+  assert.deepEqual(plain_(data.fileParts(after)), { lead: 1, added: 1 });
+  assert.equal(data.freshCount, 1, 'and the list-s age stamp knows a row outran it');
+
+  // Both carriers, since which one a row reads from turns on whether it has an
+  // open PR and this must land either way.
+  assert.equal(plain_(data.activity['me/tools'].openPRs[0]).aheadBy, 9);
+  assert.equal(plain_(data.activity['me/tools'].survey.branches[0]).aheadBy, 9);
+  seed(); data.freshRows = {};
+});
+
+// The verdict needs two trees, which a compare cannot supply. Refreshing the
+// counts around it and leaving it alone is the honest half-update.
+test('absorbCompare leaves the survey verdict alone, and ignores a branch it cannot find', () => {
+  data.activity['me/tools'].survey.branches[0].nUnique = 80;
+  data.activity['me/tools'].survey.branches[0].nMissing = 11;
+  data.absorbCompare({ repo: 'me/tools', name: 'feat/a' },
+    { ahead_by: 1, behind_by: 0, files: [{ filename: 'x', status: 'modified' }] });
+  const row = data.openBranches.find(r => r.name === 'feat/a');
+  assert.equal(row.nUnique, 80, 'the verdict is not restamped as fresh');
+  assert.equal(row.nMissing, 11);
+
+  const n = data.freshCount;
+  data.absorbCompare({ repo: 'me/tools', name: 'no/such' }, { ahead_by: 1, files: [] });
+  data.absorbCompare({ repo: 'me/nope', name: 'feat/a' }, { ahead_by: 1, files: [] });
+  data.absorbCompare({ repo: 'me/tools', name: 'feat/a' }, null);
+  assert.equal(data.freshCount, n, 'nothing found, nothing claimed');
+  seed(); data.freshRows = {};
+});
+
 test('the card splits a path so a truncation cannot eat the filename', () => {
   assert.equal(data.fileCardDir('lib/kits/branch-survey.js'), 'lib/kits/');
   assert.equal(data.fileCardName('lib/kits/branch-survey.js'), 'branch-survey.js');

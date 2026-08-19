@@ -971,6 +971,23 @@ footer opens the branch view's Files pane. Removals and renames stay out of the
 row and out of the cards, in the pairs' plain hover text, since a scanned list
 carries two classes and a card is opened one at a time.
 
+**A card's read is written back into the row it was opened from.** The compare
+it fetches is seconds old against a crawl that may be hours old, so its numbers
+are simply better: a branch has usually gained files and commits since. Without
+the write-back, a card opens over a row saying 62 changed and reports 71 itself,
+which is two readings of one branch a tap apart, disagreeing. `absorbCompare`
+patches the counts, the shape digest and the ahead/behind pair into whichever
+cache entries the row derives from, and the branches pill grows a small dot
+naming how many rows have outrun the age it states.
+
+Two limits, and both are deliberate. It is **in memory only**: the crawl owns
+`state/activity.json`, and writing the private registry from a hover would put a
+commit-shaped cost on a gesture meant to be cheap, so this lasts the visit and
+the next crawl makes it durable. And it does **not touch the verdict**, since
+landed / differs / missing is a function of two trees that a compare cannot
+supply; refreshing the counts around it and leaving it alone is the honest
+half-update rather than a stale verdict quietly restamped as fresh.
+
 **This deliberately overlaps the branch detail**, and the overlap runs in the
 card's favour on cost: the detail fetches a file's content per card opened, while
 this one fetched every patch at once without meaning to, as part of a compare it
