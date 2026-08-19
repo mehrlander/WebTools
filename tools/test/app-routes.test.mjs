@@ -116,7 +116,7 @@ test('the two sub-tab encodings, counted', () => {
   const flattened = stops.reduce((n, s) => n + s.keys.length - 1, 0);
   const params = manifest.routes.reduce((n, r) => n + (r.tabs || []).length, 0);
   assert.equal(flattened, 6, 'sub-tabs addressed as their own ?view= key');
-  assert.equal(params, 12, 'sub-tabs addressed as ?view=<parent>&tab=');
+  assert.equal(params, 13, 'sub-tabs addressed as ?view=<parent>&tab=');
 });
 
 test('an alias is a retired key, so it never doubles as a live one', () => {

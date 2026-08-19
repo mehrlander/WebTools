@@ -16,7 +16,7 @@ tools/build/bake.mjs,emit dist/<page>.html: the page's chain inlined into a stan
 tools/build/build-lib.mjs,"emit dist/web-tools.js, the pre-build: the whole lib/ as one self-booting offline artifact",tools/build,108,npm:build:lib,yes,yes,yes
 tools/build/build.mjs,"emit dist/<page>.js: a page's gh.load chain frozen offline, through lib/build.js's emitter",tools/build,77,npm:build,no,yes,no
 tools/build/console-suite.mjs,assemble console/suite.js from base.js plus the layered console modules,tools/build,51,npm:build:console,yes,yes,yes
-tools/build/docs-reach.mjs,restamp the derived reach and words fields of docs/docs.csv,tools/build,269,npm:docs-reach,yes,yes,yes
+tools/build/docs-reach.mjs,restamp the derived reach and words fields of docs/docs.csv,tools/build,279,npm:docs-reach,yes,yes,yes
 tools/build/docs-readme.mjs,regenerate docs/README.md from docs/docs.csv,tools/build,98,npm:docs-readme,no,yes,yes
 tools/build/graph.mjs,the static resolver for a page's gh.load chain; feeds build.mjs its cache,tools/build,86,imported,no,yes,no
 tools/build/graphql-schema.mjs,regenerate the pruned GitHub GraphQL schema the suite typechecks queries against,tools/build,230,npm:graphql-schema,yes,no,no
@@ -107,7 +107,7 @@ tools/render/scenarios/jumpover-coverage.mjs,the exact-file jump-overs rendered 
 tools/render/scenarios/map-docs-reads.mjs,the Map's Docs tab with the readership column,tools/render/scenarios,69,driver,no,no,no
 tools/render/scenarios/map-docs.mjs,"the Map's Docs tab, the documentation registry rendered live",tools/render/scenarios,52,driver,no,no,no
 tools/render/scenarios/map-harness.mjs,drive show-repo's Map view onto the Harness tab with the committed registry served through GH.get,tools/render/scenarios,52,driver,no,no,no
-tools/render/scenarios/map-registries.mjs,"drive the Map view's Registries tab for a screenshot, serving the real docs/registries.csv through a stubbed GH so a tokenless render still shows the three areas and the cards",tools/render/scenarios,55,driver,no,no,no
+tools/render/scenarios/map-registries.mjs,"drive the Map view's Registries tab for a screenshot, serving the real docs/registries.csv through a stubbed GH so a tokenless render still shows the three areas and the cards",tools/render/scenarios,69,driver,no,no,no
 tools/render/scenarios/map-set-adoption.mjs,"the Map's first two tabs, both halves populated",tools/render/scenarios,72,driver,no,no,no
 tools/render/scenarios/map-showing-peek.mjs,the Showing tab with a pointer held over an exact-file jump-over so the peek renders,tools/render/scenarios,50,driver,no,no,yes
 tools/render/scenarios/map-showing.mjs,"the Map's Showing tab: how content moves, renders, and gets looked at",tools/render/scenarios,60,driver,no,no,no

@@ -1,17 +1,32 @@
 registry,property,value,label,gloss
-tests,kind,behavior,,calls the subject's own functions and asserts what comes back
-tests,kind,component,,boots an Alpine component in jsdom and drives it
-tests,kind,kit,,loads a lib/kits file through the bootstrap and exercises its surface
-tests,kind,tool,,runs a CLI script as a process and asserts its output
-tests,kind,gate,,"holds committed data to the repo, so documentation cannot drift from what it describes"
-tests,kind,lockstep,,holds a generated artifact to its source
-tests,kind,guard,,asserts a convention or policy rather than a behavior
+app-routes,group,estate,Estate,Above any repo: the constellation's own dashboard.
+app-routes,group,repo,Repo,Reached with a repo open: the browser over one repository.
+app-routes,group,shell,Shell,Addresses that are not a screen of their own.
 harness,layer,scripts,,"standalone and portable: argv-driven, runs from any repo root, travels via the hub"
 harness,layer,tools,,repo-root harness files that fit no folder below
 harness,layer,tools/build,,"generators: snapshot a page or the lib into an offline artifact, or restamp a committed registry"
 harness,layer,tools/concept-lab,,"experimental ground, read-only prototypes that have not earned a place (its README states the admission rule)"
 harness,layer,tools/render,,"exercise a page headlessly: the jsdom logic render, the Chromium pixel render, and their shared CDN resolver"
 harness,layer,tools/render/scenarios,,interaction drivers for npm run shot --script: each steers one page into one state before the pixels are taken
-app-routes,group,repo,Repo,Reached with a repo open: the browser over one repository.
-app-routes,group,estate,Estate,Above any repo: the constellation's own dashboard.
-app-routes,group,shell,Shell,Addresses that are not a screen of their own.
+properties,exclusive,no,,one row may hold several values from the domain
+properties,exclusive,yes,,one row holds at most one value from the domain
+properties,form,column,,reserves a slot on every row
+properties,form,list,,records only where the assertion holds
+properties,mode,computed,,"stamped by a named deriver and held to a re-derivation by a lockstep or registry gate, never hand-edited. Mode sits on the declaration rather than the property, since the same property can be recorded in one scope and computed in another"
+properties,mode,recorded,,"authored judgment, irreplaceable, never machine-edited"
+properties,required,counted,,"a blank is legal and surfaced as a ledger figure, the count-rather-than-ban posture the computed sets run for authored judgment"
+properties,required,none,,"optional, or filled by practice with no gate behind it"
+properties,required,value,,"an assertion is present for every target: true of every computed field by construction, and of a recorded field a gate checks"
+registries,area,files,Files,the target has a path in this tree
+registries,area,names,Names,"everything else: a name something declared, the registry being what declares it"
+registries,fields,governed,,"every non-key column must be a declared property, so an undeclared field appearing in a computed set is caught as the early symptom of an unaccounted classification"
+registries,fields,ungoverned,,"the columns are exempt from their property definitions. A smell and never a resting state: five carriers were marked this way with a written reason and all five reasons were wrong, so the count is asserted at zero and adding one has to change a test"
+registries,membership,computed,,"the rule is executable (a folder, an extension, the router's own table), so the row set can be derived and compared to what is there. Only this side can carry a coverage gate, because only it has something independent to check against"
+registries,membership,curated,,"which targets belong is a judgment, so there is nothing to recompute; the strongest gate available is a promise-to-implementation one"
+tests,kind,behavior,,calls the subject's own functions and asserts what comes back
+tests,kind,component,,boots an Alpine component in jsdom and drives it
+tests,kind,gate,,"holds committed data to the repo, so documentation cannot drift from what it describes"
+tests,kind,guard,,asserts a convention or policy rather than a behavior
+tests,kind,kit,,loads a lib/kits file through the bootstrap and exercises its surface
+tests,kind,lockstep,,holds a generated artifact to its source
+tests,kind,tool,,runs a CLI script as a process and asserts its output
