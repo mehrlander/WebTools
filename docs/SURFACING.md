@@ -33,6 +33,15 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   Either form also takes `?w=<px>` on the **renderer's** own query (`toss-render.html?w=390#gh=…`), which renders the subject in a frame that wide instead of the device's. A frame is a viewport, so the page really is laid out at that width: media queries match and a boot-time `innerWidth` read agrees, and a width wider than the screen is scaled down to fit rather than scrolled. Use it to hand over a phone view from a desktop, or the reverse. It cannot move `pointer` or `hover`, so it shows another device's layout, not its interaction model. The drawer's Render tab drives the same thing with four presets.
 
+  **A `@ref` that is a SHA is copied from `git rev-parse`, never typed.** The toss
+  wants the full forty characters and `git log --oneline` prints nine, and the
+  thirty-one missing ones cannot be reasoned out: a SHA assembled from memory is
+  well-formed, so it reads as correct to every eye and every check, and the first
+  thing to disagree is the renderer finding no such commit. `git rev-parse HEAD`
+  for the value, `git rev-parse origin/<branch>` to confirm it is pushed, since
+  an unpushed SHA fails the same way. This is the one place in the address where
+  being approximately right is being wrong.
+
   Encode `#gz=` with:
 
   ```bash
@@ -140,6 +149,24 @@ Open the branch's PR as a draft at first push, automatically where configured or
 * **Keep branch guidance out of main.** Delete any obsolete `BRANCH-GUIDE.md` found there.
 
 Keep the body under one screen. **Next steps / open threads** is its heart and must remain current.
+
+**One screen is a shape, not a word budget, and the shape is an outline.** A body
+that overruns is rarely carrying too many facts; it is carrying each fact fused
+to its own justification. Four habits do the damage, and cutting them leaves the
+facts intact:
+
+| habit | cut it to |
+| --- | --- |
+| a fact and its reason in one sentence | the fact; keep the reason only where it changes what someone would do |
+| defending a decision nobody questioned | nothing |
+| self-commentary (*worth knowing*, *the point is*, *deliberately*) | nothing |
+| a section opening by restating its own heading | the next sentence |
+
+Prefer a table or a line per fact to a paragraph, and let the number carry the
+weight: "27 of 54 sheets" says what two sentences of explanation were going to.
+Measurements belong in **Notes / Risk** as a list, never narrated. Added
+2026-08-18 after a body reached 1,650 words and lost nothing on the way back down
+to 480.
 
 ```markdown
 <One sentence: what this branch is doing and why.> [Follow-up to #N.]
