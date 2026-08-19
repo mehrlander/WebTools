@@ -103,6 +103,11 @@ Takes from:
 4. a repo manifest's `stage.files` (seeds an empty stage when that repo opens),
 5. a `#stage=` link.
 
+All five append. An intake briefly took a POSITION (2026-08-19), for a
+compare-with-the-clipboard that needed its paste in the slot the positional pair
+rule read; the reader picks its other side by name now, so where an item landed
+stopped mattering and the parameter went with the gesture.
+
 **A drop anywhere in the app stages, and the intake is why it can.** Until
 2026-08-17 the fold lived inside the component, so nothing could stage anything
 before the bench had mounted, and the bench mounts on your first visit to the
@@ -312,17 +317,127 @@ Stage-view actions:
   measures the box on a 2-line file and a 4,000-line file and then scrolls the
   long one.
 
-  **The preview also holds the diff**, because the position already names a
-  pair: what you are on and what is next to it, so nothing is selected and
-  nothing is offered to select. `min(i, n-2)` keeps that valid at the end, so a
-  diff is available whenever two or more are staged, and with exactly two it is
-  simply "the two" from either position. One header button toggles the modal
-  between the file and the comparison, carrying the tagged rows, Copy, the
-  review prompts (link-carried bespoke asks first, then the fixed set), and
-  **Open in Diff** for the Diff page's split view and real patch. Stepping with
-  the diff open re-pairs and re-runs, so walking the set walks its comparisons.
-  A `&mode=diff` link opens the preview on its diff rather than selecting a
-  control on the page;
+  **The comparison is a LEVEL over the reader, not a mode on it.** It was a mode
+  until 2026-08-19: the same overlay, its slides rebuilt as diffs, one header
+  button to flip back. That put the wrong meaning on the one control every
+  reader reaches for. A header's ✕ dismisses the overlay, so from inside a
+  comparison it read as "leave the comparison" and did "leave the file as well,"
+  while the way back was a second, quieter button beside it.
+
+  So it **drills** (`swipeDeck.drill`), and the kit's own conventions do the
+  rest: the dismiss becomes a back chevron, the crumb carries where you came
+  from, and the module-level deck stack makes Escape and the phone Back button
+  pop one level rather than the lot. There is no partner button for coming back,
+  which is the point of a level. It is the shape the estate already uses one
+  floor up, where a branch takeover drills into
+  [`kits/file-deck.js`](../lib/kits/file-deck.js), and inside this component,
+  where the transform workbench drills off this same reader.
+
+  One deliberate deviation from the kit's default, which returns you to the
+  parent exactly where you left it: **the comparison walks the same set the
+  reader does**, so comparison *n* is the file at *n* seen against its pair, and
+  backing out lands where the walk got to rather than where it started.
+  Returning to the entry point would silently discard the walk. The branch
+  drill has no such problem, since a branch and its files are different things.
+
+  The position already **proposes** a pair (the file you are on, and the one next
+  to it), so a comparison is available whenever two or more are staged, nothing
+  has to be chosen to get one, and with exactly two it is simply "the two." What
+  the position proposes the reader can override (the pair, below). The
+  comparison carries Copy, the review prompts (link-carried bespoke asks first,
+  then the fixed set), **Open in Diff** for the Diff page's folding and its
+  apply step, and **three readings of the one alignment**:
+
+  | View | Is | Default |
+  | --- | --- | --- |
+  | **Unified** | one column of tagged lines, full context | under 768px |
+  | **Split** | two columns, a changed line and its replacement on one row, with the moved words marked inside it | 768px and up |
+  | **Patch** | a real unified diff: `@@` hunks at three lines of context, the two file lines, copyable | never |
+
+  The ops are diffed **once** and each view renders from them, which makes
+  switching free and is the only thing that makes the three agree. The
+  width-dependent default is `pages/diff-tool.html`'s rule and its reason: two
+  columns of code do not fit on a phone, and a reader who opens a comparison
+  there should not have to fix that first. It is read once at mount, so a
+  rotation does not move it mid-read, and the choice then survives closing the
+  comparison, unlike the pick, because it is a preference about how you read
+  rather than a choice about what you are reading.
+
+  **Copy hands over what is on screen:** the real patch in Patch view, the
+  tagged block in the other two. One verb, one button, and the title says which.
+
+  Two pieces of that moved into
+  [`kits/text-diff.js`](../lib/kits/text-diff.js) rather than being written
+  here, because the page and the stage would otherwise hold a copy each.
+  `patch()` is the hunk assembly, whose failure mode is silent: an off-by-one in
+  a hunk header still renders as a tidy patch and fails only when something
+  tries to apply it. `wordParts()` is the word diff as tokens rather than
+  markup, since the page styles its marks from a stylesheet and the stage has
+  none to use (the house rule is no vanilla CSS); `words()` is now that function
+  rendered the page's way, so one dynamic-programming walk serves both.
+
+  A `&mode=diff` link opens the reader with
+  the comparison already drilled over it, rather than selecting a control on the
+  page. The reader's one way in names what a tap does rather than how it is
+  wired: `Compare a.md ↔ b.md`;
+
+  **A slide's compare is the slide's own**, which took a fix on 2026-08-19. The
+  comparison deck mounts the active slide and its two neighbours, each a diff of
+  a different pair, and all three used to write one set of component fields. The
+  last builder won, so on any stage of three or more the reader saw `a ↔ b`
+  while the copy header and the **Open in Diff** address named `b ↔ c`, the
+  neighbour drew no rows at all (its compare returned early on the busy flag),
+  and the slide past it drew the first pair's rows under its own heading. Two
+  staged items hid all three, since `min(i, n-2)` makes both slides pair 0,1,
+  which is why the coverage passed. Each slide now resolves its own pair and
+  holds the result; what the reader is ON is published to the fields every
+  control outside the slide reads, on render and again on every step, so
+  stepping re-aims the copy and the handoff and not only the rows;
+
+  **The pair is where you are, against what you picked.** Side A is the file on
+  screen at every position. It used to be `min(i, n-2)`, which kept the pair
+  valid at the end of the list by sliding it backwards, so on the last slide A
+  was the file BEFORE the one being read and the diff ran in a direction nobody
+  asked for. Fixing A to the position costs the last slide its old direction,
+  which is the trade.
+
+  Side B is a **pick**, and the neighbour when there is none. The positional rule
+  was a defensible minimum rather than a principle: it can only express ADJACENT
+  pairs, so on a stage of five, "compare the first with the last" had no way to be
+  said at all. Position proposes and the picker disposes, which keeps the
+  zero-configuration case (two staged, open it, that is the pair) and adds the
+  reach the rule could not. The diff bar states A, then offers B as a control,
+  because that is the shape of the question: you are reading this one, against
+  what? The two halves therefore do not look alike. Choosing opens a list of every
+  other staged item, each with **where it came from** (`me/repo@ref`, or `local`),
+  since two staged items can share a filename across repos or refs and the name
+  alone is then the one thing that cannot tell them apart. The list opens in flow
+  under the bar rather than floating: a slide is an `overflow-auto` box, so an
+  absolutely-positioned panel is clipped by the very scroll container it sits in,
+  and on a phone a deck slide is the whole screen, where a menu anchored near the
+  top edge is the harder thing to hit.
+
+  The pick is held by item **key**, never by index, because the stage moves under
+  a reader: a drop, a paste or a remove renumbers everything, and an index would
+  quietly re-aim the comparison at a file nobody chose. A key whose item has left
+  stops resolving and the default takes over, and the key is forgotten so the
+  picker shows no choice that no longer exists. It ends with the **reading**, not
+  with the overlay: `drop()` is the deck kit's general teardown and so fires
+  `onClose` exactly as the reader's own ✕ does, which means a deck rebuilt around
+  a changed set looks identical to an exit from the outside. `_pReplacing` is what
+  separates them, and without it staging anything while reading silently
+  un-picked what the reader had chosen to compare against;
+
+  **A compare-with-the-clipboard shipped and was withdrawn the same day.** It
+  staged the clipboard in the next position and turned the diff on, which worked,
+  but it fused an intake with a selection: the stage has three paste buttons
+  already, and what was missing was the SELECTION rather than a fourth way to
+  paste. Pasting and then picking the result says the same thing with each tap
+  meaning one thing. What it left behind is the position parameter on the
+  intake's fold, also withdrawn, and the observation that a stage of ONE has
+  nothing to compare against, which remains true and is answered by staging a
+  second item rather than by a bespoke gesture;
+
 - **Out**: the deposit surface, and the only lens on this side now. It covers
   everything leaving the stage: the concatenated bundle (each file under a
   `// === owner/repo[@ref]:path ===` header; icon actions to refresh, copy,

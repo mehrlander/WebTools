@@ -288,7 +288,7 @@
               </td>
             </tr>
             <template x-for="r in g.rows" :key="r.path">
-              <tr :class="r.moves ? 'bg-warning/5' : ''">
+              <tr :class="r.moves ? 'bg-warning/10' : ''">
                 <td class="mono text-xs break-all">
                   <a :href="blob(r.path)" target="_blank" rel="noopener" x-text="r.base"></a>
                   <span x-show="r.nul" class="badge badge-error badge-xs ml-1"

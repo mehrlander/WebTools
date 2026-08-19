@@ -70,7 +70,7 @@
             <template x-for="m in modes.filter(x => x !== 'summary')" :key="m">
                 <button @click="setMode(m)" :title="'Raw ' + m + ' view'"
                     class="btn btn-xs join-item font-semibold"
-                    :class="view.mode===m ? 'btn-neutral' : 'btn-ghost text-base-content/55'"
+                    :class="view.mode===m ? 'btn-neutral' : 'btn-ghost text-base-content/50'"
                     x-text="m[0].toUpperCase()+m.slice(1)"></button>
             </template>
         </div>
@@ -83,10 +83,10 @@
 
     <div class="ml-auto flex items-center gap-2 shrink-0">
         <div class="flex items-center gap-1.5 px-2.5 h-7 rounded-lg bg-base-200/70 text-xs">
-            <span class="text-base-content/45 font-medium">Bills</span><b class="font-mono tabular-nums text-base-content/80" x-text="allBillsLen"></b>
+            <span class="text-base-content/40 font-medium">Bills</span><b class="font-mono tabular-nums text-base-content/80" x-text="allBillsLen"></b>
         </div>
         <div class="flex items-center gap-1.5 px-2.5 h-7 rounded-lg bg-base-200/70 text-xs">
-            <span class="text-base-content/45 font-medium">RCW</span><b class="font-mono tabular-nums text-base-content/80" x-text="rcwCount + '/' + allBillsLen"></b>
+            <span class="text-base-content/40 font-medium">RCW</span><b class="font-mono tabular-nums text-base-content/80" x-text="rcwCount + '/' + allBillsLen"></b>
         </div>
         <span class="badge badge-primary badge-sm font-bold gap-1"><i class="ph-bold ph-shield-check text-[11px]"></i><span x-text="pensionCount + ' pension'"></span></span>
     </div>
