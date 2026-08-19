@@ -1,6 +1,6 @@
 // alpineComponents/estate.js — the Activity view's branch list: the projection
 // from the activity cache to rows (allBranchRows), the SCOPE axis over the
-// survey's groups (branchScope / inScope / branchScopes, with openBranches the
+// scan's groups (branchScope / inScope / branchScopes, with openBranches the
 // scoped list), the repo filter chips (openRepos / activeRepoFilter /
 // openRows), the lifespan pair each row shows (branchStart), and the per-row
 // GitHub menu (branchMenuItems / runBranchMenu).
@@ -54,7 +54,7 @@ window.gh = { load: async () => {} };
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
-  'lib/kits/branch-survey.js',      // the lifespan display rules live here, shared
+  'lib/kits/branch-status.js',      // the lifespan display rules live here, shared
   'lib/kits/swipe-deck.js',         // the takeover IS one
   // The shelf reads every surface through the shared envelope model, which
   // gh-boot loads ahead of the components for exactly this reason.
@@ -67,16 +67,16 @@ Alpine.data('branchBrief', (opts) => ({ opts, init(){ this.$el.textContent = opt
 const data = Alpine.$data(window.document.getElementById('es'));
 const tick = (n = 1) => new Promise(r => setTimeout(r, n * 10));
 
-// A cache entry: `branches` are survey rows, `prs` are open pull requests.
+// A cache entry: `branches` are scan rows, `prs` are open pull requests.
 const entry = (branches, prs, def = 'main') => ({
   defaultBranch: def,
   openPRs: prs,
-  survey: { branches },
+  scan: { branches },
 });
 
 // Two repos with work in flight and one with none, exercising every way a row
 // reaches the list: a stranded branch with a draft PR, a stranded branch with
-// none, an open PR the survey never reached, and a landed branch (never shown).
+// none, an open PR the scan never reached, and a landed branch (never shown).
 const seed = () => {
   data.activity = {
     'me/tools': entry(
@@ -123,8 +123,8 @@ test('openBranches: open PRs and stranded branches only, freshest first', () => 
 test('a row takes its start from whichever compare the crawl ran', () => {
   const [a, b, fresh] = data.openBranches;
   assert.equal(a.first, '2026-07-05T00:00:00Z');      // the PR head's compare
-  assert.equal(b.first, '2026-07-17T20:00:00Z');      // the survey's
-  assert.equal(fresh.first, '2026-07-10T00:00:00Z');  // a PR the survey never reached
+  assert.equal(b.first, '2026-07-17T20:00:00Z');      // the scan's
+  assert.equal(fresh.first, '2026-07-10T00:00:00Z');  // a PR the scan never reached
 });
 
 test('branchStart: the lifespan reads "15 days → 2 hours", collapsed when equal', () => {
@@ -171,14 +171,347 @@ test('branchMenuItems: a PR row offers its tabs, a bare branch offers New PR', (
   const withPr = data.openBranches[0], noPr = data.openBranches[1];
   data.menuBranch = withPr;
   let keys = plain_(data.branchMenuItems.map(i => i.key));
-  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'stageDiff', 'prFiles', 'prChecks', 'copyName']);
+  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'prFiles', 'prChecks', 'copyName']);
   assert.equal(data.branchMenuItems.find(i => i.key === 'prFiles').label, 'Files changed (#12)');
   assert.equal(data.branchMenuItems.find(i => i.key === 'compare').label, 'Compare to main');
 
   data.menuBranch = noPr;
   keys = plain_(data.branchMenuItems.map(i => i.key));
-  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'stageDiff', 'newPr', 'copyName']);
+  assert.deepEqual(keys, ['tree', 'compare', 'commits', 'dropFile', 'newPr', 'copyName']);
   assert.ok(!keys.includes('prFiles'));
+});
+
+// The menu is GitHub DESTINATIONS. Staging sends files to this app's own Stage,
+// so it left on 2026-08-18 for a control on the row's action line; `copyName` is
+// the one row that stays without opening github.com, because a branch name is
+// the ADDRESS of what every other row opens and there is no address bar here to
+// lift it from. A new row that is neither belongs somewhere else.
+// Three cache generations answer "what did this branch do to its files", and the
+// row reads whichever is newest: the per-status breakdown, the bare count that
+// preceded it, and the scan's touched-path set. Nothing at all when none does,
+// since 0 would be a claim and the glyph alone is an honest route.
+test('fileStats reads the newest answer a cache carries', () => {
+  const full = { n: 9, added: 2, changed: 6, removed: 1, renamed: 1, additions: 431, deletions: 88 };
+  assert.deepEqual(data.fileStats({ stats: full, nFiles: 99, nUnique: 99 }), full, 'the breakdown wins');
+  assert.equal(data.fileStats({ nFiles: 9, nUnique: 80 }).n, 9, 'then the bare count');
+  assert.equal(data.fileStats({ nUnique: 80 }).n, 80, 'then the scan');
+  assert.equal(data.fileStats({ nFiles: null, nUnique: 0 }), null, 'not measured is not zero');
+  assert.equal(data.fileStats(null), null);
+  assert.equal(data.fileCount({ stats: full }), 9);
+});
+
+// A row whose cache knows only a total shows it as ONE number rather than
+// splitting a number it does not have.
+test('fileParts splits where the breakdown exists and leads with the total where it does not', () => {
+  // plain_: a value built inside the component comes back as Alpine's reactive
+  // proxy, which deepEqual reports as same-structure-but-not-reference-equal.
+  assert.deepEqual(plain_(data.fileParts({ stats: { n: 9, added: 2, changed: 6, removed: 1 } })),
+    { lead: 6, added: 2 });
+  assert.deepEqual(plain_(data.fileParts({ nFiles: 9 })), { lead: 9, added: 0 },
+    'an older cache leads with its total and claims no split');
+  assert.equal(data.fileParts({ nUnique: 0 }), null);
+});
+
+// A no-merge-base row keeps its numbers. They span more than the branch, which
+// is what the row's asterisk says; blanking them left the row that most needs a
+// route into its files as the one row whose glyph stood bare.
+test('fileCount keeps a no-merge-base count, which the asterisk qualifies', () => {
+  assert.equal(data.fileCount({ nFiles: null, nUnique: 80, noBase: true }), 80);
+});
+
+// The hover is where everything the row has no room for goes, so it is checked
+// for the things that are ONLY there: renames, removals and the line totals.
+test('filesTitle states the split, the removals, the renames and the lines', () => {
+  const t = data.filesTitle({ def: 'main',
+    stats: { n: 9, added: 2, changed: 6, removed: 1, renamed: 1, additions: 431, deletions: 88 } });
+  const lines = t.split('\n');
+  assert.equal(lines[0], '9 files changed against main');
+  assert.equal(lines[1], '  6 changed (1 renamed), 2 new, 1 removed');
+  assert.equal(lines[2], '  +431 -88 lines');
+  assert.equal(lines[3], 'Open the files on this branch.');
+});
+
+test('filesTitle appends the scan verdict where there is one, and claims no split otherwise', () => {
+  const scanned = data.filesTitle({ def: 'main', nUnique: 80, nLanded: 28, nMissing: 11, nDiffers: 41,
+    stats: { n: 80, added: 14, changed: 62, removed: 4, renamed: 2, additions: 5310, deletions: 2044 } });
+  assert.match(scanned, /28 landed on main, 41 differ, 11 missing/);
+  // An older cache knows a total and nothing else, so the hover says the total
+  // and stops rather than printing a split of zeroes.
+  const bare = data.filesTitle({ def: 'main', nFiles: 9 });
+  assert.equal(bare, '9 files changed against main\nOpen the files on this branch.');
+});
+
+test('the GitHub menu holds GitHub destinations, and one documented exception', () => {
+  for (const row of [data.openBranches[0], data.openBranches[1]]) {
+    data.menuBranch = row;
+    for (const item of plain_(data.branchMenuItems)) {
+      if (item.key === 'copyName') continue;
+      assert.equal(item.external, true,
+        item.key + ' is in the GitHub menu but does not leave for github.com');
+    }
+  }
+});
+
+test('staging is a row control, not a menu row', () => {
+  data.menuBranch = data.openBranches[0];
+  assert.ok(!plain_(data.branchMenuItems.map(i => i.key)).includes('stageDiff'));
+  // And the key is gone from the RUNNER too, rather than left as a branch that
+  // nothing dispatches: the row's button calls stageBranchDiff directly.
+  const calls = [];
+  const real = data.stageBranchDiff;
+  data.stageBranchDiff = (...a) => { calls.push(a); };
+  try {
+    data.runBranchMenu('stageDiff');
+    assert.deepEqual(calls, [], 'a retired key must not still stage');
+  } finally { data.stageBranchDiff = real; }
+});
+
+// ── the file card ───────────────────────────────────────────────────────────
+//
+// A panel over one of the row's two file pairs. It opens on the crawl's digest
+// with no call, then fills in file names from the compare, so the tests below
+// cover both halves of that and the seam between them: a read belongs to a card
+// only when it is about the same branch.
+
+const CARD_ROW = () => ({
+  repo: 'me/tools', name: 'feat/a', def: 'main',
+  stats: { n: 5, added: 2, changed: 2, removed: 1, renamed: 0, additions: 60, deletions: 30,
+           shape: { added: { exts: [['.md', 2]], dirs: [['docs', 2]] },
+                    changed: { exts: [['.js', 2]], dirs: [['lib', 2]] },
+                    removed: { exts: [], dirs: [] } } },
+});
+const CARD_FILES = [
+  { path: 'docs/a.md', prev: '', cls: 'added', additions: 40, deletions: 0 },
+  { path: 'docs/b.md', prev: '', cls: 'added', additions: 12, deletions: 0 },
+  { path: 'lib/x.js', prev: '', cls: 'changed', additions: 5, deletions: 3 },
+  { path: 'lib/y.js', prev: '', cls: 'changed', additions: 3, deletions: 7 },
+  { path: 'lib/z.js', prev: '', cls: 'removed', additions: 0, deletions: 20 },
+];
+const openCard = (cls) => {
+  const row = CARD_ROW();
+  data.rowCard = { repo: row.repo, name: row.name, base: row.def, cls,
+                    count: cls === 'added' ? 2 : 2, shape: row.stats.shape[cls], split: true };
+  return row;
+};
+
+test('the card opens on the crawl digest before any file name is read', () => {
+  openCard('added');
+  data.rowCardRead = null;
+  assert.deepEqual(plain_(data.rowCard.shape.exts), [['.md', 2]]);
+  assert.deepEqual(plain_(data.rowCardSummary), { count: 2, lines: '' },
+    'the count is the crawl-s, and no line total is claimed before the diff lands');
+  assert.deepEqual(plain_(data.rowCardList), [], 'no names yet, and none invented');
+});
+
+test('the card lists only its own class, and then counts and lines come off that list', () => {
+  openCard('changed');
+  data.rowCardRead = { key: data.rowCardKey('me/tools', 'feat/a', 'main'),
+                        loading: false, error: '', noBase: false, files: CARD_FILES };
+  assert.deepEqual(plain_(data.rowCardList.map(f => f.path)), ['lib/x.js', 'lib/y.js']);
+  assert.deepEqual(plain_(data.rowCardSummary), { count: 2, lines: '+8 -10' },
+    'the head describes these files, never the whole branch');
+
+  openCard('added');
+  assert.deepEqual(plain_(data.rowCardList.map(f => f.path)), ['docs/a.md', 'docs/b.md']);
+  // Only the half that happened: a card of new files does not report -0.
+  assert.deepEqual(plain_(data.rowCardSummary), { count: 2, lines: '+52' });
+});
+
+test('a read for another branch is not this card-s', () => {
+  openCard('added');
+  data.rowCardRead = { key: data.rowCardKey('me/tools', 'feat/b', 'main'),
+                        loading: false, error: '', noBase: false, files: CARD_FILES };
+  assert.equal(data.rowCardMine, null, 'the wrong branch-s diff must not show under this head');
+  assert.deepEqual(plain_(data.rowCardList), []);
+  data.rowCard = null; data.rowCardRead = null;
+});
+
+// `missing` is the scan's class, not a status in a diff, so it arrives from
+// the crawl's own path list and needs no read to be complete. The diff, when it
+// lands, only adds line counts and a patch to the rows it recognises.
+test('the missing card lists the scan-s own paths before any diff is read', () => {
+  data.rowCard = { repo: 'me/tools', name: 'feat/a', base: 'main', cls: 'missing',
+                    paths: ['docs/gone.md', 'lib/only-here.js'], count: 2,
+                    shape: { exts: [], dirs: [] }, split: true };
+  data.rowCardRead = null;
+  assert.deepEqual(plain_(data.rowCardList.map(f => f.path)), ['docs/gone.md', 'lib/only-here.js']);
+  assert.deepEqual(plain_(data.rowCardSummary), { count: 2, lines: '' });
+
+  // The diff knows one of the two. The other keeps its row and claims no lines.
+  data.rowCardRead = { key: data.rowCardKey('me/tools', 'feat/a', 'main'),
+                        loading: false, error: '', noBase: false,
+                        files: [{ path: 'lib/only-here.js', prev: '', cls: 'added',
+                                  additions: 30, deletions: 0, patch: '@@ -0,0 +1 @@\n+x' }] };
+  const list = plain_(data.rowCardList);
+  assert.deepEqual(list.map(f => f.path), ['docs/gone.md', 'lib/only-here.js']);
+  assert.equal(list[0].additions, 0, 'a path the diff does not name claims nothing');
+  assert.equal(list[0].patch, '');
+  assert.equal(list[1].additions, 30, 'and one it does gets its lines and its patch');
+  assert.ok(list[1].patch);
+  data.rowCard = null; data.rowCardRead = null;
+});
+
+test('shapeOfPaths digests a path list the same way the crawl digests a compare', () => {
+  const sh = plain_(data.shapeOfPaths([
+    'docs/a.md', 'docs/b.md', 'docs/c.md', 'lib/x.js', 'README',
+  ]));
+  assert.deepEqual(sh.exts, [['.md', 3], ['(none)', 1], ['.js', 1]]);
+  assert.deepEqual(sh.dirs, [['docs', 3], ['(root)', 1], ['lib', 1]]);
+  assert.deepEqual(plain_(data.shapeOfPaths([])), { exts: [], dirs: [] });
+});
+
+// A row opens its own diff, from the patch the compare already embedded. Capped,
+// because one file in this estate carries a quarter-megabyte hunk.
+test('patchLines tints the diff and stops at the cap, which patchOverflow reports', () => {
+  const lines = data.patchLines('@@ -1 +1 @@\n-old\n+new\n unchanged');
+  assert.deepEqual(plain_(lines.map(l => l.t)), ['@@ -1 +1 @@', '-old', '+new', ' unchanged']);
+  assert.match(lines[0].cls, /bg-info/);
+  assert.match(lines[1].cls, /bg-error/);
+  assert.match(lines[2].cls, /bg-success/);
+  assert.equal(lines[3].cls, '');
+  assert.equal(data.patchOverflow('a\nb'), 0);
+
+  const big = Array.from({ length: data.PATCH_CAP + 25 }, (_, i) => '+line ' + i).join('\n');
+  assert.equal(data.patchLines(big).length, data.PATCH_CAP);
+  assert.equal(data.patchOverflow(big), 25, 'the card says how much it is not showing');
+  assert.equal(data.patchLines('').length, 1);
+});
+
+// A card's read is seconds old against a crawl that may be hours old, so its
+// numbers are better and the list should take them. The reader saw the gap
+// first: a card opening over a row that said 62 and reporting 71 itself.
+test('a card-s live read is written back into the row it was opened from', () => {
+  const before = data.openBranches.find(r => r.name === 'feat/a');
+  assert.equal(before.ahead, 4);
+  assert.equal(data.fileCount(before), null, 'the fixture crawl measured no files');
+
+  data.absorbCompare({ repo: 'me/tools', name: 'feat/a' }, {
+    ahead_by: 9, behind_by: 3,
+    files: [{ filename: 'a.js', status: 'modified', additions: 5, deletions: 2 },
+            { filename: 'b.md', status: 'added', additions: 40, deletions: 0 }],
+  });
+
+  const after = data.openBranches.find(r => r.name === 'feat/a');
+  assert.equal(after.ahead, 9, 'the arrows take the live count');
+  assert.equal(after.behind, 3);
+  assert.equal(data.fileCount(after), 2);
+  assert.deepEqual(plain_(data.fileParts(after)), { lead: 1, added: 1 });
+  assert.equal(data.freshCount, 1, 'and the list-s age stamp knows a row outran it');
+
+  // Both carriers, since which one a row reads from turns on whether it has an
+  // open PR and this must land either way.
+  assert.equal(plain_(data.activity['me/tools'].openPRs[0]).aheadBy, 9);
+  assert.equal(plain_(data.activity['me/tools'].scan.branches[0]).aheadBy, 9);
+  seed(); data.freshRows = {};
+});
+
+// The verdict needs two trees, which a compare cannot supply. Refreshing the
+// counts around it and leaving it alone is the honest half-update.
+test('absorbCompare leaves the scan verdict alone, and ignores a branch it cannot find', () => {
+  data.activity['me/tools'].scan.branches[0].nUnique = 80;
+  data.activity['me/tools'].scan.branches[0].nMissing = 11;
+  data.absorbCompare({ repo: 'me/tools', name: 'feat/a' },
+    { ahead_by: 1, behind_by: 0, files: [{ filename: 'x', status: 'modified' }] });
+  const row = data.openBranches.find(r => r.name === 'feat/a');
+  assert.equal(row.nUnique, 80, 'the verdict is not restamped as fresh');
+  assert.equal(row.nMissing, 11);
+
+  const n = data.freshCount;
+  data.absorbCompare({ repo: 'me/tools', name: 'no/such' }, { ahead_by: 1, files: [] });
+  data.absorbCompare({ repo: 'me/nope', name: 'feat/a' }, { ahead_by: 1, files: [] });
+  data.absorbCompare({ repo: 'me/tools', name: 'feat/a' }, null);
+  assert.equal(data.freshCount, n, 'nothing found, nothing claimed');
+  seed(); data.freshRows = {};
+});
+
+// ── the commits card ────────────────────────────────────────────────────────
+//
+// The arrows are COMMITS, and both sides turned out to be free. The branch's own
+// are the compare's, which a file card already fetches; the default branch's are
+// the newest the crawl stores per repo, fetched since forever for its own
+// moved-or-not gate and never read for anything else.
+
+const MAIN_LOG = [
+  { sha: 'aaa1', msg: 'newest on main', date: '2026-08-19T10:00:00Z', author: 'm' },
+  { sha: 'bbb2', msg: 'second', date: '2026-08-19T09:00:00Z', author: 'm' },
+  { sha: 'ccc3', msg: 'third', date: '2026-08-19T08:00:00Z', author: 'm' },
+  { sha: 'ddd4', msg: 'the fork point', date: '2026-08-18T08:00:00Z', author: 'm' },
+  { sha: 'eee5', msg: 'older still', date: '2026-08-17T08:00:00Z', author: 'm' },
+];
+const commitCard = (cls, count) => {
+  data.activity['me/tools'].recentCommits = MAIN_LOG;
+  data.rowCard = { kind: 'commits', repo: 'me/tools', name: 'feat/a', base: 'main',
+                   cls, count, shape: { exts: [], dirs: [] } };
+};
+const commitRead = (extra) => ({
+  key: data.rowCardKey('me/tools', 'feat/a', 'main'),
+  loading: false, error: '', noBase: false, files: [], commits: [], mergeBase: '',
+  behindBy: null, ...extra,
+});
+
+test('the behind card reads main-s cached log, exactly, once it knows the fork point', () => {
+  commitCard('behind', 3);
+  data.rowCardRead = null;
+  // Before the compare: the newest `behind_by` of main's log, which is exact
+  // while main is linear and is the answer with no call at all.
+  assert.deepEqual(plain_(data.rowCardCommits.map(c => c.sha)), ['aaa1', 'bbb2', 'ccc3']);
+
+  // After it: everything newer than the merge base, exact regardless.
+  data.rowCardRead = commitRead({ mergeBase: 'ddd4', behindBy: 3 });
+  assert.deepEqual(plain_(data.rowCardCommits.map(c => c.sha)), ['aaa1', 'bbb2', 'ccc3']);
+  assert.equal(data.rowCardSummary.count, 3, 'the live count wins over the crawl-s');
+  assert.equal(data.rowCardCommitGap, 0);
+});
+
+test('a fork point past the cached window is named, not silently shown as empty', () => {
+  commitCard('behind', 60);
+  data.rowCardRead = commitRead({ mergeBase: 'not-in-the-window', behindBy: 60 });
+  assert.equal(data.rowCardCommits, null, 'null says the list is unreachable, and [] would say there is none');
+  assert.equal(data.rowCardCommitGap, 0, 'and no gap is claimed over a list that does not exist');
+});
+
+test('the behind gap counts what the cache could not reach', () => {
+  commitCard('behind', 9);
+  data.rowCardRead = commitRead({ mergeBase: '', behindBy: 9 });
+  assert.equal(data.rowCardCommits.length, 5, 'the whole cached log, which is all it has');
+  assert.equal(data.rowCardCommitGap, 4);
+});
+
+test('the ahead card is the compare-s own commits, newest first, and no gap', () => {
+  commitCard('ahead', 2);
+  data.rowCardRead = commitRead({ behindBy: 0, commits: [
+    { sha: 'old1', msg: 'first on the branch', date: '2026-08-18T00:00:00Z', author: 'm' },
+    { sha: 'new2', msg: 'then this', date: '2026-08-19T00:00:00Z', author: 'm' },
+    { sha: 'new3', msg: 'and this', date: '2026-08-19T01:00:00Z', author: 'm' },
+  ] });
+  assert.deepEqual(plain_(data.rowCardCommits.map(c => c.sha)), ['new3', 'new2', 'old1'],
+    'the compare lists them oldest first, and a reader wants the newest at the top');
+  assert.equal(data.rowCardSummary.count, 3, 'the compare is exact, so it overrides a stale 2');
+  assert.equal(data.rowCardCommitGap, 0, 'ahead never has a gap: its list is the whole answer');
+  data.rowCard = null; data.rowCardRead = null; seed();
+});
+
+test('openRowCard routes by class, so one control opens either kind', () => {
+  const row = data.openBranches.find(r => r.name === 'feat/a');
+  const at = { currentTarget: { getBoundingClientRect: () => ({ left: 10, right: 60, top: 20, bottom: 40 }) } };
+  data.openRowCard(row, 'ahead', at);
+  assert.equal(data.rowCard.kind, 'commits');
+  assert.equal(data.rowCard.cls, 'ahead');
+  data.openRowCard(row, 'changed', at);
+  assert.equal(data.rowCard.kind, 'files');
+  data.closeRowCard(); data.rowCardRead = null; seed();
+});
+
+test('the card splits a path so a truncation cannot eat the filename', () => {
+  assert.equal(data.rowCardDir('lib/kits/branch-status.js'), 'lib/kits/');
+  assert.equal(data.rowCardName('lib/kits/branch-status.js'), 'branch-status.js');
+  assert.equal(data.rowCardDir('README.md'), '');
+  assert.equal(data.rowCardName('README.md'), 'README.md');
+});
+
+test('fileBlobUrl encodes the branch and each path segment, not the slashes', () => {
+  assert.equal(data.fileBlobUrl('me/tools', 'claude/feat a', 'lib/kits/x y.js'),
+    'https://github.com/me/tools/blob/claude%2Ffeat%20a/lib/kits/x%20y.js');
 });
 
 test('openBranchMenu anchors through the shell and closes on a pick', () => {
@@ -317,4 +650,88 @@ test('closing clears the shell at once, whatever the deck does next', async () =
   assert.equal(data.detail, null, 'synchronously, so a caller can open something else');
   assert.equal(data._deck, null);
   await tick(6);
+});
+
+// ── The SESSION row's cards ──────────────────────────────────────────────
+// The same panel as the branch row's, a third kind of body, and no read at
+// all: every number the strip shows is already in the session record. What is
+// pinned here is that the card says what the title used to and that the count
+// over the list agrees with the list under it.
+
+const SESSION_ROW = () => ({
+  id: 's1', exchanges: 12, messages: 48, calls: 431, failures: 3,
+  filesTotal: 62, tools: [['Bash', 210], ['Edit', 96], ['Read', 71]],
+  files: [['lib/alpineComponents/estate.js', 24], ['docs/show-repo.md', 9]],
+  tokens: { output: 84200, input: 1900, cache_read: 7400000, cache_write: 120000 },
+});
+
+test('the turns card separates the two halves the title used to hold', () => {
+  const row = SESSION_ROW();
+  data.openSessionCard(row, 'turns', null);
+  assert.equal(data.rowCard.kind, 'list');
+  assert.equal(data.rowCard.label, 'user turns');
+  assert.deepEqual(plain_(data.rowCard.rows),
+    [{ label: 'user turns', n: 12 }, { label: 'assistant messages', n: 48 }]);
+  assert.equal(data.rowCardSummary.count, 12,
+    'the head states the number the row showed, not the sum of the two');
+});
+
+test('the tools card lists the per-tool breakdown and owns the failure count', () => {
+  const row = SESSION_ROW();
+  data.openSessionCard(row, 'tools', null);
+  assert.equal(data.rowCardSummary.count, 431);
+  assert.deepEqual(plain_(data.rowCard.rows.map(r => r.label)), ['Bash', 'Edit', 'Read']);
+  // The failures pair opens THIS card, being a subset of these calls, so the
+  // number it stands for has to be stated here or that pair explains nothing.
+  assert.match(data.rowCard.note, /3 of these calls failed/);
+});
+
+test('a record with no breakdown says so rather than showing an empty card', () => {
+  data.openSessionCard({ id: 's2', calls: 7, tools: [] }, 'tools', null);
+  assert.deepEqual(plain_(data.rowCard.rows), []);
+  assert.match(data.rowCard.note, /kept no per-tool breakdown/);
+});
+
+test('the files card carries paths, and marks them as paths', () => {
+  const row = SESSION_ROW();
+  data.openSessionCard(row, 'files', null);
+  assert.equal(data.rowCardSummary.count, 62);
+  assert.deepEqual(plain_(data.rowCard.rows.map(r => r.label)),
+    ['lib/alpineComponents/estate.js', 'docs/show-repo.md']);
+  assert.ok(data.rowCard.rows.every(r => r.mono), 'a path is set in mono, like every other path');
+  // 62 opened, 2 listed: the head must not shrink to the list's length, which
+  // is what the branch row's cards had to be taught the hard way.
+  assert.notEqual(data.rowCardSummary.count, data.rowCard.rows.length);
+});
+
+test('the tokens card leads with output, the half that measures the work', () => {
+  const row = SESSION_ROW();
+  data.openSessionCard(row, 'tokens', null);
+  assert.equal(data.rowCardSummary.count, 84200, 'output, not the cache-read total');
+  assert.equal(plain_(data.rowCard.rows)[0].label, 'output');
+  assert.deepEqual(plain_(data.rowCard.rows.map(r => r.n)), [84200, 1900, 7400000, 120000]);
+});
+
+test('a list card is complete on open: no read can sharpen it', () => {
+  const row = SESSION_ROW();
+  data.openSessionCard(row, 'tools', null);
+  const before = plain_(data.rowCardSummary);
+  data.rowCardRead = { key: 'anything', loading: true, error: '', files: [] };
+  assert.deepEqual(plain_(data.rowCardSummary), before,
+    'the branch cards wait on a compare; this one never does');
+});
+
+test('an unknown class opens nothing rather than an empty panel', () => {
+  data.rowCard = null;
+  data.openSessionCard(SESSION_ROW(), 'nonsense', null);
+  assert.equal(data.rowCard, null);
+});
+
+test('each pair keys its own card, so hovering along the strip re-anchors', () => {
+  const row = SESSION_ROW();
+  data.openSessionCard(row, 'tools', null);
+  const first = data.rowCard.key;
+  data.openSessionCard(row, 'files', null);
+  assert.notEqual(data.rowCard.key, first);
+  assert.match(data.rowCard.key, /^session:s1:/);
 });

@@ -198,6 +198,25 @@ own. It arrived visible (fourteen identical bars, one per nested component) and
 had been sitting quietly in `description` and `actions`, whose values happened
 to be empty wherever anyone looked. The scan now reads the element's own scope.
 
+**A third half arrived on 2026-08-19: `menu`,** which fills the launcher's
+long-press menu rather than anything inside the drawer. A component exposing
+`[{ label, icon, run }]` gets one row per entry under the built-in "Take a
+note", and show-repo contributes exactly one, the app-wide paste. The contract
+exists because the drawer is the wrong place for a verb you want *before* the
+drawer: opening it is a tap and a tab, and for the paste specifically it would
+also spend the user activation a clipboard read has to ride.
+
+Two things are load-bearing about it. **Rows are read when the menu opens, not
+when the drawer scans.** `detect()` runs on drawer open, so a menu sourced from
+its output would be empty on the first long press of a page load, which is the
+press that matters; `readPageMenu()` does its own narrow pass over `[x-data]`,
+cheap enough to redo every time and therefore correct on a view that mounted
+late. And **every row is one line.** "Take a note" carried a two-line
+explanation until this change, and it went for the same reason the toggle bar's
+`hint` did: a menu raised by a held finger is read in the half-second before the
+finger lifts, so a paragraph there is something to get past rather than
+something to read. There is no `desc` field to put one in.
+
 ### The ref switch: which ref show-repo itself is running
 
 Past the rail, behind a hairline, sits the **ref switch**
@@ -239,7 +258,7 @@ the shell (this header included) at the deployed version. The page's current
 deep link rides along as the trailing `?query`, so a switch lands on the screen
 you were already looking at rather than at the front door.
 
-The branch list is the same survey the fab's Render tab runs
+The branch list is the same scan the fab's Render tab runs
 (`branchesForPath`, degrading to an undated list without a token) and it loads
 **on hover or focus, once**: a page nobody touches the control on pays nothing.
 
@@ -841,7 +860,7 @@ by two axes: **scope** and **repo**.
 
 **Scope** picks which branches to show, and the chips carry their counts off the
 full list, so the row doubles as a running count of the estate's branches. Four scopes read
-the survey's `group` values; **Abandoned** reads the PR index instead, which is
+the scan's `group` values; **Abandoned** reads the PR index instead, which is
 why it is a chip rather than a fifth group:
 
 | Scope | Shows | For |
@@ -851,9 +870,9 @@ why it is a chip rather than a fifth group:
 | **Stranded** | `stranded` | content that exists nowhere on the default branch |
 | **Landed** | `landed` | the cleanup pass: content already on the default branch |
 | **Abandoned** | a PR closed unmerged | work decided against, still in the list |
-| **All** | everything surveyed | the whole list |
+| **All** | everything scanned | the whole list |
 
-**Abandoned is the scope the content survey could not have.** Its verdict is
+**Abandoned is the scope the content scan could not have.** Its verdict is
 landed-or-not, and abandoned work is landed nowhere, so a closed-unmerged branch
 sat among the stranded looking exactly like work still waiting to be finished.
 The two answers are opposite: stranded asks to be rescued, abandoned asks to be
@@ -869,13 +888,13 @@ nothing ahead and would stage to nothing, yet its commit date still reads
 recent. Gating on open-PR-or-stranded drops the flood of merged-but-undeleted
 session branches.
 
-**Landed is the scope that had no home before.** The crawl always surveyed and
+**Landed is the scope that had no home before.** The crawl always scanned and
 stored it (`state/activity.json` holds every branch it reached, classified, with
 the content counts), but this view hard-filtered it away in one line, so the
 per-repo **branch review** was the only place a landed branch appeared, one repo
 at a time. Exposing `group` as a control is what turns this into the estate's
 one branch list; see "The branch review" for what stays repo-scoped (the live
-uncapped survey, a repo outside the estate, the in-app compare).
+uncapped scan, a repo outside the estate, the in-app compare).
 
 Each row is **highlighted by PR state** (a colored left rail plus faint tint)
 and carries a **caption-style link cluster**. The state is what became of the
@@ -895,34 +914,231 @@ answer costs one call per repo instead of one per branch. The `#`-number links
 whichever PR the row is about, merged included, and its mark carries the state,
 with the word beside it where the width allows and a `+N` when a head has had
 several PRs over its life. `New pull request` in the row menu is gated on the
-absence of an **open** PR, so a merged branch that kept going can still open one. The row's **primary action
-(the branch name, and the leading Stage link) stages the files this branch
-changed** against its default (one `compare` call, removed paths skipped) and
-jumps to the Stage: navigating a whole branch tree is rarely the point, its diff
-is. The staged set is appended and deduped onto any working stage, at `ref=branch`
-so an item reads the branch's version and the Stage's Diff tab compares it back.
-The rest of the cluster is a **GitHub menu** (below), the guide **PR**, and the
-**Session** that authored it (the `claude.ai/code/session_…` link lifted from the
-PR body's footer, shown only when present); a per-repo **Branches** drill-down
-sits at the row's right (whole-tree browse lives there).
+absence of an **open** PR, so a merged branch that kept going can still open one.
+
+**The action line is two columns, not one wrapping row**, and that is what keeps
+the arrows out of trouble. They used to be the last item in a wrapping flex with
+`ml-auto`, so the moment anything ahead of them overflowed (the route chips, on
+the one repo that has them) they dropped to a line of their own and sat there
+right-aligned against nothing: a reader loses a row's shape when its rightmost
+fact moves. The left box wraps within itself and the right box never shrinks, so
+the **arrows hold the right edge of the first line at every width**.
+
+That also settles the chips without a breakpoint. They stay inline on a desktop,
+where the left box has room to spare and the alternative was more of the empty
+space this layout already has too much of, and they fall to a second line on a
+phone, where they do not. One rule, two behaviours.
+
+**Inside the left box the order runs GitHub, session, files, Stage, then the
+chips, and that order is load-bearing.** The three middle controls are the row's
+own and sit to the LEFT of the chips: with the session mark after them, the one
+repo that has chips carried it halfway across the row while every other row
+carried it at the left, and a mark a reader scans down a column for cannot move
+with a neighbour's width. The session slot is **reserved rather than collapsed**
+for the same reason, so a branch with no resolvable session costs one glyph of
+empty space instead of pulling the two controls after it out of column.
+
+The GitHub button is **the mark alone**. The word "GitHub" beside a GitHub logo
+said nothing the logo had not and cost about fifty pixels on the row where pixels
+are scarce. The caret stays, since that is what says "menu" rather than "link",
+and the title carries the sentence.
+
+**Files** is the route the row was missing. The branch name opens the detail
+too, but on the Guide where there is one, so "show me what changed" cost a tap,
+a read, and a second tap; this is that destination on its own glyph, the one the
+detail's file deck already wears. It carries **two numbers, and the same two on
+every row**: how many files this branch changed, and how many of them are new.
+Both are free, from the compare the crawl already runs for each open PR's
+ahead/behind pair, and from the scan's own compare where it reached the
+branch: every file in either response carries a status and a line count, and
+`BranchStatus.fileStats` reads them. A row with stranded content adds one more
+thing, the **missing** count in amber, which opens the pane already filtered to
+those files.
+
+Each count opens a **card**: one for new files, one for changed, one for missing,
+and one for each of the ahead/behind arrows. The card is the reason the row can
+afford to show so few numbers. It is a real
+panel rather than a `title` attribute, which is what a title cannot be: one
+string, in the browser's own type, at the browser's own delay, with nothing in
+it a reader can open. Three bands:
+
+1. **The head:** the count and the `+/-` line total, both describing *this
+   class* rather than the branch. The crawl's stored count answers first and the
+   listed files answer once they land, so the two numbers always come from one
+   source.
+2. **The shape**, and it needs no call at all: how many of each extension and
+   each top-level folder, capped at six and biggest first. `BranchStatus.fileStats`
+   builds it during the crawl and it rides in the cache, so the card is useful in
+   its first frame. An extensionless file reports `(none)` and a repo-root file
+   reports `(root)`, named rather than dropped, since a branch that only touches
+   root config is a real shape. A dotfile is extensionless by this reading, which
+   keeps `.gitignore` out of the histogram as a bar of one.
+3. **The files**, from the compare, fetched when the card opens and swapped in
+   underneath, each carrying its own `+/-`. The folder is muted and the filename
+   is not, so a truncation eats the half that matters least. **A row opens its
+   own diff in place**, because the compare embeds the unified patch beside the
+   file list: the card is already holding every diff it can show, and expanding
+   one asks nobody for anything. The patch renders in the same tinting the
+   file-review card uses, capped at 400 lines, since the pre-build's own diff is
+   three lines of a quarter megabyte each and would freeze the panel drawing
+   them. A small out-arrow keeps the route to the file on GitHub.
+
+**The missing card is the odd one, and it is the one that needs no fetch.**
+`missing` is the scan's verdict about paths rather than a status in a diff, so
+its list comes from the crawl's own `missingPaths` and is complete the moment the
+card opens; the diff, when it lands, only adds line counts and a patch to the
+rows it recognises, and a path it does not name keeps its row and claims nothing.
+Its digest is built client-side from the same `BranchStatus.fileKind`, so the
+three histograms cannot disagree about what an extension is. It also carries one
+line of prose saying what the word means, since the other two classes name
+themselves and this one is a verdict: a card listing files under a bare word
+nobody defined is the tooltip problem again in a nicer box.
+
+It leans on `BranchBrief`'s own sixty-second memo rather than caching anything of
+its own, which is what keeps the read affordable: hovering one row twice is a
+single call, and opening the branch detail afterwards is none, since the takeover
+reads through the same memo. That is also why **paths are not stored in the crawl
+cache**. A path list per branch across the estate is hundreds of kilobytes read
+on every Activity load, spent to save a call on the rows a reader actually opens.
+A no-merge-base branch has no compare at all, so its card shows the shape and
+says plainly that there is no diff to list.
+
+Hovering opens a card on a fine pointer, tapping opens it everywhere, and its
+footer opens the branch view's Files pane. Removals and renames stay out of the
+row and out of the cards, in the pairs' plain hover text, since a scanned list
+carries two classes and a card is opened one at a time.
+
+**A card's read is written back into the row it was opened from.** The compare
+it fetches is seconds old against a crawl that may be hours old, so its numbers
+are simply better: a branch has usually gained files and commits since. Without
+the write-back, a card opens over a row saying 62 changed and reports 71 itself,
+which is two readings of one branch a tap apart, disagreeing. `absorbCompare`
+patches the counts, the shape digest and the ahead/behind pair into whichever
+cache entries the row derives from, and the branches pill grows a small dot
+naming how many rows have outrun the age it states.
+
+Two limits, and both are deliberate. It is **in memory only**: the crawl owns
+`state/activity.json`, and writing the private registry from a hover would put a
+commit-shaped cost on a gesture meant to be cheap, so this lasts the visit and
+the next crawl makes it durable. And it does **not touch the verdict**, since
+landed / differs / missing is a function of two trees that a compare cannot
+supply; refreshing the counts around it and leaving it alone is the honest
+half-update rather than a stale verdict quietly restamped as fresh.
+
+**This deliberately overlaps the branch detail**, and the overlap runs in the
+card's favour on cost: the detail fetches a file's content per card opened, while
+this one fetched every patch at once without meaning to, as part of a compare it
+needed anyway. What the detail still owns is the full dossier per file (the
+new-file and base-file tabs, the annotations) and the registry grouping. If the
+overlap keeps growing, the honest next move is to put the dossier in the card
+rather than to keep two readings of one branch.
+
+**The palette says one thing each.** Neutral is changed, green is added, amber
+is stranded. Green used to tint the whole control when the scan found nothing
+missing, a signal the absent missing count and the Landed chip were already
+carrying twice over; freeing it is what lets a file-plus glyph read as a
+different thing from a files glyph at eighteen pixels. Spacing carries the
+grouping: four pixels binds a glyph to its number, eight separates the two pairs
+inside the control, twelve separates controls, without which a row with two new
+files and two missing ones read as `2 2`.
+
+The landed **ratio** rode here until 2026-08-18, so a scanned row read
+`28/80 landed 11 missing *` while an unscanned row read nothing at all: four
+mono elements on the busy rows, none on the quiet ones, and no column a reader
+could scan down. A ratio is a verdict and this is a route, so the verdict moved
+to where there is room to state it whole (the hover, and the Files pane's own
+strip, which names all three classes) and the row kept the counts every row can
+carry plus the one flag worth raising unasked. A no-merge-base row keeps its
+numbers rather than blanking, since the mark beside them already says that every
+number on that row spans more than the branch. A cache written before the
+breakdown existed shows its total as one number and claims no split, rather than
+printing a split of zeroes.
+
+**That mark reads `no merge base`, and until 2026-08-19 it was an asterisk.**
+One amber character, with its entire meaning in a `title` attribute, saying
+something a reader cannot afford to miss: that every number beside it is
+measuring something wider than the branch. A tooltip never appears on a phone,
+so on a phone it said nothing at all. Thirteen characters is a real cost on this
+row and it is the right trade, since the alternative was a caveat nobody could
+reach. The general rule it is a case of is now in
+[HTML-STYLE.md](HTML-STYLE.md), and [`scripts/stranded-titles.py`](../scripts/stranded-titles.py)
+counts the remaining cases.
+
+**Stage** sends the files this branch changed to the Stage (one `compare` call,
+removed paths skipped), appended and deduped onto any working stage at
+`ref=branch`, so an item reads the branch's version and the Stage's Diff tab
+compares it back. It was the row's original name-tap action, then a row in the
+GitHub menu, and a control of its own since 2026-08-18: it acts on this app's
+own Stage, so a menu whose every other row opens `github.com` was the wrong
+place for it. Its spinner rides in the button that was pressed rather than in a
+separate label at the head of the line.
+
+The **Session** that authored the branch is the `claude.ai/code/session_…` link
+read from the branch's own commit trailer, with the PR body's footer as
+fallback; a per-repo **Branches** drill-down sits at the row's right (whole-tree
+browse lives there).
+
+**The arrows are commits, and both of their cards are free.** They state how
+many commits the branch has that the default branch does not (green, muted at
+zero, which flags a branch with nothing left to stage) and how many the default
+has that the branch does not. Neither is lines and neither is files, a thing they
+said only in a `title` attribute, which never appears on a phone, so the pair read
+as two bare numbers a reader could reasonably take for either.
+
+The **ahead** list is the compare's own `commits`, which is exactly the set and
+which the file cards already fetch. The **behind** list is the newest commits on
+the default branch, which the crawl has always fetched once per repo for its own
+moved-or-not gate (`recentCommits`) and never read for anything else: main's side
+was sitting in the cache unread the whole time. That is why both arrows became
+cards at once rather than one now and one when someone paid for it.
+
+Behind is answered twice, and sharpens: before the compare lands it takes the
+newest `behind_by` of the cached log, which is exact while the default branch is
+linear and costs nothing; once the compare is in hand it takes everything newer
+than `merge_base_commit`, which is exact regardless. A branch that forked before
+the cached window gets a card that says so and keeps its count, rather than an
+empty list under a number. `ACTIVITY_RECENT_COMMITS` rose from 12 to 40 on
+2026-08-19 for exactly this: the estate routinely runs branches 20 to 40 behind,
+and the wider page is the same call and about 5 KB per repo.
 
 Each row's right edge states the branch's **lifespan**, first commit then latest,
 as `15 days → 2 hours`, which answers "how long has this been open" beside "when
 was it last touched". Neither costs a call: the crawl's compare already lists a
 branch's unique commits oldest-first, so its start is `commits[0]`
-(`BranchSurvey.firstCommitDate`) off a response the survey holds anyway. The
+(`BranchStatus.firstCommitDate`) off a response the scan holds anyway. The
 start is dropped when it rounds to the same label as the tip (a same-day branch,
 where `2h → 2h` is noise) and when it cannot be known honestly: a branch with no
 merge base has no unique-commit list, and a compare past GitHub's 250-commit cap
 reports a total larger than the list it returns, so the oldest entry present is
 not the first. Those rows show the tip age alone.
 
-Where the survey reached a branch, the row also states its **content verdict**:
-of the paths the branch uniquely touched, how many are present on the default
-branch now (`6/6`, or `1/5` plus `4 missing` with the paths on hover). It is
-what makes a Landed row actionable rather than a claim, and it costs nothing:
-the crawl stored it. An unsurveyed row shows nothing rather than `0/0`, since
-"not measured" and "measured zero" are different answers.
+Where the scan reached a branch it also measures a **content verdict**: of the
+paths the branch uniquely touched, how many hold content the default branch has
+now. It is what makes a Landed row actionable rather than a claim, and it costs
+nothing, since the crawl stored it. The row shows the verdict's one urgent half,
+the missing count; the whole of it is one hover away and lives fully in the
+branch view's Files pane.
+
+**Three classes, and the third one had no name.** A touched path is **landed**
+(those bytes are on the default branch, at this path or moved anywhere in the
+tree, or the branch deleted the path and so stranded nothing), **differs** (the
+default branch holds the path with other bytes, which is either unlanded edits
+or the default's own drift since, and separating those costs a history walk the
+scan does not make), or **missing** (neither the path nor the bytes, the only
+class that says deleting the branch would lose something). The three sum to the
+touched total. Until 2026-08-18 the row showed `28/80` beside `11 missing` and
+named nothing else, so a reader could only read the pair as a failed
+subtraction. `landed` now rides the ratio, since a bare `28/80` does not say
+which direction is good, and the full partition is in the hover.
+
+**Both halves are routes into the files.** Tapping the count opens the branch
+detail on its **Files** pane; tapping `11 missing` opens it filtered to those
+eleven, as diffs a reader can actually read. What they replaced was inert text
+whose tooltip pasted up to twelve missing paths under a sentence describing the
+paths that were *present*, so the wrong list sat under the wrong clause and
+nothing in it could be opened. The counts and the filter live on in the pane
+itself, which re-measures them rather than only rendering what it was handed;
+see [branch-overlay.md](branch-overlay.md).
 
 **Repo chips** below the scope chips narrow the list to one repo, `All` first
 and a count on each. The row's own **repo chip menu** contributes **Only
@@ -948,9 +1164,15 @@ beside that one until 2026-07-30 and was cut: `Compare to <default>` opens the
 page the URL names, and the browser copies it from there. It shares the sidebar repo menu's
 geometry (`shell.anchorMenu` / `menuStyle`: fixed, aligned to the trigger's own
 edge, flipped above near the viewport bottom), its row spec (`.wt-menu-row`,
-flat, an out-arrow on anything leaving the app), and its hover behavior. The
-`#`-number and the session mark stay outside it: neither is GitHub navigation,
-and the session mark has no other route.
+flat, an out-arrow on anything leaving the app), and its hover behavior.
+
+**Every row in it opens `github.com`, with one exception, and the rule is what
+put Stage on the action line.** The `#`-number, the session mark, the files
+route and the Stage all stay outside: none is GitHub navigation. `Copy branch
+name` is the exception that earns its place, since a branch name is long,
+hyphenated, and typed into git commands and `#gh=` addresses with no address bar
+to lift it from, which makes it the ADDRESS of what the other rows open rather
+than an action somewhere else.
 
 Each row opens with its **repo chip**, the repo's own declared icon plus its
 short name. It is a control, not a label: it opens the repo's whole grouped
@@ -993,21 +1215,21 @@ unit ride in the slot rather than being inferred by whoever draws it, since only
 the crawl knows whether it is counting repos or session records.
 
 **One pass, and it was two.** The refresh shipped split, a quick pass (commits,
-PRs, branch dates) so the list landed in seconds and a survey true-up behind it.
-The call log priced that: `deep` gates the **survey alone**, so the second pass
+PRs, branch dates) so the list landed in seconds and a scan true-up behind it.
+The call log priced that: `deep` gates the **scan alone**, so the second pass
 re-fetched every cheap read the first had just made, and a refresh of 11 repos
 spent 66 calls, a fifth of the run, asking for the same commits and the same two
 PR lists twice inside a minute. The seconds it bought back were real and did not
 cover that, so the Refresh button and the arrival kick each run one crawl,
-survey included. The quick shape stays supported because one caller still wants
+scan included. The quick shape stays supported because one caller still wants
 it: `goGuides` warms this cache for a pane that needs the repo list and the open
 PRs and no branch verdicts at all. Retired 2026-08-17; the run record still
-carries `pass: 'quick' | 'survey'`, since those two differ by an order of
+carries `pass: 'quick' | 'scan'`, since those two differ by an order of
 magnitude in cost and averaging them would mean nothing.
 
 **Every cache read that feeds the commit is FRESH** (`gh.get(path, GH.FRESH)`),
 and the split refresh is what forced it. GitHub answers an API read with
-`Cache-Control: private, max-age=60`, so the survey pass, running seconds behind
+`Cache-Control: private, max-age=60`, so the scan pass, running seconds behind
 the quick pass, was handed the very copy the quick pass had just replaced: it
 folded onto a stale base and then failed `409 does not match …` on the dead sha
 it had been given along with it. The 409 was the guardrail rather than the bug,
@@ -1044,10 +1266,10 @@ so the number reported and the gate that skipped the commit cannot disagree.
 **A verdict is carried when neither of its inputs moved.** A branch's
 landed-or-stranded call is a function of exactly two things, its own tip and the
 default branch, so a pass where neither moved is re-deriving an answer it
-already has. The crawl now hands the survey the previous rows and the default
-tip it judged against (`survey.mainSha`), and `BranchSurvey.needsSurvey` decides
+already has. The crawl now hands the scan the previous rows and the default
+tip it judged against (`scan.mainSha`), and `BranchStatus.needsScan` decides
 per branch: the branch moved, or main moved, or there is no stored row, or the
-stored row is an error. When nothing needs surveying the default tree is not
+stored row is an error. When nothing needs scanning the default tree is not
 read either, so an untouched repo costs nothing. The same pair gates the open-PR
 compares, since `main...head` cannot move while the PR's `updated_at` and main's
 tip both hold.
@@ -1065,7 +1287,7 @@ back with **86 of its 183 calls at 404**, spread across every repo and mostly on
 `compare`, including one repo (wa-bills) paying 93 calls of the run to re-derive
 branches that answer 404 every time. Two of those calls are the same shape and
 mean opposite things: GitHub answers `compare` with 404 both when there is **no
-common ancestor** (a real verdict about two histories, which the survey handles)
+common ancestor** (a real verdict about two histories, which the scan handles)
 and when a ref or a permission is missing (a fault). The log could not tell them
 apart, because the traffic ledger never touches a response body. It does now, by
 one narrow route: `gh.req` already parses the error message, so it hands it to
@@ -1074,7 +1296,7 @@ carries `msg` and the rate-limit remaining at that moment. The next run says
 which kind of 404 it hit; until then the shape of the failure is recorded and
 its meaning is not.
 
-Beside it, the same cost lesson one level down: an **errored survey row is
+Beside it, the same cost lesson one level down: an **errored scan row is
 carried** like a `noBase` one, and a bounded few (`ACTIVITY_ERROR_RETRY`, three
 per repo per crawl) are retried, so a transient failure heals within a few
 crawls while a permanent one stops costing the estate anything.
@@ -1090,7 +1312,7 @@ both. Its heaviest row by bytes was eleven reads of `state/activity.json` for
 listing) and the views' share is gone too: the crawl hands its document along on
 the `web-tools:activity-refreshed` event, so a listener that used to re-read
 370 KB now reads nothing and a detail-less event still falls back to reading.
-Its third reading was the survey itself: with the split gone, 69 compares and 30
+Its third reading was the scan itself: with the split gone, 69 compares and 30
 commit reads stood out as one repo re-deriving verdicts nobody had asked it to
 re-derive, which is the carry rule above. And a run that died on a phone at
 `Load failed` after 300-odd successful calls bought one retry for a **dropped
@@ -1099,17 +1321,17 @@ is not retried because the answer will not change in 600ms, and a write is never
 retried because it may have landed.
 
 The cache is what makes this affordable. The branch review costs ~2 + 2N calls to
-survey N branches, so surveying every repo live on a dashboard is a flood.
+scan N branches, so scanning every repo live on a dashboard is a flood.
 Instead `refreshActivityCache` crawls each estate repo on a ~12h per-browser
 throttle (heavier than the config crawl, so a longer interval) and stores the
-capped landed/stranded survey plus cheap summary signals; the branch review, the
+capped landed/stranded scan plus cheap summary signals; the branch review, the
 estate cards, and this view all render from the stored result. The per-repo
 branch review is **cache-first** too: with a token it renders Landed / Stranded
 from `state/activity.json` and marks the header `cached`, running the live fanout
-only on an explicit Refresh or where the cache has no coverage. Same survey math
-either way (`lib/kits/branch-survey.js` `surveyBranchLive`, shared by the view and the
+only on an explicit Refresh or where the cache has no coverage. Same scan math
+either way (`lib/kits/branch-status.js` `scanBranchLive`, shared by the view and the
 crawl). Source-of-truth rule as ever: the cache is derived and may be briefly
-stale; Refresh re-surveys live.
+stale; Refresh re-scans live.
 
 ### Sessions
 
@@ -1123,11 +1345,39 @@ and output tokens. The rail goes amber where the session hit failures and stays
 muted otherwise, deliberately not green-for-clean, since a clean session is the
 normal case and a page of green rails says nothing.
 
+**Each count in that row opens a card**, the same panel the branch row's counts
+open, with a third kind of body: label and number, biggest first. This row is the
+branch row's twin and it had the branch row's old defect, which is why it got the
+same answer. Four glyph-and-number pairs stated their *unit* only in a `title`,
+and the breakdown behind each number had no other route at all, so on a phone the
+strip was four bare digits. Turns splits into user turns and assistant messages;
+tool calls into the per-tool histogram, which also owns the failure count, since
+the amber failures pair is a subset of those calls rather than a fifth axis;
+files into the busiest paths; and the token total into output, input, and the two
+cache halves, with output leading because cache reads run two orders of magnitude
+larger and measure the harness rather than the work.
+
+**These cards cost nothing.** Where the branch row's cards fetch a compare, every
+number here is already in the session record the pane is rendering, so the card
+is complete in its first frame and no read can sharpen it. `rowCardSummary`
+answers for this kind first and returns the stored count, which is also what
+keeps the head honest: 62 files opened over a list of the two busiest is the
+right reading, and a head that shrank to the list's length would be the mistake
+the branch cards had to be taught not to make.
+
+Two marks in that row are **dimmed twins**: a files glyph and a Claude star,
+shown greyed when the record *could not say* rather than when there was nothing
+to report. Each now carries a `&mdash;` beside it, the same dash this component
+uses everywhere for "unknown", because a grey icon alone is indistinguishable
+from a zero. Which of the two causes applies (a pre-schema-3 record, or a session
+that never committed) is still only in the title, and that is the honest
+remainder rather than a claim to have finished.
+
 The sessions crawl reports the same way Branches does, off the same channel:
 while it runs, the pane's age pill is joined by `Reading records · 18 of 120
 records` over a determinate bar above the list. It is the lighter of the two
 crawls (a tree read, then up to 120 record blobs six at a time, against a branch
-survey per repo), but a cold pass is still tens of seconds, and it had a spinner
+scan per repo), but a cold pass is still tens of seconds, and it had a spinner
 and one word. The Guides shelf gets neither line nor bar: it is assembled in
 memory from one listing per repo, with no denominator worth drawing, so its pill
 says `Reading…` and that is the honest whole of it.
@@ -1298,7 +1548,7 @@ bottom. The repo owns the story; the estate only stacks the statements, so the
 cross-repo picture is a view, never an authored central list. The hub and the
 registry carry a role instead of a grade, since grading the hub against its own
 set says nothing. Grading stops at estate members deliberately: probing every
-repo in the cache would make this an account-wide survey mostly composed of
+repo in the cache would make this an account-wide scan mostly composed of
 repos that will never carry the set, at three live reads each. The blind spot
 that buys is that a repo adopting nothing is invisible, since the file that
 would list it is the first thing adoption writes. Graded by [`lib/kits/portable-align.js`](../lib/kits/portable-align.js), which is pure and
@@ -1493,7 +1743,7 @@ Each scope is the control its subject deserves:
   copy.) Its box
   **filters** rather than leads, which inverts the header ref switch on purpose:
   there you know the name of where you are going, here you are choosing among
-  what exists. A tag, a sha, or a branch past the survey's reach is still
+  what exists. A tag, a sha, or a branch past the scan's reach is still
   reachable, offered as typed at exactly the point the list runs out of
   matches. The default branch is handed back as `''`, never by name, so a scope
   meaning "whatever this repo calls its default" keeps meaning that when the
@@ -1695,17 +1945,17 @@ pane has had a determinate per-repo bar since the crawl learned to report, and
 the same crawl pressed here ran for the same tens of seconds behind a spinner saying only
 `Running…`. A control moved without its progress is a control made worse, so the
 bar moves with it. Under the ages line each row draws `Reading configs · 31 of 44
-repos`, `Surveying branches · 4 of 11 repos · chat-histories, home`, or `Reading
+repos`, `Scanning branches · 4 of 11 repos · chat-histories, home`, or `Reading
 records · 18 of 120 records`, over a bar whose only input is items finished over
 items total. All three read the shell's one progress channel
 (`crawlProgress`, a slot per cache key), the same one the Branches and Sessions
 panes draw, and **the crawl names its own verb and unit**, since only it knows
-whether it is counting repos or session records, and whether the survey is
+whether it is counting repos or session records, and whether the scan is
 running. A crawl that fans
 out unpooled (configs) names nothing in flight, because "every repo" is not a
 reading. Nothing is smoothed between two ticks, for the same reason the pane's
 bar smooths nothing. The bar spanned **two passes** for a day, since the activity
-refresh ran quick-then-survey and a bar that filled, reached the end and started
+refresh ran quick-then-scan and a bar that filled, reached the end and started
 over says the run has finished when it has not, which is the one thing a
 progress bar must never say. The refresh is one pass now (the second was
 re-fetching the first's cheap reads), so items finished over items total is
@@ -1944,14 +2194,109 @@ surface ([envelopes/surface.md](envelopes/surface.md), the `stage/1`
 profile), which is why the Stage view holds the bench and the shelf as one
 nav stop.
 
-The other thing that stays here is the **app-wide drop**, because it is the
-shell's gesture rather than the stage's: a file dropped on any view is staged,
-routes to the Stage, and opens in the preview when it is the only one. The
-shell owns the listeners, the drag cue, and the routing (`wireAppDrop`); what a
-dropped thing becomes is `window.StageIntake`'s, one answer shared with the
-bench's own drop-zone and with a paste. The gesture used to work only on the
-Stage, which meant you had to already be where you were trying to get to.
+The other things that stay here are the **app-wide drop and paste**, because
+they are the shell's gestures rather than the stage's: a file dropped, or
+anything pasted, on any view is staged, routes to the Stage, and opens in the
+preview when it is the only one. The shell owns the listeners, the drag cue,
+and the routing (`wireAppDrop`, `wireAppPaste`); what an arriving thing becomes
+is `window.StageIntake`'s, one answer shared with the bench's own drop-zone.
+Both gestures used to work only on the Stage, which meant you had to already be
+where you were trying to get to.
 
+The paste is the shell's **only** window paste listener, and that is a
+constraint rather than a tidiness note. Window listeners fire in registration
+order and `init()` runs before any component mounts, so a second listener in the
+stage could not use `defaultPrevented` to tell that this one had already acted;
+one reader is also what keeps a paste's several flavors from being split between
+two handlers. The stage's own listener was removed when this one arrived
+(2026-08-18).
+
+**The platform floor underneath all of it is that a phone has no paste event at
+all.** iOS Safari fires one only when an editable is focused, so the window
+listener that is the desktop's whole story is worth nothing there and the
+gesture the platform does give is a tap. So there are two tap triggers behind
+the one call (`pasteAnywhere` → `StageIntake.takeClipboard`), and they are two
+answers to "where would you reach for this", not two implementations:
+
+* the **launcher's long-press menu**, which the shell fills through the FAB's
+  `menu` contract (below), a gesture on a control already floating over every
+  view;
+* the **bench's own Paste button**, for when you are already on the Stage.
+
+**A header button was the third for one day** (shipped and removed 2026-08-19),
+and the fact that it went is the part worth recording. It was the discoverable
+route: visible without knowing a gesture exists, which the long press is not.
+It came out because the header is the app's scarcest row, holding identity, a
+nav that already scrolls at phone widths, and the sidebar toggle, and because
+the long press was confirmed working on a device first. That leaves the phone's
+only intake behind an undiscoverable gesture, which is a real cost knowingly
+taken rather than an oversight; if the menu proves too well hidden the button
+is twenty lines and comes back.
+
+Each trigger must read the clipboard on the tap's **own** user activation,
+which is why `pasteAnywhere` awaits nothing before `takeClipboard`, why
+`takeClipboard` throws rather than lazily fetching `kits/io.js`, and why the
+shell preloads that kit at boot. An `await` before the read spends the gesture,
+and the failure then looks like a clipboard problem rather than a sequencing
+one.
+
+**An empty clipboard is reported as information, not as an error** (changed
+2026-08-19, from a phone). `io.pasteItems()` returns an empty list both for a
+genuinely empty clipboard and for a read the platform refused without throwing,
+and nothing downstream can tell those apart, so the message says what happened
+("Nothing came off the clipboard") rather than guessing why. Tapping Paste
+before copying anything is the ordinary case, and the red alert it used to raise
+read as a broken button. A read that *throws* is a real failure and keeps the
+error colour.
+
+
+### Where a takeover sits
+
+A swipe-deck takeover (the file preview, the branch reader, the Map's docs, the
+transform workbench) is framed by two CSS variables the kit reads and this app
+sets: `--deck-left` and `--deck-top`, both defaulting to zero, so a page with no
+chrome beside its content gets the whole viewport as every consumer always did.
+
+**At `lg` and up the takeover lives in the view pane; below it takes the
+window.** One breakpoint for both axes, and it is the sidebar's, because that is
+where the sidebar stops being an off-canvas drawer and starts taking layout
+space. Above it the deck starts after the sidebar and below the header, so both
+stay visible and usable while it is open. Below it the deck covers everything,
+which is what a phone always did and what a short screen wants.
+
+Until 2026-08-18 the panel was a centred `max-w-4xl` card with a margin, a
+rounded border and a shadow, over a full-viewport overlay. That reads as a
+dialog pasted on top of the app rather than part of it, and here it floated
+across the sidebar, so chrome you were still meant to use sat under something
+you had to dismiss first. The phone case was already right; this makes the
+desktop match it.
+
+Two things the change costs, both stated because they are silent. The overlay's
+desktop margin used to be the click-outside-to-dismiss target and a filled frame
+leaves none, so ✕, Escape and the Back button carry dismissal everywhere now,
+as they already did on a phone. And the sidebar is reachable during a takeover
+for the first time, so navigating while one is open changes the view underneath
+it rather than being blocked.
+
+**Leaving the view closes the takeover.** Newly reachable and newly a problem:
+the deck no longer covers the chrome, so a tap navigates while the deck keeps
+painting the view you left. Measured before fixing, opening the workbench on the
+Stage and tapping Map left the workbench on screen with the rail and the URL
+both saying Map. It hangs off `syncUrl()` rather than a watcher on `view`, for
+ordering rather than taste: every `go*` method routes through there
+synchronously, so at the moment a paste calls `goStage()` no deck exists yet and
+it is a no-op, where a queued watcher could as easily have fired after the
+preview opened and closed the very thing the paste was routing to. It uses the
+kit's `drop()` rather than `close()`, since the navigation is already the
+history event.
+
+**The breakpoint alone is not the condition,** which is the trap: the desktop
+sidebar is conditional (`showSidebar`, `sidebarOpen`, and the `lg:hidden` on the
+aside), so a signed-out dashboard or a put-away sidebar has no column there. A
+deck inset by a column that is not present clips the very view it is covering.
+CSS owns the widths, `syncDeckFrame()` owns whether they apply, and the header's
+height is measured rather than restated, since it is conditional too and a
+hidden header measures zero for free.
 
 ## The branch review: landed / stranded per branch
 
@@ -1970,9 +2315,9 @@ rewrites make ref-level "unmerged" (and `ahead_by`, whose count on a
 rewrite-orphaned branch spans its whole line, marked `*`) unreliable; the
 content columns are the ones to read.
 
-It is the browser port of home's `tools/branch-survey.sh` (the CLI reference
-instrument), lives in `lib/kits/branch-survey.js` as pure unit-tested functions,
-and is held in agreement with the CLI by `scripts/check-branch-survey.mjs` (on
+It is the browser port of home's `tools/unmerged-branches.sh` (the CLI reference
+instrument), lives in `lib/kits/branch-status.js` as pure unit-tested functions,
+and is held in agreement with the CLI by `scripts/check-branch-status.mjs` (on
 home's 56-branch estate: 52 exact, 4 divergent only where the CLI's git rename
 detection credits moved-and-evolved content the API cannot see, all in the
 conservative direction). Fetch cost per branch: one compare (with a

@@ -98,7 +98,7 @@ list of them, and a `.md` now previews rendered with raw one tap away.
 Takes from:
 
 1. upload: the drop-zone (a file, or pasted text; pasted ref lines stage as refs),
-2. **a drop anywhere in the host app** (below),
+2. **a drop or a paste anywhere in the host app** (below),
 3. a repo: the **Add box** on the bench (below),
 4. a repo manifest's `stage.files` (seeds an empty stage when that repo opens),
 5. a `#stage=` link.
@@ -116,9 +116,126 @@ wrong first look at it. `StageIntake.focus(item)` is how the opening is asked
 for: it names the item on `store.stageFocus` rather than calling the bench,
 because at drop time the bench may not exist yet; the stager reads the key when
 it mounts, or on the spot when it is already up, and clears it. Two drops the
-shell leaves alone: one over a form field, which keeps its native drop the way
-the paste path leaves a field's own paste alone, and one the Stage view's own
-root already handled, which it can tell by `defaultPrevented`.
+shell leaves alone: one over a form field, which keeps its native drop, and one
+the Stage view's own root already handled, which it can tell by
+`defaultPrevented`.
+
+**A paste anywhere stages too, and it took the same move to get there.** The
+Stage has taken a paste since 2026-08-15, but through a window listener the
+STAGER registered and gated on `view === 'stage'`: the gesture was reachable
+only from the view it was staging into, and only once the bench had mounted. On
+2026-08-18 the fold followed the drop's out to `StageIntake.takePaste(cd, opts)`
+and the shell took the gesture, so a block of refs copied while reading a repo's
+files, or a screenshot pasted on the Map, now lands the way a dropped file does:
+staged, routed to the Stage, opened when it is the only thing that arrived.
+
+Two things differ from the drop, and neither was a preference. **There is no
+`defaultPrevented` tell**, because the ordering runs the other way: a drop on
+the Stage hits that view's own ELEMENT handler first and the window second, so
+the window can see it was taken, while window listeners fire in registration
+order and the shell's `init()` always precedes a component that mounts on first
+visit. So the stage's listener was removed rather than coordinated with, and the
+shell's is the only one. Being the only one is also what keeps the multi-flavor
+contract whole: one reader of the clipboard, so nothing takes `text/plain` out
+from under the bar that would have offered the HTML table beside it. And **the
+offer bar only fills where it can be seen.** A paste into a form field keeps its
+native paste everywhere; on the Stage the flavors the field cannot hold still go
+to the bar, and on any other view the clipboard is not read at all, since
+recording an offer nobody was told about is worse than not looking.
+
+The offers ride `store.stageOffers` for the reason `stageFocus` does, one step
+further along: the paste that produces one can land anywhere, so the named,
+deduped flavors have to survive until a bench exists to draw them. Naming and
+dedupe are `StageIntake.offerable`'s, so a host gets the same answer the bench
+would.
+
+**A pasted grid is a grid whichever delimiter it uses,** and the naming is
+where that is decided: `nameForText` picks an extension from the first
+characters and `ViewRegistry.READ_MODE` keys on the extension alone, so what a
+paste is CALLED is the whole of what the reader then sees. Until 2026-08-18
+`isDelimited` counted tabs only, so a spreadsheet range (which reaches the
+clipboard as TSV) opened as a table while the same data pasted as CSV opened as
+a wall of text. `delimiterOf` reads tab or comma at the same strictness the tab
+test always had, counting separators outside double quotes so a quoted comma
+stays a value; tab is tried first, so a TSV whose cells carry prose commas is
+still a TSV. A `rows => rows` function is named `.js` in the same pass, and a
+JSON array of records now opens as a table rather than a tree, which is what
+this policy's sibling on the data-view page (`AUTO_VIEW`) always did by reading
+the content.
+
+**The stage is also the transform workbench's door.** The workbench
+(`lib/alpineComponents/transform-workbench.js`) has shipped inside show-repo
+since the pre-build began globbing `lib/alpineComponents`, booting on every load
+with nothing ever mounting it: reachable only as a Tools-shelf card opening the
+standalone page in another tab. `StageIntake.transformKindOf(item)` names what
+the tool could do with a staged item, and the bench offers it as a chip.
+
+Three kinds, and they are not equally certain. A **bundle** is the tool's own
+`{fn, data}` output, recognized by the same `fn`/`fn_<tab>` key the workbench
+tests itself for, so it is exact. **rows** is the data it eats: a `.csv`, a
+`.tsv`, or a JSON array of records. A **transform** is a `rows => rows` function,
+the loosest of the three and the most interesting, since pasting one is how work
+RESUMES in the tool rather than starts. Recognition rides the name the intake
+already chose rather than sniffing again, which is why the naming fix above is
+what makes it trustworthy: before it, a pasted CSV was called `.txt` and nothing
+could tell it from prose.
+
+The chip is a sibling of the flavors bar, not part of it: that bar offers other
+readings of one paste, this offers another TOOL for what was already read.
+Tapping it opens the workbench as a **swipe-deck takeover**, the same kit the
+preview moved onto the same day, so the header, Escape, the phone Back button,
+history-backed dismissal and correct nesting all come for free and opening the
+workbench from an open preview drills rather than stacking two scrims. A deck of
+one, since a workbench is not a set to walk. The item's text goes over through
+`processText`, the tool's own sniff chain, so a bundle rehydrates whole and a
+CSV parses, with one reader of those shapes rather than two.
+
+It mounts **fresh on each open**, which is right rather than a compromise: the
+tool persists its tab sources in localStorage and deliberately never persists
+data, and every open here arrives carrying an item to load. That is also what
+keeps the one-instance rule true, since the tool addresses its viewer and table
+by document id rather than through its root.
+
+**The host has to bring the libraries:** PapaParse, which the parse path calls
+unguarded, and Tabulator, whose absence is worse than an error, because the
+table's render hook reads `typeof Tabulator === "undefined"` and returns,
+drawing the whole chrome around an empty pane in silence. That is what the first
+mount here actually did, which is why the scenario asserts the drawn rows rather
+than the parsed ones.
+
+The offer also rides the **preview's header**, not only the bench, and that is
+where it matters most: a single arrival routes to the Stage and opens on itself,
+so the reader is looking at the file rather than at the row. It is recomputed
+per slide, since the compare is a property of the SET and holds across positions
+while the transform is a property of the ITEM and does not.
+
+**A bundle is the one kind that skips the offer and opens the tool directly.**
+Every other arrival opens on its content, which is the right first look at
+something you just pasted. A bundle's content is base64 gzip, so a tree of it
+shows a handful of unreadable strings and the only thing that can read it is the
+tool that wrote it. It is also the kind recognition is exact about, which is what
+makes skipping the offer defensible here and nowhere else.
+
+**The one platform limit worth stating plainly: iOS Safari fires no `paste`
+event unless an editable is focused.** A window listener therefore has no intake
+at all on an iPhone, so the gesture there is a TAP: the app header carries a
+Paste button at every width, beside the sidebar toggle and outside the nav,
+which scrolls on a phone. It routes exactly as the window listener does, staging
+and then opening on the Stage, and the bench keeps its own Paste button for the
+same act in place. All three run one implementation,
+`StageIntake.takeClipboard`, which reads through `kits/io.js`.
+
+Two things that path has to get right, and both were wrong until 2026-08-19.
+**Reading the clipboard needs the tap's own user activation,** so nothing may be
+awaited before the read; the button used to lazy-load the io kit inside its own
+handler, which spends the gesture and then reports the loss as a clipboard
+failure. The kit is preloaded at boot instead. And **the textarea fallback must
+read its value rather than ask `execCommand('paste')` whether it worked**: on
+iOS that returns false and pastes anyway, because the real read happens behind
+the edit-menu pill the platform puts up, so gating on the return value made
+every iOS paste resolve null and surface as "Paste unavailable in this context",
+a sentence about the browser rather than about what happened. The recipe is the
+`ios-clipboard` skill's, measured on a device.
 
 Stage-view actions:
 

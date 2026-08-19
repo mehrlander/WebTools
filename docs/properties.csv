@@ -87,7 +87,7 @@ manifest-fields,status,recorded,,none,column,yes,deprecated,set only where a key
 text-fields,audience,recorded,,value,column,yes,reader;editor,who the text under this field name is addressed to; the split that decides whether it belongs in a carrier or in source
 text-fields,gloss,recorded,,value,column,yes,,"what this field name means, in a sentence"
 text-fields,use_when,recorded,,value,column,yes,,"the rule for picking this name over its neighbours, which is the part a definition alone never settles"
-text-fields,instead_of,recorded,,none,column,yes,,"the names already in use that this one accounts for; the survey resolves them rather than reporting them as violations, so an existing carrier conforms by declaration rather than by rename"
+text-fields,instead_of,recorded,,none,column,yes,,"the names already in use that this one accounts for; the scan resolves them rather than reporting them as violations, so an existing carrier conforms by declaration rather than by rename"
 app-routes,address,recorded,,counted,column,yes,,"the URL shape that opens it, e.g. ?view=map; blank on the shell row, which draws every route and is addressable as none of them"
 app-routes,label,recorded,,value,column,yes,,its name in the nav and on the row
 app-routes,group,recorded,,value,column,yes,repo;estate;shell,which context it is reached from

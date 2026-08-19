@@ -65,7 +65,7 @@ fi
 # its source rather than drifting until someone notices.
 #
 # The copies sit at a different depth than docs/, so every relative link inside
-# them resolves against the wrong directory: link-survey.py reports 11 dead
+# them resolves against the wrong directory: dead-links.py reports 11 dead
 # links across the pair, and they are not repairable here. Editing the copies is
 # worse than leaving them, because the cp below silently reverts the edit on the
 # next commit that touches docs/. The files exist to be read as injected context,

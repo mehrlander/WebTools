@@ -123,7 +123,7 @@ window.__shell = { REGISTRY_REPO: 'me/registry', DEFAULT_REPO: 'me/tools',
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
-  'lib/kits/branch-survey.js',
+  'lib/kits/branch-status.js',
   // The shelf reads every surface through the shared envelope model, which
   // gh-boot loads ahead of the components for exactly this reason.
   'lib/kits/surface.js',
@@ -131,9 +131,9 @@ const Alpine = await startAlpine(window, [
 ]);
 const data = Alpine.$data(window.document.getElementById('es'));
 
-// One repo's cached activity: a survey row per branch, plus any open PRs.
+// One repo's cached activity: a scan row per branch, plus any open PRs.
 const activity = ({ branches = [], openPRs = [] }) => ({
-  'acme/widget': { defaultBranch: 'main', openPRs, survey: { branches } },
+  'acme/widget': { defaultBranch: 'main', openPRs, scan: { branches } },
 });
 // These rows are read through the Open scope, which is what the session
 // icon's bug lived in. Stated rather than inherited: the component's
@@ -166,8 +166,8 @@ test('the PR body covers a branch whose commits carry no trailer', () => {
   assert.equal(rowFor('feature').session, SESS('PRBODY'));
 });
 
-test('a PR beyond the survey cap still carries its own session', () => {
-  // No survey row at all, so the PR body is the only source there is.
+test('a PR beyond the scan cap still carries its own session', () => {
+  // No scan row at all, so the PR body is the only source there is.
   data.activity = activity({
     branches: [],
     openPRs: [{ number: 9, head: 'fresh-push', session: SESS('PRONLY'), updatedAt: '2026-07-26' }],
@@ -189,8 +189,8 @@ test('no session anywhere leaves the row falsy, so the icon stays hidden', () =>
 // from an ancestor walk scores 55% precision at depth 8 and 19% at depth 40;
 // off the compare it is 100% by construction.
 
-const surveySrc = readFileSync(path.join(repoRoot, 'lib/kits/branch-survey.js'), 'utf8');
-const BS = (() => { const w = {}; new Function('window', surveySrc)(w); return w.BranchSurvey; })();
+const scanSrc = readFileSync(path.join(repoRoot, 'lib/kits/branch-status.js'), 'utf8');
+const BS = (() => { const w = {}; new Function('window', scanSrc)(w); return w.BranchStatus; })();
 const commit = (msg) => ({ commit: { message: msg } });
 
 test('sessionsIn reads compare order (oldest first) and returns newest first', () => {
@@ -211,7 +211,7 @@ test('sessionsIn ignores commits with no trailer and empty input', () => {
   assert.deepEqual(BS.sessionsIn(null), []);
 });
 
-test('surveyBranchLive marks compare-sourced sessions exact', async () => {
+test('scanBranchLive marks compare-sourced sessions exact', async () => {
   const gh = {
     ago: () => '1d ago',
     compare: async () => ({ files: [{ filename: 'a.txt' }], ahead_by: 2, behind_by: 0,
@@ -219,7 +219,7 @@ test('surveyBranchLive marks compare-sourced sessions exact', async () => {
     req: async () => ({ tree: [{ path: 'a.txt', type: 'blob', sha: 'tip' }] }),
   };
   const main = BS.treeSets([{ path: 'a.txt', type: 'blob', sha: 'other' }]);
-  const r = await BS.surveyBranchLive(gh, { name: 'f', sha: 'tip', date: new Date().toISOString() }, main);
+  const r = await BS.scanBranchLive(gh, { name: 'f', sha: 'tip', date: new Date().toISOString() }, main);
   assert.deepEqual(r.sessions, [SESS('S2'), SESS('S1')]);
   assert.equal(r.sessionsExact, true);
 });
@@ -240,7 +240,7 @@ test('a no-merge-base branch keeps one session and is not marked exact', async (
       : { tree: [{ path: 'a.txt', type: 'blob', sha: 'tip' }] },
   };
   const main = BS.treeSets([]);
-  const r = await BS.surveyBranchLive(gh, { name: 'orphan', sha: 'tip', date: '2025-01-01T00:00:00Z' }, main);
+  const r = await BS.scanBranchLive(gh, { name: 'orphan', sha: 'tip', date: '2025-01-01T00:00:00Z' }, main);
   assert.equal(r.noBase, true);
   assert.deepEqual(r.sessions, [SESS('TIP')], 'newest only');
   assert.equal(r.sessionsExact, false);
@@ -286,7 +286,7 @@ test('past the compare cap the sessions stand but stop claiming completeness', a
     req: async () => ({ tree: [{ path: 'a.txt', type: 'blob', sha: 'tip' }] }),
   };
   const main = BS.treeSets([{ path: 'a.txt', type: 'blob', sha: 'other' }]);
-  const r = await BS.surveyBranchLive(gh, { name: 'huge', sha: 'tip', date: new Date().toISOString() }, main);
+  const r = await BS.scanBranchLive(gh, { name: 'huge', sha: 'tip', date: new Date().toISOString() }, main);
   assert.deepEqual(r.sessions, [SESS('S2'), SESS('S1')], 'the listed tail is still usable');
   assert.equal(r.sessionsExact, false, 'but the list is not the whole branch');
   assert.equal(r.firstDate, '', 'and the lifespan start is unknowable, per #298');

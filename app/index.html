@@ -108,9 +108,9 @@
   await gh.load('kits/last-write.js');
   // Config-aggregate builders for the private cache (state/configs.json).
   await gh.load('kits/repo-config-cache.js');
-  // The pure survey math + shared fetch orchestrators behind the branches view
-  // and the activity crawl (window.BranchSurvey).
-  await gh.load('kits/branch-survey.js');
+  // The pure scan math + shared fetch orchestrators behind the branches view
+  // and the activity crawl (window.BranchStatus).
+  await gh.load('kits/branch-status.js');
   // Activity-aggregate builders for the private cache (state/activity.json).
   await gh.load('kits/repo-activity-cache.js');
   // Sessions-aggregate builders for the private cache (state/sessions.json).
@@ -151,6 +151,32 @@
    below the trigger. */
 .wt-menu-row{min-height:1.625rem;font-size:.8125rem;line-height:1rem}
 @media (pointer:coarse){.wt-menu-row{min-height:2rem;font-size:.875rem}}
+/* WHERE A TAKEOVER STARTS. kits/swipe-deck.js frames itself with --deck-left,
+   defaulting to the whole viewport; this is the app saying it has chrome beside
+   its content. The widths track the sidebar's own (lg:w-80, xl:w-[22rem]) and
+   begin at lg for the same reason the sidebar does: below that it is an
+   off-canvas drawer taking no layout space, so a takeover should cover the
+   window as it always has. --deck-border draws the seam only where there is a
+   sidebar to draw it against. Keep these numbers in step with the aside.
+
+   The breakpoint alone is NOT the condition, which is the trap here: at lg and
+   up the sidebar is a static column, but a signed-out dashboard has none and a
+   viewer can put it away (showSidebar / sidebarOpen, and the lg:hidden on the
+   aside). Insetting the deck by a column that is not there clips the very view
+   it is covering. So CSS owns the widths and syncDeckFrame() owns whether they
+   apply, through data-deck-pane on the root.
+
+   ONE BREAKPOINT FOR BOTH AXES, and it is the sidebar's: at lg and up a
+   takeover lives in the view pane, below it takes the window. That is why
+   --deck-top is mapped from --deck-head inside a media query rather than set
+   directly. The phone was already right, a true fullscreen takeover, and
+   spending 3.5rem of a short screen on a nav row the reader is not using would
+   have been a regression dressed as consistency. syncDeckFrame() measures the
+   header rather than restating its h-14, since it is conditional (shellMode)
+   and a hidden header measures 0 for free. */
+@media (min-width:1024px){:root{--deck-top:var(--deck-head,0px)}}
+@media (min-width:1024px){:root[data-deck-pane="inset"]{--deck-left:20rem;--deck-border:1px}}
+@media (min-width:1280px){:root[data-deck-pane="inset"]{--deck-left:22rem}}
 /* The Repos row's two menu buttons. Narrow and chrome-free on a fine pointer,
    where they are a pair of glyphs at the row's edge and a hover background made
    each one read as a separate tile; the row's own hover tint is the feedback,
@@ -380,6 +406,18 @@
            says there is nothing to show (a signed-out estate), since a control
            that opens an empty panel is worse than no control; the phone keeps
            it, where the sidebar is also the route back out of the view. -->
+      <!-- NO PASTE BUTTON HERE, and it is worth saying where one stood.
+           2026-08-19 the header carried one, for a real reason: iOS Safari
+           raises a paste event only when an editable is focused, so the window
+           listener wireAppPaste installs is the desktop's whole story and the
+           phone had no app-wide intake at all. A tap was the answer. It is
+           gone because the launcher's long-press menu now carries the same
+           call (the `menu` contract below), confirmed working on a device, and
+           the header is the scarcest row in the app: it holds identity, the
+           nav that already scrolls at phone widths, and the sidebar toggle. A
+           second permanent control for a verb reachable by a gesture is the
+           kind of thing that accretes until nothing on the row is findable.
+           pasteAnywhere() is untouched and still the one implementation. -->
       <button @click="toggleSidebar()"
               class="shrink-0 p-1 rounded-lg transition-colors"
               :class="[sidebarOpen ? 'text-primary bg-primary/10' : 'hover:bg-base-200',
@@ -1677,10 +1715,39 @@ function app(){ return {
               desc: 'Leave the embed and open the framed page full-viewport.',
               run: () => ({ nav: href }) }];
   },
+
+  // FAB LONG-PRESS MENU contract (`menu`), the third beside `actions` and
+  // `toggles`. One row: the app-wide paste, which belongs here rather than in
+  // the drawer because it is a verb you want at the cost of one gesture on a
+  // control already floating over every view, and because the drawer would
+  // spend the tap's user activation getting itself open (a clipboard read has
+  // to ride the gesture that asked for it, which is why pasteAnywhere awaits
+  // nothing before takeClipboard).
+  //
+  // IT IS ALSO THE PHONE'S ONLY INTAKE, since the header button that shipped
+  // beside it on 2026-08-19 came straight back out (see the header markup for
+  // where it stood). That is a real trade: a long press is not discoverable,
+  // and nothing on screen says the menu exists. It was taken because the
+  // header is the app's scarcest row and the gesture was confirmed working on
+  // a device; if the menu turns out to be too well hidden, the button is
+  // twenty lines and it comes back. One implementation (pasteAnywhere) behind
+  // two triggers now, counting the bench's own button.
+  //
+  // A long press is not a static condition, so the row is offered
+  // unconditionally rather than hidden when the clipboard looks empty: nothing
+  // can read the clipboard to find out without the very gesture the row exists
+  // to collect.
+  get menu(){
+    return [{ label: 'Paste to Stage', icon: 'ph-clipboard-text',
+              title: 'Read the clipboard and stage what is on it',
+              run: () => this.pasteAnywhere() }];
+  },
   view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'stage' | 'config' | 'app' | 'public'
   // Window-level drag counter for the app-wide drop (init wires the listeners;
   // nested enter/leave is why it counts rather than flips), and what the cue
-  // says about the drag in flight (dragNote).
+  // says about the drag in flight (dragNote). The app-wide PASTE beside it
+  // needs no state at all: a paste is instantaneous, so there is no in-flight
+  // moment for a cue to describe.
   _appDrag: 0,
   _dragNote: '',
 
@@ -1794,7 +1861,7 @@ function app(){ return {
   guidesLoadedAt: '',
   guidesBusy: false,   // mirrored the same way, so the State row can spin
   configRefreshing: false,  // the estate refresh button is mid-crawl
-  activityRefreshing: false, // the activity crawl (heavier: per-repo survey) is running
+  activityRefreshing: false, // the activity crawl (heavier: per-repo scan) is running
   // ── Live crawl progress, one channel for all three crawls ──────────────
   // A slot per cache key, null when that crawl is idle, and the shape is the
   // same in every slot: { verb, done, total, unit, active: [name, …] }. One
@@ -1803,7 +1870,7 @@ function app(){ return {
   // the Activity pane draws the same bar for its own row.
   //
   // THE CRAWL NAMES ITS OWN VERB AND UNIT. Only the crawl knows it is on the
-  // survey pass rather than the quick one, or counting session records rather
+  // scan pass rather than the quick one, or counting session records rather
   // than repos, so the words ride with the numbers instead of being inferred
   // by whoever draws them.
   //
@@ -1912,6 +1979,18 @@ function app(){ return {
     else if (!url) this.goDashboard();
 
     this.wireAppDrop();
+    this.wireAppPaste();
+    // PRELOAD THE CLIPBOARD KIT, because the header's Paste button cannot
+    // afford to fetch it. Reading the clipboard needs the tap's own user
+    // activation, and an await inside the handler spends it, so a lazy load
+    // there fails as "clipboard unavailable" rather than as "still loading".
+    // Not awaited: nothing else waits on it, and the button reports honestly
+    // if it is tapped in the first moments.
+    if (window.gh?.load) window.gh.load('kits/io.js').catch(() => {});
+    this.syncDeckFrame();
+    this.$watch('sidebarOpen', () => this.syncDeckFrame());
+    this.$watch('showSidebar', () => this.syncDeckFrame());
+    this.$watch('shellMode', () => this.syncDeckFrame());
 
     // Browser Back/Forward restores state from the URL (syncUrl pushes an entry
     // per distinct URL, so the history has real steps to walk).
@@ -2361,13 +2440,13 @@ function app(){ return {
   // Force the activity crawl and tell the estate to re-read (the Activity view's
   // Refresh button and the estate refresh flow route here). Separate from the
   // config refresh because the activity crawl is much heavier (a capped branch
-  // survey per repo), so it is not folded into every config refresh.
+  // scan per repo), so it is not folded into every config refresh.
   //
   // ONE PASS, and it shipped as two. The split ran the crawl quick-first
-  // (commits, PRs, branch dates) so the list landed in seconds, then a survey
+  // (commits, PRs, branch dates) so the list landed in seconds, then a scan
   // true-up behind it. What the call log showed (2026-08-17) is what that
   // actually cost: the deep pass repeats every cheap read the quick pass just
-  // made, because `deep` gates the survey ALONE, so a two-pass refresh of 11
+  // made, because `deep` gates the scan ALONE, so a two-pass refresh of 11
   // repos spent 66 calls, a fifth of the run, fetching the same commits and the
   // same two PR lists twice within a minute. The seconds it bought back were
   // real and the price was not worth them, and the reader watching the bar was
@@ -2431,40 +2510,47 @@ function app(){ return {
   // cache (state/activity.json) in the registry. This is the sibling of the
   // config crawl above, but heavier: besides cheap summary signals (pushed-at,
   // recent commits, open PRs, counts) it runs the capped landed/stranded branch
-  // survey (lib/kits/branch-survey.js) once and stores it, so the branches view and
+  // scan (lib/kits/branch-status.js) once and stores it, so the branches view and
   // the cross-repo Activity view render from the cache instead of a per-visit
   // fanout. A longer per-browser throttle and the same material-change gate keep
   // it occasional and commits sparse. See web-tools-private/DESIGN.md.
   ACTIVITY_CACHE_INTERVAL_MS: 12 * 3600 * 1000,
-  ACTIVITY_SURVEY_CAP: 30,       // older branches surveyed per repo (view's SURVEY_CAP)
-  // Errored survey rows retried per repo per crawl. A branch whose survey
+  ACTIVITY_SCAN_CAP: 30,       // older branches scanned per repo (view's SCAN_CAP)
+  // Errored scan rows retried per repo per crawl. A branch whose scan
   // failed usually fails again for the same reason (a rewritten history, a ref
   // the token cannot reach), so retrying every one on every crawl is how a
   // single repo came to spend 93 calls of a 183-call run with 56 of them
   // failing (2026-08-17, wa-bills). Three a run heals a transient failure
   // within a few crawls and caps what a permanent one can cost.
   ACTIVITY_ERROR_RETRY: 3,
-  ACTIVITY_RECENT_COMMITS: 12,   // newest commits fetched per repo per crawl
+  // Newest commits fetched per repo per crawl, and STORED. Raised from 12 on
+  // 2026-08-19, when the behind arrow became a card: the crawl has always
+  // fetched these for its own moved-or-not gate and read only [0].sha, so the
+  // list was already paid for and already in the cache. 40 covers the estate's
+  // usual spread (branches sit 20 to 40 behind) at one page of the same call
+  // and about 5 KB per repo; past it the card says the count is right and the
+  // list is not here, rather than showing a short list under a long number.
+  ACTIVITY_RECENT_COMMITS: 40,
   // How deep the any-state PR read goes per repo (gh.branchPulls). 100 is the
-  // API's page maximum, and it has to clear the branch survey's recent window
-  // (BranchSurvey.RECENT_DAYS, 14 days) or a fresh branch's merged PR would sit
+  // API's page maximum, and it has to clear the branch scan's recent window
+  // (BranchStatus.RECENT_DAYS, 14 days) or a fresh branch's merged PR would sit
   // past the reach and read as unknown. The busiest repo in the estate opens
   // roughly five PRs a day, so 100 covers about three weeks there and the whole
   // history everywhere else; anything past it is reported as unknown rather
   // than as "no PR", which is what `prReach` below is for.
   ACTIVITY_PR_REACH: 100,
-  ACTIVITY_REPO_POOL: 2,         // repos crawled at once (each runs its own survey pool)
+  ACTIVITY_REPO_POOL: 2,         // repos crawled at once (each runs its own scan pool)
   _activityCheckKey: 'wt:activityCacheCheckedAt',
   // Returns a summary of the run for the caller to report: {total, changed,
   // failed, committed}, or {skipped, reason} when there was nothing to do. The
   // background (unforced) caller ignores it; refreshActivity turns it into the
   // closing toast.
   // deep=false is the arrival path: current commits, PRs, branch dates and
-  // sessions, no content survey. Complete for the recent window by
+  // sessions, no content scan. Complete for the recent window by
   // construction, since anything inside it is classified on date alone and
-  // is never surveyed even on a deep pass.
+  // is never scanned even on a deep pass.
   async refreshActivityCache(force, { deep = true } = {}){
-    if (!this.hasToken() || !window.RepoActivityCache || !window.BranchSurvey) return { skipped: true };
+    if (!this.hasToken() || !window.RepoActivityCache || !window.BranchStatus) return { skipped: true };
     // Single-flight: the tab-arrival kick and the Refresh button could run two
     // crawls at once, and the loser of that race saved a cache built on a
     // pre-commit read. A call that finds a crawl in flight joins it and gets
@@ -2480,11 +2566,11 @@ function app(){ return {
     try { return await this._activityCrawl; } finally { this._activityCrawl = null; }
   },
   async _crawlActivity(deep){
-    const A = window.RepoActivityCache, B = window.BranchSurvey;
+    const A = window.RepoActivityCache, B = window.BranchStatus;
     const t0 = Date.now();   // for the run record, appended below if this commits
     // Estate membership from the config cache (estate:true). The activity crawl
     // is estate-scoped, not account-wide: only repos on the dashboard need the
-    // survey. No cache yet means nothing to crawl (the config crawl seeds it).
+    // scan. No cache yet means nothing to crawl (the config crawl seeds it).
     const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
     let members = [], cfgByName = new Map();
     try {
@@ -2502,43 +2588,43 @@ function app(){ return {
     let metaByName = new Map();
     try { metaByName = new Map((await new window.GH({ token: window.TOKEN }).repos()).map(r => [r.full_name, r])); } catch {}
 
-    // The prior cache, read up front for the survey gate below, through the same
+    // The prior cache, read up front for the scan gate below, through the same
     // reconcile the fold uses: this crawl runs twice in a row (quick, then
-    // survey), which is precisely the window in which a read can be answered
+    // scan), which is precisely the window in which a read can be answered
     // with the copy the pass before it replaced.
     let base = await this.readForFold(reg, A.CACHE_PATH);
     let prev = base?.doc || null;
 
-    // The survey gate: a repo not pushed since its last survey cannot have
+    // The scan gate: a repo not pushed since its last scan cannot have
     // changed any branch verdict (landed/stranded read git state alone, and a
     // branch delete counts as a push), so its stored rows carry forward
     // through mergeRepo and the tree reads go where something actually moved.
     // This is what makes the deep pass affordable enough to run routinely:
-    // measured 2026-08-08, the estate held 167 surveyed branches at two API
+    // measured 2026-08-08, the estate held 167 scanned branches at two API
     // calls each, nearly all of them re-verifying repos that had not moved.
     // The margin absorbs clock skew between GitHub's pushed-at and the client
-    // clock that stamped surveyedAt; anything unmeasurable surveys.
-    const SURVEY_SKEW_MS = 10 * 60 * 1000;
-    const needsSurvey = (repo) => {
-      const stored = prev?.repos?.[repo]?.survey;
-      // A stamp with no rows behind it is not a survey, and the gate must not
+    // clock that stamped scannedAt; anything unmeasurable scans.
+    const SCAN_SKEW_MS = 10 * 60 * 1000;
+    const needsScan = (repo) => {
+      const stored = prev?.repos?.[repo]?.scan;
+      // A stamp with no rows behind it is not a scan, and the gate must not
       // read it as one. That is how a repo stayed empty after the failed-read
-      // wipe of 2026-08-17: the bad pass left `surveyedAt` current and
-      // `branches` empty, so "not pushed since the last survey" skipped it
+      // wipe of 2026-08-17: the bad pass left `scannedAt` current and
+      // `branches` empty, so "not pushed since the last scan" skipped it
       // forever. Costs nothing where it fires wrongly: a repo with no older
-      // branches surveys an empty queue and makes no calls at all.
+      // branches scans an empty queue and makes no calls at all.
       if (!stored?.branches?.length) return true;
       const pushed = Date.parse(metaByName.get(repo)?.pushed_at || '');
-      const seen = Date.parse(stored.surveyedAt || '');
+      const seen = Date.parse(stored.scannedAt || '');
       if (!Number.isFinite(pushed) || !Number.isFinite(seen)) return true;
-      return pushed >= seen - SURVEY_SKEW_MS;
+      return pushed >= seen - SCAN_SKEW_MS;
     };
 
     const failed = [];
     try {
       const now = Date.now(), nowISO = new Date().toISOString();
       const fetched = {};
-      // Bounded outer concurrency: each repo runs its own inner survey pool, so
+      // Bounded outer concurrency: each repo runs its own inner scan pool, so
       // a small repo pool keeps total in-flight GitHub calls reasonable. The
       // two progress ticks bracket exactly one repo's work, which is what makes
       // done/total a count of finished repos rather than an estimate.
@@ -2550,13 +2636,13 @@ function app(){ return {
           active.push(repo);
           this.tickCrawl('activity', { done, total: members.length, active });
           try {
-            const f = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep && needsSurvey(repo), prev);
+            const f = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep && needsScan(repo), prev);
             fetched[repo] = f;
             // A deep pass that came back partial could not read the repo's
             // branches. It keeps what is stored (see the guard in
             // crawlRepoActivity) and says so, rather than reporting a clean run
             // over a repo it never saw.
-            if (deep && needsSurvey(repo) && f?.partial) failed.push(repo);
+            if (deep && needsScan(repo) && f?.partial) failed.push(repo);
           }
           catch(e){ failed.push(repo); console.warn('activity crawl', repo, e?.message || e); }
           active.splice(active.indexOf(repo), 1);
@@ -2579,14 +2665,14 @@ function app(){ return {
       const changed = A.changedRepos(prev, next);
       if (changed.length){
         // The run record rides this commit (lib/kits/crawl-runs.js). `pass` says
-        // whether the survey ran, which is an order-of-magnitude difference in
-        // cost: the Refresh button always surveys, and `goGuides` warms this
+        // whether the scan ran, which is an order-of-magnitude difference in
+        // cost: the Refresh button always scans, and `goGuides` warms this
         // cache without one, so two entries with the same shape would otherwise
         // average into a meaningless duration.
         next.runs = window.CrawlRuns?.push(prev?.runs, {
           at: new Date().toISOString(), ms: Date.now() - t0,
           checked: members.length, changed: changed.length, failed: failed.length,
-          pass: deep ? 'survey' : 'quick',
+          pass: deep ? 'scan' : 'quick',
         }) ?? prev?.runs;
         await this.saveFold(reg, A.CACHE_PATH, next,
                             'Update activity cache (state/activity.json) via show-repo', base);
@@ -2614,7 +2700,7 @@ function app(){ return {
   // Stop and so is always stale by design.
   //
   // Throttled shorter than the activity crawl (that one runs a per-repo branch
-  // survey; this one is a tree read and a few blobs) and longer than nothing,
+  // scan; this one is a tree read and a few blobs) and longer than nothing,
   // since sessions accrue while you are not looking. See
   // web-tools-private/DESIGN.md and its sessions/README.md.
   SESSIONS_CACHE_INTERVAL_MS: 3 * 3600 * 1000,
@@ -2779,7 +2865,7 @@ function app(){ return {
   // Every crawl here reads a registry file, folds into it, and writes it back.
   // GitHub's contents API is read-after-write eventual, so seconds after a
   // commit a read can still be answered with the version it replaced, sha and
-  // all: the split refresh's survey pass hit exactly that and 409'd four times
+  // all: the split refresh's scan pass hit exactly that and 409'd four times
   // (2026-08-16). `GH.FRESH` removed the browser's 60-second cache from the
   // picture; this removes the API's own lag, by preferring the copy this page
   // committed when the read comes back older than it. lib/kits/last-write.js
@@ -2876,14 +2962,14 @@ function app(){ return {
   },
 
   // Crawl one repo's activity: the cheap summary (pushed-at, recent commits,
-  // open PRs) plus the capped branch survey. Returns the <fetched> shape
+  // open PRs) plus the capped branch scan. Returns the <fetched> shape
   // repo-activity-cache.mergeRepo folds. Failures on a sub-read degrade to an
   // empty piece rather than dropping the whole repo.
-  // `deep` decides whether the content survey runs. It is the whole cost
-  // difference: the survey is one tree read per branch, up to 30, against
+  // `deep` decides whether the content scan runs. It is the whole cost
+  // difference: the scan is one tree read per branch, up to 30, against
   // roughly a dozen requests for everything else. A quick pass omits the
-  // `survey` key entirely rather than sending an empty one, because
-  // RepoActivityCache.mergeRepo keeps the prior survey when the field is
+  // `scan` key entirely rather than sending an empty one, because
+  // RepoActivityCache.mergeRepo keeps the prior scan when the field is
   // undefined and clears it when present. That affordance already existed.
   async crawlRepoActivity(repo, meta, now, A, B, cfg, deep = true, prev = null){
     const def = meta?.default_branch || 'main';
@@ -2909,7 +2995,7 @@ function app(){ return {
       // two GraphQL calls paying twice for the same pagination; the crawl's own
       // call log put that pair at the top of the bill (2026-08-17: 79 posts,
       // 75s of request time across 22 repos). Still optional by design: a
-      // failure here leaves the survey to fall back to the REST branch list and
+      // failure here leaves the scan to fall back to the REST branch list and
       // the session links blank, rather than costing the repo its row.
       g.branchesDatedSessions().catch(() => null),
     ]);
@@ -2921,10 +3007,10 @@ function app(){ return {
     const prevMainSha = prev?.repos?.[repo]?.recentCommits?.[0]?.sha || '';
     // Ahead/behind for each open PR head, so the Open view can show it without a
     // per-visit compare. The same response carries the branch's oldest unique
-    // commit (BranchSurvey.firstCommitDate), which is what lets the Open row
-    // show a lifespan for a PR head the survey never reached. Bounded pool,
+    // commit (BranchStatus.firstCommitDate), which is what lets the Open row
+    // show a lifespan for a PR head the scan never reached. Bounded pool,
     // best-effort: a failure leaves it null.
-    // Same two inputs as the survey, so the same gate: a compare of `main` to a
+    // Same two inputs as the scan, so the same gate: a compare of `main` to a
     // PR head cannot have moved while the PR has not been updated and the
     // default branch's tip is where it was. The stored row already holds the
     // answer, so this skips the call and carries it. (`updatedAt` moves on a
@@ -2941,24 +3027,34 @@ function app(){ return {
           if (mainHeld && was && was.updatedAt === p.updatedAt && was.aheadBy != null) {
             p.aheadBy = was.aheadBy; p.behindBy = was.behindBy;
             p.firstDate = was.firstDate || '';
+            // Carried with the pair it was read beside. A cache written before
+            // 2026-08-18 has no breakdown, and the row shows its files glyph
+            // without one until the next real compare rather than showing a 0.
+            p.stats = was.stats ?? null;
             if (was.sessions) { p.sessions = was.sessions; p.sessionsExact = !!was.sessionsExact; }
             continue;
           }
           try {
             const d = await g.compare(def, p.head);
             p.aheadBy = d.ahead_by ?? null; p.behindBy = d.behind_by ?? null;
+            // What the branch changed and in what way, free from a response
+            // already in hand: this is the compare the ahead/behind pair comes
+            // from, and every file in it carries a status and a line count.
+            // A floor rather than a total on a sweeping branch, since GitHub
+            // caps a compare's file list at 300 and reports no total.
+            p.stats = B.fileStats(d.files);
             // One compare, every field it can answer, through the one reader
             // that knows what each field does past GitHub's commit cap.
             Object.assign(p, B.compareFields(d));
           }
-          catch { p.aheadBy = null; p.behindBy = null; p.firstDate = ''; }
+          catch { p.aheadBy = null; p.behindBy = null; p.firstDate = ''; p.stats = null; }
         }
       };
       await Promise.all(Array.from({ length: Math.min(4, openPRs.length) }, prAheadBehind));
     }
-    // Branch survey: the same split the branches view runs (recent = date-only
-    // active; older = surveyed, capped), through the shared orchestrator.
-    let branches = [], counts = { branches: 0, active: 0, landed: 0, stranded: 0, surveyed: 0, older: 0, openPRs: openPRs.length };
+    // Branch scan: the same split the branches view runs (recent = date-only
+    // active; older = scanned, capped), through the shared orchestrator.
+    let branches = [], counts = { branches: 0, active: 0, landed: 0, stranded: 0, scanned: 0, older: 0, openPRs: openPRs.length };
     let truncated = false;
     // Whether this pass actually READ the branch list. Everything below is
     // derived from it, so a failure here means the numbers are absent rather
@@ -2975,17 +3071,17 @@ function app(){ return {
         .map(b => ({ ...b, daysAgo: b.date ? B.daysAgo(b.date, now) : Infinity }));
       const recent = dated.filter(b => b.daysAgo <= B.RECENT_DAYS).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       const older = dated.filter(b => b.daysAgo > B.RECENT_DAYS).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-      // What the last survey saw, so a branch whose tip has not moved since is
+      // What the last scan saw, so a branch whose tip has not moved since is
       // carried rather than re-derived. `mainSha` is the default branch's tip
-      // from the commits read above, and it is the survey's other input: while
-      // both hold, a verdict cannot have changed. See BranchSurvey.needsSurvey.
-      const prior = new Map((prev?.repos?.[repo]?.survey?.branches || []).map(r => [r.name, r]));
-      const surveyed = deep
-        ? await B.surveyOlder(g, { defaultRef: def, older, cap: this.ACTIVITY_SURVEY_CAP, pool: 3, now,
-                                   prior, mainSha, priorMainSha: prev?.repos?.[repo]?.survey?.mainSha || '',
+      // from the commits read above, and it is the scan's other input: while
+      // both hold, a verdict cannot have changed. See BranchStatus.needsScan.
+      const prior = new Map((prev?.repos?.[repo]?.scan?.branches || []).map(r => [r.name, r]));
+      const scanned = deep
+        ? await B.scanOlder(g, { defaultRef: def, older, cap: this.ACTIVITY_SCAN_CAP, pool: 3, now,
+                                   prior, mainSha, priorMainSha: prev?.repos?.[repo]?.scan?.mainSha || '',
                                    errorRetry: this.ACTIVITY_ERROR_RETRY })
         : { truncated: false, rows: [] };
-      truncated = surveyed.truncated;
+      truncated = scanned.truncated;
       const prSessions = Object.fromEntries(openPRs.filter(p => p.head && p.sessions?.length).map(p => [p.head, p.sessions]));
       const sessionsFor = b => {
         if (b.sessions?.length) return { sessions: b.sessions, sessionsExact: !!b.sessionsExact };
@@ -2996,20 +3092,21 @@ function app(){ return {
       const trim = b => ({ name: b.name, date: b.date || '', firstDate: b.firstDate || '',
                            sha: b.sha || '', subject: b.subject || '', ago: b.ago || '',
                            group: b.group, noBase: !!b.noBase, nUnique: b.nUnique || 0, nLanded: b.nLanded || 0,
-                           nMissing: b.nMissing || 0, missingPaths: b.missingPaths || [],
+                           nMissing: b.nMissing || 0, nDiffers: b.nDiffers || 0,
+                           missingPaths: b.missingPaths || [], stats: b.stats || null,
                            ...sessionsFor(b),
                            aheadBy: b.aheadBy ?? null, behindBy: b.behindBy ?? null });
-      branches = [...recent.map(b => trim({ ...b, group: 'active' })), ...surveyed.rows.map(trim)];
+      branches = [...recent.map(b => trim({ ...b, group: 'active' })), ...scanned.rows.map(trim)];
       counts = {
         branches: list.length,
         active: recent.length,
-        landed: surveyed.rows.filter(r => r.group === 'landed').length,
-        stranded: surveyed.rows.filter(r => r.group === 'stranded').length,
-        surveyed: surveyed.rows.length,
+        landed: scanned.rows.filter(r => r.group === 'landed').length,
+        stranded: scanned.rows.filter(r => r.group === 'stranded').length,
+        scanned: scanned.rows.length,
         older: older.length,
         openPRs: openPRs.length,
       };
-    } catch(e){ console.warn('activity survey', repo, e?.message || e); }
+    } catch(e){ console.warn('activity scan', repo, e?.message || e); }
 
     return {
       pushedAt: meta?.pushed_at || '',
@@ -3031,7 +3128,7 @@ function app(){ return {
       // counts to give. Omitting them entirely is what makes mergeRepo carry
       // the stored ones; sending zeros would report an empty repo.
       ...(listOk ? { counts } : {}),
-      // Omitted on a quick pass, so mergeRepo carries the prior survey
+      // Omitted on a quick pass, so mergeRepo carries the prior scan
       // forward. Sending { branches: [] } here would silently delete every
       // content verdict the estate has, which is the trap this guards.
       //
@@ -3042,11 +3139,11 @@ function app(){ return {
       // way in one run (home 89 rows, web-tools-private 25, fn-data 22) while
       // the crawl reported success. `listOk` is the missing half.
       // `mainSha` is what makes the next pass able to skip: it names the default
-      // branch this survey judged against, the other half of the pair (with
+      // branch this scan judged against, the other half of the pair (with
       // each row's own `sha`) that decides whether a verdict can have moved.
-      ...(deep && listOk ? { survey: { surveyedAt: new Date(now).toISOString(), cap: this.ACTIVITY_SURVEY_CAP,
+      ...(deep && listOk ? { scan: { scannedAt: new Date(now).toISOString(), cap: this.ACTIVITY_SCAN_CAP,
                              mainSha: recentCommits[0]?.sha || '',
-                             surveyed: counts.surveyed, older: counts.older, truncated, branches } } : {}),
+                             scanned: counts.scanned, older: counts.older, truncated, branches } } : {}),
       // Declared checks, PROBED not judged: the stored fact is time-independent
       // so the cache hash stays stable across crawls, and the card computes the
       // verdict against its own clock at render. Always an array, never
@@ -4286,6 +4383,7 @@ function app(){ return {
   },
 
   syncUrl(){
+    this.dropDecksOnNav();
     const qs = this.deepLinkParams(new URLSearchParams(location.search)).toString();
     const next = location.pathname + (qs ? '?' + qs : '') + location.hash;
     const cur = location.pathname + location.search + location.hash;
@@ -4584,9 +4682,9 @@ function app(){ return {
     return m ? +m[1] / (m[2] ? 24 : 1) : 0;
   },
   goActivity(){ this.estateSeen = true; this.view = 'activity'; this.arrivalActivityRefresh?.(); this.syncUrl(); },
-  // Arrival kick: one throttled crawl, survey included. Un-awaited by design;
+  // Arrival kick: one throttled crawl, scan included. Un-awaited by design;
   // there is no progress UI on this path, and the view re-reads on the event.
-  // The survey is what keeps the branch verdicts current without anyone
+  // The scan is what keeps the branch verdicts current without anyone
   // pressing Refresh, and the pushed-at gate inside the crawl reduces it to the
   // repos that took a push, so it can afford to ride every arrival past the
   // throttle. It was two passes here as well until 2026-08-17, for the same
@@ -4634,6 +4732,90 @@ function app(){ return {
   // routed here (the explorer's "+", a #stage= link, a saved surface's Load),
   // and all of them mean "show me what is staged", which is this pill.
   goStage(){ this.estateSeen = true; this.view = 'stage'; this.syncUrl(); },
+
+  // THE TAP-DRIVEN PASTE, which is the phone's whole intake: iOS Safari raises
+  // no paste event without a focused editable, so the window listener above is
+  // the desktop's story alone. Reached from the launcher's long-press menu (the
+  // `menu` contract above) and nowhere else in the chrome. Same destination as
+  // the listener: stage it, and if we are not already there, route to the Stage
+  // and open the one thing that arrived. The read and the fold are
+  // StageIntake.takeClipboard's, shared with the bench's own Paste button, so
+  // there is one implementation behind two triggers.
+  //
+  // pasteBusy survives the button it was written for: it guarded a :disabled
+  // binding, and it still guards a second menu tap landing on a read in
+  // flight, which would otherwise stage the clipboard twice.
+  //
+  // Nothing is awaited before takeClipboard: see the preload in init() for why.
+  pasteBusy: false,
+  async pasteAnywhere(){
+    if (this.pasteBusy) return;
+    const toast = Alpine.store('toast');
+    this.pasteBusy = true;
+    try {
+      const { added } = await window.StageIntake.takeClipboard();
+      if (!added.length) {
+        // Reported as information, not as an error: see the note on the bench's
+        // pasteIn(), which this is the other trigger for. Tapping Paste with an
+        // empty clipboard is the ordinary case, and the red alert it used to
+        // raise read as a broken button.
+        toast('clipboard-text', 'Nothing came off the clipboard', 'alert-info', 2500);
+      } else if (this.view !== 'stage') {
+        this.goStage();
+        if (added.length === 1) window.StageIntake.focus(added[0]);
+      } else {
+        toast('success', added.length > 1 ? 'Staged ' + added.length + ' refs'
+                                          : 'Staged ' + (added[0]?.name || 'the paste'), '', 3000);
+      }
+    } catch (e) {
+      toast('warning', 'Paste: ' + (e?.message || e), 'alert-error', 5000);
+    }
+    this.pasteBusy = false;
+  },
+
+  // LEAVING THE VIEW LEAVES THE TAKEOVER OVER IT. Newly reachable, and newly a
+  // problem, because the deck stopped covering the chrome: the sidebar and the
+  // header are live under an open takeover now, so a tap navigates while the
+  // deck keeps painting the view you just left. Measured before fixing: opening
+  // the workbench on the Stage and tapping Map left the workbench on screen with
+  // the rail and the URL both saying Map.
+  //
+  // It hangs off syncUrl rather than a $watch on `view`, and the reason is
+  // ordering rather than taste. Every go* method routes through here
+  // SYNCHRONOUSLY, so at the moment a paste calls goStage() no deck exists yet
+  // and this is a no-op; a queued watcher could just as easily have fired after
+  // the preview opened and closed the very thing the paste was routing to.
+  //
+  // drop() rather than close(): close() walks history back, and the navigation
+  // that got here is already the history event.
+  dropDecksOnNav(){
+    if (this._deckNavView === this.view) return;
+    this._deckNavView = this.view;
+    const sd = window.swipeDeck;
+    if (!sd) return;
+    while (sd.stack.length) sd.stack[sd.stack.length - 1].drop();
+  },
+
+  // WHETHER A TAKEOVER IS INSET BY THE SIDEBAR, stamped on the root for the
+  // --deck-left rules in <style> to key on. kits/swipe-deck.js frames itself
+  // from that variable and defaults to the whole viewport, so a page with no
+  // chrome beside its content needs none of this. See the CSS for why the
+  // breakpoint alone will not do: the desktop sidebar is conditional, and a
+  // deck inset by a column that is not there clips the view under it.
+  syncDeckFrame(){
+    const root = document.documentElement;
+    root.dataset.deckPane = (this.showSidebar && this.sidebarOpen) ? 'inset' : 'full';
+    // MEASURED, not stated. The header is h-14 plus a border, but it is also
+    // conditional (shellMode) and a second copy of its height here would be a
+    // number to keep in step with a class nobody would think to look at. A
+    // hidden header measures 0, which is the right answer for free. This sets
+    // --deck-head; the CSS maps it into --deck-top only at lg and up, so a
+    // phone keeps the full-window takeover it already had.
+    this.$nextTick(() => {
+      const head = document.querySelector('header');
+      root.style.setProperty('--deck-head', ((head && head.offsetHeight) || 0) + 'px');
+    });
+  },
 
   // ── A DROP ANYWHERE STAGES ────────────────────────────────────────────────
   // The Stage's own view has always taken a drop, which meant the gesture
@@ -4712,6 +4894,58 @@ function app(){ return {
     if (files.length === 1) return this.dragKind(files[0].type) + ', opening on the Stage';
     return 'Text, landing on the Stage';
   },
+  // ── A PASTE ANYWHERE STAGES ───────────────────────────────────────────────
+  // The same gesture as the drop above, over the same intake, and it had the
+  // same defect for the same reason: the Stage has taken a paste since
+  // 2026-08-15, but through a window listener the STAGER registered and gated
+  // on `view === 'stage'`, so the gesture was reachable only from the view it
+  // was staging into, and only once the bench had mounted. A block of refs
+  // copied while reading a repo's files, or a screenshot pasted on the Map,
+  // had nowhere to land and nothing on screen said so.
+  //
+  // Two things differ from the drop, both forced rather than chosen.
+  //
+  // There is no `defaultPrevented` tell to lean on, because ordering runs the
+  // other way. A drop on the Stage view hits that view's own ELEMENT handler
+  // first and the window handler second, so the window can see it was taken.
+  // Window listeners, by contrast, fire in registration order: init() runs at
+  // boot and the stager mounts on the first visit to an estate view, so this
+  // is always first and would read `defaultPrevented` as false every time. So
+  // the stage's listener is gone rather than coordinated with, and this is the
+  // only one. Being the only one is also what keeps the multi-flavor contract
+  // whole: one reader of the clipboard, so nothing takes text/plain out from
+  // under the bar that would have offered the HTML table beside it.
+  //
+  // And the flavors a form field cannot hold are only worth reading when there
+  // is somewhere to show them. On the Stage that is the offer bar, unchanged.
+  // Anywhere else the bar is off screen, so a paste into a field is left
+  // entirely alone: silently recording an offer nobody was told about is worse
+  // than not reading the clipboard at all.
+  wireAppPaste(){
+    window.addEventListener('paste', async (e) => {
+      const cd = e.clipboardData;
+      if (!cd || !window.StageIntake) return;
+      const t = e.target;
+      const editable = !!t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || '') || t.isContentEditable);
+      const onStage = this.view === 'stage';
+      // A FIELD KEEPS ITS PASTE. Nothing is preventDefault'ed on this path, so
+      // the field pastes natively; what it cannot hold goes to the bar when
+      // the bar is on screen to receive it.
+      if (editable) {
+        if (onStage) await window.StageIntake.takePaste(cd, { editable: true });
+        return;
+      }
+      e.preventDefault();
+      const { added } = await window.StageIntake.takePaste(cd);
+      if (!added.length || onStage) return;
+      // Off the Stage the paste is also a navigation, the way a drop is: it
+      // went somewhere, and the somewhere is worth being shown. One item opens
+      // on itself; a block of refs lands and stays listed.
+      this.goStage();
+      if (added.length === 1) window.StageIntake.focus(added[0]);
+    });
+  },
+
   // A dragged file's MIME as a short label. An empty type is common and is
   // reported as the plain "A file" rather than guessed at: a .md dragged out of
   // a file manager often carries no type at all, and the extension that would

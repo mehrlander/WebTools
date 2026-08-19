@@ -23,7 +23,7 @@
 // one. Siblings are opportunistic: a session with only web-tools checked out
 // still gets the local check, and one with the estate beside it gets the whole
 // picture. A missing sibling is not evidence of anything, so it is skipped
-// rather than failed, the same posture link-survey.py takes on an absent store.
+// rather than failed, the same posture dead-links.py takes on an absent store.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

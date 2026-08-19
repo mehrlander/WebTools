@@ -113,6 +113,48 @@ Guide leads when the branch has one; Files leads when it does not. On a narrow
 viewport the file rows also start collapsed, since four open cards is most of a
 phone screen and the dense row list is what is worth seeing first there.
 
+**The Files pane carries the content verdict, and it carries it as a filter.**
+Above the list sit the three counts the estate row's chip shows (`landed`,
+`differs`, `missing`, summing to the total), each one tappable to show only that
+class, which is what the estate chip links into: a reader who taps `11 missing`
+on a row lands here on those eleven files, open as diffs, rather than on a
+tooltip listing paths. Filtering runs above the registry grouping, so one rule
+covers the list, the groups and the file deck instead of each filtering for
+itself, and the Files tab reports what it is showing out of what there is.
+
+It is a filter and not a badge per row, for the reason the collapsed-density
+pass took a control off every row: thirty rows are read by scanning, and a glyph
+on each is a column of noise. The one exception is a **missing** file, which
+carries a mark while the list is unfiltered, since that is the class worth
+spotting unasked; once a filter is on, the strip has already said what every row
+is.
+
+The verdict is measured **here**, from two recursive tree reads (the base and
+the branch tip) run through `BranchStatus.pathStates`, and not awaited: the file
+list paints off the compare and the marks arrive a moment later. Two trees is
+about a fifth of what the compare it follows already spent, and it is paid once
+per branch per reading pass. A host that already knows the answer lends it
+(show-repo's crawl computed the same verdict for its row chip) on the same
+provisional contract as `facts`, which makes the counts right in the first frame
+and the `missing` filter exact before any tree is read, since the crawl stored
+those paths themselves. Measuring anyway is what keeps a cold, unhosted
+`branch.html` able to show the same thing, and keeps one rule producing both
+readings.
+
+**The two warnings beside the strip open their own line.** `tree truncated` says
+GitHub would not list a repo's whole tree, and `not measured` says the scan
+failed; both are statements that the counts above them may be wrong, and both
+carried the actual reason (which consequence, which error) only in a `title`,
+which is the one place a caveat about a number must never be the sole occupant.
+They are buttons now, and tapping one opens a line under the strip carrying the
+reason: for a truncated tree, that a path GitHub left out reads as missing here,
+so the missing count is a ceiling rather than an answer. See
+[HTML-STYLE.md](HTML-STYLE.md) for the rule and
+[`scripts/stranded-titles.py`](../scripts/stranded-titles.py) for what still breaks it. Where the branch has **no merge base** there is no compare and so no
+diff to render, and the pane falls back to listing the lent missing paths as
+links, which is the actionable half of a scan whose counts otherwise span more
+than the branch.
+
 There were three panes until 2026-08-15, and **Commits** was the third. It
 earned its place nowhere: its count restated the strip's own ahead figure (a
 compare's `total_commits` is its `ahead_by`), and twelve commit subjects beside
@@ -380,15 +422,15 @@ header would be the third copy of FAB turf in the app.
 **What a swipe costs the drawer.** Adoption was written for tosses, which
 re-address rarely and change everything when they do, so it dropped the lot. A
 deck announces on every swipe and changes only the path, and dropping the lot
-there re-ran the whole branch survey per swipe and re-parsed the guide body:
+there re-ran the whole branch scan per swipe and re-parsed the guide body:
 visibly reloading the drawer while the reader was moving between files. The
 invalidation now splits by what each thing is keyed on. Guide, version chip and
-default branch belong to repo + ref and survive a swipe. The branch survey is
+default branch belong to repo + ref and survive a swipe. The branch scan is
 the one genuinely per-file answer ("which branches carry a different copy of
 THIS path") and reloads. Measured after: zero guide re-renders per swipe.
 
 Two smaller cuts fell out of the same question. Ahead/behind is a property of
-the branch pair rather than of the file, but the survey hands back fresh row
+the branch pair rather than of the file, but the scan hands back fresh row
 objects each time, so twelve rows meant twelve REST compares per swipe for an
 answer that had not changed; it is memoized per `repo|base...branch`, holding
 two integers rather than going through `branch-brief`'s cache, which holds the

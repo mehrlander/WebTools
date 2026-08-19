@@ -29,7 +29,7 @@
 // are the same snag, while two genuinely different loader snags would both
 // carry "loader" and be fine. A gate on a guess teaches people to route around
 // it. This reports, and a human decides, which is the same posture as the
-// repo's other surveys.
+// repo's other scans.
 //
 // --check compares instead of writing, the idiom every generator here shares,
 // so tools/test/artifacts-lockstep.test.mjs can hold the file to its source.

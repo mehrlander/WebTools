@@ -35,9 +35,9 @@ Verdicts are ok, dead, or unverifiable. A link into a store with no checkout is
 and a one-repo machine must not fail on it.
 
 Usage:
-  python3 link-survey.py [ROOT] [--owner NAME] [--cross-repo] [--check]
+  python3 dead-links.py [ROOT] [--owner NAME] [--cross-repo] [--check]
 
-  ROOT          repo to survey (default: cwd)
+  ROOT          repo to scan (default: cwd)
   --owner       GitHub owner whose URLs are checkable (default: mehrlander)
   --cross-repo  report only the cross-repo and github classes
   --check       exit 1 if any cross-repo or github link is dead; implies
@@ -123,7 +123,7 @@ def build_patterns(owner):
     )
 
 
-GH_URL = RAW_URL = None  # set per run by survey(), which knows the owner
+GH_URL = RAW_URL = None  # set per run by scan(), which knows the owner
 
 
 def classify(root, owner, src, target):
@@ -159,7 +159,7 @@ def classify(root, owner, src, target):
     return ("internal", "ok" if resolved.exists() else "dead", path)
 
 
-def survey(root, owner):
+def scan(root, owner):
     global GH_URL, RAW_URL
     GH_URL, RAW_URL = build_patterns(owner)
     files = subprocess.run(["git", "-C", str(root), "ls-files", "*.md"],
@@ -226,7 +226,7 @@ def main(argv):
     only_cross = check or "--cross-repo" in flags
 
     root = Path(args[0] if args else ".").resolve()
-    findings = survey(root, owner)
+    findings = scan(root, owner)
     if only_cross:
         findings = [x for x in findings if x[0] != "internal"]
 
@@ -243,7 +243,7 @@ def main(argv):
               f"{', '.join(sorted({x[5] for x in unver}))}")
         print("   Not evidence of a bad path. Check out the store, or set its "
               "$REPO_NAME, and rerun.")
-    print(f"\nlink-survey: {len(dead)} dead, {len(unver)} unverifiable, "
+    print(f"\ndead-links: {len(dead)} dead, {len(unver)} unverifiable, "
           f"across {len(set(x[2] for x in findings))} file(s)")
     if check and dead:
         print("FAIL: a cross-repo link no longer resolves", file=sys.stderr)

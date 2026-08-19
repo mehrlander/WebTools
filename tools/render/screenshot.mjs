@@ -4,7 +4,7 @@
 //
 //   node tools/render/screenshot.mjs <page-path> [--build] [--ref <ref>]
 //       [--query <k=v&...>] [--hash <fragment>] [--out <png>] [--width N]
-//       [--height N] [--wait MS] [--full]
+//       [--height N] [--wait MS] [--full] [--touch]
 //
 // The page is served from the on-disk working tree over loopback; every external
 // request is intercepted and resolved by tools/render/cdn.mjs — own code (gh-api.js
@@ -31,11 +31,12 @@ import { resolveCdn, typeFor } from './cdn.mjs';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 function parseArgs(argv) {
-  const o = { full: false, build: false, width: 1280, height: 800, wait: 2500, ref: null, query: null, hash: null, out: null, script: null };
+  const o = { full: false, touch: false, build: false, width: 1280, height: 800, wait: 2500, ref: null, query: null, hash: null, out: null, script: null };
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--full') o.full = true;
+    else if (a === '--touch') o.touch = true;
     else if (a === '--build') o.build = true;
     else if (a === '--ref') o.ref = argv[++i];
     else if (a === '--query') o.query = argv[++i];
@@ -115,7 +116,16 @@ const consoleLines = [];
 const errorLines = [];
 
 const browser = await chromium.launch({ args: ['--no-sandbox', '--ignore-certificate-errors'] });
-const ctx = await browser.newContext({ viewport: { width: opts.width, height: opts.height } });
+// `--touch` emulates a FINGER, not a narrow window: hasTouch flips the
+// `pointer: coarse` / `hover: none` media queries, which a width alone never
+// does. Without it a coarse-pointer rule is invisible to this tool and a
+// change written for a phone renders identically to the desktop, which is
+// exactly how one ships unverified (measured 2026-08-19 on diff-tool's touch
+// type scale: the before and after shots were byte-identical).
+const ctx = await browser.newContext({
+  viewport: { width: opts.width, height: opts.height },
+  ...(opts.touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : {}),
+});
 const page = await ctx.newPage();
 
 // Intercept every request. Same-origin (loopback) goes to the static server;

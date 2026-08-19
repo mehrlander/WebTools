@@ -10,6 +10,13 @@
 // the pill to one of them. They share the pane with Open at every width (the
 // lg+ right rail went 2026-08-03), so this is how either one gets a shot.
 //
+// Pass ROUTES=1 to fake the hub's route chips onto the first row, which is how
+// the row's ORDER gets a shot: the session mark and the files control sit left
+// of the chips, so a row carrying them lines up with every row that does not.
+// Faked rather than seeded because the chips need the route manifest, the
+// per-branch file lists and a kit, none of which the sandbox can fetch, and the
+// thing under test is the layout.
+//
 // Pass MENU=1 in the environment to open one row's branch menu for the shot,
 // REPOCHIP=1 to open a row's repo chip (the repo's whole grouped menu, in the
 // shell's panel), or CHIP=1 to narrow the list to one repo through its filter
@@ -25,16 +32,49 @@ const ACTIVITY = {
     openPRs: [
       { number: 298, head: 'claude/show-repo-activity-filters', draft: true, title: 'Open view: repo chips, lifespan, GitHub menu',
         updatedAt: iso(2), aheadBy: 6, behindBy: 0, firstDate: iso(52),
+        stats: { n: 9, changed: 6, added: 2, removed: 1, renamed: 1, additions: 431, deletions: 88,
+                 shape: { added: { exts: [['.md', 1], ['.js', 1]], dirs: [['docs', 1], ['lib', 1]] },
+                          changed: { exts: [['.js', 4], ['.md', 1], ['.json', 1]],
+                                     dirs: [['lib', 4], ['docs', 1], ['tools', 1]] },
+                          removed: { exts: [['.js', 1]], dirs: [['lib', 1]] } } },
         session: 'https://claude.ai/code/session_x' },
       { number: 296, head: 'claude/fab-render-toss', draft: false, title: 'Singleton fab with toss-render',
-        updatedAt: iso(30), aheadBy: 12, behindBy: 3, firstDate: iso(500) },
+        updatedAt: iso(30), aheadBy: 12, behindBy: 3, firstDate: iso(500),
+        stats: { n: 23, changed: 23, added: 0, removed: 0, renamed: 0, additions: 1204, deletions: 977 } },
     ],
-    survey: { branches: [
+    scan: { branches: [
       { name: 'claude/show-repo-activity-filters', sha: 'a1', group: 'active', date: iso(2), subject: 'Open view: repo chips, lifespan, GitHub menu' },
       { name: 'claude/fab-render-toss', sha: 'b1', group: 'stranded', date: iso(30), firstDate: iso(500),
         subject: 'Confirm branchesForPath against a live token', aheadBy: 12, behindBy: 3 },
       { name: 'claude/pdf-ink-alignment', sha: 'c1', group: 'stranded', date: iso(200), firstDate: iso(230),
-        subject: 'Align ink strokes to the page box', aheadBy: 3, behindBy: 9 },
+        subject: 'Align ink strokes to the page box', aheadBy: 3, behindBy: 9,
+        nUnique: 12, nLanded: 9, nMissing: 2, nDiffers: 1,
+        stats: { n: 12, changed: 10, added: 2, removed: 0, renamed: 0, additions: 318, deletions: 140 },
+        missingPaths: ['lib/kits/ink-align.js', 'pages/pdf-ink.html'] },
+      // The verdict chip's own case, and the one that made it unreadable before
+      // 2026-08-18: a three-way split whose two VISIBLE numbers do not add up
+      // (28 landed + 41 differs + 11 missing = 80), on a branch with no merge
+      // base, so the asterisk is showing too. Both halves of the chip are
+      // routes into the detail's Files pane from here.
+      { name: 'claude/budget-drs-tracker-6jsaz8', sha: 'f1', group: 'stranded', date: iso(60), firstDate: iso(400),
+        subject: 'Merge origin/main into claude/budget-drs-tracker-6jsaz8', noBase: true,
+        nUnique: 80, nLanded: 28, nMissing: 11, nDiffers: 41,
+        stats: { n: 80, changed: 62, added: 14, removed: 4, renamed: 2, additions: 5310, deletions: 2044,
+                 shape: { added: { exts: [['.md', 9], ['.json', 3], ['.csv', 2]],
+                                   dirs: [['tracker', 6], ['projects', 5], ['docs', 3]] },
+                          changed: { exts: [['.md', 31], ['.js', 18], ['.json', 9], ['.html', 4]],
+                                     dirs: [['docs', 24], ['lib', 17], ['projects', 12], ['tools', 9]] },
+                          removed: { exts: [['.md', 4]], dirs: [['chron', 4]] } } },
+        // As many paths as the count claims: the missing card lists them, so a
+        // short fixture would render a card that disagrees with its own head.
+        missingPaths: ['tracker/tasks/0031-fund-splits.md', 'tracker/tasks/0044-object-mix.md',
+                       'projects/budget-drs/data/design/LAYERS.md',
+                       'projects/budget-drs/data/design/properties.csv',
+                       'projects/budget-drs/app/lineage/README.md',
+                       'docs/reading-600-6.md', 'docs/allotment-packets.md',
+                       'chron/2026/08/2026-08-03-fund-600-6-lanes.md',
+                       'chron/threads/drs-funds.md', 'code/python/webi-export.py',
+                       'me/problem-classes.md'] },
       // Landed rows: invisible at the default scope, and the whole point of the
       // Landed one. Two of them, so the chip count is not mistakable for a
       // rounding of the stranded set.
@@ -48,9 +88,10 @@ const ACTIVITY = {
     defaultBranch: 'main',
     openPRs: [
       { number: 44, head: 'claude/news-view-refresh', draft: true, title: 'News view refresh',
-        updatedAt: iso(9), aheadBy: 2, behindBy: 1, firstDate: iso(11) },
+        updatedAt: iso(9), aheadBy: 2, behindBy: 1, firstDate: iso(11),
+        stats: { n: 4, changed: 1, added: 3, removed: 0, renamed: 0, additions: 212, deletions: 6 } },
     ],
-    survey: { branches: [
+    scan: { branches: [
       { name: 'claude/news-view-refresh', sha: 'd1', group: 'active', date: iso(9), subject: 'News view refresh' },
       { name: 'claude/ledger-import', sha: 'e1', group: 'stranded', date: iso(400), firstDate: iso(900),
         subject: 'Import the 2025 ledger', aheadBy: 1, behindBy: 40 },
@@ -59,7 +100,7 @@ const ACTIVITY = {
   'me/scratch': {
     defaultBranch: 'main',
     openPRs: [],
-    survey: { branches: [
+    scan: { branches: [
       { name: 'claude/spike-parser', sha: 'f1', group: 'stranded', date: iso(70), firstDate: iso(74),
         subject: 'Spike: a smaller parser', aheadBy: 4, behindBy: 2 },
     ] },
@@ -82,7 +123,7 @@ const TODO = [
   { id: 't1', text: 'Purge the jsDelivr cache after the gh-api change', done: false, created_at: iso(30) },
   { id: 't2', text: 'Re-shoot the page thumbnails that drifted', done: false, created_at: iso(52) },
   { id: 't3', text: 'Decide whether the snags log gets a projector', done: false, created_at: iso(100) },
-  { id: 't4', text: 'Fold branch-survey into the activity cache', done: true, created_at: iso(300), done_at: iso(120) },
+  { id: 't4', text: 'Fold branch-status into the activity cache', done: true, created_at: iso(300), done_at: iso(120) },
 ];
 const JOTS = [
   { id: 'j1', text: 'A stage link could carry its own review prompts', created_at: iso(4) },
@@ -117,6 +158,18 @@ export default async (page) => {
       window.Alpine.$data(document.querySelector('[x-data^="estate"]')).goSub(t);
     }, process.env.TAB);
     await page.waitForTimeout(400);
+  }
+  if (process.env.ROUTES) {
+    await page.evaluate(() => {
+      const d = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));
+      const first = d.openRows[0];
+      d.branchRoutes = (row) => (row.repo === first.repo && row.name === first.name)
+        ? { on: [{ key: 'a', label: 'Branches', hits: ['lib/alpineComponents/estate.js'] },
+                 { key: 'b', label: 'Guides', hits: ['lib/alpineComponents/estate.js'] }],
+            near: [{ key: 'c', label: 'Map', hits: ['dist/web-tools.js'] }] }
+        : null;
+    });
+    await page.waitForTimeout(300);
   }
   if (process.env.CHIP) {
     await page.locator('button:has-text("home")').first().click();

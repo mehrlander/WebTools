@@ -13,7 +13,7 @@
 // What is deliberately NOT checked: coverage. The registry is curated against a
 // written scope (the `scope` field), and whether some fourth document has begun
 // repeating a statement nobody has filed is not decidable from the carrier. The
-// detectors answer that question (home's tools/duplicated-claims-survey.py,
+// detectors answer that question (home's tools/duplicated-claims.py,
 // tools/concept-lab/termlab.py); a registry gate here would only assert that the
 // file agrees with itself.
 

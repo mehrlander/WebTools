@@ -1,6 +1,6 @@
 // repo-activity-cache.js — the pure activity-aggregate builders. Run the IIFE
 // against a window stub, then exercise the material hash (timestamp-blind),
-// per-repo merge (recent commits accumulate + cap, survey kept on a summary-only
+// per-repo merge (recent commits accumulate + cap, scan kept on a summary-only
 // pass), whole-cache build (membership follows the crawl), the change detector
 // that gates no-op commits, and the cross-repo recent stream.
 
@@ -20,12 +20,12 @@ const commit = (sha, day) => ({ sha, msg: 'c' + sha, date: `2026-07-${String(day
 test('hashEntry ignores timestamps but tracks material fields', () => {
   const base = { pushedAt: 'p', defaultBranch: 'main', counts: { branches: 3 },
                  recentCommits: [commit('a', 5)], openPRs: [{ number: 1, updatedAt: 'u' }],
-                 survey: { surveyedAt: 't0', branches: [{ name: 'x', sha: 'S', group: 'landed' }] } };
-  const restamped = { ...base, survey: { surveyedAt: 'LATER', branches: base.survey.branches } };
-  assert.equal(A.hashEntry(base), A.hashEntry(restamped)); // surveyedAt is volatile
-  const moved = { ...base, survey: { branches: [{ name: 'x', sha: 'S', group: 'stranded' }] } };
+                 scan: { scannedAt: 't0', branches: [{ name: 'x', sha: 'S', group: 'landed' }] } };
+  const restamped = { ...base, scan: { scannedAt: 'LATER', branches: base.scan.branches } };
+  assert.equal(A.hashEntry(base), A.hashEntry(restamped)); // scannedAt is volatile
+  const moved = { ...base, scan: { branches: [{ name: 'x', sha: 'S', group: 'stranded' }] } };
   assert.notEqual(A.hashEntry(base), A.hashEntry(moved));  // a group flip is material
-  const ahead = { ...base, survey: { branches: [{ name: 'x', sha: 'S', group: 'landed', aheadBy: 3 }] } };
+  const ahead = { ...base, scan: { branches: [{ name: 'x', sha: 'S', group: 'landed', aheadBy: 3 }] } };
   assert.notEqual(A.hashEntry(base), A.hashEntry(ahead));  // an ahead-count change is material
 });
 
@@ -49,15 +49,15 @@ test('mergeRepo accumulates commits and restamps generatedAt', () => {
   assert.equal(b.generatedAt, 't1');
 });
 
-test('mergeRepo keeps the prior survey on a summary-only pass', () => {
-  const withSurvey = A.mergeRepo(undefined, {
-    recentCommits: [], survey: { surveyedAt: 't0', branches: [{ name: 'x', sha: 'S', group: 'landed' }] },
+test('mergeRepo keeps the prior scan on a summary-only pass', () => {
+  const withScan = A.mergeRepo(undefined, {
+    recentCommits: [], scan: { scannedAt: 't0', branches: [{ name: 'x', sha: 'S', group: 'landed' }] },
   }, 't0');
-  const summaryOnly = A.mergeRepo(withSurvey, { recentCommits: [commit('a', 5)] }, 't1'); // no survey key
-  assert.ok(summaryOnly.survey, 'survey retained when the fresh crawl omits it');
-  assert.equal(summaryOnly.survey.branches[0].name, 'x');
-  const cleared = A.mergeRepo(withSurvey, { recentCommits: [], survey: null }, 't2'); // explicit clear
-  assert.equal(cleared.survey, null);
+  const summaryOnly = A.mergeRepo(withScan, { recentCommits: [commit('a', 5)] }, 't1'); // no scan key
+  assert.ok(summaryOnly.scan, 'scan retained when the fresh crawl omits it');
+  assert.equal(summaryOnly.scan.branches[0].name, 'x');
+  const cleared = A.mergeRepo(withScan, { recentCommits: [], scan: null }, 't2'); // explicit clear
+  assert.equal(cleared.scan, null);
 });
 
 test('buildCache tracks crawl membership', () => {
@@ -131,16 +131,16 @@ test('recentStream merges and caps across repos, newest-first, repo-tagged', () 
 // in the projection. Were it not, the first crawl to read a branch's start
 // would hash identically to the one before it, skip the commit, and the field
 // would never reach the cache.
-test('a newly-learned firstDate is material, on both survey rows and PRs', () => {
+test('a newly-learned firstDate is material, on both scan rows and PRs', () => {
   const base = { pushedAt: 'p', defaultBranch: 'main', counts: {},
                  recentCommits: [], openPRs: [{ number: 1, updatedAt: 'u' }],
-                 survey: { branches: [{ name: 'x', sha: 'S', group: 'stranded' }] } };
-  const surveyed = { ...base, survey: { branches: [{ ...base.survey.branches[0], firstDate: '2026-07-02T00:00:00Z' }] } };
-  assert.notEqual(A.hashEntry(base), A.hashEntry(surveyed));
+                 scan: { branches: [{ name: 'x', sha: 'S', group: 'stranded' }] } };
+  const scanned = { ...base, scan: { branches: [{ ...base.scan.branches[0], firstDate: '2026-07-02T00:00:00Z' }] } };
+  assert.notEqual(A.hashEntry(base), A.hashEntry(scanned));
   const pr = { ...base, openPRs: [{ ...base.openPRs[0], firstDate: '2026-07-02T00:00:00Z' }] };
   assert.notEqual(A.hashEntry(base), A.hashEntry(pr));
   // Still stable once learned: a re-crawl reading the same start is a no-op.
-  assert.equal(A.hashEntry(surveyed), A.hashEntry({ ...surveyed, generatedAt: 'LATER' }));
+  assert.equal(A.hashEntry(scanned), A.hashEntry({ ...scanned, generatedAt: 'LATER' }));
 });
 
 // ── Declared checks in the cache ───────────────────────────────────────────
@@ -188,72 +188,72 @@ test('a crawl that ran checks and found none CLEARS them; one that skipped keeps
   assert.deepEqual(cleared.checks, []);
 
   // A summary-only pass never looked, so it keeps what it had, the same way
-  // survey does.
+  // scan does.
   const kept = A.mergeRepo(prior, { counts: {} }, 'T');
   assert.equal(kept.checks.length, 1);
 });
 
-test('a quick pass keeps the survey AND the counts that describe it', () => {
+test('a quick pass keeps the scan AND the counts that describe it', () => {
   const prev = { pushedAt: 'p0', defaultBranch: 'main',
-                 counts: { branches: 100, active: 10, openPRs: 2, landed: 30, stranded: 4, surveyed: 30 },
+                 counts: { branches: 100, active: 10, openPRs: 2, landed: 30, stranded: 4, scanned: 30 },
                  recentCommits: [], openPRs: [],
-                 survey: { branches: [{ name: 'x', sha: 'S', group: 'stranded' }] } };
-  // A quick crawl: no `survey` key at all, and counts that honestly report zero
+                 scan: { branches: [{ name: 'x', sha: 'S', group: 'stranded' }] } };
+  // A quick crawl: no `scan` key at all, and counts that honestly report zero
   // for what it did not measure.
   const quick = { pushedAt: 'p1', defaultBranch: 'main', partial: true,
-                  counts: { branches: 101, active: 12, openPRs: 3, landed: 0, stranded: 0, surveyed: 0 },
+                  counts: { branches: 101, active: 12, openPRs: 3, landed: 0, stranded: 0, scanned: 0 },
                   recentCommits: [], openPRs: [] };
   const merged = A.mergeRepo(prev, quick, '2026-08-07T00:00:00Z');
-  assert.deepEqual(merged.survey, prev.survey);        // the survey carries forward
+  assert.deepEqual(merged.scan, prev.scan);        // the scan carries forward
   assert.equal(merged.counts.branches, 101);           // freshly measured wins
   assert.equal(merged.counts.active, 12);
   assert.equal(merged.counts.openPRs, 3);
-  assert.equal(merged.counts.stranded, 4);             // survey-derived carries with the survey
+  assert.equal(merged.counts.stranded, 4);             // scan-derived carries with the scan
   assert.equal(merged.counts.landed, 30);
-  assert.equal(merged.counts.surveyed, 30);
+  assert.equal(merged.counts.scanned, 30);
 });
 
-test('an entry that simply has no survey is NOT treated as partial', () => {
-  // The distinction the `partial` flag exists to draw: absent survey means
+test('an entry that simply has no scan is NOT treated as partial', () => {
+  // The distinction the `partial` flag exists to draw: absent scan means
   // "keep the old one", it does not mean "these counts are provisional".
-  const prev = { counts: { landed: 30, stranded: 4, surveyed: 30 }, recentCommits: [],
-                 survey: { branches: [] } };
-  const fetched = { counts: { branches: 5, active: 1, openPRs: 0, landed: 0, stranded: 0, surveyed: 0 },
+  const prev = { counts: { landed: 30, stranded: 4, scanned: 30 }, recentCommits: [],
+                 scan: { branches: [] } };
+  const fetched = { counts: { branches: 5, active: 1, openPRs: 0, landed: 0, stranded: 0, scanned: 0 },
                     recentCommits: [], openPRs: [] };
   const merged = A.mergeRepo(prev, fetched, '2026-08-07T00:00:00Z');
   assert.equal(merged.counts.stranded, 0);   // taken at face value
-  assert.deepEqual(merged.survey, prev.survey);
+  assert.deepEqual(merged.scan, prev.scan);
 });
 
-test('a deep pass replaces the survey and its counts together', () => {
-  const prev = { counts: { landed: 30, stranded: 4, surveyed: 30 }, recentCommits: [],
-                 survey: { branches: [{ name: 'x', sha: 'S', group: 'stranded' }] } };
-  const deep = { counts: { branches: 101, active: 12, openPRs: 3, landed: 40, stranded: 0, surveyed: 40 },
+test('a deep pass replaces the scan and its counts together', () => {
+  const prev = { counts: { landed: 30, stranded: 4, scanned: 30 }, recentCommits: [],
+                 scan: { branches: [{ name: 'x', sha: 'S', group: 'stranded' }] } };
+  const deep = { counts: { branches: 101, active: 12, openPRs: 3, landed: 40, stranded: 0, scanned: 40 },
                  recentCommits: [], openPRs: [],
-                 survey: { branches: [{ name: 'x', sha: 'S2', group: 'landed' }] } };
+                 scan: { branches: [{ name: 'x', sha: 'S2', group: 'landed' }] } };
   const merged = A.mergeRepo(prev, deep, '2026-08-07T00:00:00Z');
-  assert.equal(merged.counts.stranded, 0);   // a real zero from a real survey stands
+  assert.equal(merged.counts.stranded, 0);   // a real zero from a real scan stands
   assert.equal(merged.counts.landed, 40);
-  assert.deepEqual(merged.survey, deep.survey);
+  assert.deepEqual(merged.scan, deep.scan);
 });
 
 // The other half of the same trap, and it took a live estate to find it. The
-// guard above covers a crawl that OMITS the survey; a crawl that read no branch
+// guard above covers a crawl that OMITS the scan; a crawl that read no branch
 // list and sent `{ branches: [] }` walked straight through it, because an empty
-// survey is a survey. Three repos lost their stored verdicts that way in one run
+// scan is a scan. Three repos lost their stored verdicts that way in one run
 // (2026-08-17: home 89 rows, web-tools-private 25, fn-data 22) while the run
 // reported success. The crawl's fix is to omit the key and mark the pass
 // partial; these assertions pin what mergeRepo does with each shape, so the two
 // halves cannot drift.
-test('an empty survey CLEARS, which is why a failed read must omit the key', () => {
-  const withSurvey = A.mergeRepo(undefined, {
+test('an empty scan CLEARS, which is why a failed read must omit the key', () => {
+  const withScan = A.mergeRepo(undefined, {
     counts: { branches: 9, stranded: 2 },
-    recentCommits: [], survey: { surveyedAt: 't0', branches: [{ name: 'x', sha: 'S', group: 'stranded' }] },
+    recentCommits: [], scan: { scannedAt: 't0', branches: [{ name: 'x', sha: 'S', group: 'stranded' }] },
   }, 't0');
-  const wiped = A.mergeRepo(withSurvey, { recentCommits: [], survey: { branches: [] } }, 't1');
-  assert.deepEqual(wiped.survey.branches, [], 'an empty survey is taken at its word');
-  // The shape a failed read sends instead: no survey key, no counts, partial.
-  const kept = A.mergeRepo(withSurvey, { recentCommits: [], partial: true }, 't2');
-  assert.equal(kept.survey.branches[0].name, 'x', 'the stored verdicts survive');
+  const wiped = A.mergeRepo(withScan, { recentCommits: [], scan: { branches: [] } }, 't1');
+  assert.deepEqual(wiped.scan.branches, [], 'an empty scan is taken at its word');
+  // The shape a failed read sends instead: no scan key, no counts, partial.
+  const kept = A.mergeRepo(withScan, { recentCommits: [], partial: true }, 't2');
+  assert.equal(kept.scan.branches[0].name, 'x', 'the stored verdicts survive');
   assert.equal(kept.counts.branches, 9, 'and so do the counts describing them');
 });

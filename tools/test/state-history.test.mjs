@@ -246,7 +246,7 @@ test('a duration is read from the ring in the newest committed version', async (
   // once: it fills every row's duration AND is the version interval 0 needs.
   VERSIONS.v3.runs = [
     { at: '2026-08-08T08:59:55Z', ms: 41000, checked: 9, changed: 2 },
-    { at: '2026-08-08T13:59:52Z', ms: 96000, checked: 9, changed: 4, failed: 1, pass: 'survey' },
+    { at: '2026-08-08T13:59:52Z', ms: 96000, checked: 9, changed: 4, failed: 1, pass: 'scan' },
     { at: '2026-08-09T19:59:58Z', ms: 12400, checked: 9, changed: 1 },
   ];
   HISTORY['state/activity.json'] = [
@@ -263,7 +263,7 @@ test('a duration is read from the ring in the newest committed version', async (
   assert.deepEqual(data.histRows.map(h => h.took || ''), ['12s', '', '1m36s', '41s']);
   // v2 predates the ring, and the runs below it must not slide up into its slot.
   assert.equal(data.histRows[1].run, undefined);
-  assert.match(data.histRows[2].runWhy, /checked 9 · 4 changed · 1 failed · the survey pass/);
+  assert.match(data.histRows[2].runWhy, /checked 9 · 4 changed · 1 failed · the scan pass/);
 });
 
 test('the summary carries what a run costs beside how often it changes', () => {

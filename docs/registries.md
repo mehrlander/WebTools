@@ -123,7 +123,7 @@ behind it. It was false in two places when the gate first ran:
 
 | Pair | Property | Targets | State |
 | --- | --- | --- | --- |
-| harness × portable | `role` | 9 scripts | paraphrases; `text-survey.py` already stale, harness knowing about `.mjs` and `.py` and portable not |
+| harness × portable | `role` | 9 scripts | paraphrases; `embedded-prose.py` already stale, harness knowing about `.mjs` and `.py` and portable not |
 | pages × tools | `title`, `note` | 4 pages | `note` differed on all four, `title` on one |
 
 Both are now resolved by **inheritance**, and the manner matters more than the
