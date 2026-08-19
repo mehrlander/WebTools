@@ -1301,32 +1301,6 @@ test('whereFrom reads as repo short name, then the folder', () => {
 // The pair is where you are and what is next to it. min(i, n-2) is what keeps
 // it valid at the end, so a diff is always available with two or more staged
 // and the last position compares the last two rather than offering nothing.
-test('previewPair is the position and its neighbour, valid at both ends', async () => {
-  reset();
-  store.stage = [{ repo: 'me/a', ref: '', path: 'x.js' }];
-  await tick();
-  data.preview = { i: 0, name: 'x.js', mode: 'file' };
-  assert.equal(data.previewPair(), null, 'one item pairs with nothing');
-
-  store.stage = [...store.stage, { repo: 'me/b', ref: '', path: 'y.js' }];
-  await tick();
-  // Exactly two: "the two", from either position. This is the case it is for.
-  data.preview = { i: 0, name: 'x.js', mode: 'file' };
-  assert.equal(data.previewPair().join(','), '0,1');
-  data.preview = { i: 1, name: 'y.js', mode: 'file' };
-  assert.equal(data.previewPair().join(','), '0,1');
-
-  store.stage = [...store.stage, { repo: 'me/c', ref: '', path: 'z.js' }];
-  await tick();
-  data.preview = { i: 0, name: 'x.js', mode: 'file' };
-  assert.equal(data.previewPair().join(','), '0,1');
-  data.preview = { i: 1, name: 'y.js', mode: 'file' };
-  assert.equal(data.previewPair().join(','), '1,2');
-  data.preview = { i: 2, name: 'z.js', mode: 'file' };
-  assert.equal(data.previewPair().join(','), '1,2', 'the last position compares the last two');
-  data.preview = null;
-});
-
 test('the preview toggles into a diff over that pair, and back to the file', async () => {
   reset();
   store.stage = [
@@ -1380,7 +1354,7 @@ test('each diff slide holds its own pair, and the copy follows the reader', asyn
 
   // And the neighbour drew ITS pair, with its own rows rather than none or
   // someone else's under its heading.
-  assert.match(slides()[1], /b\.md .* c\.md/);
+  assert.match(slides()[1], /b\.md.*c\.md/, 'the bar names this slide\'s own pair');
   assert.match(slides()[1], /- two/, 'the neighbour ran its own compare');
   assert.match(slides()[1], /\+ three/);
   assert.doesNotMatch(slides()[1], /\+ two/, "and not the first pair's rows under its own name");
@@ -1395,117 +1369,208 @@ test('each diff slide holds its own pair, and the copy follows the reader', asyn
   data.preview = null;
 });
 
-// ── Compare with the clipboard ───────────────────────────────────────────────
+// ── The compare picker ──────────────────────────────────────────────────────
 //
-// The stage's pair is a POSITION, so where a paste lands decides whether it can
-// be the thing you asked to compare with. These hold the placement first and
-// the gesture on top of it.
+// A is where you are; B is what you picked, and the neighbour when you have not.
+// The positional rule this replaces could only express ADJACENT pairs, so on a
+// stage of five "the first against the last" had no way to be said.
 
-// takeClipboard reads through kits/io.js, which this realm has no loader for.
-const setClipboard = (text) => {
-  window.io = {
-    pasteItems: async () => text == null ? []
-      : [{ kind: 'text', type: 'text/plain', text, size: text.length }],
-  };
-};
-
-test('a paste lands where it was asked for, not at the end', () => {
-  reset();
-  window.StageIntake.take({ text: 'first' });
-  window.StageIntake.take({ text: 'third' });
-  window.StageIntake.take({ text: 'second' }, 1);
-  assert.deepEqual(plain_(data.items.map(it => it.text)), ['first', 'second', 'third']);
-});
-
-test('an out-of-range position clamps rather than tearing the list', () => {
-  reset();
-  window.StageIntake.take({ text: 'a' });
-  window.StageIntake.take({ text: 'b' }, 99);
-  window.StageIntake.take({ text: 'c' }, -4);
-  assert.deepEqual(plain_(data.items.map(it => it.text)), ['c', 'a', 'b']);
-});
-
-test('every other intake still appends, so building a set is unchanged', async () => {
-  reset();
-  window.StageIntake.take({ text: 'kept first' });
-  setClipboard('arrived second');
-  await window.StageIntake.takeClipboard();
-  assert.deepEqual(plain_(data.items.map(it => it.text)), ['kept first', 'arrived second']);
-});
-
-test('compare with the clipboard stages the paste next and opens the diff on it', async () => {
+test('A is the file you are on, at every position including the last', async () => {
   reset();
   store.stage = [
-    { local: true, id: 501, name: 'a.md', path: 'a.md', size: 8, isText: true, text: 'one\ntwo\n' },
-    { local: true, id: 502, name: 'c.md', path: 'c.md', size: 9, isText: true, text: 'far\naway\n' },
+    { repo: 'me/a', ref: '', path: 'x.js' },
+    { repo: 'me/b', ref: '', path: 'y.js' },
+    { repo: 'me/c', ref: '', path: 'z.js' },
+  ];
+  await tick();
+  data.preview = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '0,1');
+  data.preview = { i: 1, name: 'y.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '1,2');
+  // The old rule slid the pair back to 1,2 here, so side A was the file BEFORE
+  // the one on screen. A stays put now and B falls back to the previous file.
+  data.preview = { i: 2, name: 'z.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '2,1');
+  data.preview = null;
+});
+
+test('one staged item still pairs with nothing', async () => {
+  reset();
+  store.stage = [{ repo: 'me/a', ref: '', path: 'x.js' }];
+  await tick();
+  data.preview = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.previewPair(), null);
+  data.preview = null;
+});
+
+test('a pick reaches a file the adjacent rule never could', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'first.js' },
+    { repo: 'me/b', ref: '', path: 'mid1.js' },
+    { repo: 'me/c', ref: '', path: 'mid2.js' },
+    { repo: 'me/d', ref: '', path: 'last.js' },
+  ];
+  await tick();
+  data.preview = { i: 0, name: 'first.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '0,1', 'the default is still the neighbour');
+
+  data.compareKey = data.itemKey(data.items[3]);
+  assert.equal(data.previewPair().join(','), '0,3', 'the first against the last');
+  assert.match(data.previewPairLabel(), /first\.js .+ last\.js/);
+  data.compareKey = '';
+  data.preview = null;
+});
+
+test('the pick follows the reader: A moves, B stays where it was pinned', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'x.js' },
+    { repo: 'me/b', ref: '', path: 'y.js' },
+    { repo: 'me/c', ref: '', path: 'z.js' },
+  ];
+  await tick();
+  data.compareKey = data.itemKey(data.items[2]);
+  data.preview = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '0,2');
+  data.preview = { i: 1, name: 'y.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '1,2');
+  // Standing on the pinned file is not a comparison, so the neighbour returns.
+  data.preview = { i: 2, name: 'z.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '2,1');
+  data.compareKey = '';
+  data.preview = null;
+});
+
+test('the pick is held by key, so a reorder does not re-aim it', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'x.js' },
+    { repo: 'me/b', ref: '', path: 'y.js' },
+    { repo: 'me/c', ref: '', path: 'z.js' },
+  ];
+  await tick();
+  data.compareKey = data.itemKey(data.items[2]);   // z.js
+  data.preview = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '0,2');
+
+  // z.js is now at index 1. An index-held pick would silently point at y.js.
+  store.stage = [store.stage[0], store.stage[2], store.stage[1]];
+  await tick();
+  assert.equal(data.previewPair().join(','), '0,1');
+  assert.equal(data.previewName(data.previewPair()[1]), 'z.js', 'still the file that was chosen');
+  data.compareKey = '';
+  data.preview = null;
+});
+
+test('a pick whose file leaves the stage is forgotten, not left dangling', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'x.js' },
+    { repo: 'me/b', ref: '', path: 'y.js' },
+    { repo: 'me/c', ref: '', path: 'z.js' },
+  ];
+  await tick();
+  data.compareKey = data.itemKey(data.items[2]);
+  data.preview = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.previewPair().join(','), '0,2');
+
+  store.stage = store.stage.slice(0, 2);
+  await tick();
+  assert.equal(data.compareKey, '', 'the key goes, so the picker shows no choice');
+  assert.equal(data.previewPair().join(','), '0,1', 'and the default takes over');
+  data.preview = null;
+});
+
+test('the picker lists every other staged file, with where each came from', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: 'main', path: 'lib/dup.js' },
+    { repo: 'me/b', ref: '', path: 'other/dup.js' },
+    { local: true, id: 601, name: 'note.md', path: 'note.md', size: 4, isText: true, text: 'hi\n' },
+  ];
+  await tick();
+  data.preview = { i: 0, name: 'lib/dup.js', mode: 'file' };
+  const opts = plain_(data.compareOptions());
+  assert.equal(opts.length, 2, 'the file you are on is not offered against itself');
+  // Two staged files can share a NAME, so the origin is what tells them apart.
+  assert.deepEqual(opts.map(o => o.label), ['dup.js', 'note.md']);
+  assert.deepEqual(opts.map(o => o.note), ['me/b', 'local']);
+  data.preview = null;
+});
+
+test('compareWith sets and clears the pick, and rebuilds the open deck', async () => {
+  reset();
+  store.stage = [
+    { local: true, id: 611, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\n' },
+    { local: true, id: 612, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'two\n' },
+    { local: true, id: 613, name: 'c.md', path: 'c.md', size: 6, isText: true, text: 'three\n' },
   ];
   await shown();
   await data.view(data.items[0]);
   await shown();
-  assert.equal(data.preview.mode, 'file');
-
-  setClipboard('one\nTWO\n');
-  await data.compareWithPaste();
-  await shown();
-
-  assert.equal(data.items.length, 3);
-  assert.equal(data.items[1].text, 'one\nTWO\n',
-    'the paste sits beside the file it was brought in to be compared with');
-  assert.equal(data.preview.mode, 'diff');
-  assert.equal(data.diffA, 0);
-  assert.equal(data.diffB, 1, 'the pair is the file you were on and the paste');
-  assert.ok(data.diffRows.some(r => r.t === 'add'), 'and the compare ran on the way in');
-  data.preview = null;
-});
-
-test('an empty clipboard leaves the reader exactly where it was', async () => {
-  reset();
-  store.stage = [{ local: true, id: 511, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\n' }];
-  await shown();
-  await data.view(data.items[0]);
-  await shown();
-
-  setClipboard(null);
-  await data.compareWithPaste();
-  await shown();
-
-  assert.equal(data.items.length, 1, 'nothing staged');
-  assert.equal(data.preview.mode, 'file', 'and no diff opened over a pair that does not exist');
-  data.preview = null;
-});
-
-test('the reader offers the clipboard compare even with one file staged', async () => {
-  reset();
-  store.stage = [{ local: true, id: 521, name: 'only.md', path: 'only.md', size: 4, isText: true, text: 'one\n' }];
-  await shown();
-  await data.view(data.items[0]);
-  await shown();
-
-  const titles = data._pActions(0).map(a => a.title);
-  assert.equal(titles.filter(t => /^Compare [^w]/.test(t)).length, 0,
-    'the positional compare has no second position to offer');
-  assert.equal(titles.filter(t => /clipboard/.test(t)).length, 1,
-    'and the one case it cannot serve is the one the clipboard can');
-  data.preview = null;
-});
-
-test('the compare action names its pair, and names the way back from a diff', async () => {
-  reset();
-  store.stage = [
-    { local: true, id: 531, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\n' },
-    { local: true, id: 532, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'two\n' },
-  ];
-  await shown();
-  await data.view(data.items[0]);
-  await shown();
-  assert.match(data._pActions(0)[0].title, /^Compare a\.md .+ b\.md$/,
-    'which two files, not how the control is wired');
-
   await data.togglePreviewDiff();
   await shown();
-  assert.equal(data._pActions(0)[0].title, 'Back to a.md',
-    'and in diff mode the same button says what it returns to');
+  assert.equal(data.diffB, 1, 'opens on the neighbour');
+
+  data.compareOpen = true;
+  data.compareWith(data.itemKey(data.items[2]));
+  await shown();
+  assert.equal(data.compareOpen, false, 'choosing closes the list');
+  assert.equal(data.diffB, 2, 'and the published pair follows the pick');
+  assert.match(data.diffDump, /--- A: \(local\) a\.md\n\+\+\+ B: \(local\) c\.md/);
+  assert.match(data.diffDump, /\+ three/, 'the rows are the picked pair\'s');
+
+  data.compareWith('');
+  await shown();
+  assert.equal(data.diffB, 1, 'and clearing returns to the neighbour');
   data.preview = null;
+});
+
+test('closing the reader forgets the pick, since it was a reading choice', async () => {
+  reset();
+  store.stage = [
+    { local: true, id: 621, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\n' },
+    { local: true, id: 622, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'two\n' },
+    { local: true, id: 623, name: 'c.md', path: 'c.md', size: 6, isText: true, text: 'three\n' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  data.compareWith(data.itemKey(data.items[2]));
+  await shown();
+  assert.equal(data.compareIndex(), 2);
+
+  data._pDeck.close();
+  await shown();
+  assert.equal(data.compareKey, '');
+});
+
+test('staging while reading keeps the pick, since that is not the reader leaving', async () => {
+  reset();
+  store.stage = [
+    { local: true, id: 631, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\n' },
+    { local: true, id: 632, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'two\n' },
+    { local: true, id: 633, name: 'c.md', path: 'c.md', size: 6, isText: true, text: 'three\n' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  data.compareWith(data.itemKey(data.items[2]));
+  await shown();
+
+  // A drop goes through _pDrop and a rebuild, which must not be read as an exit.
+  window.StageIntake.take({ text: 'arrived while reading' });
+  await shown();
+  assert.equal(data.previewName(data.compareIndex()), 'c.md', 'still comparing against what was chosen');
+  data.preview = null;
+});
+
+test('no intake takes a position any more: everything appends', async () => {
+  reset();
+  window.StageIntake.take({ text: 'first' });
+  window.StageIntake.take({ text: 'second' });
+  assert.deepEqual(plain_(data.items.map(it => it.text)), ['first', 'second']);
 });
 
 test('diffLabel names the item\'s own ref, or "default"', () => {
