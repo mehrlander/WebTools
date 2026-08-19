@@ -438,6 +438,40 @@ Stage-view actions:
   nothing to compare against, which remains true and is answered by staging a
   second item rather than by a bespoke gesture;
 
+  **The reader says which file is on screen, and the sidebar follows it.** The
+  FAB drawer floats over the reader still aimed at whatever it was aimed at
+  before, which for the Stage view is the app shell: a reader six files into a
+  set they assembled had a Render tab naming `show-repo` and rooting its path
+  picker there. So the reader announces on the subject channel
+  ([`kits/subject-channel.js`](../lib/kits/subject-channel.js), the one
+  toss-render stamps and [`kits/file-deck.js`](../lib/kits/file-deck.js) already
+  speaks on), once per position and through the comparison walk too, since side
+  A of a comparison is the position. The drawer then names the staged file, roots
+  its path picker at that repo and ref, aims its github menu at that blob and
+  reads that ref's guide, and the reader's header grows the same door into the
+  sidebar the file deck has. A **local** item announces `local` plus its label
+  rather than staying silent, which folds the ref bar and the path picker away;
+  silence would leave the drawer describing the shell, so stepping off a repo
+  file onto a pasted one would watch the sidebar keep naming the file just left.
+
+  **No `base` rides along, and that is the one field the file deck announces and
+  this does not.** `base` is what raises the drawer's compare bar, whose pick
+  travels back on `__compareRef` for the *cards* to read. This reader owns its
+  comparison and reads no such global, so a base would hang a second compare
+  control in the drawer that changes nothing on screen. The comparison stays
+  where the position lives.
+
+  **And the ref bar re-addresses rather than navigating away.** Its rows say
+  "render this file at that ref," which everywhere else means leaving for the
+  renderer; over a hand-assembled set that drops the set. The file deck answers
+  by re-rendering the slide where it stands. The stage answers in its own verb:
+  the version **joins the set and is read**, with what you were reading one swipe
+  away and a comparison of the two one tap away. Nothing is removed, and `grab`
+  dedupes, so asking twice seeks rather than duplicating. The fab asks any routed
+  subject that has installed the handle, rather than the one route name it used
+  to test for: what establishes that a surface can re-address is the handle, not
+  what its route is called;
+
 - **Out**: the deposit surface, and the only lens on this side now. It covers
   everything leaving the stage: the concatenated bundle (each file under a
   `// === owner/repo[@ref]:path ===` header; icon actions to refresh, copy,

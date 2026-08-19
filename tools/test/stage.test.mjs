@@ -64,9 +64,11 @@ const Alpine = await startAlpine(window, [
   'lib/kits/repo-mailbox.js',
   'lib/kits/surface.js',
   'lib/kits/text-diff.js',
-  // The preview's shell. stage.js gh.loads it on demand in a browser; here it
-  // is present up front, since there is no loader in this realm.
+  // The preview's shell, and the channel it tells the sidebar what it is
+  // showing on. stage.js gh.loads both on demand in a browser; here they are
+  // present up front, since there is no loader in this realm.
   'lib/kits/swipe-deck.js',
+  'lib/kits/subject-channel.js',
   'lib/alpineComponents/drop-zone.js',
   'lib/alpineComponents/path-picker.js',
   'lib/alpineComponents/viewer.js',
@@ -1815,6 +1817,233 @@ test('staging while reading keeps the pick, since that is not the reader leaving
   window.StageIntake.take({ text: 'arrived while reading' });
   await shown();
   assert.equal(data.previewName(data.compareIndex()), 'c.md', 'still comparing against what was chosen');
+  data.preview = null;
+});
+
+// ── The subject channel: what the sidebar is told ───────────────────────────
+//
+// The reader covers the screen, and the FAB sidebar floats on top of it still
+// aimed at whatever it was aimed at before. Announcing is what closes that gap:
+// the drawer's Render tab names the staged file being READ, roots its path
+// picker at that repo and ref, aims its github menu at that blob, and reads
+// that ref's guide. The channel itself (which windows hear it, what is put
+// back on the way out) belongs to kits/subject-channel.js and is tested there;
+// what these hold is the stage's half of the contract.
+
+const said = () => window.__tossSubject;
+
+test('the reader says which staged file is on screen, and keeps saying it', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: 'dev', path: 'lib/x.js' },
+    { repo: 'me/b', ref: '', path: 'docs/z.md' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  assert.equal(said().path, 'lib/x.js', 'on open, the file it opened on');
+  assert.equal(said().repo, 'me/a');
+  assert.equal(said().ref, 'dev', 'at the ref the item was staged from');
+  assert.equal(said().route, 'stage',
+    'route is what tells the sidebar this file is in a document, not a frame');
+  assert.equal(said().via, undefined,
+    'and the stage does not guess what app it is inside; the fab fills that in');
+
+  data.previewStep(1);
+  await shown();
+  assert.equal(said().path, 'docs/z.md', 'and it follows the reader');
+  assert.equal(said().ref, 'main', 'a staged item with no ref reads at the default');
+  data.preview = null;
+});
+
+// The one field a deck announces and the stage does not, and the reason is not
+// tidiness: `base` is what raises the drawer's compare bar, whose pick travels
+// back on __compareRef for the CARDS to read. This reader owns its comparison
+// and reads no such global, so a base would hang a second compare control in
+// the drawer that changes nothing on screen.
+test('the stage announces no base, since it owns its own comparison', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'lib/x.js' },
+    { repo: 'me/a', ref: 'dev', path: 'lib/x.js' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  assert.equal(said().base, undefined);
+  assert.equal(said().baseName, undefined);
+
+  await data.openCompare();
+  await shown();
+  assert.equal(said().base, undefined, 'not even with a comparison actually open');
+  assert.equal(said().path, 'lib/x.js', 'which announces side A, the position');
+  data.preview = null;
+});
+
+test('a local item says so rather than staying silent', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'lib/x.js' },
+    { local: true, id: 701, name: 'pasted.txt', path: 'pasted.txt', size: 2, isText: true, text: 'hi\n' },
+  ];
+  await shown();
+  await data.view(data.items[1]);
+  await shown();
+  // The drawer's own branch for this folds away the ref bar and the path
+  // picker and names what is being read. Silence would instead leave it
+  // describing the app shell, so stepping off a repo file onto a pasted one
+  // would watch the sidebar keep naming the file just left.
+  assert.equal(said().local, true);
+  assert.equal(said().label, 'pasted.txt');
+  assert.equal(said().repo, undefined, 'a paste has no address to offer');
+  assert.equal(said().route, 'stage');
+  data.preview = null;
+});
+
+test('leaving puts back the subject that was there before', async () => {
+  reset();
+  // show-repo can itself be running inside a toss, so the global is borrowed.
+  const held = { repo: 'me/tools', ref: 'main', path: 'pages/app.html' };
+  window.__tossSubject = held;
+  store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  assert.equal(said().path, 'lib/x.js');
+
+  data._pDeck.close();
+  await shown();
+  assert.equal(window.__tossSubject, held, 'returned, not cleared');
+  window.__tossSubject = null;
+  data.preview = null;
+});
+
+// The claim behind ONE CHANNEL FOR THE READER'S WHOLE LIFE. A deck rebuilt
+// around a changed set fires the same onClose the reader's own ✕ does, and a
+// channel closed and reopened there would snapshot its own announcement as the
+// thing to put back: leaving would then restore the file you were reading.
+test('staging while reading does not hand the subject back to itself', async () => {
+  reset();
+  const held = { repo: 'me/tools', ref: 'main', path: 'pages/app.html' };
+  window.__tossSubject = held;
+  store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  const chan = data._pChan;
+
+  window.StageIntake.take({ text: 'arrived while reading' });
+  await shown();
+  assert.equal(data._pChan, chan, 'the same channel spans the rebuild');
+  assert.equal(said().path, 'lib/x.js', 'still naming what is on screen');
+
+  data._pDeck.close();
+  await shown();
+  assert.equal(window.__tossSubject, held, 'and the page gets its own subject back');
+  window.__tossSubject = null;
+  data.preview = null;
+});
+
+test('the comparison walk keeps the sidebar following side A', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'one.md' },
+    { repo: 'me/a', ref: '', path: 'two.md' },
+    { repo: 'me/a', ref: '', path: 'three.md' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  await data.openCompare();
+  await shown();
+  assert.equal(said().path, 'one.md');
+  data._cmpDeck.deck.go(2);
+  await shown();
+  assert.equal(said().path, 'three.md', 'the comparison walks the same set one lens down');
+  data.preview = null;
+});
+
+test('the reader offers a door into the sidebar', async () => {
+  reset();
+  store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  const door = data._pActions(0).find(a => a.icon === 'ph-sidebar-simple');
+  assert.ok(door, 'nothing else says the sidebar is now aimed at the file in front of you');
+  let tab = null;
+  const on = (e) => { tab = e.detail && e.detail.tab; };
+  window.addEventListener('web-tools:open-drawer', on);
+  door.onClick();
+  window.removeEventListener('web-tools:open-drawer', on);
+  assert.equal(tab, 'render', 'and it opens on the tab that names the file');
+  data.preview = null;
+});
+
+// ── Re-addressing, rather than being navigated away from ────────────────────
+//
+// The sidebar's ref bar renders a file at another ref by LEAVING for the
+// renderer, which over a hand-assembled set would drop all of it. The stage
+// answers in its own verb instead: stage that version and read it.
+
+test('the ref bar stages the version it names and lands the reader on it', async () => {
+  reset();
+  store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+
+  assert.equal(window.__deckNavigate({ repo: 'me/a', ref: 'dev', path: 'lib/x.js' }), true,
+    'handled here, so the fab does not navigate');
+  await shown();
+  assert.equal(data.items.length, 2, 'the other version joined the set');
+  assert.equal(data.items[1].ref, 'dev');
+  assert.equal(data.preview.i, 1, 'and the reader is on it');
+  assert.equal(said().ref, 'dev', 'which the sidebar hears');
+  // Nothing was removed, so what was being read is one swipe away and a
+  // comparison of the two is one tap away.
+  assert.equal(data.items[0].ref, '');
+  data.preview = null;
+});
+
+test('asking twice seeks rather than staging a duplicate', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'lib/x.js' },
+    { repo: 'me/a', ref: 'dev', path: 'lib/x.js' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  window.__deckNavigate({ repo: 'me/a', ref: 'dev', path: 'lib/x.js' });
+  await shown();
+  assert.equal(data.items.length, 2, 'grab dedupes by key');
+  assert.equal(data.preview.i, 1, 'and the reader still lands on it');
+  data.preview = null;
+});
+
+test('a spec with no address is refused, so the fab makes the trip itself', async () => {
+  reset();
+  store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  assert.equal(window.__deckNavigate(null), false);
+  assert.equal(window.__deckNavigate({ path: 'lib/x.js' }), false, 'a path with no repo is not an address');
+  assert.equal(data.items.length, 1, 'and nothing was staged on the way');
+  data.preview = null;
+});
+
+test('the handle is put back when the reader leaves', async () => {
+  reset();
+  store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  assert.equal(typeof window.__deckNavigate, 'function');
+  data._pDeck.close();
+  await shown();
+  assert.equal(window.__deckNavigate, null, 'a closed reader cannot show anything');
   data.preview = null;
 });
 
