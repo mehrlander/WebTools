@@ -69,10 +69,12 @@ test('with nothing declaring one, the menu is the built-in row alone', async () 
 test('a page contributes its rows, and they carry the side they came from', async () => {
   clearPages();
   const d = await mountFab();
-  await mountPage(`<div x-data="{ menu: [{ label: 'Paste onto the Stage', icon: 'ph-clipboard-text', run(){} }] }"></div>`);
+  // A fixture, not show-repo's actual row: what this file guards is the fab's
+  // READ of the contract, and the shell owns its own wording (show-repo-intake).
+  await mountPage(`<div x-data="{ menu: [{ label: 'Do the thing', icon: 'ph-clipboard-text', run(){} }] }"></div>`);
   d.openFabMenu();
   assert.equal(d.pageMenu.length, 1);
-  assert.equal(d.pageMenu[0].label, 'Paste onto the Stage');
+  assert.equal(d.pageMenu[0].label, 'Do the thing');
   assert.equal(d.pageMenu[0].icon, 'ph-clipboard-text');
   assert.equal(d.pageMenu[0].side, 'shell');
 });

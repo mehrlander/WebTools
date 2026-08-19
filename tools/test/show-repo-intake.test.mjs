@@ -247,7 +247,7 @@ test('the shell contributes one menu row, and it is the paste', () => {
   const { shell } = makeShell({ browserStore: { repo: '' } });
   const rows = shell.menu;
   assert.equal(rows.length, 1);
-  assert.equal(rows[0].label, 'Paste onto the Stage');
+  assert.equal(rows[0].label, 'Paste to Stage');
   assert.equal(typeof rows[0].run, 'function');
 });
 
