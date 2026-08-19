@@ -32,7 +32,11 @@ const ACTIVITY = {
     openPRs: [
       { number: 298, head: 'claude/show-repo-activity-filters', draft: true, title: 'Open view: repo chips, lifespan, GitHub menu',
         updatedAt: iso(2), aheadBy: 6, behindBy: 0, firstDate: iso(52),
-        stats: { n: 9, changed: 6, added: 2, removed: 1, renamed: 1, additions: 431, deletions: 88 },
+        stats: { n: 9, changed: 6, added: 2, removed: 1, renamed: 1, additions: 431, deletions: 88,
+                 shape: { added: { exts: [['.md', 1], ['.js', 1]], dirs: [['docs', 1], ['lib', 1]] },
+                          changed: { exts: [['.js', 4], ['.md', 1], ['.json', 1]],
+                                     dirs: [['lib', 4], ['docs', 1], ['tools', 1]] },
+                          removed: { exts: [['.js', 1]], dirs: [['lib', 1]] } } },
         session: 'https://claude.ai/code/session_x' },
       { number: 296, head: 'claude/fab-render-toss', draft: false, title: 'Singleton fab with toss-render',
         updatedAt: iso(30), aheadBy: 12, behindBy: 3, firstDate: iso(500),
@@ -55,7 +59,12 @@ const ACTIVITY = {
       { name: 'claude/budget-drs-tracker-6jsaz8', sha: 'f1', group: 'stranded', date: iso(60), firstDate: iso(400),
         subject: 'Merge origin/main into claude/budget-drs-tracker-6jsaz8', noBase: true,
         nUnique: 80, nLanded: 28, nMissing: 11, nDiffers: 41,
-        stats: { n: 80, changed: 62, added: 14, removed: 4, renamed: 2, additions: 5310, deletions: 2044 },
+        stats: { n: 80, changed: 62, added: 14, removed: 4, renamed: 2, additions: 5310, deletions: 2044,
+                 shape: { added: { exts: [['.md', 9], ['.json', 3], ['.csv', 2]],
+                                   dirs: [['tracker', 6], ['projects', 5], ['docs', 3]] },
+                          changed: { exts: [['.md', 31], ['.js', 18], ['.json', 9], ['.html', 4]],
+                                     dirs: [['docs', 24], ['lib', 17], ['projects', 12], ['tools', 9]] },
+                          removed: { exts: [['.md', 4]], dirs: [['chron', 4]] } } },
         missingPaths: ['tracker/tasks/0031-fund-splits.md', 'projects/budget-drs/data/design/LAYERS.md'] },
       // Landed rows: invisible at the default scope, and the whole point of the
       // Landed one. Two of them, so the chip count is not mistakable for a

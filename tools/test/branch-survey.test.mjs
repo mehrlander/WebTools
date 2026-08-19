@@ -89,9 +89,51 @@ test('fileStats partitions a compare file list by status', () => {
     { filename: 'moved.js', status: 'renamed', additions: 1, deletions: 1 },
     { filename: 'gone.js', status: 'removed', additions: 0, deletions: 30 },
   ]);
-  assert.deepEqual(s, { n: 5, added: 2, changed: 2, removed: 1, renamed: 1,
-                        additions: 58, deletions: 34 });
+  const { shape, ...counts } = s;      // the digest has its own tests below
+  assert.deepEqual(counts, { n: 5, added: 2, changed: 2, removed: 1, renamed: 1,
+                             additions: 58, deletions: 34 });
   assert.equal(s.added + s.changed + s.removed, s.n, 'the three classes partition the list');
+});
+
+test('fileStats digests each class by extension and top folder, biggest first', () => {
+  const s = B.fileStats([
+    { filename: 'docs/a.md', status: 'added' },
+    { filename: 'docs/b.md', status: 'added' },
+    { filename: 'docs/c.json', status: 'added' },
+    { filename: 'lib/x.js', status: 'modified' },
+    { filename: 'README', status: 'added' },
+    { filename: '.gitignore', status: 'modified' },
+  ]);
+  assert.deepEqual(s.shape.added.exts, [['.md', 2], ['(none)', 1], ['.json', 1]]);
+  assert.deepEqual(s.shape.added.dirs, [['docs', 3], ['(root)', 1]]);
+  // A dotfile is extensionless, not an extension of one: it belongs with README
+  // and Makefile rather than adding a histogram bar of size one.
+  assert.deepEqual(s.shape.changed.exts, [['(none)', 1], ['.js', 1]]);
+  assert.deepEqual(s.shape.changed.dirs, [['(root)', 1], ['lib', 1]]);
+  assert.deepEqual(s.shape.removed, { exts: [], dirs: [] });
+});
+
+test('the shape digest caps its tail, and the counts it is built from do not', () => {
+  const files = Array.from({ length: 20 }, (_, i) => ({ filename: 'd' + i + '/f.e' + i, status: 'modified' }));
+  const s = B.fileStats(files);
+  assert.equal(s.changed, 20, 'the count is complete');
+  assert.equal(s.shape.changed.exts.length, 6, 'the histogram is capped');
+  assert.equal(s.shape.changed.dirs.length, 6);
+});
+
+test('fileClass is the one rule the counts, the digest and the card all read', () => {
+  assert.equal(B.fileClass({ status: 'added' }), 'added');
+  assert.equal(B.fileClass({ status: 'copied' }), 'added');
+  assert.equal(B.fileClass({ status: 'removed' }), 'removed');
+  assert.equal(B.fileClass({ status: 'renamed' }), 'changed');
+  assert.equal(B.fileClass({}), 'changed', 'no status reads as changed');
+});
+
+test('fileKind names the extensionless and the rootless rather than dropping them', () => {
+  assert.deepEqual(B.fileKind('lib/kits/a.js'), { ext: '.js', dir: 'lib' });
+  assert.deepEqual(B.fileKind('README'), { ext: '(none)', dir: '(root)' });
+  assert.deepEqual(B.fileKind('.gitignore'), { ext: '(none)', dir: '(root)' });
+  assert.deepEqual(B.fileKind('a/b/c/d.test.mjs'), { ext: '.mjs', dir: 'a' });
 });
 
 test('fileStats dedupes by path and reads either spelling', () => {
@@ -108,8 +150,10 @@ test('fileStats dedupes by path and reads either spelling', () => {
 
 test('fileStats treats a status-less entry as changed, and an empty list as zero', () => {
   assert.equal(B.fileStats([{ filename: 'a' }]).changed, 1);
-  assert.deepEqual(B.fileStats([]), { n: 0, added: 0, changed: 0, removed: 0, renamed: 0,
-                                      additions: 0, deletions: 0 });
+  const { shape, ...counts } = B.fileStats([]);
+  assert.deepEqual(counts, { n: 0, added: 0, changed: 0, removed: 0, renamed: 0,
+                             additions: 0, deletions: 0 });
+  assert.deepEqual(shape.added, { exts: [], dirs: [] });
   assert.equal(B.fileStats(null).n, 0);
 });
 

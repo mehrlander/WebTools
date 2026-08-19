@@ -266,6 +266,78 @@ test('staging is a row control, not a menu row', () => {
   } finally { data.stageBranchDiff = real; }
 });
 
+// ── the file card ───────────────────────────────────────────────────────────
+//
+// A panel over one of the row's two file pairs. It opens on the crawl's digest
+// with no call, then fills in file names from the compare, so the tests below
+// cover both halves of that and the seam between them: a read belongs to a card
+// only when it is about the same branch.
+
+const CARD_ROW = () => ({
+  repo: 'me/tools', name: 'feat/a', def: 'main',
+  stats: { n: 5, added: 2, changed: 2, removed: 1, renamed: 0, additions: 60, deletions: 30,
+           shape: { added: { exts: [['.md', 2]], dirs: [['docs', 2]] },
+                    changed: { exts: [['.js', 2]], dirs: [['lib', 2]] },
+                    removed: { exts: [], dirs: [] } } },
+});
+const CARD_FILES = [
+  { path: 'docs/a.md', prev: '', cls: 'added', additions: 40, deletions: 0 },
+  { path: 'docs/b.md', prev: '', cls: 'added', additions: 12, deletions: 0 },
+  { path: 'lib/x.js', prev: '', cls: 'changed', additions: 5, deletions: 3 },
+  { path: 'lib/y.js', prev: '', cls: 'changed', additions: 3, deletions: 7 },
+  { path: 'lib/z.js', prev: '', cls: 'removed', additions: 0, deletions: 20 },
+];
+const openCard = (cls) => {
+  const row = CARD_ROW();
+  data.fileCard = { repo: row.repo, name: row.name, base: row.def, cls,
+                    count: cls === 'added' ? 2 : 2, shape: row.stats.shape[cls], split: true };
+  return row;
+};
+
+test('the card opens on the crawl digest before any file name is read', () => {
+  openCard('added');
+  data.fileCardRead = null;
+  assert.deepEqual(plain_(data.fileCard.shape.exts), [['.md', 2]]);
+  assert.deepEqual(plain_(data.fileCardSummary), { count: 2, lines: '' },
+    'the count is the crawl-s, and no line total is claimed before the diff lands');
+  assert.deepEqual(plain_(data.fileCardList), [], 'no names yet, and none invented');
+});
+
+test('the card lists only its own class, and then counts and lines come off that list', () => {
+  openCard('changed');
+  data.fileCardRead = { key: data.fileCardKey('me/tools', 'feat/a', 'main'),
+                        loading: false, error: '', noBase: false, files: CARD_FILES };
+  assert.deepEqual(plain_(data.fileCardList.map(f => f.path)), ['lib/x.js', 'lib/y.js']);
+  assert.deepEqual(plain_(data.fileCardSummary), { count: 2, lines: '+8 -10' },
+    'the head describes these files, never the whole branch');
+
+  openCard('added');
+  assert.deepEqual(plain_(data.fileCardList.map(f => f.path)), ['docs/a.md', 'docs/b.md']);
+  // Only the half that happened: a card of new files does not report -0.
+  assert.deepEqual(plain_(data.fileCardSummary), { count: 2, lines: '+52' });
+});
+
+test('a read for another branch is not this card-s', () => {
+  openCard('added');
+  data.fileCardRead = { key: data.fileCardKey('me/tools', 'feat/b', 'main'),
+                        loading: false, error: '', noBase: false, files: CARD_FILES };
+  assert.equal(data.fileCardMine, null, 'the wrong branch-s diff must not show under this head');
+  assert.deepEqual(plain_(data.fileCardList), []);
+  data.fileCard = null; data.fileCardRead = null;
+});
+
+test('the card splits a path so a truncation cannot eat the filename', () => {
+  assert.equal(data.fileCardDir('lib/kits/branch-survey.js'), 'lib/kits/');
+  assert.equal(data.fileCardName('lib/kits/branch-survey.js'), 'branch-survey.js');
+  assert.equal(data.fileCardDir('README.md'), '');
+  assert.equal(data.fileCardName('README.md'), 'README.md');
+});
+
+test('fileBlobUrl encodes the branch and each path segment, not the slashes', () => {
+  assert.equal(data.fileBlobUrl('me/tools', 'claude/feat a', 'lib/kits/x y.js'),
+    'https://github.com/me/tools/blob/claude%2Ffeat%20a/lib/kits/x%20y.js');
+});
+
 test('openBranchMenu anchors through the shell and closes on a pick', () => {
   data.menuBranch = null;
   data.openBranchMenu(data.openBranches[0], { currentTarget: {} });

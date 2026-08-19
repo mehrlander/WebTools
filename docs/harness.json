@@ -660,6 +660,16 @@
       "tested": false
     },
     {
+      "path": "tools/render/scenarios/branch-file-card.mjs",
+      "role": "",
+      "layer": "tools/render/scenarios",
+      "lines": 60,
+      "invocation": "driver",
+      "emits": false,
+      "named": false,
+      "tested": false
+    },
+    {
       "path": "tools/render/scenarios/branch-guide.mjs",
       "role": "the branch page showing a branch with its guide PR body rendered in place",
       "layer": "tools/render/scenarios",
@@ -873,7 +883,7 @@
       "path": "tools/render/scenarios/estate-open.mjs",
       "role": "Activity's Open view seeded token-free so the list renders headlessly",
       "layer": "tools/render/scenarios",
-      "lines": 181,
+      "lines": 190,
       "invocation": "driver",
       "emits": false,
       "named": false,

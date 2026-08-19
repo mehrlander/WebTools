@@ -919,11 +919,41 @@ branch: every file in either response carries a status and a line count, and
 thing, the **missing** count in amber, which opens the pane already filtered to
 those files.
 
-Two is the row's budget, so **removals, renames and the line totals live in the
-hover**, which is a small table rather than a sentence: the total, the split
-including what was removed and how many of the changed files moved, the `+/-`
-lines, and the survey's three-way verdict where there is one. Those are numbers
-a reader wants once, not ones they scan a list for.
+Each pair opens a **file card**, one for new files and one for changed, and the
+card is the reason the row can afford to show only two numbers. It is a real
+panel rather than a `title` attribute, which is what a title cannot be: one
+string, in the browser's own type, at the browser's own delay, with nothing in
+it a reader can open. Three bands:
+
+1. **The head:** the count and the `+/-` line total, both describing *this
+   class* rather than the branch. The crawl's stored count answers first and the
+   listed files answer once they land, so the two numbers always come from one
+   source.
+2. **The shape**, and it needs no call at all: how many of each extension and
+   each top-level folder, capped at six and biggest first. `BranchSurvey.fileStats`
+   builds it during the crawl and it rides in the cache, so the card is useful in
+   its first frame. An extensionless file reports `(none)` and a repo-root file
+   reports `(root)`, named rather than dropped, since a branch that only touches
+   root config is a real shape. A dotfile is extensionless by this reading, which
+   keeps `.gitignore` out of the histogram as a bar of one.
+3. **The files**, from the compare, fetched when the card opens and swapped in
+   underneath: each one links to its blob on the branch and carries its own
+   `+/-`. The folder is muted and the filename is not, so a truncation eats the
+   half that matters least.
+
+It leans on `BranchBrief`'s own sixty-second memo rather than caching anything of
+its own, which is what keeps the read affordable: hovering one row twice is a
+single call, and opening the branch detail afterwards is none, since the takeover
+reads through the same memo. That is also why **paths are not stored in the crawl
+cache**. A path list per branch across the estate is hundreds of kilobytes read
+on every Activity load, spent to save a call on the rows a reader actually opens.
+A no-merge-base branch has no compare at all, so its card shows the shape and
+says plainly that there is no diff to list.
+
+Hovering opens it on a fine pointer, tapping opens it everywhere, and its footer
+opens the branch view's Files pane, which is the same material with diffs under
+it. Removals and renames stay out of the row and out of the cards, in the pairs'
+plain hover text, since two classes is what the reader asked to see side by side.
 
 **The palette says one thing each.** Neutral is changed, green is added, amber
 is stranded. Green used to tint the whole control when the survey found nothing
