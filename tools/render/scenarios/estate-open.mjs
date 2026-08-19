@@ -65,7 +65,16 @@ const ACTIVITY = {
                           changed: { exts: [['.md', 31], ['.js', 18], ['.json', 9], ['.html', 4]],
                                      dirs: [['docs', 24], ['lib', 17], ['projects', 12], ['tools', 9]] },
                           removed: { exts: [['.md', 4]], dirs: [['chron', 4]] } } },
-        missingPaths: ['tracker/tasks/0031-fund-splits.md', 'projects/budget-drs/data/design/LAYERS.md'] },
+        // As many paths as the count claims: the missing card lists them, so a
+        // short fixture would render a card that disagrees with its own head.
+        missingPaths: ['tracker/tasks/0031-fund-splits.md', 'tracker/tasks/0044-object-mix.md',
+                       'projects/budget-drs/data/design/LAYERS.md',
+                       'projects/budget-drs/data/design/properties.csv',
+                       'projects/budget-drs/app/lineage/README.md',
+                       'docs/reading-600-6.md', 'docs/allotment-packets.md',
+                       'chron/2026/08/2026-08-03-fund-600-6-lanes.md',
+                       'chron/threads/drs-funds.md', 'code/python/webi-export.py',
+                       'me/problem-classes.md'] },
       // Landed rows: invisible at the default scope, and the whole point of the
       // Landed one. Two of them, so the chip count is not mistakable for a
       // rounding of the stranded set.

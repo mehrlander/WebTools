@@ -326,6 +326,57 @@ test('a read for another branch is not this card-s', () => {
   data.fileCard = null; data.fileCardRead = null;
 });
 
+// `missing` is the survey's class, not a status in a diff, so it arrives from
+// the crawl's own path list and needs no read to be complete. The diff, when it
+// lands, only adds line counts and a patch to the rows it recognises.
+test('the missing card lists the survey-s own paths before any diff is read', () => {
+  data.fileCard = { repo: 'me/tools', name: 'feat/a', base: 'main', cls: 'missing',
+                    paths: ['docs/gone.md', 'lib/only-here.js'], count: 2,
+                    shape: { exts: [], dirs: [] }, split: true };
+  data.fileCardRead = null;
+  assert.deepEqual(plain_(data.fileCardList.map(f => f.path)), ['docs/gone.md', 'lib/only-here.js']);
+  assert.deepEqual(plain_(data.fileCardSummary), { count: 2, lines: '' });
+
+  // The diff knows one of the two. The other keeps its row and claims no lines.
+  data.fileCardRead = { key: data.fileCardKey('me/tools', 'feat/a', 'main'),
+                        loading: false, error: '', noBase: false,
+                        files: [{ path: 'lib/only-here.js', prev: '', cls: 'added',
+                                  additions: 30, deletions: 0, patch: '@@ -0,0 +1 @@\n+x' }] };
+  const list = plain_(data.fileCardList);
+  assert.deepEqual(list.map(f => f.path), ['docs/gone.md', 'lib/only-here.js']);
+  assert.equal(list[0].additions, 0, 'a path the diff does not name claims nothing');
+  assert.equal(list[0].patch, '');
+  assert.equal(list[1].additions, 30, 'and one it does gets its lines and its patch');
+  assert.ok(list[1].patch);
+  data.fileCard = null; data.fileCardRead = null;
+});
+
+test('shapeOfPaths digests a path list the same way the crawl digests a compare', () => {
+  const sh = plain_(data.shapeOfPaths([
+    'docs/a.md', 'docs/b.md', 'docs/c.md', 'lib/x.js', 'README',
+  ]));
+  assert.deepEqual(sh.exts, [['.md', 3], ['(none)', 1], ['.js', 1]]);
+  assert.deepEqual(sh.dirs, [['docs', 3], ['(root)', 1], ['lib', 1]]);
+  assert.deepEqual(plain_(data.shapeOfPaths([])), { exts: [], dirs: [] });
+});
+
+// A row opens its own diff, from the patch the compare already embedded. Capped,
+// because one file in this estate carries a quarter-megabyte hunk.
+test('patchLines tints the diff and stops at the cap, which patchOverflow reports', () => {
+  const lines = data.patchLines('@@ -1 +1 @@\n-old\n+new\n unchanged');
+  assert.deepEqual(plain_(lines.map(l => l.t)), ['@@ -1 +1 @@', '-old', '+new', ' unchanged']);
+  assert.match(lines[0].cls, /bg-info/);
+  assert.match(lines[1].cls, /bg-error/);
+  assert.match(lines[2].cls, /bg-success/);
+  assert.equal(lines[3].cls, '');
+  assert.equal(data.patchOverflow('a\nb'), 0);
+
+  const big = Array.from({ length: data.PATCH_CAP + 25 }, (_, i) => '+line ' + i).join('\n');
+  assert.equal(data.patchLines(big).length, data.PATCH_CAP);
+  assert.equal(data.patchOverflow(big), 25, 'the card says how much it is not showing');
+  assert.equal(data.patchLines('').length, 1);
+});
+
 test('the card splits a path so a truncation cannot eat the filename', () => {
   assert.equal(data.fileCardDir('lib/kits/branch-survey.js'), 'lib/kits/');
   assert.equal(data.fileCardName('lib/kits/branch-survey.js'), 'branch-survey.js');

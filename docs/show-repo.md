@@ -919,8 +919,8 @@ branch: every file in either response carries a status and a line count, and
 thing, the **missing** count in amber, which opens the pane already filtered to
 those files.
 
-Each pair opens a **file card**, one for new files and one for changed, and the
-card is the reason the row can afford to show only two numbers. It is a real
+Each count opens a **file card**: one for new files, one for changed, one for
+missing. The card is the reason the row can afford to show so few numbers. It is a real
 panel rather than a `title` attribute, which is what a title cannot be: one
 string, in the browser's own type, at the browser's own delay, with nothing in
 it a reader can open. Three bands:
@@ -937,9 +937,25 @@ it a reader can open. Three bands:
    root config is a real shape. A dotfile is extensionless by this reading, which
    keeps `.gitignore` out of the histogram as a bar of one.
 3. **The files**, from the compare, fetched when the card opens and swapped in
-   underneath: each one links to its blob on the branch and carries its own
-   `+/-`. The folder is muted and the filename is not, so a truncation eats the
-   half that matters least.
+   underneath, each carrying its own `+/-`. The folder is muted and the filename
+   is not, so a truncation eats the half that matters least. **A row opens its
+   own diff in place**, because the compare embeds the unified patch beside the
+   file list: the card is already holding every diff it can show, and expanding
+   one asks nobody for anything. The patch renders in the same tinting the
+   file-review card uses, capped at 400 lines, since the pre-build's own diff is
+   three lines of a quarter megabyte each and would freeze the panel drawing
+   them. A small out-arrow keeps the route to the file on GitHub.
+
+**The missing card is the odd one, and it is the one that needs no fetch.**
+`missing` is the survey's verdict about paths rather than a status in a diff, so
+its list comes from the crawl's own `missingPaths` and is complete the moment the
+card opens; the diff, when it lands, only adds line counts and a patch to the
+rows it recognises, and a path it does not name keeps its row and claims nothing.
+Its digest is built client-side from the same `BranchSurvey.fileKind`, so the
+three histograms cannot disagree about what an extension is. It also carries one
+line of prose saying what the word means, since the other two classes name
+themselves and this one is a verdict: a card listing files under a bare word
+nobody defined is the tooltip problem again in a nicer box.
 
 It leans on `BranchBrief`'s own sixty-second memo rather than caching anything of
 its own, which is what keeps the read affordable: hovering one row twice is a
@@ -950,10 +966,18 @@ on every Activity load, spent to save a call on the rows a reader actually opens
 A no-merge-base branch has no compare at all, so its card shows the shape and
 says plainly that there is no diff to list.
 
-Hovering opens it on a fine pointer, tapping opens it everywhere, and its footer
-opens the branch view's Files pane, which is the same material with diffs under
-it. Removals and renames stay out of the row and out of the cards, in the pairs'
-plain hover text, since two classes is what the reader asked to see side by side.
+Hovering opens a card on a fine pointer, tapping opens it everywhere, and its
+footer opens the branch view's Files pane. Removals and renames stay out of the
+row and out of the cards, in the pairs' plain hover text, since a scanned list
+carries two classes and a card is opened one at a time.
+
+**This deliberately overlaps the branch detail**, and the overlap runs in the
+card's favour on cost: the detail fetches a file's content per card opened, while
+this one fetched every patch at once without meaning to, as part of a compare it
+needed anyway. What the detail still owns is the full dossier per file (the
+new-file and base-file tabs, the annotations) and the registry grouping. If the
+overlap keeps growing, the honest next move is to put the dossier in the card
+rather than to keep two readings of one branch.
 
 **The palette says one thing each.** Neutral is changed, green is added, amber
 is stranded. Green used to tint the whole control when the survey found nothing
