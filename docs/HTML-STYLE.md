@@ -15,7 +15,7 @@ relitigating it per page
 
 **No explanatory prose.** GitHub doesn't explain and neither should we. Use structure, labels, and controls to show relationships. A range control starting at 2015 says the data starts in 2015. Explanatory prose is unfinished work: unused ideas, loitering.
 
-**A `title` is not where meaning goes.** It never appears on a phone, arrives late on a desktop, and holds nothing a reader can open. Use it for a label a reader could have guessed: an icon-only button naming its action. Never for a unit, a caveat, or the only statement of a fact, since a mark whose whole meaning is its tooltip is an unlabeled mark. Give the fact the page, or give it a panel a tap opens, which can carry the breakdown and the links a tooltip cannot.
+**A `title` is not where meaning goes.** It never appears on a phone, so a mark whose whole meaning is its tooltip is an unlabeled mark. Give the fact the page, or a panel a tap opens.
 
 **Don't narrow text to a reading column.** The pattern is `max-w-*` plus `mx-auto`, usually
 `max-w-2xl` through `max-w-4xl`, or `max-w-prose` at 65ch; `container mx-auto` is the same

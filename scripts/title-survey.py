@@ -2,9 +2,9 @@
 """Advisory survey: meaning that lives only in a `title` attribute.
 
 HTML-STYLE.md's rule is that a `title` is not where meaning goes: it never
-appears on a phone, arrives late on a desktop, and holds nothing a reader can
-open. The failure is quiet, because on the machine where the UI is built the
-tooltip does appear, so a fact parked there looks shipped. This detector is
+appears on a phone, so a mark whose whole meaning is its tooltip is an
+unlabeled mark. The failure is quiet, because on the machine where the UI is
+built the tooltip does appear, so a fact parked there looks shipped. This detector is
 mechanical, advisory, and never blocking, in the idiom of link-survey.py,
 unclaimed-code-survey.py and duplicated-claims-survey.py: run it, read the
 list, fix or shrug. It reports candidates, not findings.
