@@ -344,9 +344,39 @@ Stage-view actions:
   to it), so a comparison is available whenever two or more are staged, nothing
   has to be chosen to get one, and with exactly two it is simply "the two." What
   the position proposes the reader can override (the pair, below). The
-  comparison carries the tagged rows, Copy, the review prompts (link-carried
-  bespoke asks first, then the fixed set), and **Open in Diff** for the Diff
-  page's split view and real patch. A `&mode=diff` link opens the reader with
+  comparison carries Copy, the review prompts (link-carried bespoke asks first,
+  then the fixed set), **Open in Diff** for the Diff page's folding and its
+  apply step, and **three readings of the one alignment**:
+
+  | View | Is | Default |
+  | --- | --- | --- |
+  | **Unified** | one column of tagged lines, full context | under 768px |
+  | **Split** | two columns, a changed line and its replacement on one row, with the moved words marked inside it | 768px and up |
+  | **Patch** | a real unified diff: `@@` hunks at three lines of context, the two file lines, copyable | never |
+
+  The ops are diffed **once** and each view renders from them, which makes
+  switching free and is the only thing that makes the three agree. The
+  width-dependent default is `pages/diff-tool.html`'s rule and its reason: two
+  columns of code do not fit on a phone, and a reader who opens a comparison
+  there should not have to fix that first. It is read once at mount, so a
+  rotation does not move it mid-read, and the choice then survives closing the
+  comparison, unlike the pick, because it is a preference about how you read
+  rather than a choice about what you are reading.
+
+  **Copy hands over what is on screen:** the real patch in Patch view, the
+  tagged block in the other two. One verb, one button, and the title says which.
+
+  Two pieces of that moved into
+  [`kits/text-diff.js`](../lib/kits/text-diff.js) rather than being written
+  here, because the page and the stage would otherwise hold a copy each.
+  `patch()` is the hunk assembly, whose failure mode is silent: an off-by-one in
+  a hunk header still renders as a tidy patch and fails only when something
+  tries to apply it. `wordParts()` is the word diff as tokens rather than
+  markup, since the page styles its marks from a stylesheet and the stage has
+  none to use (the house rule is no vanilla CSS); `words()` is now that function
+  rendered the page's way, so one dynamic-programming walk serves both.
+
+  A `&mode=diff` link opens the reader with
   the comparison already drilled over it, rather than selecting a control on the
   page. The reader's one way in names what a tap does rather than how it is
   wired: `Compare a.md ↔ b.md`;

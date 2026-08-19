@@ -1396,6 +1396,119 @@ test('backing out of the comparison lands where the walk got to', async () => {
   data.preview = null;
 });
 
+// ── The three views ─────────────────────────────────────────────────────────
+//
+// One alignment read three ways. The ops are diffed once and each view renders
+// from them, which is what makes switching free and what makes the three agree.
+
+const threeUp = async (view) => {
+  reset();
+  store.stage = [
+    { local: true, id: 701, name: 'a.md', path: 'a.md', size: 0, isText: true,
+      text: 'keep one\nthe quick brown fox\nkeep two\ndropped\n' },
+    { local: true, id: 702, name: 'b.md', path: 'b.md', size: 0, isText: true,
+      text: 'keep one\nthe quick red fox\nkeep two\n' },
+  ];
+  await shown();
+  data.cmpView = view;
+  await data.view(data.items[0]);
+  await shown();
+  await data.openCompare();
+  await shown();
+  const el = data._cmpDeck.deck.track.children[0];
+  return { el, text: el.textContent.replace(/\s+/g, ' ').trim() };
+};
+
+test('the picker offers three views and switching rebuilds without re-diffing', async () => {
+  const { el } = await threeUp('unified');
+  const tabs = [...el.querySelectorAll('[role="tab"]')].map(b => b.textContent.trim());
+  assert.deepEqual(tabs, ['Unified', 'Split', 'Patch']);
+  data.setCmpView('patch');
+  await shown();
+  assert.equal(data.cmpView, 'patch');
+  data.preview = null;
+});
+
+test('unified is one column of tagged lines', async () => {
+  const { text } = await threeUp('unified');
+  assert.match(text, /- the quick brown fox/);
+  assert.match(text, /\+ the quick red fox/);
+  assert.match(text, /- dropped/);
+  data.preview = null;
+});
+
+test('split pairs a changed line into one row, and marks the words inside it', async () => {
+  const { el } = await threeUp('split');
+  const grid = [...el.querySelectorAll('div')].find(d => d.className.includes('grid-cols-['));
+  assert.ok(grid, 'a two-column grid is drawn');
+  // Two cells per row, so the sides cannot slide out of step.
+  assert.equal(grid.children.length % 2, 0);
+  // The changed line is ONE row: its delete and its insert sit side by side.
+  const cells = [...grid.children].map(c => c.textContent);
+  const left = cells.findIndex(t => t.includes('brown'));
+  assert.ok(left >= 0 && left % 2 === 0, 'the old line is on the left');
+  assert.match(cells[left + 1], /red/, 'and its replacement is beside it, not below');
+  // Word marks: only the word that moved is wrapped, not the whole line.
+  const marks = [...grid.querySelectorAll('span')].filter(sp => sp.className.includes('bg-'));
+  const marked = marks.map(m => m.textContent);
+  assert.ok(marked.includes('brown'), 'the removed word is marked');
+  assert.ok(marked.includes('red'), 'and the added one');
+  assert.ok(!marked.includes('quick'), 'what did not move is left alone');
+  data.preview = null;
+});
+
+test('a line with no counterpart leaves the other side blank rather than pairing', async () => {
+  const { el } = await threeUp('split');
+  const grid = [...el.querySelectorAll('div')].find(d => d.className.includes('grid-cols-['));
+  const cells = [...grid.children];
+  const at = cells.findIndex(c => c.textContent.includes('dropped'));
+  assert.ok(at >= 0 && at % 2 === 0);
+  assert.equal(cells[at + 1].textContent.trim(), '', 'nothing invented on the right');
+  data.preview = null;
+});
+
+test('patch is a real unified diff, with hunk headers and file lines', async () => {
+  const { text } = await threeUp('patch');
+  assert.match(text, /--- a\/a\.md/);
+  assert.match(text, /\+\+\+ b\/b\.md/);
+  assert.match(text, /@@ -\d+,\d+ \+\d+,\d+ @@/);
+  data.preview = null;
+});
+
+test('copy hands over the patch in Patch view, and the tagged block otherwise', async () => {
+  await threeUp('patch');
+  clipWrites.length = 0;
+  await data.copyDiff();
+  assert.match(clipWrites.at(-1), /^--- a\/a\.md\n\+\+\+ b\/b\.md\n@@ /,
+    'the real patch, which is the reason that view exists');
+
+  data.setCmpView('unified');
+  await shown();
+  clipWrites.length = 0;
+  await data.copyDiff();
+  assert.match(clipWrites.at(-1), /^--- A: /, 'and the labeled block elsewhere');
+  assert.doesNotMatch(clipWrites.at(-1), /@@ /);
+  data.preview = null;
+});
+
+test('identical sides say so in Patch rather than drawing an empty box', async () => {
+  reset();
+  const same = 'one\ntwo\n';
+  store.stage = [
+    { local: true, id: 711, name: 'x.md', path: 'x.md', size: 0, isText: true, text: same },
+    { local: true, id: 712, name: 'y.md', path: 'y.md', size: 0, isText: true, text: same },
+  ];
+  await shown();
+  data.cmpView = 'patch';
+  await data.view(data.items[0]);
+  await shown();
+  await data.openCompare();
+  await shown();
+  assert.equal(data.diffPatch, '', 'no hunks to emit');
+  assert.match(data._cmpDeck.deck.track.children[0].textContent, /identical/);
+  data.preview = null;
+});
+
 test('closing the reader takes the comparison with it', async () => {
   reset();
   store.stage = [
@@ -1446,6 +1559,7 @@ test('each diff slide holds its own pair, and the copy follows the reader', asyn
   await shown();
   await data.view(data.items[0]);
   await shown();
+  data.cmpView = 'unified';   // this test is about the PAIR, not the rendering
   await data.openCompare();
   await shown();
 

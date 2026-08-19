@@ -1243,57 +1243,24 @@ function diffApp() {
     nameA() { return this.slots.A.name || 'a.txt'; },
     nameB() { return this.slots.B.name || this.slots.A.name || 'b.txt'; },
 
+    // The hunk assembly is kits/text-diff.js's (textDiff.patch), shared with
+    // the stage's comparison. It used to live here, which made this page the
+    // only place a patch could be built and meant a second surface wanting one
+    // had to copy forty lines whose failure mode is silent: an off-by-one in a
+    // hunk header still renders as a tidy patch and only fails when something
+    // tries to apply it. What stays here is this page's own: which names go on
+    // the two file lines, and the display classification.
     genPatch() {
       const cache = this.plainOps();
-      const a = cache.al, b = cache.bl;
-      const ctx = this.patchContext;
-      const t = [];
-      let oi = 0, ni = 0;
-      for (const op of cache.ops) {
-        if (op.type === 'eq') t.push({ tag: ' ', old: oi++, new: ni++, text: a[op.a] });
-        else if (op.type === 'del') t.push({ tag: '-', old: oi++, new: null, text: a[op.a] });
-        else t.push({ tag: '+', old: null, new: ni++, text: b[op.b] });
-      }
-      const n = t.length;
-      let out = '';
-      if (t.some(x => x.tag !== ' ')) {
-        const keep = new Array(n).fill(false);
-        for (let i = 0; i < n; i++)
-          if (t[i].tag !== ' ')
-            for (let d = -ctx; d <= ctx; d++) {
-              const p = i + d;
-              if (p >= 0 && p < n) keep[p] = true;
-            }
-        const lines = ['--- a/' + this.nameA(), '+++ b/' + this.nameB()];
-        let i = 0;
-        while (i < n) {
-          if (!keep[i]) { i++; continue; }
-          const s = i;
-          while (i < n && keep[i]) i++;
-          let oldStart = null, newStart = null, oc = 0, nc = 0;
-          const body = [];
-          for (let q = s; q < i; q++) {
-            const x = t[q];
-            if (x.tag === ' ' || x.tag === '-') { if (oldStart === null) oldStart = x.old; oc++; }
-            if (x.tag === ' ' || x.tag === '+') { if (newStart === null) newStart = x.new; nc++; }
-            body.push((x.tag === ' ' ? ' ' : x.tag) + x.text);
-          }
-          if (oldStart === null) oldStart = s > 0 ? t[s - 1].old + 1 : 0;
-          if (newStart === null) newStart = s > 0 ? t[s - 1].new + 1 : 0;
-          lines.push('@@ -' + (oldStart + 1) + ',' + oc + ' +' + (newStart + 1) + ',' + nc + ' @@');
-          for (const l of body) lines.push(l);
-        }
-        out = lines.join('\n') + '\n';
-      }
-      this.patch = out;
-      this.patchLines = (out ? out.split('\n') : ['(the two sides are identical)']).map(text => {
-        let cls = '';
-        if (text.startsWith('--- ') || text.startsWith('+++ ')) cls = 'meta';
-        else if (text.startsWith('@@')) cls = 'hunk';
-        else if (text.startsWith('+')) cls = 'add';
-        else if (text.startsWith('-')) cls = 'del';
-        return { text, cls };
+      this.patch = textDiff.patch(cache.ops, cache.al, cache.bl, {
+        context: this.patchContext, nameA: this.nameA(), nameB: this.nameB(),
       });
+      this.patchLines = this.patch
+        ? textDiff.patchRows(this.patch).map(r => ({
+            text: r.line,
+            cls: r.t === 'ctx' ? '' : r.t,
+          }))
+        : [{ text: '(the two sides are identical)', cls: '' }];
     },
 
     applyPatch(srcText, patchText) {

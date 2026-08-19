@@ -678,6 +678,18 @@ An explained double-count costs a line of output; a dropped marker costs the
 audit its only claim to being auditable. *(seen: 2026-08-09)*
 → [markers/status.py](../.claude/skills/markers/status.py)
 
+## `pages-shots` reports success when its argument matched no page (2026-08-19)
+
+A per-session thumbnail refresh ran as `npm run pages-shots -- diff-tool`, the
+form `CLAUDE.md` names, and printed `=== pages-shots: 0/0 ok ===` while shooting
+nothing. The filter matches `p.rel`, which carries the extension, so a bare name
+selects the empty set; `results.every(r => r.ok)` is vacuously true on it, so the
+run exits 0 and reads as done. Corrected move: pass the path with its extension
+(`pages/diff-tool.html`), and read the count rather than the word `ok`. The
+generator should refuse an argument that selected nothing, which is the real fix.
+→ [../tools/build/pages-shots.mjs](../tools/build/pages-shots.mjs), and the
+invocation in [../CLAUDE.md](../CLAUDE.md) under "Per-session refresh".
+
 ## A private repo's blob 404s for anyone not signed in, in-app browsers included (2026-08-19)
 
 A page offered a `Sketch on GitHub` link into a private repo and it 404'd on the

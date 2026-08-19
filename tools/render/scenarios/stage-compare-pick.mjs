@@ -89,10 +89,37 @@ export default async function (page) {
   });
   await page.waitForTimeout(500);
 
+  const views = await page.evaluate(async () => {
+    const data = Alpine.$data(document.querySelector('[x-data*="stager"]'));
+    const out = {};
+    for (const v of ['unified', 'split', 'patch']) {
+      data.setCmpView(v);
+      await new Promise(r => setTimeout(r, 700));
+      const el = data._cmpDeck.deck.track.children[data._cmpDeck.deck.active()];
+      const grid = [...el.querySelectorAll('div')].find(d => d.className.includes('grid-cols-['));
+      out[v] = {
+        drawn: el.textContent.replace(/\s+/g, ' ').trim().length,
+        grid: !!grid,
+        cells: grid ? grid.children.length : 0,
+        wordMarks: grid ? [...grid.querySelectorAll('span')].filter(sp => sp.className.includes('bg-')).length : 0,
+        hunks: (el.textContent.match(/@@ /g) || []).length,
+      };
+    }
+    // End on split, which is what a desktop shot should carry.
+    data.setCmpView('split');
+    data.compareOpen = false;
+    data._cmpRebuild();
+    await new Promise(r => setTimeout(r, 700));
+    return out;
+  });
+  await page.waitForTimeout(400);
+
   console.log('\n--- the compare picker ---');
   console.log('  opened on the first file, then drilled into the comparison:');
   for (const [k, v] of Object.entries(opened)) console.log(`    ${k}: ${JSON.stringify(v)}`);
   console.log('  after picking the last:');
   for (const [k, v] of Object.entries(picked)) console.log(`    ${k}: ${JSON.stringify(v)}`);
+  console.log('  the three views:');
+  for (const [k, v] of Object.entries(views)) console.log(`    ${k}: ${JSON.stringify(v)}`);
   console.log('');
 }
