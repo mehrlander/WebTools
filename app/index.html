@@ -1722,6 +1722,30 @@ function app(){ return {
               desc: 'Leave the embed and open the framed page full-viewport.',
               run: () => ({ nav: href }) }];
   },
+
+  // FAB LONG-PRESS MENU contract (`menu`), the third beside `actions` and
+  // `toggles`. One row: the app-wide paste, which belongs here rather than in
+  // the drawer because it is a verb you want at the cost of one gesture on a
+  // control already floating over every view, and because the drawer would
+  // spend the tap's user activation getting itself open (a clipboard read has
+  // to ride the gesture that asked for it, which is why pasteAnywhere awaits
+  // nothing before takeClipboard).
+  //
+  // The header's Paste button stays. It is the DISCOVERABLE route, visible
+  // without knowing a gesture exists, and it is what was measured working on a
+  // phone; this is the second way to the same call, not a replacement for it.
+  // One implementation (pasteAnywhere) behind now three triggers, counting the
+  // bench's own button.
+  //
+  // A long press is not a static condition, so the row is offered
+  // unconditionally rather than hidden when the clipboard looks empty: nothing
+  // can read the clipboard to find out without the very gesture the row exists
+  // to collect.
+  get menu(){
+    return [{ label: 'Paste onto the Stage', icon: 'ph-clipboard-text',
+              title: 'Read the clipboard and stage what is on it',
+              run: () => this.pasteAnywhere() }];
+  },
   view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'stage' | 'config' | 'app' | 'public'
   // Window-level drag counter for the app-wide drop (init wires the listeners;
   // nested enter/leave is why it counts rather than flips), and what the cue
@@ -4728,7 +4752,11 @@ function app(){ return {
     try {
       const { added } = await window.StageIntake.takeClipboard();
       if (!added.length) {
-        toast('warning', 'Clipboard is empty or unreadable', 'alert-error', 4000);
+        // Reported as information, not as an error: see the note on the bench's
+        // pasteIn(), which this is the other trigger for. Tapping Paste with an
+        // empty clipboard is the ordinary case, and the red alert it used to
+        // raise read as a broken button.
+        toast('clipboard-text', 'Nothing came off the clipboard', 'alert-info', 2500);
       } else if (this.view !== 'stage') {
         this.goStage();
         if (added.length === 1) window.StageIntake.focus(added[0]);
