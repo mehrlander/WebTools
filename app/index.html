@@ -1831,6 +1831,27 @@ function app(){ return {
   // token-gated and empty without a token.
   estateRepos: [], // resolved [{repo, short, icon, group, order}]
   estateConfigs: {}, // repo -> its .web-tools.json, from the same cache pass
+  // ── The hide list ────────────────────────────────────────────────────────
+  // Membership and every descriptive field are properties OF A REPO, written
+  // in that repo's own config; this one is not. "I would rather not look at
+  // this" is a statement about the VIEWER, not about the repo, and it has to
+  // be reversible from here without a write to the repo it names, so it lives
+  // beside the other viewer-owned estate content in the private registry: a
+  // `hidden` array of owner/repo strings in the registry's own
+  // .web-tools.json, read out of the config cache the sidebar already loads.
+  // A hidden repo keeps `estate: true` and every field it declared, and comes
+  // back unchanged when it is shown again. `conventions: 'optout'` remains the
+  // repo-side answer to the neighbouring question (is this repo part of the
+  // estate at all), and the two do not overlap: optout is a decision about the
+  // repo, hiding is a decision about the dashboard.
+  estateHidden: [],        // the effective list, resolved at each sidebar load
+  estateHiddenReady: false, // false until the first cache read resolves it
+  // A toggle lands in the registry at once but reaches the cache only when the
+  // config crawl next runs, so the write leaves an override behind and the
+  // override retires itself once the cache agrees. Clearing it per load would
+  // bounce a just-hidden repo back onto the sidebar for a pass, which reads as
+  // a failed write; the Unfiled rows carry the same idiom for the same reason.
+  _hiddenOverride: null,
   // ── Branch overlay (?overlay=<branch>): preview the estate as if that
   // branch were merged wherever it exists. Sessions name ONE branch across
   // every repo they touch (a workstream), so a same-named branch is a
@@ -2143,6 +2164,10 @@ function app(){ return {
         // Under an overlay, splice each overlaid repo's live branch manifest
         // over its cached entry before anything derives from the cache.
         await this.overlayEntries(entries);
+        // The hide list rides in on the same read: it is a field of the
+        // registry's OWN config, and the registry is one of the repos the
+        // crawl already covers, so honouring it costs no second fetch.
+        const hidden = this.resolveHidden(entries[this.REGISTRY_REPO]?.config);
         for (const [repo, e] of Object.entries(entries)) {
           const cfg = e?.config;
           if (!cfg) continue;
@@ -2150,6 +2175,13 @@ function app(){ return {
           // and parsed, and menu-time questions (does this repo declare an
           // outbox?) should not cost a second fetch.
           configs[repo] = cfg;
+          // A hidden repo contributes NOTHING to the estate's lists: no
+          // sidebar row, and none of its promoted pages as app views. Its
+          // config stays in the map above, so the shell can still answer
+          // questions about it (the menu's Show row is the first caller) and
+          // opening it by address keeps working, which is what makes hiding a
+          // display decision rather than a departure.
+          if (hidden.has(repo)) continue;
           if (cfg.estate === true) {
             repos.push({
               repo,
@@ -2188,6 +2220,61 @@ function app(){ return {
       this.enrichSidebarPrivacy();   // independent; the list renders without it
       this.loadRail(configs);        // likewise: one extra GET, off the render path
     } catch { this.appViews = []; this.estateRepos = []; this.estateConfigs = {}; }
+  },
+
+  // ── The hide list: read, write, and who reads it ─────────────────────────
+  // One resolver, so the sidebar and the Repos grid cannot disagree about who
+  // is hidden. It takes the registry's own config and returns the effective
+  // set, which is the stored list except while a toggle's override is still
+  // waiting for the config crawl to catch up.
+  resolveHidden(regCfg){
+    const stored = Array.isArray(regCfg?.hidden)
+      ? regCfg.hidden.filter(x => typeof x === 'string')
+      : [];
+    const same = (a, b) => a.length === b.length && a.every(x => b.includes(x));
+    if (this._hiddenOverride && same(this._hiddenOverride, stored)) this._hiddenOverride = null;
+    const list = this._hiddenOverride || stored;
+    this.estateHidden = [...list];
+    this.estateHiddenReady = true;
+    return new Set(list);
+  },
+  isRepoHidden(repo){ return this.estateHidden.includes(repo); },
+  // Flip one repo and write the registry back. The read is FRESH and its sha
+  // rides into the save, so two hides in quick succession fold onto each
+  // other rather than the loser overwriting the winner.
+  async toggleRepoHidden(repo){
+    if (!this.hasToken() || !repo) return;
+    this.closeRepoMenu();
+    const hide = !this.isRepoHidden(repo);
+    try {
+      const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
+      let cfg = {}, sha;
+      try {
+        const r = await reg.get('.web-tools.json', window.GH.FRESH);
+        cfg = JSON.parse(r.text); sha = r.sha;
+      } catch {}
+      if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) cfg = {};
+      const list = (Array.isArray(cfg.hidden) ? cfg.hidden : []).filter(x => typeof x === 'string' && x !== repo);
+      if (hide) list.push(repo);
+      list.sort();
+      // An empty list is dropped rather than written as []: the field means
+      // "these are hidden", and a repo hiding nothing should read as a config
+      // that never mentioned hiding.
+      if (list.length) cfg.hidden = list; else delete cfg.hidden;
+      if (typeof reg.save !== 'function' && window.gh?.load) await window.gh.load('gh-store.js');
+      await reg.save('.web-tools.json', cfg,
+                     (hide ? 'Hide ' : 'Show ') + repo + ' on the estate via show-repo',
+                     { sha });
+      this._hiddenOverride = list;
+      this.estateHidden = [...list];
+      await this.loadEstateSidebar();
+      // The Repos grid reads the same cache on its own clock, so tell it the
+      // list moved rather than waiting for the crawl that will confirm it.
+      document.dispatchEvent(new CustomEvent('web-tools:hidden-changed', { detail: { repo, hidden: hide } }));
+      notify((hide ? 'Hidden: ' : 'Showing: ') + repo, 'alert-success', 'check');
+    } catch (e) {
+      notify('Could not update the hide list: ' + (e?.message || e), 'alert-error', 'warning');
+    }
   },
 
   // The RAIL: the handful of destinations worth a tap from anywhere, read from
@@ -2575,7 +2662,13 @@ function app(){ return {
     let members = [], cfgByName = new Map();
     try {
       const cc = JSON.parse((await reg.get(window.RepoConfigCache.CACHE_PATH)).text);
-      const entries = Object.entries(cc.repos || {}).filter(([, e]) => e?.config?.estate === true);
+      // Hidden repos drop out here too, which is the point of the crawl being
+      // estate-scoped: a repo nobody is looking at should not be paying for a
+      // per-branch scan, and its rows would only render in views that already
+      // exclude it.
+      const hidden = this.resolveHidden(cc.repos?.[this.REGISTRY_REPO]?.config);
+      const entries = Object.entries(cc.repos || {})
+        .filter(([n, e]) => e?.config?.estate === true && !hidden.has(n));
       members = entries.map(([n]) => n);
       // Each member's own .web-tools.json rides along from the same read, so a
       // repo's declared checks cost the crawl nothing extra to discover.
@@ -3953,11 +4046,29 @@ function app(){ return {
   //     to a repo three rows down is a menu answering a question the list has
   //     already answered.
   // Nothing expands, so nothing carries a chevron.
+  //
+  // Hide is the one row here that writes the REGISTRY rather than acting on
+  // the repo, and it is on this list rather than on a card because a hidden
+  // repo has no card: the same menu opens from the sidebar row, the estate
+  // card, and the Hidden section's row, so one row serves hiding and showing
+  // from wherever the repo is being looked at.
   get repoActionItems(){
+    const repo = this.menuRepo;
+    const hidden = this.isRepoHidden(repo);
+    const member = hidden || this.estateConfigs?.[repo]?.estate === true;
     return [
       { key: 'config', label: 'Config', icon: 'ph-gear-six' },
       this.menuRepoOutbox && { key: 'outbox', label: 'Open outbox', icon: 'ph-tray-arrow-up' },
       { key: 'copy', label: 'Copy browse link', icon: 'ph-link' },
+      this.hasToken() && member && {
+        key: 'hide',
+        label: hidden ? 'Show on the estate' : 'Hide from the estate',
+        icon: hidden ? 'ph-eye' : 'ph-eye-closed',
+        title: hidden
+          ? 'Put ' + repo + ' back on the sidebar and the Repos grid'
+          : 'Keep ' + repo + ' off the estate lists (registry hide list; reversible)',
+        run: () => this.toggleRepoHidden(repo),
+      },
     ].filter(Boolean);
   },
   // Where the menu's repo lives on GitHub (lib/kits/github-links.js). The ref rides

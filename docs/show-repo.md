@@ -514,6 +514,33 @@ repo's own config through the viewer's token (candidates come from the header
 picker's account list, minus current members). So both add and edit write the
 **repo**, never a registry list.
 
+**Hiding one is the exception, and it writes the registry.** A member can be
+kept off the dashboard without leaving it, through the `hidden` list in the
+private registry's own `.web-tools.json` (an array of `owner/repo`). The
+asymmetry is the argument: membership and every descriptive field are
+properties of the repo, and *not wanting to look at something* is a property of
+the person looking, so it belongs where the other viewer-owned estate content
+already lives, beside the pins and the lists. Nothing is written to the repo it
+names, which is what makes it reversible from here.
+
+A hidden repo drops out of the sidebar Repos index, the app-view nav (its
+promoted `pages` with it), the Repos grid, and the activity crawl, so it stops
+costing a per-branch scan as well as attention. It keeps `estate: true` and
+every field it declared, and opening it by address still works. The **Hide from
+the estate** row on the repo actions menu writes the list from the sidebar row,
+the card, or the Hidden row alike, and the Repos view carries a folded
+**Hidden** section whose count is the only thing visible until it is opened:
+one line, and a Show button per row, since a list you cannot undo from is a
+trap. The write leaves a local override behind that retires itself once the
+config crawl agrees, the same self-retiring idiom the Unfiled rows use, so a
+just-hidden repo does not reappear for a pass and read as a failed write.
+
+It does not compete with `conventions: 'optout'` below, though the questions
+sound alike. Optout is the repo's own statement that it is not part of this
+estate; `hidden` is the dashboard being told what to draw, for a repo that
+still is. Setting `estate: false` instead would drop the repo's group, note,
+icon and order on the way out and make coming back a reconstruction.
+
 **Unfiled: the rest of the account**, below a rule at the foot of the grid. The
 membership filter above discards most of what the load already fetched, since
 `gh.repos()` returns every repo you own and the cards keep only the opt-ins, so a
