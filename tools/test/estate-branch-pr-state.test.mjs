@@ -338,16 +338,21 @@ test('the card badge counts what the chip counts, from one derivation', () => {
 });
 
 test('the badge opens the pane already narrowed to what it counted', () => {
+  // The Branches pill retired on 2026-08-19 and its list became a lens of the
+  // Sessions pane, so the jump lands there with the lens already switched. The
+  // scope and repo narrowing are unchanged: a badge that counts two abandoned
+  // branches has to open on those two.
   seed({
     branches: [{ name: 'claude/dropped', group: 'stranded' }],
     branchPRs: [{ head: 'claude/dropped', number: 300, state: 'closed', draft: false, count: 1 }],
   });
   const went = [];
-  window.__shell.goActivity = () => went.push('activity');
+  window.__shell.goSessions = () => went.push('sessions');
   data.openAbandoned('acme/widget');
   assert.equal(data.branchScope, 'abandoned');
   assert.equal(data.openRepoFilter, 'acme/widget');
-  assert.deepEqual(went, ['activity']);
+  assert.equal(data.sessionLens, 'branches');
+  assert.deepEqual(went, ['sessions']);
 });
 
 test('the row menu reaches a merged PR, and still offers a new one', () => {

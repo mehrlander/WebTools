@@ -62,7 +62,7 @@
 <body class="min-h-screen bg-base-200 text-base-content" x-data="proto()" x-cloak>
 
 <!-- ══ PROTOTYPE-ONLY control strip (no counterpart in review.html) ══ -->
-<div class="bg-warning/15 border-b border-warning/30">
+<div class="bg-warning/10 border-b border-warning/30">
   <div class="max-w-4xl mx-auto px-4 py-1.5 flex items-center gap-2 text-xs">
     <span class="font-semibold opacity-70">prototype:</span>
     <div class="join">
@@ -418,9 +418,9 @@ document.addEventListener('alpine:init', function () {
       get identical() { return this.newText !== null && this.baseText !== null && this.newText === this.baseText; },
       get patchLines() {
         return (this.patch || '').split('\n').map(t => ({ t,
-          cls: t.startsWith('+') ? 'bg-success/15 text-success-content'
-             : t.startsWith('-') ? 'bg-error/15 text-error-content'
-             : t.startsWith('@@') ? 'bg-info/15' : '' }));
+          cls: t.startsWith('+') ? 'bg-success/10 text-success-content'
+             : t.startsWith('-') ? 'bg-error/10 text-error-content'
+             : t.startsWith('@@') ? 'bg-info/10' : '' }));
       },
 
       toggle() { this.open = !this.open; if (this.open) this.$nextTick(() => this._render()); else this._teardown(); },
