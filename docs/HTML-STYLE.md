@@ -59,6 +59,15 @@ renderer. Do not convert working pages for symmetry.
 **One accent, one meaning.** Assign colour by semantic role, not decoration. In a
 comparison, lock each side’s treatment across every view.
 
+**Opacity in tens.** `bg-success/10`, `text-base-content/60`. Steps off the tens
+(`/5`, `/15`, `/45`) and the bracket form (`/[5%]`) are not generated here, and
+they fail in the worst possible direction: a background falls back to
+transparent and TEXT falls back to FULL strength, so a line meant to be quiet
+comes out louder than the line it sits under. Nothing errors and nothing looks
+broken, which is why it survives review. Measured 2026-08-19 against the app's
+own stylesheet; the estate still carries about 120 of them, `branchAccent`'s
+state tints among them, which have never drawn.
+
 ## The shape that follows
 
 ```text
