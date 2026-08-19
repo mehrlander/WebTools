@@ -1,4 +1,4 @@
-// The Activity pane's session-first tree: which branch nests under which act.
+// The Sessions pane's tree: which branch nests under which act.
 //
 // Two caches meet here and neither can place every row on its own, so the join
 // is the thing under test rather than the markup. Three ways a branch reaches a
@@ -57,14 +57,18 @@ const record = (id, { agent = '', repos = [], day = '2026-08-10' } = {}) =>
 const set = (branches, records) => {
   data.activity = activity(branches);
   data.sessionRows_ = records;
+  // The pane opens on Day and the fixtures are dated, so every test states the
+  // scope it means rather than inheriting one that would empty the list.
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
 };
-const nodeFor = (id) => data.actTree.nodes.find(n => n.id === id);
+const nodeFor = (id) => data.sessionTree.nodes.find(n => n.id === id);
 
 test('a branch nests under the record its commit trailer names', () => {
   set([branch('feature', { sessions: [SESS('AAA')] })],
       [record('rec1', { agent: SESS('AAA') })]);
   assert.equal(nodeFor('rec1').children.map(b => b.name).join(), 'feature');
-  assert.equal(data.actTree.stats.viaAgent, 1);
+  assert.equal(data.sessionTree.stats.viaAgent, 1);
 });
 
 test('a record with no session id of its own is still reached by branch name', () => {
@@ -73,7 +77,7 @@ test('a record with no session id of its own is still reached by branch name', (
   set([branch('feature')],
       [record('rec1', { repos: [{ name: 'widget', branch: 'feature' }] })]);
   assert.equal(nodeFor('rec1').children.map(b => b.name).join(), 'feature');
-  assert.equal(data.actTree.stats.viaName, 1);
+  assert.equal(data.sessionTree.stats.viaName, 1);
 });
 
 test('the trailer wins over the name when the two disagree', () => {
@@ -86,7 +90,7 @@ test('the trailer wins over the name when the two disagree', () => {
 
 test('a trailer with no record behind it becomes one stub, not one per branch', () => {
   set([branch('a', { sessions: [SESS('GHOST')] }), branch('b', { sessions: [SESS('GHOST')] })], []);
-  const stubs = data.actTree.nodes.filter(n => n.kind === 'stub');
+  const stubs = data.sessionTree.nodes.filter(n => n.kind === 'stub');
   assert.equal(stubs.length, 1);
   assert.equal(stubs[0].children.map(b => b.name).sort().join(), 'a,b');
   assert.equal(stubs[0].url, SESS('GHOST'));
@@ -94,15 +98,15 @@ test('a trailer with no record behind it becomes one stub, not one per branch', 
 
 test('a branch no key reaches is an orphan, and is counted rather than dropped', () => {
   set([branch('hand-made')], []);
-  assert.equal(data.actTree.orphans.map(b => b.name).join(), 'hand-made');
-  assert.equal(data.actTree.stats.orphan, 1);
-  assert.equal(data.actTree.stats.placed, 0);
+  assert.equal(data.sessionTree.orphans.map(b => b.name).join(), 'hand-made');
+  assert.equal(data.sessionTree.stats.orphan, 1);
+  assert.equal(data.sessionTree.stats.placed, 0);
 });
 
 test('every branch row is either placed or an orphan', () => {
   set([branch('a', { sessions: [SESS('AAA')] }), branch('b'), branch('c', { sessions: [SESS('GHOST')] })],
       [record('rec1', { agent: SESS('AAA') })]);
-  const st = data.actTree.stats;
+  const st = data.sessionTree.stats;
   assert.equal(st.rows, 3);
   assert.equal(st.placed + st.orphan, st.rows);
   assert.equal(st.viaAgent + st.viaName + st.stub, st.placed);
@@ -114,25 +118,45 @@ test('a branch worked across two sessions keeps both, so the row can mark it', (
   assert.equal(nodeFor('rec1').children[0].sessions.length, 2);
 });
 
-test('a record whose branches are outside the crawl window shows as barren, not absent', () => {
+test('a record whose branches are outside the crawl window still gets a row', () => {
+  // The row says "no branch in the crawl's window" rather than vanishing: a
+  // session that committed nothing and a session whose branches are too old to
+  // have been crawled are both here, and neither is silently dropped.
   set([], [record('rec1', { agent: SESS('AAA') })]);
   assert.equal(nodeFor('rec1').children.length, 0);
-  const barren = data.actScopes.find(s => s.key === 'barren');
-  assert.equal(barren.count, 1);
+  assert.equal(data.sessionNodes.length, 1);
 });
 
-test('scope counts split the node list without overlap', () => {
+test('the list holds records and stubs together, newest first', () => {
   set([branch('a', { sessions: [SESS('AAA')] }), branch('b', { sessions: [SESS('GHOST')] })],
       [record('rec1', { agent: SESS('AAA') }), record('quiet')]);
-  const by = Object.fromEntries(data.actScopes.map(s => [s.key, s.count]));
-  assert.equal(by.all, 3);                 // two records plus one stub
-  assert.equal(by.record, 2);
-  assert.equal(by.stub, 1);
-  assert.equal(by.record + by.stub, by.all);
-  assert.equal(by.barren, 1);              // the record that committed nothing
+  const kinds = data.sessionNodes.map(n => n.kind).sort().join();
+  assert.equal(data.sessionNodes.length, 3);   // two records plus one stub
+  assert.equal(kinds, 'record,record,stub');
 });
 
-test('a session holding an open PR is Live; one holding only merged work is not', () => {
+test('Snagged is about a record, so a stub is not in it', () => {
+  // "No failures" and "no record of failures" are different answers, and only
+  // one of them is about the session.
+  set([branch('a', { sessions: [SESS('GHOST')] })],
+      [record('rec1', { agent: SESS('AAA'), }), ]);
+  data.sessionRows_ = [{ ...record('rec1', { agent: SESS('AAA') }), failures: 3 }];
+  data.sessionScope = 'failed';
+  assert.equal(data.sessionNodes.length, 1);
+  assert.equal(data.sessionNodes[0].kind, 'record');
+});
+
+test('the repo chip reaches a node through its branches, not only its checkouts', () => {
+  // The flat list could only filter by the repos a record named as a working
+  // directory. A branch in a repo the record never chdir-ed into still belongs
+  // to that repo, and the chip now says so.
+  set([branch('a', { sessions: [SESS('AAA')] })],
+      [record('rec1', { agent: SESS('AAA'), repos: [{ name: 'elsewhere', branch: 'other' }] })]);
+  data.sessionRepoFilter = 'widget';
+  assert.equal(data.sessionNodes.length, 1);
+});
+
+test('a nested branch carries its open PR, so the row can state it', () => {
   data.activity = {
     'acme/widget': { defaultBranch: 'main',
                      openPRs: [{ number: 7, head: 'open-one' }],
@@ -140,24 +164,24 @@ test('a session holding an open PR is Live; one holding only merged work is not'
                                         branch('done', { sessions: [SESS('BBB')] })] } },
   };
   data.sessionRows_ = [record('live', { agent: SESS('AAA') }), record('shipped', { agent: SESS('BBB') })];
-  const by = Object.fromEntries(data.actScopes.map(s => [s.key, s.count]));
-  assert.equal(by.live, 1);
-  assert.equal(data.actRows.length, 2);    // scope is All by default
+  data.sessionScope = 'all';
+  assert.equal(nodeFor('live').children[0].pr.number, 7);
+  assert.equal(nodeFor('shipped').children[0].pr, null);
 });
 
 test('nodes are newest first and a stub is dated by its newest branch', () => {
   set([branch('old', { sessions: [SESS('GHOST')], date: '2026-08-01' }),
        branch('new', { sessions: [SESS('GHOST')], date: '2026-08-12' })],
       [record('rec1', { agent: SESS('ZZZ'), day: '2026-08-05' })]);
-  const stub = data.actTree.nodes.find(n => n.kind === 'stub');
+  const stub = data.sessionTree.nodes.find(n => n.kind === 'stub');
   assert.equal(stub.day, '2026-08-12');
-  assert.equal(data.actTree.nodes[0].key, stub.key);        // 08-12 leads 08-05
+  assert.equal(data.sessionTree.nodes[0].key, stub.key);        // 08-12 leads 08-05
   assert.equal(stub.children.map(b => b.name).join(), 'new,old');
 });
 
 test('the join label states what it could not place', () => {
   set([branch('a', { sessions: [SESS('AAA')] }), branch('b')],
       [record('rec1', { agent: SESS('AAA') })]);
-  assert.equal(data.actJoinLabel, '1 of 2 branches placed');
-  assert.match(data.actJoinNote, /reach no session at all/);
+  assert.equal(data.sessionJoinLabel, '1 of 2 branches placed');
+  assert.match(data.sessionJoinNote, /reach no session at all/);
 });
