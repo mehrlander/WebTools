@@ -82,6 +82,9 @@ const plain_ = (v) => JSON.parse(JSON.stringify(v));
 // first, which is also what a reader does between two readings; the transform
 // takeover is the same kit and gets the same treatment.
 const reset = () => {
+  // The comparison covers the reader, so it comes down first: dropping a parent
+  // out from under a child leaves the child stacked on nothing.
+  if (data._cmpDeck) { data._cmpDeck.drop(); data._cmpDeck = null; }
   if (data._pDeck) { data._pDeck.drop(); data._pDeck = null; }
   if (data._tfDeck) { data._tfDeck.drop?.(); data._tfDeck = null; }
   data._pNotes = {};
@@ -1310,19 +1313,87 @@ test('the preview toggles into a diff over that pair, and back to the file', asy
   await shown();
   await data.view(data.items[0]);
   await shown();
-  assert.equal(data.preview.mode, 'file');
+  assert.ok(data._pDeck, 'the reader is open');
+  assert.equal(data._cmpDeck, null, 'and no comparison over it');
 
-  await data.togglePreviewDiff();
+  await data.openCompare();
   await shown();
-  assert.equal(data.preview.mode, 'diff', 'same modal, different mode');
+  assert.ok(data._cmpDeck, 'the comparison is a second deck, one level down');
+  assert.ok(data._pDeck, 'and the reader is still open underneath it');
   assert.equal(data.diffA, 0);
   assert.equal(data.diffB, 1, 'the pair came from the position, not a select');
   assert.ok(data.diffRows, 'and it ran on the way in');
   assert.match(data.previewPairLabel(), /a\.md .* b\.md/);
 
-  await data.togglePreviewDiff();
+  // THE WHOLE REASON THIS IS A LEVEL. Dismissing used to take the reader out of
+  // the file as well, because the comparison shared the file's overlay and the
+  // header's ✕ was the only obvious way out of it.
+  data._cmpDeck.close();
   await shown();
-  assert.equal(data.preview.mode, 'file', 'and back');
+  assert.equal(data._cmpDeck, null, 'backing out leaves the comparison');
+  assert.ok(data._pDeck, 'and lands on the file, not outside it');
+  assert.equal(data.preview.name, 'a.md');
+  data.preview = null;
+});
+
+test('backing out of the comparison lands where the walk got to', async () => {
+  reset();
+  store.stage = [
+    { local: true, id: 411, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\n' },
+    { local: true, id: 412, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'two\n' },
+    { local: true, id: 413, name: 'c.md', path: 'c.md', size: 6, isText: true, text: 'three\n' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  await data.openCompare();
+  await shown();
+
+  // Walk the comparisons, then leave. The kit's default would return the reader
+  // to where they ENTERED; here parent and child index the same set, so the
+  // walk has to carry.
+  data._cmpDeck.deck.go(2);
+  await shown();
+  data._cmpDeck.close();
+  await shown();
+  assert.ok(data._pDeck, 'still reading');
+  assert.equal(data.preview.name, 'c.md', 'on the file the comparison walked to');
+  data.preview = null;
+});
+
+test('closing the reader takes the comparison with it', async () => {
+  reset();
+  store.stage = [
+    { local: true, id: 421, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\n' },
+    { local: true, id: 422, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'two\n' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  await data.openCompare();
+  await shown();
+  assert.ok(data._cmpDeck);
+
+  data._pDeck.close();
+  await shown();
+  assert.equal(data._cmpDeck, null, 'no comparison left stranded over a closed reader');
+  assert.equal(data._pDeck, null);
+  assert.equal(data.preview, null);
+});
+
+test('the reader offers one way in, and no partner button for coming back', async () => {
+  reset();
+  store.stage = [
+    { local: true, id: 431, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\n' },
+    { local: true, id: 432, name: 'b.md', path: 'b.md', size: 4, isText: true, text: 'two\n' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  const titles = data._pActions(0).map(a => a.title);
+  assert.equal(titles.filter(t => /^Compare /.test(t)).length, 1);
+  assert.equal(titles.filter(t => /^Back to/.test(t)).length, 0,
+    'the way out of a level is the header chevron the kit draws');
   data.preview = null;
 });
 
@@ -1340,10 +1411,10 @@ test('each diff slide holds its own pair, and the copy follows the reader', asyn
   await shown();
   await data.view(data.items[0]);
   await shown();
-  await data.togglePreviewDiff();
+  await data.openCompare();
   await shown();
 
-  const slides = () => [...data._pDeck.deck.track.children]
+  const slides = () => [...data._cmpDeck.deck.track.children]
     .map(el => el.textContent.replace(/\s+/g, ' ').trim());
 
   // What the reader is on, and what every control outside the slide reads.
@@ -1361,7 +1432,7 @@ test('each diff slide holds its own pair, and the copy follows the reader', asyn
 
   // Stepping re-aims the controls, not only the rows. The slide is already
   // built, so nothing re-renders and only the publish can do this.
-  data.previewStep(1);
+  data._cmpDeck.deck.go(1);
   await shown();
   assert.equal(data.diffA, 1);
   assert.equal(data.diffB, 2);
@@ -1509,7 +1580,7 @@ test('compareWith sets and clears the pick, and rebuilds the open deck', async (
   await shown();
   await data.view(data.items[0]);
   await shown();
-  await data.togglePreviewDiff();
+  await data.openCompare();
   await shown();
   assert.equal(data.diffB, 1, 'opens on the neighbour');
 
@@ -1744,10 +1815,12 @@ test('a diff-mode link opens the preview on its diff, once', async () => {
   await shown();
   // The link's intent is "look at this comparison", so it puts the reader in
   // front of one rather than selecting a control on the page.
-  assert.equal(data.preview?.mode, 'diff', 'the preview opens, in diff mode');
+  assert.ok(data._pDeck, 'the reader opens');
+  assert.ok(data._cmpDeck, 'with the comparison drilled over it');
   assert.ok(data.diffRows, 'and it ran without a click');
   assert.equal(data._autoDiffed, true, 'and only arms once');
   data.linkMode = '';
+  data._cmpDrop();
   data.preview = null;
 });
 

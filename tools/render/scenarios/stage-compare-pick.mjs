@@ -5,6 +5,10 @@
 // and "the first against the last" had no way to be said. A is now the file you
 // are on and B is a pick, defaulting to the neighbour.
 //
+// The comparison is also a LEVEL rather than a mode: it drills over the file
+// reader, so its header carries a back chevron and leaving it returns to the
+// file instead of closing the reader outright.
+//
 // Stages four documents, opens the reader on the FIRST, and picks the LAST,
 // which is the pair the old rule could not reach. Ends on the open picker over
 // that comparison, so the shot shows both halves at once.
@@ -52,9 +56,16 @@ export default async function (page) {
     const data = Alpine.$data(document.querySelector('[x-data*="stager"]'));
     await data.view(data.items[0]);
     await new Promise(r => setTimeout(r, 500));
-    await data.togglePreviewDiff();
+    await data.openCompare();
     await new Promise(r => setTimeout(r, 900));
-    return { defaultPair: [data.diffA, data.diffB], label: data.previewPairLabel() };
+    return {
+      defaultPair: [data.diffA, data.diffB],
+      label: data.previewPairLabel(),
+      // The comparison is a LEVEL over the reader, not a mode on it: both decks
+      // are alive, and backing out of the top one lands on the file.
+      readerStillOpen: !!data._pDeck,
+      comparisonIsItsOwnDeck: !!data._cmpDeck,
+    };
   }, DOCS);
   await page.waitForTimeout(300);
 
@@ -65,7 +76,7 @@ export default async function (page) {
     await new Promise(r => setTimeout(r, 900));
     // Reopen the list so the shot carries the picker and the diff together.
     data.compareOpen = true;
-    data._pRebuild();
+    data._cmpRebuild();
     await new Promise(r => setTimeout(r, 700));
     return {
       pair: [data.diffA, data.diffB],
@@ -79,8 +90,8 @@ export default async function (page) {
   await page.waitForTimeout(500);
 
   console.log('\n--- the compare picker ---');
-  console.log('  opened on the first file:');
-  console.log('    default pair: ' + JSON.stringify(opened.defaultPair) + '  ' + opened.label);
+  console.log('  opened on the first file, then drilled into the comparison:');
+  for (const [k, v] of Object.entries(opened)) console.log(`    ${k}: ${JSON.stringify(v)}`);
   console.log('  after picking the last:');
   for (const [k, v] of Object.entries(picked)) console.log(`    ${k}: ${JSON.stringify(v)}`);
   console.log('');

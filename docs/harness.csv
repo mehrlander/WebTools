@@ -141,7 +141,7 @@ tools/render/scenarios/sidebar-projects-overlay.mjs,the same sidebar state in ov
 tools/render/scenarios/sidebar-projects.mjs,drive show-repo's sidebar into the nested-projects state,tools/render/scenarios,66,driver,no,yes,no
 tools/render/scenarios/sidebar-repo-menus.mjs,the sidebar Repos index with one row's two menus open,tools/render/scenarios,61,driver,no,no,no
 tools/render/scenarios/stage-aimed-deposit.mjs,"the stage opened at a branch destination, the shape a branch-page deposit hands it",tools/render/scenarios,20,driver,no,no,no
-tools/render/scenarios/stage-compare-pick.mjs,"the reader's compare picker: the first staged file against the last, which the adjacent-pair rule could not reach, with the list open over it",tools/render/scenarios,88,driver,no,no,no
+tools/render/scenarios/stage-compare-pick.mjs,"the reader's compare picker: the first staged file against the last, which the adjacent-pair rule could not reach, with the list open over it",tools/render/scenarios,99,driver,no,no,no
 tools/render/scenarios/stage-dictate.mjs,"the stage's dictation intake: the mic beside Paste, committed text with a live interim, and the mark pad",tools/render/scenarios,33,driver,no,no,no
 tools/render/scenarios/stage-diff-longrefs.mjs,the Diff tab's A/B selects clipping long repo@ref:path labels,tools/render/scenarios,18,driver,no,no,no
 tools/render/scenarios/stage-diff-review.mjs,"the Stage's Diff lens run on two local items, with the review-prompts panel",tools/render/scenarios,29,driver,no,yes,no

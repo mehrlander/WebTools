@@ -317,22 +317,43 @@ Stage-view actions:
   measures the box on a 2-line file and a 4,000-line file and then scrolls the
   long one.
 
-  **The preview also holds the diff**, because the position already proposes a
-  pair: the file you are on and the one next to it. So a diff is available
-  whenever two or more are staged, nothing has to be chosen to get one, and with
-  exactly two it is simply "the two" from either position. What the position
-  proposes the reader can override (the pair, below). One header button toggles
-  the modal between the file and the comparison, carrying the tagged rows, Copy,
-  the review prompts (link-carried bespoke asks first, then the fixed set), and
-  **Open in Diff** for the Diff page's split view and real patch. Stepping with
-  the diff open re-pairs and re-runs, so walking the set walks its comparisons.
-  A `&mode=diff` link opens the preview on its diff rather than selecting a
-  control on the page. The header button names what a tap does rather than how
-  it is wired: it reads `Compare a.md ↔ b.md`, and in diff mode `Back to a.md`;
+  **The comparison is a LEVEL over the reader, not a mode on it.** It was a mode
+  until 2026-08-19: the same overlay, its slides rebuilt as diffs, one header
+  button to flip back. That put the wrong meaning on the one control every
+  reader reaches for. A header's ✕ dismisses the overlay, so from inside a
+  comparison it read as "leave the comparison" and did "leave the file as well,"
+  while the way back was a second, quieter button beside it.
+
+  So it **drills** (`swipeDeck.drill`), and the kit's own conventions do the
+  rest: the dismiss becomes a back chevron, the crumb carries where you came
+  from, and the module-level deck stack makes Escape and the phone Back button
+  pop one level rather than the lot. There is no partner button for coming back,
+  which is the point of a level. It is the shape the estate already uses one
+  floor up, where a branch takeover drills into
+  [`kits/file-deck.js`](../lib/kits/file-deck.js), and inside this component,
+  where the transform workbench drills off this same reader.
+
+  One deliberate deviation from the kit's default, which returns you to the
+  parent exactly where you left it: **the comparison walks the same set the
+  reader does**, so comparison *n* is the file at *n* seen against its pair, and
+  backing out lands where the walk got to rather than where it started.
+  Returning to the entry point would silently discard the walk. The branch
+  drill has no such problem, since a branch and its files are different things.
+
+  The position already **proposes** a pair (the file you are on, and the one next
+  to it), so a comparison is available whenever two or more are staged, nothing
+  has to be chosen to get one, and with exactly two it is simply "the two." What
+  the position proposes the reader can override (the pair, below). The
+  comparison carries the tagged rows, Copy, the review prompts (link-carried
+  bespoke asks first, then the fixed set), and **Open in Diff** for the Diff
+  page's split view and real patch. A `&mode=diff` link opens the reader with
+  the comparison already drilled over it, rather than selecting a control on the
+  page. The reader's one way in names what a tap does rather than how it is
+  wired: `Compare a.md ↔ b.md`;
 
   **A slide's compare is the slide's own**, which took a fix on 2026-08-19. The
-  deck mounts the active slide and its two neighbours, each a diff of a
-  different pair, and all three used to write one set of component fields. The
+  comparison deck mounts the active slide and its two neighbours, each a diff of
+  a different pair, and all three used to write one set of component fields. The
   last builder won, so on any stage of three or more the reader saw `a ↔ b`
   while the copy header and the **Open in Diff** address named `b ↔ c`, the
   neighbour drew no rows at all (its compare returned early on the busy flag),
