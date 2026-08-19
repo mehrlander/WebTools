@@ -110,6 +110,9 @@ tools/render/scenarios/map-showing.mjs,"the Map's Showing tab: how content moves
 tools/render/scenarios/map-tests.mjs,the Map view's Tests tab: the test registry rendered live with assertion names expanded,tools/render/scenarios,63,driver,no,no,no
 tools/render/scenarios/nest-probe.mjs,"probe: a nested self-toss's address bar, and the FAB's actions at depth two",tools/render/scenarios,44,driver,no,no,no
 tools/render/scenarios/open-drawer.mjs,the FAB drawer open with the take grid scrolled into view,tools/render/scenarios,20,driver,no,no,no
+tools/render/scenarios/paste-anywhere.mjs,dispatches a real two-flavor ClipboardEvent on a non-Stage view and reports where the app-wide paste routed it,tools/render/scenarios,42,driver,no,no,no
+tools/render/scenarios/paste-button.mjs,"drives the header Paste button from a non-Stage view with window.io stubbed, and reports where it routed",tools/render/scenarios,46,driver,no,no,no
+tools/render/scenarios/paste-kinds-probe.mjs,puts four transform-shaped payloads through the paste intake and reports the name and preview mode each gets,tools/render/scenarios,54,driver,no,no,yes
 tools/render/scenarios/pick-md.mjs,"end-to-end reproduction of pick-a-file-in-the-fab, reporting what the frame did",tools/render/scenarios,76,driver,no,no,no
 tools/render/scenarios/project-board-review.mjs,"the project Board pane's typed read, seeded token-free",tools/render/scenarios,198,driver,no,yes,no
 tools/render/scenarios/project-board.mjs,the project view's Board pill with task links resolved into the shell viewer,tools/render/scenarios,72,driver,no,no,no
@@ -128,7 +131,7 @@ tools/render/scenarios/routes-pane.mjs,"Renders Activity's Routes pane with real
 tools/render/scenarios/search-cold.mjs,the Files view's cold open: a bare arrival scopes to the browsed repo and walks it,tools/render/scenarios,50,driver,no,no,no
 tools/render/scenarios/search-controls.mjs,"the Files view's scope controls, with the ref picker open",tools/render/scenarios,72,driver,no,no,no
 tools/render/scenarios/search-files.mjs,"the Files view a level into a folder, with a file from it open in the shared viewer",tools/render/scenarios,64,driver,no,no,no
-tools/render/scenarios/sidebar-compare.mjs,,tools/render/scenarios,166,driver,no,yes,no
+tools/render/scenarios/sidebar-compare.mjs,,tools/render/scenarios,169,driver,no,yes,no
 tools/render/scenarios/sidebar-projects-overlay.mjs,the same sidebar state in overlay posture; only the posture distinguishes the pair,tools/render/scenarios,51,driver,no,yes,no
 tools/render/scenarios/sidebar-projects.mjs,drive show-repo's sidebar into the nested-projects state,tools/render/scenarios,66,driver,no,yes,no
 tools/render/scenarios/sidebar-repo-menus.mjs,the sidebar Repos index with one row's two menus open,tools/render/scenarios,61,driver,no,no,no
@@ -138,11 +141,12 @@ tools/render/scenarios/stage-diff-longrefs.mjs,the Diff tab's A/B selects clippi
 tools/render/scenarios/stage-diff-review.mjs,"the Stage's Diff lens run on two local items, with the review-prompts panel",tools/render/scenarios,29,driver,no,yes,no
 tools/render/scenarios/stage-image-preview.mjs,,tools/render/scenarios,32,driver,no,no,no
 tools/render/scenarios/stage-keyboard-mode.mjs,"the stage's dictation card with the keyboard open, which is where the recording misreading was reported",tools/render/scenarios,53,driver,no,no,no
-tools/render/scenarios/stage-paste-flavors.mjs,,tools/render/scenarios,46,driver,no,no,no
+tools/render/scenarios/stage-paste-flavors.mjs,,tools/render/scenarios,44,driver,no,no,no
 tools/render/scenarios/stage-rename-local.mjs,,tools/render/scenarios,23,driver,no,no,no
 tools/render/scenarios/stage-stitch.mjs,"the stage composer's stitch key: a caret in a sentence gap turns the full-stop cell into the cell that takes one back, the same swap the annotator's card makes off the same kit verb",tools/render/scenarios,52,driver,no,no,no
+tools/render/scenarios/stage-transform-chip.mjs,"stages three transform-shaped items, opens one in the workbench, and asserts the table actually drew",tools/render/scenarios,54,driver,no,no,yes
 tools/render/scenarios/state-view.mjs,"Populate the State view for a screenshot: stub the registry reads with a current cache, a stale one, an unchecked one, and the buttonless entity index",tools/render/scenarios,222,driver,no,no,no
 tools/render/scenarios/subject-action-probe.mjs,"probe: can the shell invoke a toss subject's action closure, or only reach it",tools/render/scenarios,124,driver,no,no,no
 tools/render/scenarios/toss-fragment.mjs,prove toss-render hands a trailing #frag to the rendered page in both trust postures,tools/render/scenarios,96,driver,no,no,no
-tools/render/screenshot.mjs,the Chromium pixel render behind npm run shot; --script drives a scenario first,tools/render,244,npm:shot,no,yes,yes
+tools/render/screenshot.mjs,the Chromium pixel render behind npm run shot; --script drives a scenario first,tools/render,254,npm:shot,no,yes,yes
 tools/semsearch.py,"semantic search over the estate's prose, paragraph by paragraph",tools,117,argv,no,yes,no

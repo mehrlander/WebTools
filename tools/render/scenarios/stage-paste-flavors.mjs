@@ -8,7 +8,11 @@
 //
 // The event is synthesized rather than driven through a real clipboard: the
 // sandbox has no clipboard, and what is under test is the reading of a
-// DataTransfer, not the platform's construction of one.
+// DataTransfer, not the platform's construction of one. It calls the intake
+// directly rather than dispatching: the fold moved to window.StageIntake on
+// 2026-08-18 and this scenario is aimed at the BAR, so it wants the reading
+// without the shell's routing on top. paste-anywhere.mjs is the gesture's own
+// scenario and dispatches for real.
 export default async (page) => {
   await page.waitForSelector('[x-data*="stager"]', { timeout: 15000 });
   await page.evaluate(async () => {
@@ -29,16 +33,10 @@ export default async (page) => {
     const blob = await new Promise(r => c.toBlob(r, 'image/png'));
     const file = new File([blob], 'image.png', { type: 'image/png' });
 
-    const el = document.querySelector('[x-data*="stager"]');
-    const data = window.Alpine.$data(el);
-    data._onPaste({
-      target: document.body,
-      preventDefault() {},
-      clipboardData: {
-        types: ['text/plain', 'text/html', 'Files'],
-        files: [file],
-        getData: (t) => (t === 'text/plain' ? tsv : t === 'text/html' ? html : ''),
-      },
+    await window.StageIntake.takePaste({
+      types: ['text/plain', 'text/html', 'Files'],
+      files: [file],
+      getData: (t) => (t === 'text/plain' ? tsv : t === 'text/html' ? html : ''),
     });
   });
   await page.waitForTimeout(900);
