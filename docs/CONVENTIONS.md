@@ -74,6 +74,38 @@ This paragraph exists to be always in context, because the failure it prevents i
 
 Adding to a doc is a pass over it, not just an append. New material has to match the surrounding voice and structure. Go a step further and tighten related material while you are there.
 
+## Prose that describes state is unimplemented
+
+A document that restates what an app derives, or what a check enforces, is
+carrying a copy: the copy is the half that ages, and nothing reports it. Before
+adding to a doc, and whenever one has outgrown its subject, ask four questions in
+order:
+
+1. **Is this a fact the app derives?** Delete it and link the view.
+2. **Is this a rule the suite enforces?** Delete the description, keep a pointer
+   to the gate. The test is the statement.
+3. **Does another document already own it?** Delete it and link there.
+4. **Is this a reason somebody chose something?** Keep it. This is the residue,
+   and it is what a document is for.
+
+**The fourth question is the guard, not an afterthought.** A reason is not an
+unbuilt feature, and a pass that reads reasons as a backlog will either delete
+them or try to encode them, which is how a repo gets a `why` column that runs
+nought for five. Prose that records a decision is finished work.
+
+Two habits make the difference between a chop that holds and one that loses
+something. **Render before you cut**, since the honest test of "the app already
+says this" is looking at the app, and a definition that exists only in a tooltip
+is not rendered. And **look inside the file**: a paragraph repeated verbatim
+within one document is invisible to a cross-file duplicate scanner by
+construction, and to a word cap because it fits inside the budget.
+
+The cut is only safe when something will notice it being undone, so leave a gate
+behind: a pointer the doc must keep, and a ceiling it must stay under. Added
+2026-08-19, after `registries.md` went 5,628 words to 2,799 and `showing.md`
+1,949 to 1,308, the second of which the repo's own repetitions registry had
+already flagged as the copy nothing checked.
+
 ## Keep focus
 
 When asked to look for improvements, be wary of ideas that address a hypothetical problem. A simple, clear fix is worth making; the trap is speculative work that goes off course. The test points only at tasks you conceive, not a specific user request.
