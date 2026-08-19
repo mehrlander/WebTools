@@ -12,7 +12,6 @@ the working conventions text,the web-tools skill's runtime fetch,live read,,none
 the adoption commands,"docs/PORTABLE.md, How to adopt",copy,by hand,none; two hand-kept copies of the same commands
 the toss routes (content type to renderer),pages/toss-render.html TOSS_ROUTES literal (inlined so the critical render path takes no fetch),copy,by hand,lockstep (routes-manifest.test.mjs)
 "the showing mechanisms: which link reaches which change, and what each misses","CLAUDE.md, the one-trap quote",paraphrase,,"word cap plus required pointer at showing.md (routes-manifest.test.mjs), guarding against the prose creeping home"
-"the showing mechanisms: which link reaches which change, and what each misses","docs/showing.md, How it works in detail",paraphrase,,none; the doc itself declares the manifest authoritative
 the MCP readback strips HTML from PR bodies,"docs/SURFACING.md, region-markers rationale",paraphrase,,none; cites the measurement
 "the GitHub MCP routing rule: on an unexpected approval wall, call the built-in server's equivalent",docs/github/mcp-server-routing.md (2026-07-15),paraphrase,,"none: a superseded record, marked Stale on the paragraph that parted from the owner. Kept because the observation is dated evidence, not because it is current"
 "the GitHub MCP routing rule: on an unexpected approval wall, call the built-in server's equivalent",the sandbox-traps skill,pointer,,

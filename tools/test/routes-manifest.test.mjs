@@ -182,3 +182,53 @@ test('the picker only routes to mechanisms that exist', () => {
 // claude-md.test.mjs on 2026-08-05. They are about the agent instructions
 // rather than about this manifest, and grouping them under one name here meant
 // a size failure arrived wearing a message about the showing material.
+
+// ── docs/showing.md, the copy that had no check ────────────────────────────
+// docs/repetitions.csv recorded two paraphrases of the showing mechanisms.
+// CLAUDE.md's was checked (pointer plus a word cap, in claude-md.test.mjs);
+// showing.md's carried "check: none; the doc itself declares the manifest
+// authoritative", and a banner is not a check. The doc grew a full second copy
+// of the table under that banner and nothing said so for eleven days.
+//
+// So showing.md gets the same instrument CLAUDE.md has, for the same reason.
+// The ceiling is set with room above the 2026-08-19 chop and well under what
+// the file was; the remedy when it fires is extraction, never shaving. If the
+// material is a mechanism, a boundary, or an address, it is a row in
+// showing-mechanisms.csv or a field of the routes.json showing block. What
+// belongs in prose is what no row can hold: a relation between two rows, or a
+// record of what a boundary cost to find.
+const SHOWING_LIMIT = 1500;
+
+test('docs/showing.md delegates the mechanisms rather than restating them', () => {
+  const doc = readFileSync(path.join(repoRoot, 'docs', 'showing.md'), 'utf8');
+
+  assert.match(doc, /showing-mechanisms\.csv/,
+    'showing.md no longer points at the carrier it delegates to');
+  assert.match(doc, /routes\.json/,
+    'showing.md no longer points at the frame (the routes.json showing block)');
+
+  const words = doc.split(/\s+/).length;
+  assert.ok(words < SHOWING_LIMIT,
+    `docs/showing.md is ${words} words, over its ${SHOWING_LIMIT}-word ceiling. ` +
+    'The fix is extraction, not shaving: a mechanism, a boundary or an address ' +
+    'is a row in showing-mechanisms.csv or a field of the routes.json showing ' +
+    'block. Prose keeps only what no row can hold.');
+});
+
+// The one duplicate a word cap cannot see, because it is inside the budget:
+// the escape paragraph ("reachable by neither") sat in this file twice,
+// verbatim, in two different sections. A file is allowed to restate a rule for
+// emphasis; it is not allowed to do so by copy, since the copies then age
+// apart inside one document and no cross-file scanner looks within a file.
+test('docs/showing.md does not repeat a paragraph within itself', () => {
+  const doc = readFileSync(path.join(repoRoot, 'docs', 'showing.md'), 'utf8');
+  const paras = doc.split(/\n\s*\n/).map(p => p.trim())
+    .filter(p => p.split(/\s+/).length >= 25 && !p.startsWith('|'));
+  const seen = new Map();
+  for (const p of paras) {
+    const norm = p.replace(/\s+/g, ' ').toLowerCase();
+    seen.set(norm, (seen.get(norm) || 0) + 1);
+  }
+  const dupes = [...seen].filter(([, n]) => n > 1).map(([p]) => p.slice(0, 60));
+  assert.equal(dupes.join(' | '), '', 'paragraph repeated verbatim: ' + dupes.join(' | '));
+});
