@@ -1,4 +1,6 @@
-// What the header's Paste button says when the clipboard has nothing on it.
+// What the paste says when the clipboard has nothing on it. Driven through the
+// launcher menu's row, which is the chrome's only paste since the header button
+// came out on 2026-08-19.
 //
 // The whole point of the picture: this used to be the error colour, which on a
 // phone read as "this button is broken" rather than "there was nothing to
@@ -12,10 +14,9 @@
 export default async function (page) {
   const out = await page.evaluate(async () => {
     window.io = { pasteItems: async () => [] };
-    const btn = [...document.querySelectorAll('header button')]
-      .find(b => b.title === 'Paste the clipboard onto the Stage');
-    if (!btn) return { error: 'no paste button in the header' };
-    btn.click();
+    const row = (window.__shell.menu || []).find(m => /paste/i.test(m.label));
+    if (!row) return { error: 'the shell contributes no paste row to the fab menu' };
+    await row.run();
     await new Promise(r => setTimeout(r, 600));
     const t = [...(Alpine.store('toasts') || [])];
     return {

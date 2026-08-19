@@ -171,12 +171,12 @@ test('a drop anywhere else stages, routes, and opens the one file', async () => 
   assert.ok(calls.some(c => c.kind === 'focus'));
 });
 
-// ---- the header's Paste button, which is the phone's whole intake ----
+// ---- the tap-driven paste, which is the phone's whole intake ----
 //
 // wireAppPaste's window listener is worth nothing on iOS (Safari raises no
-// paste event without a focused editable), so this button is the only route
-// there, and its REPORTING is the part worth pinning: what it says when it
-// takes nothing has to distinguish "there was nothing to take" from "the read
+// paste event without a focused editable), so a tap is the only route there,
+// and its REPORTING is the part worth pinning: what it says when it takes
+// nothing has to distinguish "there was nothing to take" from "the read
 // failed", because the first is the ordinary case and the second is a bug.
 
 function withClipboard(result, { view = 'map' } = {}) {
@@ -265,9 +265,13 @@ test('the row runs the same call as the header button', async () => {
   assert.equal(toasts.length, 0, 'a paste that lands and routes says so by arriving');
 });
 
-test('the header button survives the menu row: both routes stay', () => {
-  assert.match(page, /pasteAnywhere\(\)/,
-    'the visible header control is the discoverable route; the menu row is the second one');
-  const header = page.match(/<button @click="pasteAnywhere\(\)"/);
-  assert.ok(header, 'the header button is still in the markup');
+test('the long press is the only chrome route: no second button in the markup', () => {
+  // The header carried one for a day and it came out (2026-08-19), leaving the
+  // menu row as the phone's only intake. Asserted because the failure mode is
+  // silent in both directions: a re-added button nobody decided on, or a menu
+  // contract quietly dropped leaving a phone with no tap route at all.
+  assert.equal(/<button @click="pasteAnywhere\(\)"/.test(page), false,
+    'a paste button in the chrome is a decision, not something to drift back in');
+  assert.match(page, /run: \(\) => this\.pasteAnywhere\(\)/,
+    'and the menu row must still reach the call the button used to');
 });
