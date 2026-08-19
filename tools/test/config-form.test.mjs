@@ -54,6 +54,11 @@ const TREE = {
   ],
 };
 
+// The real registry, so the reference the editor shows is the one the gate
+// holds to the estate's manifests rather than a fixture that can agree with a
+// broken reader.
+const FIELDS_CSV = readFileSync(path.join(repoRoot, 'docs', 'manifest-fields.csv'), 'utf8');
+
 let treeCalls = 0;
 window.TOKEN = 'ignored-in-test';
 window.__shell = { hasToken: () => true, _authState: 'auth' };
@@ -61,6 +66,7 @@ window.GH = class {
   constructor(opts) { this.opts = opts; }
   async get(p) {
     if (p === '.web-tools.json') return { text: JSON.stringify(CONFIG) };
+    if (p === 'docs/manifest-fields.csv') return { text: FIELDS_CSV };
     throw new Error('404');
   }
   async req(p) {
@@ -71,6 +77,9 @@ window.GH = class {
 Alpine.store('browser', { repo: 'mehrlander/home', ref: 'main', defaultRef: 'main' });
 Alpine.store('toast', () => {});
 
+// The shared CSV parser, because the field reference reads a registry with it.
+// The same kit the component uses at runtime, not a second parse for the test.
+new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8'))();
 new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/config.js'), 'utf8'))();
 Alpine.start();
 await tick(3);
@@ -296,4 +305,54 @@ test('scope takes prose or a path, and the path form is the monospaced one', asy
   data.obj = { scope: '   ' };
   data.formEdited();
   assert.equal('scope' in draft(), false);
+});
+
+// ── The field reference ───────────────────────────────────────────────────
+// docs/manifest-fields.csv rendered where the manifest is edited, added
+// 2026-08-19. docs/manifest.md had already delegated the field list to the
+// registry in 2026-08-16; what was missing was the render, so the reference a
+// person needs while filling this form in sat one GitHub click away in a raw
+// CSV. These hold the two things that make the block safe to keep: it costs
+// nothing until opened, and it cannot take the editor down.
+test('the field reference is not fetched until it is opened', () => {
+  assert.equal(data.fields, null, 'mounting the editor does not fetch the reference');
+});
+
+test('opening the reference loads the registry and groups it by nesting', async () => {
+  await data.loadFields();
+  assert.ok(data.fields.length > 40, 'the whole registry arrives');
+
+  const groups = data.fieldGroups;
+  assert.equal(groups.map(g => g.key).join(','), 'top,member');
+  // A member key is one addressed through its parent, which is the split a
+  // person filling in the form actually needs.
+  assert.ok(groups[1].rows.every(f => f.key.includes('.') || f.key.includes('[')));
+  assert.ok(groups[0].rows.every(f => !f.key.includes('.') && !f.key.includes('[')));
+  assert.equal(groups[0].rows.length + groups[1].rows.length, data.fields.length);
+});
+
+test('the filter matches the summary, not only the key', async () => {
+  await data.loadFields();
+  const all = data.fields.length;
+  data.fieldQ = 'estate';
+  const hits = data.fieldGroups.flatMap(g => g.rows);
+  data.fieldQ = '';
+  assert.ok(hits.length && hits.length < all);
+  assert.ok(hits.some(f => !f.key.includes('estate')),
+    'a summary word reaches a key that does not carry it');
+});
+
+// The editor must survive a hub it cannot reach. Help that can break the thing
+// it is helping with is worse than no help.
+test('an unreachable registry leaves the editor working', async () => {
+  const real = window.GH;
+  window.GH = class { async get() { throw new Error('503'); } };
+  const fresh = Alpine.$data(window.document.getElementById('config'));
+  fresh.fields = null;
+  await fresh.loadFields();
+  window.GH = real;
+  // Length, not deepEqual: Alpine hands back a reactive proxy and strict
+  // deep-equality fails on identity even when the contents match.
+  assert.equal(fresh.fields.length, 0, 'a failure resolves to an empty reference');
+  assert.equal(fresh.err, '', 'and never onto the editor\'s error line');
 });

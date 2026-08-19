@@ -14,7 +14,7 @@ must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
 2 arrive in every session's context, 25 are named by CLAUDE.md,
-4 by a skill, 18 by a page or component. The remaining 15 are
+4 by a skill, 19 by a page or component. The remaining 14 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -39,7 +39,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`headless-vendoring.md`](headless-vendoring.md) — building with CDN libraries and rendering headless where the CDNs are blocked
 - [`ios-sheet-drags.md`](ios-sheet-drags.md) — why a drag inside a sheet-presented in-app browser dismisses the sheet, and the two fixes, measured on device
 - [`loader.md`](loader.md) — the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality
-- [`manifest-fields.csv`](manifest-fields.csv) *(orphan)* — the field registry for root .web-tools.json: every key's type, consumer, and effect
+- [`manifest-fields.csv`](manifest-fields.csv) — the field registry for root .web-tools.json: every key's type, consumer, and effect
 - [`manifest.md`](manifest.md) — the .web-tools.json manifest: the file's contract and the registry machinery (config cache, mailbox, proposals, editing from the shell)
 - [`markdown-in-chat.md`](markdown-in-chat.md) *(measured)* — working visually with markdown in a chat client on a phone
 - [`owners.csv`](owners.csv) — for a statement the coordination layer repeats, its one authoritative carrier
