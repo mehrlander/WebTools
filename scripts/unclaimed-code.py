@@ -22,7 +22,7 @@ The layer table is the point of the run: layers are directories, taken as they
 are rather than from a list this script carries, so it says something true about
 any repo and grows a row when a repo grows a folder.
 
-Advisory, like scripts/link-survey.py's internal class and the surveys it is
+Advisory, like scripts/dead-links.py's internal class and the scans it is
 modeled on: heuristic, WILL surface false positives, always exits 0. Portable:
 python3 stdlib only, argv-driven, run from any repo root.
 
@@ -34,7 +34,7 @@ NAMING is always the whole repo, so scoping narrows what is judged, never what
 counts as evidence.
 
 Usage:
-    python3 unclaimed-code-survey.py [--all] [--ext .js,.mjs] [--root DIR] [prefix ...]
+    python3 unclaimed-code.py [--all] [--ext .js,.mjs] [--root DIR] [prefix ...]
 
     --all   also list the named files under each layer, not just the unnamed
 """
@@ -145,7 +145,7 @@ def main(argv):
     for f in candidates:
         layers.setdefault(os.path.dirname(f) or ".", []).append(f)
 
-    print("Unclaimed code survey (advisory; heuristic, expect false positives)")
+    print("Unclaimed code scan (advisory; heuristic, expect false positives)")
     print("Scope: %s   Extensions: %s   Tests excluded from candidates"
           % (" ".join(scopes) if scopes else "whole repo", ",".join(exts)))
     print()

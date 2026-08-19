@@ -29,7 +29,7 @@ const ACTIVITY = {
       { number: 296, head: 'claude/fab-render-toss', draft: false, title: 'Singleton fab with toss-render',
         updatedAt: iso(30), aheadBy: 12, behindBy: 3, firstDate: iso(500) },
     ],
-    survey: { branches: [
+    scan: { branches: [
       { name: 'claude/show-repo-activity-filters', sha: 'a1', group: 'active', date: iso(2), subject: 'Open view: repo chips, lifespan, GitHub menu' },
       { name: 'claude/fab-render-toss', sha: 'b1', group: 'stranded', date: iso(30), firstDate: iso(500),
         subject: 'Confirm branchesForPath against a live token', aheadBy: 12, behindBy: 3 },
@@ -50,7 +50,7 @@ const ACTIVITY = {
       { number: 44, head: 'claude/news-view-refresh', draft: true, title: 'News view refresh',
         updatedAt: iso(9), aheadBy: 2, behindBy: 1, firstDate: iso(11) },
     ],
-    survey: { branches: [
+    scan: { branches: [
       { name: 'claude/news-view-refresh', sha: 'd1', group: 'active', date: iso(9), subject: 'News view refresh' },
       { name: 'claude/ledger-import', sha: 'e1', group: 'stranded', date: iso(400), firstDate: iso(900),
         subject: 'Import the 2025 ledger', aheadBy: 1, behindBy: 40 },
@@ -59,7 +59,7 @@ const ACTIVITY = {
   'me/scratch': {
     defaultBranch: 'main',
     openPRs: [],
-    survey: { branches: [
+    scan: { branches: [
       { name: 'claude/spike-parser', sha: 'f1', group: 'stranded', date: iso(70), firstDate: iso(74),
         subject: 'Spike: a smaller parser', aheadBy: 4, behindBy: 2 },
     ] },
@@ -82,7 +82,7 @@ const TODO = [
   { id: 't1', text: 'Purge the jsDelivr cache after the gh-api change', done: false, created_at: iso(30) },
   { id: 't2', text: 'Re-shoot the page thumbnails that drifted', done: false, created_at: iso(52) },
   { id: 't3', text: 'Decide whether the snags log gets a projector', done: false, created_at: iso(100) },
-  { id: 't4', text: 'Fold branch-survey into the activity cache', done: true, created_at: iso(300), done_at: iso(120) },
+  { id: 't4', text: 'Fold branch-status into the activity cache', done: true, created_at: iso(300), done_at: iso(120) },
 ];
 const JOTS = [
   { id: 'j1', text: 'A stage link could carry its own review prompts', created_at: iso(4) },

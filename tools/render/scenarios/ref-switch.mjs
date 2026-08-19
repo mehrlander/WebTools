@@ -1,6 +1,6 @@
 // Drive show-repo's header ref switch to a seeded, token-free state, so the
 // control renders headlessly. Its branch list normally comes from a GraphQL
-// survey over the viewer's token, which the sandbox has neither of; this stubs
+// scan over the viewer's token, which the sandbox has neither of; this stubs
 // window.GH so load() resolves against a fixed list. What the shot proves is
 // the rendering and the states, not the fetch.
 //

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Inventory the carriers that already hold authored text, and how organized they are.
 
-The companion to scripts/text-survey.py, which finds text with no carrier. This
+The companion to scripts/embedded-prose.py, which finds text with no carrier. This
 one looks at the text that DID make it into a data file and asks whether the
 carrier is in any shape to be relied on.
 
@@ -24,7 +24,7 @@ not a naming quibble: it means no reader and no tool can ask "show me the
 authored rationale in this repo" and get an answer. A vocabulary that has never
 been stated is the honest measure of how organized the carriers are.
 
-Advisory and heuristic, like scripts/text-survey.py: it WILL surface false
+Advisory and heuristic, like scripts/embedded-prose.py: it WILL surface false
 positives, and it exits 0 unless --check is given.
 
 Portable: python3 stdlib only, argv-driven, runs from any repo root.
@@ -301,7 +301,7 @@ def registry_mode(reg, rel):
 
 # Options that take a value. Without this the value is read as a path prefix,
 # which silently scopes the run to a directory that does not exist and reports
-# a clean zero: the most misleading possible failure for a survey.
+# a clean zero: the most misleading possible failure for a scan.
 VALUED = {"--min", "--check", "--vocab"}
 
 

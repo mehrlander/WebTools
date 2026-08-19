@@ -187,7 +187,7 @@ test('the arrows walk every PR the branch has had, newest first', async () => {
   d.viaToss = true;
   d.defaultBranch = 'main';
   d.ref = 'claude/thing';
-  // The survey only ever finds the OPEN one, which is why the fuller list is a
+  // The scan only ever finds the OPEN one, which is why the fuller list is a
   // separate read: a merged PR is gone from that list and its body is often the
   // better account of what the branch did.
   d.pageBranches = [{ name: 'claude/thing', pr: { number: 333, title: 'open one', body: 'newer' } }];

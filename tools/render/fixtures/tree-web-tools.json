@@ -2343,7 +2343,7 @@
    "sha": "d0487507d996c8ecc6d690bf0a24e77f17441e64"
   },
   {
-   "path": "lib/branch-survey.js",
+   "path": "lib/branch-status.js",
    "mode": "100644",
    "type": "blob",
    "sha": "4ede11a9cb55e62a6c934a4487f7284fd6ab59da"
@@ -3783,7 +3783,7 @@
    "sha": "082e9fd0d2921a58540a38dbf7c5f5a4243d2124"
   },
   {
-   "path": "scripts/check-branch-survey.mjs",
+   "path": "scripts/check-branch-status.mjs",
    "mode": "100644",
    "type": "blob",
    "sha": "152dfdc6880d149332d03cf95cdb14d43cbfad30"
@@ -5937,7 +5937,7 @@
    "sha": "f61a58c300d9ea3090cd4265430e8e793cec58f7"
   },
   {
-   "path": "tools/render/scenarios/branches-survey.mjs",
+   "path": "tools/render/scenarios/branches-scan.mjs",
    "mode": "100644",
    "type": "blob",
    "sha": "22405cf182adae28d959c42f4049bb21244633f3"
@@ -6135,7 +6135,7 @@
    "sha": "cdd9b986d6db7db85d3baca0871afa2d3182defc"
   },
   {
-   "path": "tools/test/branch-survey.test.mjs",
+   "path": "tools/test/branch-status.test.mjs",
    "mode": "100644",
    "type": "blob",
    "sha": "09524683f2a1095861ec2cae3673a009e2572815"

@@ -64,7 +64,7 @@ const TODOS = [
   { id: 't4', text: 'Read back the docs registry reach field after the skill rename', done: false },
   { id: 't5', text: 'Work out whether the sessions cache should carry attention or derive it', done: false },
   { id: 't6', text: 'Check the wsl-fetch cron is still landing its errand', done: false },
-  { id: 't7', text: 'Follow up on the branch survey cap: 30 is dropping merged branches', done: false },
+  { id: 't7', text: 'Follow up on the branch scan cap: 30 is dropping merged branches', done: false },
   { id: 't8', text: 'Pin the OFM fund crosswalk to the thirteen-bill corpus', done: true },
 ];
 

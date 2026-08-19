@@ -1,16 +1,16 @@
 path,role,layer,lines,invocation,emits,named,tested
 scripts/build-tree.py,render a repository file tree as a linked markdown table for chat,scripts,252,argv,no,yes,no
-scripts/check-branch-survey.mjs,the stated agreement check for the branches view against home's branch-survey.sh,scripts,145,argv,no,yes,no
-scripts/code-shape-survey.py,"per-file observable properties of lib/: what a file attaches to, boot, hub, DOM, Alpine; the instrument behind docs/code-layers.md and the code-layers gate",scripts,374,npm:code-shape,yes,yes,yes
+scripts/check-branch-status.mjs,the stated agreement check for the branches view against home's unmerged-branches.sh,scripts,145,argv,no,yes,no
+scripts/code-shape.py,"per-file observable properties of lib/: what a file attaches to, boot, hub, DOM, Alpine; the instrument behind docs/code-layers.md and the code-layers gate",scripts,374,npm:code-shape,yes,yes,yes
+scripts/dead-links.py,"report markdown links that no longer resolve, in three classes (internal, cross-repo, github)",scripts,256,argv,no,yes,yes
 scripts/declared-paths.py,check every page a .web-tools.json declares still exists; runs in consumer repos' verify suites,scripts,137,argv,no,yes,no
-scripts/duplicated-claims-survey.py,"report file pairs sharing near-duplicated prose, the quiet failure where a claim is restated and the copies age apart (advisory; ported from home)",scripts,138,npm:claims-survey,no,yes,yes
-scripts/link-survey.py,"report markdown links that no longer resolve, in three classes (internal, cross-repo, github)",scripts,256,argv,no,yes,yes
+scripts/duplicated-claims.py,"report file pairs sharing near-duplicated prose, the quiet failure where a claim is restated and the copies age apart (advisory; ported from home)",scripts,138,npm:claims-scan,no,yes,yes
+scripts/embedded-prose.py,,scripts,759,argv,no,yes,no
 scripts/ocr-pdf.py,"OCR a scanned PDF into text, and say how much to trust the result",scripts,187,argv,no,yes,no
 scripts/page-strips.py,"render a PDF page as overlapping horizontal strips a vision model can read, since the binding constraint is the display cap rather than scan resolution",scripts,97,argv,no,yes,no
 scripts/sunset-scan.py,scan a repo for SUNSET(YYYY-MM-DD) markers and report the ones now due,scripts,111,npm:sunset,no,yes,yes
 scripts/text-carriers.py,"inventory the CSV and JSON carriers that already hold authored prose, and registry their field names to show how much vocabulary the carriers share",scripts,539,argv,no,yes,yes
-scripts/text-survey.py,"count the prose inside .js, .mjs, .html and .py, split into commentary, text tables, and inline reader-facing text; --check gates a comment-length budget",scripts,759,argv,no,yes,no
-scripts/unclaimed-code-survey.py,"per-layer counts of files, files prose names, and files a test exercises; the code-survey behind code-layers.md",scripts,187,npm:code-survey,no,yes,no
+scripts/unclaimed-code.py,"per-layer counts of files, files prose names, and files a test exercises; the code-scan behind code-layers.md",scripts,187,npm:code-scan,no,yes,no
 tools/build/bake.mjs,emit dist/<page>.html: the page's chain inlined into a standalone file,tools/build,53,npm:bake,no,yes,no
 tools/build/build-lib.mjs,"emit dist/web-tools.js, the pre-build: the whole lib/ as one self-booting offline artifact",tools/build,108,npm:build:lib,yes,yes,yes
 tools/build/build.mjs,"emit dist/<page>.js: a page's gh.load chain frozen offline, through lib/build.js's emitter",tools/build,77,npm:build,no,yes,no

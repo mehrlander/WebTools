@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build an entity gazetteer from the tables the estate already curates.
 
-The survey in entitylab found the estate's entity tables and found that prose
+The scan in entitylab found the estate's entity tables and found that prose
 never reaches them: budget-wa's prose says OFM 280 times while OFM's own agency
 table says "Office of Financial Management". This closes that gap from the
 table side, and it is the cheapest available lift on NER precision because it

@@ -3,7 +3,7 @@ agent-file-retrieval-skill-c5u2jy,next,"build corpus_search.py (find) with a sou
 app-views-estate-level-btp6m4,next,landed; News goes live in the estate switcher when home#314 reaches main
 backfill-guide-regions-merge-guide-bkk4xv,resolution,superseded
 branch-review-view-show-repo-rwwmrj,next,"session refreshes (show-repo thumbnail) at wrap-up, then review via PR #236"
-code-layer-taxonomy-q15jp2,next,"done on claude/web-tools-tracker-review-ij4pjj; the taxonomy is docs/code-layers.md, the survey is scripts/unclaimed-code-survey.py"
+code-layer-taxonomy-q15jp2,next,"done on claude/web-tools-tracker-review-ij4pjj; the taxonomy is docs/code-layers.md, the survey is scripts/unclaimed-code.py"
 collapse-quicklinks-projection-80oprp,next,done; landing via web-tools PR #302 and web-tools-private PR #8 (merge #302 first)
 cross-repo-edit-proposals-evo1ml,next,done as a first cut; the four scope drafts are staged as pending proposals for the user to apply
 data-view-consume-fragment-nxlpbs,next,"done on claude/web-tools-tracker-review-ij4pjj; the vocabulary is `item`, index or name, and it is written back"

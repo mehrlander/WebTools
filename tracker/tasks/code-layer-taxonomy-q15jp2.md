@@ -5,7 +5,7 @@ status: done
 opened: 2026-08-04
 closed: 2026-08-06
 session: claude/web-tools-tracker-review-ij4pjj
-next: done on claude/web-tools-tracker-review-ij4pjj; the taxonomy is docs/code-layers.md, the survey is scripts/unclaimed-code-survey.py
+next: done on claude/web-tools-tracker-review-ij4pjj; the taxonomy is docs/code-layers.md, the survey is scripts/unclaimed-code.py
 ---
 # Name the code layers and account for tools/
 
@@ -53,7 +53,7 @@ be shaped: one owner, gated copies, unchecked declared honestly.
 
   **The third category needed a second axis, not just a name.** The rule already
   in use ("registers a `window` namespace") is mechanical and cannot separate
-  `lib/kits/pdf.js` from `lib/branch-survey.js`, which are the same file shape.
+  `lib/kits/pdf.js` from `lib/branch-status.js`, which are the same file shape.
   The axis that does: a **kit** is a capability true in any repo, an **estate
   module** is the same shape carrying this estate's domain. The test is whether
   the file would have to be explained before someone else could use it. That
@@ -62,7 +62,7 @@ be shaped: one owner, gated copies, unchecked declared honestly.
   task's log, where five of the eight re-sort as estate modules and two are
   genuinely arguable.
 
-  **(2) The survey** is [`scripts/unclaimed-code-survey.py`](../../scripts/unclaimed-code-survey.py)
+  **(2) The survey** is [`scripts/unclaimed-code.py`](../../scripts/unclaimed-code.py)
   (`npm run code-survey`), in the `data-provenance-survey.sh` idiom: heuristic,
   advisory, always exits 0. Two independent signals per file rather than one,
   because they fail differently: named in prose, and exercised by a test. A file

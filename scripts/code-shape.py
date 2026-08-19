@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Report the observable SHAPE of every code file, as data.
 
-Sibling to unclaimed-code-survey.py, which asks whether a file is accounted for
+Sibling to unclaimed-code.py, which asks whether a file is accounted for
 in prose. This one asks what a file *is*, mechanically, so a layer rule can be
 derived from measurement instead of asserted and then discovered to be false.
 
@@ -40,13 +40,13 @@ attempt to sort on them is what produced the retracted rule.
 
 Reads files as BYTES and decodes with errors='replace'. Two files in this repo
 carry a literal NUL as a string delimiter, which makes grep classify them as
-binary and skip them silently; a survey that inherits that blind spot would
+binary and skip them silently; a scan that inherits that blind spot would
 under-report the shelf it exists to describe.
 
 Advisory and read-only. Always exits 0.
 
 Usage:
-    python3 code-shape-survey.py [--json] [--root DIR] [prefix ...]
+    python3 code-shape.py [--json] [--root DIR] [prefix ...]
 
     --json  emit the full per-file table as JSON on stdout (the structured
             stage; the text report is a rendering of the same data)
@@ -99,7 +99,7 @@ def code_only(src):
     """Strip comments before pattern-matching.
 
     Not cosmetic. Measured against the comments left in, every kit on the shelf
-    'used Alpine', because each one's header says it does not. A survey whose
+    'used Alpine', because each one's header says it does not. A scan whose
     numbers come from prose about the code rather than the code is exactly the
     failure that produced the rule this repo had to retract, so the stripping
     happens once here and every property below is measured on the result.
@@ -334,7 +334,7 @@ def main(argv):
         return 0
 
     browser = [r for r in rows if r["side"] == "browser" and not r["test"]]
-    print("Code shape survey (advisory; mechanical properties only)\n")
+    print("Code shape scan (advisory; mechanical properties only)\n")
     print(f"Browser code under lib/ ({len(browser)} files)\n")
     hdr = f"{'file':<38} {'attaches':<26} {'boot':<5} {'hub':<4} {'dom':<7} alpine"
     print(hdr)
@@ -362,7 +362,7 @@ def main(argv):
 
     nul = [r for r in rows if r["nul"]]
     if nul:
-        print("Files carrying a NUL byte (invisible to grep, and to any survey "
+        print("Files carrying a NUL byte (invisible to grep, and to any scan "
               "that reads text):")
         for r in nul:
             print("   ", r["path"])

@@ -64,7 +64,7 @@ folder deliberately no longer encodes.
 
 | Kit | Namespace | Role |
 |---|---|---|
-| `branch-survey.js` | `BranchSurvey` | branch-estate survey math: the content-level landed/stranded signal |
+| `branch-status.js` | `BranchStatus` | branch-estate scan math: the content-level landed/stranded signal |
 | `chat-render.js` | `chatRender` | chat transcript renderer; fenced code promoted to live artifacts |
 | `content-registry.js` | `ContentRegistry` | the epistemic content registry (`data/design/content.csv`), read in the browser |
 | `data-payload.js` | `DataPayload` | reading a data toss: one rule for what a payload is |

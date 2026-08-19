@@ -112,7 +112,7 @@ test('vendored conventions copies match their docs/ originals byte for byte', ()
 // its target travels with them. CONVENTIONS.md and SURFACING.md ship together,
 // so their mutual links stay relative; everything else in docs/ does not, and
 // is written as an absolute hub URL. Thirteen such links were dead in the
-// vendored copies until 2026-08-05 (link-survey.py found them); this is the
+// vendored copies until 2026-08-05 (dead-links.py found them); this is the
 // gate that keeps the next one from shipping.
 const SHIPPED_TOGETHER = ['CONVENTIONS.md', 'SURFACING.md'];
 const MD_LINK = /\[[^\]]*\]\(([^)\s]+)\)/g;

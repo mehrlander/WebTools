@@ -59,9 +59,9 @@ test('the emitted surface validates against both schemas', () => {
 
 test('the page reader projects it onto the four authored fields', () => {
   // The same load arrangement branch-brief.test.mjs uses: the kit into a stub
-  // window, survey first for compareFields.
+  // window, scan first for compareFields.
   const win = {};
-  for (const f of ['lib/kits/branch-survey.js', 'lib/kits/branch-brief.js']) {
+  for (const f of ['lib/kits/branch-status.js', 'lib/kits/branch-brief.js']) {
     new Function('window', readFileSync(path.join(repoRoot, f), 'utf8'))(win);
   }
   const a = win.BranchBrief.readAuthored(surface);

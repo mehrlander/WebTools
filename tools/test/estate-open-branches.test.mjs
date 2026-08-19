@@ -1,6 +1,6 @@
 // alpineComponents/estate.js — the Activity view's branch list: the projection
 // from the activity cache to rows (allBranchRows), the SCOPE axis over the
-// survey's groups (branchScope / inScope / branchScopes, with openBranches the
+// scan's groups (branchScope / inScope / branchScopes, with openBranches the
 // scoped list), the repo filter chips (openRepos / activeRepoFilter /
 // openRows), the lifespan pair each row shows (branchStart), and the per-row
 // GitHub menu (branchMenuItems / runBranchMenu).
@@ -54,7 +54,7 @@ window.gh = { load: async () => {} };
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
-  'lib/kits/branch-survey.js',      // the lifespan display rules live here, shared
+  'lib/kits/branch-status.js',      // the lifespan display rules live here, shared
   'lib/kits/swipe-deck.js',         // the takeover IS one
   // The shelf reads every surface through the shared envelope model, which
   // gh-boot loads ahead of the components for exactly this reason.
@@ -67,16 +67,16 @@ Alpine.data('branchBrief', (opts) => ({ opts, init(){ this.$el.textContent = opt
 const data = Alpine.$data(window.document.getElementById('es'));
 const tick = (n = 1) => new Promise(r => setTimeout(r, n * 10));
 
-// A cache entry: `branches` are survey rows, `prs` are open pull requests.
+// A cache entry: `branches` are scan rows, `prs` are open pull requests.
 const entry = (branches, prs, def = 'main') => ({
   defaultBranch: def,
   openPRs: prs,
-  survey: { branches },
+  scan: { branches },
 });
 
 // Two repos with work in flight and one with none, exercising every way a row
 // reaches the list: a stranded branch with a draft PR, a stranded branch with
-// none, an open PR the survey never reached, and a landed branch (never shown).
+// none, an open PR the scan never reached, and a landed branch (never shown).
 const seed = () => {
   data.activity = {
     'me/tools': entry(
@@ -123,8 +123,8 @@ test('openBranches: open PRs and stranded branches only, freshest first', () => 
 test('a row takes its start from whichever compare the crawl ran', () => {
   const [a, b, fresh] = data.openBranches;
   assert.equal(a.first, '2026-07-05T00:00:00Z');      // the PR head's compare
-  assert.equal(b.first, '2026-07-17T20:00:00Z');      // the survey's
-  assert.equal(fresh.first, '2026-07-10T00:00:00Z');  // a PR the survey never reached
+  assert.equal(b.first, '2026-07-17T20:00:00Z');      // the scan's
+  assert.equal(fresh.first, '2026-07-10T00:00:00Z');  // a PR the scan never reached
 });
 
 test('branchStart: the lifespan reads "15 days → 2 hours", collapsed when equal', () => {
