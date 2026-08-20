@@ -2480,6 +2480,11 @@ function app(){ return {
           try {
             entry.align = window.PortableAlign.assess({ repo, role, settings, claudeMd, config: entry.config });
             entry.align.scope = (entry.config && typeof entry.config.scope === 'string') ? entry.config.scope : '';
+            // The repo's own committed skills ride the same free read. The
+            // plugin's set is never here: a pulled skill lives in the plugin
+            // cache, so a committed .claude/skills/ is by construction what
+            // the hub did not ship this repo.
+            entry.align.skills = Array.isArray(entry.config?.skills) ? entry.config.skills : [];
           } catch {}
         }
         fetched[repo] = entry;
