@@ -560,6 +560,32 @@
   // Draw the icon dimmed. globalAlpha carries the fade on its own, so a
   // browser without canvas filter support still gets the treatment, just
   // without the desaturation.
+  // Does the subject have a deployed page this render stands in for? That is
+  // the whole premise of the dimming below, and for a repo that serves no Pages
+  // it is false: a private page has no github.io twin at any ref, so at its own
+  // default branch the toss is not a preview of the page, it IS the page, and
+  // its icon goes through undimmed. Off that branch the dimming still says what
+  // it always said, that this is not the canonical version.
+  //
+  // One REST read per repo per load, cached, best-effort: an unanswered call
+  // keeps the dimming, which is what every toss did before this. The fab asks
+  // the same question of the same endpoint for the escape button's destination
+  // (alpineComponents/fab.js, liveTwin).
+  const repoMeta = new Map();
+  function repoInfo(repo) {
+    if (!repoMeta.has(repo)) {
+      repoMeta.set(repo, fetch('https://api.github.com/repos/' + repo, { headers: ghHeaders() })
+        .then(r => (r.ok ? r.json() : null)).catch(() => null));
+    }
+    return repoMeta.get(repo);
+  }
+  async function isCanonicalSubject(subject) {
+    if (!subject || !subject.repo) return false;
+    const info = await repoInfo(subject.repo);
+    if (!info || info.has_pages !== false) return false;
+    return (subject.ref || 'main') === (info.default_branch || 'main');
+  }
+
   function dimIcon(src) {
     return new Promise(resolve => {
       const img = new Image();
@@ -602,8 +628,9 @@
       seen = href;
       try {
         const src = await iconDataUri(href, subject);
-        const dimmed = src && await dimIcon(src);
-        if (dimmed && !stopped) setFavicon(dimmed);
+        if (!src) return;
+        const icon = await isCanonicalSubject(subject) ? src : await dimIcon(src);
+        if (icon && !stopped) setFavicon(icon);
       } catch (e) { /* a favicon is cosmetic; never surface this */ }
     };
     let obs = null;

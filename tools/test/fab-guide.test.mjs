@@ -423,6 +423,53 @@ test('the dropdown navigates in one tap, and the default branch is the way out',
   assert.equal(calls.length, 0);
 });
 
+// A repo that serves no Pages has no deployed page to escape TO, so the way out
+// of a preview is this same view at the default branch. Before liveTwin the
+// escape offered a github.io URL that 404s for every private repo in the
+// estate, and once canonicalUrl came back empty it offered nothing at all: the
+// button was there, warning-tinted, and did not move.
+
+test('with no deployed twin, the way out is a re-address, not a github.io URL', async () => {
+  const d = await mountFab('data-repo="mehrlander/home" data-path="projects/budget-drs/app/view/app.html"');
+  d.viaToss = true;
+  d.ref = 'claude/thing';
+  await tick(1);
+  d.defaultBranch = 'main';
+
+  // Unasked reads as "assume yes", which is what every Pages-served page had
+  // before the question existed.
+  assert.equal(d.subjectPages, null);
+  assert.equal(d.liveTwin, true);
+  assert.equal(d.canonicalUrl(),
+    'https://mehrlander.github.io/home/projects/budget-drs/app/view/app.html');
+
+  d.subjectPages = false;
+  assert.equal(d.liveTwin, false);
+  assert.equal(d.canonicalUrl(), '', 'no twin, so no canonical URL to offer');
+
+  const rendered = spy(d, 'renderAtRef');
+  d.returnToLive();
+  assert.deepEqual(rendered, ['main'], 'the escape re-addresses at the default branch');
+
+  // The dropdown's default-branch row lands in the same place, which is the
+  // point of routing both through one predicate instead of two copies of it.
+  d.goToRef('main');
+  assert.deepEqual(rendered, ['main', 'main']);
+});
+
+test('a subject with no page of its own has no twin, whatever its repo serves', async () => {
+  const d = await mountFab();
+  d.subjectPages = true;              // web-tools does serve Pages
+
+  d.subjectRoute = 'data';
+  assert.equal(d.liveTwin, false, 'a routed file is read through a renderer at every ref');
+  assert.equal(d.canonicalUrl(), '');
+
+  d.subjectRoute = '';
+  d.subjectLocal = true;
+  assert.equal(d.liveTwin, false, 'a paste has no repo behind it at all');
+});
+
 test('a routed subject is the FILE, and the app showing it stays named', async () => {
   const d = await mountFab();
 
