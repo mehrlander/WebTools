@@ -53,9 +53,10 @@ start): add the `extraKnownMarketplaces` and `enabledPlugins` block to
 | `/portable:scour` | acquisition fan-out: point many agents at the open web to bring back what is said and where, as a corpus rather than a report. Carries the measured constraints (search is the only metered input; lead yield saturates near `n^0.6` within a task; hub pages beat article pages 10x to 93x, predicted by organisational form; naming the null result in the prompt moved unsourced-claim disclosure from 0 of 49 to 32 of 42) and the prior art behind them in a companion `PRIOR-ART.md` (HITS, focused crawling, snowball sampling). Environment numbers live in `docs/environment/capabilities.md` so the two age separately |
 | the session recorder | a `Stop` hook that records the session where a checkout declares a `"sessions"` store, and does nothing at all where none does |
 | the session dispatcher | a `SessionStart` hook that runs every checkout's own `.claude/hooks/session-*.sh`, in every session, whatever the project root is |
+| the PR-subscribe hint | a `PostToolUse` hook on `create_pull_request` that prompts the session to subscribe to the pull request it just opened, carrying the number. Detection is the machinery; the call stays the model's, since no hook can invoke an MCP tool |
 
-That is the whole day-to-day set. Everything above the last two rows is invoked;
-those two are not. **They are the pieces that run on their own**, which is why
+That is the whole day-to-day set. Everything above the last three rows is invoked;
+those three are not. **They are the pieces that run on their own**, which is why
 they ship in the plugin rather than being installed per repo: the per-container
 settings file they would otherwise live in is provisioned fresh each session, so
 a hand-installed copy works for exactly one session and then vanishes.

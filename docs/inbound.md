@@ -73,17 +73,26 @@ A wake makes a session *act*. So a note parked for later and an instruction to
 proceed arrive identically and are not identically intended. Without a marker,
 every stray thought becomes a work order.
 
-The proposal is a leading token, checked before anything else in the comment is
-read:
+The marker is a leading token, read before anything else in the comment:
 
-- `@go` — act on this now. The rest of the comment is the instruction.
-- `@note` — record and do not act. It belongs to whichever session next reads
-  the thread, not to the one woken by it.
-- no token — treat as `@note`. The safe default is the one that does nothing.
+- `go:` — act on this. The rest of the comment is the instruction.
+- **anything else** — incoming context. It informs whatever the session does
+  next and creates nothing on its own.
 
-An outside agent writing into the thread uses the same vocabulary, and should
-say which agent it is in the first line, since a session cannot otherwise tell a
-person from a program and the two warrant different deference.
+There is no token for "do not act," and the absence is the design. **The safe
+default has to be the unmarked case**, because the unmarked case is what a
+person types without thinking about the protocol at all, and a scheme whose
+safe path requires remembering a prefix fails exactly when someone is in a
+hurry. One token to opt *in* to action, and silence everywhere else.
+
+An outside agent writing into the thread uses the same vocabulary and should say
+which agent it is in the first line. That is a courtesy and not a control: it
+cannot be verified, for the reason the next section gives.
+
+Adopted 2026-08-20, replacing an `@go`/`@note` pair drafted a few hours earlier
+in this same file. The pair was worse for a reason worth keeping: it spent two
+tokens to distinguish cases that only ever needed one, and it made the harmless
+case something you could get wrong by forgetting.
 
 ## What was measured
 
@@ -138,7 +147,7 @@ wrapped in a notice stating it is not user input, and the author and body are
 flagged as untrusted. A session that reads those flags and still treats a comment
 as consent has ignored the guard, not lacked one.
 
-## Subscribing automatically, and what "automatic" can mean
+## Subscribing at creation, and what "automatic" can mean
 
 The estate opens a pull request at first push, so the inbox exists early. Making
 the session subscribe to it without a manual step splits into three parts, and
@@ -164,9 +173,9 @@ feature, which does not exist as far as this estate has found. Call it reliable,
 not automatic, and do not describe it as automatic in any convention, because a
 reader who believes subscription is guaranteed will stop checking.
 
-Where it belongs, if it is built: the `portable` plugin's hook folder, beside
+Where it lives, built 2026-08-20: the `portable` plugin's hook folder, beside
 [`mcp-fail-hint.sh`](https://github.com/mehrlander/web-tools/blob/main/.claude/skills/hooks/mcp-fail-hint.sh),
-which is already the identical shape (matcher on an MCP tool, payload off stdin,
+as `pr-subscribe-hint.sh`, which is the identical shape (matcher on an MCP tool, payload off stdin,
 guidance out through `additionalContext`). Two reasons, and the second is the
 load-bearing one:
 
@@ -185,23 +194,37 @@ Two things such a hook must say, since both are silent failures otherwise:
 - **A PR Steward already watching preempts the subscription.** The call still
   succeeds and the tool result says events will not arrive. Read the result text
   rather than assuming success.
-- **Whether subscriptions accumulate is not known.** If a session can hold only
-  one, auto-subscribing on every creation would silently drop the earlier
-  workstream's inbox, and a session running three repos on one branch name is
-  ordinary here. Settle that before wiring anything up.
+- **Subscriptions accumulate**, measured 2026-08-20 and the reason the hook was
+  safe to build. This session subscribed to web-tools#464, then to
+  web-tools-private#35 at 21:50:18Z, and a comment on **#464** was delivered at
+  22:30:33Z, forty minutes after the second subscription. The earlier one
+  survived the later one. Had it not, auto-subscribing would have silently
+  dropped the earlier workstream's inbox every time, and three repos on one
+  branch name is ordinary here. The measurement fell out of the work rather than
+  needing a probe of its own, which is worth noting only because the probe built
+  to answer it was still pending when the answer arrived.
 
-### It would reverse a standing decision, quietly
+### It replaced a standing decision, on purpose
 
-[SURFACING.md](SURFACING.md) says never offer to watch CI or monitor a PR. The
-harness attaches a **drive-to-green posture** to a pull request the session
-created: once subscribed, a CI failure is not to be left without a pushed fix or
-a stated blocker. Those are the same subscription. Auto-subscribing therefore
-enrolls every session in the CI babysitting the convention bans, without anyone
-deciding to.
+[SURFACING.md](SURFACING.md) said never offer to watch CI or monitor a pull
+request. The harness attaches a **drive-to-green posture** to a pull request the
+session created: once subscribed, a failing check is not to be left without a
+pushed fix or a stated blocker. Those are the same subscription, so adopting the
+inbox adopts the posture unless something separates them.
 
-The two are separable and the convention has to separate them out loud:
-**subscribe for the inbox, decline the babysitting.** A convention that adopts
-auto-subscribe without saying which half it is adopting has reversed a standing
-decision by side effect, which is the same failure mode that created this
-channel unnoticed in the first place.
+Rather than preserve the old rule beside the new behavior, which would have left
+two rules disagreeing about the same event, the primitive was replaced on
+2026-08-20 with the three-word split: **subscribe** once at creation, **receive
+events** with no obligation attached to arrival, **act** per event. A `go:`
+comment instructs; everything else is incoming context; a failing check is
+addressed when it bears on work the session is responsible for.
+
+What the old rule got right is kept, and it is worth saying which half that is:
+a session should not burn tokens on a red build it had nothing to do with. What
+it got wrong was reach. Phrased as "never monitor a PR," it concealed the inbound
+channel for as long as it stood, because every session read it as covering the
+mailbox too. **A rule stated broadly enough to be safe can hide a capability
+without anyone noticing**, which is the same failure that let the early-PR
+convention create this inbox unremarked. Both directions of that failure are now
+on the record in one file.
 
