@@ -137,3 +137,71 @@ since it is the mitigation rather than an inconvenience: an arriving event is
 wrapped in a notice stating it is not user input, and the author and body are
 flagged as untrusted. A session that reads those flags and still treats a comment
 as consent has ignored the guard, not lacked one.
+
+## Subscribing automatically, and what "automatic" can mean
+
+The estate opens a pull request at first push, so the inbox exists early. Making
+the session subscribe to it without a manual step splits into three parts, and
+only one of them can be automatic.
+
+**Detection can be.** `PostToolUse` takes a matcher on the tool name and can
+return `hookSpecificOutput.additionalContext`, described in the hook reference as
+text that "lets a hook augment what Claude sees about the tool's result." A
+matcher of `mcp__.*__create_pull_request` fires deterministically the moment a
+pull request is created, with the tool result in hand, which carries the number.
+
+**The subscribe call cannot be.** Hooks run shell commands.
+`subscribe_pr_activity` is an MCP tool reachable only by the model, and it has no
+command-line equivalent. Nothing in the hook system can invoke it. This is the
+line the question has to be answered on: **detection is machinery, the call is
+always the model.**
+
+**So the achievable mechanism is deterministic detection plus a prompt delivered
+at the exact moment, carrying the number.** That is meaningfully stronger than a
+standing instruction in `CLAUDE.md`, which competes with everything else in
+context and weakens as a session grows, and meaningfully weaker than a platform
+feature, which does not exist as far as this estate has found. Call it reliable,
+not automatic, and do not describe it as automatic in any convention, because a
+reader who believes subscription is guaranteed will stop checking.
+
+Where it belongs, if it is built: the `portable` plugin's hook folder, beside
+[`mcp-fail-hint.sh`](https://github.com/mehrlander/web-tools/blob/main/.claude/skills/hooks/mcp-fail-hint.sh),
+which is already the identical shape (matcher on an MCP tool, payload off stdin,
+guidance out through `additionalContext`). Two reasons, and the second is the
+load-bearing one:
+
+- The plugin travels to every repo, and the inbox is a per-workstream thing in
+  every repo rather than a web-tools feature.
+- **A project `.claude/settings.json` hook would not fire reliably.** A session
+  can open with the repo one level below its root, and Claude Code then reads
+  project settings from a path that does not exist, registering none of the
+  repo's hooks. The estate hit exactly this, diagnosed it, and moved its
+  build hook out of the harness for it; see
+  [environment/extending.md](environment/extending.md). The plugin registers at
+  user scope and runs from any root, which is why the dispatcher lives there.
+
+Two things such a hook must say, since both are silent failures otherwise:
+
+- **A PR Steward already watching preempts the subscription.** The call still
+  succeeds and the tool result says events will not arrive. Read the result text
+  rather than assuming success.
+- **Whether subscriptions accumulate is not known.** If a session can hold only
+  one, auto-subscribing on every creation would silently drop the earlier
+  workstream's inbox, and a session running three repos on one branch name is
+  ordinary here. Settle that before wiring anything up.
+
+### It would reverse a standing decision, quietly
+
+[SURFACING.md](SURFACING.md) says never offer to watch CI or monitor a PR. The
+harness attaches a **drive-to-green posture** to a pull request the session
+created: once subscribed, a CI failure is not to be left without a pushed fix or
+a stated blocker. Those are the same subscription. Auto-subscribing therefore
+enrolls every session in the CI babysitting the convention bans, without anyone
+deciding to.
+
+The two are separable and the convention has to separate them out loud:
+**subscribe for the inbox, decline the babysitting.** A convention that adopts
+auto-subscribe without saying which half it is adopting has reversed a standing
+decision by side effect, which is the same failure mode that created this
+channel unnoticed in the first place.
+
