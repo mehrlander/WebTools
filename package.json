@@ -42,7 +42,7 @@
     "test:card-pdf": "node tools/test/card-pdf.mjs",
     "test:viewer-xlsx": "node tools/test/viewer-xlsx.mjs",
     "test:alpine-teardown": "node tools/test/alpine-teardown.mjs",
-    "test:preview-height": "node tools/test/stage-preview-height.mjs",
+    "test:reader-height": "node tools/test/stage-reader-height.mjs",
     "test:shot-warnings": "node tools/test/shot-warnings.mjs",
     "test:data-view-links": "node tools/test/data-view-links.mjs",
     "tests-index": "node tools/build/tests-index.mjs",

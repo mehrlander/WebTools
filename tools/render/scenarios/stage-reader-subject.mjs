@@ -64,7 +64,7 @@ export default async function (page) {
       return d && { repo: d.repo, path: d.path, local: d.subjectLocal, label: d.subjectLabel };
     };
     const data = Alpine.$data(document.querySelector('[x-data*="stager"]'));
-    data.previewStep(1);
+    data.readerStep(1);
     await new Promise(r => setTimeout(r, 700));
     return { subject: window.__tossSubject, drawer: say() };
   });
@@ -74,7 +74,7 @@ export default async function (page) {
   // sidebar is now aimed at the file in the panel in front of it.
   await page.evaluate(async () => {
     const data = Alpine.$data(document.querySelector('[x-data*="stager"]'));
-    data.previewStep(-1);
+    data.readerStep(-1);
     await new Promise(r => setTimeout(r, 500));
   });
   await page.waitForTimeout(300);

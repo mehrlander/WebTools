@@ -64,10 +64,10 @@ export default async function (page) {
     await new Promise(r => setTimeout(r, 900));
     return {
       defaultPair: [data.diffA, data.diffB],
-      label: data.previewPairLabel(),
+      label: data.readerPairLabel(),
       // The comparison is a LEVEL over the reader, not a mode on it: both decks
       // are alive, and backing out of the top one lands on the file.
-      readerStillOpen: !!data._pDeck,
+      readerStillOpen: !!data._rDeck,
       comparisonIsItsOwnDeck: !!data._cmpDeck,
     };
   }, DOCS);
@@ -84,7 +84,7 @@ export default async function (page) {
     await new Promise(r => setTimeout(r, 700));
     return {
       pair: [data.diffA, data.diffB],
-      label: data.previewPairLabel(),
+      label: data.readerPairLabel(),
       stat: data.diffStat,
       options: data.compareOptions().map(o => o.label + ' · ' + o.note),
       // What is painted, so an empty list cannot pass as a picker.
