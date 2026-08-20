@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// The stage preview's height, measured across items of very different sizes.
+// The stage reader's height, measured across items of very different sizes.
 //
-//   node tools/test/stage-preview-height.mjs
+//   node tools/test/stage-reader-height.mjs
 //
-// Two claims, and they were one bug. The preview box used to be `sm:h-auto`
+// Two claims, and they were one bug. The reader box used to be `sm:h-auto`
 // with a `max-h-[85vh]` cap, so it sized itself to its content: stepping from a
 // two-line paste to a long file resized it under the reader, and an
 // auto-height box gave its children no definite height to divide, so the
@@ -11,7 +11,7 @@
 // `overflow-hidden` clipped whatever exceeded the cap with no scrollbar
 // anywhere. Pinning the height fixes both, which is why one check covers both.
 //
-// The box is swipe-deck's panel since 2026-08-18, when the preview stopped
+// The box is swipe-deck's panel since 2026-08-18, when the reader stopped
 // being a hand-rolled dialog. The kit pins its own height
 // (`sm:h-[calc(100dvh-2rem)]`), so both claims are still exactly the ones worth
 // holding, and a kit shared by five surfaces is a better place to hold them:
@@ -83,7 +83,7 @@ await page.evaluate(() => {
 });
 
 const boxHeight = async (i) => {
-  await page.evaluate((n) => window.__data.previewAt(n, 'file'), i);
+  await page.evaluate((n) => window.__data.readerAt(n, 'file'), i);
   await page.waitForTimeout(700);
   return page.evaluate(() => {
     // STRUCTURAL, not by class name. Selecting the box by the very class the
@@ -92,7 +92,7 @@ const boxHeight = async (i) => {
     // measure the height that moved. A slide's viewer sits in a <section>,
     // the section in the deck's track, and the track is a grid item of the
     // panel, which is the box.
-    const box = document.querySelector('[data-preview-slide]')
+    const box = document.querySelector('[data-reader-slide]')
       ?.closest('section')?.parentElement?.parentElement;
     return box ? Math.round(box.getBoundingClientRect().height) : -1;
   });
@@ -107,7 +107,7 @@ check(short > 500, `the box holds a useful height rather than shrinking to conte
 // The long file must scroll inside the box, not be clipped by it. Find the
 // deepest scrollable descendant and prove it actually moves.
 const scroll = await page.evaluate(() => {
-  const box = document.querySelector('[data-preview-slide]')
+  const box = document.querySelector('[data-reader-slide]')
     ?.closest('section')?.parentElement?.parentElement;
   if (!box) return null;
   const els = [box, ...box.querySelectorAll('*')].filter(el => el.scrollHeight > el.clientHeight + 4);

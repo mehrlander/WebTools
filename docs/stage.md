@@ -74,12 +74,12 @@ field keeps its native paste untouched and contributes what it cannot hold. Each
 flavor is named for what it is, which is load-bearing rather than cosmetic:
 tab-separated text is detected and named `.tsv` (at least two lines, every line
 carrying the same nonzero number of tabs, so prose with a stray tab is not a
-grid), and the preview opens `.tsv` as a **table**. The button path reads
+grid), and the reader opens `.tsv` as a **table**. The button path reads
 `io.pasteItems()`, so it sees the same set the keyboard path does; on iOS, where
 Safari fires no paste event unless an editable is focused, it is the only intake
 and used to be text-only.
 
-The preview opens a staged file through `ViewRegistry.READ_MODE`, the same
+The reader opens a staged file through `ViewRegistry.READ_MODE`, the same
 policy the Files view uses: markdown rendered, JSON as a tree, delimited data as
 a table, everything else highlighted, raw past 300 KB. It was the Files view's
 private constant until 2026-08-15; the stage wanting it is what made it shared.
@@ -87,13 +87,13 @@ private constant until 2026-08-15; the stage wanting it is what made it shared.
 **A dropped file is text when its bytes are text.** Every file intake reaches
 the stage as an ArrayBuffer, and until 2026-08-17 the item was stamped binary on
 that basis alone, so a dropped `.md` was held as opaque bytes: the "Not text"
-note instead of a preview, no diff, no bundle block, and no link able to carry
+note instead of the file, no diff, no bundle block, and no link able to carry
 it, while the same characters pasted staged as text and opened rendered. The
 decision is by capability, in two questions. A type the viewer draws from its
 own bytes (image, PDF, workbook) stays bytes, since that is what makes it open
 at all; everything else goes to a strict UTF-8 decode, and a decode that throws
 or yields a NUL is what binary means here. So any text extension works, not a
-list of them, and a `.md` now previews rendered with raw one tap away.
+list of them, and a `.md` now reads rendered with raw one tap away.
 
 Takes from:
 
@@ -115,7 +115,7 @@ Stage: a file dragged onto Repos, a file view, or the Map had nowhere to land
 and nothing on screen said so. The decisions now sit on `window.StageIntake`
 (`take`, `takeFile`, `takeDrop`) with no view attached, and the host owns the
 gesture: show-repo's shell takes a window drop on any view, stages it, routes to
-the Stage, and, when exactly one file arrived, opens it in the preview. A batch
+the Stage, and, when exactly one file arrived, opens it in the reader. A batch
 lands and stays listed, since a modal over a set nobody has seen listed is the
 wrong first look at it. `StageIntake.focus(item)` is how the opening is asked
 for: it names the item on `store.stageFocus` rather than calling the bench,
@@ -188,9 +188,9 @@ could tell it from prose.
 The chip is a sibling of the flavors bar, not part of it: that bar offers other
 readings of one paste, this offers another TOOL for what was already read.
 Tapping it opens the workbench as a **swipe-deck takeover**, the same kit the
-preview moved onto the same day, so the header, Escape, the phone Back button,
+reader moved onto the same day, so the header, Escape, the phone Back button,
 history-backed dismissal and correct nesting all come for free and opening the
-workbench from an open preview drills rather than stacking two scrims. A deck of
+workbench from an open reader drills rather than stacking two scrims. A deck of
 one, since a workbench is not a set to walk. The item's text goes over through
 `processText`, the tool's own sniff chain, so a bundle rehydrates whole and a
 CSV parses, with one reader of those shapes rather than two.
@@ -208,7 +208,7 @@ drawing the whole chrome around an empty pane in silence. That is what the first
 mount here actually did, which is why the scenario asserts the drawn rows rather
 than the parsed ones.
 
-The offer also rides the **preview's header**, not only the bench, and that is
+The offer also rides the **reader's header**, not only the bench, and that is
 where it matters most: a single arrival routes to the Stage and opens on itself,
 so the reader is looking at the file rather than at the row. It is recomputed
 per slide, since the compare is a property of the SET and holds across positions
@@ -281,7 +281,7 @@ Stage-view actions:
   dictation get one sniffed from the first few characters), and it is read in
   four places: the row, the bundle header, the `name` a local item rides on a
   `#gz=` link, and the deposited path. The **extension** is the whole of what
-  the preview reads to pick a mode and what the destination blob renders as, so
+  the reader uses to pick a mode and what the destination blob renders as, so
   a wrong sniff used to mean deleting the item and pasting it again. A slash is
   allowed and means a subpath under the destination (`docs/notes.md` lands at
   `<dir>/docs/notes.md`); `..` and empty segments are dropped. Two locals with
@@ -291,9 +291,9 @@ Stage-view actions:
   jump-over resolves, and `copyTo` reads back, so editing it would either lie
   about the origin or silently mean "land it elsewhere", which is a destination
   override and a different feature;
-- **view** a staged file inline (a preview panel in the stage itself, with a
+- **view** a staged file inline (a reading panel in the stage itself, with a
   GitHub jump-over to the file's true home; it never routes through a repo's
-  Files view). **The preview is a position in the stage, not one file:** it
+  Files view). **The reader is a position in the stage, not one file:** it
   carries an index, so the staged set is walkable by swipe on a phone or by the
   header arrows and the arrow keys anywhere. Same gesture and constants as the
   estate's branch takeover, so a horizontal drag reads alike in both and a
@@ -311,8 +311,8 @@ Stage-view actions:
   viewer's `fill` body never became a scroll container and the box's own
   `overflow-hidden` clipped whatever passed the cap with no scrollbar
   anywhere. Pinning the height fixes both, and
-  [`tools/test/stage-preview-height.mjs`](../tools/test/stage-preview-height.mjs)
-  (`npm run test:preview-height`) holds it: neither claim is visible in a
+  [`tools/test/stage-reader-height.mjs`](../tools/test/stage-reader-height.mjs)
+  (`npm run test:reader-height`) holds it: neither claim is visible in a
   screenshot or reachable from jsdom, which has no layout, so the check
   measures the box on a 2-line file and a 4,000-line file and then scrolls the
   long one.
@@ -438,6 +438,40 @@ Stage-view actions:
   nothing to compare against, which remains true and is answered by staging a
   second item rather than by a bespoke gesture;
 
+  **The reader says which file is on screen, and the sidebar follows it.** The
+  FAB drawer floats over the reader still aimed at whatever it was aimed at
+  before, which for the Stage view is the app shell: a reader six files into a
+  set they assembled had a Render tab naming `show-repo` and rooting its path
+  picker there. So the reader announces on the subject channel
+  ([`kits/subject-channel.js`](../lib/kits/subject-channel.js), the one
+  toss-render stamps and [`kits/file-deck.js`](../lib/kits/file-deck.js) already
+  speaks on), once per position and through the comparison walk too, since side
+  A of a comparison is the position. The drawer then names the staged file, roots
+  its path picker at that repo and ref, aims its github menu at that blob and
+  reads that ref's guide, and the reader's header grows the same door into the
+  sidebar the file deck has. A **local** item announces `local` plus its label
+  rather than staying silent, which folds the ref bar and the path picker away;
+  silence would leave the drawer describing the shell, so stepping off a repo
+  file onto a pasted one would watch the sidebar keep naming the file just left.
+
+  **No `base` rides along, and that is the one field the file deck announces and
+  this does not.** `base` is what raises the drawer's compare bar, whose pick
+  travels back on `__compareRef` for the *cards* to read. This reader owns its
+  comparison and reads no such global, so a base would hang a second compare
+  control in the drawer that changes nothing on screen. The comparison stays
+  where the position lives.
+
+  **And the ref bar re-addresses rather than navigating away.** Its rows say
+  "render this file at that ref," which everywhere else means leaving for the
+  renderer; over a hand-assembled set that drops the set. The file deck answers
+  by re-rendering the slide where it stands. The stage answers in its own verb:
+  the version **joins the set and is read**, with what you were reading one swipe
+  away and a comparison of the two one tap away. Nothing is removed, and `grab`
+  dedupes, so asking twice seeks rather than duplicating. The fab asks any routed
+  subject that has installed the handle, rather than the one route name it used
+  to test for: what establishes that a surface can re-address is the handle, not
+  what its route is called;
+
 - **Out**: the deposit surface, and the only lens on this side now. It covers
   everything leaving the stage: the concatenated bundle (each file under a
   `// === owner/repo[@ref]:path ===` header; icon actions to refresh, copy,
@@ -445,7 +479,7 @@ Stage-view actions:
   tap-through selector in folder mode; two-tap Send). There is no Out/Diff pill:
   the two were never two views of one thing. Out is where the set **leaves**;
   Diff was a way to **read** two of its files, and reading belongs in the
-  preview (above), which already walks the staged set and can therefore pair
+  reader (above), which already walks the staged set and can therefore pair
   two of it with no second set of controls. (The base...head branch compare is
   not here either: it lives under the Branches view, with the review it serves.);
 - **Save**: the pin on the Staged header, opening the dialog above.
@@ -494,9 +528,9 @@ six fixed general prompts, each still one-click-copying both compared texts plus
 the diff plus that ask.
 
 An optional `&mode=diff` is the third part of the object: the intent that this
-stage opens as a diff. A `mode=diff` link opens the **preview** on its diff and runs the
+stage opens as a diff. A `mode=diff` link opens the **reader** on its diff and runs the
 compare on open (no click), so a review link lands the reviewer straight on the
-diff; without it a stage opens with the preview closed, on the Out surface (a bundle handoff). `StageLink.mint(items,
+diff; without it a stage opens with the reader closed, on the Out surface (a bundle handoff). `StageLink.mint(items,
 base, { prompts, mode })` encodes all of it (a bare prompts array is still
 accepted for the legacy call), and `StageLink.parseLink(hash)` returns `{ items,
 prompts, mode }`; the bare `StageLink.parse(hash)` still returns just the items

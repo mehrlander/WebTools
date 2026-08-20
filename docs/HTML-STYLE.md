@@ -59,14 +59,16 @@ renderer. Do not convert working pages for symmetry.
 **One accent, one meaning.** Assign colour by semantic role, not decoration. In a
 comparison, lock each side’s treatment across every view.
 
-**Opacity in tens.** `bg-success/10`, `text-base-content/60`. Steps off the tens
-(`/5`, `/15`, `/45`) and the bracket form (`/[5%]`) are not generated here, and
-they fail in the worst possible direction: a background falls back to
-transparent and TEXT falls back to FULL strength, so a line meant to be quiet
-comes out louder than the line it sits under. Nothing errors and nothing looks
-broken, which is why it survives review. Measured 2026-08-19 against the app's
-own stylesheet; the estate still carries about 120 of them, `branchAccent`'s
-state tints among them, which have never drawn.
+**A theme colour takes opacity in tens, 10 through 90.** `bg-success/10`,
+`text-base-content/60`. Anything else on a daisyUI theme colour generates no
+rule: `/0`, `/100`, every step off the tens, and the bracket form (`/[5%]`).
+Stock palette colours are unaffected and take any step, so `bg-red-500/33` is
+fine. The reason to care is the direction of the failure, not the tidiness: a
+background falls back to transparent and TEXT falls back to FULL strength, so a
+line meant to be quiet comes out louder than the line above it. Nothing errors,
+which is why it survives review. Enforced by `npm run opacity-scan`
+(`scripts/dead-opacity.py`), gated in `tools/test/dead-opacity.test.mjs`, which
+also carries the measurement.
 
 ## The shape that follows
 

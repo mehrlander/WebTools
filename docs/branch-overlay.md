@@ -390,6 +390,18 @@ carries a `route` for "a file the renderer could not show as a page, so an app
 is showing it instead", which is exactly a deck slide. So the file deck
 announces on it, and the sidebar follows the reader from file to file.
 
+**The machinery is a kit now, and this doc records the deck's half of it.**
+[`kits/subject-channel.js`](../lib/kits/subject-channel.js) owns which windows
+are listening, what is saved before the first write, and the answer bridged back
+down; the deck asks it for a channel and says which file per slide. The lift
+came with the second announcer, the Stage's reader
+([`stage.md`](stage.md)), which is also what retired the fab's one whitelisted
+route name: it asked for `route === 'deck'`, and what establishes that a surface
+can re-address is the handle it installed rather than what its route is called.
+The one thing the kit fixes rather than moves is that the snapshot is taken when
+the channel opens, not at the first write, so a surface's own handle can never
+be what gets restored to the page it borrowed from.
+
 Three things that took measuring. The deck leaves `via` off and the fab fills it
 from the page it recorded at mount, so an announcer never has to work out what
 app it is inside. `subjectFramed` is new and splits what `viaToss` had

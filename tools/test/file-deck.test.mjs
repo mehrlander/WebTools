@@ -29,7 +29,7 @@ import path from 'node:path';
 import { makeWindow, repoRoot } from './bootstrap.mjs';
 
 const { window } = makeWindow({ html: '<!doctype html><html><body></body></html>' });
-for (const f of ['lib/kits/swipe-deck.js', 'lib/kits/file-deck.js']) {
+for (const f of ['lib/kits/swipe-deck.js', 'lib/kits/subject-channel.js', 'lib/kits/file-deck.js']) {
   new window.Function(readFileSync(path.join(repoRoot, f), 'utf8'))();
 }
 // fileReview is not under test here; the deck's job is to mount it with the

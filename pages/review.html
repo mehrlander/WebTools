@@ -379,6 +379,7 @@ function reviewApp() { return {
     const i = Math.max(0, this.files.findIndex(f => f.path === path));
     try {
       if (!window.swipeDeck) await gh.load('kits/swipe-deck.js');
+      if (!window.subjectChannel) await gh.load('kits/subject-channel.js');
       if (!window.fileDeck) await gh.load('kits/file-deck.js');
       window.fileDeck.open({
         repo: this.repo, ref: this.head,

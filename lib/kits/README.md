@@ -81,6 +81,7 @@ folder deliberately no longer encodes.
 | `session-render.js` | `sessionRender` | a session record as a readable, paged conversation |
 | `shorter-payload.js` | `ShorterPayload` | reading a shorter toss |
 | `source-peek.js` | `SourcePeek` | the hover card behind an exact-file GitHub jump-over **(boot;** the manifest calls `install()`, the kit no longer self-installs**)** |
+| `subject-channel.js` | `subjectChannel` | telling the FAB sidebar which file a surface is showing, and giving the page its own back |
 | `surface.js` | `Surface` | the surface envelope, in one place **(boot)** |
 | `swipe-deck.js` | `swipeDeck` | the house swipe format and its fullscreen takeover |
 | `traffic.js` | `Traffic` | the pure read over the traffic ledger gh-boot collects **(boot)** |

@@ -1,5 +1,5 @@
 // alpineComponents/stage.js — logic-level tests for the stager: the estate-
-// level picker roots (pickerRoots), the grab flow, the inline preview, the
+// level picker roots (pickerRoots), the grab flow, the inline reader, the
 // folding of dropped local files into the one stage (a local item beside refs,
 // both flowing through the one send/save/mint, with save naming its target
 // repo), and the Diff lens's A/B auto-pairing, diff dump, and review-prompts
@@ -17,7 +17,7 @@ const calls = [];
 class FakeGH {
   constructor(conf = {}) { this.token = conf.token || ''; this.repo = conf.repo || ''; this.ref = 'main'; }
   async get(path) {
-    // One repo that always 404s, so a failing read has a fixture: the preview
+    // One repo that always 404s, so a failing read has a fixture: the reader
     // has to open on it rather than refuse, or its position counter lies.
     if (this.repo === 'me/missing') throw Object.assign(new Error('404'), { status: 404 });
     return { text: 'CONTENT ' + this.repo + ':' + path, sha: 'x' };
@@ -40,14 +40,14 @@ const { window, problems } = makeWindow({
     <div id="st" x-data="stager()"></div>
   </body></html>`,
 });
-// The preview is a swipe-deck takeover now, and the deck pages by scrolling a
+// The reader is a swipe-deck takeover now, and the deck pages by scrolling a
 // track it measures. jsdom has neither layout nor scrollTo, so give it the
 // shared shim: with clientWidth falling back to 1, a slide index and a pixel
 // offset coincide and go(2) lands on slide 2, which is what a logic test needs.
 deckGeometry(window);
 
 // alpine-bundle.js defines the browser store; the stager composes dropZone and
-// pathPicker, and its inline preview mounts a viewer, so all three must be
+// pathPicker, and its inline reader mounts a viewer, so all three must be
 // registered before it mounts. kits/text-diff.js is the Diff lens's engine,
 // shared with pages/diff-tool.html: it attaches window.textDiff, which the
 // stager's diffLines requires.
@@ -64,9 +64,11 @@ const Alpine = await startAlpine(window, [
   'lib/kits/repo-mailbox.js',
   'lib/kits/surface.js',
   'lib/kits/text-diff.js',
-  // The preview's shell. stage.js gh.loads it on demand in a browser; here it
-  // is present up front, since there is no loader in this realm.
+  // The reader's shell, and the channel it tells the sidebar what it is
+  // showing on. stage.js gh.loads both on demand in a browser; here they are
+  // present up front, since there is no loader in this realm.
   'lib/kits/swipe-deck.js',
+  'lib/kits/subject-channel.js',
   'lib/alpineComponents/drop-zone.js',
   'lib/alpineComponents/path-picker.js',
   'lib/alpineComponents/viewer.js',
@@ -77,7 +79,7 @@ const data = Alpine.$data(window.document.getElementById('st'));
 const store = Alpine.store('browser');
 store.gh = new FakeGH({ token: 't', repo: 'me/open' });
 const plain_ = (v) => JSON.parse(JSON.stringify(v));
-// The preview is a deck mounted on document.body, so it outlives a store reset
+// The reader is a deck mounted on document.body, so it outlives a store reset
 // and would be seeked rather than reopened by the next test's view(). Close it
 // first, which is also what a reader does between two readings; the transform
 // takeover is the same kit and gets the same treatment.
@@ -85,10 +87,10 @@ const reset = () => {
   // The comparison covers the reader, so it comes down first: dropping a parent
   // out from under a child leaves the child stacked on nothing.
   if (data._cmpDeck) { data._cmpDeck.drop(); data._cmpDeck = null; }
-  if (data._pDeck) { data._pDeck.drop(); data._pDeck = null; }
+  if (data._rDeck) { data._rDeck.drop(); data._rDeck = null; }
   if (data._tfDeck) { data._tfDeck.drop?.(); data._tfDeck = null; }
-  data._pNotes = {};
-  store.stage = []; store.stageFocus = ''; store.stageOffers = []; data.preview = null;
+  data._rNotes = {};
+  store.stage = []; store.stageFocus = ''; store.stageOffers = []; data.reader = null;
   data.diffA = 0; data.diffB = 0; data._diffTouched = false; data.diffRows = null;
 };
 
@@ -174,7 +176,7 @@ test('aim sets the destination and the picker label together', () => {
   delete data.$refs.destPicker;
 });
 
-// ---- grabbing from a repo, previewing inline -----------------------------
+// ---- grabbing from a repo, reading inline -----------------------------
 
 test('grab stages the picked ref once, deduped by key', () => {
   reset();
@@ -187,12 +189,12 @@ test('grab stages the picked ref once, deduped by key', () => {
   ]);
 });
 
-// The preview is a swipe-deck takeover, one slide per staged item, each slide
-// mounting its own viewer. `data-preview-slide` carries the index, so a test can
+// The reader is a swipe-deck takeover, one slide per staged item, each slide
+// mounting its own viewer. `data-reader-slide` carries the index, so a test can
 // read the viewer for the position it means rather than the only one there used
-// to be. `preview.note` still says why a position rendered nothing.
-const previewViewer = (i) => window.document
-  .querySelector(`[data-preview-slide="${i ?? data.preview.i}"]`)?.__viewer;
+// to be. `reader.note` still says why a position rendered nothing.
+const readerViewer = (i) => window.document
+  .querySelector(`[data-reader-slide="${i ?? data.reader.i}"]`)?.__viewer;
 
 // The deck builds a slide from its scroll handler, on a real animation frame,
 // and the slide then resolves its content asynchronously. `tick` only turns the
@@ -201,28 +203,28 @@ const previewViewer = (i) => window.document
 // fails when jsdom's frame clock is not running. Same idiom as file-deck's.
 const shown = async () => { await new Promise(r => setTimeout(r, 50)); await tick(3); };
 
-test('view loads a ref into the inline preview, not the shared activeFile', async () => {
+test('view loads a ref into the inline reader, not the shared activeFile', async () => {
   reset();
   store.activeFile = null;
-  // The preview is a position in the stage, so the row it opens from is staged.
+  // The reader is a position in the stage, so the row it opens from is staged.
   store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
   await data.view({ repo: 'me/a', ref: '', path: 'lib/x.js' });
   await shown();
-  assert.equal(data.preview.name, 'lib/x.js');
-  assert.equal(data.preview.i, 0, 'and it knows where it is');
-  assert.equal(store.activeFile, null, 'stage preview never routes through Files');
-  const vwr = previewViewer();
+  assert.equal(data.reader.name, 'lib/x.js');
+  assert.equal(data.reader.i, 0, 'and it knows where it is');
+  assert.equal(store.activeFile, null, 'stage reader never routes through Files');
+  const vwr = readerViewer();
   assert.equal(vwr.file, 'lib/x.js');
   assert.match(vwr.content, /CONTENT me\/a:lib\/x.js/);
   assert.ok(vwr.fileUrls.some(u => /github\.com\/me\/a\/blob/.test(u.u)),
-    'the origin gives the preview its GitHub link');
+    'the origin gives the reader its GitHub link');
 });
 
-// The preview used to be a dead end: one file, and the only way to the next
+// The reader used to be a dead end: one file, and the only way to the next
 // staged one was close, find the row, open again. It carries an index now, so
 // the staged set is walkable. Every position opens, including the ones with
 // nothing to render, which is what keeps the counter honest.
-test('the preview walks the staged set, and every position opens', async () => {
+test('the reader walks the staged set, and every position opens', async () => {
   reset();
   store.stage = [
     { repo: 'me/a', ref: '', path: 'one.js' },
@@ -231,28 +233,28 @@ test('the preview walks the staged set, and every position opens', async () => {
   ];
   await data.view({ repo: 'me/a', ref: '', path: 'one.js' });
   await shown();
-  assert.equal(data.preview.i, 0);
-  assert.equal(data.preview.note, '', 'a text file renders');
+  assert.equal(data.reader.i, 0);
+  assert.equal(data.reader.note, '', 'a text file renders');
 
   // A binary local file is a position like any other: it opens with a note
   // instead of a viewer, so stepping past it never skips or dead-ends.
-  await data.previewStep(1);
+  await data.readerStep(1);
   await shown();
-  assert.equal(data.preview.i, 1);
-  assert.match(data.preview.note, /Binary/);
-  assert.equal(data.preview.name, 'bin.png');
+  assert.equal(data.reader.i, 1);
+  assert.match(data.reader.note, /Binary/);
+  assert.equal(data.reader.name, 'bin.png');
 
-  await data.previewStep(1);
+  await data.readerStep(1);
   await shown();
-  assert.equal(data.preview.i, 2);
-  assert.equal(data.preview.note, '');
+  assert.equal(data.reader.i, 2);
+  assert.equal(data.reader.note, '');
 
   // The ends hold.
-  await data.previewStep(1);
-  assert.equal(data.preview.i, 2, 'past the last is a no-op');
-  await data.previewStep(-1); await data.previewStep(-1); await data.previewStep(-1);
+  await data.readerStep(1);
+  assert.equal(data.reader.i, 2, 'past the last is a no-op');
+  await data.readerStep(-1); await data.readerStep(-1); await data.readerStep(-1);
   await shown();
-  assert.equal(data.preview.i, 0, 'before the first is a no-op');
+  assert.equal(data.reader.i, 0, 'before the first is a no-op');
 });
 
 test('a fetch that fails still opens, as a note rather than a closed modal', async () => {
@@ -260,8 +262,8 @@ test('a fetch that fails still opens, as a note rather than a closed modal', asy
   store.stage = [{ repo: 'me/missing', ref: '', path: 'gone.js' }];
   await data.view({ repo: 'me/missing', ref: '', path: 'gone.js' });
   await shown();
-  assert.ok(data.preview, 'the modal is open');
-  assert.match(data.preview.note, /Could not load it/);
+  assert.ok(data.reader, 'the modal is open');
+  assert.match(data.reader.note, /Could not load it/);
 });
 
 test('view shows a local text item inline', async () => {
@@ -269,8 +271,8 @@ test('view shows a local text item inline', async () => {
   store.stage = [loc];
   await data.view(loc);
   await shown();
-  assert.equal(data.preview.name, 'n.txt');
-  const vwr = previewViewer();
+  assert.equal(data.reader.name, 'n.txt');
+  const vwr = readerViewer();
   assert.equal(vwr.file, 'n.txt');
   assert.equal(vwr.content, 'hi');
   assert.equal(vwr.origin?.local, true);
@@ -292,7 +294,7 @@ test('a dropped file becomes a local stage item holding its bytes', () => {
 });
 
 // A DROPPED TEXT FILE IS TEXT. Every file intake arrives as bytes, and the
-// item was stamped binary on that basis, so a dropped .md previewed as "Not
+// item was stamped binary on that basis, so a dropped .md read as "Not
 // text" while the same characters pasted opened rendered. The decision is a
 // strict UTF-8 decode, so it holds for any text extension, not a list of them.
 test('a dropped markdown file is held as text, not as bytes', () => {
@@ -310,15 +312,15 @@ test('a dropped markdown file is held as text, not as bytes', () => {
 // and get the file rather than a note about it. The pane's own mode is
 // READ_MODE's (markdown renders, raw one tap away); what is asserted here is
 // that the viewer is driven at all.
-test('a dropped markdown file previews rather than reporting itself binary', async () => {
+test('a dropped markdown file reads rather than reporting itself binary', async () => {
   reset();
   const md = '# Notes\n\nA paragraph.\n';
   const bytes = new TextEncoder().encode(md);
   data.onDropped({ file: {}, name: 'notes.md', size: bytes.length, type: 'text/markdown', bytes, buf: bytes.buffer });
   await data.view(data.localItems[0]);
   await shown();
-  assert.equal(data.preview.note, '', 'no "Binary … staged for copy, not preview" note');
-  assert.equal(previewViewer().content, md);
+  assert.equal(data.reader.note, '', 'no "Binary … staged for copy, not reader" note');
+  assert.equal(readerViewer().content, md);
 });
 
 // The one form a file can arrive in with no `bytes` beside it. Reading the
@@ -340,7 +342,7 @@ test('bytes that are not UTF-8 stay bytes', () => {
   assert.equal(data.localItems[0].isText, false);
 });
 
-test('an svg keeps its bytes, so it still previews as an image', () => {
+test('an svg keeps its bytes, so it still reads as an image', () => {
   reset();
   const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"></svg>');
   data.onDropped({ file: {}, name: 'mark.svg', size: svg.length, type: 'image/svg+xml', bytes: svg, buf: svg.buffer });
@@ -398,7 +400,7 @@ test('takeDrop with no files falls to the dragged text, refs and all', async () 
 
 // The id counter is module-scope for this: two creators (the bench's drop-zone
 // and the app-wide drop) minting from per-mount counters would collide, and
-// `local:<id>` is the key dedupe and the preview address by.
+// `local:<id>` is the key dedupe and the reader address by.
 test('every local item takes its own key', () => {
   reset();
   const a = window.StageIntake.take({ text: 'one' })[0];
@@ -408,28 +410,28 @@ test('every local item takes its own key', () => {
 
 // focus is a REQUEST, not a selection: a host stages from another view, names
 // the item, and the bench opens on it whenever it gets there.
-test('focus names an item and the stage opens its preview, then forgets it', async () => {
+test('focus names an item and the stage opens its reader, then forgets it', async () => {
   reset();
   const it = window.StageIntake.take({ text: 'just some prose' })[0];
   window.StageIntake.focus(it);
   assert.equal(store.stageFocus, 'local:' + it.id);
   await tick(5);
   assert.equal(store.stageFocus, '', 'reading the request clears it, so a later mount does not reopen');
-  assert.ok(data.preview, 'the preview opened');
-  assert.equal(data.preview.name, it.name);
+  assert.ok(data.reader, 'the reader opened');
+  assert.equal(data.reader.name, it.name);
 });
 
 test('a drop on the view itself opens one file, and stays out of the way for a batch', async () => {
   reset();
   await data.onPageDrop({ dataTransfer: dropOf({ types: ['Files'], files: [textFile('one.md', '# One\n')] }) });
   await tick(4);
-  assert.equal(data.preview?.name, 'one.md');
+  assert.equal(data.reader?.name, 'one.md');
 
   reset();
   await data.onPageDrop({ dataTransfer: dropOf({ types: ['Files'],
     files: [textFile('a.md', 'a'), textFile('b.md', 'b')] }) });
   await tick(4);
-  assert.equal(data.preview, null, 'two arrivals stay listed rather than opening one of them');
+  assert.equal(data.reader, null, 'two arrivals stay listed rather than opening one of them');
   assert.equal(data.localItems.length, 2);
 });
 
@@ -594,7 +596,7 @@ test('a rows function is a transform, and other JavaScript is not', () => {
   assert.equal(kindOfPaste('function tidy(rows) { return rows }'), 'fn');
 });
 
-test('a pasted bundle opens in the tool, since its preview would be gzip strings', async () => {
+test('a pasted bundle opens in the tool, since reading it shows gzip strings', async () => {
   reset();
   let opened = null;
   const real = data.openTransform.bind(data);
@@ -604,7 +606,7 @@ test('a pasted bundle opens in the tool, since its preview would be gzip strings
   await tick(3);
   assert.ok(opened, 'focus routed it to the workbench');
   assert.match(opened.name, /\.json$/);
-  assert.equal(data.preview, null, 'and did not also open the preview on it');
+  assert.equal(data.reader, null, 'and did not also open the reader on it');
   data.openTransform = real;
 });
 
@@ -617,8 +619,8 @@ test('every other arrival still opens on its own content', async () => {
   window.StageIntake.take({ text: csv, size: csv.length });
   window.StageIntake.focus(data.localItems[0]);
   await tick(3);
-  assert.equal(opened, null, 'rows are worth looking at, so the preview is the right first look');
-  assert.ok(data.preview, 'the preview opened instead');
+  assert.equal(opened, null, 'rows are worth looking at, so the reader is the right first look');
+  assert.ok(data.reader, 'the reader opened instead');
   data.openTransform = real;
 });
 
@@ -771,7 +773,7 @@ test('takeFlavor stages one flavor under its own name, refs included', async () 
 
 // ---- a pasted image is a file, not an unviewable binary -----------------
 
-test('a local image previews from its own bytes, with no repo behind it', async () => {
+test('a local image reads from its own bytes, with no repo behind it', async () => {
   reset();
   // The 1x1 PNG, as the bytes a paste or a drop hands over.
   const png = Uint8Array.from(atob(
@@ -780,10 +782,10 @@ test('a local image previews from its own bytes, with no repo behind it', async 
   store.stage = [{ local: true, id: 210, name: 'image.png', path: 'image.png', size: png.length, type: 'image/png', isText: false, bytes: png }];
   await data.view(data.localItems[0]);
   await shown();
-  assert.equal(data.preview.note, '', 'an image is not refused as a binary');
-  const vwr = previewViewer();
+  assert.equal(data.reader.note, '', 'an image is not refused as a binary');
+  const vwr = readerViewer();
   assert.match(vwr.content, /^data:image\/png;base64,/, 'the bytes ride as a data URI, the one form a repo-less file can supply');
-  data.preview = null;
+  data.reader = null;
 });
 
 test('the data URI keys on the extension, so a rename changes what it renders as', () => {
@@ -792,7 +794,7 @@ test('the data URI keys on the extension, so a rename changes what it renders as
   assert.match(data.dataUri({ name: 'a.svg', bytes }), /^data:image\/svg\+xml;/);
   // A workbook carried a data URI from 2026-08-15, when the viewer gained a
   // mode that can draw one. This assertion read the other way until then, which
-  // is the point of keying on `mimeFor`: the set that previews here is the set
+  // is the point of keying on `mimeFor`: the set that reads here is the set
   // the viewer can render, and it moves when that does.
   assert.match(data.dataUri({ name: 'a.xlsx', bytes }), /^data:application\/vnd\.openxml/);
   assert.equal(data.dataUri({ name: 'a.zip', bytes }), '', 'a binary the viewer cannot render still says so');
@@ -804,11 +806,11 @@ test('a binary with no mode to draw it is still refused, and says which', async 
   store.stage = [{ local: true, id: 211, name: 'bundle.zip', path: 'bundle.zip', size: 2048, type: '', isText: false, bytes: Uint8Array.from([1, 2]) }];
   await data.view(data.localItems[0]);
   await shown();
-  assert.match(data.preview.note, /^Binary/);
-  data.preview = null;
+  assert.match(data.reader.note, /^Binary/);
+  data.reader = null;
 });
 
-test('a dropped workbook previews rather than being refused', async () => {
+test('a dropped workbook reads rather than being refused', async () => {
   // The case the refusal above used to cover. A .xlsx reaching the stage as
   // local bytes now goes to the viewer, which is what makes naming a paste
   // `.xlsx` do something.
@@ -816,9 +818,9 @@ test('a dropped workbook previews rather than being refused', async () => {
   store.stage = [{ local: true, id: 212, name: 'book.xlsx', path: 'book.xlsx', size: 2048, type: '', isText: false, bytes: Uint8Array.from([1, 2]) }];
   await data.view(data.localItems[0]);
   await shown();
-  assert.equal(data.preview.note, '', 'not refused as a binary');
-  assert.match(previewViewer().content, /^data:application\/vnd\.openxml/);
-  data.preview = null;
+  assert.equal(data.reader.note, '', 'not refused as a binary');
+  assert.match(readerViewer().content, /^data:application\/vnd\.openxml/);
+  data.reader = null;
 });
 
 // ---- renaming a local item ----------------------------------------------
@@ -836,7 +838,7 @@ test('a rename reaches both fields a local item is read through', () => {
   data.renameDraft = 'notes.md';
   data.commitRename();
   assert.equal(data.localItems[0].name, 'notes.md');
-  assert.equal(data.localItems[0].path, 'notes.md', 'the preview and diff labels read path');
+  assert.equal(data.localItems[0].path, 'notes.md', 'the reader and diff labels read path');
   assert.equal(data.renameId, null);
 });
 
@@ -888,18 +890,18 @@ test('a ref item cannot be renamed: its path is where it came from', () => {
   assert.equal(data.refItems[0].path, 'lib/x.js');
 });
 
-test('renaming under an open preview re-labels it', async () => {
+test('renaming under an open reader re-labels it', async () => {
   reset();
   const it = { local: true, id: 204, name: 'n.txt', path: 'n.txt', size: 2, isText: true, text: 'hi' };
   store.stage = [it];
   await data.view(data.localItems[0]);
   await shown();
-  assert.equal(data.preview.name, 'n.txt');
+  assert.equal(data.reader.name, 'n.txt');
   data.startRename(data.localItems[0]);
   data.renameDraft = 'renamed.md';
   data.commitRename();
-  assert.equal(data.preview.name, 'renamed.md');
-  data.preview = null;
+  assert.equal(data.reader.name, 'renamed.md');
+  data.reader = null;
 });
 
 test('groups covers only refs; local items render on their own', () => {
@@ -1063,7 +1065,7 @@ test('a second save appends rather than replacing the first', async () => {
   assert.notEqual(paths[0], paths[1], 'a history that overwrites is not one');
 });
 
-test('the dialog previews exactly what will be written', async () => {
+test('the dialog reads exactly what will be written', async () => {
   reset();
   window.__shell = { REGISTRY_REPO: 'me/registry' };
   store.stage = [
@@ -1073,9 +1075,9 @@ test('the dialog previews exactly what will be written', async () => {
   data.saveDest = 'me/other:docs';
   // The serialized form is not guessable from the list on screen, which is the
   // whole reason the dialog shows it rather than describing it.
-  const preview = JSON.parse(data.savePreview);
-  assert.deepEqual(preview.context, { destination: 'me/other:docs' });
-  assert.equal(preview.items.length, 1);
+  const written = JSON.parse(data.savePreview);
+  assert.deepEqual(written.context, { destination: 'me/other:docs' });
+  assert.equal(written.items.length, 1);
   assert.deepEqual(plain_(data.saveSkipped), ['shot.png'], 'and what it will leave behind');
   assert.match(data.savePath, /^surfaces\//);
   delete window.__shell;
@@ -1304,7 +1306,7 @@ test('whereFrom reads as repo short name, then the folder', () => {
 // The pair is where you are and what is next to it. min(i, n-2) is what keeps
 // it valid at the end, so a diff is always available with two or more staged
 // and the last position compares the last two rather than offering nothing.
-test('the preview toggles into a diff over that pair, and back to the file', async () => {
+test('the reader toggles into a diff over that pair, and back to the file', async () => {
   reset();
   store.stage = [
     { local: true, id: 401, name: 'a.md', path: 'a.md', size: 4, isText: true, text: 'one\ntwo\n' },
@@ -1313,17 +1315,17 @@ test('the preview toggles into a diff over that pair, and back to the file', asy
   await shown();
   await data.view(data.items[0]);
   await shown();
-  assert.ok(data._pDeck, 'the reader is open');
+  assert.ok(data._rDeck, 'the reader is open');
   assert.equal(data._cmpDeck, null, 'and no comparison over it');
 
   await data.openCompare();
   await shown();
   assert.ok(data._cmpDeck, 'the comparison is a second deck, one level down');
-  assert.ok(data._pDeck, 'and the reader is still open underneath it');
+  assert.ok(data._rDeck, 'and the reader is still open underneath it');
   assert.equal(data.diffA, 0);
   assert.equal(data.diffB, 1, 'the pair came from the position, not a select');
   assert.ok(data.diffRows, 'and it ran on the way in');
-  assert.match(data.previewPairLabel(), /a\.md .* b\.md/);
+  assert.match(data.readerPairLabel(), /a\.md .* b\.md/);
 
   // THE WHOLE REASON THIS IS A LEVEL. Dismissing used to take the reader out of
   // the file as well, because the comparison shared the file's overlay and the
@@ -1331,9 +1333,9 @@ test('the preview toggles into a diff over that pair, and back to the file', asy
   data._cmpDeck.close();
   await shown();
   assert.equal(data._cmpDeck, null, 'backing out leaves the comparison');
-  assert.ok(data._pDeck, 'and lands on the file, not outside it');
-  assert.equal(data.preview.name, 'a.md');
-  data.preview = null;
+  assert.ok(data._rDeck, 'and lands on the file, not outside it');
+  assert.equal(data.reader.name, 'a.md');
+  data.reader = null;
 });
 
 test('two taps open one comparison, not two stacked on each other', async () => {
@@ -1368,7 +1370,7 @@ test('two taps open one comparison, not two stacked on each other', async () => 
     window.swipeDeck = deck;
     if (gh === undefined) delete window.gh; else window.gh = gh;
   }
-  data.preview = null;
+  data.reader = null;
 });
 
 test('backing out of the comparison lands where the walk got to', async () => {
@@ -1391,9 +1393,9 @@ test('backing out of the comparison lands where the walk got to', async () => {
   await shown();
   data._cmpDeck.close();
   await shown();
-  assert.ok(data._pDeck, 'still reading');
-  assert.equal(data.preview.name, 'c.md', 'on the file the comparison walked to');
-  data.preview = null;
+  assert.ok(data._rDeck, 'still reading');
+  assert.equal(data.reader.name, 'c.md', 'on the file the comparison walked to');
+  data.reader = null;
 });
 
 // ── The three views ─────────────────────────────────────────────────────────
@@ -1426,7 +1428,7 @@ test('the picker offers three views and switching rebuilds without re-diffing', 
   data.setCmpView('patch');
   await shown();
   assert.equal(data.cmpView, 'patch');
-  data.preview = null;
+  data.reader = null;
 });
 
 test('unified is one column of tagged lines', async () => {
@@ -1434,7 +1436,7 @@ test('unified is one column of tagged lines', async () => {
   assert.match(text, /- the quick brown fox/);
   assert.match(text, /\+ the quick red fox/);
   assert.match(text, /- dropped/);
-  data.preview = null;
+  data.reader = null;
 });
 
 test('split pairs a changed line into one row, and marks the words inside it', async () => {
@@ -1454,7 +1456,7 @@ test('split pairs a changed line into one row, and marks the words inside it', a
   assert.ok(marked.includes('brown'), 'the removed word is marked');
   assert.ok(marked.includes('red'), 'and the added one');
   assert.ok(!marked.includes('quick'), 'what did not move is left alone');
-  data.preview = null;
+  data.reader = null;
 });
 
 test('a line with no counterpart leaves the other side blank rather than pairing', async () => {
@@ -1464,7 +1466,7 @@ test('a line with no counterpart leaves the other side blank rather than pairing
   const at = cells.findIndex(c => c.textContent.includes('dropped'));
   assert.ok(at >= 0 && at % 2 === 0);
   assert.equal(cells[at + 1].textContent.trim(), '', 'nothing invented on the right');
-  data.preview = null;
+  data.reader = null;
 });
 
 test('patch is a real unified diff, with hunk headers and file lines', async () => {
@@ -1472,7 +1474,39 @@ test('patch is a real unified diff, with hunk headers and file lines', async () 
   assert.match(text, /--- a\/a\.md/);
   assert.match(text, /\+\+\+ b\/b\.md/);
   assert.match(text, /@@ -\d+,\d+ \+\d+,\d+ @@/);
-  data.preview = null;
+  data.reader = null;
+});
+
+test('patch context is a control, and only Patch shows it', async () => {
+  const { el } = await threeUp('patch');
+  const labels = [...el.querySelectorAll('button')].map(b => b.textContent.trim());
+  assert.ok(labels.includes('0') && labels.includes('3') && labels.includes('8') && labels.includes('all'),
+    'the four steps are offered');
+
+  // Tighter context drops the unchanged lines further from a change.
+  data.setCmpContext(0);
+  await shown();
+  const at0 = data._cmpDeck.deck.track.children[0].textContent;
+  data.setCmpContext(999);
+  await shown();
+  const atAll = data._cmpDeck.deck.track.children[0].textContent;
+  assert.ok(atAll.length > at0.length, 'all-context carries more than none');
+  assert.match(at0, /@@ /, 'and both are still real patches');
+  assert.match(atAll, /@@ /);
+
+  // The copy follows the control, so what you hand over is what you read.
+  clipWrites.length = 0;
+  data.setCmpContext(0);
+  await shown();
+  await data.copyDiff();
+  assert.ok(clipWrites.at(-1).length < atAll.length);
+
+  data.setCmpView('unified');
+  await shown();
+  const unified = data._cmpDeck.deck.track.children[0].textContent;
+  assert.doesNotMatch(unified, /Context/, 'no context control where it would change nothing');
+  data.setCmpContext(3);
+  data.reader = null;
 });
 
 test('copy hands over the patch in Patch view, and the tagged block otherwise', async () => {
@@ -1488,7 +1522,7 @@ test('copy hands over the patch in Patch view, and the tagged block otherwise', 
   await data.copyDiff();
   assert.match(clipWrites.at(-1), /^--- A: /, 'and the labeled block elsewhere');
   assert.doesNotMatch(clipWrites.at(-1), /@@ /);
-  data.preview = null;
+  data.reader = null;
 });
 
 test('identical sides say so in Patch rather than drawing an empty box', async () => {
@@ -1506,7 +1540,7 @@ test('identical sides say so in Patch rather than drawing an empty box', async (
   await shown();
   assert.equal(data.diffPatch, '', 'no hunks to emit');
   assert.match(data._cmpDeck.deck.track.children[0].textContent, /identical/);
-  data.preview = null;
+  data.reader = null;
 });
 
 test('closing the reader takes the comparison with it', async () => {
@@ -1522,11 +1556,11 @@ test('closing the reader takes the comparison with it', async () => {
   await shown();
   assert.ok(data._cmpDeck);
 
-  data._pDeck.close();
+  data._rDeck.close();
   await shown();
   assert.equal(data._cmpDeck, null, 'no comparison left stranded over a closed reader');
-  assert.equal(data._pDeck, null);
-  assert.equal(data.preview, null);
+  assert.equal(data._rDeck, null);
+  assert.equal(data.reader, null);
 });
 
 test('the reader offers one way in, and no partner button for coming back', async () => {
@@ -1538,14 +1572,14 @@ test('the reader offers one way in, and no partner button for coming back', asyn
   await shown();
   await data.view(data.items[0]);
   await shown();
-  const titles = data._pActions(0).map(a => a.title);
+  const titles = data._rActions(0).map(a => a.title);
   assert.equal(titles.filter(t => /^Compare /.test(t)).length, 1);
   assert.equal(titles.filter(t => /^Back to/.test(t)).length, 0,
     'the way out of a level is the header chevron the kit draws');
-  data.preview = null;
+  data.reader = null;
 });
 
-// THE THREE-SLIDE CASE, which two staged items cannot reach: previewPair
+// THE THREE-SLIDE CASE, which two staged items cannot reach: readerPair
 // clamps at the end, so with two everything pairs 0,1 and three concurrent
 // builders agree by accident. With three they disagree, and the shared
 // diffA/diffB/diffRows fields used to let the last builder win.
@@ -1586,7 +1620,7 @@ test('each diff slide holds its own pair, and the copy follows the reader', asyn
   assert.equal(data.diffA, 1);
   assert.equal(data.diffB, 2);
   assert.match(data.diffDump, /--- A: \(local\) b\.md\n\+\+\+ B: \(local\) c\.md/);
-  data.preview = null;
+  data.reader = null;
 });
 
 // ── The compare picker ──────────────────────────────────────────────────────
@@ -1603,24 +1637,24 @@ test('A is the file you are on, at every position including the last', async () 
     { repo: 'me/c', ref: '', path: 'z.js' },
   ];
   await tick();
-  data.preview = { i: 0, name: 'x.js', mode: 'file' };
-  assert.equal(data.previewPair().join(','), '0,1');
-  data.preview = { i: 1, name: 'y.js', mode: 'file' };
-  assert.equal(data.previewPair().join(','), '1,2');
+  data.reader = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.readerPair().join(','), '0,1');
+  data.reader = { i: 1, name: 'y.js', mode: 'file' };
+  assert.equal(data.readerPair().join(','), '1,2');
   // The old rule slid the pair back to 1,2 here, so side A was the file BEFORE
   // the one on screen. A stays put now and B falls back to the previous file.
-  data.preview = { i: 2, name: 'z.js', mode: 'file' };
-  assert.equal(data.previewPair().join(','), '2,1');
-  data.preview = null;
+  data.reader = { i: 2, name: 'z.js', mode: 'file' };
+  assert.equal(data.readerPair().join(','), '2,1');
+  data.reader = null;
 });
 
 test('one staged item still pairs with nothing', async () => {
   reset();
   store.stage = [{ repo: 'me/a', ref: '', path: 'x.js' }];
   await tick();
-  data.preview = { i: 0, name: 'x.js', mode: 'file' };
-  assert.equal(data.previewPair(), null);
-  data.preview = null;
+  data.reader = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.readerPair(), null);
+  data.reader = null;
 });
 
 test('a pick reaches a file the adjacent rule never could', async () => {
@@ -1632,14 +1666,14 @@ test('a pick reaches a file the adjacent rule never could', async () => {
     { repo: 'me/d', ref: '', path: 'last.js' },
   ];
   await tick();
-  data.preview = { i: 0, name: 'first.js', mode: 'file' };
-  assert.equal(data.previewPair().join(','), '0,1', 'the default is still the neighbour');
+  data.reader = { i: 0, name: 'first.js', mode: 'file' };
+  assert.equal(data.readerPair().join(','), '0,1', 'the default is still the neighbour');
 
   data.compareKey = data.itemKey(data.items[3]);
-  assert.equal(data.previewPair().join(','), '0,3', 'the first against the last');
-  assert.match(data.previewPairLabel(), /first\.js .+ last\.js/);
+  assert.equal(data.readerPair().join(','), '0,3', 'the first against the last');
+  assert.match(data.readerPairLabel(), /first\.js .+ last\.js/);
   data.compareKey = '';
-  data.preview = null;
+  data.reader = null;
 });
 
 test('the pick follows the reader: A moves, B stays where it was pinned', async () => {
@@ -1651,15 +1685,15 @@ test('the pick follows the reader: A moves, B stays where it was pinned', async 
   ];
   await tick();
   data.compareKey = data.itemKey(data.items[2]);
-  data.preview = { i: 0, name: 'x.js', mode: 'file' };
-  assert.equal(data.previewPair().join(','), '0,2');
-  data.preview = { i: 1, name: 'y.js', mode: 'file' };
-  assert.equal(data.previewPair().join(','), '1,2');
+  data.reader = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.readerPair().join(','), '0,2');
+  data.reader = { i: 1, name: 'y.js', mode: 'file' };
+  assert.equal(data.readerPair().join(','), '1,2');
   // Standing on the pinned file is not a comparison, so the neighbour returns.
-  data.preview = { i: 2, name: 'z.js', mode: 'file' };
-  assert.equal(data.previewPair().join(','), '2,1');
+  data.reader = { i: 2, name: 'z.js', mode: 'file' };
+  assert.equal(data.readerPair().join(','), '2,1');
   data.compareKey = '';
-  data.preview = null;
+  data.reader = null;
 });
 
 test('the pick is held by key, so a reorder does not re-aim it', async () => {
@@ -1671,16 +1705,16 @@ test('the pick is held by key, so a reorder does not re-aim it', async () => {
   ];
   await tick();
   data.compareKey = data.itemKey(data.items[2]);   // z.js
-  data.preview = { i: 0, name: 'x.js', mode: 'file' };
-  assert.equal(data.previewPair().join(','), '0,2');
+  data.reader = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.readerPair().join(','), '0,2');
 
   // z.js is now at index 1. An index-held pick would silently point at y.js.
   store.stage = [store.stage[0], store.stage[2], store.stage[1]];
   await tick();
-  assert.equal(data.previewPair().join(','), '0,1');
-  assert.equal(data.previewName(data.previewPair()[1]), 'z.js', 'still the file that was chosen');
+  assert.equal(data.readerPair().join(','), '0,1');
+  assert.equal(data.itemName(data.readerPair()[1]), 'z.js', 'still the file that was chosen');
   data.compareKey = '';
-  data.preview = null;
+  data.reader = null;
 });
 
 test('a pick whose file leaves the stage is forgotten, not left dangling', async () => {
@@ -1692,14 +1726,14 @@ test('a pick whose file leaves the stage is forgotten, not left dangling', async
   ];
   await tick();
   data.compareKey = data.itemKey(data.items[2]);
-  data.preview = { i: 0, name: 'x.js', mode: 'file' };
-  assert.equal(data.previewPair().join(','), '0,2');
+  data.reader = { i: 0, name: 'x.js', mode: 'file' };
+  assert.equal(data.readerPair().join(','), '0,2');
 
   store.stage = store.stage.slice(0, 2);
   await tick();
   assert.equal(data.compareKey, '', 'the key goes, so the picker shows no choice');
-  assert.equal(data.previewPair().join(','), '0,1', 'and the default takes over');
-  data.preview = null;
+  assert.equal(data.readerPair().join(','), '0,1', 'and the default takes over');
+  data.reader = null;
 });
 
 test('the picker lists every other staged file, with where each came from', async () => {
@@ -1710,13 +1744,13 @@ test('the picker lists every other staged file, with where each came from', asyn
     { local: true, id: 601, name: 'note.md', path: 'note.md', size: 4, isText: true, text: 'hi\n' },
   ];
   await tick();
-  data.preview = { i: 0, name: 'lib/dup.js', mode: 'file' };
+  data.reader = { i: 0, name: 'lib/dup.js', mode: 'file' };
   const opts = plain_(data.compareOptions());
   assert.equal(opts.length, 2, 'the file you are on is not offered against itself');
   // Two staged files can share a NAME, so the origin is what tells them apart.
   assert.deepEqual(opts.map(o => o.label), ['dup.js', 'note.md']);
   assert.deepEqual(opts.map(o => o.note), ['me/b', 'local']);
-  data.preview = null;
+  data.reader = null;
 });
 
 test('compareWith sets and clears the pick, and rebuilds the open deck', async () => {
@@ -1744,7 +1778,7 @@ test('compareWith sets and clears the pick, and rebuilds the open deck', async (
   data.compareWith('');
   await shown();
   assert.equal(data.diffB, 1, 'and clearing returns to the neighbour');
-  data.preview = null;
+  data.reader = null;
 });
 
 test('closing the reader forgets the pick, since it was a reading choice', async () => {
@@ -1761,7 +1795,7 @@ test('closing the reader forgets the pick, since it was a reading choice', async
   await shown();
   assert.equal(data.compareIndex(), 2);
 
-  data._pDeck.close();
+  data._rDeck.close();
   await shown();
   assert.equal(data.compareKey, '');
 });
@@ -1779,11 +1813,238 @@ test('staging while reading keeps the pick, since that is not the reader leaving
   data.compareWith(data.itemKey(data.items[2]));
   await shown();
 
-  // A drop goes through _pDrop and a rebuild, which must not be read as an exit.
+  // A drop goes through _rDrop and a rebuild, which must not be read as an exit.
   window.StageIntake.take({ text: 'arrived while reading' });
   await shown();
-  assert.equal(data.previewName(data.compareIndex()), 'c.md', 'still comparing against what was chosen');
-  data.preview = null;
+  assert.equal(data.itemName(data.compareIndex()), 'c.md', 'still comparing against what was chosen');
+  data.reader = null;
+});
+
+// ── The subject channel: what the sidebar is told ───────────────────────────
+//
+// The reader covers the screen, and the FAB sidebar floats on top of it still
+// aimed at whatever it was aimed at before. Announcing is what closes that gap:
+// the drawer's Render tab names the staged file being READ, roots its path
+// picker at that repo and ref, aims its github menu at that blob, and reads
+// that ref's guide. The channel itself (which windows hear it, what is put
+// back on the way out) belongs to kits/subject-channel.js and is tested there;
+// what these hold is the stage's half of the contract.
+
+const said = () => window.__tossSubject;
+
+test('the reader says which staged file is on screen, and keeps saying it', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: 'dev', path: 'lib/x.js' },
+    { repo: 'me/b', ref: '', path: 'docs/z.md' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  assert.equal(said().path, 'lib/x.js', 'on open, the file it opened on');
+  assert.equal(said().repo, 'me/a');
+  assert.equal(said().ref, 'dev', 'at the ref the item was staged from');
+  assert.equal(said().route, 'stage',
+    'route is what tells the sidebar this file is in a document, not a frame');
+  assert.equal(said().via, undefined,
+    'and the stage does not guess what app it is inside; the fab fills that in');
+
+  data.readerStep(1);
+  await shown();
+  assert.equal(said().path, 'docs/z.md', 'and it follows the reader');
+  assert.equal(said().ref, 'main', 'a staged item with no ref reads at the default');
+  data.reader = null;
+});
+
+// The one field a deck announces and the stage does not, and the reason is not
+// tidiness: `base` is what raises the drawer's compare bar, whose pick travels
+// back on __compareRef for the CARDS to read. This reader owns its comparison
+// and reads no such global, so a base would hang a second compare control in
+// the drawer that changes nothing on screen.
+test('the stage announces no base, since it owns its own comparison', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'lib/x.js' },
+    { repo: 'me/a', ref: 'dev', path: 'lib/x.js' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  assert.equal(said().base, undefined);
+  assert.equal(said().baseName, undefined);
+
+  await data.openCompare();
+  await shown();
+  assert.equal(said().base, undefined, 'not even with a comparison actually open');
+  assert.equal(said().path, 'lib/x.js', 'which announces side A, the position');
+  data.reader = null;
+});
+
+test('a local item says so rather than staying silent', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'lib/x.js' },
+    { local: true, id: 701, name: 'pasted.txt', path: 'pasted.txt', size: 2, isText: true, text: 'hi\n' },
+  ];
+  await shown();
+  await data.view(data.items[1]);
+  await shown();
+  // The drawer's own branch for this folds away the ref bar and the path
+  // picker and names what is being read. Silence would instead leave it
+  // describing the app shell, so stepping off a repo file onto a pasted one
+  // would watch the sidebar keep naming the file just left.
+  assert.equal(said().local, true);
+  assert.equal(said().label, 'pasted.txt');
+  assert.equal(said().repo, undefined, 'a paste has no address to offer');
+  assert.equal(said().route, 'stage');
+  data.reader = null;
+});
+
+test('leaving puts back the subject that was there before', async () => {
+  reset();
+  // show-repo can itself be running inside a toss, so the global is borrowed.
+  const held = { repo: 'me/tools', ref: 'main', path: 'pages/app.html' };
+  window.__tossSubject = held;
+  store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  assert.equal(said().path, 'lib/x.js');
+
+  data._rDeck.close();
+  await shown();
+  assert.equal(window.__tossSubject, held, 'returned, not cleared');
+  window.__tossSubject = null;
+  data.reader = null;
+});
+
+// The claim behind ONE CHANNEL FOR THE READER'S WHOLE LIFE. A deck rebuilt
+// around a changed set fires the same onClose the reader's own ✕ does, and a
+// channel closed and reopened there would snapshot its own announcement as the
+// thing to put back: leaving would then restore the file you were reading.
+test('staging while reading does not hand the subject back to itself', async () => {
+  reset();
+  const held = { repo: 'me/tools', ref: 'main', path: 'pages/app.html' };
+  window.__tossSubject = held;
+  store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  const chan = data._rChan;
+
+  window.StageIntake.take({ text: 'arrived while reading' });
+  await shown();
+  assert.equal(data._rChan, chan, 'the same channel spans the rebuild');
+  assert.equal(said().path, 'lib/x.js', 'still naming what is on screen');
+
+  data._rDeck.close();
+  await shown();
+  assert.equal(window.__tossSubject, held, 'and the page gets its own subject back');
+  window.__tossSubject = null;
+  data.reader = null;
+});
+
+test('the comparison walk keeps the sidebar following side A', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'one.md' },
+    { repo: 'me/a', ref: '', path: 'two.md' },
+    { repo: 'me/a', ref: '', path: 'three.md' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  await data.openCompare();
+  await shown();
+  assert.equal(said().path, 'one.md');
+  data._cmpDeck.deck.go(2);
+  await shown();
+  assert.equal(said().path, 'three.md', 'the comparison walks the same set one lens down');
+  data.reader = null;
+});
+
+test('the reader offers a door into the sidebar', async () => {
+  reset();
+  store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  const door = data._rActions(0).find(a => a.icon === 'ph-sidebar-simple');
+  assert.ok(door, 'nothing else says the sidebar is now aimed at the file in front of you');
+  let tab = null;
+  const on = (e) => { tab = e.detail && e.detail.tab; };
+  window.addEventListener('web-tools:open-drawer', on);
+  door.onClick();
+  window.removeEventListener('web-tools:open-drawer', on);
+  assert.equal(tab, 'render', 'and it opens on the tab that names the file');
+  data.reader = null;
+});
+
+// ── Re-addressing, rather than being navigated away from ────────────────────
+//
+// The sidebar's ref bar renders a file at another ref by LEAVING for the
+// renderer, which over a hand-assembled set would drop all of it. The stage
+// answers in its own verb instead: stage that version and read it.
+
+test('the ref bar stages the version it names and lands the reader on it', async () => {
+  reset();
+  store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+
+  assert.equal(window.__deckNavigate({ repo: 'me/a', ref: 'dev', path: 'lib/x.js' }), true,
+    'handled here, so the fab does not navigate');
+  await shown();
+  assert.equal(data.items.length, 2, 'the other version joined the set');
+  assert.equal(data.items[1].ref, 'dev');
+  assert.equal(data.reader.i, 1, 'and the reader is on it');
+  assert.equal(said().ref, 'dev', 'which the sidebar hears');
+  // Nothing was removed, so what was being read is one swipe away and a
+  // comparison of the two is one tap away.
+  assert.equal(data.items[0].ref, '');
+  data.reader = null;
+});
+
+test('asking twice seeks rather than staging a duplicate', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: '', path: 'lib/x.js' },
+    { repo: 'me/a', ref: 'dev', path: 'lib/x.js' },
+  ];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  window.__deckNavigate({ repo: 'me/a', ref: 'dev', path: 'lib/x.js' });
+  await shown();
+  assert.equal(data.items.length, 2, 'grab dedupes by key');
+  assert.equal(data.reader.i, 1, 'and the reader still lands on it');
+  data.reader = null;
+});
+
+test('a spec with no address is refused, so the fab makes the trip itself', async () => {
+  reset();
+  store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  assert.equal(window.__deckNavigate(null), false);
+  assert.equal(window.__deckNavigate({ path: 'lib/x.js' }), false, 'a path with no repo is not an address');
+  assert.equal(data.items.length, 1, 'and nothing was staged on the way');
+  data.reader = null;
+});
+
+test('the handle is put back when the reader leaves', async () => {
+  reset();
+  store.stage = [{ repo: 'me/a', ref: '', path: 'lib/x.js' }];
+  await shown();
+  await data.view(data.items[0]);
+  await shown();
+  assert.equal(typeof window.__deckNavigate, 'function');
+  data._rDeck.close();
+  await shown();
+  assert.equal(window.__deckNavigate, null, 'a closed reader cannot show anything');
+  data.reader = null;
 });
 
 test('no intake takes a position any more: everything appends', async () => {
@@ -1801,7 +2062,7 @@ test('diffLabel names the item\'s own ref, or "default"', () => {
 
 // No control constructs a pair. The Diff lens's selects and "ref" boxes read
 // as "type two refs to build one"; the boxes are gone, the selects are gone,
-// and the two ways a pair arises are the preview's position (above) and a
+// and the two ways a pair arises are the reader's position (above) and a
 // staged address. Nothing types a ref anywhere.
 test('nothing in the stage asks for a ref to be typed', () => {
   assert.equal('diffARef' in data, false);
@@ -1952,9 +2213,9 @@ test('decodePrompts drops malformed entries and bad payloads', () => {
   assert.deepEqual(plain_(StageLink.decodePrompts(enc)), [{ label: 'ok', ask: 'a' }], 'only complete {label,ask} survive');
 });
 
-test('a diff-mode link opens the preview on its diff, once', async () => {
+test('a diff-mode link opens the reader on its diff, once', async () => {
   reset();
-  data.preview = null;
+  data.reader = null;
   data.linkMode = 'diff';
   data._autoDiffed = false;
   store.stage = [
@@ -1964,13 +2225,113 @@ test('a diff-mode link opens the preview on its diff, once', async () => {
   await shown();
   // The link's intent is "look at this comparison", so it puts the reader in
   // front of one rather than selecting a control on the page.
-  assert.ok(data._pDeck, 'the reader opens');
+  assert.ok(data._rDeck, 'the reader opens');
   assert.ok(data._cmpDeck, 'with the comparison drilled over it');
   assert.ok(data.diffRows, 'and it ran without a click');
   assert.equal(data._autoDiffed, true, 'and only arms once');
   data.linkMode = '';
   data._cmpDrop();
-  data.preview = null;
+  data.reader = null;
+});
+
+// ── The link carries the reading, not just the refs ────────────────────────
+//
+// A `mode=diff` link used to reopen the recipient on the DEFAULT pair in the
+// DEFAULT view, so a link sent while looking at "first against last, as a
+// patch" showed them "first against second, split". The refs were right and the
+// thing being pointed at was not.
+
+test('mint round-trips the compare pick and the view', () => {
+  const refs = [{ repo: 'me/a', ref: 'main', path: 'first.md' },
+                { repo: 'me/a', ref: 'main', path: 'last.md' }];
+  const url = window.StageLink.mint(refs, 'https://h/app/',
+    { mode: 'diff', cmp: 'me/a@main:last.md', view: 'patch' });
+  // The address stays readable: a person can see what it points at.
+  assert.match(url, /&cmp=me\/a@main:last\.md/);
+  assert.match(url, /&view=patch/);
+  const back = window.StageLink.parseLink(url.split('#')[1]);
+  assert.equal(back.cmp, 'me/a@main:last.md');
+  assert.equal(back.view, 'patch');
+  assert.equal(back.mode, 'diff');
+});
+
+test('a local pick cannot ride, since its key is an in-page id', () => {
+  const refs = [{ repo: 'me/a', ref: '', path: 'x.md' }];
+  assert.doesNotMatch(window.StageLink.mint(refs, '', { cmp: 'local:7' }), /cmp=/);
+});
+
+test('a view the picker does not offer is refused rather than carried', () => {
+  const refs = [{ repo: 'me/a', ref: '', path: 'x.md' }];
+  assert.doesNotMatch(window.StageLink.mint(refs, '', { view: 'wat' }), /view=/);
+  assert.equal(window.StageLink.parseLink('#stage=me/a:x.md&view=wat').view, '');
+});
+
+test('the grammar and the picker read one list, so neither can grow alone', () => {
+  reset();
+  assert.deepEqual(plain_(data.cmpViews.map(v => v.key)), plain_(window.StageLink.VIEWS));
+});
+
+test('read takes the reading from the query too, when a context ate the hash', () => {
+  const r = window.StageLink.read({
+    hash: '',
+    search: '?stage=me/a@main:first.md,last.md&mode=diff&cmp=me/a@main:last.md&view=split',
+  });
+  assert.equal(r.items.length, 2);
+  assert.equal(r.cmp, 'me/a@main:last.md');
+  assert.equal(r.view, 'split');
+});
+
+test('an opening link applies its view at once and its pick when the item lands', async () => {
+  reset();
+  data.cmpView = 'unified';
+  data._linkCmp = '';
+  // What init() does with a link, without needing a real location.
+  const lk = window.StageLink.read({
+    hash: '#stage=me/a:first.md,me/a:last.md&cmp=me/a:last.md&view=patch',
+    search: '',
+  });
+  data.cmpView = lk.view;
+  data._linkCmp = lk.cmp;
+  assert.equal(data.cmpView, 'patch', 'the view needs no set to resolve against');
+  assert.equal(data.compareKey, '', 'and the pick waits for its item');
+
+  store.stage = [{ repo: 'me/a', ref: '', path: 'first.md' },
+                 { repo: 'me/a', ref: '', path: 'last.md' }];
+  await tick(2);
+  assert.equal(data.compareKey, 'me/a:last.md', 'taken once the item is staged');
+  assert.equal(data._linkCmp, '', 'and forgotten, so a later removal falls back');
+  data.compareKey = '';
+});
+
+test('a pick naming something the link did not carry never resolves', async () => {
+  reset();
+  data._linkCmp = 'me/a:absent.md';
+  store.stage = [{ repo: 'me/a', ref: '', path: 'first.md' },
+                 { repo: 'me/a', ref: '', path: 'last.md' }];
+  await tick(2);
+  assert.equal(data.compareKey, '', 'no pick');
+  data.reader = { i: 0, name: 'first.md' };
+  assert.equal(data.readerPair().join(','), '0,1', 'so the neighbour default stands');
+  data.reader = null;
+  data._linkCmp = '';
+});
+
+test('copyLink carries the reading back out', async () => {
+  reset();
+  store.stage = [{ repo: 'me/a', ref: 'main', path: 'first.md' },
+                 { repo: 'me/a', ref: 'main', path: 'mid.md' },
+                 { repo: 'me/a', ref: 'main', path: 'last.md' }];
+  await tick(2);
+  data.compareKey = data.itemKey(data.items[2]);
+  data.cmpView = 'patch';
+  data.diffRows = [{ t: 'ctx', line: 'x' }];
+  clipWrites.length = 0;
+  await data.copyLink();
+  const url = clipWrites.at(-1);
+  assert.match(url, /&mode=diff/);
+  assert.match(url, /&cmp=me\/a@main:last\.md/);
+  assert.match(url, /&view=patch/);
+  data.compareKey = ''; data.diffRows = null;
 });
 
 test('diffPrompts shows link-carried bespoke asks first, then the fixed set', () => {

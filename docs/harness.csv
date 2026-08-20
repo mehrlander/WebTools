@@ -3,6 +3,7 @@ scripts/build-tree.py,render a repository file tree as a linked markdown table f
 scripts/check-branch-status.mjs,the stated agreement check for the branches view against home's unmerged-branches.sh,scripts,145,argv,no,yes,no
 scripts/code-shape.py,"per-file observable properties of lib/: what a file attaches to, boot, hub, DOM, Alpine; the instrument behind docs/code-layers.md and the code-layers gate",scripts,374,npm:code-shape,yes,yes,yes
 scripts/dead-links.py,"report markdown links that no longer resolve, in three classes (internal, cross-repo, github)",scripts,256,argv,no,yes,yes
+scripts/dead-opacity.py,"report a daisyUI theme colour carrying an opacity step that generates no CSS rule. The ramp daisyUI ships is 10..90 by tens, so every other step, both ends, and the bracket form fall back: a background to transparent and TEXT to full strength, which is the wrong direction and errors nowhere. Stock palette colours take any step and are never reported, which is the half a looser scan gets wrong. --check gates it",scripts,152,npm:opacity-scan,no,yes,yes
 scripts/declared-paths.py,check every page a .web-tools.json declares still exists; runs in consumer repos' verify suites,scripts,137,argv,no,yes,no
 scripts/duplicated-claims.py,"report file pairs sharing near-duplicated prose, the quiet failure where a claim is restated and the copies age apart (advisory; ported from home)",scripts,138,npm:claims-scan,no,yes,yes
 scripts/embedded-prose.py,"count the prose inside .js, .mjs, .html and .py, split into commentary, text tables, and inline reader-facing text; --check gates a comment-length budget",scripts,759,argv,no,yes,no
@@ -148,6 +149,7 @@ tools/render/scenarios/stage-diff-review.mjs,"the Stage's Diff lens run on two l
 tools/render/scenarios/stage-image-preview.mjs,,tools/render/scenarios,32,driver,no,no,no
 tools/render/scenarios/stage-keyboard-mode.mjs,"the stage's dictation card with the keyboard open, which is where the recording misreading was reported",tools/render/scenarios,53,driver,no,no,no
 tools/render/scenarios/stage-paste-flavors.mjs,,tools/render/scenarios,44,driver,no,no,no
+tools/render/scenarios/stage-reader-subject.mjs,"the stage reader announcing which staged file is on screen, so the FAB drawer names the file being read rather than the app shell hosting it",tools/render/scenarios,102,driver,no,no,no
 tools/render/scenarios/stage-rename-local.mjs,,tools/render/scenarios,23,driver,no,no,no
 tools/render/scenarios/stage-stitch.mjs,"the stage composer's stitch key: a caret in a sentence gap turns the full-stop cell into the cell that takes one back, the same swap the annotator's card makes off the same kit verb",tools/render/scenarios,52,driver,no,no,no
 tools/render/scenarios/stage-transform-chip.mjs,"stages three transform-shaped items, opens one in the workbench, and asserts the table actually drew",tools/render/scenarios,54,driver,no,no,yes
