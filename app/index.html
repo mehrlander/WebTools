@@ -4955,8 +4955,14 @@ function app(){ return {
   deckDock: (() => { try { return localStorage.getItem('deckDock') === '1'; } catch { return false; } })(),
   syncDeckFrame(){
     const root = document.documentElement;
-    const sidebar = (this.showSidebar && this.sidebarOpen);
-    root.dataset.deckPane = sidebar || this.deckDock ? (this.deckDock ? 'dock' : 'inset') : 'full';
+    // THE SIDEBAR IS NOT THE DOCK'S DECISION. Showing or hiding it is already a
+    // control the reader has, so docking only ever adds a column beside
+    // whatever the sidebar is currently doing: --deck-side measures the aside,
+    // and the dock offsets from there. Read as one chain rather than a nested
+    // ternary, because the nesting was the part that made it look as though
+    // docking and the sidebar were one decision.
+    const sidebar = this.showSidebar && this.sidebarOpen;
+    root.dataset.deckPane = this.deckDock ? 'dock' : sidebar ? 'inset' : 'full';
     // MEASURED, not stated. The header is h-14 plus a border, but it is also
     // conditional (shellMode) and a second copy of its height here would be a
     // number to keep in step with a class nobody would think to look at. A
