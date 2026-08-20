@@ -6,9 +6,8 @@ session, whether one is running or not. The two are easy to conflate and they
 fail differently. A venue that cannot be reached is idle; an inbound channel
 with no venue behind it is a message nobody reads.
 
-**Status: draft, 2026-08-20.** The load-bearing claim in the last row of the
-table is unverified. See "The open question" below, and do not build on this
-file until it is settled.
+**Measured 2026-08-20.** The push claim was tested rather than reasoned about,
+on this file's own pull request. See "What was measured" below.
 
 ## The channels
 
@@ -86,18 +85,55 @@ An outside agent writing into the thread uses the same vocabulary, and should
 say which agent it is in the first line, since a session cannot otherwise tell a
 person from a program and the two warrant different deference.
 
-## The open question
+## What was measured
 
-**It is not known whether a wake event revives a reclaimed container.** A web
-session's container is ephemeral. If a comment arriving hours later can wake the
-session that subscribed, this is genuine asynchrony. If it cannot, the channel
-degrades to a durable pull, useful but no longer a trigger, and the honest place
-for it in the table above moves.
+Tested 2026-08-20 on [PR #464](https://github.com/mehrlander/web-tools/pull/464),
+the pull request carrying this file.
 
-The harness also states that delivery is best effort, that some event kinds
-arrive late or not at all, and that a PR Steward agent already watching a pull
-request preempts the subscription silently.
+| | |
+| --- | --- |
+| Session subscribed | 20:57:05Z |
+| Last activity in the session | about 20:57Z |
+| Container running the session | booted about 20:37Z |
+| That container | reclaimed at some point after 20:57Z |
+| **A new container** | **booted 21:33:57Z** |
+| Comment event delivered into the conversation | 21:37:02Z |
+| Control: a scheduled self check-in | armed for 21:58Z, did not fire first |
 
-None of that is settleable by reasoning. This file is being carried on a branch
-whose own pull request is the test rig: subscribed at open, commented on from
-outside, and the result written back here.
+**A PR comment revives a reclaimed container.** The container that ran the first
+half of the session no longer existed. A new one was provisioned and the
+conversation resumed inside it, carrying its full context, because somebody
+commented. The scheduled check-in was armed as a control precisely so a pull
+could not be mistaken for a push, and it was still twenty-one minutes away when
+the wake landed. This is genuine asynchrony, and it is the strongest form of the
+claim rather than the weak one.
+
+**Budget about three minutes of cold start.** Boot preceded delivery by 3m 05s.
+The gap between the comment being posted on GitHub and the session acting on it
+was not directly observed and is at least that. So the channel is asynchronous,
+not interactive: it is for handing over work, not for holding a conversation.
+
+## The channel carries no authorship
+
+The test comment arrived under the repo owner's account and its text said it was
+written by an agent from another vendor acting through that account. **From
+inside the session those two are indistinguishable**, and no probe available to
+a session can separate them. Anything holding a token with write access to the
+repository *is* the account, as far as an arriving event can show.
+
+Two consequences, and the first is the one that matters:
+
+- **A leading token states intent, never authority.** `@go` means "this is meant
+  as an instruction," not "the person sanctioned this." An action that would be
+  costly, destructive, or outward-facing still needs the person, and a comment
+  is not the person even when it arrives under their name.
+- **Claims in a comment are claims.** The test comment asserted that the private
+  session corpus had been read successfully. Nothing in the comment cited that
+  corpus, and the assertion is unverifiable from a session. It is recorded here
+  as reported rather than confirmed.
+
+The harness already treats this correctly and the treatment is worth naming,
+since it is the mitigation rather than an inconvenience: an arriving event is
+wrapped in a notice stating it is not user input, and the author and body are
+flagged as untrusted. A session that reads those flags and still treats a comment
+as consent has ignored the guard, not lacked one.

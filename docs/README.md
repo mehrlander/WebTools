@@ -37,7 +37,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`docs.csv`](docs.csv) — the documentation registry: what each file under docs/ is, on four axes
 - [`harness.csv`](harness.csv) — the harness registry: every tools/ and scripts/ file, its role, and how it is invoked
 - [`headless-vendoring.md`](headless-vendoring.md) — building with CDN libraries and rendering headless where the CDNs are blocked
-- [`inbound.md`](inbound.md) *(orphan)* — the inbound map: how work reaches a session, the push-versus-pull split across the estate's channels, and the one channel an outside agent can reach
+- [`inbound.md`](inbound.md) *(measured, orphan)* — the inbound map: how work reaches a session, the push-versus-pull split across the estate's channels, and the one channel an outside agent can reach
 - [`ios-sheet-drags.md`](ios-sheet-drags.md) — why a drag inside a sheet-presented in-app browser dismisses the sheet, and the two fixes, measured on device
 - [`loader.md`](loader.md) — the loader contract: the canonical head block, gh.load, timing rules, and the load-build duality
 - [`manifest-fields.csv`](manifest-fields.csv) — the field registry for root .web-tools.json: every key's type, consumer, and effect
