@@ -92,7 +92,6 @@ property about one target answers to one registry** (gated); resolve a
 collision by declaring that one registry **inherits** the other's descriptions,
 never by renaming a side, which keeps the duplicate.
 
-
 ## Snags
 
 [`docs/SNAGS.md`](docs/SNAGS.md) is this repo's friction log, the store behind the conventions' "where a friction observation goes instead." Its own header carries the intake shape, the recurrence rule, the generated index, and what is still provisional; this section restated them and was the copy.
