@@ -97,6 +97,6 @@ export function writeCsv(rows, cols) {
 // hook rewrote the file from a stale list, and nothing re-ran. Change this list
 // in the same commit as any column change to docs/registries.csv.
 export const REGISTRY_COLS = ['id','path','key','identity','membership','inherits','target','scope',
-                              'fields','gate','area','title','gloss','renders_in'];
+                              'span','fields','gate','area','title','gloss','renders_in'];
 export const PROPERTY_COLS = ['registry','property','mode','deriver','required','form',
                               'exclusive','values','gloss'];

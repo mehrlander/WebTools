@@ -104,6 +104,7 @@ registries,membership,recorded,,value,column,yes,computed;curated,"whether the s
 registries,inherits,recorded,,none,column,yes,,"another registry this one borrows descriptions from, by id, so a curated selection need not restate what a computed set already says. Blank is the normal state. Named the crosswalk kind until 2026-08-18, which said that a registry borrowed without saying from whom"
 registries,target,recorded,,value,column,yes,,the thing a row asserts about; not always a file
 registries,scope,recorded,,value,column,yes,,the population the registry covers
+registries,span,recorded,,value,column,yes,hub;estate,"whether this checkout bounds the population, or a complete enumeration needs another repo; the typed sibling of scope, which says the same thing in prose and so cannot be grouped or counted"
 registries,fields,recorded,,value,column,yes,governed;ungoverned,whether every non-key column of this carrier must be a declared property
 registries,gate,recorded,,value,column,yes,,the test that fails when the registry and the repo disagree; none when nothing holds it
 registries,area,recorded,,value,column,yes,files;names,the reader grouping in the Registries tab
