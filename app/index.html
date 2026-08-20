@@ -175,8 +175,33 @@
    header rather than restating its h-14, since it is conditional (shellMode)
    and a hidden header measures 0 for free. */
 @media (min-width:1024px){:root{--deck-top:var(--deck-head,0px)}}
-@media (min-width:1024px){:root[data-deck-pane="inset"]{--deck-left:20rem;--deck-border:1px}}
-@media (min-width:1280px){:root[data-deck-pane="inset"]{--deck-left:22rem}}
+@media (min-width:1024px){:root[data-deck-pane="inset"]{--deck-left:var(--deck-side,0px);--deck-border:1px}}
+/* THE DOCK: the deck clears the sidebar AND a column for the list it was
+   opened from, so choosing and reading are on screen together. The widths are
+   the only part CSS decides; whether this value applies at all is
+   syncDeckFrame()'s, exactly as for "inset".
+
+   The list column is clamped rather than a plain fraction. A percentage alone
+   gives a 1024px window a 200px list that truncates every row, and a 2560px one
+   a 700px list of short titles beside the wasted half of a document. The clamp
+   is what keeps both ends readable, and the floor is set at the width where the
+   Portable tab's longest row label stops wrapping to three lines.
+
+   Below lg there is no dock and the toggle does not render: three columns do
+   not fit, and a phone's answer to "see the list and the file" is the deck's
+   own back gesture, which already works. */
+@media (min-width:1024px){:root[data-deck-pane="dock"]{--deck-left:calc(var(--deck-side,0px) + clamp(17rem,30vw,26rem));--deck-border:1px}}
+/* AND THE LIST HAS TO BE GIVEN THE WIDTH BACK. The deck is `fixed`, so it takes
+   no layout space and the pane underneath still measures the whole window: the
+   first docked build looked right and was not, because every list row simply ran
+   under the deck and was clipped mid-word, which reads as a rendering bug rather
+   than a column. Reflowing is the entire difference between a list beside a file
+   and a list hidden behind one, and no amount of deck geometry can cause it.
+
+   Padding rather than width so nothing inside has to opt in, and only under
+   [data-deck-pane="dock"], since "inset" and "full" both cover the pane
+   completely and narrowing it there would reflow a list nobody can see. */
+@media (min-width:1024px){:root[data-deck-pane="dock"] main{padding-right:calc(100vw - var(--deck-left));transition:padding-right .15s ease-out}}
 /* The Repos row's two menu buttons. Narrow and chrome-free on a fine pointer,
    where they are a pair of glyphs at the row's edge and a hover background made
    each one read as a separate tile; the row's own hover tint is the feedback,
@@ -1014,7 +1039,15 @@
        Open / To-do / Jots sub-tabs switch by pill, not swipe; the header's
        repo-sponsored group is out of the carousel, being iframes); see
        swipeToView. ─────────────────────────────────────────────────────────── -->
-  <main class="flex-1 min-w-0 min-h-0"
+  <!-- @container so a view can size to THE PANE rather than the window. Under
+       the dock the two stop agreeing: the window is 1440 and the pane is 416,
+       and a grid keyed on `xl:` still reads three columns into a column that
+       fits one, which is how the first docked build produced a list of single
+       words. Viewport breakpoints were never really asking the right question
+       here (a 1280 window with the sidebar open leaves main 928px, and `xl:`
+       called that three columns too); the dock is just where being wrong got
+       loud. Adoption is per view, `lg:` to `@3xl:`, as each is touched. -->
+  <main class="@container flex-1 min-w-0 min-h-0"
         @touchstart.passive="onSwipeStart($event)" @touchmove="onSwipeMove($event)"
         @touchend.passive="onSwipeEnd($event)" @touchcancel.passive="onSwipeCancel()">
 
@@ -2009,6 +2042,7 @@ function app(){ return {
     // if it is tapped in the first moments.
     if (window.gh?.load) window.gh.load('kits/io.js').catch(() => {});
     this.syncDeckFrame();
+    this.__installDeckPane();
     this.$watch('sidebarOpen', () => this.syncDeckFrame());
     this.$watch('showSidebar', () => this.syncDeckFrame());
     this.$watch('shellMode', () => this.syncDeckFrame());
@@ -4913,9 +4947,16 @@ function app(){ return {
   // chrome beside its content needs none of this. See the CSS for why the
   // breakpoint alone will not do: the desktop sidebar is conditional, and a
   // deck inset by a column that is not there clips the view under it.
+  // Docked is a reader's standing preference, not a per-deck choice: someone
+  // who wants the list beside the file wants it on the next file too. Kept off
+  // the address, since it describes THIS SCREEN rather than what is being
+  // looked at, and a pane width in a shared link would arrive as a claim about
+  // the reader's window that the sender could not have known.
+  deckDock: (() => { try { return localStorage.getItem('deckDock') === '1'; } catch { return false; } })(),
   syncDeckFrame(){
     const root = document.documentElement;
-    root.dataset.deckPane = (this.showSidebar && this.sidebarOpen) ? 'inset' : 'full';
+    const sidebar = (this.showSidebar && this.sidebarOpen);
+    root.dataset.deckPane = sidebar || this.deckDock ? (this.deckDock ? 'dock' : 'inset') : 'full';
     // MEASURED, not stated. The header is h-14 plus a border, but it is also
     // conditional (shellMode) and a second copy of its height here would be a
     // number to keep in step with a class nobody would think to look at. A
@@ -4925,7 +4966,29 @@ function app(){ return {
     this.$nextTick(() => {
       const head = document.querySelector('header');
       root.style.setProperty('--deck-head', ((head && head.offsetHeight) || 0) + 'px');
+      // MEASURED for the same reason the header is, and this one replaces a
+      // literal that was already a second copy: the CSS used to restate the
+      // aside's lg:w-80 / xl:w-[22rem] as 20rem / 22rem, so a change to the
+      // sidebar's width would have moved the app and left the deck behind it
+      // with nothing to report the gap. A sidebar that is closed or below lg
+      // carries lg:hidden and measures 0, which is the right answer for free.
+      const aside = document.querySelector('aside');
+      root.style.setProperty('--deck-side', ((aside && aside.offsetWidth) || 0) + 'px');
     });
+  },
+
+  // The deck's dock toggle calls this. It takes an INTENT ('dock' or 'pane'),
+  // not a value of data-deck-pane: the kit knows it wants to sit beside the
+  // list, and which attribute value expresses that here, with this sidebar, at
+  // this width, is the shell's to decide. Installed on window rather than
+  // passed to open() because the deck outlives no component and every surface
+  // that opens one would otherwise wire the same argument.
+  __installDeckPane(){
+    window.__deckPane = (intent) => {
+      this.deckDock = intent === 'dock';
+      try { localStorage.setItem('deckDock', this.deckDock ? '1' : '0'); } catch {}
+      this.syncDeckFrame();
+    };
   },
 
   // ── A DROP ANYWHERE STAGES ────────────────────────────────────────────────
