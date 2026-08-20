@@ -4,6 +4,7 @@ _Generated from tasks/. Do not hand-edit._
 
 ## On deck
 - 🎫 [Give an app view one address key and an identity of its own](tasks/app-view-address-and-icon-tc1a91.md) · M
+- 🎫 [Let the app view's FAB describe the page, not the shell](tasks/app-view-fab-subject-1evnwv.md) · S
 - 🎫 [Reach the take-away menu from show-repo's Pages gallery](tasks/brief-from-the-pages-gallery-7d4031.md) (needs: Find a way to focus attention on one piece of a page's UI)
 - 🎫 [Consolidate the HTML-escape helpers and move entity-decoding to ingestion](tasks/consolidate-escape-helpers-gxverk.md) · S
 - 🎫 [A multi-method harness for extracting structure from scanned documents](tasks/document-structure-harness-4mz7wk.md)
