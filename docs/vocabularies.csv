@@ -32,3 +32,9 @@ tests,kind,guard,,asserts a convention or policy rather than a behavior
 tests,kind,kit,,loads a lib/kits file through the bootstrap and exercises its surface
 tests,kind,lockstep,,holds a generated artifact to its source
 tests,kind,tool,,runs a CLI script as a process and asserts its output
+skills,group,prose,Prose,"the writing itself is the subject: drafting, tightening, outlining, anchoring to sources, showing an edit"
+skills,group,documents,Documents,"a file format is the subject: docx, pdf, pptx, xlsx, and the query language that feeds them"
+skills,group,web,Web,"building something that renders in a browser: markup, components, icons, bundling"
+skills,group,device,Device,"the handset is the constraint, not an incidental viewport: Shortcuts, the iOS pasteboard, a sheet-presented drag"
+skills,group,windows,Windows,the Microsoft stack is the constraint: PowerShell and Office Scripts
+skills,group,session,Session,"the working session itself is the subject: memory, prompts, scheduling, and the skills mechanism"
