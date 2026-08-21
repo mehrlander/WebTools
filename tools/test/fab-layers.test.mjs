@@ -237,7 +237,10 @@ test('the glyph slot names the layer, and the off-ref mark still takes it', asyn
   const d = await mountFab();
   // A placeholder circle in this slot is what left two rows reading app and
   // app.html with nothing to tell them apart.
-  assert.match(d.layerIcon({ role: 'app', ref: 'main' }), /ph-tree-structure/);
+  // The app row wears web-tools' own declared mark (.web-tools.json), which is
+  // the glyph on its card in the app's sidebar, so the two rows named for an
+  // app are told apart by a mark the reader already reads as Web Tools.
+  assert.match(d.layerIcon({ role: 'app', ref: 'main' }), /ph-toolbox/);
   assert.match(d.layerIcon({ role: 'renderer', ref: 'main' }), /ph-frame-corners/);
   assert.match(d.layerIcon({ role: 'page', ref: 'main' }), /ph-file-html/);
 
