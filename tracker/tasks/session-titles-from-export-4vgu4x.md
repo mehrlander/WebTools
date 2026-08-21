@@ -1,10 +1,12 @@
 ---
 id: session-titles-from-export-4vgu4x
 title: Carry real session titles from the Dispatch export, without depending on it
-status: backlog
+status: done
 project: show-repo
 track: independent
 opened: 2026-08-10
+closed: 2026-08-20
+session: claude/session-titles-join-7wq3vz
 size: M
 ---
 # Carry real session titles from the Dispatch export, without depending on it
@@ -89,3 +91,45 @@ is not read as "the estate has no titles."
   and shipped the derived-name fallback (web-tools PR #395, web-tools-private
   PR #23). Could not read the CSV: `chat-histories` was out of session scope
   and could not be added. Everything under "Settle these first" is open.
+- 2026-08-20: Settled all three, then built the join, one way, derived layer
+  only. Done on `claude/session-titles-join-7wq3vz` in both repos.
+
+  **The key.** All 380 URLs are `claude.ai/code/session_…`, so the join runs
+  through `agent_session` as hoped. No chat URLs.
+
+  **Coverage, against 143 cache rows on 2026-08-19.** 30 rows joined. The
+  binding constraint is not the export's age: it is `agent_session`, which no
+  record written before 2026-08-06 carries. The join is 100% for 2026-08-07
+  through 2026-08-09, 6 of 7 on 2026-08-06, and zero before, so 44 rows can
+  never be titled by any export however fresh. 34 records are dated on or
+  before the export's filename date and **none** of them can join. Mirror
+  image: 350 of the 380 export rows name sessions with no record at all.
+
+  **Rename volatility: not measurable, and not claimed.** One snapshot exists,
+  so there is nothing to diff. The surface states the export date instead.
+
+  **The export's filename date is wrong, and that is a finding for
+  chat-histories, not a bug here.** `2026-08-04-sessions.csv` contains sessions
+  through 2026-08-09 and was committed 2026-08-10. The code reads the date off
+  the filename (the folder's own convention), so the on-screen claim is older
+  than the truth, which is the safe direction; renaming the file corrects the
+  display with no code change.
+
+  **What shipped.** `lib/kits/repo-sessions-cache.js` takes the export as a
+  second input and writes `title` per row plus top-level `titlesAt` /
+  `titlesFrom`; the title is applied on every fold rather than inside
+  `summarize()`, so it needs no ROW_V bump and no re-crawl. show-repo's
+  `_crawlSessions` reads the newest dated CSV (two calls a pass) and treats
+  every failure as "carry the titles you already have." `labelOf` and
+  `search.py`'s `session_label` are one precedence, falling back per row;
+  `estate-search`'s session corpus and `search.py --name` carry both forms.
+  The Sessions pane shows the label per row and "Titles as of <date> · N of M
+  named". `sessions/README.md` gains "The title, joined from another venue".
+
+  **Still open, deliberately, and the reason this is not a re-file.** The
+  capture is manual: Dispatch is attended and nothing schedules it, so
+  `titlesAt` moves only when someone runs it. That was already noted here as a
+  limit to record rather than design around; the unattended venue is
+  `laptop-self-hosted-runner-6a0n5f`. Also unjoined: the Sessions pane's
+  branch-trailer stubs, which have a session id and no record, and which the
+  export could name.
