@@ -172,6 +172,42 @@ test('the default selection re-points the drawer, not just the strip', async () 
   assert.equal(d.viaToss, true);
 });
 
+// ── Which path the drawer is aimed at, and what the row calls it ──────────
+
+// infer() reads the address off `location`, so these drive it through a stub
+// rather than through jsdom's URL, which the harness cannot move per test.
+const inferWith = async (pagesPath, attrs) => {
+  const d = await mountFab(attrs);
+  d._fromPagesUrl = () => ({ repo: 'mehrlander/web-tools', path: pagesPath });
+  d.infer();
+  return d;
+};
+
+test('a directory address takes the declared path; a file address does not', async () => {
+  // The app: /web-tools/app/ can only infer the FOLDER, so the declaration is
+  // the only thing that names the file running there.
+  const app = await inferWith('app', 'data-path="app/index.html"');
+  assert.equal(app.path, 'app/index.html');
+
+  // A file address is the file being served, so it wins over a declaration
+  // that has gone stale. Three pages under pages/scratch/ carried exactly this
+  // mismatch, naming the path they had before they moved.
+  const moved = await inferWith('pages/scratch/demo.html', 'data-path="pages/demo.html"');
+  assert.equal(moved.path, 'pages/scratch/demo.html', 'the address, not the claim');
+});
+
+test('an index file is named by its folder, since index.html identifies nothing', async () => {
+  const d = await mountFab();
+  assert.equal(d.layerName({ path: 'app/index.html' }), 'app');
+  assert.equal(d.layerName({ path: 'pages/demos/index.html' }), 'demos');
+  assert.equal(d.layerName({ path: 'pages/branch.html' }), 'branch.html',
+    'every other file keeps its own name');
+  assert.equal(d.layerName({ path: 'index.html' }), 'index.html',
+    'with no folder above it there is nothing better to say');
+  assert.equal(d.layerName({ path: 'a/b.html', label: 'Spend' }), 'Spend',
+    'an announced label still wins');
+});
+
 test('the github.io inference is one function, and infer() is one of its callers', async () => {
   const d = await mountFab();
   assert.deepEqual({ ...d._fromPagesUrl({ hostname: 'mehrlander.github.io', pathname: '/web-tools/pages/x.html' }) },
