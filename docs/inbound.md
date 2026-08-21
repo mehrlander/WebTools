@@ -6,15 +6,16 @@ session, whether one is running or not. The two are easy to conflate and they
 fail differently. A venue that cannot be reached is idle; an inbound channel
 with no venue behind it is a message nobody reads.
 
-**Measured 2026-08-20.** The push claim was tested rather than reasoned about,
-on this file's own pull request. See "What was measured" below.
+**Measured 2026-08-20 and 2026-08-21.** Every claim here was tested rather than
+reasoned about, on this file's own pull request and a private-repo probe beside
+it. See "What was measured" below.
 
 ## The channels
 
 | Channel | Who can send | Push or pull | Durable | Reachable by a non-Anthropic agent |
 | --- | --- | --- | --- | --- |
 | Chat prompt | the user | it *is* the session | no | no |
-| **PR comment, subscribed** | anyone with repo write | **push** | yes | **yes** |
+| **PR comment, subscribed** | anyone with repo write *except this session* | **push** | yes | **yes** |
 | `SendMessage` between sessions | Claude sessions on the account | push | no | no |
 | Routine, `send_later` | a schedule, or a session arming itself | push | the trigger is | no |
 | mailbox `requests/` | a session, answered by the browser | pull | yes | by token |
@@ -28,6 +29,10 @@ Two columns carry the whole argument.
 a mailbox request: each waits in a folder until something next looks. That is
 robust and it is slow, and slowness is the correct trade for most of them. What
 it cannot do is redirect work already under way.
+
+The one exclusion in that first column is not a quibble: a session's own
+comments are filtered before delivery, so it cannot reach itself through this
+channel. See "It works on private repositories" below.
 
 **Exactly one channel is both push and open to an outside agent.** A subscribed
 PR comment is the only row that is durable, addressable, human readable, and
@@ -117,10 +122,38 @@ could not be mistaken for a push, and it was still twenty-one minutes away when
 the wake landed. This is genuine asynchrony, and it is the strongest form of the
 claim rather than the weak one.
 
-**Budget about three minutes of cold start.** Boot preceded delivery by 3m 05s.
-The gap between the comment being posted on GitHub and the session acting on it
-was not directly observed and is at least that. So the channel is asynchronous,
-not interactive: it is for handing over work, not for holding a conversation.
+**Cold start is a container cost, not a channel cost.** Boot preceded delivery by
+3m 05s here, and a second test the same night, on a warm container, delivered in
+**2 seconds** from GitHub timestamp to arrival. So the three minutes buys a
+container, and only a session that has gone cold pays it. Warm, the channel is
+effectively immediate. Treat three minutes as the worst case rather than the
+expected one, and still write to it as asynchronous, since which case applies is
+not knowable from the sending end.
+
+### It works on private repositories, and self-comments never arrive
+
+Measured 2026-08-21 on `web-tools-private#35`, a private repo. **A private
+repository delivers**, which is what makes the channel usable at all: an inbound
+message that had to be world-readable could carry nothing drawn from the session
+corpus, the mailbox, or any other private material.
+
+The same probe answered a question nobody had asked. Two comments sat on that one
+pull request under one subscription:
+
+| | posted | delivered |
+| --- | --- | --- |
+| posted by the session itself | 21:50:24Z | **never**, across 2h 35m |
+| posted by someone else | 00:25:50Z | 00:25:52Z |
+
+Both carry the same `user.login` and the same `author_association`. Nothing in
+the GitHub record separates them, so **the echo filter keys on what the session
+did, not on who wrote the comment**, and it runs before delivery rather than as
+a judgment after it.
+
+The consequence is worth more than the fact: **a session cannot verify this
+channel from one end.** Posting to a subscribed thread and hearing nothing back
+proves nothing about whether the subscription still works. Any check of a live
+subscription needs a second party.
 
 ## The channel carries no authorship
 
