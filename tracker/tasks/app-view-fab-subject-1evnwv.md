@@ -1,7 +1,8 @@
 ---
 id: app-view-fab-subject-1evnwv
 title: The FAB drawer should let you pick which layer it describes
-status: backlog
+status: in-progress
+session: claude/toss-url-shorthand-dz0xpt
 opened: 2026-08-20
 size: M
 ---
@@ -77,3 +78,5 @@ omitting it and implying a shorter stack.
 - 2026-08-20: reframed by Marcus, from "which layer should win" to "show the
   choice." Rewritten around that. The bust-out action stays useful and stops
   being the answer to this.
+- 2026-08-21: claimed on `claude/toss-url-shorthand-dz0xpt`, restarted from main
+  after PR #465 merged.
