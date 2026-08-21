@@ -8,6 +8,11 @@ doc went unread; it is that no question was raised. So the venues are named
 here, and named again in one line of [CONVENTIONS.md](CONVENTIONS.md), which is
 always in context. A name is enough to make a session ask.
 
+This file answers where work can *run*. Its sibling [inbound.md](inbound.md)
+answers how work *reaches* a session, which is a different question with a
+different failure: an unreachable venue is idle, while an inbound channel with
+no venue behind it is a message nobody reads.
+
 **The axis that matters is attended versus unattended.** An attended venue needs
 a person, or at least a machine that is awake with an app open; it is where
 judgment and one-off work belong. An unattended venue runs without anyone

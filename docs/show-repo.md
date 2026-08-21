@@ -1891,8 +1891,12 @@ GitHub/Raw/CDN menu, all stacked above the data on a phone. That is an editor's
 chrome, and nothing here is edited: the crawl owns these files, so every control
 but copy answered a question the row does not raise. The full multi-mode reading
 stays one tap away at the github mark and at the data route
-(`toss-render.html#data=`), where a reader who wants to pivot a table should go.
-Nothing is re-serialized, since the crawls already write a 2-space indent and the
+(`toss-render.html#data=`). **Wrong 2026-08-21:** that sentence used to end "where
+a reader who wants to pivot a table should go," and the data route has never had
+grouping or aggregation in it. It is a viewer, five ways of reading the same
+bytes. Grouping lives in the transform workbench's Pivot view
+([`pages/transform.html`](../pages/transform.html)), a different page for a
+different verb. Nothing is re-serialized, since the crawls already write a 2-space indent and the
 row's promise is that this is what is committed. One row is open at a time: these run 68 KB to 818 KB,
 so mounting four is a cost with no reader. The fetch is not cached, since the
 row's whole promise is that what you are looking at is what is committed now.
