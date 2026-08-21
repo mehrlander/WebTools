@@ -44,9 +44,13 @@ as one.
 
 Two things also widen it past the title:
 
-- **Three views frame a page this way**, not one: the app view, a project's
-  declared landing, and the atlas. Announcing upward changes the drawer in all
-  three, which is probably right and is certainly more than "the app view".
+- **Two views frame a page through toss-render**, not one: the app view and a
+  project's declared landing (`projectLandingUrl`, same `#gh=` address shape).
+  Announcing upward changes the drawer in both, which is probably right and is
+  more than "the app view". The atlas is framed too and has the same
+  shell-describing FAB, but it embeds `pages/repo-atlas.html` DIRECTLY rather
+  than through toss-render, so nothing here reaches it and it would want its own
+  answer.
 - **Leaving needs a clear.** Nothing tells the parent when the iframe goes, so
   a subject announced upward would outlive the view and the drawer would keep
   describing a page that is no longer on screen. Whoever takes this owns both
@@ -77,3 +81,6 @@ Two things also widen it past the title:
   the change spans three framed views and needs a clear-on-leave to be honest.
   Written up above so the next session does not re-derive it. This wants the
   user's call before anyone builds it.
+- 2026-08-20: corrected. The blast radius is two framed views, not three: the
+  atlas embeds its page directly rather than through toss-render, so it is out
+  of this change's reach.
