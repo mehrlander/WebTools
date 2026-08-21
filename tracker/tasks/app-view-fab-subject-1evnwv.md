@@ -3,7 +3,7 @@ id: app-view-fab-subject-1evnwv
 title: Let the app view's FAB describe the page, not the shell
 status: backlog
 opened: 2026-08-20
-size: S
+size: M
 ---
 # Let the app view's FAB describe the page, not the shell
 
@@ -31,6 +31,27 @@ words: an announcement written only to `window` reached nobody, because the fab
 that is listening is one window up. Its host list is "every window that might
 hold a fab, this one first."
 
+## What a second read found, before claiming this
+
+The shell already reasons about it. `app/index.html`, in the comment above its
+FAB `actions` getter: "The framed page's own FAB declines to mount inside an
+iframe (fab.js's framed guard), so busting out is how you reach its full
+experience, subject-adopted FAB included." So the current behavior was accepted
+rather than overlooked, and the mitigation is the bust-out action already on the
+drawer. That does not make the neutral launcher over branch code correct, but it
+does mean this is a design change rather than a bug fix, and it should be taken
+as one.
+
+Two things also widen it past the title:
+
+- **Three views frame a page this way**, not one: the app view, a project's
+  declared landing, and the atlas. Announcing upward changes the drawer in all
+  three, which is probably right and is certainly more than "the app view".
+- **Leaving needs a clear.** Nothing tells the parent when the iframe goes, so
+  a subject announced upward would outlive the view and the drawer would keep
+  describing a page that is no longer on screen. Whoever takes this owns both
+  halves; the announce alone trades one wrong report for another.
+
 ## Shape
 
 - `toss-render`'s `setSubject` announces up the host list rather than only to
@@ -51,3 +72,8 @@ hold a fab, this one first."
   the same indicator (the escape button's destination and the favicon dimming)
   and deliberately left this one, since it touches the app shell and the
   subject channel rather than the FAB's own reading.
+- 2026-08-20: not claimed after all. A closer read of the shell found the
+  behavior is deliberate and already mitigated by the bust-out action, and that
+  the change spans three framed views and needs a clear-on-leave to be honest.
+  Written up above so the next session does not re-derive it. This wants the
+  user's call before anyone builds it.
