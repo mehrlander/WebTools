@@ -58,7 +58,7 @@ test('a page on its own is one layer, which the strip shows as a label', async (
   assert.equal(layers.length, 1);
   assert.equal(layers[0].repo, 'mehrlander/web-tools');
   assert.equal(layers[0].path, 'app/index.html');
-  assert.equal(layers[0].role, 'shell', 'no stack under it, so it is not "the app"');
+  assert.equal(layers[0].role, 'page', 'nothing nested under it, so it is just the page');
 });
 
 test('a toss is two layers: the renderer names itself, the page is named by the announcement', async () => {
