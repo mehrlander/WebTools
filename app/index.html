@@ -113,6 +113,9 @@
   await gh.load('kits/branch-status.js');
   // Activity-aggregate builders for the private cache (state/activity.json).
   await gh.load('kits/repo-activity-cache.js');
+  // Comma-separated parsing, shared. Loaded before the sessions cache, whose
+  // title join reads the Dispatch export's CSV through it.
+  await gh.load('kits/csv.js');
   // Sessions-aggregate builders for the private cache (state/sessions.json).
   await gh.load('kits/repo-sessions-cache.js');
   // The pure fold behind Activity's Routes pane: the app's own destinations
@@ -2834,6 +2837,29 @@ function app(){ return {
   SESSIONS_FETCH_POOL: 6,        // record blobs read at once
   SESSIONS_MAX_FETCH: 120,       // records read per crawl; the rest wait for the next
   _sessionsCheckKey: 'wt:sessionsCacheCheckedAt',
+  // ── The title join's second input ────────────────────────────────────────
+  // A session's real title reaches no container, so the recorder cannot capture
+  // one (web-tools-private sessions/README.md, "The third name"). A Dispatch
+  // session on the desktop scrapes the claude.ai/code sidebar instead and
+  // commits one dated CSV per capture to mehrlander/chat-histories. Two calls a
+  // crawl: list the folder, read the newest file.
+  //
+  // Every failure here returns null, which the fold reads as "carry the titles
+  // you already have." A repo the token cannot see, a folder that does not
+  // exist, and a malformed CSV are all the same answer, and none of them may
+  // cost the crawl its records.
+  async _readSessionTitles(){
+    const S = window.RepoSessionsCache;
+    try {
+      const gh = new window.GH({ token: window.TOKEN, repo: S.TITLES_REPO, ref: 'main' });
+      const pick = S.newestExport(await gh.req('contents/' + S.TITLES_DIR));
+      if (!pick) return null;
+      const byId = S.parseTitles((await gh.get(pick.path)).text);
+      // An export that parsed to nothing is a broken export, not an empty one:
+      // treating it as empty would blank every title on the next fold.
+      return Object.keys(byId).length ? { at: pick.at, path: pick.path, byId } : null;
+    } catch(e){ console.warn('session titles export:', e?.message || e); return null; }
+  },
   async refreshSessionsCache(force){
     if (!this.hasToken() || !window.RepoSessionsCache) return { skipped: true };
     // Single-flight: opening the Sessions tab kicks the throttled crawl, and a
@@ -2902,10 +2928,13 @@ function app(){ return {
       };
       await Promise.all(Array.from({ length: Math.min(this.SESSIONS_FETCH_POOL, take.length) }, readOne));
 
+      // The titles export, read after the records so a slow or missing
+      // chat-histories cannot delay the part of the crawl that matters.
+      const titles = await this._readSessionTitles();
       // The scope is the FULL listing, never `take`: a record the cap deferred
       // must keep its row, and only a record genuinely gone from the store
       // loses one.
-      const next = S.buildCache(prev, fetched, listing.map(e => e.path), nowISO);
+      const next = S.buildCache(prev, fetched, listing.map(e => e.path), nowISO, titles);
       try { localStorage.setItem(this._sessionsCheckKey, String(Date.now())); } catch {}
       const changed = S.cacheChanged(prev, next);
       if (changed){
@@ -2922,7 +2951,8 @@ function app(){ return {
                             'Update sessions cache (state/sessions.json) via show-repo', base);
       }
       return { total: listing.length, read: Object.keys(fetched).length,
-               deferred: Math.max(0, stale.length - take.length), committed: changed };
+               deferred: Math.max(0, stale.length - take.length), committed: changed,
+               titlesAt: next.titlesAt || '' };
     } catch(e){
       console.warn('sessions cache refresh:', e?.message || e);
       return { error: e?.message || String(e) };

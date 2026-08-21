@@ -15,9 +15,13 @@ import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
 const src = readFileSync(path.join(repoRoot, 'lib/kits/repo-sessions-cache.js'), 'utf8');
+// The title join parses the export through the shared CSV kit, so the fixture
+// window carries it the same way app/index.html's load chain does.
+const csvSrc = readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8');
 
 function load() {
   const win = {};
+  new Function('window', csvSrc)(win);
   new Function('window', src)(win);
   return win.RepoSessionsCache;
 }
@@ -335,4 +339,165 @@ test('nameOf says nothing rather than guessing when a session has no branch', ()
   assert.equal(S.nameOf({ branches: [] }), '');
   assert.equal(S.nameOf({}), '');
   assert.equal(S.nameOf(null), '');
+});
+
+// ── The title, joined from the export ────────────────────────────────────────
+// The join's design constraint is that the estate must DEGRADE when the export
+// is old or absent rather than go blank, so most of what is asserted here is
+// what happens when the second input is missing, stale, or broken.
+
+const AGENT = 'https://claude.ai/code/session_01SXuNTtUx1sdmoQPbLE3Bqk';
+const P = 'sessions/2026/08/2026-08-05-b8fae678.json';
+
+function titles(over = {}) {
+  return {
+    at: '2026-08-04',
+    path: 'claude-code-web/2026-08-04-sessions.csv',
+    byId: { session_01SXuNTtUx1sdmoQPbLE3Bqk: 'Sessions tab for the estate' },
+    ...over,
+  };
+}
+
+test('sessionIdOf reduces the record URL to the export bare id', () => {
+  assert.equal(S.sessionIdOf(AGENT), 'session_01SXuNTtUx1sdmoQPbLE3Bqk');
+  assert.equal(S.sessionIdOf('session_01SXuNTtUx1sdmoQPbLE3Bqk'), 'session_01SXuNTtUx1sdmoQPbLE3Bqk');
+  // A record with no session URL joins to nothing rather than to everything.
+  assert.equal(S.sessionIdOf(''), '');
+  assert.equal(S.sessionIdOf(null), '');
+  assert.equal(S.sessionIdOf('https://claude.ai/chat/abc-123'), '');
+});
+
+test('newestExport picks by the date in the filename and ignores everything else', () => {
+  const pick = S.newestExport([
+    { name: 'README.md', path: 'claude-code-web/README.md' },
+    { name: '2026-08-04-sessions.csv', path: 'claude-code-web/2026-08-04-sessions.csv' },
+    { name: '2026-08-11-sessions.csv', path: 'claude-code-web/2026-08-11-sessions.csv' },
+    { name: '2026-08-09-notes.csv', path: 'claude-code-web/2026-08-09-notes.csv' },
+  ]);
+  assert.deepEqual(pick, { at: '2026-08-11', path: 'claude-code-web/2026-08-11-sessions.csv' });
+  assert.equal(S.newestExport([{ name: 'README.md', path: 'claude-code-web/README.md' }]), null);
+  assert.equal(S.newestExport([]), null);
+});
+
+test('parseTitles keeps a title that contains a comma whole', () => {
+  // Not hypothetical: "Session title capture in history, adjusted" is a row in
+  // the first export on file, and a split on comma would cut it in half and
+  // shift session_id into the status column.
+  const csv = [
+    'title,url,session_id,status',
+    '"Session title capture in history, adjusted",https://claude.ai/code/session_01AAA,session_01AAA,',
+    '"Refresh buttons on show repo page",https://claude.ai/code/session_01BBB,session_01BBB,',
+  ].join('\n');
+  assert.deepEqual(S.parseTitles(csv), {
+    session_01AAA: 'Session title capture in history, adjusted',
+    session_01BBB: 'Refresh buttons on show repo page',
+  });
+});
+
+test('parseTitles falls back to the url column when session_id is missing', () => {
+  const csv = 'title,url\n"A session",https://claude.ai/code/session_01CCC';
+  assert.deepEqual(S.parseTitles(csv), { session_01CCC: 'A session' });
+  assert.deepEqual(S.parseTitles(''), {});
+});
+
+test('a title lands on the row it names and nowhere else', () => {
+  const cache = S.buildCache(null, {
+    [P]: { record: record(), sha: 'x' },
+    'sessions/2026/08/2026-08-04-aaaaaaaa.json': {
+      record: record({ short: 'aaaaaaaa', day: '2026-08-04', started: '2026-08-04T09:00:00Z',
+                       agent_session: 'https://claude.ai/code/session_01UNKNOWN' }),
+      sha: 'y',
+    },
+  }, null, 'now', titles());
+  const named = cache.rows.find(r => r.id === 'b8fae678');
+  const other = cache.rows.find(r => r.id === 'aaaaaaaa');
+  assert.equal(named.title, 'Sessions tab for the estate');
+  assert.ok(!('title' in other), 'a session the export does not name carries no title key');
+  assert.equal(cache.titlesAt, '2026-08-04');
+  assert.equal(cache.titlesFrom, 'claude-code-web/2026-08-04-sessions.csv');
+});
+
+test('labelOf falls back per row, so a list never goes blank', () => {
+  assert.equal(S.labelOf({ title: 'Sessions tab for the estate', branches: ['claude/x-1g5p9v'] }),
+               'Sessions tab for the estate');
+  assert.equal(S.labelOf({ branches: ['claude/fab-naming-todqvq'] }), 'fab-naming');
+  assert.equal(S.labelOf({ branches: [] }), '');
+});
+
+test('an unreadable export carries the titles the cache already had', () => {
+  // The load-bearing degradation. A day the desktop slept, a token that cannot
+  // see chat-histories, and a 500 are all `titles === null`, and none of them
+  // may cost a title that was already joined.
+  const first = S.buildCache(null, { [P]: { record: record(), sha: 'x' } }, null, 'now', titles());
+  const again = S.buildCache(first, {}, [P], 'later', null);
+  assert.equal(again.rows[0].title, 'Sessions tab for the estate');
+  assert.equal(again.titlesAt, '2026-08-04');
+  assert.equal(again.titlesFrom, 'claude-code-web/2026-08-04-sessions.csv');
+});
+
+test('a refetched record keeps its title, which its own blob cannot supply', () => {
+  // The live session's record rewrites on every Stop, so this is the common
+  // path rather than the edge: summarize() reads the record and a record has no
+  // title field, so the row would come back blank on the very session a reader
+  // is most likely to be looking at.
+  const first = S.buildCache(null, { [P]: { record: record(), sha: 'x' } }, null, 'now', titles());
+  const again = S.buildCache(first, { [P]: { record: record(), sha: 'MOVED' } }, [P], 'later', null);
+  assert.equal(again.rows[0].title, 'Sessions tab for the estate');
+  assert.equal(again.rows[0].sha, 'MOVED');
+});
+
+test('the fold does not edit the cache it is folding from', () => {
+  // withTitles copies rather than mutates, because carried-forward rows are the
+  // SAME objects the previous cache holds and cacheChanged compares the two
+  // afterwards. Mutating in place would edit the baseline and a new export
+  // would read as no change at all.
+  const first = S.buildCache(null, { [P]: { record: record(), sha: 'x' } }, null, 'now', null);
+  const next = S.buildCache(first, {}, [P], 'later', titles());
+  assert.ok(!('title' in first.rows[0]), 'the previous fold stays untitled');
+  assert.equal(next.rows[0].title, 'Sessions tab for the estate');
+  assert.equal(S.cacheChanged(first, next), true);
+});
+
+test('a rename lands, and a re-run of the same export does not', () => {
+  const first = S.buildCache(null, { [P]: { record: record(), sha: 'x' } }, null, 'now', titles());
+  const same = S.buildCache(first, {}, [P], 'later', titles());
+  assert.equal(S.cacheChanged(first, same), false);
+
+  const renamed = S.buildCache(first, {}, [P], 'later',
+    titles({ at: '2026-08-11', byId: { session_01SXuNTtUx1sdmoQPbLE3Bqk: 'Sessions tab, renamed' } }));
+  assert.equal(renamed.rows[0].title, 'Sessions tab, renamed');
+  assert.equal(S.cacheChanged(first, renamed), true);
+});
+
+test('a fresher export commits even when it renames nothing', () => {
+  // titlesAt is the one top-level key inside material(), and this is why: it is
+  // a claim shown on screen, so a surface that kept saying "titles as of
+  // 2026-08-04" after a newer capture landed would understate itself with no
+  // way for a reader to tell.
+  const first = S.buildCache(null, { [P]: { record: record(), sha: 'x' } }, null, 'now', titles());
+  const newer = S.buildCache(first, {}, [P], 'later', titles({ at: '2026-08-11' }));
+  assert.equal(newer.rows[0].title, first.rows[0].title);
+  assert.equal(S.cacheChanged(first, newer), true);
+});
+
+test('a title dropped from the export is dropped from the row', () => {
+  // A session deleted in the app leaves the sidebar and so leaves the export.
+  // The row falls back to its derived name rather than keeping a title nothing
+  // asserts any more; the export is the source of truth while it is readable.
+  const first = S.buildCache(null, { [P]: { record: record(), sha: 'x' } }, null, 'now', titles());
+  const gone = S.buildCache(first, {}, [P], 'later', titles({ at: '2026-08-11', byId: {} }));
+  assert.ok(!('title' in gone.rows[0]));
+  assert.equal(S.labelOf(gone.rows[0]), 'sessions-tab');
+});
+
+test('a record with no session URL joins to nothing and keeps its derived name', () => {
+  // 44 of the 143 rows on file when this landed are in exactly this state: the
+  // recorder only began reading the session id from the environment on
+  // 2026-08-07, and a record is never revisited, so those rows can never be
+  // titled by any export.
+  const r = record();
+  delete r.agent_session;
+  const cache = S.buildCache(null, { [P]: { record: r, sha: 'x' } }, null, 'now', titles());
+  assert.ok(!('title' in cache.rows[0]));
+  assert.equal(S.labelOf(cache.rows[0]), 'sessions-tab');
 });
