@@ -201,7 +201,13 @@
    Padding rather than width so nothing inside has to opt in, and only under
    [data-deck-pane="dock"], since "inset" and "full" both cover the pane
    completely and narrowing it there would reflow a list nobody can see. */
-@media (min-width:1024px){:root[data-deck-pane="dock"] main{padding-right:calc(100vw - var(--deck-left));transition:padding-right .15s ease-out}}
+/* AND ONLY WHILE A DECK IS ACTUALLY OPEN. `data-deck-pane` records the
+   reader's standing preference and rightly outlives any one deck, so keying
+   the reflow on it alone left main padded by the width of a deck that had
+   been closed: squeezed on every view, and across reloads, since the
+   preference is stored. `data-deck-open` is the kit's fact and the deck's
+   lifetime; the pane is the host's and the reader's. Both, or no reflow. */
+@media (min-width:1024px){:root[data-deck-pane="dock"][data-deck-open] main{padding-right:calc(100vw - var(--deck-left));transition:padding-right .15s ease-out}}
 /* The Repos row's two menu buttons. Narrow and chrome-free on a fine pointer,
    where they are a pair of glyphs at the row's edge and a hover background made
    each one read as a separate tile; the row's own hover tint is the feedback,
@@ -2514,6 +2520,11 @@ function app(){ return {
           try {
             entry.align = window.PortableAlign.assess({ repo, role, settings, claudeMd, config: entry.config });
             entry.align.scope = (entry.config && typeof entry.config.scope === 'string') ? entry.config.scope : '';
+            // The repo's own committed skills ride the same free read. The
+            // plugin's set is never here: a pulled skill lives in the plugin
+            // cache, so a committed .claude/skills/ is by construction what
+            // the hub did not ship this repo.
+            entry.align.skills = Array.isArray(entry.config?.skills) ? entry.config.skills : [];
           } catch {}
         }
         fetched[repo] = entry;

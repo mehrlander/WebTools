@@ -23,6 +23,8 @@ registries,fields,governed,,"every non-key column must be a declared property, s
 registries,fields,ungoverned,,"the columns are exempt from their property definitions. A smell and never a resting state: five carriers were marked this way with a written reason and all five reasons were wrong, so the count is asserted at zero and adding one has to change a test"
 registries,membership,computed,,"the rule is executable (a folder, an extension, the router's own table), so the row set can be derived and compared to what is there. Only this side can carry a coverage gate, because only it has something independent to check against"
 registries,membership,curated,,"which targets belong is a judgment, so there is nothing to recompute; the strongest gate available is a promise-to-implementation one"
+registries,span,hub,Hub,"every target is inside this repository, so the checkout is a complete enumeration"
+registries,span,estate,Estate,"targets live in other repositories too, so this repo holds an aggregate and not the population; the carrier still lives here, which is what keeps it gateable"
 tests,kind,behavior,,calls the subject's own functions and asserts what comes back
 tests,kind,component,,boots an Alpine component in jsdom and drives it
 tests,kind,gate,,"holds committed data to the repo, so documentation cannot drift from what it describes"
@@ -30,3 +32,9 @@ tests,kind,guard,,asserts a convention or policy rather than a behavior
 tests,kind,kit,,loads a lib/kits file through the bootstrap and exercises its surface
 tests,kind,lockstep,,holds a generated artifact to its source
 tests,kind,tool,,runs a CLI script as a process and asserts its output
+skills,group,prose,Prose,"the writing itself is the subject: drafting, tightening, outlining, anchoring to sources, showing an edit"
+skills,group,documents,Documents,"a file format is the subject: docx, pdf, pptx, xlsx, and the query language that feeds them"
+skills,group,web,Web,"building something that renders in a browser: markup, components, icons, bundling"
+skills,group,device,Device,"the handset is the constraint, not an incidental viewport: Shortcuts, the iOS pasteboard, a sheet-presented drag"
+skills,group,windows,Windows,the Microsoft stack is the constraint: PowerShell and Office Scripts
+skills,group,session,Session,"the working session itself is the subject: memory, prompts, scheduling, and the skills mechanism"

@@ -14,7 +14,7 @@ must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
 2 arrive in every session's context, 26 are named by CLAUDE.md,
-4 by a skill, 19 by a page or component. The remaining 14 are
+4 by a skill, 20 by a page or component. The remaining 14 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -35,6 +35,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`branch-overlay.md`](branch-overlay.md) *(orphan)* — the branch overlay: the takeover, file substitution, the sidebar's second ref, and drop-on-a-branch
 - [`code-layers.md`](code-layers.md) — the code layers and the admission rule that sorts a new file into one of them
 - [`docs.csv`](docs.csv) — the documentation registry: what each file under docs/ is, on four axes
+- [`estate-span.md`](estate-span.md) *(measured)* — what the hub knows about the rest of the estate: the outbound/inbound asymmetry, the three shapes a governed area takes, and the 2026-08-20 measurement behind the span column
 - [`harness.csv`](harness.csv) — the harness registry: every tools/ and scripts/ file, its role, and how it is invoked
 - [`headless-vendoring.md`](headless-vendoring.md) — building with CDN libraries and rendering headless where the CDNs are blocked
 - [`inbound.md`](inbound.md) *(measured)* — the inbound map: how work reaches a session, the push-versus-pull split across the estate's channels, and the one channel an outside agent can reach

@@ -30,6 +30,7 @@ tools,icon,recorded,,none,column,yes,,phosphor icon name
 owners,kind,recorded,,value,column,yes,statement;family,"whether the row owns one repeated statement or declares a rule over a scope; a family row is a DECLARATION in this model, carried here because its carrier is distributed"
 owners,applies_to,recorded,,none,column,yes,,the population a family rule covers; absent on a statement row
 owners,authoritative,recorded,,value,column,yes,,the one carrier that owns the statement; every other mention is a repetition
+skills,group,recorded,,value,column,yes,prose;documents;web;device;windows;session,"what the skill is FOR, the axis a reader browses on; authored, since nothing on disk carries a subject"
 skills,description,recorded,,value,column,yes,,"the skill's trigger description. A COPY: the authoritative carrier is the skill's own SKILL.md, per the family rule in docs/owners.csv"
 pages,top,computed,tools/build/pages-index.mjs,value,column,yes,,"the top-level segment under pages/ the page sits in, which drives the gallery's location chips; every page below drop/ scopes to one drop chip. A root page reads main"
 pages,group,computed,tools/build/pages-index.mjs,counted,column,yes,,"the page's own directory, as the gallery labels it; blank for a root page. Was a nesting level until 2026-08-16, when flattening it onto the row is what let the catalog become a CSV"
@@ -104,6 +105,7 @@ registries,membership,recorded,,value,column,yes,computed;curated,"whether the s
 registries,inherits,recorded,,none,column,yes,,"another registry this one borrows descriptions from, by id, so a curated selection need not restate what a computed set already says. Blank is the normal state. Named the crosswalk kind until 2026-08-18, which said that a registry borrowed without saying from whom"
 registries,target,recorded,,value,column,yes,,the thing a row asserts about; not always a file
 registries,scope,recorded,,value,column,yes,,the population the registry covers
+registries,span,recorded,,value,column,yes,hub;estate,"whether this checkout bounds the population, or a complete enumeration needs another repo; the typed sibling of scope, which says the same thing in prose and so cannot be grouped or counted"
 registries,fields,recorded,,value,column,yes,governed;ungoverned,whether every non-key column of this carrier must be a declared property
 registries,gate,recorded,,value,column,yes,,the test that fails when the registry and the repo disagree; none when nothing holds it
 registries,area,recorded,,value,column,yes,files;names,the reader grouping in the Registries tab
