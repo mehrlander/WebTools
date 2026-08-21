@@ -1,4 +1,5 @@
 path,role,layer,lines,invocation,emits,named,tested
+scripts/bound-boolean-attrs.py,"report an Alpine boolean attribute (:disabled, :checked, :readonly) bound to an expression that can be undefined. x-bind coerces an undefined result to '' for any dotted expression, and bind() removes an attribute only for null/undefined/false, so '' SETS it: a bare property read on a missing key disables the control. Only accessor chains are flagged; an operator always yields a real boolean, which is the half a looser scan gets wrong. --check gates it",scripts,170,npm:bool-attr-scan,no,yes,yes
 scripts/build-tree.py,render a repository file tree as a linked markdown table for chat,scripts,252,argv,no,yes,no
 scripts/check-branch-status.mjs,the stated agreement check for the branches view against home's unmerged-branches.sh,scripts,145,argv,no,yes,no
 scripts/code-shape.py,"per-file observable properties of lib/: what a file attaches to, boot, hub, DOM, Alpine; the instrument behind docs/code-layers.md and the code-layers gate",scripts,374,npm:code-shape,yes,yes,yes

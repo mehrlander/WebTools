@@ -70,6 +70,20 @@ which is why it survives review. Enforced by `npm run opacity-scan`
 (`scripts/dead-opacity.py`), gated in `tools/test/dead-opacity.test.mjs`, which
 also carries the measurement.
 
+**A bound boolean attribute takes `!!`.** `:disabled="!!row.busy"`, never
+`:disabled="row.busy"`. Alpine's `x-bind` coerces an undefined result to `''`
+whenever the expression contains a dot, and `bind()` removes an attribute only
+for `null`, `undefined` and `false`, so `''` takes the other branch and WRITES
+it. A property that is simply absent therefore disables the button, freezes the
+input, or checks the box, and the author is looking at a field that is plainly
+not true. Only a bare fetch is exposed: `!row.busy` and `row.busy === true`
+already yield a real boolean and need nothing. Two shipped controls were dead
+this way before anyone found the cause (PR #469), both with passing suites,
+because a test that calls a method on the component cannot see an attribute the
+template put on a button. Enforced by `npm run bool-attr-scan`
+(`scripts/bound-boolean-attrs.py`), gated in
+`tools/test/bound-boolean-attrs.test.mjs`.
+
 ## The shape that follows
 
 ```text
