@@ -11,6 +11,15 @@
 // is what every other pane in the drawer reads. A pick that moved the strip and
 // left the ref bar behind would pass a shallower test and be worse than the
 // silent choice it replaced.
+//
+// AND THE ROW HAS TO BE TAPPABLE, which the tests above cannot see. Calling
+// selectLayer on the component proves the model and says nothing about the
+// button, and for the strip's whole life every button in it carried a disabled
+// attribute nobody asked for: Alpine's x-bind turns an undefined result into ''
+// whenever the expression contains a dot, and '' is not one of the three values
+// bind() treats as absent, so :disabled="L.sealed" on a row with no sealed flag
+// SET the attribute. Every model test passed. So the last block here renders
+// the real template and asks the DOM, which is the only place that bug lived.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -163,6 +172,42 @@ test('the default selection re-points the drawer, not just the strip', async () 
   assert.equal(d.viaToss, true);
 });
 
+// ── Which path the drawer is aimed at, and what the row calls it ──────────
+
+// infer() reads the address off `location`, so these drive it through a stub
+// rather than through jsdom's URL, which the harness cannot move per test.
+const inferWith = async (pagesPath, attrs) => {
+  const d = await mountFab(attrs);
+  d._fromPagesUrl = () => ({ repo: 'mehrlander/web-tools', path: pagesPath });
+  d.infer();
+  return d;
+};
+
+test('a directory address takes the declared path; a file address does not', async () => {
+  // The app: /web-tools/app/ can only infer the FOLDER, so the declaration is
+  // the only thing that names the file running there.
+  const app = await inferWith('app', 'data-path="app/index.html"');
+  assert.equal(app.path, 'app/index.html');
+
+  // A file address is the file being served, so it wins over a declaration
+  // that has gone stale. Three pages under pages/scratch/ carried exactly this
+  // mismatch, naming the path they had before they moved.
+  const moved = await inferWith('pages/scratch/demo.html', 'data-path="pages/demo.html"');
+  assert.equal(moved.path, 'pages/scratch/demo.html', 'the address, not the claim');
+});
+
+test('an index file is named by its folder, since index.html identifies nothing', async () => {
+  const d = await mountFab();
+  assert.equal(d.layerName({ path: 'app/index.html' }), 'app');
+  assert.equal(d.layerName({ path: 'pages/demos/index.html' }), 'demos');
+  assert.equal(d.layerName({ path: 'pages/branch.html' }), 'branch.html',
+    'every other file keeps its own name');
+  assert.equal(d.layerName({ path: 'index.html' }), 'index.html',
+    'with no folder above it there is nothing better to say');
+  assert.equal(d.layerName({ path: 'a/b.html', label: 'Spend' }), 'Spend',
+    'an announced label still wins');
+});
+
 test('the github.io inference is one function, and infer() is one of its callers', async () => {
   const d = await mountFab();
   assert.deepEqual({ ...d._fromPagesUrl({ hostname: 'mehrlander.github.io', pathname: '/web-tools/pages/x.html' }) },
@@ -170,4 +215,72 @@ test('the github.io inference is one function, and infer() is one of its callers
   assert.deepEqual({ ...d._fromPagesUrl({ hostname: 'mehrlander.github.io', pathname: '/' }) },
     { repo: 'mehrlander/mehrlander.github.io', path: '' });
   assert.equal(d._fromPagesUrl({ hostname: 'example.com', pathname: '/x' }), null);
+});
+
+// ── The strip as rendered, not as modelled ─────────────────────────────────
+
+// The rows the drawer actually draws, in order. Read off the DOM rather than
+// off `layers`, since the whole point of these three is that the two disagreed.
+const stripRows = (d) => [...d.$root.querySelectorAll('button')]
+  .filter(b => b.getAttribute('@click') === 'selectLayer(i)');
+
+// Reached the way the real drawer reaches it: refreshLayers derives the stack
+// and points the drawer at the innermost readable row, then the panel opens.
+// Opening last keeps _afterIdentityChange from firing the loads, which have no
+// answer here.
+async function mountStrip(layers) {
+  const d = await mountFab();
+  d.readLayers = () => layers;
+  d.refreshLayers();
+  d.open = true;
+  await tick(4);
+  return d;
+}
+
+test('a readable row carries no disabled attribute, and a sealed one does', async () => {
+  const d = await mountStrip([
+    { repo: 'mehrlander/web-tools', path: 'app', ref: 'main', role: 'app' },
+    { repo: 'mehrlander/web-tools', path: 'pages/toss-render.html', ref: 'main', role: 'renderer' },
+    { sealed: true, role: 'sealed' },
+  ]);
+  const rows = stripRows(d);
+  assert.equal(rows.length, 3, 'one button per layer');
+
+  // The bug was invisible from the component and total from the DOM: it
+  // disabled every row, the selected one included.
+  assert.equal(rows[0].hasAttribute('disabled'), false, 'the app row is tappable');
+  assert.equal(rows[1].hasAttribute('disabled'), false, 'so is the renderer row');
+  assert.equal(rows[2].hasAttribute('disabled'), true, 'and the sealed row is not');
+});
+
+test('tapping the rendered app row re-points the drawer', async () => {
+  const d = await mountStrip([
+    { repo: 'mehrlander/web-tools', path: 'app', ref: 'main', role: 'app' },
+    { repo: 'mehrlander/home', path: 'projects/budget-drs/app/view/app.html', ref: 'main', role: 'page' },
+  ]);
+  assert.equal(d.repo, 'mehrlander/home', 'the drawer starts on the innermost layer');
+
+  stripRows(d)[0].click();
+  await tick(3);
+
+  assert.equal(d.layerIndex, 0);
+  assert.equal(d.repo, 'mehrlander/web-tools', 'a tap, not a method call, moved it');
+  assert.equal(d.path, 'app');
+  assert.equal(d.viaToss, false);
+});
+
+test('the glyph slot names the layer, and the off-ref mark still takes it', async () => {
+  const d = await mountFab();
+  // A placeholder circle in this slot is what left two rows reading app and
+  // app.html with nothing to tell them apart.
+  // The app row wears web-tools' own declared mark (.web-tools.json), which is
+  // the glyph on its card in the app's sidebar, so the two rows named for an
+  // app are told apart by a mark the reader already reads as Web Tools.
+  assert.match(d.layerIcon({ role: 'app', ref: 'main' }), /ph-toolbox/);
+  assert.match(d.layerIcon({ role: 'renderer', ref: 'main' }), /ph-frame-corners/);
+  assert.match(d.layerIcon({ role: 'page', ref: 'main' }), /ph-file-html/);
+
+  assert.match(d.layerIcon({ sealed: true, role: 'sealed' }), /ph-lock-simple/);
+  assert.match(d.layerIcon({ role: 'app', ref: 'claude/x' }), /ph-disc text-warning/,
+    'branch code cannot hide behind an identity glyph');
 });
