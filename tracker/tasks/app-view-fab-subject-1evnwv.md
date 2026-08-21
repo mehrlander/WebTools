@@ -1,86 +1,79 @@
 ---
 id: app-view-fab-subject-1evnwv
-title: Let the app view's FAB describe the page, not the shell
+title: The FAB drawer should let you pick which layer it describes
 status: backlog
 opened: 2026-08-20
 size: M
 ---
-# Let the app view's FAB describe the page, not the shell
+# The FAB drawer should let you pick which layer it describes
 
-In `?view=app`, show-repo frames `pages/toss-render.html`, which frames the
-promoted page. Three windows. The FAB that mounts is the app's own, at the top
-level, and it reports `app/index.html` at main. So the drawer over a promoted
-page describes show-repo rather than the page in the frame, and the launcher
-stays neutral even when `appRef` names a branch.
+A page reaches the screen through a stack of frames, and the drawer describes
+exactly one of them without saying which. Give it a chooser at the top: one row
+per layer, outermost to innermost, current one selected. The drawer then
+describes whichever you pick.
 
-That is the under-reporting direction of the error, which is the worse one. A
-toss saying "warning" over a SHA you asked for costs nothing; a shell saying
-"neutral" over branch code is a quiet false statement.
+## Why this replaces the question that was filed here
 
-## Why it happens
+This task used to ask a yes-or-no: should the drawer describe the app shell or
+the page inside it? Both answers are wrong in some context, which is the tell
+that the question was wrong. The stack is real and the reader can see it is
+real; hiding it behind a winner is what made the indicator dishonest. Showing it
+is simpler to explain than either winner would have been.
 
-`toss-render` stamps `window.__tossSubject` on its OWN window, which is right
-when it is the top-level document: its fab is right there. Framed inside the
-app it is not the top-level document, its own fab declines to mount (a fab in
-an iframe declines unless `data-allow-framed`), and the announcement reaches
-nobody.
+It also removes the half that made the original fix risky. Announcing a subject
+upward needs a matching clear when the frame goes, or the drawer describes a
+page no longer on screen. A chooser derived by WALKING THE LIVE FRAME TREE has
+nothing to clear: a layer that goes away stops being in the list. Prefer the
+walk to the announcement for that reason.
 
-`lib/kits/subject-channel.js` already solves this exact problem for the file
-deck and the stage's reader, and its head comment names the failure in the same
-words: an announcement written only to `window` reached nobody, because the fab
-that is listening is one window up. Its host list is "every window that might
-hold a fab, this one first."
+## The stacks that occur
 
-## What a second read found, before claiming this
+| context | layers, outermost first |
+| --- | --- |
+| a deployed page | the page |
+| a toss | `toss-render`, the subject |
+| the app view, a project landing | the app shell, `toss-render`, the page |
+| a nested toss | the app shell (sometimes), `toss-render`, `toss-render`, the page |
 
-The shell already reasons about it. `app/index.html`, in the comment above its
-FAB `actions` getter: "The framed page's own FAB declines to mount inside an
-iframe (fab.js's framed guard), so busting out is how you reach its full
-experience, subject-adopted FAB included." So the current behavior was accepted
-rather than overlooked, and the mitigation is the bust-out action already on the
-drawer. That does not make the neutral launcher over branch code correct, but it
-does mean this is a design change rather than a bug fix, and it should be taken
-as one.
+One row is the degenerate case, and should read as a label rather than a
+control.
 
-Two things also widen it past the title:
+## Decisions inside it
 
-- **Two views frame a page through toss-render**, not one: the app view and a
-  project's declared landing (`projectLandingUrl`, same `#gh=` address shape).
-  Announcing upward changes the drawer in both, which is probably right and is
-  more than "the app view". The atlas is framed too and has the same
-  shell-describing FAB, but it embeds `pages/repo-atlas.html` DIRECTLY rather
-  than through toss-render, so nothing here reaches it and it would want its own
-  answer.
-- **Leaving needs a clear.** Nothing tells the parent when the iframe goes, so
-  a subject announced upward would outlive the view and the drawer would keep
-  describing a page that is no longer on screen. Whoever takes this owns both
-  halves; the announce alone trades one wrong report for another.
+- **What the launcher glyph summarizes.** It is one mark and the stack is many.
+  Proposal: it follows the SELECTED layer, which defaults to the innermost
+  readable one, and every row in the chooser carries its own off-ref mark so a
+  layer that is off its default branch cannot hide behind a neutral launcher.
+- **How far the selection reaches.** Proposal: all of it. The ref bar, the
+  branch list, the path picker, the guide, Inspect, and the take actions all
+  follow the selection. A drawer where half the panes follow and half do not is
+  worse than either fixed choice.
+- **Labels.** A phone drawer has room for a filename and a ref chip, not a path.
+  The role (app, renderer, page) is the caption.
 
-## Shape
+## The limit, which the chooser should say out loud
 
-- `toss-render`'s `setSubject` announces up the host list rather than only to
-  its own window, whether by adopting the kit or by matching its walk.
-- Same-origin only, which address mode is; a `#gz=` payload toss is opaque and
-  the access throws, which the kit already treats as the honest end of it.
-- Nothing about the toss-as-top-level case changes.
+Only same-origin layers can be walked. A `#gz=` payload toss renders under an
+opaque origin, so the innermost layer is sealed and cannot be identified. The
+chooser lists what it can reach and names the sealed one as sealed, rather than
+omitting it and implying a shorter stack.
 
 ## Done when
 
-- `?view=app&appRepo=<repo>&appPath=<path>&appRef=<a branch>` shows the
-  warning-tinted launcher, and the drawer's ref bar names that branch.
-- The same address at the default branch stays neutral.
-- A toss opened directly is unchanged.
+- The drawer's top strip lists the layers, marks the selected one, and every
+  pane below it describes that layer.
+- Opening a page in the app view selects the page, and the launcher tints from
+  it, so branch code no longer reads as canonical.
+- A one-layer context shows a label, not a control.
+- An opaque layer is listed and named as unreachable.
 
 ## Progress log
 - 2026-08-20: filed alongside PR #465, which fixed the two defects underneath
   the same indicator (the escape button's destination and the favicon dimming)
-  and deliberately left this one, since it touches the app shell and the
-  subject channel rather than the FAB's own reading.
-- 2026-08-20: not claimed after all. A closer read of the shell found the
-  behavior is deliberate and already mitigated by the bust-out action, and that
-  the change spans three framed views and needs a clear-on-leave to be honest.
-  Written up above so the next session does not re-derive it. This wants the
-  user's call before anyone builds it.
-- 2026-08-20: corrected. The blast radius is two framed views, not three: the
-  atlas embeds its page directly rather than through toss-render, so it is out
-  of this change's reach.
+  and left this one.
+- 2026-08-20: a closer read found the old framing was a design change rather
+  than a bug fix: `app/index.html` already reasons about the framed FAB and
+  offers the bust-out action as its mitigation.
+- 2026-08-20: reframed by Marcus, from "which layer should win" to "show the
+  choice." Rewritten around that. The bust-out action stays useful and stops
+  being the answer to this.
