@@ -222,6 +222,36 @@ load-bearing one:
   [environment/extending.md](environment/extending.md). The plugin registers at
   user scope and runs from any root, which is why the dispatcher lives there.
 
+### When a merged hook actually starts firing
+
+The plugin declares no `version`, so Claude Code resolves it from the git commit
+SHA of web-tools main and refreshes on every new commit there. That makes the
+propagation sound simple, and it is off by one session.
+
+**A plugin refresh happens at session start, but that session's hooks have
+already run from the previous pin.** Observed twice in one session on
+2026-08-20, which is why it is stated here rather than assumed:
+
+```
+portable@web-tools refreshed f53c558c4357 to 8bc79dbb0342;
+  its hooks ran from the old pin, so /reload-plugins if you were
+  waiting on a hook change
+```
+
+So the two halves of this change land on different schedules:
+
+| | takes effect |
+| --- | --- |
+| the **convention** (SURFACING.md, CONVENTIONS.md) | the next session, since the loader and the injection hook fetch from main |
+| the **hook** (`pr-subscribe-hint.sh`) | the session *after* the one that refreshes, or immediately on `/reload-plugins` |
+
+The practical consequence: **the first session after a hook merge is the one
+most likely to report the hook as broken**, because it refreshed to the new pin
+and ran the old one. Check `/reload-plugins` before concluding anything about a
+hook that just shipped. This is a narrower case of the two-copies problem the
+estate already knows about, where the marketplace clone and the plugin cache
+drift and `claude plugin list` reads the clone.
+
 Two things such a hook must say, since both are silent failures otherwise:
 
 - **A PR Steward already watching preempts the subscription.** The call still
