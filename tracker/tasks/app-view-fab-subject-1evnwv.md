@@ -1,7 +1,8 @@
 ---
 id: app-view-fab-subject-1evnwv
 title: The FAB drawer should let you pick which layer it describes
-status: in-progress
+status: done
+closed: 2026-08-21
 session: claude/toss-url-shorthand-dz0xpt
 opened: 2026-08-20
 size: M
@@ -65,7 +66,9 @@ omitting it and implying a shorter stack.
   pane below it describes that layer.
 - Opening a page in the app view selects the page, and the launcher tints from
   it, so branch code no longer reads as canonical.
-- A one-layer context shows a label, not a control.
+- A one-layer context shows no strip at all, which is one step past the label
+  this asked for: a one-row chooser is a control that cannot do anything, and
+  the identity block below already names the page.
 - An opaque layer is listed and named as unreachable.
 
 ## Progress log
@@ -80,3 +83,9 @@ omitting it and implying a shorter stack.
   being the answer to this.
 - 2026-08-21: claimed on `claude/toss-url-shorthand-dz0xpt`, restarted from main
   after PR #465 merged.
+- 2026-08-21: done on `claude/toss-url-shorthand-dz0xpt`; lands via PR #467. The
+  walk turned up two things the design did not anticipate, both now handled: an
+  in-document subject (a deck slide) has no frame to walk to, and a raw stamp
+  from a route-blind shell has to be resolved the same way in the walk as in
+  adoptSubject or the refresh undoes the rewrite. The launcher tint needed no
+  change: it already followed the selected layer.
