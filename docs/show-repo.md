@@ -200,11 +200,27 @@ to be empty wherever anyone looked. The scan now reads the element's own scope.
 
 **A third half arrived on 2026-08-19: `menu`,** which fills the launcher's
 long-press menu rather than anything inside the drawer. A component exposing
-`[{ label, icon, run }]` gets one row per entry under the built-in "Take a
-note", and show-repo contributes exactly one, the app-wide paste. The contract
-exists because the drawer is the wrong place for a verb you want *before* the
-drawer: opening it is a tap and a tab, and for the paste specifically it would
-also spend the user activation a clipboard read has to ride.
+`[{ label, icon, run }]` gets one row per entry under the built-in rows. The
+contract exists because the drawer is the wrong place for a verb you want
+*before* the drawer: opening it is a tap and a tab, and for a paste
+specifically it would also spend the user activation a clipboard read has to
+ride.
+
+**It has no user now, and that is the contract working rather than failing.**
+show-repo contributed exactly one row through it, the app-wide paste, and on
+2026-08-22 that row was promoted into the fab beside "Take a note" and "Web
+Tools home". The promotion is the argument: a paste is worth most exactly where
+there is no other way in, and a contributed row could only ever appear on the
+page that already had a Stage on screen. What being everywhere costs is a
+carrier, since the stage is `Alpine.store('browser').stage`, a store array held
+for one page load, and the navigation that reaches a Stage is what would
+otherwise discard the paste. So the fab defers to `pasteAnywhere` on a document
+that renders the Stage, and parks the clipboard's flavors through
+[`kits/stage-handoff.js`](../lib/kits/stage-handoff.js) everywhere else, for
+this app to drain at boot. The carrier moves **flavors, not staged items**: what
+a pasted thing becomes is this file's intake decision, and making the sending
+page decide would mean pulling the 233K stage component on a long press for a
+paste that may never happen.
 
 Two things are load-bearing about it. **Rows are read when the menu opens, not
 when the drawer scans.** `detect()` runs on drawer open, so a menu sourced from
