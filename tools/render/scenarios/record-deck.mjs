@@ -10,9 +10,13 @@
 // pushes the slide wider than the track (the failure swipe-deck's own note
 // warns about, where every index past the wide slide is wrong), and that the
 // entry button is where a thumb can reach it.
+// The deck entry lives in the VIEWER HEADER now, beside copy and mode,
+// rather than in a strip of the table mode's own.
+const DECK_BTN = '[data-view-controls] button:has(.ph-cards-three)';
+
 export default async function (page) {
-  await page.waitForSelector('#tab-deck button', { timeout: 15000 });
-  await page.click('#tab-deck button');
+  await page.waitForSelector(DECK_BTN, { timeout: 15000 });
+  await page.click(DECK_BTN);
   await page.waitForSelector('.sd-track', { timeout: 10000 });
   await page.waitForTimeout(700);
 
