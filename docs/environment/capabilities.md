@@ -325,6 +325,15 @@ Probe results, written with `update_pull_request` and read with
 | the same comment inside a fence | removed, leaving an empty fence |
 | `[//]: # (label)` | **survives** |
 | `<a name="x"></a>` | removed |
+| `<tip>` as a placeholder in an address *(2026-08-22)* | removed |
+
+The last row is the same rule and the worst case of it, which is why it is worth
+a line of its own: a placeholder is not markup anybody meant as markup, and it
+is the natural way to write an address in prose. `app/?use=<sha>&view=<key>`
+reads back as `app/?use=&view=`, an address that looks complete, looks wrong in
+a way that reads as a bug in the thing being described, and invites a session to
+"fix" a body that was never broken. PR #481's own body did exactly that. Write
+placeholders as plain words.
 
 **Why this is a readback fault and not a write fault.** The same content written
 through `create_or_update_file` and read back with `git show` from a fetched ref,

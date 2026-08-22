@@ -24,7 +24,7 @@ docs/envelopes/schemas/surface-v2.schema.json,the surface v2 JSON Schema,living,
 docs/envelopes/shorter.md,the shorter envelope contract: a document and a shortening to adjudicate,living,app,704,"authored; prose contract for pages/shorter.html, which links it from its header"
 docs/envelopes/surface.md,the surface format contract,living,project,2326,"authored; named by the envelope primitive; declares the sibling schemas the validation source of truth and carries a Stale banner saying nothing validates against them, which is the honest state rather than the intended one"
 docs/environment/README.md,"the environment docs' front door, and their update discipline",living,orphan,279,authored; states the rules the four concern files follow
-docs/environment/capabilities.md,what the sandbox can run and reach,measured,project,5911,"authored; per-claim verification dates, edited in place and re-dated, probes preferred over assertions"
+docs/environment/capabilities.md,what the sandbox can run and reach,measured,project,6017,"authored; per-claim verification dates, edited in place and re-dated, probes preferred over assertions"
 docs/environment/container.md,what the box is and what persists across sessions,measured,project,1985,"authored; per-claim verification dates, edited in place"
 docs/environment/extending.md,the Claude Code component model and the hooks this repo runs,living,project,2562,"authored; mostly stable conceptual knowledge, only the repo-specific inventory is dated"
 docs/environment/testing.md,how to test HTML and JS in the sandbox,measured,project,2907,"authored; per-claim verification dates, edited in place"
