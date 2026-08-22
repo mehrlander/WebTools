@@ -182,13 +182,14 @@ test('goState announces each kick as it lands, and once when all settle', () => 
   assert.match(go, /web-tools:cache-checked/);
   // Per kick, so a row updates as its own crawl lands rather than at the pace
   // of the slowest of the three.
-  assert.match(go, /\.then\(\(\) => checked\(false\)\)/);
+  assert.match(go, /checked\(false\)/);
   // And once at the end: a crawl that committed also moved `updated`, which no
   // localStorage read can see.
-  assert.match(go, /Promise\.all\([\s\S]*?\)\s*\n?\s*\.then\(\(\) => checked\(true\)\)/);
+  assert.match(go, /Promise\.all\([\s\S]*?\]\)\.then\(\(\) => checked\(true\)\)/);
   // A crawl that threw must not strand the announcement, or one failing crawl
-  // freezes the other two rows' ages for the life of the page.
-  assert.match(go, /Promise\.resolve\(p\)\.catch\(\(\) => \{\}\)/);
+  // freezes the other two rows' ages for the life of the page. The `finally`
+  // that carries this is asserted whole further down.
+  assert.match(go, /Promise\.resolve\(run\(\)\)\.catch\(\(\) => \{\}\)/);
 });
 
 test('the view listens for it, and cleans the listener up', () => {
@@ -206,4 +207,40 @@ test('the manual events are still separate, since they mean something else', () 
   // estate reload behind every visit to this view.
   for (const ev of ['configs-refreshed', 'activity-refreshed', 'sessions-refreshed'])
     assert.ok(viewSrc.includes(ev), `${ev} should still be listened for`);
+});
+
+// ── Saying it is checking, while it checks ─────────────────────────────────
+// The row went from "1d ago" to "22m ago" with nothing in between, so the one
+// stretch where the view had something live to report was the stretch it said
+// nothing at all.
+
+test('the arrival flag is separate from the buttons, and has to be', () => {
+  // The `*Refreshing` flags bracket a run whose progress slot is opened and
+  // closed, and closeCrawl writes that run's call log, which is a COMMIT.
+  // Borrowing them for the arrival kicks would put a commit on every visit to
+  // this view. That is the whole reason for a second flag rather than reuse.
+  assert.match(shellSrc, /^ {2}crawlChecking: \{ configs: false, activity: false, sessions: false \},$/m);
+  const go = shellSrc.slice(shellSrc.indexOf('goState(item){'),
+                            shellSrc.indexOf('this.syncUrl();', shellSrc.indexOf('goState(item){')));
+  assert.doesNotMatch(go, /openCrawl|configRefreshing|activityRefreshing|sessionsRefreshing/,
+    'an arrival kick must not borrow the button machinery');
+  assert.match(go, /mark\(key, true\)/);
+});
+
+test('a crawl that threw still stops saying it is checking', () => {
+  // `finally`, not `then`: a failed crawl has still stopped running, and a row
+  // left spinning forever over one is a worse reading than the stale age it
+  // replaced, because it claims work is happening.
+  const go = shellSrc.slice(shellSrc.indexOf('goState(item){'),
+                            shellSrc.indexOf('this.syncUrl();', shellSrc.indexOf('goState(item){')));
+  assert.match(go, /\.finally\(\(\) => \{ mark\(key, false\); checked\(false\); \}\)/);
+});
+
+test('the row reads the flag, which is what subscribes it', () => {
+  // window.__shell is the shell's own Alpine data, so reading a property of it
+  // inside a component expression registers the dependency and the row
+  // re-renders when the flag moves. Same mechanism as busy().
+  assert.match(viewSrc, /checking\(r\) \{ return !!window\.__shell\?\.crawlChecking\?\.\[r\.key\]; \}/);
+  assert.match(viewSrc, /<template x-if="checking\(r\)">/);
+  assert.match(viewSrc, /<template x-if="!checking\(r\)">/);
 });

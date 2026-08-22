@@ -1953,6 +1953,22 @@ function app(){ return {
   // that fans out all at once (configs) reports no `active` at all: "every
   // repo" is not a reading.
   crawlProgress: { configs: null, activity: null, sessions: null },
+  // ── The arrival crawls, while they are in flight ────────────────────────
+  //
+  // Separate from the three `*Refreshing` flags beside them, and the split is
+  // the whole point rather than a duplicate. Those flags belong to the Refresh
+  // BUTTONS: they disable the control, spin its icon, and bracket a run whose
+  // progress slot is opened and closed, and closing writes that run's call log,
+  // which is a commit. An arrival crawl must not cost a commit per visit, so it
+  // cannot borrow them.
+  //
+  // What it can do is say it is running, which is the reading a row was missing
+  // entirely: the number went from "1d ago" to "22m ago" with nothing in
+  // between, so the one moment the view had something live to report was the
+  // one moment it said nothing. No progress bar rides this, and the reason is
+  // the same commit: `tickCrawl` no-ops without an open slot, and opening one
+  // is what writes the log. A word is honest and free; a bar is not.
+  crawlChecking: { configs: false, activity: false, sessions: false },
   // Recently-committed files for the current repo@ref, shown in the sidebar.
   // Generated artifacts a build hook writes on every commit are noise here,
   // not real edits, so they're filtered out for web-tools specifically.
@@ -5210,12 +5226,20 @@ function app(){ return {
     // the `updated` date, which is a commit read per file.
     const checked = (settled) => document.dispatchEvent(
       new CustomEvent('web-tools:cache-checked', { detail: { settled } }));
+    const mark = (key, on) => { this.crawlChecking = { ...this.crawlChecking, [key]: on }; };
+    const kick = (key, run) => {
+      mark(key, true);
+      // `finally` rather than `then`: a crawl that threw has still stopped
+      // running, and a row left saying "checking…" forever over a failed crawl
+      // is a worse reading than the stale age it replaced.
+      return Promise.resolve(run()).catch(() => {})
+        .finally(() => { mark(key, false); checked(false); });
+    };
     Promise.all([
-      this.refreshConfigCache?.(),
-      this.refreshActivityCache?.(false, { deep: false }),
-      this.refreshSessionsCache?.(),
-    ].map(p => Promise.resolve(p).catch(() => {}).then(() => checked(false))))
-      .then(() => checked(true));
+      kick('configs', () => this.refreshConfigCache?.()),
+      kick('activity', () => this.refreshActivityCache?.(false, { deep: false })),
+      kick('sessions', () => this.refreshSessionsCache?.()),
+    ]).then(() => checked(true));
     // Announced even when the view is already mounted: arriving from a second
     // age pill has to move the highlight, and re-setting `view` to the value it
     // already holds is not something Alpine reacts to.
