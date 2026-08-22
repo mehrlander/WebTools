@@ -5086,6 +5086,16 @@ function app(){ return {
       try { localStorage.setItem('deckDock', this.deckDock ? '1' : '0'); } catch {}
       this.syncDeckFrame();
     };
+    // `when` qualifies the claim the hook makes, and it closes a gap this shell
+    // had: the CSS maps --deck-left in only at lg, so below it the shell CANNOT
+    // dock, but the hook was installed unconditionally and the kit offered the
+    // toggle anyway. Tapping it on a phone set data-deck-pane="dock", which
+    // changed no layout (the rules are lg-gated) and did change one thing that
+    // is not layout: the kit leaves page scroll UNLOCKED under 'dock', so the
+    // background scrolled behind a full-window takeover. The same breakpoint the
+    // CSS uses, stated once here, so the toggle appears exactly where docking
+    // means something.
+    window.__deckPane.when = '(min-width: 1024px)';
   },
 
   // ── A DROP ANYWHERE STAGES ────────────────────────────────────────────────
