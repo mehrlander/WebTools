@@ -63,15 +63,14 @@
     await import('../dist/web-tools.js');
   }
   // proof.js backs chat-render's sandboxed Render frames; swipe-deck owns the
-  // track and the takeover; chat-render renders a turn; claude-mark owns the
-  // logomark this page and the deck header both draw. session-render sits on
-  // all four, and session-export reads session-render, so the chain is strictly
-  // ordered from the bottom up.
+  // track and the takeover; chat-render renders a turn. session-render sits on
+  // all three, and session-export reads session-render, so the chain is strictly
+  // ordered from the bottom up. kits/claude-mark.js is the fourth and is not
+  // listed: gh-boot carries it as standing equipment, so it is already here.
   try {
     await gh.load('kits/proof.js');
     await gh.load('kits/swipe-deck.js');
     await gh.load('kits/chat-render.js');
-    await gh.load('kits/claude-mark.js');
     await gh.load('kits/session-render.js');
     await gh.load('kits/session-export.js');
   } finally { window.__depsDone(); }

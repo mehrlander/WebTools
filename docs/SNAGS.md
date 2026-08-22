@@ -287,12 +287,14 @@ both shapes; the systematic fix on recurrence is a tiny `claudeMark` export
 giving a string and an element from one path constant. The recurrence arrived
 as predicted, as the improvised arrow rather than a seventh copy: the session
 deck's header carried `ph-arrow-square-out` on the one button that opens the
-session. `lib/kits/claude-mark.js` is now that owner, serving both shapes, and
-`pages/session.html` and the deck header read it. The three Alpine components
-still hold their copies: they render on nine pages that would each need the
-kit added to a chain, which is a wider change than the mark is worth on its
-own, so they migrate when one of them is next opened. *(seen: 2026-08-09,
-2026-08-21)*
+session. **Closed 2026-08-21.** [`lib/kits/claude-mark.js`](../lib/kits/claude-mark.js)
+is that owner, and all six copies now read it. What the original entry got
+wrong is where the owner had to live: not a page chain, because `fab.js` draws
+the mark and gh-boot loads the FAB on every page, so the kit is in the BOOT
+manifest. The Alpine sites read it through `x-html` at render rather than
+interpolating into a template string, which is what makes one BOOT entry
+enough: the FAB block runs before the BOOT loop, so a load-time read would
+race the deferred Alpine start. *(seen: 2026-08-09, 2026-08-21)*
 → [code-layers.md](code-layers.md)
 
 ### venues-invisible-from-inside: a session inventories only the venues it can see from its own sandbox

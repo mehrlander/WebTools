@@ -220,9 +220,20 @@ export function captureAlpineErrors(Alpine) {
   });
 }
 
+// What gh-boot's BOOT manifest puts on every loader page before Alpine starts,
+// and which a component may therefore read without loading it itself. A unit
+// harness that omits it is not a smaller page, it is a page that cannot exist:
+// the component reads `window.claudeMark` in an `x-html`, so leaving it out
+// turns every mount into an Alpine expression error and a test asserting
+// "mounting is quiet" fails for a reason that is the harness's, not the code's.
+// Kept to what a component actually reaches for, so a test still fails when a
+// real dependency goes missing (see the `stub-hides-the-wiring` snag).
+const STANDING = ['lib/kits/claude-mark.js'];
+
 // Import the real Alpine, register it on the window, run each component file
 // in the window realm (they hook 'alpine:init'), start Alpine, and let the
-// first effects flush. Component paths are repo-relative.
+// first effects flush. Component paths are repo-relative; the standing
+// equipment above is prepended, exactly as gh-boot orders it.
 export async function startAlpine(window, componentPaths = []) {
   // The ESM file, not the package root: the package has no `exports` map, so
   // bare 'alpinejs' resolves to the CJS build, whose default export arrives
@@ -231,7 +242,7 @@ export async function startAlpine(window, componentPaths = []) {
   const { default: Alpine } = await import('alpinejs/dist/module.esm.js');
   captureAlpineErrors(Alpine);
   window.Alpine = Alpine;
-  for (const p of componentPaths) {
+  for (const p of [...STANDING, ...componentPaths]) {
     const src = readFileSync(path.join(repoRoot, p), 'utf8');
     new window.Function(src)();
   }
