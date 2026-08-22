@@ -36,6 +36,7 @@
     "test:traffic-states": "node tools/test/traffic-states.mjs",
     "test:tabstrip": "node tools/test/fab-tabstrip-geometry.mjs",
     "test:deck-dock": "node tools/test/deck-dock-reflow.mjs",
+    "test:deck-split": "node tools/test/deck-split-drag.mjs",
     "test:toss-multiparam": "node tools/test/toss-multiparam.mjs",
     "test:toss-width": "node tools/test/toss-width.mjs",
     "test:toss-paste": "node tools/test/toss-paste.mjs",

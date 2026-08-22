@@ -82,6 +82,7 @@ tools/render/scenarios/code-layers-guide-lower.mjs,scroll the code-layers guide 
 tools/render/scenarios/data-view-item-tossed.mjs,"the #item= addressing end to end through a toss, proving the two halves meet",tools/render/scenarios,61,driver,no,yes,no
 tools/render/scenarios/data-view-item.mjs,"data-view's #item= addressing, read and written",tools/render/scenarios,89,driver,no,yes,yes
 tools/render/scenarios/data-view-items.mjs,"the data-view demo through its envelope's three items, each declared view winning",tools/render/scenarios,13,driver,no,no,no
+tools/render/scenarios/deck-split.mjs,,tools/render/scenarios,45,driver,yes,no,no
 tools/render/scenarios/diff-tool-at.mjs,the diff tool's address field driving the browse panel over captured API fixtures,tools/render/scenarios,187,driver,no,no,no
 tools/render/scenarios/diff-tool-grab.mjs,"the Sources tab with both slots in GitHub mode, the @-grab row on screen",tools/render/scenarios,15,driver,no,no,no
 tools/render/scenarios/diff-tool-loaded.mjs,diff-tool in its loaded state: two versions diffed on the Diff tab,tools/render/scenarios,65,driver,no,no,no

@@ -190,7 +190,12 @@
    Below lg there is no dock and the toggle does not render: three columns do
    not fit, and a phone's answer to "see the list and the file" is the deck's
    own back gesture, which already works. */
-@media (min-width:1024px){:root[data-deck-pane="dock"]{--deck-left:calc(var(--deck-side,0px) + clamp(17rem,30vw,26rem));--deck-border:1px}}
+/* The clamp is the DEFAULT, not the value: --deck-dock-left is whatever the
+   reader last dragged the seam to (kits/dock-split.js, driven from
+   swipe-deck), and the clamp is what a reader who has never dragged it
+   gets. Keeping the fallback inside the var() is what lets the preference
+   be cleared by simply removing the property. */
+@media (min-width:1024px){:root[data-deck-pane="dock"]{--deck-left:var(--deck-dock-left,calc(var(--deck-side,0px) + clamp(17rem,30vw,26rem)));--deck-border:1px}}
 /* AND THE LIST HAS TO BE GIVEN THE WIDTH BACK. The deck is `fixed`, so it takes
    no layout space and the pane underneath still measures the whole window: the
    first docked build looked right and was not, because every list row simply ran
@@ -208,6 +213,10 @@
    preference is stored. `data-deck-open` is the kit's fact and the deck's
    lifetime; the pane is the host's and the reader's. Both, or no reflow. */
 @media (min-width:1024px){:root[data-deck-pane="dock"][data-deck-open] main{padding-right:calc(100vw - var(--deck-left));transition:padding-right .15s ease-out}}
+/* Except while the seam is being dragged. A 150ms ease is right for the
+   toggle, which is a jump, and wrong for a drag, where it makes the list
+   trail the finger by a frame and a half and reads as lag in the page. */
+html.dk-dragging main{transition:none !important}
 /* The Repos row's two menu buttons. Narrow and chrome-free on a fine pointer,
    where they are a pair of glyphs at the row's edge and a hover background made
    each one read as a separate tile; the row's own hover tint is the feedback,
@@ -4974,6 +4983,13 @@ function app(){ return {
     // docking and the sidebar were one decision.
     const sidebar = this.showSidebar && this.sidebarOpen;
     root.dataset.deckPane = this.deckDock ? 'dock' : sidebar ? 'inset' : 'full';
+    // The remembered seam, applied only while docked. Undocked it must go, or
+    // the property sits on the root describing a split that is not on screen.
+    if (this.deckDock) {
+      let pct = 0;
+      try { pct = Number(localStorage.getItem('deckDockPct')); } catch {}
+      if (pct >= 20 && pct <= 80) root.style.setProperty('--deck-dock-left', `calc(100vw - ${pct}vw)`);
+    } else root.style.removeProperty('--deck-dock-left');
     // MEASURED, not stated. The header is h-14 plus a border, but it is also
     // conditional (shellMode) and a second copy of its height here would be a
     // number to keep in step with a class nobody would think to look at. A
@@ -5005,6 +5021,29 @@ function app(){ return {
       this.deckDock = intent === 'dock';
       try { localStorage.setItem('deckDock', this.deckDock ? '1' : '0'); } catch {}
       this.syncDeckFrame();
+    };
+    // HOW WIDE, which is a separate claim from whether it can dock at all. The
+    // kit asks for it as a percentage OF THE WINDOW given to the deck, because
+    // that is the only quantity both sides can agree on: the shell's own
+    // formula is sidebar-relative and the kit knows nothing about a sidebar.
+    //
+    // Read by MEASURING the deck rather than by parsing the property, since the
+    // property is a calc with a clamp in it and its computed value is a length
+    // the shell would then have to turn back into a percentage. The overlay is
+    // on screen and its left edge is the answer.
+    //
+    // Stored per reader like the dock preference itself, and kept off the
+    // address for the reason stated there: a pane width in a shared link is a
+    // claim about the recipient's window that the sender could not have known.
+    window.__deckWidth = (pct, commit) => {
+      if (pct == null) {
+        const el = document.querySelector('.sd-overlay');
+        const left = el ? el.getBoundingClientRect().left : 0;
+        return Math.round((window.innerWidth - left) / (window.innerWidth || 1) * 100);
+      }
+      document.documentElement.style.setProperty('--deck-dock-left', `calc(100vw - ${pct}vw)`);
+      if (commit) { try { localStorage.setItem('deckDockPct', String(pct)); } catch {} }
+      return pct;
     };
   },
 
