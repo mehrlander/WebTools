@@ -1,6 +1,8 @@
-// The launcher's long-press menu on the app, showing all three rows: the two
-// built-ins ("Take a note", one line and no prose under it, then "Web Tools
-// home") and the page-contributed "Paste to Stage".
+// The launcher's long-press menu on the app, showing its three built-in rows:
+// "Take a note" (one line, no prose under it), "Paste to Stage", and "Web Tools
+// home". The `menu` contract has no contributor now that the paste is built in,
+// so `contributed` is expected to be empty here and the shape under test is the
+// three rows plus the one-line rule.
 //
 // Driven by calling openFabMenu() rather than by synthesising a 450ms pointer
 // hold: the gesture is covered by the fab's own tests, and what a screenshot
@@ -20,6 +22,12 @@ export default async function (page) {
     return {
       open: d.fabMenu,
       contributed: [...d.pageMenu].map(m => ({ label: m.label, icon: m.icon, side: m.side })),
+      // The built-ins, read off the rendered rows rather than from a list in
+      // the component: what a long press actually shows is the point.
+      rows: [...document.querySelectorAll('[x-show="fabMenu"] button span')].map(s => s.textContent),
+      // The app is a stage host, so its paste must stay in place rather than
+      // park and navigate.
+      stageHost: !!Alpine.$data(document.querySelector('[x-data*="fab()"]'))._stageHost(),
       // The rule the row change was made for: no row carries a second line.
       rowLines: [...document.querySelectorAll('[x-show="fabMenu"] button')]
         .map(b => b.querySelectorAll('span').length),

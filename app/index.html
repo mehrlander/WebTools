@@ -1764,32 +1764,24 @@ function app(){ return {
               run: () => ({ nav: href }) }];
   },
 
-  // FAB LONG-PRESS MENU contract (`menu`), the third beside `actions` and
-  // `toggles`. One row: the app-wide paste, which belongs here rather than in
-  // the drawer because it is a verb you want at the cost of one gesture on a
-  // control already floating over every view, and because the drawer would
-  // spend the tap's user activation getting itself open (a clipboard read has
-  // to ride the gesture that asked for it, which is why pasteAnywhere awaits
-  // nothing before takeClipboard).
+  // THE FAB'S PASTE ROW IS NOT CONTRIBUTED ANY MORE. This is where the
+  // `menu` contract's one and only row lived from 2026-08-19 to 2026-08-22:
+  // the app-wide paste, offered on the launcher's long press because a phone
+  // has no other intake gesture and the drawer would spend the tap's user
+  // activation getting itself open.
   //
-  // IT IS ALSO THE PHONE'S ONLY INTAKE, since the header button that shipped
-  // beside it on 2026-08-19 came straight back out (see the header markup for
-  // where it stood). That is a real trade: a long press is not discoverable,
-  // and nothing on screen says the menu exists. It was taken because the
-  // header is the app's scarcest row and the gesture was confirmed working on
-  // a device; if the menu turns out to be too well hidden, the button is
-  // twenty lines and it comes back. One implementation (pasteAnywhere) behind
-  // two triggers now, counting the bench's own button.
+  // It is built into the fab now, for the reason it was worth having in the
+  // first place taken one step further: a paste is most valuable exactly where
+  // there is no other way in, and a contributed row could only ever appear on
+  // the page that already had a Stage on screen. The fab still calls
+  // pasteAnywhere here, since a document rendering the Stage should stage in
+  // place rather than navigate; it finds it by scanning for the method, so
+  // this stays the app's implementation and the fab's fallback (parking the
+  // paste through kits/stage-handoff.js) is for everywhere else.
   //
-  // A long press is not a static condition, so the row is offered
-  // unconditionally rather than hidden when the clipboard looks empty: nothing
-  // can read the clipboard to find out without the very gesture the row exists
-  // to collect.
-  get menu(){
-    return [{ label: 'Paste to Stage', icon: 'ph-clipboard-text',
-              title: 'Read the clipboard and stage what is on it',
-              run: () => this.pasteAnywhere() }];
-  },
+  // The `menu` contract itself stays. It has no user now, which is a fact
+  // worth stating rather than a reason to delete: the row it carried earned
+  // promotion by being built through it.
   view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'stage' | 'config' | 'app' | 'public'
   // Window-level drag counter for the app-wide drop (init wires the listeners;
   // nested enter/leave is why it counts rather than flips), and what the cue
@@ -2046,6 +2038,20 @@ function app(){ return {
     // A bare open (no repo, file, view, or stage addressed) lands on the
     // estate: the all-repo view is the page's front door.
     else if (!url) this.goDashboard();
+
+    // A PASTE TAKEN SOMEWHERE ELSE, arriving. The fab's paste row runs on every
+    // page carrying the launcher, and off this app there is no Stage to put
+    // anything in and no way to keep a store array across the navigation that
+    // reaches one, so it parks the clipboard's flavors and comes here. This is
+    // the far end of that trip: kits/stage-handoff.js hands back what was
+    // parked and the intake decides what it becomes, once, here, exactly as it
+    // would have for a paste taken on this page.
+    //
+    // It runs after the route rather than as part of it, because a handoff is
+    // an arrival rather than an address: the fab navigates with ?view=stage, so
+    // the route has already opened the Stage, and goStage() below is for the
+    // case where it did not (a hand-typed URL, a restored tab).
+    await this.drainStageHandoff();
 
     this.wireAppDrop();
     this.wireAppPaste();
@@ -5131,6 +5137,31 @@ function app(){ return {
   //
   // Nothing is awaited before takeClipboard: see the preload in init() for why.
   pasteBusy: false,
+  // Fold in whatever the fab parked on another page, and open the Stage on it.
+  // Quiet when nothing is parked, which is every ordinary boot; a stale or
+  // unreadable payload is dropped by the kit rather than reported, since the
+  // paste it describes belongs to a session nobody is in any more.
+  //
+  // The kit is loaded here rather than in the boot chain: nothing else on this
+  // page reads it, and a boot that fetched it every time would be paying on
+  // every load for the rare one that has something to collect.
+  async drainStageHandoff(){
+    try {
+      if (!window.StageHandoff && window.gh?.load) await window.gh.load('kits/stage-handoff.js');
+      const flavors = window.StageHandoff?.drain?.() || [];
+      if (!flavors.length) return;
+      const { added } = await window.StageIntake.takeFlavors(flavors);
+      if (!added.length) return;
+      if (this.view !== 'stage') this.goStage();
+      if (added.length === 1) window.StageIntake.focus(added[0]);
+      Alpine.store('toast')?.('clipboard-text', added.length > 1
+        ? 'Staged ' + added.length + ' pasted refs' : 'Staged ' + (added[0]?.name || 'the paste'), '', 3000);
+    } catch (e) {
+      Alpine.store('toast')?.('warning', 'The parked paste did not arrive: ' +
+        (e?.message || e), 'alert-error', 5000);
+    }
+  },
+
   async pasteAnywhere(){
     if (this.pasteBusy) return;
     const toast = Alpine.store('toast');

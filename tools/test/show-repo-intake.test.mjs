@@ -237,41 +237,94 @@ test('a second tap while the first is still reading is dropped', async () => {
   assert.equal(shell.view, 'stage');
 });
 
-// ---- the FAB long-press menu contract ----
+// ---- the FAB's paste, from this side ----
 //
-// The app fills the launcher's menu with the same paste. Held here rather than
-// in fab-menu.test.mjs because that file tests the fab's READ of the contract
-// and this tests the shell's DECLARATION of it: the two fail separately.
+// The app filled the launcher's menu with its own paste through the `menu`
+// contract from 2026-08-19 to 2026-08-22, and then the row was promoted into
+// the fab so it would appear on every page rather than only on the one already
+// showing a Stage. Two obligations moved here with it, and both fail silently
+// if dropped:
+//
+//   THE METHOD IS THE DECLARATION. The fab finds a document that can show the
+//   Stage by scanning for a mounted component exposing pasteAnywhere. Rename
+//   it and every paste on this app silently starts parking itself and
+//   navigating to a page it is already on.
+//
+//   THE FAR END OF THE HANDOFF IS HERE. A paste taken anywhere else arrives as
+//   parked flavors, and nothing else on this page reads them.
 
-test('the shell contributes one menu row, and it is the paste', () => {
+test('the shell no longer contributes a menu row', () => {
   const { shell } = makeShell({ browserStore: { repo: '' } });
-  const rows = shell.menu;
-  assert.equal(rows.length, 1);
-  assert.equal(rows[0].label, 'Paste to Stage');
-  assert.equal(typeof rows[0].run, 'function');
+  assert.equal(shell.menu, undefined,
+    'the paste is built into the fab now; a contributed copy would show twice');
 });
 
-test('the menu row carries no prose, because a held-finger menu has no room for it', () => {
-  const { shell } = makeShell({ browserStore: { repo: '' } });
-  for (const r of shell.menu) {
-    assert.equal(r.desc, undefined, 'a row explains itself in its label or not at all');
-  }
+test('pasteAnywhere survives as the fab handle, since it is what the scan looks for', async () => {
+  const { shell } = withClipboard([{ name: 'one.csv' }]);
+  assert.equal(typeof shell.pasteAnywhere, 'function');
+  await shell.pasteAnywhere();
+  assert.equal(shell.view, 'stage', 'one implementation, and the fab is one of its triggers');
 });
 
-test('the row runs the same call as the header button', async () => {
-  const { shell, toasts } = withClipboard([{ name: 'one.csv' }]);
-  await shell.menu[0].run();
-  assert.equal(shell.view, 'stage', 'one implementation, three triggers');
-  assert.equal(toasts.length, 0, 'a paste that lands and routes says so by arriving');
-});
-
-test('the long press is the only chrome route: no second button in the markup', () => {
+test('the long press is still the only chrome route: no second button in the markup', () => {
   // The header carried one for a day and it came out (2026-08-19), leaving the
   // menu row as the phone's only intake. Asserted because the failure mode is
-  // silent in both directions: a re-added button nobody decided on, or a menu
-  // contract quietly dropped leaving a phone with no tap route at all.
+  // silent in both directions: a re-added button nobody decided on, or the
+  // handle the fab reaches for quietly renamed.
   assert.equal(/<button @click="pasteAnywhere\(\)"/.test(page), false,
     'a paste button in the chrome is a decision, not something to drift back in');
-  assert.match(page, /run: \(\) => this\.pasteAnywhere\(\)/,
-    'and the menu row must still reach the call the button used to');
+  assert.match(page, /async pasteAnywhere\(\)/,
+    'and the call the fab scans for must still be here');
+});
+
+// ---- the parked paste arriving ----
+
+// A shell with the handoff kit stubbed at the shape drainStageHandoff uses,
+// plus the intake's flavor fold. What the kit itself does with storage, TTL and
+// blobs is stage-handoff.test.mjs's subject.
+function withParked(flavors, { added = [{ name: 'one.md' }], view = 'landing' } = {}) {
+  const { shell, toasts, win } = makeShell({ browserStore: { repo: '' }, win: { addEventListener: () => {} } });
+  const focused = [];
+  const calls = [];
+  win.StageHandoff = { drain: () => flavors };
+  win.StageIntake = {
+    takeFlavors: async (fl) => { calls.push(fl); return { added, offers: [] }; },
+    focus: (it) => focused.push(it),
+  };
+  shell.view = view;
+  shell.syncUrl = () => {};
+  return { shell, toasts, focused, calls, win };
+}
+
+test('a parked paste is folded in and the Stage is opened on it', async () => {
+  const { shell, focused, calls } = withParked([{ kind: 'text', type: 'text/plain', text: 'x' }]);
+  await shell.drainStageHandoff();
+  assert.equal(calls.length, 1, 'the flavors reach the intake, which is what decides what they become');
+  assert.equal(shell.view, 'stage');
+  assert.equal(focused.length, 1, 'one arrival opens on itself, the same as a paste taken here');
+});
+
+test('nothing parked is silence: no toast, no navigation', async () => {
+  const { shell, toasts, calls } = withParked([]);
+  await shell.drainStageHandoff();
+  assert.deepEqual(calls, []);
+  assert.equal(shell.view, 'landing', 'every ordinary boot runs this and must not be moved by it');
+  assert.equal(toasts.length, 0);
+});
+
+test('a batch arrives listed rather than opening one of itself', async () => {
+  const { shell, focused } = withParked([{ kind: 'text', type: 'text/plain', text: 'x' }],
+                                        { added: [{ name: 'a.md' }, { name: 'b.md' }] });
+  await shell.drainStageHandoff();
+  assert.equal(shell.view, 'stage');
+  assert.equal(focused.length, 0);
+});
+
+test('a fold that throws reports rather than taking the boot down with it', async () => {
+  const { shell, toasts, win } = withParked([{ kind: 'text', type: 'text/plain', text: 'x' }]);
+  win.StageIntake.takeFlavors = async () => { throw new Error('bad payload'); };
+  await shell.drainStageHandoff();
+  assert.equal(shell.view, 'landing', 'a failed arrival must not strand the boot on an empty Stage');
+  assert.equal(toasts.length, 1);
+  assert.equal(toasts[0].cls, 'alert-error');
 });
