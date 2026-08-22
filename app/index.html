@@ -2632,9 +2632,14 @@ function app(){ return {
     if (r.changed.length)
       toast('arrows-clockwise', 'Activity refreshed' + label + ' · ' + plural(r.changed.length, 'repo') + ' changed' + tail,
             fail ? 'alert-warning' : 'alert-success', 4000);
-    else
-      toast('check', 'No activity changes' + label + ' · ' + plural(r.total, 'repo') + ' checked' + tail,
+    else {
+      const skipped = r.skipped?.length || 0;
+      const how = skipped && skipped === r.total ? ' unmoved'
+                : skipped ? ' checked, ' + skipped + ' unmoved'
+                : ' checked';
+      toast('check', 'No activity changes' + label + ' · ' + plural(r.total, 'repo') + how + tail,
             fail ? 'alert-warning' : 'alert-info', 3000);
+    }
   },
 
   // ── Activity aggregate: crawl each ESTATE repo (estate:true, read from the
@@ -2644,9 +2649,22 @@ function app(){ return {
   // recent commits, open PRs, counts) it runs the capped landed/stranded branch
   // scan (lib/kits/branch-status.js) once and stores it, so the branches view and
   // the cross-repo Activity view render from the cache instead of a per-visit
-  // fanout. A longer per-browser throttle and the same material-change gate keep
-  // it occasional and commits sparse. See web-tools-private/DESIGN.md.
-  ACTIVITY_CACHE_INTERVAL_MS: 12 * 3600 * 1000,
+  // fanout. The material-change gate keeps commits sparse; the watermark gate
+  // below keeps the calls sparse. See web-tools-private/DESIGN.md.
+  //
+  // 30 MINUTES, down from 12 hours. The old number was set when every pass paid
+  // for the whole estate whether or not anything had moved, and half a day was
+  // the honest price of that. The watermark gate changed the thing the throttle
+  // is rationing: a pass over a quiet estate is now about a dozen cheap reads
+  // (one account listing, one PR watermark per repo) and no per-repo work at
+  // all, so spacing it out by half a day buys nothing and costs a reader
+  // looking at branch rows from this morning.
+  //
+  // What a busy pass costs has NOT changed, and that is the number to watch: a
+  // repo that moved still pays its summary, and one that was pushed still pays
+  // its branch scan. The throttle is short because the FLOOR fell, not because
+  // the ceiling did.
+  ACTIVITY_CACHE_INTERVAL_MS: 30 * 60 * 1000,
   ACTIVITY_SCAN_CAP: 30,       // older branches scanned per repo (view's SCAN_CAP)
   // Errored scan rows retried per repo per crawl. A branch whose scan
   // failed usually fails again for the same reason (a rewritten history, a ref
@@ -2672,7 +2690,34 @@ function app(){ return {
   // than as "no PR", which is what `prReach` below is for.
   ACTIVITY_PR_REACH: 100,
   ACTIVITY_REPO_POOL: 2,         // repos crawled at once (each runs its own scan pool)
+  ACTIVITY_WATERMARK_POOL: 6,    // PR watermarks read at once (one cheap call each)
   _activityCheckKey: 'wt:activityCacheCheckedAt',
+
+  // ── The per-repo watermark store ───────────────────────────────────────
+  // What each repo looked like the last time a crawl successfully read it:
+  // its pushed_at, and its PR watermark (gh.prWatermark). The next crawl
+  // compares against these to decide which repos it can skip entirely.
+  //
+  // IN LOCALSTORAGE, NOT IN THE CACHE, and the reason is that the committed
+  // file has no safe place to put them. Ride the material hash and a comment on
+  // any pull request restamps and recommits a 700 KB cache for a field nothing
+  // renders. Stay out of the hash and a crawl that learns a new watermark never
+  // persists it, so the next pass sees the same movement, crawls again, and
+  // never converges. Neither is a trade worth making for a number only this
+  // browser's next crawl consults, and the throttle stamp beside it is already
+  // per browser for exactly the same reason.
+  //
+  // The cost of it being per browser is one full crawl on a new browser, which
+  // is the correct behaviour anyway: a browser that has never looked has
+  // nothing to carry forward.
+  _watermarkKey: 'wt:activityWatermarks',
+  readWatermarks(){
+    try { const m = JSON.parse(localStorage.getItem(this._watermarkKey) || '{}'); return m && typeof m === 'object' ? m : {}; }
+    catch { return {}; }
+  },
+  writeWatermarks(marks){
+    try { localStorage.setItem(this._watermarkKey, JSON.stringify(marks)); } catch {}
+  },
   // Returns a summary of the run for the caller to report: {total, changed,
   // failed, committed}, or {skipped, reason} when there was nothing to do. The
   // background (unforced) caller ignores it; refreshActivity turns it into the
@@ -2694,10 +2739,10 @@ function app(){ return {
         if (Date.now() - last < this.ACTIVITY_CACHE_INTERVAL_MS) return { skipped: true };
       } catch {}
     }
-    this._activityCrawl = this._crawlActivity(deep);
+    this._activityCrawl = this._crawlActivity(deep, force);
     try { return await this._activityCrawl; } finally { this._activityCrawl = null; }
   },
-  async _crawlActivity(deep){
+  async _crawlActivity(deep, force = false){
     const A = window.RepoActivityCache, B = window.BranchStatus;
     const t0 = Date.now();   // for the run record, appended below if this commits
     // Estate membership from the config cache (estate:true). The activity crawl
@@ -2742,6 +2787,56 @@ function app(){ return {
     // calls each, nearly all of them re-verifying repos that had not moved.
     // The margin absorbs clock skew between GitHub's pushed-at and the client
     // clock that stamped scannedAt; anything unmeasurable scans.
+    // ── The cheap half of the crawl, and now the first thing it does ─────
+    // One PR watermark per repo, read before anything expensive. Together with
+    // the pushed_at already in `metaByName` (one account listing, above) this
+    // is the whole "did anything move" question, answered for the estate in
+    // about a dozen calls against the 231 a full pass logged on 2026-08-21.
+    //
+    // A read that fails records null rather than '', and null never gates: a
+    // repo whose watermark could not be read is crawled, because skipping work
+    // on a guess is worse than the calls it saves.
+    const marks = this.readWatermarks();
+    const prAt = {};
+    {
+      let wi = 0;
+      const readMark = async () => {
+        while (wi < members.length){
+          const repo = members[wi++];
+          try { prAt[repo] = (await new window.GH({ token: window.TOKEN, repo }).prWatermark()).updatedAt; }
+          catch { prAt[repo] = null; }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(this.ACTIVITY_WATERMARK_POOL, members.length) }, readMark));
+    }
+
+    // A repo is QUIET when nothing this cache stores can have moved: no push
+    // since the last successful crawl, and no pull request touched since it
+    // either. BOTH halves are required, and the second is the one that is easy
+    // to leave out: openPRs, branchPRs and prReach all change with no push at
+    // all, so a gate on pushed_at alone would freeze every branch row's PR
+    // verdict until something happened to push. That is the bug this gate is
+    // most likely to be reintroduced without.
+    //
+    // Four ways to be wrong, each closed explicitly:
+    //   * a FORCED pass is never quiet, because the Refresh button has to mean
+    //     "go and look" or it means nothing
+    //   * a repo with no stored entry is never quiet, whatever the marks say,
+    //     since there is nothing to carry forward
+    //   * a repo with no recorded watermark is never quiet (a new repo, a new
+    //     browser, or a repo whose last crawl failed)
+    //   * an unreadable watermark or a missing pushed_at is never quiet
+    const quiet = (repo) => {
+      if (force) return false;
+      if (!prev?.repos?.[repo]) return false;
+      const m = marks[repo];
+      if (!m) return false;
+      const pushed = metaByName.get(repo)?.pushed_at || '';
+      if (!pushed || pushed !== m.pushedAt) return false;
+      if (prAt[repo] == null) return false;
+      return prAt[repo] === m.prAt;
+    };
+
     const SCAN_SKEW_MS = 10 * 60 * 1000;
     const needsScan = (repo) => {
       const stored = prev?.repos?.[repo]?.scan;
@@ -2758,7 +2853,7 @@ function app(){ return {
       return pushed >= seen - SCAN_SKEW_MS;
     };
 
-    const failed = [];
+    const failed = [], skipped = [];
     try {
       const now = Date.now(), nowISO = new Date().toISOString();
       const fetched = {};
@@ -2768,14 +2863,29 @@ function app(){ return {
       // done/total a count of finished repos rather than an estimate.
       let mi = 0, done = 0;
       const active = [];
+      // Watermarks are recorded ONLY for a repo this pass actually read, and
+      // only after it came back. Stamping one for a repo whose crawl threw
+      // would make the failure permanent: the next pass would read the mark,
+      // call the repo quiet, and carry forward the entry the failed pass never
+      // refreshed. A skipped repo keeps the mark it already had, which is by
+      // definition still current, since that is why it was skipped.
+      const nextMarks = {};
       const crawlOne = async () => {
         while (mi < members.length){
           const repo = members[mi++];
+          if (quiet(repo)) {
+            skipped.push(repo);
+            nextMarks[repo] = marks[repo];
+            this.tickCrawl('activity', { done: ++done, total: members.length, active });
+            continue;
+          }
           active.push(repo);
           this.tickCrawl('activity', { done, total: members.length, active });
           try {
             const f = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep && needsScan(repo), prev);
             fetched[repo] = f;
+            const pushed = metaByName.get(repo)?.pushed_at || '';
+            if (pushed && prAt[repo] != null) nextMarks[repo] = { pushedAt: pushed, prAt: prAt[repo] };
             // A deep pass that came back partial could not read the repo's
             // branches. It keeps what is stored (see the guard in
             // crawlRepoActivity) and says so, rather than reporting a clean run
@@ -2798,8 +2908,17 @@ function app(){ return {
       // `members` is the scope, so a repo whose crawl threw (it is in `failed`,
       // not in `fetched`) keeps its previous entry instead of being deleted by
       // a pass that never reached it.
+      // `members` is the carry scope, so a repo this pass SKIPPED keeps its
+      // stored entry untouched, with its own hash and its own crawl stamps.
+      // That is the same path a failed repo takes, and it is why the skip is
+      // safe: buildCache already had to answer "what about a repo I did not
+      // fetch", and the answer was never "drop it".
       const next = A.buildCache(prev, fetched, nowISO, A.COMMIT_CAP, members);
       try { localStorage.setItem(this._activityCheckKey, String(Date.now())); } catch {}
+      // Pruned to the current membership by construction: nextMarks is built
+      // from `members` alone, so a repo that left the estate stops carrying a
+      // mark nothing will ask about again.
+      this.writeWatermarks(nextMarks);
       const changed = A.changedRepos(prev, next);
       if (changed.length){
         // The run record rides this commit (lib/kits/crawl-runs.js). `pass` says
@@ -2810,6 +2929,10 @@ function app(){ return {
         next.runs = window.CrawlRuns?.push(prev?.runs, {
           at: new Date().toISOString(), ms: Date.now() - t0,
           checked: members.length, changed: changed.length, failed: failed.length,
+          // What the gate saved, recorded where the cost is recorded. A run
+          // whose `skipped` equals its `checked` did the cheap pass and nothing
+          // else, which is the shape a quiet estate should have.
+          skipped: skipped.length,
           pass: deep ? 'scan' : 'quick',
         }) ?? prev?.runs;
         await this.saveFold(reg, A.CACHE_PATH, next,
@@ -2819,10 +2942,10 @@ function app(){ return {
       // event does not have to: it is 370 KB and the crawl is holding it
       // already. Measured 2026-08-17, one refresh read state/activity.json
       // eleven times for 7.2 MB, and two of those reads were exactly this.
-      return { total: members.length, changed, failed, committed: changed.length > 0, doc: next };
+      return { total: members.length, changed, failed, skipped, committed: changed.length > 0, doc: next };
     } catch(e){
       console.warn('activity cache refresh:', e?.message || e);
-      return { total: members.length, changed: [], failed, error: e?.message || String(e) };
+      return { total: members.length, changed: [], failed, skipped, error: e?.message || String(e) };
     }
   },
 
@@ -2837,11 +2960,18 @@ function app(){ return {
   // handful plus the live session's own record, which is republished on every
   // Stop and so is always stale by design.
   //
-  // Throttled shorter than the activity crawl (that one runs a per-repo branch
-  // scan; this one is a tree read and a few blobs) and longer than nothing,
-  // since sessions accrue while you are not looking. See
-  // web-tools-private/DESIGN.md and its sessions/README.md.
-  SESSIONS_CACHE_INTERVAL_MS: 3 * 3600 * 1000,
+  // Throttled shorter than the activity crawl and longer than nothing, since
+  // sessions accrue while you are not looking. See web-tools-private/DESIGN.md
+  // and its sessions/README.md.
+  //
+  // 15 MINUTES, down from 3 hours. This crawl never had the activity crawl's
+  // problem: it is incremental by blob sha, so a pass over a store where
+  // nothing moved is ONE tree read and no blob reads at all. The old 3 hours
+  // was set to sit beneath a 12-hour sibling rather than to ration anything
+  // here, and with the sibling at 30 minutes it had no reason left to be long.
+  // Records land continuously (the live session's own record rewrites on every
+  // Stop), so this is the cache that most rewards being asked often.
+  SESSIONS_CACHE_INTERVAL_MS: 15 * 60 * 1000,
   SESSIONS_FETCH_POOL: 6,        // record blobs read at once
   SESSIONS_MAX_FETCH: 120,       // records read per crawl; the rest wait for the next
   _sessionsCheckKey: 'wt:sessionsCacheCheckedAt',
@@ -3036,7 +3166,15 @@ function app(){ return {
       if (a?.skipped) skips.push('branches' + (a.reason ? ': ' + a.reason : ''));
       if (s?.skipped) skips.push('sessions' + (s.reason ? ': ' + s.reason : ''));
       if (skips.length) return toast('warning', 'Activity refresh skipped · ' + skips.join(' · '), 'alert-warning', 4000);
-      return toast('check', 'No activity changes · ' + plural(a?.total || 0, 'repo') + ' and '
+      // A pass that skipped every repo is not the same event as one that
+      // crawled them all and found nothing, and reporting both as "checked"
+      // hid the whole point of the gate: the first cost a dozen calls, the
+      // second cost a couple of hundred. The word says which happened.
+      const skipped = a?.skipped?.length || 0;
+      const how = skipped && skipped === (a?.total || 0) ? ' unmoved'
+                : skipped ? ' checked, ' + skipped + ' unmoved'
+                : ' checked';
+      return toast('check', 'No activity changes · ' + plural(a?.total || 0, 'repo') + how + ', '
                    + plural(s?.total || 0, 'record') + ' checked' + tail,
                    failed ? 'alert-warning' : 'alert-info', 3000);
     }
