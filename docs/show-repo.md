@@ -200,11 +200,13 @@ to be empty wherever anyone looked. The scan now reads the element's own scope.
 
 **A third half arrived on 2026-08-19: `menu`,** which fills the launcher's
 long-press menu rather than anything inside the drawer. A component exposing
-`[{ label, icon, run }]` gets one row per entry under the built-in "Take a
-note", and show-repo contributes exactly one, the app-wide paste. The contract
-exists because the drawer is the wrong place for a verb you want *before* the
-drawer: opening it is a tap and a tab, and for the paste specifically it would
-also spend the user activation a clipboard read has to ride.
+`[{ label, icon, run }]` gets one row per entry under the built-in rows ("Take
+a note", and since 2026-08-22 "Web Tools home", which leaves for the deployed
+app at the default branch), and show-repo contributes exactly one, the app-wide
+paste. The contract exists because the drawer is the wrong place for a verb you
+want *before* the drawer: opening it is a tap and a tab, and for the paste
+specifically it would also spend the user activation a clipboard read has to
+ride.
 
 Two things are load-bearing about it. **Rows are read when the menu opens, not
 when the drawer scans.** `detect()` runs on drawer open, so a menu sourced from

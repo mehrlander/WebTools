@@ -130,6 +130,27 @@ test('a contributor whose menu getter throws is skipped, not fatal', async () =>
     'one bad contributor must not take the whole menu down with it');
 });
 
+// The second built-in row. It is not part of the `menu` contract (nothing on
+// the page can move it or take it away), so what is worth holding is that it
+// stays a FIXED address: the deployed app at the default branch, carrying no
+// ref, no ?use= pin, and nothing off the view it is leaving.
+test('the home row aims at the deployed app, not at this view', async () => {
+  clearPages();
+  const d = await mountFab();
+  d.repo = 'mehrlander/home';
+  d.path = 'projects/budget-drs/app/view/app.html';
+  d.ref = 'claude/some-branch';
+  assert.equal(d.homeUrl, 'https://mehrlander.github.io/web-tools/app/');
+});
+
+test('a re-pointed shell goes home to its own base', async () => {
+  clearPages();
+  const d = await mountFab();
+  d.showRepoBase = 'https://example.test/app/';
+  assert.equal(d.homeUrl, 'https://example.test/app/',
+    'writing the address out a second time is how the two copies part');
+});
+
 test('running a row calls its run', async () => {
   const d = await mountFab();
   let ran = 0;
