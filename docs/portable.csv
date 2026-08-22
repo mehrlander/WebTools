@@ -40,6 +40,7 @@ script,,scripts/dead-links.py,dead-links.py,,on-demand
 script,,scripts/embedded-prose.py,embedded-prose.py,,on-demand
 script,,scripts/stranded-titles.py,stranded-titles.py,,on-demand
 script,,scripts/dead-opacity.py,dead-opacity.py,,on-demand
+script,,scripts/showing.py,showing.py,,on-demand
 script,,scripts/text-carriers.py,text-carriers.py,,on-demand
 script,,scripts/build-tree.py,build-tree.py,,on-demand
 script,,scripts/ocr-pdf.py,ocr-pdf.py,,on-demand

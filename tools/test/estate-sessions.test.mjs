@@ -299,3 +299,60 @@ test('the finder\'s open-session event switches panes and opens the record\'s re
   assert.equal(data.openSessionId, 'b8fae678');
   assert.equal(OPENED.length, 1);
 });
+
+// ── The pointer, and the address it names ───────────────────────────────────
+//
+// A session had two routes out of this pane and neither survived being sent to
+// anybody: tapping the id opens an in-app takeover with no address, and the
+// record itself is a private path. So what is pinned here is the join: the
+// address the row links and the address the copied block names must be the same
+// record, and the store must be the one THIS estate reads rather than a
+// constant compiled into the kit.
+test('the row links the session page at the id the store knows it by', () => {
+  const row = window.RepoSessionsCache.summarize(rec(), 'sha1');
+  assert.equal(data.sessionPageUrl(row),
+    'https://mehrlander.github.io/web-tools/pages/session.html#id=b8fae678');
+  assert.equal(data.sessionPageUrl({}),
+    'https://mehrlander.github.io/web-tools/pages/session.html#id=');
+});
+
+test('copySessionPointer writes the block, with this estate\'s store and the pane\'s duration', async () => {
+  let copied = '';
+  window.navigator.clipboard = { writeText: async (t) => { copied = t; } };
+  const row = window.RepoSessionsCache.summarize(rec(), 'sha1');
+  await data.copySessionPointer(row);
+  assert.match(copied, /^Session b8fae678 · claude\/a-1 \(2026-08-05, 3h · web-tools\)$/m);
+  assert.match(copied, /^Ask: do the thing$/m);
+  // The shell's registry, not the kit's default: an estate reading another
+  // store would otherwise hand out a path into a repo it does not use.
+  assert.match(copied, /^Record: me\/registry:sessions\/2026\/08\/2026-08-05-b8fae678\.json$/m);
+  assert.match(copied, /^Read: \S+#id=b8fae678$/m);
+  assert.match(copied, /^Query: python3 registry\/sessions\/tools\/search\.py --show b8fae678$/m);
+  assert.match(copied, /^In Claude: https:\/\/claude\.ai\/code\/session_01SX$/m);
+  // The link the row draws and the link the block carries are one address.
+  assert.ok(copied.includes(data.sessionPageUrl(row)));
+});
+
+test('both controls draw on a record row, and a stub gets neither', async () => {
+  shell.view = 'sessions';
+  data.sessionLens = 'list';
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  // One record, and one stub beside it: a branch whose commit trailer names a
+  // session the store holds no record for. The stub is the case that matters,
+  // since there is nothing to address and nothing to copy, and a link to a
+  // record that does not exist is worse than no control at all.
+  data.activity = { 'acme/widget': { defaultBranch: 'main', scan: { branches: [
+    { name: 'ghost-work', group: 'active', date: '2026-08-05',
+      sessions: ['https://claude.ai/code/session_GHOST'] },
+  ] } } };
+  data.sessionRows_ = [window.RepoSessionsCache.summarize(rec(), 'sha1')];
+  await Alpine.nextTick();
+  const doc = window.document;
+  assert.equal(data.sessionNodes.filter(n => n.kind === 'stub').length, 1, 'the stub is on screen');
+  const links = [...doc.querySelectorAll('a[href*="session.html#id="]')];
+  assert.equal(links.length, 1, 'one session page link, on the record row only');
+  assert.equal(links[0].getAttribute('href'),
+    'https://mehrlander.github.io/web-tools/pages/session.html#id=b8fae678');
+  assert.equal(doc.querySelectorAll('i.ph-copy').length, 1, 'one copy control, likewise');
+});
