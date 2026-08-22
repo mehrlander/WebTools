@@ -166,3 +166,44 @@ test('the arrival passes are unforced, or the gates would never fire', () => {
   assert.doesNotMatch(go, /refreshSessionsCache\?\.\(true\)/);
   assert.doesNotMatch(go, /refreshActivityCache\?\.\(true/);
 });
+
+// ── A kick that lands has to say so ────────────────────────────────────────
+// The half this change shipped without, and the way it failed is the reason it
+// needs a test rather than a careful reader. The crawls ran, gated correctly,
+// and stamped their `checked` keys. The view had read those stamps once at
+// mount and had no reason to read them again, so every row sat there reporting
+// an age from before the crawl: on a phone, "checked 1d ago" over a crawl that
+// had finished a second earlier. Nothing threw, nothing logged, and the only
+// symptom was a number that looked plausible.
+
+test('goState announces each kick as it lands, and once when all settle', () => {
+  const go = shellSrc.slice(shellSrc.indexOf('goState(item){'),
+                            shellSrc.indexOf('this.syncUrl();', shellSrc.indexOf('goState(item){')));
+  assert.match(go, /web-tools:cache-checked/);
+  // Per kick, so a row updates as its own crawl lands rather than at the pace
+  // of the slowest of the three.
+  assert.match(go, /\.then\(\(\) => checked\(false\)\)/);
+  // And once at the end: a crawl that committed also moved `updated`, which no
+  // localStorage read can see.
+  assert.match(go, /Promise\.all\([\s\S]*?\)\s*\n?\s*\.then\(\(\) => checked\(true\)\)/);
+  // A crawl that threw must not strand the announcement, or one failing crawl
+  // freezes the other two rows' ages for the life of the page.
+  assert.match(go, /Promise\.resolve\(p\)\.catch\(\(\) => \{\}\)/);
+});
+
+test('the view listens for it, and cleans the listener up', () => {
+  assert.match(viewSrc, /document\.addEventListener\('web-tools:cache-checked', this\._checked\)/);
+  assert.match(viewSrc, /document\.removeEventListener\('web-tools:cache-checked', this\._checked\)/);
+  // The cheap pass reads localStorage only. Calling load() on every kick would
+  // put three five-call reads on every visit to the view.
+  assert.match(viewSrc, /if \(e\.detail\?\.settled\) \{ this\.load\(\); return; \}/);
+  assert.match(viewSrc, /checkedAgo: this\.checkedAgo\(r\.checkedKey\)/);
+});
+
+test('the manual events are still separate, since they mean something else', () => {
+  // `*-refreshed` says a crawl the USER forced has finished and the panes it
+  // feeds should re-read. Folding the arrival kicks into it would put a full
+  // estate reload behind every visit to this view.
+  for (const ev of ['configs-refreshed', 'activity-refreshed', 'sessions-refreshed'])
+    assert.ok(viewSrc.includes(ev), `${ev} should still be listened for`);
+});

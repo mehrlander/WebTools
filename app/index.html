@@ -5194,9 +5194,28 @@ function app(){ return {
   goState(item){
     this.stateItem = item || '';
     this.stateSeen = true; this.view = 'state';
-    this.refreshConfigCache?.();
-    this.refreshActivityCache?.(false, { deep: false });
-    this.refreshSessionsCache?.();
+    // EACH KICK ANNOUNCES ITSELF, and leaving this out made the whole change
+    // invisible. The crawls ran correctly and stamped their `checked` keys; the
+    // view had read those stamps once at mount and had no reason to read them
+    // again, so a row sat there saying "checked 1d ago" over a crawl that had
+    // finished seconds earlier. The three `*-refreshed` events the view already
+    // listens for are dispatched by the manual Refresh wrappers alone, so an
+    // arrival crawl landed in silence. Caught on a phone, 2026-08-22, by the
+    // reading being obviously wrong.
+    //
+    // Two passes, because they cost different amounts. Each kick fires the
+    // cheap one as it lands: the `checked` stamps are localStorage and re-read
+    // for nothing. When all three have settled, one more pass says so, and the
+    // view re-reads everything once, since a crawl that committed also moved
+    // the `updated` date, which is a commit read per file.
+    const checked = (settled) => document.dispatchEvent(
+      new CustomEvent('web-tools:cache-checked', { detail: { settled } }));
+    Promise.all([
+      this.refreshConfigCache?.(),
+      this.refreshActivityCache?.(false, { deep: false }),
+      this.refreshSessionsCache?.(),
+    ].map(p => Promise.resolve(p).catch(() => {}).then(() => checked(false))))
+      .then(() => checked(true));
     // Announced even when the view is already mounted: arriving from a second
     // age pill has to move the highlight, and re-setting `view` to the value it
     // already holds is not something Alpine reacts to.
