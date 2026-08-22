@@ -336,3 +336,44 @@ test('nameOf says nothing rather than guessing when a session has no branch', ()
   assert.equal(S.nameOf({}), '');
   assert.equal(S.nameOf(null), '');
 });
+
+// The pointer. What is pinned is that the three routes it names all address the
+// SAME record: a block whose page link and store path disagree is worse than no
+// block at all, because both halves look right on their own.
+test('pointerOf addresses one record three ways and they agree', () => {
+  const row = S.summarize(record(), 'x');
+  const p = S.pointerOf(row, { dur: '2h58m' });
+  assert.match(p, /^Session b8fae678 · sessions-tab \(2026-08-05, 2h58m · web-tools, home\)$/m);
+  assert.match(p, /^Ask: Add a sessions tab to the activity view$/m);
+  assert.match(p,
+    /^Record: mehrlander\/web-tools-private:sessions\/2026\/08\/2026-08-05-b8fae678\.json$/m);
+  assert.match(p,
+    /^Read: https:\/\/mehrlander\.github\.io\/web-tools\/pages\/session\.html#id=b8fae678$/m);
+  assert.match(p,
+    /^Query: python3 web-tools-private\/sessions\/tools\/search\.py --show b8fae678$/m);
+  // The store is the shell's to name, and the checkout folder in the command
+  // follows it rather than being written twice.
+  const alt = S.pointerOf(row, { store: 'someone/other-store' });
+  assert.match(alt, /^Record: someone\/other-store:sessions\//m);
+  assert.match(alt, /^Query: python3 other-store\/sessions\/tools\/search\.py /m);
+});
+
+test('pointerOf states the Claude session only where the record named one', () => {
+  const has = S.pointerOf(S.summarize(record(), 'x'));
+  assert.match(has, /^In Claude: https:\/\/claude\.ai\/code\/session_01SXuNTtUx1sdmoQPbLE3Bqk$/m);
+  // Empty on every record written before 2026-08-07, and permanently so, since
+  // records are never revisited. A blank line claiming a session is worse than
+  // a missing one.
+  const without = S.pointerOf(S.summarize(record({ agent_session: '' }), 'x'));
+  assert.ok(!/In Claude:/.test(without));
+});
+
+test('pointerOf keeps the ask to one line, and omits it rather than showing an empty one', () => {
+  const multi = S.pointerOf(S.summarize(record({
+    opening_ask: 'Line one.\n\nLine two,\n  indented.',
+  }), 'x'));
+  assert.match(multi, /^Ask: Line one\. Line two, indented\.$/m);
+  assert.equal(multi.split('\n').filter(l => l.startsWith('Ask:')).length, 1);
+  const none = S.pointerOf(S.summarize(record({ opening_ask: '' }), 'x'));
+  assert.ok(!/^Ask:/m.test(none));
+});
