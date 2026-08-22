@@ -218,18 +218,41 @@ test('a row title opens the doc deck: full folder, tapped row first, rendered by
   assert.ok(fetchesAfter > fetchesBefore, 'first reads did fetch');
 
   const opened = [];
-  window.swipeDeck = { open(o){ opened.push(o); return { close(){}, setSubtitle(){}, deck: {}, el: {} }; } };
+  window.swipeDeck = { open(o){
+    opened.push(o);
+    return { close(){}, setTitle(){}, setSubtitle(){}, setLink(){},
+             deck: { active: () => 2 }, el: {} };
+  } };
   const files = data.docDirFiles;
   await data.openDocDeck(files[2]);
   const o = opened[0];
   assert.equal(o.count, files.length, 'the deck pages the whole selected folder');
   assert.equal(o.start, 2, 'and opens on the tapped row');
-  assert.equal(o.title, 'docs/');
+
+  // THE NAME IS SAID ONCE. The header used to carry the folder as its title and
+  // the whole path as its subtitle, and the slide then printed the path a third
+  // time; the file-name/folder split is the one kits/file-deck.js had already
+  // settled for the changeset deck.
+  const name = files[2].path.slice(files[2].path.lastIndexOf('/') + 1);
+  assert.equal(o.title, name, 'the title is the file, not the folder');
+  assert.equal(o.subtitle, 'docs', 'and the folder rides the crumb');
+  assert.equal(o.link.href, data.hubUrl(files[2].path),
+    'GitHub is a header link now, not a mark inside the reading surface');
+  assert.ok(o.actions.some(a => typeof a.onClick === 'function'),
+    'and the reference menu is a header action');
+
+  // The contents labeler: one call per row, and the gloss is the registry's own
+  // subject rather than a second copy of the path.
+  assert.equal(typeof o.index, 'function', 'the deck can list itself');
+  const row = o.index(2);
+  assert.equal(row.title, name);
+  assert.equal(row.subtitle, files[2].subject, 'a row says what the doc is about');
 
   const slide = window.document.createElement('div');
   o.render(2, slide);
   await tick(3);
-  assert.ok(slide.textContent.includes(files[2].path), 'a slide leads with its path');
+  assert.ok(!slide.textContent.includes(files[2].path),
+    'the slide does not repeat the path the header already carries');
   assert.ok(/prose|<pre/.test(slide.querySelector('[data-deck-content]').innerHTML),
     'and carries the rendered document');
   delete window.marked;
