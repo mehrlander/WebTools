@@ -65,7 +65,8 @@
   // proof.js backs chat-render's sandboxed Render frames; swipe-deck owns the
   // track and the takeover; chat-render renders a turn. session-render sits on
   // all three, and session-export reads session-render, so the chain is strictly
-  // ordered from the bottom up.
+  // ordered from the bottom up. kits/claude-mark.js is the fourth and is not
+  // listed: gh-boot carries it as standing equipment, so it is already here.
   try {
     await gh.load('kits/proof.js');
     await gh.load('kits/swipe-deck.js');
@@ -132,16 +133,14 @@
         </button>
         <!-- The estate's standard way to link a session: the Claude logomark in
              brand colour, no label, exactly as the branch and session rows in
-             show-repo's Activity draw it. A generic open-in-new arrow said
-             "a link"; this says which link. The markup is a sixth copy of the
-             same 11-ray path (estate.js twice, fab.js, branch-brief.js), which
-             is a duplication worth owning rather than a sixth improvisation:
-             see the snag filed alongside this. -->
+             show-repo's Activity draw it, and as the deck header draws its own
+             exit. A generic open-in-new arrow said "a link"; this says which
+             link. Drawn from kits/claude-mark.js rather than pasted, which is
+             what the copy this replaced asked for in its own comment. -->
         <a x-show="record.agent_session" :href="record.agent_session" target="_blank"
            title="Open this session in Claude Code"
-           class="btn btn-sm btn-ghost btn-circle hover:opacity-75 transition-opacity">
-          <svg viewBox="0 0 24 24" class="w-6 h-6 shrink-0" style="stroke:#d97757" stroke-width="2.2"
-               stroke-linecap="round" fill="none" aria-hidden="true"><path d="M12,12 L12.0,1.6 M12,12 L17.62,3.25 M12,12 L21.46,7.68 M12,12 L22.29,13.48 M12,12 L19.86,18.81 M12,12 L14.93,21.98 M12,12 L9.07,21.98 M12,12 L4.14,18.81 M12,12 L1.71,13.48 M12,12 L2.54,7.68 M12,12 L6.38,3.25"/></svg></a>
+           class="btn btn-sm btn-ghost btn-circle hover:opacity-75 transition-opacity"
+           x-html="window.claudeMark.svg()"></a>
         <div class="grow"></div>
         <button @click="showFacts = !showFacts" class="btn btn-sm btn-ghost btn-circle"
                 :aria-label="showFacts ? 'Hide capture facts' : 'Show capture facts'">
