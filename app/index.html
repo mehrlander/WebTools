@@ -2964,6 +2964,86 @@ function app(){ return {
     } finally { this.sessionsRefreshing = false; this.closeCrawl('sessions'); }
   },
 
+  // ── The Activity group's one Refresh ───────────────────────────────────
+  // Branches and Sessions are two crawls over two sources into two files, and
+  // the State view gave them a button each. That split is real underneath and
+  // was wrong on screen: a session ending is ONE event that moves both
+  // readings, since its record lands in the registry and its commits land on a
+  // branch, so wanting one without the other is the rare case rather than the
+  // common one. One press runs both.
+  //
+  // The measured gap (231 calls and ~28s for branches against 4 and ~1s for
+  // sessions, 2026-08-21) is what made two buttons look right, and it is a
+  // reason to keep two FILES on two throttles with two histories, not two
+  // controls. The throttled background passes stay independent for exactly
+  // that reason; only the deliberate press merges.
+  //
+  // SEQUENTIAL, sessions first. Both crawls commit to the registry's main, and
+  // two contents PUTs racing on one branch is the 409 that the single-flight
+  // guard inside each crawl already exists to avoid. Sessions first costs about
+  // 4% of the gesture and lets the cheap row settle while the long bar runs.
+  //
+  // Each half keeps its own busy flag and its own progress slot, so both rows
+  // still draw their own bar and their own wire line. What merges is the
+  // gesture and the report: pressed once, told once.
+  activityGroupRefreshing: false,
+  async refreshActivityGroup(){
+    if (this.activityGroupRefreshing || !this.hasToken()) return;
+    this.activityGroupRefreshing = true;
+    let s = null, a = null;
+    try {
+      this.sessionsRefreshing = true;
+      this.openCrawl('sessions', 'Listing records', 'records');
+      try { s = await this.refreshSessionsCache(true); }
+      finally { this.sessionsRefreshing = false; this.closeCrawl('sessions'); }
+      document.dispatchEvent(new CustomEvent('web-tools:sessions-refreshed'));
+
+      this.activityRefreshing = true;
+      this.openCrawl('activity', 'Refreshing activity', 'repos');
+      try { a = await this.refreshActivityCache(true, { deep: true }); }
+      finally { this.activityRefreshing = false; this.closeCrawl('activity'); }
+      this.announceActivity(a);
+    } finally {
+      this.activityGroupRefreshing = false;
+      this.reportActivityGroup(s, a);
+    }
+  },
+
+  // One line for two crawls. The units genuinely differ and both are worth
+  // saying (repos changed, records read), so the report names each half rather
+  // than inventing a shared unit that would describe neither. A half that
+  // failed says so by name and does not hide behind the other's success, which
+  // is the one thing a merged report can get wrong that two reports could not.
+  reportActivityGroup(s, a){
+    const toast = Alpine.store('toast');
+    if (!toast) return;
+    const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+    const errs = [];
+    if (a?.error) errs.push('branches: ' + a.error);
+    if (s?.error) errs.push('sessions: ' + s.error);
+    if (errs.length) return toast('warning', 'Activity refresh failed · ' + errs.join(' · '), 'alert-error', 6000);
+
+    const did = [];
+    if (a?.changed?.length) did.push(plural(a.changed.length, 'repo') + ' changed');
+    if (s?.committed) did.push(plural(s.read || 0, 'record') + ' read');
+    const failed = a?.failed?.length || 0;
+    const tail = failed ? ' · ' + plural(failed, 'repo') + ' failed, see console' : '';
+
+    // A skip is not a no-op and must not be reported as one: "nothing changed"
+    // over a crawl that never ran is the one reading this view exists to stop.
+    if (!did.length) {
+      const skips = [];
+      if (a?.skipped) skips.push('branches' + (a.reason ? ': ' + a.reason : ''));
+      if (s?.skipped) skips.push('sessions' + (s.reason ? ': ' + s.reason : ''));
+      if (skips.length) return toast('warning', 'Activity refresh skipped · ' + skips.join(' · '), 'alert-warning', 4000);
+      return toast('check', 'No activity changes · ' + plural(a?.total || 0, 'repo') + ' and '
+                   + plural(s?.total || 0, 'record') + ' checked' + tail,
+                   failed ? 'alert-warning' : 'alert-info', 3000);
+    }
+    toast('arrows-clockwise', 'Activity refreshed · ' + did.join(' · ') + tail,
+          failed ? 'alert-warning' : 'alert-success', 4000);
+  },
+
   // ── The progress channel's two writers ─────────────────────────────────
   // openCrawl opens a slot (a Refresh button pressed), tickCrawl fills it.
   // Both reassign rather than mutate, so the whole shape lands on every reader

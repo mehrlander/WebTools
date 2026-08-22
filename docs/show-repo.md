@@ -1855,6 +1855,30 @@ keeps derived, each piece with its age, what builds it, what the build costs,
 and a Refresh where one is possible. It is the address the age pills open, and
 the reason the four estate Refresh buttons could go.
 
+**Branches and Sessions share one Refresh.** They are two crawls over two
+sources into two files, and nothing about that changed: the branch scan reads
+every estate repo on github.com (231 calls and about 28 seconds on the run
+logged 2026-08-21) while the sessions fold reads one folder in the registry and
+a blob per record that moved (4 calls, about a second). They are two rows for
+that reason, each with its own store, throttle, history, and probe. What they
+are not is two decisions. A session ending moves both at once, its record
+landing in the registry and its commits landing on a branch, so a press that
+refreshed one and left the other was asking the reader about a boundary that is
+internal to the crawls. The two rows sit in an **Activity** group under one
+button, which runs both, sessions first, and reports once; the throttled
+background passes stay independent on their own intervals, since the cost gap is
+a real reason to fetch one four times as often as the other. `GROUPS` in
+`state-view.js` declares the group and names the shell method that runs it,
+and `tools/test/state-view-groups.test.mjs` holds the fold and checks that the
+method the view names is one the shell actually defines.
+
+The row that reads `Branches` was `Branch activity` until the group arrived.
+That label was the confusion in three words: **Activity** is the nav stop over
+five views with Sessions among them, so a row wearing it read as *the* activity
+cache and made the Sessions row look like a half that had been split off. Under
+the group heading the row is Branches, which is what its own `used by` chip
+always said.
+
 **Each row says who uses it, as view keys.** `feeds` is a list of shell view
 keys (`estate`, `activity`, `sessions`, `guides`, `search`) rendered as chips
 that route through the shell's own `go*` methods, so a tap goes and looks at the
