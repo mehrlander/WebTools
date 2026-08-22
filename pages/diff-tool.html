@@ -497,7 +497,7 @@
               <input x-model="slots[id].value" @input="onAddrInput(id)" @keydown="onAddrKey(id, $event)"
                      :placeholder="slots[id].src === 'gh' ? 'owner/repo[@ref]:path, or @ to browse' : 'https://…'"
                      class="input input-xs input-bordered lctl join-item grow min-w-0 font-mono text-xs">
-              <button class="btn btn-xs btn-primary lctl join-item px-3" @click="fill(id)" :disabled="slots[id].loading">
+              <button class="btn btn-xs btn-primary lctl join-item px-3" @click="fill(id)" :disabled="!!slots[id].loading">
                 <span x-show="slots[id].loading" class="loading loading-spinner loading-xs"></span>
                 <span x-show="!slots[id].loading">Get</span>
               </button>

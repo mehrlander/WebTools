@@ -11,6 +11,17 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__.*__create_pull_request",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pr-subscribe-hint.sh\""
+          }
+        ]
+      }
+    ],
     "PostToolUseFailure": [
       {
         "matcher": "mcp__.*",

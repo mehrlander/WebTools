@@ -1,4 +1,5 @@
 path,role,layer,lines,invocation,emits,named,tested
+scripts/bound-boolean-attrs.py,"report an Alpine boolean attribute (:disabled, :checked, :readonly) bound to an expression that can be undefined. x-bind coerces an undefined result to '' for any dotted expression, and bind() removes an attribute only for null/undefined/false, so '' SETS it: a bare property read on a missing key disables the control. Only accessor chains are flagged; an operator always yields a real boolean, which is the half a looser scan gets wrong. --check gates it",scripts,170,npm:bool-attr-scan,no,yes,yes
 scripts/build-tree.py,render a repository file tree as a linked markdown table for chat,scripts,252,argv,no,yes,no
 scripts/check-branch-status.mjs,the stated agreement check for the branches view against home's unmerged-branches.sh,scripts,145,argv,no,yes,no
 scripts/code-shape.py,"per-file observable properties of lib/: what a file attaches to, boot, hub, DOM, Alpine; the instrument behind docs/code-layers.md and the code-layers gate",scripts,374,npm:code-shape,yes,yes,yes
@@ -93,6 +94,7 @@ tools/render/scenarios/estate-open.mjs,Activity's Open view seeded token-free so
 tools/render/scenarios/estate-pins.mjs,the Lists pane with the Pin block populated above To-do and Jot,tools/render/scenarios,86,driver,no,no,no
 tools/render/scenarios/estate-rows.mjs,the grouped-grid Repos view with a nested companion card,tools/render/scenarios,88,driver,no,no,no
 tools/render/scenarios/estate-sessions.mjs,"the Sessions and Lists panes on fixture data, token-free",tools/render/scenarios,123,driver,no,no,no
+tools/render/scenarios/estate-skills.mjs,,tools/render/scenarios,106,driver,no,no,no
 tools/render/scenarios/estate-surfaces-embed.mjs,"the Surfaces view rendering a kind:embed item, collapsed",tools/render/scenarios,81,driver,no,no,no
 tools/render/scenarios/estate-unfiled.mjs,,tools/render/scenarios,99,driver,no,no,no
 tools/render/scenarios/fab-export.mjs,the FAB's Export controls,tools/render/scenarios,31,driver,no,yes,no
@@ -112,6 +114,7 @@ tools/render/scenarios/map-registries.mjs,"drive the Map view's Registries tab f
 tools/render/scenarios/map-set-adoption.mjs,"the Map's first two tabs, both halves populated",tools/render/scenarios,72,driver,no,no,no
 tools/render/scenarios/map-showing-peek.mjs,the Showing tab with a pointer held over an exact-file jump-over so the peek renders,tools/render/scenarios,50,driver,no,no,yes
 tools/render/scenarios/map-showing.mjs,"the Map's Showing tab: how content moves, renders, and gets looked at",tools/render/scenarios,60,driver,no,no,no
+tools/render/scenarios/map-skills.mjs,,tools/render/scenarios,83,driver,no,no,no
 tools/render/scenarios/map-tests.mjs,the Map view's Tests tab: the test registry rendered live with assertion names expanded,tools/render/scenarios,63,driver,no,no,no
 tools/render/scenarios/nest-probe.mjs,"probe: a nested self-toss's address bar, and the FAB's actions at depth two",tools/render/scenarios,44,driver,no,no,no
 tools/render/scenarios/open-drawer.mjs,the FAB drawer open with the take grid scrolled into view,tools/render/scenarios,20,driver,no,no,no
@@ -153,7 +156,7 @@ tools/render/scenarios/stage-reader-subject.mjs,"the stage reader announcing whi
 tools/render/scenarios/stage-rename-local.mjs,,tools/render/scenarios,23,driver,no,no,no
 tools/render/scenarios/stage-stitch.mjs,"the stage composer's stitch key: a caret in a sentence gap turns the full-stop cell into the cell that takes one back, the same swap the annotator's card makes off the same kit verb",tools/render/scenarios,52,driver,no,no,no
 tools/render/scenarios/stage-transform-chip.mjs,"stages three transform-shaped items, opens one in the workbench, and asserts the table actually drew",tools/render/scenarios,54,driver,no,no,yes
-tools/render/scenarios/state-view.mjs,"Populate the State view for a screenshot: stub the registry reads with a current cache, a stale one, an unchecked one, and the buttonless entity index",tools/render/scenarios,222,driver,no,no,no
+tools/render/scenarios/state-view.mjs,"Populate the State view for a screenshot: stub the registry reads with a current cache, a stale one, an unchecked one, and the buttonless entity index",tools/render/scenarios,225,driver,no,no,no
 tools/render/scenarios/subject-action-probe.mjs,"probe: can the shell invoke a toss subject's action closure, or only reach it",tools/render/scenarios,124,driver,no,no,no
 tools/render/scenarios/toss-fragment.mjs,prove toss-render hands a trailing #frag to the rendered page in both trust postures,tools/render/scenarios,96,driver,no,no,no
 tools/render/screenshot.mjs,the Chromium pixel render behind npm run shot; --script drives a scenario first,tools/render,254,npm:shot,no,yes,yes
