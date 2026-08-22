@@ -149,3 +149,13 @@ test('the group runs both crawls, and each is forced', () => {
     assert.match(fn, new RegExp("closeCrawl\\('" + key + "'"));
   }
 });
+
+// Last, and not optional. The component's init() starts a 60-second interval to
+// age the rows, so a file that boots one and never tears it down leaves a handle
+// open and `node --test` never exits. Locally that reads as a slow suite;
+// in CI, where the workflow sets no timeout-minutes, it reads as a check that
+// runs for six hours and then fails. state-view-progress.test.mjs ends the same
+// way for the same reason.
+test('teardown clears the tick and the listeners', () => {
+  data.destroy();
+});
