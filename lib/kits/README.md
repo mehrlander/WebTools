@@ -66,6 +66,7 @@ folder deliberately no longer encodes.
 |---|---|---|
 | `branch-status.js` | `BranchStatus` | branch-estate scan math: the content-level landed/stranded signal |
 | `chat-render.js` | `chatRender` | chat transcript renderer; fenced code promoted to live artifacts |
+| `claude-mark.js` | `claudeMark` | the Claude logomark, as markup or a node, from one path |
 | `content-registry.js` | `ContentRegistry` | the epistemic content registry (`data/design/content.csv`), read in the browser |
 | `data-payload.js` | `DataPayload` | reading a data toss: one rule for what a payload is |
 | `estate-search.js` | `EstateSearch` | the estate's search calls (tree, names, code, sessions), one cache |
