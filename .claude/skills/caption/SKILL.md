@@ -156,10 +156,34 @@ topical caption keeps the full triple.
 
 After the list, a blank line, then one 🥏 or ⭐ line per changed renderable HTML
 page, link text the page path. Honesty gate: a kit, doc, or asset gets none.
-Choose per the repo's preview mechanism; in web-tools: lib/dist change → ⭐
-`?use=<sha>` on the deployed page URL; page-shell change on an un-deployed
-branch → 🥏 toss `#gh=<owner>/<repo>@<sha>:<path>`. With no preview mechanism,
-the portable fallback is the 🥏 `#gz=` toss.
+
+**Do not decide this by reading. Run `npm run showing`** (web-tools;
+`python3 scripts/showing.py` anywhere the script has travelled). It reads the
+branch's own changed files and prints the render line ready to paste, or an
+honest "no link reaches this" with the reason, and it checks the two things
+that go wrong silently: that the SHA it names is pushed, and that `dist/` was
+rebuilt so `?use=` carries the lib change rather than last week's bundle.
+
+The rules it runs are the ones this section used to state: lib or dist change →
+⭐ `?use=<sha>` on the deployed page; a page's own file → 🥏 toss
+`#gh=<owner>/<repo>@<sha>:<path>` with `?use=` in the renderer's query; the
+renderer itself → a nested toss; a shell change acting on the top-level
+document (title, favicon, history, navigation) → no link at all, send a
+screenshot. They are stated once as data in `docs/routes.json` and
+`docs/showing-mechanisms.csv`, and the script is what executes them.
+
+**Why a command rather than a paragraph.** The paragraph was here, correct and
+complete, on 2026-08-22 when a session changed `lib/alpineComponents/estate.js`
+and reported that no link could show it. It never opened the table, because it
+was sure it already knew, and a wrong pick does not error: it yields a link
+that resolves and shows the wrong week. Reading cannot fix a failure whose
+first symptom is confidence.
+
+Two things the script cannot do, so they stay yours: it cannot tell whether the
+change is VISIBLE (a refactor gets a valid link that shows nothing new), and it
+cannot see pixels. Where it names several pages, pick the one the change is
+about. With no preview mechanism and no script, the portable fallback is the 🥏
+`#gz=` toss.
 
 A page published as an artifact this session gets a 📦 line: link text the
 page path, URL the claude.ai artifact URL. Pick by where the link opens: the
