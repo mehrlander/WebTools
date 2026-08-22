@@ -111,8 +111,11 @@ test('the tooltip states both costs and both throttles, which the rows no longer
   const why = data.groupWhy(group());
   assert.match(why, /Branches:/);
   assert.match(why, /Sessions:/);
-  assert.match(why, /every 12h/);
-  assert.match(why, /every 3h/);
+  // The SHAPE, not the durations. Each row states its own interval, and the
+  // interval itself belongs to the shell: asserting '12h' here made this a
+  // third copy of a number two places already hold, and it duly went stale the
+  // day the throttle moved. state-view-throttles.test.mjs owns the values.
+  assert.equal(why.match(/normally every \S+/g)?.length, 2, 'one interval per row');
 });
 
 // ── The group's probe ──────────────────────────────────────────────────────
@@ -177,8 +180,7 @@ test('the refresh tooltip names WHICH half is past its throttle', () => {
   // Two throttles behind one button, so an unnamed staleness claim is one the
   // reader cannot act on.
   assert.doesNotMatch(why, /Sessions past twice/);
-  assert.match(why, /every 12h/);
-  assert.match(why, /every 3h/);
+  assert.equal(why.match(/normally every \S+/g)?.length, 2, 'both rows still state theirs');
   branches.stale = false;
   assert.doesNotMatch(data.groupWhy(g), /past twice/);
 });
