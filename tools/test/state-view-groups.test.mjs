@@ -115,6 +115,74 @@ test('the tooltip states both costs and both throttles, which the rows no longer
   assert.match(why, /every 3h/);
 });
 
+// ── The group's probe ──────────────────────────────────────────────────────
+// The heading trades its note for a live reading once it has one, so what the
+// reading says has to survive a half-read and must never reduce two units to
+// one number.
+
+test('the heading probe concatenates both readings and never sums them', () => {
+  const g = group();
+  data.probe = { activity: { n: 2, names: ['a/b', 'c/d'], line: '2 pushed' },
+                 sessions: { n: 3, records: 3, line: '3 written' } };
+  const p = data.groupProbe(g);
+  // Both facts, side by side. A sum would read '5' over two units that have
+  // nothing in common, which is the one fold that would be false here.
+  assert.equal(p.line, '2 pushed, 3 written');
+  assert.equal(p.moved, 2);
+  data.probe = {};
+});
+
+test('a quiet probe still reads, and reads as quiet', () => {
+  data.probe = { activity: { n: 0, names: [], line: 'no push' },
+                 sessions: { n: 0, records: 0, line: 'no record' } };
+  const p = data.groupProbe(group());
+  assert.equal(p.line, 'no push, no record');
+  assert.equal(p.moved, 0);
+  data.probe = {};
+});
+
+test('a half-read heading says nothing rather than half the answer', () => {
+  const g = group();
+  assert.equal(data.groupProbe(g), null, 'no readings at all');
+  // The probe makes two calls that fail independently. One arriving is not the
+  // group's answer, and a heading showing it would read as though it were.
+  data.probe = { sessions: { n: 3, records: 3, line: '3 written' } };
+  assert.equal(data.groupProbe(g), null, 'one reading of two');
+  data.probe = {};
+});
+
+test('the probe tooltip keeps each half attributed, with its own caveat', () => {
+  const g = group();
+  data.probe = { activity: { n: 2, names: ['mehrlander/home', 'mehrlander/wps'], line: '2 pushed' },
+                 sessions: { n: 1, records: 1, line: '1 written' } };
+  const why = data.groupProbeWhy(g);
+  assert.match(why, /Branches: /);
+  assert.match(why, /Sessions: /);
+  // The per-file caveats are the reason the sentences are not merged: each
+  // reading over- or under-counts in its own direction.
+  assert.match(why, /PR opened without a push moves nothing here/);
+  assert.match(why, /1 session record committed since this was built/);
+  data.probe = {};
+});
+
+test('the refresh tooltip names WHICH half is past its throttle', () => {
+  const g = group();
+  // Only meaningful with no probe: a live reading supersedes the clock, which
+  // is what refreshWhy does per row.
+  data.probe = {};
+  const branches = g.rows.find(r => r.key === 'activity');
+  branches.stale = true;
+  const why = data.groupWhy(g);
+  assert.match(why, /^Branches past twice its throttle\./);
+  // Two throttles behind one button, so an unnamed staleness claim is one the
+  // reader cannot act on.
+  assert.doesNotMatch(why, /Sessions past twice/);
+  assert.match(why, /every 12h/);
+  assert.match(why, /every 3h/);
+  branches.stale = false;
+  assert.doesNotMatch(data.groupWhy(g), /past twice/);
+});
+
 // ── The wiring, read out of the shell ──────────────────────────────────────
 // The view names a shell method by string, since the shell is not up when the
 // component registers. That is the right call and it is also unchecked at
