@@ -1349,9 +1349,8 @@ retried because it may have landed.
 
 The cache is what makes this affordable. The branch review costs ~2 + 2N calls to
 scan N branches, so scanning every repo live on a dashboard is a flood.
-Instead `refreshActivityCache` crawls each estate repo on a ~12h per-browser
-throttle (heavier than the config crawl, so a longer interval) and stores the
-capped landed/stranded scan plus cheap summary signals; the branch review, the
+Instead `refreshActivityCache` crawls each estate repo on a ~30m per-browser
+throttle and stores the capped landed/stranded scan plus cheap summary signals; the branch review, the
 estate cards, and this view all render from the stored result. The per-repo
 branch review is **cache-first** too: with a token it renders Landed / Stranded
 from `state/activity.json` and marks the header `cached`, running the live fanout
@@ -1359,6 +1358,42 @@ only on an explicit Refresh or where the cache has no coverage. Same scan math
 either way (`lib/kits/branch-status.js` `scanBranchLive`, shared by the view and the
 crawl). Source-of-truth rule as ever: the cache is derived and may be briefly
 stale; Refresh re-scans live.
+
+**Two gates decide what a pass actually pays for**, and they answer different
+questions. The **scan gate** has been there since the crawl was written: a repo
+whose `pushed_at` has not moved since its last `scannedAt` cannot have changed a
+branch verdict, so its stored rows carry forward and the tree reads go where
+something moved. The **watermark gate** is newer and covers the rest of the
+pass. Measured 2026-08-21, a run over ten repos spent 231 calls, of which 168
+were the scan the first gate already rations; the remaining ~62 were four calls
+per repo fired unconditionally, so a completely quiet estate still paid them.
+
+A repo is **quiet** when both its `pushed_at` and its **PR watermark**
+(`gh.prWatermark`, one row of the same `pulls?state=all&sort=updated` list
+`branchPulls` reads a hundred of) match what the last successful crawl recorded.
+A quiet repo is skipped whole and carries its stored entry forward through the
+same `buildCache` path a failed repo takes. A quiet estate therefore costs one
+account listing plus one watermark per repo, about a dozen calls, which is what
+let the throttle come down from twelve hours to thirty minutes: the floor fell,
+not the ceiling. A repo that moved still pays its summary, and one that was
+pushed still pays its scan.
+
+**Both halves are required, and the second is the one to keep.** `pushed_at`
+cannot see a pull request opening, merging or closing, and this cache stores
+exactly that in `openPRs`, `branchPRs` and `prReach`. Gating on pushes alone
+would freeze every branch row's PR verdict until something happened to push,
+and nothing on screen would look wrong. The watermark over-reports instead
+(`updated_at` moves on a comment or a review), which costs a crawl that then
+finds nothing material and skips its commit. That is the direction a gate must
+err in.
+
+The watermarks live in `localStorage`, not in the cache, because the committed
+file has no safe place for them: riding the material hash would restamp and
+recommit a 700 KB file whenever anyone commented on a PR, and staying out of it
+would mean a crawl never persists what it just learned, so the next pass sees
+the same movement and never converges. A forced pass ignores the gate entirely,
+since Refresh has to mean "go and look". `tools/test/activity-watermark-gate.test.mjs`
+holds each of those clauses.
 
 ### Sessions
 
@@ -1471,9 +1506,11 @@ record is addressed by a git blob sha, so one recursive trees call names every
 record and its sha, and `stalePaths` re-reads only those whose sha moved. In
 steady state that is the day's handful plus the live session's own record, which
 is republished on every Stop and so is always stale by design, with no special
-case for "the current one". `refreshSessionsCache` runs it on a ~3h per-browser
-throttle (lighter than the activity crawl, being a tree read and a few blobs, so
-a shorter interval) and commits only when the folded rows materially changed.
+case for "the current one". `refreshSessionsCache` runs it on a ~15m per-browser
+throttle (lighter than the activity crawl, being a tree read and a few blobs) and
+commits only when the folded rows materially changed. This crawl never needed the
+activity crawl's watermark gate: being incremental by blob sha, a pass over a
+store where nothing moved is one tree read and no blob reads at all.
 
 The fold's scope is the **full** listing, never the batch it read: a record the
 per-crawl cap deferred keeps its row, and only a record genuinely gone from the
@@ -1854,6 +1891,30 @@ everything already.
 keeps derived, each piece with its age, what builds it, what the build costs,
 and a Refresh where one is possible. It is the address the age pills open, and
 the reason the four estate Refresh buttons could go.
+
+**Branches and Sessions share one Refresh.** They are two crawls over two
+sources into two files, and nothing about that changed: the branch scan reads
+every estate repo on github.com (231 calls and about 28 seconds on the run
+logged 2026-08-21) while the sessions fold reads one folder in the registry and
+a blob per record that moved (4 calls, about a second). They are two rows for
+that reason, each with its own store, throttle, history, and probe. What they
+are not is two decisions. A session ending moves both at once, its record
+landing in the registry and its commits landing on a branch, so a press that
+refreshed one and left the other was asking the reader about a boundary that is
+internal to the crawls. The two rows sit in an **Activity** group under one
+button, which runs both, sessions first, and reports once; the throttled
+background passes stay independent on their own intervals, since the cost gap is
+a real reason to fetch one four times as often as the other. `GROUPS` in
+`state-view.js` declares the group and names the shell method that runs it,
+and `tools/test/state-view-groups.test.mjs` holds the fold and checks that the
+method the view names is one the shell actually defines.
+
+The row that reads `Branches` was `Branch activity` until the group arrived.
+That label was the confusion in three words: **Activity** is the nav stop over
+five views with Sessions among them, so a row wearing it read as *the* activity
+cache and made the Sessions row look like a half that had been split off. Under
+the group heading the row is Branches, which is what its own `used by` chip
+always said.
 
 **Each row says who uses it, as view keys.** `feeds` is a list of shell view
 keys (`estate`, `activity`, `sessions`, `guides`, `search`) rendered as chips

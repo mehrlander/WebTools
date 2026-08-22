@@ -70,6 +70,16 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # The suite runs in about 100 seconds, so ten minutes is slack rather than a
+    # budget. It exists because the failure it catches is not a slow test, it is
+    # a test that never ENDS: `node --test` waits on the event loop, so one
+    # jsdom component left un-destroyed (the State view starts a 60s interval to
+    # age its rows) keeps the runner alive after every assertion has passed.
+    # Measured 2026-08-22 on PR #472, where exactly that left the check sitting
+    # in_progress and, with no timeout here, it would have run to GitHub's
+    # six-hour default before reporting. Ten minutes turns six wasted hours into
+    # a fast red, and a red is what a hung suite should be.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
 
