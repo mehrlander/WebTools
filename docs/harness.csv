@@ -134,6 +134,8 @@ tools/render/scenarios/proposals-deliver-demo.mjs,"the two delivery buttons besi
 tools/render/scenarios/proposals-demo.mjs,the Proposals view over a stubbed registry,tools/render/scenarios,54,driver,no,yes,no
 tools/render/scenarios/proposals-phone-demo.mjs,the Proposals list at phone width with the real four records,tools/render/scenarios,55,driver,no,no,no
 tools/render/scenarios/proposals-stale-demo.mjs,the staleness guard and signature line on a moved target,tools/render/scenarios,51,driver,no,no,no
+tools/render/scenarios/record-deck-wide.mjs,,tools/render/scenarios,64,driver,no,no,no
+tools/render/scenarios/record-deck.mjs,,tools/render/scenarios,33,driver,no,no,no
 tools/render/scenarios/ref-switch.mjs,the header ref switch seeded token-free,tools/render/scenarios,57,driver,no,no,no
 tools/render/scenarios/repo-landing-row.mjs,"the per-repo sidebar for a repo declaring a `landing`: the Landing row beside Overview, which no real repo produces",tools/render/scenarios,56,driver,no,no,no
 tools/render/scenarios/repos-abandoned-badge.mjs,"the repo card's abandoned-branch badge, beside stranded and open PRs",tools/render/scenarios,12,driver,no,no,no
