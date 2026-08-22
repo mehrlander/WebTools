@@ -8,7 +8,10 @@
 //
 // `?crawl=1` adds the mid-refresh posture: the busy flags and the shell's
 // progress channel, which no stub of the reads can produce, since the bars draw
-// from a running crawl.
+// from a running crawl. It lights every slot at once so all three bar shapes
+// render in one frame. That is a fixture convenience and not a claim about the
+// crawls: the Activity group's one press runs its two halves in SEQUENCE, so
+// live you see the sessions bar finish before the branches bar starts.
 export default async (page) => {
   await page.evaluate(() => {
     window.TOKEN = 'FAKE';
