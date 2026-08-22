@@ -80,6 +80,39 @@ test('numeric columns are detected, and zero is not empty', async () => {
   await tick();
 });
 
+test('the headline is the column that VARIES, not the leftmost one', async () => {
+  // Measured on budget-drs's master budget lines, whose columns open with three
+  // that are constant across the table: every one of 100 records was headlined
+  // "2015-17" and the deck header said it on every swipe.
+  const rows = [
+    { biennium: '2015-17', stage: 'supp', item_title: "1. Workers' Compensation Changes" },
+    { biennium: '2015-17', stage: 'supp', item_title: '2. Central Services Changes' },
+    { biennium: '2015-17', stage: 'supp', item_title: '3. Lease Rate Adjustments' },
+  ];
+  const handle = drivable(recordDeck.open({ rows, title: 'Master budget lines' }));
+  await tick();
+  assert.equal(headline(handle, 0), "1. Workers' Compensation Changes");
+  handle.close();
+  await tick();
+
+  // …and where the leftmost column IS the varying one, it still wins, so the
+  // obvious answer is not sacrificed to fix the case that broke.
+  const led = [{ vendor: 'ODP', agency: 'Retirement Systems' },
+               { vendor: 'STAPLES', agency: 'Retirement Systems' }];
+  const h2 = drivable(recordDeck.open({ rows: led }));
+  await tick();
+  assert.equal(headline(h2, 0), 'ODP');
+  h2.close();
+  await tick();
+
+  // An explicit titleField outranks the heuristic for a host that knows.
+  const h3 = drivable(recordDeck.open({ rows, titleField: 'stage' }));
+  await tick();
+  assert.equal(headline(h3, 0), 'supp');
+  h3.close();
+  await tick();
+});
+
 test('the header names the record the reader is ON, not the one they opened at', async () => {
   const rows = [{ agency: 'Retirement Systems' }, { agency: 'Health Care Authority' }];
   const handle = drivable(recordDeck.open({ rows, title: 'Agencies' }));
