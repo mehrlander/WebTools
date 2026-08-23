@@ -137,6 +137,17 @@
   // The line/word differ behind the stage's Diff lens, shared with
   // pages/diff-tool.html (window.textDiff).
   await gh.load('kits/text-diff.js');
+  // The drag handle on the docked deck's edge. swipe-deck treats it as an
+  // OPTIONAL dependency and mounts the seam only when `window.dockSplit` is
+  // present, the same bargain session-render makes with session-export: the
+  // host loads it, the kit notices. Nothing here loaded it, so this shell
+  // installed both dock hooks, docked correctly, and never grew a seam, from
+  // the day the splitter shipped until 2026-08-23. What hid it is that the
+  // splitter's own test loads the kit itself before driving the app, which is
+  // exactly the dependency the app was missing, so a passing check and a dead
+  // feature were perfectly consistent. deck-dock-reflow.mjs now asserts the
+  // seam is there on the app's OWN boot, which is the claim that was untested.
+  await gh.load('kits/dock-split.js');
 </script>
 <style>[x-cloak]{display:none!important}
 .no-scrollbar::-webkit-scrollbar{display:none}

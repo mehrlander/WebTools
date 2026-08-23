@@ -40,10 +40,28 @@ root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 
 cd "$root" || exit 0
 
+# `git add`, but LOUD about a path that is not there. Every add below used the
+# form `git add X 2>/dev/null || true`, which cannot tell "nothing to stage" from
+# "that file was renamed two months ago." Both happened: PR #441 turned
+# docs/docs.json into docs/docs.csv and tracker/board.json into board.csv, and
+# from that day the two legs regenerated their registry on every commit and
+# staged it on none. The generators were fine, the adds addressed nothing, and
+# the silence was written into the line. Found 2026-08-23 when CI failed on a
+# words stamp the hook had dutifully computed and dropped.
+stage() {
+  for f in "$@"; do
+    if [ -e "$f" ]; then
+      git add "$f" 2>/dev/null || true
+    else
+      echo "build hook: nothing at $f to stage — renamed, or the generator writes something else now" >&2
+    fi
+  done
+}
+
 # --- leg 1: lib/ -> dist/web-tools.js (the pre-build) -------------------------
 if git status --porcelain -- lib/ | grep -q .; then
   if npm run build:lib --silent >/dev/null 2>&1; then
-    git add dist/web-tools.js 2>/dev/null || true
+    stage dist/web-tools.js
   else
     echo "build hook: 'npm run build:lib' failed — committing without refreshing dist/web-tools.js" >&2
   fi
@@ -52,7 +70,7 @@ fi
 # --- leg 1b: console/ -> console/suite.js (base + mods, one paste) ------------
 if git status --porcelain -- console/base.js console/mods/ | grep -q .; then
   if npm run build:console --silent >/dev/null 2>&1; then
-    git add console/suite.js 2>/dev/null || true
+    stage console/suite.js
   else
     echo "build hook: 'npm run build:console' failed — committing without refreshing console/suite.js" >&2
   fi
@@ -72,7 +90,7 @@ fi
 # not browsed. Fix a link in docs/ or not at all.
 if git status --porcelain -- docs/CONVENTIONS.md docs/SURFACING.md | grep -q .; then
   if cp docs/CONVENTIONS.md docs/SURFACING.md .claude/skills/web-tools/ 2>/dev/null; then
-    git add .claude/skills/web-tools/CONVENTIONS.md .claude/skills/web-tools/SURFACING.md 2>/dev/null || true
+    stage .claude/skills/web-tools/CONVENTIONS.md .claude/skills/web-tools/SURFACING.md
   else
     echo "build hook: could not refresh the plugin's vendored conventions — committing without them" >&2
   fi
@@ -84,7 +102,7 @@ fi
 changed_pages="$(git status --porcelain -- pages/ | grep '\.html' | sed 's/^...//; s/.* -> //' || true)"
 if [ -n "$changed_pages" ]; then
   if npm run pages-index --silent >/dev/null 2>&1; then
-    git add pages/README.md pages/index.html 2>/dev/null || true
+    stage pages/README.md pages/index.html
   else
     echo "build hook: 'npm run pages-index' failed — committing without refreshing the pages catalogs" >&2
   fi
@@ -106,7 +124,7 @@ fi
 # on exactly one row, which is how the ordering was found.
 if git status --porcelain -- tools/test package.json tools/build/tests-index.mjs | grep -q .; then
   if npm run tests-index --silent >/dev/null 2>&1; then
-    git add docs/tests.csv 2>/dev/null || true
+    stage docs/tests.csv
   else
     echo "build hook: 'npm run tests-index' failed — docs/tests.csv may be stale" >&2
   fi
@@ -119,7 +137,7 @@ fi
 # artifacts-lockstep runs the generator's --check as the backstop.
 if git status --porcelain -- tools scripts package.json tools/build/tools-index.mjs docs/harness.csv | grep -q .; then
   if npm run tools-index --silent >/dev/null 2>&1; then
-    git add docs/harness.csv 2>/dev/null || true
+    stage docs/harness.csv
   else
     echo "build hook: 'npm run tools-index' failed — docs/harness.csv may be stale" >&2
   fi
@@ -132,9 +150,34 @@ fi
 # word count 3a measures. properties-registry.test.mjs is the backstop.
 if git status --porcelain -- lib pages docs/registries.csv tools/build/registries-reach.mjs | grep -q .; then
   if npm run registries-reach --silent >/dev/null 2>&1; then
-    git add docs/registries.csv 2>/dev/null || true
+    stage docs/registries.csv
   else
     echo "build hook: 'npm run registries-reach' failed — renders_in may be stale" >&2
+  fi
+fi
+
+# --- leg 2e: docs/SNAGS.md -> its index, plus the repeat warning --------------
+# BEFORE leg 3a, and that ordering is the whole reason this moved. This leg
+# REWRITES a file in docs/, and leg 3a measures every docs/ file's length into
+# the registry's `words`. Running after it meant the stamp was taken against
+# SNAGS.md as authored and the index block was regenerated a moment later, so
+# docs/docs.json was stale by exactly that block's delta on every commit that
+# touched the log. Nothing local said so, because the hook does not verify what
+# it stamps: docs-registry.test.mjs caught it, in CI, after the push, on 2026-08-23
+# (PR #488, declared 9412 against an actual 9430). Same shape as the 3a/3b cycle
+# one leg down, and settled the same way, by making the measurement last.
+#
+# The index is deterministic and rides the same rule as the rest. The repeat
+# warning is the reason this leg exists at all: it fires while the new entry is
+# being committed, which is the last moment folding it into the entry that
+# already owns it is cheap. So the generator's stdout is shown rather than
+# swallowed, unlike the legs above.
+if git status --porcelain -- docs/SNAGS.md | grep -q .; then
+  if out="$(npm run snags-index --silent 2>&1)"; then
+    stage docs/SNAGS.md
+    printf '%s\n' "$out" >&2
+  else
+    echo "build hook: 'npm run snags-index' failed — committing without refreshing the snags index" >&2
   fi
 fi
 
@@ -146,7 +189,7 @@ fi
 # docs-registry.test.mjs is the backstop where the hook does not run.
 if git status --porcelain -- .claude/skills skills lib pages docs tools/build/docs-reach.mjs | grep -q .; then
   if npm run docs-reach --silent >/dev/null 2>&1; then
-    git add docs/docs.json 2>/dev/null || true
+    stage docs/docs.csv
   else
     echo "build hook: 'npm run docs-reach' failed — docs/docs.json reach may be stale" >&2
   fi
@@ -155,9 +198,9 @@ fi
 # --- leg 3b: docs/docs.json -> docs/README.md ---------------------------------
 # The docs index is a projection of the documentation registry; regenerate it
 # whenever the registry (or the generator) has pending changes.
-if git status --porcelain -- docs/docs.json tools/build/docs-readme.mjs | grep -q .; then
+if git status --porcelain -- docs/docs.csv tools/build/docs-readme.mjs | grep -q .; then
   if npm run docs-readme --silent >/dev/null 2>&1; then
-    git add docs/README.md 2>/dev/null || true
+    stage docs/README.md
   else
     echo "build hook: 'npm run docs-readme' failed — committing without refreshing docs/README.md" >&2
   fi
@@ -169,7 +212,7 @@ if git status --porcelain -- docs/docs.json tools/build/docs-readme.mjs | grep -
   # and it terminates: the README renders path, subject, status, and reach, none
   # of which this pass touches, so nothing sends control back to 3b.
   if npm run docs-reach --silent >/dev/null 2>&1; then
-    git add docs/docs.json 2>/dev/null || true
+    stage docs/docs.csv
   else
     echo "build hook: 'npm run docs-reach' re-stamp failed — docs/docs.json words may be stale" >&2
   fi
@@ -178,24 +221,9 @@ fi
 # --- leg 4: tracker/tasks/ -> tracker/board.md + board.json -------------------
 if git status --porcelain -- tracker/tasks/ | grep -q .; then
   if npm run tracker-board --silent >/dev/null 2>&1; then
-    git add tracker/board.md tracker/board.json 2>/dev/null || true
+    stage tracker/board.md tracker/board.csv
   else
     echo "build hook: 'npm run tracker-board' failed — committing without refreshing the tracker rollups" >&2
-  fi
-fi
-
-# --- leg 4b: docs/SNAGS.md -> its index, plus the repeat warning --------------
-# The index is deterministic and rides the same rule as the rest. The repeat
-# warning is the reason this leg exists at all: it fires while the new entry is
-# being committed, which is the last moment folding it into the entry that
-# already owns it is cheap. So the generator's stdout is shown rather than
-# swallowed, unlike the legs above.
-if git status --porcelain -- docs/SNAGS.md | grep -q .; then
-  if out="$(npm run snags-index --silent 2>&1)"; then
-    git add docs/SNAGS.md 2>/dev/null || true
-    printf '%s\n' "$out" >&2
-  else
-    echo "build hook: 'npm run snags-index' failed — committing without refreshing the snags index" >&2
   fi
 fi
 

@@ -156,11 +156,11 @@ page.on('console', m => { if (m.type() === 'warning' && /Alpine Expression Error
 const state = () => page.evaluate(() => {
   const host = document.getElementById('dv-viewer');
   const v = host && Alpine.$data(host);
-  const root = document.getElementById('viewer-pdf');
+  const root = document.querySelector('[data-pdf="root"]');
   const deck = root?.__deck || null;
-  const msg = document.getElementById('viewer-pdf-msg');
-  const bar = document.getElementById('viewer-pdf-bar');
-  const open = document.getElementById('viewer-pdf-open');
+  const msg = document.querySelector('[data-pdf="msg"]');
+  const bar = document.querySelector('[data-pdf="bar"]');
+  const open = document.querySelector('[data-pdf="open"]');
   const at = deck ? deck.active() : -1;
   // The ACTIVE slide's canvas, not "the canvas": there is one per page now,
   // and only the ones near the reader exist at all.
@@ -188,8 +188,8 @@ const state = () => page.evaluate(() => {
     shown: !!canvas,
     msg: msg && !msg.classList.contains('hidden') ? msg.textContent.trim() : '(gone)',
     barShown: bar ? !bar.classList.contains('hidden') : false,
-    label: document.getElementById('viewer-pdf-page')?.textContent || '',
-    size: document.getElementById('viewer-pdf-size')?.textContent || '',
+    label: document.querySelector('[data-pdf="page"]')?.textContent || '',
+    size: document.querySelector('[data-pdf="size"]')?.textContent || '',
     openHref: open && !open.classList.contains('hidden') ? open.getAttribute('href') : '',
     ink,
   };
@@ -228,7 +228,7 @@ try {
   ok('and points at the inspector', s.openHref.includes('/pages/pdf-inspect.html'), s.openHref);
 
   const inkOne = s.ink;
-  await page.click('#viewer-pdf-next');
+  await page.click('[data-pdf="next"]');
   await page.waitForTimeout(1500);
   s = await state();
   ok('next moves the pager', s.label.replace(/\s/g, '') === '2/2', s.label);
@@ -243,7 +243,7 @@ try {
   ok('the track scrolls horizontally', s.scrollable === true, JSON.stringify(s));
   ok('with mandatory snap points', /mandatory/.test(s.snap), s.snap);
   await page.evaluate(() => {
-    const t = document.getElementById('viewer-pdf').__deck.track;
+    const t = document.querySelector('[data-pdf="root"]').__deck.track;
     t.scrollTo({ left: 0, behavior: 'auto' });
     t.dispatchEvent(new Event('scroll'));
   });
@@ -276,7 +276,7 @@ try {
   const layout = await page.evaluate(() => {
     const vw = document.documentElement.clientWidth;
     const boxes = [];
-    document.querySelectorAll('header span, header h1, #viewer-pdf-bar *').forEach(el => {
+    document.querySelectorAll('header span, header h1, [data-pdf="bar"] *').forEach(el => {
       const t = (el.textContent || '').trim();
       if (!t || el.children.length) return;
       // The FAB's drawer is parked OFF-SCREEN to the right while closed, and
@@ -318,11 +318,11 @@ try {
       // Where the document itself starts. The honest measure of "too much
       // going on at the top", and the only one that keeps rising as rows are
       // added one reasonable-looking row at a time.
-      stageTop: Math.round(document.getElementById('viewer-pdf-stage')?.getBoundingClientRect().top ?? 9999),
+      stageTop: Math.round(document.querySelector('[data-pdf="stage"]')?.getBoundingClientRect().top ?? 9999),
       // How much of its pane the page actually covers. Four separate paddings
       // used to stack between the viewport and the canvas (the page shell, two
       // flex gaps, and the slide's own), and each was defensible alone.
-      stageWidth: Math.round(document.getElementById('viewer-pdf-stage')?.clientWidth ?? 0),
+      stageWidth: Math.round(document.querySelector('[data-pdf="stage"]')?.clientWidth ?? 0),
       pageWidth: Math.round(document.querySelector('.viewer-pdf-page')?.getBoundingClientRect().width ?? 0),
       // A heading here would be a third copy of the filename: the address
       // ends with it and the viewer prints it. Only a payload that names
@@ -369,7 +369,7 @@ try {
   await page.goto(`${origin}/pages/data-view.html?src=${encodeURIComponent(`${REPO}@main:${EIGHT}`)}`,
                   { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(5000);
-  for (let i = 0; i < 7; i++) { await page.click('#viewer-pdf-next'); await page.waitForTimeout(450); }
+  for (let i = 0; i < 7; i++) { await page.click('[data-pdf="next"]'); await page.waitForTimeout(450); }
   await page.waitForTimeout(1200);
   const paged = await state();
   ok('it reached the last page', paged.label.replace(/\s/g, '') === '8/8', paged.label);
@@ -384,7 +384,13 @@ try {
   await page.waitForTimeout(3000);
   s = await state();
   ok('no pdf mode is offered', !(s.modes || []).includes('pdf'), JSON.stringify(s.modes));
-  ok('and the default still decides', s.mode === 'tree', JSON.stringify(s));
+  ok('and the default still decides', s.mode === 'table', JSON.stringify(s));
+  // 'table', not 'tree': docs/tools.json became docs/tools.csv in PR #441,
+  // which updated this address and left the expectation behind. A CSV
+  // opening as a table IS the default deciding, so the claim is unchanged
+  // and only the shape of the fixture moved. It went unnoticed for five
+  // days because these three checks need a browser and so are outside
+  // `npm test`, which is the suite CI runs.
 } finally {
   await browser.close();
   server.close();

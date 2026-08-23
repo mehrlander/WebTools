@@ -65,8 +65,8 @@ page.on('pageerror', e => console.log(`  [pageerror] ${e.message}`));
 const state = () => page.evaluate(() => {
   const host = document.getElementById('dv-viewer');
   const v = host && Alpine.$data(host);
-  const img = document.getElementById('viewer-image');
-  const msg = document.getElementById('viewer-image-msg');
+  const img = document.querySelector('[data-img="el"]');
+  const msg = document.querySelector('[data-img="msg"]');
   return {
     mode: v?.mode || null,
     modes: (v?.availableModes || []).map(m => m.id),
@@ -130,7 +130,13 @@ try {
   await page.waitForTimeout(3000);
   s = await state();
   ok('no image mode is offered', !(s.modes || []).includes('image'), JSON.stringify(s.modes));
-  ok('and the default still decides', s.mode === 'tree', JSON.stringify(s));
+  ok('and the default still decides', s.mode === 'table', JSON.stringify(s));
+  // 'table', not 'tree': docs/tools.json became docs/tools.csv in PR #441,
+  // which updated this address and left the expectation behind. A CSV
+  // opening as a table IS the default deciding, so the claim is unchanged
+  // and only the shape of the fixture moved. It went unnoticed for five
+  // days because these three checks need a browser and so are outside
+  // `npm test`, which is the suite CI runs.
 } finally {
   await browser.close();
   server.close();

@@ -79,7 +79,14 @@ try {
     const snap = () => ({ pane: root.dataset.deckPane || '',
                           open: root.hasAttribute('data-deck-open'),
                           pad: parseFloat(getComputedStyle(main).paddingRight) || 0,
-                          decks: window.swipeDeck.stack.length });
+                          decks: window.swipeDeck.stack.length,
+                          // The seam, on the APP'S OWN BOOT. Nothing here loads
+                          // kits/dock-split.js, and that is the entire point of
+                          // measuring it from this file rather than from
+                          // deck-split-drag.mjs, which loads the kit itself
+                          // before it drives anything.
+                          kit: typeof window.dockSplit,
+                          seams: document.querySelectorAll('.dk-split').length });
     const out = {};
     out.before = snap();
     const d = window.swipeDeck.open({ total: 1, render: (i, el) => { el.textContent = 'slide'; }, start: 0 });
@@ -100,6 +107,18 @@ try {
   ok('closing clears the open flag', !steps.closed.open && steps.closed.decks === 0);
   ok('the dock PREFERENCE survives the close', steps.closed.pane === 'dock',
      `pane=${steps.closed.pane} (it is stored on purpose; the next file opens docked)`);
+
+  // The seam is a SEPARATE claim from the reflow, and it failed silently for as
+  // long as it existed. swipe-deck mounts the handle only when window.dockSplit
+  // is present, the shell never loaded kits/dock-split.js, and the splitter's
+  // own test supplies that kit before driving the page. So the drag was covered
+  // by a green check and unreachable in the app at the same time. The assertion
+  // that closes that gap has to be made from a boot nobody helped.
+  ok('the shell boots with the splitter kit', steps.open.kit === 'object',
+     `typeof window.dockSplit = ${steps.open.kit} (the app must gh.load kits/dock-split.js)`);
+  ok('docking grows a draggable seam', steps.docked.seams === 1,
+     `${steps.docked.seams} seam(s) (a dock with no handle is a boundary the reader cannot move)`);
+  ok('and undocked there is none', steps.open.seams === 0, `${steps.open.seams} seam(s) while full-screen`);
 } finally {
   await browser.close();
   server.close();

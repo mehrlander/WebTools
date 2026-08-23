@@ -228,10 +228,10 @@ test('the pdf pane starts as a message and nothing else', () => {
   // a blank page.
   const mod = VR.modules.find(m => m.id === 'pdf');
   const doc = new window.DOMParser().parseFromString(mod.render(), 'text/html');
-  assert.match(doc.getElementById('viewer-pdf-bar').className, /hidden/);
-  assert.match(doc.getElementById('viewer-pdf-open').className, /hidden/,
+  assert.match(doc.querySelector('[data-pdf="bar"]').className, /hidden/);
+  assert.match(doc.querySelector('[data-pdf="open"]').className, /hidden/,
     'the inspect link stays hidden until there is an address behind it');
-  assert.ok(doc.getElementById('viewer-pdf-msg').textContent.trim().length,
+  assert.ok(doc.querySelector('[data-pdf="msg"]').textContent.trim().length,
     'and the pane says what it is doing meanwhile');
   assert.equal(doc.querySelectorAll('canvas').length, 0,
     'no canvas is authored: one per page is built lazily by the deck');
@@ -245,7 +245,7 @@ test('the pdf stage can host a flex track, which needs min-h-0', () => {
   // styling slip rather than a broken pager.
   const mod = VR.modules.find(m => m.id === 'pdf');
   const doc = new window.DOMParser().parseFromString(mod.render(), 'text/html');
-  const stage = doc.getElementById('viewer-pdf-stage');
+  const stage = doc.querySelector('[data-pdf="stage"]');
   assert.match(stage.className, /flex-1/);
   assert.match(stage.className, /min-h-0/);
 });
