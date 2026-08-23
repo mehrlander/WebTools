@@ -41,6 +41,7 @@ tools/concept-lab/exp_gold.py,score a termlab index against the gold polysemy se
 tools/concept-lab/exp_pos.py,experiment: spaCy noun chunks as the term-candidate source,tools/concept-lab,66,argv,no,yes,no
 tools/concept-lab/flag_reply.py,"flag risky vocabulary in a draft reply, using a termlab index",tools/concept-lab,232,argv,no,yes,no
 tools/concept-lab/gazetteer.py,build an entity gazetteer from the tables the estate already curates,tools/concept-lab,179,argv,no,yes,no
+tools/concept-lab/registerlab.py,,tools/concept-lab,598,argv,no,no,no
 tools/concept-lab/termlab.py,term lab: experimental multi-corpus term and ambiguity analysis,tools/concept-lab,875,argv,no,yes,yes
 tools/render/cdn.mjs,the CDN URL to local-file resolver both renderers share,tools/render,369,imported,no,yes,yes
 tools/render/estate-card-demo.mjs,screenshot driver: render the estate's Repos grid with seeded entries,tools/render,72,none found,no,no,no
