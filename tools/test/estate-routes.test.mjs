@@ -22,8 +22,9 @@ const MANIFEST = {
   routes: [
     { key: 'map', address: '?view=map', label: 'Map', group: 'estate', what: 'the coordination layer',
       files: ['lib/alpineComponents/map.js'] },
-    { key: 'guides', address: '?view=guides', label: 'Guides', group: 'estate', what: 'the shelf',
-      files: ['lib/alpineComponents/estate.js', 'lib/kits/guide-index.js'] },
+    { key: 'sessions', address: '?view=sessions', label: 'Sessions', group: 'estate',
+      what: 'the work that made the branches',
+      files: ['lib/alpineComponents/estate.js', 'lib/kits/repo-sessions-cache.js'] },
     { key: 'landing', address: '?repo=owner/name', label: 'Landing', group: 'estate',
       what: 'a repo front door', files: [], note: 'inline in the shell' },
   ],
@@ -50,7 +51,7 @@ const VOCAB_CSV = csv(['registry', 'property', 'value', 'label', 'gloss'],
 // Newest first per path, so the ranking has something to order by.
 const COMMITS = {
   'lib/alpineComponents/map.js': { sha: 'aaaaaaa1', date: '2026-08-14T10:00:00Z', msg: 'map: registries tab' },
-  'lib/kits/guide-index.js':     { sha: 'bbbbbbb2', date: '2026-08-02T10:00:00Z', msg: 'guides: derive the session' },
+  'lib/kits/repo-sessions-cache.js': { sha: 'bbbbbbb2', date: '2026-08-02T10:00:00Z', msg: 'sessions: derive the branch' },
   // estate.js and the shell deliberately have no entry: one exercises the
   // no-commits path, the other must not date anything even when it does.
   'app/index.html': { sha: 'ccccccc3', date: '2026-08-14T23:00:00Z', msg: 'shell: route table' },
@@ -145,15 +146,15 @@ test('the loader asks for exactly the declared carriers plus the shell', async (
     'app/index.html',
     'lib/alpineComponents/estate.js',
     'lib/alpineComponents/map.js',
-    'lib/kits/guide-index.js',
+    'lib/kits/repo-sessions-cache.js',
   ]);
 });
 
 test('a carrier with no commits leaves its route undated rather than throwing', () => {
-  const guides = data.routeRows.find(r => r.key === 'guides');
-  // estate.js answered empty; guide-index.js dated the row.
-  assert.equal(guides.lastTouch.sha, 'bbbbbbb2');
-  assert.equal(guides.files.find(f => f.path === 'lib/alpineComponents/estate.js').touch, null);
+  const sessions = data.routeRows.find(r => r.key === 'sessions');
+  // estate.js answered empty; repo-sessions-cache.js dated the row.
+  assert.equal(sessions.lastTouch.sha, 'bbbbbbb2');
+  assert.equal(sessions.files.find(f => f.path === 'lib/alpineComponents/estate.js').touch, null);
 });
 
 test('the shell dates its own row and no route', () => {
@@ -163,7 +164,7 @@ test('the shell dates its own row and no route', () => {
 });
 
 test('rows rank freshest first, undated last', () => {
-  assert.deepEqual(plain_(data.routeRows.map(r => r.key)), ['map', 'guides', 'landing']);
+  assert.deepEqual(plain_(data.routeRows.map(r => r.key)), ['map', 'sessions', 'landing']);
 });
 
 test('open PRs join on the files they touch, and only those', () => {
