@@ -115,7 +115,11 @@ test('the two sub-tab encodings, counted', () => {
   const stops = navStops(shellSrc);
   const flattened = stops.reduce((n, s) => n + s.keys.length - 1, 0);
   const params = manifest.routes.reduce((n, r) => n + (r.tabs || []).length, 0);
-  assert.equal(flattened, 6, 'sub-tabs addressed as their own ?view= key');
+  // 6 to 7 on 2026-08-23: State stopped being a nav stop of its own and became
+  // Activity's last pill, which is the promotion this figure exists to make
+  // somebody restate. ?view=state is unchanged, so the route is re-encoded
+  // rather than retired.
+  assert.equal(flattened, 7, 'sub-tabs addressed as their own ?view= key');
   assert.equal(params, 13, 'sub-tabs addressed as ?view=<parent>&tab=');
 });
 
