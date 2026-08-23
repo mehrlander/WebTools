@@ -5049,11 +5049,11 @@ function app(){ return {
   // published view reachable only after opening a drawer. Each item maps to the
   // same go* method and `view` string the router already uses.
   //
-  // Activity is one nav stop over the two readings of the estate's own motion:
-  // Open (internal key 'activity', kept so existing ?view=activity links
-  // resolve), the branches in flight, and Sessions, the work that made them.
-  // The estate component's segmented pill switches between them and the URL
-  // stamps the specific key, so each deep-links on its own.
+  // Activity is one nav stop over the estate's own motion, read several ways:
+  // Sessions, the work; Branches (internal key 'activity'), the artifacts it
+  // left; then Guides, State, Chats and Routes. The estate component's
+  // segmented pill switches between them and the URL stamps the specific key,
+  // so each deep-links on its own.
   //
   // To-do and Jot used to be Activity's other two pills and are now their own
   // stop, Lists. They were never activity: a personal checklist and an idea
@@ -5200,7 +5200,8 @@ function app(){ return {
   // about this visit rather than about whenever a pane was last opened.
   // ?view=state still resolves, and lands where State now lives: Activity's
   // last pill. An address a reader has bookmarked is a contract, which is the
-  // same reason ?view=activity survived the Branches pill becoming a lens.
+  // same reason ?view=activity kept resolving through the four days the
+  // Branches pill spent demoted to a lens of Sessions.
   goState(item){
     this.stateItem = item || '';
     this.stateSeen = true; this.estateSeen = true; this.view = 'state';
