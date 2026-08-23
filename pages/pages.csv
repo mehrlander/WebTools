@@ -9,6 +9,7 @@ main,,data-view,Data View,data-view.html,thumbs/data-view.png,https://github.com
 main,,diff-tool,Diff,diff-tool.html,thumbs/diff-tool.png,https://github.com/mehrlander/web-tools/blob/main/pages/diff-tool.html,Side-by-side text diff tool.
 main,,entities,Entities,entities.html,thumbs/entities.png,https://github.com/mehrlander/web-tools/blob/main/pages/entities.html,
 main,,gist-editor,Gist Editor,gist-editor.html,thumbs/gist-editor.png,https://github.com/mehrlander/web-tools/blob/main/pages/gist-editor.html,Browse and edit GitHub gists in the browser.
+main,,inquiry,Inquiry,inquiry.html,thumbs/inquiry.png,https://github.com/mehrlander/web-tools/blob/main/pages/inquiry.html,
 main,,launcher,Popup Launcher · setup,launcher.html,thumbs/launcher.png,https://github.com/mehrlander/web-tools/blob/main/pages/launcher.html,"Popup launcher setup — paste a token, copy out the bookmarklet."
 main,,links,Links,links.html,thumbs/links.png,https://github.com/mehrlander/web-tools/blob/main/pages/links.html,"home's bookmarks board: a pinned rail, areas of links, and an area's markdown dossier, all editable in place."
 main,,pdf-inspect,PDF Inspect,pdf-inspect.html,thumbs/pdf-inspect.png,https://github.com/mehrlander/web-tools/blob/main/pages/pdf-inspect.html,
