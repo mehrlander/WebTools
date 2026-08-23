@@ -3,7 +3,6 @@ id: use-gh-api-chain-blob-import-y2hwqe
 title: Extend fetch + blob-import to the gh-api.js-chain ?use= boot
 status: done
 closed: 2026-08-02
-track: independent
 opened: 2026-07-20
 ---
 # Extend fetch + blob-import to the gh-api.js-chain ?use= boot

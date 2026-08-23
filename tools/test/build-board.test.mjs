@@ -1,7 +1,8 @@
 // .claude/skills/tasks/build-board.py — the canonical board generator, bundled
 // in the portable plugin and run by every tracker in the estate. A regression
 // here is silent and repo-wide, so the behavior worth pinning is the part with
-// branches: how `track: depends-on:<id>` renders.
+// branches: how `depends-on: <id>[, <id>...]` renders, and that a dormant task
+// is rendered on no section at all.
 //
 // The generator is python3/stdlib, so this drives it the way a tracker does,
 // through the file system, and reads the board it writes.
@@ -43,7 +44,7 @@ function visibleText(md) {
 
 test('an unmet dependency names the blocker by title, not by id', () => {
   const md = board({
-    'waiter-000001': { title: 'The waiting task', status: 'backlog', track: 'depends-on:blocker-000002' },
+    'waiter-000001': { title: 'The waiting task', status: 'backlog', 'depends-on': 'blocker-000002' },
     'blocker-000002': { title: 'The blocking task', status: 'backlog' },
   });
   assert.match(md, /\[The waiting task\]\(tasks\/waiter-000001\.md\) \(needs: The blocking task\)/);
@@ -56,7 +57,7 @@ test('an unmet dependency names the blocker by title, not by id', () => {
 
 test('a satisfied dependency renders nothing', () => {
   const md = board({
-    'waiter-000001': { title: 'The waiting task', status: 'backlog', track: 'depends-on:blocker-000002' },
+    'waiter-000001': { title: 'The waiting task', status: 'backlog', 'depends-on': 'blocker-000002' },
     'blocker-000002': { title: 'The blocking task', status: 'done' },
   });
   assert.match(md, /- 🎫 \[The waiting task\]\(tasks\/waiter-000001\.md\)$/m);
@@ -64,7 +65,7 @@ test('a satisfied dependency renders nothing', () => {
 
 test("a done task's dependency renders nothing, even when unmet", () => {
   const md = board({
-    'waiter-000001': { title: 'The waiting task', status: 'done', track: 'depends-on:blocker-000002' },
+    'waiter-000001': { title: 'The waiting task', status: 'done', 'depends-on': 'blocker-000002' },
     'blocker-000002': { title: 'The blocking task', status: 'backlog' },
   });
   assert.match(md, /- 🎫 \[The waiting task\]\(tasks\/waiter-000001\.md\)$/m);
@@ -72,25 +73,74 @@ test("a done task's dependency renders nothing, even when unmet", () => {
 
 test('a dependency on an id no task defines is surfaced, not swallowed', () => {
   const md = board({
-    'waiter-000001': { title: 'The waiting task', status: 'backlog', track: 'depends-on:ghost-000009' },
+    'waiter-000001': { title: 'The waiting task', status: 'backlog', 'depends-on': 'ghost-000009' },
   });
-  assert.match(md, /\[The waiting task\]\(tasks\/waiter-000001\.md\) \(needs `ghost-000009`, which no task file defines\)/);
+  // One phrasing for every unmet dependency, resolved or not, since a list can
+  // mix them: `(needs: A; ` + '`ghost`' + `, which no task file defines)`.
+  assert.match(md, /\[The waiting task\]\(tasks\/waiter-000001\.md\) \(needs: `ghost-000009`, which no task file defines\)/);
 });
 
-test('track: independent and other track values render nothing', () => {
+test('an absent depends-on renders nothing, which is how a task says it is independent', () => {
+  // The retired `track` field carried `independent` and `anchor` as values the
+  // generator never read. Absence replaces both: there is no value meaning "no
+  // dependency", because not having the key already says it.
   const md = board({
-    'a-000001': { title: 'Independent task', status: 'backlog', track: 'independent' },
-    'b-000002': { title: 'Anchor task', status: 'backlog', track: 'anchor' },
+    'a-000001': { title: 'Independent task', status: 'backlog' },
+    'b-000002': { title: 'Another task', status: 'backlog' },
   });
   assert.match(md, /- 🎫 \[Independent task\]\(tasks\/a-000001\.md\)$/m);
-  assert.match(md, /- 🎫 \[Anchor task\]\(tasks\/b-000002\.md\)$/m);
+  assert.match(md, /- 🎫 \[Another task\]\(tasks\/b-000002\.md\)$/m);
+});
+
+test('depends-on takes several ids, and only the unmet ones render', () => {
+  const md = board({
+    'waiter-000001': { title: 'The waiting task', status: 'backlog',
+                       'depends-on': 'met-000002, unmet-000003, alsounmet-000004' },
+    'met-000002': { title: 'Already finished', status: 'done' },
+    'unmet-000003': { title: 'First blocker', status: 'backlog' },
+    'alsounmet-000004': { title: 'Second blocker', status: 'blocked' },
+  });
+  assert.match(md, /\[The waiting task\]\(tasks\/waiter-000001\.md\) \(needs: First blocker; Second blocker\)/);
+});
+
+test('a dormant task is rendered on no section at all, and still reaches board.csv', () => {
+  // The point of the status: preserved, not surfaced. A reader of the board
+  // must not meet it; a consumer of the typed projection must still find it.
+  const { md, csv } = both({
+    'live-000001': { title: 'A live task', status: 'backlog' },
+    'parked-000002': { title: 'A parked idea', status: 'dormant' },
+  });
+  assert.doesNotMatch(md, /A parked idea/);
+  assert.doesNotMatch(md, /parked-000002/);
+  assert.match(md, /- 🎫 \[A live task\]\(tasks\/live-000001\.md\)$/m);
+  assert.match(csv, /^parked-000002,A parked idea,dormant,/m);
+});
+
+test("a dormant task's dependency is history, like a done task's", () => {
+  const md = board({
+    'parked-000001': { title: 'A parked idea', status: 'dormant',
+                       'depends-on': 'blocker-000002' },
+    'blocker-000002': { title: 'The blocking task', status: 'backlog' },
+  });
+  assert.doesNotMatch(md, /A parked idea/);
+});
+
+test('a dependency satisfied by a dormant task renders nothing', () => {
+  // Dormant means nobody is going to do it, so waiting on it is not a live
+  // blocker to report; it is a fact about the waiting task's own future.
+  const md = board({
+    'waiter-000001': { title: 'The waiting task', status: 'backlog',
+                       'depends-on': 'parked-000002' },
+    'parked-000002': { title: 'A parked idea', status: 'dormant' },
+  });
+  assert.match(md, /- 🎫 \[The waiting task\]\(tasks\/waiter-000001\.md\)$/m);
 });
 
 test('the owning branch and the dependency render in a stable order, and nothing else does', () => {
   const md = board({
     'waiter-000001': {
       title: 'The waiting task', status: 'in-progress', session: 'claude/some-branch',
-      track: 'depends-on:blocker-000002', next: 'the next step',
+      'depends-on': 'blocker-000002', next: 'the next step',
     },
     'blocker-000002': { title: 'The blocking task', status: 'backlog' },
   });
@@ -210,7 +260,7 @@ test('the owning branch, dependency, size and awaiting hold a stable order', () 
   const md = board({
     'waiter-000001': {
       title: 'Everything at once', status: 'in-progress', size: 'M',
-      session: 'claude/some-branch', track: 'depends-on:blocker-000002',
+      session: 'claude/some-branch', 'depends-on': 'blocker-000002',
       awaiting: 'the blocker to land',
     },
     'blocker-000002': { title: 'The blocking task', status: 'backlog' },
@@ -277,7 +327,7 @@ test('board.csv lands beside board.md with one row per task', () => {
 test('the columns are fixed and complete, whatever the tasks carry', () => {
   const { csv } = both({ 'a-000001': { title: 'T', status: 'backlog' } });
   const [head, first] = csv.trim().split('\n');
-  assert.equal(head, 'id,title,status,project,track,opened,closed,session,size,' +
+  assert.equal(head, 'id,title,status,project,depends-on,opened,closed,session,size,' +
                      'awaiting,blockedBy,file,href,lastActivity,logEntries');
   assert.equal(first.split(',').length, head.split(',').length);
 });
@@ -330,7 +380,7 @@ test('a task with no progress log reports empty rather than guessing', () => {
 
 test('an unmet dependency reaches the projection as a resolved phrase', () => {
   const { rows } = both({
-    'waiter-000001': { title: 'Waiter', status: 'backlog', track: 'depends-on:blocker-000002' },
+    'waiter-000001': { title: 'Waiter', status: 'backlog', 'depends-on': 'blocker-000002' },
     'blocker-000002': { title: 'Blocker', status: 'backlog' },
   });
   const w = rows.find((t) => t.title === 'Waiter');

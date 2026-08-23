@@ -4,7 +4,6 @@ title: Fold chat-results into the surface schema, or keep it a sibling
 status: done
 closed: 2026-08-02
 session: claude/web-tools-project-tracker-reo5qo
-track: independent
 opened: 2026-07-22
 ---
 # Fold chat-results into the surface schema, or keep it a sibling

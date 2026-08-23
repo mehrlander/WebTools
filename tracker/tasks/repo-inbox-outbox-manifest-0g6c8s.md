@@ -3,7 +3,6 @@ id: repo-inbox-outbox-manifest-0g6c8s
 title: Repo-designated inbox and outbox in .web-tools.json
 status: done
 project: repo
-track: independent
 opened: 2026-07-15
 closed: 2026-07-28
 session: claude/tracker-status-cjogjn

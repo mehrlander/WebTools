@@ -2,7 +2,6 @@
 id: own-json-tree-retire-vje-i0lcj2
 title: Build our own JSON tree for display, keep vanilla-jsoneditor for editing
 status: backlog
-track: independent
 opened: 2026-07-25
 next: user was leaning toward replacing it outright; the recommendation is the split below, so confirm the split before building
 ---

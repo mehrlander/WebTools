@@ -3,7 +3,6 @@ id: speed-up-show-repo-cold-load-u3846j
 title: Speed up show-repo's cold load
 status: done
 project: repo
-track: independent
 opened: 2026-07-13
 closed: 2026-07-13
 session: claude/speed-up-show-repo-load-3cdvl0

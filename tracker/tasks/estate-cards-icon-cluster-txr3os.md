@@ -4,7 +4,6 @@ title: Estate cards still carry the retired three-icon cluster
 status: done
 closed: 2026-08-02
 session: claude/web-tools-project-tracker-reo5qo
-track: show-repo
 opened: 2026-07-26
 ---
 # Estate cards still carry the retired three-icon cluster

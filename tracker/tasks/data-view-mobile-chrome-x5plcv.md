@@ -4,7 +4,6 @@ title: Reclaim the phone viewport in data-view
 status: done
 closed: 2026-08-02
 session: claude/web-tools-project-tracker-reo5qo
-track: independent
 opened: 2026-07-25
 ---
 # Reclaim the phone viewport in data-view

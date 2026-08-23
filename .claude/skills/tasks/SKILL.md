@@ -74,6 +74,31 @@ several tasks, and a task may span several PRs. When adjacent small items can be
 cleared in one pass, bundle them into the open branch rather than minting a
 branch per item. The task files, not the branch topology, carry the accounting.
 
+## Dormant tasks: preserved, and not to be raised
+
+`status: dormant` means the owner has decided this is kept but off the table.
+The board renders it on no section, and **you do not raise it either**: do not
+surface, assess, summarize, recommend, count, or otherwise discuss a dormant
+task unless the user explicitly asks about it or names it.
+
+The temptations to break this all look like diligence, and each is the failure:
+
+- listing it in an assessment "for completeness"
+- counting it in an open-task total, or in a "15 open, one of them dormant"
+- proposing that it be revived, closed, or reconsidered
+- explaining, when a related subject comes up, that there is a dormant task about it
+- mentioning that you are deliberately not mentioning it
+
+A dormant task is not a weaker `blocked` and not a tidier `backlog`. Those two
+say "not now" while still asking to be read on every pass, which is exactly the
+cost the owner is declining to keep paying. If a dormant task genuinely needs to
+come back, the user brings it back.
+
+**Setting one is the user's call, never yours.** Propose it the way you propose
+a close: name the task, say why it looks dormant rather than blocked, and let
+them decide. Once set, the file stays where it is with its history intact, and
+the only thing that changes is that reviews stop discussing it.
+
 ## Bare invocation: caption the board
 
 Called with no further ask (e.g. `/tasks` on its own), caption the current board
@@ -83,7 +108,8 @@ the next action. When the ask names an action instead, skip the caption and go
 straight to it.
 
 One single-column table per status section, no header row, the column header
-being the section name in caps. In-progress groups by owning branch: the branch
+being the section name in caps. Dormant tasks appear in no section and are not
+counted; see the rule above. In-progress groups by owning branch: the branch
 name bold on its own row, then each task under it prefixed `↳` (always, even for
 a single task). Backlog and blocked are flat. Omit an empty section. This is the
 `caption` skill's grouped-table grammar applied to tasks; that skill owns the
@@ -136,9 +162,9 @@ project: <optional workspace>
 - <YYYY-MM-DD>: <what happened, and the intended next step>
 ```
 
-Status is one of `backlog | in-progress | blocked | done`. Two optional keys
-answer what `status` cannot, and both are recognized: the board renders them on
-open rows.
+Status is one of `backlog | in-progress | blocked | done | dormant`. Three
+optional keys answer what `status` cannot, and all are recognized: the board
+renders them on open rows.
 
 - `size: XS | S | M | L | XL | ?` calibrated to the session, the real unit of
   execution. **XS** folds into another task's pass, **S** is one session with
@@ -148,8 +174,13 @@ open rows.
 - `awaiting: <free text>` names what is holding a task. It is free text and
   cleared by hand, and it renders on a `backlog` row as readily as a `blocked`
   one, because a task can be startable in part and still be waiting on someone
-  for the rest. It is not `depends-on:`: nothing mechanically knows when a
+  for the rest. It is not `depends-on`: nothing mechanically knows when a
   person has decided.
+- `depends-on: <id>[, <id>...]` names the tasks this one waits on, comma
+  separated. **Absence means no dependency**, so never write a value meaning
+  "none". It replaced the `track` field on 2026-08-23; if you meet `track:` in
+  an old file, migrate it (a `depends-on:<id>` value becomes this key, and every
+  other value is dropped).
 
 Any scalar beyond the recognized set (`priority: high`, `owner: marcus`) is an
 open tag: preserved, shown, not acted on. Full schema in `TRACKER.md`.
@@ -218,7 +249,9 @@ Read every task file's body and progress log plus the repo's recent motion
 (the newest commits, merged PRs), then report in chat: the workstreams the
 open tasks form, framing that lags the implementation, decisions hiding inside
 tasks, differences in scale and readiness, bundles that would travel together,
-and good next-session candidates. Dispatch briefs, a ready-to-launch prompt
+and good next-session candidates. **Skip dormant tasks entirely**, including in
+the counts and in `basis`: an assessment that mentions one has failed at its
+one instruction. Dispatch briefs, a ready-to-launch prompt
 per bundle, are among the most useful outputs: converting backlog into
 launchable work is much of an assessment's point.
 
@@ -256,6 +289,10 @@ particular machine wants `runner:` and the same, since both are startable and
 `blocked` reads as "do not try." Leave `blocked` to what genuinely depends on
 other work. A `done` task missing `closed:`, or a `backlog` task carrying a
 `session:`, is the same class of finding.
+
+Dormant tasks are out of scope for refinement too: do not reframe, split, close
+or re-status one, and do not report on it. The exception is a dormant task the
+user has just asked about.
 
 There is no status for a refinement close, since a real `done` means the work
 was completed. Set `status: done` and `closed: <date>` as usual, add the open

@@ -3,7 +3,6 @@ id: automate-merge-guide-from-pr-bodies-uaect4
 title: Automate the merge guide from PR bodies
 status: done
 project: repo
-track: independent
 opened: 2026-07-10
 closed: 2026-07-14
 session: claude/task-tracker-discussion-wg27xv

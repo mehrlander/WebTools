@@ -26,15 +26,15 @@ Scope a tracker to a workspace, a bounded area you keep coherent across sessions
 
 Two layers. A small closed set of recognized keys drives the tooling; an open set of arbitrary scalar tags rides along, preserved and human-readable, ignored by the generator until promoted.
 
-**Recognized keys.** `id`, `title`, and `status` are required. `project`, `track`, `opened`, `closed`, and `session` are optional and recognized: the generator acts on them when present. The body is the task.
+**Recognized keys.** `id`, `title`, and `status` are required. `project`, `depends-on`, `opened`, `closed`, and `session` are optional and recognized: the generator acts on them when present. The body is the task.
 
 ```markdown
 ---
 id: <slug>-<rrrrrr>    # interpretable slug + 6 random base36 chars; see Task id
 title: <short imperative>
-status: backlog | in-progress | blocked | done
+status: backlog | in-progress | blocked | done | dormant
 project: <workspace or partition>   # optional, recognized
-track: anchor | independent | depends-on:<id>   # optional, recognized
+depends-on: <id>[, <id>...]         # optional, recognized; absent means none
 opened: YYYY-MM-DD
 closed: YYYY-MM-DD    # set when done
 session: <branch>     # set while in-progress
@@ -58,9 +58,9 @@ Calibrate `size` to the session, the real unit of execution: **XS** folds into a
 
 `awaiting` is free text and cleared by hand. It is not typed and not auto-satisfied, because nothing mechanically knows when a person has decided, which is exactly what distinguishes it from `depends-on:`. Its natural values carry colons ("awaiting: OFM ruling: candidate 1"); the parser splits on the first colon, so they survive.
 
-**Task id.** The `id` is a filing handle: it names the task file (`<id>.md`). Mint it as a short interpretable slug plus a random suffix, `<slug>-<rrrrrr>`, mirroring how a working branch is named (`fn-data-tracker-assessment-npjxbj`). The slug is a few lowercase hyphen-separated words drawn from the title, kept under about 40 characters, so a directory listing reads as a table of contents and a `depends-on:<id>` reference reads as a phrase. The six-character random suffix, from base36, is what keeps two sessions from colliding when they file at the same time. Do not use a sequential integer: two sessions each reading `main` and picking "the next free number" pick the same one, and the merge that lands second silently drops one task (see Conflicts). The slug is frozen at filing: it is a handle, not a live summary, so if the title later changes, leave the filename and `id` as they are.
+**Task id.** The `id` is a filing handle: it names the task file (`<id>.md`). Mint it as a short interpretable slug plus a random suffix, `<slug>-<rrrrrr>`, mirroring how a working branch is named (`fn-data-tracker-assessment-npjxbj`). The slug is a few lowercase hyphen-separated words drawn from the title, kept under about 40 characters, so a directory listing reads as a table of contents and a `depends-on` reference reads as a phrase. The six-character random suffix, from base36, is what keeps two sessions from colliding when they file at the same time. Do not use a sequential integer: two sessions each reading `main` and picking "the next free number" pick the same one, and the merge that lands second silently drops one task (see Conflicts). The slug is frozen at filing: it is a handle, not a live summary, so if the title later changes, leave the filename and `id` as they are.
 
-Bring existing tasks aboard the new form at first opportunity. The generator keys on the filename, so a mixed directory works and nothing forces a flag-day, but the target is one scheme everywhere, not a standing exception for old files. The next time a session touches a tracker that still carries legacy ids (integers like `0001`, or the earlier dated form `20260716-8p0`), migrate them: rename each `tasks/<old-id>.md` to a slug, set the file's `id` to match, update any `depends-on:<old-id>` references that point at it, regenerate the rollups, and commit the renames to `main` like any other tracker change. The board is keyed by title, so the rename does not change it; the diff is the filenames and the one `id` line each.
+Bring existing tasks aboard the new form at first opportunity. The generator keys on the filename, so a mixed directory works and nothing forces a flag-day, but the target is one scheme everywhere, not a standing exception for old files. The next time a session touches a tracker that still carries legacy ids (integers like `0001`, or the earlier dated form `20260716-8p0`), migrate them: rename each `tasks/<old-id>.md` to a slug, set the file's `id` to match, update any `depends-on` references that point at it, regenerate the rollups, and commit the renames to `main` like any other tracker change. The board is keyed by title, so the rename does not change it; the diff is the filenames and the one `id` line each.
 
 **Parser contract.** Frontmatter is flat `key: value` pairs, split on the first colon, scalars only. No YAML library, no lists, no nesting, no multi-line values. Unknown keys are preserved and ignored, never errors. This is deliberate: a file arriving from any channel (a web edit, a paste) needs no valid YAML to parse, so imperfect input degrades to an ignored tag rather than a failure. It is a feature, not a limitation to fix.
 
@@ -111,11 +111,17 @@ Run `<action>` for <the subject, in one line>.
 - **Blocked** (`status: blocked`)
 - **Done** (`status: done`)
 
+`status: dormant` renders on **no section at all**. It is preserved-but-not-surfaced: the task file and its history stay in `tasks/`, and the row still reaches `board.csv` so a consumer asked for it can find it, but a reader of the board never meets it. Added 2026-08-23 for the case a board had no way to express: an idea kept on purpose whose owner does not want routine reviews raising it. `blocked` and a parked `awaiting:` both say "not now" to a session while still asking to be read every pass; `dormant` says "do not bring this up". The operating rule that follows from it belongs to the skill, not here.
+
 One line per task, each prefixed with the 🎫 task marker ([SURFACING.md](SURFACING.md) owns the marker), keyed by title (not id); in-progress lines also show the owning branch. Nothing else: an open tag is never rendered, per the two-layer rule above.
 
 **The title is a link to the task file**, `🎫 [title](tasks/<file>.md)`, which is the marker's form everywhere else and makes the board a table of contents rather than a list of strings: the row says what the work is, and one tap reaches the file holding the why, the definition of done, and the progress log. The href is relative to the **board's** folder, since that is the one base both consumers resolve against: GitHub renders `board.md` in place, and show-repo's board pane resolves a row's relative href against the board file's folder and opens the task in its viewer. It targets the file on disk rather than the `id` field, so a task whose id drifted from its filename still links to something that exists. The id appearing in an href is not a breach of "keyed by title": that rule governs visible text, and a reader sees only the title. The generator used to make one exception, a `next` tag it rendered while the schema did not define it, retired 2026-08-01 because a half-recognized key is the one thing the two-layer split exists to prevent. Where a task's next step belongs is the Progress log, which the file format already carries for it. The board is a faithful projection of the task files. Regenerate and commit both rollups with any commit that changes what the board shows: status, owning branch, or an unmet dependency.
 
-**Dependencies render only while they bite.** A task carrying `track: depends-on:<id>` shows ` (needs: <blocker title>)`, resolved to the blocker's title because the id means nothing to a reader who did not write the task. The line is suppressed once the dependency is satisfied (the blocker is `done`) and on a `done` task, whose dependency is history either way. So a board stays quiet about the dependencies it has already cleared and speaks up about the ones a session would trip over. A `depends-on:` pointing at an id no task file defines renders as such rather than silently vanishing, since a dangling reference is the one case worth interrupting for.
+**Dependencies render only while they bite.** A task carrying `depends-on: <id>[, <id>...]` shows ` (needs: <blocker title>)`, resolved to each blocker's title because the id means nothing to a reader who did not write the task. Several unmet blockers join with `; `. The line is suppressed once a dependency is settled (`done` or `dormant`) and on a settled task, whose dependency is history either way. So a board stays quiet about the dependencies it has already cleared and speaks up about the ones a session would trip over. A `depends-on` pointing at an id no task file defines renders as such rather than silently vanishing, since a dangling reference is the one case worth interrupting for.
+
+The value is a **comma-separated scalar, not a YAML list**: the parser contract below is flat `key: value` pairs, and a real list is the one thing that would force a YAML dependency. **Absence means no dependency**, so there is no value meaning "independent".
+
+`depends-on` replaced a `track` field on 2026-08-23, which had accumulated four unrelated meanings across the estate (`independent` on 130 tasks, `depends-on:<id>` on 23, `anchor` on 1, and a workstream label on 2) while the generator read exactly one of them. Only the dependency half was load-bearing, so it became a field of its own and the rest went. `anchor` in particular marked the task others pointed at, which is the reciprocal of a dependency and therefore derivable from the other side: a hand-kept second copy that could only ever go wrong.
 
 ### The typed projection
 
@@ -187,7 +193,7 @@ Trackers are scoped to a workspace and sessions are scoped to a repository, so t
 
 **References carry their repo.** A task naming material in another repository writes the `owner/repo` prefix, always, even where the reader could infer it: `budget-wa's tools/split-bill.py`, not `tools/split-bill.py`. A bare path reads as in-repo, so a task that is really a cross-repo dependency looks like a local refactor, and it keeps looking like one until someone tries it. This is the whole prevention half, and it costs one prefix.
 
-`track: depends-on:<id>` does not cross a tracker. It resolves against task files in one `tasks/` directory, so a dependency on another repo's task is named in prose, by repo and title, not by id.
+`depends-on` does not cross a tracker. It resolves against task files in one `tasks/` directory, so a dependency on another repo's task is named in prose, by repo and title, not by id.
 
 **Correcting is maintenance; filing is filing.** Fixing a statement another repo's tracker makes that is now false (a moved corpus, a path that changed repos, a dependency that closed elsewhere) is the same class of act as updating your own task, and carries the same standing permission: do it, and say so in the reply. Creating a *new* task in another repo's tracker is filing, and takes the gate every filing takes, because the cost being managed is that repo's backlog, not the write.
 

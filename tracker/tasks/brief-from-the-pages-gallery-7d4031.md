@@ -3,7 +3,7 @@ id: brief-from-the-pages-gallery-7d4031
 title: Reach the take-away menu from show-repo's Pages gallery
 status: backlog
 opened: 2026-07-26
-track: depends-on:focus-a-ui-component-f0awt7
+depends-on: focus-a-ui-component-f0awt7
 ---
 # Reach the take-away menu from show-repo's Pages gallery
 
