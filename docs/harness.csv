@@ -29,7 +29,7 @@ tools/build/pages-shots.mjs,"regenerate pages/thumbs/*.png, one screenshot per p
 tools/build/registries-load.mjs,"read and write the registry pair (docs/registries.csv, docs/properties.csv): the CSV parse, the path/fragment split, and the column order a restamp must preserve",tools/build,103,imported,no,no,yes
 tools/build/registries-reach.mjs,"stamp renders_in into docs/registries.csv: the app files that name each registry's path, empty being the Registries tab's warning state",tools/build,91,npm:registries-reach,yes,yes,yes
 tools/build/repo-pages-shots.mjs,regenerate pages-gallery thumbnails for another repo's pages catalog,tools/build,167,argv,no,yes,no
-tools/build/snags-index.mjs,generates the index at the top of docs/SNAGS.md and warns about likely repeats,tools/build,169,npm:snags-index,no,no,yes
+tools/build/snags-index.mjs,generates the index at the top of docs/SNAGS.md and warns about likely repeats,tools/build,169,npm:snags-index,no,yes,yes
 tools/build/tests-index.mjs,"restamp the derived half of docs/tests.csv, the test registry",tools/build,235,npm:tests-index,yes,no,yes
 tools/build/tools-index.mjs,restamp the derived half of this registry,tools/build,175,npm:tools-index,yes,yes,yes
 tools/build/verify-build.mjs,prove a page's dist build renders byte-identical to its live gh.load chain,tools/build,86,npm:verify-build,no,yes,no
@@ -135,6 +135,8 @@ tools/render/scenarios/proposals-deliver-demo.mjs,"the two delivery buttons besi
 tools/render/scenarios/proposals-demo.mjs,the Proposals view over a stubbed registry,tools/render/scenarios,54,driver,no,yes,no
 tools/render/scenarios/proposals-phone-demo.mjs,the Proposals list at phone width with the real four records,tools/render/scenarios,55,driver,no,no,no
 tools/render/scenarios/proposals-stale-demo.mjs,the staleness guard and signature line on a moved target,tools/render/scenarios,51,driver,no,no,no
+tools/render/scenarios/record-deck-wide.mjs,,tools/render/scenarios,68,driver,no,no,no
+tools/render/scenarios/record-deck.mjs,,tools/render/scenarios,37,driver,no,no,no
 tools/render/scenarios/ref-switch.mjs,the header ref switch seeded token-free,tools/render/scenarios,57,driver,no,no,no
 tools/render/scenarios/repo-landing-row.mjs,"the per-repo sidebar for a repo declaring a `landing`: the Landing row beside Overview, which no real repo produces",tools/render/scenarios,56,driver,no,no,no
 tools/render/scenarios/repos-abandoned-badge.mjs,"the repo card's abandoned-branch badge, beside stranded and open PRs",tools/render/scenarios,12,driver,no,no,no
