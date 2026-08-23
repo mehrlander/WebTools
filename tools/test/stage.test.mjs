@@ -257,6 +257,28 @@ test('the reader walks the staged set, and every position opens', async () => {
   assert.equal(data.reader.i, 0, 'before the first is a no-op');
 });
 
+test('the reader lists the staged set, each item named and placed', async () => {
+  reset();
+  store.stage = [
+    { repo: 'me/a', ref: 'main', path: 'one.js' },
+    { local: true, id: 92, name: 'note.md', path: 'note.md', size: 2, isText: true, text: 'hi' },
+  ];
+  await data.view({ repo: 'me/a', ref: 'main', path: 'one.js' });
+  await shown();
+  const mark = data._rDeck.el.querySelector('.sd-header').children[1];
+  assert.equal(mark.tagName, 'BUTTON', 'a list behind the mark makes it a button');
+  mark.click();
+  await shown();
+  const listed = [...data._rDeck.el.querySelector('.sd-index').children];
+  assert.equal(listed.length, 2, 'one row per staged item');
+  assert.match(listed[0].textContent, /one\.js/);
+  assert.match(listed[0].textContent, /me\/a@main/,
+    'placed as well as named, since two staged items can share a path');
+  assert.match(listed[1].textContent, /local/);
+  mark.click();
+  await shown();
+});
+
 test('a fetch that fails still opens, as a note rather than a closed modal', async () => {
   reset();
   store.stage = [{ repo: 'me/missing', ref: '', path: 'gone.js' }];
