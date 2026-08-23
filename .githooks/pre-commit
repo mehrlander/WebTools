@@ -138,6 +138,31 @@ if git status --porcelain -- lib pages docs/registries.csv tools/build/registrie
   fi
 fi
 
+# --- leg 2e: docs/SNAGS.md -> its index, plus the repeat warning --------------
+# BEFORE leg 3a, and that ordering is the whole reason this moved. This leg
+# REWRITES a file in docs/, and leg 3a measures every docs/ file's length into
+# the registry's `words`. Running after it meant the stamp was taken against
+# SNAGS.md as authored and the index block was regenerated a moment later, so
+# docs/docs.json was stale by exactly that block's delta on every commit that
+# touched the log. Nothing local said so, because the hook does not verify what
+# it stamps: docs-registry.test.mjs caught it, in CI, after the push, on 2026-08-23
+# (PR #488, declared 9412 against an actual 9430). Same shape as the 3a/3b cycle
+# one leg down, and settled the same way, by making the measurement last.
+#
+# The index is deterministic and rides the same rule as the rest. The repeat
+# warning is the reason this leg exists at all: it fires while the new entry is
+# being committed, which is the last moment folding it into the entry that
+# already owns it is cheap. So the generator's stdout is shown rather than
+# swallowed, unlike the legs above.
+if git status --porcelain -- docs/SNAGS.md | grep -q .; then
+  if out="$(npm run snags-index --silent 2>&1)"; then
+    git add docs/SNAGS.md 2>/dev/null || true
+    printf '%s\n' "$out" >&2
+  else
+    echo "build hook: 'npm run snags-index' failed — committing without refreshing the snags index" >&2
+  fi
+fi
+
 # --- leg 3a: skills/pages/lib -> the registry's derived fields ----------------
 # `reach` and `words` are the derived fields inside an otherwise authored file:
 # pointing a skill or a page at a doc changes the first, and editing any doc's
@@ -181,21 +206,6 @@ if git status --porcelain -- tracker/tasks/ | grep -q .; then
     git add tracker/board.md tracker/board.json 2>/dev/null || true
   else
     echo "build hook: 'npm run tracker-board' failed — committing without refreshing the tracker rollups" >&2
-  fi
-fi
-
-# --- leg 4b: docs/SNAGS.md -> its index, plus the repeat warning --------------
-# The index is deterministic and rides the same rule as the rest. The repeat
-# warning is the reason this leg exists at all: it fires while the new entry is
-# being committed, which is the last moment folding it into the entry that
-# already owns it is cheap. So the generator's stdout is shown rather than
-# swallowed, unlike the legs above.
-if git status --porcelain -- docs/SNAGS.md | grep -q .; then
-  if out="$(npm run snags-index --silent 2>&1)"; then
-    git add docs/SNAGS.md 2>/dev/null || true
-    printf '%s\n' "$out" >&2
-  else
-    echo "build hook: 'npm run snags-index' failed — committing without refreshing the snags index" >&2
   fi
 fi
 
