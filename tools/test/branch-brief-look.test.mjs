@@ -51,7 +51,15 @@ for (const f of ['lib/kits/csv.js', 'lib/kits/branch-status.js', 'lib/kits/branc
 
 class FakeGH {
   constructor(conf = {}) { this.repo = conf.repo || ''; this.ref = conf.ref || ''; }
-  async compare() { return compare; }
+  async compare(base, head) {
+    // One branch in this harness rebuilt the pre-build, which is what lets the
+    // stale-bundle warning be tested in both directions off one fixture.
+    return /rebuilt/.test(String(head) + String(base) + String(this.ref))
+      ? { ...compare, files: [...compare.files,
+          { filename: 'dist/web-tools.js', status: 'modified',
+            additions: 200, deletions: 180, patch: '@@ -1 +1 @@' }] }
+      : compare;
+  }
   // Only the deferred branch has a PR, and that is what stages the deferral:
   // a branch with no pull request lands on Files, which asks for the compare on
   // arrival, so the wait this row has to survive only exists behind a guide.
@@ -142,6 +150,22 @@ test('a changed page gets its own render link, and a deleted one gets none', () 
 // that shows the branch and one that resolves, renders, and shows main.
 test('a lib change with no rebuilt bundle is called out on the row', () => {
   assert.equal(data.bundleStale, true);
+});
+
+// The other half of that, and the half worth pinning: the warning has to GO
+// when the branch did rebuild, or it is noise on every honest branch and a
+// reader learns to look past it on the one branch where it is true.
+test('a branch that rebuilt the pre-build carries no warning', async () => {
+  const el = window.document.createElement('div');
+  el.setAttribute('x-data', `branchBrief({ repo: '${HUB}', branch: 'claude/rebuilt', base: 'main' })`);
+  window.document.body.append(el);
+  Alpine.initTree(el);
+  await tick(8);
+  const d = Alpine.$data(el);
+  assert.ok(d.brief.files.some(f => f.path === 'dist/web-tools.js'), 'the fixture rebuilt');
+  assert.ok(d.brief.files.some(f => f.path.startsWith('lib/')), 'and it changed lib');
+  assert.equal(d.bundleStale, false);
+  assert.deepEqual(j(d.routeChips).on.map(c => c.key), ['stage'], 'the chips are unaffected');
 });
 
 test('the row has something to occupy its line with', () => {
