@@ -98,6 +98,32 @@ def changed(base, ref):
     return [p for p in out.splitlines() if p]
 
 
+def uncommitted():
+    """Files changed but not committed, staged or not.
+
+    Only ever read when the committed diff is EMPTY, and that is the whole
+    reason this exists. `git diff base...ref` is a question about commits, so a
+    session that stages its work and asks before committing gets a truthful
+    "nothing that renders changed" about a branch that has not been written yet,
+    and reads it as a verdict on the work in front of it. That is the same
+    silent-and-plausible failure this script was written to end, arriving
+    through the one input nobody thought to check. Measured 2026-08-22, on this
+    script's own second outing: `npm run showing` ran between `git add -A` and
+    `git commit`, said no link, and the session passed that on.
+    """
+    # Parsed by pattern rather than by column, because sh() strips the whole
+    # output and porcelain's status field is two characters wide with a leading
+    # space in the common case: the strip eats it, and a fixed l[3:] then bites
+    # the first character off the first filename and nothing else's.
+    out = sh("git", "status", "--porcelain")
+    hits = []
+    for line in out.splitlines():
+        m = re.match(r"\s*\S{1,2}\s+(.*)", line)
+        if m:
+            hits.append(m.group(1).strip('"').split(" -> ")[-1])
+    return hits
+
+
 def diff_text(base, ref, paths):
     if not paths:
         return ""
@@ -260,6 +286,15 @@ def pick(paths, base, ref, use_git=True, diff=None):
             d["carried"] = carried
         return d
 
+    if use_git and not paths:
+        waiting = uncommitted()
+        if waiting:
+            warn.append("nothing is committed against " + base + " yet, but " + str(len(waiting))
+                        + " file(s) are staged or modified ("
+                        + ", ".join(waiting[:4]) + ("…" if len(waiting) > 4 else "")
+                        + "): this reads COMMITS, so commit and re-run, or pass --files.")
+            why.append("no committed change to show yet.")
+            return decision("none-yet", [], sha, slug, hosted, why, warn, facts)
     why.append("nothing that renders changed.")
     return decision("none-needed", [], sha, slug, hosted, why, warn, facts)
 
@@ -292,7 +327,11 @@ def decision(mech, subjects, sha, slug, hosted, why, warn, facts):
 
 def lines(d):
     out = []
-    if d["mechanism"] == "none-needed":
+    if d["mechanism"] == "none-yet":
+        # NOT "no render link", which is the answer this case is most easily
+        # mistaken for and the one that travels into a reply.
+        out.append("Nothing committed yet, so there is nothing to link.")
+    elif d["mechanism"] == "none-needed":
         out.append("No render link: " + " ".join(d["why"]))
     elif d["mechanism"] == "none":
         out.append("No link reaches this. " + " ".join(d["why"]))

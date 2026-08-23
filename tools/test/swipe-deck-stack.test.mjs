@@ -29,6 +29,21 @@ new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/swipe-deck.js'), 
 const sd = window.swipeDeck;
 
 const tick = (n = 1) => new Promise(r => setTimeout(r, n * 10));
+
+// A TRACK THAT CAN ACTUALLY BE DRIVEN, which this file needed all along.
+// jsdom has no layout and no Element.prototype.scrollTo, so `go()` threw inside
+// jsdom's event dispatch on every arrow key. The throw was invisible: node
+// printed it as a diagnostic and still counted the file green, and the one
+// assertion that depended on it ("the branch deck did not step") passed for the
+// wrong reason, since nothing had stepped at all. It surfaced on CI 2026-08-23,
+// where the same uncaught error landed inside the run's accounting and failed
+// it, on a tree whose only change was elsewhere. Six lines of geometry make the
+// track real, the same shape file-deck.test.mjs already uses.
+Object.defineProperty(window.Element.prototype, 'clientWidth', { value: 400, configurable: true });
+window.Element.prototype.scrollTo = function ({ left }) {
+  Object.defineProperty(this, 'scrollLeft', { value: left, configurable: true, writable: true });
+  this.dispatchEvent(new window.Event('scroll'));
+};
 const deck = (title, count = 3, extra = {}) =>
   sd.open({ count, title, render: (i, el) => { el.textContent = title + ' ' + i; }, ...extra });
 const key = (k) => window.dispatchEvent(Object.assign(new window.KeyboardEvent('keydown', { key: k })));
@@ -79,6 +94,7 @@ test('only the top deck answers a key', async () => {
 
   key('ArrowRight');
   await tick(3);
+  assert.equal(inner.deck.active(), 1, 'the file deck, being on top, took the key');
   assert.equal(outer.deck.active(), outerAt,
     'the branch deck did not step under a key meant for the file deck');
 
