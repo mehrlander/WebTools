@@ -2,7 +2,6 @@
 id: stage-links-main-area-explorer-7a6gd7
 title: Stage links and the main-area explorer in show-repo
 status: done
-track: independent
 opened: 2026-07-14
 closed: 2026-07-14
 session: claude/task-tracker-discussion-wg27xv

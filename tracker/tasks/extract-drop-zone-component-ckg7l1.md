@@ -2,7 +2,6 @@
 id: extract-drop-zone-component-ckg7l1
 title: Extract drop-zone as a reusable Alpine component
 status: done
-track: independent
 opened: 2026-07-14
 closed: 2026-07-15
 session: claude/tracker-summary-nu74te

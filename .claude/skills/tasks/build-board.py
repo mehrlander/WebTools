@@ -46,7 +46,7 @@ task_href_base = os.path.relpath(tasks_dir, out.parent).replace(os.sep, "/")
 # would produce a different file on every run, which is exactly what the
 # no-timestamp rule at the bottom of this file exists to prevent. Membership
 # tests against ten strings cost nothing.
-RECOGNIZED = ("id", "title", "status", "project", "track",
+RECOGNIZED = ("id", "title", "status", "project", "depends-on",
               "opened", "closed", "session", "size", "awaiting")
 
 # The three derived values the task file does not state, plus the two locators.
@@ -94,37 +94,57 @@ def meta(p):
 
 
 tasks = [meta(p) for p in sorted(tasks_dir.glob("*.md"))]
-buckets = {"backlog": [], "in-progress": [], "blocked": [], "done": []}
+# `dormant` is preserved-but-not-surfaced: the task and its history stay in
+# tasks/ and in board.csv, and it is rendered on no board section at all. That
+# is the whole point of the status, so it takes a bucket the section list below
+# never reads rather than a section nobody scrolls to. An unknown status still
+# falls to backlog, which is the safe default for a typo but would have been the
+# wrong one here: before dormant was recognized it put the task on On deck.
+buckets = {"backlog": [], "in-progress": [], "blocked": [], "done": [], "dormant": []}
 for m in tasks:
     buckets.get(m.get("status", "backlog"), buckets["backlog"]).append(m)
+
+# Statuses whose open-task decorations are history rather than current state.
+SETTLED = ("done", "dormant")
 
 by_id = {m["id"]: m for m in tasks if m.get("id")}
 
 
 def blocker(m):
-    # `track: depends-on:<id>` names a task this one waits on. Render it only
-    # while it still bites: an unmet dependency on an open task, on a task that
-    # is itself not done. A satisfied dependency is history, and a done task's
-    # dependency is history twice over, so both stay quiet. Resolve the id to
-    # the blocker's title, because the id means nothing to a reader who did not
-    # write the task (TRACKER.md, Conventions).
-    track = m.get("track", "")
-    if not track.startswith("depends-on:") or m.get("status") == "done":
+    # `depends-on: <id>[, <id>...]` names the tasks this one waits on. Render a
+    # dependency only while it still bites: an unmet one on a task that is
+    # itself unsettled. A satisfied dependency is history, and a settled task's
+    # dependency is history twice over, so both stay quiet. Resolve each id to
+    # its title, because the id means nothing to a reader who did not write the
+    # task (TRACKER.md, Conventions).
+    #
+    # The value is a comma-separated scalar rather than a YAML list, because the
+    # parser contract is flat `key: value` pairs and a real list is the one
+    # thing that would force a YAML dependency. Absence means no dependency, so
+    # there is no value that means "independent": that was the whole content of
+    # the retired `track` field, and an absent key says it without a row.
+    raw = m.get("depends-on", "")
+    if not raw or m.get("status") in SETTLED:
         return ""
-    dep = track.split(":", 1)[1].strip()
-    target = by_id.get(dep)
-    if target is None:
-        return f" (needs `{dep}`, which no task file defines)"
-    if target.get("status") == "done":
+    unmet = []
+    for dep in (d.strip() for d in raw.split(",")):
+        if not dep:
+            continue
+        target = by_id.get(dep)
+        if target is None:
+            unmet.append(f"`{dep}`, which no task file defines")
+        elif target.get("status") not in SETTLED:
+            unmet.append(target.get("title", dep))
+    if not unmet:
         return ""
-    return f" (needs: {target.get('title', dep)})"
+    return f" (needs: {'; '.join(unmet)})"
 
 
 def row(m):
-    open_task = m.get("status") != "done"
+    open_task = m.get("status") not in SETTLED
     # `size` and `awaiting` answer independent questions and both belong to an
     # open task only: a finished task's estimate and its old blocker are
-    # history, the same rule that already silences `depends-on:` on Done.
+    # history, the same rule that already silences `depends-on` on a settled task.
     # `status` says whether a session can start this; `awaiting` says what is
     # holding it, which is why it renders on backlog rows too and not only on
     # blocked ones. A task can be startable in part and still be waiting on

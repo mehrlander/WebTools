@@ -2,7 +2,7 @@
 id: data-view-consume-fragment-nxlpbs
 title: Have data-view open at an addressed item via the fragment
 status: done
-track: depends-on:toss-fragment-passthrough-558xcw
+depends-on: toss-fragment-passthrough-558xcw
 opened: 2026-07-25
 closed: 2026-08-06
 session: claude/web-tools-tracker-review-ij4pjj

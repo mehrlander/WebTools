@@ -2,7 +2,6 @@
 id: singleton-fab-toss-render-gticvb
 title: Singleton fab with toss-render integration
 status: done
-track: independent
 opened: 2026-07-08
 session: claude/fab-render-toss-render-ua6p3p
 closed: 2026-07-26

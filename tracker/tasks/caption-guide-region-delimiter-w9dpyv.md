@@ -2,7 +2,6 @@
 id: caption-guide-region-delimiter-w9dpyv
 title: Teach the guide region a delimiter that survives an agent's readback
 status: done
-track: independent
 opened: 2026-07-28
 closed: 2026-07-28
 session: claude/budget-drs-tracker-review-s64mc6

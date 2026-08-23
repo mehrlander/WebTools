@@ -6,7 +6,7 @@ closed: 2026-08-05
 resolution: superseded
 session: claude/merge-guide-web-tools-gjhw8l
 project: repo
-track: depends-on:automate-merge-guide-from-pr-bodies-uaect4
+depends-on: automate-merge-guide-from-pr-bodies-uaect4
 opened: 2026-07-14
 ---
 # Backfill guide regions into old PR bodies and full-regenerate the merge guide

@@ -3,7 +3,6 @@ id: session-titles-from-export-4vgu4x
 title: Carry real session titles from the Dispatch export, without depending on it
 status: done
 project: show-repo
-track: independent
 opened: 2026-08-10
 closed: 2026-08-20
 session: claude/session-titles-join-7wq3vz

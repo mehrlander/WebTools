@@ -2,7 +2,6 @@
 id: stage-diff-b-select-desync-v554kn
 title: Fix the stage Diff lens B-select display desync
 status: done
-track: independent
 opened: 2026-07-20
 closed: 2026-07-20
 session: claude/web-tools-diff-review-s0nrq7

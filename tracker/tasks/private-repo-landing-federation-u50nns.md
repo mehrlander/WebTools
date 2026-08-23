@@ -2,7 +2,6 @@
 id: private-repo-landing-federation-u50nns
 title: Private-repo landing federation via the home registry
 status: done
-track: independent
 opened: 2026-07-08
 closed: 2026-07-28
 resolution: superseded

@@ -3,7 +3,6 @@ id: branch-review-view-show-repo-rwwmrj
 title: Branch-review view in show-repo
 status: done
 project: show-repo
-track: independent
 opened: 2026-07-16
 closed: 2026-07-17
 session: claude/web-tools-branch-tracking-n1zawm

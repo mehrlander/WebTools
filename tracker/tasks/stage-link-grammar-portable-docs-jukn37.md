@@ -2,7 +2,6 @@
 id: stage-link-grammar-portable-docs-jukn37
 title: Propagate the stage link's new grammar to the portable docs
 status: done
-track: independent
 opened: 2026-07-21
 session: claude/stage-link-grammar-docs-jukn37
 closed: 2026-07-26

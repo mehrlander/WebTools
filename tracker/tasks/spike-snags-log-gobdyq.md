@@ -3,7 +3,6 @@ id: spike-snags-log-gobdyq
 title: Spike the snags log (friction learned the hard way)
 status: backlog
 project: repo
-track: independent
 opened: 2026-07-15
 session: claude/pr-219-review-22csrh
 ---
