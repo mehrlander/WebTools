@@ -96,17 +96,21 @@ test('every tick is identical, so density is the only other variable', () => {
   // heat scale would have to appear.
   const src = readFileSync(path.join(repoRoot, 'lib', 'alpineComponents', 'state-view.js'), 'utf8');
   const tick = src.slice(src.indexOf('x-for="(t, i) in (pulse['), src.indexOf('</template>', src.indexOf('x-for="(t, i) in (pulse[')));
-  assert.match(tick, /w-px h-2/, 'a fixed width and height');
+  assert.match(tick, /w-px h-3/, 'a fixed width and height');
   // One colour class, with its alpha baked in, and the same one on every tick.
   // The alpha is what makes overlap compound, so it belongs on the mark rather
   // than on anything computed per event.
-  assert.match(tick, /bg-base-content\/\d+/, 'one fixed colour and alpha');
+  //
+  // PRIMARY, and not green: on this view green means one verb (bring this up to
+  // date) and lives on the Refresh controls alone, so tinting a reading with it
+  // would spend the one colour that still carries meaning here.
+  assert.match(tick, /bg-primary\/\d+/, 'one fixed accent and alpha');
   // Only steps the app already generates. Tailwind's browser build emits an
   // opacity modifier only where it finds one in the scanned source, so /45 and
-  // /15 rendered fully transparent here on 2026-08-22 while /20 and /30, which
-  // the estate already used, resolved. A tick nobody can see is the failure
-  // this catches, and it looks identical to a quiet day.
-  assert.ok(/bg-base-content\/(10|20|30|70)\b/.test(tick),
+  // /15 rendered fully transparent here on 2026-08-22 while /20, /30 and /60,
+  // which the estate already used, resolved. A tick nobody can see is the
+  // failure this catches, and it looks identical to a quiet day.
+  assert.ok(/bg-primary\/(10|20|30|60|70)\b/.test(tick),
     'use an opacity step the app already generates, or the tick paints transparent');
   assert.doesNotMatch(tick, /height:|opacity:|scale/, 'nothing may vary per event');
   // The alpha is on the tick itself so overlapping marks compound, which is how
@@ -149,4 +153,18 @@ test('a list that runs out inside the window says so', () => {
 
 test('teardown clears the tick and the listeners', () => {
   data.destroy();
+});
+
+test('the rail says its own span, and says it once', () => {
+  // A row of marks over an unstated span is not a timeline: nothing on screen
+  // separates 24 hours from a week. The label is derived from the same number
+  // the arithmetic uses, since two copies of one figure is how a rail comes to
+  // say 24h over a week of events.
+  assert.equal(data.windowLabel, '24h');
+  assert.equal(row('activity').window, data.windowLabel);
+  assert.equal(data.WINDOW_H, 24);
+  const src = readFileSync(path.join(repoRoot, 'lib', 'alpineComponents', 'state-view.js'), 'utf8');
+  const rail = src.slice(src.indexOf('const TICKS ='), src.indexOf('// THE BAR,'));
+  assert.match(rail, /x-text="\$\{r\}\.window"/, 'the label reads the row, never a literal');
+  assert.doesNotMatch(rail, />24h</, 'no typed copy of the span');
 });
