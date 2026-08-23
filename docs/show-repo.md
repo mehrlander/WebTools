@@ -666,19 +666,10 @@ passes is the one the others pass, that it reports where work actually
 happens; it is the only one that can say so about thinking done outside a
 checkout. To-do and Jot failed exactly that test and left (below).
 
-**Guides was a third reading of the repos and left on 2026-08-23.** It indexed
-`pages/guides/*.html` across the estate, in flight first, joining each guide to
-the branch and the session that wrote it. Two things retired it. The shelf held
-one file, estate-wide, for the whole life of the pane: one guide when
-`kits/guide-index.js` measured on 2026-08-09, still one two weeks later, and no
-other repo grew a shelf at all. And the fold read "in flight" off the same open
-PRs Branches already lists and Sessions already attributes, so the pane's one
-original contribution was a join derived from what two other panes held.
-Nothing became unreachable: a guide is a page, with a row in `pages/pages.csv`
-and a thumbnail, so Pages and Files still find it. The shelf stays, and so does
-`kits/guide-render.js`, which renders a guide **PR body** for the fab drawer,
-`pages/branch.html`, and the branch takeover: a different thing wearing a
-similar name.
+**Guides was a third reading and left 2026-08-23:** the shelf held one file
+estate-wide, and its "in flight" was the open PRs Branches and Sessions already
+carry. `pages/guides/` stays, indexed by Pages; so does `kits/guide-render.js`,
+which renders a guide PR body and is a different thing wearing a similar name.
 
 Three things about Chats follow from the archive rather than from taste.
 
@@ -2036,9 +2027,8 @@ stores nothing, and has no age at all. Both wore the same button in six places,
 and the as-of reading that says whether to press was the part hidden below `sm`,
 so a phone kept the control and dropped the fact. Three sections carry the
 split: **Derived** (the registry's `state/`) and **This browser** (the search
-caches and the page itself, both gone on reload, neither estate state). A
-third, **Read live**, held the guides shelf alone and went with it on
-2026-08-23.
+caches and the page itself, both gone on reload, neither estate state). A third,
+**Read live**, held the guides shelf alone and went with it.
 
 **Built and checked are two different ages, and one alone misreads.** `built` is
 the last commit touching the file; `checked` is this browser's throttle stamp
