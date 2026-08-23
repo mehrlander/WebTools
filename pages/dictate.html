@@ -342,7 +342,12 @@
         window.Dictate.paint(this._host, {
           text: this.text, interim: this.interim,
           range: this.d ? this.d.range : null, armed: this.armed,
-          overlay: this.$refs.layer, endCaret: true,
+          overlay: this.$refs.layer,
+          // Only once there is something to be at the end OF. On an empty
+          // buffer the end caret is a red bar alone in the corner, behind the
+          // start prompt, and it reads as a rendering fault rather than as an
+          // insertion point.
+          endCaret: !!this.text,
         });
       },
 
