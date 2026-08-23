@@ -67,6 +67,19 @@
     <i class="ph ph-warning"></i><span x-text="error"></span>
   </div>
 
+  <!--
+    A framed inquiry is a broken inquiry, and silently so. toss-render mounts
+    its subject with `allow-scripts allow-same-origin allow-popups allow-forms
+    allow-modals allow-downloads` and NOT allow-top-navigation, so a custom
+    scheme in an ACTION link cannot navigate anything: the tap does nothing and
+    reports nothing. This page exists to launch such links, so the toss is not
+    a delivery route for it and the page has to say that itself.
+  -->
+  <div x-show="framed" class="alert alert-warning py-2 px-3 text-sm flex-col items-start gap-1">
+    <div><i class="ph ph-warning"></i> Framed: the ACTION links cannot fire here.</div>
+    <a :href="direct" class="link break-all text-xs">Open this inquiry directly</a>
+  </div>
+
   <div x-show="loading" class="flex justify-center py-16">
     <span class="loading loading-spinner loading-lg text-primary"></span>
   </div>
@@ -148,6 +161,11 @@ document.addEventListener('alpine:init', () => {
   Alpine.data('inquiryApp', () => ({
     env: null, items: [], answers: {}, ran: {},
     loading: true, error: '', sending: false, sent: '', sentPath: '',
+    // A sandboxed frame withholds top navigation, so a custom scheme is inert.
+    framed: window.top !== window.self,
+    get direct() {
+      return 'https://mehrlander.github.io/web-tools/pages/inquiry.html' + location.hash;
+    },
 
     get answered() { return Object.keys(this.answers).length; },
     wants(it, kind) { return it.ask?.kind === kind || (it.ask?.also || []).includes(kind); },
