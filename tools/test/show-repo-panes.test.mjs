@@ -15,7 +15,16 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { repoRoot } from './bootstrap.mjs';
 import { page, makeShell } from './show-repo-shell.mjs';
+
+// The estate component's source, for the pill-row join below. Read as text for
+// the same reason the shell is: the markup is a template string inside it, so
+// the two lists this checks are both literals in one file.
+const estateSrc = readFileSync(
+  path.join(repoRoot, 'lib/alpineComponents/estate.js'), 'utf8');
 
 // The estate's sub-views share one container, so they all name it; every other
 // stop names itself.
@@ -55,6 +64,36 @@ test('a repo view is not a carousel stop', () => {
     shell.view = view;
     assert.equal(panes.has(shell._paneKey), false,
       `${view} must not carry a pane: an iframe or repo view owns its own gestures`);
+  }
+});
+
+// The same drift one level down, and it fails more quietly still. A pill is a
+// button that calls goSub('key'); goSub is a chain of `if (key === …)` arms,
+// each naming a method on the shell. Miss the arm and the pill is DEAD: it
+// renders, the `tab` getter recognizes the key, the pane is written, and the
+// tap does nothing whatever. State shipped that way on 2026-08-23 when it
+// moved from a nav stop of its own into Activity's pill row, because every
+// list naming the set was updated except the one that acts on it.
+const pillKeys = () => new Set(
+  [...estateSrc.matchAll(/goSub\('([a-z]+)'\)/g)].map(m => m[1]));
+
+// The arms, read out of goSub's own body so a `goSub('x')` written elsewhere
+// in the component cannot pass for one.
+const goSubArms = () => {
+  const m = estateSrc.match(/goSub\(key\)\{[\s\S]*?\n      \},/);
+  assert.ok(m, "goSub's body was not found");
+  return new Map([...m[0].matchAll(/key === '([a-z]+)'\) s\.(\w+)\(\)/g)]
+    .map(a => [a[1], a[2]]));
+};
+
+test('every pill tap has an arm in goSub naming a method the shell defines', () => {
+  const { shell } = makeShell();
+  const arms = goSubArms();
+  for (const key of pillKeys()) {
+    const method = arms.get(key);
+    assert.ok(method, `goSub('${key}') has no arm: the pill renders and does nothing`);
+    assert.equal(typeof shell[method], 'function',
+      `goSub('${key}') calls shell.${method}(), which the shell does not define`);
   }
 });
 
