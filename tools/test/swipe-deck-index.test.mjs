@@ -163,3 +163,53 @@ test('an open list is one extra history entry, and ✕ still unwinds the whole s
   await tick(3);
   assert.equal(overlays(), 0, 'one ✕ took the deck and the list it was holding');
 });
+
+
+// ── Naming nothing, and grouping ────────────────────────────────────────────
+//
+// Two halves of the same question: what a deck offers when its slides have no
+// names. The list is still worth opening, because reaching slide 11 is ten
+// swipes or one tap, and the footer can still say where the boundaries are.
+
+test('a labeler that names nothing still lists, and each row prints its number once', async () => {
+  const h = open({ index: () => ({}) });
+  await tick();
+  markOf(h).dispatchEvent(new window.MouseEvent('click'));
+  await tick();
+  const rows = rowsOf(h);
+  assert.equal(rows.length, DOCS.length, 'the list opens on a set it cannot name');
+  assert.equal(rows[2].textContent.trim(), '3',
+    'the number, once: a gutter number beside a title falling back to it reads as a bug');
+  // The jump itself is the track's scroll, which jsdom has no layout to do, so
+  // what a case here can hold is that the row is wired and takes the list down
+  // with it. swipe-deck-stack drives the track where geometry is stubbed.
+  rows[3].dispatchEvent(new window.MouseEvent('click'));
+  await tick();
+  assert.equal(sheetOf(h), null, 'and a numbered row is a live jump, not decoration');
+  h.close();
+  await tick(3);
+});
+
+test('the pager clusters its dots where the labeler groups the slides', async () => {
+  // Two sections over four slides: one owns the first three, the next owns the
+  // last. The gap is at the boundary and nowhere else.
+  const h = open({ index: (i) => ({ title: DOCS[i], group: i < 3 ? 'a' : 'b' }) });
+  await tick();
+  const dots = [...h.el.querySelectorAll('[aria-label^="Go to"]')];
+  assert.equal(dots.length, DOCS.length);
+  assert.equal(dots[0].style.marginLeft, '', 'the first dot opens the row rather than a group');
+  assert.equal(dots[1].style.marginLeft, '', 'inside a run, nothing');
+  assert.equal(dots[2].style.marginLeft, '', 'still inside it');
+  assert.equal(dots[3].style.marginLeft, '0.75rem', 'the boundary, and only the boundary');
+  h.close();
+  await tick(3);
+});
+
+test('a labeler with no groups leaves the pager exactly as it was', async () => {
+  const h = open();
+  await tick();
+  const spaced = [...h.el.querySelectorAll('[aria-label^="Go to"]')].filter(d => d.style.marginLeft);
+  assert.equal(spaced.length, 0, 'grouping is opt-in, and silence is not a group of its own');
+  h.close();
+  await tick(3);
+});

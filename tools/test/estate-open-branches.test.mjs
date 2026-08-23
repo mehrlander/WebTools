@@ -627,6 +627,25 @@ test('the header follows the reader from slide to slide', async () => {
   await tick(4);
 });
 
+test('the mark lists the whole set, each branch named the way the header names one', async () => {
+  seed();
+  data.openBranchDetail(data.openBranches[0]);
+  await tick(4);
+  const mark = deckOf().el.querySelector('.sd-header').children[1];
+  assert.equal(mark.tagName, 'BUTTON', 'a list behind the mark makes it a button');
+  mark.click();
+  await tick(4);
+  const listed = [...deckOf().el.querySelector('.sd-index').children];
+  assert.equal(listed.length, 3, 'one row per branch in the deck');
+  assert.match(listed[2].textContent, /fresh/, 'the slug, as the header shows it');
+  assert.match(listed[2].textContent, /home/);
+  assert.match(listed[2].textContent, /#7/, 'and the repo and PR its subtitle carries');
+  mark.click();
+  await tick(4);
+  data.closeDetail();
+  await tick(6);
+});
+
 test('opening while one is open replaces it rather than stacking a second', async () => {
   seed();
   data.openBranchDetail(data.openBranches[0]);
