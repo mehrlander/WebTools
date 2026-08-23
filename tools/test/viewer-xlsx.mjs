@@ -141,9 +141,9 @@ page.on('pageerror', e => console.log(`  [pageerror] ${e.message}`));
 const state = () => page.evaluate(() => {
   const host = document.getElementById('dv-viewer');
   const v = host && Alpine.$data(host);
-  const root = document.getElementById('viewer-xlsx');
-  const tabs = root?.querySelector('#viewer-xlsx-tabs');
-  const msg = root?.querySelector('#viewer-xlsx-msg');
+  const root = document.querySelector('[data-xlsx="root"]');
+  const tabs = root?.querySelector('[data-xlsx="tabs"]');
+  const msg = root?.querySelector('[data-xlsx="msg"]');
   // Read the drawn grid rather than the data behind it: Tabulator having the
   // rows and Tabulator having painted them are different claims.
   const cells = [...(root?.querySelectorAll('.tabulator-cell') || [])].map(c => c.textContent.trim());
@@ -198,7 +198,7 @@ try {
   ok('the header states sheets and bytes', /^2 sheets · \d+\.\d KB$/.test(s.stats), s.stats);
 
   console.log('switching to the second sheet:');
-  await page.evaluate(() => document.querySelectorAll('#viewer-xlsx-tabs button')[1]?.click());
+  await page.evaluate(() => document.querySelectorAll('[data-xlsx="tabs"] button')[1]?.click());
   await page.waitForTimeout(900);
   const t = await state();
   ok('the inline string survived', t.cells.includes('carried inline'), JSON.stringify(t.cells));
@@ -210,7 +210,11 @@ try {
   await page.waitForTimeout(3000);
   const u = await state();
   ok('no sheets mode is offered', !(u.modes || []).includes('xlsx'), JSON.stringify(u.modes));
-  ok('and the default still decides', u.mode === 'tree', JSON.stringify(u));
+  ok('and the default still decides', u.mode === 'table', JSON.stringify(u));
+  // 'table', not 'tree': docs/tools.json became docs/tools.csv in PR #441,
+  // which updated this address and left the expectation behind. A CSV
+  // opening as a table IS the default deciding, so the claim is unchanged
+  // and only the shape of the fixture moved.
 } finally {
   await browser.close();
   server.close();
