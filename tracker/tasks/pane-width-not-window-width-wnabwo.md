@@ -33,3 +33,12 @@ rule it repeats.
   as `viewport-rule-blind-to-a-docked-pane` in SNAGS. `docs/HTML-STYLE.md`
   already carries the same lesson for a form in a split pane, so the rule exists
   and the sweep does not.
+- 2026-08-23: The Stage bench converted, found the same way: a reader opened a
+  stage of eight PDFs with the deck docked and the aside's `xl:` 26rem column
+  laid itself out inside a 368px pane, overflowing it by 24px and painting over
+  the deposit column. `@container` on the bench root, and the grid's three
+  `lg:`/`xl:`/`2xl:` templates became `@2xl:`/`@5xl:`/`@7xl:`, each threshold the
+  aside's own width plus the gap plus a lens column worth having. Measured
+  before and after with a headless probe: 8 overlapping element pairs and 8
+  elements past the pane's right edge, both to zero, with the undocked layout
+  unchanged at every width. Still unaudited: every other view in the pane.
