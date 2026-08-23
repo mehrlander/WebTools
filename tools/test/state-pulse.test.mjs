@@ -27,7 +27,14 @@ const ACTIVITY = {
   },
 };
 const SESSIONS = {
-  rows: [{ started: iso(2), ended: iso(1.5) }, { started: iso(30), ended: iso(29) }],
+  rows: [
+    // A LIVE session: started outside the window, still writing. The recorder is
+    // a Stop hook and fires every turn, so `ended` walks forward while `started`
+    // stays pinned. This row is the whole reason the rail reads `ended`.
+    { started: iso(30), ended: iso(0.2) },
+    { started: iso(2), ended: iso(1.5) },
+    { started: iso(40), ended: iso(39) },
+  ],
 };
 
 class FakeGH {
@@ -77,7 +84,10 @@ test('only events inside the window get a tick', () => {
   // rail claim a day held four commits when it held three.
   assert.equal(data.pulse.activity.n, 3);
   assert.equal(data.pulse.activity.ticks.length, 3);
-  assert.equal(data.pulse.sessions.n, 1, 'the 30h session is outside the day');
+  // Two sessions were ACTIVE inside the day: the live one (last active 12
+  // minutes ago, though it began 30 hours ago) and the one that ended 1.5h ago.
+  // The 40h session is genuinely outside.
+  assert.equal(data.pulse.sessions.n, 2);
 });
 
 test('a tick is placed by time alone, left is older', () => {
@@ -167,4 +177,29 @@ test('the rail says its own span, and says it once', () => {
   const rail = src.slice(src.indexOf('const TICKS ='), src.indexOf('// THE BAR,'));
   assert.match(rail, /x-text="\$\{r\}\.window"/, 'the label reads the row, never a literal');
   assert.doesNotMatch(rail, />24h</, 'no typed copy of the span');
+});
+
+test('a session still running counts as active now, not at its start', () => {
+  // THE BUG THIS FILE EXISTS TO PREVENT REPEATING. `started` is pinned at
+  // session start; the recorder is a Stop hook firing every turn, so `ended`
+  // is the record's last-active stamp and the only one that tracks a live
+  // session. Drawing `started` put one tick at the top of a session and
+  // nothing across the hours it was working, so a session running right now
+  // read as silence.
+  const live = data.pulse.sessions;
+  assert.equal(live.newest, iso(0.2), 'the newest event is the live session, minutes ago');
+  // Its tick sits hard right, where a session active minutes ago belongs, and
+  // NOT off the left end where its 30h-old start would have put it.
+  assert.ok(Math.max(...live.ticks) > 99, 'the live session ticks at the right edge');
+});
+
+test('the two rails cannot contradict each other over one estate', () => {
+  // How this was caught: Branches showed commits 17 minutes old while Sessions
+  // claimed nothing in two hours, and every one of those commits was made by a
+  // session. A commit inside the window implies a session was active at least
+  // that recently, so the sessions rail must reach at least as far right as the
+  // commits rail. A single rail could never have run this check on itself.
+  const newest = (k) => Math.max(...data.pulse[k].ticks);
+  assert.ok(newest('sessions') >= newest('activity') - 1,
+    'commits with no session active around them means the wrong field is being drawn');
 });
