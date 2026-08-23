@@ -198,7 +198,7 @@ fi
 # --- leg 3b: docs/docs.json -> docs/README.md ---------------------------------
 # The docs index is a projection of the documentation registry; regenerate it
 # whenever the registry (or the generator) has pending changes.
-if git status --porcelain -- docs/docs.json tools/build/docs-readme.mjs | grep -q .; then
+if git status --porcelain -- docs/docs.csv tools/build/docs-readme.mjs | grep -q .; then
   if npm run docs-readme --silent >/dev/null 2>&1; then
     stage docs/README.md
   else
