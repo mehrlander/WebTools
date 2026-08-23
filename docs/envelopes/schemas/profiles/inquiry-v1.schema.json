@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/mehrlander/web-tools/main/docs/envelopes/schemas/profiles/inquiry-v1.schema.json",
+  "title": "inquiry profile (v1)",
+  "description": "Profile schema for a SELF-ADDRESSED surface: a set of framed requests that carries the address its answers come back to. Every other profile sends content outward and ends there; this one names a return leg, which is the whole of what it adds. A document claiming this profile must validate against BOTH the core surface v2 schema and this schema. Documentation: docs/envelopes/inquiry.md.",
+  "type": "object",
+  "required": ["manifest", "context", "items"],
+  "properties": {
+    "manifest": {
+      "type": "object",
+      "required": ["profile"],
+      "properties": {
+        "profile": {
+          "type": "object",
+          "required": ["name", "version"],
+          "properties": {
+            "name": { "const": "inquiry" },
+            "version": { "const": 1 }
+          }
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "required": ["reply_to"],
+      "properties": {
+        "reply_to": {
+          "type": "string",
+          "description": "Where the ANSWERS to this inquiry are posted, as owner/repo[:dir]. Deliberately NOT destination, which stage/1 defines as a claim about the set itself (where these files are proposed to go). Two different subjects: destination speaks about the items, reply_to about answers that do not exist yet at authoring time. They can be true at once (propose the subject files land in one repo, send the answers to another), and one key cannot hold both, which is the test that made this its own field. It still passes the year-later rule: 'answers to this belong here' stays true with nothing running.",
+          "pattern": "^[^/\\s]+/[^/\\s:]+(:[^\\s]*)?$"
+        },
+        "reply_ref": {
+          "type": "string",
+          "description": "Branch the answers land on. Omit for the repository default."
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "ask"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "TEST: what this step is establishing, in one line."
+          },
+          "action": {
+            "type": "string",
+            "description": "ACTION: the URL to run. Any scheme, since the point is that the step is not tied to one runner. Absent for a step that only asks."
+          },
+          "expect": {
+            "type": "string",
+            "description": "OBSERVE: what the author expects, so the answer is a comparison rather than a description."
+          },
+          "ask": {
+            "type": "object",
+            "required": ["kind"],
+            "description": "The shape of the answer this step wants. `kind` is one of yesno, text, image; a step may want more than one, hence the array form on `also`.",
+            "properties": {
+              "kind": { "enum": ["yesno", "text", "image"] },
+              "label": { "type": "string" },
+              "also": {
+                "type": "array",
+                "items": { "enum": ["yesno", "text", "image"] }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

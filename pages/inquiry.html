@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en" data-theme="emerald">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Inquiry</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>📩</text></svg>">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+
+<!--
+  inquiry.html — renders an `inquiry/1` surface: a SELF-ADDRESSED envelope.
+
+  Every other envelope in this repo carries content outward and stops there. A
+  stage's `&prompts=` asks are one-click-copied INTO another chat; nothing comes
+  back. This one carries the address its answers return to, so the person who
+  taps through it never has to describe what they were answering.
+
+  Three layers, and keeping them separate is the point:
+    the OBJECT     an inquiry/1 surface, self-addressed via context.reply_to
+    the RENDERING  this page, a dynamic form drawn from the items
+    the CONSTRAINT the profile schema, which names the boxes and requires them
+
+  reply_to is NOT stage/1's `destination`. That field is defined as "a claim
+  about the set" (where these files are proposed to go). Answers are a different
+  subject and do not exist when the envelope is authored, and an inquiry can
+  legitimately carry both, which is the test that made it its own field.
+
+  Addressing, the same grammar the other envelopes use:
+    #src=owner/repo[@ref]:path     fetch the envelope through the stored token
+    #gz=<base64url gzip>           carry it inline, for a token-less reader
+  Both also read from ?query, for contexts that strip fragments.
+
+  The return leg is gh-store's save(), the same read-modify-write the annotator
+  uses for a jot. Answers append to one file per submission rather than mutating
+  a shared one: a run is a record, and two runs of the same inquiry are two
+  facts, not a correction.
+-->
+<script>window.__depsReady = new Promise(r => { window.__depsDone = r; });</script>
+<script type="module">
+  const ref = new URLSearchParams(location.search).get('use');
+  if (ref) {
+    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`, { cache: 'no-store' });
+    const url = URL.createObjectURL(new Blob([await src.text()], { type: 'text/javascript' }));
+    try { await import(url); } finally { URL.revokeObjectURL(url); }
+  } else {
+    await import('../dist/web-tools.js');
+  }
+  try { await gh.load('gh-store.js'); } finally { window.__depsDone(); }
+</script>
+<style>[x-cloak]{display:none!important}</style>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content" x-data="inquiryApp()" x-cloak>
+
+<header class="navbar bg-base-100 border-b border-base-300 sticky top-0 z-30 min-h-0 py-1 px-3 gap-2">
+  <i class="ph ph-envelope-simple text-primary text-lg"></i>
+  <span class="font-semibold text-sm" x-text="env?.manifest?.name || 'Inquiry'"></span>
+  <div class="grow"></div>
+  <span class="badge badge-sm" x-show="env" x-text="answered + '/' + items.length"></span>
+  <button @click="ghAuth.prompt('Paste a GitHub token: the envelope and the reply both need it.')"
+          class="btn btn-ghost btn-xs" title="Set the stored token"><i class="ph ph-key"></i></button>
+</header>
+
+<main class="max-w-2xl mx-auto px-3 py-4 flex flex-col gap-3">
+
+  <div x-show="error" class="alert alert-error py-2 px-3 text-sm">
+    <i class="ph ph-warning"></i><span x-text="error"></span>
+  </div>
+
+  <!--
+    A framed inquiry is a broken inquiry, and silently so. toss-render mounts
+    its subject with `allow-scripts allow-same-origin allow-popups allow-forms
+    allow-modals allow-downloads` and NOT allow-top-navigation, so a custom
+    scheme in an ACTION link cannot navigate anything: the tap does nothing and
+    reports nothing. This page exists to launch such links, so the toss is not
+    a delivery route for it and the page has to say that itself.
+  -->
+  <div x-show="framed" class="alert alert-warning py-2 px-3 text-sm flex-col items-start gap-1">
+    <div><i class="ph ph-warning"></i> Framed: the ACTION links cannot fire here.</div>
+    <a :href="direct" class="link break-all text-xs">Open this inquiry directly</a>
+  </div>
+
+  <div x-show="loading" class="flex justify-center py-16">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+
+  <p class="text-sm opacity-70" x-show="env?.manifest?.description" x-text="env?.manifest?.description"></p>
+
+  <!-- One card per step. The form is drawn from the items, never hand-built. -->
+  <template x-for="(it, i) in items" :key="it.id">
+    <div class="card bg-base-100 border border-base-300">
+      <div class="card-body p-4 gap-3">
+
+        <div>
+          <div class="text-[10px] font-semibold tracking-widest opacity-50">TEST</div>
+          <div class="text-sm" x-text="it.title"></div>
+        </div>
+
+        <div x-show="it.action">
+          <div class="text-[10px] font-semibold tracking-widest opacity-50">ACTION</div>
+          <!-- A custom scheme needs an explicit anchor; the chat client will not
+               autolink one and neither will a bare string here. -->
+          <a :href="it.action" @click="ran[it.id] = true"
+             class="link link-primary text-sm break-all" x-text="it.action"></a>
+        </div>
+
+        <div x-show="it.expect">
+          <div class="text-[10px] font-semibold tracking-widest opacity-50">OBSERVE</div>
+          <div class="text-sm" x-text="it.expect"></div>
+        </div>
+
+        <div x-show="wants(it,'yesno')">
+          <div class="text-[10px] font-semibold tracking-widest opacity-50">RESULT</div>
+          <div class="flex gap-4 pt-1">
+            <label class="label cursor-pointer gap-2 p-0">
+              <input type="radio" class="radio radio-sm" :name="'r'+i" @change="set(it,'result','yes')"
+                     :checked="answers[it.id]?.result === 'yes'"><span class="label-text text-sm">Yes</span>
+            </label>
+            <label class="label cursor-pointer gap-2 p-0">
+              <input type="radio" class="radio radio-sm" :name="'r'+i" @change="set(it,'result','no')"
+                     :checked="answers[it.id]?.result === 'no'"><span class="label-text text-sm">No</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <div class="text-[10px] font-semibold tracking-widest opacity-50">NOTES</div>
+          <textarea class="textarea textarea-bordered w-full text-sm" rows="2"
+                    :placeholder="it.ask?.label || 'What appeared?'"
+                    @input="set(it,'notes',$event.target.value)"
+                    @paste="grabImage(it, $event)"></textarea>
+          <div x-show="answers[it.id]?.image" class="mt-2">
+            <img :src="answers[it.id]?.image" class="max-h-40 rounded border border-base-300" />
+            <button @click="set(it,'image',null)" class="btn btn-ghost btn-xs mt-1">
+              <i class="ph ph-x"></i> remove
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </template>
+
+  <div x-show="env" class="flex items-center gap-3 pb-10">
+    <button @click="send()" class="btn btn-primary" :disabled="sending">
+      <span x-show="sending" class="loading loading-spinner loading-xs"></span>
+      <i class="ph ph-paper-plane-tilt" x-show="!sending"></i> Send
+    </button>
+    <span class="text-xs opacity-60 font-mono" x-text="env?.context?.reply_to"></span>
+  </div>
+
+  <div x-show="sent" class="alert alert-success py-2 px-3 text-sm">
+    <i class="ph ph-check-circle"></i>
+    <span>Sent. <a :href="sent" target="_blank" class="link" x-text="sentPath"></a></span>
+  </div>
+
+</main>
+
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('inquiryApp', () => ({
+    env: null, items: [], answers: {}, ran: {},
+    loading: true, error: '', sending: false, sent: '', sentPath: '',
+    // A sandboxed frame withholds top navigation, so a custom scheme is inert.
+    framed: window.top !== window.self,
+    get direct() {
+      return 'https://mehrlander.github.io/web-tools/pages/inquiry.html' + location.hash;
+    },
+
+    get answered() { return Object.keys(this.answers).length; },
+    wants(it, kind) { return it.ask?.kind === kind || (it.ask?.also || []).includes(kind); },
+
+    set(it, key, val) {
+      this.answers[it.id] = { ...(this.answers[it.id] || {}), [key]: val };
+    },
+
+    // A pasted screenshot is the answer a text box cannot hold, and it is the
+    // reason this belongs in a browser rather than in a shortcut.
+    grabImage(it, ev) {
+      const file = [...(ev.clipboardData?.items || [])]
+        .find(i => i.type.startsWith('image/'))?.getAsFile();
+      if (!file) return;
+      ev.preventDefault();
+      const fr = new FileReader();
+      fr.onload = () => this.set(it, 'image', fr.result);
+      fr.readAsDataURL(file);
+    },
+
+    // hash first, then query: the fragment is the private form, the query is
+    // what survives a context that strips fragments.
+    param(key) {
+      const h = new URLSearchParams(location.hash.slice(1)).get(key);
+      return h || new URLSearchParams(location.search).get(key);
+    },
+
+    async init() {
+      await window.__depsReady;
+      try {
+        const gz = this.param('gz');
+        const src = this.param('src');
+        if (gz) {
+          const bin = Uint8Array.from(atob(gz.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+          const ds = new DecompressionStream('gzip');
+          const text = await new Response(new Blob([bin]).stream().pipeThrough(ds)).text();
+          this.env = JSON.parse(text);
+        } else if (src) {
+          const [addr, ...rest] = src.split(':');
+          const path = rest.join(':');
+          const [repo, ref] = addr.split('@');
+          this.env = JSON.parse((await new GH({ token: window.TOKEN, repo, ref: ref || '' }).get(path)).text);
+        } else {
+          this.error = 'No envelope. Address one with #src=owner/repo[@ref]:path or #gz=…';
+        }
+        this.items = this.env?.items || [];
+      } catch (e) {
+        this.error = e.message;
+      }
+      this.loading = false;
+    },
+
+    async send() {
+      this.sending = true;
+      try {
+        const [repo, dir] = (this.env.context.reply_to || '').split(':');
+        const gh2 = new GH({ token: window.TOKEN, repo, ref: this.env.context.reply_ref || '' });
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const name = (this.env.manifest?.name || 'inquiry').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+        const path = `${dir ? dir.replace(/\/$/, '') + '/' : ''}${stamp}-${name}.json`;
+        // A run is a record: append a file rather than mutate a shared one, so
+        // two runs of the same inquiry are two facts and not a correction.
+        const body = {
+          inquiry: this.env.manifest?.name,
+          answered_at: new Date().toISOString(),
+          answers: this.items.map(it => ({
+            id: it.id, title: it.title,
+            opened: !!this.ran[it.id],
+            ...(this.answers[it.id] || {}),
+          })),
+        };
+        const res = await gh2.save(path, body, `Inquiry answers: ${this.env.manifest?.name || path}`);
+        this.sentPath = path;
+        this.sent = res?.content?.html_url || `https://github.com/${repo}/blob/HEAD/${path}`;
+      } catch (e) {
+        this.error = e.message;
+      }
+      this.sending = false;
+    },
+  }));
+});
+</script>
+</body>
+</html>
