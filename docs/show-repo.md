@@ -91,7 +91,7 @@ says. No other URL changes shape.
 all-repo context) or in a **repo** (a per-repo context with its own views).
 
 The **header carries the app-level nav**: a fixed, app-owned set of the estate's
-own views, **Activity** (Branches / Sessions by pill), **Lists**, **Repos**,
+own views, **Activity** (Sessions / Branches and four more by pill), **Lists**, **Repos**,
 **Stage**, **Tools**, and **Map**, as icon buttons (icon + label on desktop,
 icon-only on mobile), lit on the active view and present on every viewport. The
 `#repo` component sits beside the nav but renders nothing (it is the repo/auth
@@ -466,10 +466,11 @@ the header nav the way a repo shows landing/atlas/files/…:
 - **Stage** — one nav stop with two pill-switched sub-views, each keeping its
   own deep link: the **bench** (`?view=stage`) and **Saved** (`?view=surfaces`)
   (below).
-- **Activity** — the estate's own motion: one nav stop with four pill-switched
-  sub-tabs, each keeping its own deep link: **Branches** (`?view=activity`),
-  **Sessions** (`?view=sessions`), **Guides** (`?view=guides`), and **Chats**
-  (`?view=chats`) (all below).
+- **Activity** — the estate's own motion: one nav stop with six pill-switched
+  sub-tabs, each keeping its own deep link: **Sessions** (`?view=sessions`),
+  **Branches** (`?view=activity`), **Guides** (`?view=guides`), **State**
+  (`?view=state`), **Chats** (`?view=chats`), and **Routes** (`?view=routes`)
+  (all below).
 - **Lists** — the two personal piles, To-do over Jot, in one pane rather than
   two tabs. Both `?view=todo` and `?view=jots` resolve here (below).
 - **Files** (`?view=search`) — the central file surface: file names at any ref under any folder, contents through the code-search API, the session records, and the file itself read in place (below). The `?view=` key stays `search`, its name since the view was a results list: an address is not a label, and every link ever shared still opens it.
