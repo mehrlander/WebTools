@@ -458,6 +458,16 @@ third paragraph. Measured rather than argued this time: the rule computed to
 `border-b border-base-200` control on the same page computed to
 `oklch(0.98 0 0)`. Fixed by removing the rules altogether, since spacing
 separated the fields better than a hairline did.
+
+A gate was attempted the same day and abandoned, which is worth knowing before
+anyone tries again. The classifier a scan needs is "which utility families take
+a daisyUI theme colour", and it cannot be probed in a page: a Tailwind BROWSER
+build compiles only the classes it has scanned, so an injected `bg-red-500`
+control does not resolve either, and the probe cannot tell "this family rejects
+the colour" from "this class appears nowhere in the source". Both read as dead.
+Getting a defensible list means reading daisyUI's own stylesheet for the
+families it ships, not measuring a rendered page. Left at recurrence two on the
+log's own rule that the third earns the systematic fix.
 *(seen: 2026-07-28, 2026-08-22)*
 → [../skills/daisy-alpine/SKILL.md](../skills/daisy-alpine/SKILL.md)
 
