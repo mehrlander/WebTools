@@ -145,7 +145,8 @@ test('a row with no stream still says when the cache was rebuilt', () => {
 });
 
 test('a quiet day reads as quiet, not as missing', () => {
-  const quiet = data.strip([now - 40 * HOUR], now - 24 * HOUR, now - 40 * HOUR);
+  const quiet = data.strip([{ t: now - 40 * HOUR, name: 'me/a', detail: '' }],
+                           now - 24 * HOUR, now - 40 * HOUR);
   assert.equal(quiet.n, 0);
   assert.equal(quiet.partial, false, 'the list reaches past the window, so the rail is trustworthy');
   assert.equal(data.changeAgo({ stream: 'commits', key: 'x' }), 'unknown');
@@ -155,7 +156,8 @@ test('a list that runs out inside the window says so', () => {
   // RepoActivityCache.COMMIT_CAP is 30 a repo, so a busy repo's stored history
   // can be younger than a day. An empty left half then means "the list ended",
   // not "nothing happened", and those must not read alike.
-  const short = data.strip([now - 2 * HOUR], now - 24 * HOUR, now - 2 * HOUR);
+  const short = data.strip([{ t: now - 2 * HOUR, name: 'me/a', detail: '' }],
+                           now - 24 * HOUR, now - 2 * HOUR);
   assert.equal(short.partial, true);
   data.pulse = { ...data.pulse, probe: short };
   assert.match(data.pulseTitle({ key: 'probe', stream: 'commits' }), /unknown rather than quiet/);
@@ -171,8 +173,8 @@ test('the rail says its own span, and says it once', () => {
   // the arithmetic uses, since two copies of one figure is how a rail comes to
   // say 24h over a week of events.
   assert.equal(data.windowLabel, '24h');
-  assert.equal(row('activity').window, data.windowLabel);
   assert.equal(data.WINDOW_H, 24);
+  assert.equal(data.rows.find(r => r.key === 'activity').window, '24h');
   const src = readFileSync(path.join(repoRoot, 'lib', 'alpineComponents', 'state-view.js'), 'utf8');
   const rail = src.slice(src.indexOf('const TICKS ='), src.indexOf('// THE BAR,'));
   assert.match(rail, /x-text="\$\{r\}\.window"/, 'the label reads the row, never a literal');
@@ -203,3 +205,63 @@ test('the two rails cannot contradict each other over one estate', () => {
   assert.ok(newest('sessions') >= newest('activity') - 1,
     'commits with no session active around them means the wrong field is being drawn');
 });
+
+// ── The window, and the control that is the label ──────────────────────────
+
+test('cycling the window re-derives rather than re-reading', () => {
+  // The window is a reading of events already in hand, so changing it must not
+  // touch the network: two cache reads per tap would make a toggle cost what
+  // opening the view costs.
+  const before = data.pulse.activity.n;
+  data.cycleWindow();
+  assert.equal(data.WINDOW_H, 168);
+  assert.equal(data.windowLabel, '7d');
+  // 168h reaches the 30h and 40h events the 24h window excluded.
+  assert.ok(data.pulse.activity.n >= before, 'a wider window cannot hold fewer events');
+  assert.equal(data.pulse.sessions.n, 3, 'all three sessions are inside a week');
+  assert.equal(data.rows.find(r => r.key === 'activity').window, '7d', 'the label follows');
+  data.cycleWindow();
+  assert.equal(data.WINDOW_H, 24, 'two spans, so it cycles back');
+});
+
+test('a day is said in hours, a week in days', () => {
+  // "1d" reads as a rounding of something; "24h" is the span itself. And 168h
+  // states a week without communicating one.
+  data.WINDOW_H = 24;  assert.equal(data.windowLabel, '24h');
+  data.WINDOW_H = 168; assert.equal(data.windowLabel, '7d');
+  data.WINDOW_H = 24;
+  data.restrip();
+});
+
+// ── The tick under the pointer ─────────────────────────────────────────────
+
+test('the nearest event answers, which is what makes a 1px mark reachable', () => {
+  // A tick is 1px wide, so it is not a target for a thumb and barely one for a
+  // mouse. One overlay resolving the nearest event behaves the same either way
+  // and gets BETTER as the rail gets busier, where per-tick hit boxes would be
+  // piling on top of each other.
+  const marks = data.pulse.activity.marks;
+  assert.ok(marks.length && marks.every(m => 'left' in m && 't' in m && 'name' in m),
+    'position and identity travel together');
+  const box = { left: 0, width: 100 };
+  const ev = { currentTarget: { getBoundingClientRect: () => box }, clientX: marks[0].left };
+  data.peekAt(row('activity'), ev);
+  assert.equal(data.peek.key, 'activity');
+  assert.equal(data.peek.left, marks[0].left, 'the resolved mark is the nearest one');
+  assert.ok(data.peek.ago, 'it says when');
+  assert.ok(data.peek.name, 'and what');
+  // Aiming at the far end resolves to the far mark, not the first one.
+  data.peekAt(row('activity'), { ...ev, clientX: 100 });
+  assert.equal(data.peek.left, marks[marks.length - 1].left);
+  data.clearPeek();
+  assert.equal(data.peek, null);
+});
+
+test('a rail with no events cannot open a card', () => {
+  // An empty window is the common case on a quiet day, and a tap on it must do
+  // nothing rather than resolve to an event outside the span.
+  data.pulse = { ...data.pulse, empty: { marks: [], ticks: [], n: 0 } };
+  data.peekAt({ key: 'empty' }, { currentTarget: { getBoundingClientRect: () => ({ left: 0, width: 100 }) }, clientX: 50 });
+  assert.equal(data.peek, null);
+});
+
