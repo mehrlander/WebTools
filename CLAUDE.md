@@ -48,13 +48,13 @@ Every **deterministic** derived artifact is owned by one commit-time hook, [`.gi
 
 - `lib/` changed → `npm run build:lib` → `dist/web-tools.js`
 - `pages/**/*.html` changed → `npm run pages-index` → `pages/README.md` + `pages/index.html`
-- skills, `lib/`, `pages/`, or `docs/` changed → `npm run docs-reach` → the `reach` and `words` fields in `docs/docs.json`
-- `docs/docs.json` changed → `npm run docs-readme` → `docs/README.md`, then `npm run docs-reach` again (leg 3c)
+- skills, `lib/`, `pages/`, or `docs/` changed → `npm run docs-reach` → the `reach` and `words` fields in `docs/docs.csv`
+- `docs/docs.csv` changed → `npm run docs-readme` → `docs/README.md`, then `npm run docs-reach` again (leg 3c)
 - `docs/SNAGS.md` changed → `npm run snags-index` → the index block at its top
-- `tracker/tasks/` changed → `npm run tracker-board` → `tracker/board.md` + `tracker/board.json`
+- `tracker/tasks/` changed → `npm run tracker-board` → `tracker/board.md` + `tracker/board.csv`
 
 `reach` and `words` are the odd ones: derived fields in an otherwise authored
-file, so `docs/docs.json` is hand-edited everywhere except those two keys.
+file, so `docs/docs.csv` is hand-edited everywhere except those two keys.
 `reach` says who can get to a doc and moves when a skill or page names a file,
 an edit nowhere near the registry; `words` says how much of the folder it is.
 The two disagree, which is why the Docs tab shows both: the orphans are the
