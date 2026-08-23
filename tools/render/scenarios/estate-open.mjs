@@ -164,9 +164,15 @@ export default async (page) => {
       const d = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));
       const first = d.openRows[0];
       d.branchRoutes = (row) => (row.repo === first.repo && row.name === first.name)
-        ? { on: [{ key: 'a', label: 'Branches', hits: ['lib/alpineComponents/estate.js'] },
-                 { key: 'b', label: 'Guides', hits: ['lib/alpineComponents/estate.js'] }],
-            near: [{ key: 'c', label: 'Map', hits: ['dist/web-tools.js'] }] }
+        // `url` is what the chip gained when it started carrying the ref: a
+        // real address into the app running that branch's bundle. One chip is
+        // left without, which is the row whose tip the crawl never read and
+        // which keeps the in-shell hop.
+        ? { on: [{ key: 'a', label: 'Branches', hits: ['lib/alpineComponents/estate.js'],
+                   url: 'https://mehrlander.github.io/web-tools/app/?use=abc&view=activity' },
+                 { key: 'b', label: 'Guides', hits: ['lib/alpineComponents/estate.js'], url: '' }],
+            near: [{ key: 'c', label: 'Map', hits: ['dist/web-tools.js'],
+                     url: 'https://mehrlander.github.io/web-tools/app/?use=abc&view=map' }] }
         : null;
     });
     await page.waitForTimeout(300);
