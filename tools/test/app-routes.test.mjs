@@ -120,8 +120,10 @@ test('the two sub-tab encodings, counted', () => {
   // 6 to 7 on 2026-08-23: State stopped being a nav stop of its own and became
   // Activity's last pill, which is the promotion this figure exists to make
   // somebody restate. ?view=state is unchanged, so the route is re-encoded
-  // rather than retired.
-  assert.equal(flattened, 7, 'sub-tabs addressed as their own ?view= key');
+  // rather than retired. Back to 6 the same day: the Guides pill was RETIRED,
+  // shelf and all, so ?view=guides resolves to nothing and the key is gone
+  // rather than re-encoded.
+  assert.equal(flattened, 6, 'sub-tabs addressed as their own ?view= key');
   assert.equal(params, 13, 'sub-tabs addressed as ?view=<parent>&tab=');
 });
 

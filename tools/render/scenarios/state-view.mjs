@@ -140,9 +140,8 @@ export default async (page) => {
     localStorage.setItem('wt:activityCacheCheckedAt', String(now - 40 * 60e3));
     localStorage.removeItem('wt:sessionsCacheCheckedAt');
 
-    // The guides shelf keeps its stamp on the shell; the search caches keep
-    // their own counts. Both are session state with nothing committed.
-    window.__shell.guidesLoadedAt = new Date(now - 4 * 60e3).toISOString();
+    // The search caches keep their own counts: session state, nothing
+    // committed.
     const realStats = window.EstateSearch.stats;
     window.EstateSearch.stats = () => ({ ...realStats(), trees: 11, records: 42 });
 

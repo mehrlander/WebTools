@@ -71,7 +71,6 @@ const shell = {
   refreshConfigCache() {}, refreshActivity() {}, refreshSessions() {},
   goActivity() { this.view = 'activity'; },
   goSessions() { this.view = 'sessions'; },
-  goGuides() { this.view = 'guides'; },
   goChats() { this.view = 'chats'; },
   goTodo() { this.view = 'todo'; }, goJots() { this.view = 'jots'; },
 };
