@@ -151,6 +151,26 @@ test('fromGrid pages the ACTIVE rows, in the grid\'s order', async () => {
   assert.ok(scrolledTo, 'closing returns the grid to the record the reader left on');
 });
 
+test('the deck lists itself by the headline, and an unnamed record still gets a row', async () => {
+  const rows = [{ vendor: 'ODP BUSINESS SOLUTIONS' }, { vendor: 'STAPLES' }, { amount: '3.00' }];
+  const handle = drivable(recordDeck.open({ rows, title: 'Vendor payments' }));
+  await tick();
+  const mark = handle.el.querySelector('.sd-header').children[1];
+  assert.equal(mark.tagName, 'BUTTON',
+    'the mark opens the contents rather than sitting there as a plaque');
+  mark.click();
+  await tick();
+  const listed = [...handle.el.querySelector('.sd-index').children];
+  assert.equal(listed.length, rows.length, 'every record, not just the built slides');
+  assert.match(listed[1].textContent, /STAPLES/, 'labelled by the headline column');
+  assert.match(listed[2].textContent, /Record 3/,
+    'and a record with nothing in that column falls back the way the header does');
+  mark.click();
+  await tick();
+  handle.close();
+  await tick();
+});
+
 test('an empty collection opens nothing rather than an empty deck', () => {
   const before = swipeDeck.stack.length;
   assert.equal(recordDeck.open({ rows: [] }), null);
