@@ -106,6 +106,53 @@ reached only by tapping. A link naming a branch the current list no longer holds
 (a filter hides it, or it landed) still opens, as a list of one, since a link
 that resolves to nothing is worse than one with nowhere to swipe.
 
+**Above the panes is the Look row: the branch, running.** Chips naming the app
+views this branch changes, each one an address into the deployed app at the
+branch's own tip (`app/?use=<sha>&view=<key>`), followed by a render link for
+each page the branch changed. It sits above the tab strip because it is not a
+reading of the branch but the branch itself, and because a constant position is
+most of what it is for: a render link was reachable before this, as a dimmed
+icon at the end of a file row and a menu row two taps into a card, and was still
+asked for in chat every time. Findable in principle is not findable.
+
+**The join is not new and is not re-decided here.** `routeActivity.routesTouched`
+has answered "what is this branch working on" since the Routes pane shipped, and
+the estate's Open list has painted its answer on branch rows ever since: a hit on
+a file fewer than three routes declare puts the branch **on** that route, a hit
+only on a widely shared file leaves it merely **near**, and the shell never
+counts. That rule carries a scar (the Routes pane's first render claimed work
+open on eleven routes off three pull requests) and re-deriving it beside a second
+copy is how a scar gets forgotten. What this row adds is the **ref**. The Open
+list's chips call the shell's own dispatcher, which walks the page you are
+already on to that view: main, rendered from main, at the one moment the branch
+was the point.
+
+The shared routes collapse to a `+N shared` count rather than chips, and the
+pixels are the argument: one wide file is wide precisely by being declared many
+times, so a branch touching `estate.js` brushes nine routes at once, which
+rendered as two lines of ghosted labels above the one line that answers the
+question, at 430px. It opens nothing, since every route in it is one the rule
+says the branch cannot be claimed to change.
+
+Two limits it states rather than hides. `?use=` fetches `dist/web-tools.js` and
+not `lib/`, so a branch that changed a component without rebuilding serves the
+old bundle under a link that resolves and renders; the row says **bundle not
+rebuilt** when the changed files show it. And the routes are read from
+`docs/app-routes.csv` at the branch ref, so a branch that adds a route shows it,
+while a branch in any other repo gets no row at all rather than a guess: routes
+are one page in one repo, and asking every other repo for a CSV it cannot have
+is a 404 per branch step for a question the repo's name already settled.
+
+Where the compare is deferred (in show-repo the crawl lends the head's numbers,
+so the diff waits for a tap) the row holds its place as the ask for that read.
+It renders as absent only when there is genuinely nothing, because a reader who
+cannot see the row concludes the branch changes no view.
+
+The same decision the row makes is available at a terminal as
+`npm run showing`, which writes the identical `?use=<sha>&view=<key>` address for
+a lib-only branch; a test holds the two to each other, because two answers to
+"where do I look at this branch" is the state this replaced.
+
 **Its sections are panes, not a scroll.** Guide and Files switch on a
 segmented control under the facts strip, with the count on the Files label, so
 the changed files are one tap from the top instead of below a screen of guide.

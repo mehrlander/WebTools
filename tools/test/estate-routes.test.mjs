@@ -261,3 +261,27 @@ test('the group is a row label read off the manifest, not a section', async () =
   // An unknown key labels itself rather than rendering blank.
   assert.equal(data.routeGroupLabel('nope'), 'nope');
 });
+
+// The ref on the chip, which is the whole reason the reverse join is drawn on a
+// branch row at all. Before this the chip called the shell's own dispatcher,
+// which walks the page you are already on to that view: main, at the one moment
+// the branch was the point.
+test('a branch row chip opens the view running THAT branch', async () => {
+  await data.loadRoutes(true);
+  const sha = 'a'.repeat(40);
+  const r = data.branchRoutes({ repo: 'mehrlander/web-tools', name: 'claude/registries', sha });
+  assert.equal(r.on[0].key, 'map');
+  assert.equal(r.on[0].url,
+    'https://mehrlander.github.io/web-tools/app/?use=' + sha + '&view=map');
+});
+
+// A SHA and never the branch name: ?use= is interpolated straight into a
+// raw.githubusercontent path and every branch here has a slash in its name, so
+// a row the crawl has no tip for keeps the in-shell hop rather than minting an
+// address that may not resolve. The chip's title is what tells the reader.
+test('a row with no crawled tip keeps the old behavior instead of guessing', async () => {
+  await data.loadRoutes(true);
+  const r = data.branchRoutes({ repo: 'mehrlander/web-tools', name: 'claude/registries' });
+  assert.equal(r.on[0].url, '', 'no tip, no address');
+  assert.equal(r.on[0].key, 'map', 'the chip is still there');
+});
