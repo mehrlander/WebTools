@@ -305,3 +305,75 @@ test('a meta card is a note, never an answer', () => {
   assert.ok(o.every(c => c.kind !== 'answer'));
   assert.ok(o.some(c => c.kind === 'note'));
 });
+
+
+// ── The deck's contents list ────────────────────────────────────────────────
+//
+// The deck pages `groups(turns(record))` and the list is built from
+// `outline(record)`, which derives the same cards. That is the invariant the
+// whole feature rests on: row `i` IS slide `i`, by construction rather than by
+// a mapping that could drift. `one outline row per deck card` above pins the
+// count; these pin what the row then says and what the labeler hands the kit.
+
+test('a card belongs to the exchange it answers, counted from the ask', () => {
+  // REC is ask, work, work, ask: the first question owns three cards and the
+  // second owns one. That is exactly the run a pager clusters, and it is the
+  // reason the group is the exchange and not the kind.
+  assert.deepEqual(outline(REC).map(c => c.exchange), [1, 1, 1, 2]);
+});
+
+test('a card before the first ask is exchange 0 rather than joining the ask after it', () => {
+  // A leading capture note folds into card 0, so reaching this needs a record
+  // whose first card is a standalone meta one. The closing summary is that
+  // card when there are no prompts at all.
+  const o = outline({ schema: 4, tools: { Bash: 1 }, prompts: [], replies: [], calls: [] });
+  assert.ok(o.length, 'the summary card is there to be numbered');
+  assert.equal(o[0].exchange, 0, 'nothing has been asked yet, and the count says so');
+});
+
+// Loading the shipped open() means stubbing the two kits it delegates to, which
+// is what lets a pure-function harness assert the wiring: the options object
+// swipe-deck receives is the whole contract between them.
+const load = (rel, w, doc) =>
+  new Function('window', 'document', readFileSync(path.join(repoRoot, rel), 'utf8'))(w, doc);
+
+const deckOpts = async (record) => {
+  const w = {};
+  const doc = { createElement: () => ({ style: {}, append() {}, setAttribute() {} }) };
+  load('lib/kits/session-render.js', w, doc);
+  w.chatRender = { ready: async () => {}, message: () => ({}) };
+  let seen = null;
+  w.swipeDeck = { open: (opts) => { seen = opts; return { deck: {} }; } };
+  await w.sessionRender.open(record);
+  return seen;
+};
+
+test('the deck is handed a labeler, so the header mark opens a contents list', async () => {
+  const opts = await deckOpts(REC);
+  assert.equal(typeof opts.index, 'function',
+    'without this the mark is a plaque and thirty cards are reachable only by swiping');
+  assert.equal(opts.count, groups(turns(REC)).length);
+});
+
+test('a row carries the card title, what it ran, and a mark for its kind', async () => {
+  const opts = await deckOpts(REC);
+  const line = outline(REC);
+  const row = opts.index(1);
+  assert.equal(row.title, line[1].title, 'the list and the outline say the same thing');
+  assert.equal(row.subtitle, line[1].ran, 'a work card is placed by what it ran');
+  assert.match(row.icon, /^ph-/, 'and the kind is a glyph, which the title cannot be wrong about');
+  assert.notEqual(opts.index(0).icon, opts.index(1).icon, 'an ask does not look like work');
+});
+
+test('the labeler groups by exchange, which is what the pager clusters on', async () => {
+  const opts = await deckOpts(REC);
+  assert.deepEqual([0, 1, 2, 3].map(i => opts.index(i).group), [1, 1, 1, 2]);
+});
+
+test('a labeler asked past the end answers rather than throwing', async () => {
+  // The kit calls the labeler once per slide for the dots and again per row,
+  // and a deck whose count and outline ever disagreed would take the whole
+  // list down with it. One row failing is not the list failing.
+  const opts = await deckOpts(REC);
+  assert.deepEqual(opts.index(99), {});
+});
