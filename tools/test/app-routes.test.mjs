@@ -17,21 +17,23 @@ import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 import { parseCsv, splitList } from '../build/registries-load.mjs';
 
-// Assembled from two CSVs since 2026-08-16, the same way estate.js does it. The
-// shell is a row keyed `shell`, which is what it always was: a path plus a note.
-// The group glosses live in the shared value-gloss table.
-const allRoutes = parseCsv(readFileSync(path.join(repoRoot, 'docs', 'app-routes.csv'), 'utf8'))
-  .map(r => ({ ...r, files: splitList(r.files).filter(Boolean), tabs: splitList(r.tabs).filter(Boolean) }));
-const shellRow = allRoutes.find(r => r.key === 'shell');
-const manifest = {
-  app: shellRow.files[0],
-  shell: shellRow.files[0],
-  shellNote: shellRow.what,
-  groups: parseCsv(readFileSync(path.join(repoRoot, 'docs', 'vocabularies.csv'), 'utf8'))
-    .filter(v => v.registry === 'app-routes' && v.property === 'group')
-    .map(v => ({ key: v.value, label: v.label, gloss: v.gloss })),
-  routes: allRoutes.filter(r => r.key !== 'shell'),
-};
+const src = readFileSync(path.join(repoRoot, 'lib/kits/route-activity.js'), 'utf8');
+const window = {};
+new Function('window', src)(window);
+const R = window.routeActivity;
+
+// Assembled from two CSVs since 2026-08-16, and through the FOLD'S OWN builder
+// since 2026-08-22: this file, estate.js and branch-brief.js each wrote the
+// shape out by hand, which put the one non-obvious part of it (the shell is a
+// row keyed `shell`, not a sibling key) in three places to be wrong in. Only
+// the parse stays here, since the browser and the suite reach for different
+// CSV readers.
+const rows = (f) => parseCsv(readFileSync(path.join(repoRoot, 'docs', f), 'utf8'));
+const manifest = R.manifest(
+  rows('app-routes.csv').map(r => ({
+    ...r, files: splitList(r.files).filter(Boolean), tabs: splitList(r.tabs).filter(Boolean),
+  })),
+  rows('vocabularies.csv'));
 const shellSrc = readFileSync(path.join(repoRoot, manifest.app), 'utf8');
 
 // The VIEWS keys, read out of the shell. Deliberately strict about the block
@@ -131,11 +133,6 @@ test('an alias is a retired key, so it never doubles as a live one', () => {
 });
 
 // ── The fold ────────────────────────────────────────────────────────────────
-
-const src = readFileSync(path.join(repoRoot, 'lib/kits/route-activity.js'), 'utf8');
-const window = {};
-new Function('window', src)(window);
-const R = window.routeActivity;
 
 const FIXTURE = {
   shell: 'shell.html',
@@ -301,4 +298,70 @@ test('a stop sums the work open across its rows', () => {
   // PR 2 hits only the wide file, so it is `near` on every row and open on none.
   assert.equal(g.find(s => s.stop === 'One').open, 1);
   assert.equal(g.find(s => s.stop === 'Pair').open, 0);
+});
+
+// ── The address the reverse join was missing ────────────────────────────────
+//
+// routesTouched has answered "what is this branch working on" since the Routes
+// pane shipped, and the estate's branch rows have painted its answer. What the
+// chips did with it was call the shell's dispatcher, which walks the page you
+// are already on to that view: main, rendered from main, at the one moment the
+// branch was the point. These hold the address that fixes it.
+
+test('a route opens AT a ref, which is the whole reason to draw the join', () => {
+  const stage = manifest.routes.find(r => r.key === 'stage');
+  assert.ok(stage, 'the stage route is declared');
+  assert.equal(R.viewUrl(stage, 'abc123'),
+    'https://mehrlander.github.io/web-tools/app/?use=abc123&view=stage');
+});
+
+// The same address scripts/showing.py writes for the lib-only case, and the
+// agreement is the point: two answers to "where do I look at this branch" is
+// the state this replaced.
+test('the app and the script agree on the lib-only address', () => {
+  const py = readFileSync(path.join(repoRoot, 'scripts/showing.py'), 'utf8');
+  const m = py.match(/q = f"\?use=\{sha\}" \+ \(f"&view=\{view\}" if view else ""\)/);
+  assert.ok(m, 'showing.py still writes ?use=<sha>&view=<key>; update the kit if it moved');
+  const stage = manifest.routes.find(r => r.key === 'stage');
+  assert.ok(R.viewUrl(stage, 'deadbeef').endsWith('/app/?use=deadbeef&view=stage'));
+});
+
+test('a route whose address carries a placeholder yields no link at all', () => {
+  // A link that lands nowhere is worse than no link, so the rule is a bare
+  // ?view= and nothing else. Two live rows exercise both sides.
+  const placeholder = manifest.routes.filter(r => /[<&]/.test(r.address || ''));
+  assert.ok(placeholder.length, 'the manifest still declares a placeholder address');
+  for (const r of placeholder) {
+    assert.equal(R.openable(r), false, r.key + ' carries a placeholder and is not openable');
+    assert.equal(R.viewUrl(r, 'abc123'), '');
+  }
+  const bare = manifest.routes.filter(r => /^\?view=[a-z]+$/.test(r.address || ''));
+  assert.ok(bare.length > 10, 'most routes are plain ?view= addresses');
+  for (const r of bare) assert.ok(R.viewUrl(r, 'x').includes('&view=' + r.key));
+});
+
+// Every live row happens to carry an address, so this one is synthetic on
+// purpose: the guard exists for a row that arrives without one, and asserting
+// the manifest contains such a row would fail the day someone gives it one.
+test('a row with no address, or none at all, is not openable', () => {
+  assert.equal(R.openable({ key: 'x' }), false);
+  assert.equal(R.openable(null), false);
+  assert.equal(R.viewUrl({ key: 'x' }, 'abc'), '');
+});
+
+// ?use= fetches the BUNDLE, not lib/, so this is the one caveat that turns a
+// link which resolves and renders into a link that shows last week's code.
+test('a lib change without a rebuilt pre-build is reported, not swallowed', () => {
+  assert.equal(R.bundleStale(['lib/alpineComponents/stage.js']), true);
+  assert.equal(R.bundleStale(['lib/alpineComponents/stage.js', 'dist/web-tools.js']), false);
+  assert.equal(R.bundleStale(['pages/branch.html']), false, 'a page change does not ride the bundle');
+  assert.equal(R.bundleStale([]), false);
+});
+
+test('the manifest builder keeps the shell out of the routes and names it twice', () => {
+  assert.equal(manifest.routes.some(r => r.key === 'shell'), false);
+  assert.equal(manifest.shell, manifest.app);
+  assert.ok(manifest.shellNote, 'the shell carries its own note');
+  assert.ok(manifest.groups.length > 1, 'group glosses came from the vocabulary');
+  assert.equal(manifest.groups.every(g => g.key && g.label), true);
 });

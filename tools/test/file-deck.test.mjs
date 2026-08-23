@@ -42,6 +42,22 @@ window.Alpine = { initTree: (el) => {
 } };
 
 const tick = (n = 1) => new Promise(r => setTimeout(r, n * 10));
+// jsdom has no layout, so the scroll the contents list makes to open on the
+// reader's own row is absent rather than inert.
+window.Element.prototype.scrollIntoView = function(){};
+// And a NO-OP scrollTo, for the tracks `drivable` below never wraps. The deck's
+// opening jump to `start` runs in a frame of its own, before any test can wrap
+// that track, so it threw into jsdom's dispatch, where node prints it and
+// carries on. Harmless until it is not: the same class of uncaught throw failed
+// CI from swipe-deck-stack on 2026-08-23.
+//
+// A no-op rather than a working scroller ON PURPOSE. Making it move the track
+// is not neutral here: the opening jump would then fire a real scroll event and
+// change what the subject channel announces, which broke the announcement case
+// when it was tried. The throw was already a no-op, so this preserves every
+// existing expectation and only stops the uncaught error. `drivable` supplies
+// the real thing for the tests that page.
+window.Element.prototype.scrollTo = function () {};
 
 // jsdom has no layout and no scrollTo, and the deck computes its position in
 // units of the track's width. Six lines of geometry make the track real enough
@@ -104,6 +120,28 @@ test('a deep directory keeps both its ends and elides the middle', () => {
                'sources/…/drs.wa.gov',
                'which part of the tree, and which folder the file is in');
   assert.equal(c(''), '', 'a file at the root has no crumb to make');
+});
+
+// The deck lists itself through swipe-deck's `index` labeler, and a changeset
+// is the case that wants one: the footer draws dots only while they stay
+// countable, so past 25 files a reader has a progress bar and no idea what is
+// around them. What a row owes is the file and what happened to it.
+test('the contents name each file and what happened to it', async () => {
+  const d = window.fileDeck.open({ ...AT, files: FILES, subtitle: 'b' });
+  await tick(2);
+  d.el.querySelector('.sd-header button[aria-haspopup]').dispatchEvent(new window.MouseEvent('click'));
+  await tick(2);
+  const rows = [...d.el.querySelectorAll('.sd-index > button')];
+  assert.equal(rows.length, FILES.length, 'every file in the changeset, not just the mounted three');
+  assert.match(rows[0].textContent, /swipe-deck\.js/);
+  assert.match(rows[0].textContent, /lib\/kits · \+40 −3/,
+    'the folder locates it and the counts say how much moved');
+  assert.match(rows[2].textContent, /new/, 'a status worth naming is named');
+  assert.ok(!/modified/.test(rows[0].textContent),
+    'and the ordinary case is not, since it is most of any changeset');
+  assert.match(rows[2].querySelector('i')?.className || '', /ph-file-plus/);
+  assert.equal(rows[0].querySelector('i'), null, 'no glyph for the ordinary case either');
+  d.close(); await tick(4);
 });
 
 test('a file with no directory keeps its whole name', () => {
