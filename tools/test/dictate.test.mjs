@@ -1187,3 +1187,139 @@ test('a caret move is not an undo step, and a no-op assignment is not either', (
   assert.equal(e.text, '');
   assert.equal(e.canUndo, false, 'and the two that changed nothing recorded nothing');
 });
+
+// ── Keeping the engine alive ──────────────────────────────────────────────
+// The rule these hold: an end the READER did not ask for is the device's own
+// silence timeout, not the end of the session. Everything here drives the
+// stub's `onend` directly, which is what a WebKit silence timeout looks like
+// from inside the kit: an end with no stop() behind it.
+
+// A relaunch is scheduled on a timer, so a test has to let the loop turn. The
+// wait is the kit's own gap plus a little, and the loop below is what a real
+// pause looks like: end, wait, and a fresh engine is up.
+// `relaunchMs: 0` is what keeps a dozen relaunches from costing two seconds
+// of wall clock; the delay itself is the kit's business, not a rule to hold.
+const fast = (opts = {}) => engine({ relaunchMs: 0, ...opts });
+const tick = () => new Promise(r => setTimeout(r, 5));
+
+test('an end nobody asked for relaunches, and the mic does not blink', async () => {
+  // The whole point. Before this the reader paused to think, WebKit ended the
+  // recognition at its own silence timeout, and the words stopped arriving
+  // with nothing said about it.
+  const states = [];
+  const d = fast({ onState: () => states.push({ listening: d.listening, live: d.live }) });
+  d.start();
+  const first = FakeSR.last;
+  FakeSR.last.say([{ t: 'the opening sentence', final: true }]);
+
+  first.onend();                       // the device gives up on the silence
+  assert.equal(d.listening, true, 'the reader never stopped, so the session has not');
+  assert.equal(d.live, false, 'and the engine really is down for the moment');
+
+  await tick();
+  assert.notEqual(FakeSR.last, first, 'a fresh engine came up behind it');
+  assert.equal(d.live, true);
+  assert.equal(d.relaunches, 1);
+
+  FakeSR.last.say([{ t: 'and the one after the pause', final: true }]);
+  assert.equal(d.text, 'the opening sentence. and the one after the pause.',
+    'both sides of the pause are in one buffer (the stub does not capitalize)');
+
+  assert.ok(states.every(s => s.listening),
+    'no state the surface was told about painted the mic as off');
+  d.stop();
+});
+
+test('stop() ends it for good: the relaunch reads intent, not the engine', async () => {
+  const d = fast();
+  d.start();
+  const only = FakeSR.last;
+  d.stop();
+  assert.equal(d.listening, false);
+  await tick();
+  assert.equal(FakeSR.last, only, 'nothing came up behind the reader');
+  assert.equal(d.live, false);
+});
+
+test('the dry budget gives up on a device that never hears anything', async () => {
+  // A microphone that is muted, seized by another app, or pointed at a silent
+  // room ends at once and forever. Without a cap this is a hot loop.
+  const errs = [];
+  const d = fast({ onError: (m) => errs.push(m) });
+  d.start();
+  for (let i = 0; i < 20 && d.listening; i++) {
+    FakeSR.last.onend();
+    await tick();
+  }
+  assert.equal(d.listening, false, 'the kit stopped asking');
+  assert.match(errs.join(' '), /nothing was heard/, 'and said why rather than going quiet');
+  assert.ok(d.relaunches <= 13, 'the budget bounded it: ' + d.relaunches);
+});
+
+test('any result refills the budget, since an engine returning words is working', async () => {
+  const d = fast();
+  d.start();
+  // Ten dry ends, then a hypothesis, then ten more. Without the refill the
+  // second run would exhaust a budget the first had already spent.
+  for (let i = 0; i < 10; i++) { FakeSR.last.onend(); await tick(); }
+  assert.equal(d.listening, true);
+  FakeSR.last.say([{ t: 'still here' }]);
+  for (let i = 0; i < 10; i++) { FakeSR.last.onend(); await tick(); }
+  assert.equal(d.listening, true, 'the interim alone settled the question the budget asks');
+  d.stop();
+});
+
+test('a permission refusal is not a silence: it never relaunches', async () => {
+  // Relaunching into a denied microphone asks the reader to refuse again ten
+  // times a second, and on a phone each refusal is a sheet over the page.
+  const errs = [];
+  const d = fast({ onError: (m) => errs.push(m) });
+  d.start();
+  const only = FakeSR.last;
+  only.onerror({ error: 'not-allowed' });
+  only.onend();
+  await tick();
+  assert.equal(d.listening, false);
+  assert.equal(FakeSR.last, only, 'no second prompt');
+  assert.match(errs.join(' '), /not-allowed/);
+});
+
+test('keepAlive: false keeps the old behavior exactly', async () => {
+  const d = fast({ keepAlive: false });
+  d.start();
+  const only = FakeSR.last;
+  only.onend();
+  await tick();
+  assert.equal(d.listening, false, 'an end is the end');
+  assert.equal(FakeSR.last, only);
+});
+
+test('a tapped mark still rides its own relaunch, with keep-alive on', async () => {
+  // punct() parks the mark, stops the engine, and the end handler writes it
+  // and comes back up. That path predates keep-alive and must not now do it
+  // twice, nor spend a dry credit on an end the kit itself asked for.
+  const d = fast();
+  d.start();
+  FakeSR.last.say([{ t: 'a clause', final: true }]);
+  d.punct(',');
+  assert.match(d.text, /a clause, $/, 'the mark replaced the pause period');
+  await tick();
+  assert.equal(d.live, true, 'and the engine came back');
+  assert.equal(d.relaunches, 0, 'the mark path is not counted as a silence relaunch');
+  FakeSR.last.say([{ t: 'Carrying on', final: true }]);
+  assert.match(d.text, /a clause, carrying on\.$/, 'and the continuation casing survived it');
+  d.stop();
+});
+
+test('starting twice is one engine, and toggle reads the intent', async () => {
+  const d = fast();
+  d.start();
+  const first = FakeSR.last;
+  d.start();
+  assert.equal(FakeSR.last, first, 'no second engine on the same microphone');
+  d.toggle();
+  assert.equal(d.listening, false);
+  d.toggle();
+  assert.equal(d.listening, true);
+  d.stop();
+});

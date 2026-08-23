@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Dictate</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🎙️</text></svg>">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+
+<!--
+  dictate.html — the blank page you talk at.
+
+  Every other caller of kits/dictate.js attaches the voice buffer to something:
+  the annotator pins a note to a passage, the stage makes a file out of it, the
+  FAB's menu stages a note about the page you are reading. All three are right
+  and none of them answers "I want to say a thing." That address did not exist,
+  which is why the dictation stack could be complete and still not be reached
+  for. This page is the missing address and nothing else: a full viewport of
+  text, a pad under your thumb, and somewhere for the words to go.
+
+  IT IS A PHONE PAGE FIRST. Not responsive-so-it-also-works: the shell is the
+  viewport (h-dvh, no document scroll, so no pull-to-refresh and no rubber
+  band), the controls sit at the bottom where a thumb already is, the type runs
+  large enough to read at arm's length while speaking, and the bottom row
+  clears the home indicator. A desktop gets the same thing centred, which costs
+  nothing and is the honest way round: the hard constraints are the phone's.
+
+  WHAT IT ADDS TO THE KIT, since the kit is where the composition rules live:
+
+    THE ENGINE IS KEPT ALIVE. Not here, in the kit, but this page is why it
+    was fixed. `continuous` is a request WebKit does not honor past its own
+    silence timeout, so the microphone switched itself off at every thinking
+    pause. Survivable for a one-sentence note; fatal for the thing this page
+    is for. See "Keeping the engine alive" in kits/dictate.js.
+
+    THE DRAFT SURVIVES THE PAGE. Every change writes the buffer to
+    localStorage, and it is restored on the next load. A phone call, a swipe
+    to another app that comes back cold, a stray reload: none of them should
+    cost ten minutes of talking. The draft is cleared when the words reach
+    somewhere durable, so a session that ENDED properly opens blank and only
+    an INTERRUPTED one comes back.
+
+    THE SCREEN IS HELD AWAKE while listening, because a phone that dims and
+    locks takes the microphone with it, and nothing about that failure tells
+    the reader what happened.
+
+    IT COMES BACK FROM THE BACKGROUND. Switching apps kills the recognition
+    outright, past anything a relaunch timer can see, so returning to a
+    visible page restarts it if the reader never asked to stop.
+
+    THE WORDS GO SOMEWHERE. This is the half that makes it a tool rather than
+    a textarea. Copy and Share read the buffer; Jot files it in the estate's
+    pile (the registry's lists/jots.json, which the app already renders at
+    ?view=jots) and Drop writes a dated markdown file into home's chron/dump/,
+    the tray /drain reads. The two that file it durably clear the buffer; the
+    two that only read it leave it alone.
+
+    CORRECTIONS ARE A LIST, NOT A HOPE. iOS Safari's recognizer is Apple's
+    own, the same one behind Siri dictation, so it mishears a technical
+    vocabulary exactly as reliably here as anywhere and no amount of speaking
+    clearly will teach it. A substitution list is the only lever a page has:
+    it lives in the registry, it is applied to each segment as it lands
+    (kits/dictate.js `opts.fix`), and the ✎ row in the menu adds to it from
+    whatever is selected, so the page gets better the more it is wrong.
+
+  ADDRESSING
+    ?to=copy|share|jot|drop   which destination the save sheet opens on
+    ?dest=owner/repo[@ref]:dir   where Drop writes, overriding home/chron/dump
+    ?lang=en-US               recognition language, default the browser's
+    ?use=<ref>                pin the lib chain to a branch for previewing
+
+  THE ONE TAP ON ARRIVAL is not a design choice. WebKit needs a user gesture
+  before it will raise the microphone prompt, so a page cannot start listening
+  on its own the first time. Once the reader has allowed it, the grant is
+  remembered here and the next arrival starts listening with no tap at all;
+  a refusal or a throw falls back to the tap target rather than asking again.
+-->
+
+<style>[x-cloak]{display:none!important}</style>
+
+<script type="module">
+  const q = new URLSearchParams(location.search);
+  const ref = q.get('use');
+  if (ref) {
+    window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
+    const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
+    const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+    try { await import(u); } finally { URL.revokeObjectURL(u); }
+  } else {
+    await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
+  }
+  await gh.load('gh-auth.js');
+  await gh.load('gh-store.js');
+  await gh.load('kits/dictate.js');
+
+  const REGISTRY = 'mehrlander/web-tools-private';
+  const JOTS = 'lists/jots.json';
+  const FIXES = 'lists/dictation-fixes.json';
+  const DRAFT = 'dictate:draft';
+  const GRANT = 'dictate:granted';
+
+  const ls = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+    del(k) { try { localStorage.removeItem(k); } catch {} },
+  };
+
+  // A destination address: "owner/repo[@ref]:dir". The same grammar every
+  // envelope here uses, so ?dest= reads like a stage item rather than like a
+  // third way of naming a place.
+  const parseDest = (s) => {
+    const m = /^([^/\s]+\/[^@:\s]+)(?:@([^:\s]+))?:(.*)$/.exec(String(s || '').trim());
+    return m ? { repo: m[1], ref: m[2] || '', dir: m[3].replace(/^\/|\/$/g, '') } : null;
+  };
+  const DEST = parseDest(q.get('dest')) || { repo: 'mehrlander/home', ref: '', dir: 'chron/dump' };
+
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('dictate', () => ({
+      // The buffer is the kit's. Everything below is a mirror it writes
+      // through onText, so there is one answer to "what has been said" and
+      // this component is a view of it, never a second copy.
+      d: null,
+      text: '', interim: '', armed: null, beat: 0,
+      listening: false, err: '',
+      started: false,           // has the reader ever begun (the tap target)
+      elapsed: 0, since: 0,
+      edit: false, draft: '',
+      breaks: false,
+      menu: false, sheet: false, fixing: false,
+      dest: q.get('to') || 'copy',
+      fixFrom: '', fixTo: '',
+      fixes: [], fixRe: null,
+      restored: 0,              // how many characters came back from a draft
+      saving: '',
+      canShare: typeof navigator !== 'undefined' && !!navigator.share,
+      destName: DEST.repo.split('/')[1] + '/' + DEST.dir,
+      _wake: null,
+
+      get token() { return window.TOKEN || ls.get('ghToken') || ''; },
+      get words() { const t = (this.text + ' ' + this.interim).trim(); return t ? t.split(/\s+/).length : 0; },
+      get clock() {
+        const s = Math.floor(this.elapsed / 1000);
+        return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+      },
+      get empty() { return !this.text.trim() && !this.interim.trim(); },
+      get sel() { this.beat; return !!(this.d && this.d.hasSelection); },
+      get stitchable() { this.beat; return !!(this.d && this.d.canStitch); },
+      get breakable() { this.beat; return !this.edit && !!this.text && !!(this.d && this.d.segments.length); },
+      get canUndo() { this.beat; return !!(this.d && this.d.canUndo); },
+
+      // THE PAD, one row, seven keys wide because the page is the whole
+      // screen. The stage had to stack three keys in a sidebar column and buy
+      // the other three with a shift; at full width every mark fits at once
+      // and the mode goes away, which is one fewer thing to remember mid
+      // sentence. A live selection replaces the marks with casing, the same
+      // swap the other two surfaces make and for the same reason: a selection
+      // is made to fix a word far more often than to punctuate one.
+      get pad() {
+        if (this.sel) return [
+          { k: 'AB', t: 'UPPER CASE' }, { k: 'ab', t: 'lower case' }, { k: 'Ab', t: 'Title Case' },
+          { k: 'fix', t: 'Teach a correction for these words' },
+          { k: 'drop', t: 'Drop the selection' },
+        ];
+        return [
+          this.stitchable
+            ? { k: 'stitch', t: 'Join this to the sentence before it: the full stop goes and the capital comes down' }
+            : { k: '.', t: 'Full stop' },
+          { k: ',', t: 'Comma' }, { k: '?', t: 'Question mark' }, { k: ';', t: 'Semicolon' },
+          { k: '!', t: 'Exclamation point' }, { k: '¶', t: 'New paragraph' },
+        ];
+      },
+
+      init() {
+        this.d = window.Dictate.create({
+          lang: q.get('lang') || undefined,
+          fix: (s) => this.applyFixes(s),
+          onText: (t) => { this.text = t; this.heard(); this.save(); this.paint(); },
+          onInterim: (t) => { this.interim = t; this.heard(); this.paint(); },
+          onState: () => {
+            this.listening = !!(this.d && this.d.listening);
+            if (this.listening) this.wake(); else this.unwake();
+          },
+          onError: (m) => {
+            this.err = m;
+            // A refusal invalidates the remembered grant, so the next arrival
+            // asks with a tap rather than starting into a denied microphone.
+            if (/not-allowed/.test(m)) ls.del(GRANT);
+          },
+        });
+
+        // An interrupted session comes back. A finished one does not: `save`
+        // is cleared wherever the words reach somewhere durable, so a blank
+        // page here means the last note was filed, not that one was lost.
+        const held = ls.get(DRAFT);
+        if (held && held.trim()) { this.d.text = held; this.restored = held.length; this.started = true; }
+
+        this.loadFixes();
+        // Paint AFTER binding, not only from onText. A restored draft is
+        // assigned in init(), which runs before $refs.body exists, so its
+        // paint had nowhere to land and the page came back blank with the
+        // words sitting in the buffer behind it. Found by the browser check.
+        this.$nextTick(() => { this.bind(this.$refs.body); this.paint(); });
+        setInterval(() => { if (this.listening) this.elapsed = Date.now() - this.since; }, 500);
+
+        // Backgrounding kills the recognition outright, below anything the
+        // kit's relaunch timer can see: the page is frozen, so the timer does
+        // not run either. Coming back visible is the only moment that can
+        // notice, and it restarts only what the reader never stopped.
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState !== 'visible') return;
+          if (this.listening) { this.d.start(); this.wake(); }
+        });
+
+        // The remembered grant. WebKit will not raise the microphone prompt
+        // outside a user gesture, so the first arrival must be tapped; after
+        // that the permission is the site's and the page can simply begin.
+        if (ls.get(GRANT) && this.d.available()) this.begin();
+      },
+
+      // ── Starting ──────────────────────────────────────────────────────
+      begin() {
+        this.started = true;
+        this.since = Date.now() - this.elapsed;
+        this.err = '';
+        this.d.start();
+      },
+      mic() {
+        if (this.listening) { this.d.stop(); return; }
+        this.begin();
+      },
+
+      // WORDS ARRIVING is the proof, and the only one available. Starting an
+      // engine is not: r.start() succeeds whether or not the microphone is
+      // allowed, and the refusal comes back asynchronously, so a flag written
+      // at start time would remember a permission that was never granted.
+      heard() {
+        // GATED ON THE ENGINE. onText fires for every write to the buffer, a
+        // restored draft and a typed edit included, and treating those as
+        // speech wrote a microphone grant nobody had given and cleared the
+        // banner announcing the restore in the same breath.
+        if (this._heard || !this.listening) return;
+        this._heard = true;
+        ls.set(GRANT, '1');
+        this.restored = 0;
+      },
+
+      async wake() {
+        // A phone that dims and locks takes the microphone with it, and the
+        // reader is given no reason. Absent in a browser without the API,
+        // which loses nothing that was working before.
+        if (this._wake || !navigator.wakeLock) return;
+        try { this._wake = await navigator.wakeLock.request('screen'); } catch {}
+      },
+      unwake() { try { this._wake && this._wake.release(); } catch {} this._wake = null; },
+
+      save() { this.text.trim() ? ls.set(DRAFT, this.text) : ls.del(DRAFT); },
+
+      // ── The painted surface and its gestures ──────────────────────────
+      // Three, and deliberately no drag among them: a LONG PRESS takes the
+      // word under the finger (or drops a caret, on whitespace), tapping a
+      // HANDLE arms it, and the next tap in the text moves the armed edge
+      // there. Dragging a handle puts the finger over the words being aimed
+      // at, which is the problem every platform then patches with a floating
+      // magnifier; not dragging means there is nothing to magnify. Lifted
+      // from the stage's card, which is where it was worked out.
+      bind(host) {
+        this._host = host;
+        const surface = host.parentElement || host;
+        let timer = null, x = 0, y = 0, long = false, lastTap = 0, taps = 0;
+        const clear = () => { if (timer) { clearTimeout(timer); timer = null; } };
+        const toEnd = () => { this.d.caretAt(this.d.text.length); this.armed = null; this.paint(); };
+        const at = (cx, cy) => {
+          const doc = host.ownerDocument;
+          const r = doc.caretRangeFromPoint ? doc.caretRangeFromPoint(cx, cy) : null;
+          const p = !r && doc.caretPositionFromPoint ? doc.caretPositionFromPoint(cx, cy) : null;
+          const node = r ? r.startContainer : p ? p.offsetNode : null;
+          const off = r ? r.startOffset : p ? p.offset : 0;
+          return node ? window.Dictate.offsetAt(host, node, off) : null;
+        };
+        surface.addEventListener('pointerdown', (e) => {
+          if (this.edit) return;
+          x = e.clientX; y = e.clientY; long = false;
+          clear();
+          timer = setTimeout(() => {
+            timer = null; long = true;
+            if (!window.Dictate.hitsText(host, x, y)) return;
+            const i = at(x, y);
+            if (i == null) return;
+            this.d.selectWordAt(i); this.armed = null; this.paint();
+          }, 450);
+        });
+        surface.addEventListener('pointermove', (e) => {
+          if (timer && (Math.abs(e.clientX - x) > 10 || Math.abs(e.clientY - y) > 10)) clear();
+        });
+        surface.addEventListener('pointercancel', clear);
+        // Heard on the LAYER rather than the scroll box: a double tap paints
+        // a handle where the finger was, so the third tap of a triple lands
+        // on furniture the run itself just put there.
+        (this.$refs.layer || surface).addEventListener('pointerup', (e) => {
+          clear();
+          if (this.edit || long) return;
+          const pin = e.target?.closest?.('[data-edge],[data-d="nudge"]');
+          if (!pin && !surface.contains(e.target)) { taps = 0; return; }
+          if (!pin && !window.Dictate.hitsText(host, e.clientX, e.clientY)) { taps = 0; toEnd(); return; }
+          const t = Date.now();
+          taps = (t - lastTap) < 300 ? taps + 1 : 1;
+          lastTap = t;
+          if (taps >= 3) { this.d.select(0, this.d.text.length); this.armed = null; this.paint(); return; }
+          if (pin) return;
+          const i = at(e.clientX, e.clientY);
+          if (i == null) { toEnd(); return; }
+          if (taps === 2) { this.d.selectWordAt(i); this.armed = null; this.paint(); return; }
+          if (this.armed) this.d.moveEdge(this.armed, i);
+          else if (this.d.range) { this.d.caretAt(i); this.armed = null; }
+          else return;
+          this.paint();
+        });
+      },
+      layerTap(e) {
+        const t = e.target;
+        const dir = t?.getAttribute?.('data-nudge');
+        if (dir && this.armed) { e.preventDefault(); e.stopPropagation(); this.d.nudge(this.armed, +dir); this.paint(); return; }
+        if (t?.getAttribute?.('data-disarm')) { e.preventDefault(); e.stopPropagation(); this.armed = null; this.paint(); return; }
+        const edge = t?.closest?.('[data-edge]');
+        if (edge) {
+          e.preventDefault(); e.stopPropagation();
+          const which = edge.getAttribute('data-edge');
+          this.armed = this.armed === which ? null : which;
+          this.paint();
+        }
+      },
+      paint() {
+        this.beat++;
+        if (!this._host) return;
+        if (!this._styled) {
+          this._styled = true;
+          this._host.setAttribute('style', (this._host.getAttribute('style') || '') + window.Dictate.SUPPRESS);
+        }
+        window.Dictate.paint(this._host, {
+          text: this.text, interim: this.interim,
+          range: this.d ? this.d.range : null, armed: this.armed,
+          overlay: this.$refs.layer, endCaret: true,
+        });
+      },
+
+      // ── The pad ───────────────────────────────────────────────────────
+      key(k) {
+        if (k === 'stitch') { this.d.stitch(); this.paint(); return; }
+        if (k === 'drop') { this.d.clearRange(); this.armed = null; this.paint(); return; }
+        if (k === 'fix') { this.openFix(); return; }
+        const cased = { AB: 'upper', ab: 'lower', Ab: 'title' }[k];
+        if (cased) { this.d.recase(cased); this.paint(); return; }
+        this.d.punct(k);
+      },
+      back() { this.d.backWord(); },
+      undo() { this.d.undo(); this.armed = null; this.paint(); },
+
+      // ── The keyboard half ─────────────────────────────────────────────
+      editOpen() {
+        this.d.flush();                  // the phrase on screen is part of what is being edited
+        this._resume = this.listening;
+        this.d.stop();
+        this.draft = this.d.text;
+        this.edit = true;
+        this.$nextTick(() => this.$refs.ta && this.$refs.ta.focus());
+      },
+      editClose() {
+        this.d.text = this.draft;
+        this.edit = false;
+        if (this._resume) this.begin();
+        this._resume = false;
+      },
+
+      // ── Corrections ───────────────────────────────────────────────────
+      // Read once at boot, held as one alternation so a segment costs one
+      // pass rather than one per entry. Longest first, so "web tools app"
+      // cannot be eaten by "web tools" before it is reached.
+      async loadFixes() {
+        if (!this.token) return;
+        try {
+          const reg = new window.GH({ token: this.token, repo: REGISTRY, ref: 'main' });
+          const raw = JSON.parse((await reg.get(FIXES)).text);
+          this.fixes = Array.isArray(raw.items) ? raw.items : [];
+          this.compile();
+        } catch {}
+      },
+      compile() {
+        const rows = this.fixes.filter(f => f && f.from).sort((a, b) => b.from.length - a.from.length);
+        if (!rows.length) { this.fixRe = null; return; }
+        const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        this.fixRe = new RegExp('\\b(' + rows.map(f => esc(f.from)).join('|') + ')\\b', 'gi');
+        this._fixMap = new Map(rows.map(f => [f.from.toLowerCase(), f.to]));
+      },
+      // Case is carried across: a correction fired at the head of a sentence
+      // keeps its capital, since the recognizer's own capitalization is the
+      // only signal available about where a sentence started.
+      applyFixes(s) {
+        if (!this.fixRe) return s;
+        return s.replace(this.fixRe, (m) => {
+          const to = this._fixMap.get(m.toLowerCase());
+          if (to == null) return m;
+          return /^[A-Z]/.test(m) && /^[a-z]/.test(to) ? to[0].toUpperCase() + to.slice(1) : to;
+        });
+      },
+      openFix() {
+        const r = this.d.range;
+        this.fixFrom = r ? this.d.text.slice(r.start, r.end).replace(/^[\s.,;:!?]+|[\s.,;:!?]+$/g, '') : '';
+        this.fixTo = '';
+        this.fixing = true;
+        this.menu = false;
+        this.$nextTick(() => this.$refs.fixTo && this.$refs.fixTo.focus());
+      },
+      async saveFix() {
+        const from = this.fixFrom.trim(), to = this.fixTo.trim();
+        if (!from || !to || !this.token) { this.fixing = false; return; }
+        this.fixing = false;
+        // The buffer is corrected too, since the reader is looking at the
+        // word that was wrong and a list that only helps NEXT time reads as
+        // a control that did nothing.
+        if (this.d.hasSelection) { this.d.insert(to); this.armed = null; this.paint(); }
+        try {
+          const reg = new window.GH({ token: this.token, repo: REGISTRY, ref: 'main' });
+          let items = [];
+          try { const raw = JSON.parse((await reg.get(FIXES)).text); items = Array.isArray(raw.items) ? raw.items : []; }
+          catch (e) { if (e?.status && e.status !== 404) throw e; }
+          items = [...items.filter(f => (f.from || '').toLowerCase() !== from.toLowerCase()),
+                   { from, to, added: new Date().toISOString() }];
+          await reg.save(FIXES, { items }, `Dictation fix: "${from}" → "${to}"`);
+          this.fixes = items; this.compile();
+          Alpine.store('toast')('check', `"${from}" will come out "${to}"`, 'alert-success', 2600);
+        } catch (e) {
+          Alpine.store('toast')('warning', 'Fix not saved: ' + (e?.message || e), 'alert-error', 5000);
+        }
+      },
+
+      // ── Where the words go ────────────────────────────────────────────
+      // Committing the hypothesis first, always: the reader has READ the grey
+      // text and tapped save, so accepting it is what they asked for.
+      // A METHOD, not a getter: it commits the running hypothesis, and a
+      // getter with a side effect is a trap set for the first template that
+      // reads it. Committing is right whichever way the words go out, since
+      // the reader has READ the grey text and then tapped save.
+      outgoing() {
+        if (!this.d) return '';
+        if (this.edit) return this.draft;
+        this.d.flush();
+        return this.breaks ? this.d.paragraphs() : this.d.text;
+      },
+      slug(t) {
+        return (t.trim().split(/\s+/).slice(0, 7).join('-') || 'note')
+          .toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'note';
+      },
+      openSheet() { if (this.empty && !this.draft.trim()) return; this.sheet = true; },
+      // ?to= names the destination a link already has in mind, and the sheet
+      // paints that one primary rather than opening on it: choosing is still
+      // the reader's, and a URL that could file a note on arrival would be a
+      // different and much less safe thing.
+      lead(k) { return this.dest === k ? 'btn-primary' : ''; },
+
+      // Copy and Share only READ the buffer, so they leave it standing and
+      // leave the draft in place: nothing durable has happened yet and a
+      // clipboard is not a place words live.
+      async copy() {
+        const t = this.outgoing();
+        const n = this.words;
+        try {
+          await navigator.clipboard.writeText(t);
+          this.sheet = false;
+          Alpine.store('toast')('clipboard-text', 'Copied ' + n + ' words', 'alert-success', 2200);
+        } catch (e) {
+          // Rather than a silent no-op: a clipboard write can be refused, and
+          // a reader who thinks they have the words and does not is worse off
+          // than one who is told to use Share.
+          Alpine.store('toast')('warning', 'The browser refused the clipboard: use Share', 'alert-error', 5000);
+        }
+      },
+      async share() {
+        const t = this.outgoing();
+        this.sheet = false;
+        try { await navigator.share({ text: t }); } catch {}
+      },
+      // Jot and Drop file it, so both clear: the note has a home now and the
+      // page goes back to being blank, which is the state it is for.
+      async jot() {
+        await this.commit(async (reg) => {
+          let items = [];
+          try { const raw = JSON.parse((await reg.get(JOTS)).text); items = Array.isArray(raw.items) ? raw.items : []; }
+          catch (e) { if (e?.status && e.status !== 404) throw e; }
+          const text = this.outgoing();
+          items = [...items, { id: 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                               text, created_at: new Date().toISOString() }];
+          await reg.save(JOTS, { items }, `Jot "${text.slice(0, 40)}" via dictate`);
+          return 'the jots pile';
+        }, REGISTRY, 'main');
+      },
+      async drop() {
+        await this.commit(async (gh2) => {
+          const text = this.outgoing();
+          const now = new Date();
+          const stamp = now.toISOString().slice(0, 10);
+          const hhmm = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+          const path = `${DEST.dir}/${stamp}-${hhmm}-${this.slug(text)}.md`;
+          await gh2.save(path, text.replace(/\s*$/, '') + '\n', `Dictated ${stamp} ${hhmm}`);
+          return path;
+        }, DEST.repo, DEST.ref);
+      },
+      async commit(work, repo, ref) {
+        if (!this.token) {
+          Alpine.store('toast')('warning', 'No token on this browser: Copy or Share instead', 'alert-error', 5000);
+          return;
+        }
+        this.saving = repo;
+        try {
+          const inst = new window.GH({ token: this.token, repo, ref: ref || '' });
+          const where = await work(inst);
+          this.sheet = false;
+          this.clear();
+          Alpine.store('toast')('check', 'Filed in ' + where, 'alert-success', 3200);
+        } catch (e) {
+          Alpine.store('toast')('warning', 'Not saved: ' + (e?.message || e), 'alert-error', 6000);
+        }
+        this.saving = '';
+      },
+      // Back to blank, and still listening if it was. The buffer goes through
+      // the kit's setter, so undo can bring it back for one step, which is
+      // the whole safety net a clear needs here.
+      clear() {
+        this.d.text = '';
+        this.draft = ''; this.interim = ''; this.armed = null;
+        this.breaks = false; this.restored = 0;
+        ls.del(DRAFT);
+        this.elapsed = 0; this.since = Date.now();
+        this.menu = false;
+        this.paint();
+      },
+    }));
+  });
+
+  await gh.load('alpine-bundle.js');   // starts Alpine
+</script>
+</head>
+
+<body class="bg-base-200 text-base-content overscroll-none">
+
+<div x-data="dictate" x-cloak
+     class="h-dvh w-full flex flex-col mx-auto max-w-3xl bg-base-100 sm:border-x border-base-300">
+
+  <!-- ── The status bar ──────────────────────────────────────────────────
+       Three facts and a menu, because a capture surface has to answer "is it
+       hearing me" without being asked, and answer it from across the room. -->
+  <div class="shrink-0 flex items-center gap-3 px-4 min-h-12 border-b border-base-300 pt-[env(safe-area-inset-top)]">
+    <span class="relative flex size-3 shrink-0">
+      <span x-show="listening" class="absolute inline-flex size-3 rounded-full bg-error opacity-60 animate-ping"></span>
+      <span class="relative inline-flex size-3 rounded-full"
+            :class="listening ? 'bg-error' : 'bg-base-300'"></span>
+    </span>
+    <span class="text-sm font-medium" x-text="listening ? 'Listening' : (started ? 'Paused' : 'Dictate')"></span>
+    <span x-show="started" class="font-mono text-xs opacity-40 tabular-nums" x-text="clock"></span>
+    <div class="grow"></div>
+    <span class="font-mono text-xs opacity-40 tabular-nums" x-text="words + 'w'"></span>
+    <button @click="undo()" :disabled="!canUndo" class="btn btn-ghost btn-sm btn-square" title="Undo">
+      <i class="ph ph-arrow-counter-clockwise text-lg"></i>
+    </button>
+    <button @click="menu = !menu" class="btn btn-ghost btn-sm btn-square -mr-2" title="More">
+      <i class="ph ph-dots-three-vertical text-xl"></i>
+    </button>
+  </div>
+
+  <!-- The menu: everything that is not needed mid-sentence. -->
+  <div x-show="menu" @click.outside="menu = false"
+       class="shrink-0 border-b border-base-300 bg-base-200 px-3 py-2 flex flex-wrap gap-2">
+    <button @click="clear()" class="btn btn-sm btn-ghost gap-1.5"><i class="ph ph-file-dashed"></i>New</button>
+    <button @click="breaks = !breaks" :disabled="!breakable"
+            class="btn btn-sm gap-1.5" :class="breaks ? 'btn-warning' : 'btn-ghost'"
+            :title="breakable ? 'Break into paragraphs where you paused longest' : 'Needs the pause record, which typing replaces'">
+      <i class="ph ph-paragraph"></i>Breaks
+    </button>
+    <button @click="openFix()" class="btn btn-sm btn-ghost gap-1.5"
+            title="Teach the recognizer a word it keeps getting wrong">
+      <i class="ph ph-pencil-line"></i>Fix a word
+    </button>
+    <a :href="'https://github.com/mehrlander/web-tools-private/blob/main/lists/dictation-fixes.json'"
+       target="_blank" rel="noopener" class="btn btn-sm btn-ghost gap-1.5"
+       :title="fixes.length + ' corrections in the list'">
+      <i class="ph ph-list-magnifying-glass"></i><span x-text="fixes.length"></span>
+    </a>
+    <div class="grow"></div>
+    <span x-show="d && d.relaunches" class="self-center font-mono text-[11px] opacity-30"
+          :title="'the engine has been restarted this many times through your pauses'"
+          x-text="(d ? d.relaunches : 0) + ' relaunches'"></span>
+  </div>
+
+  <div x-show="err" class="shrink-0 px-4 py-1.5 text-sm bg-error/10 text-error" x-text="err"></div>
+  <div x-show="restored" class="shrink-0 px-4 py-1.5 text-sm bg-warning/15 flex items-center gap-2">
+    <i class="ph ph-clock-counter-clockwise"></i>
+    <span>Picked up where you left off.</span>
+    <button @click="clear()" class="link link-hover font-medium">Start fresh</button>
+  </div>
+
+  <!-- ── The text ────────────────────────────────────────────────────────
+       The whole middle of the screen, scrolling inside itself so the shell
+       never moves. data-no-swipe and touch-action keep a selection drag from
+       being read as a page gesture. The LAYER is the handles' home: outside
+       the scroll box and unclipped, so a pin may hang above the first line
+       rather than being cut in half by the box's own padding edge. -->
+  <div class="grow min-h-0 relative touch-manipulation" x-ref="layer"
+       @pointerdown="layerTap($event)" data-no-swipe>
+
+    <div x-show="!edit" class="absolute inset-0 overflow-y-auto px-4 py-3" @scroll="paint()">
+      <div class="whitespace-pre-wrap text-[21px] leading-[1.65] tracking-[-0.01em]"
+           x-ref="body" @contextmenu.prevent></div>
+
+      <!-- Nothing said yet. The whole empty surface IS the start button,
+           which is the one tap WebKit's gesture requirement makes unavoidable
+           and the largest target a page can offer for it. -->
+      <button x-show="!text && !interim" @click="started ? mic() : begin()"
+              class="absolute inset-0 w-full flex flex-col items-center justify-center gap-3 text-center px-8">
+        <i class="ph text-6xl opacity-20" :class="listening ? 'ph-waveform' : 'ph-microphone'"></i>
+        <span class="text-lg opacity-50" x-text="listening ? 'Go ahead.' : (started ? 'Paused. Tap to carry on.' : 'Tap anywhere to start talking.')"></span>
+        <span x-show="!started" class="text-sm opacity-30">Your phone will ask for the microphone once.</span>
+      </button>
+    </div>
+
+    <!-- The keyboard half. Same buffer, handed back through the kit's setter
+         on the way out, so dictation resumes from what was typed. -->
+    <textarea x-show="edit" x-cloak x-ref="ta" x-model="draft"
+              class="absolute inset-0 w-full h-full resize-none textarea rounded-none border-0 text-[21px] leading-[1.65] px-4 py-3 focus:outline-none"
+              placeholder="Type instead"></textarea>
+  </div>
+
+  <!-- ── The pad ─────────────────────────────────────────────────────────
+       One row across the full width, which is what a page can do and a
+       sidebar cannot: every mark reachable without a shift. Backspace is the
+       last key and styled apart, since it is the only one that destroys. -->
+  <div class="shrink-0 border-t border-base-300 px-2 pt-2 flex gap-1.5">
+    <template x-for="p in pad" :key="p.k">
+      <button @pointerdown.prevent="key(p.k)" :title="p.t"
+              class="btn flex-1 min-w-0 h-12 min-h-0 px-0 text-xl font-semibold"
+              :class="p.k === 'stitch' ? 'btn-warning' : (p.k === 'drop' ? 'btn-info btn-outline' : (p.k === 'fix' ? 'btn-accent btn-outline' : 'btn-ghost bg-base-200'))">
+        <i x-show="p.k === 'stitch'" class="ph ph-arrows-in-line-horizontal"></i>
+        <i x-show="p.k === 'fix'" class="ph ph-pencil-line"></i>
+        <span x-show="p.k === 'drop'">✕</span>
+        <span x-show="!['stitch','fix','drop'].includes(p.k)" x-text="p.k"></span>
+      </button>
+    </template>
+    <button @pointerdown.prevent="back()" title="Delete the last word"
+            class="btn btn-outline btn-error flex-1 min-w-0 h-12 min-h-0 px-0">
+      <i class="ph ph-backspace text-xl"></i>
+    </button>
+  </div>
+
+  <!-- ── The action row ──────────────────────────────────────────────────
+       The mic is the biggest thing on it and it is red while live, which is
+       the one control a reader looks for without reading. Save is primary and
+       to the right, where a thumb lands last. -->
+  <!-- pr-[4.5rem] RESERVES THE BOTTOM-RIGHT CORNER, which is not this page's
+       to use: the FAB launcher is fixed at bottom-6 right-6 on every page
+       that boots the lib chain, and Save sitting under it was the first thing
+       the headless shot showed. The same reservation the drawer's own footer
+       makes with pr-14, for the same reason. -->
+  <div class="shrink-0 flex items-center gap-2 px-2 py-2 pr-[5.25rem] lg:pr-2"
+       style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.5rem)">
+    <button @click="mic()" :disabled="edit"
+            class="btn btn-square h-14 w-14 min-h-0 shrink-0"
+            :class="listening ? 'btn-error' : 'btn-neutral'"
+            :title="listening ? 'Recording. Tap to stop.' : 'Start listening'">
+      <i class="ph text-3xl" :class="listening ? 'ph-microphone' : 'ph-microphone-slash'"></i>
+    </button>
+    <button @click="edit ? editClose() : editOpen()"
+            class="btn h-14 min-h-0 shrink-0" :class="edit ? 'btn-success btn-outline px-4 gap-2' : 'btn-ghost btn-square w-14'"
+            :title="edit ? 'Done: back to dictation' : 'Type instead (opens the keyboard)'">
+      <i class="ph text-2xl" :class="edit ? 'ph-check' : 'ph-keyboard'"></i>
+      <span x-show="edit">Done</span>
+    </button>
+    <button @click="openSheet()" :disabled="empty && !draft.trim()"
+            class="btn btn-primary grow h-14 min-h-0 gap-2 text-base">
+      <i class="ph ph-paper-plane-tilt text-xl"></i>Save
+    </button>
+  </div>
+
+  <!-- ── The save sheet ──────────────────────────────────────────────────
+       A bottom sheet rather than a centred dialog, because the choice is made
+       with the same thumb that has been tapping the pad. -->
+  <div x-show="sheet" x-cloak class="fixed inset-0 z-[90] flex items-end justify-center">
+    <div class="absolute inset-0 bg-black/40" @click="sheet = false"></div>
+    <div class="relative w-full max-w-3xl bg-base-100 rounded-t-2xl border-t border-base-300 p-4 flex flex-col gap-2"
+         style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
+      <div class="flex items-baseline gap-2 pb-1">
+        <span class="font-medium">Save</span>
+        <span class="font-mono text-xs opacity-40" x-text="words + ' words'"></span>
+        <div class="grow"></div>
+        <button @click="sheet = false" class="btn btn-ghost btn-sm btn-square"><i class="ph ph-x text-lg"></i></button>
+      </div>
+
+      <button @click="copy()" class="btn btn-lg justify-start gap-3 h-16 min-h-0" :class="lead('copy')">
+        <i class="ph ph-clipboard-text text-2xl"></i>
+        <span class="flex flex-col items-start leading-tight">
+          <span>Copy</span><span class="text-xs font-normal opacity-50">to paste into a chat</span>
+        </span>
+      </button>
+
+      <button x-show="canShare" @click="share()" class="btn btn-lg justify-start gap-3 h-16 min-h-0" :class="lead('share')">
+        <i class="ph ph-share-network text-2xl"></i>
+        <span class="flex flex-col items-start leading-tight">
+          <span>Share</span><span class="text-xs font-normal opacity-50">the system sheet: any app on the phone</span>
+        </span>
+      </button>
+
+      <button @click="jot()" :disabled="!token || !!saving" class="btn btn-lg justify-start gap-3 h-16 min-h-0" :class="lead('jot')">
+        <i class="ph ph-note-pencil text-2xl"></i>
+        <span class="flex flex-col items-start leading-tight">
+          <span>Jot</span><span class="text-xs font-normal opacity-50">the estate's pile, beside the others</span>
+        </span>
+      </button>
+
+      <button @click="drop()" :disabled="!token || !!saving" class="btn btn-lg justify-start gap-3 h-16 min-h-0" :class="lead('drop')">
+        <i class="ph ph-tray-arrow-down text-2xl"></i>
+        <span class="flex flex-col items-start leading-tight">
+          <span>Drop</span>
+          <span class="text-xs font-normal opacity-70" x-text="destName + ', for the next drain'"></span>
+        </span>
+      </button>
+
+      <p x-show="!token" class="text-sm opacity-50 px-1 pt-1">
+        Jot and Drop write to a repository, so they need this browser's GitHub token.
+        Copy and Share do not.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── Teaching a correction ───────────────────────────────────────────
+       Two fields, because the recognizer will not learn and a list is the
+       only lever left. -->
+  <div x-show="fixing" x-cloak class="fixed inset-0 z-[90] flex items-end justify-center">
+    <div class="absolute inset-0 bg-black/40" @click="fixing = false"></div>
+    <div class="relative w-full max-w-3xl bg-base-100 rounded-t-2xl border-t border-base-300 p-4 flex flex-col gap-3"
+         style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
+      <div class="font-medium">Fix a word it keeps getting wrong</div>
+      <input x-model="fixFrom" placeholder="what it hears" class="input input-bordered w-full text-lg">
+      <input x-model="fixTo" x-ref="fixTo" placeholder="what you meant" class="input input-bordered w-full text-lg">
+      <p class="text-xs opacity-50 -mt-1">
+        Applied to every segment from now on, whole words only, and it corrects what is selected here too.
+      </p>
+      <div class="flex gap-2">
+        <button @click="fixing = false" class="btn btn-ghost flex-1">Cancel</button>
+        <button @click="saveFix()" :disabled="!fixFrom.trim() || !fixTo.trim() || !token"
+                class="btn btn-primary flex-1">Teach it</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast toast-top toast-center z-[95]" x-data x-show="$store.toasts && $store.toasts.length">
+  <template x-for="t in ($store.toasts || [])" :key="t.id">
+    <div class="alert text-base gap-2" :class="t.cls">
+      <i class="ph" :class="'ph-'+t.icon"></i>
+      <span x-text="t.msg"></span>
+    </div>
+  </template>
+</div>
+
+</body>
+</html>

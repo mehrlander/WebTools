@@ -31,6 +31,7 @@
     "test:pdf": "node tools/test/pdf-kit-browser.mjs && node tools/test/pdf-ink-alignment.mjs",
     "test:pdf-versions": "node tools/test/pdf-version-probe.mjs",
     "test:word-select": "node tools/test/word-select-touch.mjs",
+    "test:dictate-page": "node tools/test/dictate-page.mjs",
     "test:render-copy": "node tools/test/render-copy.mjs",
     "test:subject-actions": "node tools/test/subject-actions.mjs",
     "test:traffic-states": "node tools/test/traffic-states.mjs",

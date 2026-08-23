@@ -156,7 +156,7 @@
       </div>
 
       <div class="mt-4 flex flex-wrap items-center gap-2">
-        <button class="btn btn-primary gap-2" :disabled="!original.trim() || busy" @click="compare()">
+        <button class="btn btn-primary gap-2" :disabled="!!(!original.trim() || busy)" @click="compare()">
           <i class="ph" :class="busy ? 'ph-spinner-gap animate-spin' : (proposal.trim() ? 'ph-git-diff' : 'ph-sparkle')"></i>
           <span x-text="proposal.trim() ? 'Merge & review' : 'Draft a shorter version'"></span>
         </button>
