@@ -1908,12 +1908,6 @@ function app(){ return {
   // naming it in the URL, not by scrolling on a callback. Blank when the nav
   // opened the view, since arriving with nothing named singles out nothing.
   stateItem: new URLSearchParams(location.search).get('item') || '',
-  // The guides shelf's read stamp, mirrored here by the estate component as it
-  // lands. Every other derived thing carries its age in a file the State view
-  // can read; this one has no file, so the shell holds the only copy outside
-  // the component that produced it.
-  guidesLoadedAt: '',
-  guidesBusy: false,   // mirrored the same way, so the State row can spin
   configRefreshing: false,  // the estate refresh button is mid-crawl
   activityRefreshing: false, // the activity crawl (heavier: per-repo scan) is running
   // ── Live crawl progress, one channel for all three crawls ──────────────
@@ -2699,9 +2693,9 @@ function app(){ return {
   // real and the price was not worth them, and the reader watching the bar was
   // also being told a run had finished when it had not.
   //
-  // The quick pass keeps its caller: `goGuides` warms this cache for a pane that
-  // needs the repo list and the open PRs and no branch verdicts at all, so
-  // `deep: false` stays a supported shape rather than dead weight.
+  // The quick pass keeps its caller: the State view's arrival kick warms this
+  // cache for rows that need the repo list and the open PRs and no branch
+  // verdicts at all, so `deep: false` stays a supported shape.
   async refreshActivity(){
     if (this.activityRefreshing || !this.hasToken()) return;
     this.activityRefreshing = true;
@@ -3046,8 +3040,8 @@ function app(){ return {
       if (changed.length){
         // The run record rides this commit (lib/kits/crawl-runs.js). `pass` says
         // whether the scan ran, which is an order-of-magnitude difference in
-        // cost: the Refresh button always scans, and `goGuides` warms this
-        // cache without one, so two entries with the same shape would otherwise
+        // cost: the Refresh button always scans, and the State view's arrival
+        // kick warms this cache without one, so two entries with the same shape would otherwise
         // average into a meaningless duration.
         next.runs = window.CrawlRuns?.push(prev?.runs, {
           at: new Date().toISOString(), ms: Date.now() - t0,
@@ -4772,7 +4766,6 @@ function app(){ return {
         if (w && w !== this.BRANCH_WINDOW_DEFAULT) p.set('window', this.windowParam(w));
       } },
     { key: 'sessions', open(){ this.goSessions(); } },
-    { key: 'guides',   open(){ this.goGuides(); } },
     { key: 'chats',    open(){ this.goChats(); } },
     { key: 'routes',   open(){ this.goRoutes(); } },
     { key: 'map', alias: 'portable',
@@ -5011,7 +5004,7 @@ function app(){ return {
   // the grid and the Stage, switching on this.view, sharing the one lazy
   // mount); estateCtx is the wider context test the sidebar switches on.
   // 'surfaces' is in this list as the Stage's alias, not as a second pane.
-  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions', 'guides', 'chats', 'routes', 'state'].includes(this.view); },
+  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions', 'chats', 'routes', 'state'].includes(this.view); },
   // The Lists view is the one estate pane that FILLS rather than flows: its two
   // halves scroll inside themselves, so the page must not scroll and the chain
   // from the pane down to the component root has to carry a definite height.
@@ -5070,7 +5063,7 @@ function app(){ return {
   // Both old keys still route (?view=todo and ?view=jots land on Lists).
   get estateNav(){
     return [
-      { view: 'activity', views: ['activity', 'sessions', 'guides', 'chats', 'routes', 'state'],
+      { view: 'activity', views: ['activity', 'sessions', 'chats', 'routes', 'state'],
         icon: 'ph-pulse',    label: 'Activity', go: () => this.goActivity() },
       { view: 'todo', views: ['todo', 'jots'],
         icon: 'ph-list-checks', label: 'Lists',  go: () => this.goTodo() },
@@ -5280,11 +5273,6 @@ function app(){ return {
   // throttled crawl on visit, the way Open kicks the activity crawl, so the
   // cache warms itself and a cold one is one tap from being warm.
   goSessions(){ this.estateSeen = true; this.view = 'sessions'; this.refreshSessionsCache?.(); this.syncUrl(); },
-  // Guides does its own directory reads, but the repo list and the open PRs it
-  // scans come off the ACTIVITY cache, so this warms the same one goActivity
-  // does. Landing straight on ?view=guides without it is how the pane came up
-  // empty: nothing to scan, and nothing to say so.
-  goGuides(){ this.estateSeen = true; this.view = 'guides'; this.refreshActivityCache?.(false, { deep: false }); this.syncUrl(); },
   // Chats warms nothing, and the absence is the design. The other three panes
   // read a crawl cache this shell keeps fresh; the archive's month shards are
   // immutable once committed, so there is no staleness for a crawl to chase.
