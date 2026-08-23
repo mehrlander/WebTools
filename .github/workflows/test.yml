@@ -101,4 +101,13 @@ jobs:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
 
       - name: Run the suite
+        # The reporter is the spec one, set in the npm script rather than here so
+        # a contributor and the runner see the same output. It matters most
+        # exactly when this step is red: node's TAP reporter emits a YAML block
+        # per PASSING test and names a failure only where it happened, so a
+        # failure early in a 2,280-test run sits ~250k characters above the end
+        # and the logs API serves only the tail. Measured 2026-08-23, when three
+        # rounds could not read why this check was failing. The spec reporter is
+        # a third the size and repeats every failure, with its error, in a
+        # summary at the very bottom.
         run: npm test
