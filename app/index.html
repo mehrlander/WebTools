@@ -1630,13 +1630,6 @@ html.dk-dragging main{transition:none !important}
          and a local recompute with no age at all), spread over six surfaces, with
          the as-of reading that tells you whether to press hidden below `sm`.
          Estate-level, token-gated, its own component and lazy mount. -->
-    <div x-show="view==='state'" data-pane="state" class="h-full overflow-y-auto">
-      <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 max-w-4xl">
-        <template x-if="stateSeen">
-          <div x-data="stateView()"></div>
-        </template>
-      </div>
-    </div>
 
   </main>
 </div>
@@ -1945,6 +1938,22 @@ function app(){ return {
   // that fans out all at once (configs) reports no `active` at all: "every
   // repo" is not a reading.
   crawlProgress: { configs: null, activity: null, sessions: null },
+  // ── The arrival crawls, while they are in flight ────────────────────────
+  //
+  // Separate from the three `*Refreshing` flags beside them, and the split is
+  // the whole point rather than a duplicate. Those flags belong to the Refresh
+  // BUTTONS: they disable the control, spin its icon, and bracket a run whose
+  // progress slot is opened and closed, and closing writes that run's call log,
+  // which is a commit. An arrival crawl must not cost a commit per visit, so it
+  // cannot borrow them.
+  //
+  // What it can do is say it is running, which is the reading a row was missing
+  // entirely: the number went from "1d ago" to "22m ago" with nothing in
+  // between, so the one moment the view had something live to report was the
+  // one moment it said nothing. No progress bar rides this, and the reason is
+  // the same commit: `tickCrawl` no-ops without an open slot, and opening one
+  // is what writes the log. A word is honest and free; a bar is not.
+  crawlChecking: { configs: false, activity: false, sessions: false },
   // Recently-committed files for the current repo@ref, shown in the sidebar.
   // Generated artifacts a build hook writes on every commit are noise here,
   // not real edits, so they're filtered out for web-tools specifically.
@@ -2471,8 +2480,35 @@ function app(){ return {
   // repo's own file; this is breadth + history a single read can't give. A
   // per-browser throttle (localStorage) keeps the crawl occasional, and a
   // material-change check keeps commits sparse, so nav triggers cost nothing.
-  CONFIG_CACHE_INTERVAL_MS: 6 * 3600 * 1000,
+  // ── THE GATE IS MOTION, NOT THE CLOCK ──────────────────────────────────
+  //
+  // Each of these three crawls used to be gated by an interval: six hours for
+  // configs, thirty minutes for activity, fifteen for sessions. An interval is
+  // not evidence about the source. It is a guess standing in for evidence, and
+  // it is wrong in both directions at once: a repo pushed thirty seconds ago
+  // waits out the clock while a quiet estate pays a full crawl for having
+  // waited. The State view then printed the interval as "auto every 30m", which
+  // read as a schedule and was not one, since nothing here has ever run on a
+  // timer. The crawls fire when a view that reads them is opened, so the
+  // interval was only ever a floor with a promise written on it.
+  //
+  // The evidence was already in the building. Every one of these crawls can ask
+  // its source what moved for about the price of one call: the account repo
+  // listing carries `pushed_at` per repo, and the registry's own tree carries a
+  // blob sha per session record. So the gate moves inside the crawl, per unit of
+  // work, and the crawl simply runs: it looks, finds nothing, and costs a call.
+  // A repo that moved is crawled the moment anyone looks, rather than at the
+  // mercy of a stamp in one browser's localStorage.
+  //
+  // What survives of the clock is this floor, and it is a debounce rather than a
+  // policy: two views opened in the same breath must not fire the same crawl
+  // twice. Nothing renders it, because a number that only prevents a double-tap
+  // is not a reading anyone needs.
+  CRAWL_FLOOR_MS: 60 * 1000,
   _cacheCheckKey: 'wt:configCacheCheckedAt',
+  // What each repo looked like the last time this crawl read its manifest.
+  // Same store shape and same reasoning as the activity watermarks below.
+  _configMarkKey: 'wt:configWatermarks',
   // OVERLAY-BLIND BY CONSTRUCTION, and deliberately not guarded: this crawl
   // (and the activity crawl below) builds its own GH clients pinned at main,
   // so its inputs and output are identical under a branch overlay, and a
@@ -2490,17 +2526,60 @@ function app(){ return {
     // without any registry list. If the enumeration fails, fall back to the
     // members already resolved from the cache: that re-crawls what is known
     // and cannot discover a new joiner, which is the honest degradation.
-    let repos = [];
-    try { repos = (await new window.GH({ token: window.TOKEN }).repos()).map(r => r.full_name); }
-    catch { repos = this.estateRepos.map(r => r.repo); }
-    if (!repos.length) return;
+    // The floor is read BEFORE the enumeration, which is where the throttle
+    // used to sit after it: a call this crawl is about to decline should not
+    // cost a request to decline.
     if (!force){
       try {
         const last = +localStorage.getItem(this._cacheCheckKey) || 0;
-        if (Date.now() - last < this.CONFIG_CACHE_INTERVAL_MS) return;
+        if (Date.now() - last < this.CRAWL_FLOOR_MS) return;
       } catch {}
     }
+    // This listing is the enumeration that discovers estate members AND, from
+    // the same response, the motion reading the gate below runs on. One call,
+    // two jobs, which is what makes gating per repo affordable.
+    let repos = [], pushedAt = new Map();
+    try {
+      const all = await new window.GH({ token: window.TOKEN }).repos();
+      repos = all.map(r => r.full_name);
+      pushedAt = new Map(all.map(r => [r.full_name, r.pushed_at || '']));
+    }
+    catch { repos = this.estateRepos.map(r => r.repo); }
+    if (!repos.length) return;
     const t0 = Date.now();   // for the run record, appended below if this commits
+
+    // A repo is QUIET when it has not been pushed since this crawl last read
+    // it. Everything this crawl stores about a repo comes out of files in that
+    // repo (its .web-tools.json, and the two files PortableAlign grades), and
+    // no file changes without a push, so the reading is exact in the direction
+    // that matters: a quiet repo cannot be hiding a manifest change.
+    //
+    // It is NOT exact in the other direction, and does not need to be. A push
+    // that never touched a manifest re-reads the repo for nothing, which costs
+    // three calls and produces no commit. Gating tighter would mean reading the
+    // files to find out whether the files changed.
+    //
+    // The four ways to be wrong are the same four the activity gate closes
+    // below, for the same reasons: a forced pass is never quiet, a repo with
+    // nothing stored is never quiet, a repo with no recorded mark is never
+    // quiet, and an unreadable pushed_at is never quiet. The fallback
+    // enumeration above supplies no pushed_at at all, so a crawl that lost the
+    // listing reads every repo rather than trusting a map it never filled.
+    // Read up front, because a skip is only safe when there is a stored entry
+    // to serve instead. The fold below re-reads this file after the fan-out,
+    // for the same reason the activity crawl does: a crawl that runs for a
+    // while must not fold onto the copy it read before it started.
+    const creg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
+    const cprev = (await this.readForFold(creg, window.RepoConfigCache.CACHE_PATH))?.doc || null;
+    const cmarks = this._marks(this._configMarkKey);
+    const cachedRepos = new Set(Object.keys(cprev?.repos || {}));
+    const cquiet = (repo) => {
+      if (force) return false;
+      if (!cachedRepos.has(repo)) return false;
+      const pushed = pushedAt.get(repo);
+      if (!pushed) return false;
+      return cmarks[repo] === pushed;
+    };
     try {
       // One GH per repo (the shared store.gh is bound to the open repo). Read
       // the current manifest for each participant.
@@ -2510,7 +2589,16 @@ function app(){ return {
       const fetched = {};
       let cdone = 0;
       this.tickCrawl('configs', { total: repos.length, done: 0, active: [] });
+      const cskipped = [];
       await Promise.all(repos.map(async (repo) => {
+        // The gate, and it is the whole saving: a quiet repo makes no request
+        // at all. Its stored entry rides forward through `carry` below, which
+        // is the same path a repo the enumeration could not see already took.
+        if (cquiet(repo)){
+          cskipped.push(repo);
+          this.tickCrawl('configs', { done: ++cdone, total: repos.length });
+          return;
+        }
         const g = new window.GH({ token: window.TOKEN, repo, ref: 'main' });
         let entry = { config: null, configName: null };
         try {
@@ -2543,8 +2631,17 @@ function app(){ return {
           } catch {}
         }
         fetched[repo] = entry;
+        // Stamped only for a repo this pass read, and only after it came back.
+        // A repo whose pushed_at the listing did not carry records nothing, so
+        // it stays un-gated rather than being marked with an empty string that
+        // would match the next empty read.
+        if (pushedAt.get(repo)) cmarks[repo] = pushedAt.get(repo);
         this.tickCrawl('configs', { done: ++cdone, total: repos.length });
       }));
+      // Pruned to the current enumeration, so a repo that left the account
+      // stops carrying a mark nothing will ask about again.
+      this._setMarks(this._configMarkKey,
+        Object.fromEntries(repos.filter(r => cmarks[r]).map(r => [r, cmarks[r]])));
       const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
       // FRESH against the browser's 60-second cache, and reconciled against what
       // this page last wrote, against the API's own read-after-write lag. Both
@@ -2577,6 +2674,9 @@ function app(){ return {
         next.runs = window.CrawlRuns?.push(prev?.runs, {
           at: new Date().toISOString(), ms: Date.now() - t0,
           checked: repos.length, changed: moved.length,
+          // What the gate saved, recorded where the cost is. A run whose
+          // `skipped` equals its `checked` made one request in total.
+          skipped: cskipped.length,
         }) ?? prev?.runs;
         await this.saveFold(reg, window.RepoConfigCache.CACHE_PATH, next,
                             'Update config cache (state/configs.json) via show-repo', base);
@@ -2679,7 +2779,6 @@ function app(){ return {
   // repo that moved still pays its summary, and one that was pushed still pays
   // its branch scan. The throttle is short because the FLOOR fell, not because
   // the ceiling did.
-  ACTIVITY_CACHE_INTERVAL_MS: 30 * 60 * 1000,
   ACTIVITY_SCAN_CAP: 30,       // older branches scanned per repo (view's SCAN_CAP)
   // Errored scan rows retried per repo per crawl. A branch whose scan
   // failed usually fails again for the same reason (a rewritten history, a ref
@@ -2726,13 +2825,17 @@ function app(){ return {
   // is the correct behaviour anyway: a browser that has never looked has
   // nothing to carry forward.
   _watermarkKey: 'wt:activityWatermarks',
-  readWatermarks(){
-    try { const m = JSON.parse(localStorage.getItem(this._watermarkKey) || '{}'); return m && typeof m === 'object' ? m : {}; }
+  // One store shape, three crawls. Each keeps its own key; the reading and the
+  // writing are the same two lines, so they are written once here.
+  _marks(key){
+    try { const m = JSON.parse(localStorage.getItem(key) || '{}'); return m && typeof m === 'object' ? m : {}; }
     catch { return {}; }
   },
-  writeWatermarks(marks){
-    try { localStorage.setItem(this._watermarkKey, JSON.stringify(marks)); } catch {}
+  _setMarks(key, marks){
+    try { localStorage.setItem(key, JSON.stringify(marks)); } catch {}
   },
+  readWatermarks(){ return this._marks(this._watermarkKey); },
+  writeWatermarks(marks){ this._setMarks(this._watermarkKey, marks); },
   // Returns a summary of the run for the caller to report: {total, changed,
   // failed, committed}, or {skipped, reason} when there was nothing to do. The
   // background (unforced) caller ignores it; refreshActivity turns it into the
@@ -2748,10 +2851,15 @@ function app(){ return {
     // pre-commit read. A call that finds a crawl in flight joins it and gets
     // that crawl's result.
     if (this._activityCrawl) return this._activityCrawl;
+    // The floor, not a schedule: this crawl's real gate is the per-repo quiet
+    // check inside it, which already reduces an unmoved estate to one listing
+    // plus one watermark per repo. Holding it behind half an hour on top of
+    // that only meant a repo pushed a minute ago waited out a clock that knew
+    // nothing about it.
     if (!force){
       try {
         const last = +localStorage.getItem(this._activityCheckKey) || 0;
-        if (Date.now() - last < this.ACTIVITY_CACHE_INTERVAL_MS) return { skipped: true };
+        if (Date.now() - last < this.CRAWL_FLOOR_MS) return { skipped: true };
       } catch {}
     }
     this._activityCrawl = this._crawlActivity(deep, force);
@@ -2986,7 +3094,6 @@ function app(){ return {
   // here, and with the sibling at 30 minutes it had no reason left to be long.
   // Records land continuously (the live session's own record rewrites on every
   // Stop), so this is the cache that most rewards being asked often.
-  SESSIONS_CACHE_INTERVAL_MS: 15 * 60 * 1000,
   SESSIONS_FETCH_POOL: 6,        // record blobs read at once
   SESSIONS_MAX_FETCH: 120,       // records read per crawl; the rest wait for the next
   _sessionsCheckKey: 'wt:sessionsCacheCheckedAt',
@@ -3000,13 +3107,18 @@ function app(){ return {
     if (!force){
       try {
         const last = +localStorage.getItem(this._sessionsCheckKey) || 0;
-        if (Date.now() - last < this.SESSIONS_CACHE_INTERVAL_MS) return { skipped: true };
+        if (Date.now() - last < this.CRAWL_FLOOR_MS) return { skipped: true };
       } catch {}
     }
-    this._sessionsCrawl = this._crawlSessions();
+    this._sessionsCrawl = this._crawlSessions(force);
     try { return await this._sessionsCrawl; } finally { this._sessionsCrawl = null; }
   },
-  async _crawlSessions(){
+  // What the record listing looked like the last time this crawl folded it in.
+  // A single string, not a per-record map: the question here is "did the store
+  // move at all", and the per-record answer is already the blob shas the fold
+  // itself compares.
+  _sessionsMarkKey: 'wt:sessionsListing',
+  async _crawlSessions(force = false){
     const S = window.RepoSessionsCache;
     const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
     const t0 = Date.now();   // for the run record, appended below if this commits
@@ -3020,6 +3132,30 @@ function app(){ return {
         .filter(e => e.type === 'blob' && S.isRecordPath(e.path))
         .map(e => ({ path: e.path, sha: e.sha }));
       if (!listing.length) return { skipped: true, reason: 'no session records in the registry' };
+
+      // THE GATE, and its whole value is that it sits above the read below.
+      // The listing above already carries a blob sha per record, so a store
+      // with the same paths at the same shas cannot hold a record this cache
+      // has not folded in. Reading the cache to discover that costs 371 KB to
+      // learn nothing, on every arrival, which is the price this crawl paid
+      // for the fifteen-minute clock to be worth having.
+      //
+      // A forced pass never gates, for the same reason a forced activity pass
+      // is never quiet: Refresh has to mean go and look.
+      //
+      // The fingerprint is the paths and shas in tree order, joined. It moves
+      // when a record is added, rewritten, or removed, which is the full set of
+      // things that can make this cache wrong.
+      const fingerprint = listing.map(e => e.path + ':' + e.sha).join('\n');
+      const smarks = this._marks(this._sessionsMarkKey);
+      if (!force && smarks.listing === fingerprint){
+        // Stamped, because this pass DID check: the floor above is a debounce
+        // and this is the reading it debounces. Leaving it unstamped would make
+        // "checked" mean "last committed", which is the conflation the State
+        // view's two ages exist to keep apart.
+        try { localStorage.setItem(this._sessionsCheckKey, String(Date.now())); } catch {}
+        return { skipped: true, reason: 'no session record has changed since the last crawl' };
+      }
 
       // This read decides which records are stale AND supplies the sha the save
       // rides on, so a copy that is behind both under-reads the store and writes
@@ -3061,8 +3197,19 @@ function app(){ return {
       // The scope is the FULL listing, never `take`: a record the cap deferred
       // must keep its row, and only a record genuinely gone from the store
       // loses one.
+      const deferred = Math.max(0, stale.length - take.length);
       const next = S.buildCache(prev, fetched, listing.map(e => e.path), nowISO);
       try { localStorage.setItem(this._sessionsCheckKey, String(Date.now())); } catch {}
+      // ONLY WHEN THIS PASS LEFT NOTHING BEHIND, and this is the clause the
+      // gate is wrong without. `stale` can exceed the cap, and a record whose
+      // blob read threw is not in `fetched` either; both stay stale for the
+      // next pass. Stamping the fingerprint anyway would tell that next pass
+      // the store had not moved, and the deferred records would never be read
+      // again: the cache would sit permanently short with every reading on
+      // screen saying it was current. So the mark records a COMPLETE fold, and
+      // an incomplete one leaves the store looking moved, which it is.
+      const complete = !deferred && Object.keys(fetched).length === take.length;
+      if (complete) this._setMarks(this._sessionsMarkKey, { listing: fingerprint });
       const changed = S.cacheChanged(prev, next);
       if (changed){
         // The run record rides this commit (lib/kits/crawl-runs.js). `checked`
@@ -3071,14 +3218,13 @@ function app(){ return {
         // the other two crawls: the cap defers the rest to the next pass.
         next.runs = window.CrawlRuns?.push(prev?.runs, {
           at: new Date().toISOString(), ms: Date.now() - t0,
-          checked: listing.length, read: Object.keys(fetched).length,
-          deferred: Math.max(0, stale.length - take.length),
+          checked: listing.length, read: Object.keys(fetched).length, deferred,
         }) ?? prev?.runs;
         await this.saveFold(reg, S.CACHE_PATH, next,
                             'Update sessions cache (state/sessions.json) via show-repo', base);
       }
       return { total: listing.length, read: Object.keys(fetched).length,
-               deferred: Math.max(0, stale.length - take.length), committed: changed };
+               deferred, committed: changed };
     } catch(e){
       console.warn('sessions cache refresh:', e?.message || e);
       return { error: e?.message || String(e) };
@@ -4865,7 +5011,7 @@ function app(){ return {
   // the grid and the Stage, switching on this.view, sharing the one lazy
   // mount); estateCtx is the wider context test the sidebar switches on.
   // 'surfaces' is in this list as the Stage's alias, not as a second pane.
-  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions', 'guides', 'chats', 'routes'].includes(this.view); },
+  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions', 'guides', 'chats', 'routes', 'state'].includes(this.view); },
   // The Lists view is the one estate pane that FILLS rather than flows: its two
   // halves scroll inside themselves, so the page must not scroll and the chain
   // from the pane down to the component root has to carry a definite height.
@@ -4924,7 +5070,7 @@ function app(){ return {
   // Both old keys still route (?view=todo and ?view=jots land on Lists).
   get estateNav(){
     return [
-      { view: 'activity', views: ['activity', 'sessions', 'guides', 'chats', 'routes'],
+      { view: 'activity', views: ['activity', 'sessions', 'guides', 'chats', 'routes', 'state'],
         icon: 'ph-pulse',    label: 'Activity', go: () => this.goActivity() },
       { view: 'todo', views: ['todo', 'jots'],
         icon: 'ph-list-checks', label: 'Lists',  go: () => this.goTodo() },
@@ -4952,7 +5098,6 @@ function app(){ return {
       // conditional): the answer to "is what I am looking at current" has to be
       // reachable before you know you need it, which is the failure the four
       // scattered Refresh buttons had.
-      { view: 'state',    icon: 'ph-stack-simple', label: 'State',    go: () => this.goState() },
       // Proposals is the one conditional entry: an empty channel should cost no
       // attention, so it appears only while something is pending (or while the
       // view is open, so the nav does not vanish under the user on the apply
@@ -5044,12 +5189,58 @@ function app(){ return {
   },
   // The Proposals view: pending cross-repo edits awaiting the user's confirm.
   goProposals(){ this.proposalsSeen = true; this.view = 'proposals'; this.syncUrl(); },
-  // State kicks nothing. Every other view warms the cache it reads on arrival;
-  // this one reports ages, and a view that ran a crawl to show you how old
-  // things were would answer its own question before you read it.
+  // State kicks ALL THREE, which is the reverse of what it used to do, and the
+  // reverse is the point. It kicked nothing on the argument that a view whose
+  // subject is age must not answer its own question before you read it. That
+  // argument held while a crawl cost a full pass over the estate; it stopped
+  // holding when the gate moved inside the crawls, since a look that finds
+  // nothing now costs about one call per crawl.
+  //
+  // And the old behaviour had a worse property than the one it avoided: this
+  // is the view someone opens BECAUSE they suspect something is behind, and it
+  // was the one view that would show them the lag and then decline to fix it.
+  // Reporting a fault you are able to repair, to someone who came to you about
+  // it, is not neutrality.
+  //
+  // Un-awaited, so the rows render on the stored ages and re-read as each crawl
+  // lands. Each one re-stamps `checked`, so the reading the view leads with is
+  // about this visit rather than about whenever a pane was last opened.
+  // ?view=state still resolves, and lands where State now lives: Activity's
+  // last pill. An address a reader has bookmarked is a contract, which is the
+  // same reason ?view=activity survived the Branches pill becoming a lens.
   goState(item){
     this.stateItem = item || '';
-    this.stateSeen = true; this.view = 'state';
+    this.stateSeen = true; this.estateSeen = true; this.view = 'state';
+    // EACH KICK ANNOUNCES ITSELF, and leaving this out made the whole change
+    // invisible. The crawls ran correctly and stamped their `checked` keys; the
+    // view had read those stamps once at mount and had no reason to read them
+    // again, so a row sat there saying "checked 1d ago" over a crawl that had
+    // finished seconds earlier. The three `*-refreshed` events the view already
+    // listens for are dispatched by the manual Refresh wrappers alone, so an
+    // arrival crawl landed in silence. Caught on a phone, 2026-08-22, by the
+    // reading being obviously wrong.
+    //
+    // Two passes, because they cost different amounts. Each kick fires the
+    // cheap one as it lands: the `checked` stamps are localStorage and re-read
+    // for nothing. When all three have settled, one more pass says so, and the
+    // view re-reads everything once, since a crawl that committed also moved
+    // the `updated` date, which is a commit read per file.
+    const checked = (settled) => document.dispatchEvent(
+      new CustomEvent('web-tools:cache-checked', { detail: { settled } }));
+    const mark = (key, on) => { this.crawlChecking = { ...this.crawlChecking, [key]: on }; };
+    const kick = (key, run) => {
+      mark(key, true);
+      // `finally` rather than `then`: a crawl that threw has still stopped
+      // running, and a row left saying "checking…" forever over a failed crawl
+      // is a worse reading than the stale age it replaced.
+      return Promise.resolve(run()).catch(() => {})
+        .finally(() => { mark(key, false); checked(false); });
+    };
+    Promise.all([
+      kick('configs', () => this.refreshConfigCache?.()),
+      kick('activity', () => this.refreshActivityCache?.(false, { deep: false })),
+      kick('sessions', () => this.refreshSessionsCache?.()),
+    ]).then(() => checked(true));
     // Announced even when the view is already mounted: arriving from a second
     // age pill has to move the highlight, and re-setting `view` to the value it
     // already holds is not something Alpine reacts to.

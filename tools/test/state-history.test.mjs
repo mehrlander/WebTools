@@ -15,9 +15,8 @@
 //    record to count,
 //  • the duration column, read from the `runs` ring the crawls append to the
 //    commit they were making anyway,
-//  • the probe: whether the SOURCE has moved since a row was built, which is
-//    the question the age was standing in for, and which now carries the
-//    Refresh button's weight.
+//  • the staleness verdict, and which single row is still entitled to one now
+//    that arriving at the view refreshes the other three.
 //
 // No network, no pixels.
 
@@ -270,62 +269,34 @@ test('the summary carries what a run costs beside how often it changes', () => {
   assert.match(data.histSummary(), /typically 5h apart · 41s a run$/);
 });
 
-// ── The probe ────────────────────────────────────────────────────────────────
+// ── The staleness verdict, which now belongs to one row only ────────────────
 
-test('the probe reports pushes and record writes since each row was built', async () => {
-  ACCOUNT = [
-    { full_name: 'me/tools', pushed_at: '2026-08-09T23:00:00Z' },   // after both builds
-    { full_name: 'me/home', pushed_at: '2026-08-09T18:00:00Z' },    // after activity's only
-    { full_name: 'me/quiet', pushed_at: '2026-07-01T00:00:00Z' },
-  ];
-  HISTORY.sessions = [
-    { sha: 'w2', date: '2026-08-09T13:00:00Z' },
-    { sha: 'w1', date: '2026-08-09T11:30:00Z' },   // before the sessions build
-  ];
-  await data.runProbe({ configs: '2026-08-09T22:00:00Z', activity: '2026-08-09T17:30:00Z',
-                        sessions: '2026-08-09T12:00:00Z' });
-  assert.equal(data.probe.configs.line, '1 pushed');
-  assert.equal(data.probe.activity.line, '2 pushed');
-  assert.equal(data.probe.sessions.line, '1 written');
-});
-
-test('a quiet source says so plainly rather than saying nothing', async () => {
-  await data.runProbe({ configs: '2026-08-10T00:00:00Z', activity: '2026-08-10T00:00:00Z',
-                        sessions: '2026-08-10T00:00:00Z' });
-  assert.equal(data.probe.configs.line, 'no push');
-  assert.equal(data.probe.sessions.line, 'no record');
-  assert.equal(data.probe.configs.n, 0);
-});
-
-test('the probe carries the Refresh weight, and the clock only where it cannot', async () => {
-  // A row the probe answered is weighted on the fact, not on the age: a store
-  // built long ago whose source has not moved is not worth pressing.
-  assert.equal(data.matters({ key: 'configs', stale: true }), false);
-  await data.runProbe({ configs: '2026-08-09T22:00:00Z' });
-  assert.equal(data.matters({ key: 'configs', stale: false }), true);
-  // The entity index has no probe, so it falls back to the declared bar.
-  assert.equal(data.matters({ key: 'entities', stale: true }), true);
-  assert.equal(data.matters({ key: 'entities', stale: false }), false);
-});
-
-test('the probe says what its figure is worth, in both directions', async () => {
-  ACCOUNT = [{ full_name: 'me/tools', pushed_at: '2026-08-09T23:00:00Z' }];
-  await data.runProbe({ configs: '2026-08-09T22:00:00Z', activity: '2026-08-09T22:00:00Z' });
-  // configs over-counts: a push that never touched a manifest still lands here.
-  assert.match(data.probeWhy({ key: 'configs' }), /upper bound/);
-  // activity under-counts: a PR opened without a push moves no pushed_at.
-  assert.match(data.probeWhy({ key: 'activity' }), /may still find more/);
-  assert.match(data.probeWhy({ key: 'configs' }), /^1 repo pushed since this was built \(me\/tools\)/);
-});
-
-test('a probe that cannot read leaves the rows exactly as they were', async () => {
-  const boom = window.GH.prototype.repos;
-  window.GH.prototype.repos = async () => { throw new Error('offline'); };
-  await data.runProbe({ configs: '2026-08-09T22:00:00Z', activity: '2026-08-09T22:00:00Z' });
-  assert.equal(data.probe.configs, undefined);
-  assert.equal(data.matters({ key: 'configs', stale: true }), true);   // back to the clock
-  assert.match(data.probeWhy({ key: 'configs', stale: true }), /not probed/);
-  window.GH.prototype.repos = boom;
+test('an ancient file is stale only where nothing refreshes it', async () => {
+  // Both halves against ONE date, so the difference is the rule rather than the
+  // fixture. A year is past every bar anything ever used.
+  const ancient = new Date(Date.now() - 400 * 86400 * 1000).toISOString();
+  const keep = { ...HISTORY };
+  for (const path of Object.keys(HISTORY)) HISTORY[path] = [{ sha: 'old', date: ancient }];
+  try {
+    await data.load();
+    // The crawled three: opening this view runs all three crawls (goState in
+    // the shell), so a row on screen was checked moments ago and its age is not
+    // evidence of neglect, however old it is. The store simply has not changed.
+    // A row painting itself stale here would report a fault already looked for.
+    for (const key of ['configs', 'activity', 'sessions'])
+      assert.equal(data.rows.find(r => r.key === key).stale, false,
+        key + ' claimed staleness over an age nothing can act on');
+    // The entity index, which has no Refresh at all: a rebuild is spaCy over
+    // ~4,000 files across seven checkouts. Its age IS the reading, so it keeps
+    // the 30-day bar its own repo check uses. Dropping staleness estate-wide
+    // would have taken this with it, and this is the row where it was always
+    // true.
+    assert.equal(data.offline.refresh, undefined, 'the entity index has no crawl');
+    assert.equal(data.offline.stale, true);
+  } finally {
+    for (const path of Object.keys(keep)) HISTORY[path] = keep[path];
+    await data.load();
+  }
 });
 
 // The view ticks a minute timer so its ages move without a reload, which would

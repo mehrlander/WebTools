@@ -96,93 +96,26 @@ test('busy while EITHER half runs, since the shell runs them in sequence', () =>
   assert.equal(data.groupBusy(g), false);
 });
 
-test('worth pressing if EITHER source moved', () => {
-  const g = group();
-  data.probe = { activity: { n: 0, line: 'no push' }, sessions: { n: 0, line: 'no record' } };
-  assert.equal(data.groupMatters(g), false);
-  // One press covers both, so one row with something to fetch is reason enough;
-  // the other row's no-op crawl is the four calls it costs to be sure.
-  data.probe = { activity: { n: 0, line: 'no push' }, sessions: { n: 3, line: '3 written' } };
-  assert.equal(data.groupMatters(g), true);
-  data.probe = {};
-});
-
-test('the tooltip states both costs and both throttles, which the rows no longer can', () => {
+test('the tooltip states both costs, which the rows no longer can', () => {
   const why = data.groupWhy(group());
   assert.match(why, /Branches:/);
   assert.match(why, /Sessions:/);
-  // The SHAPE, not the durations. Each row states its own interval, and the
-  // interval itself belongs to the shell: asserting '12h' here made this a
-  // third copy of a number two places already hold, and it duly went stale the
-  // day the throttle moved. state-view-throttles.test.mjs owns the values.
-  assert.equal(why.match(/normally every \S+/g)?.length, 2, 'one interval per row');
+  // It used to state both INTERVALS too, one per row. There are none: the
+  // crawls gate on whether their source moved rather than on a clock, so what
+  // this button offers over simply arriving is the ungated pass, and that is
+  // what the sentence now says.
+  assert.doesNotMatch(why, /normally every/);
+  assert.match(why, /past the gate/);
 });
 
-// ── The group's probe ──────────────────────────────────────────────────────
-// The heading trades its note for a live reading once it has one, so what the
-// reading says has to survive a half-read and must never reduce two units to
-// one number.
-
-test('the heading probe concatenates both readings and never sums them', () => {
-  const g = group();
-  data.probe = { activity: { n: 2, names: ['a/b', 'c/d'], line: '2 pushed' },
-                 sessions: { n: 3, records: 3, line: '3 written' } };
-  const p = data.groupProbe(g);
-  // Both facts, side by side. A sum would read '5' over two units that have
-  // nothing in common, which is the one fold that would be false here.
-  assert.equal(p.line, '2 pushed, 3 written');
-  assert.equal(p.moved, 2);
-  data.probe = {};
-});
-
-test('a quiet probe still reads, and reads as quiet', () => {
-  data.probe = { activity: { n: 0, names: [], line: 'no push' },
-                 sessions: { n: 0, records: 0, line: 'no record' } };
-  const p = data.groupProbe(group());
-  assert.equal(p.line, 'no push, no record');
-  assert.equal(p.moved, 0);
-  data.probe = {};
-});
-
-test('a half-read heading says nothing rather than half the answer', () => {
-  const g = group();
-  assert.equal(data.groupProbe(g), null, 'no readings at all');
-  // The probe makes two calls that fail independently. One arriving is not the
-  // group's answer, and a heading showing it would read as though it were.
-  data.probe = { sessions: { n: 3, records: 3, line: '3 written' } };
-  assert.equal(data.groupProbe(g), null, 'one reading of two');
-  data.probe = {};
-});
-
-test('the probe tooltip keeps each half attributed, with its own caveat', () => {
-  const g = group();
-  data.probe = { activity: { n: 2, names: ['mehrlander/home', 'mehrlander/wps'], line: '2 pushed' },
-                 sessions: { n: 1, records: 1, line: '1 written' } };
-  const why = data.groupProbeWhy(g);
-  assert.match(why, /Branches: /);
-  assert.match(why, /Sessions: /);
-  // The per-file caveats are the reason the sentences are not merged: each
-  // reading over- or under-counts in its own direction.
-  assert.match(why, /PR opened without a push moves nothing here/);
-  assert.match(why, /1 session record committed since this was built/);
-  data.probe = {};
-});
-
-test('the refresh tooltip names WHICH half is past its throttle', () => {
-  const g = group();
-  // Only meaningful with no probe: a live reading supersedes the clock, which
-  // is what refreshWhy does per row.
-  data.probe = {};
-  const branches = g.rows.find(r => r.key === 'activity');
-  branches.stale = true;
-  const why = data.groupWhy(g);
-  assert.match(why, /^Branches past twice its throttle\./);
-  // Two throttles behind one button, so an unnamed staleness claim is one the
-  // reader cannot act on.
-  assert.doesNotMatch(why, /Sessions past twice/);
-  assert.equal(why.match(/normally every \S+/g)?.length, 2, 'both rows still state theirs');
-  branches.stale = false;
-  assert.doesNotMatch(data.groupWhy(g), /past twice/);
+test('nothing on the heading escalates, because nothing here is behind', () => {
+  // Both readings the heading used to carry are gone with the probe: the
+  // concatenated "2 pushed, 3 written" line and the button weight it drove.
+  // Arriving at this view runs both crawls, so a heading that lit up would be
+  // pointing at work that had already been done.
+  assert.equal(typeof data.groupProbe, 'undefined', 'no heading probe survives');
+  assert.equal(typeof data.groupMatters, 'undefined', 'no heading weight survives');
+  assert.equal(typeof data.probe, 'undefined', 'no probe state survives');
 });
 
 // ── The wiring, read out of the shell ──────────────────────────────────────
