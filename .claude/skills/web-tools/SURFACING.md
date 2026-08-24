@@ -112,12 +112,14 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 * **Session diff:** summarize substantial work with `Session diff: [main...branch](url)`.
 * **Closing state:** every reply that finishes work or proposes more ends with exactly one of six labeled states, so the cheapest useful answer is one word. The bold label carries the meaning; the color makes it scannable:
 
-  - 🟢 **Ready to continue:** named work available on "go", listed as bullets. "Go" authorizes only what the list names, and "go 1, 3" takes a subset. Write each bullet so it can be understood on its own. Keep it to one or two lines, but describe each piece with simple precision, not terms that may have been established in the text above. If you refer to a file, link the file. The reader should not need to read the whole message in order to understand what is being proposed: the purpose is to highlight the decision so the reader can decide whether to read the full message or not. Work the session conceives belongs here as a proposal (Keep focus), never done unprompted.
+  - 🟢 **Ready to continue:** named work available on "go", listed as bullets. "Go" authorizes only what the list names, and "go 1, 3" takes a subset. Work the session conceives belongs here as a proposal (Keep focus), never done unprompted.
   - 🟡 **Decision needed:** continuation depends on the user's call, and the state names the decision.
   - ⚪ **Natural stopping point:** no further work proposed; the wrap-up offer lives here.
   - 🟠 **Attention:** something concrete needs addressing before proceeding. Reserved for an actual problem or risk, not routine uncertainty. Amber is the alarm here, and red is not a louder version of it.
   - 🟣 **Merged:** this workstream's branch merged. One line on what shipped.
   - 🔴 **Closed:** this workstream's branch abandoned, its PR closed unmerged. Say why in one line.
+
+  **🟢 and 🟡 both put something to the reader, so write either one to be understood on its own.** Keep a bullet, or the decision a 🟡 names, to one or two lines, but describe each piece with simple precision, not terms that may have been established in the text above. If you refer to a file, link the file. The reader should not need to read the whole message in order to understand what is being proposed: the purpose is to highlight the decision so the reader can decide whether to read the full message or not.
 
   **Red marks a terminal state, not an alarm.** That is the whole rule, and it is why the escalating state is amber while the finished one is red: a closed branch is usually a decision rather than a failure, and nothing follows it. Red was banned outright until 2026-08-16, on the reading that it could only ever mean panic. Adopting it here settles a split instead, since show-repo's Activity list has always painted a closed branch's rail red, matching Claude Code's own session list and GitHub. A closing state and a branch rail now say the same thing in the same color. ⚫ is retired; a reply written before the change keeps it.
 
