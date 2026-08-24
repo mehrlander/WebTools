@@ -115,7 +115,7 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
   - 🟢 **Ready to continue:** named work available on "go", listed as bullets, one line each. "Go" authorizes only what the list names, and "go 1, 3" takes a subset. Work the session conceives belongs here as a proposal (Keep focus), never done unprompted.
   - 🟡 **Decision needed:** continuation depends on the user's call, and the state names the decision.
   - ⚪ **Natural stopping point:** no further work proposed; the wrap-up offer lives here.
-  - 🔵 **Short answer:** answered a question, proposed no work; ⚪'s conversational sibling, saying there is no diff to go looking for. Name the question as it was ASKED, not as the answer reframed it: restating it is a fidelity check before it is an orientation, so a misread shows before the answer is read. `🔵 **Short answer.** You asked whether the arrows came from the notes card.`
+  - 🔵 **Short answer:** for an answer-only or answer-mainly response, briefly restate what was asked and the answer.
   - 🟠 **Attention:** something concrete needs addressing before proceeding. Reserved for an actual problem or risk, not routine uncertainty. Amber is the alarm here, and red is not a louder version of it.
   - 🟣 **Merged:** this workstream's branch merged. One line on what shipped.
   - 🔴 **Closed:** this workstream's branch abandoned, its PR closed unmerged. Say why in one line.
