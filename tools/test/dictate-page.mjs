@@ -136,20 +136,26 @@ try {
     const r = (el) => el ? el.getBoundingClientRect().toJSON() : null;
     return {
       save: r([...document.querySelectorAll('button')].find(b => /Save/.test(b.textContent))),
-      pad: r(byTitle('Press and drag')),
+      pad: r(document.querySelector('button:has(i.ph-crosshair)')),
+      mic: r(document.querySelector('button[title*="listening"], button[title*="Recording"]')),
       fab: r(document.querySelector('.fixed.bottom-6.right-6')),
       h: innerHeight, docH: document.body.scrollHeight, w: innerWidth,
     };
   });
   ok('the page declines the FAB, so nothing is fixed over the corner', !boxes.fab,
     JSON.stringify(boxes.fab));
-  ok('the pad holds the bottom-right corner',
-    !!boxes.pad && boxes.pad.right > boxes.w - 24 && boxes.pad.bottom > boxes.h - 24,
-    JSON.stringify(boxes.pad));
+  // The instruments live in the HEADER now: record, undo, redo and the target
+  // are each tapped a handful of times a session, and the bottom of a phone
+  // belongs to whatever is tapped every sentence.
+  ok('the target sits in the header', !!boxes.pad && boxes.pad.top < 60, JSON.stringify(boxes.pad));
+  ok('the mic sits in the header', !!boxes.mic && boxes.mic.top < 60, JSON.stringify(boxes.mic));
+  ok('and none of them overlaps its neighbour',
+    !!boxes.mic && !!boxes.pad && boxes.mic.right <= boxes.pad.left,
+    `mic.right=${boxes.mic?.right} target.left=${boxes.pad?.left}`);
   ok('Save is a thumb-sized target', !!boxes.save && boxes.save.height >= 44 && boxes.save.width >= 100,
     JSON.stringify(boxes.save));
-  ok('and nothing overlaps it', !!boxes.save && !!boxes.pad && boxes.save.right <= boxes.pad.left + 1,
-    `save.right=${boxes.save?.right} pad.left=${boxes.pad?.left}`);
+  ok('and it reaches the bottom of the screen', !!boxes.save && boxes.save.bottom > boxes.h - 24,
+    JSON.stringify(boxes.save));
   ok('the shell does not scroll the document', boxes.docH <= boxes.h + 1,
     `body=${boxes.docH} viewport=${boxes.h}`);
   ok('the painter is asked for no arrow cluster',
@@ -176,7 +182,7 @@ try {
       view: cs('[x-ref="view"]'),
       layer: cs('[x-ref="layer"]'),
       marks: cs('[x-ref="layer"] ~ div button'),
-      pad: cs('button[title^="Press and drag"]'),
+      pad: cs('button:has(i.ph-crosshair)'),
       root: cs('[data-dictate-ui]'),
     };
   });
@@ -223,8 +229,11 @@ try {
   await page.waitForTimeout(400);
   const after = await page.evaluate(() => window.__engines);
   ok('a fresh engine came up behind the silence', after > before, `${before} -> ${after}`);
-  ok('and the page still reads as listening',
-    /Listening/.test(await page.locator('.shrink-0.flex.items-center').first().innerText()));
+  ok('and the mic still reads as recording, which is the only readout there is',
+    await page.evaluate(() => {
+      const b = document.querySelector('button:has(i.ph-microphone)');
+      return !!b && b.className.includes('btn-error');
+    }));
   await say('the sentence after the pause');
   ok('both sides of the pause are in one buffer',
     /first sentence/.test(await buffer()) && /after the pause/.test(await buffer()),
@@ -250,7 +259,7 @@ try {
   // The pad is pressed and dragged. The caret starts at the end (a null
   // range), so the first drag has to place one; dragging LEFT walks it back
   // through the buffer, which is the whole of what the control does.
-  const padBox = await page.locator('button[title^="Press and drag"]').boundingBox();
+  const padBox = await page.locator('button:has(i.ph-crosshair)').boundingBox();
   await page.mouse.move(padBox.x + padBox.width / 2, padBox.y + padBox.height / 2);
   await page.mouse.down();
   for (let i = 0; i < 14; i++) {
@@ -265,6 +274,46 @@ try {
     `caret=${moved} length=${len}`);
   ok('and it did not have to touch the words to do it',
     await page.evaluate(() => !!document.querySelector('[data-d="caret"]')));
+
+  // THE TARGET'S TAP HALF. Tap it and the caret becomes one end of a
+  // selection; the next tap in the text is the other end. Two taps for an
+  // arbitrary range, where the long press gives only a word.
+  const target = page.locator('button:has(i.ph-crosshair)');
+  const anchored = () => page.evaluate(() =>
+    document.querySelector('[x-data="dictate"]')._x_dataStack[0].anchoring);
+  const sel = () => page.evaluate(() => {
+    const d = document.querySelector('[x-data="dictate"]')._x_dataStack[0].d;
+    const r = d.range;
+    return r && r.start !== r.end ? { ...r, text: d.text.slice(r.start, r.end) } : null;
+  });
+  const anchorAt = await caretAt();
+  await target.click();
+  await page.waitForTimeout(150);
+  ok('a tap on the target arms an anchor rather than dragging', await anchored());
+  ok('and the button says so, in the ring an armed pin wears',
+    await target.evaluate(el => el.className.includes('btn-error')));
+
+  const words = await page.locator('[x-ref="body"] [data-d="text"]').first().boundingBox();
+  await page.mouse.click(words.x + 40, words.y + 12);
+  await page.waitForTimeout(250);
+  const range = await sel();
+  ok('the next tap in the text completes the selection', !!range, JSON.stringify(range));
+  ok('it runs from the caret that was there to the word that was tapped',
+    !!range && (range.start === anchorAt || range.end === anchorAt),
+    `anchor=${anchorAt} range=${JSON.stringify(range)}`);
+  ok('the anchor disarms once it is spent', !(await anchored()));
+  ok('and the edge that moved is armed, so the pad can refine it',
+    !!(await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].armed)));
+
+  // Tapping it again while armed is the way out, since an armed control with
+  // no cancel is a mode the reader cannot leave.
+  await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.d.clearRange(); c.armed = null; c.paint(); });
+  await target.click();
+  await page.waitForTimeout(120);
+  ok('tapping the armed target again cancels it', await anchored());
+  await target.click();
+  await page.waitForTimeout(120);
+  ok('...and a second tap puts it away', !(await anchored()));
 
   // A double tap on the words opens the keyboard, with the caret where it
   // landed. The pencil is retired, so this is the only way in.

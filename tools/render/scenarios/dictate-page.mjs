@@ -12,7 +12,7 @@
 //
 // `--script tools/render/scenarios/dictate-page-selection.mjs` is the sibling
 // that goes on to select a word, which is where the pad becomes casing keys.
-export const speak = async (page, { select = false, sheet = false } = {}) => {
+export const speak = async (page, { select = false, sheet = false, anchor = false } = {}) => {
   await page.evaluate(() => {
     class FakeSR {
       constructor() { window.__sr = this; }
@@ -55,6 +55,11 @@ export const speak = async (page, { select = false, sheet = false } = {}) => {
       await page.mouse.up();
       await page.waitForTimeout(300);
     }
+  }
+  if (anchor) {
+    // The target's tap half: arm a selection from wherever the caret is.
+    await page.locator('button:has(i.ph-crosshair)').click();
+    await page.waitForTimeout(250);
   }
   if (sheet) {
     await page.locator('button:has-text("Save")').click();

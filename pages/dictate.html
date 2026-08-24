@@ -77,6 +77,22 @@
     (kits/dictate.js `opts.fix`), and the ✎ row in the menu adds to it from
     whatever is selected, so the page gets better the more it is wrong.
 
+  WHERE THE CONTROLS SIT, and why the split is where it is. The HEADER holds
+  the four instruments: record, undo, redo, and the target. Each is tapped a
+  handful of times in a session. The BOTTOM holds the marks, backspace and
+  Save, which are tapped every sentence, and a phone's bottom edge belongs to
+  whatever is tapped most. Record doubles as the state readout, since red and
+  pulsing answers "is it hearing me" from across the room and the page then
+  needs no word for it.
+
+  THE TARGET IS TWO GESTURES ON ONE BUTTON, because they are one job: this is
+  the control that aims. DRAG it and the caret moves (the pad, below). TAP it
+  and the caret becomes one end of a selection whose other end is your next
+  tap in the text. Two taps for an arbitrary range, where the long press gives
+  only a word and the pins give one edge at a time. Armed, it wears the ring
+  an armed pin wears, which is this page's one word for "live and pointed at
+  the text" and is why the affordance needs no label.
+
   ADDRESSING
     ?to=copy|share|jot|drop   which destination the save sheet opens on
     ?dest=owner/repo[@ref]:dir   where Drop writes, overriding home/chron/dump
@@ -402,6 +418,9 @@
           // "let me type here", and it used to be the one place that did
           // nothing, because the canvas won before the count.
           if (taps >= 2) { taps = 0; this.editOpen(i == null ? this.d.text.length : i); return; }
+          // The armed anchor takes the tap first, canvas included: a tap past
+          // the last word means the end of the buffer there as everywhere.
+          if (this.anchorTo(i == null ? this.d.text.length : i)) return;
           if (i == null) { this.d.caretAt(this.d.text.length); this.armed = null; this.paint(); return; }
           if (this.armed) this.d.moveEdge(this.armed, i);
           else this.d.caretAt(i);
@@ -430,7 +449,58 @@
       // the three numbers: crawl and the caret creeps at well under 1:1, flick
       // and it runs ahead of the thumb, so a short button reaches a long
       // buffer and the overshoot is walked back without lifting.
-      padDrag: false, precise: false, _pad: null,
+      padDrag: false, precise: false,
+
+      // ── The target's other half: anchoring ────────────────────────────
+      // The pad DRAGS the caret; a plain TAP on it arms a selection that
+      // starts where the caret already is, and the next tap in the text is
+      // the other end. Two taps for an arbitrary range, where the long press
+      // gives a word and the pins give one edge at a time.
+      //
+      // It is the same button because it is the same job: this is the control
+      // that aims. Dragging says where the point goes, tapping says the point
+      // is one end of something. Armed, it wears the ring an armed pin wears,
+      // which is the page's one word for "this is live and pointed at the
+      // text" and is why the affordance needs no label.
+      //
+      // The anchor is read at ARM TIME, not at the tap that completes it, so
+      // speaking or backspacing in between cannot silently move it: a stale
+      // anchor is dropped rather than honoured (see `anchorFrom`).
+      anchoring: false, anchorFrom: null,
+
+      // The caret, with a selection counting as its far end. Extending from
+      // the far end is what shift-click does everywhere, which makes the one
+      // rule cover the collapsed case, the selected case and the empty case
+      // without a branch for any of them.
+      caretOffset() {
+        const r = this.d && this.d.range;
+        return r ? r.end : (this.d ? this.d.text.length : 0);
+      },
+      toggleAnchor() {
+        if (this.anchoring) { this.anchoring = false; this.anchorFrom = null; this.paint(); return; }
+        this.anchoring = true;
+        this.anchorFrom = this.caretOffset();
+        this.paint();
+      },
+      // The completing tap. Returns whether it consumed the tap, so the
+      // gesture handler can fall through to its ordinary reading when the
+      // anchor was never armed.
+      anchorTo(i) {
+        if (!this.anchoring) return false;
+        const a = this.anchorFrom;
+        this.anchoring = false; this.anchorFrom = null;
+        // An anchor past the end of a buffer that shrank under it is not a
+        // position any more, so the tap becomes an ordinary caret placement
+        // rather than a selection to somewhere that is gone.
+        if (a == null || a > this.d.text.length) { this.d.caretAt(i); this.armed = null; this.paint(); return true; }
+        if (a === i) { this.d.caretAt(i); this.armed = null; this.paint(); return true; }
+        this.d.select(a, i);
+        // Arm the edge that just moved, so the pad can refine it without a
+        // second decision: select roughly with two taps, then walk the edge.
+        this.armed = i > a ? 'end' : 'start';
+        this.paint();
+        return true;
+      },
 
       // What the pad is aiming, in client coordinates: the armed pin if one is
       // armed, the caret otherwise. One gesture, two subjects, and which is a
@@ -466,6 +536,7 @@
           // moment, and "flick then creep" is two moments.
           const t = (typeof e.timeStamp === 'number' && e.timeStamp) || 0;
           const dx = e.clientX - from.lx, dy = e.clientY - from.ly;
+          from.travel += Math.abs(dx) + Math.abs(dy);
           const dt = Math.max(8, t - from.lt);
           const k = Math.min(1, Math.max(0, (Math.hypot(dx, dy) / dt - V0) / (V1 - V0)));
           const gain = SLOW + (FAST - SLOW) * k;
@@ -497,8 +568,14 @@
         };
         const up = (e) => {
           if (!from) return;
+          // A TAP IS A DRAG THAT WENT NOWHERE, and it means the other half of
+          // this button. Measured against the raw thumb travel rather than the
+          // accumulated virtual point, since the gain would call a 6px twitch
+          // a 14px move at a flick.
+          const tapped = from.travel < 8;
           from = null;
           this.padDrag = false;
+          if (tapped) this.toggleAnchor();
           const d = document;
           d.removeEventListener('pointermove', move, true);
           d.removeEventListener('pointerup', up, true);
@@ -513,7 +590,7 @@
           if (!p) return;
           e.preventDefault();
           const cs = getComputedStyle(this.$refs.view);
-          from = { x: p.x, y: p.y, y0: p.y, lx: e.clientX, ly: e.clientY,
+          from = { x: p.x, y: p.y, y0: p.y, lx: e.clientX, ly: e.clientY, travel: 0,
                    lt: (typeof e.timeStamp === 'number' && e.timeStamp) || 0,
                    line: parseFloat(cs.lineHeight) || 26 };
           // The flag the text box reads to stand down. It has to: a capture can
@@ -780,6 +857,7 @@
       clear() {
         this.d.text = '';
         this.draft = ''; this.interim = ''; this.armed = null;
+        this.anchoring = false; this.anchorFrom = null;
         this.breaks = false; this.restored = 0;
         ls.del(DRAFT);
         this.elapsed = 0; this.since = Date.now();
@@ -802,18 +880,44 @@
   <!-- ── The status bar ──────────────────────────────────────────────────
        Three facts and a menu, because a capture surface has to answer "is it
        hearing me" without being asked, and answer it from across the room. -->
-  <div class="shrink-0 flex items-center gap-3 px-4 min-h-12 border-b border-base-300 pt-[env(safe-area-inset-top)]">
-    <span class="relative flex size-3 shrink-0">
-      <span x-show="listening" class="absolute inline-flex size-3 rounded-full bg-error opacity-60 animate-ping"></span>
-      <span class="relative inline-flex size-3 rounded-full"
-            :class="listening ? 'bg-error' : 'bg-base-300'"></span>
-    </span>
-    <span class="text-sm font-medium" x-text="listening ? 'Listening' : (started ? 'Paused' : 'Dictate')"></span>
-    <span x-show="started" class="font-mono text-xs opacity-40 tabular-nums" x-text="clock"></span>
-    <div class="grow"></div>
-    <span class="font-mono text-xs opacity-40 tabular-nums" x-text="words + 'w'"></span>
-    <button @click="menu = !menu" class="btn btn-ghost btn-sm btn-square -mr-2" title="More">
-      <i class="ph ph-dots-three-vertical text-xl"></i>
+  <div class="shrink-0 flex items-center gap-1.5 px-2 min-h-11 border-b border-base-300 pt-[env(safe-area-inset-top)]">
+    <!-- RECORD, and it is the state readout as well as the switch: red and
+         pulsing while live, so the one question a capture surface has to
+         answer without being asked is answered by the control that changes
+         it. Small now, because it is tapped twice a session where the marks
+         are tapped every sentence, and the bottom of the screen belongs to
+         whatever is tapped most. -->
+    <button @click="mic()" :disabled="edit"
+            class="btn btn-sm btn-square shrink-0"
+            :class="listening ? 'btn-error' : 'btn-ghost'"
+            :title="listening ? 'Recording. Tap to stop.' : 'Start listening'">
+      <i class="ph text-lg" :class="(listening ? 'ph-microphone animate-pulse' : 'ph-microphone-slash')"></i>
+    </button>
+    <span class="font-mono text-xs opacity-40 tabular-nums shrink-0"
+          x-text="started ? clock : ''"></span>
+    <div class="grow min-w-0"></div>
+    <span class="font-mono text-xs opacity-40 tabular-nums shrink-0" x-text="words + 'w'"></span>
+    <button @click="undo()" :disabled="!canUndo" class="btn btn-ghost btn-sm btn-square shrink-0" title="Undo">
+      <i class="ph ph-arrow-counter-clockwise text-base"></i>
+    </button>
+    <button @click="redo()" :disabled="!canRedo" class="btn btn-ghost btn-sm btn-square shrink-0" title="Redo">
+      <i class="ph ph-arrow-clockwise text-base"></i>
+    </button>
+    <!-- THE TARGET. Two gestures on one button, because they are one job:
+         drag it and the caret moves, tap it and the caret becomes one end of
+         a selection whose other end is your next tap. Armed it wears the ring
+         an armed pin wears, which is this page's one word for "live and
+         pointed at the text". touch-action:none inline is what makes the drag
+         work rather than scrolling the page under it. -->
+    <button x-init="bindPad($el)" :disabled="edit" style="touch-action:none"
+            class="btn btn-sm btn-square shrink-0"
+            :class="anchoring ? 'btn-error btn-outline' : (padDrag ? 'btn-info' : 'btn-ghost')"
+            :title="anchoring ? 'Now tap where the selection should end (tap here again to cancel)'
+                              : 'Drag to move the cursor. Tap to start a selection from it.'">
+      <i class="ph ph-crosshair text-lg"></i>
+    </button>
+    <button @click="menu = !menu" class="btn btn-ghost btn-sm btn-square shrink-0" title="More">
+      <i class="ph ph-dots-three-vertical text-lg"></i>
     </button>
   </div>
 
@@ -919,48 +1023,19 @@
   </div>
 
   <!-- ── The bottom row ──────────────────────────────────────────────────
-       Shorter than the mark keys, and deliberately: the marks are aimed at
-       over and over inside one note, while these are hit once each, so they
-       can give their height back to the words. The PAD TAKES THE CORNER, the
-       cell that most wants one, since it is the only control here that is
-       held and dragged rather than tapped.
-
-       Which is why this page opts out of the FAB (data-no-fab on <body>): the
-       launcher is fixed at bottom-6 right-6 and would sit on the pad. The
-       drawer is a real loss and it is bounded, since a page rendered through
-       a toss declines to mount one anyway and the shell's own drawer is right
-       there; what goes is the drawer on the deployed page, which is a capture
-       appliance opened to say one thing and leave. -->
-  <div class="shrink-0 flex items-stretch gap-1 px-1 pb-1 border-t border-base-300 pt-1"
+       Two controls, since record, undo, redo and the target went to the
+       header. What is left is what a thumb reaches for without looking: the
+       key that takes back a misheard word, and the one that ends the note. -->
+  <div class="shrink-0 flex items-stretch gap-1 px-1 pb-1 pt-1"
        style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.25rem)">
-    <button @click="mic()" :disabled="edit"
-            class="btn h-12 min-h-0 grow basis-0 px-0"
-            :class="listening ? 'btn-error' : 'btn-neutral'"
-            :title="listening ? 'Recording. Tap to stop.' : 'Start listening'">
-      <i class="ph text-2xl" :class="listening ? 'ph-microphone' : 'ph-microphone-slash'"></i>
-    </button>
-    <button @click="undo()" :disabled="!canUndo" class="btn btn-ghost bg-base-200 h-12 min-h-0 grow basis-0 px-0" title="Undo">
-      <i class="ph ph-arrow-counter-clockwise text-xl"></i>
-    </button>
-    <button @click="redo()" :disabled="!canRedo" class="btn btn-ghost bg-base-200 h-12 min-h-0 grow basis-0 px-0" title="Redo">
-      <i class="ph ph-arrow-clockwise text-xl"></i>
-    </button>
     <button @pointerdown.prevent="back()" :disabled="edit"
-            class="btn btn-outline btn-error h-12 min-h-0 grow basis-0 px-0"
+            class="btn btn-outline btn-error h-12 min-h-0 basis-1/4 px-0"
             title="Delete the last word (dictation keeps running)">
       <i class="ph ph-backspace text-xl"></i>
     </button>
     <button @click="openSheet()" :disabled="empty && !draft.trim()"
-            class="btn btn-primary h-12 min-h-0 grow-[2] basis-0 gap-1.5 px-0">
+            class="btn btn-primary h-12 min-h-0 grow gap-1.5 px-0">
       <i class="ph ph-paper-plane-tilt text-lg"></i>Save
-    </button>
-    <!-- The pad, in the corner. touch-action:none is what makes the drag WORK
-         on a phone rather than scrolling the page under it. -->
-    <button x-init="bindPad($el)" :disabled="edit" style="touch-action:none"
-            class="btn h-12 min-h-0 w-12 shrink-0 px-0"
-            :class="padDrag ? 'btn-info' : 'btn-ghost bg-base-200'"
-            title="Press and drag to move the cursor, or an armed selection edge">
-      <i class="ph ph-crosshair text-xl"></i>
     </button>
   </div>
 
