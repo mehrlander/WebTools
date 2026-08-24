@@ -121,23 +121,39 @@ const say = async (t, final = true) => {
 const buffer = () => page.evaluate(() => document.querySelector('[x-ref="body"]').textContent);
 
 try {
-  // ── 1. The Save button is reachable ──────────────────────────────────
+  // ── 1. The corner belongs to the cursor pad ──────────────────────────
+  // The FAB launcher is fixed at bottom-6 right-6 on every page that boots
+  // the lib chain, and it sat on this page's Save button until the layout
+  // reserved the corner. Once the composer's grid came across, the corner
+  // became the CURSOR PAD's, which is the one control here that is held and
+  // dragged rather than tapped, so the page opts out of the FAB entirely
+  // (data-no-fab). Both halves are asserted, because a silently returning
+  // launcher would land on the pad and the source would not say so.
   console.log('geometry at 390x844:');
   await open();
   const boxes = await page.evaluate(() => {
-    const save = [...document.querySelectorAll('button')].find(b => /Save/.test(b.textContent));
-    const fab = document.querySelector('.fixed.bottom-6.right-6');
+    const byTitle = (t) => document.querySelector(`button[title^="${t}"]`);
     const r = (el) => el ? el.getBoundingClientRect().toJSON() : null;
-    return { save: r(save), fab: r(fab), h: innerHeight, docH: document.body.scrollHeight };
+    return {
+      save: r([...document.querySelectorAll('button')].find(b => /Save/.test(b.textContent))),
+      pad: r(byTitle('Press and drag')),
+      fab: r(document.querySelector('.fixed.bottom-6.right-6')),
+      h: innerHeight, docH: document.body.scrollHeight, w: innerWidth,
+    };
   });
-  ok('the FAB launcher is on the page at all (else this proves nothing)', !!boxes.fab);
-  ok('Save does not sit under the FAB launcher',
-    !!boxes.save && !!boxes.fab && boxes.save.right <= boxes.fab.left,
-    `save.right=${boxes.save?.right} fab.left=${boxes.fab?.left}`);
+  ok('the page declines the FAB, so nothing is fixed over the corner', !boxes.fab,
+    JSON.stringify(boxes.fab));
+  ok('the pad holds the bottom-right corner',
+    !!boxes.pad && boxes.pad.right > boxes.w - 24 && boxes.pad.bottom > boxes.h - 24,
+    JSON.stringify(boxes.pad));
   ok('Save is a thumb-sized target', !!boxes.save && boxes.save.height >= 44 && boxes.save.width >= 100,
     JSON.stringify(boxes.save));
+  ok('and nothing overlaps it', !!boxes.save && !!boxes.pad && boxes.save.right <= boxes.pad.left + 1,
+    `save.right=${boxes.save?.right} pad.left=${boxes.pad?.left}`);
   ok('the shell does not scroll the document', boxes.docH <= boxes.h + 1,
     `body=${boxes.docH} viewport=${boxes.h}`);
+  ok('the painter is asked for no arrow cluster',
+    !(await page.evaluate(() => !!document.querySelector('[data-d="nudge"]'))));
 
   // ── 2. The engine is kept alive ──────────────────────────────────────
   console.log('keep-alive:');
@@ -166,6 +182,43 @@ try {
   const cased = await buffer();
   ok('a correction at the head of a sentence keeps its capital',
     /Web-tools is the hub/.test(cased), cased);
+
+  // ── 3b. The two gestures the composer port exists for ────────────────
+  console.log('the cursor pad and the double tap:');
+  const caretAt = () => page.evaluate(() => {
+    const el = document.querySelector('[x-data="dictate"]');
+    return el?._x_dataStack?.[0]?.d?.range?.start ?? null;
+  });
+  // The pad is pressed and dragged. The caret starts at the end (a null
+  // range), so the first drag has to place one; dragging LEFT walks it back
+  // through the buffer, which is the whole of what the control does.
+  const padBox = await page.locator('button[title^="Press and drag"]').boundingBox();
+  await page.mouse.move(padBox.x + padBox.width / 2, padBox.y + padBox.height / 2);
+  await page.mouse.down();
+  for (let i = 0; i < 14; i++) {
+    await page.mouse.move(padBox.x + padBox.width / 2 - 8 * (i + 1), padBox.y + padBox.height / 2);
+    await page.waitForTimeout(20);
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(150);
+  const moved = await caretAt();
+  const len = await page.evaluate(() => document.querySelector('[x-ref="body"]').textContent.length);
+  ok('a pad drag places the caret inside the buffer', moved != null && moved < len,
+    `caret=${moved} length=${len}`);
+  ok('and it did not have to touch the words to do it',
+    await page.evaluate(() => !!document.querySelector('[data-d="caret"]')));
+
+  // A double tap on the words opens the keyboard, with the caret where it
+  // landed. The pencil is retired, so this is the only way in.
+  const line = await page.locator('[x-ref="body"] [data-d="text"]').first().boundingBox();
+  await page.mouse.dblclick(line.x + 60, line.y + 12);
+  await page.waitForTimeout(300);
+  ok('a double tap opens the keyboard', await page.locator('textarea').isVisible());
+  ok('there is no pencil to have opened it instead',
+    !(await page.evaluate(() => !!document.querySelector('button[title*="Type instead"]'))));
+  await page.evaluate(() => document.querySelector('textarea').blur());
+  await page.waitForTimeout(300);
+  ok('and blurring is the way out', !(await page.locator('textarea').isVisible()));
 
   // ── 4. The draft survives, and a filed note does not ─────────────────
   console.log('persistence:');
