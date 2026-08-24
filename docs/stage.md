@@ -157,7 +157,12 @@ would.
 **A pasted grid is a grid whichever delimiter it uses,** and the naming is
 where that is decided: `nameForText` picks an extension from the first
 characters and `ViewRegistry.READ_MODE` keys on the extension alone, so what a
-paste is CALLED is the whole of what the reader then sees. Until 2026-08-18
+paste is CALLED is the whole of what the reader then sees. JSON is the one
+flavor that can be checked rather than guessed, so it is: `isJson` parses, and
+the leading `[` or `{` only guards the parse. Guessing it from that character
+alone named a PowerShell script `.json` and sent it to the tree view, which
+renders nothing for text that will not parse, so the paste was hidden rather
+than merely mislabelled. Until 2026-08-18
 `isDelimited` counted tabs only, so a spreadsheet range (which reaches the
 clipboard as TSV) opened as a table while the same data pasted as CSV opened as
 a wall of text. `delimiterOf` reads tab or comma at the same strictness the tab
@@ -282,7 +287,14 @@ Stage-view actions:
   four places: the row, the bundle header, the `name` a local item rides on a
   `#gz=` link, and the deposited path. The **extension** is the whole of what
   the reader uses to pick a mode and what the destination blob renders as, so
-  a wrong sniff used to mean deleting the item and pasting it again. A slash is
+  a wrong sniff used to mean deleting the item and pasting it again. **A guessed
+  extension is drawn as a guess:** where the name came from the sniff rather
+  than from a file, a clipboard MIME type, or a link payload, the item carries
+  `sniffed` and its extension draws with a dotted underline. Dotted and not
+  dimmed, since dimming the one part worth a second look is backwards. That
+  marker is the whole of what was missing: the pencil has always been the
+  correction, and nothing said a correction was wanted. A rename clears it,
+  because the name is authored from then on. A slash is
   allowed and means a subpath under the destination (`docs/notes.md` lands at
   `<dir>/docs/notes.md`); `..` and empty segments are dropped. Two locals with
   one name is warned about, not refused, since the deposit writes one over the
