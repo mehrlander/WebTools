@@ -155,6 +155,64 @@ try {
   ok('the painter is asked for no arrow cluster',
     !(await page.evaluate(() => !!document.querySelector('[data-d="nudge"]'))));
 
+  // ── 1b. The selection lock, over the WHOLE surface ───────────────────
+  // Reported from the phone on 2026-08-24: selection was not suppressed where
+  // it should be. The painted text was locked and the scroll box around it was
+  // not, so every press in the padding and in the empty canvas below the last
+  // line, which is most of the screen, raised the platform's own selection.
+  // The lock is a stylesheet now, for the reason the composer has one, and
+  // this is the measurement rather than a reading of the CSS.
+  console.log('the selection lock:');
+  const locks = await page.evaluate(() => {
+    const cs = (sel) => {
+      const el = typeof sel === 'string' ? document.querySelector(sel) : sel;
+      if (!el) return null;
+      const c = getComputedStyle(el);
+      return { sel: c.webkitUserSelect || c.userSelect, touch: c.touchAction };
+    };
+    const host = document.querySelector('[x-ref="body"]');
+    return {
+      host: cs(host),
+      view: cs('[x-ref="view"]'),
+      layer: cs('[x-ref="layer"]'),
+      marks: cs('[x-ref="layer"] ~ div button'),
+      pad: cs('button[title^="Press and drag"]'),
+      root: cs('[data-dictate-ui]'),
+    };
+  });
+  for (const [name, v] of Object.entries(locks)) {
+    if (name === 'pad') continue;
+    ok(`${name} refuses the browser its own selection`, v && v.sel === 'none', JSON.stringify(v));
+    ok(`${name} refuses double-tap zoom`, v && v.touch === 'manipulation', JSON.stringify(v));
+  }
+  // touch-action does NOT inherit, which is how the host and the painted spans
+  // computed `auto` under a layer that said manipulation.
+  ok('the painted spans are covered too, since touch-action does not inherit',
+    await page.evaluate(() => {
+      const sp = document.querySelector('[x-ref="body"] [data-d="text"]');
+      if (!sp) return false;
+      const c = getComputedStyle(sp);
+      return (c.webkitUserSelect || c.userSelect) === 'none' && c.touchAction === 'manipulation';
+    }));
+  // The pad is the one deliberate exception, and it says so inline so that
+  // specificity settles it rather than source order.
+  ok('the pad keeps touch-action:none, which is what makes its drag work',
+    locks.pad && locks.pad.touch === 'none', JSON.stringify(locks.pad));
+  // And the keyboard gets the platform back, since a textarea is where a
+  // reader looks for select-all and the caret handles.
+  await page.evaluate(() => {
+    const el = document.querySelector('[x-data="dictate"]');
+    el._x_dataStack[0].edit = true;
+  });
+  await page.waitForTimeout(150);
+  ok('the textarea gets selection back',
+    await page.evaluate(() => {
+      const c = getComputedStyle(document.querySelector('textarea'));
+      return (c.webkitUserSelect || c.userSelect) === 'text';
+    }));
+  await page.evaluate(() => { document.querySelector('[x-data="dictate"]')._x_dataStack[0].edit = false; });
+  await page.waitForTimeout(150);
+
   // ── 2. The engine is kept alive ──────────────────────────────────────
   console.log('keep-alive:');
   await begin();

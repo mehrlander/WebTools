@@ -90,7 +90,44 @@
   a refusal or a throw falls back to the tap target rather than asking again.
 -->
 
-<style>[x-cloak]{display:none!important}</style>
+<style>
+[x-cloak]{display:none!important}
+
+/* ── The selection lock ──────────────────────────────────────────────────
+   A STYLESHEET, not an inline style, which is the composer's rule and the
+   reason it has one. `-webkit-touch-callout` is absent from the CSSOM's
+   property list, so inline it survives only as authored attribute text and
+   ANY later `.style.foo =` on that element re-serializes the attribute from
+   the parsed declarations and drops it, silently. A rule here is parsed once
+   and cannot be clobbered.
+
+   And it covers the WHOLE surface, not just the painted text. Measured
+   2026-08-24 after the field report: the text host read user-select:none and
+   the scroll box around it read auto, so every press in the padding and in
+   the empty canvas below the last line, which is most of the screen, raised
+   the platform's own selection and its callout bubble over the words.
+
+   touch-action rides along because it does NOT inherit: the host and the
+   painted spans both computed `auto` under a layer set to manipulation, and
+   a phone reads a double tap on auto as a request to zoom. That is now the
+   gesture that opens the keyboard, so the reader got both. Inline values win
+   on specificity, which is how the pad keeps its `none`. */
+[data-dictate-ui], [data-dictate-ui] * {
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+  touch-action: manipulation;
+}
+[data-dictate-ui] textarea, [data-dictate-ui] input {
+  -webkit-touch-callout: default; -webkit-user-select: text; user-select: text;
+}
+
+/* A PIN IS FURNITURE WHILE THE PAD IS DRIVING IT. A pin's hit box is 32px
+   wide, so caret-from-point keeps answering with the pin rather than with the
+   word under it, and the edge does not move until the aim point has cleared
+   it. The composer measured the cost at a 32px dead band per pin, stepping 13,
+   15, 17 across a 120px sweep. Taps still arm a pin; only for the length of a
+   drag is it transparent. */
+[data-dictate-pad] [data-edge] { pointer-events: none; }
+</style>
 
 <script type="module">
   const q = new URLSearchParams(location.search);
@@ -504,10 +541,6 @@
       paint() {
         this.beat++;
         if (!this._host) return;
-        if (!this._styled) {
-          this._styled = true;
-          this._host.setAttribute('style', (this._host.getAttribute('style') || '') + window.Dictate.SUPPRESS);
-        }
         window.Dictate.paint(this._host, {
           text: this.text, interim: this.interim,
           range: this.d ? this.d.range : null, armed: this.armed,
@@ -762,7 +795,8 @@
 
 <body data-no-fab class="bg-base-200 text-base-content overscroll-none">
 
-<div x-data="dictate" x-cloak
+<div x-data="dictate" x-cloak data-dictate-ui
+     :data-dictate-pad="padDrag ? '' : null"
      class="h-dvh w-full flex flex-col mx-auto max-w-3xl bg-base-100 sm:border-x border-base-300">
 
   <!-- ── The status bar ──────────────────────────────────────────────────
@@ -922,8 +956,8 @@
     </button>
     <!-- The pad, in the corner. touch-action:none is what makes the drag WORK
          on a phone rather than scrolling the page under it. -->
-    <button x-init="bindPad($el)" :disabled="edit"
-            class="btn h-12 min-h-0 w-12 shrink-0 px-0 touch-none"
+    <button x-init="bindPad($el)" :disabled="edit" style="touch-action:none"
+            class="btn h-12 min-h-0 w-12 shrink-0 px-0"
             :class="padDrag ? 'btn-info' : 'btn-ghost bg-base-200'"
             title="Press and drag to move the cursor, or an armed selection edge">
       <i class="ph ph-crosshair text-xl"></i>
