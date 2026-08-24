@@ -571,6 +571,82 @@ test('a multi-line function body is a function, not a comma grid', async () => {
     'the grid test runs after this one precisely so this cannot be renamed .csv');
 });
 
+// ---- .json is a parse, not a first character -------------------------------
+//
+// Reported 2026-08-24: a PowerShell script pasted into the stage was named
+// .json on the strength of its opening `[`, and READ_MODE sent it to the tree
+// view, which shows nothing for text that will not parse. The extension is the
+// routing decision, so a wrong one here does not merely mislabel the paste, it
+// hides it.
+
+const PS_SCRIPT = `[CmdletBinding()]
+param(
+    [Parameter(Mandatory)][string]$Path,
+    [switch]$Force
+)
+
+$ErrorActionPreference = 'Stop'
+Get-ChildItem -Path $Path | Where-Object { $_.Length -gt 1kb }`;
+
+const extOf = (text) => window.StageIntake.nameForText(text).split('.').pop();
+
+test('a pasted PowerShell script is not JSON, whatever its first character', async () => {
+  reset();
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': PS_SCRIPT } }));
+  const name = data.localItems[0].name;
+  assert.doesNotMatch(name, /\.json$/, 'the reported bug: `[CmdletBinding()]` opened with a bracket');
+  assert.match(name, /\.ps1$/, 'and it is named for what it is, not left as .txt');
+});
+
+test('a bare script block is not JSON either', () => {
+  assert.equal(extOf('{\n    param($x)\n    Write-Host $x\n}'), 'ps1',
+    'the other half of /^[{[]/, and the same misread');
+});
+
+test('JSON that parses is still named .json', () => {
+  assert.equal(extOf('{"a": 1, "b": [2, 3]}'), 'json');
+  assert.equal(extOf('[{"a": 1}, {"a": 2}]'), 'json');
+  assert.equal(extOf('\n\n  [1, 2, 3]  \n'), 'json', 'surrounding whitespace is not content');
+});
+
+test('a scalar parses but is not what pasting JSON means', () => {
+  assert.equal(window.StageIntake.isJson('42'), false);
+  assert.equal(window.StageIntake.isJson('"a string"'), false);
+  assert.equal(window.StageIntake.isJson('{ not json'), false, 'nor is a truncated object');
+});
+
+test('a commented PowerShell script is not markdown', () => {
+  const src = `# Build the report and drop it on disk.
+function New-Report {
+    param([string]$Out)
+    Get-Process | Select-Object Name, CPU | Export-Csv -Path $Out -NoTypeInformation
+}`;
+  assert.equal(extOf(src), 'ps1',
+    'a leading `# comment` reads as an H1 to the markdown pattern, so ps1 runs first');
+});
+
+test('prose that names one cmdlet is prose, and a fenced example is markdown', () => {
+  const doc = `# Cleaning up the share
+
+Run Get-ChildItem against the archive and see what is left.`;
+  assert.equal(extOf(doc), 'md', 'one signal is a mention, not a script');
+  const withFence = doc + '\n\n```\nGet-ChildItem -Path C:\\x | Where-Object { $_.Length -gt 0 }\n```\n';
+  assert.equal(extOf(withFence), 'md',
+    'a fence is exact markdown and is not PowerShell at all, so it settles the tie');
+});
+
+test('isPowerShell wants two distinct signals, and counts each one once', () => {
+  assert.equal(window.StageIntake.isPowerShell('Get-ChildItem and Set-Location and New-Item'), false,
+    'three cmdlets are one signal: the cmdlet signal');
+  assert.equal(window.StageIntake.isPowerShell('$rows = Import-Csv .\\in.csv\n$rows | Where-Object { $_.Amount -gt 0 }'), true,
+    'a cmdlet, $_, and a word operator');
+});
+
+test('a CSV is still a CSV, and prose is still prose', () => {
+  assert.equal(extOf(CSV), 'csv', 'the PowerShell test sits ahead of the grid test and must not eat one');
+  assert.equal(extOf('Just a couple of sentences.\nWith a second line.'), 'txt');
+});
+
 test('a JSON array of records opens as a table; any other JSON stays a tree', () => {
   const rowsJson = JSON.stringify([{ a: 1, b: 2 }, { a: 3, b: 4 }]);
   const bundle = JSON.stringify({ fn: 'H4sI', data: 'H4sI' });
