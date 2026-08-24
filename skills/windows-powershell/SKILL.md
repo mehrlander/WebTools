@@ -263,7 +263,11 @@ while ($listener.IsListening) {
 - **Skip validation/error handling** unless explicitly requested
 - **No aliases in scripts**: use `ForEach-Object` not `%`, `Where-Object` not `?`
 - **Single quotes** for literals, double quotes only when interpolating
-- **Comments**: explain *why*, not *what*
+- **No comments.** Not sparse comments, none. Reasoning goes in the commit
+  message, the PR body, or a tracker task, and usage goes in the folder's README.
+  Those are read; interspersed comments are not, and they become a second copy of
+  the reasoning that nothing checks. Set 2026-08-24, replacing "explain *why*, not
+  *what*", which licensed the habit by saying nothing about how often.
 
 ## WPF Forms Module
 
