@@ -647,6 +647,75 @@ test('a CSV is still a CSV, and prose is still prose', () => {
   assert.equal(extOf('Just a couple of sentences.\nWith a second line.'), 'txt');
 });
 
+// ---- a guessed extension looks guessed --------------------------------------
+//
+// A sniff will always be wrong sometimes, and the pencil has always been the
+// correction. What was missing is any sign that a correction was wanted: a name
+// the sniff invented read exactly like one a file or a clipboard MIME type
+// stated, so nobody had reason to reach for the rename. `sniffed` is that
+// distinction, set at the one intake that guesses and drawn on the row as a
+// dimmed, dotted extension.
+
+test('a pasted plain-text item is marked as guessed', async () => {
+  reset();
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': PS_SCRIPT } }));
+  assert.equal(data.localItems[0].sniffed, true);
+});
+
+test('a name the platform stated is not a guess', async () => {
+  reset();
+  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': HTML } }));
+  assert.equal(data.localItems[0].sniffed, false,
+    'text/html is named from the clipboard MIME type, which is a declaration');
+  reset();
+  window.StageIntake.take({ text: 'anything at all', name: 'given.md', size: 15 });
+  assert.equal(data.localItems[0].sniffed, false,
+    'and so is a #gz= payload, which carries the name it was minted with');
+});
+
+test('a dropped file keeps its own name and is never marked', async () => {
+  reset();
+  await window.StageIntake.takeFile(fakeFile('script.ps1', 'text/plain', 3));
+  assert.ok(!data.localItems[0].sniffed, 'the person who saved it named it');
+});
+
+test('nameParts splits at the last dot, never at the slash', () => {
+  // plain_ because the component builds its array in the jsdom realm, so the
+  // prototype differs and a strict deep-equal reads that as a mismatch.
+  const parts = (it) => plain_(data.nameParts(it));
+  assert.deepEqual(parts({ name: '2026-08-24-paste.ps1' }), ['2026-08-24-paste', '.ps1']);
+  assert.deepEqual(parts({ name: 'docs/note.md' }), ['docs/note', '.md']);
+  assert.deepEqual(parts({ name: 'README' }), ['README', ''],
+    'no dot means no marker to draw');
+  assert.deepEqual(parts({ path: 'a.b', name: 'c.d' }), ['a', '.b'],
+    'path wins, which is the field the row reads');
+});
+
+test('the row draws a guessed extension differently from a stated one', async () => {
+  reset();
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': PS_SCRIPT } }));
+  window.StageIntake.take({ text: '<h1>hi</h1>', size: 11, name: '2026-08-24-paste.html' });
+  await tick(3);
+  // The tail span is the extension; the marker is its class, so this is the
+  // gate on the pixels rather than on the flag the pixels are drawn from.
+  const tails = [...window.document.getElementById('st').querySelectorAll('span')]
+    .filter(s => /^\.(ps1|html)$/.test(s.textContent || ''));
+  const cls = Object.fromEntries(tails.map(s => [s.textContent, s.className]));
+  assert.match(cls['.ps1'], /decoration-dotted/, 'the sniffed one is drawn as a guess');
+  assert.doesNotMatch(cls['.html'] || '', /decoration-dotted/, 'the stated one is drawn plain');
+});
+
+test('a rename clears the guess, since the name is then authored', async () => {
+  reset();
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': PS_SCRIPT } }));
+  assert.equal(data.localItems[0].sniffed, true);
+  data.startRename(data.localItems[0]);
+  data.renameDraft = 'deploy.ps1';
+  data.commitRename();
+  assert.equal(data.localItems[0].sniffed, false,
+    'leaving it on would tell a reader their own correction was still a sniff');
+});
+
 test('a JSON array of records opens as a table; any other JSON stays a tree', () => {
   const rowsJson = JSON.stringify([{ a: 1, b: 2 }, { a: 3, b: 4 }]);
   const bundle = JSON.stringify({ fn: 'H4sI', data: 'H4sI' });
