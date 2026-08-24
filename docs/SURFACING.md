@@ -112,7 +112,7 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 * **Session diff:** summarize substantial work with `Session diff: [main...branch](url)`.
 * **Closing state:** every reply that finishes work or proposes more ends with exactly one of six labeled states, so the cheapest useful answer is one word. The bold label carries the meaning; the color makes it scannable:
 
-  - 🟢 **Ready to continue:** named work available on "go", listed as bullets, one line each. "Go" authorizes only what the list names, and "go 1, 3" takes a subset. Work the session conceives belongs here as a proposal (Keep focus), never done unprompted.
+  - 🟢 **Ready to continue:** named work available on "go", listed as bullets, one line each. "Go" authorizes only what the list names, and "go 1, 3" takes a subset. **A bullet carries its own referents,** because it is answered cold: short, but naming its subject instead of pointing back at the reply above it, the way a decision paper states the question on the page where it is asked. "The cheap route" is not a proposal; "cluster definite noun phrases by shared governor, skipping coreference" is. Work the session conceives belongs here as a proposal (Keep focus), never done unprompted.
   - 🟡 **Decision needed:** continuation depends on the user's call, and the state names the decision.
   - ⚪ **Natural stopping point:** no further work proposed; the wrap-up offer lives here.
   - 🟠 **Attention:** something concrete needs addressing before proceeding. Reserved for an actual problem or risk, not routine uncertainty. Amber is the alarm here, and red is not a louder version of it.
