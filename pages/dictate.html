@@ -1340,6 +1340,7 @@
         <i class="ph text-xl" :class="(listening ? 'ph-microphone animate-pulse' : 'ph-microphone-slash')"></i>
       </button>
       <span class="font-mono text-sm opacity-40 tabular-nums" x-text="started ? clock : ''"></span>
+      <span class="font-mono text-sm opacity-40 tabular-nums" x-text="words + 'w'"></span>
     </div>
 
     <!-- THE TARGET, on the centre line. Two gestures on one button, because
@@ -1358,24 +1359,23 @@
     </button>
 
     <div class="flex items-center gap-0.5 justify-self-end">
-      <span class="font-mono text-xs opacity-40 tabular-nums" x-text="words + 'w'"></span>
-      <button @click="undo()" :disabled="!canUndo" class="btn btn-ghost btn-sm btn-square" title="Undo">
-        <i class="ph ph-arrow-counter-clockwise text-lg"></i>
+      <button @click="undo()" :disabled="!canUndo" class="btn btn-ghost btn-md btn-square" title="Undo">
+        <i class="ph ph-arrow-counter-clockwise text-xl"></i>
       </button>
-      <button @click="redo()" :disabled="!canRedo" class="btn btn-ghost btn-sm btn-square" title="Redo">
-        <i class="ph ph-arrow-clockwise text-lg"></i>
+      <button @click="redo()" :disabled="!canRedo" class="btn btn-ghost btn-md btn-square" title="Redo">
+        <i class="ph ph-arrow-clockwise text-xl"></i>
       </button>
       <button @pointerdown.prevent="back()" :disabled="edit"
-              class="btn btn-ghost btn-sm btn-square text-error"
+              class="btn btn-ghost btn-md btn-square text-error"
               title="Delete the last word (dictation keeps running)">
-        <i class="ph ph-backspace text-lg"></i>
+        <i class="ph ph-backspace text-xl"></i>
       </button>
       <!-- The menu is a DROPDOWN, not a band. As a band it inserted itself
            between the header and the text and pushed the words down the screen
            to show controls that are not about the words at all. -->
       <div class="relative" @click.outside="menu = false">
-        <button @click="menu = !menu" class="btn btn-ghost btn-sm btn-square" title="More">
-          <i class="ph ph-dots-three-vertical text-lg"></i>
+        <button @click="menu = !menu" class="btn btn-ghost btn-md btn-square" title="More">
+          <i class="ph ph-dots-three-vertical text-xl"></i>
         </button>
         <div x-show="menu" x-cloak
              class="absolute right-0 top-full mt-1 z-50 w-56 rounded-box border border-base-300 bg-base-100 shadow-xl py-1 flex flex-col">
