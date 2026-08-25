@@ -600,22 +600,38 @@
         this.pinDrag = which;
         this.paint();
         const EDGE = 6;
-        // ── THE VERTICAL DEADBAND ─────────────────────────────────────────
-        // Horizontal is one to one. VERTICAL IS IGNORED for the first line and
-        // a half of travel, and only then resumes, quantized to lines and
+        // ── THE VERTICAL DEADBAND, AND WHICH SIDE IT SITS ON ──────────────
+        // Horizontal is one to one. Vertical is IGNORED for the first line and
+        // a half of travel and only then resumes, quantized to lines and
         // measured from where the deadband ended rather than from the grab.
         //
-        // So moving the edge down one line costs about two lines of thumb, and
-        // the first of those is spent getting the thumb off the words. That is
-        // the whole point: the finger clears the text before anything moves,
-        // and it does not have to be given a wide berth by the design, because
-        // the reader gives it one by dragging.
+        // So moving the edge costs about two lines of thumb, and the first of
+        // those is spent getting the thumb off the words. The clearance comes
+        // from the gesture rather than from the geometry: the reader takes
+        // exactly as much as they need and the pin stays where it points.
         //
         // It also fixes the commoner accident, which is not aiming at the
         // wrong line but drifting onto one. A thumb sliding along a line to
         // place an edge does not travel straight, and without a deadband a few
         // pixels of wander step the edge into the line above.
+        //
+        // AND IT IS ONE-SIDED, MIRRORED PER PIN, because the two balls hang on
+        // opposite sides of the line: the start's above it, the end's below.
+        // Your thumb is therefore already on that side when you grab, and the
+        // travel that carries it AWAY from the words is travel in that same
+        // direction. That is the travel the buffer is for.
+        //
+        // The other way, the thumb is coming from outside the text and crossing
+        // toward it, so you can see exactly where you are going and a buffer
+        // there only makes the pin feel stuck. Symmetric was the first cut and
+        // it made one of the two directions worse on each pin.
+        //
+        // The side is FIXED AT THE GRAB, not read per frame. Which pin you
+        // hold can change mid-drag when the edges cross, and where your thumb
+        // physically is cannot, so recomputing it would jump the aim a line
+        // and a half at the moment of a crossing.
         const DEAD = 1.5;
+        const dir = which === 'end' ? 1 : -1;
         const lineH = parseFloat(getComputedStyle(this.$refs.view).lineHeight) || 26;
         let moved = false;
         const d = document;
@@ -628,7 +644,9 @@
           const b = this.$refs.view.getBoundingClientRect();
           let ax = from.x + (ev.clientX - from.px);
           const travel = (ev.clientY - from.py) / lineH;
-          const past = Math.abs(travel) <= DEAD ? 0 : travel - Math.sign(travel) * DEAD;
+          const past = travel * dir > 0
+            ? (Math.abs(travel) <= DEAD ? 0 : travel - Math.sign(travel) * DEAD)
+            : travel;
           let ay = from.y + Math.round(past) * lineH;
           // Held against an edge, scroll, the same as the pad: an edge dragged
           // to the bottom of a buffer longer than the screen would otherwise

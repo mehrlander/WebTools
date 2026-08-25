@@ -406,11 +406,12 @@ try {
   // along a line does not step off it. A long one must.
   const lineH = await page.evaluate(() =>
     parseFloat(getComputedStyle(document.querySelector('[x-ref="view"]')).lineHeight));
-  const dragEnd = async (dy) => {
-    await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.d.select(4, 30); c.armed = null; c.paint(); });
+  const dragPin = async (edge, dy) => {
+    await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.d.select(34, 60); c.armed = null; c.paint(); });
     await page.waitForTimeout(150);
-    const box = await page.locator('[x-ref="layer"] [data-edge="end"]').boundingBox();
-    const y0 = box.y + box.height - 4;
+    const box = await page.locator(`[x-ref="layer"] [data-edge="${edge}"]`).boundingBox();
+    // Grab the ball, which hangs above the line on start and below it on end.
+    const y0 = edge === 'end' ? box.y + box.height - 4 : box.y + 4;
     await page.mouse.move(box.x + box.width / 2, y0);
     await page.mouse.down();
     for (let i = 1; i <= 10; i++) {
@@ -422,13 +423,29 @@ try {
     await page.waitForTimeout(120);
     return r;
   };
-  const base = await dragEnd(0);
-  const nudged = await dragEnd(lineH * 1.2);
+  const base = await dragPin('end', 0);
+  const nudged = await dragPin('end', lineH * 1.2);
   ok('a drag of one line down does not move the edge off its line',
     nudged && base && nudged.end === base.end, `${base?.end} -> ${nudged?.end}`);
-  const pushed = await dragEnd(lineH * 2.6);
+  const pushed = await dragPin('end', lineH * 2.6);
   ok('but past the deadband it steps, so the line is still reachable',
     pushed && base && pushed.end > base.end, `${base?.end} -> ${pushed?.end}`);
+
+  // THE BUFFER IS ONE-SIDED AND MIRRORED. It sits on the side each ball hangs,
+  // which is the side the thumb is already on, so the travel it absorbs is the
+  // travel that carries the thumb off the words. The other way the thumb is
+  // crossing toward the text in plain view, and a buffer there reads as stuck.
+  const endUp = await dragPin('end', -lineH * 1.2);
+  ok('the end pin answers a short drag UP at once, its buffer being below',
+    endUp && base && endUp.end < base.end, `${base?.end} -> ${endUp?.end}`);
+
+  const sBase = await dragPin('start', 0);
+  const startUp = await dragPin('start', -lineH * 1.2);
+  ok('and the start pin mirrors it: a short drag up is absorbed',
+    startUp && sBase && startUp.start === sBase.start, `${sBase?.start} -> ${startUp?.start}`);
+  const startDown = await dragPin('start', lineH * 1.2);
+  ok('while a short drag down moves it, its buffer being above',
+    startDown && sBase && startDown.start > sBase.start, `${sBase?.start} -> ${startDown?.start}`);
 
   // The pins have to vanish from hit testing while one is being dragged, or
   // caret-from-point answers with the pin the aim point is tracking.
