@@ -1,5 +1,5 @@
 path,role,layer,lines,invocation,emits,named,tested
-scripts/bound-boolean-attrs.py,"report an Alpine boolean attribute (:disabled, :checked, :readonly) bound to an expression that can be undefined. x-bind coerces an undefined result to '' for any dotted expression, and bind() removes an attribute only for null/undefined/false, so '' SETS it: a bare property read on a missing key disables the control. Only accessor chains are flagged; an operator always yields a real boolean, which is the half a looser scan gets wrong. --check gates it",scripts,170,npm:bool-attr-scan,no,yes,yes
+scripts/bound-boolean-attrs.py,"report an Alpine boolean attribute (:disabled, :checked, :readonly) bound to an expression that can be undefined. x-bind coerces an undefined result to '' for any dotted expression, and bind() removes an attribute only for null/undefined/false, so '' SETS it: a bare property read on a missing key disables the control. Two shapes are flagged and nothing else: a bare accessor chain, and the last operand of a top-level ||/&& chain, since those operators hand back an operand rather than a boolean (dictate.html bound :disabled to !token or saving, which is the empty string with a token in hand, and both its writing destinations were dead). Negation, comparison and a ternary answer for their own type and are left alone, which is the half a looser scan gets wrong. --check gates it",scripts,237,npm:bool-attr-scan,no,yes,yes
 scripts/build-tree.py,render a repository file tree as a linked markdown table for chat,scripts,252,argv,no,yes,no
 scripts/check-branch-status.mjs,the stated agreement check for the branches view against home's unmerged-branches.sh,scripts,145,argv,no,yes,no
 scripts/code-shape.py,"per-file observable properties of lib/: what a file attaches to, boot, hub, DOM, Alpine; the instrument behind docs/code-layers.md and the code-layers gate",scripts,374,npm:code-shape,yes,yes,yes
@@ -25,7 +25,7 @@ tools/build/docs-readme.mjs,regenerate docs/README.md from docs/docs.csv,tools/b
 tools/build/graph.mjs,the static resolver for a page's gh.load chain; feeds build.mjs its cache,tools/build,86,imported,no,yes,no
 tools/build/graphql-schema.mjs,regenerate the pruned GitHub GraphQL schema the suite typechecks queries against,tools/build,230,npm:graphql-schema,yes,no,no
 tools/build/kit-shim.mjs,run a browser-shaped gh.load kit inside Node; the bridge build.mjs and the suite share,tools/build,19,imported,no,yes,no
-tools/build/pages-index.mjs,regenerate both page catalogs: pages/README.md and pages/index.html,tools/build,455,npm:pages-index,no,yes,yes
+tools/build/pages-index.mjs,regenerate both page catalogs: pages/README.md and pages/index.html,tools/build,456,npm:pages-index,no,yes,yes
 tools/build/pages-shots.mjs,"regenerate pages/thumbs/*.png, one screenshot per page for the visual index",tools/build,85,npm:pages-shots,no,yes,no
 tools/build/registries-load.mjs,"read and write the registry pair (docs/registries.csv, docs/properties.csv): the CSV parse, the path/fragment split, and the column order a restamp must preserve",tools/build,103,imported,no,no,yes
 tools/build/registries-reach.mjs,"stamp renders_in into docs/registries.csv: the app files that name each registry's path, empty being the Registries tab's warning state",tools/build,91,npm:registries-reach,yes,yes,yes
@@ -86,6 +86,7 @@ tools/render/scenarios/data-view-item-tossed.mjs,"the #item= addressing end to e
 tools/render/scenarios/data-view-item.mjs,"data-view's #item= addressing, read and written",tools/render/scenarios,89,driver,no,yes,yes
 tools/render/scenarios/data-view-items.mjs,"the data-view demo through its envelope's three items, each declared view winning",tools/render/scenarios,13,driver,no,no,no
 tools/render/scenarios/deck-split.mjs,,tools/render/scenarios,45,driver,yes,no,no
+tools/render/scenarios/dictate-page.mjs,"pages/dictate.html mid-dictation with SpeechRecognition stubbed: committed text, a live hypothesis, the mark row and the header instruments. Options take it on to a word selected by long press (the casing face), the armed target, and the save sheet",tools/render/scenarios,81,driver,no,no,yes
 tools/render/scenarios/diff-tool-at.mjs,the diff tool's address field driving the browse panel over captured API fixtures,tools/render/scenarios,187,driver,no,no,no
 tools/render/scenarios/diff-tool-grab.mjs,"the Sources tab with both slots in GitHub mode, the @-grab row on screen",tools/render/scenarios,15,driver,no,no,no
 tools/render/scenarios/diff-tool-loaded.mjs,diff-tool in its loaded state: two versions diffed on the Diff tab,tools/render/scenarios,65,driver,no,no,no

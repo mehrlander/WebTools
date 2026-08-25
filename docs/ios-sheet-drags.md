@@ -120,6 +120,13 @@ Put the `pointermove` / `pointerup` listeners on `window` (or the document)
 rather than on the handle. Captured events still bubble, so one path serves both
 the captured and the uncaptured case.
 
+## A related question, asked the same way and answered no
+
+Whether a page can fire the phone's HAPTIC on its own gesture was measured with
+the same one-cell-per-technique method and came back negative:
+[ios-haptics.md](ios-haptics.md). The reachable buzz belongs to a real user
+activation of a native control and cannot be aimed at a moment the page picks.
+
 ## How to test this
 
 Do not reason about it. Headless browsers reproduce scrolling and
@@ -137,5 +144,44 @@ but recorded two move events actually lost the gesture to the browser.
 with the skip selector above; it arms the cursor pad, the annotator card's drag
 handle, and the region cover. The launcher in
 [`lib/alpineComponents/fab.js`](../lib/alpineComponents/fab.js) carries the same
-through an Alpine binding. Path 2 is `overscroll-behavior: contain` on the
-composer's two scrolling boxes, its editor, and the fab drawer's panes.
+through an Alpine binding. [`pages/dictate.html`](../pages/dictate.html) carries
+its own copy for its cursor pad and its selection pins. Path 2 is
+`overscroll-behavior: contain` on the composer's two scrolling boxes, its
+editor, and the fab drawer's panes.
+
+**A surface that must SCROLL cannot use variant D at all,** which is the case
+`pages/dictate.html` hit with its long-press-and-drag selection. `touch-action`
+is latched at touchstart, so it cannot be turned off once a gesture is under
+way; cancelling touchstart would kill the pane's ordinary scrolling; and at
+touchstart nothing yet knows the touch will become a long press. What is left is
+**variant E**, a cancelled `touchmove` and nothing else, gated on a flag the
+long press sets. An ordinary swipe scrolls; only the extension is held.
+
+That also keeps the gesture alive rather than merely tidy. A browser that
+decides a touch is a scroll fires `pointercancel` and stops sending
+`pointermove`, so a custom drag on a scrollable surface does not just fight the
+sheet, it ends.
+
+**And variant E needs a flag the gesture has already set, which a drag with no
+opening act cannot supply.** The same page tried, for two days, to hold a plain
+drag-to-select on the same pane: a drag that opened sideways was a selection,
+one that opened downward was a scroll, and the hold fired on the first move
+that had gone far enough sideways to say which. It worked. What it could not do
+is be discoverable, since nothing on screen can state a rule about direction,
+and a refused drag is indistinguishable from a dead surface. The general form
+is worth keeping: on a scrolling pane, a custom drag needs a **discrete opening
+act** the reader performs on purpose, a long press or a grabbed handle, both
+because that is what variant E can gate on and because that is what tells the
+reader the surface has two behaviours at all. Retired 2026-08-25.
+
+**A handle that is REBUILT cannot be held from an ancestor,** which the dictate
+page hit and is worth knowing before reaching for one listener on a container. A
+touch keeps the element it started on as its target even after that element
+leaves the document, and a detached target has no path to an ancestor's
+listener, so a delegated hold goes quiet on the first repaint of a drag. That is
+the one moment it is for. Two answers, by whether the element is enumerable:
+the pins are two nodes, so the page re-attaches to each on every paint; the
+text spans are many and rebuilt every frame, so the listener goes on the ONE
+node the touch started on, captured at pointerdown, and rides it into
+detachment. Both are what "attach to the element, and be explicit" above costs
+when the element is not stable.
