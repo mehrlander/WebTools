@@ -1883,3 +1883,38 @@ test('copy rides the format row, so it needs no word at all', () => {
   A.clear();
   A.disable();
 });
+
+test('a note being edited is not also a row underneath it', () => {
+  // The pencil put one note on screen twice: in the composer with a caret in
+  // it, and as a static row below still showing the text being replaced.
+  // Which of the two WAS the note was left to the reader, and the row was the
+  // one that looked settled.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const one = A.add({ type: 'page' }, 'first');
+  const two = A.add({ type: 'page' }, 'second');
+  const S = A._state;
+  const rows = () => [...S.listEl.children].length;
+
+  assert.equal(rows(), 2);
+  A.editNote(two.id);
+  assert.equal(S.draft.editId, two.id);
+  assert.equal(rows(), 1, 'the edited note leaves the list while it is in the composer');
+  assert.equal(S.countEl.textContent, '2', 'but the count does not move: nothing was deleted');
+
+  // Saving brings it back, carrying the new words.
+  S.compSave.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(rows(), 2);
+  assert.equal(A.items.find(i => i.id === two.id).note, 'second', 'unchanged text survives the round trip');
+
+  // And so does leaving the edit any other way: every exit runs through
+  // cancelDraft, which is why the row is put back there rather than at each
+  // call site.
+  A.editNote(one.id);
+  assert.equal(rows(), 1);
+  A.notePage({ listen: false });
+  assert.equal(rows(), 2, 'aiming a fresh draft ends the edit, and the row returns with it');
+
+  A.clear();
+  A.disable();
+});

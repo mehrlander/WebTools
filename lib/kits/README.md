@@ -571,6 +571,11 @@ window.Annotate.setScope('set' | 'note')    // which subject a serialization has
 window.Annotate.disable()
 ```
 
+Reopening a note through its pencil folds that note's ROW out of the list: the
+composer is the note while it is open, and the row comes back when the edit is
+saved. It used to be on screen twice, once with a caret in it and once as a
+static row still showing the text being replaced.
+
 The card reads its own set behind an **expander**, which is its header's
 `Notes` button: the card's name, its count and its way in are one control. It
 grows upward from the card's bottom edge, pinning that edge first so a card
