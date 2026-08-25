@@ -356,6 +356,7 @@
       // differs in what the reader is given to aim WITH:
       //
       //   long press ON the words   take the word under the finger
+      //   ...and keep dragging      extend from that word, arming as it goes
       //   long press OFF them       open the keyboard, caret where it was
       //   double tap                open the keyboard, caret where it landed
       //   single tap                place the caret, or move an armed edge
@@ -409,6 +410,10 @@
         this._host = host;
         const surface = host.parentElement || host;
         let timer = null, x = 0, y = 0, long = false, lastTap = 0, taps = 0, anchor = null, dragging = false;
+        // The word a long press took, kept for as long as the finger stays
+        // down. Its presence is what turns the rest of the gesture into an
+        // extension rather than a fresh selection. See the move handler.
+        let word = null;
         const clear = () => { if (timer) { clearTimeout(timer); timer = null; } };
         const at = (cx, cy) => this.pointOffset(cx, cy);
         surface.addEventListener('pointerdown', (e) => {
@@ -417,7 +422,7 @@
           // do the extending, so the handles are furniture for a job the
           // platform already does. The selection stays painted.
           if (e.pointerType === 'mouse') { this.precise = true; }
-          x = e.clientX; y = e.clientY; long = false;
+          x = e.clientX; y = e.clientY; long = false; word = null;
           anchor = window.Dictate.hitsText(host, x, y) ? at(x, y) : null;
           clear();
           timer = setTimeout(() => {
@@ -427,28 +432,77 @@
             if (!window.Dictate.hitsText(host, x, y)) { this.editOpen(); return; }
             const i = at(x, y);
             if (i == null) return;
-            this.d.selectWordAt(i); this.armed = null; this.paint();
+            this.d.selectWordAt(i); this.armed = null;
+            // REMEMBER THE WORD, because the finger has not lifted and what it
+            // does next decides whether this gesture is over.
+            const r = this.d.range;
+            word = r && r.start !== r.end ? { start: r.start, end: r.end } : null;
+            this.paint();
           }, 450);
         });
         surface.addEventListener('pointermove', (e) => {
           const far = Math.abs(e.clientX - x) > 10 || Math.abs(e.clientY - y) > 10;
           if (timer && far) clear();
+          if (!e.buttons) return;
+
+          // ── A LONG PRESS THAT KEEPS GOING IS ONE GESTURE ────────────────
+          // The press takes the word; carrying on past it extends from the
+          // word's OUTER EDGE, so a range is one press-and-drag rather than a
+          // press, a lift, and a second gesture to widen what it found. This
+          // is the platform's own reading, and it was half here already: the
+          // ordinary drag below would fire and select from the raw character
+          // under the press, which threw the word away and lit no pin, so the
+          // gesture appeared to work and quietly did something else.
+          //
+          // The edge under the finger arms as it goes, which is what makes the
+          // rest of the page continue the gesture: lift, and the pad or that
+          // pinhead refines the edge you were already moving.
+          if (word) {
+            const i = at(e.clientX, e.clientY);
+            if (i == null) return;
+            dragging = true;
+            // Back inside the word is not a shrink. The word is the floor of
+            // this gesture, the same as on the platform, and treating a wobble
+            // as a request to cut into it would make the press feel unstable.
+            if (i > word.end) { this.d.select(word.start, i); this.armed = 'end'; }
+            else if (i < word.start) { this.d.select(i, word.end); this.armed = 'start'; }
+            else { this.d.select(word.start, word.end); this.armed = null; }
+            // NO DEADBAND HERE, unlike a pin drag. There the aim point is
+            // offset from the finger, so a deadband buys the thumb room; here
+            // the finger IS the aim point, and holding the selection back from
+            // it would read as lag rather than as clearance.
+            //
+            // Pins off for the duration, or caret-from-point answers with the
+            // pin this drag just lit rather than with the word under it.
+            this.pinDrag = this.armed;
+            this.paint();
+            return;
+          }
+
           // Past the slop with the button down, the drag is a selection. Under
           // it, a click that wobbled, and turning that into a one-character
           // selection is how a text box comes to feel twitchy.
-          if (anchor == null || !e.buttons || !(far || dragging)) return;
+          if (anchor == null || !(far || dragging)) return;
           const i = at(e.clientX, e.clientY);
           if (i == null) return;
           dragging = true; this.armed = null;
           if (i === anchor) this.d.caretAt(i); else this.d.select(anchor, i);
           this.paint();
         });
-        surface.addEventListener('pointercancel', () => { clear(); anchor = null; dragging = false; });
+        surface.addEventListener('pointercancel', () => {
+          clear(); anchor = null; dragging = false; word = null; this.pinDrag = null;
+        });
         (this.$refs.layer || surface).addEventListener('pointerup', (e) => {
           clear();
+          word = null;
           // A drag claims its own release: the tap logic below would read it as
           // a click and drop a caret where the selection just finished.
-          if (dragging) { dragging = false; anchor = null; taps = 0; return; }
+          //
+          // `pinDrag` is cleared HERE and not above, which is not tidiness. A
+          // pin's own drag has no `dragging` and is caught by the guard below,
+          // so clearing the flag before that guard reads it lets the release
+          // fall through and drop a caret over the selection just made.
+          if (dragging) { dragging = false; anchor = null; taps = 0; this.pinDrag = null; return; }
           anchor = null;
           if (this.edit || long || this.padDrag || this.pinDrag) return;
           const pin = e.target?.closest?.('[data-edge]');

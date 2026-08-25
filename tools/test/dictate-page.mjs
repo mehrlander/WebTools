@@ -445,6 +445,57 @@ try {
   await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.pinDrag = null; c.paint(); });
   await page.waitForTimeout(120);
 
+  // ── A LONG PRESS THAT KEEPS GOING ────────────────────────────────────
+  // The press takes a word; carrying on extends from it in one gesture, the
+  // way the platform does, rather than making the reader lift and start again.
+  await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.d.clearRange(); c.armed = null; c.paint(); });
+  await page.waitForTimeout(150);
+  const line1 = await page.locator('[x-ref="body"] [data-d="text"]').first().boundingBox();
+  await page.mouse.move(line1.x + 60, line1.y + 12);
+  await page.mouse.down();
+  await page.waitForTimeout(600);          // past the 450ms press
+  const held = await sel();
+  ok('a long press takes the word under the finger', !!held, JSON.stringify(held));
+  ok('and arms nothing yet, since the gesture may end here', (await armed()) === null);
+
+  for (let i = 1; i <= 8; i++) {
+    await page.mouse.move(line1.x + 60 + 14 * i, line1.y + 12);
+    await page.waitForTimeout(25);
+  }
+  const grown = await sel();
+  ok('dragging on extends the selection', grown && held && grown.end > held.end,
+    `${JSON.stringify(held)} -> ${JSON.stringify(grown)}`);
+  ok('from the WORD\'s edge, not from the character pressed',
+    grown && held && grown.start === held.start,
+    `start ${held?.start} -> ${grown?.start}`);
+  ok('and the edge under the finger arms as it goes', (await armed()) === 'end');
+  await page.mouse.up();
+  await page.waitForTimeout(150);
+  ok('the release leaves it armed, so the pad continues the same gesture',
+    (await armed()) === 'end');
+  ok('and does not fall through to place a caret', !!(await sel()));
+  ok('nor leave the pins transparent afterwards',
+    await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].pinDrag) === null);
+
+  // Dragging BACK inside the word restores it rather than cutting into it: the
+  // word is the floor of this gesture, as it is on the platform.
+  await page.mouse.move(line1.x + 60, line1.y + 12);
+  await page.mouse.down();
+  await page.waitForTimeout(600);
+  const held2 = await sel();
+  for (let i = 1; i <= 6; i++) {
+    await page.mouse.move(line1.x + 60 + 12 * i, line1.y + 12);
+    await page.waitForTimeout(20);
+  }
+  await page.mouse.move(line1.x + 62, line1.y + 12);
+  await page.waitForTimeout(80);
+  const shrunk = await sel();
+  await page.mouse.up();
+  await page.waitForTimeout(120);
+  ok('coming back inside the word restores it whole',
+    shrunk && held2 && shrunk.start === held2.start && shrunk.end === held2.end,
+    `${JSON.stringify(held2)} -> ${JSON.stringify(shrunk)}`);
+
   // NO STALK, DELIBERATELY. Arming used to push the ball out to clear the
   // thumb; the drag's vertical deadband above does that instead, from the
   // gesture rather than from the geometry. This holds the decision: the ball
