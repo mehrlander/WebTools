@@ -24,7 +24,14 @@
       C  the same switch toggled BY HAND. The control.
       D  a label wrapping a switch, tapped. A real tap, not on the input.
 
-    RUN 1 (2026-08-25, iPhone, in-app browser) ANSWERED C AND NOTHING ELSE.
+    ANSWERED, 2026-08-25: C and D buzz, A and B do not. So the haptic belongs
+    to a real user activation of a switch, the activation may arrive through a
+    label rather than the input, and a page still cannot fire one on demand.
+    The reasoning and what it costs the long press: docs/ios-haptics.md.
+
+    Kept, not deleted, because WebKit can move and no emulator can tell us.
+
+    RUN 1 (same day) ANSWERED C AND NOTHING ELSE.
     C buzzed, so the device is willing. A, B and D reported nothing because the
     page was broken in a way it could not tell anyone about: Alpine and Tailwind
     rode one combined jsDelivr URL, that request did not land, and the result

@@ -105,6 +105,13 @@
   something", and the reader gets a full-size button for the exit that the
   12px pinhead was: a near miss there used to clear the selection outright.
 
+  AND NO HAPTIC ON THE LONG PRESS, though the platform's own long-press
+  selection answers with one. Measured on the device rather than assumed:
+  docs/ios-haptics.md. The reachable buzz belongs to a real user activation of
+  a native control, a scripted one earns nothing, and navigator.vibrate has
+  never existed in WebKit. There is no way for this page to fire one at the
+  moment its own gesture does.
+
   ADDRESSING
     ?to=copy|share|jot|drop   which destination the save sheet opens on
     ?dest=owner/repo[@ref]:dir   where Drop writes, overriding home/chron/dump

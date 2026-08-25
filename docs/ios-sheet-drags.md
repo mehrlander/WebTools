@@ -120,6 +120,13 @@ Put the `pointermove` / `pointerup` listeners on `window` (or the document)
 rather than on the handle. Captured events still bubble, so one path serves both
 the captured and the uncaptured case.
 
+## A related question, asked the same way and answered no
+
+Whether a page can fire the phone's HAPTIC on its own gesture was measured with
+the same one-cell-per-technique method and came back negative:
+[ios-haptics.md](ios-haptics.md). The reachable buzz belongs to a real user
+activation of a native control and cannot be aimed at a moment the page picks.
+
 ## How to test this
 
 Do not reason about it. Headless browsers reproduce scrolling and
