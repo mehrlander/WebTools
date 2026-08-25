@@ -1219,19 +1219,30 @@
         this.draft = this.d.text;
         this.edit = true;
         this.paint();                    // after the flag, so the pins come off with it
-        this.$nextTick(() => {
-          const ta = this.$refs.ta;
-          if (!ta) return;
-          ta.focus();
-          // A SELECTION CROSSES INTACT, which is the whole point of the
-          // button: the first thing typed replaces the words that were picked
-          // out, which is the one repair a keyboard does better than a voice.
-          // A caret is the same call with the two offsets equal, and nothing
-          // selected opens at the end, where dictation would have carried on.
-          if (typeof at === 'number') ta.setSelectionRange(at, at);
-          else if (r) ta.setSelectionRange(r.start, r.end);
-          else ta.setSelectionRange(this.draft.length, this.draft.length);
-        });
+        const ta = this.$refs.ta;
+        if (!ta) return;
+        // SYNCHRONOUS, INSIDE THE TAP, and that is the whole of why the
+        // textarea is never `display:none` (see its markup). This used to run
+        // in `$nextTick`, which focused the field correctly and left the
+        // keyboard down on a phone: WebKit gives a programmatic focus the
+        // keyboard only from the call stack of the gesture, and a microtask is
+        // past it. Nothing on a desktop can show the difference, since a
+        // desktop has no keyboard to raise.
+        //
+        // The VALUE has to be written by hand for the same reason. `x-model`
+        // assigns on the reactive flush, so at this instant the element still
+        // holds the previous text and `setSelectionRange` would be measured
+        // against it. Alpine writes the same string a moment later.
+        ta.value = this.draft;
+        ta.focus();
+        // A SELECTION CROSSES INTACT, which is the whole point of the button:
+        // the first thing typed replaces the words that were picked out, which
+        // is the one repair a keyboard does better than a voice. A caret is
+        // the same call with the two offsets equal, and nothing selected opens
+        // at the end, where dictation would have carried on.
+        if (typeof at === 'number') ta.setSelectionRange(at, at);
+        else if (r) ta.setSelectionRange(r.start, r.end);
+        else ta.setSelectionRange(ta.value.length, ta.value.length);
       },
       editClose() {
         // Read the caret BEFORE the assignment, because setting the buffer
@@ -1569,6 +1580,35 @@
        @pointerdown="pinDown($event)" data-no-swipe>
 
     <div class="relative grow min-w-0">
+      <!-- ALWAYS RENDERED, hidden by opacity rather than by `x-show`, and the
+           reason is the phone's and not a style preference. WebKit raises the
+           keyboard for a programmatic `focus()` only from inside the call
+           stack of a user gesture, so the focus has to happen in the tap
+           itself. `x-show` writes `display:none`, a `display:none` element
+           cannot take focus, and Alpine does not clear it until the reactive
+           flush, which is after the handler has returned. The field therefore
+           has to exist and be focusable at the moment the button is pressed,
+           which is what this costs and what it buys. Measured 2026-08-25:
+           display was `none` synchronously after setting the flag and `block`
+           by `$nextTick`, and focus landed there, which is why the button
+           opened the textarea and left the keyboard down.
+
+           It sits UNDER the read pane, and by DOM ORDER rather than by a
+           z-index: it is written first, so the pane paints over it, and the
+           pin layer above them both keeps painting over the pane. A `z-10` on
+           the pane did the same job for the pane and hid the pins behind it,
+           since they are the layer's own children with no z-index of their
+           own. Order costs nothing and disturbs nothing.
+
+           It takes no taps while it is invisible, and `tabindex` goes to -1 so
+           a keyboard user does not land in a field they cannot see; -1 still
+           permits the programmatic focus this is all for. -->
+      <textarea x-ref="ta" x-model="draft" :tabindex="edit ? 0 : -1"
+                @blur="editClose()" @keydown.escape="editClose()"
+                class="absolute inset-0 w-full h-full resize-none textarea rounded-none border-0 text-[21px] leading-[1.65] tracking-[-0.01em] break-words px-4 py-3 focus:outline-none"
+                :class="edit ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                placeholder="Type instead"></textarea>
+
       <div x-show="!edit" x-ref="view" data-dictate-view class="absolute inset-0 overflow-y-auto px-4 py-3" @scroll="paint()">
         <div class="whitespace-pre-wrap break-words text-[21px] leading-[1.65] tracking-[-0.01em]"
              x-ref="body" @contextmenu.prevent></div>
@@ -1603,10 +1643,7 @@
            fix. `break-words` went the other way, onto the read pane, so a URL
            too long for the measure breaks in both rather than scrolling in
            one. -->
-      <textarea x-show="edit" x-cloak x-ref="ta" x-model="draft"
-                @blur="editClose()" @keydown.escape="editClose()"
-                class="absolute inset-0 w-full h-full resize-none textarea rounded-none border-0 text-[21px] leading-[1.65] tracking-[-0.01em] break-words px-4 py-3 focus:outline-none"
-                placeholder="Type instead"></textarea>
+
     </div>
 
   </div>

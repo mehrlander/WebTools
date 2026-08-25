@@ -780,12 +780,27 @@ try {
   const line = await page.locator('[x-ref="body"] [data-d="text"]').first().boundingBox();
   await page.mouse.dblclick(line.x + 60, line.y + 12);
   await page.waitForTimeout(300);
-  ok('a double tap opens the keyboard', await page.locator('textarea').isVisible());
+  // READ THE OPACITY, not `isVisible`. The textarea is never `display:none`
+  // any more, because WebKit only raises the keyboard for a focus taken inside
+  // the tap and a hidden element cannot take one, so Playwright calls it
+  // visible in both states and the old assertion passed vacuously.
+  const typing = () => page.evaluate(() => {
+    const ta = document.querySelector('[x-ref="ta"]');
+    const cs = getComputedStyle(ta);
+    return { shown: cs.opacity === '1', taps: cs.pointerEvents !== 'none',
+             focused: document.activeElement === ta };
+  });
+  const opened = await typing();
+  ok('a double tap opens the keyboard', opened.shown && opened.taps, JSON.stringify(opened));
+  ok('and lands the caret in it, which is what raises the keyboard', opened.focused,
+    JSON.stringify(opened));
   ok('there is no pencil to have opened it instead',
     !(await page.evaluate(() => !!document.querySelector('button[title*="Type instead"]'))));
-  await page.evaluate(() => document.querySelector('textarea').blur());
+  await page.evaluate(() => document.querySelector('[x-ref="ta"]').blur());
   await page.waitForTimeout(300);
-  ok('and blurring is the way out', !(await page.locator('textarea').isVisible()));
+  const closed = await typing();
+  ok('and blurring is the way out', !closed.shown, JSON.stringify(closed));
+  ok('with the field behind taking no taps', !closed.taps, JSON.stringify(closed));
 
   // ── 4. The draft survives, and a filed note does not ─────────────────
   console.log('persistence:');
