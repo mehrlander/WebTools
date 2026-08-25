@@ -138,6 +138,7 @@ try {
       save: r([...document.querySelectorAll('button')].find(b => /Save/.test(b.textContent))),
       pad: r(document.querySelector('button:has(i.ph-crosshair)')),
       mic: r(document.querySelector('button[title*="listening"], button[title*="Recording"]')),
+      back: r(document.querySelector('button:has(i.ph-backspace)')),
       fab: r(document.querySelector('.fixed.bottom-6.right-6')),
       h: innerHeight, docH: document.body.scrollHeight, w: innerWidth,
     };
@@ -152,10 +153,14 @@ try {
   ok('and none of them overlaps its neighbour',
     !!boxes.mic && !!boxes.pad && boxes.mic.right <= boxes.pad.left,
     `mic.right=${boxes.mic?.right} target.left=${boxes.pad?.left}`);
+  ok('the target is on the viewport centre line',
+    !!boxes.pad && Math.abs((boxes.pad.left + boxes.pad.right) / 2 - boxes.w / 2) < 4,
+    `centre=${boxes.pad && (boxes.pad.left + boxes.pad.right) / 2} of ${boxes.w}`);
+  ok('backspace joined the header', !!boxes.back && boxes.back.top < 60, JSON.stringify(boxes.back));
   ok('Save is a thumb-sized target', !!boxes.save && boxes.save.height >= 44 && boxes.save.width >= 100,
     JSON.stringify(boxes.save));
-  ok('and it reaches the bottom of the screen', !!boxes.save && boxes.save.bottom > boxes.h - 24,
-    JSON.stringify(boxes.save));
+  ok('and it has the bottom row to itself', !!boxes.save && boxes.save.bottom > boxes.h - 24
+    && boxes.save.width > boxes.w * 0.9, JSON.stringify(boxes.save));
   ok('the shell does not scroll the document', boxes.docH <= boxes.h + 1,
     `body=${boxes.docH} viewport=${boxes.h}`);
   ok('the painter is asked for no arrow cluster',
@@ -171,24 +176,40 @@ try {
   const shut = await topOf();
   await page.locator('button[title="More"]').click();
   await page.waitForTimeout(200);
-  ok('the menu opens', await page.locator('text=Autocorrect list').isVisible());
+  ok('the menu opens', await page.locator('button:has-text("Breaks")').isVisible());
   ok('and the text has not moved', Math.abs((await topOf()) - shut) < 1,
     `closed=${shut} open=${await topOf()}`);
   await page.mouse.click(200, 500);
   await page.waitForTimeout(200);
-  ok('a tap outside closes it', !(await page.locator('text=Autocorrect list').isVisible()));
+  ok('a tap outside closes it', !(await page.locator('button:has-text("Breaks")').isVisible()));
 
-  // Autocorrect is a dictionary in the header now, not a row inside the menu.
-  ok('the dictionary is in the header',
+  // Autocorrect is one sheet holding the list AND the way to add to it, and
+  // it is reached from the menu: the dictionary button in the header is gone,
+  // since a control that opens a sheet the menu also opens is two doors.
+  ok('no dictionary button survives in the header',
+    !(await page.evaluate(() => !!document.querySelector('button:has(i.ph-book-open):not([class*=hover])'))) ||
     await page.evaluate(() => {
       const b = document.querySelector('button:has(i.ph-book-open)');
-      return !!b && b.getBoundingClientRect().top < 60;
+      return !b || b.closest('[x-show="menu"]') !== null;
     }));
-  await page.locator('button:has(i.ph-book-open)').click();
-  await page.waitForTimeout(250);
-  ok('and it opens the sheet', await page.locator('input[placeholder="heard"]').isVisible());
-  await page.locator('button:has-text("Cancel")').click();
+  await page.locator('button[title="More"]').click();
   await page.waitForTimeout(200);
+  await page.locator('button:has-text("Autocorrect")').click();
+  await page.waitForTimeout(300);
+  ok('the menu row opens the sheet', await page.locator('input[placeholder="heard"]').isVisible());
+  ok('and the sheet carries the list, not a link out to GitHub',
+    (await page.locator('text=web-tools').count()) > 0
+    && !(await page.evaluate(() => !!document.querySelector('a[href*="autocorrect.json"]'))));
+  // Scoped to the row list, since every sheet on this page has a close ✕ of
+  // its own and an unscoped :has(i.ph-x) finds the hidden one first.
+  const rowX = page.locator('.divide-y > div button');
+  const rows = await rowX.count();
+  ok('every row can be removed', rows >= 2, String(rows));
+  await page.locator('[x-show="autoOpen"] button:has(i.ph-x)').first().click();
+  await page.waitForTimeout(200);
+  // Removing one is checked at the very END of this run: it writes a shorter
+  // list into the page's own state, and the correction assertions further
+  // down need both entries still in it.
 
   // ── 1b. The selection lock, over the WHOLE surface ───────────────────
   // Reported from the phone on 2026-08-24: selection was not suppressed where
@@ -387,6 +408,23 @@ try {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2500);
   ok('a note that was FILED does not come back', !(await buffer()).trim(), await buffer());
+
+  // ── 5. Removing an autocorrect row ───────────────────────────────────
+  // Last, because it writes a shorter list into the page's own state and the
+  // correction assertions above need both entries still in it.
+  console.log('removing a correction:');
+  await page.locator('button[title="More"]').click();
+  await page.waitForTimeout(200);
+  await page.locator('button:has-text("Autocorrect")').click();
+  await page.waitForTimeout(300);
+  writes.length = 0;
+  await page.locator('.divide-y > div button').first().click();
+  await page.waitForTimeout(600);
+  ok('it writes the shorter list', writes.length === 1
+    && !JSON.parse(writes[0].text).items.some(c => c.from === 'web tools'),
+    writes[0]?.text);
+  ok('and the sheet stays open, since the list under it is the confirmation',
+    await page.locator('input[placeholder="heard"]').isVisible());
 } finally {
   await browser.close();
   server.close();

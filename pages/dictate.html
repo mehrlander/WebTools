@@ -79,14 +79,18 @@
     cannot do is context: homophones are out of its reach entirely, and only
     a model reading the sentence around a word would go further.
 
-  WHERE THE CONTROLS SIT, and why the split is where it is. The HEADER holds
-  the five instruments: record, undo, redo, the target, and autocorrect as a
-  dictionary, plus the menu. Each is tapped a
-  handful of times in a session. The BOTTOM holds the marks, backspace and
-  Save, which are tapped every sentence, and a phone's bottom edge belongs to
-  whatever is tapped most. Record doubles as the state readout, since red and
-  pulsing answers "is it hearing me" from across the room and the page then
-  needs no word for it.
+  WHERE THE CONTROLS SIT. The HEADER is a three-column grid: the session on
+  the left (record, and how long it has run), the TARGET on the centre line,
+  and the history plus the menu on the right (undo, redo, backspace). The
+  BOTTOM holds the marks and Save. Record doubles as the state readout, since
+  red and pulsing answers "is it hearing me" from across the room and the page
+  then needs no word for it.
+
+  Backspace is the one placement worth arguing with: it is tapped mid-sentence
+  more than anything but the marks, and it now lives at the top of the screen
+  where a thumb has to travel. Moved there 2026-08-25 on the reading that it
+  undoes a word the way undo undoes an act, so the three belong together. If
+  it turns out to cost more than the grouping buys, it goes back.
 
   THE TARGET IS TWO GESTURES ON ONE BUTTON, because they are one job: this is
   the control that aims. DRAG it and the caret moves (the pad, below). TAP it
@@ -653,14 +657,6 @@
         // sticky case is the one asked for by tapping again.
         this.shift = false;
       },
-      // The shift key's second job: while a selection is live it DROPS the
-      // selection, which is the way back to the marks. The pad and the
-      // selection are one state, so one key ends both rather than leaving a
-      // mode with no exit.
-      shiftKey() {
-        if (this.sel) { this.d.clearRange(); this.armed = null; this.paint(); return; }
-        this.shift = !this.shift;
-      },
       back() { this.d.backWord(); },
       undo() { this.d.undo(); this.armed = null; this.paint(); },
       redo() { this.d.redo(); this.armed = null; this.paint(); },
@@ -743,27 +739,43 @@
         this.menu = false;
         this.$nextTick(() => this.$refs.autoTo && this.$refs.autoTo.focus());
       },
-      async saveAuto() {
-        const from = this.autoFrom.trim(), to = this.autoTo.trim();
-        if (!from || !to || !this.token) { this.autoOpen = false; return; }
-        this.autoOpen = false;
-        // The buffer is corrected too, since the reader is looking at the
-        // word that was wrong and a list that only helps NEXT time reads as
-        // a control that did nothing.
-        if (this.d.hasSelection) { this.d.insert(to); this.armed = null; this.paint(); }
+      // Add and remove share one read-modify-write, since they differ only in
+      // what they do to the list in between. A list you can only add to makes
+      // a mistyped entry permanent from the page's side, which is the state
+      // the reader is most likely to want out of.
+      async writeList(mutate, note) {
+        if (!this.token) return;
         try {
           const reg = new window.GH({ token: this.token, repo: REGISTRY, ref: 'main' });
           let items = [];
           try { const raw = JSON.parse((await reg.get(AUTOCORRECT)).text); items = Array.isArray(raw.items) ? raw.items : []; }
           catch (e) { if (e?.status && e.status !== 404) throw e; }
-          items = [...items.filter(f => (f.from || '').toLowerCase() !== from.toLowerCase()),
-                   { from, to, added: new Date().toISOString() }];
-          await reg.save(AUTOCORRECT, { items }, `Autocorrect "${from}" → "${to}"`);
+          items = mutate(items);
+          await reg.save(AUTOCORRECT, { items }, note);
           this.corrections = items; this.compile();
-          Alpine.store('toast')('check', `"${from}" will come out "${to}"`, 'alert-success', 2600);
         } catch (e) {
           Alpine.store('toast')('warning', 'Not saved: ' + (e?.message || e), 'alert-error', 5000);
         }
+      },
+      async dropAuto(from) {
+        await this.writeList(
+          (items) => items.filter(c => (c.from || '').toLowerCase() !== from.toLowerCase()),
+          `Autocorrect: drop "${from}"`);
+      },
+      async saveAuto() {
+        const from = this.autoFrom.trim(), to = this.autoTo.trim();
+        if (!from || !to || !this.token) return;
+        // The buffer is corrected too, since the reader is looking at the word
+        // that was wrong and a list that only helps NEXT time reads as a
+        // control that did nothing.
+        if (this.d.hasSelection) { this.d.insert(to); this.armed = null; this.paint(); }
+        this.autoFrom = ''; this.autoTo = '';
+        // The sheet STAYS OPEN. The list under the fields is the confirmation,
+        // and closing on save would hide the one thing that says it worked.
+        await this.writeList(
+          (items) => [...items.filter(c => (c.from || '').toLowerCase() !== from.toLowerCase()),
+                      { from, to, added: new Date().toISOString() }],
+          `Autocorrect "${from}" → "${to}"`);
       },
 
       // ── Where the words go ────────────────────────────────────────────
@@ -883,77 +895,86 @@
   <!-- ── The status bar ──────────────────────────────────────────────────
        Three facts and a menu, because a capture surface has to answer "is it
        hearing me" without being asked, and answer it from across the room. -->
-  <div class="shrink-0 flex items-center gap-1.5 px-2 min-h-11 border-b border-base-300 pt-[env(safe-area-inset-top)]">
-    <!-- RECORD, and it is the state readout as well as the switch: red and
-         pulsing while live, so the one question a capture surface has to
-         answer without being asked is answered by the control that changes
-         it. Small now, because it is tapped twice a session where the marks
-         are tapped every sentence, and the bottom of the screen belongs to
-         whatever is tapped most. -->
-    <button @click="mic()" :disabled="edit"
-            class="btn btn-sm btn-square shrink-0"
-            :class="listening ? 'btn-error' : 'btn-ghost'"
-            :title="listening ? 'Recording. Tap to stop.' : 'Start listening'">
-      <i class="ph text-lg" :class="(listening ? 'ph-microphone animate-pulse' : 'ph-microphone-slash')"></i>
-    </button>
-    <span class="font-mono text-xs opacity-40 tabular-nums shrink-0"
-          x-text="started ? clock : ''"></span>
-    <div class="grow min-w-0"></div>
-    <span class="font-mono text-xs opacity-40 tabular-nums shrink-0" x-text="words + 'w'"></span>
-    <button @click="undo()" :disabled="!canUndo" class="btn btn-ghost btn-sm btn-square shrink-0" title="Undo">
-      <i class="ph ph-arrow-counter-clockwise text-base"></i>
-    </button>
-    <button @click="redo()" :disabled="!canRedo" class="btn btn-ghost btn-sm btn-square shrink-0" title="Redo">
-      <i class="ph ph-arrow-clockwise text-base"></i>
-    </button>
-    <!-- THE TARGET. Two gestures on one button, because they are one job:
-         drag it and the caret moves, tap it and the caret becomes one end of
-         a selection whose other end is your next tap. Armed it wears the ring
-         an armed pin wears, which is this page's one word for "live and
-         pointed at the text". touch-action:none inline is what makes the drag
-         work rather than scrolling the page under it. -->
+  <!-- ── The header ──────────────────────────────────────────────────────
+       A THREE-COLUMN GRID, so the target lands on the viewport's centre line
+       rather than on the midpoint of whatever space the two side groups leave
+       over. With flex spacers it drifts right, because the instruments on the
+       right are twice the width of the clock on the left.
+
+       Left is the session (record, and how long it has run). Centre is the one
+       control that AIMS. Right is the history and the menu. Backspace joins
+       undo and redo rather than staying in the bottom row: it undoes a word
+       the way undo undoes an act, and the three read as one group. -->
+  <div class="shrink-0 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 px-2 min-h-11
+              border-b border-base-300 pt-[env(safe-area-inset-top)]">
+
+    <div class="flex items-center gap-1.5 justify-self-start">
+      <!-- RECORD, and the state readout as well as the switch: red and pulsing
+           while live, so the one question a capture surface has to answer
+           without being asked is answered by the control that changes it. -->
+      <button @click="mic()" :disabled="edit"
+              class="btn btn-sm btn-square shrink-0"
+              :class="listening ? 'btn-error' : 'btn-ghost'"
+              :title="listening ? 'Recording. Tap to stop.' : 'Start listening'">
+        <i class="ph text-lg" :class="(listening ? 'ph-microphone animate-pulse' : 'ph-microphone-slash')"></i>
+      </button>
+      <span class="font-mono text-xs opacity-40 tabular-nums" x-text="started ? clock : ''"></span>
+    </div>
+
+    <!-- THE TARGET, on the centre line. Two gestures on one button, because
+         they are one job: drag it and the caret moves, tap it and the caret
+         becomes one end of a selection whose other end is your next tap. Armed
+         it wears the ring an armed pin wears, which is this page's one word
+         for "live and pointed at the text". touch-action:none inline is what
+         makes the drag work rather than scrolling the page under it. -->
     <button x-init="bindPad($el)" :disabled="edit" style="touch-action:none"
-            class="btn btn-sm btn-square shrink-0"
+            class="btn btn-sm btn-square justify-self-center"
             :class="anchoring ? 'btn-error btn-outline' : (padDrag ? 'btn-info' : 'btn-ghost')"
             :title="anchoring ? 'Now tap where the selection should end (tap here again to cancel)'
                               : 'Drag to move the cursor. Tap to start a selection from it.'">
       <i class="ph ph-crosshair text-lg"></i>
     </button>
-    <!-- AUTOCORRECT, as a dictionary. A word list is what it is, and a
-         dictionary is the picture everybody already has for one, so the
-         control needs no label and no menu row to arrive through. Beside the
-         target because both operate on the words rather than on the session. -->
-    <button @click="openAuto()" class="btn btn-ghost btn-sm btn-square shrink-0" title="Autocorrect">
-      <i class="ph ph-book-open text-lg"></i>
-    </button>
-    <!-- The menu is a DROPDOWN, not a band. As a band it inserted itself
-         between the header and the text and pushed the words down the screen
-         to show four controls that are not about the words at all. An overlay
-         costs the text nothing and closes on the next tap anywhere. -->
-    <div class="relative shrink-0" @click.outside="menu = false">
-      <button @click="menu = !menu" class="btn btn-ghost btn-sm btn-square" title="More">
-        <i class="ph ph-dots-three-vertical text-lg"></i>
+
+    <div class="flex items-center gap-1.5 justify-self-end">
+      <span class="font-mono text-xs opacity-40 tabular-nums" x-text="words + 'w'"></span>
+      <button @click="undo()" :disabled="!canUndo" class="btn btn-ghost btn-sm btn-square" title="Undo">
+        <i class="ph ph-arrow-counter-clockwise text-base"></i>
       </button>
-      <div x-show="menu" x-cloak
-           class="absolute right-0 top-full mt-1 z-50 w-56 rounded-box border border-base-300 bg-base-100 shadow-xl py-1 flex flex-col">
-        <button @click="clear(); menu = false"
-                class="flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-base-200">
-          <i class="ph ph-file-dashed text-lg opacity-60"></i>New
+      <button @click="redo()" :disabled="!canRedo" class="btn btn-ghost btn-sm btn-square" title="Redo">
+        <i class="ph ph-arrow-clockwise text-base"></i>
+      </button>
+      <button @pointerdown.prevent="back()" :disabled="edit"
+              class="btn btn-ghost btn-sm btn-square text-error"
+              title="Delete the last word (dictation keeps running)">
+        <i class="ph ph-backspace text-base"></i>
+      </button>
+      <!-- The menu is a DROPDOWN, not a band. As a band it inserted itself
+           between the header and the text and pushed the words down the screen
+           to show controls that are not about the words at all. -->
+      <div class="relative" @click.outside="menu = false">
+        <button @click="menu = !menu" class="btn btn-ghost btn-sm btn-square" title="More">
+          <i class="ph ph-dots-three-vertical text-lg"></i>
         </button>
-        <button @click="breaks = !breaks" :disabled="!breakable"
-                class="flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-base-200 disabled:opacity-40"
-                :title="breakable ? 'Break into paragraphs where you paused longest' : 'Needs the pause record, which typing replaces'">
-          <i class="ph ph-paragraph text-lg opacity-60"></i>Breaks
-          <i x-show="breaks" class="ph ph-check ml-auto text-lg text-success"></i>
-        </button>
-        <a href="https://github.com/mehrlander/web-tools-private/blob/main/lists/autocorrect.json"
-           target="_blank" rel="noopener" @click="menu = false"
-           class="flex items-center gap-2.5 px-3 py-2.5 hover:bg-base-200">
-          <i class="ph ph-list-magnifying-glass text-lg opacity-60"></i>Autocorrect list
-          <span class="ml-auto font-mono text-xs opacity-40" x-text="corrections.length"></span>
-        </a>
-        <div x-show="d && d.relaunches" class="px-3 pt-1.5 pb-0.5 font-mono text-[11px] opacity-30"
-             x-text="(d ? d.relaunches : 0) + ' relaunches'"></div>
+        <div x-show="menu" x-cloak
+             class="absolute right-0 top-full mt-1 z-50 w-56 rounded-box border border-base-300 bg-base-100 shadow-xl py-1 flex flex-col">
+          <button @click="clear(); menu = false"
+                  class="flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-base-200">
+            <i class="ph ph-file-dashed text-lg opacity-60"></i>New
+          </button>
+          <button @click="breaks = !breaks" :disabled="!breakable"
+                  class="flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-base-200 disabled:opacity-40"
+                  :title="breakable ? 'Break into paragraphs where you paused longest' : 'Needs the pause record, which typing replaces'">
+            <i class="ph ph-paragraph text-lg opacity-60"></i>Breaks
+            <i x-show="breaks" class="ph ph-check ml-auto text-lg text-success"></i>
+          </button>
+          <button @click="openAuto()"
+                  class="flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-base-200">
+            <i class="ph ph-book-open text-lg opacity-60"></i>Autocorrect
+            <span class="ml-auto font-mono text-xs opacity-40" x-text="corrections.length"></span>
+          </button>
+          <div x-show="d && d.relaunches" class="px-3 pt-1.5 pb-0.5 font-mono text-[11px] opacity-30"
+               x-text="(d ? d.relaunches : 0) + ' relaunches'"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1025,27 +1046,24 @@
         <span x-show="k.k !== 'stitch'" x-text="k.k"></span>
       </button>
     </template>
-    <!-- Sticky in fact, momentary in feel. With a selection live it drops the
-         selection instead, which is the way back to the marks: the pad and
-         the selection are one state, so one key ends both. -->
-    <button @pointerdown.prevent="shiftKey()"
+    <!-- Sticky in fact, momentary in feel: a shifted mark drops the shift the
+         way a phone keyboard does. It used to become a ✕ that dropped the
+         selection, on the composer's reasoning that the pad and the selection
+         are one state and a mode needs an exit. The exit was already there,
+         since a tap anywhere outside the selection collapses it to a caret,
+         so the key does one thing. -->
+    <button @pointerdown.prevent="shift = !shift"
             class="btn h-14 min-h-0 grow basis-0 px-0 font-mono text-sm"
-            :class="sel ? 'btn-info btn-outline' : (shift ? 'btn-warning' : 'btn-ghost bg-base-200')"
-            :title="sel ? 'Drop the selection' : 'The other three marks'"
-            x-text="sel ? '✕' : (shift ? 'abc' : '·!¶')"></button>
+            :class="shift ? 'btn-warning' : 'btn-ghost bg-base-200'"
+            title="The other three marks"
+            x-text="shift ? 'abc' : '·!¶'"></button>
   </div>
 
   <!-- ── The bottom row ──────────────────────────────────────────────────
-       Two controls, since record, undo, redo and the target went to the
-       header. What is left is what a thumb reaches for without looking: the
-       key that takes back a misheard word, and the one that ends the note. -->
+       One control. Everything else is in the header now, and what is left is
+       the one that ends the note. -->
   <div class="shrink-0 flex items-stretch gap-1 px-1 pb-1 pt-1"
        style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.25rem)">
-    <button @pointerdown.prevent="back()" :disabled="edit"
-            class="btn btn-outline btn-error h-12 min-h-0 basis-1/4 px-0"
-            title="Delete the last word (dictation keeps running)">
-      <i class="ph ph-backspace text-xl"></i>
-    </button>
     <button @click="openSheet()" :disabled="empty && !draft.trim()"
             class="btn btn-primary h-12 min-h-0 grow gap-1.5 px-0">
       <i class="ph ph-paper-plane-tilt text-lg"></i>Save
@@ -1103,25 +1121,47 @@
   </div>
 
   <!-- ── Autocorrect ─────────────────────────────────────────────────────
-       A title, two fields and two buttons. NOTHING EXPLAINS ITSELF here: the
-       word "autocorrect" is one everybody already knows, and a paragraph
-       under it describing whole-word matching was the page telling a reader
-       about its own implementation. Heard, meant, add. -->
+       The list AND the way to add to it, in one sheet, because they were one
+       thing pretending to be two: a form in the page and the list itself
+       behind a link out to GitHub, which is a place you cannot get back from
+       with a note half spoken. Nothing explains itself: heard, meant, Add,
+       and the rows underneath. -->
   <div x-show="autoOpen" x-cloak class="fixed inset-0 z-[90] flex items-end justify-center">
     <div class="absolute inset-0 bg-black/40" @click="autoOpen = false"></div>
     <div class="relative w-full max-w-3xl bg-base-100 rounded-t-2xl border-t border-base-300 p-4 flex flex-col gap-3"
          style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
-      <div class="font-medium">Autocorrect</div>
+      <div class="flex items-center gap-2">
+        <span class="font-medium">Autocorrect</span>
+        <span class="font-mono text-xs opacity-40" x-text="corrections.length"></span>
+        <div class="grow"></div>
+        <button @click="autoOpen = false" class="btn btn-ghost btn-sm btn-square"><i class="ph ph-x text-lg"></i></button>
+      </div>
+
       <input x-model="autoFrom" placeholder="heard" class="input input-bordered w-full text-lg">
       <input x-model="autoTo" x-ref="autoTo" placeholder="meant" class="input input-bordered w-full text-lg">
-      <div class="flex gap-2">
-        <button @click="autoOpen = false" class="btn btn-ghost flex-1">Cancel</button>
-        <button @click="saveAuto()" :disabled="!autoFrom.trim() || !autoTo.trim() || !token"
-                class="btn btn-primary flex-1">Add</button>
+      <button @click="saveAuto()" :disabled="!autoFrom.trim() || !autoTo.trim() || !token"
+              class="btn btn-primary w-full">Add</button>
+
+      <!-- The rows, newest first, so a correction just added is the one you
+           are looking at. Capped and scrolling: the list grows without bound
+           and the sheet must not. -->
+      <div x-show="corrections.length" class="max-h-56 overflow-y-auto -mx-1 px-1 divide-y divide-base-200">
+        <template x-for="c in [...corrections].reverse()" :key="c.from">
+          <div class="flex items-center gap-2 py-2">
+            <span class="min-w-0 truncate opacity-60" x-text="c.from"></span>
+            <i class="ph ph-arrow-right text-sm opacity-30 shrink-0"></i>
+            <span class="min-w-0 truncate" x-text="c.to"></span>
+            <div class="grow"></div>
+            <button @click="dropAuto(c.from)" :disabled="!token"
+                    class="btn btn-ghost btn-xs btn-square opacity-40 hover:opacity-100 hover:text-error">
+              <i class="ph ph-x"></i>
+            </button>
+          </div>
+        </template>
       </div>
+      <p x-show="!token" class="text-sm opacity-50">This browser has no GitHub token, so the list is read-only.</p>
     </div>
   </div>
-</div>
 
 <div class="toast toast-top toast-center z-[95]" x-data x-show="$store.toasts && $store.toasts.length">
   <template x-for="t in ($store.toasts || [])" :key="t.id">
