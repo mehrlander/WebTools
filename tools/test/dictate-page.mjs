@@ -422,9 +422,8 @@ try {
     await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.d.select(34, 60); c.armed = null; c.paint(); });
     await page.waitForTimeout(150);
     const box = await page.locator(`[x-ref="layer"] [data-edge="${edge}"]`).boundingBox();
-    // Both balls hang BELOW their line on this page, so both are grabbed at
-    // the bottom of the hit box. That is the change `pinsBelow` makes.
-    const y0 = box.y + box.height - 4;
+    // Grab the ball, which hangs above the line on start and below it on end.
+    const y0 = edge === 'end' ? box.y + box.height - 4 : box.y + 4;
     await page.mouse.move(box.x + box.width / 2, y0);
     await page.mouse.down();
     for (let i = 1; i <= 10; i++) {
@@ -444,32 +443,37 @@ try {
   ok('but past the deadband it steps, so the line is still reachable',
     pushed && base && pushed.end > base.end, `${base?.end} -> ${pushed?.end}`);
 
-  // THE BUFFER IS ONE-SIDED, on the side the ball hangs, which is the side the
-  // thumb is already on. Both balls hang below here, so both buffers face down
-  // and the two pins behave the same way rather than oppositely.
+  // THE BUFFER IS DOWNWARD FOR BOTH, and LONGER for the start pin. Its ball
+  // hangs above the line, so its thumb begins on the wrong side and the buffer
+  // has to carry it down across the line before it starts clearing. Upward is
+  // immediate for both, since that direction is clearance for neither.
   const endUp = await dragPin('end', -lineH * 1.2);
-  ok('the end pin answers a short drag UP at once, its buffer being below',
-    endUp && base && endUp.end < base.end, `${base?.end} -> ${endUp?.end}`);
+  ok('the end pin answers a short drag UP at once', endUp && base && endUp.end < base.end,
+    `${base?.end} -> ${endUp?.end}`);
 
   const sBase = await dragPin('start', 0);
-  const startDown = await dragPin('start', lineH * 1.2);
-  ok('and the start pin behaves the SAME, not opposite: down is absorbed',
-    startDown && sBase && startDown.start === sBase.start, `${sBase?.start} -> ${startDown?.start}`);
+  const startShort = await dragPin('start', lineH * 1.8);
+  ok('the start pin absorbs a drag that would already have moved the end one',
+    startShort && sBase && startShort.start === sBase.start,
+    `${sBase?.start} -> ${startShort?.start}`);
+  const startLong = await dragPin('start', lineH * 4);
+  ok('and moves once that longer buffer is spent',
+    startLong && sBase && startLong.start > sBase.start, `${sBase?.start} -> ${startLong?.start}`);
   const startUp = await dragPin('start', -lineH * 1.2);
-  ok('while up moves it at once, both buffers facing the one way',
+  ok('while up moves it at once, as on the other pin',
     startUp && sBase && startUp.start < sBase.start, `${sBase?.start} -> ${startUp?.start}`);
 
-  // And the geometry the buffer rests on: both balls below their own line.
-  ok('both balls hang below their line', await page.evaluate(() => {
+  // The geometry the two buffers are derived from, which is why they differ.
+  ok('the start ball sits above its line and the end ball below', await page.evaluate(() => {
     const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0];
     c.precise = false; c.d.select(34, 60); c.armed = null; c.paint();
-    const at = (e) => {
+    const lead = (e) => {
       const pin = document.querySelector(`[x-ref="layer"] [data-edge="${e}"]`);
       const bar = pin.firstElementChild.getBoundingClientRect();
       const dot = pin.lastElementChild.getBoundingClientRect();
-      return dot.top >= bar.bottom - 1;
+      return (dot.top + dot.height / 2) - (bar.top + bar.height / 2);
     };
-    return at('start') && at('end');
+    return lead('start') < 0 && lead('end') > 0;
   }));
 
   // The pins have to vanish from hit testing while one is being dragged, or

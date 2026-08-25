@@ -215,19 +215,6 @@
       // this component is a view of it, never a second copy.
       d: null,
       text: '', interim: '', armed: null, beat: 0,
-      // BOTH BALLS HANG BELOW THEIR LINE on this page, where the platform's
-      // default is above on the left and below on the right. The ball here is
-      // a grip, since a pin is dragged rather than only tapped, and a grip
-      // that changes sides between the two edges puts the thumb over the words
-      // on one of them and makes the same drag read differently depending on
-      // which end you grabbed. One side for both, so the hand always lands in
-      // the same place and the drag's buffer has one direction.
-      //
-      // Read in two places, which is why it is a constant rather than a
-      // literal twice: the painter is told where to draw, and the pin drag is
-      // told which way its deadband faces. Those two must not disagree.
-      pinsBelow: true,
-
       // A REAL PIN, as against 'anchor', which is armed with nothing drawn.
       // Everything that reaches into the overlay for a handle asks this
       // rather than `armed`, since 'anchor' would send it looking for an
@@ -651,14 +638,19 @@
         let which = box.getAttribute('data-edge');
         const was = this.armed === which;
         // MEASURED BEFORE ANYTHING IS PAINTED. The bar is the pin's first
-        // child and it IS the text line, and paint() replaces this whole
-        // element, so reading it afterwards reads a detached node, whose
-        // getBoundingClientRect is all zeroes and reports no failure.
-        const bar = box.firstElementChild;
+        // child and it IS the text line, its last is the ball, and paint()
+        // replaces the whole element, so reading either afterwards reads a
+        // detached node, whose getBoundingClientRect is all zeroes and reports
+        // no failure.
+        const bar = box.firstElementChild, dot = box.lastElementChild;
         const br = bar?.getBoundingClientRect?.();
+        const dr = dot?.getBoundingClientRect?.();
         const from = br && br.height
           ? { x: br.left + br.width / 2, y: br.top + br.height / 2, px: e.clientX, py: e.clientY }
           : null;
+        // Where the GRIP sits relative to the line it marks: positive below,
+        // negative above. This is the whole difference between the two pins.
+        const lead = from && dr && dr.height ? (dr.top + dr.height / 2) - from.y : 0;
 
         // Armed on the way DOWN, so the ring is under the finger before it
         // moves, and a drag never has to be told apart from a tap to paint it.
@@ -681,25 +673,29 @@
         // place an edge does not travel straight, and without a deadband a few
         // pixels of wander step the edge into the line above.
         //
-        // AND IT IS ONE-SIDED, on the side the ball hangs. Your thumb is
-        // already there when you grab, so the travel that carries it AWAY from
-        // the words is travel in that same direction, and that is the travel
-        // the buffer is for. The other way the thumb is coming from outside
-        // the text and crossing toward it in plain view, and a buffer there
-        // only makes the pin feel stuck. Symmetric was the first cut and it
-        // made one direction worse on each pin.
+        // AND IT IS ONE-SIDED, DOWNWARD, FOR BOTH PINS, but not the same
+        // length for both, and that difference is the point.
         //
-        // With `pinsBelow` that side is DOWN for both, which is the whole
-        // reason the two balls were moved onto one side: a buffer that
-        // mirrored per pin worked, and meant the same drag behaved oppositely
-        // depending on which end you happened to grab.
+        // The end's ball hangs BELOW its line, so grabbing it already puts the
+        // thumb under the words and a line and a half of travel is all the
+        // clearance it needs. The start's ball hangs ABOVE, which is where it
+        // belongs and where it stays: the split is what tells the two pins
+        // apart. So its thumb begins on the wrong side, and the buffer has to
+        // carry it DOWN ACROSS THE LINE FIRST and only then out to clearance.
+        // Twice the travel, for the same end state.
         //
-        // The side is FIXED AT THE GRAB, not read per frame. Which pin you
-        // hold can change mid-drag when the edges cross, and where your thumb
-        // physically is cannot, so recomputing it would jump the aim a line
-        // and a half at the moment of a crossing.
+        // Measured rather than guessed at, from the ball's own offset from its
+        // stem at the moment of the grab, so the two pins arrive at the same
+        // thumb-below-the-aim distance whichever one was taken and neither
+        // number is a constant that can drift from the geometry it describes.
+        //
+        // Upward is immediate for both. That direction is not clearance for
+        // either of them, and a buffer there only makes the pin feel stuck.
+        //
+        // Fixed at the grab, not read per frame. Which pin you hold can change
+        // mid-drag when the edges cross, and where your thumb physically is
+        // cannot, so recomputing would jump the aim at the crossing.
         const DEAD = 1.5;
-        const dir = this.pinsBelow ? 1 : (which === 'end' ? 1 : -1);
         const lineH = parseFloat(getComputedStyle(this.$refs.view).lineHeight) || 26;
         let moved = false;
         const d = document;
@@ -711,11 +707,13 @@
           moved = true;
           const b = this.$refs.view.getBoundingClientRect();
           let ax = from.x + (ev.clientX - from.px);
-          const travel = (ev.clientY - from.py) / lineH;
-          const past = travel * dir > 0
-            ? (Math.abs(travel) <= DEAD ? 0 : travel - Math.sign(travel) * DEAD)
-            : travel;
-          let ay = from.y + Math.round(past) * lineH;
+          // A grip already below the line spends DEAD; one above spends DEAD
+          // plus twice its own offset, which is exactly the travel that brings
+          // it down across the line to where the other one started.
+          const buffer = DEAD * lineH + (Math.abs(lead) - lead);
+          const travel = ev.clientY - from.py;
+          const past = travel > 0 ? Math.max(0, travel - buffer) : travel;
+          let ay = from.y + Math.round(past / lineH) * lineH;
           // Held against an edge, scroll, the same as the pad: an edge dragged
           // to the bottom of a buffer longer than the screen would otherwise
           // stop at whatever happens to be visible.
@@ -1018,7 +1016,6 @@
           // if the pin ever needs to say "grabbable" louder than the red ring
           // already does.
           reach: 0,
-          pinsBelow: this.pinsBelow,
           // Only once there is something to be at the end OF. On an empty
           // buffer the end caret is a red bar alone in the corner, behind the
           // start prompt, and it reads as a rendering fault.

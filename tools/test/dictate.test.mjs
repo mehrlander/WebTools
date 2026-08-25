@@ -753,25 +753,6 @@ test('reach extends the armed pin only, and only when asked for', () => {
   assert.doesNotMatch(out.end.getAttribute('style'), /transition/, 'the hit box does not');
 });
 
-// `pinsBelow` moves the START ball under its line, for a surface where a pin is
-// dragged rather than only tapped. It is OFF by default, and the default is the
-// half that matters: two other surfaces share this painter and neither drags a
-// pin, so both keep the platform's above-left, below-right split.
-test('pinsBelow puts the start ball under its line, and is off by default', () => {
-  const h = host();
-  const ball = (e) => h.querySelector(`[data-edge="${e}"]`).lastElementChild.getAttribute('style');
-  const topOf = (css) => Number(/top:(-?\d+(?:\.\d+)?)px/.exec(css)[1]);
-
-  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 } });
-  const split = { start: topOf(ball('start')), end: topOf(ball('end')) };
-  assert.ok(split.start < split.end, 'by default the start ball sits above the end one');
-
-  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 }, pinsBelow: true });
-  const under = { start: topOf(ball('start')), end: topOf(ball('end')) };
-  assert.equal(under.start, under.end, 'asked for, both hang at the same depth');
-  assert.equal(under.end, split.end, 'and the end ball did not move to meet it');
-});
-
 // The pins are KEPT across paints, because a rebuilt element has no previous
 // value to transition from. Identity is the gate: a caller may have attached a
 // listener to the node, and the reach cannot ease out of a node that is new.
