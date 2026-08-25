@@ -236,10 +236,15 @@ try {
       root: cs('[data-dictate-ui]'),
     };
   });
+  // The text pane is the one exception, and a deliberate one: it gives the
+  // browser the vertical axis so it can scroll, keeps pinch so small type
+  // stays readable, and takes the horizontal axis for drag-to-select.
+  const wants = { view: 'pan-y pinch-zoom' };
   for (const [name, v] of Object.entries(locks)) {
     if (name === 'pad') continue;
     ok(`${name} refuses the browser its own selection`, v && v.sel === 'none', JSON.stringify(v));
-    ok(`${name} refuses double-tap zoom`, v && v.touch === 'manipulation', JSON.stringify(v));
+    ok(`${name} refuses double-tap zoom`, v && v.touch === (wants[name] || 'manipulation'),
+      JSON.stringify(v));
   }
   // touch-action does NOT inherit, which is how the host and the painted spans
   // computed `auto` under a layer that said manipulation.
@@ -370,10 +375,17 @@ try {
   ok('arming a pinhead arms the page', (await armed()) === 'end', String(await armed()));
   ok('and the target is red for it, having not been tapped', await targetRed());
   ok('the selection survived the arming', !!(await sel()));
+  // Tapping the target ADVANCES the cycle rather than always disarming, once
+  // there is a selection to cycle. The safe exit the pinhead lacked survives:
+  // no tap here can lose the selection, and off is at most two taps away.
   await target.click();
   await page.waitForTimeout(150);
-  ok('tapping the target puts the armed pin down', (await armed()) === null, String(await armed()));
-  ok('...without disturbing the selection', !!(await sel()));
+  ok('tapping the target hands the arming to the other pin',
+    (await armed()) === 'start', String(await armed()));
+  await target.click();
+  await page.waitForTimeout(150);
+  ok('and once more puts it down', (await armed()) === null, String(await armed()));
+  ok('...without ever disturbing the selection', !!(await sel()));
 
   // ── DRAGGING A PINHEAD DIRECTLY ──────────────────────────────────────
   // Tap-then-pad is still there; this is the gesture every reader already
@@ -494,6 +506,27 @@ try {
   ok('nor leave the pins transparent afterwards',
     await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].pinDrag) === null);
 
+  // A PLAIN DRAG SELECTS, no long press. Sideways is the qualifier on a touch
+  // screen, since the pane must keep the vertical axis to scroll.
+  await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.d.clearRange(); c.armed = null; c.paint(); });
+  await page.waitForTimeout(150);
+  await page.mouse.move(line1.x + 40, line1.y + 12);
+  await page.mouse.down();
+  for (let i = 1; i <= 8; i++) {
+    await page.mouse.move(line1.x + 40 + 16 * i, line1.y + 12);
+    await page.waitForTimeout(20);
+  }
+  const swiped = await sel();
+  ok('a drag across the words selects without a long press', !!swiped, JSON.stringify(swiped));
+  ok('and arms the edge it is moving', (await armed()) === 'end', String(await armed()));
+  await page.mouse.up();
+  await page.waitForTimeout(150);
+  ok('the release leaves that edge armed too', (await armed()) === 'end');
+
+  ok('the pane keeps the vertical axis and the pinch, giving up only sideways',
+    await page.evaluate(() =>
+      getComputedStyle(document.querySelector('[data-dictate-view]')).touchAction === 'pan-y pinch-zoom'));
+
   // AND IT HOLDS THE iOS SHEET for the length of the extension. The pane has
   // to keep scrolling, so this cannot be touch-action; it is a cancelled
   // touchmove (variant E), gated so an ordinary swipe still scrolls. The
@@ -585,11 +618,24 @@ try {
   ok('the pad cancels touchmove, the half that holds the sheet', !!holds.pad?.touchmove);
   ok('a repainted pin carries the same hold', !!holds.pin?.touchstart && !!holds.pin?.touchmove);
 
+  // WITH A SELECTION THE TARGET CYCLES THE PINS, since which edge am I about
+  // to move is the only question left. Without one there are no pins to cycle,
+  // so it arms an anchor instead and the next tap in the text is the far end.
+  await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.d.select(4, 20); c.armed = null; c.paint(); });
+  await page.waitForTimeout(150);
+  await target.click(); await page.waitForTimeout(120);
+  ok('with a selection, the target arms the end first', (await armed()) === 'end', String(await armed()));
+  await target.click(); await page.waitForTimeout(120);
+  ok('again and it hands over to the start', (await armed()) === 'start', String(await armed()));
+  await target.click(); await page.waitForTimeout(120);
+  ok('again and neither is armed', (await armed()) === null, String(await armed()));
+  ok('and the selection survived the whole cycle', !!(await sel()));
+
   // And the target's own armed state has the same way out.
   await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.d.clearRange(); c.armed = null; c.paint(); });
   await target.click();
   await page.waitForTimeout(120);
-  ok('tapping the armed target again cancels it', (await armed()) === 'anchor');
+  ok('with no selection it arms an anchor instead', (await armed()) === 'anchor');
   await target.click();
   await page.waitForTimeout(120);
   ok('...and a second tap puts it away', (await armed()) === null);
