@@ -396,6 +396,36 @@
         return node ? window.Dictate.offsetAt(host, node, off) : null;
       },
 
+      // ── THE VERTICAL AIM OF ANY DRAG ──────────────────────────────────
+      // Horizontal is always the finger, one to one. Vertical is HELD BACK
+      // until the thumb has cleared the words, then resumes, quantized to
+      // lines and measured from where the hold ended rather than from the
+      // grab. So placing an edge a line down costs about two lines of thumb,
+      // and the first is spent getting the hand off the text.
+      //
+      // `lead` is how far the grip sits from the line it marks: a pin's ball,
+      // signed, positive below and negative above. ZERO when the finger is on
+      // the text itself, which is the plain drag and the long-press extend.
+      // A grip already below the line spends the base hold; one above spends
+      // that plus twice its own offset, which is exactly the travel that
+      // carries it down across the line to where the other one started.
+      //
+      // Upward is immediate in every case. That direction is clearance for
+      // none of them, and a hold there only makes the drag feel stuck.
+      //
+      // One rule for all three drags, because they are one question: where is
+      // the reader aiming, given that their thumb is in the way of the answer.
+      // The plain drag went without it at first, on the reading that a finger
+      // on the text IS the aim point and holding back would read as lag. It
+      // reads as the thumb covering the boundary instead.
+      DEAD_LINES: 1.5,
+      dragY(y0, py, cy, lineH, lead = 0) {
+        const buffer = this.DEAD_LINES * lineH + (Math.abs(lead) - lead);
+        const travel = cy - py;
+        const past = travel > 0 ? Math.max(0, travel - buffer) : travel;
+        return y0 + Math.round(past / lineH) * lineH;
+      },
+
       // ── Holding a drag against an iOS sheet ───────────────────────────
       // `touch-action: none` IS NECESSARY AND NOT SUFFICIENT, which is the one
       // thing to remember here. A page opened from an app on a phone is
@@ -476,6 +506,7 @@
         };
         const clear = () => { if (timer) { clearTimeout(timer); timer = null; } };
         const at = (cx, cy) => this.pointOffset(cx, cy);
+        const lineOf = () => parseFloat(getComputedStyle(this.$refs.view).lineHeight) || 26;
         surface.addEventListener('pointerdown', (e) => {
           if (this.edit) return;
           // A mouse or a keyboard means the pins can go: drag and shift-click
@@ -521,7 +552,7 @@
           // rest of the page continue the gesture: lift, and the pad or that
           // pinhead refines the edge you were already moving.
           if (word) {
-            const i = at(e.clientX, e.clientY);
+            const i = at(e.clientX, this.dragY(y, y, e.clientY, lineOf()));
             if (i == null) return;
             dragging = true;
             // Back inside the word is not a shrink. The word is the floor of
@@ -530,11 +561,6 @@
             if (i > word.end) { this.d.select(word.start, i); this.armed = 'end'; }
             else if (i < word.start) { this.d.select(i, word.end); this.armed = 'start'; }
             else { this.d.select(word.start, word.end); this.armed = null; }
-            // NO DEADBAND HERE, unlike a pin drag. There the aim point is
-            // offset from the finger, so a deadband buys the thumb room; here
-            // the finger IS the aim point, and holding the selection back from
-            // it would read as lag rather than as clearance.
-            //
             // Pins off for the duration, or caret-from-point answers with the
             // pin this drag just lit rather than with the word under it.
             this.pinDrag = this.armed;
@@ -566,7 +592,7 @@
           if (anchor == null || !(far || dragging)) return;
           if (!dragging && e.pointerType !== 'mouse'
               && Math.abs(e.clientY - y) > Math.abs(e.clientX - x)) return;
-          const i = at(e.clientX, e.clientY);
+          const i = at(e.clientX, this.dragY(y, y, e.clientY, lineOf()));
           if (i == null) return;
           dragging = true;
           // And it arms the edge it is moving, the same as every other way of
@@ -658,44 +684,22 @@
         this.pinDrag = which;
         this.paint();
         const EDGE = 6;
-        // ── THE VERTICAL DEADBAND, AND WHICH SIDE IT SITS ON ──────────────
-        // Horizontal is one to one. Vertical is IGNORED for the first line and
-        // a half of travel and only then resumes, quantized to lines and
-        // measured from where the deadband ended rather than from the grab.
-        //
-        // So moving the edge costs about two lines of thumb, and the first of
-        // those is spent getting the thumb off the words. The clearance comes
-        // from the gesture rather than from the geometry: the reader takes
-        // exactly as much as they need and the pin stays where it points.
+        // The vertical aim is `dragY`, shared with the other two drags. What
+        // this one supplies is `lead`, the ball's own offset from its stem,
+        // which is why the two pins hold back by different amounts: the end's
+        // ball hangs below the line so its thumb starts clear, the start's
+        // hangs above so its buffer must carry the thumb down across the line
+        // first. Measured at the grab rather than set as a constant, so both
+        // arrive at the same thumb-below-the-aim distance.
         //
         // It also fixes the commoner accident, which is not aiming at the
         // wrong line but drifting onto one. A thumb sliding along a line to
-        // place an edge does not travel straight, and without a deadband a few
+        // place an edge does not travel straight, and without the hold a few
         // pixels of wander step the edge into the line above.
-        //
-        // AND IT IS ONE-SIDED, DOWNWARD, FOR BOTH PINS, but not the same
-        // length for both, and that difference is the point.
-        //
-        // The end's ball hangs BELOW its line, so grabbing it already puts the
-        // thumb under the words and a line and a half of travel is all the
-        // clearance it needs. The start's ball hangs ABOVE, which is where it
-        // belongs and where it stays: the split is what tells the two pins
-        // apart. So its thumb begins on the wrong side, and the buffer has to
-        // carry it DOWN ACROSS THE LINE FIRST and only then out to clearance.
-        // Twice the travel, for the same end state.
-        //
-        // Measured rather than guessed at, from the ball's own offset from its
-        // stem at the moment of the grab, so the two pins arrive at the same
-        // thumb-below-the-aim distance whichever one was taken and neither
-        // number is a constant that can drift from the geometry it describes.
-        //
-        // Upward is immediate for both. That direction is not clearance for
-        // either of them, and a buffer there only makes the pin feel stuck.
         //
         // Fixed at the grab, not read per frame. Which pin you hold can change
         // mid-drag when the edges cross, and where your thumb physically is
         // cannot, so recomputing would jump the aim at the crossing.
-        const DEAD = 1.5;
         const lineH = parseFloat(getComputedStyle(this.$refs.view).lineHeight) || 26;
         let moved = false;
         const d = document;
@@ -707,13 +711,7 @@
           moved = true;
           const b = this.$refs.view.getBoundingClientRect();
           let ax = from.x + (ev.clientX - from.px);
-          // A grip already below the line spends DEAD; one above spends DEAD
-          // plus twice its own offset, which is exactly the travel that brings
-          // it down across the line to where the other one started.
-          const buffer = DEAD * lineH + (Math.abs(lead) - lead);
-          const travel = ev.clientY - from.py;
-          const past = travel > 0 ? Math.max(0, travel - buffer) : travel;
-          let ay = from.y + Math.round(past / lineH) * lineH;
+          let ay = this.dragY(from.y, from.py, ev.clientY, lineH, lead);
           // Held against an edge, scroll, the same as the pad: an edge dragged
           // to the bottom of a buffer longer than the screen would otherwise
           // stop at whatever happens to be visible.
@@ -754,9 +752,16 @@
           setTimeout(() => { this.pinDrag = null; }, 0);
           // A TAP IS A DRAG THAT WENT NOWHERE, and it toggles, which is the
           // behaviour the pinheads have always had: tap to arm, tap again to
-          // put down. A drag leaves the edge armed, since the pad refining it
-          // is the obvious next thing and it is already pointed at the text.
-          if (!moved && was) this.armed = null;
+          // put down.
+          //
+          // A DRAG PUTS IT DOWN, always. This drag STARTED from an armed pin,
+          // so the arming was the grip rather than a mode to leave behind, and
+          // letting go is the end of it: the pin goes back to blue and the
+          // selection stands. Same shape as the two-tap maneuver, which also
+          // sets rather than staying live. The other two drags CREATE a
+          // selection and keep their edge armed, since there the arming says
+          // which end you were moving and the pad can carry on with it.
+          if (moved || was) this.armed = null;
           this.paint();
           d.removeEventListener('pointermove', move, true);
           d.removeEventListener('pointerup', up, true);

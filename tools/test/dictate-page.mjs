@@ -409,8 +409,9 @@ try {
   ok('and leaves the other edge alone', !!during && during.start === wasSel.start);
   await page.mouse.up();
   await page.waitForTimeout(150);
-  ok('the release keeps the edge armed, so the pad can refine it',
-    (await armed()) === 'end', String(await armed()));
+  // A PIN DRAG ENDS PUT DOWN. The arming was the grip, not a mode to leave
+  // behind, so letting go returns the pin to blue with the selection standing.
+  ok('the release puts the pin back down', (await armed()) === null, String(await armed()));
   ok('and does not fall through to place a caret in the text', !!(await sel()));
 
   // THE VERTICAL DEADBAND. A short downward drag must not change the line, so
@@ -524,7 +525,9 @@ try {
     await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].pinDrag) === null);
 
   // A PLAIN DRAG SELECTS, no long press. Sideways is the qualifier on a touch
-  // screen, since the pane must keep the vertical axis to scroll.
+  // screen, since the pane must keep the vertical axis to scroll. Unlike a pin
+  // drag it KEEPS its arming on release, because it created the selection and
+  // the armed edge says which end you were moving.
   await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.d.clearRange(); c.armed = null; c.paint(); });
   await page.waitForTimeout(150);
   await page.mouse.move(line1.x + 40, line1.y + 12);
@@ -539,6 +542,31 @@ try {
   await page.mouse.up();
   await page.waitForTimeout(150);
   ok('the release leaves that edge armed too', (await armed()) === 'end');
+
+  // THE SAME VERTICAL HOLD, with the finger on the text rather than on a ball.
+  // A drag that goes sideways and a little down must not step a line: that
+  // downward travel is the thumb getting off the boundary it is placing.
+  const swipeAt = async (dy) => {
+    await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.d.clearRange(); c.armed = null; c.paint(); });
+    await page.waitForTimeout(150);
+    await page.mouse.move(line1.x + 40, line1.y + 12);
+    await page.mouse.down();
+    for (let i = 1; i <= 8; i++) {
+      await page.mouse.move(line1.x + 40 + 16 * i, line1.y + 12 + (dy * i) / 8);
+      await page.waitForTimeout(20);
+    }
+    const r = await sel();
+    await page.mouse.up();
+    await page.waitForTimeout(120);
+    return r;
+  };
+  const flat = await swipeAt(0);
+  const dipped = await swipeAt(lineH * 1.2);
+  ok('a sideways drag that dips a line still ends on the line it began',
+    flat && dipped && dipped.end === flat.end, `${flat?.end} -> ${dipped?.end}`);
+  const dropped = await swipeAt(lineH * 2.6);
+  ok('and past the hold it does step, so the next line is reachable',
+    dropped && flat && dropped.end > flat.end, `${flat?.end} -> ${dropped?.end}`);
 
   ok('the pane keeps the vertical axis and the pinch, giving up only sideways',
     await page.evaluate(() =>
