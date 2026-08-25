@@ -256,13 +256,35 @@ try {
 
   // The tap itself, which on touch arrives as a click only when the gesture
   // did not scroll.
-  await page.evaluate(() => {
-    document.querySelector('[data-reader-slide] [data-pdf="stage"]')
-      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  });
+  const tap = (sel) => page.evaluate((q) => {
+    document.querySelector(q).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  }, sel);
+  await tap('[data-reader-slide] [data-pdf="stage"]');
   await page.waitForTimeout(300);
   s = await state();
   ok('a real tap brings it back', s.chrome.shown === true, JSON.stringify(s.chrome));
+
+  // AND TAKES IT AWAY AGAIN. The tap is a toggle rather than a restore,
+  // because scrolling is the only other way in and a document too short to
+  // scroll has none: a one-page Letter PDF at phone width does not scroll at
+  // all, and three of the eight R1 submittals are one page.
+  await tap('[data-reader-slide] [data-pdf="stage"]');
+  await page.waitForTimeout(300);
+  s = await state();
+  ok('and a second tap puts it away', s.chrome.shown === false, JSON.stringify(s.chrome));
+
+  // A control is not the document. The pdf pager sits OVER the page rather
+  // than in either band, so without this its arrows would take the chrome away
+  // as the reader reached for the next page.
+  await tap('[data-reader-slide] [data-pdf="next"]');
+  await page.waitForTimeout(400);
+  s = await state();
+  ok('but tapping the pager is not tapping the document', s.chrome.shown === false,
+     JSON.stringify(s.chrome));
+  await tap('[data-reader-slide] [data-pdf="stage"]');
+  await page.waitForTimeout(300);
+  s = await state();
+  ok('and the document tap still works after it', s.chrome.shown === true, JSON.stringify(s.chrome));
 
   console.log('the workbench handoff is per document and per page:');
   await overPage(0, 1400);
