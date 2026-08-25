@@ -796,14 +796,18 @@
           // shift-click do the extending. The selection stays painted; only
           // the thing you would have tapped goes.
           handles: !this.precise,
-          // THE ARMED PIN RIDES OUT ON A STALK, half a line, easing rather
-          // than jumping. It is a smaller claim than it started as: the drag's
-          // vertical deadband is what actually keeps the thumb off the words,
-          // so the stalk is left saying "this one is live and grabbable" and
-          // not carrying the clearance on its own. On the first line it still
-          // reaches into the header, which needs no background there and no
-          // stacking context of its own. Set it to 0 to retire it.
-          reach: 18,
+          // NO STALK. The armed pin was pushed out on one, first 36px and then
+          // 18, to keep the thumb off the words it was aiming at. THE DRAG'S
+          // VERTICAL DEADBAND does that instead, and does it better: the
+          // clearance comes from the gesture, so the reader takes exactly as
+          // much as they need and the pin stays where it is pointing. A stalk
+          // on top of that was a second answer to a solved problem, and it
+          // moved the one thing on the screen whose job is to not move.
+          //
+          // The painter keeps the option, tested and off. It is a number away
+          // if the pin ever needs to say "grabbable" louder than the red ring
+          // already does.
+          reach: 0,
           // Only once there is something to be at the end OF. On an empty
           // buffer the end caret is a red bar alone in the corner, behind the
           // start prompt, and it reads as a rendering fault.

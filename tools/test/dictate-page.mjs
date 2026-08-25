@@ -445,41 +445,31 @@ try {
   await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.pinDrag = null; c.paint(); });
   await page.waitForTimeout(120);
 
-  // THE ARMED BALL RIDES OUT ON A STALK, so the thumb dragging it is not on
-  // the words either side of the edge. On the first line it reaches up into
-  // the header, which only works because the header is static and carries no
-  // background: a positioned pin paints over static siblings.
-  const ballBox = (edge) => page.evaluate((e) => {
-    const pin = document.querySelector(`[x-ref="layer"] [data-edge="${e}"]`);
-    const dot = pin?.lastElementChild?.getBoundingClientRect?.();
-    const line = pin?.firstElementChild?.getBoundingClientRect?.();
-    return dot && line ? { dot: { x: dot.x + dot.width / 2, y: dot.y + dot.height / 2, top: dot.top },
-                           stem: { top: line.top, bottom: line.bottom } } : null;
-  }, edge);
+  // NO STALK, DELIBERATELY. Arming used to push the ball out to clear the
+  // thumb; the drag's vertical deadband above does that instead, from the
+  // gesture rather than from the geometry. This holds the decision: the ball
+  // marks the edge and does not move for being armed.
+  const ballY = () => page.evaluate(() => {
+    const dot = document.querySelector('[x-ref="layer"] [data-edge="start"]')?.lastElementChild;
+    const r = dot?.getBoundingClientRect?.();
+    return r ? r.top + r.height / 2 : null;
+  });
   await page.evaluate(() => {
     const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0];
     c.precise = false; c.d.select(4, 30); c.armed = null; c.paint();
   });
   await page.waitForTimeout(150);
-  const rest = await ballBox('start');
-  // (the reach assertions below; the deadband is checked after the drag)
+  const rest = await ballY();
   await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.armed = 'start'; c.paint(); });
-  await page.waitForTimeout(150);
-  const reached = await ballBox('start');
-  ok('arming lifts the ball clear of the line', rest && reached && rest.dot.y - reached.dot.y > 14,
-    `${rest?.dot.y} -> ${reached?.dot.y}`);
-  ok('but the stem still ends on the line, so the mark did not move',
-    Math.abs(reached.stem.bottom - rest.stem.bottom) < 1,
-    `${rest?.stem.bottom} vs ${reached?.stem.bottom}`);
-
-  const headerTop = await page.evaluate(() =>
-    document.querySelector('[x-ref="layer"]').getBoundingClientRect().top);
-  ok('on the first line it reaches up into the header band', reached.dot.top < headerTop,
-    `ball ${reached.dot.top} vs text pane ${headerTop}`);
-  ok('and nothing in the header paints over it', await page.evaluate(({ x, y }) => {
-    const hit = document.elementFromPoint(x, y);
-    return !!hit?.closest?.('[data-edge="start"]');
-  }, reached.dot));
+  await page.waitForTimeout(200);
+  const lit = await ballY();
+  ok('arming lights the pin without moving it', rest != null && Math.abs(rest - lit) < 1,
+    `${rest} -> ${lit}`);
+  ok('and the page asks the painter for no reach at all',
+    await page.evaluate(() => {
+      const dot = document.querySelector('[x-ref="layer"] [data-edge="start"]').lastElementChild;
+      return !/transition/.test(dot.getAttribute('style'));
+    }));
 
   // VARIANT D against the iOS sheet: touch-action alone was measured on device
   // to let the sheet go, so both touch events must be cancellable and cancelled
