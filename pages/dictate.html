@@ -649,7 +649,18 @@
           // the last word means the end of the buffer there as everywhere.
           if (this.anchorTo(i == null ? this.d.text.length : i)) return;
           if (i == null) { this.d.caretAt(this.d.text.length); this.armed = null; this.paint(); return; }
-          if (this.pinned) this.d.moveEdge(this.armed, i);
+          // AND THE PLACEMENT SPENDS THE ARMING. An armed pin takes this tap,
+          // moves its edge to it, and goes back to blue: the arming asked
+          // "where should this edge go", the tap answered, and there is
+          // nothing left for it to be live for. Wanting to move it again is
+          // one tap on the pinhead, which is the same cost as leaving it lit
+          // and cheaper than the alternative, since a pin left live turns the
+          // NEXT tap anywhere in the text into a move nobody asked for.
+          //
+          // Completes the one rule the rest of the page already follows: every
+          // drag ends put down, the two-tap maneuver ends put down, and now so
+          // does this. An arming is spent by the action it enables.
+          if (this.pinned) { this.d.moveEdge(this.armed, i); this.armed = null; }
           else this.d.caretAt(i);
           this.paint();
         });
@@ -818,6 +829,11 @@
       //   tap a pinhead                arms that edge
       //   tap the target, selected     end → start → null → end (toggleAnchor)
       //   tap the target, not          null → 'anchor' → null
+      //
+      // ARMING IS ALWAYS MOMENTARY. Whatever lit it, the thing it enables puts
+      // it out again: a drag ends put down, the two-tap maneuver ends put
+      // down, and a tap that places an armed edge ends put down. Nothing here
+      // leaves a mode behind for the next tap to fall into.
       //
       // 'anchor' is the special case with no pin to show, since there is no
       // range yet. It needs none: the target itself is the affordance, and

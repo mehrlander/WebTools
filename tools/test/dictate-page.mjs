@@ -682,6 +682,27 @@ try {
   ok('the pad cancels touchmove, the half that holds the sheet', !!holds.pad?.touchmove);
   ok('a repainted pin carries the same hold', !!holds.pin?.touchstart && !!holds.pin?.touchmove);
 
+  // AND A TAP THAT PLACES AN ARMED EDGE SPENDS THE ARMING. Arm a pinhead, tap
+  // in the text: the edge moves there and the pin goes back to blue, so the
+  // next tap anywhere is not a move nobody asked for.
+  await page.evaluate(() => {
+    const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0];
+    c.precise = false; c.d.select(34, 60); c.armed = null; c.paint();
+  });
+  await page.waitForTimeout(150);
+  await page.locator('[x-ref="layer"] [data-edge="end"]').click();
+  await page.waitForTimeout(150);
+  ok('the pinhead arms', (await armed()) === 'end', String(await armed()));
+  const beforePlace = await sel();
+  await page.waitForTimeout(400);          // clear of the double-tap window
+  const firstLine = await page.locator('[x-ref="body"] [data-d="text"]').first().boundingBox();
+  await page.mouse.click(firstLine.x + 30, firstLine.y + 12);
+  await page.waitForTimeout(250);
+  const placed = await sel();
+  ok('the tap moves that edge', placed && beforePlace && placed.end !== beforePlace.end,
+    `${beforePlace?.end} -> ${placed?.end}`);
+  ok('and the placement puts the pin back to blue', (await armed()) === null, String(await armed()));
+
   // WITH A SELECTION THE TARGET CYCLES THE PINS, since which edge am I about
   // to move is the only question left. Without one there are no pins to cycle,
   // so it arms an anchor instead and the next tap in the text is the far end.
