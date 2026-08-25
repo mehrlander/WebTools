@@ -124,6 +124,7 @@ the link-dense text twin of the visual index above.
 | `define-test` | x-define — isolated test | [view](https://mehrlander.github.io/web-tools/pages/scratch/define-test.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/define-test.html) |
 | `demo-spacex` | SpaceX Viewer Demo | [view](https://mehrlander.github.io/web-tools/pages/scratch/demo-spacex.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/demo-spacex.html) |
 | `fab-sidebar-test` | FAB sidebar test | [view](https://mehrlander.github.io/web-tools/pages/scratch/fab-sidebar-test.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/fab-sidebar-test.html) |
+| `haptics-probe` | Haptics probe | [view](https://mehrlander.github.io/web-tools/pages/scratch/haptics-probe.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/haptics-probe.html) |
 | `review-proto` | Review · styling prototype | [view](https://mehrlander.github.io/web-tools/pages/scratch/review-proto.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/review-proto.html) |
 | `sidebar-drawer-mwe` | Sidebar Drawer MWE | [view](https://mehrlander.github.io/web-tools/pages/scratch/sidebar-drawer-mwe.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/sidebar-drawer-mwe.html) |
 
