@@ -1655,9 +1655,14 @@ test('the expander opens the set, and the card grows upward whatever it is ancho
   A.clear();
   const S = A._state;
 
-  assert.equal(S.expandBtn.style.display, 'none', 'nothing filed, so no set to open');
+  // OFFERED ON ARRIVAL, with nothing filed. It hid behind a non-empty set at
+  // first, which is defensible and was still wrong: the first thing a reader
+  // does with a fresh page is arrive at it holding no notes, so the control
+  // was invisible in exactly the state where it had to teach itself.
+  assert.equal(S.expandBtn.style.display, 'flex', 'the way in is visible before there is anything in it');
+  assert.equal(S.countEl.textContent, '', 'carrying no number, so it is narrower empty than full');
   A.add({ type: 'page' }, 'about the page');
-  assert.equal(S.expandBtn.style.display, 'flex', 'and it arrives with the first note');
+  assert.equal(S.countEl.textContent, '1');
   assert.equal(A.expanded, false);
   assert.equal(S.readBar.style.display, 'none');
   assert.equal(S.setActs.style.display, 'none');
@@ -1780,6 +1785,39 @@ test('the set band goes when the notes go, and when the page takes them', () => 
 
   A.clear();
   assert.equal(S.setActs.style.display, 'none', 'an empty set has no actions to offer');
-  assert.equal(S.expandBtn.style.display, 'none');
+  assert.equal(S.expandBtn.style.display, 'flex', 'but the way in stays, which is how it is ever found');
+  A.disable();
+});
+
+test('an expanded empty set says where notes come from, rather than showing an empty one', () => {
+  // Opening the expander with nothing filed is the state that has to teach the
+  // gesture, so it cannot be a blank pane: an empty markdown document under a
+  // lit Markdown chip reads as something broken. The readings strip stays,
+  // since seeing the three on offer is most of what opening an empty set is
+  // for; the list, the serialization and the actions all wait for a note.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const S = A._state;
+  A.expand(true);
+
+  assert.equal(S.empty.style.display, 'block');
+  assert.match(S.empty.textContent, /Select text on the page/, 'and it names the gesture with no chip of its own');
+  assert.equal(S.readBar.style.display, 'flex', 'the three readings are still on offer');
+  assert.equal(S.listEl.style.display, 'none');
+  assert.equal(S.serial.style.display, 'none');
+  assert.equal(S.setActs.style.display, 'none');
+
+  // Picking a reading over nothing does not conjure an empty document.
+  A.setReading('md');
+  assert.equal(S.empty.style.display, 'block');
+  assert.equal(S.serial.style.display, 'none');
+
+  // The first note spends the line and the pane takes over, still on Markdown.
+  A.add({ type: 'page' }, 'the first one');
+  assert.equal(S.empty.style.display, 'none');
+  assert.equal(S.serial.style.display, 'flex');
+  assert.match(S.serialPre.textContent, /the first one/);
+  A.clear();
+  assert.equal(S.empty.style.display, 'block', 'and removing the last note brings it back');
   A.disable();
 });

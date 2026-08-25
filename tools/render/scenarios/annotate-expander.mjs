@@ -6,16 +6,21 @@
 //   npm run shot -- pages/annotate.html --script tools/render/scenarios/annotate-expander.mjs
 //   npm run shot -- pages/annotate.html --query "reading=md" --width 430 --script …
 //
-// `reading` picks which of the three is photographed (notes | md | json) and
-// `scope=note` narrows a serialization to the selected note. What the PNG is
-// evidence of: the card grew UPWARD from its own bottom edge, the readings
-// strip and the set's actions arrived with it, and the pane shows the bytes
-// Copy would hand over rather than a description of them.
+// Four knobs on the query. `notes=0` seeds none, which is the state a reader
+// ARRIVES in and the one the expander first got wrong by hiding itself in it;
+// `open=0` leaves the card collapsed; `reading` picks which of the three is
+// photographed (notes | md | json); `scope=note` narrows a serialization to
+// the selected note. What the PNG is evidence of: the card grew UPWARD from
+// its own bottom edge, the readings strip and the set's actions arriving with
+// it, and the pane showing the bytes Copy would hand over rather than a
+// description of them.
 export default async (page) => {
   await page.waitForSelector('#doc h1', { timeout: 15000 });
   const q = new URL(page.url()).searchParams;
   const reading = q.get('reading') || 'notes';
   const scope = q.get('scope') || 'set';
+  const seed = q.get('notes') !== '0';
+  const open = q.get('open') !== '0';
 
   const openKeyboard = () => page.evaluate(() => {
     const S = window.Annotate._state;
@@ -61,20 +66,28 @@ export default async (page) => {
     await page.click('button[data-annotate-ui][title="Note the text you selected"]');
   };
 
-  await noteText('zero em dashes');
-  await save('The rule every repo repeats. Worth its own line in the skill?');
+  if (seed) {
+    await noteText('zero em dashes');
+    await save('The rule every repo repeats. Worth its own line in the skill?');
 
-  await noteText('wins wherever it conflicts');
-  await save('This is the precedence sentence people quote at each other.');
+    await noteText('wins wherever it conflicts');
+    await save('This is the precedence sentence people quote at each other.');
 
-  // A page note takes no gesture at all, which is the case the other targets
-  // cannot serve: a complaint about the document itself.
-  await page.click('button[data-annotate-ui][title^="Note this page as a whole"]');
-  await save('Three sections in and the scope is still not stated.');
+    // A page note takes no gesture at all, which is the case the other targets
+    // cannot serve: a complaint about the document itself.
+    await page.click('button[data-annotate-ui][title^="Note this page as a whole"]');
+    await save('Three sections in and the scope is still not stated.');
+  }
 
-  // THE EXPANDER, which is the count in the header wearing a chevron.
+  if (!open) { await page.waitForTimeout(300); return; }
+
+  // THE EXPANDER, which is the count in the header wearing a chevron. It is
+  // offered with nothing filed too, which is the whole point of shooting
+  // `notes=0`: the button has to be findable in the state a reader arrives in.
   await page.click('button[data-annotate-ui][title^="Open the set"]');
   await page.waitForTimeout(200);
+
+  if (!seed) { await page.waitForTimeout(300); return; }
 
   if (reading !== 'notes') {
     const label = reading === 'json' ? 'annotate/1 JSON' : 'markdown';
