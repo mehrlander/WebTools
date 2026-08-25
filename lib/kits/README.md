@@ -561,10 +561,24 @@ window.Annotate.enable({ doc?, subject? })  // mount on a target document
                                             // = {title, url} for serialization
 window.Annotate.add(target, note)           // programmatic add
 window.Annotate.toMarkdown() / .toJSON()    // the set, serialized
+window.Annotate.noteMarkdown(id)            // one note, same shape and preamble
+window.Annotate.noteJSON(id)                //   (still annotate/1, one note in it)
 await window.Annotate.copy('md' | 'json')   // serialize + clipboard
 await window.Annotate.saveJot()             // one jot (fresh-read → mutate → save)
+window.Annotate.expand(true)                // open the card onto the set
+window.Annotate.setReading('notes'|'md'|'json')
+window.Annotate.setScope('set' | 'note')    // which subject a serialization has
 window.Annotate.disable()
 ```
+
+The card reads its own set behind an **expander**, the count in its header. It
+grows upward from the card's bottom edge, pinning that edge first so a card
+that has been dragged (which re-anchors it to the top) grows the same
+direction as one that has not. What opens is the list with room in it, either
+serialization exactly as Copy hands it over, and the actions on the whole set;
+the serialization takes the set or the one selected note, which is the reading
+no other surface offers. Until 2026-08-25 all of that lived only in the FAB
+drawer's Notes tab, so reading a set meant a page with a drawer on it.
 
 The FAB's take grid carries it as **Annotate** (the one take that operates on
 the view rather than carrying it away), aiming at the subject frame's

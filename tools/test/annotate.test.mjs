@@ -1643,3 +1643,143 @@ test('the set has a second reading: on the page, where a screenshot can hold it'
   A.clear();
   A.disable();
 });
+
+test('the expander opens the set, and the card grows upward whatever it is anchored by', () => {
+  // Reading the set used to mean leaving for the drawer's Notes tab, on a page
+  // that has a drawer at all. The card is anchored bottom-left, so a taller
+  // panel grows up and the header stays under the thumb that just tapped it.
+  // A header drag re-anchors the card to the TOP, though, and a taller panel
+  // then grows down and off the screen: expanding re-pins the bottom edge so
+  // the direction is the same either way.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const S = A._state;
+
+  assert.equal(S.expandBtn.style.display, 'none', 'nothing filed, so no set to open');
+  A.add({ type: 'page' }, 'about the page');
+  assert.equal(S.expandBtn.style.display, 'flex', 'and it arrives with the first note');
+  assert.equal(A.expanded, false);
+  assert.equal(S.readBar.style.display, 'none');
+  assert.equal(S.setActs.style.display, 'none');
+
+  // What a drag leaves behind: bottom released, top pinned.
+  S.ui.style.bottom = 'auto';
+  S.ui.style.top = '40px';
+
+  S.expandBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A.expanded, true);
+  assert.equal(S.ui.style.top, 'auto', 'the top anchor is released');
+  assert.match(S.ui.style.bottom, /px$/, 'and the bottom edge is pinned, so the growth goes up');
+  assert.match(S.panel.style.maxHeight, /px$/, 'the ceiling is computed from the room above that edge');
+  assert.equal(S.readBar.style.display, 'flex', 'the three readings arrive');
+  assert.equal(S.setActs.style.display, 'flex', 'and the actions on the set');
+  assert.equal(S.listEl.style.display, 'flex', 'opening on the list, which is where a reader already was');
+
+  S.expandBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A.expanded, false);
+  assert.equal(S.panel.style.maxHeight, 'min(480px,70vh)', 'and collapsing puts the card back to its own cap');
+  assert.equal(S.readBar.style.display, 'none');
+  A.clear();
+  A.disable();
+});
+
+test('three readings of one set, and a serialization is shown rather than described', () => {
+  // A button labelled by its format that copies without saying so is the thing
+  // this replaced: what will land on the clipboard is on screen first.
+  A.enable({ doc, subject: { title: 'Sample doc', url: 'https://e.test/p' } });
+  A.clear();
+  A.add({ type: 'element', selector: '#p1', excerpt: 'the quick brown fox' }, 'about the paragraph');
+  A.add({ type: 'page' }, 'about the page');
+  const S = A._state;
+  A.expand(true);
+
+  S.readChips.md.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A.reading, 'md');
+  assert.equal(S.listEl.style.display, 'none', 'the list gives up the strip of card it shares');
+  assert.equal(S.serial.style.display, 'flex');
+  assert.equal(S.serialPre.textContent, A.toMarkdown(), 'exactly what Copy hands over, not a paraphrase');
+  assert.equal(S.readChips.md.style.background, 'rgb(250, 204, 21)', 'lit, the way a live mode chip is');
+
+  S.readChips.json.dispatchEvent(new window.Event('click', { bubbles: true }));
+  // Everything but `at`, which is stamped at the moment of serializing and so
+  // differs by a millisecond between the pane's copy and this one.
+  const shape = (o) => { const { at, ...rest } = o; return rest; };
+  assert.deepEqual(shape(JSON.parse(S.serialPre.textContent)), shape(A.toJSON()));
+
+  // The set stays live under the reading: a note filed while the JSON is up
+  // repaints the JSON rather than leaving a stale copy on screen.
+  A.add({ type: 'page' }, 'a third');
+  assert.match(S.serialPre.textContent, /a third/);
+
+  S.readChips.notes.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.listEl.style.display, 'flex');
+  assert.equal(S.serial.style.display, 'none');
+  A.clear();
+  A.disable();
+});
+
+test('a serialization narrows to one note, and says which of how many it is', () => {
+  // The reading no other surface offers. A single note still carries the
+  // preamble, since a note pasted somewhere has to say which page it came
+  // from, and the lead line reads "Note 2 of 3" rather than "1 note", which
+  // would be a claim about the set instead of an excerpt from one.
+  A.enable({ doc, subject: { title: 'Sample doc', url: 'https://e.test/p' } });
+  A.clear();
+  A.add({ type: 'page' }, 'first');
+  const two = A.add({ type: 'element', selector: '#p1', excerpt: 'the quick brown fox' }, 'second');
+  A.add({ type: 'page' }, 'third');
+  const S = A._state;
+  A.expand(true);
+  A.setReading('md');
+
+  assert.equal(S.scopeNote.style.display, 'none', 'nothing selected, so no note chip to offer');
+  A.select(two.id, { scroll: false });
+  assert.equal(S.scopeNote.style.display, 'block');
+  assert.equal(S.scopeNote.textContent, 'Note 2', 'labelled by the selection rather than greyed out');
+
+  S.scopeNote.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.serialPre.textContent, A.noteMarkdown(two.id));
+  assert.match(S.serialPre.textContent, /Note 2 of 3/);
+  assert.match(S.serialPre.textContent, /https:\/\/e\.test\/p/, 'the page it came from rides along');
+  assert.match(S.serialPre.textContent, /second/);
+  assert.doesNotMatch(S.serialPre.textContent, /third/, 'and nothing else in the set does');
+
+  A.setReading('json');
+  const one = JSON.parse(S.serialPre.textContent);
+  assert.equal(one.format, 'annotate/1', 'still the declared format, with one note in it');
+  assert.equal(one.notes.length, 1);
+  assert.equal(one.notes[0].note, 'second');
+
+  // The scope names the SELECTED note, so it cannot outlive the selection.
+  A.select(null);
+  assert.equal(S.scopeNote.style.display, 'none');
+  assert.equal(JSON.parse(S.serialPre.textContent).notes.length, 3, 'and it falls back to the set');
+  A.clear();
+  A.disable();
+});
+
+test('the set band goes when the notes go, and when the page takes them', () => {
+  // Copy, Save and Clear over an empty set are three offers that cannot be
+  // taken up. And the in-place reading exists to leave one 30px strip for a
+  // screenshot, which an expanded card would be the loudest thing to break.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'page' }, 'one');
+  const S = A._state;
+  A.expand(true);
+  assert.equal(S.setActs.style.display, 'flex');
+
+  A.showInPlace(true);
+  assert.equal(S.readBar.style.display, 'none', 'the readings fold away with the list');
+  assert.equal(S.setActs.style.display, 'none');
+  assert.equal(S.expandBtn.style.display, 'none', 'and so does the way back into them');
+
+  A.showInPlace(false);
+  assert.equal(S.readBar.style.display, 'flex', 'the card comes back the way it was left');
+  assert.equal(S.setActs.style.display, 'flex');
+
+  A.clear();
+  assert.equal(S.setActs.style.display, 'none', 'an empty set has no actions to offer');
+  assert.equal(S.expandBtn.style.display, 'none');
+  A.disable();
+});
