@@ -574,11 +574,15 @@ window.Annotate.disable()
 The card reads its own set behind an **expander**, the count in its header. It
 grows upward from the card's bottom edge, pinning that edge first so a card
 that has been dragged (which re-anchors it to the top) grows the same
-direction as one that has not. What opens is the list with room in it, either
-serialization exactly as Copy hands it over, and the actions on the whole set;
-the serialization takes the set or the one selected note, which is the reading
-no other surface offers. Until 2026-08-25 all of that lived only in the FAB
-drawer's Notes tab, so reading a set meant a page with a drawer on it.
+direction as one that has not. What opens is one window of a fixed height, the
+same for all three readings, with the body scrolling inside it: the list, or
+either serialization exactly as Copy hands it over, of the whole set or of the
+one selected note, which is the reading no other surface offers. Copy sits in
+the tab it copies from, so it is one word rather than a format named twice;
+the footer keeps only Save jot and Clear. An empty set does not take the
+window, since one line does not need it. Until 2026-08-25 all of this lived
+only in the FAB drawer's Notes tab, so reading a set meant a page with a
+drawer on it.
 
 The FAB's take grid carries it as **Annotate** (the one take that operates on
 the view rather than carrying it away), aiming at the subject frame's

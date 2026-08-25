@@ -1821,3 +1821,71 @@ test('an expanded empty set says where notes come from, rather than showing an e
   assert.equal(S.empty.style.display, 'block', 'and removing the last note brings it back');
   A.disable();
 });
+
+test('the three readings are one window, and what does not fit scrolls inside it', () => {
+  // Sized to content, the card jumped on every tap of the strip: three short
+  // notes made a short card and their markdown a tall one, so the reader's own
+  // tap moved the thing they were reading. One height, and the body takes the
+  // leftover rather than the card taking the content.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'page' }, 'one');
+  A.add({ type: 'page' }, 'two');
+  const S = A._state;
+  A.expand(true);
+
+  const h = S.panel.style.height;
+  assert.match(h, /px$/, 'an open set is a window of a fixed size');
+  assert.equal(S.panel.style.maxHeight, h, 'and the composer opens inside it rather than growing it');
+  assert.equal(S.listEl.style.flexGrow, '1', 'the list takes the leftover height');
+  assert.equal(S.listEl.style.flexBasis, '0px', 'from zero, so a short list does not set the window');
+  assert.equal(S.listEl.style.minHeight, '0px', 'and may shrink below its content, which is what lets it scroll');
+  assert.match(S.listEl.getAttribute('style'), /overflow-y:\s*auto/);
+
+  A.setReading('md');
+  assert.equal(S.panel.style.height, h, 'markdown is the same window');
+  A.setReading('json');
+  assert.equal(S.panel.style.height, h, 'so is the JSON');
+  assert.match(S.serialPre.getAttribute('style'), /overflow:\s*auto/, 'the pane scrolls rather than the card growing');
+
+  // Collapsed, the card goes back to being sized by what is in it: a stretched
+  // list under a composer holding two notes is a band of white.
+  A.expand(false);
+  assert.equal(S.panel.style.height, '');
+  assert.equal(S.panel.style.maxHeight, 'min(480px,70vh)');
+  assert.equal(S.listEl.style.flexGrow, '');
+
+  // An empty set is not one of the three and does not take the window: one
+  // italic line in a 700px card is a hole, not a reading.
+  A.expand(true);
+  A.clear();
+  assert.equal(S.panel.style.height, '', 'nothing filed, so nothing to hold open');
+  assert.equal(S.empty.style.display, 'block');
+  A.disable();
+});
+
+test('copy lives in the tab, so the word needs no format after it', () => {
+  // "Copy markdown" and "Copy JSON" sat in the footer naming a format the tab
+  // a row above had already named, and the reader had to check which of the
+  // two they were about to press. Inside the tab the tab is the qualifier.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'page' }, 'one');
+  const S = A._state;
+  A.expand(true);
+  A.setReading('md');
+
+  assert.equal(S.serialCopy.textContent.trim(), 'Copy', 'one word, in the pane it copies from');
+  assert.match(S.serialCopy.title, /markdown/, 'the title still says which, for a pointer that hovers');
+  assert.ok(S.serial.contains(S.serialCopy), 'and it is inside the tab, not under it');
+
+  A.setReading('json');
+  assert.match(S.serialCopy.title, /JSON/, 'and it follows the tab it sits in');
+
+  // The footer keeps only what is neither a reading nor a format.
+  const acts = [...S.setActs.querySelectorAll('button')].map(b => b.textContent);
+  assert.deepEqual(acts, ['Save jot', 'Clear']);
+  assert.ok(!acts.some(t => /markdown|JSON/i.test(t)), 'no format is named twice over');
+  A.clear();
+  A.disable();
+});
