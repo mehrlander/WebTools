@@ -22,6 +22,8 @@
 //   2. down over a page moves the pages and leaves the document deck alone
 //   3. each document still pages itself (the neighbour's pager is not driven)
 //   4. the workbench handoff carries the page the reader is on, per document
+//   5. the chrome steps aside while reading down and comes back on the way up,
+//      on a tap, and on the next document, without being dropped
 //
 // A wheel rather than a thumb: Playwright's touchscreen only taps, and
 // `overscroll-behavior` governs scroll chaining for both, so a horizontal
@@ -145,6 +147,21 @@ const state = () => page.evaluate(() => {
     pages: flow ? flow.count : 0,
     label: here?.querySelector('[data-pdf="page"]')?.textContent?.trim() ?? '',
     pos: flow ? Math.round(flow.scroller.scrollTop) : -1,
+    // Immersive chrome: both bands still EXIST (nothing was dropped), and
+    // `shown` is whether they are claiming the screen right now.
+    chrome: (() => {
+      const p = document.querySelector('.sd-overlay .grid');
+      const h = p?.querySelector('.sd-header'), f = p?.querySelector('.row-start-4');
+      // The SLIDE's own chrome counts too. The viewer draws a header inside
+      // each slide, and a deck that hid its two bands and left that one behind
+      // would be one band instead of three, not full screen.
+      const slide = [...p.querySelectorAll('[data-sd-chrome]')];
+      return { has: !!h && !!f && slide.length > 0,
+               shown: !!h && !h.classList.contains('hidden')
+                      && !!f && !f.classList.contains('hidden'),
+               slideShown: slide.some(el => !el.classList.contains('hidden')) };
+    })(),
+    trackH: Math.round(document.querySelector('[data-reader-slide]')?.closest('.sd-track')?.clientHeight || 0),
     // Scoped to the SLIDE, not to `[data-pdf="root"]`: the handoff moved up a
     // level into the viewer's own open-elsewhere dropdown, so it is a sibling
     // of the pdf pane rather than a descendant of it. Querying inside the pane
@@ -201,11 +218,42 @@ try {
   ok('which pages ITS own document', s.label === '1 / 4', s.label);
   ok('and its own workbench link', /flow-b\.pdf&page=1$/.test(s.inspect), s.inspect);
 
+  console.log('the chrome steps aside while reading, without being dropped:');
+  s = await state();
+  const roomy = s.trackH;
+  ok('it is showing at the top of a document', s.chrome.shown === true, JSON.stringify(s.chrome));
+  await overPage(0, 900);
+  s = await state();
+  ok('scrolling down puts it away', s.chrome.shown === false, JSON.stringify(s.chrome));
+  ok('the slide\'s own header goes with it', s.chrome.slideShown === false, JSON.stringify(s.chrome));
+  ok('but every band still exists', s.chrome.has === true, JSON.stringify(s.chrome));
+  ok('and the document gets the room', s.trackH > roomy, `${roomy} -> ${s.trackH}`);
+  await overPage(0, -400);
+  s = await state();
+  ok('scrolling back up returns it', s.chrome.shown === true, JSON.stringify(s.chrome));
+  ok('the slide\'s header with it', s.chrome.slideShown === true, JSON.stringify(s.chrome));
+
+  // A tap is the other way back, and it is one-way: it can never take a
+  // control away from under a finger already reaching for one.
+  await overPage(0, 900);
+  s = await state();
+  ok('away again', s.chrome.shown === false, JSON.stringify(s.chrome));
+  await page.evaluate(() => {
+    const el = document.querySelector('[data-reader-slide] [data-pdf="stage"]');
+    const r = el.getBoundingClientRect();
+    el.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }));
+  });
+  await page.waitForTimeout(300);
+  s = await state();
+  ok('a tap brings it back', s.chrome.shown === true, JSON.stringify(s.chrome));
+
   console.log('the workbench handoff is per document and per page:');
   await overPage(0, 1400);
   await overPage(0, 1400);
   s = await state();
   ok('the reader moved down document B', s.pageAt >= 1, JSON.stringify(s));
+  ok('with the chrome out of the way again', s.chrome.shown === false, JSON.stringify(s.chrome));
   ok('and the link names the page it is on',
      new RegExp(`&page=${s.pageAt + 1}$`).test(s.inspect), s.inspect);
   ok('of the document it is in', s.inspect.includes('flow-b.pdf'), s.inspect);
