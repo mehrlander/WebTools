@@ -1737,12 +1737,13 @@ test('a serialization narrows to one note, and says which of how many it is', ()
   A.expand(true);
   A.setReading('md');
 
-  assert.equal(S.scopeNote.style.display, 'none', 'nothing selected, so no note chip to offer');
+  assert.equal(S.scopeBtn.style.display, 'none', 'nothing selected, so nothing to narrow to');
   A.select(two.id, { scroll: false });
-  assert.equal(S.scopeNote.style.display, 'block');
-  assert.equal(S.scopeNote.textContent, 'Note 2', 'labelled by the selection rather than greyed out');
+  assert.equal(S.scopeBtn.style.display, 'flex');
+  assert.equal(S.scopeBtn.textContent, 'Set', 'one chip, carrying the scope it is currently showing');
 
-  S.scopeNote.dispatchEvent(new window.Event('click', { bubbles: true }));
+  S.scopeBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.scopeBtn.textContent, 'Note 2', 'and it swaps, labelled by the selection rather than by the word');
   assert.equal(S.serialPre.textContent, A.noteMarkdown(two.id));
   assert.match(S.serialPre.textContent, /Note 2 of 3/);
   assert.match(S.serialPre.textContent, /https:\/\/e\.test\/p/, 'the page it came from rides along');
@@ -1757,7 +1758,7 @@ test('a serialization narrows to one note, and says which of how many it is', ()
 
   // The scope names the SELECTED note, so it cannot outlive the selection.
   A.select(null);
-  assert.equal(S.scopeNote.style.display, 'none');
+  assert.equal(S.scopeBtn.style.display, 'none');
   assert.equal(JSON.parse(S.serialPre.textContent).notes.length, 3, 'and it falls back to the set');
   A.clear();
   A.disable();
@@ -1875,12 +1876,19 @@ test('copy lives in the tab, so the word needs no format after it', () => {
   A.expand(true);
   A.setReading('md');
 
-  assert.equal(S.serialCopy.textContent.trim(), 'Copy', 'one word, in the pane it copies from');
+  assert.equal(S.serialCopy.textContent.trim(), 'Copy', 'one word, beside the chips that qualify it');
   assert.match(S.serialCopy.title, /markdown/, 'the title still says which, for a pointer that hovers');
-  assert.ok(S.serial.contains(S.serialCopy), 'and it is inside the tab, not under it');
+  assert.ok(S.readBar.contains(S.serialCopy), 'and it rides the format row, not a footer under it');
+  assert.equal(S.serialCopy.style.display, 'flex');
 
   A.setReading('json');
-  assert.match(S.serialCopy.title, /JSON/, 'and it follows the tab it sits in');
+  assert.match(S.serialCopy.title, /JSON/, 'and it follows the chip it sits beside');
+
+  // Both leave the row where they mean nothing. A Copy beside the Notes chip
+  // has no bytes on screen to take.
+  A.setReading('notes');
+  assert.equal(S.serialCopy.style.display, 'none');
+  assert.equal(S.scopeBtn.style.display, 'none');
 
   // The footer keeps only what is neither a reading nor a format.
   const acts = [...S.setActs.querySelectorAll('button')].map(b => b.textContent);

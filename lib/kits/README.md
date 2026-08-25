@@ -577,10 +577,14 @@ that has been dragged (which re-anchors it to the top) grows the same
 direction as one that has not. What opens is one window of a fixed height, the
 same for all three readings, with the body scrolling inside it: the list, or
 either serialization exactly as Copy hands it over, of the whole set or of the
-one selected note, which is the reading no other surface offers. Copy sits in
-the tab it copies from, so it is one word rather than a format named twice;
-the footer keeps only Save jot and Clear. An empty set does not take the
-window, since one line does not need it. Until 2026-08-25 all of this lived
+one selected note, which is the reading no other surface offers. The window is
+two thirds of the viewport and never past 560px, so the card stays a window
+over the document rather than a takeover of it. One row carries both choices,
+which reading and what it is a reading of: the three format chips, then a
+scope chip labelled by the selection (`Note 2`) that swaps on a tap, then
+`Copy`, which needs no format after it because the chips beside it are the
+qualifier. The footer keeps only Save jot and Clear. An empty set does not
+take the window, since one line does not need it. Until 2026-08-25 all of this lived
 only in the FAB drawer's Notes tab, so reading a set meant a page with a
 drawer on it.
 

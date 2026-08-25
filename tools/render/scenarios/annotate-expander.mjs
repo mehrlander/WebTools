@@ -97,7 +97,7 @@ export default async (page) => {
       // chip; the chip is labelled by that selection rather than sitting there
       // greyed out, so it does not exist until there is one.
       await page.evaluate(() => window.Annotate.select(window.Annotate.items[1].id, { scroll: false }));
-      await page.click('button[data-annotate-ui][title^="Serialize the selected note"]');
+      await page.click('button[data-annotate-ui][title^="Showing the whole set"]');
     }
     await page.waitForTimeout(200);
   }
