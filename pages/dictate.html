@@ -80,7 +80,8 @@
     a model reading the sentence around a word would go further.
 
   WHERE THE CONTROLS SIT, and why the split is where it is. The HEADER holds
-  the four instruments: record, undo, redo, and the target. Each is tapped a
+  the five instruments: record, undo, redo, the target, and autocorrect as a
+  dictionary, plus the menu. Each is tapped a
   handful of times in a session. The BOTTOM holds the marks, backspace and
   Save, which are tapped every sentence, and a phone's bottom edge belongs to
   whatever is tapped most. Record doubles as the state readout, since red and
@@ -918,31 +919,43 @@
                               : 'Drag to move the cursor. Tap to start a selection from it.'">
       <i class="ph ph-crosshair text-lg"></i>
     </button>
-    <button @click="menu = !menu" class="btn btn-ghost btn-sm btn-square shrink-0" title="More">
-      <i class="ph ph-dots-three-vertical text-lg"></i>
+    <!-- AUTOCORRECT, as a dictionary. A word list is what it is, and a
+         dictionary is the picture everybody already has for one, so the
+         control needs no label and no menu row to arrive through. Beside the
+         target because both operate on the words rather than on the session. -->
+    <button @click="openAuto()" class="btn btn-ghost btn-sm btn-square shrink-0" title="Autocorrect">
+      <i class="ph ph-book-open text-lg"></i>
     </button>
-  </div>
-
-  <!-- The menu: everything that is not needed mid-sentence. -->
-  <div x-show="menu" @click.outside="menu = false"
-       class="shrink-0 border-b border-base-300 bg-base-200 px-3 py-2 flex flex-wrap gap-2">
-    <button @click="clear()" class="btn btn-sm btn-ghost gap-1.5"><i class="ph ph-file-dashed"></i>New</button>
-    <button @click="breaks = !breaks" :disabled="!breakable"
-            class="btn btn-sm gap-1.5" :class="breaks ? 'btn-warning' : 'btn-ghost'"
-            :title="breakable ? 'Break into paragraphs where you paused longest' : 'Needs the pause record, which typing replaces'">
-      <i class="ph ph-paragraph"></i>Breaks
-    </button>
-    <button @click="openAuto()" class="btn btn-sm btn-ghost gap-1.5">
-      <i class="ph ph-pencil-line"></i>Autocorrect
-    </button>
-    <a href="https://github.com/mehrlander/web-tools-private/blob/main/lists/autocorrect.json"
-       target="_blank" rel="noopener" class="btn btn-sm btn-ghost gap-1.5">
-      <i class="ph ph-list-magnifying-glass"></i><span x-text="corrections.length"></span>
-    </a>
-    <div class="grow"></div>
-    <span x-show="d && d.relaunches" class="self-center font-mono text-[11px] opacity-30"
-          :title="'the engine has been restarted this many times through your pauses'"
-          x-text="(d ? d.relaunches : 0) + ' relaunches'"></span>
+    <!-- The menu is a DROPDOWN, not a band. As a band it inserted itself
+         between the header and the text and pushed the words down the screen
+         to show four controls that are not about the words at all. An overlay
+         costs the text nothing and closes on the next tap anywhere. -->
+    <div class="relative shrink-0" @click.outside="menu = false">
+      <button @click="menu = !menu" class="btn btn-ghost btn-sm btn-square" title="More">
+        <i class="ph ph-dots-three-vertical text-lg"></i>
+      </button>
+      <div x-show="menu" x-cloak
+           class="absolute right-0 top-full mt-1 z-50 w-56 rounded-box border border-base-300 bg-base-100 shadow-xl py-1 flex flex-col">
+        <button @click="clear(); menu = false"
+                class="flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-base-200">
+          <i class="ph ph-file-dashed text-lg opacity-60"></i>New
+        </button>
+        <button @click="breaks = !breaks" :disabled="!breakable"
+                class="flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-base-200 disabled:opacity-40"
+                :title="breakable ? 'Break into paragraphs where you paused longest' : 'Needs the pause record, which typing replaces'">
+          <i class="ph ph-paragraph text-lg opacity-60"></i>Breaks
+          <i x-show="breaks" class="ph ph-check ml-auto text-lg text-success"></i>
+        </button>
+        <a href="https://github.com/mehrlander/web-tools-private/blob/main/lists/autocorrect.json"
+           target="_blank" rel="noopener" @click="menu = false"
+           class="flex items-center gap-2.5 px-3 py-2.5 hover:bg-base-200">
+          <i class="ph ph-list-magnifying-glass text-lg opacity-60"></i>Autocorrect list
+          <span class="ml-auto font-mono text-xs opacity-40" x-text="corrections.length"></span>
+        </a>
+        <div x-show="d && d.relaunches" class="px-3 pt-1.5 pb-0.5 font-mono text-[11px] opacity-30"
+             x-text="(d ? d.relaunches : 0) + ' relaunches'"></div>
+      </div>
+    </div>
   </div>
 
   <div x-show="err" class="shrink-0 px-4 py-1.5 text-sm bg-error/10 text-error" x-text="err"></div>

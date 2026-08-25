@@ -161,6 +161,35 @@ try {
   ok('the painter is asked for no arrow cluster',
     !(await page.evaluate(() => !!document.querySelector('[data-d="nudge"]'))));
 
+  // ── 1c. The menu overlays; it does not shove the words down ──────────
+  // It was a band inserted between the header and the text, so opening it
+  // pushed the words down the screen to show four controls that are not about
+  // the words at all. The measurement is the text pane's own top edge.
+  console.log('the menu and the dictionary:');
+  const topOf = () => page.evaluate(() =>
+    document.querySelector('[x-ref="view"]').getBoundingClientRect().top);
+  const shut = await topOf();
+  await page.locator('button[title="More"]').click();
+  await page.waitForTimeout(200);
+  ok('the menu opens', await page.locator('text=Autocorrect list').isVisible());
+  ok('and the text has not moved', Math.abs((await topOf()) - shut) < 1,
+    `closed=${shut} open=${await topOf()}`);
+  await page.mouse.click(200, 500);
+  await page.waitForTimeout(200);
+  ok('a tap outside closes it', !(await page.locator('text=Autocorrect list').isVisible()));
+
+  // Autocorrect is a dictionary in the header now, not a row inside the menu.
+  ok('the dictionary is in the header',
+    await page.evaluate(() => {
+      const b = document.querySelector('button:has(i.ph-book-open)');
+      return !!b && b.getBoundingClientRect().top < 60;
+    }));
+  await page.locator('button:has(i.ph-book-open)').click();
+  await page.waitForTimeout(250);
+  ok('and it opens the sheet', await page.locator('input[placeholder="heard"]').isVisible());
+  await page.locator('button:has-text("Cancel")').click();
+  await page.waitForTimeout(200);
+
   // ── 1b. The selection lock, over the WHOLE surface ───────────────────
   // Reported from the phone on 2026-08-24: selection was not suppressed where
   // it should be. The painted text was locked and the scroll box around it was
