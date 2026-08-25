@@ -527,7 +527,7 @@
     </span>
     <button class="btn btn-ghost btn-sm" @click="resetDraft()" x-show="dirty" :disabled="committing">Discard</button>
     <button class="btn btn-primary btn-sm gap-2" @click="commit()" x-show="dirty"
-            :disabled="committing || invalid" :title="invalid ? 'Fix the invalid row first' : ''">
+            :disabled="!!(committing || invalid)" :title="invalid ? 'Fix the invalid row first' : ''">
       <span x-show="!committing"><i class="ph ph-git-commit"></i> Commit</span>
       <span x-show="committing" class="loading loading-spinner loading-xs"></span>
     </button>

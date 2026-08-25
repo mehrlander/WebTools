@@ -1,12 +1,11 @@
 // The page-level note and the two controls it arrived with: the Page chip that
-// opens a draft with nothing to aim at, the review button that reads the
-// drawer's state instead of guessing, and the launcher's long-press menu that
+// opens a draft with nothing to aim at, and the launcher's long-press menu that
 // reaches the annotator without opening the drawer first.
 //
 //   npm run shot -- pages/annotate.html --script tools/render/scenarios/annotate-page-note.mjs
 //
 // STATE=draft  the Page draft open on the card                  (the default)
-// STATE=saved  the note saved, drawer open on Notes beside it
+// STATE=saved  the note saved, and the card expanded onto the set
 // STATE=menu   the launcher's long-press menu
 // STATE=idle   what the menu row leaves behind: the page draft staged, the
 //              microphone off, the hint saying so
@@ -44,11 +43,8 @@ export default async (page) => {
 
   await page.click('button[data-annotate-ui][title^="Save note"]');
   await page.waitForTimeout(200);
-  await page.evaluate(() => {
-    const d = window.Alpine.$data(document.querySelector('[x-data^="fab"]'));
-    d.open = true;
-    d.activeTab = 'notes';
-    d.annSync();
-  });
+  // The set is read in the card now, not in the drawer: the expander is the
+  // header's own Notes button. The drawer's Notes tab was retired 2026-08-25.
+  await page.click('button[data-annotate-ui][title^="Open the set"]');
   await page.waitForTimeout(600);
 };
