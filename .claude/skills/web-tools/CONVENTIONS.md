@@ -4,8 +4,8 @@ Remote-sandbox conventions for Claude Code web sessions; output is strictly via 
 
 This hub holds behavior that applies regardless of whether anything is being surfaced. Two companions carry the rest, and load as one set with this file:
 
-- **[SURFACING.md](SURFACING.md)** — the surfacing system: the primitives that make session work visible in chat (no setup), plus the surfacing course (the guide-PR lifecycle, idle until you open a PR). This was the bulk of this file; it now lives on its own.
-- **[PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md)** — installation, the plugin, and the full catalog of what travels from the hub to any repo.
+- **[SURFACING.md](SURFACING.md)**, the surfacing system: the primitives that make session work visible in chat (no setup), plus the surfacing course (the guide-PR lifecycle, idle until you open a PR). This was the bulk of this file; it now lives on its own.
+- **[PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md)**: installation, the plugin, and the full catalog of what travels from the hub to any repo.
 
 **Prose style:** zero em dashes. Use colons, commas, semicolons, parentheses, or new sentences.
 
@@ -20,6 +20,8 @@ Local `CLAUDE.md` wins wherever it conflicts with these defaults. Beyond that, n
 ## Standing decisions: write the answer down, not just the question
 
 **A consistency ask is not a fork.** When a treatment is approved in one place and the instruction is to apply it elsewhere ("do the same on X so it's consistent"), apply it to every surface it plausibly covers, show the pixels, and name what was assumed. Do not ask which surface was meant: doing one place too many costs a revert, while asking costs a round trip on work already decided.
+
+**A correction you trip over is part of the work.** A session doing approved work routinely finds a small defect beside it: a count that no longer matches what it describes, a line ending that disagrees with every sibling file, an unreachable branch, a link that stopped resolving. Fix it, say plainly what was fixed and why, and do not stop to ask. The bar is four conditions at once and is meant to be narrow: **small**, **additive**, **verifiable by a check the repo already runs**, and **inside the area the approved work already touches**. Anything that changes a public name, a schema, a committed column, or behavior stays a proposal. This does not loosen [Keep focus](#keep-focus), which governs work a session *conceives*; this covers only what it *trips over*, where the defect is already in front of the session and the only open question is whether naming it should cost a round trip. Added 2026-08-25, after a review session found four such fixes in one pass and offered all four as a menu.
 
 A recurring fork (commit this class of file to main without asking, subscribe the workstream PR at creation, take the smaller of two options) becomes a standing decision the moment a doc states it as a default: name it in `CLAUDE.md` or the relevant portable doc (this file, [SURFACING.md](SURFACING.md), [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md)), and a session that hits it takes the default and notes the assumption rather than raising it fresh. Writing it down is the only lever that works: a `permissions.deny` on the question tool does not help, since asking is a model choice, not a gated call. A repo fielding the same question has a missing standing decision, not a tool to disable.
 
