@@ -25,11 +25,12 @@ import { makeShell } from './show-repo-shell.mjs';
 // decision to call them and what is said afterwards, never the crawls.
 function stubbed({ view = 'sessions', committed = true } = {}) {
   const h = makeShell();
-  const calls = { sessions: 0, activity: 0 };
+  const calls = { sessions: 0, activity: 0, configs: 0 };
   h.shell.view = view;
   h.shell.hasToken = () => true;
   h.shell.refreshSessionsCache = async () => { calls.sessions++; return { committed }; };
   h.shell.refreshActivityCache = async () => { calls.activity++; return { committed, doc: null }; };
+  h.shell.refreshConfigCache = async () => { calls.configs++; return { committed, changed: 1 }; };
   return { ...h, calls };
 }
 
@@ -60,10 +61,11 @@ test('a sessions crawl that throws is reported, not rethrown', async () => {
 });
 
 test('the warm covers what the pane on screen actually reads', async () => {
-  for (const [view, want] of [['sessions', { sessions: 1, activity: 0 }],
-                              ['activity', { sessions: 0, activity: 1 }],
-                              ['state',    { sessions: 1, activity: 1 }],
-                              ['chats',    { sessions: 0, activity: 0 }]]) {
+  for (const [view, want] of [['sessions', { sessions: 1, activity: 0, configs: 0 }],
+                              ['activity', { sessions: 0, activity: 1, configs: 0 }],
+                              ['estate',   { sessions: 0, activity: 0, configs: 1 }],
+                              ['state',    { sessions: 1, activity: 1, configs: 1 }],
+                              ['chats',    { sessions: 0, activity: 0, configs: 0 }]]) {
     const h = stubbed({ view });
     h.shell.warmEstateCaches();
     await new Promise(r => setImmediate(r));
@@ -76,7 +78,34 @@ test('a signed-out shell warms nothing', async () => {
   h.shell.hasToken = () => false;
   h.shell.warmEstateCaches();
   await new Promise(r => setImmediate(r));
-  assert.deepEqual(h.calls, { sessions: 0, activity: 0 });
+  assert.deepEqual(h.calls, { sessions: 0, activity: 0, configs: 0 });
+});
+
+// The Repos pane's cards reload on this event and nothing else, so the same
+// pair of assertions the sessions crawl gets: a commit speaks, a no-op does
+// not. Its crawl reported nothing at all until this branch, which is what had
+// kept the pane re-readable only by its own Refresh button.
+test('a config crawl that commits tells the Repos cards to re-read', async () => {
+  const h = stubbed({ view: 'estate' });
+  await h.shell.warmConfigCache();
+  assert.equal(h.calls.configs, 1);
+  assert.equal(named(h, 'web-tools:configs-refreshed'), 1);
+});
+
+test('a config crawl that changes nothing stays quiet', async () => {
+  const h = stubbed({ view: 'estate', committed: false });
+  await h.shell.warmConfigCache();
+  assert.equal(named(h, 'web-tools:configs-refreshed'), 0);
+});
+
+// Repos was the one estate pane with no arrival kick: warmed at boot and by its
+// own Refresh, and never by walking over to it.
+test('opening Repos warms its cache', async () => {
+  const h = stubbed({ view: 'landing' });
+  h.shell.syncUrl = () => {};
+  h.shell.goEstate();
+  await new Promise(r => setImmediate(r));
+  assert.equal(h.calls.configs, 1);
 });
 
 test('a tab flick is not an arrival', async () => {

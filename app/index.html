@@ -2530,8 +2530,13 @@ function app(){ return {
   // not in it. The invariant that keeps this true is held by
   // tools/test/show-repo-overlay.test.mjs: every client the crawl constructs
   // reads at main, never at the overlay branch.
+  // Returns {committed, changed} when it ran, {skipped:true} when it declined,
+  // {error} when it failed. It reported NOTHING until 2026-08-25, which is why
+  // the Repos pane could only be re-read by the manual Refresh: an announcement
+  // needs a commit to announce, and there was no way to ask whether one had
+  // happened. Every existing caller ignores the value.
   async refreshConfigCache(force){
-    if (!this.hasToken() || !window.RepoConfigCache) return;
+    if (!this.hasToken() || !window.RepoConfigCache) return { skipped: true };
     // Seed the crawl from the account's repos (the enumeration that discovers
     // estate members), so a repo opting in via its own config is picked up
     // without any registry list. If the enumeration fails, fall back to the
@@ -2543,7 +2548,7 @@ function app(){ return {
     if (!force){
       try {
         const last = +localStorage.getItem(this._cacheCheckKey) || 0;
-        if (Date.now() - last < this.CRAWL_FLOOR_MS) return;
+        if (Date.now() - last < this.CRAWL_FLOOR_MS) return { skipped: true };
       } catch {}
     }
     // This listing is the enumeration that discovers estate members AND, from
@@ -2556,7 +2561,7 @@ function app(){ return {
       pushedAt = new Map(all.map(r => [r.full_name, r.pushed_at || '']));
     }
     catch { repos = this.estateRepos.map(r => r.repo); }
-    if (!repos.length) return;
+    if (!repos.length) return { skipped: true, reason: 'no repos to read' };
     const t0 = Date.now();   // for the run record, appended below if this commits
 
     // A repo is QUIET when it has not been pushed since this crawl last read
@@ -2692,7 +2697,11 @@ function app(){ return {
         await this.saveFold(reg, window.RepoConfigCache.CACHE_PATH, next,
                             'Update config cache (state/configs.json) via show-repo', base);
       }
-    } catch(e){ console.warn('config cache refresh:', e?.message || e); }
+      return { committed: moved.length > 0, changed: moved.length, checked: repos.length };
+    } catch(e){
+      console.warn('config cache refresh:', e?.message || e);
+      return { error: e?.message || String(e) };
+    }
   },
 
   // Force the activity crawl and tell the estate to re-read (the Activity view's
@@ -5149,7 +5158,11 @@ function app(){ return {
   // just changed (a repo's views for the estate's, say). It now closes only
   // when you say so, by the scrim or the X. The pinned desktop sidebar never
   // closed, so the two behave alike now.
-  goEstate(){ this.estateSeen = true; this.view = 'estate'; this.syncUrl(); },
+  // Repos kicks its own throttled crawl on arrival, the way Open and Sessions
+  // do. It was the one estate pane that did not, warmed only at boot and by its
+  // own Refresh, so a session that opened elsewhere and walked over to Repos an
+  // hour later read whatever the boot had left.
+  goEstate(){ this.estateSeen = true; this.view = 'estate'; this.warmConfigCache(); this.syncUrl(); },
   // The Stage's other sub-view: the shelf of saved surfaces. Its own ?view key,
   // the way each of Activity's three has one, so a pill tap deep-links.
   goSurfaces(){ this.estateSeen = true; this.view = 'surfaces'; this.syncUrl(); },
@@ -5286,6 +5299,18 @@ function app(){ return {
       if (r?.committed) this.announceActivity(r);
     } catch(e){ console.warn('arrival activity refresh:', e?.message || e); }
   },
+  // The Repos pane's half of the same contract. Its cards reload on
+  // web-tools:configs-refreshed, which until now only the manual Refresh
+  // dispatched, so the config crawl had the identical silence the sessions
+  // crawl did: a background pass could commit a new cache and leave the cards
+  // and the age pill drawn from the one before it.
+  async warmConfigCache(){
+    try {
+      const r = await this.refreshConfigCache(false);
+      if (r?.committed) document.dispatchEvent(new CustomEvent('web-tools:configs-refreshed'));
+    } catch(e){ console.warn('arrival config refresh:', e?.message || e); }
+  },
+
   // ── Coming back to a page that never left ─────────────────────────────
   // Every cache-backed pane warms itself on ARRIVAL, and arrival means a
   // navigation inside a running app: goActivity, goSessions, goState. On a
@@ -5329,6 +5354,7 @@ function app(){ return {
     const v = this.view;
     if (v === 'sessions' || v === 'state') this.warmSessionsCache();
     if (v === 'activity' || v === 'state') this.arrivalActivityRefresh();
+    if (v === 'estate' || v === 'state') this.warmConfigCache();
   },
 
   // Activity's other pill: the sessions that made the branches. Kicks its own
