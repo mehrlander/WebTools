@@ -238,15 +238,31 @@ try {
   await overPage(0, 900);
   s = await state();
   ok('away again', s.chrome.shown === false, JSON.stringify(s.chrome));
+  // A SWIPE IS NOT A TAP, and on a phone that is the whole difference. Every
+  // swipe opens with a pointerdown, so a restore bound to pointerdown put the
+  // chrome back at the start of the second swipe of a read and hid it again as
+  // the finger moved: a flicker per gesture, and to the reader "it does not
+  // work". This drives the pointer sequence a real finger produces, which a
+  // wheel never does, and asserts that it changes nothing.
   await page.evaluate(() => {
     const el = document.querySelector('[data-reader-slide] [data-pdf="stage"]');
-    const r = el.getBoundingClientRect();
-    el.dispatchEvent(new PointerEvent('pointerdown', {
-      bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }));
+    for (const type of ['pointerdown', 'pointerup']) {
+      el.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: 'touch' }));
+    }
   });
   await page.waitForTimeout(300);
   s = await state();
-  ok('a tap brings it back', s.chrome.shown === true, JSON.stringify(s.chrome));
+  ok('the start of another swipe leaves it away', s.chrome.shown === false, JSON.stringify(s.chrome));
+
+  // The tap itself, which on touch arrives as a click only when the gesture
+  // did not scroll.
+  await page.evaluate(() => {
+    document.querySelector('[data-reader-slide] [data-pdf="stage"]')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  });
+  await page.waitForTimeout(300);
+  s = await state();
+  ok('a real tap brings it back', s.chrome.shown === true, JSON.stringify(s.chrome));
 
   console.log('the workbench handoff is per document and per page:');
   await overPage(0, 1400);
