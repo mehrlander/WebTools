@@ -732,19 +732,52 @@ test('reach extends the armed pin only, and only when asked for', () => {
   D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 }, armed: 'end' });
   const plain = pins();
   assert.match(stem(plain.end), /height:0px/, 'no reach by default, so the stem is the line');
-  const plainBall = ball(plain.end);
+  assert.match(ball(plain.end), /translateY\(0px\)/, 'and the ball sits on it');
+  assert.doesNotMatch(ball(plain.end), /transition/, 'with nothing to animate');
 
-  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 }, armed: 'end', reach: 36 });
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 }, armed: 'end', reach: 18 });
   const out = pins();
-  assert.match(stem(out.end), /height:36px/, 'the armed stem carries the reach');
-  assert.notEqual(ball(out.end), plainBall, 'and the ball rides out to the end of it');
+  assert.match(stem(out.end), /height:18px/, 'the armed stem carries the reach');
+  assert.match(ball(out.end), /translateY\(18px\)/, 'and the ball rides out to the end of it');
   assert.match(stem(out.start), /height:0px/, 'the unarmed pin does not reach');
-  assert.equal(ball(out.start), ball(plain.start), 'nor does its ball move');
+  assert.match(ball(out.start), /translateY\(0px\)/, 'nor does its ball move');
 
   // The mark itself must not move: the stem still starts on the line, so what
   // the pin POINTS at is the same and only where you hold it changed.
   assert.match(stem(out.end), /top:17px/, 'the stem still begins on the line');
-  assert.match(out.end.getAttribute('style'), /height:70px/, 'the hit box grew with it');
+  assert.match(out.end.getAttribute('style'), /height:52px/, 'the hit box grew with it');
+
+  // THE REACH IS A TRANSFORM SO IT CAN BE ANIMATED, and position is not, so a
+  // drag is not made to trail the finger by the same transition.
+  assert.match(ball(out.end), /transition:transform/, 'the ball eases out');
+  assert.doesNotMatch(out.end.getAttribute('style'), /transition/, 'the hit box does not');
+});
+
+// The pins are KEPT across paints, because a rebuilt element has no previous
+// value to transition from. Identity is the gate: a caller may have attached a
+// listener to the node, and the reach cannot ease out of a node that is new.
+test('a pin survives a repaint, and goes when it is no longer drawn', () => {
+  // AN OVERLAY IS THE PRECONDITION, and it is not a detail: paint() clears the
+  // host to redraw the text, so a pin living in the host cannot survive by
+  // construction. Only a caller that hands over a separate overlay gets kept
+  // nodes, which is the same caller that wanted the pins unclipped.
+  const h = host();
+  const overlay = h.ownerDocument.createElement('div');
+  const draw = (o) => D.paint(h, { text: 'the quick fox', overlay, ...o });
+
+  draw({ range: { start: 4, end: 9 } });
+  const was = overlay.querySelector('[data-edge="start"]');
+  was.__mark = 1;
+  draw({ range: { start: 4, end: 9 }, armed: 'start', reach: 18 });
+  assert.equal(overlay.querySelector('[data-edge="start"]').__mark, 1,
+    'the same node was restyled, so the reach has something to ease out of');
+
+  draw({ range: { start: 4, end: 4 } });
+  assert.equal(overlay.querySelector('[data-edge]'), null,
+    'a collapsed range leaves no pins behind');
+  draw({ range: { start: 4, end: 9 }, handles: false });
+  assert.equal(overlay.querySelector('[data-edge]'), null,
+    'nor does turning them off for a mouse');
 });
 
 test('the caret is a plain inline, so it cannot break the word it sits inside', () => {

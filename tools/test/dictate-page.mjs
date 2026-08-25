@@ -401,6 +401,35 @@ try {
     (await armed()) === 'end', String(await armed()));
   ok('and does not fall through to place a caret in the text', !!(await sel()));
 
+  // THE VERTICAL DEADBAND. A short downward drag must not change the line, so
+  // the thumb can clear the text before anything moves and a wandering slide
+  // along a line does not step off it. A long one must.
+  const lineH = await page.evaluate(() =>
+    parseFloat(getComputedStyle(document.querySelector('[x-ref="view"]')).lineHeight));
+  const dragEnd = async (dy) => {
+    await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.d.select(4, 30); c.armed = null; c.paint(); });
+    await page.waitForTimeout(150);
+    const box = await page.locator('[x-ref="layer"] [data-edge="end"]').boundingBox();
+    const y0 = box.y + box.height - 4;
+    await page.mouse.move(box.x + box.width / 2, y0);
+    await page.mouse.down();
+    for (let i = 1; i <= 10; i++) {
+      await page.mouse.move(box.x + box.width / 2, y0 + (dy * i) / 10);
+      await page.waitForTimeout(20);
+    }
+    const r = await sel();
+    await page.mouse.up();
+    await page.waitForTimeout(120);
+    return r;
+  };
+  const base = await dragEnd(0);
+  const nudged = await dragEnd(lineH * 1.2);
+  ok('a drag of one line down does not move the edge off its line',
+    nudged && base && nudged.end === base.end, `${base?.end} -> ${nudged?.end}`);
+  const pushed = await dragEnd(lineH * 2.6);
+  ok('but past the deadband it steps, so the line is still reachable',
+    pushed && base && pushed.end > base.end, `${base?.end} -> ${pushed?.end}`);
+
   // The pins have to vanish from hit testing while one is being dragged, or
   // caret-from-point answers with the pin the aim point is tracking.
   await page.evaluate(() => {
@@ -433,10 +462,11 @@ try {
   });
   await page.waitForTimeout(150);
   const rest = await ballBox('start');
+  // (the reach assertions below; the deadband is checked after the drag)
   await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.armed = 'start'; c.paint(); });
   await page.waitForTimeout(150);
   const reached = await ballBox('start');
-  ok('arming lifts the ball clear of the line', rest && reached && rest.dot.y - reached.dot.y > 30,
+  ok('arming lifts the ball clear of the line', rest && reached && rest.dot.y - reached.dot.y > 14,
     `${rest?.dot.y} -> ${reached?.dot.y}`);
   ok('but the stem still ends on the line, so the mark did not move',
     Math.abs(reached.stem.bottom - rest.stem.bottom) < 1,

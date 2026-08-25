@@ -511,6 +511,23 @@
         this.pinDrag = which;
         this.paint();
         const EDGE = 6;
+        // ── THE VERTICAL DEADBAND ─────────────────────────────────────────
+        // Horizontal is one to one. VERTICAL IS IGNORED for the first line and
+        // a half of travel, and only then resumes, quantized to lines and
+        // measured from where the deadband ended rather than from the grab.
+        //
+        // So moving the edge down one line costs about two lines of thumb, and
+        // the first of those is spent getting the thumb off the words. That is
+        // the whole point: the finger clears the text before anything moves,
+        // and it does not have to be given a wide berth by the design, because
+        // the reader gives it one by dragging.
+        //
+        // It also fixes the commoner accident, which is not aiming at the
+        // wrong line but drifting onto one. A thumb sliding along a line to
+        // place an edge does not travel straight, and without a deadband a few
+        // pixels of wander step the edge into the line above.
+        const DEAD = 1.5;
+        const lineH = parseFloat(getComputedStyle(this.$refs.view).lineHeight) || 26;
         let moved = false;
         const d = document;
 
@@ -521,7 +538,9 @@
           moved = true;
           const b = this.$refs.view.getBoundingClientRect();
           let ax = from.x + (ev.clientX - from.px);
-          let ay = from.y + (ev.clientY - from.py);
+          const travel = (ev.clientY - from.py) / lineH;
+          const past = Math.abs(travel) <= DEAD ? 0 : travel - Math.sign(travel) * DEAD;
+          let ay = from.y + Math.round(past) * lineH;
           // Held against an edge, scroll, the same as the pad: an edge dragged
           // to the bottom of a buffer longer than the screen would otherwise
           // stop at whatever happens to be visible.
@@ -777,13 +796,14 @@
           // shift-click do the extending. The selection stays painted; only
           // the thing you would have tapped goes.
           handles: !this.precise,
-          // THE ARMED PIN RIDES OUT ON A STALK, one line of text plus a little,
-          // so the thumb that drags it is not sitting on the words either side
-          // of the edge it is placing. The mark does not move: the stem still
-          // ends on the line, and only the grip travels. On the first line it
-          // reaches up into the header, which is why the header carries no
-          // background and no stacking context of its own.
-          reach: 36,
+          // THE ARMED PIN RIDES OUT ON A STALK, half a line, easing rather
+          // than jumping. It is a smaller claim than it started as: the drag's
+          // vertical deadband is what actually keeps the thumb off the words,
+          // so the stalk is left saying "this one is live and grabbable" and
+          // not carrying the clearance on its own. On the first line it still
+          // reaches into the header, which needs no background there and no
+          // stacking context of its own. Set it to 0 to retire it.
+          reach: 18,
           // Only once there is something to be at the end OF. On an empty
           // buffer the end caret is a red bar alone in the corner, behind the
           // start prompt, and it reads as a rendering fault.
