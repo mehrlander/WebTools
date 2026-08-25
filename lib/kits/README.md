@@ -584,8 +584,8 @@ selected note, which is the reading no other surface offers. The window is 55%
 of the viewport and never past 440px, so the card stays a window over the
 document rather than a takeover of it. One row carries both choices, which
 reading and what it is a reading of: the three format chips, then a scope chip
-labelled by the selection (`Note 2`) that swaps on a tap, then `Copy`, which
-needs no format after it because the chips beside it are the qualifier. The
+labelled by the selection (`Note 2`) that swaps on a tap, then a copy key,
+which is a glyph and no word because the chips beside it are the qualifier. The
 footer is Save jot and Clear, and there is no status line: Save jot reports on
 its own label, and every other message it used to carry announced something
 the reader had just watched happen and then stayed.
