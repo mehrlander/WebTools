@@ -139,14 +139,26 @@ test('a branch the list no longer holds still opens, as a list of one', () => {
 // nothing to render though the cached PR row was holding one. Measured on
 // web-tools #293, whose session link was in the cache the whole time.
 
-// The options a slide is holding, read off the newest mount. The stub above
-// keeps them, and the deck hands them through a keyed global rather than
-// through the x-data expression.
-const slideOpts = () => {
-  const els = [...window.document.querySelectorAll('[x-data]')]
-    .filter(el => /^branchBrief\(window\.\w+\)$/.test(el.getAttribute('x-data') || ''));
-  const m = /^branchBrief\(window\.(\w+)\)$/.exec(els.at(-1)?.getAttribute('x-data') || '');
-  return m ? window[m[1]] : null;
+// The keyed globals the mounted slides are holding. The deck hands a slide
+// its options through one of these rather than through the x-data
+// expression, so this is where a test reads what a slide was given.
+const slideKeys = () => [...window.document.querySelectorAll('[x-data]')]
+  .map(el => /^branchBrief\(window\.(\w+)\)$/.exec(el.getAttribute('x-data') || ''))
+  .filter(Boolean).map(m => m[1]);
+
+// The options of a slide mounted since `before`. Waiting on the MOUNT rather
+// than on a count of turns is the honest wait: mountDeck awaits a six-link
+// kit chain before it renders anything, and a fixed count that suffices on an
+// idle machine does not under a parallel suite run, which this file produced
+// once before the poll went in. Keying on a NEW slide also refuses a stale
+// element left by an earlier test, which a "newest mount" read would take.
+const freshSlide = async (before, limit = 400) => {
+  for (let i = 0; i < limit; i++) {
+    const k = slideKeys().find(x => !before.includes(x));
+    if (k && window[k]) return window[k];
+    await tick(1);
+  }
+  return null;
 };
 
 test('a link opens a branch the window hides, and it arrives carrying its row', async () => {
@@ -155,13 +167,14 @@ test('a link opens a branch the window hides, and it arrives carrying its row', 
   window.__shell.branchWindow = 1;                // the shell's own default
   try {
     assert.equal(data.openRows.length, 0, 'the fixture really is outside the window');
+    const before = slideKeys();
     window.history.replaceState(null, '', '/?view=activity&detail=me/tools@claude/feat-b');
     data.openDetailFromUrl();
-    await tick(8);
     assert.equal(data.detailRow.name, 'claude/feat-b');
     assert.equal(data.detailRow.def, 'main', 'the cached row, not a name pulled out of the address');
     assert.deepEqual(data.detailRow.sessions, [SESS], 'so the session comes with it');
-    const opts = slideOpts();
+    const opts = await freshSlide(before);
+    assert.ok(opts, 'the slide mounted');
     assert.equal(opts.base, 'main', 'and the slide has something to compare against');
     assert.deepEqual(opts.facts.sessions, [SESS]);
     assert.equal(opts.facts.sessionsExact, true,
@@ -174,11 +187,13 @@ test('a branch no row exists for still gets a base', async () => {
   // fallback is right. It still may not be handed an empty base.
   data.closeDetail();
   data._detailFromUrl = false;
+  const before = slideKeys();
   window.history.replaceState(null, '', '/?view=activity&detail=me/tools@claude/never-crawled');
   data.openDetailFromUrl();
-  await tick(8);
   assert.equal(data.detailRow.name, 'claude/never-crawled');
-  assert.equal(slideOpts().base, 'main', "the repo's default branch, off the same cache");
+  const opts = await freshSlide(before);
+  assert.ok(opts, 'the slide mounted');
+  assert.equal(opts.base, 'main', "the repo's default branch, off the same cache");
 });
 
 test('the address survives a slashed branch name and refuses a malformed one', () => {
