@@ -545,3 +545,115 @@ test('a removal delivered as a PR titles and diffs itself as a removal', async (
   assert.match(body, /- true/);
   assert.match(body, /\+ \(removed\)/);
 });
+
+// ── delete-issue: the first mutation kind ─────────────────────────────────────
+// A mutation is not a file edit, so what these hold is that it stays inside the
+// channel's safety properties while leaving the file machinery alone: it fails
+// closed on a bad record, it refuses a delivery it cannot honor, its staleness
+// guard speaks in comments rather than shas, and an issue already gone reads as
+// done rather than as failure. GitHub's REST API cannot delete an issue at all,
+// which is why this kind exists; see the kit header.
+
+// A GH stub speaking GraphQL. `issue` null means the issue is not there, which
+// is what the API returns for a deleted one.
+function stubGraphQL(issue, log = []) {
+  return class {
+    constructor({ repo }) { this.repo = repo; }
+    async graphql(query, variables) {
+      const op = (query.match(/(?:query|mutation)\s+(\w+)/) || [])[1];
+      log.push({ op, variables });
+      if (op === 'ProposalIssue') return { repository: { issue } };
+      return { deleteIssue: { repository: { nameWithOwner: this.repo } } };
+    }
+  };
+}
+const liveIssue = (over = {}) => ({
+  id: 'I_kwDOabc', title: 'scratch: probes', state: 'CLOSED',
+  url: 'https://github.com/me/target/issues/498', comments: { totalCount: 6 }, ...over,
+});
+const del = (over = {}) => ({
+  id: 'delete-issue-498', kind: 'delete-issue', repo: 'me/target', issue: 498,
+  why: 'a scratch issue whose rows are transcribed into the docs', expectComments: 6, ...over,
+});
+
+test('a mutation record carries an issue number and refuses file fields', () => {
+  assert.equal(P.validate(del()).ok, true);
+  assert.match(P.validate(del({ issue: undefined })).error, /needs an issue number/);
+  assert.match(P.validate(del({ issue: 0 })).error, /needs an issue number/);
+  assert.match(P.validate(del({ path: '.web-tools.json' })).error, /takes no path/);
+  assert.match(P.validate(del({ expectSha: 'abc' })).error, /takes no expectSha/);
+  assert.match(P.validate(del({ why: '' })).error, /missing why/);
+});
+
+// The delivery menu is three ways of landing a FILE change. A deletion has no
+// softer form, so accepting `deliver` would promise a gentleness it cannot give.
+test('a mutation refuses a deliver rather than ignoring it', () => {
+  assert.match(P.validate(del({ deliver: 'pr' })).error, /takes no deliver/);
+  assert.match(P.validate(del({ deliver: 'commit' })).error, /takes no deliver/);
+});
+
+test('resolve reads the issue as it stands, not as the record described it', async () => {
+  const log = [];
+  const r = await P.resolve(del(), { GH: stubGraphQL(liveIssue({ title: 'renamed since' }), log), token: 't' });
+  assert.equal(r.ok, true);
+  assert.equal(r.exists, true);
+  assert.equal(r.issue.id, 'I_kwDOabc');
+  assert.equal(r.issue.title, 'renamed since', 'the card shows the live title');
+  assert.equal(r.issue.comments, 6);
+  assert.equal(log[0].op, 'ProposalIssue');
+  assert.equal(log[0].variables.number, 498);
+});
+
+test('the guard counts comments, since an issue has no blob sha', async () => {
+  const GH = stubGraphQL(liveIssue({ comments: { totalCount: 9 } }));
+  const p = del();
+  const r = await P.resolve(p, { GH, token: 't' });
+  assert.equal(r.stale, true);
+  const pre = P.checks(p, r);
+  assert.equal(pre.blocking, true);
+  assert.match(pre.list.find(c => c.key === 'unchanged').note, /now 9 comment\(s\), was 6/);
+});
+
+test('a stale issue refuses by default and records the override when forced', async () => {
+  const moved = () => stubGraphQL(liveIssue({ comments: { totalCount: 9 } }));
+  const refused = await P.apply(del(), { GH: moved(), token: 't' });
+  assert.equal(refused.ok, false);
+  assert.equal(refused.stale, true);
+  assert.match(refused.error, /expected 6 comment\(s\), found 9/);
+  const forced = await P.apply(del(), { GH: moved(), token: 't', force: true });
+  assert.equal(forced.ok, true);
+  assert.equal(forced.forced, true, 'forcing is recorded, never silent');
+  assert.equal(forced.foundComments, 9);
+});
+
+// The same rule the removal kinds follow: getting what you asked for is done.
+test('an issue already gone is done rather than failed', async () => {
+  const p = del();
+  const r = await P.resolve(p, { GH: stubGraphQL(null), token: 't' });
+  const pre = P.checks(p, r);
+  assert.equal(pre.done, true);
+  assert.equal(pre.blocking, false);
+  const out = await P.apply(p, { GH: stubGraphQL(null), token: 't' });
+  assert.equal(out.ok, false);
+  assert.equal(out.done, true);
+  assert.match(out.error, /no longer exists/);
+});
+
+test('applying runs the mutation and keeps what the issue was', async () => {
+  const log = [];
+  const out = await P.apply(del(), { GH: stubGraphQL(liveIssue(), log), token: 't', now: 'T' });
+  assert.equal(out.ok, true);
+  assert.equal(out.issue, 498);
+  assert.equal(out.deletedTitle, 'scratch: probes', 'the only durable trace once the object is gone');
+  assert.equal(out.deletedComments, 6);
+  assert.equal(out.path, undefined, 'a mutation record carries no path');
+  assert.deepEqual(log.map(l => l.op), ['ProposalIssue', 'ProposalDeleteIssue']);
+  assert.equal(log[1].variables.issueId, 'I_kwDOabc');
+});
+
+test('a mutation never reaches the network without gh-fetch loaded', async () => {
+  class NoGraphQL { async get() { throw new Error('should not be reached'); } }
+  const out = await P.apply(del(), { GH: NoGraphQL, token: 't' });
+  assert.equal(out.ok, false);
+  assert.match(out.error, /graphql missing/);
+});
