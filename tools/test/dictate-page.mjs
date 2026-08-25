@@ -156,11 +156,19 @@ try {
   ok('the target is on the viewport centre line',
     !!boxes.pad && Math.abs((boxes.pad.left + boxes.pad.right) / 2 - boxes.w / 2) < 4,
     `centre=${boxes.pad && (boxes.pad.left + boxes.pad.right) / 2} of ${boxes.w}`);
-  ok('backspace joined the header', !!boxes.back && boxes.back.top < 60, JSON.stringify(boxes.back));
+  // Backspace is the exception to the paragraph above and went back down on
+  // 2026-08-25: undo and redo are reached for a handful of times, but a
+  // misheard word is deleted mid-sentence, over and over, which is the test
+  // the rest of the bottom passes.
+  ok('backspace is on the bottom row', !!boxes.back && boxes.back.bottom > boxes.h - 24,
+    JSON.stringify(boxes.back));
   ok('Save is a thumb-sized target', !!boxes.save && boxes.save.height >= 44 && boxes.save.width >= 100,
     JSON.stringify(boxes.save));
-  ok('and it has the bottom row to itself', !!boxes.save && boxes.save.bottom > boxes.h - 24
-    && boxes.save.width > boxes.w * 0.9, JSON.stringify(boxes.save));
+  ok('and Save still takes most of that row', !!boxes.save && boxes.save.bottom > boxes.h - 24
+    && boxes.save.width > boxes.w * 0.75, JSON.stringify(boxes.save));
+  ok('with backspace beside it rather than under it',
+    !!boxes.back && !!boxes.save && boxes.back.right <= boxes.save.left,
+    `back.right=${boxes.back?.right} save.left=${boxes.save?.left}`);
   ok('the shell does not scroll the document', boxes.docH <= boxes.h + 1,
     `body=${boxes.docH} viewport=${boxes.h}`);
   ok('the painter is asked for no arrow cluster',
@@ -810,6 +818,113 @@ try {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2500);
   ok('a note that was FILED does not come back', !(await buffer()).trim(), await buffer());
+
+  // ── 4a. The two halves lay text out identically ──────────────────────
+  // Switching to the keyboard must not reflow the paragraph. The panes are
+  // separate elements carrying separate class lists, so nothing but a check
+  // holds them together: they drifted on `tracking` alone, which ran the type
+  // 0.21px wider per character in the textarea, 16.8px over a 79-character
+  // line. Mirrored rather than read off line boxes, since a textarea has none
+  // to read: each side builds a probe from its OWN computed style at its own
+  // content width, and the two probes must agree.
+  console.log('the two halves:');
+  const SAMPLE = 'The quick brown fox jumps over the lazy dog and keeps on running past the '
+    + 'fence. Then it turned round and came back the way it had gone, twice over.';
+  const mirror = (target) => page.evaluate(([sel, t]) => {
+    const el = document.querySelector(sel);
+    const cs = getComputedStyle(el);
+    const w = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const d = document.createElement('div');
+    d.style.cssText = `position:fixed;left:-9999px;top:0;width:${w}px;font-family:${cs.fontFamily};`
+      + `font-size:${cs.fontSize};font-weight:${cs.fontWeight};line-height:${cs.lineHeight};`
+      + `letter-spacing:${cs.letterSpacing};word-spacing:${cs.wordSpacing};`
+      + `white-space:pre-wrap;overflow-wrap:${cs.overflowWrap};word-break:${cs.wordBreak}`;
+    d.textContent = t;
+    document.body.appendChild(d);
+    const h = Math.round(d.getBoundingClientRect().height);
+    d.remove();
+    return { width: Math.round(w), height: h };
+  }, [target, SAMPLE]);
+
+  await open();
+  await page.evaluate((t) => {
+    const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0];
+    c.d.text = t; c.started = true; c.paint();
+  }, SAMPLE);
+  await page.waitForTimeout(300);
+  const readShape = await mirror('[x-ref="body"]');
+  await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].editOpen(0));
+  await page.waitForTimeout(300);
+  const editShape = await mirror('[x-ref="ta"]');
+  ok('the read pane and the textarea wrap to the same shape',
+    readShape.width === editShape.width && readShape.height === editShape.height,
+    `${JSON.stringify(readShape)} vs ${JSON.stringify(editShape)}`);
+
+  // THE KEYBOARD BUTTON CARRIES THE SELECTION, which the double tap cannot:
+  // it lands on a point and a point collapses one. That is the whole reason
+  // the button exists rather than being a second route to the same place.
+  await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].editClose());
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0];
+    c.precise = false; c.d.select(4, 9); c.armed = null; c.paint();
+  });
+  await page.waitForTimeout(200);
+  await page.locator('button[title^="Type."]').click();
+  await page.waitForTimeout(400);
+  const carried = await page.evaluate(() => {
+    const ta = document.querySelector('[x-ref="ta"]');
+    return { start: ta.selectionStart, end: ta.selectionEnd, over: ta.value.slice(ta.selectionStart, ta.selectionEnd) };
+  });
+  ok('the selection crosses into the keyboard intact',
+    carried.start === 4 && carried.end === 9, JSON.stringify(carried));
+  ok('so the first thing typed replaces those words', carried.over === 'quick', carried.over);
+  // The pin layer sits OUTSIDE the read pane's x-show, so it does not go with
+  // it. Invisible while the only way in was a double tap, which collapses a
+  // selection; now the button carries one across, both marks were drawn.
+  ok('and the pins come off, leaving the textarea to mark it once',
+    await page.evaluate(() => !document.querySelector('[data-edge]')));
+
+  // And a double tap still wins where it lands, since it said WHERE.
+  await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].editClose());
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0];
+    c.d.select(4, 9); c.paint(); c.editOpen(30);
+  });
+  await page.waitForTimeout(400);
+  ok('an offset the reader pointed at still wins over the selection',
+    await page.evaluate(() => {
+      const ta = document.querySelector('[x-ref="ta"]');
+      return ta.selectionStart === 30 && ta.selectionEnd === 30;
+    }));
+
+  // A long word breaks rather than scrolling the pane sideways, which is the
+  // other half of matching the two: the textarea already broke it.
+  await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].editClose());
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0];
+    c.d.text = 'see https://mehrlander.github.io/web-tools/pages/toss-render.html#gh=owner/repo:pages/dictate.html for it';
+    c.paint();
+  });
+  await page.waitForTimeout(300);
+  ok('a URL too long for the measure breaks instead of scrolling the pane',
+    await page.evaluate(() => {
+      const v = document.querySelector('[x-ref="view"]');
+      return v.scrollWidth - v.clientWidth === 0;
+    }));
+
+  // THE DELETE KEY IS IN THE BOTTOM ROW, beside Save rather than in the
+  // header: it is tapped over and over mid-sentence, which is what the rows
+  // down here are for.
+  ok('backspace sits in the bottom row, not the header',
+    await page.evaluate(() => {
+      const b = document.querySelector('button:has(i.ph-backspace)');
+      if (!b) return false;
+      const save = document.querySelector('button:has(i.ph-paper-plane-tilt)');
+      return b.parentElement === save.parentElement;
+    }));
 
   // ── 4b. The two modifier taps ────────────────────────────────────────
   // Keyboard, so desktop only in practice, but the checks are the cheap half:

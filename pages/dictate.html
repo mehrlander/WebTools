@@ -1142,7 +1142,17 @@
           // And no pins once a mouse or a keyboard is in play: drag and
           // shift-click do the extending. The selection stays painted; only
           // the thing you would have tapped goes.
-          handles: !this.precise,
+          //
+          // NOR WHILE THE TEXTAREA IS UP, which is not the same reason. The
+          // read pane is hidden then but the pin layer is not: it sits outside
+          // the scroll box on purpose, so a pin can hang above the first line
+          // rather than being cut in half, and that also puts it outside the
+          // `x-show` that hides the words. It never showed while the only way
+          // in was a double tap, which lands on a point and collapses the
+          // selection to a caret. The keyboard button carries a selection
+          // across intact, so two pins were suddenly drawn on top of the
+          // textarea's own native one, marking the same words twice.
+          handles: !this.precise && !this.edit,
           // NO STALK. The armed pin was pushed out on one, first 36px and then
           // 18, to keep the thumb off the words it was aiming at. THE DRAG'S
           // VERTICAL DEADBAND does that instead, and does it better: the
@@ -1194,17 +1204,33 @@
       //
       // The way out is the keyboard's own: blur, or Escape. There is no
       // control of its own to find.
+      // `at` is an offset the reader POINTED AT, which only the double tap
+      // has; the button has none and takes the selection instead. Both end at
+      // the same call, so the textarea is always opened somewhere deliberate.
       editOpen(at) {
         this.d.flush();                  // the phrase on screen is part of what is being edited
         this._resume = this.listening;
         this.d.stop();
+        // READ THE RANGE AFTER THE FLUSH, not before. A flush with a selection
+        // live is a REPLACEMENT: the running hypothesis lands over the
+        // selected words and the kit leaves the range over what replaced them.
+        // Read first and the offsets describe a buffer that has since moved.
+        const r = this.d.range;
         this.draft = this.d.text;
         this.edit = true;
+        this.paint();                    // after the flag, so the pins come off with it
         this.$nextTick(() => {
           const ta = this.$refs.ta;
           if (!ta) return;
           ta.focus();
+          // A SELECTION CROSSES INTACT, which is the whole point of the
+          // button: the first thing typed replaces the words that were picked
+          // out, which is the one repair a keyboard does better than a voice.
+          // A caret is the same call with the two offsets equal, and nothing
+          // selected opens at the end, where dictation would have carried on.
           if (typeof at === 'number') ta.setSelectionRange(at, at);
+          else if (r) ta.setSelectionRange(r.start, r.end);
+          else ta.setSelectionRange(this.draft.length, this.draft.length);
         });
       },
       editClose() {
@@ -1473,10 +1499,17 @@
       <button @click="redo()" :disabled="!canRedo" class="btn btn-ghost btn-md btn-square" title="Redo">
         <i class="ph ph-arrow-clockwise text-xl"></i>
       </button>
-      <button @pointerdown.prevent="back()" :disabled="edit"
-              class="btn btn-ghost btn-md btn-square text-error"
-              title="Delete the last word (dictation keeps running)">
-        <i class="ph ph-backspace text-xl"></i>
+      <!-- THE KEYBOARD, on a button rather than only on a double tap. The
+           double tap stays and is still the better aim, since it says WHERE
+           as well as that you want to type. What it cannot do is carry a
+           selection: it lands on a point, and a point collapses one. This
+           does the other thing, and it is the reason it exists rather than
+           being a second route to the same place: whatever is selected comes
+           across selected, so the first thing typed replaces it. -->
+      <button @click="editOpen()" :disabled="edit"
+              class="btn btn-ghost btn-md btn-square"
+              title="Type. Anything selected comes across selected, so typing replaces it.">
+        <i class="ph ph-keyboard text-xl"></i>
       </button>
       <!-- The menu is a DROPDOWN, not a band. As a band it inserted itself
            between the header and the text and pushed the words down the screen
@@ -1537,7 +1570,7 @@
 
     <div class="relative grow min-w-0">
       <div x-show="!edit" x-ref="view" data-dictate-view class="absolute inset-0 overflow-y-auto px-4 py-3" @scroll="paint()">
-        <div class="whitespace-pre-wrap text-[21px] leading-[1.65] tracking-[-0.01em]"
+        <div class="whitespace-pre-wrap break-words text-[21px] leading-[1.65] tracking-[-0.01em]"
              x-ref="body" @contextmenu.prevent></div>
 
         <!-- Nothing said yet. The whole empty surface IS the start button,
@@ -1553,10 +1586,26 @@
 
       <!-- The keyboard half, and it has no controls of its own: blur or
            Escape is the way out, which is the keyboard's own gesture and the
-           one a reader already reaches for. -->
+           one a reader already reaches for.
+           
+           ITS TYPE CLASSES MATCH THE READ PANE'S EXACTLY, and the list has to
+           be read as one thing rather than tidied per side: the same size,
+           the same leading, the same tracking, the same wrap rule, the same
+           padding, over the same 358px content box. A word wrapping one
+           character earlier here than there is the whole paragraph reflowing
+           under the reader at the moment they switch, and it reads as the
+           text having moved rather than as a font detail.
+           
+           Measured 2026-08-25, when it did not match: the read pane carried
+           `tracking-[-0.01em]` and this did not, so 21px type ran 0.21px wider
+           per character, 16.8px over a 79-character line. Everything else was
+           already identical, which is what made it hard to see and easy to
+           fix. `break-words` went the other way, onto the read pane, so a URL
+           too long for the measure breaks in both rather than scrolling in
+           one. -->
       <textarea x-show="edit" x-cloak x-ref="ta" x-model="draft"
                 @blur="editClose()" @keydown.escape="editClose()"
-                class="absolute inset-0 w-full h-full resize-none textarea rounded-none border-0 text-[21px] leading-[1.65] px-4 py-3 focus:outline-none"
+                class="absolute inset-0 w-full h-full resize-none textarea rounded-none border-0 text-[21px] leading-[1.65] tracking-[-0.01em] break-words px-4 py-3 focus:outline-none"
                 placeholder="Type instead"></textarea>
     </div>
 
@@ -1590,10 +1639,21 @@
   </div>
 
   <!-- ── The bottom row ──────────────────────────────────────────────────
-       One control. Everything else is in the header now, and what is left is
-       the one that ends the note. -->
+       The one that ends the note, and the one tapped most while writing it.
+       Backspace sat in the header beside undo and redo, on the reading that
+       the three are one group: they all take something back. True, and the
+       wrong grouping. Undo and redo are reached for occasionally and from
+       anywhere; backspace is reached for over and over in the middle of
+       talking, which is what the pad row above is tall for. It belongs where
+       the thumb already is, so it moved down here beside the keys rather
+       than up there beside its logical siblings. -->
   <div class="shrink-0 flex items-stretch gap-1 px-1 pb-1 pt-1"
        style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.25rem)">
+    <button @pointerdown.prevent="back()" :disabled="edit"
+            class="btn btn-ghost bg-base-200 h-12 min-h-0 w-14 px-0 text-error"
+            title="Delete the last word (dictation keeps running)">
+      <i class="ph ph-backspace text-2xl"></i>
+    </button>
     <button @click="openSheet()" :disabled="empty && !draft.trim()"
             class="btn btn-primary h-12 min-h-0 grow gap-1.5 px-0">
       <i class="ph ph-paper-plane-tilt text-lg"></i>Save
