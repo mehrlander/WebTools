@@ -23,6 +23,8 @@ class FakeGH {
   async compare() { return { ahead_by: 0, behind_by: 0, commits: [], files: [] }; }
 }
 
+const SESS = 'https://claude.ai/code/session_01FEAT';
+
 const { window, problems } = makeWindow({
   html: '<!doctype html><html><body><div id="es" x-data="estate()"></div></body></html>',
 });
@@ -73,7 +75,7 @@ data.activity = {
     openPRs: ['a', 'b', 'c'].map((n, i) => ({
       number: 300 + i, head: 'claude/feat-' + n, draft: true, title: 'work on ' + n,
       updatedAt: '2026-08-06T00:00:00Z', aheadBy: 2, behindBy: 0,
-      firstDate: '2026-08-04T00:00:00Z',
+      firstDate: '2026-08-04T00:00:00Z', sessions: [SESS], sessionsExact: true,
     })),
     scan: { branches: ['a', 'b', 'c'].map(n => ({
       name: 'claude/feat-' + n, sha: n, group: 'active',
@@ -126,6 +128,57 @@ test('a branch the list no longer holds still opens, as a list of one', () => {
   data.openDetailFromUrl();
   assert.equal(data.detail.rows.length, 1, 'nowhere to swipe, but somewhere to land');
   assert.equal(data.detailRow.name, 'claude/long-merged');
+});
+
+// ── a link is not a claim about the current filter ──────────────────────────
+// The row lookup used to run over `openRows`, the list as the reader has it
+// filtered. The app's default scope is Recent inside a ONE-DAY window, so an
+// open PR from last month misses it and the takeover fell back to a bare
+// {repo, name}: no default branch, so the slide's compare asked for
+// `compare/...branch` and 404'd, and no sessions, so the Claude mark had
+// nothing to render though the cached PR row was holding one. Measured on
+// web-tools #293, whose session link was in the cache the whole time.
+
+// The options a slide is holding, read off the newest mount. The stub above
+// keeps them, and the deck hands them through a keyed global rather than
+// through the x-data expression.
+const slideOpts = () => {
+  const els = [...window.document.querySelectorAll('[x-data]')]
+    .filter(el => /^branchBrief\(window\.\w+\)$/.test(el.getAttribute('x-data') || ''));
+  const m = /^branchBrief\(window\.(\w+)\)$/.exec(els.at(-1)?.getAttribute('x-data') || '');
+  return m ? window[m[1]] : null;
+};
+
+test('a link opens a branch the window hides, and it arrives carrying its row', async () => {
+  data.closeDetail();
+  data._detailFromUrl = false;
+  window.__shell.branchWindow = 1;                // the shell's own default
+  try {
+    assert.equal(data.openRows.length, 0, 'the fixture really is outside the window');
+    window.history.replaceState(null, '', '/?view=activity&detail=me/tools@claude/feat-b');
+    data.openDetailFromUrl();
+    await tick(8);
+    assert.equal(data.detailRow.name, 'claude/feat-b');
+    assert.equal(data.detailRow.def, 'main', 'the cached row, not a name pulled out of the address');
+    assert.deepEqual(data.detailRow.sessions, [SESS], 'so the session comes with it');
+    const opts = slideOpts();
+    assert.equal(opts.base, 'main', 'and the slide has something to compare against');
+    assert.deepEqual(opts.facts.sessions, [SESS]);
+    assert.equal(opts.facts.sessionsExact, true,
+      'the crawl read them off its own compare, so the slide is told they are exact');
+  } finally { window.__shell.branchWindow = 0; }
+});
+
+test('a branch no row exists for still gets a base', async () => {
+  // The other half: nothing in the cache carries this branch, so the bare
+  // fallback is right. It still may not be handed an empty base.
+  data.closeDetail();
+  data._detailFromUrl = false;
+  window.history.replaceState(null, '', '/?view=activity&detail=me/tools@claude/never-crawled');
+  data.openDetailFromUrl();
+  await tick(8);
+  assert.equal(data.detailRow.name, 'claude/never-crawled');
+  assert.equal(slideOpts().base, 'main', "the repo's default branch, off the same cache");
 });
 
 test('the address survives a slashed branch name and refuses a malformed one', () => {
