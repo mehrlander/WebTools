@@ -518,16 +518,16 @@ try {
   ok('and the edge under the finger arms as it goes', (await armed()) === 'end');
   await page.mouse.up();
   await page.waitForTimeout(150);
-  ok('the release leaves it armed, so the pad continues the same gesture',
-    (await armed()) === 'end');
+  ok('the release puts the pin down, as every drag here does',
+    (await armed()) === null, String(await armed()));
   ok('and does not fall through to place a caret', !!(await sel()));
   ok('nor leave the pins transparent afterwards',
     await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].pinDrag) === null);
 
   // A PLAIN DRAG SELECTS, no long press. Sideways is the qualifier on a touch
-  // screen, since the pane must keep the vertical axis to scroll. Unlike a pin
-  // drag it KEEPS its arming on release, because it created the selection and
-  // the armed edge says which end you were moving.
+  // screen, since the pane must keep the vertical axis to scroll. The edge
+  // arms WHILE the drag runs, to show which end is moving, and the release
+  // puts it down: one rule across all three drags.
   await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.d.clearRange(); c.armed = null; c.paint(); });
   await page.waitForTimeout(150);
   await page.mouse.move(line1.x + 40, line1.y + 12);
@@ -541,7 +541,8 @@ try {
   ok('and arms the edge it is moving', (await armed()) === 'end', String(await armed()));
   await page.mouse.up();
   await page.waitForTimeout(150);
-  ok('the release leaves that edge armed too', (await armed()) === 'end');
+  ok('and puts it down again on release', (await armed()) === null, String(await armed()));
+  ok('leaving the selection it made', !!(await sel()));
 
   // THE SAME VERTICAL HOLD, with the finger on the text rather than on a ball.
   // A drag that goes sideways and a little down must not step a line: that

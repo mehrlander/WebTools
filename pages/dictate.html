@@ -548,9 +548,9 @@
           // under the press, which threw the word away and lit no pin, so the
           // gesture appeared to work and quietly did something else.
           //
-          // The edge under the finger arms as it goes, which is what makes the
-          // rest of the page continue the gesture: lift, and the pad or that
-          // pinhead refines the edge you were already moving.
+          // The edge under the finger arms as it goes, so the moving end is
+          // visible while it moves. The release puts it down again, like every
+          // other drag here.
           if (word) {
             const i = at(e.clientX, this.dragY(y, y, e.clientY, lineOf()));
             if (i == null) return;
@@ -612,11 +612,21 @@
           // A drag claims its own release: the tap logic below would read it as
           // a click and drop a caret where the selection just finished.
           //
+          // AND EVERY DRAG ENDS WITH THE PIN DOWN. The edge arms as the drag
+          // runs, which is what says which end is moving while it moves, and
+          // letting go is the end of that: the selection stands and the pin
+          // goes back to blue. One rule for all three drags, the pin's own
+          // included, so a lifted finger never leaves a mode behind.
+          //
           // `pinDrag` is cleared HERE and not above, which is not tidiness. A
           // pin's own drag has no `dragging` and is caught by the guard below,
           // so clearing the flag before that guard reads it lets the release
           // fall through and drop a caret over the selection just made.
-          if (dragging) { dragging = false; anchor = null; taps = 0; this.pinDrag = null; return; }
+          if (dragging) {
+            dragging = false; anchor = null; taps = 0;
+            this.pinDrag = null; this.armed = null; this.paint();
+            return;
+          }
           anchor = null;
           if (this.edit || long || this.padDrag || this.pinDrag) return;
           const pin = e.target?.closest?.('[data-edge]');
@@ -754,13 +764,11 @@
           // behaviour the pinheads have always had: tap to arm, tap again to
           // put down.
           //
-          // A DRAG PUTS IT DOWN, always. This drag STARTED from an armed pin,
-          // so the arming was the grip rather than a mode to leave behind, and
-          // letting go is the end of it: the pin goes back to blue and the
-          // selection stands. Same shape as the two-tap maneuver, which also
-          // sets rather than staying live. The other two drags CREATE a
-          // selection and keep their edge armed, since there the arming says
-          // which end you were moving and the pad can carry on with it.
+          // A DRAG PUTS IT DOWN, and so does every other drag on this page
+          // (see the text box's own release). The arming is what says which
+          // end is moving WHILE it moves; letting go ends that, leaving the
+          // selection and a blue pin. Same shape as the two-tap maneuver,
+          // which also sets rather than staying live.
           if (moved || was) this.armed = null;
           this.paint();
           d.removeEventListener('pointermove', move, true);
