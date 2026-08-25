@@ -85,17 +85,21 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   `[new]` is the branch tip; `[main]` is the baseline. `[main]/[diff]` is the net change against main; `[new]/[diff]` is on-branch history. Add `#L120` or `#L120-L145` for line anchors. Keep rows uniform and do not repeat a file's links within a turn.
 
-  **The GitHub MCP's write path defangs five link shapes** by wrapping them in backticks, so they render as literal text on GitHub and in every downstream reader. In any body or comment written through the MCP, substitute; chat replies keep the full forms, which travel untouched:
+  **The GitHub MCP's write path wraps a long URL in backticks**, so the link renders as literal text on GitHub and in every downstream reader. The rule is **length, and only length: 150 characters or more inside a markdown link is wrapped and dies; 149 or fewer survives.** It holds on both write paths, a PR body and an issue comment alike. Chat replies are untouched by any of this and keep the full forms.
 
-  | In chat | In an MCP-written body |
+  So there is one substitution, and it is arithmetic: **count the URL, and get under 150.** The ways to do that, in the order worth trying:
+
+  | Too long | Shorten it to |
   | --- | --- |
-  | `[main](…)/[diff](…)` slash-joined pairs | separate with `, ` |
-  | a compare URL with a `#diff-<hex>` anchor | the plain compare URL |
   | a toss carrying `?use=` and `#gh=` together | `#gh=` only (dependencies already load from the ref) |
-  | a `#gh=` ref containing a slash plus a `:path` (every `claude/…` branch) | address the commit SHA |
-  | a `:path` deeper than one slash | link the branch page, or hand a `#gz=` |
+  | a `#gh=` address on a `claude/…` branch | the commit SHA, which is shorter than the branch name |
+  | a compare URL with a `#diff-<hex>` anchor | the plain compare URL |
+  | a deep `:path` in a toss | the branch page, or hand a `#gz=` in chat |
+  | anything still over | leave the render link out of the body and put it in the chat caption |
 
-  The last two compound rather than substitute: switching a wrapped link to the SHA fixes a one-slash path and leaves a two-slash one exactly as broken, so **a nested page cannot be tossed from a body at all**, and the render link lives in the chat caption rather than the body. The measurements behind each row, with their probes and controls, are in [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md) (2026-08-08 PR #372, 2026-08-09 PR #388, 2026-08-10 PR #385).
+  `[main](…)/[diff](…)` slash-joined pairs are the one row that is not a length matter: separate them with `, `. The pair was measured wrapping in 2026-07-29's probe and has not been re-tested against the length rule.
+
+  This replaces a table of five link SHAPES on 2026-08-25, after four rounds varying one thing at a time (PR #497). The shapes were correlates: a toss with `?use=`, a compare URL with an anchor, a `claude/…` branch plus a `:path` all routinely run past 150 characters. What settles it is the control at equal length, since the same 155-character URL wraps whether or not it carries the `owner/repo@ref` the shape rules named, and a 132-character `#gh=` address carrying both a slashed ref and a `:path` survives. The measurements, with every probe and control, are in [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
 
   When a renderable HTML page changed, put its 🥏 or 📦 render after the list, not in a row. The list carries source; the render line carries the running page. Apply the same honesty gate as ⭐.
 
