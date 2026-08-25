@@ -85,7 +85,7 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   `[new]` is the branch tip; `[main]` is the baseline. `[main]/[diff]` is the net change against main; `[new]/[diff]` is on-branch history. Add `#L120` or `#L120-L145` for line anchors. Keep rows uniform and do not repeat a file's links within a turn.
 
-  **The GitHub MCP's write path wraps a long URL in backticks**, so the link renders as literal text on GitHub and in every downstream reader. The rule is **length, and only length: 150 characters or more inside a markdown link is wrapped and dies; 149 or fewer survives.** It holds on both write paths, a PR body and an issue comment alike. Chat replies are untouched by any of this and keep the full forms.
+  **The GitHub MCP's write path wraps a long URL in backticks**, so the link renders as literal text on GitHub and in every downstream reader. The rule is **length, and only length: 150 characters or more inside a markdown link is wrapped and dies; 149 or fewer survives.** The label does not contribute, however long it runs. The count applies to a URL **anywhere in the text**, not only inside a link: a plain code span at 150 or more is stored double-backticked with quotes added around the address, which survives as readable text but is not left alone either. It holds on both write paths, a PR body and an issue comment alike. Chat replies are untouched by any of this and keep the full forms.
 
   So there is one substitution, and it is arithmetic: **count the URL, and get under 150.** The ways to do that, in the order worth trying:
 
@@ -97,9 +97,9 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
   | a deep `:path` in a toss | the branch page, or hand a `#gz=` in chat |
   | anything still over | leave the render link out of the body and put it in the chat caption |
 
-  `[main](…)/[diff](…)` slash-joined pairs are the one row that is not a length matter: separate them with `, `. The pair was measured wrapping in 2026-07-29's probe and has not been re-tested against the length rule.
+  `[main](…)/[diff](…)` slash-joined pairs are the same arithmetic over a longer span, not an exception to it. `)/[` does not end the URL, so the count runs from the first URL's first character through the second URL's last, joining punctuation and the second label included: two clean 70-character links make one 149-character span, and a single character more wraps the pair. Separate them with `, `, which ends the run and puts each URL back on its own count.
 
-  This replaces a table of five link SHAPES on 2026-08-25, after four rounds varying one thing at a time (PR #497). The shapes were correlates: a toss with `?use=`, a compare URL with an anchor, a `claude/…` branch plus a `:path` all routinely run past 150 characters. What settles it is the control at equal length, since the same 155-character URL wraps whether or not it carries the `owner/repo@ref` the shape rules named, and a 132-character `#gh=` address carrying both a slashed ref and a `:path` survives. The measurements, with every probe and control, are in [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
+  This replaces a table of five link SHAPES on 2026-08-25, after four rounds varying one thing at a time (PR #497), and five more settling what the count covers (issue #498). The shapes were correlates: a toss with `?use=`, a compare URL with an anchor, a `claude/…` branch plus a `:path` all routinely run past 150 characters. What settles it is the control at equal length, since the same 155-character URL wraps whether or not it carries the `owner/repo@ref` the shape rules named, and a 132-character `#gh=` address carrying both a slashed ref and a `:path` survives. The measurements, with every probe and control, are in [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
 
   When a renderable HTML page changed, put its 🥏 or 📦 render after the list, not in a row. The list carries source; the render line carries the running page. Apply the same honesty gate as ⭐.
 
@@ -114,11 +114,12 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   Keep the reply and the guide body in sync. A bare reply implies nothing is viewable yet. The render line is part of the caption at **every size**, turn-size refinement closers included: the smaller a diff feels, the more the reader wants to look, so if there is no render link, say why (the renderer itself is what changed, the page's data is an untracked build artifact), never omit it silently.
 * **Session diff:** summarize substantial work with `Session diff: [main...branch](url)`.
-* **Closing state:** every reply that finishes work or proposes more ends with exactly one of six labeled states, so the cheapest useful answer is one word. The bold label carries the meaning; the color makes it scannable:
+* **Closing state:** every reply that finishes work or proposes more ends with exactly one of seven labeled states, so the cheapest useful answer is one word. The bold label carries the meaning; the color makes it scannable:
 
   - 🟢 **Ready to continue:** named work available on "go", listed as bullets. "Go" authorizes only what the list names, and "go 1, 3" takes a subset. Work the session conceives belongs here as a proposal (Keep focus), never done unprompted.
   - 🟡 **Decision needed:** continuation depends on the user's call, and the state names the decision.
   - ⚪ **Natural stopping point:** no further work proposed; the wrap-up offer lives here.
+  - 🔵 **Short answer:** for an answer-only or answer-mainly response, briefly restate what was asked and the answer.
   - 🟠 **Attention:** something concrete needs addressing before proceeding. Reserved for an actual problem or risk, not routine uncertainty. Amber is the alarm here, and red is not a louder version of it.
   - 🟣 **Merged:** this workstream's branch merged. One line on what shipped.
   - 🔴 **Closed:** this workstream's branch abandoned, its PR closed unmerged. Say why in one line.

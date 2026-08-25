@@ -1,0 +1,1825 @@
+<!doctype html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Dictate</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🎙️</text></svg>">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+
+<!--
+  dictate.html — the blank page you talk at.
+
+  Every other caller of kits/dictate.js attaches the voice buffer to something:
+  the annotator pins a note to a passage, the stage makes a file out of it, the
+  FAB's menu stages a note about the page you are reading. All three are right
+  and none of them answers "I want to say a thing." That address did not exist,
+  which is why the dictation stack could be complete and still not be reached
+  for. This page is the missing address and nothing else: a full viewport of
+  text, a pad under your thumb, and somewhere for the words to go.
+
+  IT IS A PHONE PAGE FIRST. Not responsive-so-it-also-works: the shell is the
+  viewport (h-dvh, no document scroll, so no pull-to-refresh and no rubber
+  band), the controls sit at the bottom where a thumb already is, the type runs
+  large enough to read at arm's length while speaking, and the bottom row
+  clears the home indicator. A desktop gets the same thing centred, which costs
+  nothing and is the honest way round: the hard constraints are the phone's.
+
+  THE GESTURE LAYER IS THE NOTES COMPOSER'S (kits/annotate.js), not the
+  stage's. The first cut of this page took the stage's dictation card, which
+  is a version behind: it keeps the painter's arrow cluster because it has no
+  cursor pad, and it still carries a pencil into the keyboard. What came
+  across on 2026-08-23 is the composer's answer to both. The PAD is held and
+  dragged, the caret moves and the button does not, so placing one no longer
+  means putting a thumb over the two words either side of it; `arrows: false`
+  follows, since an armed pin is dragged the same way. A DOUBLE TAP opens the
+  keyboard where it landed, and the pencil is gone. What did NOT come across
+  is the composer's vertical mark column, for a reason measured rather than
+  preferred: see "The text" below.
+
+  WHAT IT ADDS TO THE KIT, since the kit is where the composition rules live:
+
+    THE ENGINE IS KEPT ALIVE. Not here, in the kit, but this page is why it
+    was fixed. `continuous` is a request WebKit does not honor past its own
+    silence timeout, so the microphone switched itself off at every thinking
+    pause. Survivable for a one-sentence note; fatal for the thing this page
+    is for. See "Keeping the engine alive" in kits/dictate.js.
+
+    THE DRAFT SURVIVES THE PAGE. Every change writes the buffer to
+    localStorage, and it is restored on the next load. A phone call, a swipe
+    to another app that comes back cold, a stray reload: none of them should
+    cost ten minutes of talking. The draft is cleared when the words reach
+    somewhere durable, so a session that ENDED properly opens blank and only
+    an INTERRUPTED one comes back.
+
+    THE SCREEN IS HELD AWAKE while listening, because a phone that dims and
+    locks takes the microphone with it, and nothing about that failure tells
+    the reader what happened.
+
+    TWO MODIFIER TAPS, for the desk rather than the phone, where the hands are
+    free and idle. Both say something only the reader can know, because it is
+    about words not yet spoken: CONTROL un-ends the sentence the pause just
+    closed, so the words still coming belong to it; SHIFT capitalizes the next
+    word, or recases the selected one. Tapped alone, acted on release, so a
+    chord is not mistaken for one. See "The two modifier taps" below.
+
+    IT COMES BACK FROM THE BACKGROUND. Switching apps kills the recognition
+    outright, past anything a relaunch timer can see, so returning to a
+    visible page restarts it if the reader never asked to stop.
+
+    THE WORDS GO SOMEWHERE. This is the half that makes it a tool rather than
+    a textarea. Copy and Share read the buffer; Jot files it in the estate's
+    pile (the registry's lists/jots.json, which the app already renders at
+    ?view=jots) and Drop writes a dated markdown file into home's chron/dump/,
+    the tray /drain reads. The two that file it durably clear the buffer; the
+    two that only read it leave it alone.
+
+    AUTOCORRECT, and the plain word is the right one: it is find and replace
+    over a list, whole words, longest first, applied to each segment as it
+    lands (kits/dictate.js `opts.fix`). It earns its place only because iOS
+    Text Replacement reaches the keyboard and not a page's speech results,
+    and because the Web Speech API's own SpeechGrammarList does nothing in
+    WebKit. The list lives in the registry and the menu row adds to it from
+    whatever is selected, so it gets better the more it is wrong. What it
+    cannot do is context: homophones are out of its reach entirely, and only
+    a model reading the sentence around a word would go further.
+
+  WHERE THE CONTROLS SIT. The HEADER is a three-column grid: the session on
+  the left (record, and how long it has run), the TARGET on the centre line,
+  and the history plus the menu on the right (undo, redo, backspace). The
+  BOTTOM holds the marks and Save. Record doubles as the state readout, since
+  red and pulsing answers "is it hearing me" from across the room and the page
+  then needs no word for it.
+
+  Backspace is the one placement worth arguing with: it is tapped mid-sentence
+  more than anything but the marks, and it now lives at the top of the screen
+  where a thumb has to travel. Moved there 2026-08-25 on the reading that it
+  undoes a word the way undo undoes an act, so the three belong together. If
+  it turns out to cost more than the grouping buys, it goes back.
+
+  THE TARGET IS TWO GESTURES ON ONE BUTTON, because they are one job: this is
+  the control that aims. DRAG it and the caret moves (the pad, below). TAP it
+  and the caret becomes one end of a selection whose other end is your next
+  tap in the text. Two taps for an arbitrary range, where the long press gives
+  only a word and the pins give one edge at a time.
+
+  AND THE TARGET IS RED WHENEVER A PIN IS. There is one armed state, not two:
+  arming a pinhead lights the target, tapping the target puts any pin down,
+  and the second tap of the two-tap selection disarms rather than leaving one
+  lit. So the red target means one thing, "the next tap in the text moves
+  something", and the reader gets a full-size button for the exit that the
+  12px pinhead was: a near miss there used to clear the selection outright.
+
+  AND NO HAPTIC ON THE LONG PRESS, though the platform's own long-press
+  selection answers with one. Measured on the device rather than assumed:
+  docs/ios-haptics.md. The reachable buzz belongs to a real user activation of
+  a native control, a scripted one earns nothing, and navigator.vibrate has
+  never existed in WebKit. There is no way for this page to fire one at the
+  moment its own gesture does.
+
+  ADDRESSING
+    ?to=copy|share|jot|drop   which destination the save sheet opens on
+    ?dest=owner/repo[@ref]:dir   where Drop writes, overriding home/chron/dump
+    ?lang=en-US               recognition language, default the browser's
+    ?use=<ref>                pin the lib chain to a branch for previewing
+
+  THE ONE TAP ON ARRIVAL is not a design choice. WebKit needs a user gesture
+  before it will raise the microphone prompt, so a page cannot start listening
+  on its own the first time. Once the reader has allowed it, the grant is
+  remembered here and the next arrival starts listening with no tap at all;
+  a refusal or a throw falls back to the tap target rather than asking again.
+-->
+
+<style>
+[x-cloak]{display:none!important}
+
+/* ── The selection lock ──────────────────────────────────────────────────
+   A STYLESHEET, not an inline style, which is the composer's rule and the
+   reason it has one. `-webkit-touch-callout` is absent from the CSSOM's
+   property list, so inline it survives only as authored attribute text and
+   ANY later `.style.foo =` on that element re-serializes the attribute from
+   the parsed declarations and drops it, silently. A rule here is parsed once
+   and cannot be clobbered.
+
+   And it covers the WHOLE surface, not just the painted text. Measured
+   2026-08-24 after the field report: the text host read user-select:none and
+   the scroll box around it read auto, so every press in the padding and in
+   the empty canvas below the last line, which is most of the screen, raised
+   the platform's own selection and its callout bubble over the words.
+
+   touch-action rides along because it does NOT inherit: the host and the
+   painted spans both computed `auto` under a layer set to manipulation, and
+   a phone reads a double tap on auto as a request to zoom. That is now the
+   gesture that opens the keyboard, so the reader got both. Inline values win
+   on specificity, which is how the pad keeps its `none`. */
+[data-dictate-ui], [data-dictate-ui] * {
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+  touch-action: manipulation;
+}
+[data-dictate-ui] textarea, [data-dictate-ui] input {
+  -webkit-touch-callout: default; -webkit-user-select: text; user-select: text;
+}
+
+/* A PIN IS FURNITURE WHILE ANYTHING IS DRIVING IT, the pad or the pin's own
+   drag. A pin's hit box is 32px wide, so caret-from-point keeps answering with
+   the pin rather than with the word under it, and the edge does not move until
+   the aim point has cleared it. The composer measured the cost at a 32px dead
+   band per pin, stepping 13, 15, 17 across a 120px sweep. Taps still arm a
+   pin; only for the length of a drag is it transparent, and a pin dragging
+   ITSELF needs this most of all, since the aim point tracks the pin. */
+[data-dictate-pad] [data-edge] { pointer-events: none; }
+
+/* THE PANE HAD ONE MORE RULE HERE AND NO LONGER NEEDS IT. It read
+   `touch-action: pan-y pinch-zoom`, taking the horizontal axis off the
+   browser so that a sideways drag could select. That drag is now the mouse's
+   alone (see "A PLAIN DRAG IS THE MOUSE'S" in the move handler), so the axis
+   went back and `manipulation` above covers the pane like everything else.
+
+   The measurement that settled it: with 300 words in the buffer the pane's
+   scrollWidth was 390 against a clientWidth of 390. There is no horizontal
+   overflow and there never was, so the axis the page had taken was one the
+   browser had nothing to do with. Giving it back costs nothing and removes
+   the one gesture on this page whose behaviour depended on its direction. */
+</style>
+
+<script type="module">
+  const q = new URLSearchParams(location.search);
+  const ref = q.get('use');
+  if (ref) {
+    window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
+    const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
+    const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+    try { await import(u); } finally { URL.revokeObjectURL(u); }
+  } else {
+    await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
+  }
+  await gh.load('gh-auth.js');
+  await gh.load('gh-store.js');
+  await gh.load('kits/dictate.js');
+
+  const REGISTRY = 'mehrlander/web-tools-private';
+  const JOTS = 'lists/jots.json';
+  const AUTOCORRECT = 'lists/autocorrect.json';
+  const DRAFT = 'dictate:draft';
+  const GRANT = 'dictate:granted';
+
+  const ls = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+    del(k) { try { localStorage.removeItem(k); } catch {} },
+  };
+
+  // A destination address: "owner/repo[@ref]:dir". The same grammar every
+  // envelope here uses, so ?dest= reads like a stage item rather than like a
+  // third way of naming a place.
+  const parseDest = (s) => {
+    const m = /^([^/\s]+\/[^@:\s]+)(?:@([^:\s]+))?:(.*)$/.exec(String(s || '').trim());
+    return m ? { repo: m[1], ref: m[2] || '', dir: m[3].replace(/^\/|\/$/g, '') } : null;
+  };
+  const DEST = parseDest(q.get('dest')) || { repo: 'mehrlander/home', ref: '', dir: 'chron/dump' };
+
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('dictate', () => ({
+      // The buffer is the kit's. Everything below is a mirror it writes
+      // through onText, so there is one answer to "what has been said" and
+      // this component is a view of it, never a second copy.
+      d: null,
+      text: '', interim: '', armed: null, beat: 0,
+      // A REAL PIN, as against 'anchor', which is armed with nothing drawn.
+      // Everything that reaches into the overlay for a handle asks this
+      // rather than `armed`, since 'anchor' would send it looking for an
+      // element that does not exist.
+      get pinned() { return this.armed === 'start' || this.armed === 'end'; },
+      listening: false, err: '',
+      started: false,           // has the reader ever begun (the tap target)
+      elapsed: 0, since: 0,
+      edit: false, draft: '',
+      breaks: false,
+      menu: false, sheet: false, autoOpen: false,
+      dest: q.get('to') || 'copy',
+      autoFrom: '', autoTo: '',
+      corrections: [], autoRe: null,
+      restored: 0,              // how many characters came back from a draft
+      saving: '',
+      canShare: typeof navigator !== 'undefined' && !!navigator.share,
+      destName: DEST.repo.split('/')[1] + '/' + DEST.dir,
+      _wake: null,
+
+      get token() { return window.TOKEN || ls.get('ghToken') || ''; },
+      get words() { const t = (this.text + ' ' + this.interim).trim(); return t ? t.split(/\s+/).length : 0; },
+      get clock() {
+        const s = Math.floor(this.elapsed / 1000);
+        return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+      },
+      get empty() { return !this.text.trim() && !this.interim.trim(); },
+      get sel() { this.beat; return !!(this.d && this.d.hasSelection); },
+      get stitchable() { this.beat; return !!(this.d && this.d.canStitch); },
+      get breakable() { this.beat; return !this.edit && !!this.text && !!(this.d && this.d.segments.length); },
+      get canUndo() { this.beat; return !!(this.d && this.d.canUndo); },
+      get canRedo() { this.beat; return !!(this.d && this.d.canRedo); },
+      get capsArmed() { this.beat; return !!(this.d && this.d.capitalArmed); },
+
+      // THE PAD, ported from the notes composer (kits/annotate.js) rather than
+      // from the stage's card, which is where this page's first cut came from
+      // and which is a version behind. Three keys and a shift, four faces:
+      //
+      //   PRIMARY   . , ?          the marks ordinary prose runs on
+      //   SHIFTED   ; ! ¶          reached for deliberately, worth a second tap
+      //   CASING    AB ab Ab       while a selection is live, since a selection
+      //                            is made to fix a word far more often than to
+      //                            punctuate one
+      //   STITCHED  ⇥ , ?          with a caret in a sentence gap, the top key
+      //                            becomes the key that closes the gap, because
+      //                            a full stop cannot be wanted where one sits
+      //
+      // The page's own six-across row is retired with the arrow cluster: it was
+      // reasoned from the width a page has and the composer does not, which was
+      // true and beside the point once the composer had moved on.
+      get pad() {
+        if (this.sel) return [
+          { k: 'AB', t: 'Upper case' }, { k: 'ab', t: 'Lower case' }, { k: 'Ab', t: 'Capitalise' },
+        ];
+        if (this.shift) return [
+          { k: ';', t: 'Semicolon' }, { k: '!', t: 'Exclamation point' }, { k: '¶', t: 'New paragraph' },
+        ];
+        return [
+          this.stitchable
+            ? { k: 'stitch', t: 'Join this to the sentence before it: the full stop goes and the capital comes down' }
+            : { k: '.', t: 'Full stop' },
+          { k: ',', t: 'Comma' }, { k: '?', t: 'Question mark' },
+        ];
+      },
+
+      init() {
+        this.d = window.Dictate.create({
+          lang: q.get('lang') || undefined,
+          fix: (s) => this.autocorrect(s),
+          onText: (t) => { this.text = t; this.heard(); this.save(); this.paint(); },
+          onInterim: (t) => { this.interim = t; this.heard(); this.paint(); },
+          onState: () => {
+            this.listening = !!(this.d && this.d.listening);
+            if (this.listening) this.wake(); else this.unwake();
+          },
+          onError: (m) => {
+            this.err = m;
+            // A refusal invalidates the remembered grant, so the next arrival
+            // asks with a tap rather than starting into a denied microphone.
+            if (/not-allowed/.test(m)) ls.del(GRANT);
+          },
+        });
+
+        // An interrupted session comes back. A finished one does not: `save`
+        // is cleared wherever the words reach somewhere durable, so a blank
+        // page here means the last note was filed, not that one was lost.
+        const held = ls.get(DRAFT);
+        if (held && held.trim()) { this.d.text = held; this.restored = held.length; this.started = true; }
+
+        this.loadCorrections();
+        // Paint AFTER binding, not only from onText. A restored draft is
+        // assigned in init(), which runs before $refs.body exists, so its
+        // paint had nowhere to land and the page came back blank with the
+        // words sitting in the buffer behind it. Found by the browser check.
+        this.$nextTick(() => { this.bind(this.$refs.body); this.paint(); });
+        setInterval(() => { if (this.listening) this.elapsed = Date.now() - this.since; }, 500);
+
+        // Backgrounding kills the recognition outright, below anything the
+        // kit's relaunch timer can see: the page is frozen, so the timer does
+        // not run either. Coming back visible is the only moment that can
+        // notice, and it restarts only what the reader never stopped.
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState !== 'visible') return;
+          if (this.listening) { this.d.start(); this.wake(); }
+        });
+
+        this.bindKeys();
+
+        // The remembered grant. WebKit will not raise the microphone prompt
+        // outside a user gesture, so the first arrival must be tapped; after
+        // that the permission is the site's and the page can simply begin.
+        if (ls.get(GRANT) && this.d.available()) this.begin();
+      },
+
+      // ── The two modifier taps ─────────────────────────────────────────
+      // A desk is not this page's home, but it is where a long note actually
+      // gets dictated, and there the two hands are free and idle. Both keys
+      // say the same kind of thing, which is why they are a pair: the engine
+      // is about to guess a sentence boundary wrong, and only the reader knows
+      // it, because only the reader knows what they are about to say.
+      //
+      //   CONTROL   this is not a new sentence. The pause wrote a full stop
+      //             and the words still to come belong to what came before.
+      //   SHIFT     the next word is a capital: a name, a product, an
+      //             initialism the recognizer has no way to hear as one.
+      //
+      // A TAP, NOT A CHORD, and that is the whole difficulty. The reader's
+      // hands are not on the keys and there is no second key to press, so the
+      // gesture is press-and-release with nothing in between. `keydown` alone
+      // cannot serve: it fires as the first half of Ctrl+C, it repeats while
+      // held, and Shift is held through every capital typed in the edit half.
+      // So the press only ARMS, anything else that happens cancels it, and the
+      // release is what acts. That is the standard read of a bare modifier and
+      // it is the reason this is fifteen lines rather than two.
+      //
+      // Control acts at once and shows its work: the full stop disappears.
+      // Shift cannot, since the word it capitalizes has not been said, so it
+      // arms the kit and the header wears the indicator until a word spends it.
+      bindKeys() {
+        // The key that went down alone, or null. Any second key, any pointer,
+        // and any focus leaving the page clears it: all three mean the press
+        // was part of something else.
+        let tap = null;
+        const cancel = () => { tap = null; };
+        const mine = (e) => !this.edit
+          && !e.target?.closest?.('input, textarea, select, [contenteditable]');
+
+        addEventListener('keydown', (e) => {
+          if (e.repeat) return;                 // a held key is not a tap
+          tap = (e.key === 'Control' || e.key === 'Shift') && mine(e) ? e.key : null;
+        }, true);
+        addEventListener('keyup', (e) => {
+          const k = tap; tap = null;
+          if (k !== e.key || !mine(e)) return;
+          // A chord that ends with the modifier released last (Ctrl+C held
+          // through the C's own keyup) already cleared `tap` on the C's
+          // keydown, so nothing reaches here.
+          if (k === 'Control') this.unend();
+          else this.capitalize();
+        }, true);
+        addEventListener('pointerdown', cancel, true);
+        addEventListener('blur', cancel);
+      },
+
+      // Inert where there is nothing to take back, which is the point of it
+      // being its own act rather than the backspace: a mistaken press on a
+      // buffer ending in a word must not eat the word.
+      unend() {
+        if (!this.d || !this.d.unend()) return;
+        this.paint();
+      },
+
+      // With a word selected the reader is pointing at a capital that already
+      // exists and can simply be changed, so the same key means recase. With
+      // nothing selected there is no word yet, so it arms.
+      capitalize() {
+        if (!this.d) return;
+        if (this.d.hasSelection) { this.d.recase('title'); this.paint(); return; }
+        this.d.armCapital(!this.d.capitalArmed);
+        this.beat++;
+      },
+
+      // ── Starting ──────────────────────────────────────────────────────
+      begin() {
+        this.started = true;
+        this.since = Date.now() - this.elapsed;
+        this.err = '';
+        this.d.start();
+      },
+      mic() {
+        if (this.listening) { this.d.stop(); return; }
+        this.begin();
+      },
+
+      // WORDS ARRIVING is the proof, and the only one available. Starting an
+      // engine is not: r.start() succeeds whether or not the microphone is
+      // allowed, and the refusal comes back asynchronously, so a flag written
+      // at start time would remember a permission that was never granted.
+      heard() {
+        // GATED ON THE ENGINE. onText fires for every write to the buffer, a
+        // restored draft and a typed edit included, and treating those as
+        // speech wrote a microphone grant nobody had given and cleared the
+        // banner announcing the restore in the same breath.
+        if (this._heard || !this.listening) return;
+        this._heard = true;
+        ls.set(GRANT, '1');
+        this.restored = 0;
+      },
+
+      async wake() {
+        // A phone that dims and locks takes the microphone with it, and the
+        // reader is given no reason. Absent in a browser without the API,
+        // which loses nothing that was working before.
+        if (this._wake || !navigator.wakeLock) return;
+        try { this._wake = await navigator.wakeLock.request('screen'); } catch {}
+      },
+      unwake() { try { this._wake && this._wake.release(); } catch {} this._wake = null; },
+
+      save() { this.text.trim() ? ls.set(DRAFT, this.text) : ls.del(DRAFT); },
+
+      // ── The painted surface and its gestures ──────────────────────────
+      // The notes composer's set, which is a version on from the stage's and
+      // differs in what the reader is given to aim WITH:
+      //
+      //   long press ON the words   take the word under the finger
+      //   ...and keep dragging      extend from that word, arming as it goes
+      //   long press OFF them       open the keyboard, caret where it was
+      //   double tap                open the keyboard, caret where it landed
+      //   single tap                place the caret, or move an armed edge
+      //   tap a pinhead             arm that edge, or put it down
+      //   drag a pinhead            move that edge, one to one
+      //   drag a finger anywhere    scroll, and only scroll
+      //   mouse drag                select, for a pointer that has no problem
+      //
+      // THE LAST TWO ARE ONE DECISION. A finger has exactly one way to scroll
+      // this pane, so a finger drag cannot also mean select; a cursor has a
+      // wheel, so a cursor drag can. The page spent two days trying to split
+      // the difference by direction, sideways selecting and vertical
+      // scrolling, and the rule worked without ever being legible: nothing on
+      // screen could teach it, and the reader who dragged the wrong way found
+      // a surface that looked broken. On touch the long press is the way in,
+      // which is what the phone already means by it on a page you are reading.
+      //
+      // No triple, and no arrow cluster. The triple's select-all cannot
+      // survive the double opening a keyboard: the second tap swaps the read
+      // surface for a textarea and the third lands somewhere this listener
+      // cannot hear. The arrows are retired by the pad below, which drags an
+      // armed pin with the same gesture it drags the caret.
+      // A CLIENT POINT AS AN OFFSET INTO THE BUFFER, which is the one question
+      // every gesture here asks. Three of them used to carry their own copy of
+      // this, differing only in which local named the host.
+      pointOffset(cx, cy) {
+        const host = this._host;
+        if (!host) return null;
+        const doc = host.ownerDocument;
+        const r = doc.caretRangeFromPoint ? doc.caretRangeFromPoint(cx, cy) : null;
+        const pt = !r && doc.caretPositionFromPoint ? doc.caretPositionFromPoint(cx, cy) : null;
+        const node = r ? r.startContainer : pt ? pt.offsetNode : null;
+        const off = r ? r.startOffset : pt ? pt.offset : 0;
+        return node ? window.Dictate.offsetAt(host, node, off) : null;
+      },
+
+      // ── THE VERTICAL AIM OF A THUMB'S DRAG ────────────────────────────
+      // Horizontal is always the finger, one to one. Vertical is HELD BACK
+      // until the thumb has cleared the words, then resumes, quantized to
+      // lines and measured from where the hold ended rather than from the
+      // grab. So placing an edge a line down costs about two lines of thumb,
+      // and the first is spent getting the hand off the text.
+      //
+      // `lead` is how far the grip sits from the line it marks: a pin's ball,
+      // signed, positive below and negative above. ZERO when the finger is on
+      // the text itself, which is the long-press extend. A grip already below
+      // the line spends the base hold; one above spends that plus twice its
+      // own offset, which is exactly the travel that carries it down across
+      // the line to where the other one started.
+      //
+      // Upward is immediate in every case. That direction is clearance for
+      // none of them, and a hold there only makes the drag feel stuck.
+      //
+      // ONE RULE FOR THE TWO DRAGS A THUMB DRIVES, the long-press extend and
+      // the pin, because they are one question: where is the reader aiming,
+      // given that their thumb is in the way of the answer. It was three until
+      // the plain drag became the mouse's alone; a cursor occludes nothing, so
+      // it aims with the raw pointer and this is not in its path. The extend
+      // went without it at first, on the reading that a finger on the text IS
+      // the aim point and holding back would read as lag. It reads as the
+      // thumb covering the boundary instead.
+      DEAD_LINES: 1.5,
+      dragY(y0, py, cy, lineH, lead = 0) {
+        const buffer = this.DEAD_LINES * lineH + (Math.abs(lead) - lead);
+        const travel = cy - py;
+        const past = travel > 0 ? Math.max(0, travel - buffer) : travel;
+        return y0 + Math.round(past / lineH) * lineH;
+      },
+
+      // ── Holding a drag against an iOS sheet ───────────────────────────
+      // `touch-action: none` IS NECESSARY AND NOT SUFFICIENT, which is the one
+      // thing to remember here. A page opened from an app on a phone is
+      // presented in a sheet the reader dismisses by dragging down, and the
+      // host decides that from the web view's SCROLL rather than from touches,
+      // so a handle carrying only touch-action still lets the sheet go. This
+      // is variant D of five measured on device (docs/ios-sheet-drags.md):
+      // touch-action, plus a cancelled touchstart and touchmove.
+      //
+      // `{ passive: false }` is not optional, since a passive listener cannot
+      // cancel anything and browsers default both events to passive. Nothing
+      // is lost: preventDefault on a TOUCH event suppresses the compatibility
+      // MOUSE events, not the pointer ones, so every drag below runs as before.
+      // It does suppress the compatibility CLICK, which costs nothing here
+      // because the pad and the pins are driven from pointerdown.
+      holdTouch(node) {
+        if (!node || node._heldTouch) return;
+        node._heldTouch = true;
+        const stop = (e) => e.preventDefault();
+        node.addEventListener('touchstart', stop, { passive: false });
+        node.addEventListener('touchmove', stop, { passive: false });
+      },
+
+      bind(host) {
+        this._host = host;
+        const surface = host.parentElement || host;
+        let timer = null, x = 0, y = 0, long = false, lastTap = 0, taps = 0, anchor = null, dragging = false;
+        // The word a long press took, kept for as long as the finger stays
+        // down. Its presence is what turns the rest of the gesture into an
+        // extension rather than a fresh selection. See the move handler.
+        let word = null;
+
+        // ── Holding the iOS sheet for the length of a long-press drag ─────
+        // The pad and the pins can carry `touch-action: none` because neither
+        // scrolls. THE TEXT PANE MUST SCROLL, so it cannot, and the sheet has
+        // to be held by the only lever left: cancelling `touchmove`, which is
+        // variant E in docs/ios-sheet-drags.md and measured to hold. Gated on
+        // `word`, so an ordinary swipe scrolls and only an extension is held.
+        //
+        // Cancelling touchSTART is not available here for the same reason it
+        // was right on the pad: it would kill the scroll outright, and at
+        // touchstart nothing yet knows this touch will become a long press.
+        //
+        // THE LISTENER GOES ON THE NODE THE TOUCH STARTED ON, captured at
+        // pointerdown. paint() clears the host and rebuilds every span on
+        // every frame of the extension, and a touch keeps its original target
+        // after that target leaves the document, so a listener on the pane or
+        // on the document would never see the events: a detached target has no
+        // path to an ancestor. Same trap as the pins, one layer deeper, and
+        // here there is no repaint hook to re-attach from.
+        //
+        // It also keeps the gesture alive at all. A browser that decides a
+        // touch is a scroll fires pointercancel and stops sending pointermove,
+        // so without this the extension does not merely fight the sheet, it
+        // ends.
+        let held = null;
+        //
+        // IT USED TO CANCEL PRE-EMPTIVELY TOO, on the first touch that had
+        // opened far enough sideways to be a selection rather than a scroll,
+        // because the browser rules on a gesture before the move handler does
+        // and a claimed pan fires pointercancel. That test went with the plain
+        // touch drag it protected: nothing now becomes a selection without a
+        // long press first, and by the time a press has taken its word there
+        // is a `word` to gate on.
+        const holdMove = (ev) => { if (word || dragging) ev.preventDefault(); };
+        const unhold = () => {
+          if (!held) return;
+          held.removeEventListener('touchmove', holdMove, { passive: false });
+          held = null;
+        };
+        const clear = () => { if (timer) { clearTimeout(timer); timer = null; } };
+        const at = (cx, cy) => this.pointOffset(cx, cy);
+        const lineOf = () => parseFloat(getComputedStyle(this.$refs.view).lineHeight) || 26;
+        surface.addEventListener('pointerdown', (e) => {
+          if (this.edit) return;
+          // A mouse or a keyboard means the pins can go: drag and shift-click
+          // do the extending, so the handles are furniture for a job the
+          // platform already does. The selection stays painted.
+          if (e.pointerType === 'mouse') { this.precise = true; }
+          x = e.clientX; y = e.clientY; long = false; word = null;
+          unhold();
+          held = e.target;
+          if (held?.addEventListener) held.addEventListener('touchmove', holdMove, { passive: false });
+          anchor = window.Dictate.hitsText(host, x, y) ? at(x, y) : null;
+          clear();
+          timer = setTimeout(() => {
+            timer = null; long = true;
+            // OFF the words a held finger is not an aim that missed, it is a
+            // request for the keyboard. Nothing is collapsed on the way in.
+            if (!window.Dictate.hitsText(host, x, y)) { this.editOpen(); return; }
+            const i = at(x, y);
+            if (i == null) return;
+            this.d.selectWordAt(i); this.armed = null;
+            // REMEMBER THE WORD, because the finger has not lifted and what it
+            // does next decides whether this gesture is over.
+            const r = this.d.range;
+            word = r && r.start !== r.end ? { start: r.start, end: r.end } : null;
+            this.paint();
+          }, 450);
+        });
+        surface.addEventListener('pointermove', (e) => {
+          const far = Math.abs(e.clientX - x) > 10 || Math.abs(e.clientY - y) > 10;
+          if (timer && far) clear();
+          if (!e.buttons) return;
+
+          // ── A LONG PRESS THAT KEEPS GOING IS ONE GESTURE ────────────────
+          // The press takes the word; carrying on past it extends from the
+          // word's OUTER EDGE, so a range is one press-and-drag rather than a
+          // press, a lift, and a second gesture to widen what it found. This
+          // is the platform's own reading, and it was half here already: the
+          // ordinary drag below would fire and select from the raw character
+          // under the press, which threw the word away and lit no pin, so the
+          // gesture appeared to work and quietly did something else.
+          //
+          // The edge under the finger arms as it goes, so the moving end is
+          // visible while it moves. The release puts it down again, like every
+          // other drag here.
+          if (word) {
+            const i = at(e.clientX, this.dragY(y, y, e.clientY, lineOf()));
+            if (i == null) return;
+            dragging = true;
+            // Back inside the word is not a shrink. The word is the floor of
+            // this gesture, the same as on the platform, and treating a wobble
+            // as a request to cut into it would make the press feel unstable.
+            if (i > word.end) { this.d.select(word.start, i); this.armed = 'end'; }
+            else if (i < word.start) { this.d.select(i, word.end); this.armed = 'start'; }
+            else { this.d.select(word.start, word.end); this.armed = null; }
+            // Pins off for the duration, or caret-from-point answers with the
+            // pin this drag just lit rather than with the word under it.
+            this.pinDrag = this.armed;
+            this.paint();
+            return;
+          }
+
+          // ── A PLAIN DRAG IS THE MOUSE'S ─────────────────────────────────
+          // Press the button, drag across the words, and the selection follows
+          // from where it went down to where it is. On a desktop that is what
+          // every text surface does and there is nothing to weigh it against:
+          // a mouse does not scroll by dragging, so the gesture is free.
+          //
+          // ON A FINGER IT IS NOT FREE, and that is why this branch is gated
+          // rather than shared. The pane has to scroll, and a drag is the only
+          // way to scroll it, so a drag that also selects has to be told apart
+          // from one that scrolls. The page tried the one discriminator there
+          // is, direction: sideways selected, vertical scrolled. It worked and
+          // it was still wrong. Nothing on screen can teach a rule like that,
+          // a refused vertical drag fell through to the tap path and moved the
+          // caret to wherever the finger lifted, and the reader who tried the
+          // obvious thing found a surface that looked broken.
+          //
+          // So on touch the long press is the way in, which is the convention
+          // the phone already uses for a page you are reading rather than
+          // typing into. What that costs is one thing and it is worth naming:
+          // a press floors the anchor at a word, so a selection can no longer
+          // BEGIN mid-word on a finger. Everything after stays character-level,
+          // the far end as it extends and either edge afterwards by pin drag,
+          // and the target's two taps place both edges to the character. The
+          // precise route survives; it stopped being a drag. Decided
+          // 2026-08-25, retiring the touch half added two days earlier.
+          //
+          // Under the slop, a click that wobbled. Turning that into a
+          // one-character selection is how a text box comes to feel twitchy.
+          if (e.pointerType !== 'mouse') return;
+          if (anchor == null || !(far || dragging)) return;
+          // NO VERTICAL HOLD-BACK HERE, unlike the two drags below. `dragY`
+          // exists to get a thumb off the words before the aim starts moving,
+          // and a cursor covers nothing: quantizing it to lines and charging
+          // it a line and a half of travel would only make it feel broken.
+          const i = at(e.clientX, e.clientY);
+          if (i == null) return;
+          dragging = true;
+          // And it arms the edge it is moving, the same as every other way of
+          // extending here, so the pad or that pinhead continues on release.
+          if (i === anchor) { this.d.caretAt(i); this.armed = null; }
+          else { this.d.select(anchor, i); this.armed = i > anchor ? 'end' : 'start'; }
+          this.pinDrag = this.armed;
+          this.paint();
+        });
+        surface.addEventListener('pointercancel', () => {
+          clear(); anchor = null; dragging = false; word = null; this.pinDrag = null; unhold();
+        });
+        (this.$refs.layer || surface).addEventListener('pointerup', (e) => {
+          clear();
+          word = null;
+          unhold();
+          // A drag claims its own release: the tap logic below would read it as
+          // a click and drop a caret where the selection just finished.
+          //
+          // AND EVERY DRAG ENDS WITH THE PIN DOWN. The edge arms as the drag
+          // runs, which is what says which end is moving while it moves, and
+          // letting go is the end of that: the selection stands and the pin
+          // goes back to blue. One rule for all three drags, the pin's own
+          // included, so a lifted finger never leaves a mode behind.
+          //
+          // `pinDrag` is cleared HERE and not above, which is not tidiness. A
+          // pin's own drag has no `dragging` and is caught by the guard below,
+          // so clearing the flag before that guard reads it lets the release
+          // fall through and drop a caret over the selection just made.
+          if (dragging) {
+            dragging = false; anchor = null; taps = 0;
+            this.pinDrag = null; this.armed = null; this.paint();
+            return;
+          }
+          anchor = null;
+          if (this.edit || long || this.padDrag || this.pinDrag) return;
+          // A RELEASE FAR FROM ITS PRESS IS NOT A TAP. On touch every drag is
+          // now a scroll, and a scroll that lifts should leave the caret where
+          // it was. Usually the browser claims the gesture and fires
+          // pointercancel before this runs, but a drag under its own scroll
+          // threshold reaches here, and without this the caret jumped to
+          // wherever the finger came up. That was the quiet half of the old
+          // sideways rule: a refused vertical drag did not do nothing, it
+          // moved the caret to the far end of the gesture. Same 10px slop the
+          // move handler uses, and the count resets so a scroll cannot become
+          // the first half of a double.
+          if (Math.abs(e.clientX - x) > 10 || Math.abs(e.clientY - y) > 10) { taps = 0; return; }
+          const pin = e.target?.closest?.('[data-edge]');
+          if (!pin && !surface.contains(e.target)) { taps = 0; return; }
+          // ARMING ENDS A RUN. pointerdown already armed the pin, and counting
+          // the tap too made "tap a pin, then tap the text" a double and opened
+          // the keyboard on the gesture meant to move the edge.
+          if (pin) { taps = 0; return; }
+          const t = Date.now();
+          taps = (t - lastTap) < 300 ? taps + 1 : 1;
+          lastTap = t;
+          const onText = window.Dictate.hitsText(host, e.clientX, e.clientY);
+          const i = onText ? at(e.clientX, e.clientY) : null;
+          // The double opens the keyboard from the canvas too: tapping the
+          // empty space under the words is the most obvious way of saying
+          // "let me type here", and it used to be the one place that did
+          // nothing, because the canvas won before the count.
+          if (taps >= 2) { taps = 0; this.editOpen(i == null ? this.d.text.length : i); return; }
+          // The armed anchor takes the tap first, canvas included: a tap past
+          // the last word means the end of the buffer there as everywhere.
+          if (this.anchorTo(i == null ? this.d.text.length : i)) return;
+          if (i == null) { this.d.caretAt(this.d.text.length); this.armed = null; this.paint(); return; }
+          // AND THE PLACEMENT SPENDS THE ARMING. An armed pin takes this tap,
+          // moves its edge to it, and goes back to blue: the arming asked
+          // "where should this edge go", the tap answered, and there is
+          // nothing left for it to be live for. Wanting to move it again is
+          // one tap on the pinhead, which is the same cost as leaving it lit
+          // and cheaper than the alternative, since a pin left live turns the
+          // NEXT tap anywhere in the text into a move nobody asked for.
+          //
+          // Completes the one rule the rest of the page already follows: every
+          // drag ends put down, the two-tap maneuver ends put down, and now so
+          // does this. An arming is spent by the action it enables.
+          if (this.pinned) { this.d.moveEdge(this.armed, i); this.armed = null; }
+          else this.d.caretAt(i);
+          this.paint();
+        });
+      },
+      // ── A pinhead is tapped OR dragged ────────────────────────────────
+      // Tapping arms the edge so the pad can walk it, which is the gesture
+      // this surface was built around: a finger dragging a selection edge
+      // covers the words it is aiming at. But the BALL sits off the line, one
+      // diameter above it or below it, so a finger on the ball is not over the
+      // text either. The objection never applied to the handle itself, and
+      // dragging one is what every reader already expects a handle to do. So
+      // both, and neither costs the other anything.
+      //
+      // The aim point is the BAR's centre carried by the finger's delta, not
+      // the finger. One to one, so what moves under the ball is what the ball
+      // was already marking, and the offset between thumb and line is whatever
+      // the reader chose by where they grabbed it.
+      pinDown(e) {
+        const box = e.target?.closest?.('[data-edge]');
+        if (!box) return;
+        e.preventDefault(); e.stopPropagation();
+        let which = box.getAttribute('data-edge');
+        const was = this.armed === which;
+        // MEASURED BEFORE ANYTHING IS PAINTED. The bar is the pin's first
+        // child and it IS the text line, its last is the ball, and paint()
+        // replaces the whole element, so reading either afterwards reads a
+        // detached node, whose getBoundingClientRect is all zeroes and reports
+        // no failure.
+        const bar = box.firstElementChild, dot = box.lastElementChild;
+        const br = bar?.getBoundingClientRect?.();
+        const dr = dot?.getBoundingClientRect?.();
+        const from = br && br.height
+          ? { x: br.left + br.width / 2, y: br.top + br.height / 2, px: e.clientX, py: e.clientY }
+          : null;
+        // Where the GRIP sits relative to the line it marks: positive below,
+        // negative above. This is the whole difference between the two pins.
+        const lead = from && dr && dr.height ? (dr.top + dr.height / 2) - from.y : 0;
+
+        // Armed on the way DOWN, so the ring is under the finger before it
+        // moves, and a drag never has to be told apart from a tap to paint it.
+        this.armed = which;
+        this.pinDrag = which;
+        this.paint();
+        const EDGE = 6;
+        // The vertical aim is `dragY`, shared with the other two drags. What
+        // this one supplies is `lead`, the ball's own offset from its stem,
+        // which is why the two pins hold back by different amounts: the end's
+        // ball hangs below the line so its thumb starts clear, the start's
+        // hangs above so its buffer must carry the thumb down across the line
+        // first. Measured at the grab rather than set as a constant, so both
+        // arrive at the same thumb-below-the-aim distance.
+        //
+        // It also fixes the commoner accident, which is not aiming at the
+        // wrong line but drifting onto one. A thumb sliding along a line to
+        // place an edge does not travel straight, and without the hold a few
+        // pixels of wander step the edge into the line above.
+        //
+        // Fixed at the grab, not read per frame. Which pin you hold can change
+        // mid-drag when the edges cross, and where your thumb physically is
+        // cannot, so recomputing would jump the aim at the crossing.
+        const lineH = parseFloat(getComputedStyle(this.$refs.view).lineHeight) || 26;
+        let moved = false;
+        const d = document;
+
+        const move = (ev) => {
+          if (!from || !this.d) return;
+          ev.preventDefault();
+          if (!moved && Math.abs(ev.clientX - from.px) < 6 && Math.abs(ev.clientY - from.py) < 6) return;
+          moved = true;
+          const b = this.$refs.view.getBoundingClientRect();
+          let ax = from.x + (ev.clientX - from.px);
+          let ay = this.dragY(from.y, from.py, ev.clientY, lineH, lead);
+          // Held against an edge, scroll, the same as the pad: an edge dragged
+          // to the bottom of a buffer longer than the screen would otherwise
+          // stop at whatever happens to be visible.
+          const v = this.$refs.view;
+          if (ay >= b.bottom - EDGE && v.scrollTop + v.clientHeight < v.scrollHeight) v.scrollTop += EDGE;
+          else if (ay <= b.top + EDGE && v.scrollTop > 0) v.scrollTop -= EDGE;
+          ax = Math.min(b.right - EDGE, Math.max(b.left + EDGE, ax));
+          ay = Math.min(b.bottom - EDGE, Math.max(b.top + EDGE, ay));
+          const i = this.pointOffset(ax, ay);
+          if (i == null) return;
+          const r = this.d.range;
+          if (!r) return;
+          const other = which === 'start' ? r.end : r.start;
+          // LANDING EXACTLY ON THE OTHER EDGE IS SKIPPED, not clamped. A
+          // zero-width range takes both pins off the screen mid-drag, and a
+          // clamp one character short means the edges can never cross at all.
+          // Skipping the frame keeps a live selection and lets the next move
+          // land past it.
+          if (i === other) return;
+          this.d.moveEdge(which, i);
+          // AND A CROSSING RENAMES THE PIN UNDER THE FINGER. setRange sorts,
+          // so dragging start past end makes the dragged edge the end; follow
+          // it, or the label the rest of the page is holding quietly lies.
+          if (which === 'start' && i > other) which = 'end';
+          else if (which === 'end' && i < other) which = 'start';
+          this.armed = which;
+          this.pinDrag = which;
+          this.paint();
+        };
+        const up = () => {
+          // CLEARED ON THE NEXT TICK, not here. These listeners are on the
+          // document in the CAPTURE phase, so they run before the same
+          // pointerup reaches the text box's own handler, and the pin is
+          // destroyed and rebuilt on every paint, so that handler hit-tests
+          // fresh and sees the WORDS rather than the pin it started on. The
+          // pad has no such trouble: its button survives the drag and holds
+          // pointer capture, so the release never reaches the text at all.
+          setTimeout(() => { this.pinDrag = null; }, 0);
+          // A TAP IS A DRAG THAT WENT NOWHERE, and it toggles, which is the
+          // behaviour the pinheads have always had: tap to arm, tap again to
+          // put down.
+          //
+          // A DRAG PUTS IT DOWN, and so does every other drag on this page
+          // (see the text box's own release). The arming is what says which
+          // end is moving WHILE it moves; letting go ends that, leaving the
+          // selection and a blue pin. Same shape as the two-tap maneuver,
+          // which also sets rather than staying live.
+          if (moved || was) this.armed = null;
+          this.paint();
+          d.removeEventListener('pointermove', move, true);
+          d.removeEventListener('pointerup', up, true);
+          d.removeEventListener('pointercancel', up, true);
+          d.body.style.userSelect = ''; d.body.style.webkitUserSelect = ''; d.body.style.touchAction = '';
+        };
+        d.body.style.userSelect = 'none';
+        d.body.style.webkitUserSelect = 'none';
+        d.body.style.touchAction = 'none';
+        d.addEventListener('pointermove', move, true);
+        d.addEventListener('pointerup', up, true);
+        d.addEventListener('pointercancel', up, true);
+      },
+
+      // ── The cursor pad ────────────────────────────────────────────────
+      // Press it and drag: the button does not move, the CARET does. On a
+      // phone the only way to place a caret was to touch the text at the place
+      // you were aiming at, which puts a thumb over the two words either side
+      // of it, and a second tap there takes the word instead of moving
+      // anything. So the one gesture for "put it between these two" hid its
+      // own target and had a homonym. Here the finger is somewhere else and
+      // the eye stays on the text.
+      //
+      // Ported from kits/annotate.js, constants and all, because the feel IS
+      // the three numbers: crawl and the caret creeps at well under 1:1, flick
+      // and it runs ahead of the thumb, so a short button reaches a long
+      // buffer and the overshoot is walked back without lifting.
+      padDrag: false, pinDrag: null, precise: false,
+
+      // ── One armed state, three ways in ────────────────────────────────
+      // `armed` is the whole aiming state and it has four values: null, the
+      // two pin names, and 'anchor'. That is a merge, not a widening. The
+      // page used to carry a separate `anchoring` flag beside it, and the two
+      // said the same thing in different words: SOMETHING IS LIVE AND POINTED
+      // AT THE TEXT, so the next tap in the buffer moves it rather than
+      // placing a caret. Two flags for one fact meant the target could be red
+      // while a pin was red, or neither, and the reader had to learn which
+      // red meant what.
+      //
+      // So: the target is red exactly when `armed` is set, whichever way it
+      // got set, and tapping it walks the state rather than reaching into the
+      // text. That gives the tiny pinhead a large, safe control, which is the
+      // thing that was missing: a miss near a pinhead used to clear the
+      // selection outright, and no tap on the target ever can.
+      //
+      //   tap a pinhead                arms that edge
+      //   tap the target, selected     end → start → null → end (toggleAnchor)
+      //   tap the target, not          null → 'anchor' → null
+      //
+      // ARMING IS ALWAYS MOMENTARY. Whatever lit it, the thing it enables puts
+      // it out again: a drag ends put down, the two-tap maneuver ends put
+      // down, and a tap that places an armed edge ends put down. Nothing here
+      // leaves a mode behind for the next tap to fall into.
+      //
+      // 'anchor' is the special case with no pin to show, since there is no
+      // range yet. It needs none: the target itself is the affordance, and
+      // painting a lone red pin at the caret would be a fourth thing to read.
+      // The caret, with a selection counting as its far end. Extending from
+      // the far end is what shift-click does everywhere, which makes the one
+      // rule cover the collapsed case, the selected case and the empty case
+      // without a branch for any of them.
+      caretOffset() {
+        const r = this.d && this.d.range;
+        return r ? r.end : (this.d ? this.d.text.length : 0);
+      },
+      // TAPPING THE HEADER'S OWN BACKGROUND PUTS ANY PIN DOWN. The target
+      // cycles and the pinheads toggle, so both are ways of CHANGING which
+      // edge is live; this is the way of simply ending it, and the header is
+      // the largest piece of nothing on the screen that is not the text. A tap
+      // in the text would move something, which is exactly what a reader who
+      // is done does not want.
+      //
+      // Buttons are excluded rather than stopped from propagating, since the
+      // header's controls each own their own tap and this must not eat any.
+      headerTap(e) {
+        if (e.target?.closest?.('button, input, label, a, [role="menu"]')) return;
+        if (!this.armed) return;
+        this.armed = null;
+        this.paint();
+      },
+
+      // The target's tap half, and it reads the buffer rather than being one
+      // switch. WITH A SELECTION it cycles the two pins and off, since that is
+      // the only question left to ask: which edge am I about to move. WITHOUT
+      // one there are no pins to cycle, so it arms an anchor at the caret and
+      // the next tap in the text is the other end.
+      //
+      //   selected      null → end → start → null
+      //   not selected  null → anchor → null
+      //
+      // END FIRST, because the far end of a selection is the active one
+      // everywhere else here: `caretOffset` returns it, and the anchor extends
+      // from it. One rule, not a second convention for this control.
+      //
+      // The anchor is not lost by this. Arming a pin and tapping the text does
+      // exactly what the anchor did, extending from the other edge to where
+      // you tapped, so with a selection the cycle is the same tool with the
+      // edge named rather than guessed.
+      toggleAnchor() {
+        this.armed = this.d && this.d.hasSelection
+          ? (this.armed === 'end' ? 'start' : this.armed === 'start' ? null : 'end')
+          : (this.armed ? null : 'anchor');
+        this.paint();
+      },
+      // The completing tap. Returns whether it consumed the tap, so the
+      // gesture handler can fall through to its ordinary reading when the
+      // anchor was never armed.
+      //
+      // The anchor is read HERE rather than at the tap that armed it, so the
+      // pad can be dragged to the exact start and only then tapped shut. An
+      // arm-time capture made that flow silently wrong, selecting from
+      // wherever the caret had been before the drag.
+      anchorTo(i) {
+        if (this.armed !== 'anchor') return false;
+        const a = this.caretOffset();
+        // AND IT DISARMS. The maneuver is finished when the selection exists,
+        // so leaving a pin lit would mean a third tap to close it, on a target
+        // 12px across, with the selection lost if that tap missed. Refining an
+        // edge afterwards is still one tap on its pinhead.
+        this.armed = null;
+        if (a === i) this.d.caretAt(i); else this.d.select(a, i);
+        this.paint();
+        return true;
+      },
+
+      // What the pad is aiming, in client coordinates: the armed pin if one is
+      // armed, the caret otherwise. One gesture, two subjects, and which is a
+      // state the reader set by tapping a pinhead. That is what let the arrows
+      // go: an armed edge is dragged exactly the way the caret is. 'anchor' is
+      // not a pin, so it aims the caret like the unarmed case.
+      padPoint() {
+        const host = this._host;
+        if (!host) return null;
+        if (this.pinned && this.$refs.layer) {
+          const h = this.$refs.layer.querySelector('[data-edge="' + this.armed + '"]');
+          const hr = h?.getBoundingClientRect?.();
+          if (hr && (hr.width || hr.height)) return { x: hr.left + hr.width / 2, y: hr.top + hr.height / 2 };
+        }
+        const c = host.querySelector('[data-d="caret"]');
+        const r = c?.getBoundingClientRect?.();
+        if (r && (r.width || r.height)) return { x: r.left, y: r.top + r.height / 2 };
+        const b = host.getBoundingClientRect();
+        return b ? { x: b.right, y: b.bottom - 8 } : null;
+      },
+
+      bindPad(btn) {
+        this.holdTouch(btn);
+        const SLOW = 0.45, FAST = 2.4, V0 = 0.12, V1 = 1.5, EDGE = 6;
+        let from = null;
+        const noSelect = (e) => e.preventDefault();
+        const box = () => this.$refs.view.getBoundingClientRect();
+        const move = (e) => {
+          if (!from || !this.d) return;
+          e.preventDefault();
+          const b = box();
+          // The virtual point ACCUMULATES, one move at a time, each step scaled
+          // by how fast that move was. An absolute mapping cannot accelerate:
+          // the gain would be a property of the whole drag rather than of the
+          // moment, and "flick then creep" is two moments.
+          const t = (typeof e.timeStamp === 'number' && e.timeStamp) || 0;
+          const dx = e.clientX - from.lx, dy = e.clientY - from.ly;
+          from.travel += Math.abs(dx) + Math.abs(dy);
+          const dt = Math.max(8, t - from.lt);
+          const k = Math.min(1, Math.max(0, (Math.hypot(dx, dy) / dt - V0) / (V1 - V0)));
+          const gain = SLOW + (FAST - SLOW) * k;
+          from.lx = e.clientX; from.ly = e.clientY; from.lt = t;
+          // Clamped as it accumulates, not only where it is read: an unclamped
+          // accumulator drifts outside the box on a flick, and the drag back
+          // spends its first inch returning from somewhere invisible.
+          from.x = Math.min(b.right - EDGE, Math.max(b.left + EDGE, from.x + dx * gain));
+          from.y = Math.min(b.bottom - EDGE, Math.max(b.top + EDGE, from.y + dy * gain));
+          // Vertical lands on LINES rather than between them, so a slow drag
+          // steps one line at a time and a flick crosses several.
+          const vy = from.y0 + Math.round((from.y - from.y0) / from.line) * from.line;
+          // Held against an edge, SCROLL rather than stop: the buffer runs
+          // longer than the screen, and a pad that could only reach what
+          // happens to be visible would be worst on exactly the long notes.
+          const v = this.$refs.view;
+          if (from.y >= b.bottom - EDGE && v.scrollTop + v.clientHeight < v.scrollHeight) v.scrollTop += EDGE;
+          else if (from.y <= b.top + EDGE && v.scrollTop > 0) v.scrollTop -= EDGE;
+          const cy = Math.min(b.bottom - EDGE, Math.max(b.top + EDGE, vy));
+          const i = this.pointOffset(from.x, cy);
+          if (i == null) return;
+          if (this.pinned) this.d.moveEdge(this.armed, i); else this.d.caretAt(i);
+          this.paint();
+        };
+        const up = (e) => {
+          if (!from) return;
+          // A TAP IS A DRAG THAT WENT NOWHERE, and it means the other half of
+          // this button. Measured against the raw thumb travel rather than the
+          // accumulated virtual point, since the gain would call a 6px twitch
+          // a 14px move at a flick.
+          const tapped = from.travel < 8;
+          from = null;
+          this.padDrag = false;
+          if (tapped) this.toggleAnchor();
+          const d = document;
+          d.removeEventListener('pointermove', move, true);
+          d.removeEventListener('pointerup', up, true);
+          d.removeEventListener('pointercancel', up, true);
+          d.removeEventListener('selectstart', noSelect, true);
+          d.body.style.userSelect = ''; d.body.style.webkitUserSelect = ''; d.body.style.touchAction = '';
+          try { if (e) btn.releasePointerCapture(e.pointerId); } catch {}
+        };
+        btn.addEventListener('pointerdown', (e) => {
+          if (this.edit || !this.d) return;      // the keyboard brings its own caret
+          const p = this.padPoint();
+          if (!p) return;
+          e.preventDefault();
+          const cs = getComputedStyle(this.$refs.view);
+          from = { x: p.x, y: p.y, y0: p.y, lx: e.clientX, ly: e.clientY, travel: 0,
+                   lt: (typeof e.timeStamp === 'number' && e.timeStamp) || 0,
+                   line: parseFloat(cs.lineHeight) || 26 };
+          // The flag the text box reads to stand down. It has to: a capture can
+          // be lost mid-gesture (a browser deciding the touch was a scroll) and
+          // the box would then read the tail of a drag as a tap.
+          this.padDrag = true;
+          const d = document;
+          d.body.style.userSelect = 'none';
+          d.body.style.webkitUserSelect = 'none';
+          // And the document holds still. A pad drag is not a scroll, but the
+          // page under it will happily take one, and a page that scrolls at its
+          // top edge inside a sheet-presented in-app browser is the gesture
+          // that dismisses the sheet.
+          d.body.style.touchAction = 'none';
+          // Listeners on the DOCUMENT rather than the button: pointer capture
+          // is best-effort and a lost one must not strand the drag.
+          d.addEventListener('pointermove', move, true);
+          d.addEventListener('pointerup', up, true);
+          d.addEventListener('pointercancel', up, true);
+          d.addEventListener('selectstart', noSelect, true);
+          try { btn.setPointerCapture(e.pointerId); } catch {}
+        });
+      },
+
+      // `retry` is not a caller's parameter: it is how this defers itself once.
+      // EVERY POSITION HERE IS MEASURED, off `getClientRects` on the painted
+      // spans, and a hidden element measures zero, so a paint that runs while
+      // the read pane is `display:none` puts both pins at the layer's origin
+      // and leaves them there. Nothing about that looks like a measurement
+      // failure on screen: it looks like two pins stuck in the corner.
+      //
+      // `editClose` is how it happened. It sets the flag and paints in the
+      // same breath, and Alpine does not clear `display:none` until the
+      // reactive flush, so the paint measured the pane one tick before it came
+      // back. Measured 2026-08-25: pins at 34,88 and 82,88 before a trip
+      // through the keyboard and both at -16,71 after it, with the pane
+      // computing `none` at the paint and `block` at `$nextTick`.
+      //
+      // Guarded HERE rather than at that one call site, because the trap
+      // belongs to painting and not to the keyboard: any caller that repaints
+      // across a visibility change has it. One deferral only, so a host that
+      // is hidden for good costs a wasted tick rather than a loop.
+      paint(retry = true) {
+        this.beat++;
+        if (!this._host) return;
+        if (!this._host.getClientRects().length) {
+          if (retry) this.$nextTick(() => this.paint(false));
+          return;
+        }
+        window.Dictate.paint(this._host, {
+          text: this.text, interim: this.interim,
+          range: this.d ? this.d.range : null, armed: this.pinned ? this.armed : null,
+          overlay: this.$refs.layer,
+          // NO ARROW CLUSTER. The pad drags an armed pin the same way it drags
+          // the caret, so a pair of arrows chasing the pin around is furniture
+          // for a job already done. This page carried them because its first
+          // cut came from the stage's card, which keeps them for the good
+          // reason that it has no pad.
+          arrows: false,
+          // And no pins once a mouse or a keyboard is in play: drag and
+          // shift-click do the extending. The selection stays painted; only
+          // the thing you would have tapped goes.
+          //
+          // NOR WHILE THE TEXTAREA IS UP, which is not the same reason. The
+          // read pane is hidden then but the pin layer is not: it sits outside
+          // the scroll box on purpose, so a pin can hang above the first line
+          // rather than being cut in half, and that also puts it outside the
+          // `x-show` that hides the words. It never showed while the only way
+          // in was a double tap, which lands on a point and collapses the
+          // selection to a caret. The keyboard button carries a selection
+          // across intact, so two pins were suddenly drawn on top of the
+          // textarea's own native one, marking the same words twice.
+          handles: !this.precise && !this.edit,
+          // NO STALK. The armed pin was pushed out on one, first 36px and then
+          // 18, to keep the thumb off the words it was aiming at. THE DRAG'S
+          // VERTICAL DEADBAND does that instead, and does it better: the
+          // clearance comes from the gesture, so the reader takes exactly as
+          // much as they need and the pin stays where it is pointing. A stalk
+          // on top of that was a second answer to a solved problem, and it
+          // moved the one thing on the screen whose job is to not move.
+          //
+          // The painter keeps the option, tested and off. It is a number away
+          // if the pin ever needs to say "grabbable" louder than the red ring
+          // already does.
+          reach: 0,
+          // Only once there is something to be at the end OF. On an empty
+          // buffer the end caret is a red bar alone in the corner, behind the
+          // start prompt, and it reads as a rendering fault.
+          endCaret: !!this.text,
+        });
+        // THE PINS ARE REPLACED EVERY PAINT, so the touch hold is re-attached
+        // every paint. It cannot live on the layer instead: a touch keeps the
+        // element it STARTED on as its target even after that element is
+        // removed from the document, and a detached target has no path to an
+        // ancestor's listener, so the hold would go quiet on the first repaint
+        // of a drag, which is the one moment it is for.
+        const layer = this.$refs.layer;
+        if (layer) for (const pin of layer.querySelectorAll('[data-edge]')) this.holdTouch(pin);
+      },
+
+      // ── The pad ───────────────────────────────────────────────────────
+      shift: false,
+      key(k) {
+        if (k === 'stitch') { this.d.stitch(); this.paint(); return; }
+        const cased = { AB: 'upper', ab: 'lower', Ab: 'title' }[k];
+        if (cased) { this.d.recase(cased); this.paint(); return; }
+        this.d.punct(k);
+        // A shifted mark drops the shift, the way a phone keyboard does: the
+        // sticky case is the one asked for by tapping again.
+        this.shift = false;
+      },
+      back() { this.d.backWord(); },
+      undo() { this.d.undo(); this.armed = null; this.paint(); },
+      redo() { this.d.redo(); this.armed = null; this.paint(); },
+
+      // ── The keyboard half ─────────────────────────────────────────────
+      // THE PENCIL IS RETIRED, as it is in the composer: a double tap is the
+      // only way in, and it is both shorter and better aimed than a button,
+      // since the reader has already pointed at the place they mean. Opening
+      // with the caret at the end would make them point again through a
+      // textarea their thumb is now half covering.
+      //
+      // The way out is the keyboard's own: blur, or Escape. There is no
+      // control of its own to find.
+      // `at` is an offset the reader POINTED AT, which only the double tap
+      // has; the button has none and takes the selection instead. Both end at
+      // the same call, so the textarea is always opened somewhere deliberate.
+      editOpen(at) {
+        this.d.flush();                  // the phrase on screen is part of what is being edited
+        this._resume = this.listening;
+        this.d.stop();
+        // READ THE RANGE AFTER THE FLUSH, not before. A flush with a selection
+        // live is a REPLACEMENT: the running hypothesis lands over the
+        // selected words and the kit leaves the range over what replaced them.
+        // Read first and the offsets describe a buffer that has since moved.
+        const r = this.d.range;
+        this.draft = this.d.text;
+        this.edit = true;
+        this.paint();                    // after the flag, so the pins come off with it
+        const ta = this.$refs.ta;
+        if (!ta) return;
+        // SYNCHRONOUS, INSIDE THE TAP, and that is the whole of why the
+        // textarea is never `display:none` (see its markup). This used to run
+        // in `$nextTick`, which focused the field correctly and left the
+        // keyboard down on a phone: WebKit gives a programmatic focus the
+        // keyboard only from the call stack of the gesture, and a microtask is
+        // past it. Nothing on a desktop can show the difference, since a
+        // desktop has no keyboard to raise.
+        //
+        // The VALUE has to be written by hand for the same reason. `x-model`
+        // assigns on the reactive flush, so at this instant the element still
+        // holds the previous text and `setSelectionRange` would be measured
+        // against it. Alpine writes the same string a moment later.
+        ta.value = this.draft;
+        ta.focus();
+        // A SELECTION CROSSES INTACT, which is the whole point of the button:
+        // the first thing typed replaces the words that were picked out, which
+        // is the one repair a keyboard does better than a voice. A caret is
+        // the same call with the two offsets equal, and nothing selected opens
+        // at the end, where dictation would have carried on.
+        if (typeof at === 'number') ta.setSelectionRange(at, at);
+        else if (r) ta.setSelectionRange(r.start, r.end);
+        else ta.setSelectionRange(ta.value.length, ta.value.length);
+      },
+      editClose() {
+        // Read the caret BEFORE the assignment, because setting the buffer
+        // drops the range by design, and restore it after. That is the whole
+        // of "the red caret is where you left the keyboard": without it,
+        // leaving sent the caret to the end and the next spoken words landed
+        // there rather than where the reader had been working.
+        const ta = this.$refs.ta;
+        const a = ta ? ta.selectionStart : null, b = ta ? ta.selectionEnd : null;
+        this.d.text = this.draft;
+        if (typeof a === 'number') { if (a === b) this.d.caretAt(a); else this.d.select(a, b); }
+        this.edit = false;
+        try { ta && ta.blur(); } catch {}
+        this.paint();
+        if (this._resume) this.begin();
+        this._resume = false;
+      },
+
+      // ── Corrections ───────────────────────────────────────────────────
+      // Read once at boot, held as one alternation so a segment costs one
+      // pass rather than one per entry. Longest first, so "web tools app"
+      // cannot be eaten by "web tools" before it is reached.
+      async loadCorrections() {
+        if (!this.token) return;
+        try {
+          const reg = new window.GH({ token: this.token, repo: REGISTRY, ref: 'main' });
+          const raw = JSON.parse((await reg.get(AUTOCORRECT)).text);
+          this.corrections = Array.isArray(raw.items) ? raw.items : [];
+          this.compile();
+        } catch {}
+      },
+      compile() {
+        const rows = this.corrections.filter(f => f && f.from).sort((a, b) => b.from.length - a.from.length);
+        if (!rows.length) { this.autoRe = null; return; }
+        const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        this.autoRe = new RegExp('\\b(' + rows.map(f => esc(f.from)).join('|') + ')\\b', 'gi');
+        this._autoMap = new Map(rows.map(f => [f.from.toLowerCase(), f.to]));
+      },
+      // Case is carried across: a correction fired at the head of a sentence
+      // keeps its capital, since the recognizer's own capitalization is the
+      // only signal available about where a sentence started.
+      autocorrect(s) {
+        if (!this.autoRe) return s;
+        return s.replace(this.autoRe, (m) => {
+          const to = this._autoMap.get(m.toLowerCase());
+          if (to == null) return m;
+          return /^[A-Z]/.test(m) && /^[a-z]/.test(to) ? to[0].toUpperCase() + to.slice(1) : to;
+        });
+      },
+      openAuto() {
+        const r = this.d.range;
+        this.autoFrom = r ? this.d.text.slice(r.start, r.end).replace(/^[\s.,;:!?]+|[\s.,;:!?]+$/g, '') : '';
+        this.autoTo = '';
+        this.autoOpen = true;
+        this.menu = false;
+        this.$nextTick(() => this.$refs.autoTo && this.$refs.autoTo.focus());
+      },
+      // Add and remove share one read-modify-write, since they differ only in
+      // what they do to the list in between. A list you can only add to makes
+      // a mistyped entry permanent from the page's side, which is the state
+      // the reader is most likely to want out of.
+      async writeList(mutate, note) {
+        if (!this.token) return;
+        try {
+          const reg = new window.GH({ token: this.token, repo: REGISTRY, ref: 'main' });
+          let items = [];
+          try { const raw = JSON.parse((await reg.get(AUTOCORRECT)).text); items = Array.isArray(raw.items) ? raw.items : []; }
+          catch (e) { if (e?.status && e.status !== 404) throw e; }
+          items = mutate(items);
+          await reg.save(AUTOCORRECT, { items }, note);
+          this.corrections = items; this.compile();
+        } catch (e) {
+          Alpine.store('toast')('warning', 'Not saved: ' + (e?.message || e), 'alert-error', 5000);
+        }
+      },
+      async dropAuto(from) {
+        await this.writeList(
+          (items) => items.filter(c => (c.from || '').toLowerCase() !== from.toLowerCase()),
+          `Autocorrect: drop "${from}"`);
+      },
+      async saveAuto() {
+        const from = this.autoFrom.trim(), to = this.autoTo.trim();
+        if (!from || !to || !this.token) return;
+        // The buffer is corrected too, since the reader is looking at the word
+        // that was wrong and a list that only helps NEXT time reads as a
+        // control that did nothing.
+        if (this.d.hasSelection) { this.d.insert(to); this.armed = null; this.paint(); }
+        this.autoFrom = ''; this.autoTo = '';
+        // The sheet STAYS OPEN. The list under the fields is the confirmation,
+        // and closing on save would hide the one thing that says it worked.
+        await this.writeList(
+          (items) => [...items.filter(c => (c.from || '').toLowerCase() !== from.toLowerCase()),
+                      { from, to, added: new Date().toISOString() }],
+          `Autocorrect "${from}" → "${to}"`);
+      },
+
+      // ── Where the words go ────────────────────────────────────────────
+      // Committing the hypothesis first, always: the reader has READ the grey
+      // text and tapped save, so accepting it is what they asked for.
+      // A METHOD, not a getter: it commits the running hypothesis, and a
+      // getter with a side effect is a trap set for the first template that
+      // reads it. Committing is right whichever way the words go out, since
+      // the reader has READ the grey text and then tapped save.
+      outgoing() {
+        if (!this.d) return '';
+        if (this.edit) return this.draft;
+        this.d.flush();
+        return this.breaks ? this.d.paragraphs() : this.d.text;
+      },
+      slug(t) {
+        return (t.trim().split(/\s+/).slice(0, 7).join('-') || 'note')
+          .toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'note';
+      },
+      openSheet() { if (this.empty && !this.draft.trim()) return; this.sheet = true; },
+      // ?to= names the destination a link already has in mind, and the sheet
+      // paints that one primary rather than opening on it: choosing is still
+      // the reader's, and a URL that could file a note on arrival would be a
+      // different and much less safe thing.
+      lead(k) { return this.dest === k ? 'btn-primary' : ''; },
+
+      // Copy and Share only READ the buffer, so they leave it standing and
+      // leave the draft in place: nothing durable has happened yet and a
+      // clipboard is not a place words live.
+      async copy() {
+        const t = this.outgoing();
+        const n = this.words;
+        try {
+          await navigator.clipboard.writeText(t);
+          this.sheet = false;
+          Alpine.store('toast')('clipboard-text', 'Copied ' + n + ' words', 'alert-success', 2200);
+        } catch (e) {
+          // Rather than a silent no-op: a clipboard write can be refused, and
+          // a reader who thinks they have the words and does not is worse off
+          // than one who is told to use Share.
+          Alpine.store('toast')('warning', 'The browser refused the clipboard: use Share', 'alert-error', 5000);
+        }
+      },
+      async share() {
+        const t = this.outgoing();
+        this.sheet = false;
+        try { await navigator.share({ text: t }); } catch {}
+      },
+      // Jot and Drop file it, so both clear: the note has a home now and the
+      // page goes back to being blank, which is the state it is for.
+      async jot() {
+        await this.commit(async (reg) => {
+          let items = [];
+          try { const raw = JSON.parse((await reg.get(JOTS)).text); items = Array.isArray(raw.items) ? raw.items : []; }
+          catch (e) { if (e?.status && e.status !== 404) throw e; }
+          const text = this.outgoing();
+          items = [...items, { id: 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                               text, created_at: new Date().toISOString() }];
+          await reg.save(JOTS, { items }, `Jot "${text.slice(0, 40)}" via dictate`);
+          return 'the jots pile';
+        }, REGISTRY, 'main');
+      },
+      async drop() {
+        await this.commit(async (gh2) => {
+          const text = this.outgoing();
+          const now = new Date();
+          const stamp = now.toISOString().slice(0, 10);
+          const hhmm = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+          const path = `${DEST.dir}/${stamp}-${hhmm}-${this.slug(text)}.md`;
+          await gh2.save(path, text.replace(/\s*$/, '') + '\n', `Dictated ${stamp} ${hhmm}`);
+          return path;
+        }, DEST.repo, DEST.ref);
+      },
+      async commit(work, repo, ref) {
+        if (!this.token) {
+          Alpine.store('toast')('warning', 'No token on this browser: Copy or Share instead', 'alert-error', 5000);
+          return;
+        }
+        this.saving = repo;
+        try {
+          const inst = new window.GH({ token: this.token, repo, ref: ref || '' });
+          const where = await work(inst);
+          this.sheet = false;
+          this.clear();
+          Alpine.store('toast')('check', 'Filed in ' + where, 'alert-success', 3200);
+        } catch (e) {
+          Alpine.store('toast')('warning', 'Not saved: ' + (e?.message || e), 'alert-error', 6000);
+        }
+        this.saving = '';
+      },
+      // Back to blank, and still listening if it was. The buffer goes through
+      // the kit's setter, so undo can bring it back for one step, which is
+      // the whole safety net a clear needs here.
+      clear() {
+        this.d.text = '';
+        this.draft = ''; this.interim = ''; this.armed = null; this.pinDrag = null;
+        this.breaks = false; this.restored = 0;
+        ls.del(DRAFT);
+        this.elapsed = 0; this.since = Date.now();
+        this.menu = false;
+        this.paint();
+      },
+    }));
+  });
+
+  await gh.load('alpine-bundle.js');   // starts Alpine
+</script>
+</head>
+
+<body data-no-fab class="bg-base-200 text-base-content overscroll-none">
+
+<div x-data="dictate" x-cloak data-dictate-ui
+     :data-dictate-pad="(padDrag || pinDrag) ? '' : null"
+     class="h-dvh w-full flex flex-col mx-auto max-w-3xl bg-base-100 sm:border-x border-base-300">
+
+  <!-- ── The status bar ──────────────────────────────────────────────────
+       Three facts and a menu, because a capture surface has to answer "is it
+       hearing me" without being asked, and answer it from across the room. -->
+  <!-- ── The header ──────────────────────────────────────────────────────
+       A THREE-COLUMN GRID, so the target lands on the viewport's centre line
+       rather than on the midpoint of whatever space the two side groups leave
+       over. With flex spacers it drifts right, because the instruments on the
+       right are twice the width of the clock on the left.
+
+       Left is the session (record, and how long it has run). Centre is the one
+       control that AIMS. Right is the history and the menu. Backspace joins
+       undo and redo rather than staying in the bottom row: it undoes a word
+       the way undo undoes an act, and the three read as one group. -->
+  <div @pointerdown="headerTap($event)"
+       class="shrink-0 grid grid-cols-[1fr_auto_1fr] items-center gap-1 px-1 min-h-14
+              border-b border-base-300 pt-[env(safe-area-inset-top)]">
+
+    <div class="flex items-center gap-1 justify-self-start">
+      <!-- RECORD, and the state readout as well as the switch: red and pulsing
+           while live, so the one question a capture surface has to answer
+           without being asked is answered by the control that changes it. -->
+      <button @click="mic()" :disabled="edit"
+              class="btn btn-md btn-square shrink-0"
+              :class="listening ? 'btn-error' : 'btn-ghost'"
+              :title="listening ? 'Recording. Tap to stop.' : 'Start listening'">
+        <i class="ph text-xl" :class="(listening ? 'ph-microphone animate-pulse' : 'ph-microphone-slash')"></i>
+      </button>
+      <span class="font-mono text-sm opacity-40 tabular-nums" x-text="started ? clock : ''"></span>
+      <span class="font-mono text-sm opacity-40 tabular-nums" x-text="words + 'w'"></span>
+      <!-- The armed capital has nothing on screen to show yet: the word it
+           applies to has not been said. So it wears the ring red the pins and
+           the target wear, which is this page's one word for "live". -->
+      <i x-show="capsArmed" x-cloak class="ph ph-text-aa text-lg text-error"
+         title="The next word you say will be capitalised (tap Shift again to cancel)"></i>
+    </div>
+
+    <!-- THE TARGET, on the centre line. Two gestures on one button, because
+         they are one job: drag it and the caret moves, tap it and the caret
+         becomes one end of a selection whose other end is your next tap. Armed
+         it wears the ring an armed pin wears, which is this page's one word
+         for "live and pointed at the text". touch-action:none inline is what
+         makes the drag work rather than scrolling the page under it. -->
+    <button x-init="bindPad($el)" :disabled="edit" style="touch-action:none"
+            class="btn btn-md btn-square justify-self-center"
+            :class="armed ? 'btn-error btn-outline' : (padDrag ? 'btn-info' : 'btn-ghost')"
+            :title="armed === 'anchor' ? 'Now tap where the selection should end (tap here again to cancel)'
+                    : armed ? 'The ' + armed + ' of the selection is armed. Tap here to put it down.'
+                    : 'Drag to move the cursor. Tap to start a selection from it.'">
+      <i class="ph ph-crosshair text-xl"></i>
+    </button>
+
+    <div class="flex items-center gap-0.5 justify-self-end">
+      <button @click="undo()" :disabled="!canUndo" class="btn btn-ghost btn-md btn-square" title="Undo">
+        <i class="ph ph-arrow-counter-clockwise text-xl"></i>
+      </button>
+      <button @click="redo()" :disabled="!canRedo" class="btn btn-ghost btn-md btn-square" title="Redo">
+        <i class="ph ph-arrow-clockwise text-xl"></i>
+      </button>
+      <!-- THE KEYBOARD, on a button rather than only on a double tap. The
+           double tap stays and is still the better aim, since it says WHERE
+           as well as that you want to type. What it cannot do is carry a
+           selection: it lands on a point, and a point collapses one. This
+           does the other thing, and it is the reason it exists rather than
+           being a second route to the same place: whatever is selected comes
+           across selected, so the first thing typed replaces it. -->
+      <button @click="editOpen()" :disabled="edit"
+              class="btn btn-ghost btn-md btn-square"
+              title="Type. Anything selected comes across selected, so typing replaces it.">
+        <i class="ph ph-keyboard text-xl"></i>
+      </button>
+      <!-- The menu is a DROPDOWN, not a band. As a band it inserted itself
+           between the header and the text and pushed the words down the screen
+           to show controls that are not about the words at all. -->
+      <div class="relative" @click.outside="menu = false">
+        <button @click="menu = !menu" class="btn btn-ghost btn-md btn-square" title="More">
+          <i class="ph ph-dots-three-vertical text-xl"></i>
+        </button>
+        <div x-show="menu" x-cloak
+             class="absolute right-0 top-full mt-1 z-50 w-56 rounded-box border border-base-300 bg-base-100 shadow-xl py-1 flex flex-col">
+          <button @click="clear(); menu = false"
+                  class="flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-base-200">
+            <i class="ph ph-file-dashed text-lg opacity-60"></i>New
+          </button>
+          <button @click="breaks = !breaks" :disabled="!breakable"
+                  class="flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-base-200 disabled:opacity-40"
+                  :title="breakable ? 'Break into paragraphs where you paused longest' : 'Needs the pause record, which typing replaces'">
+            <i class="ph ph-paragraph text-lg opacity-60"></i>Breaks
+            <i x-show="breaks" class="ph ph-check ml-auto text-lg text-success"></i>
+          </button>
+          <button @click="openAuto()"
+                  class="flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-base-200">
+            <i class="ph ph-book-open text-lg opacity-60"></i>Autocorrect
+            <span class="ml-auto font-mono text-sm opacity-40" x-text="corrections.length"></span>
+          </button>
+          <div x-show="d && d.relaunches" class="px-3 pt-1.5 pb-0.5 font-mono text-[11px] opacity-30"
+               x-text="(d ? d.relaunches : 0) + ' relaunches'"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div x-show="err" class="shrink-0 px-4 py-1.5 text-sm bg-error/10 text-error" x-text="err"></div>
+  <div x-show="restored" class="shrink-0 px-4 py-1.5 text-sm bg-warning/10 flex items-center gap-2">
+    <i class="ph ph-clock-counter-clockwise"></i>
+    <span>Picked up where you left off.</span>
+    <button @click="clear()" class="link link-hover font-medium">Start fresh</button>
+  </div>
+
+  <!-- ── The text ────────────────────────────────────────────────────────
+       The whole width and the whole remaining height. THE COMPOSER'S MARK
+       COLUMN DID NOT COME ACROSS, and it is the one piece of that card's
+       shape that could not: a column beside the text holds 56px of the width
+       for the full height in order to carry four keys at the bottom of it,
+       which on a 390px phone is 14% of the measure spent on whitespace. The
+       composer can afford it because its text box is capped at 172px, so the
+       column is the height of the keys; here the box is the height of a
+       phone. Shot both ways before deciding.
+
+       What DID come across is everything that is behavior rather than
+       geometry: the key set and its four faces, the cursor pad, the retired
+       arrows, the retired pencil, and the bottom row.
+
+       The LAYER is the handles' home: outside the scroll box and unclipped,
+       so a pin may hang above the first line rather than being cut in half. -->
+  <div class="grow min-h-0 relative touch-manipulation flex" x-ref="layer"
+       @pointerdown="pinDown($event)" data-no-swipe>
+
+    <div class="relative grow min-w-0">
+      <!-- ALWAYS RENDERED, hidden by opacity rather than by `x-show`, and the
+           reason is the phone's and not a style preference. WebKit raises the
+           keyboard for a programmatic `focus()` only from inside the call
+           stack of a user gesture, so the focus has to happen in the tap
+           itself. `x-show` writes `display:none`, a `display:none` element
+           cannot take focus, and Alpine does not clear it until the reactive
+           flush, which is after the handler has returned. The field therefore
+           has to exist and be focusable at the moment the button is pressed,
+           which is what this costs and what it buys. Measured 2026-08-25:
+           display was `none` synchronously after setting the flag and `block`
+           by `$nextTick`, and focus landed there, which is why the button
+           opened the textarea and left the keyboard down.
+
+           It sits UNDER the read pane, and by DOM ORDER rather than by a
+           z-index: it is written first, so the pane paints over it, and the
+           pin layer above them both keeps painting over the pane. A `z-10` on
+           the pane did the same job for the pane and hid the pins behind it,
+           since they are the layer's own children with no z-index of their
+           own. Order costs nothing and disturbs nothing.
+
+           It takes no taps while it is invisible, and `tabindex` goes to -1 so
+           a keyboard user does not land in a field they cannot see; -1 still
+           permits the programmatic focus this is all for. -->
+      <textarea x-ref="ta" x-model="draft" :tabindex="edit ? 0 : -1"
+                @blur="editClose()" @keydown.escape="editClose()"
+                class="absolute inset-0 w-full h-full resize-none textarea rounded-none border-0 text-[21px] leading-[1.65] tracking-[-0.01em] break-words px-4 py-3 focus:outline-none"
+                :class="edit ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                placeholder="Type instead"></textarea>
+
+      <div x-show="!edit" x-ref="view" data-dictate-view class="absolute inset-0 overflow-y-auto px-4 py-3" @scroll="paint()">
+        <div class="whitespace-pre-wrap break-words text-[21px] leading-[1.65] tracking-[-0.01em]"
+             x-ref="body" @contextmenu.prevent></div>
+
+        <!-- Nothing said yet. The whole empty surface IS the start button,
+             which is the one tap WebKit's gesture requirement makes
+             unavoidable and the largest target a page can offer for it. -->
+        <button x-show="!text && !interim" @click="started ? mic() : begin()"
+                class="absolute inset-0 w-full flex flex-col items-center justify-center gap-3 text-center px-8">
+          <i class="ph text-6xl opacity-20" :class="listening ? 'ph-waveform' : 'ph-microphone'"></i>
+          <span class="text-lg opacity-50" x-text="listening ? 'Go ahead.' : (started ? 'Paused. Tap to carry on.' : 'Tap anywhere to start talking.')"></span>
+          <span x-show="!started" class="text-sm opacity-30">Your phone will ask for the microphone once.</span>
+        </button>
+      </div>
+
+      <!-- The keyboard half, and it has no controls of its own: blur or
+           Escape is the way out, which is the keyboard's own gesture and the
+           one a reader already reaches for.
+           
+           ITS TYPE CLASSES MATCH THE READ PANE'S EXACTLY, and the list has to
+           be read as one thing rather than tidied per side: the same size,
+           the same leading, the same tracking, the same wrap rule, the same
+           padding, over the same 358px content box. A word wrapping one
+           character earlier here than there is the whole paragraph reflowing
+           under the reader at the moment they switch, and it reads as the
+           text having moved rather than as a font detail.
+           
+           Measured 2026-08-25, when it did not match: the read pane carried
+           `tracking-[-0.01em]` and this did not, so 21px type ran 0.21px wider
+           per character, 16.8px over a 79-character line. Everything else was
+           already identical, which is what made it hard to see and easy to
+           fix. `break-words` went the other way, onto the read pane, so a URL
+           too long for the measure breaks in both rather than scrolling in
+           one. -->
+
+    </div>
+
+  </div>
+
+  <!-- ── The marks ───────────────────────────────────────────────────────
+       The composer's three keys and its shift, laid across instead of down.
+       Four keys at a phone's width is 90px each, which is a larger target
+       than the column's 46 and costs the text nothing. Tapped over and over
+       inside one note, so they are the tall row. -->
+  <div x-show="!edit" class="shrink-0 flex items-stretch gap-1 px-1 pt-1">
+    <template x-for="k in pad" :key="k.k">
+      <button @pointerdown.prevent="key(k.k)" :title="k.t"
+              class="btn h-14 min-h-0 grow basis-0 px-0 text-2xl font-semibold"
+              :class="k.k === 'stitch' ? 'btn-warning' : 'btn-ghost bg-base-200'">
+        <i x-show="k.k === 'stitch'" class="ph ph-arrows-in-line-horizontal"></i>
+        <span x-show="k.k !== 'stitch'" x-text="k.k"></span>
+      </button>
+    </template>
+    <!-- Sticky in fact, momentary in feel: a shifted mark drops the shift the
+         way a phone keyboard does. It used to become a ✕ that dropped the
+         selection, on the composer's reasoning that the pad and the selection
+         are one state and a mode needs an exit. The exit was already there,
+         since a tap anywhere outside the selection collapses it to a caret,
+         so the key does one thing. -->
+    <button @pointerdown.prevent="shift = !shift"
+            class="btn h-14 min-h-0 grow basis-0 px-0 font-mono text-sm"
+            :class="shift ? 'btn-warning' : 'btn-ghost bg-base-200'"
+            title="The other three marks"
+            x-text="shift ? 'abc' : '·!¶'"></button>
+  </div>
+
+  <!-- ── The bottom row ──────────────────────────────────────────────────
+       The one that ends the note, and the one tapped most while writing it.
+       Backspace sat in the header beside undo and redo, on the reading that
+       the three are one group: they all take something back. True, and the
+       wrong grouping. Undo and redo are reached for occasionally and from
+       anywhere; backspace is reached for over and over in the middle of
+       talking, which is what the pad row above is tall for. It belongs where
+       the thumb already is, so it moved down here beside the keys rather
+       than up there beside its logical siblings. -->
+  <div class="shrink-0 flex items-stretch gap-1 px-1 pb-1 pt-1"
+       style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.25rem)">
+    <button @pointerdown.prevent="back()" :disabled="edit"
+            class="btn btn-ghost bg-base-200 h-12 min-h-0 w-14 px-0 text-error"
+            title="Delete the last word (dictation keeps running)">
+      <i class="ph ph-backspace text-2xl"></i>
+    </button>
+    <button @click="openSheet()" :disabled="empty && !draft.trim()"
+            class="btn btn-primary h-12 min-h-0 grow gap-1.5 px-0">
+      <i class="ph ph-paper-plane-tilt text-lg"></i>Save
+    </button>
+  </div>
+
+  <!-- ── The save sheet ──────────────────────────────────────────────────
+       A bottom sheet rather than a centred dialog, because the choice is made
+       with the same thumb that has been tapping the pad. -->
+  <div x-show="sheet" x-cloak class="fixed inset-0 z-[90] flex items-end justify-center">
+    <div class="absolute inset-0 bg-black/40" @click="sheet = false"></div>
+    <div class="relative w-full max-w-3xl bg-base-100 rounded-t-2xl border-t border-base-300 p-4 flex flex-col gap-2"
+         style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
+      <div class="flex items-baseline gap-2 pb-1">
+        <span class="font-medium">Save</span>
+        <span class="font-mono text-xs opacity-40" x-text="words + ' words'"></span>
+        <div class="grow"></div>
+        <button @click="sheet = false" class="btn btn-ghost btn-sm btn-square"><i class="ph ph-x text-lg"></i></button>
+      </div>
+
+      <button @click="copy()" class="btn btn-lg justify-start gap-3 h-16 min-h-0" :class="lead('copy')">
+        <i class="ph ph-clipboard-text text-2xl"></i>
+        <span class="flex flex-col items-start leading-tight">
+          <span>Copy</span><span class="text-xs font-normal opacity-50">to paste into a chat</span>
+        </span>
+      </button>
+
+      <button x-show="canShare" @click="share()" class="btn btn-lg justify-start gap-3 h-16 min-h-0" :class="lead('share')">
+        <i class="ph ph-share-network text-2xl"></i>
+        <span class="flex flex-col items-start leading-tight">
+          <span>Share</span><span class="text-xs font-normal opacity-50">the system sheet: any app on the phone</span>
+        </span>
+      </button>
+
+      <button @click="jot()" :disabled="!token || !!saving" class="btn btn-lg justify-start gap-3 h-16 min-h-0" :class="lead('jot')">
+        <i class="ph ph-note-pencil text-2xl"></i>
+        <span class="flex flex-col items-start leading-tight">
+          <span>Jot</span><span class="text-xs font-normal opacity-50">the estate's pile, beside the others</span>
+        </span>
+      </button>
+
+      <button @click="drop()" :disabled="!token || !!saving" class="btn btn-lg justify-start gap-3 h-16 min-h-0" :class="lead('drop')">
+        <i class="ph ph-tray-arrow-down text-2xl"></i>
+        <span class="flex flex-col items-start leading-tight">
+          <span>Drop</span>
+          <span class="text-xs font-normal opacity-70" x-text="destName + ', for the next drain'"></span>
+        </span>
+      </button>
+
+      <p x-show="!token" class="text-sm opacity-50 px-1 pt-1">
+        Jot and Drop write to a repository, so they need this browser's GitHub token.
+        Copy and Share do not.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── Autocorrect ─────────────────────────────────────────────────────
+       The list AND the way to add to it, in one sheet, because they were one
+       thing pretending to be two: a form in the page and the list itself
+       behind a link out to GitHub, which is a place you cannot get back from
+       with a note half spoken. Nothing explains itself: heard, meant, Add,
+       and the rows underneath. -->
+  <div x-show="autoOpen" x-cloak class="fixed inset-0 z-[90] flex items-end justify-center">
+    <div class="absolute inset-0 bg-black/40" @click="autoOpen = false"></div>
+    <div class="relative w-full max-w-3xl bg-base-100 rounded-t-2xl border-t border-base-300 p-4 flex flex-col gap-3"
+         style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
+      <div class="flex items-center gap-2">
+        <span class="font-medium">Autocorrect</span>
+        <span class="font-mono text-xs opacity-40" x-text="corrections.length"></span>
+        <div class="grow"></div>
+        <button @click="autoOpen = false" class="btn btn-ghost btn-sm btn-square"><i class="ph ph-x text-lg"></i></button>
+      </div>
+
+      <input x-model="autoFrom" placeholder="heard" class="input input-bordered w-full text-lg">
+      <input x-model="autoTo" x-ref="autoTo" placeholder="meant" class="input input-bordered w-full text-lg">
+      <button @click="saveAuto()" :disabled="!autoFrom.trim() || !autoTo.trim() || !token"
+              class="btn btn-primary w-full">Add</button>
+
+      <!-- The rows, newest first, so a correction just added is the one you
+           are looking at. Capped and scrolling: the list grows without bound
+           and the sheet must not. -->
+      <div x-show="corrections.length" class="max-h-56 overflow-y-auto -mx-1 px-1 divide-y divide-base-200">
+        <template x-for="c in [...corrections].reverse()" :key="c.from">
+          <div class="flex items-center gap-2 py-2">
+            <span class="min-w-0 truncate opacity-60" x-text="c.from"></span>
+            <i class="ph ph-arrow-right text-sm opacity-30 shrink-0"></i>
+            <span class="min-w-0 truncate" x-text="c.to"></span>
+            <div class="grow"></div>
+            <button @click="dropAuto(c.from)" :disabled="!token"
+                    class="btn btn-ghost btn-xs btn-square opacity-40 hover:opacity-100 hover:text-error">
+              <i class="ph ph-x"></i>
+            </button>
+          </div>
+        </template>
+      </div>
+      <p x-show="!token" class="text-sm opacity-50">This browser has no GitHub token, so the list is read-only.</p>
+    </div>
+  </div>
+
+<div class="toast toast-top toast-center z-[95]" x-data x-show="$store.toasts && $store.toasts.length">
+  <template x-for="t in ($store.toasts || [])" :key="t.id">
+    <div class="alert text-base gap-2" :class="t.cls">
+      <i class="ph" :class="'ph-'+t.icon"></i>
+      <span x-text="t.msg"></span>
+    </div>
+  </template>
+</div>
+
+</body>
+</html>
