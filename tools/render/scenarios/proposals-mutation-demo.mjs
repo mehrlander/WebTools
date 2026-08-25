@@ -17,7 +17,7 @@ export default async (page) => {
       [REG]: {
         'proposals/pending/delete-issue-498.json': JSON.stringify({
           id: 'delete-issue-498', kind: 'delete-issue',
-          repo: 'mehrlander/web-tools', issue: 498, expectComments: 6,
+          repo: 'mehrlander/web-tools', issue: 498, expectComments: 5,
           summary: 'Delete the scratch issue the link-defanging probes ran in.',
           caution: 'Six files now cite issue #498 as the evidence for the 150-character rule. Deleting it breaks those citations, and GitHub keeps no tombstone.',
           by: 'claude-code', authored: '2026-08-25',
@@ -35,7 +35,7 @@ export default async (page) => {
     const issue = {
       id: 'I_kwDOstub', title: 'scratch: MCP write-path link-defanging probes (delete when done)',
       state: 'CLOSED', url: 'https://github.com/mehrlander/web-tools/issues/498',
-      comments: { totalCount: 6 },
+      comments: { totalCount: 5 },
     };
     const Real = window.GH;
     window.TOKEN = 'stub-token-for-the-shot';
