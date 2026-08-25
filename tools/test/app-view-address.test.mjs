@@ -89,14 +89,56 @@ test('the promoting repo is where a slug is declared', () => {
     'a pages entry carries the slug into the collected app view');
 });
 
-test('the subject query rides the toss address, and v.query still wins', () => {
-  // v.query is set programmatically for an ACTION (the Links pencil opens the
-  // board in edit mode). An action beats an address, and is deliberately not
-  // stamped, so a reload lands on the reading view.
-  assert.match(shell, /const q = v\.query \|\| this\.subjectParams;/,
-    'appViewUrl must prefer an explicit query and fall back to the subject params');
+test('the subject query rides the toss address, captured not read live', () => {
+  // v.query holds what was captured when the address arrived. A LIVE read here
+  // would hand the next app view the fragment belonging to the one before it,
+  // which is bug two below.
+  assert.match(shell, /const q = v\.query \|\| '';/,
+    'appViewUrl must read only the captured query');
   assert.match(shell, /\(q \? '\?' \+ q : ''\)/,
     'the subject params ride as a ?query on the addressed path');
+  assert.match(appRoute, /if \(v && !v\.query\) v\.query = this\.subjectParamsFor\(u\);/,
+    'the capture happens when the route opens');
+});
+
+// ── Two bugs a browser found after every source assertion above passed ───────
+//
+// Both were invisible to this file's own method, which is worth saying plainly:
+// the wiring read correctly and did the wrong thing. They are pinned here so
+// they cannot come back, and the drive that caught them is the reason to reach
+// for a browser on an address change rather than trusting a grep.
+
+test('?on= is threaded from the parsed url, not read off location', () => {
+  // BUG ONE. By the time the app route opens, two unrelated syncUrl writes have
+  // run (ensureBrowser moves the browsed ref; the ref watcher stamps), and each
+  // deletes every VIEW_KEY it does not stamp. `on` is a VIEW_KEY, so a live
+  // read found it already gone and the fallback delivered nothing, silently.
+  // parseUrl's snapshot is taken before any of that, so the value comes from
+  // there. The fragment needs no such thread, since syncUrl carries it through.
+  assert.match(shell, /subjectParamsFor\(u\)\{/, 'the fallback must be threaded from the parsed url');
+  assert.match(shell, /search: u && u\.on \? '\?on=' \+ encodeURIComponent\(u\.on\) : ''/,
+    'subjectParamsFor must build its search from u.on rather than from location');
+  assert.match(shell, /hash: location\.hash,/,
+    'the fragment is still read live, which is the half that is not stripped');
+});
+
+test('the fragment belongs to the app view, so it moves with it', () => {
+  // BUG TWO. The fragment is one view's address. Left in place, switching from
+  // a deep-linked budget-drs to News handed News the params that belonged to
+  // budget-drs, and left an address that lied about what was on screen. The
+  // shell's own three keys survive the switch, since a stage link is nobody's
+  // view.
+  const go = shell.match(/ {2}goAppView\(v\)\{([\s\S]*?)\n {2}\},/);
+  assert.ok(go, 'goAppView was not found');
+  assert.match(go[1], /this\.SHELL_FRAGMENT_KEYS\.includes\(seg\.split\('='\)\[0\]\)/,
+    'the shell\'s own fragment keys are kept across a view switch');
+  assert.match(go[1], /this\._nextHash = body \? '#' \+ body : '';/,
+    'goAppView must set the fragment it means, including empty');
+  // And syncUrl has to honour it exactly once, or every later write would
+  // re-apply a stale fragment.
+  assert.match(shell, /const hash = this\._nextHash === undefined \? location\.hash : this\._nextHash;/,
+    'syncUrl reads the one-shot fragment');
+  assert.match(shell, /this\._nextHash = undefined;/, 'and clears it, so the carry-through stays the rule');
 });
 
 test('the shell claims exactly three keys in the subject\'s fragment', () => {

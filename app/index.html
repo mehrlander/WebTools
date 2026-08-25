@@ -1869,6 +1869,9 @@ function app(){ return {
   // lookup then simply misses. Pre-set to a resolved promise so a caller that
   // runs before init (a test, a popstate on a cold frame) awaits nothing.
   appViewsReady: Promise.resolve(),
+  // One-shot fragment for the next syncUrl; see goAppView. `undefined` means
+  // "carry location.hash through", which is every other caller.
+  _nextHash: undefined,
   appView: null,    // the selected app view when view==='app'
   // The rail: `rail: true` items from the links board a repo declares with
   // `links` in its own config (loadRail). Outbound destinations, not views, so
@@ -4853,6 +4856,12 @@ function app(){ return {
     { key: 'app', when: u => !!(u.app || (u.appRepo && u.appPath)),
       async open(u){
         const v = await this.appViewFromUrl(u);
+        // Captured HERE, not read at render time, and the ordering is the whole
+        // reason: goAppView stamps, the stamp deletes `on` (it is in VIEW_KEYS),
+        // and a render-time read would then find the fallback already gone. So
+        // the ?on= form worked in theory and delivered nothing, which a source
+        // assertion could not have seen. Measured in a browser, 2026-08-25.
+        if (v && !v.query) v.query = this.subjectParamsFor(u);
         // A slug naming nothing lands on the estate, the page's front door,
         // rather than on an app view with no page in it. Silent, because a
         // stale bookmark is not an error worth a dialog, and the estate shows
@@ -4989,7 +4998,13 @@ function app(){ return {
   syncUrl(){
     this.dropDecksOnNav();
     const qs = this.deepLinkParams(new URLSearchParams(location.search)).toString();
-    const next = location.pathname + (qs ? '?' + qs : '') + location.hash;
+    // The fragment is carried through untouched unless a caller has just asked
+    // for a different one (goAppView, whose view owns its fragment). One shot:
+    // cleared on read, so every other caller keeps the carry-through that has
+    // always been the rule here.
+    const hash = this._nextHash === undefined ? location.hash : this._nextHash;
+    this._nextHash = undefined;
+    const next = location.pathname + (qs ? '?' + qs : '') + hash;
     const cur = location.pathname + location.search + location.hash;
     // Push a new history entry per distinct URL so the browser Back button walks
     // the navigation (repo, view, file, folder). A no-op change, or a change made
@@ -5823,7 +5838,21 @@ function app(){ return {
   openRepoDialog(repo){ document.getElementById('repo')?.__repo?.openDialog(repo, { tab: 'settings' }); },
   // Select an estate-level app view; the main area renders it live via
   // toss-render #gh= (appViewUrl).
-  goAppView(v){ this.appView = v; this.view = 'app'; this.syncUrl(); },
+  goAppView(v){
+    this.appView = v;
+    this.view = 'app';
+    // The fragment is THIS view's address, not the shell's, so it moves with the
+    // view. Two things fall out, and both are bugs without it: a ?on= arrival
+    // self-heals into the fragment form the reader can keep, and switching app
+    // views drops the previous one's params instead of handing News the deep
+    // link that belonged to budget-drs. The shell's own fragment keys are the
+    // exception and survive, since a stage link is not any view's.
+    const kept = String(location.hash || '').replace(/^#/, '').split('&')
+      .filter(seg => seg && this.SHELL_FRAGMENT_KEYS.includes(seg.split('=')[0]));
+    const body = kept.concat(v && v.query ? [v.query] : []).join('&');
+    this._nextHash = body ? '#' + body : '';
+    this.syncUrl();
+  },
   // Reconstruct an app view from a deep link. Three spellings arrive here and
   // they resolve differently, which is the whole of this method:
   //
@@ -5910,8 +5939,22 @@ function app(){ return {
   // "the fragment is the subject's". They are the stage link's, and they travel
   // as one unit; see StageLink.read.
   SHELL_FRAGMENT_KEYS: ['stage', 'prompts', 'mode'],
-  get subjectParams(){
-    return window.UrlParams ? window.UrlParams.subject(this.SHELL_FRAGMENT_KEYS, location) : '';
+  //
+  // Takes the PARSED url rather than reading `location`, and that is not a
+  // style choice. parseUrl() snapshots the address at boot; by the time this
+  // route opens, two unrelated syncUrl writes have already run (ensureBrowser
+  // moves the browsed ref, and the ref watcher stamps), and each of them
+  // deletes every VIEW_KEY it does not stamp, `on` included. So a live read
+  // finds the fallback gone and the ?on= form delivers nothing, silently.
+  // Measured in a browser on 2026-08-25, after the source assertions passed.
+  // The fragment has no such problem, since syncUrl carries it through, so it
+  // is still read live and only the fallback is threaded.
+  subjectParamsFor(u){
+    if (!window.UrlParams) return '';
+    return window.UrlParams.subject(this.SHELL_FRAGMENT_KEYS, {
+      hash: location.hash,
+      search: u && u.on ? '?on=' + encodeURIComponent(u.on) : '',
+    });
   },
   // An app view's toss address, with whatever the subject's namespace holds
   // riding it as a ?query on the addressed path.
@@ -5919,7 +5962,9 @@ function app(){ return {
     const v = this.appView;
     if (!v || !v.repo || !v.path) return '';
     const ref = v.ref ? '@' + v.ref : '';
-    const q = v.query || this.subjectParams;
+    // v.query only. A live subjectParams read here would hand the NEXT app view
+    // the fragment belonging to the one before it.
+    const q = v.query || '';
     return '../pages/toss-render.html#gh=' + v.repo + ref + ':' + v.path + (q ? '?' + q : '');
   },
   // The sidebar app-view list: the collected app views (from the config cache,
