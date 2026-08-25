@@ -14,7 +14,7 @@
 //   1. a repo PDF renders, from bytes fetched at the addressed ref
 //   2. it OPENS in the pdf mode, over the host's blanket defaultMode, which is
 //      what `exclusive` buys and what raw would otherwise take
-//   3. the header states the page count and the real byte size, neither of
+//   3. the header states the real byte size, which is not
 //      which is derivable from the text the host holds
 //   4. the pager moves, and the handoff to pages/pdf-inspect.html carries the
 //      file's own address
@@ -163,7 +163,6 @@ const state = () => page.evaluate(() => {
   // readable and paged, not about which axis it is read on.
   const flow = root?.__pdfFlow || null;
   const msg = document.querySelector('[data-pdf="msg"]');
-  const bar = document.querySelector('[data-pdf="bar"]');
   const open = document.querySelector('[data-pdf="open"]');
   const at = flow ? flow.active() : -1;
   // The ACTIVE slide's canvas, not "the canvas": there is one per page now,
@@ -198,9 +197,15 @@ const state = () => page.evaluate(() => {
     scrollerWidth: flow ? Math.round(flow.scroller.clientWidth) : 0,
     shown: !!canvas,
     msg: msg && !msg.classList.contains('hidden') ? msg.textContent.trim() : '(gone)',
-    barShown: bar ? !bar.classList.contains('hidden') : false,
+    // The module contributes NO chrome row of its own. Its two controls sit
+    // in the viewer's header slot, beside the copy and mode buttons, and its
+    // position readout floats over the page.
+    ownBar: !!document.querySelector('[data-pdf="bar"]'),
+    inHeader: [...document.querySelectorAll('[data-view-controls] [data-pdf]')]
+      .map(el => el.dataset.pdf).sort().join(','),
+    pagerFloats: !!document.querySelector('.viewer-pdf-pager [data-pdf="page"]'),
     label: document.querySelector('[data-pdf="page"]')?.textContent || '',
-    size: document.querySelector('[data-pdf="size"]')?.textContent || '',
+
     openHref: open && !open.classList.contains('hidden') ? open.getAttribute('href') : '',
     ink,
   };
@@ -225,14 +230,22 @@ try {
   // be nothing at all: a PDF's text is not the file, so a derived line would
   // report newline bytes in the binary as "lines" and the mangled decode as a
   // size, which is what the binary flag on the module suppresses.
-  ok('the header line says nothing it cannot know', s.stats === '', s.stats);
-  ok('the real byte size rides with the pager', /^\d+\.\d KB$/.test(s.size), s.size);
-  ok('and no page count is stated twice', !/pages?/.test(s.size + s.stats), s.size + ' / ' + s.stats);
+  // The header line reports the size the MODULE measured, through ctx.report,
+  // rather than deriving one from text that is not the file. It went silent
+  // for a binary before any module could measure one, and it went silent again
+  // when the size followed the pager into a bar of this module's own. With
+  // that bar retired the line carries the size and only the size: no page
+  // count, because the count is not a fact about the object and the floating
+  // pager says where you are.
+  ok('the header line carries the real byte size', /^\d+\.\d KB$/.test(s.stats), s.stats);
+  ok('and states no page count', !/pages?/.test(s.stats), s.stats);
   ok('pdf-lib was never requested', askedForPdfLib === false,
      'the viewer pulled the editor library it never calls');
 
   console.log('the pager and the handoff:');
-  ok('the bar is showing', s.barShown === true, JSON.stringify(s));
+  ok('the module built no chrome row of its own', s.ownBar === false, JSON.stringify(s));
+  ok('its controls are in the viewer\'s header', s.inHeader === 'flow,open', s.inHeader);
+  ok('and the position floats over the page', s.pagerFloats === true, JSON.stringify(s));
   ok('the pager reads page 1 of 2', s.label.replace(/\s/g, '') === '1/2', s.label);
   ok('the inspect link carries this file\'s address',
      s.openHref.endsWith(`#gh=${REPO}@main:${FIXTURE}`), s.openHref);
@@ -406,6 +419,55 @@ try {
   ok('with nothing thrown on the way',
      thrown.filter(t => /is not defined|Expression Error/.test(t)).length === 0,
      thrown.slice(0, 2).join(' | '));
+
+  // ── the floating pager ───────────────────────────────────────────────────
+  //
+  // It replaces a chrome row, so it has to do that row's job: say where you
+  // are while you are moving, get out of the way when you are not, and offer
+  // the jump the retired pager never did. The deck's contents sheet lists the
+  // DOCUMENTS in a stage and never the pages of one, so before this there was
+  // no way to reach page 6 of 8 except by scrolling to it.
+  console.log('the floating pager fades, returns, and jumps:');
+  const pagerState = () => page.evaluate(() => {
+    const w = document.querySelector('.viewer-pdf-pager');
+    const jump = document.querySelector('[data-pdf="jump"]');
+    return {
+      faded: !!w?.classList.contains('opacity-0'),
+      rows: document.querySelectorAll('[data-pdf="jumplist"] a[data-page]').length,
+      open: !!jump?.open,
+      label: document.querySelector('[data-pdf="page"]')?.textContent?.trim() || '',
+    };
+  });
+  await page.waitForTimeout(1800);
+  let pg = await pagerState();
+  ok('it fades once the reader stops', pg.faded === true, JSON.stringify(pg));
+  ok('and built no jump rows nobody asked for', pg.rows === 0, `${pg.rows} rows`);
+
+  await page.evaluate(() => {
+    const box = document.querySelector('[data-pdf="root"]').__pdfFlow.scroller;
+    box.scrollTop += 40;
+    box.dispatchEvent(new Event('scroll'));
+  });
+  await page.waitForTimeout(300);
+  pg = await pagerState();
+  ok('a scroll brings it back', pg.faded === false, JSON.stringify(pg));
+
+  await page.evaluate(() => { document.querySelector('[data-pdf="jump"]').open = true; });
+  await page.waitForTimeout(500);
+  pg = await pagerState();
+  ok('opening it builds one row per page', pg.rows === 8, `${pg.rows} rows`);
+  await page.waitForTimeout(1800);
+  pg = await pagerState();
+  ok('and it does not fade out from under the list', pg.faded === false, JSON.stringify(pg));
+
+  await page.evaluate(() => {
+    [...document.querySelectorAll('[data-pdf="jumplist"] a[data-page]')]
+      .find(a => a.dataset.page === '5').click();
+  });
+  await page.waitForTimeout(1500);
+  pg = await pagerState();
+  ok('picking a page goes there', pg.label.replace(/\s/g, '') === '6/8', pg.label);
+  ok('and the list closes behind it', pg.open === false, JSON.stringify(pg));
 
   console.log('a text file is untouched by any of this:');
   await page.goto(`${origin}/pages/data-view.html?src=${encodeURIComponent(`${REPO}@main:docs/tools.csv`)}`,
