@@ -452,7 +452,23 @@
         // so without this the extension does not merely fight the sheet, it
         // ends.
         let held = null;
-        const holdMove = (ev) => { if (word || dragging) ev.preventDefault(); };
+        const holdMove = (ev) => {
+          if (word || dragging) { ev.preventDefault(); return; }
+          // AND BEFORE `dragging` IS SET, because by then it can be too late.
+          // The pane allows a vertical pan, a real thumb crossing the words is
+          // never purely horizontal, and the browser rules on the gesture
+          // before the move handler does: it claims the pan, fires
+          // pointercancel, and the selection never starts. So the same
+          // sideways test the move handler applies is applied HERE too, at the
+          // first touch that has opened far enough to say which it is.
+          //
+          // A still finger has no dx and cancels nothing, so the long press is
+          // untouched; a downward swipe has dy over dx and scrolls as before.
+          const t = ev.touches && ev.touches[0];
+          if (!t || anchor == null) return;
+          const dx = Math.abs(t.clientX - x), dy = Math.abs(t.clientY - y);
+          if (dx > 10 && dy <= dx) ev.preventDefault();
+        };
         const unhold = () => {
           if (!held) return;
           held.removeEventListener('touchmove', holdMove, { passive: false });
@@ -788,6 +804,22 @@
         const r = this.d && this.d.range;
         return r ? r.end : (this.d ? this.d.text.length : 0);
       },
+      // TAPPING THE HEADER'S OWN BACKGROUND PUTS ANY PIN DOWN. The target
+      // cycles and the pinheads toggle, so both are ways of CHANGING which
+      // edge is live; this is the way of simply ending it, and the header is
+      // the largest piece of nothing on the screen that is not the text. A tap
+      // in the text would move something, which is exactly what a reader who
+      // is done does not want.
+      //
+      // Buttons are excluded rather than stopped from propagating, since the
+      // header's controls each own their own tap and this must not eat any.
+      headerTap(e) {
+        if (e.target?.closest?.('button, input, label, a, [role="menu"]')) return;
+        if (!this.armed) return;
+        this.armed = null;
+        this.paint();
+      },
+
       // The target's tap half, and it reads the buffer rather than being one
       // switch. WITH A SELECTION it cycles the two pins and off, since that is
       // the only question left to ask: which edge am I about to move. WITHOUT
@@ -1244,7 +1276,8 @@
        control that AIMS. Right is the history and the menu. Backspace joins
        undo and redo rather than staying in the bottom row: it undoes a word
        the way undo undoes an act, and the three read as one group. -->
-  <div class="shrink-0 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 px-2 min-h-11
+  <div @pointerdown="headerTap($event)"
+       class="shrink-0 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 px-2 min-h-11
               border-b border-base-300 pt-[env(safe-area-inset-top)]">
 
     <div class="flex items-center gap-1.5 justify-self-start">

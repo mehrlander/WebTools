@@ -527,6 +527,24 @@ try {
     await page.evaluate(() =>
       getComputedStyle(document.querySelector('[data-dictate-view]')).touchAction === 'pan-y pinch-zoom'));
 
+  // TAPPING THE HEADER'S BACKGROUND PUTS ANY PIN DOWN, which is the way of
+  // simply ending the arming rather than changing which edge is live. Its
+  // buttons must keep their own taps.
+  await page.evaluate(() => {
+    const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0];
+    c.precise = false; c.d.select(4, 20); c.armed = 'end'; c.paint();
+  });
+  await page.waitForTimeout(150);
+  const header = await page.locator('[x-data="dictate"] > div').first().boundingBox();
+  await page.mouse.click(header.x + header.width / 2 - 62, header.y + header.height / 2);
+  await page.waitForTimeout(150);
+  ok('a tap on the header background disarms', (await armed()) === null, String(await armed()));
+  ok('and leaves the selection alone', !!(await sel()));
+  await target.click();
+  await page.waitForTimeout(150);
+  ok('the header tap did not eat the target\'s own tap', (await armed()) === 'end');
+  await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.armed = null; c.paint(); });
+
   // AND IT HOLDS THE iOS SHEET for the length of the extension. The pane has
   // to keep scrolling, so this cannot be touch-action; it is a cancelled
   // touchmove (variant E), gated so an ordinary swipe still scrolls. The
