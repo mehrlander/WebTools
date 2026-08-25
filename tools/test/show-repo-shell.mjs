@@ -29,7 +29,16 @@ export function shellScript(src = page) {
 // placeholder, so pre-seeding a token would be lost).
 export function makeShell({ browserStore, search = '', win = {} } = {}) {
   const store = browserStore ?? { repo: '' };
-  const doc = { addEventListener: () => {}, getElementById: () => null, dispatchEvent: () => {} };
+  // Listeners and dispatches are RECORDED rather than dropped, because a
+  // handler the shell only ever registers is exactly the class of code a stub
+  // that swallows both cannot be tested at all: the test has to be able to
+  // fire the event and read what the shell said back.
+  const events = [];
+  const listeners = { document: {}, window: {} };
+  const on = (bag) => (type, fn) => { (bag[type] ||= []).push(fn); };
+  const doc = { addEventListener: on(listeners.document), getElementById: () => null,
+                dispatchEvent: (e) => { events.push(e); return true; }, hidden: false };
+  if (!win.addEventListener) win.addEventListener = on(listeners.window);
   // The 'toast' store is the function notify() prefers; recording it lets
   // tests assert that a code path SPOKE, not just that it declined to act.
   const toasts = [];
@@ -45,6 +54,11 @@ export function makeShell({ browserStore, search = '', win = {} } = {}) {
   new Function('window', 'document', 'Alpine', 'location', 'history', '__exports',
     shellScript(page) + '\n;__exports.app = app;__exports.gallery = gallery;')(
     win, doc, alpine, loc, hist, exports);
+  // `fire` is the point of the recording: hand a test the same call the browser
+  // would make, so a visibility change or a bfcache restore is something the
+  // suite can stage rather than something only a phone can produce.
+  const fire = (target, type, ev = {}) =>
+    (listeners[target][type] || []).forEach(fn => fn({ type, ...ev }));
   return { shell: exports.app(), gallery: exports.gallery(), browserStore: store,
-           win, toasts, history: hist, location: loc };
+           win, toasts, history: hist, location: loc, doc, events, listeners, fire };
 }
