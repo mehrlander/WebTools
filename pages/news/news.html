@@ -42,7 +42,7 @@
   if (ref) {
     // ?use=<ref>: fresh branch lib via raw + blob-import (no jsDelivr branch-tip lag).
     window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
-    const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`);
+    const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`, { cache: 'no-store' });
     if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
     const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
     try { await import(u); } finally { URL.revokeObjectURL(u); }
@@ -300,7 +300,7 @@
 <body class="min-h-screen bg-base-200 text-base-content antialiased" x-data="news" x-cloak>
 
 <!-- ── Header ─────────────────────────────────────────────────────────────── -->
-<header class="sticky top-0 z-20 bg-base-100/95 backdrop-blur border-b border-base-300">
+<header class="sticky top-0 z-20 bg-base-100/90 backdrop-blur border-b border-base-300">
   <div class="max-w-5xl mx-auto px-4 py-3">
     <div class="flex items-center gap-3 flex-wrap">
       <span class="text-xl">📰</span>
@@ -423,7 +423,7 @@
                  amber-tinted, badged. A live item is a clean card. -->
             <article class="rounded-lg border bg-base-100 px-4 py-3 transition-shadow hover:shadow-sm"
                      :class="it.backfilled
-                       ? 'border-dashed border-warning/50 bg-warning/5'
+                       ? 'border-dashed border-warning/50 bg-warning/10'
                        : 'border-base-300'">
               <div class="flex items-start gap-3">
                 <div class="min-w-0 grow">
@@ -507,7 +507,7 @@
 
 <!-- ── Pending-changes tray (control facet) ─────────────────────────────────── -->
 <div x-show="facet==='sources' && (dirty || justCommitted)" x-cloak
-     class="fixed bottom-0 inset-x-0 z-30 border-t border-base-300 bg-base-100/95 backdrop-blur">
+     class="fixed bottom-0 inset-x-0 z-30 border-t border-base-300 bg-base-100/90 backdrop-blur">
   <div class="max-w-5xl mx-auto px-4 py-5 flex items-center gap-3 flex-wrap">
     <div class="text-sm grow min-w-0">
       <template x-if="justCommitted && !dirty">

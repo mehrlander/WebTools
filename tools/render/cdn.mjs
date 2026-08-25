@@ -134,7 +134,16 @@ function readSpec(spec, repoRoot) {
       try {
         const m = JSON.parse(readFileSync(manifest, 'utf8'));
         const entry = typeof m.browser === 'string' ? m.browser : m.main;
-        if (entry) {
+        // Only when the entry is the same KIND of file that was asked for. A
+        // package's declared entry is its Node entry, and for a plugin that is
+        // JavaScript no matter what the URL wanted: @tailwindcss/typography
+        // ships no dist CSS, its basename matches its package name, so a
+        // request for dist/typography.min.css resolved to src/index.js and the
+        // page was served a Node module as its stylesheet. It reported a hit
+        // (combine 3/3) and rendered with no prose styles at all, which made a
+        // headless screenshot silently disagree with every real browser. A
+        // miss is the honest answer and shows up as MISS in the log.
+        if (entry && path.extname(entry) === path.extname(fp).replace(/^\.min/, '')) {
           const cand = path.join(repoRoot, 'node_modules', pkg, entry);
           if (existsSync(cand)) fp = cand;
         }
@@ -261,16 +270,63 @@ export function resolveCdn(rawUrl, repoRoot, ref) {
         }));
         return { kind: 'fulfill', contentType: 'application/json; charset=utf-8', tag: `api dir ${rel}`, body: JSON.stringify(entries) };
       }
-      const text = readFileSync(fp, 'utf8');
+      // Bytes, not text. Reading as utf8 and re-encoding round-trips a text
+      // file exactly and CORRUPTS every binary one, since the invalid
+      // sequences in a PNG are replaced on decode and the base64 that goes out
+      // is of the replacements. The real contents API base64s the bytes, so
+      // this does too, which is what lets a page fetching an image through the
+      // API (the viewer's image module) be rendered headlessly at all.
+      const bytes = readFileSync(fp);
       return {
         kind: 'fulfill', contentType: 'application/json; charset=utf-8', tag: `api ${tail}`,
+        body: JSON.stringify({
+          content: bytes.toString('base64'),
+          encoding: 'base64', sha: 'local', size: bytes.length, html_url: '',
+        }),
+      };
+    }
+    return { kind: 'empty', contentType: 'application/json; charset=utf-8', tag: `MISS api ${tail}` };
+  }
+
+  // --- A SIBLING repo's contents, served from its checkout next to this one ---
+  //
+  // The estate's newer panes are cross-repo: the Chats pane reads
+  // mehrlander/chat-histories, the guides fold reads whichever repos hold a
+  // shelf. Without this they render the signed-out state headlessly, which is
+  // the one view nobody needs a screenshot of, so a cross-repo pane could be
+  // shot only by hand with a real token.
+  //
+  // Scoped deliberately: the repo NAME must match a directory beside this
+  // checkout, and that directory must be a git repo. A multi-repo session
+  // already has the siblings on disk (this one holds four), and a request for
+  // a repo that is not checked out falls through to the miss below rather than
+  // reaching the network, so the render stays offline either way.
+  const sibling = /^\/repos\/[^/]+\/([^/]+)\/contents\/(.*)$/.exec(u.pathname);
+  if (host === 'api.github.com' && sibling) {
+    const [, name, tail] = sibling;
+    const root = path.join(repoRoot, '..', name);
+    const rel = decodeURIComponent(tail).replace(/\/$/, '').replace(/\?.*$/, '');
+    const fp = path.join(root, rel);
+    if (existsSync(path.join(root, '.git')) && existsSync(fp)) {
+      if (statSync(fp).isDirectory()) {
+        const entries = readdirSync(fp, { withFileTypes: true }).map(e => ({
+          name: e.name, path: rel ? `${rel}/${e.name}` : e.name,
+          type: e.isDirectory() ? 'dir' : 'file',
+          sha: 'local', size: 0, html_url: '', download_url: '',
+        }));
+        return { kind: 'fulfill', contentType: 'application/json; charset=utf-8',
+                 tag: `api ${name} dir ${rel}`, body: JSON.stringify(entries) };
+      }
+      const text = readFileSync(fp, 'utf8');
+      return {
+        kind: 'fulfill', contentType: 'application/json; charset=utf-8', tag: `api ${name}/${rel}`,
         body: JSON.stringify({
           content: Buffer.from(text).toString('base64'),
           encoding: 'base64', sha: 'local', size: text.length, html_url: '',
         }),
       };
     }
-    return { kind: 'empty', contentType: 'application/json; charset=utf-8', tag: `MISS api ${tail}` };
+    return { kind: 'empty', contentType: 'application/json; charset=utf-8', tag: `MISS api ${name}/${rel}` };
   }
 
   // --- Third-party libs: jsDelivr /combine/ (comma-joined specs) ---

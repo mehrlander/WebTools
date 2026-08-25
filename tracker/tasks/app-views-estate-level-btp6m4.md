@@ -2,7 +2,6 @@
 id: app-views-estate-level-btp6m4
 title: App views - designate a page as an estate-level view
 status: done
-track: independent
 opened: 2026-07-18
 closed: 2026-07-19
 session: claude/web-tools-app-views-m3pkyo

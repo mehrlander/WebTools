@@ -9,7 +9,7 @@
   search over the chat-histories repo emits it (see docs/envelopes/chat-results.md for
   the schema), this page presents it — narrative, facet chips, excerpt cards,
   and full transcripts whose fenced code blocks are live artifacts
-  (lib/chat-render.js). A search bar filters within the loaded set.
+  (lib/kits/chat-render.js). A search bar filters within the loaded set.
 
   Data sources, first match wins:
     #gz=<base64url>   gzipped envelope JSON in the fragment (toss-style,
@@ -17,7 +17,7 @@
     ?src=<path>       envelope JSON fetched via the GitHub contents API;
                       plain path = this repo, or owner/repo@ref:path
     (neither)         a small built-in demo envelope
-  Each key is read fragment first, query as fallback (lib/url-params.js), so
+  Each key is read fragment first, query as fallback (lib/kits/url-params.js), so
   ?gz= and #src= work too. Prefer the forms above: the payload wants '#'
   because a query string is capped at roughly 8KB by the Pages edge, and the
   address arrives as ?src= from a routed toss's params shim.
@@ -26,22 +26,56 @@
 <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
 <style>[x-cloak]{display:none}</style>
 <script type="module">
+  // Rendered when the lib chain fails to load. Kept above the boot so it is
+  // defined no matter where the failure lands, and free of any dependency the
+  // failure might have taken out.
+  function showBootError(e) {
+    const box = document.createElement('div');
+    box.className = 'mx-auto my-10 max-w-2xl rounded-box border border-error/40 bg-error/10 p-4 text-sm';
+    const title = document.createElement('p');
+    title.className = 'font-semibold';
+    title.textContent = 'Could not load the renderer';
+    const detail = document.createElement('p');
+    detail.className = 'mt-1 font-mono text-xs opacity-70';
+    detail.textContent = e?.message || String(e);
+    const hint = document.createElement('p');
+    hint.className = 'mt-3 opacity-70';
+    hint.textContent = 'This page loads its own code through the GitHub contents API. '
+      + 'The most common cause is the unauthenticated rate limit: 60 requests per hour '
+      + 'per IP, which a browser holding no token can reach on its own and a shared '
+      + 'mobile IP can reach faster. The status in the message above says whether that '
+      + 'is what happened here.';
+    box.append(title, detail, hint);
+    document.body.prepend(box);
+  }
+
   // ?use=<branch|tag|sha> picks which ref the lib chain loads from; defaults
   // to main. gh-api.js auto-boots window.gh from its import URL or window.__ghBlobBoot.
   const ref = new URLSearchParams(location.search).get('use');
-  if (ref) {
-    // ?use=<ref>: fresh branch lib via raw + blob-import (no jsDelivr branch-tip lag).
-    window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
-    const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`);
-    if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
-    const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
-    try { await import(u); } finally { URL.revokeObjectURL(u); }
-  } else {
-    await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
+  try {
+    if (ref) {
+      // ?use=<ref>: fresh branch lib via raw + blob-import (no jsDelivr branch-tip lag).
+      window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
+      const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`, { cache: 'no-store' });
+      if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
+      const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+      try { await import(u); } finally { URL.revokeObjectURL(u); }
+    } else {
+      await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
+    }
+    await gh.load('kits/url-params.js');
+    await gh.load('kits/proof.js');
+    await gh.load('kits/swipe-deck.js');
+    await gh.load('kits/chat-render.js');
+  } catch (e) {
+    // Any failure here aborts this module before window.app is defined, so the
+    // page went blank and the console filled with "Can't find variable: app"
+    // Alpine warnings that name nothing. Say what actually broke, in the page,
+    // using plain DOM: Alpine may have loaded (gh-boot brings it in for the
+    // FAB) or may not have, and this has to read either way.
+    showBootError(e);
+    throw e;
   }
-  await gh.load('url-params.js');
-  await gh.load('kits/proof.js');
-  await gh.load('chat-render.js');
 
   const exCache = new Map();   // result id -> excerpt DOM (kept out of Alpine's proxy)
 
@@ -74,7 +108,7 @@
       while (!window.chatRender) await new Promise(r => setTimeout(r, 50));
       await chatRender.ready();
       try {
-        // Fragment first, query as fallback, per key (lib/url-params.js): the
+        // Fragment first, query as fallback, per key (lib/kits/url-params.js): the
         // payload wants '#' for size and privacy, while ?src= is how a routed
         // toss delivers an address through toss-render's params shim.
         const gz = UrlParams.get('gz');
@@ -135,7 +169,7 @@
           const text = await fetchText(spec);
           messages = r.source.path.endsWith('.json') ? JSON.parse(text) : text;
         }
-        chatRender.openTranscript(messages, { title: r.title, provider: r.provider, date: r.date });
+        chatRender.openTranscript(messages, { title: r.title, provider: r.provider, date: r.date, url: r.url });
       } catch (e) {
         r._error = `Couldn't load transcript: ${e.message}`;
       } finally {
@@ -206,7 +240,13 @@
     <div>
       <!-- header: the question, then the filter bar -->
       <header class="mb-5">
-        <p class="font-mono text-[10px] tracking-widest uppercase opacity-40 mb-1">Chat search</p>
+        <!-- The eyebrow doubles as the contract link: docs/envelopes/chat-results.md
+             was named only from comments, which the docs registry refuses to
+             count, so the page that renders the envelope links its contract
+             where a reader can tap it. -->
+        <p class="font-mono text-[10px] tracking-widest uppercase opacity-40 mb-1">Chat search
+          <a href="https://github.com/mehrlander/web-tools/blob/main/docs/envelopes/chat-results.md"
+             target="_blank" rel="noopener" class="link link-hover normal-case tracking-normal">contract</a></p>
         <h1 class="text-[1.35rem] leading-tight font-bold tracking-tight" x-text="env.query || 'Results'"></h1>
         <p class="text-xs opacity-50 mt-1" x-show="env.generated" x-text="env.generated"></p>
       </header>
@@ -259,10 +299,26 @@
         <template x-for="r in results" :key="r.id">
           <article data-card class="rounded-box bg-base-100 border border-base-300 overflow-hidden">
             <div class="px-4 pt-3.5 pb-3">
+              <!-- Read chat rides the title row as an icon. It used to sit in a
+                   full-width footer bar of its own, which spent a band of card
+                   the height of a turn on one button. -->
               <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <h2 class="font-semibold text-[0.98rem] leading-snug" x-text="r.title"></h2>
                 <span class="badge badge-xs font-mono" :class="providerBadge(r.provider)" x-text="r.provider"></span>
                 <span class="font-mono text-[10px] opacity-40" x-text="r.date"></span>
+                <span class="grow"></span>
+                <button x-show="hasTranscript(r)" @click="viewTranscript(r)"
+                        class="btn btn-ghost btn-xs gap-1 self-center px-1.5 text-primary"
+                        title="Read the chat" aria-label="Read the chat">
+                  <span class="loading loading-spinner loading-xs" x-show="r._loading"></span>
+                  <i class="ph ph-cards-three text-base" x-show="!r._loading"></i>
+                  <span class="font-mono text-[10px]">Read</span>
+                </button>
+                <a x-show="blobUrl(r)" :href="blobUrl(r)" target="_blank" rel="noopener"
+                   class="btn btn-ghost btn-xs self-center px-1.5 opacity-50"
+                   title="Source in the archive" aria-label="Source in the archive">
+                  <i class="ph ph-github-logo text-sm"></i>
+                </a>
               </div>
               <p class="text-[0.83rem] opacity-70 mt-1" x-show="r.relevance" x-text="r.relevance"></p>
               <div class="flex flex-wrap gap-1 mt-1.5" x-show="(r.tags||[]).length">
@@ -278,20 +334,6 @@
               <div x-init="mountExcerpts($el, r)"></div>
             </div>
 
-            <!-- footer: open the full chat (fullscreen takeover) + source link -->
-            <div class="flex items-center gap-2 px-3 py-2 border-t border-base-300 bg-base-200/50"
-                 x-show="hasTranscript(r) || blobUrl(r)">
-              <button x-show="hasTranscript(r)" class="btn btn-sm btn-primary gap-1.5"
-                      @click="viewTranscript(r)">
-                <span class="loading loading-spinner loading-xs" x-show="r._loading"></span>
-                <i class="ph ph-cards-three text-[15px]" x-show="!r._loading"></i>
-                <span>Read chat</span>
-              </button>
-              <a x-show="blobUrl(r)" :href="blobUrl(r)" target="_blank" rel="noopener"
-                 class="btn btn-sm btn-ghost gap-1 font-mono text-[10px] opacity-60">
-                <i class="ph ph-github-logo text-[13px]"></i> Source
-              </a>
-            </div>
             <p x-show="r._error" x-text="r._error" class="text-error text-xs px-4 py-2 border-t border-base-300"></p>
           </article>
         </template>

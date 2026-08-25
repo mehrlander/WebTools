@@ -3,7 +3,7 @@
 // `window`; we hand it a minimal object and return whatever it attached.
 //
 // Only safe for kits whose used surface is Node-available (JSON, TextEncoder,
-// encodeURIComponent, btoa…). kits/build.js's emit/bake qualify; its collectCache
+// encodeURIComponent, btoa…). build.js's emit/bake qualify; its collectCache
 // (which touches gh + __loadedScripts) is browser-only and simply isn't called here.
 
 import { readFileSync } from 'node:fs';

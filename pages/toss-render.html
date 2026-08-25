@@ -30,14 +30,16 @@
     Neither suffix reaches the API; both are handed to the PAGE. An optional
     ?query arrives via the params shim (the frame has no location.search of
     its own), so a page's own deep links work tossed:
-    ...:pages/show-repo/show-repo.html?view=stage. An optional #frag rides on
+    ...:app/index.html?view=stage. An optional #frag rides on
     the frame's blob: URL as a real location.hash, so a page that routes on
     its own hash opens where the link says: ...:pages/data-view.html#item=2.
     A payload toss takes the same suffix: #gz=<base64>#frag.
   Fetches the file via the GitHub API (using the stored token, so private
   repos and un-deployed branches work) and renders it same-origin, with a
-  <base> stamped in so relative URLs resolve and a shim so the page's own
-  ?use= read returns <ref> (the rewrite recipe from alpineComponents/fab.js).
+  <base> stamped in so relative URLs resolve, a shim that keeps fragment-only
+  links on the rendered blob rather than resolving them against that base, and
+  a shim so the page's own ?use= read returns <ref> (the rewrite recipe from
+  alpineComponents/fab.js).
   Same-origin rendering means the page could read the stored token — which
   is exactly why this mode only accepts repos owned by the OWNERS allowlist
   below. A crafted link to someone else's repo is refused outright, so the
@@ -60,23 +62,38 @@
     renderer by adding one TOSS_ROUTES entry. Per-type schema doc:
     docs/envelopes/chat-results.md.
 
-  Empty state: with no input, the page shows a panel — a "Paste & render"
-  button (Clipboard API, so it works from one tap on iOS without revealing
-  the text) and a field for a GitHub file. A global paste listener catches
-  desktop Ctrl/Cmd-V too.
+  Empty state (the page's second job, and the reason it is listed as a tool):
+  with no input, the panel is a look at whatever is on the clipboard, whether
+  or not you know what that is. A "Paste & render" button (Clipboard API, so
+  it works from one tap on iOS without revealing the text) and a field for a
+  GitHub file; a global paste listener catches desktop Ctrl/Cmd-V too. What
+  arrives is routed by shape rather than assumed to be HTML: a blob URL or a
+  bare owner/repo:path to address mode, a URL to the frame, a whole HTML
+  document to the frame, an image to a minimal payload shell, and everything
+  else (CSV, JSON, markdown, logs, code, prose) to pages/data-view.html, which
+  picks a mode by reading the content. See renderInput below.
 
   Page actions live in the FAB, not a floating pill. A tiny `tossRender`
   x-data component exposes the FAB's opt-in contract — a `description` and an
-  `actions` array — so the toolbox renders "Copy toss link" (rebuilds the
-  durable #gz=/#url=/#gh= bookmark for what's on screen) and "New toss" in its
-  header strip. The component only holds metadata closing over the render
-  state below, so the critical render path stays vanilla and instant.
+  `actions` array — so the toolbox renders "Copy toss link", which rebuilds the
+  durable #gz=/#url=/#gh= bookmark for what's on screen. It declares
+  `group: 'Copy'`, so it lands in the FAB's take grid beside the other clipboard
+  outputs rather than in a strip of its own. The component only holds metadata
+  closing over the render state below, so the critical render path stays vanilla
+  and instant.
 
-  The FAB (alpineComponents/fab.js) also brings zip/offline export, the
-  component/script/console tabs, and the render tab's branch survey. It boots
-  after the render logic and self-loads its own kits, so a blocked CDN
-  degrades to render-only rather than breaking the page. ?use=<ref> pins the
-  FAB's lib chain to a branch/tag/sha for previewing edits to this shell.
+  The FAB (alpineComponents/fab.js) also brings the take menu (rendering copy,
+  review brief, stage, zip/offline export), the component/script/console tabs,
+  and the render tab's branch scan. It boots after the render logic and
+  self-loads its own kits, so a blocked CDN degrades to render-only rather than
+  breaking the page. ?use=<ref> pins the FAB's lib chain to a branch/tag/sha for
+  previewing edits to this shell.
+
+  The take menu used to be hidden whenever the FAB was inside a toss, and this
+  comment claimed an export the page did not offer. Both are fixed: the menu
+  aims at the SUBJECT, reading its module and read registries out of the frame
+  (address mode is same-origin, which is what makes that legal), so taking a
+  copy of an un-deployed branch page works from the one view that can show it.
 
   One fab per viewport: every rendered mode stamps window.__fabHosted into
   the frame HTML, so a fab the tossed page mounts declines (fab.js's
@@ -84,6 +101,14 @@
   ({repo, ref, path}) and fires 'toss-subject'; the shell's fab adopts it, so
   its header, version readout, and render tab describe the tossed page, not
   this shell, and "Re-toss at ref" re-addresses in place via __tossNavigate.
+
+  The tab shows the SUBJECT's favicon, dimmed. Address mode is same-origin, so
+  the shell reads the icon the rendered page actually resolved (gh-boot's
+  injected default included) and redraws it desaturated and faded through a
+  canvas, so the tab names which page is open without impersonating the
+  deployed one. A #gz= payload gets the same treatment when its icon is
+  self-contained. The frisbee is the fallback, and now carries a meaning: no
+  addressable subject behind this render.
 
   How the frame is mounted: a blob: URL, not srcdoc. A srcdoc document's
   location.hash is permanently "" and the property is non-configurable, so no
@@ -99,6 +124,13 @@
   short, so either form works. All base64 params accept standard or URL-safe
   alphabet, with or without padding.
 
+  One key per fragment, and it is read by slice (see readFragment below), so a
+  multi-param page query survives with bare '&'s:
+  #gh=…:app/index.html?view=app&appRepo=X&appPath=Y hands all
+  three params to the page. The same address in the QUERY string does not: '&'
+  delimits there, so past the first one the params are the renderer's, not the
+  page's. Put a multi-param address on the fragment, or encode its '&' as %26.
+
   Caveat for #url=: sites that send X-Frame-Options or CSP frame-ancestors
   will refuse to load in the iframe.
 
@@ -107,7 +139,10 @@
   the page's own relative deps would 404. Two shims close the basic case, both
   fetching through the authenticated contents API at the same ref: render-time
   inlining (inlineRelativeDeps) pulls each relative <script src> and
-  <link rel=stylesheet href> ahead of render, and a fetch shim (addressHtml)
+  <link rel=stylesheet href> ahead of render, escaping any literal close tag in
+  what it pulls, since the result is serialised with outerHTML and an unescaped
+  one would end the element early and truncate the dep on re-parse (added
+  2026-07-30, covered by tools/test/toss-inline-deps.test.mjs). A fetch shim (addressHtml)
   reroutes the page's relative runtime GET fetch()es (e.g. './data.json',
   './rows.csv') on demand. A third shim makes history.replaceState/pushState
   safe: a RELATIVE replaceState('#x') resolves against the stamped <base>
@@ -135,7 +170,7 @@
   <i class="ph ph-disc text-5xl opacity-50"></i>
 
   <button id="paste-btn" class="btn btn-primary gap-2"><i class="ph ph-clipboard-text"></i>Paste &amp; render</button>
-  <div class="text-xs text-base-content/40 max-w-xs">Paste HTML or a URL — it renders straight to the frame, the text is never shown.</div>
+  <div class="text-xs text-base-content/40 max-w-xs">See what is on the clipboard: a page, a link, an image, a CSV, JSON, markdown, a log. It renders straight away, in whichever way suits it.</div>
 
   <div class="flex items-center gap-2 w-full max-w-sm">
     <div class="flex-1 h-px bg-base-300"></div>
@@ -152,12 +187,12 @@
   <a id="empty-token" target="_blank" rel="noreferrer" class="link link-primary text-xs hidden"
      href="https://github.com/settings/tokens/new?scopes=repo&description=web-tools">Get or renew a GitHub token</a>
   <p class="text-[10px] text-base-content/30 max-w-md leading-relaxed">
-    URL forms: <code>#gh=owner/repo@ref:path?query</code> (the ?query reaches the page), <code>#gz=</code>/<code>#html=</code> base64 HTML, <code>#url=</code> base64 URL.
+    URL forms: <code>#gh=owner/repo@ref:path?a=1&amp;b=2</code> (the whole ?query reaches the page), <code>#gz=</code>/<code>#html=</code> base64 HTML, <code>#url=</code> base64 URL. Add <code>?w=390</code> to render at that width.
   </p>
 </div>
 
-<!-- Page actions ("Copy toss link", "New toss") are surfaced through the FAB's
-     header strip via the x-data `actions` contract, not a floating pill. -->
+<!-- "Copy toss link" is surfaced through the FAB's take grid via the x-data
+     `actions` contract, not a floating pill. -->
 <div x-data="tossRender" data-marker="toss"></div>
 
 <!-- Toolbox: page actions, zip/offline export, component/script/console tabs. -->
@@ -169,9 +204,34 @@
 
   // Fragment first (never sent to the server, so no edge URL-length cap),
   // query string as fallback.
-  const hashParams  = new URLSearchParams(location.hash.slice(1));
+  //
+  // The fragment is read by SLICE, not URLSearchParams. A toss fragment carries
+  // exactly one key, and that key's value routinely contains a page query of its
+  // own (#gh=…:app/index.html?view=app&appRepo=X&appPath=Y). URLSearchParams
+  // splits the whole fragment on '&' before it looks at any key, so everything
+  // past the first '&' was torn off the address and became sibling fragment
+  // params nothing here reads: the page got ?view=app and its other two params
+  // arrived null, silently. Reading the one key by slice keeps a bare '&' inside
+  // the value. Percent-escapes are still decoded, so links minted with the old
+  // %26 workaround keep working, and a value that is not valid escaping is used
+  // verbatim rather than throwing. The '+' is left alone here (URLSearchParams
+  // would have made it a space); the params shim re-parses the page query with
+  // URLSearchParams, which decodes '+' there, where it means something.
+  //
+  // The query string keeps URLSearchParams: there a '&' really does delimit, and
+  // a page query with more than one param has to ride the fragment (or encode
+  // its '&' as %26) to survive the trip.
+  function readFragment(hash) {
+    const raw = String(hash || '').replace(/^#/, '');
+    const m = raw.match(/^([A-Za-z][\w-]*)=([\s\S]*)$/);
+    if (!m) return [null, null];
+    let value = m[2];
+    try { value = decodeURIComponent(value); } catch (e) {}
+    return [m[1], value];
+  }
+  const [hashKey, hashValue] = readFragment(location.hash);
   const queryParams = new URLSearchParams(location.search);
-  const param = k => hashParams.get(k) ?? queryParams.get(k);
+  const param = k => (k === hashKey ? hashValue : null) ?? queryParams.get(k);
 
   // Fragment-only navigation is same-document: this script wouldn't re-run
   // when the user follows a second toss link, so force a real reload.
@@ -185,7 +245,26 @@
   // what's on screen; the FAB's "Copy toss link" action calls it.
   let tossLinkFn = null;
 
-  const absUrl = frag => location.origin + location.pathname + frag;
+  // This page's own address, plus the fragment: the durable bookmark.
+  //
+  // Nested (this shell is itself a toss subject) `location` is the frame's
+  // blob: URL, and a blob: URL's `pathname` is the WHOLE blob string, origin
+  // included, so origin + pathname doubles it. A blob: shell also has no
+  // visitable address of its own, which is the real problem: the enclosing page
+  // is the thing a bookmark can name. Same-origin in address mode, so read it.
+  //
+  // The query rides along: `?w=` (and `?use=`) say how to render what the
+  // fragment addresses, so a bookmark that dropped them would name the right
+  // page and open it in the wrong shape.
+  const absUrl = frag => {
+    if (location.protocol === 'blob:') {
+      try { return top.location.origin + top.location.pathname + top.location.search + frag; } catch (e) {}
+      // Sandboxed under an opaque origin (a payload toss), so the enclosing
+      // address is unreadable. The blob href is at least not malformed.
+      return location.href.split('#')[0] + frag;
+    }
+    return location.origin + location.pathname + location.search + frag;
+  };
 
   function showInput(error, tokenHint) {
     tossLinkFn = null;
@@ -194,6 +273,9 @@
     frame.classList.add('hidden');
     empty.classList.remove('hidden');
     empty.classList.add('flex');
+    // A width forced before a render that then failed must not leave the panel
+    // unable to scroll: the frame it was hiding overflow for is not there.
+    document.body.style.overflow = '';
     msg.textContent = error || '';
     // Only token-shaped failures surface the token link; a decode or parse
     // failure must not send the viewer off to mint a new token for nothing.
@@ -205,7 +287,89 @@
   function reveal() {
     empty.classList.add('hidden'); empty.classList.remove('flex');
     frame.classList.remove('hidden');
+    // The forced-width layout owns the body's overflow, and only while there
+    // is a frame under it: the input panel scrolls on its own terms.
+    if (window.__tossWidthNow) document.body.style.overflow = 'hidden';
   }
+
+  // ── Forced frame width: seeing a page at a shape the device is not ────────
+  //
+  // A FRAME IS A VIEWPORT, which is the whole mechanism. Give the subject a
+  // frame W CSS px wide and every width question agrees: media queries, a
+  // boot-time innerWidth read, a container measure. Nothing is faked, so
+  // nothing has to be kept consistent; the page really is laid out at W.
+  //
+  // Both directions come off this one lever, which is why the shell owns it
+  // and the drawer only calls it. A phone at 1280 gets a frame wider than the
+  // screen, scaled down to fit: the same trade "Request Desktop Site" makes,
+  // reached without touching this document's own viewport meta. A desktop at
+  // 390 gets a narrow frame at scale 1, centered, with an edge so it reads as
+  // a shape rather than as a page that failed to fill the window.
+  //
+  // The transform is presentation only and does not shrink the layout box, so
+  // a frame wider than the screen still pushes out a horizontal scrollbar.
+  // Hence overflow:hidden on the body for as long as a width is forced, and
+  // the height divided back out by the scale so the frame still fills.
+  //
+  // What no width can fake, and the drawer says so rather than implying
+  // otherwise: `pointer` and `hover`. A phone rendering at 1280 still answers
+  // `(pointer: coarse)`. This shows the LAYOUT another device gets, not its
+  // interaction model.
+  //
+  // Read from `?w=` on the renderer's own query, never from inside the address:
+  // the address is what to show, the width is how to show it, and keeping them
+  // apart is what lets a width ride any of the render modes unchanged.
+  let forcedWidth = 0;
+  window.__tossWidthNow = 0;
+
+  function applyWidth() {
+    const s = frame.style;
+    if (!forcedWidth) {
+      s.width = s.height = s.transform = s.transformOrigin = s.marginLeft = s.outline = '';
+      document.body.style.overflow = '';
+      window.__tossWidthNow = 0;
+      return;
+    }
+    const availW = document.documentElement.clientWidth;
+    const availH = document.documentElement.clientHeight;
+    const scale = Math.min(1, availW / forcedWidth);
+    s.width = forcedWidth + 'px';
+    s.height = Math.round(availH / scale) + 'px';
+    s.transformOrigin = 'top left';
+    s.transform = 'scale(' + scale + ')';
+    s.marginLeft = Math.max(0, Math.round((availW - forcedWidth * scale) / 2)) + 'px';
+    s.outline = scale === 1 ? '1px solid rgba(128,128,128,0.35)' : '';
+    // Only while a frame is actually under it: a width asked for on the URL is
+    // applied at boot, before anything has rendered, and the input panel that
+    // may be all the viewer ever sees has to keep its own scrolling.
+    document.body.style.overflow = frame.classList.contains('hidden') ? '' : 'hidden';
+    window.__tossWidthNow = forcedWidth;
+  }
+
+  // 0 (or anything falsy) is "actual". A real width is floored at 240, since
+  // below that there is no page left to look at, only a column of wrapped
+  // words, and a typo should not render something unreadable in silence.
+  window.__tossWidth = w => {
+    const n = Math.round(+w) || 0;
+    forcedWidth = n > 0 ? Math.max(240, Math.min(4000, n)) : 0;
+    applyWidth();
+    // Keep the address honest, so the width survives a reload and travels when
+    // the address bar is copied. replaceState fires no hashchange, so the
+    // reload listener above stays quiet.
+    try {
+      const u = new URL(location.href);
+      if (forcedWidth) u.searchParams.set('w', String(forcedWidth));
+      else u.searchParams.delete('w');
+      history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    } catch (e) {}
+    return forcedWidth;
+  };
+
+  // Rotating the device, or resizing the window, changes what "fit" means.
+  window.addEventListener('resize', () => { if (forcedWidth) applyWidth(); });
+
+  const bootWidth = +param('w');
+  if (bootWidth) window.__tossWidth(bootWidth);
 
   // Mount HTML in the frame at a real URL, so a trailing #frag reaches the
   // page as its own location.hash.
@@ -227,7 +391,17 @@
   function mountFrame(html, sandbox, frag) {
     frame.setAttribute('sandbox', sandbox);
     frame.removeAttribute('srcdoc');
-    const next = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    // charset=utf-8 is load-bearing, not decoration. A blob: document takes its
+    // encoding from the Blob's type, and with none declared the browser sniffs,
+    // finds no <meta charset> in a page that never had one, and falls back to
+    // the locale default (windows-1252). The Blob is built from a JS string, so
+    // its bytes are always UTF-8, and every non-ASCII character then renders as
+    // its mojibake: 🎉 as ðŸŽ‰. The data: URL this replaced said
+    // ;charset=utf-8 in the URL itself and was silently carrying every page
+    // that omits the meta tag, which is most HTML arriving from a chat.
+    // Reported 2026-08-17 from a phone, reproduced headless in
+    // tools/test/toss-charset.mjs.
+    const next = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
     // Revoke the previous render's URL only after the new one is committed, so
     // a rapid re-toss can't pull the document out from under a pending load.
     const prev = frameBlobUrl;
@@ -243,10 +417,15 @@
     return Uint8Array.from(atob(b), c => c.charCodeAt(0));
   }
   const decodeB64 = s => new TextDecoder().decode(b64Bytes(s));
-  function b64urlEncode(bytes) {
+  // Standard alphabet, padded: what a data: URI needs. The URL-safe form below
+  // is the same bytes with the two substitutions and the padding stripped.
+  function b64Std(bytes) {
     let s = '';
     for (const c of bytes) s += String.fromCharCode(c);
-    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return btoa(s);
+  }
+  function b64urlEncode(bytes) {
+    return b64Std(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
   const utf8 = str => new TextEncoder().encode(str);
 
@@ -271,26 +450,258 @@
     return '<head>' + g + '</head>' + text;
   }
 
+  // ── The subject's favicon, dimmed ────────────────────────────────────────
+  //
+  // A toss is a rendering OF a page, so the tab should say which page. The
+  // frisbee only ever said that some toss was open, which is the one fact the
+  // viewer already knows. So the subject's own icon is adopted, and dimmed so
+  // the tab never impersonates the deployed page.
+  //
+  // Where the icon comes from: not a reconstruction. Address mode renders
+  // same-origin, so the frame's resolved <link rel=icon> is readable directly,
+  // which picks up gh-boot's runtime injection (the hex nut, on any lib page
+  // declaring no icon of its own) and any page that sets its icon late. The
+  // alternative (parsing the fetched source, or reading `icon` out of
+  // .web-tools.json) reconstructs what the icon OUGHT to be and gets the
+  // runtime cases wrong. Read the href ATTRIBUTE, not the property: the
+  // property is already resolved against the <base> addressHtml stamps, and a
+  // private repo's icon file is not fetchable from that URL without the token.
+  //
+  // Why dimming rather than a badge: a favicon is 16 CSS px in the tab strip,
+  // where a corner badge is about five pixels of mush. Desaturating and fading
+  // keeps the silhouette, which is the channel that actually survives, and
+  // reads as "this thing, but a rendering of it."
+  //
+  // Rasterized to PNG through a canvas rather than wrapped in an SVG <image>:
+  // SVG favicons render under a restricted mode whose handling of nested
+  // images is not worth betting the feature on, while a PNG data URI is
+  // unambiguous. Also sidesteps escaping a data URI inside XML.
+  //
+  // On caching: Chrome keys the favicon cache by ICON url, and a data URI is
+  // its own content, so every subject gets its own entry and none can go
+  // stale. History and bookmarks key on the PAGE url instead, which is
+  // identical for every toss (the address rides in the fragment), so those
+  // surfaces keep whichever icon was recorded last. Not fixable from here.
+  // Picked against real icons on both a light and a dark tab strip. Fading
+  // harder (alpha ~0.55) reads well on light and goes muddy on dark, where the
+  // strip is already dark; going fully grayscale is unmistakable but throws
+  // away the color that makes an icon recognizable at a glance. Most of the
+  // signal is cheaper to buy in saturation than in alpha.
+  const DIM_SATURATE  = 0.15;   // 0 = grayscale, 1 = untouched
+  const DIM_ALPHA     = 0.78;
+  const ICON_PX       = 64;     // covers the 16 and 32 px tab renditions
+  const ICON_WATCH_MS = 5000;   // how long to keep watching for a late icon
+
+  // The frisbee, captured before anything replaces it: the mark for a render
+  // with no subject behind it.
+  const baseIcon = (document.querySelector('link[rel~="icon"]') || {}).href || '';
+
+  function setFavicon(href) {
+    if (!href) return;
+    document.querySelectorAll('link[rel~="icon"]').forEach(el => el.remove());
+    const link = document.createElement('link');
+    link.rel = 'icon';
+    link.href = href;
+    document.head.appendChild(link);
+  }
+
+  const ICON_MIME = { svg: 'image/svg+xml', png: 'image/png', ico: 'image/x-icon',
+                      gif: 'image/gif', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+                      webp: 'image/webp', avif: 'image/avif' };
+
+  // A repo file as a data URI. Bytes, not text: an icon is usually binary, and
+  // the raw media type serves it directly (the JSON-labeled reply is the
+  // metadata form, whose base64 payload we unwrap).
+  async function ghDataUri(owner, name, ref, filePath) {
+    const apiBase = 'https://api.github.com/repos/' + owner + '/' + name;
+    const res = await fetch(apiBase + '/contents/' + filePath +
+      (ref ? '?ref=' + encodeURIComponent(ref) : ''), { headers: ghHeaders(RAW_MEDIA) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    let bytes = new Uint8Array(await res.arrayBuffer());
+    if (jsonLabeled(res)) {
+      try {
+        const d = JSON.parse(new TextDecoder().decode(bytes));
+        if (contentsMeta(d) && d.content) bytes = b64Bytes(d.content);
+      } catch (e) {}
+    }
+    const ext = (filePath.split('.').pop() || '').toLowerCase();
+    return 'data:' + (ICON_MIME[ext] || 'image/png') + ';base64,' + b64Std(bytes);
+  }
+
+  // Whatever the page declared, resolved to something this origin can draw.
+  // A repo-relative href goes through the token at the same ref, which is the
+  // whole point in address mode: a private repo's icon file is reachable no
+  // other way. An absolute URL is fetched and inlined so the canvas stays
+  // untainted; if that is blocked, give up rather than draw a broken icon.
+  async function iconDataUri(href, subject) {
+    if (!href) return null;
+    if (href.startsWith('data:')) return href;
+    // A relative icon resolves against the SUBJECT's repo, so a subject with no
+    // repo (a pasted payload) has nothing to resolve against and keeps the
+    // frisbee, which is the honest mark for a render with no address behind it.
+    if (isRelativeRef(href) && subject && subject.repo) {
+      const dir = subject.path.includes('/')
+        ? subject.path.slice(0, subject.path.lastIndexOf('/') + 1) : '';
+      const p = resolveRepoPath(dir, href);
+      if (!p) return null;
+      const [owner, name] = subject.repo.split('/');
+      return await ghDataUri(owner, name, subject.ref, p);
+    }
+    if (/^https?:\/\//i.test(href)) {
+      const res = await fetch(href);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      const mime = (res.headers.get('Content-Type') || 'image/png').split(';')[0];
+      return 'data:' + mime + ';base64,' + b64Std(bytes);
+    }
+    return null;
+  }
+
+  // Draw the icon dimmed. globalAlpha carries the fade on its own, so a
+  // browser without canvas filter support still gets the treatment, just
+  // without the desaturation.
+  // Does the subject have a deployed page this render stands in for? That is
+  // the whole premise of the dimming below, and for a repo that serves no Pages
+  // it is false: a private page has no github.io twin at any ref, so at its own
+  // default branch the toss is not a preview of the page, it IS the page, and
+  // its icon goes through undimmed. Off that branch the dimming still says what
+  // it always said, that this is not the canonical version.
+  //
+  // One REST read per repo per load, cached, best-effort: an unanswered call
+  // keeps the dimming, which is what every toss did before this. The fab asks
+  // the same question of the same endpoint for the escape button's destination
+  // (alpineComponents/fab.js, liveTwin).
+  const repoMeta = new Map();
+  function repoInfo(repo) {
+    if (!repoMeta.has(repo)) {
+      repoMeta.set(repo, fetch('https://api.github.com/repos/' + repo, { headers: ghHeaders() })
+        .then(r => (r.ok ? r.json() : null)).catch(() => null));
+    }
+    return repoMeta.get(repo);
+  }
+  async function isCanonicalSubject(subject) {
+    if (!subject || !subject.repo) return false;
+    const info = await repoInfo(subject.repo);
+    if (!info || info.has_pages !== false) return false;
+    return (subject.ref || 'main') === (info.default_branch || 'main');
+  }
+
+  function dimIcon(src) {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const c = document.createElement('canvas');
+          c.width = c.height = ICON_PX;
+          const ctx = c.getContext('2d');
+          ctx.filter = 'saturate(' + DIM_SATURATE + ')';
+          ctx.globalAlpha = DIM_ALPHA;
+          // An SVG with only a viewBox reports no intrinsic size in some
+          // engines; fall back to square so it still draws.
+          const iw = img.naturalWidth || ICON_PX, ih = img.naturalHeight || ICON_PX;
+          const s = Math.min(ICON_PX / iw, ICON_PX / ih);   // letterbox, never stretch
+          const w = iw * s, h = ih * s;
+          ctx.drawImage(img, (ICON_PX - w) / 2, (ICON_PX - h) / 2, w, h);
+          resolve(c.toDataURL('image/png'));
+        } catch (e) { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  }
+
+  // Watch the frame for its icon. gh-boot injects its default asynchronously
+  // and a page may set its own later still, so sample on load and then keep
+  // observing briefly, rather than reading once and accepting whatever was
+  // there first.
+  let cancelIconWatch = null;
+  function adoptSubjectIcon(subject) {
+    let stopped = false, seen = '';
+    const apply = async () => {
+      if (stopped) return;
+      let doc;
+      try { doc = frame.contentDocument; } catch (e) { return; }   // opaque origin
+      if (!doc) return;
+      const el = doc.querySelector('link[rel~="icon"]');
+      const href = el && el.getAttribute('href');
+      if (!href || href === seen) return;
+      seen = href;
+      try {
+        const src = await iconDataUri(href, subject);
+        if (!src) return;
+        const icon = await isCanonicalSubject(subject) ? src : await dimIcon(src);
+        if (icon && !stopped) setFavicon(icon);
+      } catch (e) { /* a favicon is cosmetic; never surface this */ }
+    };
+    let obs = null;
+    const onLoad = () => {
+      apply();
+      try {
+        const doc = frame.contentDocument;
+        if (!doc) return;
+        obs = new MutationObserver(apply);
+        obs.observe(doc.head || doc.documentElement,
+          { childList: true, subtree: true, attributes: true, attributeFilter: ['href', 'rel'] });
+        setTimeout(() => { try { obs.disconnect(); } catch (e) {} }, ICON_WATCH_MS);
+      } catch (e) {}
+    };
+    frame.addEventListener('load', onLoad);
+    cancelIconWatch = () => {
+      stopped = true;
+      frame.removeEventListener('load', onLoad);
+      try { obs && obs.disconnect(); } catch (e) {}
+    };
+  }
+
+  // A payload renders under an opaque origin, so the frame cannot be read and
+  // there is no repo to resolve a relative href against. The shell is holding
+  // the exact HTML, though, so a self-contained icon still comes through.
+  async function adoptPayloadIcon(html) {
+    try {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const el = doc.querySelector('link[rel~="icon"]');
+      const href = el && el.getAttribute('href');
+      if (!href || !href.startsWith('data:')) return;
+      const dimmed = await dimIcon(href);
+      if (dimmed) setFavicon(dimmed);
+    } catch (e) {}
+  }
+
   // Announce the rendered subject (the repo/ref/path the viewer is actually
   // looking at) to the shell's own chrome; the fab adopts it. Cleared for
   // renders with no repo behind them (inline HTML, external URLs, the panel).
   // __tossFrame hands the frame itself along: an address-mode render is
   // same-origin, so the fab's Inspect can scan the subject document and its
   // script registry (payload renders are opaque-origin; access just fails).
+  //
+  // Also the one place that knows whether a render has a subject, so the
+  // favicon resets here: back to the frisbee, then upgraded to the subject's
+  // own icon if the frame turns out to have one.
   function setSubject(s) {
     window.__tossSubject = s || null;
     window.__tossFrame = s ? frame : null;
+    if (cancelIconWatch) { cancelIconWatch(); cancelIconWatch = null; }
+    setFavicon(baseIcon);
+    if (s) adoptSubjectIcon(s);
     window.dispatchEvent(new CustomEvent('toss-subject'));
   }
 
   function showHtml(html, frag) {
     const t = html.match(/<title[^>]*>([^<]*)<\/title>/i);
     document.title = 'Toss · ' + (t ? t[1].trim() : 'inline');
+    // Hand the payload up before the subject event fires. A payload toss has no
+    // subject to adopt (it renders under an opaque origin, so there is nothing
+    // to reach into), but the shell is holding the exact HTML the FAB's
+    // rendering copy would otherwise have to reconstruct: a #gz= payload is
+    // self-contained by definition. Without this the take menu is present in
+    // this mode but aimed at the shell, which is not what the viewer is reading.
+    window.__tossPayload = html;
     setSubject(null);
     // Sandbox without allow-same-origin: the inline HTML arrives via the URL
     // or a paste, so it must not run as this page's origin (which can hold a
     // gh token in localStorage). Scripts still run, but under an opaque origin.
     mountFrame(guardHtml(html), 'allow-scripts allow-popups allow-forms allow-modals allow-downloads', frag);
+    adoptPayloadIcon(html);
     tossLinkFn = async () => absUrl('#gz=' + await gzipB64(html) + (frag ? '#' + frag : ''));
     reveal();
   }
@@ -299,7 +710,8 @@
   // identity, so its own gh.load chain and stored token work.
   function showTrusted(html, title, addr, frag) {
     document.title = title;
-    mountFrame(html, 'allow-scripts allow-same-origin allow-popups allow-forms allow-modals', frag);
+    window.__tossPayload = null;   // address mode has a real subject instead
+    mountFrame(html, 'allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-downloads', frag);
     tossLinkFn = async () => absUrl('#gh=' + addr);
     reveal();
   }
@@ -368,6 +780,31 @@ window.fetch=function(input,init){try{
 })();<\/script>`;
   }
 
+  // A stamped <base> is necessary for repo-relative assets, but it also changes
+  // what an ordinary href="#section" means: the browser resolves it against the
+  // GitHub Pages base and navigates the full-viewport frame away from its blob.
+  // That is especially deceptive for a private repo, where the frame becomes a
+  // GitHub Pages 404 while the shell's address bar remains unchanged. Handle
+  // unmodified, same-frame fragment links through location.hash instead. The
+  // setter operates on the blob document itself, so native ID scrolling and a
+  // page's own hashchange router both keep working. Raw attributes matter here;
+  // a.href has already been poisoned by <base> resolution.
+  function hashNavigationShim() {
+    return `<script>(function(){
+document.addEventListener('click',function(e){
+  if(e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+  var a=e.target&&e.target.closest&&e.target.closest('a[href]');
+  if(!a)return;
+  var h=a.getAttribute('href');
+  if(!h||h.charAt(0)!=='#'||(a.target&&a.target.toLowerCase()!=='_self'))return;
+  e.preventDefault();
+  if(h==='#'){
+    if(location.hash)location.hash='';else scrollTo(0,0);
+  }else location.hash=h;
+},false);
+})();<\/script>`;
+  }
+
   // The address-render recipe (toss-render is now the one renderer; the fab
   // navigates here rather than carrying its own overlay copy): <base> so
   // relative URLs resolve on github.io, plus (when a ref was addressed) a shim
@@ -389,6 +826,7 @@ window.fetch=function(input,init){try{
       'H.replaceState=function(){try{return rs.apply(H,arguments)}catch(e){}};' +
       'H.pushState=function(){try{return ps.apply(H,arguments)}catch(e){}};' +
       '})();<\/script>';
+    prelude += hashNavigationShim();
     // Params shim: the srcdoc iframe has no location.search, so answer
     // URLSearchParams lookups for the addressed ?query keys (the page's own
     // deep links, e.g. ?view=stage) plus use=<ref> (the lib-chain pin, the
@@ -501,6 +939,16 @@ window.fetch=function(input,init){try{
   // gh.load. Static first-level refs only: nested module imports, CSS
   // url()/@import, and images are left to <base> and a later pass. Runs only in
   // trusted address mode, and is a no-op when there are no relative deps.
+  // outerHTML serialisation is how the inlined doc gets back to a string, so a dep
+  // carrying a literal close tag for the element we just put it inside would end
+  // that element early: the re-parse truncates the code and leaks the remainder as
+  // body text, silently. Escaping is lossless, since the close sequence can only
+  // legally appear inside a JS or CSS string and the browser parses the escaped
+  // form back to the original there. Found downstream, porting this into the
+  // budget-drs appendix embed (mehrlander/home).
+  function escapeClose(text, tag) {
+    return String(text).replace(new RegExp('</(' + tag + ')', 'gi'), '<\\/$1');
+  }
   function isRelativeRef(u) {
     return !!u && !/^[a-z][a-z0-9+.-]*:/i.test(u) &&
       !u.startsWith('//') && !u.startsWith('/') && !u.startsWith('#') && !u.startsWith('data:');
@@ -525,7 +973,7 @@ window.fetch=function(input,init){try{
           const code = await ghText(owner, name, ref, p);
           const s = doc.createElement('script');
           for (const a of el.attributes) if (a.name !== 'src') s.setAttribute(a.name, a.value);
-          s.textContent = code;
+          s.textContent = escapeClose(code, 'script');
           el.replaceWith(s);
         } catch (e) { el.setAttribute('data-inline-error', (e && e.message) || String(e)); }
       })());
@@ -541,7 +989,7 @@ window.fetch=function(input,init){try{
           const css = await ghText(owner, name, ref, p);
           const st = doc.createElement('style');
           if (el.getAttribute('media')) st.setAttribute('media', el.getAttribute('media'));
-          st.textContent = css;
+          st.textContent = escapeClose(css, 'style');
           el.replaceWith(st);
         } catch (e) { el.setAttribute('data-inline-error', (e && e.message) || String(e)); }
       })());
@@ -618,8 +1066,151 @@ window.fetch=function(input,init){try{
     showAddress(addr);
   };
 
-  // Route a pasted string: a github blob URL -> trusted address, a bare URL ->
-  // #url load, anything else -> untrusted HTML. Used by both paste paths.
+  // A ROUTED re-address, the same move for a file that is not a page: the fab's
+  // path picker can land on a .csv or a .js, and those render through a route
+  // (#data= -> the multi-mode viewer) rather than as a page. __tossNavigate
+  // cannot carry them, since it speaks #gh= only.
+  //
+  // It exists so the route map stays owned by this file. The alternative was
+  // for the fab to resolve `data` to pages/data-view.html itself, which would
+  // put a third copy of TOSS_ROUTES in the estate next to the two that already
+  // need a test to hold them in step.
+  window.__tossRoute = (key, raw) => showRoute(key, String(raw || '').trim());
+
+  // One resolution for both callers: the boot path below and __tossRoute above.
+  // A trailing #frag belongs to the RENDERER, not the envelope address:
+  // #data=owner/repo:rows.csv#item=2 addresses rows.csv and opens the page at
+  // item=2. Split it off before encoding, or it would be percent-escaped into
+  // the ?src= value and the renderer would try to fetch it as part of the path.
+  async function showRoute(key, raw) {
+    const r = TOSS_ROUTES[key];
+    if (!r) return showEmpty('Unknown toss route: ' + key);
+    const [env, frag] = splitFrag(raw);
+    try { history.replaceState(null, '', location.pathname + location.search + '#' + key + '=' + raw); } catch (e) {}
+    // Resolve onto address mode: render the renderer page and hand it the
+    // envelope via ?src=, which the params shim delivers to the page's own
+    // location.search read. The renderer ref is the map's (the app itself);
+    // any @ref inside <env> is the ENVELOPE's ref, untouched here.
+    await showAddress(`${r.repo}@${r.ref}:${r.path}?src=${encodeURIComponent(env)}` + (frag ? '#' + frag : ''));
+    // Re-emit the pretty route form for "Copy toss link", not the resolved #gh=.
+    tossLinkFn = async () => absUrl(`#${key}=${raw}`);
+    // THE SUBJECT IS THE CONTENT, not the app showing it. showAddress just
+    // stamped data-view.html, because that is the document it fetched and
+    // mounted, and the drawer around it duly reported that you were looking at
+    // web-tools@main:pages/data-view.html. You were looking at a markdown file
+    // in another repo. A route is a rendering strategy for a file the same way
+    // the frame is a rendering strategy for a page, and neither is the thing
+    // addressed. Re-stamp with the envelope, keeping the renderer as `via`
+    // (the take actions really do operate on ITS dom, so something has to
+    // still name it) and the route key, so a re-address at another ref comes
+    // back through the same door.
+    //
+    // Only when showAddress actually mounted something. Its failure path is
+    // showEmpty, which clears the subject on the way to the panel, so a
+    // re-stamp here would resurrect a subject for a file that never rendered:
+    // the drawer would describe a document the viewer cannot see, and its take
+    // actions would reach into a frame that is hidden.
+    if (!window.__tossSubject) return;
+    const a = splitAddr(env);
+    if (!a) return;
+    document.title = 'Toss · ' + a.path.split('/').pop() + (a.ref ? ' @ ' + a.ref : '');
+    setSubject({ repo: a.repo, ref: a.ref, path: a.path, route: key,
+                 via: { repo: r.repo, ref: r.ref, path: r.path } });
+  }
+
+  // owner/repo[@ref]:path, with any ?query and #frag trimmed off. The address
+  // regex lives in showAddress, which needs the pieces in flight; this is the
+  // same grammar read for its parts alone.
+  function splitAddr(addr) {
+    const m = String(addr || '').match(/^([^/@:]+\/[^/@:]+)(?:@([^:]+))?:(.+)$/);
+    if (!m) return null;
+    return { repo: m[1], ref: m[2] || '', path: m[3].split(/[?#]/)[0] };
+  }
+
+  // ── Look at what is on the clipboard ─────────────────────────────────────
+  //
+  // The panel's premise is that you may not know what you are holding, so the
+  // paste path has to decide. It used to decide badly: three branches, of
+  // which the last was "assume HTML." A pasted CSV, JSON blob, markdown file,
+  // log, or paragraph of prose was mounted as a document and rendered as a
+  // wall of unstyled text, which is the answer for exactly one of them.
+  //
+  // The renderer for the rest already existed and had no paste door:
+  // pages/data-view.html over alpineComponents/viewer.js picks a mode by
+  // reading the content (a JSON array is a table, an object is a tree, .md is
+  // preview) and leaves every other mode one tap away, so a wrong guess costs
+  // a tap rather than a reload. Nothing here re-implements that judgment, and
+  // nothing here sniffs: kits/data-payload.js already names a bare payload by
+  // its bytes, so handing over the raw text is the whole handoff.
+  //
+  // Delivery takes no new machinery either. Address mode already accepts a
+  // trailing #frag that rides the frame's blob: URL as a real location.hash,
+  // and data-view already reads `gz` fragment-first, so the viewer page is
+  // addressed with the paste hanging off it. "Copy toss link" then re-emits
+  // the whole thing as a durable #gh= bookmark, which is what turns a look at
+  // the clipboard into something shareable.
+  //
+  // The one thing that had to change elsewhere: data-view renders same-origin
+  // (address mode's trade, and what gives its repo links a token), so it is
+  // now rendering content nobody vetted. The viewer's markdown preview was
+  // marked -> innerHTML with no sanitizer; it takes DOMPurify as of this
+  // change. Its html preview was already sandboxed, and raw/code escape.
+  const DATA_VIEWER = 'mehrlander/web-tools@main:pages/data-view.html';
+
+  // A whole document goes to the frame; a fragment does not. `<div>x</div>` is
+  // better read as code-plus-preview in the viewer than mounted as a page, and
+  // an SVG is a document worth rendering as itself.
+  const looksLikeDocument = t =>
+    /^\s*<(!doctype\s+html|html|head|body|svg)[\s>]/i.test(t) ||
+    /<html[\s>]/i.test(t) || /<body[\s>]/i.test(t);
+
+  // owner/repo[@ref]:path on its own line: the address the panel's field takes,
+  // which is also a thing people copy. Pasting one used to render it as HTML.
+  const looksLikeAddress = t => /^[\w.-]+\/[\w.-]+(?:@[^\s:]+)?:[^\s?#]+(?:[?#]\S*)?$/.test(t);
+
+  // Hand text to the multi-mode viewer, addressed with the payload attached.
+  //
+  // Then re-stamp the subject, for the reason showRoute re-stamps its own: the
+  // address showAddress just resolved names the RENDERER, so the drawer around
+  // it would report that you are looking at web-tools@main:pages/data-view.html
+  // when you are looking at your clipboard. A routed toss fixes that by
+  // re-stamping with the envelope's address; a paste has no address, so it
+  // stamps `local` instead, which the fab reads as a subject with no repo
+  // behind it: the frame stays reachable (take actions, Inspect) and every
+  // claim about a repo file is dropped.
+  async function showData(text) {
+    await showAddress(DATA_VIEWER + '#gz=' + await gzipB64(text));
+    // Only when something actually mounted: showAddress's failure path clears
+    // the subject on its way to the panel, and a re-stamp would resurrect one
+    // for a render that is not on screen.
+    if (!window.__tossSubject) return;
+    document.title = 'Toss · clipboard';
+    const [repo, path] = DATA_VIEWER.split('@main:');
+    setSubject({ local: true, label: 'Clipboard', path: '', route: 'data',
+                 via: { repo, ref: 'main', path } });
+  }
+
+  // A pasted image has no modes to switch between, so it needs no viewer: a
+  // minimal shell rendered as a PAYLOAD, which keeps it opaque-origin and
+  // makes "Copy toss link" a self-contained #gz= link to the picture.
+  function showImage(dataUri) {
+    showHtml('<!doctype html><html><head><meta charset="utf-8">' +
+      '<title>Pasted image</title>' +
+      '<style>html,body{margin:0;height:100%;background:#1a1a1a;display:grid;place-items:center}' +
+      'img{max-width:100%;max-height:100%;object-fit:contain}</style></head>' +
+      '<body><img src="' + dataUri + '" alt="Pasted image"></body></html>');
+  }
+
+  const blobToDataUri = blob => new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error('could not read the image'));
+    r.readAsDataURL(blob);
+  });
+
+  // Route a pasted string: a github blob URL or a bare repo address -> trusted
+  // address mode, a URL -> #url load, a whole HTML document -> the frame,
+  // anything else -> the data viewer. Used by both paste paths.
   function renderInput(raw) {
     const text = (raw || '').trim();
     if (!text) return;
@@ -629,15 +1220,31 @@ window.fetch=function(input,init){try{
       try { return showUrl(text); }
       catch (e) { return showEmpty('Decoded value is not a valid http(s) URL: ' + text); }
     }
-    showHtml(text);
+    if (looksLikeAddress(text)) return showAddress(text);
+    if (looksLikeDocument(text)) return showHtml(text);
+    return showData(text);
   }
 
   // --- input panel wiring ---
+  //
+  // read() before readText(), because readText() cannot see a screenshot: it
+  // returns '' for an image-only clipboard, which read as "empty" and was the
+  // one case the panel could not report honestly. read() is newer and not
+  // everywhere, so the text path stays as the fallback rather than the
+  // exception.
   document.getElementById('paste-btn').addEventListener('click', async () => {
     try {
+      if (navigator.clipboard.read) {
+        try {
+          for (const item of await navigator.clipboard.read()) {
+            const type = item.types.find(t => t.startsWith('image/'));
+            if (type) return showImage(await blobToDataUri(await item.getType(type)));
+          }
+        } catch (e) { /* not available or refused: fall through to text */ }
+      }
       const text = await navigator.clipboard.readText();
       if (text && text.trim()) renderInput(text);
-      else showEmpty('Clipboard is empty — copy some HTML or a link first.');
+      else showEmpty('Clipboard is empty — copy a page, a link, a file, or an image first.');
     } catch (e) {
       showEmpty('Could not read the clipboard. Paste with Ctrl/Cmd-V, or use a toss link.');
     }
@@ -648,10 +1255,19 @@ window.fetch=function(input,init){try{
     if (v) showAddress(blobUrlToAddr(v) || v);
   });
   // Desktop convenience: paste anywhere off a field renders straight away.
-  window.addEventListener('paste', e => {
+  // Images first here too, and from the event's own items, which need no
+  // permission prompt at all.
+  window.addEventListener('paste', async e => {
     const t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-    const text = (e.clipboardData || window.clipboardData)?.getData('text/plain');
+    const dt = e.clipboardData || window.clipboardData;
+    const file = [...(dt?.items || [])].find(i => i.kind === 'file' && i.type.startsWith('image/'));
+    if (file) {
+      e.preventDefault();
+      try { return showImage(await blobToDataUri(file.getAsFile())); }
+      catch (err) { return showEmpty('Could not read the pasted image.'); }
+    }
+    const text = dt?.getData('text/plain');
     if (text && text.trim()) { e.preventDefault(); renderInput(text); }
   });
 
@@ -662,19 +1278,25 @@ window.fetch=function(input,init){try{
   document.addEventListener('alpine:init', () => {
     Alpine.data('tossRender', () => ({
       description: 'Full-viewport renderer for tossed HTML, URLs, and GitHub files ' +
-        '(#gz / #html / #url / #gh, plus typed #<page>= content tosses). Paste or use ' +
-        'the panel to render; "Copy toss link" rebuilds the durable bookmark for what is on screen.',
+        '(#gz / #html / #url / #gh, plus typed #<page>= content tosses). With no address it ' +
+        'is the clipboard viewer: paste anything and it is routed by shape, with data, ' +
+        'markdown, and logs handed to pages/data-view.html rather than assumed to be HTML. ' +
+        '"Copy toss link" rebuilds the durable bookmark for what is on screen. ' +
+        'A ?w=<px> on its own query renders the subject at that width instead of the ' +
+        'device\'s: the frame IS a viewport, so media queries and a boot-time innerWidth ' +
+        'read both see it, and a width wider than the screen is scaled down to fit rather ' +
+        'than scrolled. The drawer\'s Render tab drives it through window.__tossWidth().',
+      // `group` files this with the FAB's other clipboard outputs instead of
+      // standing apart: copying the address of what is on screen belongs beside
+      // copying its HTML. "New toss" is retired; it only cleared the URL, which
+      // the empty panel and the address bar both already offer.
       get actions() {
-        const list = [];
-        if (tossLinkFn) list.push({
-          label: 'Copy toss link', icon: 'ph-link',
+        if (!tossLinkFn) return [];
+        return [{
+          label: 'Link', icon: 'ph-link', group: 'Copy',
+          desc: 'The durable #gz=/#url=/#gh= bookmark for what is on screen.',
           run: async () => { await navigator.clipboard.writeText(await tossLinkFn()); return 'Copied'; }
-        });
-        list.push({
-          label: 'New toss', icon: 'ph-plus',
-          run: () => { location.href = location.pathname; }  // drop params, clean panel
-        });
-        return list;
+        }];
       }
     }));
   });
@@ -704,6 +1326,7 @@ window.fetch=function(input,init){try{
   const TOSS_ROUTES = {
     'chat-results': { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/chat-results.html' },
     'data':         { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/data-view.html' },
+    'pdf':          { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/pdf-inspect.html' },
     'shorter':      { repo: 'mehrlander/web-tools', ref: 'main', path: 'pages/shorter.html' },
   };
   const routeKey = Object.keys(TOSS_ROUTES).find(k => param(k));
@@ -714,20 +1337,7 @@ window.fetch=function(input,init){try{
   const url  = param('url') || param('u');
 
   if (routeKey) {
-    const r = TOSS_ROUTES[routeKey], raw = param(routeKey).trim();
-    // A trailing #frag belongs to the RENDERER, not the envelope address:
-    // #data=owner/repo:rows.csv#item=2 addresses rows.csv and opens the page
-    // at item=2. Split it off before encoding, or it would be percent-escaped
-    // into the ?src= value and the renderer would try to fetch it as part of
-    // the path.
-    const [env, frag] = splitFrag(raw);
-    // Resolve onto address mode: render the renderer page and hand it the
-    // envelope via ?src=, which the params shim delivers to the page's own
-    // location.search read. The renderer ref is the map's (the app itself);
-    // any @ref inside <env> is the ENVELOPE's ref, untouched here.
-    await showAddress(`${r.repo}@${r.ref}:${r.path}?src=${encodeURIComponent(env)}` + (frag ? '#' + frag : ''));
-    // Re-emit the pretty route form for "Copy toss link", not the resolved #gh=.
-    tossLinkFn = async () => absUrl(`#${routeKey}=${raw}`);
+    await showRoute(routeKey, param(routeKey).trim());
   } else if (gh) {
     await showAddress(gh.trim());
   } else if (gz) {
@@ -770,7 +1380,7 @@ window.fetch=function(input,init){try{
     if (ref) {
       // ?use=<ref>: fresh branch lib via raw + blob-import (no jsDelivr branch-tip lag).
       window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
-      const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`);
+      const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`, { cache: 'no-store' });
       if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
       const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
       try { await import(u); } finally { URL.revokeObjectURL(u); }

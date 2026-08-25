@@ -1,10 +1,11 @@
 ---
 id: stage-link-onto-url-params-u9o7ny
 title: Move StageLink.read onto the shared fragment-first param read
-status: backlog
-track: depends-on:one-repo-address-parser-5gtv92
+status: done
+closed: 2026-08-02
+session: claude/web-tools-project-tracker-reo5qo
+depends-on: one-repo-address-parser-5gtv92
 opened: 2026-07-25
-next: confirm the empty-key change is wanted before touching it; it is the only observable difference
 ---
 # Move StageLink.read onto the shared fragment-first param read
 
@@ -60,3 +61,10 @@ stage and the toss routes sharing implementations rather than only conventions.
 - 2026-07-25: filed at wrap-up of PR #291. The divergence was found by running
   both readers side by side while answering how the toss routes compare to the
   stage, not by reading the code.
+- 2026-07-30 unblocked: `one-repo-address-parser-5gtv92` closed, so
+  `StageLink.parseItem` now delegates and `lib/repo-address.js` is loaded
+  wherever the stage runs. This task is unchanged in scope. It is about the
+  other half of `StageLink.read`, the fragment-first param read, and its open
+  decision (whether a bare `#stage=` should fall back to a populated `?stage=`)
+  is still a decision, not a discovery.
+- 2026-08-02: Done on `claude/web-tools-project-tracker-reo5qo` (lands via that branch's PR). UrlParams gained source(), StageLink.read picks its source through it, and the three keys still travel together. The open decision went the helper's way: an empty #stage= falls back to a populated ?stage=, covered by a test; the fragment still reaches parseLink raw, so encoded paths survive. The pre-build now boots url-params.js ahead of the components.

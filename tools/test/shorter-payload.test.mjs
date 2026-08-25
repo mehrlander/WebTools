@@ -1,4 +1,4 @@
-// lib/shorter-payload.js: the bare-or-envelope rule behind the #shorter= toss
+// lib/kits/shorter-payload.js: the bare-or-envelope rule behind the #shorter= toss
 // route. The narrowness is the point, so the cases that must NOT be read as an
 // envelope carry as much weight here as the ones that must.
 
@@ -9,7 +9,11 @@ import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
 const win = {};
-new Function('window', readFileSync(path.join(repoRoot, 'lib/shorter-payload.js'), 'utf8')).call(win, win);
+// The address grammar first: parseSpec delegates to it (lib/kits/repo-address.js),
+// and this is the same load order pages/shorter.html keeps.
+for (const f of ['lib/kits/repo-address.js', 'lib/kits/shorter-payload.js']) {
+  new Function('window', readFileSync(path.join(repoRoot, f), 'utf8')).call(win, win);
+}
 const { read, isEnvelope, isReviewable, parseSpec, KIND } = win.ShorterPayload;
 
 test('plain prose is bare, verbatim, with the right column left empty', () => {
@@ -103,8 +107,8 @@ test('a missing ref is empty, not "main", so the default branch is honored', () 
 
 test('the page reads its inputs through the shared helpers and registers the route', () => {
   const page = readFileSync(path.join(repoRoot, 'pages/shorter.html'), 'utf8');
-  assert.match(page, /gh\.load\('url-params\.js'\)/);
-  assert.match(page, /gh\.load\('shorter-payload\.js'\)/);
+  assert.match(page, /gh\.load\('kits\/url-params\.js'\)/);
+  assert.match(page, /gh\.load\('kits\/shorter-payload\.js'\)/);
   assert.match(page, /UrlParams\.get\('gz'\)/);
   assert.match(page, /UrlParams\.get\('src'\)/);
   const toss = readFileSync(path.join(repoRoot, 'pages/toss-render.html'), 'utf8');

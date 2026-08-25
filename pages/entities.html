@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entities</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🏷️</text></svg>">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+
+<!--
+  entities.html — what each repo names, from a standard recognizer.
+
+  Built to docs/HTML-STYLE.md. The three rules that shaped it, since a first
+  draft broke all three:
+
+    No stat cards. The header carries one compact line, and it carries a
+    DENOMINATOR (files scanned against files present), because the scope of
+    the scan is the fact about this page most likely to be misread. Four tiles
+    reading 177 / 291 / 5,414 / 19% would say nothing.
+    No page prose. Method, caveats, and the precision table live in the info
+    dialog. Where a qualifier has to stay attached to what it qualifies, it is
+    a LABEL: the contrast section is headed "errors included" rather than
+    explained in a paragraph, and an unjudged label reads "not judged" in the
+    row itself.
+    Full-viewport takeover. This is a result set the reader moves through, so
+    fixed inset-0, thin header, content, thin footer.
+
+  Accent discipline: `warning` means a measured-weak number, `primary` marks
+  the selected repo. Neither is used decoratively.
+
+  Removed 2026-08-05: a third view, "confirmed", listing the ORG names that
+  also appeared in a curated estate table (OFM's agency and fund registries,
+  spend-wa's vendor crosswalk, an acronym bridge). The framing was incoherent.
+  Every name in that set was a table key found in the prose, so it would be
+  reached by scanning the text for table keys with no model involved; the
+  recognizer contributed nothing to it except discarding table matches it had
+  failed to tag. A dictionary lookup with a handicap, presented as though the
+  table had graded the model. Its headline figure, 0 type errors in 24 sampled,
+  was circular: the sample was drawn from a set built by matching an agency
+  table, then checked for being agencies. A lookup over this prose may still be
+  worth having. It would be its own thing, run without the model, and not a
+  tier above the extraction.
+
+  Data: mehrlander/web-tools-private state/entities.json, private because the
+  names come from private repos. ?use=<ref> pins the lib chain; &data=<ref>
+  pins which ref of the registry.
+-->
+<style>
+  [x-cloak]{display:none!important}
+  .tabular{font-variant-numeric:tabular-nums}
+</style>
+
+<script type="module">
+  const ref = new URLSearchParams(location.search).get('use');
+  if (ref) {
+    window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
+    const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
+    const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+    try { await import(u); } finally { URL.revokeObjectURL(u); }
+  } else {
+    await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
+  }
+  await gh.load('gh-auth.js');
+  await gh.load('gh-store.js');
+
+  const LABEL = { wt:'web-tools', home:'home', chats:'chat-histories', bwa:'budget-wa',
+                  spend:'spend-wa', bills:'wa-bills', fn:'fn-data' };
+  const FULL = Object.fromEntries(Object.entries(LABEL).map(([k,v]) => [k, `mehrlander/${v}`]));
+  const NAMED = ['ORG','PERSON','GPE','LAW','NORP','PRODUCT','EVENT','WORK_OF_ART','FAC','LOC','LANGUAGE'];
+  const VALUE = ['DATE','MONEY','CARDINAL','PERCENT','QUANTITY','ORDINAL','TIME'];
+  const JUDGED = { ORG: 0.23, PERSON: 0.07 };   // adjudicated; everything else is unjudged
+
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('entities', () => ({
+      REGISTRY: 'mehrlander/web-tools-private',
+      PATH: 'state/entities.json',
+
+      // Which ref of the registry to read the index from.
+      //
+      // `window.__ref` is what toss-render injects when it serves this page
+      // from a branch, and defaulting to it is the point: a branch preview
+      // should read that branch's data without anyone remembering a
+      // parameter. This is the data-side twin of the `?use=` trap in
+      // CLAUDE.md. `?use=` pins the code a page loads and says nothing about
+      // the data it fetches, so a page previewed from a branch was reading
+      // main's index and 404ing whenever the index had not merged yet.
+      // Explicit `?data=` still wins, for reading one ref's data through
+      // another ref's code.
+      DATA_REF: new URLSearchParams(location.search).get('data')
+                || window.__ref || 'main',
+
+      idx: null, loading: true, error: '',
+      view: 'extracted', repo: 'home', label: 'ORG', hideFlagged: false,
+      cell: 'name',   // contrast matrix cell: leading name, or counts
+      corpus: '',     // '' = every corpus pooled; else one analysis_use value
+
+      async init() {
+        try {
+          const reg = new window.GH({ token: window.TOKEN || '', repo: this.REGISTRY, ref: this.DATA_REF });
+          this.idx = JSON.parse((await reg.get(this.PATH)).text);
+          const h = new URLSearchParams(location.hash.slice(1));
+          for (const k of ['view','repo','label']) if (h.get(k)) this[k] = h.get(k);
+        } catch (e) {
+          this.error = e.status === 404
+            ? `No index at ${this.REGISTRY}@${this.DATA_REF} ${this.PATH}`
+            : `${e.message || e} (${this.REGISTRY}@${this.DATA_REF})`;
+        } finally { this.loading = false }
+      },
+
+      get repos() { return this.idx ? Object.keys(this.idx.repos) : [] },
+      get cur() { return this.idx?.repos?.[this.repo] },
+      name(k) { return LABEL[k] || k },
+      full(k) { return FULL[k] || k },
+      pct(x) { return x == null ? '—' : `${Math.round(x*100)}%` },
+      n(x) { return (x ?? 0).toLocaleString() },
+      go(p) {
+        Object.assign(this, p);
+        history.replaceState(null, '', `#${new URLSearchParams({view:this.view, repo:this.repo, label:this.label})}`);
+      },
+
+      // The header line: what was read, against what was there. No precision
+      // figure here. It is per label and judged for only four of them, so it
+      // belongs in the row that shows one label at a time, and in the dialog
+      // with its sample size. A headline number with no denominator is the
+      // stat card this page is built to avoid.
+      get headline() {
+        if (!this.cur) return '';
+        const parts = [`${this.n(this.cur.filesScanned)}/${this.n(this.cur.filesTotal)} files scanned`];
+        if (this.cur.excludedByRegistry) parts.push(`${this.n(this.cur.excludedByRegistry)} excluded by registry`);
+        if (this.cur.skippedOversize) parts.push(`${this.n(this.cur.skippedOversize)} over 200KB`);
+        return parts.join(' · ');
+      },
+
+      get labelsPresent() { return NAMED.filter(l => this.cur?.labels?.[l]) },
+      get valueLabels() { return VALUE.filter(l => this.cur?.labels?.[l]) },
+      // A corpus view reads the per-corpus counts the scan tagged; the empty
+      // corpus reads the pooled label. Same shape either way, so the table
+      // below does not branch.
+      get corpora() {
+        const seen = new Set();
+        for (const r of this.repos) for (const c of Object.keys(this.idx.repos[r].corpora || {})) seen.add(c);
+        return [...seen].sort();
+      },
+      labelFor(repo, lab) {
+        const R = this.idx.repos[repo];
+        if (!this.corpus) return R.labels?.[lab];
+        return R.corpora?.[this.corpus]?.[lab];
+      },
+      get curLabel() { return this.labelFor(this.repo, this.label) },
+      get rows() {
+        const t = this.curLabel?.top || [];
+        // Per-corpus rows carry no flags (the flag pass runs on the pooled
+        // names), so the filter is a no-op there rather than emptying the table.
+        return this.hideFlagged ? t.filter(r => !(r.flags || []).length) : t;
+      },
+      judged(l) { return JUDGED[l] },
+      // Columns are the named labels any repo actually carries, in a fixed
+      // order so a column means the same thing in every row.
+      get matrixLabels() {
+        return NAMED.filter(l => this.repos.some(r => this.labelFor(r, l)));
+      },
+    }));
+  });
+
+  await gh.load('alpine-bundle.js');
+</script>
+</head>
+
+<body>
+<div x-data="entities" x-cloak class="fixed inset-0 grid grid-rows-[auto_1fr_auto] bg-base-200">
+
+  <!-- ── header: thin. identity, the one figure line, controls ──────────── -->
+  <header class="min-w-0 px-4 py-2 bg-base-100 border-b border-base-300">
+    <div class="flex items-center gap-3 min-w-0">
+      <h1 class="text-lg font-semibold shrink-0">Entities</h1>
+      <span class="text-xs opacity-60 tabular truncate hidden sm:block" x-text="headline"></span>
+      <button class="btn btn-ghost btn-xs ml-auto shrink-0" @click="$refs.info.showModal()"
+              title="method, measured precision, exclusions">
+        <i class="ph ph-info"></i>
+      </button>
+    </div>
+
+    <div class="flex items-center gap-1 mt-2 overflow-x-auto">
+      <template x-for="v in ['extracted','contrast']" :key="v">
+        <button class="btn btn-xs capitalize shrink-0"
+                :class="view===v ? 'btn-neutral' : 'btn-ghost'"
+                @click="go({view:v})" x-text="v"></button>
+      </template>
+      <span class="opacity-20 px-1 shrink-0" x-show="view!=='contrast'">|</span>
+      <template x-for="r in repos" :key="r">
+        <button class="btn btn-xs shrink-0" x-show="view!=='contrast'"
+                :class="repo===r ? 'btn-primary' : 'btn-ghost'"
+                @click="go({repo:r})" x-text="name(r)"></button>
+      </template>
+      <!-- Buttons, not a select: x-model on a <select> binds before x-for has
+           rendered its options, so the control showed "all corpora" while the
+           data underneath was correctly filtered. Buttons also match the view
+           and repo controls beside them. -->
+      <div class="join shrink-0">
+        <button class="btn btn-xs join-item" :class="!corpus && 'btn-accent'"
+                @click="corpus=''">all corpora</button>
+        <template x-for="c in corpora" :key="c">
+          <button class="btn btn-xs join-item" :class="corpus===c && 'btn-accent'"
+                  @click="corpus=c" x-text="c"></button>
+        </template>
+      </div>
+      <select class="select select-xs ml-auto shrink-0 font-mono" x-show="view==='extracted'"
+              :value="label" @change="go({label:$event.target.value})">
+        <template x-for="l in labelsPresent" :key="l"><option :value="l" x-text="l"></option></template>
+        <template x-for="l in valueLabels" :key="l"><option :value="l" x-text="`${l} (value)`"></option></template>
+      </select>
+    </div>
+    <div class="text-xs opacity-60 tabular mt-1 sm:hidden" x-text="headline"></div>
+  </header>
+
+  <!-- ── content: the thing ─────────────────────────────────────────────── -->
+  <main class="min-h-0 min-w-0 overflow-auto px-4 py-4">
+    <div x-show="loading" class="opacity-60">loading…</div>
+    <div x-show="error" class="alert alert-warning" x-text="error"></div>
+
+    <template x-if="idx">
+    <div class="max-w-5xl">
+
+      <!-- EXTRACTED: everything the model returned -->
+      <section x-show="view==='extracted'">
+        <template x-if="curLabel">
+        <div>
+          <!-- Opacity is set per span, never on this row. CSS opacity applies to
+               the whole subtree, so an opacity-60 container would mute the
+               precision figure no matter what class the child carried, and that
+               is the one number qualifying everything below it. -->
+          <div class="flex items-baseline gap-4 text-xs tabular mb-3">
+            <span class="opacity-60" x-text="`${n(curLabel.names)} names, ${n(curLabel.mentions)} mentions`"></span>
+            <span class="opacity-60" x-show="!corpus" x-text="`${pct(curLabel.flagRate)} flagged by shape`"></span>
+            <span class="opacity-60 italic" x-show="corpus">flags and precision are pooled-set measurements</span>
+            <!-- A filled badge, not text-warning: winter's warning is a pale
+                 amber on a light ground, so colour alone reads as de-emphasis,
+                 which is the opposite of what this figure needs. -->
+            <span x-show="!corpus"
+                  :class="judged(label)!==undefined ? 'badge badge-warning badge-sm font-medium' : 'opacity-60 italic'"
+                  x-text="judged(label)!==undefined ? `${pct(judged(label))} precision, adjudicated` : 'precision not judged'"></span>
+            <label class="cursor-pointer flex items-center gap-1 ml-auto opacity-60" x-show="!corpus">
+              <input type="checkbox" class="checkbox checkbox-xs" x-model="hideFlagged">
+              hide flagged
+            </label>
+          </div>
+          <table class="table">
+            <tbody>
+              <template x-for="r in rows" :key="r.name">
+                <tr class="hover">
+                  <td class="text-xl leading-8" :class="r.flags.length && 'opacity-50'" x-text="r.name"></td>
+                  <td class="text-xl leading-8 tabular text-right w-24" x-text="n(r.mentions)"></td>
+                  <td class="text-xs opacity-40 tabular text-right w-20"
+                      x-text="r.files === undefined ? '' : `${n(r.files)} files`"></td>
+                  <td class="text-xs font-mono opacity-40" x-text="(r.flags || []).join(' ')"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        </template>
+      </section>
+
+      <!-- CONTRAST: a repo x category matrix. One list per category stacked
+           vertically made the reader hold seven rows in their head to compare
+           two repos; the matrix puts the comparison on one axis and reads both
+           ways, down a column for one category across repos and along a row
+           for one repo's whole profile. The qualifier stays a label in the
+           corner rather than a paragraph. -->
+      <section x-show="view==='contrast'">
+        <div class="flex items-center gap-3 text-xs mb-3">
+          <span class="badge badge-sm badge-ghost">errors included</span>
+          <div class="join">
+            <button class="btn btn-xs join-item" :class="cell==='name' && 'btn-neutral'"
+                    @click="cell='name'">leading name</button>
+            <button class="btn btn-xs join-item" :class="cell==='count' && 'btn-neutral'"
+                    @click="cell='count'">counts</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th></th>
+                <template x-for="l in matrixLabels" :key="l">
+                  <th class="font-mono text-xs font-normal opacity-60" x-text="l"></th>
+                </template>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="r in repos" :key="r">
+                <tr class="hover align-baseline">
+                  <th class="text-xl leading-8 font-normal whitespace-nowrap">
+                    <a class="link link-hover" :href="`https://github.com/${full(r)}`" x-text="name(r)"></a>
+                  </th>
+                  <template x-for="l in matrixLabels" :key="l">
+                    <td>
+                      <template x-if="labelFor(r,l)">
+                        <div>
+                          <div class="text-xl leading-8" x-show="cell==='name'"
+                               x-text="labelFor(r,l).top[0]?.name || '—'"></div>
+                          <div class="text-xl leading-8 tabular" x-show="cell==='count'"
+                               x-text="n(labelFor(r,l).mentions)"></div>
+                          <div class="text-xs opacity-40 tabular whitespace-nowrap"
+                               x-text="cell==='name'
+                                 ? n(labelFor(r,l).top[0]?.mentions)
+                                 : `${n(labelFor(r,l).names)} names`"></div>
+                        </div>
+                      </template>
+                      <span x-show="!labelFor(r,l)" class="opacity-20">—</span>
+                    </td>
+                  </template>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+    </template>
+  </main>
+
+  <!-- ── footer: thin ───────────────────────────────────────────────────── -->
+  <footer class="px-4 py-1.5 bg-base-100 border-t border-base-300 flex items-center gap-3 text-xs opacity-50">
+    <span x-show="idx" x-text="`spaCy en_core_web_sm · OntoNotes · ${idx?.generatedAt}`"></span>
+    <a class="link link-hover ml-auto" :href="`https://github.com/${REGISTRY}/blob/${DATA_REF}/${PATH}`">index</a>
+  </footer>
+
+  <!-- ── the method, one tap away rather than on the page ───────────────── -->
+  <dialog x-ref="info" class="modal">
+    <div class="modal-box max-w-2xl">
+      <h3 class="text-lg font-semibold mb-3">Method</h3>
+
+      <template x-if="idx">
+      <div class="space-y-4 text-sm">
+        <div>
+          <p class="font-medium mb-1">Four levels, kept apart</p>
+          <p class="opacity-70">A <strong>type</strong> is an OntoNotes label. A
+          <strong>name</strong> is a surface form. A <strong>mention</strong> is one
+          occurrence, dropped from this index for size. An <strong>entity</strong> is
+          what two names may share, and is <strong>not resolved</strong>: DRS and
+          Department of Retirement Systems are two rows on purpose.</p>
+        </div>
+
+        <div>
+          <p class="font-medium mb-1">Measured precision</p>
+          <table class="table table-xs">
+            <tbody>
+              <tr><td><code>ORG</code>, top 10 per repo</td><td class="text-right tabular">23%</td><td class="opacity-50 text-right">70 judged</td></tr>
+              <tr><td><code>ORG</code>, stratified</td><td class="text-right tabular">19%</td><td class="opacity-50 text-right">68 judged</td></tr>
+              <tr><td><code>PERSON</code>, top 10 per repo</td><td class="text-right tabular">7%</td><td class="opacity-50 text-right">67 judged</td></tr>
+              <tr><td><code>PERSON</code>, stratified</td><td class="text-right tabular">9%</td><td class="opacity-50 text-right">69 judged</td></tr>
+            </tbody>
+          </table>
+          <p class="opacity-70 mt-1">One rater, against the OntoNotes definitions. The
+          head is not cleaner than the tail, which rules out taking the top of the list
+          and calling it clean. Every other label is unjudged, and reads so. Flag rate
+          is a different measurement: Pearson r between the two is
+          <strong>-0.54</strong> over 14 repo/label pairs, so shape explains under a
+          third of the variation.</p>
+          <p class="opacity-70 mt-2">These are the only precision figures. Two others
+          appeared here previously and are withdrawn rather than corrected: 97.5%,
+          measured before the masking fix on a set still carrying names like
+          <code>| Governor's Office</code>; and "0 type errors in 24 judged" for names
+          matched against a curated table, which measured nothing, the sample having
+          been drawn from a set built by matching an agency table and then checked for
+          being agencies.</p>
+        </div>
+
+        <div>
+          <p class="font-medium mb-1">What is scanned</p>
+          <p class="opacity-70"><strong>Markdown prose only.</strong> In the data repos
+          that is the documentation layer, not the corpus: wa-bills holds 32 markdown
+          files in a repo of 138,896, so its profile describes what its notes discuss,
+          not the legislative corpus it stores.</p>
+          <p class="opacity-70 mt-2">Each repo's <code>data/design/content.csv</code>
+          decides membership. A file declared <code>exclude</code> is dropped, and every
+          extraction is tagged with the corpus its file belongs to, which is what the
+          corpus buttons filter on. Sampling runs per corpus, so a large one cannot
+          crowd out a small one. The split matters most where a repo mostly holds
+          somebody else's words: 108 of budget-wa's 176 scanned files are declared
+          supplied source material rather than the repo's own voice, and 1,200 of
+          fn-data's 1,258.</p>
+        </div>
+
+        <div>
+          <p class="font-medium mb-1">Corpus</p>
+          <table class="table table-xs">
+            <thead><tr><th>repo</th><th class="text-right">scanned</th><th class="text-right">total</th><th class="text-right">skipped &gt;200KB</th></tr></thead>
+            <tbody>
+              <template x-for="r in repos" :key="r">
+                <tr><td x-text="name(r)"></td>
+                  <td class="text-right tabular" x-text="n(idx.repos[r].filesScanned)"></td>
+                  <td class="text-right tabular" x-text="n(idx.repos[r].filesTotal)"></td>
+                  <td class="text-right tabular opacity-50" x-text="n(idx.repos[r].skippedOversize)"></td></tr>
+              </template>
+            </tbody>
+          </table>
+          <p class="opacity-70 mt-1">Totals are markdown files present, not files in the
+          repo. Skipped files are supplied material: enrolled bill text, ACFR extracts,
+          raw transcripts. fn-data is a 1,258-file sample of its 7,938.</p>
+        </div>
+      </div>
+      </template>
+
+      <div class="modal-action"><form method="dialog"><button class="btn btn-sm">close</button></form></div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+</div>
+</body>
+</html>

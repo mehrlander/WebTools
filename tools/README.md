@@ -15,8 +15,9 @@ Everything here resolves the same two networks of dependencies to local files:
 
 ## Layout
 
-Three categories, one folder each (they share no module imports — render and
-build touch only via subprocess and the `dist/` artifact):
+Three categories, one folder each, plus one folder of generated input (they
+share no module imports — render and build touch only via subprocess and the
+`dist/` artifact):
 
 - [`render/`](render/) — exercise a page headlessly, offline. `preview.mjs`
   (jsdom logic render) + `screenshot.mjs` (Chromium pixel render), with
@@ -33,9 +34,12 @@ build touch only via subprocess and the `dist/` artifact):
   real-Alpine recipe from
   [`docs/environment/testing.md`](../docs/environment/testing.md) for
   component logic tests. One `*.test.mjs` per kit/component beside it.
+- [`graphql/`](graphql/) — one generated file, the pruned GitHub schema the
+  suite typechecks `lib/gh-fetch.js`'s queries against. Tracked, unlike the
+  other generated outputs, because the test needs it offline.
 
 The build/bake
-*format* itself lives outside `tools/`, in [`../lib/kits/build.js`](../lib/kits/build.js)
+*format* itself lives outside `tools/`, in [`../lib/build.js`](../lib/build.js)
 (`window.buildKit`) — one emitter shared by `build/`'s Node tools (static cache)
 and `kits/export.js` (browser, runtime cache) so the two can't drift. The
 contract that makes all of this possible is in [`../docs/loader.md`](../docs/loader.md).
@@ -54,6 +58,7 @@ contract that makes all of this possible is in [`../docs/loader.md`](../docs/loa
 | `npm run pages-shots` | Regenerate `pages/thumbs/*.png` — one headless screenshot per page, the card previews for the visual index. Uses the [`screenshot.mjs`](render/screenshot.mjs) renderer; see [Cataloging the pages](#cataloging-the-pages). |
 | `npm run pages-index` | Regenerate both catalogs of every page: [`pages/README.md`](../pages/README.md) (link-dense table) and [`pages/index.html`](../pages/index.html) (visual card index). A *catalog* generator, not part of the code pipeline below — see [Cataloging the pages](#cataloging-the-pages). |
 | `npm run pages` | `pages-shots` then `pages-index` — refresh thumbnails and both catalogs in one step. |
+| `npm run graphql-schema [-- --check]` | Regenerate [`graphql/github-schema.pruned.graphql`](graphql/): fetch GitHub's published SDL (1.5 MB) and write only the slice `lib/gh-fetch.js`'s queries reach (~2 KB), so `npm test` can typecheck them offline. The **one generator that needs the network**, which is why it stays out of the commit hook and the lockstep test; the drift guard lives in [`test/graphql-schema.test.mjs`](test/graphql-schema.test.mjs) instead. Run it after editing a query. |
 | `node tools/build/repo-pages-shots.mjs --repo <owner/name> --root <checkout> --out <thumbs-dir>` | Shoot ANOTHER repo's `pages` catalog into the private thumb cache (`web-tools-private/thumbs/`), so show-repo's gallery can show clickable screenshots for that repo. Serves the source checkout, vendors CDN libs from this repo's `node_modules`. Not an npm script (it takes a target). |
 
 Shared internals: [`render/cdn.mjs`](render/cdn.mjs) (URL → local
@@ -71,7 +76,13 @@ can capture a *state* — a drawer open, a toggle ticked, a breakpoint — not j
 landing view. The file default-exports `async (page, ctx) => {}` and gets the
 Playwright `page` (`ctx.repoRoot` too). Scenarios live in
 [`tools/render/scenarios/`](render/scenarios/); the PNG/log pick up the scenario
-name in their suffix. Example — the FAB's Export controls, opened to the Render
+name in their suffix.
+
+Every driver lives there and there is nowhere else to put one. Two of them,
+`sidebar-projects.mjs` and `sidebar-projects-overlay.mjs`, still overlap on
+their default path; only the overlay posture distinguishes them.
+
+Example — the FAB's Export controls, opened to the Render
 tab with "Fully offline" ticked:
 
 ```
@@ -154,7 +165,7 @@ So "bundle" now means only the hand-authored grab-bags (`vanilla-bundle.js`,
 `npm run build` snapshots *one page's* reachable graph. **The pre-build**
 (`npm run build:lib` → [`build-lib.mjs`](build/build-lib.mjs)) snapshots the
 *whole* `lib/`: every `lib/*.js` inlined into one self-resolving artifact at
-`dist/web-tools.js`. It's the same emitter (`lib/kits/build.js`), just seeded
+`dist/web-tools.js`. It's the same emitter (`lib/build.js`), just seeded
 with all of `lib/` instead of a page's boot block — so the format can't drift
 from the per-page build, and `verify-build` still holds for pages.
 
@@ -238,19 +249,52 @@ Every derived artifact in the repo is refreshed one of two ways, split on one
 property: whether its generator is **deterministic**.
 
 **Deterministic artifacts ride in the commit that changes their source.** The
-commit-time hook
-([`.claude/hooks/build-on-commit.sh`](../.claude/hooks/build-on-commit.sh), a
-`PreToolUse(Bash)` hook wired in `.claude/settings.json`) fires before every
-`git commit` and regenerates + stages whatever the pending changes touch:
+commit-time hook ([`.githooks/pre-commit`](../.githooks/pre-commit), a git hook
+rather than a Claude Code hook, so it fires whatever the session's project root
+is) runs before every `git commit` and regenerates + stages whatever the pending
+changes touch:
 
 | Source dirty | Generator | Staged into the same commit |
 |---|---|---|
 | `lib/` | `npm run build:lib` | `dist/web-tools.js` |
-| `pages/**/*.html` | `npm run pages-index` | `pages/README.md`, `pages/index.html` |
+| `console/` | `npm run build:console` | `console/suite.js` |
+| `pages/**/*.html` | `npm run pages-index` | `pages/README.md`, `pages/index.html`, `pages/pages.csv` |
+| skills, `lib/`, `pages/`, `docs/` | `npm run docs-reach` | `reach` and `words` in `docs/docs.csv` |
+| `docs/docs.csv` | `npm run docs-readme` | `docs/README.md` |
+| `tracker/tasks/` | `npm run tracker-board` | `tracker/board.md`, `tracker/board.csv`, `tracker/board-tags.csv` |
 
-Both generators are byte-deterministic, so the hook can fire on every commit and
+**Order is part of the contract, and it runs one way: a leg that WRITES into a
+folder precedes the leg that MEASURES it.** `docs-reach` stamps every `docs/`
+file's length into the registry's `words`, so `tests-index`, `tools-index`,
+`registries-reach` and `snags-index` all run above it: each writes a file under
+`docs/`, and a stamp taken before that write is stale by exactly that file's own
+delta. Nothing local reports it either, because the hook does not verify what it
+stamps; `docs-registry.test.mjs` catches it in CI, after the push. Three legs
+learned this separately and each left the finding as a comment on its own leg,
+which is how the fourth was free to repeat it in 2026-08-23. So it is stated
+here once: a new generator that writes under `docs/` goes above leg 3a, and one
+that only reads goes wherever it likes.
+
+**And a leg has to stage the file it actually writes.** Every `git add` in the
+hook goes through a `stage()` helper that reports a path that is not there,
+because the bare form swallowed two renames for a month: `docs/docs.json` and
+`tracker/board.json` both became CSVs in PR #441 and their adds silently
+addressed nothing, so two registries were regenerated on every commit and
+committed on none. `git add X 2>/dev/null || true` cannot tell "nothing to
+stage" from "renamed," and the second is the one worth hearing about.
+
+Every generator is byte-deterministic, so the hook can fire on every commit and
 no-op invisibly when nothing real changed. It's non-blocking: a generator failure
 warns and the commit proceeds.
+
+The tracker board was the last to get an owner there, on 2026-08-05, and the gap
+was not theoretical: `board.json`, the projection's shape until 2026-08-18,
+emitted its per-task keys by iterating a set, so hash randomization reordered
+them on every run. Same input, different bytes,
+in an artifact whose own closing comment promises the opposite, unnoticed
+because it is read by machines and diffed by no one. The suite now asserts
+determinism directly rather than inferring it from one passing run, since a
+nondeterministic generator makes a lockstep test flaky rather than false.
 
 **Thumbnails (`pages/thumbs/*.png`) refresh once per session, at wrap-up.**
 Screenshots are slow (a Chromium render per page) and not byte-deterministic

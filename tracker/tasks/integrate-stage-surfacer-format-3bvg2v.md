@@ -1,10 +1,9 @@
 ---
 id: integrate-stage-surfacer-format-3bvg2v
 title: Integrate the stage with the surfacer's .surface format
-status: backlog
-track: depends-on:stage-links-main-area-explorer-7a6gd7
+status: done
+depends-on: stage-links-main-area-explorer-7a6gd7
 opened: 2026-07-14
-next: run in a session with both web-tools and the home repo, to read the surfacer's .surface files directly
 ---
 # Integrate the stage with the surfacer's .surface format
 
@@ -60,3 +59,19 @@ Storage does not reconcile by format alone: the surfacer keeps its truth in a lo
   (mehrlander/chat-histories' results/<slug>.json) appear in the estate view
   as generic cards, once the v1-to-v2 migration lands. No work done; a
   candidate future bridge, not scoped into this task.
+
+## Progress log
+- 2026-08-03: Done, on PR #341, together with its cluster sibling
+  stage-surface-convergence-kgtosz. Steps 1, 3, and 4 of the path forward
+  shipped: stage items are v2 surface items (lib/surface.js), save-as-surface
+  writes a .surface into the registry's surfaces/ over the Contents API, and
+  open-as-stage loads one back. Two departures from the plan above, both
+  deliberate. The item shape is v2 (`type` plus `target.source`) rather than
+  v1's `kind`, since the contract split genre from transport after this task
+  was written. And `stage.files` is no longer the saved form at all: it is
+  read as a seed and never written, because saving there overwrote the
+  previous set and put a cross-repo list in one repo's config.
+  Step 2 (a per-item commentary field editable on the bench) is the one part
+  not built; the shape carries `commentary` already, so it is a UI affordance
+  rather than a format change. Noted here rather than filed.
+

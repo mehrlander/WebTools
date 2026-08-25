@@ -1,8 +1,8 @@
 ---
 id: use-gh-api-chain-blob-import-y2hwqe
 title: Extend fetch + blob-import to the gh-api.js-chain ?use= boot
-status: backlog
-track: independent
+status: done
+closed: 2026-08-02
 opened: 2026-07-20
 ---
 # Extend fetch + blob-import to the gh-api.js-chain ?use= boot
@@ -34,3 +34,4 @@ if (ref) {
 
 ## Progress log
 - 2026-07-20: Filed as the chain-boot half of `use-blob-import-bundle-dtuqjo` (pre-build half done). Captured the `import.meta.url` blob-safe-fallback prerequisite and the page/doc surface to convert.
+- 2026-08-02: Closed during a tracker groom: delivered but never closed. lib/gh-api.js carries the window.__ghBlobBoot blob-safe bootstrap this task specified, the canonical boot block in README.md fetches the reffed gh-api.js from raw.githubusercontent.com and blob-imports it, and CLAUDE.md states both ?use= boots are now fetch + blob-import, so a branch name is cache-safe on every ?use= page.

@@ -1,11 +1,10 @@
 ---
 id: singleton-fab-toss-render-gticvb
 title: Singleton fab with toss-render integration
-status: in-progress
-track: independent
+status: done
 opened: 2026-07-08
 session: claude/fab-render-toss-render-ua6p3p
-next: live-confirm branchesForPath (GraphQL Commit.file) with a token, then wrap up PR #241
+closed: 2026-07-26
 ---
 # Singleton fab with toss-render integration
 
@@ -79,3 +78,4 @@ the URL machinery.
   file-scoped branch survey on gh-fetch's new branchesForPath, with tab-badge
   differs count and in-place re-toss via __tossNavigate. jsdom tests + headless
   scenario green. Remaining: live GraphQL confirmation with a token.
+- 2026-07-26 closed: Delivered in PR #241, merged 2026-07-18. The branch predates the history rewrite so it shares no ancestor with today's main, which is why it read as unmerged. The one live-confirm the `next` tag named (branchesForPath against the real API) is refiled as its own task, alongside the same check for branchSessions. Found by `/in-flight`, which reconciles every in-progress claim against the branch it names.

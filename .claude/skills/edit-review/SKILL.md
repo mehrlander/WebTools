@@ -16,7 +16,7 @@ description: >-
 
 # edit-review
 
-Hands an edited file to show-repo's stage for review, rather than generating
+Hands an edited file to the Web Tools app's stage for review, rather than generating
 a bespoke page. The Diff lens (`lib/alpineComponents/stage.js`) already does
 the diff, the copy, and a general-purpose review-prompts panel; this skill's
 job is staging the right two things and handing over the link.
@@ -38,12 +38,12 @@ Mint a `#stage=` link with the same path at both refs, and append `&mode=diff`
 so the stage opens on the Diff tab and runs the diff itself, no click:
 
 ```
-https://mehrlander.github.io/web-tools/pages/show-repo/show-repo.html#stage=owner/repo@<base-ref>:path/to/file.md;owner/repo@<head-ref>:path/to/file.md&mode=diff
+https://mehrlander.github.io/web-tools/app/#stage=owner/repo@<base-ref>:path/to/file.md;owner/repo@<head-ref>:path/to/file.md&mode=diff
 ```
 
 The Diff lens auto-pairs the two staged items into A/B (first stage item to
-A, the second to B) the moment they land, and `mode=diff` runs the compare on
-open, so the reviewer sees the diff immediately. Drop `&mode=diff` to open on
+A, the second to B) the moment they land, and `mode=diff` opens the preview on
+that compare, so the reviewer sees the diff immediately. Drop `&mode=diff` to open on
 the Out tab instead (a bundle handoff rather than a review).
 
 **Uncommitted edit.** The "after" text has no ref yet (a draft still being

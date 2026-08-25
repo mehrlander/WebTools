@@ -2,20 +2,20 @@
 // halves populated. (Formerly portable-view.mjs, for the view's old name; the
 // component became map() in the rename, which left this scenario waiting on an
 // x-data that no longer existed.) The third tab has its own scenario,
-// map-transport.mjs, since it loads a different manifest.
+// map-showing.mjs, since it loads a different manifest.
 //
-//   node tools/render/screenshot.mjs pages/show-repo/show-repo.html \
+//   node tools/render/screenshot.mjs app/index.html \
 //     --script tools/render/scenarios/map-set-adoption.mjs \
 //     --out tools/.preview/map-set-adoption.png
 //
 // The sandbox blocks api.github.com, so the scenario serves the REAL committed
-// docs/portable.json (fetched relative, same origin) and fakes a small
+// docs/portable.csv (fetched relative, same origin) and fakes a small
 // ecosystem for the adoption probe: the hub, the registry, one fully aligned
 // consumer, one partial, one unaligned. What the pixels prove: the set's
 // grouped rows (title, role, use badge), and the adoption rows' verdict
 // badges and per-signal check/x chips.
 export default async function (page) {
-  const manifest = await page.evaluate(() => fetch('../../docs/portable.json').then(r => r.text()));
+  const manifest = await page.evaluate(() => fetch('../../docs/portable.csv').then(r => r.text()));
   const ok = await page.evaluate((manifestText) => {
     if (!window.Alpine || !window.__shell || !window.GH || !window.PortableAlign) return 'no shell';
     window.TOKEN = 'fixture-token';
@@ -35,7 +35,7 @@ export default async function (page) {
       hooks: { SessionStart: [] },
     };
     const FILES = {
-      [HUB + '::docs/portable.json']: manifestText,
+      [HUB + '::docs/portable.csv']: manifestText,
       [REG + '::.web-tools.json']: JSON.stringify(REG_CFG),
       'mehrlander/home::.claude/settings.json': JSON.stringify(ALIGNED_SETTINGS),
       'mehrlander/home::CLAUDE.md': 'Run /web-tools at the start of any session that will modify files.',
@@ -49,7 +49,7 @@ export default async function (page) {
       const key = this.repo + '::' + name;
       if (key in FILES) return { text: FILES[key] };
       if (name === '.claude/settings.json' || name === 'CLAUDE.md' || name === '.web-tools.json'
-          || name === 'docs/portable.json' || name === 'state/configs.json' || name === 'state/activity.json'
+          || name === 'docs/portable.csv' || name === 'state/configs.json' || name === 'state/activity.json'
           || name === 'lists/todo.json' || name === 'lists/jots.json')
         throw Object.assign(new Error('404'), { status: 404 });
       return origGet.call(this, name);

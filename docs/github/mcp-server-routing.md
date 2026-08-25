@@ -2,6 +2,13 @@
 
 *(observed 2026-07-15)*
 
+> [!WARNING]
+> **Stale 2026-08-05 → ../environment/capabilities.md:** the operative rule
+> moved. A better-evidenced measurement two weeks later (logs, controls, and
+> upstream issues) reaches the same move from a different account of the cause,
+> and that section is now the one owner. This file stays as the record of what
+> was observed on 2026-07-15 and is not rewritten to agree with it.
+
 A session can have more than one GitHub MCP server connected at once, and a
 call's approval behavior depends on which one it lands on.
 
@@ -21,6 +28,12 @@ tool name. The stable `mcp__github__*` server is on the allowlist; a
 freshly-reconnected UUID-named server is not, so the same operation prompts
 there. Nothing about the approval flow is broken; the call was simply routed to
 an un-allowlisted twin.
+
+**Stale 2026-08-05 → ../environment/capabilities.md:** this paragraph is the
+part that was superseded. The later measurement puts the split at built-in
+versus connector rather than allowlisted versus not, and reports that
+allowlisting the connector's tools was tried upstream and failed, which this
+account would not predict. The move below is unaffected.
 
 **The move.** Prefer the stable `mcp__github__*` tools. When a GitHub MCP call
 unexpectedly requires approval, do not re-approve on the duplicate: reload the

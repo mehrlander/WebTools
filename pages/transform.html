@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transform</title>
+<!-- The standalone face of lib/alpineComponents/transform-workbench.js, which
+     carries the whole tool (component, markup, worker, viewer). This shell
+     only loads dependencies, mounts the panel, and turns on the localStorage
+     function cache. Supersedes table-compress.html and table-compress-multi.html;
+     their single-fn {fn,data} bundles still paste in, the multi page's
+     {name}_fn keys do not. The budget-drs app embeds the same file with its
+     own loading and recipe registry around it. -->
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/tabulator-tables/dist/css/tabulator_simple.min.css" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web,npm/papaparse,npm/clipboard,npm/tabulator-tables"></script>
+<script defer src="https://unpkg.com/alpinejs/dist/cdn.min.js"></script>
+<script src="../lib/alpineComponents/transform-workbench.js"></script>
+</head>
+<body class="bg-base-100 min-h-screen p-4">
+
+<div class="w-full flex flex-col gap-3 lg:h-[calc(100vh-2rem)]">
+  <div class="flex items-baseline justify-between shrink-0">
+    <h1 class="text-xl font-bold tracking-tight">Transform</h1>
+    <span class="text-base-content/40 text-xs">paste → tabs of rows ⇒ rows (with $name refs) → export or bundle</span>
+  </div>
+  <div id="twb-mount" class="lg:flex-1 lg:min-h-0"></div>
+</div>
+
+<script>
+  // Inject the workbench markup before Alpine (deferred above) walks the DOM.
+  // persist keeps tab names + sources in localStorage across visits; data
+  // itself never persists.
+  document.getElementById('twb-mount').innerHTML =
+    TransformWorkbench.panelHTML("{ persist: true, storageKey: 'transform-page' }");
+</script>
+</body>
+</html>

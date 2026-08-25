@@ -9,11 +9,12 @@ in `lib/`, reload, and the next run uses it.
 The repo has two tiers of pages:
 
 - **Simple pages** (`pages/index.html`, `pages/stories/bookmarklets-story.html`,
-  `show-repo/repo-drag.html`, `table-compress*.html`) — each is
+  `show-repo/repo-drag.html`, `transform.html`) — each is
   self-contained: CDN Tailwind + Phosphor + Alpine (via `<script defer>`),
-  then an inline `<script>` with the page's Alpine components. They don't use
-  the loader at all.
-- **Loader-based pages** (`show-repo/show-repo.html`,
+  then an inline `<script>` with the page's Alpine components (or, as
+  `transform.html` does, one plain `<script src>` pulling a self-contained
+  component file from `lib/`). They don't use the loader at all.
+- **Loader-based pages** (`app/index.html`,
   `show-repo/demo-viewer.html`, `scratch/demo-spacex.html`,
   `lib/kits/demos/{persistence,messaging,io}.html`) —
   use `gh-api.js` (whose bootstrap chains `gh-boot.js` and its auto-loads;
@@ -59,14 +60,14 @@ Every loader-based page's `<head>` looks like this, with minor variation:
   // await gh.load('gh-store.js');                // optional: write methods
 
   await gh.load('alpineComponents/repo.js');      // 1) register Alpine.data('repo', ...)
-  await gh.load('alpineComponents/navigator.js'); // 2) register Alpine.data('navigator', ...)
+  await gh.load('alpineComponents/mention.js');   // 2) register Alpine.data('mention', ...)
   await gh.load('alpineComponents/viewer.js');    // 3) register Alpine.data('viewer', ...)
   await gh.load('alpine-bundle.js');              // 4) register magics + boot Alpine
 </script>
 ```
 
 The page body then has `<body x-data="app()" x-init="init()">` and the
-components each use `x-data="repo()"`, `x-data="navigator()"`,
+components each use `x-data="repo()"`, `x-data="mention()"`,
 `x-data="viewer()"`.
 
 The `?use=` convention is opt-in per page. Pages that adopt it gain a runtime
@@ -115,7 +116,10 @@ stays dormant and the page instantiates `GH` by hand.
   each resolved `read()` onto `window.__reads` (newest value per path,
   fires a `reads` event; the export kit's input), injects the project
   favicon when a page declares none, and under `?use=` paints the corner
-  ref badge and auto-mounts the FAB unless the page mounts its own. The
+  ref badge and auto-mounts the FAB unless the page mounts its own
+  (registering `alpineComponents/path-picker.js` alongside it, since the
+  FAB's render tab mounts one and a component file loaded after Alpine
+  starts never registers). The
   cosmetic pieces are wrapped best-effort; nothing in it may break the
   boot chain.
 - `gh-auth.js` — optional augmentation. Patches the `headers` getter so
@@ -149,7 +153,7 @@ stays dormant and the page instantiates `GH` by hand.
 - `alpineComponents/*.js` — each calls `document.addEventListener('alpine:init', …)`
   with `Alpine.data('name', fn)` inside. They reach across to other
   components via `Alpine.store('browser')` and via per-element back-pointers
-  (`this.$root.__navigator = this`).
+  (`this.$root.__viewer = this`).
 - The view registry (Tabulator/Prism/Marked render modes) lives inside
   `alpineComponents/viewer.js` as a module-private constant.
   Pages don't load it separately.
@@ -167,17 +171,49 @@ itself; a page that instantiates `GH` by hand gets only what it loads.
 | `__consoleLogs` (+ `consolelog` event) | `gh-api.js` | flattened console capture; the fallback renderers use when `kits/console.js` is absent |
 | `__loadedScripts` (+ `loadedscripts` event) | `gh-boot.js` | the load registry: path, timing, status, `by:` attribution; the FAB's Scripts tab reads it |
 | `__reads` (+ `reads` event) | `gh-boot.js` | newest `read()` value per path; the export kit's input |
+| `__traffic`, `__trafficTotals` (+ `traffic` event, coalesced to 250ms) | `gh-boot.js` | the request ledger: one row per `fetch`, with `method`, status, elapsed, and `wire` from `content-length` (`null` when the response declared none). `method` is what separates a write from a read, since `gh-store` PUTs to the same `contents/` endpoint `gh.load()` GETs from, and `via` is the repo path a `load()`/`read()` was fetching, which separates the loader pulling own code from a page reading a file over that same endpoint. The rows are capped at 400 and the totals are not, so a long crawl trims its history without deflating its count |
+| `__trafficRate`, `__trafficRateAt`, `__trafficRateReset` | `gh-boot.js` | newest `x-ratelimit-remaining` seen on any response, when it was seen, and when the window resets |
+| `__ghFiles` (+ `ghfiles` event) | `gh-boot.js` | per-path `{ bytes, inlined, sha }` from a `get()` wrapper. `inlined` is true when the pre-build served the file from its cache (sha `build:<ref>`), which is how the FAB's Scripts rows tell a load that cost nothing from one that cost a fetch |
+| `Traffic` | `traffic.js` | the pure read over the two above plus Resource Timing: classification, roll-ups, formatting, and the three-state size vocabulary (network / cached / undisclosed) |
 | `ghAuth` | `gh-auth.js` | `resolve` / `save` / `clear` / `prompt` / `bootDone` |
 | `console.history` / `.subscribe` / `.filter`, `consoleKit` | `kits/console.js` | structured console retention over the base wrapper |
 | `html`, the DOM helpers (`ea`, `el`, …), `copy()` | `vanilla-bundle.js` | ambient string/DOM utilities |
 | `proof` | `kits/proof.js` | sandboxed proof documents (srcdoc builders); vanilla-demo and chat-render sit on it |
-| `chatRender` | `chat-render.js` | chat transcript renderer; fenced blocks become live artifacts |
+| `chatRender` | `chat-render.js` | chat transcript renderer; fenced blocks become live artifacts. Loads after `swipe-deck.js` |
+| `sessionRender` | `session-render.js` | a session record (web-tools-private `sessions/**.json`) as a paged conversation: merges the record's three parallel turn lists on `at`, groups a card per ask and per prose turn, and names what the record could not capture. Loads after `chat-render.js` |
+| `swipeDeck` | `swipe-deck.js` | the house swipe format: a snap track of slides, and the fullscreen takeover that frames it. Self-contained, so another repo's page can load it with a plain `<script src>` |
+| `TransformWorkbench` | `alpineComponents/transform-workbench.js` | the multi-tab transform workbench: `panelHTML()` markup plus the `transformWorkbench` / `tfViewer` Alpine components. Not boot-chain: page-loaded (a plain `<script src>` or `gh.load`); `pages/transform.html` and the budget-drs app both mount it |
 | Alpine stores `browser`, `toasts`; magics `$clip`, `$paste`, `$toast` | `alpine-bundle.js` | exist only after `alpine:init` |
-| `__builtOffline` | a build (`kits/build.js` output) | present only on baked/offline pages |
+| `Annotate` | `kits/annotate.js` | notes pinned to selections/elements/regions of a target document, or to the page as a whole; serializes to markdown/JSON, saves jots. FAB take "Annotate" and `pages/annotate.html` drive it. Chain `kits/dictate.js` before it for the voice composer |
+| `Dictate` | `kits/dictate.js` | voice input as a text buffer over `SpeechRecognition`, with the punctuation and casing rules that make stitched utterances read as prose. Soft dependency of `annotate.js`: absent, the composer simply shows no microphone |
+| `__builtOffline` | a build (`build.js` output) | present only on baked/offline pages |
 | `window.<kit>` namespaces | each kit | see [kits/README.md](../lib/kits/README.md) |
 
 A new global with no row here is a doc bug; add the row in the same
 change that adds the global.
+
+#### The one thing the chain patches: `window.fetch`
+
+`gh-boot.js` replaces `window.fetch` with a wrapper that records the URL,
+the status, the elapsed time, and `content-length`. It is worth stating
+plainly because a global patch is the kind of thing that should never be
+a surprise, and because the boundaries are what make it safe to keep:
+
+- **It never touches the body.** No `clone()`, no `text()`. The same
+  `Response` object comes back, with its stream unread, so nothing
+  downstream can be starved by the instrument. The cost is that only the
+  compressed length is known, which is the figure the tab wants anyway.
+- **It never swallows an error.** A rejected fetch is recorded and
+  rethrown unchanged.
+- **It installs once**, guarded by `__trafficWrapped`, so a re-boot or a
+  second bundle on the page does not stack wrappers.
+- **It sees only what comes after it.** The document, the CDN tags and
+  `gh-api.js` itself are already in flight when the wrapper installs;
+  those are Resource Timing's job, which is why the FAB's Traffic tab
+  reads both and keeps them in separate bands rather than one total.
+
+A page that wraps `fetch` itself should do so before the bundle import or
+accept that its wrapper sits outside this one.
 
 ## The load mechanism
 
@@ -197,7 +233,7 @@ stripped `export` / `export default` out of the source and auto-`return`ed
 the first top-level `class`/`function` it found. Both are gone. The strip was
 removed (commit `451f963`) because rewriting every file silently corrupted
 any that merely *carried* the word `export` in a string or comment —
-`kits/build.js`, which emits an `export default` in its output template, was
+`build.js`, which emits an `export default` in its output template, was
 the file that exposed it.
 
 The framing the strip obscured, and the one to keep: **we don't author
@@ -249,15 +285,15 @@ anything we add:
    exist, and only then does Alpine walk the DOM and call `init()` on each
    `x-data` component. By that point `Alpine.store('browser')` is defined.
 4. **`x-init="init()"` on the body still races the module script.** That's
-   why `show-repo/show-repo.html`'s `app.init()` opens with
+   why `app/index.html`'s `app.init()` opens with
    `while(!window.GH) await new Promise(r => setTimeout(r, 50));`.
    Alpine can reach `init()` before the module script's final
    `gh.load(...)` resolves, because the two tasks (module script vs.
    Alpine boot) aren't coordinated.
 5. **Component-to-component handles rely on element back-pointers.**
-   `init() { this.$root.__navigator = this }` in `navigator.js`, and other
-   pages do `while(!navEl.__navigator) await new Promise(r => setTimeout(r, 50));`
-   to wait for it. This is the current idiom for "have I mounted yet?".
+   `init() { this.$root.__viewer = this }` in `viewer.js`, and a caller does
+   `while(!el.__viewer) await new Promise(r => setTimeout(r, 50));` to wait for
+   it. This is the current idiom for "have I mounted yet?".
 6. **Token sentinel `🎟️GitHubToken`.** Both `gh-api.js` (in `headers`) and
    pages look for that exact string and replace it (or fall back to
    `localStorage.ghToken`). Anything we add that touches tokens must use
@@ -275,6 +311,30 @@ anything we add:
    awaits resolve — should either convert to `<script type="module">` or
    call `window.ghAuth.bootDone()` at the end of their chain to opt into
    "boot is over, stop showing boot UI" semantics.
+8. **A pre-build page boots Alpine inside its import, so its own `gh.load`
+   chain always runs late.** This is invariant 4 in its sharpest form. A page
+   that does `await import('../dist/web-tools.js')` gets the whole auto-boot
+   chain, ending in `alpine-bundle.js`, before the import resolves; the
+   `gh.load(...)` calls it writes underneath therefore run *after* Alpine has
+   walked the DOM and called `init()`. Every kit such a page loads for itself
+   is undefined at component-init time. Which one you notice is arbitrary: it
+   is whichever the component touches first, so the same bug surfaced as
+   `reviewTarget.parse` on one path and `BranchBrief.fetchBrief` one `await`
+   later on another (2026-08-07, `branch.html`, in a real browser).
+
+   The build fixes its own two instances of this by forcing `url-params.js`
+   and `repo-address.js` into the auto-boot chain, and
+   [`tools/build/build-lib.mjs`](../tools/build/build-lib.mjs) says why in
+   those words. That does not extend to a kit only one page wants, so such a
+   page declares a **ready gate**: a plain `<script>` *above* the module
+   creating `window.__depsReady`, the module resolving `window.__depsDone()`
+   in a `finally`, and the component opening `init()` with
+   `await window.__depsReady`. The promise has to be created above the module
+   because a component that starts during the import would otherwise find the
+   promise itself undefined. Held by
+   [`tools/test/page-deps-gate.test.mjs`](../tools/test/page-deps-gate.test.mjs),
+   which is static: the failure is a race, so a passing run proves nothing and
+   only the shape can be pinned.
 
 ## What breaks the pattern
 
@@ -373,7 +433,7 @@ Cost: adds one line per page; fine for a handful of additions.
 Best for: things every loader-based page wants (retry/backoff for rate
 limits, a batch loader, a tiny pub-sub, a token-picker UI helper, a
 `persist(key, data)` helper that saves to the user's home repo the way
-`show-repo/show-repo.html` currently does).
+`app/index.html` currently does).
 
 Rules:
 - `gh-api.js` is the ESM root (default export `class GH`); `gh-fetch.js`
@@ -417,7 +477,7 @@ the `new Function()` constraint.
 ### Option D — step outside the pattern for one-off pages
 
 Best for: pages that don't need repo browsing at all (e.g., the simple
-`pages/stories/bookmarklets-story.html` or `table-compress.html`).
+`pages/stories/bookmarklets-story.html` or `transform.html`).
 
 Rules:
 - Just use CDN Alpine + inline components, like the existing simple pages.

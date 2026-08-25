@@ -2,7 +2,6 @@
 id: generalize-gallery-pages-catalog-m3b8pa
 title: Generalize the gallery to a per-repo pages catalog
 status: done
-track: independent
 opened: 2026-07-18
 closed: 2026-07-19
 session: claude/web-tools-app-views-m3pkyo

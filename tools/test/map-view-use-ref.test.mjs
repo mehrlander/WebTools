@@ -14,16 +14,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { makeWindow, tick, repoRoot } from './bootstrap.mjs';
+import { makeWindow, tick, repoRoot, captureAlpineErrors } from './bootstrap.mjs';
 
 const BRANCH = 'claude/some-branch';
 
 const { window } = makeWindow({
   html: '<!doctype html><html><body><div id="map" x-data="map()"></div></body></html>',
-  url: `https://localhost/pages/show-repo/show-repo.html?use=${encodeURIComponent(BRANCH)}&view=map`,
+  url: `https://localhost/app/index.html?use=${encodeURIComponent(BRANCH)}&view=map`,
 });
 
 const { default: Alpine } = await import('alpinejs/dist/module.esm.js');
+captureAlpineErrors(Alpine);
 window.Alpine = Alpine;
 
 // Record every (repo, ref, path) the view asks for, and answer from disk so the
@@ -39,6 +40,9 @@ window.GH = class {
   }
 };
 
+// The registries are CSV now, so the parse kit has to be in the window the same
+// way the pre-build puts it there.
+new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8'))();
 new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/map.js'), 'utf8'))();
 Alpine.start();
 await tick(3);
@@ -47,7 +51,7 @@ const data = Alpine.$data(window.document.getElementById('map'));
 await data.loadRoutes();
 
 test('the set manifest is fetched at the ?use= ref, not main', () => {
-  const hit = asked.find(a => a.path === 'docs/portable.json');
+  const hit = asked.find(a => a.path === 'docs/portable.csv');
   assert.ok(hit, 'the set manifest was requested');
   assert.equal(hit.ref, BRANCH);
 });

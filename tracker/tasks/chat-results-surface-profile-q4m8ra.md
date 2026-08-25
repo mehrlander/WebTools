@@ -1,8 +1,9 @@
 ---
 id: chat-results-surface-profile-q4m8ra
 title: Fold chat-results into the surface schema, or keep it a sibling
-status: backlog
-track: independent
+status: done
+closed: 2026-08-02
+session: claude/web-tools-project-tracker-reo5qo
 opened: 2026-07-22
 ---
 # Fold chat-results into the surface schema, or keep it a sibling
@@ -22,3 +23,4 @@ Done means: a decision recorded in `docs/envelopes/README.md` (profile or siblin
 
 ## Progress log
 - 2026-07-22: Filed alongside the envelope-family consolidation (web-tools branch `claude/content-envelope-convention-rz6xvz`, which moved the three contracts under `docs/envelopes/`). The consolidation named this open question in the family README; this task carries it so it survives the branch.
+- 2026-08-02: Done on `claude/web-tools-project-tracker-reo5qo` (lands via that branch's PR). Decided: sibling. The reasoning is recorded in docs/envelopes/README.md as the task asked: the shapes differ structurally (message arrays, many-to-many facets), the ref triple is already shared, and no concrete mixed-envelope need is asking; the revisit trigger is named there.

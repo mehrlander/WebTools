@@ -1,10 +1,10 @@
 ---
 id: estate-cards-icon-cluster-txr3os
 title: Estate cards still carry the retired three-icon cluster
-status: backlog
-track: show-repo
+status: done
+closed: 2026-08-02
+session: claude/web-tools-project-tracker-reo5qo
 opened: 2026-07-26
-next: Decide whether a card gets the repo menu, a trimmed cluster, or stays as it is
 ---
 # Estate cards still carry the retired three-icon cluster
 
@@ -37,3 +37,4 @@ acting on a repo, whichever of those three that turns out to be.
 - 2026-07-26: Filed out of the PR #292 sidebar work, which is where the two
   surfaces diverged. Not a regression; the cards are unchanged. Raised in the
   PR and left for a separate decision rather than widened into that branch.
+- 2026-08-02: Done on `claude/web-tools-project-tracker-reo5qo` (lands via PR #339). The decision went to the first option, the same repo menu everywhere: the card now carries the sidebar row's pair of triggers (github button opens the GitHub list, the visibility marker opens the actions list), the gear left for the menu's Config row, and a paired card's face switch rides the actions menu as a contributed row, which the shell now accepts for that kind. Cards and sidebar rows tell the same story, which was the definition of done.

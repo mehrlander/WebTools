@@ -35,41 +35,41 @@ export default async (page) => {
     const activity = {
       'mehrlander/web-tools': {
         pushedAt: iso(2), defaultBranch: 'main',
-        counts: { branches: 24, active: 2, landed: 6, stranded: 1, surveyed: 8, older: 12, openPRs: 1 },
+        counts: { branches: 24, active: 2, landed: 6, stranded: 1, scanned: 8, older: 12, openPRs: 1 },
         openPRs: [
           { number: 271, title: 'Open view: cross-repo live branches with caption-style links', head: 'claude/open-view-live-branches-yk24d9', draft: false, updatedAt: iso(2), session: sess('01OpenViewReadyAbc123'), aheadBy: 8, behindBy: 0 },
         ],
-        survey: { surveyedAt: iso(3), cap: 30, surveyed: 8, older: 12, truncated: false, branches: [
-          { name: 'claude/open-view-live-branches-yk24d9', sha: 'a1', group: 'active', date: iso(2), subject: 'Open view: highlight branches ahead of main, link the session' },
-          { name: 'claude/tighten-mobile-grid-mm01', sha: 'a2', group: 'stranded', date: iso(9), subject: 'Tighten the mobile grid and drop the hard borders', aheadBy: 3, behindBy: 12 },
+        scan: { scannedAt: iso(3), cap: 30, scanned: 8, older: 12, truncated: false, branches: [
+          { name: 'claude/open-view-live-branches-yk24d9', sha: 'a1', group: 'active', date: iso(2), subject: 'Open view: highlight branches ahead of main, link the session', sessions: [sess('01OpenViewReadyAbc123')], sessionsExact: true },
+          { name: 'claude/tighten-mobile-grid-mm01', sha: 'a2', group: 'stranded', date: iso(9), subject: 'Tighten the mobile grid and drop the hard borders', sessions: [sess('01NoPrBranchJkl012'), sess('01NoPrBranchEarlier')], sessionsExact: true, aheadBy: 3, behindBy: 12 },
         ] },
       },
       'mehrlander/web-tools-private': {
         pushedAt: iso(5), defaultBranch: 'main',
-        counts: { branches: 11, active: 1, landed: 3, stranded: 0, surveyed: 4, older: 5, openPRs: 1 },
+        counts: { branches: 11, active: 1, landed: 3, stranded: 0, scanned: 4, older: 5, openPRs: 1 },
         openPRs: [
           { number: 44, title: 'Registry: add the activity-cache session field', head: 'claude/registry-session-field-pp02', draft: true, updatedAt: iso(5), session: sess('01RegistryDraftDef456'), aheadBy: 2, behindBy: 1 },
         ],
-        survey: { surveyedAt: iso(6), cap: 30, surveyed: 4, older: 5, truncated: false, branches: [
+        scan: { scannedAt: iso(6), cap: 30, scanned: 4, older: 5, truncated: false, branches: [
           { name: 'claude/registry-session-field-pp02', sha: 'b1', group: 'active', date: iso(5), subject: 'Store the PR session link in the activity cache' },
         ] },
       },
       'mehrlander/home': {
         pushedAt: iso(14), defaultBranch: 'main',
-        counts: { branches: 31, active: 1, landed: 9, stranded: 2, surveyed: 10, older: 18, openPRs: 2 },
+        counts: { branches: 31, active: 1, landed: 9, stranded: 2, scanned: 10, older: 18, openPRs: 2 },
         openPRs: [
           { number: 118, title: 'Chron: drain the dump and propose two threads', head: 'claude/chron-drain-2607-qq03', draft: true, updatedAt: iso(14), session: '', aheadBy: 5, behindBy: 3 },
-          { number: 109, title: 'Tooling: branch-survey report refinements', head: 'claude/branch-survey-report-rr04', draft: false, updatedAt: iso(70), session: sess('01OlderPrGhi789'), aheadBy: 0, behindBy: 41 },
+          { number: 109, title: 'Tooling: branch-status report refinements', head: 'claude/branch-scan-report-rr04', draft: false, updatedAt: iso(70), session: sess('01OlderPrGhi789'), aheadBy: 0, behindBy: 41 },
         ],
-        survey: { surveyedAt: iso(15), cap: 30, surveyed: 10, older: 18, truncated: false, branches: [
-          { name: 'claude/chron-drain-2607-qq03', sha: 'c1', group: 'active', date: iso(14), subject: 'Promote nine dump files, seed the datashelf thread' },
+        scan: { scannedAt: iso(15), cap: 30, scanned: 10, older: 18, truncated: false, branches: [
+          { name: 'claude/chron-drain-2607-qq03', sha: 'c1', group: 'active', date: iso(14), subject: 'Promote nine dump files, seed the datashelf thread' },   // no session anywhere: icon stays hidden
         ] },
       },
       'mehrlander/chat-histories': {
         pushedAt: iso(30), defaultBranch: 'main',
-        counts: { branches: 7, active: 1, landed: 2, stranded: 0, surveyed: 3, older: 4, openPRs: 0 },
+        counts: { branches: 7, active: 1, landed: 2, stranded: 0, scanned: 3, older: 4, openPRs: 0 },
         openPRs: [],
-        survey: { surveyedAt: iso(31), cap: 30, surveyed: 3, older: 4, truncated: false, branches: [
+        scan: { scannedAt: iso(31), cap: 30, scanned: 3, older: 4, truncated: false, branches: [
           { name: 'claude/catalog-coverage-refresh-ss05', sha: 'd1', group: 'stranded', date: iso(30), subject: 'Refresh the coverage report after the July batch', aheadBy: 1, behindBy: 58 },
         ] },
       },
@@ -79,4 +79,22 @@ export default async (page) => {
     d.activity = activity;
   });
   await page.waitForTimeout(400);
+
+  // The route chips: the Branches pane reads the same manifest and PR file
+  // lists the Routes pane loads, so this seeds that shared half directly rather
+  // than letting the pane fetch (no token here). Files are chosen to exercise
+  // all three cases: a narrow carrier (on), a widely shared one (near), and a
+  // branch touching nothing any route declares.
+  await page.evaluate(async () => {
+    const d = window.Alpine.$data(document.querySelector('[x-data="estate()"]'));
+    d.routeManifest = await (await fetch('/docs/app-routes.csv')).json();
+    d.routeJoinTried = true;
+    d.routeBranchFiles = [
+      { repo: 'mehrlander/web-tools', name: 'claude/open-view-live-branches-yk24d9', pr: 271,
+        files: ['lib/alpineComponents/map.js', 'lib/alpineComponents/tools.js'] },
+      { repo: 'mehrlander/web-tools', name: 'claude/no-pr-branch', pr: 0,
+        files: ['lib/alpineComponents/estate.js'] },
+    ];
+  });
+  await page.waitForTimeout(300);
 };

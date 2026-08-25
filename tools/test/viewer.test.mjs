@@ -144,3 +144,179 @@ test('no stray warnings or errors after the resolves', async () => {
   await tick();
   assert.deepEqual(problems, []);
 });
+
+test('the markdown preview scrolls on its pane, not on its text column', () => {
+  // One element carrying both `overflow-auto` and the prose measure put the
+  // scrollbar at the end of the TEXT, stranded mid-pane with empty space to its
+  // right. It read as a layout bug and was reported as one.
+  //
+  // The class list looked right the whole time: it carried `max-w-none`. That
+  // never took, because Tailwind v4 emits utilities into `@layer utilities`
+  // while the typography plugin's stylesheet is unlayered, and an unlayered
+  // declaration beats a layered one whatever the specificity or order. So the
+  // structure is the fix, not the utility: the scroll container is the pane and
+  // the measured column is its child.
+  //
+  // Rendered as a string, so this reads it as one rather than mounting: show()
+  // pulls marked from the CDN, which never resolves under jsdom.
+  const mod = window.ViewRegistry.modules.find(m => m.id === 'preview');
+  window.marked = { parse: () => '<h1>x</h1>' };
+  const html = mod.render({ ext: 'md', content: '# x' });
+
+  const doc = new window.DOMParser().parseFromString(html, 'text/html');
+  const pane = doc.body.firstElementChild;
+  const column = pane.querySelector('.prose');
+  assert.ok(column, 'the prose column is a child, not the pane itself');
+  assert.match(pane.className, /overflow-auto/, 'the PANE scrolls');
+  assert.doesNotMatch(column.className, /overflow-/, 'and the column does not');
+  assert.match(column.className, /mx-auto/, 'the column is centred in the pane it no longer fills');
+  assert.doesNotMatch(column.className, /max-w-/,
+    'a max-w utility here loses to the unlayered .prose rule; use an inline style if a width is wanted');
+
+  // An html payload is a framed document and has none of this. jsdom has no
+  // URL.createObjectURL, so stand one up for the length of the call.
+  window.URL.createObjectURL = () => 'blob:x';
+  try {
+    assert.match(mod.render({ ext: 'html', content: '<p>x</p>' }), /^<iframe/);
+  } finally { delete window.URL.createObjectURL; }
+});
+
+// ── the pdf mode ────────────────────────────────────────────────────────────
+//
+// Its `after` fetches bytes and pulls pdf.js from a CDN, neither of which
+// resolves under jsdom, so what is checked here is everything up to that: the
+// classifier, the mode gating, and the exclusivity that decides what a PDF
+// OPENS in. The render path itself is tools/test/viewer-pdf.mjs, in a browser.
+
+test('mimeFor answers for images and PDFs, and stays quiet otherwise', () => {
+  assert.equal(VR.mimeFor('pdf'), 'application/pdf');
+  assert.equal(VR.mimeFor('png'), 'image/png');
+  assert.equal(VR.mimeFor('svg'), 'image/svg+xml');
+  assert.equal(VR.mimeFor('md'), '', 'text is not carried as a data: URI');
+  assert.equal(VR.mimeFor(''), '');
+});
+
+test('isPdf and isImage stay separate questions', () => {
+  assert.ok(VR.isPdf('pdf'));
+  assert.ok(!VR.isImage('pdf'), 'a PDF must not reach the <img> path');
+  assert.ok(VR.isImage('png') && !VR.isPdf('png'));
+});
+
+test('a PDF offers the pdf mode, with raw still one tap away', () => {
+  data.file = 'budget.pdf';
+  data.content = '%PDF-1.4 ...';
+  const ids = data.availableModes.map(m => m.id);
+  assert.ok(ids.includes('pdf'), 'a .pdf should reach the pdf mode');
+  assert.ok(ids.includes('raw'), 'the escape hatch the mode strip promises');
+  assert.ok(!ids.includes('image'), 'and it is not an image');
+});
+
+test('the pdf mode is exclusive: it beats a host blanket default of raw', () => {
+  // show-repo's file view sets defaultMode 'raw', which is right for the only
+  // kind of file it used to have and wrong for a PDF. Before this mode existed
+  // that produced a pane of replacement characters, which is what `exclusive`
+  // is here to prevent, exactly as it does for images.
+  assert.equal(resolve('budget.pdf', '%PDF-1.4', 'raw'), 'pdf');
+  assert.equal(resolve('budget.pdf', '%PDF-1.4', { '*': 'raw' }), 'pdf');
+  assert.equal(resolve('budget.pdf', '%PDF-1.4', () => 'code'), 'pdf');
+});
+
+test('the pdf pane starts as a message and nothing else', () => {
+  // The bar is revealed only when it has a pager or an address to carry, and
+  // the page track is appended by `after` once the document opens, so a failed
+  // fetch leaves the message visible rather than an empty frame that reads as
+  // a blank page.
+  const mod = VR.modules.find(m => m.id === 'pdf');
+  const doc = new window.DOMParser().parseFromString(mod.render(), 'text/html');
+  assert.match(doc.querySelector('[data-pdf="bar"]').className, /hidden/);
+  assert.match(doc.querySelector('[data-pdf="open"]').className, /hidden/,
+    'the inspect link stays hidden until there is an address behind it');
+  assert.ok(doc.querySelector('[data-pdf="msg"]').textContent.trim().length,
+    'and the pane says what it is doing meanwhile');
+  assert.equal(doc.querySelectorAll('canvas').length, 0,
+    'no canvas is authored: one per page is built lazily by the deck');
+});
+
+test('the pdf stage can host a flex track, which needs min-h-0', () => {
+  // A flex child defaults to min-height auto, so a track dropped into the
+  // stage would be floored at its content height and grow the pane instead of
+  // scrolling inside it. Same class of trap swipe-deck documents for min-w-0
+  // on the horizontal axis, and it fails the same quiet way: it looks like a
+  // styling slip rather than a broken pager.
+  const mod = VR.modules.find(m => m.id === 'pdf');
+  const doc = new window.DOMParser().parseFromString(mod.render(), 'text/html');
+  const stage = doc.querySelector('[data-pdf="stage"]');
+  assert.match(stage.className, /flex-1/);
+  assert.match(stage.className, /min-h-0/);
+});
+
+// ── the header's path split ─────────────────────────────────────────────────
+//
+// Reported from a phone: the header read "docs/…" for a file whose NAME was
+// the whole point, because a path truncated from the right loses its
+// identifying end. The split is what lets the directory go first.
+
+test('dirPart and namePart divide a path, slash riding with the directory', () => {
+  data.file = 'projects/budget-drs/data/source/DP-ML-RH-Adding Roth Option to DCP.pdf';
+  assert.equal(data.dirPart, 'projects/budget-drs/data/source/');
+  assert.equal(data.namePart, 'DP-ML-RH-Adding Roth Option to DCP.pdf');
+  assert.equal(data.dirPart + data.namePart, data.file, 'the two halves are the whole path');
+});
+
+test('a bare filename is all name and no directory', () => {
+  data.file = 'rows.csv';
+  assert.equal(data.dirPart, '');
+  assert.equal(data.namePart, 'rows.csv');
+});
+
+test('the name can still be truncated once the directory is gone', () => {
+  // The first fix gave the name shrink-0, which stopped it truncating at all:
+  // a 38-character filename then ran straight through the buttons beside it.
+  // The directory carries the weight instead, so it disappears first and the
+  // name only gives way when it is the last thing left.
+  data.file = 'a/b.md';
+  const doc = new window.DOMParser().parseFromString(data.template, 'text/html');
+  const name = [...doc.querySelectorAll('span')].find(s => s.getAttribute('x-text') === 'namePart');
+  const dir = [...doc.querySelectorAll('span')].find(s => s.getAttribute('x-text') === 'dirPart');
+  assert.ok(name && dir, 'both halves are rendered');
+  assert.match(name.className, /truncate/, 'the name ellipsises rather than overflowing');
+  assert.doesNotMatch(name.className, /shrink-0/, 'and it is allowed to give way at all');
+  assert.match(dir.className, /shrink-\[9999\]/, 'the directory absorbs the shrinking first');
+});
+
+test('a workbook opens in the sheets mode, whatever the host asked for', () => {
+  // The registry mounted above sets defaultMode { md, json, '*': 'raw' }, so a
+  // workbook would fall to 'raw' by that map. It must not: raw for a ZIP is a
+  // screen of replacement characters, which is what every surface here showed
+  // before this mode existed.
+  const R = window.ViewRegistry;
+  const f = { name: 'book.xlsx', ext: 'xlsx', content: '', repo: 'o/r' };
+  const modes = R.getModes(f);
+  // Spread into a node-realm literal: getModes builds its array inside jsdom,
+  // and assert/strict compares prototypes, so a cross-realm Array never matches.
+  assert.deepEqual([...modes.map(m => m.id)], ['raw', 'xlsx'], 'raw stays available, one tap away');
+
+  const v = window.Alpine.$data(window.document.getElementById('v'));
+  assert.equal(v.resolveDefaultMode(f, modes).id, 'xlsx');
+});
+
+test('isWorkbook and mimeFor agree on which extensions are workbooks', () => {
+  const R = window.ViewRegistry;
+  assert.ok(R.isWorkbook('xlsx'));
+  assert.ok(R.isWorkbook('xlsm'), 'a macro workbook is the same ZIP');
+  assert.ok(!R.isWorkbook('xls'), 'the pre-2007 binary format is not a ZIP and is not read here');
+  assert.ok(!R.isWorkbook('csv'), 'a csv is text and belongs to the table mode');
+  for (const ext of ['xlsx', 'xlsm']) {
+    assert.match(R.mimeFor(ext), /spreadsheet|ms-excel/, ext);
+  }
+  assert.equal(R.mimeFor('txt'), '', 'a type the viewer cannot render carries no mime');
+  assert.equal(R.mimeFor('png'), 'image/png', 'and the image map still answers');
+});
+
+test('the sheets mode is exclusive, and the image mode still is too', () => {
+  // Both make the same argument about a host's blanket defaultMode, so if one
+  // ever loses the flag the other's reasoning has quietly changed as well.
+  const byId = Object.fromEntries(window.ViewRegistry.modules.map(m => [m.id, m]));
+  assert.equal(byId.xlsx.exclusive, true);
+  assert.equal(byId.image.exclusive, true);
+});

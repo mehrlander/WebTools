@@ -50,21 +50,34 @@
   ?use=<branch|tag|sha> pins this page's own lib chain to a ref (the repo's
   standard preview mechanism). The reffed bundle loads by fetch + blob-import
   from raw.githubusercontent, not jsDelivr's /gh/ CDN whose branch-tip listing
-  lags a fresh push ~12h, so a branch name is cache-safe (no SHA needed).
+  lags a fresh push ~12h. The fetch sets `cache: 'no-store'`, since a branch
+  ref moves and the HTTP cache is keyed by URL alone (2026-08-07).
 -->
+<!--
+  The ready gate: importing the pre-build boots Alpine as part of the import, so
+  this page's own gh.load calls below have not run by the time a component's
+  init() does. The promise is created here, above the module, because a
+  component that starts during the import would otherwise find it undefined.
+  Full account in pages/branch.html, where the failure was first measured.
+-->
+<script>
+  window.__depsReady = new Promise(r => { window.__depsDone = r; });
+</script>
 <script type="module">
   const ref = new URLSearchParams(location.search).get('use');
   if (ref) {
-    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`);
+    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`, { cache: 'no-store' });
     if (!src.ok) throw new Error(`?use=${ref}: could not fetch the bundle (HTTP ${src.status})`);
     const url = URL.createObjectURL(new Blob([await src.text()], { type: 'text/javascript' }));
     try { await import(url); } finally { URL.revokeObjectURL(url); }
   } else {
     await import('../dist/web-tools.js');
   }
-  await gh.load('kits/review-target.js');
-  await gh.load('kits/cm6-merge.js');
-  await gh.load('alpineComponents/file-review.js');
+  try {
+    await gh.load('kits/review-target.js');
+    await gh.load('kits/cm6-merge.js');
+    await gh.load('alpineComponents/file-review.js');
+  } finally { window.__depsDone(); }
 </script>
 <style>
   [x-cloak]{display:none!important}
@@ -198,10 +211,21 @@
     </div>
   </div>
 
-  <!-- ── The file cards (both modes) ─────────────────────────────────────── -->
-  <template x-for="f in files" :key="f.path">
-    <div x-data="fileReview(f)"></div>
-  </template>
+  <!-- ── The file rows (both modes) ──────────────────────────────────────
+       One bordered list with hairline separators, matching the branch page:
+       a card each, with a gap between, spent vertical space on borders that
+       carried nothing and made a long changeset harder to scan, not easier. -->
+  <div x-show="files.length > 1" class="flex justify-end pb-1.5">
+    <button @click="openFileDeck(files[0] && files[0].path)"
+            class="btn btn-sm btn-ghost gap-1.5 normal-case"
+            :title="'Read ' + files.length + ' files one at a time'">
+      <i class="ph ph-cards-three text-base"></i>Read one at a time</button>
+  </div>
+  <div x-show="files.length" class="border border-base-300 rounded-lg overflow-hidden">
+    <template x-for="f in files" :key="f.path">
+      <div x-data="fileReview(f)"></div>
+    </template>
+  </div>
 
 </main>
 
@@ -235,6 +259,10 @@ function reviewApp() { return {
   ],
 
   async init() {
+    // Before boot(), which reads window.reviewTarget: Alpine booted inside the
+    // pre-build's import, so this page's own gh.load chain has not run yet.
+    // See the gate above the module script.
+    await window.__depsReady;
     window.addEventListener('hashchange', () => this.boot());
     await this.boot();
   },
@@ -336,7 +364,31 @@ function reviewApp() { return {
       status: f.status, additions: f.additions, deletions: f.deletions,
       patch: f.patch || '',
       open: (d.files || []).length === 1,
+      action: { label: 'Read from here', icon: 'ph-cards-three',
+                onClick: (path) => this.openFileDeck(path) },
     }));
+  },
+
+  // The file deck: the same cards, one per slide, in the house swipe deck
+  // (kits/file-deck.js). This page is a root, so it opens as a root deck and
+  // its ✕ returns here; inside show-repo's branch takeover the same call
+  // drills. Loaded on first use, so a visit that only scans the list pays
+  // nothing for it.
+  async openFileDeck(path) {
+    if (!this.files.length) return;
+    const i = Math.max(0, this.files.findIndex(f => f.path === path));
+    try {
+      if (!window.swipeDeck) await gh.load('kits/swipe-deck.js');
+      if (!window.subjectChannel) await gh.load('kits/subject-channel.js');
+      if (!window.fileDeck) await gh.load('kits/file-deck.js');
+      window.fileDeck.open({
+        repo: this.repo, ref: this.head,
+        base: this.files[0].base, baseName: this.base,
+        files: this.files, start: i,
+        subtitle: this.head,
+        parent: window.swipeDeck.top(),
+      });
+    } catch (e) { this.error = 'Could not open the file deck: ' + (e?.message || e); }
   },
 
   goPaste() {

@@ -57,6 +57,17 @@ page into a state first. `--build` renders through `dist/<page>.js` instead of
 the live chain; see [`tools/README.md`](../../tools/README.md) for the build /
 verify-build companions.
 
+**A scenario that re-loads the page at a new fragment has to reload.** Inside a
+`--script`, `page.goto(url + '#other')` is a same-document navigation when only
+the fragment differs: nothing re-fetches, no boot code re-runs, and the page
+keeps the state it already had. So every assertion afterwards reads the
+*previous* case and passes or fails for the wrong reason, silently, since the
+navigation itself succeeded. Follow the goto with `page.reload()` when the point
+is what the page does *on load* at that fragment. Measured 2026-08-06 while
+covering data-view's `#item=` addressing, where three of eight assertions passed
+against stale state before the reload was added
+([`tools/render/scenarios/data-view-item.mjs`](../../tools/render/scenarios/data-view-item.mjs)).
+
 ### What renders: three page categories
 
 | Category | First paint needs | Headless result |
@@ -72,18 +83,95 @@ repos, and `setup(gh, { quiet: true })` fills the picker in the background
 page). That drops the page into the repo-content category. Worked example:
 
 ```bash
-npm run shot -- pages/nav-repo.html --query "repo=mehrlander/web-tools&file=README.md"
+npm run shot -- pages/repo-atlas.html --query "repo=mehrlander/web-tools"
 ```
 
 ### Limits
 
 - `esm.sh` / `cdnjs` modules aren't vendored, so `kits/cm6.js` (CodeMirror)
   doesn't mount in any harness.
+- **The typography plugin is not available (2026-08-01).** `@tailwindcss/typography`
+  publishes no `dist/typography.min.css` in its npm tarball, though jsDelivr
+  serves one, so `cdn.mjs` has nothing to resolve and any page loading it
+  renders **unstyled prose**. A markdown preview therefore looks wider and
+  flatter in a shot than in a browser. Vendor the file into
+  `node_modules/@tailwindcss/typography/dist/` (curl it from jsDelivr) when the
+  shot is *about* prose; `node_modules` is gitignored, so it does not survive
+  the container.
+
+  This one was worth writing down for how it failed rather than for the gap
+  itself. `readSpec` falls back to a package's declared entry when the request's
+  basename matches the package name, which is what makes `npm/marked/marked.min.js`
+  resolve. `@tailwindcss/typography` matches that shape too, so a request for
+  its **CSS** resolved to `src/index.js` and the page was handed a Node module
+  as its stylesheet: the log said `combine 3/3`, no error appeared anywhere, and
+  the screenshot disagreed with every real browser. The fallback now requires the
+  entry to be the same kind of file that was asked for, so this reads `MISS` and
+  the log can be believed.
 - If you're tempted to skip shot and open the live URL instead: GitHub
   **Pages serves `main`**. `?use=<ref>` swaps which ref a page's *loaded
   code* comes from, not the HTML shell, so a brand-new page has no live Pages
   URL until it merges. For branch HTML on a live origin, use toss-render's
   `#gh=` address mode or the FAB's Render tab.
+
+### Measuring horizontal overflow, not looking for it
+
+A viewport screenshot crops whatever sits past the frame, so horizontal overflow
+is invisible to the exact check most likely to be run. At phone width, compare
+`documentElement.scrollWidth` against `clientWidth`. When listing offending
+elements, skip any inside a horizontally scrollable ancestor, or every carousel
+slide reports as a fault.
+
+This is what catches the two failures `docs/HTML-STYLE.md` prescribes against:
+a scroll track without `min-w-0` claiming one viewport per slide, and a form
+control that stops short of its column.
+
+### Measuring the rendered ink (2026-08-10)
+
+A screenshot answers "does it look right" only if you can see it, and precise
+vertical alignment is the case where looking fails: the difference between an
+icon set well and an icon sagging is one or two pixels, and it does not survive
+being described. Two techniques settle it, and the second is the one that
+decides.
+
+**Measure the ink, not the boxes.** `getBoundingClientRect` returns a font's box,
+which carries leading, ascent, and descent the glyphs do not fill, so comparing
+box centres says nothing about what the eye compares. Take a clipped screenshot
+inside the scenario, decode it back into the page, and report which rows each
+element actually darkens:
+
+```js
+const shot = (await page.screenshot({ clip })).toString('base64');
+const ink = await page.evaluate(async ({ shot, clip, band }) => {
+  const img = await createImageBitmap(await (await fetch('data:image/png;base64,' + shot)).blob());
+  const c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+  const px = g.getImageData(0, 0, c.width, c.height).data;
+  const hit = [];
+  for (let y = 0; y < c.height; y++) {
+    for (let x = band[0]; x < band[1]; x++) {
+      const i = (y * c.width + x) * 4;
+      if (0.299 * px[i] + 0.587 * px[i+1] + 0.114 * px[i+2] < 210) { hit.push(y); break; }
+    }
+  }
+  return { top: hit[0], bottom: hit.at(-1) };
+}, { shot, clip, band });
+```
+
+Sweep the candidate offsets in one run (set `style.top`, re-measure, repeat)
+and read the value off the table. Only integers matter: at DPR 1, `-0.5px`
+renders identically to `0`.
+
+**Then look at it, magnified.** The measurement needs a target, and choosing the
+wrong target is the failure the numbers cannot catch. Redraw the clip 6x to 10x
+with `imageSmoothingEnabled = false` and write it out with `writeFileSync`. On
+2026-08-10 this reversed a decision twice over: a 14px mark beside mono text was
+genuinely 2px under the baseline and wanted `-1px`, while the same arithmetic
+said the row's 18px leading icon was 4px low, and at 6x the "corrected" version
+was visibly floating above the cap line. A wide, low-profile glyph is centred in
+its own em box and reads against the x-height, not against cap-to-baseline. The
+numbers say how far; only the picture says from what.
 
 ## npm run preview: boot logic under jsdom
 
@@ -140,6 +228,19 @@ Component-test lessons that generalize:
   render (`npm run shot`) caught the blank panel. Pair `x-collapse` with an
   `x-show`, or, when you only need presence toggling and not the height
   animation, mount with a plain `x-if` and no `x-collapse`.
+- **Stub a carrier with its bytes, never with an object.** A test that hands a
+  reader `JSON.stringify(fixture)` supplies the shape the reader already
+  expects, so it cannot notice when the real file stops having that shape. Four
+  readers broke this way in one session (2026-08-18) when eleven registries
+  went from JSON to CSV: the FAB's Match lane, the page gallery, the Tools
+  view, and the harness registry's strip all kept parsing JSON against a CSV file,
+  and all four of their tests stayed green because each stub was still handing
+  over JSON. Read the fixture the way the reader will: give it CSV text, or a
+  string built by the same writer the generator uses, and let the reader's own
+  parse run. The cousin failure is `stub-hides-the-wiring` in
+  [SNAGS.md](../SNAGS.md), where stubbing the product of a lazy load hides the
+  load; the family is a stub that supplies exactly what the thing under test
+  exists to obtain.
 - **Reactive values fail `deepStrictEqual`.** `Alpine.$data(el)` and anything
   read through it are `@vue/reactivity` proxies; a strict structural compare
   rejects the proxy prototype ("same structure but not reference-equal"). Strip
@@ -213,31 +314,53 @@ just as page content.
 | **jsdom** | Node | Yes (`runScripts: 'dangerously'`) | inline scripts must execute |
 | **BeautifulSoup / lxml / selectolax / parsel** | Python | No | Python-side traversal |
 
-## Tailwind's browser build never generates a toggle-only utility (2026-07-26)
+## Tailwind generates a toggled utility lazily, not never (2026-07-26)
 
-A utility class that only ever reaches the DOM by being toggled onto an existing
-element is **never generated** by `@tailwindcss/browser@4`. The class lands in
-`className` and computes to nothing, because the browser build emits rules for
-classes it finds present in the document, and flipping an attribute on a node
-that is already there does not put a new class in front of it.
+`@tailwindcss/browser@4` emits a utility's rule **the moment the class appears in
+the DOM**, including when Alpine toggles it onto an element that was already
+there. It watches the document and regenerates. A toggle-only utility therefore
+works, and needs no workaround.
 
-Confirmed on `show-repo`: `.rotate-180` and `.animate-spin` have no rule in any
-stylesheet, while `.truncate` (present in the initial markup) does. This is
-silent. Nothing errors, and the element simply does not turn or spin.
+This corrects an earlier entry here that said the opposite. The observation
+behind it was real and is easy to repeat: open a page, inspect the stylesheets,
+and `.animate-spin` and `.rotate-180` genuinely have no rule while `.truncate`
+does. The wrong part was the inference. Nothing has toggled yet, so the rule has
+not been generated yet; it appears when the class does. Measured on
+`show-repo`, before and after toggling `animate-spin rotate-180` onto a live
+element:
 
-Two consequences worth knowing:
+| | `.truncate` | `.animate-spin` | `@keyframes spin` | `.rotate-180` |
+|---|---|---|---|---|
+| before the toggle | present | absent | absent | absent |
+| after the toggle | present | present | present | present |
 
-- **A caret that rotates is a trap.** Ship two static glyphs
-  (`ph-caret-down` / `ph-caret-up`) swapped with `x-show`, so both classes exist
-  from the start. `crumb-bar.js`, `repo-menu.js`, and `path-picker.js` all do
-  this now; `path-picker`'s caret had silently never turned.
-- **A spinner toggled with `animate-spin` does not spin.** Still true in
-  `estate.js` and `repo.js` at the time of writing; the fix is either the same
-  always-present-element trick or a plain rule in the page's own `<style>`.
+with `getComputedStyle(el).animationName === 'spin'` and `rotate === '180deg'`
+after. Driving the real Repos-view Refresh button (`estate.js`, flipping
+`configRefreshing`) spins it. Verified against both the vendored
+`@tailwindcss/browser@4.3.3` and the bytes jsDelivr serves the deployed page.
 
-**Testing note:** assert on *computed* effect, not on the class attribute or on
-Playwright's `isVisible`. `getComputedStyle(el).transform` catches this; a
-`className.includes('rotate-180')` check passes while the element sits still.
+**The baked path does not change this.** A page built by the `bake-page` skill
+has its CSS compiled ahead of time with no runtime observer, but that compiler
+scans **source as text**, so a literal in `:class="open && 'rotate-180'"` is
+found and kept. What breaks under baking is a class *assembled* from fragments
+(`'ph-' + name`), which no text scan can see. That, not toggling, is the hazard
+worth designing around, and it is the same hazard in both builds.
+
+Two carried-over notes that remain correct on their own terms:
+
+- **Two static glyphs swapped with `x-show`** (`ph-caret-down` / `ph-caret-up`,
+  as `crumb-bar.js`, `repo-menu.js`, and `path-picker.js` do) is a fine way to
+  build a caret, and is what a Phosphor icon swap needs anyway, since the glyph
+  itself is a class. Read it as a style choice, not as a workaround for a
+  Tailwind limitation that does not exist.
+- **Assert on computed effect, not on the class attribute**, and not on
+  stylesheet text. `getComputedStyle(el).animationName` is the honest check;
+  `className.includes('animate-spin')` passes either way. Stylesheet text is
+  worse than it looks: cross-origin sheets (daisyUI, Phosphor) throw on
+  `cssRules` and silently contribute nothing, and Tailwind nests its output in
+  `@layer`, so a naive `startsWith('.truncate')` scan reports absent for rules
+  that are plainly there. That combination is how the original entry got written.
+
 `isVisible` is separately misleading for a bottom sheet, which parks itself
 off-screen with a transform rather than hiding, so it reads as visible when
 closed; compare `getBoundingClientRect()` against the viewport instead.

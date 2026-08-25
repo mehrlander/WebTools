@@ -7,25 +7,22 @@ The two imports above are the portable half: conventions that apply in any repo.
 
 CONVENTIONS.md is one of several docs written to travel; the full to-go bag (conventions, scripts, the headless-vendoring recipe, the sandbox notes) is catalogued in [docs/PORTABLE.md](docs/PORTABLE.md), which the loader skill points at and which points back. When adding a doc or script meant for reuse elsewhere, list it there.
 
-## Preview mechanism: test page on a branch via `?use=`
+## The Web Tools app
 
-GitHub Pages serves from one branch, typically main, so to render branch code through the canonical URL `lib/gh-api.js` honors a `?use=<branch|tag|sha>` query parameter: pages that adopt the convention read it at boot and load the rest of their code from that ref. Useful when linking the user to a test page that exercises work on a branch. See `README.md` for the canonical boot block.
+[docs/APP.md](docs/APP.md) is the product frame: mission, goals, and the name split (**Web Tools** where a reader is addressed; **show-repo** on files, routes, and the tracker project).
 
-Both `?use=` boots now fetch the reffed code from `raw.githubusercontent.com` and blob-import it, so a **branch name is cache-safe on every `?use=` page** and a fresh push previews immediately, no SHA needed. The **pre-build `dist/web-tools.js` boot** (show-repo, review, prebuild-demo) blob-imports the whole reffed bundle (see [tools/README.md](tools/README.md#the-pre-build)); the **`lib/gh-api.js` chain boot** (every other lib-booting page) blob-imports the reffed `gh-api.js`, which then loads the rest through the contents API at that ref (a `window.__ghBlobBoot` carrier hands repo/ref past the opaque `blob:` URL, since `import.meta.url` can no longer supply the ref). jsDelivr is used only where it is cache-stable or unavoidable: the no-`?use` `@main` default that every chain page imports (this repo's one CDN entry point), and the two bundle demos (`alpine-bundle-demo`, `vanilla-bundle-demo`), whose proof frames load lib via classic `<script src>` that raw's `text/plain` + `nosniff` cannot back, so their `?use=` handoff stays on jsDelivr.
+## Showing: which link shows what
 
-This is the repo's **preview mechanism** for the conventions' ⭐ links: a changed page (or a component a page loads) previews live at
+The mechanisms, what each reaches and misses, and the rule for picking one are **not restated here**. They live as data in [`docs/showing-mechanisms.csv`](docs/showing-mechanisms.csv) and render in the app's **Map view, Showing tab**; the frame and the record are in [`docs/showing.md`](docs/showing.md). This section used to be 1,589 words, 63% of this file, and it still did not stop a session with all of it in context from handing over the wrong link. The app holds it now.
 
-> `https://mehrlander.github.io/web-tools/pages/<page>.html?use=<ref>`
-
-**What `?use=` swaps, and what it doesn't (the boundary with 🥏).** `?use=` only redirects the code a page *loads* (`gh.load(...)`, the `dist/` import): github.io still serves the **page file itself from main**, and only its downstream lib is pinned to the ref. So `?use=` previews branch work that lives in `lib/` or `dist/`, but **not** a change to a page's own inline shell (its markup, or an `x-data` defined inline in the file). For a page whose branch change is in the shell, `?use=` on the deployed URL runs main's old shell with branch lib and shows the pre-change page. Preview those with the **🥏 toss `#gh=` address mode** instead (`pages/toss-render.html#gh=mehrlander/web-tools@<ref>:pages/<page>.html`): it fetches the branch's actual file via the token, stamps a `?use` shim so the shell's own lib chain loads from `<ref>` too, and reroutes the page's relative deps and `fetch()`es to the same ref (see the `toss-render.html` head comment). So the rule of thumb: **lib/dist change → ⭐ `?use=`; page-shell change on an un-deployed branch → 🥏 toss `#gh=`.** A 🥏 link always points at `toss-render.html`, never at the page's own URL.
-
-**Every page that boots lib honors `?use=`, and every one carries the FAB.** Both were once partial, and the gap was silent in a way that cost real time: five pages pinned the ref in their own boot block and ignored the parameter, while the FAB reported a preview based on the address bar rather than on what loaded, so a `?use=` link to one of those pages showed a preview banner over default-branch code. The FAB now cross-checks `window.gh.ref` and says plainly when `?use=` was ignored. When adding a page, use the canonical boot block (see `README.md`) rather than a hardcoded ref; `gh-boot.js` mounts the FAB unless the page mounts its own or sets `data-no-fab` on `<html>`/`<body>`.
-
-The honesty rule still applies: only a page renders this way; for a kit or doc, ⭐ links the `[new]` blob.
-
-**When toss-render itself is the change (the one self-preview limit).** A 🥏 link is served by **main's** `toss-render.html`, so the deployed shell is the one parsing the address. Most branch work on that page is still previewable by **nesting**: `#gh=mehrlander/web-tools@<ref>:pages/toss-render.html?<param>=<value>` has main render the branch's shell, and the params shim delivers the input, so the branch's routing, frame mounting, and rendering all run for real. What nesting cannot reach is **how toss-render reads its own address bar**, because a nested inner shell never sees one: it reads shimmed params instead. So a change to fragment or query parsing has no render link until it merges, and headless evidence stands in. State that reason in the reply rather than omitting the render line. The limit is self-clearing: once fragment delivery is on main, the outer can hand the inner a real `location.hash`, and address-bar parsing becomes nestable too.
-
-**Viewer context adds a third channel, the 📦 artifact.** Both 🥏 forms assume something about where the link opens: `#gh=` needs the viewer's browser to hold the `ghToken`. The Claude app's in-app browser keeps its own storage, so the token is not guaranteed there (historically absent, though it can be entered, after which `#gh=` works there too). Treat the token as possibly absent in the app: when it is, `#gh=` fails, so for a link the user will open there, bake the page self-contained (`bake-page` skill) and publish it as a 📦 artifact (renders on claude.ai sign-in, no token needed); 🥏 `#gz=` is the no-build fallback. Matrix and pipeline: [docs/artifacts.md](docs/artifacts.md).
+**So do not decide it by reading. Run it:** `npm run showing` reads the branch's
+changed files and prints the render line to paste, or an honest no-link with the
+reason ([`scripts/showing.py`](scripts/showing.py); `/caption` calls it). It
+happened again on 2026-08-22, with the `?use=` trap itself in context, which is
+why the last rule this section stated in prose is now executable. The honesty
+rule survives, since no script supplies it: only a page renders this way, for a
+kit or doc ⭐ links the `[new]` blob, and where no link reaches a change, say so
+and send a headless screenshot.
 
 ## Per-session refresh: thumbnails
 
@@ -45,13 +42,39 @@ Any turn that modifies `lib/gh-api.js` must end with the jsDelivr purge link so 
 
 `dist/web-tools.js` is **the pre-build**: the whole `lib/` frozen into one self-booting offline artifact, so a page can adopt the entire library with one import instead of a `gh.load` chain. It's generated (`npm run build:lib`) and it's the one tracked file under the otherwise-gitignored `dist/`. Full story in [`tools/README.md`](tools/README.md#the-pre-build).
 
-Every **deterministic** derived artifact is owned by one commit-time hook (`.claude/hooks/build-on-commit.sh`, a `PreToolUse(Bash)` hook wired in `.claude/settings.json`). Before a `git commit` it regenerates and stages, in the same commit, whatever the pending changes touch:
+The `gh.load` chain it replaces is the repo's default, not a legacy path: 36 page files use it, and [`docs/loader.md`](docs/loader.md) is the only statement of the contract a file must honor to be loadable that way, plus the timing invariants the boot sequence depends on. Read it before adding a file to `lib/` or changing how a page boots. Which folder the file belongs in at all is the prior question, answered once in [`docs/code-layers.md`](docs/code-layers.md) and measured by `npm run code-scan`. It is also the argument that load and build are two readings of one set of rules, which is why the pre-build works at all.
+
+Every **deterministic** derived artifact is owned by one commit-time hook, [`.githooks/pre-commit`](.githooks/pre-commit). Before a `git commit` it regenerates and stages, in the same commit, whatever the pending changes touch:
 
 - `lib/` changed → `npm run build:lib` → `dist/web-tools.js`
 - `pages/**/*.html` changed → `npm run pages-index` → `pages/README.md` + `pages/index.html`
-- `tracker/tasks/` changed → `npm run tracker-board` → `tracker/board.md`
+- skills, `lib/`, `pages/`, or `docs/` changed → `npm run docs-reach` → the `reach` and `words` fields in `docs/docs.csv`
+- `docs/docs.csv` changed → `npm run docs-readme` → `docs/README.md`, then `npm run docs-reach` again (leg 3c)
+- `docs/SNAGS.md` changed → `npm run snags-index` → the index block at its top
+- `tracker/tasks/` changed → `npm run tracker-board` → `tracker/board.md` + `tracker/board.csv`
 
-Don't hand-edit any of those four files; edit the source and let the hook refresh them. Thumbnails (`pages/thumbs/*.png`) are the deliberate exception: not byte-deterministic, so the hook only *warns* when a page changes without its thumb; the actual refresh happens once per session at wrap-up (see "Per-session refresh" above).
+`reach` and `words` are the odd ones: derived fields in an otherwise authored
+file, so `docs/docs.csv` is hand-edited everywhere except those two keys.
+`reach` says who can get to a doc and moves when a skill or page names a file,
+an edit nowhere near the registry; `words` says how much of the folder it is.
+The two disagree, which is why the Docs tab shows both: the orphans are the
+larger count and the smaller mass. `tools/test/docs-registry.test.mjs` holds
+both to the derivation and names the restamp command when they part.
+
+Leg 3c exists because 3a and 3b are a cycle: `docs/README.md` is generated *from*
+the registry and is also a row *in* it. One more stamp settles it. The stamp
+itself runs to a fixpoint for the same reason one level down, and asserts
+convergence rather than assuming it.
+
+Don't hand-edit any of those five files; edit the source and let the hook refresh them. Thumbnails (`pages/thumbs/*.png`) are the deliberate exception: not byte-deterministic, so the hook only *warns* when a page changes without its thumb; the actual refresh happens once per session at wrap-up (see "Per-session refresh" above).
+
+**It is a git hook, not a Claude Code hook, deliberately:** a `PreToolUse` hook is read only when the session's project root IS this repo, so a multi-repo session ran it never and said nothing. [`.claude/hooks/session-githooks.sh`](.claude/hooks/session-githooks.sh) sets `core.hooksPath`; `--no-verify` bypasses. Why, and what it does not generalize to: [extending.md](docs/environment/extending.md).
+
+**Best-effort still.** A clone that never set `core.hooksPath` runs nothing, so `npm test` keeps [`tools/test/artifacts-lockstep.test.mjs`](tools/test/artifacts-lockstep.test.mjs), which re-runs each generator in `--check` mode and fails if a tracked artifact is behind its source. Run the command it names and commit the result.
+
+Regenerating by hand after touching `lib/` or `pages/` is still the fast path; the test makes forgetting loud instead of silent. Why each generator has to be byte-deterministic, and the tracker board's 2026-08-05 counterexample, are in [`tools/README.md`](tools/README.md#the-refresh-model).
+
+**And a third owner, which does not depend on anyone remembering.** The test only speaks when the suite is run, so [`.github/workflows/test.yml`](.github/workflows/test.yml) runs `npm test` on every pull request and reports it as a check on the PR. That is the whole reason it exists: a hook that may not fire, guarded by a test that may not be run, was a chain with no link the platform enforced. It is the repo's only workflow triggered by a commit under review, so it is the only one whose result appears as a check rather than only in the Actions tab; `wsl-fetch.yml` is an errand on a cron. The suite is browser-free by construction (`node --test` globs `tools/test/**/*.test.mjs`, and every Playwright-driven check is named without `.test.`), so keep it that way or the runner grows a browser install. One caveat worth knowing: `package-lock.json` is gitignored, so CI resolves dependency ranges fresh on each run and a green check is not a claim about a pinned tree.
 
 ## Project tracker
 
@@ -59,6 +82,23 @@ Root-level `tracker/` scoped to repo-wide work (conventions, build tooling, docs
 
 - **Placement:** `tracker/` (single tracker, no registry).
 - **Board generator:** `npm run tracker-board` (wired into the commit hook above).
+
+## Registries
+
+A committed JSON or CSV that inventories or classifies part of the tree is a
+**registry**; adding one means adding a row to
+[`docs/registries.csv`](docs/registries.csv) in the same commit. The model,
+the rules, and what its audits found are in
+[`docs/registries.md`](docs/registries.md); read it before inventing a carrier,
+since the answer is usually a row in one that exists. The one trap: **one
+property about one target answers to one registry** (gated); resolve a
+collision by declaring that one registry **inherits** the other's descriptions,
+never by renaming a side, which keeps the duplicate.
+
+
+## Snags
+
+[`docs/SNAGS.md`](docs/SNAGS.md) is this repo's friction log, the store behind the conventions' "where a friction observation goes instead." Its own header carries the intake shape, the recurrence rule, the generated index, and what is still provisional; this section restated them and was the copy.
 
 ## Environment & testing
 

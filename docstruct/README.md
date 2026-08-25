@@ -71,7 +71,7 @@ control, because it teaches you to ignore it.
 ```bash
 ./docstruct/bootstrap.sh              # ~18s: tesseract, poppler, PyMuPDF, Pillow
 ./docstruct/bootstrap.sh --check      # report what is present, install nothing
-python3 docstruct/test_docstruct.py   # 56 tests, ~2s
+python3 docstruct/test_docstruct.py   # 64 tests, ~2s
 
 python3 docstruct/run.py <source> -o out/       # a pass
 python3 docstruct/survey.py out/ --by-doc      # what it found

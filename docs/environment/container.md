@@ -26,6 +26,127 @@ The environment cache includes files, packages, tools, and Docker images install
 
 Packages installed during a session do not transfer to other sessions unless their installation is added to the setup script. Repository `SessionStart` hooks run separately at their configured lifecycle events.
 
+### What `~/.claude` carries
+
+*(measured 2026-07-30)*
+
+The home directory is two layers with different lifetimes, and the modification
+times separate them cleanly. Written fresh at boot: `skills/` (the account's own
+skills, 39 of them), `projects/` (this session's transcript), `session-env/`, and
+the harness's hook scripts. Restored from the environment snapshot, carrying the
+timestamp of the day that snapshot was built: `settings.json`, `CLAUDE.md`, and
+`plugins/`, including `plugins/installed_plugins.json` and the plugin cache below
+it.
+
+So **account skills sync every container and account plugins do not.** A plugin is
+pinned at the commit it held when the snapshot was built. Nothing surfaces that
+from inside a session: the plugin is present, enabled, and stale. In the measured
+case the pin was two days behind and lacked a `Stop` hook the newer version
+shipped, so a fix that had merged was running nowhere. The same lifetime governs a
+hook installed by hand into `~/.claude/settings.json`. It covers exactly the
+session that wrote it, because a session's filesystem changes never enter the
+snapshot.
+
+Two commands freshen a running container:
+
+```bash
+claude plugin marketplace update <marketplace>
+claude plugin update <plugin>@<marketplace>
+```
+
+The CLI answers "Restart to apply changes," and the [plugin documentation](https://code.claude.com/docs/en/discover-plugins) offers `/reload-plugins` as the in-session equivalent. Neither was needed here. Skills from the updated cache appeared in the session's own skill listing within the turn, and the plugin's `Stop` hook fired 43 minutes later with nothing restarted and no reload typed. [Settings-file hooks are documented as reloading live](https://code.claude.com/docs/en/settings); on CLI 2.1.220 plugin hooks did too. Treat `/reload-plugins` as the fallback for an update that does not take.
+
+**Putting that update in the setup script does not solve it,** which is the part
+worth stating plainly, because it is the obvious fix and it fails quietly. The
+setup script runs when the snapshot is built, not when a session starts, so its
+`claude plugin update` pins the version current on build day and every later
+session restores that result. The measurement is direct: a setup script whose
+first act is an unconditional heredoc into `~/.claude/CLAUDE.md` left that file
+dated 2026-07-28 02:08 in a container booted 2026-07-30 19:31, alongside a plugin
+pin from the same instant. A script that has not run cannot refresh anything.
+
+What runs every session is a `SessionStart` hook, and the setup script is the
+right place to write one, since `~/.claude/settings.json` rides the snapshot and
+therefore persists. That inverts the roles: the setup script installs the
+refresher once, and the refresher tracks the tip on every boot. Match
+`startup|resume`, not `startup` alone: reopening an expired session provisions a
+fresh environment, and that fires `resume`.
+
+**The documentation and the measurement disagree about what a mid-session update
+reaches, and the disagreement is the whole risk in that design.** The hooks
+reference says plugins are loaded once at startup, and gives `SessionStart`'s
+`reloadSkills` the explicit carve-out that it reloads user and project skills
+while plugin-provided skills are not reloaded. If that holds strictly, a refresher
+that runs at session start pulls a version that only takes effect at the next
+boot, which in a one-session-per-container environment means never. Measured twice
+on 2026-07-30, CLI 2.1.220, it did not hold: after `claude plugin update` ran
+mid-session, a skill present only in the newer version appeared in the session's
+own skill listing on the following turn, and the newer version's `Stop` hook fired
+43 minutes later, with no restart and no `/reload-plugins`. Something picks up a
+changed plugin cache; the documented sentence is about `reloadSkills`, not about
+every path.
+
+Treat that as measured on one version and not as a guarantee. The decisive test is
+cheap and belongs to whoever depends on it: change something visible on the
+plugin's `main`, start a fresh session, and check whether it is present or arrives
+one session late. Until then a refresher should say what it did, since
+`SessionStart` stdout is added to the session's context, which turns a silent
+one-session lag into a line someone can read.
+
+Editing the setup script at all invalidates the snapshot, so the next session
+rebuilds rather than waiting out the roughly seven-day expiry. That makes the
+first fix free and is worth knowing whenever an environment looks stuck.
+
+The pin reaches the repository checkout as well, by the same route. `node_modules/`
+is gitignored, so it cannot arrive with the fresh clone; the setup script installs
+it and the snapshot preserves it. A dependency added to `package.json` after the
+snapshot was built is therefore missing in a session that has the commit adding
+it. Measured 2026-07-30: `graphql@^17.0.2` landed on main that morning, the
+container's `node_modules/` was dated 2026-07-28, and `npm test` failed one test on
+`ERR_MODULE_NOT_FOUND` while the same suite passed in CI, which installs fresh.
+When a suite fails locally on a missing package, check the dates before believing
+the failure.
+
+## The session transcript
+
+*(measured 2026-07-29)*
+
+Each session writes a JSONL transcript at
+`~/.claude/projects/<slug>/<session-id>.jsonl`, appended turn by turn. A `Stop`
+hook receives its path as `transcript_path`. Every line carries `timestamp`,
+`cwd`, `sessionId`, and the CLI `version`; assistant lines add `message.model`
+and `message.usage`, so per-session model and token totals are readable without
+instrumenting anything.
+
+**It does not persist.** The container holds exactly one transcript, the running
+session's. There is no on-disk history of prior sessions, no session list in the
+CLI config, and no MCP tool that enumerates them. The session's own
+`claude.ai/code/session_...` URL is not fetchable from inside the box. So a
+transcript not copied out before the container is reclaimed is gone, and the copy
+has to be made by the session that produced it.
+
+**Most of it is tool output.** Measured on one working session:
+
+| Form | Size | Share |
+| --- | --- | --- |
+| Raw JSONL | 691 KB | 100% |
+| Conversation only, tool results dropped | 24 KB | 3% |
+
+The other 97% is file reads, command output, and search results: bulky, largely
+reconstructable from the repo, and the reason a transcript's size is out of
+proportion to what it says.
+
+**It is as sensitive as the most sensitive thing the session read.** Tool results
+are recorded verbatim, so a transcript inherits whatever secrets, private file
+contents, and API responses passed through it. Archiving one is a disclosure
+decision, not a backup.
+
+**Two fields do not mean what their names suggest.** `gitBranch` reads `HEAD`
+rather than a branch name, so a branch has to be read from the repo instead. And
+the user role carries harness-injected turns, a retry notice being the common
+one, so counting user messages overstates how many times the user actually said
+something.
+
 ## Repository observations
 
 *Observed 2026-05-30.*
@@ -37,15 +158,17 @@ Packages installed during a session do not transfer to other sessions unless the
 - Git objects removed from the remote remained present in that running environment.
 - Concurrent sessions could not see each other's uncommitted files.
 
+*Shallow-clone consequence added 2026-07-30.* The shallow checkout is worth separating from the observation, because its effect is silent. `git log` in a shallow clone returns a truncated history with no error and no marker: a file's apparent first commit is the graft boundary rather than its creation, and `git log -S` finds nothing earlier. Two sessions have read that truncation as evidence of a rewritten history, an inference the fourth observation above makes easy to reach for and the second disproves. The two are unrelated. A rewrite replaces commits; a shallow clone omits them. Run `git rev-parse --is-shallow-repository` before drawing any conclusion from `git log`, and `git fetch --unshallow` when the answer is `true` and the question needs real history.
+
 Anthropic documents the [GitHub proxy](https://code.claude.com/docs/en/claude-code-on-the-web#github-proxy) as the authentication boundary for Git and GitHub API operations. Credentials remain outside the VM. The proxy supports cloning, fetching, pushing, and pull-request operations while restricting pushes to the current working branch and limiting operations to repositories attached to the session.
 
-The timestamps and stale local ref established the state of the observed environment. They did not establish that a repository clone is reused across sessions. The current documentation specifies a fresh clone for each session.
+The current documentation specifies a fresh clone for each session. What these observations do and do not establish about persistence is set out under [Evidence limits](#evidence-limits) rather than restated here.
 
 ```bash
 stat -c '%y %n' .git
 uptime -s
 git remote -v
-test -f .git/shallow && echo "shallow clone"
+git rev-parse --is-shallow-repository
 git rev-parse main origin/main
 ```
 

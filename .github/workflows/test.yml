@@ -1,0 +1,113 @@
+name: Tests
+
+# The repo's one VERIFICATION workflow. Everything else under .github/workflows/
+# is an errand (a cron or a button), and an errand's run has no commit under
+# review to attach to, so it lives in the Actions tab and nowhere else. This one
+# is triggered by a pull request, so its result attaches to the PR's head commit
+# and becomes a check: the green or red mark in the merge box, the Checks tab,
+# and the tick beside the commit wherever GitHub lists it.
+#
+# Why it exists: .claude/hooks/build-on-commit.sh regenerates dist/web-tools.js
+# and the page catalogs before a commit, but a hook only fires where the harness
+# registers it, and where it does not, it fails silently (cause and tells in
+# docs/environment/extending.md). tools/test/artifacts-lockstep.test.mjs is the
+# backstop for that, and until now it only ran when someone remembered to run the
+# suite. Here it runs on every PR, so a stale artifact is caught by the platform
+# rather than by memory.
+#
+# The suite is browser-free: `node --test` globs tools/test/**/*.test.mjs, and
+# every Playwright-driven check (subject-actions, render-copy, the pdf probes) is
+# deliberately named without `.test.` and stays a manual run. That is what lets
+# the install below skip the browser download.
+#
+# The one thing this cannot promise: that it ran. Observed 2026-08-06 on PR #362,
+# a push to the branch produced NO synchronize run at all, so that commit sat in
+# an open PR with zero checks and nothing said so. The next push to the same PR
+# ran normally, so the trigger is not broken; what correlated was pushing the
+# branch and then its base branch inside the same minute, which moves the merge
+# ref the pull_request event is computed against.
+#
+# Seen again 2026-08-13 on PR #413, and this time the cause was measured rather
+# than guessed: main had moved under the branch and the merge conflicted, so the
+# PR's mergeable_state was `dirty`. A pull_request run is computed against the
+# MERGE ref, and a PR that cannot be merged has none, so no run starts. Nothing
+# reports this: the PR shows the previous commit's green check, the new commit
+# shows no check at all, and the conflict notice is elsewhere in the UI. Two
+# pushes in a row produced no run for exactly this reason and both looked, from
+# the checks alone, like a trigger that had misfired.
+#
+# That confirms the 2026-08-06 reading rather than retiring it. Pushing the base
+# branch inside the same minute is one way to leave the merge ref unavailable;
+# an outright conflict is the durable way. The general statement covers both: no
+# usable merge ref, no run.
+#
+# The move: after a push you care about, look for a run on the new head sha
+# rather than assuming the trigger fired, and when none appears, check
+# mergeable_state before anything else. A workflow that exists so the platform
+# catches what memory does not is worth exactly nothing on the commit where it
+# silently did not start.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    # The monthly WSL snapshot commits data and touches no code, so there is
+    # nothing for the suite to say about it.
+    paths-ignore: ['pages/wsl-sync/data/**']
+  workflow_dispatch:
+
+# Read-only: this one reports, it does not commit. (wsl-fetch.yml takes
+# contents: write because it pushes its snapshot back.)
+permissions:
+  contents: read
+
+# A second push to a branch supersedes the first, so cancel the run it
+# obsoleted instead of paying for both.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # The suite runs in about 100 seconds, so ten minutes is slack rather than a
+    # budget. It exists because the failure it catches is not a slow test, it is
+    # a test that never ENDS: `node --test` waits on the event loop, so one
+    # jsdom component left un-destroyed (the State view starts a 60s interval to
+    # age its rows) keeps the runner alive after every assertion has passed.
+    # Measured 2026-08-22 on PR #472, where exactly that left the check sitting
+    # in_progress and, with no timeout here, it would have run to GitHub's
+    # six-hour default before reporting. Ten minutes turns six wasted hours into
+    # a fast red, and a red is what a hung suite should be.
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      # 22, not 20, and not by preference: `node --test` only expands a glob
+      # pattern from 22 on, so on 20 the test script looks for a directory
+      # literally named ** and exits 1 before running anything. It also matches
+      # the sandbox (22.22.2), which is the version the suite is written against.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      # package-lock.json is gitignored in this repo, so there is no lockfile to
+      # `npm ci` against or to key setup-node's cache with. The env var stops the
+      # playwright dev dependency's postinstall from fetching browsers the suite
+      # never launches, which is most of the install time.
+      - name: Install
+        run: npm install
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+
+      - name: Run the suite
+        # The reporter is the spec one, set in the npm script rather than here so
+        # a contributor and the runner see the same output. It matters most
+        # exactly when this step is red: node's TAP reporter emits a YAML block
+        # per PASSING test and names a failure only where it happened, so a
+        # failure early in a 2,280-test run sits ~250k characters above the end
+        # and the logs API serves only the tail. Measured 2026-08-23, when three
+        # rounds could not read why this check was failing. The spec reporter is
+        # a third the size and repeats every failure, with its error, in a
+        # summary at the very bottom.
+        run: npm test

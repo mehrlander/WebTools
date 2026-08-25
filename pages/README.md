@@ -13,22 +13,28 @@ the link-dense text twin of the visual index above.
 
 | Page | Title | Links |
 |---|---|---|
+| `annotate` | Annotate | [view](https://mehrlander.github.io/web-tools/pages/annotate.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/annotate.html) |
+| `branch` | Branch | [view](https://mehrlander.github.io/web-tools/pages/branch.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/branch.html) |
 | `chat-results` | Chat Search Results | [view](https://mehrlander.github.io/web-tools/pages/chat-results.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/chat-results.html) |
+| `citations` | Citations | [view](https://mehrlander.github.io/web-tools/pages/citations.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/citations.html) |
 | `compression-helper` | Compression Helper (v5) | [view](https://mehrlander.github.io/web-tools/pages/compression-helper.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/compression-helper.html) |
 | `console-playground` | Console Suite Guide | [view](https://mehrlander.github.io/web-tools/pages/console-playground.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/console-playground.html) |
 | `data-view` | Data View | [view](https://mehrlander.github.io/web-tools/pages/data-view.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/data-view.html) |
 | `diff-tool` | Diff | [view](https://mehrlander.github.io/web-tools/pages/diff-tool.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/diff-tool.html) |
+| `entities` | Entities | [view](https://mehrlander.github.io/web-tools/pages/entities.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/entities.html) |
 | `gist-editor` | Gist Editor | [view](https://mehrlander.github.io/web-tools/pages/gist-editor.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/gist-editor.html) |
 | `index` | web-tools | [view](https://mehrlander.github.io/web-tools/pages/index.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/index.html) |
+| `inquiry` | Inquiry | [view](https://mehrlander.github.io/web-tools/pages/inquiry.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/inquiry.html) |
 | `launcher` | Popup Launcher · setup | [view](https://mehrlander.github.io/web-tools/pages/launcher.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/launcher.html) |
-| `nav-repo` | Nav Repo | [view](https://mehrlander.github.io/web-tools/pages/nav-repo.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/nav-repo.html) |
+| `links` | Links | [view](https://mehrlander.github.io/web-tools/pages/links.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/links.html) |
 | `pdf-inspect` | PDF Inspect | [view](https://mehrlander.github.io/web-tools/pages/pdf-inspect.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/pdf-inspect.html) |
 | `repo-atlas` | Repo Atlas | [view](https://mehrlander.github.io/web-tools/pages/repo-atlas.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/repo-atlas.html) |
 | `review` | Review | [view](https://mehrlander.github.io/web-tools/pages/review.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/review.html) |
+| `session` | Session | [view](https://mehrlander.github.io/web-tools/pages/session.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/session.html) |
 | `shorter` | Shorter | [view](https://mehrlander.github.io/web-tools/pages/shorter.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/shorter.html) |
-| `table-compress` | Transform | [view](https://mehrlander.github.io/web-tools/pages/table-compress.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/table-compress.html) |
-| `table-compress-multi` | Transform Multi | [view](https://mehrlander.github.io/web-tools/pages/table-compress-multi.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/table-compress-multi.html) |
 | `toss-render` | Toss Render | [view](https://mehrlander.github.io/web-tools/pages/toss-render.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/toss-render.html) |
+| `transform` | Transform | [view](https://mehrlander.github.io/web-tools/pages/transform.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/transform.html) |
+| `word-select` | Word Select | [view](https://mehrlander.github.io/web-tools/pages/word-select.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/word-select.html) |
 
 ## pages/demos/
 
@@ -86,6 +92,12 @@ the link-dense text twin of the visual index above.
 | `aic-kimi` | Art Institute Collection — fill | [view](https://mehrlander.github.io/web-tools/pages/drop/fills-concepts/3-reactive-surface/aic-kimi.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/drop/fills-concepts/3-reactive-surface/aic-kimi.html) |
 | `collection-browser` | The Art Institute of Chicago · Collection Browser | [view](https://mehrlander.github.io/web-tools/pages/drop/fills-concepts/3-reactive-surface/collection-browser.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/drop/fills-concepts/3-reactive-surface/collection-browser.html) |
 
+## pages/guides/
+
+| Page | Title | Links |
+|---|---|---|
+| `code-layers` | Code layers: current state and migration plan | [view](https://mehrlander.github.io/web-tools/pages/guides/code-layers.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/guides/code-layers.html) |
+
 ## lib/kits/demos/
 
 | Page | Title | Links |
@@ -119,8 +131,7 @@ the link-dense text twin of the visual index above.
 | Page | Title | Links |
 |---|---|---|
 | `demo-viewer` | Assembled Viewer Demo | [view](https://mehrlander.github.io/web-tools/pages/show-repo/demo-viewer.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/show-repo/demo-viewer.html) |
-| `repo-drag` | — | [view](https://mehrlander.github.io/web-tools/pages/show-repo/repo-drag.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/show-repo/repo-drag.html) |
-| `show-repo` | web-tools · browse | [view](https://mehrlander.github.io/web-tools/pages/show-repo/show-repo.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/show-repo/show-repo.html) |
+| `repo-drag` | Repo drag explorer | [view](https://mehrlander.github.io/web-tools/pages/show-repo/repo-drag.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/show-repo/repo-drag.html) |
 
 ## pages/stories/
 

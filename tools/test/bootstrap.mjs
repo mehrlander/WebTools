@@ -42,6 +42,12 @@ export const KIT_IMPORTS = {
   'https://unpkg.com/acorn@8.11.3/dist/acorn.mjs': () => import('acorn'),
   'https://cdn.jsdelivr.net/npm/fast-xml-parser@4.5.1/+esm': () => import('fast-xml-parser'),
   'https://cdn.jsdelivr.net/npm/flat@6.0.0/+esm': () => import('flat'),
+  // JSZip's package has no ESM entry, so `import('jszip')` in Node lands on the
+  // CJS interop object whose `.default` is the constructor. That is the same
+  // shape the kit's `.then(m => m.default)` expects from the CDN's +esm build,
+  // so no wrapper is needed. Vendored so kits/xlsx.js's readZip and readMashup
+  // can be tested here rather than browser-side only.
+  'https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm': () => import('jszip'),
 };
 
 // Run lib/kits/<name>.js against `window` (a plain object is fine for kits —
@@ -53,6 +59,27 @@ export const KIT_IMPORTS = {
 // kit that wraps console methods (kits/console.js) can't touch the real one.
 // An async kit body (gh.load shape: `return (async () => …)()`) finishes
 // registering after its awaits; callers await `w.__kitReturn` for that.
+// jsdom has no layout and no Element.scrollTo, and kits/swipe-deck.js counts
+// slides in units of its track's width and pages by scrolling. Give every
+// element a scrollLeft that sticks and a scrollTo that fires the event the deck
+// listens on. The deck's width probe falls back to 1 when clientWidth is 0, so
+// a slide index and a pixel offset coincide and go(2) lands on slide 2, which
+// is all a logic test needs; the real geometry is covered by the headless
+// scenarios under tools/render.
+export function deckGeometry(window) {
+  const at = new WeakMap();
+  Object.defineProperty(window.Element.prototype, 'scrollLeft', {
+    configurable: true,
+    get() { return at.get(this) || 0; },
+    set(v) { at.set(this, v); },
+  });
+  window.Element.prototype.scrollTo = function ({ left } = {}) {
+    at.set(this, left || 0);
+    this.dispatchEvent(new window.Event('scroll'));
+  };
+  return window;
+}
+
 export function loadKit(name, { window: w = {}, imports = KIT_IMPORTS, console: cons = console } = {}) {
   const file = path.join(repoRoot, 'lib', 'kits', name.endsWith('.js') ? name : `${name}.js`);
   let src = readFileSync(file, 'utf8');
@@ -106,6 +133,21 @@ export function makeWindow({ html = '<!doctype html><html><body></body></html>',
   global.window = window;
   global.document = window.document;
 
+  // The streams/fetch surface, which jsdom ships none of: no CompressionStream,
+  // no ReadableStream, no Response, and a Blob whose .stream() is missing. Every
+  // real browser has all four, so a component that compresses (the stage's
+  // gz link payload) would be untestable here for a reason that has nothing to
+  // do with the component. Node's own implementations are copied in, together,
+  // so they stay in ONE realm: mixing jsdom's Blob with Node's CompressionStream
+  // is what fails first. Same rationale as the matchMedia polyfill below.
+  for (const name of ['ReadableStream', 'WritableStream', 'TransformStream',
+                      'CompressionStream', 'DecompressionStream', 'Response']) {
+    if (!window[name] && globalThis[name]) window[name] = globalThis[name];
+  }
+  try {
+    if (typeof new window.Blob(['x']).stream !== 'function') window.Blob = globalThis.Blob;
+  } catch { window.Blob = globalThis.Blob; }
+
   // matchMedia polyfill with settable matches + change events.
   const mqls = [];
   window.matchMedia = (query) => {
@@ -147,17 +189,60 @@ export function makeWindow({ html = '<!doctype html><html><body></body></html>',
   return { dom, window, setMedia, problems };
 }
 
+// Stop Alpine turning an expression error into a process-level throw.
+//
+// Alpine's normalErrorHandler warns AND rethrows asynchronously
+// (`setTimeout(() => { throw error }, 0)`), so the console line is a copy and
+// the throw itself lands wherever the event loop happens to be by then. Under
+// `node --test` that is fatal and its victim is arbitrary: a test still
+// running takes the failure, and if none is running the runner reports
+// "generated asynchronous activity after the test ended" and fails the WHOLE
+// FILE with every subtest green.
+//
+// That is what made branch-brief-groups.test.mjs flaky at roughly one full
+// suite run in seven, here and on CI. Collapsing a registry group removes the
+// `x-if` holding its cards, and Alpine re-evaluates those cards' bindings once
+// against the scope it has already popped: `tab is not defined` and 239 of its
+// kin, all on a timer nobody awaits. Nothing decided pass or fail but whether
+// that timer beat the test to the exit, which is why it moved with machine
+// load and why the file failed with all its assertions passing.
+//
+// The errors are not silenced. The handler still warns, so the `problems`
+// array collects them exactly as before and any test can assert on them. Only
+// the rethrow goes, because a throw on an unawaited timer is not a test
+// result: it fails whichever test it lands on, which may be one that has
+// nothing to do with it.
+export function captureAlpineErrors(Alpine) {
+  Alpine.setErrorHandler((error, el, expression) => {
+    const msg = error?.message ?? String(error ?? 'No error message given.');
+    console.warn(`Alpine Expression Error: ${msg}\n\n`
+      + (expression ? `Expression: "${expression}"\n\n` : ''), el);
+  });
+}
+
+// What gh-boot's BOOT manifest puts on every loader page before Alpine starts,
+// and which a component may therefore read without loading it itself. A unit
+// harness that omits it is not a smaller page, it is a page that cannot exist:
+// the component reads `window.claudeMark` in an `x-html`, so leaving it out
+// turns every mount into an Alpine expression error and a test asserting
+// "mounting is quiet" fails for a reason that is the harness's, not the code's.
+// Kept to what a component actually reaches for, so a test still fails when a
+// real dependency goes missing (see the `stub-hides-the-wiring` snag).
+const STANDING = ['lib/kits/claude-mark.js'];
+
 // Import the real Alpine, register it on the window, run each component file
 // in the window realm (they hook 'alpine:init'), start Alpine, and let the
-// first effects flush. Component paths are repo-relative.
+// first effects flush. Component paths are repo-relative; the standing
+// equipment above is prepended, exactly as gh-boot orders it.
 export async function startAlpine(window, componentPaths = []) {
   // The ESM file, not the package root: the package has no `exports` map, so
   // bare 'alpinejs' resolves to the CJS build, whose default export arrives
   // double-wrapped under Node's interop (and it news a MutationObserver at
   // import time, so makeWindow must already have run either way).
   const { default: Alpine } = await import('alpinejs/dist/module.esm.js');
+  captureAlpineErrors(Alpine);
   window.Alpine = Alpine;
-  for (const p of componentPaths) {
+  for (const p of [...STANDING, ...componentPaths]) {
     const src = readFileSync(path.join(repoRoot, p), 'utf8');
     new window.Function(src)();
   }

@@ -1,10 +1,11 @@
 ---
 id: toss-render-multiparam-query-encoding-n9lbcp
 title: toss-render ?query forwarding drops multi-param page queries
-status: backlog
-track: independent
+status: done
 opened: 2026-07-19
-next: decode the gh param from the raw fragment slice (not URLSearchParams) so a bare & in the page query survives, or document the %26 requirement in the head comment and the on-page help
+closed: 2026-07-30
+session: claude/web-tools-tracker-review-bw48ga
+next: done on claude/web-tools-tracker-review-bw48ga; both fixes taken, the slice read and the documentation
 ---
 # toss-render ?query forwarding drops multi-param page queries
 
@@ -50,3 +51,26 @@ encode `%26`. Worth smoothing so a hand-written link is not a trap.
 ## Progress log
 - 2026-07-19: filed from the app-views session (web-tools PR #242), where the
   News app-view deep link failed until the `&` was encoded as `%26`.
+- 2026-07-30: fixed, taking both listed fixes rather than choosing between them.
+  The fragment now goes through `readFragment(hash)`, which matches the one
+  leading key and takes the whole rest of the string as its value, then decodes
+  percent-escapes (so `%26` links keep resolving) and falls back to the raw
+  value when the escaping is invalid. The query string keeps
+  `URLSearchParams`, where `&` really does delimit. The head comment and the
+  on-page help now show a multi-param example and name the query string's limit.
+
+  Two differences from the old reader, both deliberate. `+` is no longer turned
+  into a space at this level: the params shim re-parses the page query with
+  `URLSearchParams`, which decodes `+` where it means something, and a `+` in a
+  path is a literal. And a fragment can no longer carry a second key, which no
+  minted link did (checked across `lib/`, `pages/`, `docs/`, `tools/`).
+
+  Two tests. `tools/test/toss-fragment.test.mjs` lifts `readFragment` out of the
+  page source and runs it, in `npm test`. `tools/test/toss-multiparam.mjs` is
+  the browser half, since the params shim only means anything once the framed
+  document runs: it tosses a probe page through the real shell and reads back
+  what the page's own `URLSearchParams` returns. Against main's reader the
+  browser check fails on exactly the two params the task named
+  (`appRepo` and `appPath` come back `null`), which is the A/B the fix is worth.
+  It also measures the query string's limit as a control, so the documented
+  caveat has a number behind it.

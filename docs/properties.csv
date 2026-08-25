@@ -1,0 +1,130 @@
+registry,property,mode,deriver,required,form,exclusive,values,gloss
+docs,subject,recorded,,none,column,yes,,"what the document is about, one line"
+docs,status,recorded,,none,column,yes,living;record;measured,"whether the document is kept true, preserved as written, or derived from measurement"
+docs,reach,computed,tools/build/docs-reach.mjs,value,column,yes,injected;project;skill;app;orphan,"who can get to the document: injected at session start, reachable from project instructions, a skill, the app, or nothing"
+docs,words,computed,tools/build/docs-reach.mjs,value,column,yes,,"the document's size, and its share of the folder"
+docs,maintenance,recorded,,counted,column,yes,,who keeps the document true; a bare row is counted by the registry rather than hidden
+tests,kind,recorded,,value,column,yes,behavior;component;kit;tool;gate;lockstep;guard,the genre of check; the vocabulary is closed and the gate holds rows to it
+tests,protects,recorded,,counted,column,yes,,the one thing that breaks if the test is deleted; blanks are counted
+tests,assertions,computed,tools/build/tests-index.mjs,counted,column,yes,,"how many assertions the file makes. Blank, never zero, on the 10 browser-driven checks that are not node:test files, because test() is not their unit; the blank is the honest reading and the count is the ledger figure"
+tests,assertion_names,computed,tools/build/tests-index.mjs,counted,column,no,,"what each top-level test() call is named, in source order; the file's own account of its coverage, so protects need not restate it. A parameterized name is carried as its template text. Blank on the same 10 browser-driven checks as its count, for the same reason: test() is not their unit"
+tests,method,computed,tools/build/tests-index.mjs,value,column,yes,kit;alpine;spawn;read;pure,"how the check reaches its subject, strongest present wins"
+tests,runner,computed,tools/build/tests-index.mjs,value,column,yes,,"suite for a *.test.mjs file, else the npm script that runs it, else unrun"
+tests,boot_smoke,computed,tools/build/tests-index.mjs,counted,column,no,,"which assertions only check a component mounts, as indices into assertion_names; the property is per assertion, so a file-level count is the length rather than the record. Blank on the same 10 browser-driven checks, for the same reason"
+harness,role,recorded,,counted,column,yes,,what the file is for; blanks are counted rather than hidden
+harness,layer,computed,tools/build/tools-index.mjs,value,column,yes,scripts;tools;tools/build;tools/concept-lab;tools/render;tools/render/scenarios,"which shelf the file sits on. The domain is closed and owned by the carrier's own layers glossary block, the same arrangement as manifest-fields.consumer; docs/code-layers.md is the prose behind it"
+harness,lines,computed,tools/build/tools-index.mjs,value,column,yes,,file length
+harness,invocation,computed,tools/build/tools-index.mjs,value,column,yes,,"how the file gets run: argv, imported, driver, 'none found' (the warning state), or npm:<script> naming the script. Deliberately OPEN, because the npm form is a grammar rather than an enumeration and a new script must not need a declaration edit"
+harness,emits,computed,tools/build/tools-index.mjs,value,column,yes,yes;no,writes a file: a generator rather than a reader
+harness,named,computed,tools/build/tools-index.mjs,value,column,yes,yes;no,its path or basename appears in tracked prose
+harness,tested,computed,tools/build/tools-index.mjs,value,column,yes,yes;no,a file under tools/test/ exercises it
+content,creation_mode,recorded,,none,column,yes,supplied;mechanical;human-authored;model-authored;hybrid-authored;mixed,what the artifact IS epistemically; the portable content skill owns the convention
+content,analysis_use,recorded,,none,column,yes,concept-vocabulary;prose-review;semantic-search;source-corpus;exclude,"what the artifact is good for downstream. The domain is closed and is owned by the content skill, not here; docs/owners.csv records the copy"
+content,description,recorded,,none,column,yes,,one line on the artifact
+portable,kind,recorded,,value,column,yes,skill;doc;script;dir,what species of thing travels
+portable,command,recorded,,none,column,yes,,the invocation name; present on kind:skill rows only
+portable,title,recorded,,none,column,yes,,display name
+portable,role,recorded,,counted,column,yes,,"what the item does for an adopting repo. NOT asserted where a registry already owns the claim: blank on the nine scripts harness describes, joined at render time. Kept on the skills, whose skills row carries a model-facing trigger description rather than a reader's one-liner"
+portable,use,recorded,,none,column,yes,plugin;live;reference;adopt;on-demand,"how a consumer takes the item: installed by the plugin, read live, referenced, adopted once, or fetched on demand"
+tools,icon,recorded,,none,column,yes,,phosphor icon name
+owners,kind,recorded,,value,column,yes,statement;family,"whether the row owns one repeated statement or declares a rule over a scope; a family row is a DECLARATION in this model, carried here because its carrier is distributed"
+owners,applies_to,recorded,,none,column,yes,,the population a family rule covers; absent on a statement row
+owners,authoritative,recorded,,value,column,yes,,the one carrier that owns the statement; every other mention is a repetition
+skills,group,recorded,,value,column,yes,prose;documents;web;device;windows;session,"what the skill is FOR, the axis a reader browses on; authored, since nothing on disk carries a subject"
+skills,description,recorded,,value,column,yes,,"the skill's trigger description. A COPY: the authoritative carrier is the skill's own SKILL.md, per the family rule in docs/owners.csv"
+pages,top,computed,tools/build/pages-index.mjs,value,column,yes,,"the top-level segment under pages/ the page sits in, which drives the gallery's location chips; every page below drop/ scopes to one drop chip. A root page reads main"
+pages,group,computed,tools/build/pages-index.mjs,counted,column,yes,,"the page's own directory, as the gallery labels it; blank for a root page. Was a nesting level until 2026-08-16, when flattening it onto the row is what let the catalog become a CSV"
+pages,label,computed,tools/build/pages-index.mjs,value,column,yes,,the short name the catalog card and the picker show
+pages,title,computed,tools/build/pages-index.mjs,value,column,yes,,"the page's own <title>, read from the file"
+pages,note,computed,tools/build/pages-index.mjs,counted,column,yes,,"the one-line blurb. Authored in the NOTES map inside the deriver, not here, and blank on 40 of 66 pages: a counted figure, the honest measure of how much of the gallery is unexplained"
+pages,thumb,computed,tools/build/pages-index.mjs,value,column,yes,,"the committed screenshot path; refreshed once per session, never by the commit hook"
+pages,code,computed,tools/build/pages-index.mjs,value,column,yes,,the GitHub blob URL for the page source
+tracker-tasks,title,computed,.claude/skills/tasks/build-board.py,value,column,yes,,"the task's short imperative, read from its frontmatter"
+tracker-tasks,status,computed,.claude/skills/tasks/build-board.py,value,column,yes,backlog;in-progress;blocked;done;dormant,where the task sits. Domain owned by docs/TRACKER.md
+tracker-tasks,opened,computed,.claude/skills/tasks/build-board.py,value,column,yes,,the date the task was filed
+tracker-tasks,closed,computed,.claude/skills/tasks/build-board.py,none,column,yes,,"the date it was completed; absent while open, which is not a blank to count"
+tracker-tasks,file,computed,.claude/skills/tasks/build-board.py,value,column,yes,,the task file this row is derived from
+tracker-tasks,href,computed,.claude/skills/tasks/build-board.py,value,column,yes,,the blob URL the board and the caption link to
+tracker-tasks,lastActivity,computed,.claude/skills/tasks/build-board.py,counted,column,yes,,"the date of the newest progress-log line. Blank on a task filed without one, which the board generator allows and the tasks template does not produce; the blank is the honest reading of 'filed, nothing logged yet' and is worth counting"
+tracker-tasks,logEntries,computed,.claude/skills/tasks/build-board.py,value,column,yes,,how many progress-log lines the task carries
+tracker-tasks,session,computed,.claude/skills/tasks/build-board.py,none,column,yes,,"the branch that owns the task while it is in progress, or completed it"
+tracker-tasks,project,computed,.claude/skills/tasks/build-board.py,none,column,yes,,"the workspace a task belongs to, where the repo scopes them"
+tracker-tasks,size,computed,.claude/skills/tasks/build-board.py,none,column,yes,XS;S;M;L;XL;?,"effort calibrated to the session. Domain owned by docs/TRACKER.md; optional by design, and carried on 9 of 75"
+tracker-tasks,depends-on,computed,.claude/skills/tasks/build-board.py,none,column,yes,,"the task ids this one waits on, comma separated; absent means none. Replaced `track` on 2026-08-23"
+tracker-tasks,awaiting,computed,.claude/skills/tasks/build-board.py,none,column,yes,,free text naming what is holding the task; cleared by hand
+tracker-tasks,blockedBy,computed,.claude/skills/tasks/build-board.py,none,column,yes,,the task or condition a blocked row names
+routes-modes,form,recorded,,value,column,yes,,"the address shape, e.g. #gz=<base64url of gzipped HTML>"
+routes-modes,carries,recorded,,value,column,yes,inline;reference,whether the payload rides in the URL or is fetched
+routes-modes,trust,recorded,,value,column,yes,trusted;untrusted;n/a,"how the renderer treats what arrives. n/a is the data route, which hands bytes to a viewer rather than executing a page, so the question does not arise"
+routes-modes,sandbox,recorded,,value,column,yes,,the sandbox the mode renders under
+routes-modes,reach,recorded,,value,column,yes,any reader;viewer holding the token,"who can open it: any reader, or a token holder"
+routes-modes,note,recorded,,value,column,yes,,what the mode buys and what it costs
+routes-routes,repo,recorded,,value,column,yes,,the repo holding the renderer page
+routes-routes,ref,recorded,,value,column,yes,,the ref the renderer is read at
+routes-routes,path,recorded,,value,column,yes,,the renderer page
+routes-routes,renders,recorded,,value,column,yes,,the content type this route is for
+routes-routes,doc,recorded,,value,column,yes,,the envelope contract the route honors
+routes-routes,example,recorded,,value,column,yes,,a worked address
+showing-mechanisms,glyph,recorded,,value,column,yes,,the marker the caption uses
+showing-mechanisms,label,recorded,,value,column,yes,,the mechanism name a reader sees
+showing-mechanisms,form,recorded,,none,column,yes,,the address shape; absent where the mechanism is not a URL
+showing-mechanisms,subject,recorded,,value,column,yes,,what kind of thing it can show
+showing-mechanisms,version,recorded,,value,column,yes,,which version of the subject it reaches
+showing-mechanisms,viewer,recorded,,value,column,yes,,who can open it
+showing-mechanisms,reaches,recorded,,none,column,yes,,what it does show
+showing-mechanisms,misses,recorded,,value,column,yes,,"what it does NOT show, which is the field the picker turns on"
+showing-mechanisms,trap,recorded,,none,column,yes,,"the failure mode, where one has bitten; carried on 1 of 7"
+showing-mechanisms,use,recorded,,value,column,yes,,when to pick it
+surfacing,lead,recorded,,value,column,yes,,"the bullet lead-in, held two-way against SURFACING.md's prose"
+surfacing,title,recorded,,value,column,yes,,the short name
+surfacing,glyph,recorded,,counted,column,yes,,"the caption marker; blank on 9 of 20, which have no marker of their own"
+surfacing,use,recorded,,value,column,yes,,"what the primitive is for, in one line"
+surfacing,boundary,recorded,,none,column,yes,,where it stops working; carried on 14 of 20
+surfacing,form,recorded,,none,column,yes,,"the concrete shape, where the primitive has one"
+manifest-fields,type,recorded,,value,column,yes,string;number;boolean;object;array;boolean|object;string|array;string|boolean,the JSON type the key takes
+manifest-fields,consumer,recorded,,value,column,yes,show-repo;portable;session-hook,"which tool reads the key: show-repo (the shell presents the repo), portable (the conventions read it and show-repo ignores it), session-hook (a plugin hook reads it outside any page)"
+manifest-fields,summary,recorded,,value,column,yes,,what the key does and who owns its value
+manifest-fields,status,recorded,,none,column,yes,deprecated,set only where a key is superseded but still parsed
+text-fields,audience,recorded,,value,column,yes,reader;editor,who the text under this field name is addressed to; the split that decides whether it belongs in a carrier or in source
+text-fields,gloss,recorded,,value,column,yes,,"what this field name means, in a sentence"
+text-fields,use_when,recorded,,value,column,yes,,"the rule for picking this name over its neighbours, which is the part a definition alone never settles"
+text-fields,instead_of,recorded,,none,column,yes,,"the names already in use that this one accounts for; the scan resolves them rather than reporting them as violations, so an existing carrier conforms by declaration rather than by rename"
+app-routes,address,recorded,,counted,column,yes,,"the URL shape that opens it, e.g. ?view=map; blank on the shell row, which draws every route and is addressable as none of them"
+app-routes,label,recorded,,value,column,yes,,its name in the nav and on the row
+app-routes,group,recorded,,value,column,yes,repo;estate;shell,which context it is reached from
+app-routes,what,recorded,,value,column,yes,,"what the destination is for, one line"
+app-routes,files,recorded,,counted,column,no,,"the files that render it, shell excluded. Blank is a finding, not a gap: three routes render from components defined inline in the shell and so have no code of their own, which the Routes pane counts rather than hides"
+app-routes,note,recorded,,none,column,yes,,"why a row has no files, or what qualifies the row"
+app-routes,alias,recorded,,none,column,yes,,a retired key that still resolves
+app-routes,tabs,recorded,,none,column,no,,the sub-tabs addressable within it
+app-routes,stop,recorded,,counted,column,yes,,"the nav destination it is reached as. Six sub-tabs are addressed as their own ?view= key while twelve are addressed as ?view=<parent>&tab=, so this is the level the router flattens away; the gate holds every estate route's value to estateNav; blank on the shell row, which draws every route and is addressable as none of them"
+registries,path,recorded,,value,column,yes,,"the file the registry lives in; one table per file, so a path is a plain file path with nothing after it"
+registries,key,recorded,,value,column,yes,,"the column that identifies a row, exempt from having a property definition of its own; several columns join with +"
+registries,identity,recorded,,none,column,yes,,"the name space the key resolves into, so two registries' keys can be compared: path for a repo-relative path, path:<prefix> for one relative to a prefix, blank for an opaque name that never collides"
+registries,membership,recorded,,value,column,yes,computed;curated,"whether the set of rows can be recomputed from the tree or the code, or is decided by curation. Only a computed set can be held to a coverage gate, because only it has something independent to be checked against"
+registries,inherits,recorded,,none,column,yes,,"another registry this one borrows descriptions from, by id, so a curated selection need not restate what a computed set already says. Blank is the normal state. Named the crosswalk kind until 2026-08-18, which said that a registry borrowed without saying from whom"
+registries,target,recorded,,value,column,yes,,the thing a row asserts about; not always a file
+registries,scope,recorded,,value,column,yes,,the population the registry covers
+registries,span,recorded,,value,column,yes,hub;estate,"whether this checkout bounds the population, or a complete enumeration needs another repo; the typed sibling of scope, which says the same thing in prose and so cannot be grouped or counted"
+registries,fields,recorded,,value,column,yes,governed;ungoverned,whether every non-key column of this carrier must be a declared property
+registries,gate,recorded,,value,column,yes,,the test that fails when the registry and the repo disagree; none when nothing holds it
+registries,area,recorded,,value,column,yes,files;names,the reader grouping in the Registries tab
+registries,title,recorded,,value,column,yes,,display name
+registries,gloss,recorded,,value,column,yes,,one line on what the registry is for
+registries,renders_in,computed,tools/build/registries-reach.mjs,counted,column,no,,"the lib/, pages/ and app/ files naming the path in code; empty marks a registry no app surface reads"
+properties,mode,recorded,,value,column,yes,recorded;computed,whether the value is authored or derived
+properties,deriver,recorded,,counted,column,yes,,"the script that computes the value, required when mode is computed"
+properties,required,recorded,,value,column,yes,value;counted;none,"what the gate enforces: every row filled, blanks counted, or nothing"
+properties,form,recorded,,value,column,yes,column;list,column reserves a slot on every row; list records only where the assertion holds
+properties,exclusive,recorded,,value,column,yes,yes;no,whether one row may hold more than one value from the domain
+properties,values,recorded,,none,column,yes,,"the value domain, semicolon separated, where it is closed; blank means open"
+properties,gloss,recorded,,value,column,yes,,one line on what the property means
+manifest-fields,required,recorded,,none,column,yes,yes;no,"whether a member of an array or object key must be present; blank on a top-level key, whose requiredness was never recorded"
+repetitions,where,recorded,,value,column,yes,,"the file, or the surface, carrying the repetition"
+repetitions,relation,recorded,,value,column,yes,copy;paraphrase;pointer;live read,how the repetition stands to the authoritative version
+repetitions,kept,recorded,,counted,column,yes,,who keeps a copy current; applies only when the relation is copy
+repetitions,check,recorded,,counted,column,yes,,"the test holding this repetition to its owner; blank where nothing does, which is the honest state the table exists to show"
+vocabularies,gloss,recorded,,value,column,yes,,"what this one value means, in the terms a reader picking among them needs"
+vocabularies,label,recorded,,counted,column,yes,,"the display name for this value, where it differs from the value itself"
+tracker-tags,tag,computed,.claude/skills/tasks/build-board.py,value,column,yes,,"the frontmatter key. Deliberately undeclared as a domain: the layer is open by design, so a closed set here would be the promotion TRACKER.md says to make in the generator instead"
+tracker-tags,value,computed,.claude/skills/tasks/build-board.py,value,column,yes,,the scalar the task file gave that key

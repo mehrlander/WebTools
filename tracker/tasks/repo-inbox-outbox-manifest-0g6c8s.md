@@ -1,11 +1,12 @@
 ---
 id: repo-inbox-outbox-manifest-0g6c8s
 title: Repo-designated inbox and outbox in .web-tools.json
-status: backlog
+status: done
 project: repo
-track: independent
 opened: 2026-07-15
-session: claude/pr-219-review-22csrh
+closed: 2026-07-28
+session: claude/tracker-status-cjogjn
+next: done as a first cut; folder-vs-branch settled as a per-repo choice, both fields wired
 ---
 # Repo-designated inbox and outbox in .web-tools.json
 
@@ -113,3 +114,30 @@ pipeline" change; this task is only about the default *location(s)*.
   token-gating gap in the cross-repo handoff primitives. Added the
   public-repo raw-URL outbox case and the folder-vs-branch design question for
   both fields. Still backlog; no branch claimed.
+- 2026-07-28: done on `claude/tracker-status-cjogjn`, landing via web-tools
+  PR #302. **The blocking question is settled**: a box spec is a folder on the
+  repo's default branch by default, and can name a ref (`"@drop:incoming"`) or
+  another repo (`"owner/repo@ref:dir"`) when a repo wants that. So folder
+  versus branch stops being a global design fork and becomes a per-repo choice,
+  with the discoverable option as the default. Two reasons for that default,
+  both practical rather than aesthetic: a folder is visible in ordinary
+  browsing while a branch is invisible unless something points at it, so a
+  consumer that forgets the ref reads the default branch and silently finds
+  nothing; and writing into a branch presumes the branch exists, which needs
+  the Git Data API this lib does not carry, while a folder needs nothing.
+  The other open decisions went with it. Fields are top-level `inbox` and
+  `outbox`, not nested under `stage`, since a box is a location and not a
+  staging concern. There is no convention default: absent means the root, so
+  nothing changes for a repo that declares nothing.
+  Built: `lib/repo-address.js` owns the grammar and the box parser
+  (`RepoAddress.box(config, 'inbox'|'outbox', repo)`), 9 tests. Inbox resolves
+  on the send side in `stage.js`, one cached read of the destination repo's
+  manifest, with the armed button naming the resolved directory so the second
+  tap confirms the redirect rather than hiding it. Outbox is a repo-menu row
+  that opens the Files view at the folder, read from the config cache the
+  estate already holds. Headless evidence:
+  `tools/render/scripts/inbox-demo.mjs`.
+  Left for later, and deliberately small: the picker does not pre-fill the
+  inbox before the send (resolution happens at send time, which is where the
+  destination repo is known), and nothing stages an outbox's contents in one
+  tap. Both are affordances on a mechanism that now exists.

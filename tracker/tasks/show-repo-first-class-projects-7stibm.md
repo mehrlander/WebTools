@@ -1,8 +1,10 @@
 ---
 id: show-repo-first-class-projects-7stibm
 title: show-repo - first-class projects, defined by tracker presence
-status: backlog
+status: done
 opened: 2026-07-22
+closed: 2026-07-31
+session: claude/project-pages-docs-udzi51
 ---
 # show-repo: first-class projects, defined by tracker presence
 
@@ -49,3 +51,19 @@ landing to point at. Origin: the 2026-07-22 budget-drs contracts session
 - 2026-07-22 filed from the home budget-drs contracts session, where the
   missing project landing forced a bare GitHub tree link as the "comprehensive
   operation" target.
+- 2026-07-31 claimed on `claude/project-pages-docs-udzi51` (PR #331). The
+  project view grew Overview / Pages / Docs pills: a `projects` entry's new
+  `landing` field takes Overview rendered live (the budget-drs case this task
+  opened with; home's paired branch declares it), Pages derives the workspace's
+  slice of the repo catalog (path prefix or a `project` claim key, deliberately
+  no per-project list), and Docs lists every markdown file off one recursive
+  tree with a curated DOCS.md lead. `&tab=` deep-links a pill, which covers the
+  scope item about an addressable handle. Remaining scope: boards as navigable
+  surfaces in the shell (today the Board button still opens the raw file in
+  the viewer), and the merged docs recording the convention.
+- 2026-07-31 done on `claude/project-pages-docs-udzi51`; lands via PR #331. The
+  Board pill closed the remaining scope: a file board renders in-pane with its
+  relative task links resolved into the shell's viewer, and every board tap
+  routes there. The defining convention and the derived Pages/Docs mechanisms
+  are recorded in docs/show-repo.md; home's paired branch declares budget-drs
+  and budget-wa landings.

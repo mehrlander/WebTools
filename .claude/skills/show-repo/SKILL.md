@@ -25,9 +25,9 @@ markers: 🗂️ a stage link, 🥏 a toss, 📦 an artifact.
 
 ## What it enables (before you fetch)
 
-- **Browse link:** `…/show-repo/show-repo.html?repo=owner/repo[&ref=…][&view=files&path=<dir>]`. Public repos need no auth; private repos and branches need the viewer's stored token.
-- **Stage link 🗂️:** `…/show-repo/show-repo.html#stage=owner/repo[@ref]:path1,path2;owner2/repo2:path3`, a cross-repo fileset for view, concatenated-bundle copy/download, two-tap transfer into another repo, or a review diff. Refs are pointers (content stays behind the viewer's token); optional `&prompts=<base64url>` (a `{label, ask}` review-prompt list) and `&mode=diff` (open on the Diff tab, run on open) are authored, so they ride the link, and the `?query` too (`StageLink.read`) for a fragment-stripping context.
-- **Manifest:** a repo's root `.web-tools.json` (the repo's web-tools config; `landing`, `pins`, `stage.files`, `stage.targets`) configures how the shell presents it. The shell falls back to the legacy `.show-repo.json` name.
+- **Browse link:** `…/app/?repo=owner/repo[&ref=…][&view=files&path=<dir>]`. Public repos need no auth; private repos and branches need the viewer's stored token.
+- **Stage link 🗂️:** `…/app/#stage=owner/repo[@ref]:path1,path2;owner2/repo2:path3`, a cross-repo fileset for view, concatenated-bundle copy/download, two-tap transfer into another repo, or a review diff. Refs are pointers (content stays behind the viewer's token); optional `&prompts=<base64url>` (a `{label, ask}` review-prompt list) and `&mode=diff` (open the preview on that diff, run on open) are authored, so they ride the link, and the `?query` too (`StageLink.read`) for a fragment-stripping context.
+- **Manifest:** a repo's root `.web-tools.json` (the repo's web-tools config; `landing`, `pins`, `stage.files`, `stage.targets`) configures how the shell presents it.
 
 ## The honesty caveat (state it on every stage handoff)
 
@@ -45,9 +45,16 @@ bundle and `SendUserFile` it instead of sending a link.
 curl -fsSL https://raw.githubusercontent.com/mehrlander/web-tools/main/docs/show-repo.md
 ```
 
+For stage work (the bench, the preview and its diff, save-as-surface, the
+`#stage=` grammar), fetch the stage's own reference the same way:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mehrlander/web-tools/main/docs/stage.md
+```
+
 `raw.githubusercontent.com` is on the Claude Code web sandbox allowlist, and the
-repo is public, so this needs no auth. In `mehrlander/web-tools` itself the file
-is local; read `docs/show-repo.md` directly.
+repo is public, so this needs no auth. In `mehrlander/web-tools` itself the files
+are local; read `docs/show-repo.md` and `docs/stage.md` directly.
 
 ## Fallbacks
 

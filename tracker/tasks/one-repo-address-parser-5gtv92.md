@@ -1,9 +1,11 @@
 ---
 id: one-repo-address-parser-5gtv92
 title: One parser for the owner/repo[@ref]:path address
-status: backlog
+status: done
 opened: 2026-07-25
-next: decide what an unspecified ref means at the link-building boundary; that is the whole question, and the parser follows from it
+closed: 2026-07-30
+session: claude/web-tools-tracker-review-bw48ga
+next: done on claude/web-tools-tracker-review-bw48ga; stage-link-onto-url-params-u9o7ny, which depended on this, is now unblocked
 ---
 # One parser for the owner/repo[@ref]:path address
 
@@ -79,3 +81,63 @@ honest ref may be available without a new call.
   left the other two alone: touching `DataPayload` changes data-view's rendered
   links, which is a behavior change that wants its own change and its own
   verification, not a wrap-up drive-by.
+- 2026-07-28: the deciding question is answered and the module is built, on
+  `claude/tracker-status-cjogjn` (web-tools PR #302), because the inbox/outbox
+  work needed the grammar and should not have added a fourth copy.
+  `lib/repo-address.js` takes the shape this task proposed: `parse(spec)`
+  reports what the address said, so a missing ref is `''` and never a guess,
+  and `ref(addr, fallback)` is the link-building boundary where a fallback is
+  legitimate. It also carries the `inbox`/`outbox` box parser built on the same
+  grammar.
+  What remains is the mechanical half, unchanged in shape: delegate
+  `StageLink.parseItem`, `ShorterPayload.parseSpec`, and
+  `DataPayload.parseSpec`, keeping their exported names, and verify data-view's
+  GitHub/Raw/CDN links by a render rather than by reading. Note the load-order
+  constraint found while building: the three copies are used by pages whose
+  boot chains differ, so each consuming page needs `gh.load('repo-address.js')`
+  before delegation, which is why this PR did not sweep them.
+  `tools/test/repo-address.test.mjs` already asserts the copies agree with the
+  module on shape today, so the delegation is a refactor rather than a
+  behavior change; DataPayload's `'main'` remains the one real difference, and
+  whether data-view keeps guessing is now the only judgment left.
+- 2026-07-30 the mechanical half landed, and the load-order note in the entry
+  above turned out to be the whole difficulty.
+
+  `StageLink.parseItem`, `DataPayload.parseSpec`, and `ShorterPayload.parseSpec`
+  now call `RepoAddress.parse` and keep their exported names; the local regexes
+  are gone, including the second copy inside `StageLink.parseLink`, which reads
+  a group whose path half is a comma list and needed no special grammar after
+  all. `pages/toss-render.html` keeps its inline copy with the comment saying
+  why. Each reader throws a named error if the module is absent, since the
+  alternative was a null parse that reads as "not an address" and misroutes in
+  silence.
+
+  **Load order was the real work.** Reading `RepoAddress` at module scope
+  captures an undefined: a component registers during the pre-build's boot,
+  which happens inside the `dist/` import, before the page's own `gh.load` chain
+  runs. So the readers resolve at call time, `repo-address.js` was added to the
+  bundle's boot list ahead of the components (`tools/build/build-lib.mjs`), and
+  the two chain pages that load a delegate now load it first. The order is
+  asserted rather than remembered: `repo-address.test.mjs` checks the pages, the
+  generator, and the built bundle's boot list.
+
+  **The judgment the entry above left open, and what measuring it changed.** The
+  plan was to move DataPayload's `'main'` from parse time to the link-building
+  boundary. That was right, but the boundary already had a fallback: the
+  viewer's `ref` getter has always ended in `|| 'main'`, so a `''` ref never
+  reached `fileUrls` and the parse-time guess was never load-bearing for the
+  links. Measured, not read: the render check below passes with the fallback in
+  `fileUrls` removed. So the change is smaller and better than planned. The
+  fallback stays in the one getter, now stated as the boundary and preferring a
+  default branch the shell actually surveyed (`store.defaultRef`, and only for
+  the repo it surveyed it for) with `'main'` as the last resort rather than the
+  first. That answers this task's "worth checking whether the viewer can learn
+  the real default branch" in the affirmative, where the shell knows.
+
+  The render check the definition of done asked for is
+  `tools/test/data-view-links.mjs` (`npm run test:data-view-links`, browser, not
+  in `npm test`): it opens data-view on an address with no `@ref` and reads back
+  the hrefs the file menu rendered. Both halves of the ref rule hold. No link is
+  malformed, blob and CDN name a concrete branch, and the fetch omits the `ref`
+  parameter entirely rather than sending an empty one, which is a separate fix
+  in `pages/data-view.html`: an empty `?ref=` is not the same request as none.

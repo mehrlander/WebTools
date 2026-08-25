@@ -2,7 +2,6 @@
 id: use-blob-import-bundle-dtuqjo
 title: Load the ?use= bundle by fetch + blob-import instead of jsDelivr
 status: done
-track: independent
 opened: 2026-07-20
 closed: 2026-07-20
 session: claude/loading-behavior-tracker-aqbf4f

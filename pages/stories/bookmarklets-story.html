@@ -13,7 +13,7 @@
 
   <header class="border-b border-base-300 px-8 py-5 flex justify-between items-baseline">
     <span style="font-family:'Playfair Display',serif" class="text-xl font-black tracking-tight">Field Notes</span>
-    <span style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/35 uppercase tracking-widest">Bookmarklets · 2026</span>
+    <span style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/30 uppercase tracking-widest">Bookmarklets · 2026</span>
   </header>
 
   <section class="px-8 pt-12 pb-8 max-w-2xl">
@@ -21,7 +21,7 @@
       You write a bookmarklet.<br>
       <em class="text-primary">GitHub says no.</em>
     </h1>
-    <p class="text-base-content/55 text-lg leading-relaxed">
+    <p class="text-base-content/50 text-lg leading-relaxed">
       The CSP wall. The pipeline that almost exists. Three tools you can drag to your bookmarks bar right now. A frank ranking of which AI actually helped.
     </p>
   </section>
@@ -32,12 +32,12 @@
     <section>
       <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-primary uppercase tracking-widest mb-2">01 / The Wall</div>
       <h2 style="font-family:'Playfair Display',serif" class="text-3xl font-bold mb-4">CSP, or: why your clever idea fails on the one site you actually need</h2>
-      <p class="text-base-content/75 leading-relaxed mb-6">
+      <p class="text-base-content/70 leading-relaxed mb-6">
         A bookmarklet injecting <code style="font-family:'JetBrains Mono',monospace" class="text-sm bg-base-200 px-1.5 py-0.5 rounded">&lt;script src="cdn..."&gt;</code> works beautifully on permissive pages and fails silently on GitHub, Notion, and most enterprise tools. The CSP header is doing exactly its job. The practical rule has two parts: bundle everything inline, and if you need a remote script, open a temporary window that operates outside the parent page's CSP entirely. That's the Lambdalet approach. It's the most underrated trick in this space.
       </p>
 
       <div x-data="{mode:'external'}" class="border border-base-300 rounded-xl p-5 bg-base-200">
-        <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/35 uppercase tracking-widest mb-4">Live · CSP Simulator</div>
+        <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/30 uppercase tracking-widest mb-4">Live · CSP Simulator</div>
         <div class="tabs tabs-box mb-5">
           <button class="tab" :class="mode==='external' && 'tab-active'" @click="mode='external'">External script</button>
           <button class="tab" :class="mode==='inline' && 'tab-active'" @click="mode='inline'">Inline bundle</button>
@@ -77,7 +77,7 @@
     <section>
       <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-primary uppercase tracking-widest mb-2">02 / The Tools</div>
       <h2 style="font-family:'Playfair Display',serif" class="text-3xl font-bold mb-4">Drag these to your bookmarks bar</h2>
-      <p class="text-base-content/75 leading-relaxed mb-6">
+      <p class="text-base-content/70 leading-relaxed mb-6">
         Three bookmarklets that follow the rules: all inline, no external fetch, CSP-resilient on permissive pages. The first two are immediately useful anywhere. The third is diagnostic — run it first when something fails mysteriously.
       </p>
 
@@ -135,31 +135,31 @@
     <section>
       <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-primary uppercase tracking-widest mb-2">03 / The Stack</div>
       <h2 style="font-family:'Playfair Display',serif" class="text-3xl font-bold mb-4">The pipeline that almost exists</h2>
-      <p class="text-base-content/75 leading-relaxed mb-6">
+      <p class="text-base-content/70 leading-relaxed mb-6">
         Gitingest and Repomix flatten repos into LLM-ready artifacts — both have MCP servers, meaning Claude can trigger repo packing as a tool call. give-me/bookmarklets exports conversations across all major platforms. The GitHub API commit pattern — stored PAT, extract title and URL, POST a named markdown file — is proven, just never bundled cleanly. What doesn't exist: a unified "capture with provenance" tool that shows what it's extracting and why. And the bookmarklet-to-MCP bridge — completely unexplored — which would invert the model from "human captures, Claude reads later" to "Claude decides when to capture."
       </p>
 
       <div class="border border-base-300 rounded-xl p-5 bg-base-200 space-y-3">
-        <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/35 uppercase tracking-widest mb-1">Capture Pipeline</div>
+        <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/30 uppercase tracking-widest mb-1">Capture Pipeline</div>
 
         <div class="flex items-center gap-3">
           <div class="w-28 text-right shrink-0"><span style="font-family:'JetBrains Mono',monospace" class="badge badge-neutral text-xs">bookmarklet</span></div>
-          <i class="ph-bold ph-arrow-right text-base-content/25 text-sm"></i>
+          <i class="ph-bold ph-arrow-right text-base-content/20 text-sm"></i>
           <span class="text-sm text-base-content/60">Turndown / dom-to-semantic-markdown · laptop</span>
         </div>
         <div class="flex items-center gap-3">
           <div class="w-28 text-right shrink-0"><span style="font-family:'JetBrains Mono',monospace" class="badge badge-neutral text-xs">📲 Fetch</span></div>
-          <i class="ph-bold ph-arrow-right text-base-content/25 text-sm"></i>
+          <i class="ph-bold ph-arrow-right text-base-content/20 text-sm"></i>
           <span class="text-sm text-base-content/60">Apple Shortcut · token stored securely · mobile</span>
         </div>
         <div class="flex items-center gap-3">
           <div class="w-28 text-right shrink-0"><span style="font-family:'JetBrains Mono',monospace" class="badge badge-neutral text-xs">GitHub API</span></div>
-          <i class="ph-bold ph-arrow-right text-base-content/25 text-sm"></i>
+          <i class="ph-bold ph-arrow-right text-base-content/20 text-sm"></i>
           <span class="text-sm text-base-content/60">timestamp+slug filenames · fine-grained PAT · single-repo scope</span>
         </div>
         <div class="flex items-center gap-3">
           <div class="w-28 text-right shrink-0"><span style="font-family:'JetBrains Mono',monospace" class="badge badge-neutral text-xs">dump repo</span></div>
-          <i class="ph-bold ph-arrow-right text-base-content/25 text-sm"></i>
+          <i class="ph-bold ph-arrow-right text-base-content/20 text-sm"></i>
           <span class="text-sm text-base-content/60">Claude drains · or expose as MCP tools <span class="text-warning font-semibold">(unbuilt)</span></span>
         </div>
       </div>
@@ -169,7 +169,7 @@
     <section>
       <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-primary uppercase tracking-widest mb-2">04 / The Sources</div>
       <h2 style="font-family:'Playfair Display',serif" class="text-3xl font-bold mb-4">Five AIs walked into a research prompt</h2>
-      <p class="text-base-content/75 leading-relaxed mb-6">
+      <p class="text-base-content/70 leading-relaxed mb-6">
         The measure that actually matters is net-new signal, not word count. ChatGPT found Gitingest and the best CSP analysis. Grok found the GitHub API commit pattern and the MCP-exposure idea. DeepSeek named the launcher pattern cleanly. Gemini buried its real findings in academic filler — then invented Paul Ford's opinions on AI agents in 2026 and presented them as sourced quotes. That's not extrapolation. That's confabulation dressed as research. The lesson: deep research tools do wide well. Depth requires judgment — knowing what matters, what's uncertain, and when to stop.
       </p>
 
@@ -201,7 +201,7 @@
     <section class="border-t border-base-300 pt-12">
       <div style="font-family:'JetBrains Mono',monospace" class="text-xs text-primary uppercase tracking-widest mb-2">05 / The Gap</div>
       <h2 style="font-family:'Playfair Display',serif" class="text-3xl font-bold mb-4">The thing nobody has built</h2>
-      <p class="text-base-content/75 leading-relaxed">
+      <p class="text-base-content/70 leading-relaxed">
         A single CSP-resilient bookmarklet that extracts semantic content, shows you what it captured and why, commits it to GitHub with a timestamped filename, and registers itself as an MCP tool surface for the duration of the session. Every primitive exists separately. Nobody has bolted them together. Power Query is untouched across five rounds of research. Your niche remains open.
       </p>
     </section>
@@ -209,7 +209,7 @@
   </main>
 
   <footer class="border-t border-base-300 px-8 py-5">
-    <span style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/25 uppercase tracking-widest">
+    <span style="font-family:'JetBrains Mono',monospace" class="text-xs text-base-content/20 uppercase tracking-widest">
       Field Notes · assembled from five rounds of AI research · the gap remains open
     </span>
   </footer>

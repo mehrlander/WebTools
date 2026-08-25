@@ -2,12 +2,21 @@
 
 Claude Code supports [skills](https://code.claude.com/docs/en/skills), [subagents](https://code.claude.com/docs/en/sub-agents), [MCP servers](https://code.claude.com/docs/en/mcp), [hooks](https://code.claude.com/docs/en/hooks), [LSP servers](https://code.claude.com/docs/en/plugins-reference#lsp-servers), and [plugins](https://code.claude.com/docs/en/plugins).
 
-This repository uses two hooks:
+This repository uses two hooks and ships a third:
 
 * A Claude Code `SessionStart` hook that installs repository dependencies.
 * A commit-time `build-on-commit.sh` hook that stages deterministic derived artifacts when their sources change. See the [`tools/README.md`](../../tools/README.md#the-refresh-model) refresh model.
+* A `Stop` hook carried by the `portable` plugin, which records the session where a checkout declares a store. It runs in every session that installs the plugin, not only in sessions on this repo, which is the point of putting it there. See [Stop: the session recorder](#stop-the-session-recorder) below.
 
-**Do not assume the `PreToolUse` hook ran** *(observed 2026-07-25)*. In a Claude Code web session, `git commit` calls completed with `dist/web-tools.js` left stale, while `.claude/hooks/build-on-commit.sh` exited 0 and behaved correctly when piped its JSON payload by hand. So the script is sound and the harness did not invoke it. The failure is silent and the artifact it skips is one nobody reads directly, which is how it goes unnoticed. Until this is understood, run the generator yourself (`npm run build:lib`, `npm run pages-index`) after touching a source it derives from, and verify (`grep -c '<a new symbol>' dist/web-tools.js`) rather than trusting the commit.
+**Do not assume the `PreToolUse` hook ran** *(observed 2026-07-25, cause found 2026-07-27)*. `git commit` calls completed with `dist/web-tools.js` left stale, while `.claude/hooks/build-on-commit.sh` exited 0 and behaved correctly when piped its JSON payload by hand. The script was sound and the harness did not invoke it.
+
+The cause is **where the session's project root sits**, which is not something this repository controls. A session can open with the repo one level *below* the root: primary working directory `/home/user`, repo at `/home/user/web-tools`, arriving as an additional directory. Claude Code then reads project settings from `/home/user/.claude/settings.json`, which does not exist, so this repo's `.claude/settings.json` is never loaded and none of its hooks are registered. Confirmed three ways: the session transcript is written to `~/.claude/projects/-home-user/`, naming the root; `/home/user/.claude/` is absent; and a probe at line 1 of the hook script never wrote its log, for a `$CLAUDE_PROJECT_DIR`-relative command and an absolute one alike. Repo-side settings edits cannot reach it, because the file holding them is the file that is not read. The tell is cheap: `ls ~/.claude/projects/` names the root the session is using.
+
+Two consequences worth carrying. Any repo whose hooks matter has to treat them as best-effort, not as a guarantee. And a silent guarantee needs a backstop that does not depend on the harness: `tools/test/artifacts-lockstep.test.mjs` re-runs the generators in `--check` mode inside `npm test`, so a stale artifact fails the suite wherever it is run. Regenerating by hand (`npm run build:lib`, `npm run pages-index`) after touching a source is still the fast path; the test is what makes forgetting loud.
+
+**Resolved 2026-08-06 by leaving the harness.** The two paragraphs above stand as the diagnosis, and the fix follows from them: a hook that must not depend on the project root should not be a Claude Code hook. Git resolves its hooks from the repository being committed to and has no notion of a root, so the script moved verbatim to `.githooks/pre-commit` and the `PreToolUse` block came out of `.claude/settings.json`. The stdin JSON parse and the `git commit` gate came off with it, both being scaffolding for the event it no longer listens to. The one thing git will not do is find a *committed* hooks folder, since `.git/hooks/` is local and absent on clone, so `core.hooksPath` has to be set once per clone; `.claude/hooks/session-githooks.sh` does it, and is itself discovered by filename by the dispatcher below, from any root. Confirmed the same day in a session rooted at `/home/user`: a commit touching `lib/` staged `dist/web-tools.js` on its own, which is the case that failed before. Home has run the identical pair since 2026-07-31.
+
+The remaining gap is smaller and worth naming: a clone whose `core.hooksPath` was never set runs nothing, so the lockstep test keeps its job. `git commit --no-verify` is the deliberate bypass. And the generalization does not follow: a `PreToolUse` hook that is *not* about committing has no git event to move to, and would need a dispatcher of its own, with sequential execution, a small budget, and an any-deny-wins rule.
 
 ## Components
 
@@ -37,7 +46,7 @@ MCP tool definitions consume context. Claude Code can defer loading them through
 
 #### SessionStart dependency install
 
-`.claude/settings.json` registers `.claude/hooks/session-start.sh` as a `SessionStart` hook.
+`.claude/hooks/session-start.sh` runs at session start. Nothing registers it: the `portable` plugin's dispatcher discovers it by its `session-*.sh` filename, from whatever project root the session has. This repo's `.claude/settings.json` declared it as a `SessionStart` hook until 2026-07-31 and no longer does, because the two together ran it twice whenever web-tools was the root. `session-githooks.sh` rides the same discovery, and since 2026-08-06 they are the only two, so `settings.json` declares no hooks at all.
 
 The script:
 
@@ -72,6 +81,46 @@ A cloud [setup script](https://code.claude.com/docs/en/claude-code-on-the-web#en
 
 The hook applies only to sessions using a branch that contains its configuration.
 
+#### Stop: the session recorder
+
+*Added 2026-07-30; wiring corrected the same day.* The `portable` plugin carries a [`Stop`](https://code.claude.com/docs/en/hooks) hook in [`.claude/skills/hooks/hooks.json`](../../.claude/skills/hooks/hooks.json), running [`.claude/skills/hooks/session-record.sh`](../../.claude/skills/hooks/session-record.sh). It is found by **default discovery**: `hooks/hooks.json` in the plugin root, and the plugin root is the entry's `source`, so the file already sits where the loader looks. The marketplace entry declares nothing.
+
+**Wrong 2026-07-30 → the paragraph below:** this section first said a marketplace entry accepts any plugin-manifest field, and so declared `"hooks": "./hooks/hooks.json"` on the entry. The loader rejects that form and refuses the whole plugin:
+
+```
+Status: × failed to load
+Error: Hook load failed: hooks: the file-path and array forms are not yet
+supported in a marketplace entry. Define hooks in the plugin's own
+hooks/hooks.json (or its plugin.json), or inline them here as an object
+mapping hook event names to matcher arrays.
+```
+
+Removing the key flipped the same command to `√ enabled`. The declaration was redundant even when it worked, since it named the location discovery already uses, so the fix costs nothing. The pinning assertion in the suite is inverted to match: the key must now be **absent**, because re-adding it reads as diligence.
+
+**The distribution channel is the whole point, and the alternative was measured failing.** `mehrlander/web-tools-private` holds a session recorder that writes one JSON record per session. Its own installer writes `~/.claude/settings.json`, correctly avoiding a repo hook for the project-root reason above. But that file is provisioned fresh for every container, carrying the account's marketplace and plugin configuration and nothing else, so a hand-installed hook survives exactly as long as the container. On 2026-07-30 the store held one record, dated 2026-07-29, the session that built the recorder. At least four other sessions ran that day and merged pull requests; none was recorded, and nothing reported the gap. The installed-by-hand hook records the session that installs it and no other.
+
+A plugin install is the only channel that repeats, because the platform performs it at session start. That makes plugin-shipped hooks the right home for anything that must run in *every* session rather than in one repo's sessions.
+
+**Finding the target without naming it.** The hook holds no repo name and no knowledge of the record format. A checkout whose `.web-tools.json` declares `"sessions": "<dir>"` owns the store, and `<store>/tools/on-stop.sh` does the recording and publishing, so the store can change its schema without a plugin release. Discovery is a bounded candidate list, since this runs on every turn: the project root, its children, and its siblings, which are the three shapes a session takes (root above the checkouts, root is the store, root is one checkout beside the store). `SESSIONS_STORE` names a store directly and skips the search.
+
+**Cost, since it fires on every turn of every session.** No store checked out means one `grep` over whatever manifests exist, measured at 10 ms, then exit. With a store, the delegate parses the transcript, measured at roughly 100 ms on a 400 KB transcript and growing with session length. Every path exits 0: a logger that cannot find its store is an ordinary state, not an error to report into someone's session.
+
+Two states are deliberately quiet rather than loud. A checkout can declare the store on a branch that predates the tooling, so a declaration whose `tools/on-stop.sh` is absent is declined rather than reported. And a malformed manifest is skipped, not raised.
+
+Coverage is [`tools/test/session-record-hook.test.mjs`](../../tools/test/session-record-hook.test.mjs): the three discovery shapes, byte-identical payload hand-off, the quiet paths, the override, and the assertion that the hook sits at the default location with no redeclaration on the entry. A script present on disk but not wired to the loader is the failure this change exists to fix, so that last one is not ceremony.
+
+**Three things measured while wiring it, all worth knowing before trusting a plugin hook.**
+
+`claude plugin validate` does not read the hooks file. It passed `--strict` with `"hooks"` pointing at a nonexistent path, and passed again with valid JSON of the wrong shape (`"Stop": "not-an-array"`) at the real path. So a passing validation says nothing about whether the hook will load, and the structural check has to live in the repo's own suite. It also passed cleanly on the entry that the loader refused outright, which is how the broken wiring shipped.
+
+**`claude plugin details` does not report the truth either, and this section used to say it did.** It reads the declared inventory, not the loader's verdict, so on 2026-07-30 it reported `Skills (10)` and `Hooks (1) Stop` for a plugin that `claude plugin list` was simultaneously refusing to load. Both commands were run against the same install, seconds apart. The earlier verification here (a local-path install into a scratch `HOME`, reporting `Hooks (1)` alongside `Skills (9)`) was real but was reading intent, and a local-path install is a different channel from the delivered github-marketplace one. **`claude plugin list` is the command that shows a load failure**, and it is the one to run.
+
+The skill count remains the useful second half of a `details` check, confirming a `hooks/` directory inside the plugin's skills-directory source is not picked up as an extra skill.
+
+**Status is per-directory, so run the check where the plugin is meant to be enabled.** The same `claude plugin list` reported `× failed to load` from `/home/user` and `/home/user/home` and `× disabled` from `/home/user/web-tools`, because this repo does not enable a plugin it *is* the source of. A status read in the wrong directory answers a different question than the one asked.
+
+**The delivered copy is not executable.** A plugin is installed by copy into `~/.claude/plugins/cache/<marketplace>/<plugin>/<sha>/`, and the cached files arrive `rw-r--r--`. A hook command written as a bare path would therefore fail on the permission bit, so the declaration invokes the interpreter explicitly (`bash "${CLAUDE_PLUGIN_ROOT}/..."`). Verified by running the cached copy through the declared command line, which recorded a real session.
+
 ### LSP servers
 
 [LSP servers](https://code.claude.com/docs/en/plugins-reference#lsp-servers) provide language-aware diagnostics, symbol lookup, references, and code navigation. Claude Code configures them through language-specific plugins. The corresponding language-server executable must be installed in the environment.
@@ -101,7 +150,7 @@ Plugin skills are namespaced and do not conflict with project or user skills. Or
 
 This setup uses:
 
-- [`.claude/settings.json`](../../.claude/settings.json): denies `AskUserQuestion` and registers the two hooks above.
+- [`.claude/settings.json`](../../.claude/settings.json): denies `AskUserQuestion`, and registers no hooks. Both of this repo's are `session-*.sh` files the dispatcher finds by name, which is what makes them fire from any project root. *(as of 2026-08-06)*
 - `~/.claude/settings.json`: registers the `web-tools` marketplace and enables `portable@web-tools`. *(verified 2026-07-20)*
 
 The Local scope (`.claude/settings.local.json`) is per-user and meant to stay uncommitted, so the repository carries only the project file above.

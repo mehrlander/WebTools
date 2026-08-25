@@ -4,10 +4,20 @@ A **surface** is a JSON file: a curated, annotated set of items presented for a 
 
 **Authoritative artifacts:** the JSON Schemas beside this doc are the validation source of truth; this document carries the concepts, conventions, and worked examples.
 
+> [!WARNING]
+> **Stale 2026-08-05 (nothing validates against them):** "source of truth" states
+> the intent, not the practice. As of this date no code in `lib/`, `pages/`, or
+> the skills loads these schemas, and nothing validates a surface document
+> against them, so a producer that drifts from the schema gets no signal. They
+> are a written contract two readers can agree on, which is worth having; they
+> are not a gate. Found by the docs registry's reach pass, which is what made
+> the gap visible: they are the only files in `docs/` declared authoritative
+> that nothing reads.
+
 - [`schemas/surface-v2.schema.json`](schemas/surface-v2.schema.json): the core schema.
 - [`schemas/profiles/branch-review-v1.schema.json`](schemas/profiles/branch-review-v1.schema.json): the first profile.
 
-**Status (2026-07-20):** this contract defines **v2**. Both existing readers (the Surfacer C# app and `lib/alpineComponents/estate.js`) still read v1; their migration targets are documented at the end of this file and are deliberately not part of this pass. New surfaces should be authored as v2 once a reader exists; v1 files remain valid v1.
+**Status (2026-08-03):** this contract defines **v2**, and a v2 reader now exists. [`lib/kits/surface.js`](../../lib/kits/surface.js) dual-reads v1 and v2, normalizing to v2 in memory; show-repo's Surfaces shelf and its Stage both read through it, and new surfaces are authored as v2 under the [`stage/1`](#stage1) profile. The Surfacer C# app still reads v1 and its migration target stands at the end of this file. **v1 files are never rewritten in place:** reading normalizes for display only, so a v1 file stays v1 until someone deliberately saves it as v2.
 
 ## Shape
 
@@ -265,7 +275,7 @@ Worked example:
     },
     {
       "id": "shell",
-      "title": "pages/show-repo/show-repo.html",
+      "title": "app/index.html",
       "type": "file",
       "role": "context",
       "target": {
@@ -273,7 +283,7 @@ Worked example:
           "repository": "mehrlander/web-tools",
           "ref": "claude/stage-rework-x1y2z3",
           "revision": "a81c3f2",
-          "path": "pages/show-repo/show-repo.html"
+          "path": "app/index.html"
         },
         "line_ranges": [ { "start": 40, "end": 115, "label": "stage mount" } ]
       },
@@ -286,6 +296,58 @@ Worked example:
       "role": "omitted",
       "change": { "status": "modified" },
       "view": { "mode": "metadata", "reason": "regenerated screenshot; not reviewable content" }
+    }
+  ]
+}
+```
+
+### `stage/1`
+
+Serializes a **staged fileset**: a working set of files gathered for an operation, saved so it survives the session. The insight it encodes is the inverse of branch-review's. There, a surface is the manifest layer over a diff that is the real record; here, the set itself is the record, and the operations that motivated it (bundle, send, download) are the tool's business and stay out.
+
+The profile requires exactly one thing: **every item carries a `target`**. A stage is a set of things, not a piece of writing about them, and that single constraint is what the profile is for. `context` may carry a `destination` (`owner/repo[:dir]`, where the set is proposed to go) and `prompts` (authored review asks, `{label, ask}`). Documented relation: `compares-to`, naming the other side of a diff pair.
+
+The line that decides what may enter: **a field belongs if it is still true a year later with no tool running.** A proposed destination passes, since it is a claim about the set. A transfer in flight does not. Nor does the Diff lens's per-side ref override, which describes a moment of looking rather than the set, and so stays a lens control.
+
+Three things are worth naming because they are absent on purpose:
+
+- **No `intent` field.** branch-review has one, meaning "why the *change* exists," a fact about its subject. A stage's equivalent question is "why this set exists," which `manifest.description` already answers. A second field beside it would be two names for one thing.
+- **No surface-level view mode.** The stage link's `&mode=diff` says "open on the Diff tab," which is transport, not content. What the surface records instead is `view.mode: "diff"` on the two compared items plus a `compares-to` relation between them, which says *which two*, something the flag never could.
+- **No name required from the author.** `manifest.name` is generated from the contents (first file, plus a count), because a saved stage is a clipboard entry rather than a document. Renaming is one field in the editor for the ones that grow into documents.
+
+Worked example:
+
+```json
+{
+  "manifest": {
+    "name": "stage.js +1",
+    "description": "The two files behind the stage/surface collapse.",
+    "created_at": "2026-08-03T17:20:00Z",
+    "category": "stage",
+    "schema": { "name": "surface", "version": 2 },
+    "profile": { "name": "stage", "version": 1 }
+  },
+  "context": {
+    "destination": "mehrlander/home:docs",
+    "prompts": [
+      { "label": "Fresh-eyes clarity", "ask": "Read this as someone new to the topic. Where does it lose you?" }
+    ]
+  },
+  "items": [
+    {
+      "id": "mehrlander/web-tools:lib/alpineComponents/stage.js",
+      "title": "lib/alpineComponents/stage.js",
+      "type": "file",
+      "target": { "source": { "repository": "mehrlander/web-tools", "path": "lib/alpineComponents/stage.js" } },
+      "view": { "mode": "diff" },
+      "related": [ { "item": "mehrlander/web-tools:lib/kits/surface.js", "relation": "compares-to" } ]
+    },
+    {
+      "id": "mehrlander/web-tools:lib/kits/surface.js",
+      "title": "lib/kits/surface.js",
+      "type": "file",
+      "target": { "source": { "repository": "mehrlander/web-tools", "path": "lib/kits/surface.js" } },
+      "view": { "mode": "diff" }
     }
   ]
 }
@@ -313,4 +375,4 @@ v1 is the shape the Surfacer app shipped with (`schema_version: 1` in the manife
 Deliberately out of scope for the pass that lands this contract; change the implementations only after the contract has been reviewed.
 
 - **Surfacer C# app + `surfacer.html`** (home `projects/surfacer/app/`): reads v1. Target: dispatch on `manifest.schema`; keep reading v1 files indefinitely (personal surfaces are not migrated in place), author new surfaces as v2.
-- **`lib/alpineComponents/estate.js`** (show-repo's Surfaces estate view): reads v1 (`kind`, flat fields) from the registry repo's `surfaces/`. Target: same dual-read dispatch; the editor template seeds v2. The stage convergence work (tracker: "Converge the stage and surface item schemas") builds on the v2 item shape, so estate.js migrates as part of, or just ahead of, that task.
+- **`lib/alpineComponents/estate.js`** (show-repo's Surfaces shelf): **migrated 2026-08-03.** It reads every surface through `lib/kits/surface.js`, which dual-reads and normalizes to v2, and the editor seeds v2. The stage convergence it was waiting on landed in the same pass: the Stage is now the working surface, saving mints a v2 `stage/1` file, and the two views share one nav stop.

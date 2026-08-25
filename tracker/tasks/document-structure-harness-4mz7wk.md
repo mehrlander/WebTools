@@ -11,11 +11,12 @@ structured representation: regions, tables, cells, and text with coordinates
 and per-method confidence. It stops short of what any cell *means*, which is
 always corpus-specific.
 
-## Why this is portable and not a spend-wa script
+## Why this is portable and not a corpus-side script
 
-`mehrlander/spend-wa` has the first real corpus: 3,984 pages of scanned
-Washington budget documents, 1979-1995. But the work splits cleanly, and only
-the second half is about budgets:
+`mehrlander/budget-wa` has the first real corpus: 3,984 pages of scanned
+Washington budget documents, 1979-1995, under
+`sources/legislative-budget-notes/`. But the work splits cleanly, and only the
+second half is about budgets:
 
 | stage | general | corpus-specific |
 | --- | --- | --- |
@@ -50,7 +51,8 @@ to the right cell is worse than a dropped one, and character-level confidence
 does not catch it. Cross-method agreement does.
 
 Consumer-side counterpart, which defines what this must emit:
-`mehrlander/spend-wa` task `text-provenance-vocabulary-p8n4qc`.
+`mehrlander/budget-wa` task `text-provenance-vocabulary-p8n4qc` (closed
+2026-07-25; the settled model is `sources/legislative-budget-notes/extract/PROVENANCE.md`).
 
 ## Environment, measured 2026-07-25 (Claude Code web sandbox)
 
@@ -86,8 +88,8 @@ Sampled across one corpus: 42% of words flagged suspect.
 
 ## Spike findings, 2026-07-25 (45 pages, 3 per scanned edition)
 
-A half-day probe against the spend-wa corpus. Sample sizes are small and stated
-per finding; none of this establishes corpus-wide accuracy.
+A half-day probe against the scanned LBN corpus. Sample sizes are small and
+stated per finding; none of this establishes corpus-wide accuracy.
 
 **The container does not persist.** A fresh session has no tesseract, no
 poppler, no PyMuPDF, no Pillow, no numpy. Rebuilding the baseline measured 18 s
@@ -184,6 +186,14 @@ nothing yet about how competing extractions compose.
   ready (sources committed, per page, 300 DPI); this is the general half,
   filed here rather than in spend-wa so it does not grow inside one corpus.
   Environment and throughput figures measured that day.
+- 2026-08-05: Repointed at `mehrlander/budget-wa`, from a cross-tracker read run
+  in a home session. The corpus and its provenance task were in spend-wa when
+  this was filed; both moved to budget-wa in the 2026-08-01 estate shuffle, and
+  this task was the one pointer nobody repositioned, which left the harness
+  naming the wrong repo for the corpus it exists to read. The counterpart task
+  has since closed, so what it "must emit" is settled rather than pending: see
+  `PROVENANCE.md` above. Nothing about the design changed. The dated entries
+  below stay as written, since spend-wa is where this was filed from.
 - 2026-07-25: Spike over 45 pages (see findings above). Three results change
   the plan: parallel tesseract needs `OMP_THREAD_LIMIT=1` and a full pass is
   then ~27 minutes rather than hours; ~7% of pages are misoriented and OSD's

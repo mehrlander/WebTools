@@ -1,9 +1,13 @@
-// docs/routes.json: the manifest of how content moves and renders (address
-// grammar, delivery modes, toss routes), rendered by show-repo's Map view in
-// its Transport tab. This test is what lets the routes live in two places
-// without drifting: the manifest owns the table, toss-render.html keeps an
-// inlined literal so its critical render path takes no fetch, and adding a
-// route to one without the other fails here.
+// How content moves and renders (address grammar, delivery modes, toss
+// routes), rendered by show-repo's Map view in its Transport tab. This test is
+// what lets the routes live in two places without drifting: docs/routes-routes.csv
+// owns the table, toss-render.html keeps an inlined literal so its critical
+// render path takes no fetch, and adding a route to one without the other fails
+// here.
+//
+// Four carriers since 2026-08-18. The three tables (modes, routes, showing
+// mechanisms) are CSV registries of their own; docs/routes.json keeps what is
+// not a table: the grammar, the parameter precedence, and the showing frame.
 //
 // Also checks the two claims a reader would otherwise have to trust: every
 // renderer and doc the manifest names exists on disk, and every delivery mode
@@ -15,7 +19,37 @@ import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
-const manifest = JSON.parse(readFileSync(path.join(repoRoot, 'docs', 'routes.json'), 'utf8'));
+// An independent CSV reader, not the loader under tools/build/: this file is a
+// gate on what the carriers hold, so borrowing the parser it checks against
+// would let a parser bug agree with itself.
+function parseCsv(raw) {
+  const rows = [];
+  let row = [], cell = '', q = false;
+  for (let i = 0; i < raw.length; i++) {
+    const c = raw[i];
+    if (q) {
+      if (c === '"' && raw[i + 1] === '"') { cell += '"'; i++; }
+      else if (c === '"') q = false;
+      else cell += c;
+    }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(cell); cell = ''; }
+    else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if (c !== '\r') cell += c;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  const [head, ...body] = rows.filter(r => r.length > 1);
+  return body.map(r => Object.fromEntries(head.map((h, i) => [h, r[i] ?? ''])));
+}
+
+const read = (f) => readFileSync(path.join(repoRoot, 'docs', f), 'utf8');
+const manifest = JSON.parse(read('routes.json'));
+// The three tables read back onto the manifest object, which is the same shape
+// the Map view assembles at load, so every assertion below is written against
+// what a reader actually sees.
+manifest.modes = parseCsv(read('routes-modes.csv'));
+manifest.routes = parseCsv(read('routes-routes.csv'));
+manifest.showing.mechanisms = parseCsv(read('showing-mechanisms.csv'));
 const tossRender = readFileSync(path.join(repoRoot, manifest.renderer), 'utf8');
 
 // Pull the TOSS_ROUTES literal out of the page source. Deliberately strict
@@ -56,7 +90,7 @@ test('the manifest routes and the inlined TOSS_ROUTES literal agree', () => {
     manifest.routes.map(r => [r.key, { repo: r.repo, ref: r.ref, path: r.path }]),
   );
   assert.deepEqual(inlined, fromManifest,
-    'docs/routes.json and the TOSS_ROUTES literal have drifted; the manifest is the owner');
+    'docs/routes-routes.csv and the TOSS_ROUTES literal have drifted; the CSV is the owner');
 });
 
 test('every renderer and doc the manifest names exists in the repo', () => {
@@ -80,4 +114,121 @@ test('every described delivery mode is a parameter toss-render reads', () => {
     }
     assert.ok(tossRender.includes(`param('${m.param}')`), 'not read by toss-render: ' + m.param);
   }
+});
+
+// The fab carries the INVERSE of the route keys: to tell a routed fragment from
+// a plain one it only needs to know toss-render's own delivery params, so it
+// keeps that short list rather than a copy of the route table. Short and stable
+// is not the same as safe, though: adding a delivery mode to toss-render without
+// adding it here would make the fab read the new param as a route key and
+// mislabel whatever it addressed. So the manifest owns this list too.
+test('the fab knows every delivery mode, so it never reads one as a route key', () => {
+  const fab = readFileSync(path.join(repoRoot, 'lib/alpineComponents/fab.js'), 'utf8');
+  const block = fab.match(/_TOSS_MODES: \[([^\]]*)\]/);
+  assert.ok(block, '_TOSS_MODES not found in lib/alpineComponents/fab.js');
+  const modes = [...block[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
+
+  const documented = manifest.modes.map(m => m.param)
+    .filter(p => p !== '<route>' && p !== 'src');   // a route key, and the renderer side
+  for (const p of documented) {
+    assert.ok(modes.includes(p), 'the fab would read ' + p + '= as a route key: ' + p);
+  }
+  // The one extra is url's alias, which toss-render reads and the manifest does
+  // not describe. Pinned so the list cannot quietly grow a third member.
+  assert.deepEqual(modes.filter(m => !documented.includes(m)), ['u']);
+  assert.match(tossRender, /param\('url'\) \|\| param\('u'\)/, 'the u alias is gone; drop it here too');
+});
+
+// ── The `showing` block ────────────────────────────────────────────────────
+//
+// This block exists because 1,589 words of CLAUDE.md, 63% of the file, failed
+// to stop the session that was reading them from handing over the wrong link.
+// The rule moved into data the app renders (show-repo's Map view, Transport
+// tab), and the doc points there instead of restating it. What the tests below
+// hold is the part that would rot silently: a row missing the field that says
+// what it CANNOT show is worse than no row, since the whole point of the table
+// is the boundaries rather than the recipes.
+test('every showing mechanism declares its three axes and its boundary', () => {
+  const s = manifest.showing;
+  assert.ok(s, 'docs/routes.json has no showing block');
+  assert.ok(s.mechanisms.length >= 5, 'suspiciously few mechanisms');
+  for (const m of s.mechanisms) {
+    for (const k of ['key', 'label', 'subject', 'version', 'viewer', 'use'])
+      assert.ok(m[k], `mechanism ${m.key || '?'} is missing ${k}`);
+    // `misses` is required and `reaches` is not: the one mechanism that reaches
+    // nothing (a shell change aimed at the top-level document) is a real row,
+    // and it is the row a reader most needs.
+    assert.ok(m.misses, `mechanism ${m.key} does not say what it misses`);
+  }
+  const keys = s.mechanisms.map(m => m.key);
+  assert.equal(new Set(keys).size, keys.length, 'duplicate mechanism key');
+});
+
+test('the axes are the three the mechanisms are indexed by', () => {
+  assert.deepEqual(Object.keys(manifest.showing.axes), ['subject', 'version', 'viewer']);
+});
+
+test('the picker only routes to mechanisms that exist', () => {
+  const keys = new Set(manifest.showing.mechanisms.map(m => m.key));
+  for (const r of manifest.showing.picker.rules) {
+    assert.ok(r.when && r.then, 'a picker rule is missing a half');
+    // A rule may name alternatives ("toss-gz or artifact"); each must resolve.
+    for (const k of r.then.split(/\s+or\s+/))
+      assert.ok(keys.has(k), `picker routes to unknown mechanism: ${k}`);
+  }
+});
+
+// The two CLAUDE.md assertions that used to sit here moved to
+// claude-md.test.mjs on 2026-08-05. They are about the agent instructions
+// rather than about this manifest, and grouping them under one name here meant
+// a size failure arrived wearing a message about the showing material.
+
+// ── docs/showing.md, the copy that had no check ────────────────────────────
+// docs/repetitions.csv recorded two paraphrases of the showing mechanisms.
+// CLAUDE.md's was checked (pointer plus a word cap, in claude-md.test.mjs);
+// showing.md's carried "check: none; the doc itself declares the manifest
+// authoritative", and a banner is not a check. The doc grew a full second copy
+// of the table under that banner and nothing said so for eleven days.
+//
+// So showing.md gets the same instrument CLAUDE.md has, for the same reason.
+// The ceiling is set with room above the 2026-08-19 chop and well under what
+// the file was; the remedy when it fires is extraction, never shaving. If the
+// material is a mechanism, a boundary, or an address, it is a row in
+// showing-mechanisms.csv or a field of the routes.json showing block. What
+// belongs in prose is what no row can hold: a relation between two rows, or a
+// record of what a boundary cost to find.
+const SHOWING_LIMIT = 1500;
+
+test('docs/showing.md delegates the mechanisms rather than restating them', () => {
+  const doc = readFileSync(path.join(repoRoot, 'docs', 'showing.md'), 'utf8');
+
+  assert.match(doc, /showing-mechanisms\.csv/,
+    'showing.md no longer points at the carrier it delegates to');
+  assert.match(doc, /routes\.json/,
+    'showing.md no longer points at the frame (the routes.json showing block)');
+
+  const words = doc.split(/\s+/).length;
+  assert.ok(words < SHOWING_LIMIT,
+    `docs/showing.md is ${words} words, over its ${SHOWING_LIMIT}-word ceiling. ` +
+    'The fix is extraction, not shaving: a mechanism, a boundary or an address ' +
+    'is a row in showing-mechanisms.csv or a field of the routes.json showing ' +
+    'block. Prose keeps only what no row can hold.');
+});
+
+// The one duplicate a word cap cannot see, because it is inside the budget:
+// the escape paragraph ("reachable by neither") sat in this file twice,
+// verbatim, in two different sections. A file is allowed to restate a rule for
+// emphasis; it is not allowed to do so by copy, since the copies then age
+// apart inside one document and no cross-file scanner looks within a file.
+test('docs/showing.md does not repeat a paragraph within itself', () => {
+  const doc = readFileSync(path.join(repoRoot, 'docs', 'showing.md'), 'utf8');
+  const paras = doc.split(/\n\s*\n/).map(p => p.trim())
+    .filter(p => p.split(/\s+/).length >= 25 && !p.startsWith('|'));
+  const seen = new Map();
+  for (const p of paras) {
+    const norm = p.replace(/\s+/g, ' ').toLowerCase();
+    seen.set(norm, (seen.get(norm) || 0) + 1);
+  }
+  const dupes = [...seen].filter(([, n]) => n > 1).map(([p]) => p.slice(0, 60));
+  assert.equal(dupes.join(' | '), '', 'paragraph repeated verbatim: ' + dupes.join(' | '));
 });

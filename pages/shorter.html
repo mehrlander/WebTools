@@ -15,15 +15,17 @@
     const ref = new URLSearchParams(location.search).get('use');
     if (ref) {
       window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
-      const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`);
+      const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`, { cache: 'no-store' });
       if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
       const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
       try { await import(u); } finally { URL.revokeObjectURL(u); }
     } else {
       await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
     }
-    await gh.load('url-params.js');
-    await gh.load('shorter-payload.js');
+    await gh.load('kits/url-params.js');
+    // The owner/repo[@ref]:path grammar, which shorter-payload.js delegates to.
+    await gh.load('kits/repo-address.js');
+    await gh.load('kits/shorter-payload.js');
     // Alpine last, so the component's init() finds both helpers defined. Same
     // boot order as the other renderer pages.
     await gh.load('alpine-bundle.js');
@@ -51,7 +53,7 @@
       #gz=<base64url>   gzipped text or envelope in the fragment
       ?src=<spec>       owner/repo[@ref]:path, via the contents API
       (neither)         the empty form
-    Each key is read fragment first, query as fallback (lib/url-params.js).
+    Each key is read fragment first, query as fallback (lib/kits/url-params.js).
     Prose is unbounded, so it belongs in '#'; ?src= is how the #shorter= toss
     route hands an address to this page through toss-render's params shim.
     A payload carrying both sides opens in review, already diffed.
@@ -109,7 +111,13 @@
           <path d="M9 9 L12 20 L15 9"/>
         </svg> Shorter
       </h1>
-      <p class="mt-1 text-sm text-base-content/60">Line up a shorter draft against your text and accept it piece by piece.</p>
+      <!-- The contract link is a reader affordance and a reach channel at
+           once: docs/envelopes/shorter.md was named only from comments, which
+           the docs registry rightly refuses to count, so the page it serves now
+           links it where a reader can tap it. -->
+      <p class="mt-1 text-sm text-base-content/60">Line up a shorter draft against your text and accept it piece by piece.
+        <a href="https://github.com/mehrlander/web-tools/blob/main/docs/envelopes/shorter.md"
+           target="_blank" rel="noopener" class="link link-hover text-base-content/40">contract</a></p>
     </div>
     <button class="badge badge-sm gap-1 shrink-0 mt-1 cursor-default"
             :class="{'badge-ghost':model.status==='idle','badge-warning':model.status==='loading','badge-success':model.status==='ready','badge-error':model.status==='error'}"
@@ -168,7 +176,7 @@
   <template x-if="mode==='review'">
     <div>
       <!-- toolbar -->
-      <div class="sticky top-2 z-20 mb-4 rounded-box border border-base-300 bg-base-100/95 backdrop-blur px-3 py-2 shadow-sm
+      <div class="sticky top-2 z-20 mb-4 rounded-box border border-base-300 bg-base-100/90 backdrop-blur px-3 py-2 shadow-sm
                   flex flex-wrap items-center gap-x-3 gap-y-2">
         <button class="btn btn-ghost btn-sm gap-1" @click="mode='edit'"><i class="ph ph-arrow-left"></i> Edit</button>
         <div class="flex items-center gap-2 text-sm">
@@ -193,7 +201,7 @@
         <span class="flex items-center gap-1"><span class="inline-block h-3 w-3 rounded-sm" style="background:#dcfce7;box-shadow:inset 0 -1px 0 #86efac"></span> accepted (shorter)</span>
         <span class="flex items-center gap-1"><span class="inline-block h-3 w-3 rounded-sm" style="background:#f1f5f9;box-shadow:inset 0 -1px 0 #cbd5e1"></span> original kept</span>
         <span class="flex items-center gap-1"><span class="inline-block h-3 w-3 rounded-sm" style="background:#ede9fe;box-shadow:inset 0 -1px 0 #c4b5fd"></span> rewritten</span>
-        <span class="flex items-center gap-1 text-base-content/45"><i class="ph ph-sparkle" style="color:#8b5cf6"></i> hover an unchanged sentence to rewrite it</span>
+        <span class="flex items-center gap-1 text-base-content/40"><i class="ph ph-sparkle" style="color:#8b5cf6"></i> hover an unchanged sentence to rewrite it</span>
       </div>
 
       <!-- The assembled document, inline and interactive. NOTE: the container
@@ -205,7 +213,7 @@
       <article class="review rounded-box border border-base-300 bg-base-100 p-5 sm:p-6"
         ><template x-for="seg in segments" :key="seg.id"><span class="seg" :class="segClass(seg) + (activeId===seg.id ? ' seg-active' : '')" @click="seg.kind==='edit' && openPop(seg, $event)"><template x-if="!isEmpty(seg)"><span x-text="selectedText(seg)"></span></template><template x-if="isEmpty(seg)"><span class="seg-empty"><i class="ph ph-dots-three-outline"></i></span></template><template x-if="seg.kind==='equal' && seg.text.trim()"><button class="seg-spark" title="Rewrite this sentence with the local model" @click.stop="shorten(seg, $event)"><i class="ph ph-sparkle"></i></button></template><template x-if="seg.busy"><span class="loading loading-dots loading-xs align-middle text-primary"></span></template></span></template></article>
 
-      <p class="mt-3 text-xs text-base-content/45">
+      <p class="mt-3 text-xs text-base-content/40">
         Click any highlighted edit to switch between the shorter and original wording, write your own, or regenerate it. Green is what you'll copy.
       </p>
     </div>
@@ -227,11 +235,11 @@
         <div class="flex flex-col gap-1.5 max-h-72 overflow-y-auto pr-0.5">
           <template x-for="opt in aSeg().options" :key="opt.id">
             <button class="w-full rounded-btn border px-2.5 py-1.5 text-left transition"
-                    :class="aSeg().selected===opt.id ? 'border-primary bg-primary/5' : 'border-base-300 hover:bg-base-200'"
+                    :class="aSeg().selected===opt.id ? 'border-primary bg-primary/10' : 'border-base-300 hover:bg-base-200'"
                     @click="pick(aSeg(), opt.id)">
               <div class="flex items-center justify-between gap-2">
                 <span class="badge badge-xs" :class="toneBadge(opt.tone)" x-text="opt.label"></span>
-                <span class="text-[11px] tabular-nums text-base-content/45" x-text="w(opt.text)+'w'"></span>
+                <span class="text-[11px] tabular-nums text-base-content/40" x-text="w(opt.text)+'w'"></span>
               </div>
               <div class="mt-1 text-xs leading-snug opt-preview"
                    :class="opt.text.trim() ? 'text-base-content/80' : 'italic text-base-content/40'"
@@ -245,7 +253,7 @@
         </template>
 
         <div class="mt-3 flex items-center gap-2">
-          <button class="btn btn-xs btn-secondary gap-1 flex-1" :disabled="aSeg().busy" @click="shorten(aSeg())">
+          <button class="btn btn-xs btn-secondary gap-1 flex-1" :disabled="!!aSeg().busy" @click="shorten(aSeg())">
             <i class="ph" :class="aSeg().busy ? 'ph-spinner-gap animate-spin' : 'ph-sparkle'"></i>
             <span x-text="aSeg().busy ? 'Working…' : 'Shorten with local model'"></span>
           </button>
@@ -292,7 +300,7 @@ function shorter() {
     },
 
     // Input by URL. Fragment first, query as fallback, per key
-    // (lib/url-params.js): the text wants '#' because a query string is
+    // (lib/kits/url-params.js): the text wants '#' because a query string is
     // capped at roughly 8KB by the Pages edge, while ?src= is how a routed
     // toss delivers an address through toss-render's params shim.
     //

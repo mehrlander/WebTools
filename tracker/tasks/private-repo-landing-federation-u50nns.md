@@ -1,10 +1,11 @@
 ---
 id: private-repo-landing-federation-u50nns
 title: Private-repo landing federation via the home registry
-status: backlog
-track: independent
+status: done
 opened: 2026-07-08
-next: superseded by tasks generalize-gallery-pages-catalog-m3b8pa (gallery generalization) and app-views-estate-level-btp6m4 (app views); reassess whether any federation-specific work remains
+closed: 2026-07-28
+resolution: superseded
+next: closed as superseded; the goal shipped per-repo, not federated
 ---
 # Private-repo landing federation via the home registry
 
@@ -87,3 +88,19 @@ lands.
 
 ## Progress log
 - 2026-07-08: concept captured; deferred pending the integrated landing-page work
+- 2026-07-28: closed as superseded. Both successors landed on 2026-07-19 in PR
+  #242 (the per-repo `pages` gallery and estate-level app views), and the
+  reassessment this task was held open for comes out negative: nothing
+  federation-specific remains. The registry hinge exists, but it is
+  REGISTRY_REPO = mehrlander/web-tools-private rather than a HOME_REPO
+  pointing at mehrlander/home, and it carries a derived config cache rather
+  than a curated landing.json. Membership is a property of each repo's own
+  .web-tools.json (`estate`, `quickLink`, `pages`, `appView`), so the curated
+  cross-repo list this task proposed has no place to live and nothing to do.
+  The open question (repo-authored page vs structured card) was answered in
+  favor of the repo's own page, rendered live through toss-render `#gh=`. The
+  "what leaks" posture is unchanged: one generic private repo name in public
+  source, contents and membership behind the token. The two stale
+  forward-references to the federated plan (the docs/show-repo.md roadmap
+  bullet and the show-repo.html comment) are corrected on branch
+  claude/tracker-status-cjogjn.

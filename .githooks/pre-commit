@@ -1,0 +1,238 @@
+#!/usr/bin/env bash
+# git pre-commit hook — keep every *deterministic* derived artifact in lockstep
+# with its source, in the same commit that changes the source:
+#
+#   lib/ changed            -> npm run build:lib     -> stage dist/web-tools.js
+#   console/ changed        -> npm run build:console -> stage console/suite.js
+#   pages/**/*.html changed -> npm run pages-index   -> stage pages/README.md + pages/index.html
+#
+# Both generators are deterministic, so a commit that didn't really change the
+# source produces identical bytes (a no-op `git add`). Thumbnails
+# (pages/thumbs/*.png) are deliberately NOT regenerated here — screenshots are
+# slow and not byte-deterministic, so auto-regen would write binary churn on
+# every commit. Instead the hook *warns* when a page's HTML changes without its
+# thumbnail, and the refresh happens once per session at wrap-up
+# (see CLAUDE.md "Per-session refresh"). Non-blocking: failures warn but never
+# stop the commit.
+#
+# THIS WAS A CLAUDE CODE PreToolUse(Bash) HOOK UNTIL 2026-08-06, and the move to
+# git is the whole point. A Claude hook is declared in .claude/settings.json,
+# which the harness reads only when the session's project root IS this repo. In
+# a multi-repo session the root sits above the checkouts, so the declaration was
+# never read and this never ran, silently: measured in a session rooted at
+# /home/user, where a lib/ change committed without its dist/ rebuild and the
+# gap was noticed by hand. Git resolves its hooks from the repository being
+# committed to and has no notion of a project root, so it fires from anywhere.
+# The one thing git will not do is find a committed hooks folder by itself, and
+# .claude/hooks/session-githooks.sh supplies that single line of config.
+#
+# Two things came off in the move, both of them scaffolding for the old event:
+# the JSON stdin parse that recovered the Bash command, and the `git commit`
+# gate. Git only calls this on a commit, so both were answering a question that
+# no longer gets asked.
+set -euo pipefail
+
+# Git runs a hook from the repository top-level, and CLAUDE_PROJECT_DIR is
+# exactly the value that is wrong here (it can name a directory ABOVE this
+# repo), so ask git rather than the environment.
+root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+[ -n "$root" ] || exit 0
+
+cd "$root" || exit 0
+
+# `git add`, but LOUD about a path that is not there. Every add below used the
+# form `git add X 2>/dev/null || true`, which cannot tell "nothing to stage" from
+# "that file was renamed two months ago." Both happened: PR #441 turned
+# docs/docs.json into docs/docs.csv and tracker/board.json into board.csv, and
+# from that day the two legs regenerated their registry on every commit and
+# staged it on none. The generators were fine, the adds addressed nothing, and
+# the silence was written into the line. Found 2026-08-23 when CI failed on a
+# words stamp the hook had dutifully computed and dropped.
+stage() {
+  for f in "$@"; do
+    if [ -e "$f" ]; then
+      git add "$f" 2>/dev/null || true
+    else
+      echo "build hook: nothing at $f to stage — renamed, or the generator writes something else now" >&2
+    fi
+  done
+}
+
+# --- leg 1: lib/ -> dist/web-tools.js (the pre-build) -------------------------
+if git status --porcelain -- lib/ | grep -q .; then
+  if npm run build:lib --silent >/dev/null 2>&1; then
+    stage dist/web-tools.js
+  else
+    echo "build hook: 'npm run build:lib' failed — committing without refreshing dist/web-tools.js" >&2
+  fi
+fi
+
+# --- leg 1b: console/ -> console/suite.js (base + mods, one paste) ------------
+if git status --porcelain -- console/base.js console/mods/ | grep -q .; then
+  if npm run build:console --silent >/dev/null 2>&1; then
+    stage console/suite.js
+  else
+    echo "build hook: 'npm run build:console' failed — committing without refreshing console/suite.js" >&2
+  fi
+fi
+
+# --- leg 1c: docs/ -> the plugin's vendored conventions -----------------------
+# The plugin ships its own copies of the two conventions docs so injection is a
+# file read rather than a fetch (see .claude/skills/hooks/inject-conventions.sh).
+# A copy is a derived artifact like any other, so it rides the same commit as
+# its source rather than drifting until someone notices.
+#
+# The copies sit at a different depth than docs/, so every relative link inside
+# them resolves against the wrong directory: dead-links.py reports 11 dead
+# links across the pair, and they are not repairable here. Editing the copies is
+# worse than leaving them, because the cp below silently reverts the edit on the
+# next commit that touches docs/. The files exist to be read as injected context,
+# not browsed. Fix a link in docs/ or not at all.
+if git status --porcelain -- docs/CONVENTIONS.md docs/SURFACING.md | grep -q .; then
+  if cp docs/CONVENTIONS.md docs/SURFACING.md .claude/skills/web-tools/ 2>/dev/null; then
+    stage .claude/skills/web-tools/CONVENTIONS.md .claude/skills/web-tools/SURFACING.md
+  else
+    echo "build hook: could not refresh the plugin's vendored conventions — committing without them" >&2
+  fi
+fi
+
+# --- leg 2: pages/**/*.html -> the two catalogs -------------------------------
+# Any pending .html change under pages/ (add/edit/delete/retitle) regenerates
+# pages/README.md + pages/index.html so the catalogs ride in the same commit.
+changed_pages="$(git status --porcelain -- pages/ | grep '\.html' | sed 's/^...//; s/.* -> //' || true)"
+if [ -n "$changed_pages" ]; then
+  if npm run pages-index --silent >/dev/null 2>&1; then
+    stage pages/README.md pages/index.html
+  else
+    echo "build hook: 'npm run pages-index' failed — committing without refreshing the pages catalogs" >&2
+  fi
+
+  # --- leg 3: thumbnail nudge (warn only, never regenerate) -------------------
+  while IFS= read -r p; do
+    case "$p" in pages/index.html|pages/thumbs/*) continue ;; esac
+    thumb="pages/thumbs/${p#pages/}"; thumb="${thumb%.html}.png"
+    if [ -e "$root/$p" ] && ! git status --porcelain -- "$thumb" | grep -q .; then
+      echo "build hook: $p changed but $thumb didn't — refresh at wrap-up: npm run pages-shots -- ${p#pages/}" >&2
+    fi
+  done <<< "$changed_pages"
+fi
+
+# --- leg 2b: tools/test/ -> the test registry's derived fields ----------------
+# Must precede leg 3a, not follow it. This writes docs/tests.csv, and
+# docs/tests.csv is a row in docs/docs.json, so a restamp here invalidates any
+# word count 3a had already taken. Running it after 3a leaves the suite failing
+# on exactly one row, which is how the ordering was found.
+if git status --porcelain -- tools/test package.json tools/build/tests-index.mjs | grep -q .; then
+  if npm run tests-index --silent >/dev/null 2>&1; then
+    stage docs/tests.csv
+  else
+    echo "build hook: 'npm run tests-index' failed — docs/tests.csv may be stale" >&2
+  fi
+fi
+
+# --- leg 2c: tools/ or scripts/ -> the harness census's derived fields --------
+# docs/harness.csv is authored only in `role` and the layer glossary; layer,
+# lines, invocation, emits, named, and tested are stamped from the tree, and a
+# rename or a new npm script moves them without touching the registry.
+# artifacts-lockstep runs the generator's --check as the backstop.
+if git status --porcelain -- tools scripts package.json tools/build/tools-index.mjs docs/harness.csv | grep -q .; then
+  if npm run tools-index --silent >/dev/null 2>&1; then
+    stage docs/harness.csv
+  else
+    echo "build hook: 'npm run tools-index' failed — docs/harness.csv may be stale" >&2
+  fi
+fi
+
+# --- leg 2d: lib/ or pages/ -> the registries' renders_in field ---------------
+# docs/registries.csv is authored everywhere except `renders_in`, the app
+# files that name each carrier, stamped the way leg 3a stamps reach. Must
+# precede 3a: this writes docs/registries.csv, which is a docs/ file whose
+# word count 3a measures. properties-registry.test.mjs is the backstop.
+if git status --porcelain -- lib pages docs/registries.csv tools/build/registries-reach.mjs | grep -q .; then
+  if npm run registries-reach --silent >/dev/null 2>&1; then
+    stage docs/registries.csv
+  else
+    echo "build hook: 'npm run registries-reach' failed — renders_in may be stale" >&2
+  fi
+fi
+
+# --- leg 2e: docs/SNAGS.md -> its index, plus the repeat warning --------------
+# BEFORE leg 3a, and that ordering is the whole reason this moved. This leg
+# REWRITES a file in docs/, and leg 3a measures every docs/ file's length into
+# the registry's `words`. Running after it meant the stamp was taken against
+# SNAGS.md as authored and the index block was regenerated a moment later, so
+# docs/docs.json was stale by exactly that block's delta on every commit that
+# touched the log. Nothing local said so, because the hook does not verify what
+# it stamps: docs-registry.test.mjs caught it, in CI, after the push, on 2026-08-23
+# (PR #488, declared 9412 against an actual 9430). Same shape as the 3a/3b cycle
+# one leg down, and settled the same way, by making the measurement last.
+#
+# The index is deterministic and rides the same rule as the rest. The repeat
+# warning is the reason this leg exists at all: it fires while the new entry is
+# being committed, which is the last moment folding it into the entry that
+# already owns it is cheap. So the generator's stdout is shown rather than
+# swallowed, unlike the legs above.
+if git status --porcelain -- docs/SNAGS.md | grep -q .; then
+  if out="$(npm run snags-index --silent 2>&1)"; then
+    stage docs/SNAGS.md
+    printf '%s\n' "$out" >&2
+  else
+    echo "build hook: 'npm run snags-index' failed — committing without refreshing the snags index" >&2
+  fi
+fi
+
+# --- leg 3a: skills/pages/lib -> the registry's derived fields ----------------
+# `reach` and `words` are the derived fields inside an otherwise authored file:
+# pointing a skill or a page at a doc changes the first, and editing any doc's
+# length changes the second, and both edits are nowhere near docs/docs.json.
+# Restamp before leg 3b so the README projects the new value in the same commit.
+# docs-registry.test.mjs is the backstop where the hook does not run.
+if git status --porcelain -- .claude/skills skills lib pages docs tools/build/docs-reach.mjs | grep -q .; then
+  if npm run docs-reach --silent >/dev/null 2>&1; then
+    stage docs/docs.csv
+  else
+    echo "build hook: 'npm run docs-reach' failed — docs/docs.json reach may be stale" >&2
+  fi
+fi
+
+# --- leg 3b: docs/docs.json -> docs/README.md ---------------------------------
+# The docs index is a projection of the documentation registry; regenerate it
+# whenever the registry (or the generator) has pending changes.
+if git status --porcelain -- docs/docs.csv tools/build/docs-readme.mjs | grep -q .; then
+  if npm run docs-readme --silent >/dev/null 2>&1; then
+    stage docs/README.md
+  else
+    echo "build hook: 'npm run docs-readme' failed — committing without refreshing docs/README.md" >&2
+  fi
+
+  # --- leg 3c: docs/README.md -> the registry's word count -------------------
+  # 3a and 3b are a cycle, and adding `words` is what closed it. docs/README.md
+  # is generated FROM the registry and is also a row IN it, so leg 3b changes a
+  # file whose size leg 3a measured a moment earlier. One more stamp settles it,
+  # and it terminates: the README renders path, subject, status, and reach, none
+  # of which this pass touches, so nothing sends control back to 3b.
+  if npm run docs-reach --silent >/dev/null 2>&1; then
+    stage docs/docs.csv
+  else
+    echo "build hook: 'npm run docs-reach' re-stamp failed — docs/docs.json words may be stale" >&2
+  fi
+fi
+
+# --- leg 4: tracker/tasks/ -> tracker/board.md + board.json -------------------
+if git status --porcelain -- tracker/tasks/ | grep -q .; then
+  if npm run tracker-board --silent >/dev/null 2>&1; then
+    stage tracker/board.md tracker/board.csv
+  else
+    echo "build hook: 'npm run tracker-board' failed — committing without refreshing the tracker rollups" >&2
+  fi
+fi
+
+# --- leg 5: SUNSET markers now due (warn only) --------------------------------
+# Back-compat shims are tagged SUNSET(YYYY-MM-DD); warn at commit time once a
+# marker's date has passed so it gets removed rather than lingering forever.
+if [ -f scripts/sunset-scan.py ]; then
+  out="$(python3 scripts/sunset-scan.py 2>/dev/null || true)"
+  [ -n "$out" ] && printf '%s\n' "$out" >&2 || true
+fi
+
+exit 0

@@ -5,3 +5,15 @@ __pycache__/
 dist/*
 !dist/web-tools.js
 package-lock.json
+
+# bake-page scratch (skills/bake-page/scripts/bake.js cleans these up; belt and braces)
+_bake_src.html
+_bake_in.css
+_bake_out.css
+.concept-index/
+
+# concept-lab derived stores (semantic vectors, term indexes); rebuild, never commit
+.concept-lab/
+# registerlab fetches the Brysbaert norms on first use; 1.6 MB of survey data
+# is a download, not a repo artifact
+tools/concept-lab/data/concreteness.tsv

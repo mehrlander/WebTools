@@ -1,0 +1,67 @@
+// Shoot the annotator mid-flight on pages/annotate.html: two text notes made
+// through the real selection path (select → "+ note" → type → save), the
+// panel open with both rows, and the quote highlights painted by the CSS
+// Custom Highlight API.
+//
+//   npm run shot -- pages/annotate.html --script tools/render/scenarios/annotate-demo.mjs
+export default async (page) => {
+  await page.waitForSelector('#doc h1', { timeout: 15000 });
+
+  // The way into the keyboard since the pencil was retired: a double tap on
+  // the read surface. Aimed at the blank canvas under the words, so it opens
+  // with the caret at the end whatever the buffer holds.
+  const openKeyboard = () => page.evaluate(() => {
+    const S = window.Annotate._state;
+    const r = S.compView.getBoundingClientRect();
+    const x = Math.round(r.left + 20), y = Math.round(r.bottom - 6);
+    for (let i = 0; i < 2; i++) {
+      S.compView.dispatchEvent(new PointerEvent('pointerup', {
+        clientX: x, clientY: y, bubbles: true, pointerType: 'touch', isPrimary: true }));
+    }
+  });
+
+  const annotate = async (needle, note) => {
+    await page.evaluate((text) => {
+      const walker = document.createTreeWalker(document.getElementById('doc'), NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = walker.nextNode())) {
+        const i = n.data.indexOf(text);
+        if (i > -1) {
+          const r = document.createRange();
+          r.setStart(n, i);
+          r.setEnd(n, i + text.length);
+          const sel = getSelection();
+          sel.removeAllRanges();
+          sel.addRange(r);
+          n.parentElement.scrollIntoView({ block: 'center' });
+          document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+          return;
+        }
+      }
+      throw new Error('needle not found: ' + text);
+    }, needle);
+    await page.waitForSelector('[data-annotate-ui]:has-text("+ note")', { timeout: 5000 });
+    await page.click('button[data-annotate-ui]:has-text("+ note")');
+    // The composer opens in DICTATION mode, so the textarea is hidden until
+    // the double tap asks for it. This scenario had been filling a display:none
+    // box since the composer was rebuilt, and failed on every run.
+    await openKeyboard();
+    await page.fill('textarea[data-annotate-ui]', note);
+    // The keyboard's dismiss is the way out of edit mode, and Save is on the
+    // control row that comes back with the read surface.
+    await page.evaluate(() => document.querySelector('textarea[data-annotate-ui]').blur());
+    await page.click('button[data-annotate-ui][title^="Save note"]');
+    await page.waitForTimeout(150);
+  };
+
+  await annotate('zero em dashes', 'House style: this is the rule every repo repeats.');
+  await annotate('A consistency ask is not a fork',
+    'Candidate for promotion into the tasks skill?');
+
+  // Scroll back to the first highlight so both the paint and the panel show.
+  await page.evaluate(() => {
+    document.getElementById('doc').scrollIntoView({ block: 'start' });
+    window.scrollTo(0, 260);
+  });
+  await page.waitForTimeout(400);
+};

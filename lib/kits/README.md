@@ -5,31 +5,37 @@ Themed logic libraries loaded via `gh.load`. Each kit is a plain script
 
 ## Concept
 
-A **kit** is the third category of file in this repo, alongside:
+The repo's code layers, and which folder a new file belongs in, are stated once
+in [`docs/code-layers.md`](../../docs/code-layers.md). What follows is the kit
+shelf's own admission rule.
 
-- **Scaffolding in `lib/`** — `lib/gh-api.js`, `lib/gh-boot.js`,
-  `lib/gh-auth.js`, `lib/gh-fetch.js`, `lib/gh-store.js`,
-  `lib/alpine-bundle.js`, `lib/vanilla-bundle.js`. The boot chain.
-  `alpine-bundle.js` also owns the
-  Alpine-coupled `x-define` directive (custom-element registration from a
-  `<template>`), so kits can stay Alpine-free. `vanilla-bundle.js` is the
-  no-framework alternative.
-- **`lib/alpineComponents/*.js`** — UI components that register with
-  `Alpine.data(name, fn)` inside `alpine:init`.
-- **`kits/*.js`** — logic libraries that register a namespace on
-  `window`. No Alpine coupling. (The daisyUI/Tailwind string helpers that
-  used to live here as `fills.js` now hang off `window.html` in
-  `vanilla-bundle.js`.)
+A **kit** is a logic library that registers a namespace on `window`, with no
+Alpine coupling. (The daisyUI/Tailwind string helpers that used to live here as
+`fills.js` now hang off `window.html` in `vanilla-bundle.js`.)
 
-  The line is **no Alpine and no DOM opinions of its own**, not "no DOM."
-  This entry used to say "no DOM rendering," and the shelf has outgrown
-  it: `cm6.js` mounts a live editor into a host element you hand it,
-  `io.js` drives file inputs and the clipboard, `pdf.js` renders pages and
-  projects geometry into screen space. What a kit must not do is decide
-  where it lives, own reactive state, or assume a framework. It takes the
-  host it is given and returns a handle. A kit that wants Alpine
-  reactivity gets a component wrapper: `cm-editor.js` over `cm6.js` is the
-  reference pair.
+**That is the whole rule, and as of 2026-08-07 it is also the whole boundary.**
+This shelf holds every logic module; `lib/` root keeps only the loader, the
+files extending its prototype, and the boot bundles. A kit is emphatically not a
+"portable capability" and not "cross-app logic": both rules were written down,
+measured against this shelf, and found false, which is why the surviving rule
+sorts on attachment alone. The reasoning is in
+[`docs/code-layers.md`](../../docs/code-layers.md).
+
+The tree matches the rule as of 2026-08-08
+([`lib-root-kit-migration-dind5t`](../../tracker/tasks/lib-root-kit-migration-dind5t.md)):
+22 kits moved in from `lib/` root, `build.js` moved out to `lib/` root (it
+extends `GH.prototype`, which the rule makes scaffolding), and
+`tools/test/code-layers.test.mjs` holds the boundary in all three directions,
+so a misfiled arrival fails the suite rather than waiting to be noticed.
+
+The line is **no Alpine and no DOM opinions of its own**, not "no DOM." This
+entry used to say "no DOM rendering," and the shelf has outgrown it: `cm6.js`
+mounts a live editor into a host element you hand it, `io.js` drives file inputs
+and the clipboard, `pdf.js` renders pages and projects geometry into screen
+space. What a kit must not do is decide where it lives, own reactive state, or
+assume a framework. It takes the host it is given and returns a handle. A kit
+that wants Alpine reactivity gets a component wrapper: `cm-editor.js` over
+`cm6.js` is the reference pair.
 
 The shape rules (so the file works through `gh.load`):
 
@@ -48,6 +54,40 @@ The shape rules (so the file works through `gh.load`):
 See [`docs/loader.md`](../../docs/loader.md) for the full loader contract.
 
 ## Current kits
+
+The long-form sections below predate the 2026-08-08 migration and cover the
+original shelf. The 22 kits that moved in from `lib/` root that day are listed
+here with their namespace and role; each carries its full story in its own
+header comment, which is the authoritative doc for this group. **(boot)** marks
+membership in gh-boot.js's declared BOOT manifest, a fact about cost that the
+folder deliberately no longer encodes.
+
+| Kit | Namespace | Role |
+|---|---|---|
+| `branch-status.js` | `BranchStatus` | branch-estate scan math: the content-level landed/stranded signal |
+| `chat-render.js` | `chatRender` | chat transcript renderer; fenced code promoted to live artifacts |
+| `claude-mark.js` | `claudeMark` | the Claude logomark, as markup or a node, from one path |
+| `content-registry.js` | `ContentRegistry` | the epistemic content registry (`data/design/content.csv`), read in the browser |
+| `data-payload.js` | `DataPayload` | reading a data toss: one rule for what a payload is |
+| `estate-search.js` | `EstateSearch` | the estate's search calls (tree, names, code, sessions), one cache |
+| `github-links.js` | `GithubLinks` | the GitHub destinations for one repo, as menu rows |
+| `portable-align.js` | `PortableAlign` | pure assessment of a repo's alignment with the portable set |
+| `repo-activity-cache.js` | `RepoActivityCache` | per-repo activity snapshots folded into one cache |
+| `repo-address.js` | `RepoAddress` | the `owner/repo[@ref]:path` address grammar **(boot)** |
+| `repo-checks.js` | `RepoChecks` | declared staleness checks for a repo, evaluated on sight |
+| `repo-config-cache.js` | `RepoConfigCache` | `.web-tools.json` aggregate, history, and alignment grade |
+| `repo-mailbox.js` | `RepoMailbox` | the private git-backed request/response channel |
+| `repo-proposals.js` | `RepoProposals` | cross-repo edit proposals, the mailbox's write side |
+| `repo-sessions-cache.js` | `RepoSessionsCache` | session-record aggregate over the private registry |
+| `session-render.js` | `sessionRender` | a session record as a readable, paged conversation |
+| `shorter-payload.js` | `ShorterPayload` | reading a shorter toss |
+| `source-peek.js` | `SourcePeek` | the hover card behind an exact-file GitHub jump-over **(boot;** the manifest calls `install()`, the kit no longer self-installs**)** |
+| `subject-channel.js` | `subjectChannel` | telling the FAB sidebar which file a surface is showing, and giving the page its own back |
+| `surface.js` | `Surface` | the surface envelope, in one place **(boot)** |
+| `swipe-deck.js` | `swipeDeck` | the house swipe format and its fullscreen takeover |
+| `traffic.js` | `Traffic` | the pure read over the traffic ledger gh-boot collects **(boot)** |
+| `url-params.js` | `UrlParams` | a page's own input params, fragment first, query fallback |
+| `vanilla-demo.js` | `demo` | the living-documentation demo format |
 
 ### compression.js
 
@@ -353,7 +393,13 @@ window.treemap.fmtBytes(6672908)          // '6.4 MB'
 degenerate input: zero/empty weights and extreme skew emit zero-size
 rects rather than negative extents.
 
-### build.js
+### build.js (moved to `lib/` root, 2026-08-08)
+
+Lives at [`lib/build.js`](../build.js) now: it extends `GH.prototype`
+(overriding `.read` and `.get` while a build runs), which the admission rule
+makes scaffolding, and an exception written into a rule on day one is how the
+previous two rules died. Its API doc stays here beside its consumers until it
+finds a better home.
 
 The single emitter for "the build": a page's `gh.load` chain frozen into
 one self-resolving offline artifact. Two consumers share the one emitter
@@ -366,12 +412,15 @@ runs (same execution, same gh-boot registry), and third-party CDN
 libraries stay on the network.
 
 ```js
-window.buildKit.emit({ ghApiSrc, cache, repo, defaultRef, header?, extraBoot? })
+window.buildKit.emit({ ghApiSrc, cache, data?, repo, defaultRef, header?, extraBoot? })
                                         // assemble the build JS (a string)
-window.buildKit.bake(pageHtml, buildJs) // rewrite the page's jsDelivr
-                                        //   gh-api.js import to a data: URL
-                                        //   carrying the build
-await window.buildKit.collectCache(gh)  // { ghApiSrc, cache } gathered at
+window.buildKit.bake(pageHtml, buildJs) // rewrite the page's gh-api.js
+                                        //   import to a data: URL carrying
+                                        //   the build
+window.buildKit.bakeable(pageHtml)      // whether there is an import to
+                                        //   rewrite at all
+await window.buildKit.collectCache(gh, { scripts? })
+                                        // { ghApiSrc, cache } gathered at
                                         //   runtime from __loadedScripts
 window.buildKit.stripLoader(ghApiSrc)   // gh-api.js minus its bootstrap
                                         //   tail and `export default`
@@ -379,8 +428,20 @@ window.buildKit.stripLoader(ghApiSrc)   // gh-api.js minus its bootstrap
 
 `emit` reproduces the bootstrap offline, still honoring `?use=<ref>` (an
 explicit ref falls through to the network), and sets
-`window.__builtOffline`. `bake` throws if the page has no jsDelivr
-`gh-api.js` import to rewrite. See "Load and build are one contract" in
+`window.__builtOffline`. Optional `data` does for `read()` what `cache`
+does for `get()`: a `path → value` map consulted before the local probe
+and before the network, which is how a single-file copy carries data it
+cannot lay down as sibling files.
+
+`bake` matches the import **call**, not a literal URL, because two boot
+idioms are in use: the canonical block imports the jsDelivr URL directly
+(25 pages) while every kit demo builds it from a `base` const and imports
+`` `${base}/gh-api.js` `` (33 pages). Matching only the literal form left
+the larger half looking chainless when it was merely unreachable, which is
+the worse failure: the output looks finished and then asks the network for
+its modules. `bakeable` is the honest predicate for "there is nothing to
+inline," which is a real state (a page with no chain is already a
+standalone artifact). See "Load and build are one contract" in
 [`docs/loader.md`](../../docs/loader.md) and the pipeline in
 [`tools/README.md`](../../tools/README.md).
 
@@ -390,13 +451,30 @@ Export the current page as a portable zip: the page's pristine source
 plus the data it `read()`s, laid out so `read()`'s local-first resolution
 finds the frozen copies on `file://`. gh-boot's `__reads` registry is the
 default manifest, so a page declares its data simply by reading it. With
-`{ offline: true }` the page's code is baked in too (via `kits/build.js`)
+`{ offline: true }` the page's code is baked in too (via `build.js`)
 and unzip-and-open needs no network for own code; third-party CDN
 libraries still load from the CDN. This is the "export" leg of the
 vocabulary: load → build → bake → export → brief. The FAB's take-away
 menu drives it, alongside `brief.js`, its reader-facing sibling below.
 
+`renderCopy` is the third output and answers a different question: not
+"archive this page" but "let me render it somewhere else." It returns one
+HTML string for pasting into CodePen or any bare HTML preview, so it has
+nowhere to put sibling files and inlines the `read()` data as well as the
+code. Third-party CDN tags are left alone on purpose, since the
+destination has a network and untouched tags are what keep the paste
+small. What it cannot inline it counts: `cdnRefs` is the number of
+run-time references to this repo's CDN that survive baking (a kit demo
+injects `${base}/kits/<kit>.js` into each proof frame as a plain
+`<script src>`, which is no `gh.load` and so not in the cache). Those
+resolve wherever jsDelivr does and break on a private repo, so they are
+reported at copy time rather than discovered on paste.
+
 ```js
+await window.exporter.renderCopy(opts)  // one pasteable HTML string:
+                                        //   { html, path, base, codeFiles,
+                                        //     reads, dropped, bytes,
+                                        //     chainless, cdnRefs }
 await window.exporter.page({ offline?, path?, reads?, filename? })
                                    // build and download the zip
 await window.exporter.build(opts)  // same, minus the download: returns
@@ -404,11 +482,18 @@ await window.exporter.build(opts)  // same, minus the download: returns
                                    //     codeFiles, reads, files }
 window.exporter.localForm(path, value) // one read() value in its local
                                        //   <script> deposit form
+window.exporter.cdnRefs(html)          // count the run-time CDN references
+                                       //   a baked page still carries
 ```
+
+Every entry point takes `opts.gh` / `opts.scripts` / `opts.reads`, so a
+caller can aim the kit at something other than the current window. The FAB
+does exactly that inside a toss, where the page on screen is the subject in
+the frame and the globals belong to the shell around it.
 
 The page path comes from `opts.path` or the FAB's `[data-path]` stamp;
 the page source is fetched pristine from the repo at the booted ref, not
-scraped from the post-Alpine DOM. `kits/io.js` and `kits/build.js` load
+scraped from the post-Alpine DOM. `kits/io.js` and `build.js` load
 on demand if absent.
 
 ### brief.js
@@ -440,7 +525,7 @@ await window.brief.copy(opts)      // assemble + io.copy (iOS-safe)
 window.brief.stageUrl({ path?, prompts? })  // the same closure as a #stage= link
 ```
 
-`pages/show-repo/show-repo.html` is the one page this cannot serve whole: it
+`app/index.html` is the one page this cannot serve whole: it
 imports the 918K pre-build, so its closure is the entire library (~262K
 tokens). `assemble` refuses it unless `opts.force`, and points at
 per-component scope instead.
@@ -450,6 +535,84 @@ know *which* files a running page pulled in, and the stage is the tool that
 specializes in choosing among them. It mints the single-group case of
 `StageLink`'s grammar directly, since `stage.js` is a full Alpine component
 and is not loaded on an ordinary page.
+
+### annotate.js
+
+Notes pinned to pieces of a page: select text (or pick an element, or drag a
+rectangle), write a note, and carry the set out as markdown for a chat model,
+as JSON (`annotate/1`), or as one jot in the estate registry. The unit is the
+**annotation set**, not the single note: several small notes against one
+document, shipped together, which is what neither a screenshot nor a copied
+quote does.
+
+Text selections anchor as **text quotes** (exact + prefix/suffix context, the
+W3C Web Annotation idea) rather than node offsets, so an anchor survives
+re-render and can be re-found in another copy of the document; an agent
+session holding the same file re-finds it by grep. Highlights paint through
+the CSS Custom Highlight API where the target window has it, so the
+document's DOM is never rewritten and a reactive page has nothing to trip
+over; without the API the notes still collect and serialize. Element picks
+anchor by css path plus excerpt; regions by document-coordinate rectangle
+plus the text of the blocks they cover.
+
+```js
+window.Annotate.enable({ doc?, subject? })  // mount on a target document
+                                            // (defaults to this one); subject
+                                            // = {title, url} for serialization
+window.Annotate.add(target, note)           // programmatic add
+window.Annotate.toMarkdown() / .toJSON()    // the set, serialized
+await window.Annotate.copy('md' | 'json')   // serialize + clipboard
+await window.Annotate.saveJot()             // one jot (fresh-read → mutate → save)
+window.Annotate.disable()
+```
+
+The FAB's take grid carries it as **Annotate** (the one take that operates on
+the view rather than carrying it away), aiming at the subject frame's
+document inside a readable `#gh=` toss; a `#gz=` sandbox is opaque and gets
+the shell, which the take's caveat says. `pages/annotate.html` is the page
+half: load any `owner/repo[@ref]:path` document and annotate it.
+
+The composer's voice half is **`dictate.js`**, below, and it is a soft
+dependency: load `annotate.js` alone and everything works except the
+microphone, which simply never appears. Both loaders here chain the pair.
+
+### dictate.js
+
+Voice input as a plain text buffer. `Dictate.create({win, onText, onInterim,
+onState, onError})` returns a handle over `SpeechRecognition`; read `text`
+back, or paint it from the callbacks. Every option is optional.
+
+Extracted from `annotate.js` on 2026-08-09, where it had been written as a
+callback factory with no reference to the annotator so that this would be a
+move. The value is four **text** rules, none of them about speech recognition:
+
+- **Spoken punctuation is text, tapped punctuation is punctuation.** Engines
+  guess badly at where a comma goes, so a recognized `.` is rewritten to the
+  word " period" and real marks arrive only from the caller's mark row. The
+  guess is removed rather than corrected.
+- **The stop-mark-restart cycle.** Nothing can be injected into a live
+  recognition stream, so a tapped mark parks itself, stops the engine, and the
+  end handler writes it and starts again.
+- **Continuation casing.** After a comma or semicolon the next utterance is
+  the same sentence, so its leading capital is lowered. This is what makes
+  stitched fragments read as prose.
+- **The running hypothesis is committable.** `flush()` commits the interim the
+  reader can see, because they have read it; the alternative is losing a
+  sentence to a pause they did not know they owed the recognizer.
+
+```js
+const d = Dictate.create({ win })   // win: a window or an accessor for one
+d.start() / d.stop() / d.toggle()
+d.punct('.')                        // a real mark; '¶' breaks the paragraph
+d.backWord()                        // drop a word without stopping the engine
+d.flush()                           // commit the interim, return the buffer
+d.text                              // get/set
+Dictate.available(win)              // is there a recognizer there
+```
+
+`win` is a parameter rather than a global read because the annotator points it
+at a frame's window: the kit runs in the shell realm and dictates into a
+document it does not own.
 
 ### wsl-core.js
 
@@ -518,6 +681,20 @@ the kit makes lives there, which is why the whole table-detection surface is
 testable under node against synthetic geometry. Only `open()` needs pdf.js,
 and only `doc` needs pdf-lib (both load lazily from jsDelivr).
 
+The two libraries load **separately**, and a caller that only reads should say
+so. `loadPdfjs()` is the reading half, `loadPdfLib()` the writing half, and
+`loadLibs()` still means both. `open()` takes the first, everything under `doc`
+takes the second, and nothing takes both. That matters to anyone rendering
+rather than editing: the viewer's `pdf` mode
+([`alpineComponents/viewer.js`](../alpineComponents/viewer.js)) draws a page
+with pdf.js alone, so it no longer pulls roughly a megabyte of editor library
+it never calls before the first pixel. `tools/test/viewer-pdf.mjs` asserts that
+request is never made, since the regression is invisible from the pixels.
+
+A viewer also does not want `open()`. It parses every page's text and operator
+list up front, which is exactly right for extraction and wrong for showing page
+1 of a 200-page submittal; go through `pdfjsLib` directly for that.
+
 ```js
 const d = await pdf.open('/report.pdf');   // url, File/Blob, or bytes
 const d = await pdf.pick();                // file picker, for console use
@@ -567,6 +744,27 @@ real defects. Version pinning is settled by running rather than by changelog:
 `npm run test:pdf-versions`. Tolerances, failure modes, the measured font-alignment numbers, the
 government-PDF pathologies, and the honest limits are in
 [`docs/pdf-structure.md`](../../docs/pdf-structure.md).
+
+**Two ways in, and the difference is the point.** The page reads a local file
+(picker or drop) and an **address**, `#gh=owner/repo[@ref]:path`, so a PDF
+anywhere in any repo is a link rather than a download-and-drag; it accepts
+`?src=` in the same grammar, which is what the `#pdf=` toss route feeds it. So
+`#data=<a pdf>` is the FIRST LOOK, the viewer's `pdf` mode drawing a page with
+a pager, and `#pdf=<the same file>` is the WORKBENCH, this page with its
+layers, trim and two table readings. One decision, spelled two ways, so the
+link says which one was meant. Both are in [`docs/routes-routes.csv`](../../docs/routes-routes.csv).
+
+**The first look pages on [`swipe-deck.js`](swipe-deck.js), and that is the
+alignment rather than a detail.** The estate already pages branches, then a
+branch's files, one card at a time; a PDF is the case that makes the pattern
+three levels deep, because a file can have pages of its own. Nothing about the
+third level is special, so it does not get a gesture of its own. `core()` is
+what an inline pane wants (the track without the takeover chrome), and it
+brings the part that matters most for a big document for free: slides build
+lazily and drop once the reader is two away, so a 200-page submittal rasterizes
+three canvases rather than 200. The arrows drive the track rather than keeping a
+page number beside it, so the pager and a thumb cannot disagree: there is one
+position, the track's scroll offset.
 
 ### xlsx.js
 
@@ -632,11 +830,12 @@ examples.
 | `console.js` | `pages/demos/console-kit-demo.html` | console retention + `debugConsole` renderer |
 | `cm6.js` | `vanilla-demo.js` / `pages/drop/cm6-editor.html` | lazy CodeMirror 6 editor factory |
 | `cm6-merge.js` | `pages/review.html` | read-only CM6 split/unified diff views; display sibling of `cm6.js` |
+| `text-diff.js` | `pages/diff-tool.html` / the stage's Diff lens | patience line diff + word diff; pure, no renderer. `cm6-merge.js` is the other diff shelf: this one computes, that one displays |
 | `review-target.js` | `pages/review.html` | parse/mint the review address grammar (`gh=owner/repo[@ref][:path][&base=]`) |
 | `brief.js` | the FAB's "Take this page" menu | page + its own modules as one pasteable markdown brief |
 | `wring.js` | `pages/demos/wring-text.html` / `pages/demos/wring-dom.html` | template induction; generated from `archive/wring/` |
 | `treemap.js` | `pages/repo-atlas.html` | squarified treemap kernels + file taxonomy |
-| `build.js` | `tools/build/` + the FAB export | one emitter, two consumers |
+| `../build.js` | `tools/build/` + the FAB export | one emitter, two consumers; `lib/` root since 2026-08-08 (extends `GH.prototype`) |
 | `export.js` | the FAB's export control | page + `read()` data as a zip |
 | `wsl-core.js` | `pages/wsl-sync/` + Node fetch | dependency-free; libs injected |
 | `wsl.js` | `pages/wsl-sync/` | browser wrapper; lazy XML libs |

@@ -156,10 +156,34 @@ topical caption keeps the full triple.
 
 After the list, a blank line, then one 🥏 or ⭐ line per changed renderable HTML
 page, link text the page path. Honesty gate: a kit, doc, or asset gets none.
-Choose per the repo's preview mechanism; in web-tools: lib/dist change → ⭐
-`?use=<sha>` on the deployed page URL; page-shell change on an un-deployed
-branch → 🥏 toss `#gh=<owner>/<repo>@<sha>:<path>`. With no preview mechanism,
-the portable fallback is the 🥏 `#gz=` toss.
+
+**Do not decide this by reading. Run `npm run showing`** (web-tools;
+`python3 scripts/showing.py` anywhere the script has travelled). It reads the
+branch's own changed files and prints the render line ready to paste, or an
+honest "no link reaches this" with the reason, and it checks the two things
+that go wrong silently: that the SHA it names is pushed, and that `dist/` was
+rebuilt so `?use=` carries the lib change rather than last week's bundle.
+
+The rules it runs are the ones this section used to state: lib or dist change →
+⭐ `?use=<sha>` on the deployed page; a page's own file → 🥏 toss
+`#gh=<owner>/<repo>@<sha>:<path>` with `?use=` in the renderer's query; the
+renderer itself → a nested toss; a shell change acting on the top-level
+document (title, favicon, history, navigation) → no link at all, send a
+screenshot. They are stated once as data in `docs/routes.json` and
+`docs/showing-mechanisms.csv`, and the script is what executes them.
+
+**Why a command rather than a paragraph.** The paragraph was here, correct and
+complete, on 2026-08-22 when a session changed `lib/alpineComponents/estate.js`
+and reported that no link could show it. It never opened the table, because it
+was sure it already knew, and a wrong pick does not error: it yields a link
+that resolves and shows the wrong week. Reading cannot fix a failure whose
+first symptom is confidence.
+
+Two things the script cannot do, so they stay yours: it cannot tell whether the
+change is VISIBLE (a refactor gets a valid link that shows nothing new), and it
+cannot see pixels. Where it names several pages, pick the one the change is
+about. With no preview mechanism and no script, the portable fallback is the 🥏
+`#gz=` toss.
 
 A page published as an artifact this session gets a 📦 line: link text the
 page path, URL the claude.ai artifact URL. Pick by where the link opens: the
@@ -187,10 +211,59 @@ token (possibly absent in the Claude app's in-app browser). It supplements
 the rows, never replaces them: the plain GitHub links stay the portable
 fallback.
 
+## The branch line (🌿) and its authored layer
+
+The full caption's judgment can ride the branch page instead of being re-typed
+per turn: `build-branch-review.mjs` (bundled beside this file) serializes it as
+a **branch-review/1 surface**, the authored envelope `pages/branch.html`
+renders over its live derived layer. This is the decided format: `/caption`
+emits branch-review/1, and the plain branch-brief shape stays accepted by the
+page's reader only as a hand-authoring convenience.
+
+Write the judgment (the part no API can derive) to a notes file, then:
+
+```
+node .claude/skills/caption/build-branch-review.mjs --notes notes.json --link
+```
+
+notes.json: `{ "intent": "...", "open": ["..."], "omitted": ["..."],
+"files": { "<path>": "one-line why" }, "notes": "..." }`. The script derives
+the rest from git (repo, branch, revisions, changed files with statuses),
+validates against both schemas (core surface v2 plus the profile; an invalid
+surface is an error, not an artifact), and `--link` prints the 🌿 address with
+the surface gzipped into the fragment:
+
+```
+🌿 [<repo>@<branch>](…/pages/branch.html#gh=<repo>@<branch>&base=main&gz=<payload>)
+```
+
+Emit it at guide-PR sync or wrap-up, and record the link in the PR (body or a
+comment): the fragment never reaches a server, so the link itself is the
+instance's only carrier. The derived layer stays live either way; the envelope
+only ever adds. Gated by `tools/test/branch-review-emit.test.mjs` (schema
+validity, the page reader's projection, the gz round-trip).
+
 ## Tail
 
-When the branch has a guide PR (or a branch-guide file), close with the
-pointer: `🧭 [PR #N](<url>)`.
+When the branch has a guide PR, close with **both** pointers, 🌿 first:
+
+```
+🌿 [branch](https://mehrlander.github.io/web-tools/pages/branch.html#gh=<owner>/<repo>&pr=<n>) · 🧭 [PR #N](<url>)
+```
+
+They name the same PR and are not redundant, because they open different
+readings of it:
+
+- **🌿 the branch page** renders the guide body *and* the derived file list as
+  diff cards, with the body's file links re-aimed at what can show each file.
+  One tap, the whole picture, current at open time. Token-gated like every
+  `#gh=` address, so it may fail in an in-app browser.
+- **🧭 GitHub** is where the PR is *operated*: the Files tab, comments, checks,
+  the merge button. It is also the tokenless fallback when 🌿 will not resolve.
+
+With no PR, 🌿 still works on the branch alone
+(`#gh=<owner>/<repo>@<branch>`) and 🧭 is omitted. Drop 🌿 in a repo whose
+branches the viewer's token cannot read.
 
 ## The recap form
 
@@ -212,9 +285,19 @@ omitting it, so the form stays fixed.
 
 ## Syncing a guide PR body
 
-The full caption is the core of the guide PR body's managed region
-(`<!-- guide -->` … `<!-- /guide -->`). To sync after a push: regenerate the
-region (⭐ Look line, Changed list, Next steps / open threads, Notes / Risk),
-rewrite only that region via the GitHub API (`update_pull_request`), and leave
-everything outside the fences untouched. Narrative goes in PR comments, not
-the body.
+The full caption is the core of the guide PR body's managed region, delimited by
+the markdown link labels `[//]: # (guide)` … `[//]: # (/guide)`. To sync after a
+push: regenerate the region (⭐ Look line, Changed list, Next steps / open
+threads, Notes / Risk), rewrite only that region via the GitHub API
+(`update_pull_request`), and leave everything outside the delimiters untouched.
+Narrative goes in PR comments, not the body.
+
+**Read both delimiters, write only the link-label one.** Bodies written before
+2026-07-28 carry `<!-- guide -->` … `<!-- /guide -->`, so treat either pair as
+the region when locating it, and emit the link-label form when rewriting. The
+reason is not cosmetic: reading a body back through the GitHub MCP strips HTML
+comments, so the older markers are invisible to the very step that needs them,
+and a sync that cannot find its region appends a second one or overwrites
+hand-written prose. If neither pair is present, stop and say so rather than
+guessing at the boundary. Link labels are reference definitions, so keep each on
+its own line with blank lines around it.

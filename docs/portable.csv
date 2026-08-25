@@ -1,0 +1,48 @@
+kind,command,path,title,role,use
+skill,/portable:web-tools,.claude/skills/web-tools/SKILL.md,web-tools,loads the working conventions live (surfacing primitives plus the guide-PR course),plugin
+skill,/portable:caption,.claude/skills/caption/SKILL.md,caption,"the surfacing caption, and the guide-PR body sync",plugin
+skill,/portable:load-skill,.claude/skills/load-skill/SKILL.md,load-skill,fetch any skill from the library on demand,plugin
+skill,/portable:show-repo,.claude/skills/show-repo/SKILL.md,show-repo,browse any repo and move files across repos,plugin
+skill,/portable:tree,.claude/skills/tree/SKILL.md,tree,"render a linked file tree of the repo, table-first for mobile",plugin
+skill,/portable:in-flight,.claude/skills/in-flight/SKILL.md,in-flight,"check whether a branch, PR, or task is already working on something, and reconcile stale tracker claims",plugin
+skill,/portable:tasks,.claude/skills/tasks/SKILL.md,tasks,"operate the cross-session project tracker, and the filing rules: the bar, the propose-first gate, no fragmenting",plugin
+skill,/portable:repo-review,.claude/skills/repo-review/SKILL.md,repo-review,"read the repo's own state and report what stands out, at three depths (light, deep, sweep); probes, layers, lenses and destinations declared per repo",plugin
+skill,/portable:markers,.claude/skills/markers/SKILL.md,markers,"the status system: mark a claim Frozen/Stale/Wrong in prose, declare a path frozen in a cascading .paths.json, inventory both, check that they agree",plugin
+skill,/portable:sandbox-traps,.claude/skills/sandbox-traps/SKILL.md,sandbox-traps,"the web sandbox's enumerable failures, each impersonating a worse one: the test that tells them apart, and the rule",plugin
+skill,/portable:content-registry,.claude/skills/content-registry/SKILL.md,content-registry,"the epistemic content registry: classify a repo's artifacts and their corpus membership in a curated content.csv; scaffold, verify, extract",plugin
+skill,/portable:concept-index,.claude/skills/concept-index/SKILL.md,concept-index,"build a repo's declared vocabulary and check a piece of writing against it: unlinked file names, terms of art used as if already known",plugin
+skill,/portable:drop-link,.claude/skills/drop-link/SKILL.md,drop-link,"mint a link that opens GitHub's new-file form on the working branch, so long content lands on the branch without riding through chat",plugin
+skill,/portable:edit-review,.claude/skills/edit-review/SKILL.md,edit-review,"hand over an edited file for second-opinion review: stage before and after into show-repo's Diff lens, with review prompts on the link",plugin
+skill,/portable:file-retrieval,.claude/skills/file-retrieval/SKILL.md,file-retrieval,"retrieve files from a configured corpus through a fixed-behavior tool: ranked snippet search and whole-document reads, one auditable command",plugin
+skill,/portable:scour,.claude/skills/scour/SKILL.md,scour,"acquisition fan-out: send agents to gather source material that does not exist locally, and map who says what about a subject across the open web",plugin
+doc,,docs/CONVENTIONS.md,Working conventions,"the general-behavior hub: prose style, standing decisions, keep-focus, the session/repository/workstream vocabulary",live
+doc,,docs/SURFACING.md,Surfacing,the surfacing system: primitives (chat-handoff mechanics) plus the guide-PR course; loaded with CONVENTIONS.md as one set,live
+doc,,docs/venues.md,Venues,"the venue map: where work can run besides the session reading it, and the attended-versus-unattended split that decides where a job belongs",live
+doc,,docs/PORTABLE.md,The to-go bag,catalog of everything here that travels; the prose parent of this manifest,reference
+doc,,docs/TRACKER.md,Project tracker,opt-in cross-session tracker: one file per task plus a generated board,adopt
+doc,,docs/CONSTELLATION.md,Constellation architecture,"the portable kernel of the what-goes-where doctrine: commit discipline, visibility forces repo boundaries, conventions pull from a public hub, the repo owns its own scope. The theory behind show-repo's Map view",reference
+doc,,docs/show-repo.md,show-repo,"the hosted shell, the stage, and the .web-tools.json manifest",on-demand
+doc,,docs/artifacts.md,Artifacts,the bake-and-publish pipeline and the 📦 marker's place in the link-choice matrix,on-demand
+doc,,docs/HTML-STYLE.md,HTML house style,"what to build, as against how: no stat cards, no page prose, browsing is a full-viewport takeover, type sized for reading",on-demand
+doc,,docs/headless-vendoring.md,Headless vendoring,build with CDN stacks and test them headless where the sandbox blocks their CDNs,on-demand
+doc,,docs/markdown-in-chat.md,Markdown in chat,working visually with markdown in a chat client; tables over nested bullets,on-demand
+doc,,docs/github/markdown.md,GitHub markdown,"what GitHub's renderer does with Mermaid, math, alerts, sparklines",on-demand
+doc,,docs/github/mcp-server-routing.md,MCP server routing,unexpected approval prompts with two GitHub MCP servers are often routing artifacts,on-demand
+dir,,docs/environment,Web sandbox environment,"dated facts about the Claude Code web sandbox: network, persistence, testing recipes",on-demand
+dir,,docs/envelopes,Content envelopes,"the envelope family: the surface contract, chat-results, and the schemas that validate them",on-demand
+dir,,skills,Skill library,"the personal skill library load-skill pulls from, published as static resources",on-demand
+dir,,docstruct,docstruct,"multi-method structure extraction from scanned documents: lossless page images, orientation decided by measurement, recognition, and a record holding competing readings",on-demand
+script,,.claude/skills/tasks/build-board.py,build-board.py,regenerate a tracker's board.md from task frontmatter; ships inside the plugin,plugin
+script,,.claude/skills/in-flight/in-flight.py,in-flight.py,classify a branch estate into live / merged / unrelated and reconcile tracker claims against it; ships inside the plugin,plugin
+script,,scripts/sunset-scan.py,sunset-scan.py,,on-demand
+script,,scripts/unclaimed-code.py,unclaimed-code.py,,on-demand
+script,,scripts/declared-paths.py,declared-paths.py,,on-demand
+script,,scripts/dead-links.py,dead-links.py,,on-demand
+script,,scripts/embedded-prose.py,embedded-prose.py,,on-demand
+script,,scripts/stranded-titles.py,stranded-titles.py,,on-demand
+script,,scripts/dead-opacity.py,dead-opacity.py,,on-demand
+script,,scripts/showing.py,showing.py,,on-demand
+script,,scripts/text-carriers.py,text-carriers.py,,on-demand
+script,,scripts/build-tree.py,build-tree.py,,on-demand
+script,,scripts/ocr-pdf.py,ocr-pdf.py,,on-demand
+script,,scripts/page-strips.py,page-strips.py,,on-demand

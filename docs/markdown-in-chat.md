@@ -94,12 +94,50 @@ operated by the [`tree`](../.claude/skills/tree/SKILL.md) skill, which owns
 the full parameterization (scope, depth, mode, gloss). A plain fenced code
 block (aligned box art, no links) stays as the pasteable fallback.
 
+## A custom URL scheme needs an explicit markdown link
+
+Measured 2026-08-19, by screenshot, handing over two `shortcuts://` install
+links three ways in one reply:
+
+| Form | Result |
+| --- | --- |
+| `[label](shortcuts://…)` | **tappable**, underlined, leading emoji intact |
+| the URL inside a code span | literal text |
+| the URL bare, on its own line | literal text, wrapped mid-token |
+
+So the client applies no scheme filtering: a `shortcuts://` href in an explicit
+markdown link is honored exactly like an `https://` one. What it does not do is
+**autolink** a bare custom scheme, which is the whole trap.
+
+**The habit that fails is one that http teaches.** A bare `https://` URL is
+commonly autolinked, so pasting one unadorned usually works, and a session that
+has got away with it reaches for the same move on a `shortcuts://` link. There
+the same keystrokes produce dead text. Worse, the failure is silent and looks
+like an encoding problem rather than a formatting one, which sends the next
+session hunting the payload instead of the wrapper.
+
+Backticks are the second way in, and they arrive by a different instinct: a
+long opaque URL *looks* like code, so it gets a code span, and the code span is
+precisely what strips the link. That is the same "a code span cannot contain a
+link" constraint the table section above states for indentation, met from the
+other direction.
+
+The rule is therefore unconditional, and it is worth stating even though the
+surfacing conventions already say something like it: **a link the reader is
+meant to tap is written `[label](url)`, whatever its scheme.** For 📋 and 📲
+handovers, where one tap is the entire deliverable, there is no acceptable
+second form. The URL still has to be emitted by its generator and pasted
+unedited into the parentheses; the markdown wrapper is the only thing being
+added.
+
 ## Rules of thumb
 
 - Structure that would be a nested bullet list → a markdown table.
 - Depth/indentation in a table → a surviving character (code span, U+2800,
   or a visible rail), never plain space or tab.
 - Tappable node → the link sits outside any code span.
+- A `shortcuts://` or other custom-scheme link → always `[label](url)`; the
+  client honors the href but will not autolink it bare.
 - Alignment matters more than links → a fenced code block.
 - New chat client → re-probe the trim and the survivors before trusting
   them; the behavior is renderer-specific.

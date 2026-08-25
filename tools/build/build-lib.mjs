@@ -7,7 +7,7 @@
 // Unlike tools/build/build.mjs (which walks a single page's gh.load graph and
 // caches only what that page reaches), this caches *every* lib/*.js, so a page
 // can adopt the whole library with one import instead of a gh.load chain. It
-// reuses the same emitter (lib/kits/build.js, window.buildKit.emit) so the
+// reuses the same emitter (lib/build.js, window.buildKit.emit) so the
 // format can't drift from the per-page build or the in-browser baker.
 //
 // Auto-boot: emit() already runs gh-boot.js (GitHub access + console + vanilla
@@ -45,7 +45,7 @@ const allJs = walk(libDir)
   .filter(rel => rel !== 'gh-api.js') // the loader itself is emitted separately
   .sort();
 
-const { buildKit } = loadKit(repoRoot, 'lib/kits/build.js');
+const { buildKit } = loadKit(repoRoot, 'lib/build.js');
 const ghApiSrc = readFileSync(path.join(libDir, 'gh-api.js'), 'utf8');
 
 // cache: { 'lib/<path>': source } — what GH.prototype.get receives.
@@ -54,8 +54,14 @@ for (const rel of allJs) cache['lib/' + rel] = readFileSync(path.join(libDir, re
 
 // Register all components, then boot Alpine (alpine-bundle.js last — it fires
 // alpine:init, which runs every component's registration handler).
+//
+// kits/url-params.js and kits/repo-address.js go FIRST, ahead of the
+// components. They are the kits a component reads at init: stage.js delegates
+// the fragment-first param read to one and the owner/repo[@ref]:path grammar to
+// the other, and a page's own gh.load chain runs AFTER this import, so a
+// component that read a stage link during init would find them undefined.
 const components = allJs.filter(p => p.startsWith('alpineComponents/'));
-const extraBoot = [...components, 'alpine-bundle.js'];
+const extraBoot = ['kits/url-params.js', 'kits/repo-address.js', 'kits/csv.js', ...components, 'alpine-bundle.js'];
 
 const header = `// dist/web-tools.js — the pre-build: the whole web-tools lib/ frozen into one
 // self-booting, offline artifact (the gh-api.js loader + an inlined source cache
@@ -72,8 +78,25 @@ const header = `// dist/web-tools.js — the pre-build: the whole web-tools lib/
 const out = buildKit.emit({ ghApiSrc, cache, repo: REPO, defaultRef: 'main', header, extraBoot });
 
 const distDir = path.join(repoRoot, 'dist');
-mkdirSync(distDir, { recursive: true });
 const outPath = path.join(distDir, 'web-tools.js');
+
+// --check: compare instead of write, the same idiom pages-index uses. The
+// commit hook is supposed to keep this file in lockstep with lib/, but a hook
+// only runs where it is wired: a session whose project root sits above the repo
+// never loads .claude/settings.json, and the staleness was silent. Emit is
+// deterministic, so comparing bytes is the whole test.
+if (process.argv.includes('--check')) {
+  let cur = '';
+  try { cur = readFileSync(outPath, 'utf8'); } catch {}
+  if (cur !== out) {
+    console.error('build:lib: dist/web-tools.js is stale — run `npm run build:lib`.');
+    process.exit(1);
+  }
+  console.log('build:lib: dist/web-tools.js is up to date.');
+  process.exit(0);
+}
+
+mkdirSync(distDir, { recursive: true });
 writeFileSync(outPath, out);
 
 const kb = (Buffer.byteLength(out) / 1024).toFixed(0);

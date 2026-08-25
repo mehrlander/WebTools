@@ -13,7 +13,7 @@ At session start, only `web-tools` and `load-skill` are registered from web-tool
 
 ## The library
 
-`manifest.json` lists every available skill. Each entry has:
+`manifest.csv` lists every available skill. Each entry has:
 
 - `name`: the slug that matches the folder name (`arriving-together`, `xlsx`, etc.)
 - `description`: the same description text the skill's own `SKILL.md` carries in its frontmatter, provided so consumers can decide relevance without fetching every body.
@@ -30,7 +30,9 @@ Trigger phrases live in the `load-skill` skill's description. Only fire on expli
 
 Skill bodies are edited in place here. Any repo that loads them picks up the change on next fetch: the URL always points at `main`. No target repo needs to be updated when a body changes.
 
-Adding a new skill: create `web-tools/skills/<name>/SKILL.md` with the standard YAML frontmatter (`name`, `description`), then add an entry to `manifest.json`. That's it. Callers see the new skill on their next manifest fetch.
+**That holds for `/load-skill` and not for an account-level install.** A skill also installed at claude.ai account scope has a second copy this library does not reach, and that copy is the one that fires unprompted, while the library's is fetched deliberately. Editing here therefore leaves the stale version in charge. Either drop the account copy and let `/load-skill` be the only route, or re-upload after every edit. Measured 2026-08-10: `apple-shortcuts-actions` was rewritten here while the account copy went on triggering on a renamed shortcut and a superseded payload format.
+
+Adding a new skill: create `web-tools/skills/<name>/SKILL.md` with the standard YAML frontmatter (`name`, `description`), then add an entry to `manifest.csv`. That's it. Callers see the new skill on their next manifest fetch.
 
 Removing a skill: delete its folder and remove its manifest entry. Consumers that had already resolved a URL to it will fail on next fetch; that's the intended failure mode.
 

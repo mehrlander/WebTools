@@ -1,8 +1,8 @@
 # web-tools
 
-A workshop for browser-based tools with a focus on working with data.
+Two things live here: the **Web Tools app**, the front door to the development estate, and the workshop that builds it, browser-based tools with a focus on working with data.
 
-⭐ **[Open show-repo, the dashboard →](https://mehrlander.github.io/web-tools/pages/show-repo/)** — browse any repo, stage and move files across repos, read cross-repo activity, and reach the tools. The [pages index](https://mehrlander.github.io/web-tools/pages/) lists every page with screenshots, live previews, and source links.
+⭐ **[Open the Web Tools app →](https://mehrlander.github.io/web-tools/app/)**: browse any repo, stage and move files between repos, read cross-repo activity, and reach the tools. [docs/APP.md](docs/APP.md) states the mission; show-repo is the shell's internal name, and [docs/show-repo.md](docs/show-repo.md) is its reference. The [pages index](https://mehrlander.github.io/web-tools/pages/) lists every page with screenshots, live previews, and source links.
 
 [Pages](#pages), [bookmarklets](#bookmarklets), [popups](#popups), [console snippets](#console-snippets), plus the parts used to build them.
 
@@ -64,8 +64,9 @@ already done so.
 A few durable entries by name:
 [compression-helper](https://mehrlander.github.io/web-tools/pages/compression-helper.html)
 turns pasted text into a compact blob or a self-decompressing bookmarklet;
-[show-repo](https://mehrlander.github.io/web-tools/pages/show-repo/)
-browses any GitHub repo as a sidebar tree with a viewer pane;
+[show-repo](https://mehrlander.github.io/web-tools/app/)
+is the Web Tools app's shell: the estate dashboard, the stage, activity,
+and the per-repo views;
 [toss-render](https://mehrlander.github.io/web-tools/pages/toss-render.html)
 renders HTML carried in the URL fragment (the 🥏 primitive);
 [launcher](https://mehrlander.github.io/web-tools/pages/launcher.html)
@@ -213,7 +214,7 @@ On top of that, two collections by convention:
 - **Components** in `lib/alpineComponents/` are reusable UI pieces registered
   as `Alpine.data(...)`.
 - **Kits** in `lib/kits/` are logic libraries, not dependent on Alpine.
-  [kits/README.md](lib/kits/README.md) is the census.
+  [kits/README.md](lib/kits/README.md) is the full list.
 
 The same handful of concerns drove every piece of it:
 
@@ -251,7 +252,7 @@ Three docs go deeper:
   chain into a standalone offline artifact, with a byte-identical `verify-build`
   check).
 - **[lib/kits/README.md](lib/kits/README.md)**: the logic libraries. What
-  each kit exposes on `window`, with usage examples; the census lives
+  each kit exposes on `window`, with usage examples; the full list lives
   there, not here.
 
 The shape of a loaded page in one block:
@@ -277,9 +278,17 @@ The shape of a loaded page in one block:
     await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
   }
 
-  await gh.load('kits/persistence.js');                   // logic kits (resolved under lib/)
-  await gh.load('alpineComponents/viewer.js');            // UI components
-  await gh.load('alpine-bundle.js');                      // boots Alpine
+  // Publish the chain as window.__pageBoot: gh-boot's FAB timer awaits it
+  // before starting its own Alpine, so a chain slower than the timer (a phone
+  // on a slow connection, a #gh= toss routing every load through the API)
+  // cannot have the page's x-data initialized against helpers that have not
+  // loaded yet. A page that skips this line still works until it is slow.
+  window.__pageBoot = (async () => {
+    await gh.load('kits/persistence.js');                 // logic kits (resolved under lib/)
+    await gh.load('alpineComponents/viewer.js');          // UI components
+    await gh.load('alpine-bundle.js');                    // boots Alpine
+  })();
+  await window.__pageBoot;
 </script>
 ```
 

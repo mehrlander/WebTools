@@ -1,10 +1,12 @@
 ---
 id: github-jumpover-coverage-7bkgmk
 title: Finish GitHub jump-over coverage across show-repo views
-status: backlog
+status: done
 project: show-repo
 opened: 2026-07-17
-next: sweep the remaining views (stage rows, atlas, recent panel, compare) for missing one-tap GitHub links
+closed: 2026-07-30
+session: claude/github-icon-placement-3d06i7
+next: none; the named views all carry their jump-over
 ---
 # Finish GitHub jump-over coverage across show-repo views
 
@@ -24,3 +26,18 @@ or the design notes record why it deliberately does not.
 ## Progress log
 - 2026-07-17: Filed from the estate-view session; principle documented in
   docs/show-repo.md and the page's design notes, first three jump-overs landed.
+- 2026-07-30: Closed on `claude/github-icon-placement-3d06i7`. All four named
+  gaps filled: staged rows and the Recent/Search finder (stage.js `itemGh`, at
+  each item's own repo@ref), the sidebar Recent entries (shell `fileGhUrl`),
+  compare's per-file rows (blob at head; a `removed` file stays inert, having
+  no head-side blob), and the atlas header (its ref chip became the repo's
+  link). The sweep turned up the reason coverage alone was not enough: the one
+  glyph carries four meanings (repo menu, repo/branch destination, the manifest
+  behind a whole view, an exact file), and the Map's Transport header showed
+  the cost, setting a bare icon after the code span naming
+  pages/toss-render.html while pointing at docs/routes.json. So the pass also
+  separated them: a manifest link is labelled ("Curate") and sits at the
+  header's far edge, and an exact-file link carries a source peek
+  (lib/source-peek.js). The viewer's and config view's GitHub actions
+  deliberately have none, both sitting above the file's contents already on
+  screen; that exception is recorded in the design notes.

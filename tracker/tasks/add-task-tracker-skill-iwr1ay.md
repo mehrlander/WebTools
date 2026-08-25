@@ -2,7 +2,6 @@
 id: add-task-tracker-skill-iwr1ay
 title: Add a task-tracker skill
 status: done
-track: independent
 opened: 2026-07-14
 closed: 2026-07-15
 session: claude/agent-file-retrieval-skill-tv4can

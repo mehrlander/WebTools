@@ -160,13 +160,13 @@
 
         runCode() {
           const blobHtml = this.getRunnerHtml();
-          const url = URL.createObjectURL(new Blob([blobHtml], { type: 'text/html' }));
+          const url = URL.createObjectURL(new Blob([blobHtml], { type: 'text/html;charset=utf-8' }));
           this.$refs.hiddenRunner.src = url;
         },
 
         openPreview() {
           const blobHtml = this.getRunnerHtml();
-          const url = URL.createObjectURL(new Blob([blobHtml], { type: 'text/html' }));
+          const url = URL.createObjectURL(new Blob([blobHtml], { type: 'text/html;charset=utf-8' }));
           window.open(url, '_blank', 'width=800,height=600');
         }
       }));

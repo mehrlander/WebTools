@@ -1,0 +1,22 @@
+locator,creation_mode,analysis_use,description
+CLAUDE.md,hybrid-authored,concept-vocabulary,Repo instructions; declares much of the estate's working vocabulary
+README.md,hybrid-authored,concept-vocabulary,The hub's own account of itself
+docs/,hybrid-authored,concept-vocabulary,The portable conventions and the repo's design docs; the densest vocabulary here
+skills/,mixed,concept-vocabulary,"Skill prose is authored vocabulary, but 117 vendored .xsd schemas sit alongside it and are supplied; not yet isolated"
+tracker/,hybrid-authored,concept-vocabulary,"Task files. Their boilerplate headings (Progress log, Definition of done) rank high in termlab and that is arguably correct"
+sites/,hybrid-authored,prose-review,Long-form written pages
+popups/,hybrid-authored,exclude,Browser tool markup
+lib/,hybrid-authored,exclude,Library JavaScript; code register
+tools/,hybrid-authored,exclude,Build and test tooling; code register
+scripts/,hybrid-authored,exclude,Utility scripts; code register
+bookmarklets/,hybrid-authored,exclude,Single-purpose JavaScript
+console/,hybrid-authored,exclude,Console snippets
+pages/,hybrid-authored,exclude,"Browser pages and their thumbnails; the prose lives in HTML comments, not extractable as text"
+pages/wsl-sync/data/,supplied,source-corpus,"Bill records fetched from the Washington State Legislature API by the wsl-fetch cron; without this row the pages/ row above calls 134,022 words of supplied text hybrid-authored"
+pages/wsl-sync/rcw/,supplied,source-corpus,"The RCW hierarchy pulled whole, titles through section captions; supplied statute text"
+data/,mechanical,exclude,Generated data
+data/design/content.csv,hybrid-authored,exclude,This registry; curated rows over generated data
+dist/,mechanical,exclude,The pre-build; lib/ frozen into one artifact by build:lib
+archive/,mixed,exclude,Retired code and docs kept as a record
+package.json,mechanical,exclude,Dependency manifest
+package-lock.json,mechanical,exclude,Generated lockfile
