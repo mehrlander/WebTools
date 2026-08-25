@@ -769,6 +769,63 @@ try {
   await page.waitForTimeout(2500);
   ok('a note that was FILED does not come back', !(await buffer()).trim(), await buffer());
 
+  // ── 4b. The two modifier taps ────────────────────────────────────────
+  // Keyboard, so desktop only in practice, but the checks are the cheap half:
+  // that a bare tap acts, and that the same key inside a chord does not.
+  console.log('the modifier taps:');
+  await open();
+  // The grant is remembered by now, so the page has already begun on the REAL
+  // recognizer that this Chromium carries, before the stub went in. Cycle the
+  // engine so the fake is the one running, and start from an empty buffer.
+  await page.evaluate(() => {
+    const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0];
+    c.d.stop(); c.d.text = '';
+  });
+  await page.waitForTimeout(300);
+  await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].d.start());
+  await page.waitForTimeout(200);
+  await say('so I went to the store');
+  ok('a pause writes the full stop', /store\.$/.test((await buffer()).trim()), await buffer());
+
+  await page.keyboard.press('Control');
+  await page.waitForTimeout(120);
+  ok('a bare Control tap takes it back', !/store\./.test(await buffer()), await buffer());
+
+  await say('And then I came back');
+  ok('and the sentence runs on in lower case',
+    /store and then i came back/i.test(await buffer())
+      && !/store\. And/.test(await buffer()), await buffer());
+
+  // The chord is the reason this listens on keyup rather than keydown: the
+  // Control keydown fires first and looks exactly like the tap.
+  const wasChord = (await buffer()).trim();
+  await page.keyboard.press('Control+KeyC');
+  await page.waitForTimeout(120);
+  ok('Ctrl+C is a copy, not an un-ending', (await buffer()).trim() === wasChord, await buffer());
+
+  await say('a new thought');
+  const capsArmed = () => page.evaluate(() =>
+    !!document.querySelector('[x-data="dictate"]')._x_dataStack[0].capsArmed);
+  await page.keyboard.press('Shift');
+  await page.waitForTimeout(120);
+  ok('a bare Shift tap arms the capital', await capsArmed());
+  ok('and the header says so', await page.locator('i.ph-text-aa').isVisible());
+
+  await say('dexie', false);
+  ok('the grey text already wears it', /Dexie/.test(await buffer()), await buffer());
+  await say('dexie held the rest');
+  ok('the word lands capitalised', /Dexie held the rest/.test(await buffer()), await buffer());
+  ok('and one word spends the arming', !(await capsArmed()));
+
+  await page.evaluate(() => {
+    const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0];
+    c.d.select(c.d.text.indexOf('rest'), c.d.text.indexOf('rest') + 4); c.paint();
+  });
+  await page.keyboard.press('Shift');
+  await page.waitForTimeout(120);
+  ok('with a word selected, Shift recases it instead of arming',
+    /Rest/.test(await buffer()) && !(await capsArmed()), await buffer());
+
   // ── 5. Removing an autocorrect row ───────────────────────────────────
   // Last, because it writes a shorter list into the page's own state and the
   // correction assertions above need both entries still in it.

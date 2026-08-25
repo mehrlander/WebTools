@@ -624,6 +624,99 @@ test('a paragraph break is a gap too, so the caret closes it the same way', () =
   assert.equal(d.text, 'first thought second thought');
 });
 
+// ── Un-ending, and the capital ──────────────────────────────────────────────
+// The stitch one keystroke earlier: the pause has written its full stop and
+// the reader has not said the next words yet, so there is no seam to find.
+
+test('un-ending takes back the pause\'s full stop and the sentence runs on', () => {
+  const d = engine();
+  d.start();
+  FakeSR.last.say([{ t: 'so I went to the store', final: true }]);
+  assert.equal(d.text, 'so I went to the store.');
+  assert.equal(d.canStitch, false, 'nothing follows the mark, so there is no seam');
+  assert.equal(d.canUnend, true);
+  assert.equal(d.unend(), true);
+  assert.equal(d.text, 'so I went to the store');
+
+  FakeSR.last.say([{ t: 'And then I came back', final: true }]);
+  assert.equal(d.text, 'so I went to the store and then I came back.',
+    'the capital comes down, the way it does after a stitch');
+  d.stop();
+});
+
+test('un-ending declines where there is nothing to take back', () => {
+  assert.equal(withText('no mark here').canUnend, false);
+  assert.equal(withText('no mark here').unend(), false);
+  assert.equal(withText('a comma, then').canUnend, false,
+    'only the full stop is the pause\'s guess; a comma was meant');
+
+  const mid = withText('one. two.');
+  mid.caretAt(4);
+  assert.equal(mid.canUnend, false, 'the caret is not at the end, so this is stitch territory');
+
+  const sel = withText('one two.');
+  sel.select(0, 3);
+  assert.equal(sel.canUnend, false, 'a live selection means the reader is aiming at a word');
+});
+
+test('un-ending is one undo step', () => {
+  const d = withText('done.');
+  d.unend();
+  assert.equal(d.text, 'done');
+  d.undo();
+  assert.equal(d.text, 'done.');
+});
+
+test('an armed capital rides every revision of the interim and is spent once', () => {
+  const seen = [];
+  const d = engine({ onInterim: (t) => seen.push(t) });
+  d.start();
+  d.armCapital();
+  assert.equal(d.capitalArmed, true);
+
+  FakeSR.last.say([{ t: 'dexie' }]);
+  FakeSR.last.say([{ t: 'dexie is' }]);
+  assert.deepEqual(seen.slice(-2), ['Dexie', 'Dexie is'],
+    'the capital holds across revisions rather than flickering off');
+
+  FakeSR.last.say([{ t: 'dexie is the store', final: true }]);
+  assert.equal(d.text, 'Dexie is the store.');
+  assert.equal(d.capitalArmed, false, 'one shot: the segment that landed spent it');
+
+  FakeSR.last.say([{ t: 'and it works', final: true }]);
+  assert.equal(d.text, 'Dexie is the store. and it works.',
+    'the next segment is left alone');
+  d.stop();
+});
+
+test('an armed capital beats the continuation rule, which would have lowered it', () => {
+  // A comma left at the end is what a continuation IS here, and backWord is
+  // the shortest honest way into that state: it reads the flag off the buffer.
+  const d = withText('we shipped it, so');
+  d.backWord();
+  d.start();
+  FakeSR.last.say([{ t: 'Dexie held the rest', final: true }]);
+  assert.match(d.text, /it, dexie held/, 'a continuation lowers a plain capital');
+  d.stop();
+
+  const e = withText('we shipped it, so');
+  e.backWord();
+  e.start();
+  e.armCapital();
+  FakeSR.last.say([{ t: 'Dexie held the rest', final: true }]);
+  assert.match(e.text, /it, Dexie held/, 'unless the reader asked for the capital');
+  e.stop();
+});
+
+test('stopping drops an arming whose word is not coming', () => {
+  const d = engine();
+  d.start();
+  d.armCapital();
+  d.stop();
+  assert.equal(d.capitalArmed, false);
+  assert.equal(d.armCapital(false), false, 'and it can be disarmed by hand');
+});
+
 test('delete takes the selection when there is one, and the word before a caret otherwise', () => {
   const d = withText('the quick brown fox');
   d.select(4, 10);                       // "quick "

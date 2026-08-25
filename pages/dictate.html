@@ -58,6 +58,13 @@
     locks takes the microphone with it, and nothing about that failure tells
     the reader what happened.
 
+    TWO MODIFIER TAPS, for the desk rather than the phone, where the hands are
+    free and idle. Both say something only the reader can know, because it is
+    about words not yet spoken: CONTROL un-ends the sentence the pause just
+    closed, so the words still coming belong to it; SHIFT capitalizes the next
+    word, or recases the selected one. Tapped alone, acted on release, so a
+    chord is not mistaken for one. See "The two modifier taps" below.
+
     IT COMES BACK FROM THE BACKGROUND. Switching apps kills the recognition
     outright, past anything a relaunch timer can see, so returning to a
     visible page restarts it if the reader never asked to stop.
@@ -254,6 +261,7 @@
       get breakable() { this.beat; return !this.edit && !!this.text && !!(this.d && this.d.segments.length); },
       get canUndo() { this.beat; return !!(this.d && this.d.canUndo); },
       get canRedo() { this.beat; return !!(this.d && this.d.canRedo); },
+      get capsArmed() { this.beat; return !!(this.d && this.d.capitalArmed); },
 
       // THE PAD, ported from the notes composer (kits/annotate.js) rather than
       // from the stage's card, which is where this page's first cut came from
@@ -327,10 +335,80 @@
           if (this.listening) { this.d.start(); this.wake(); }
         });
 
+        this.bindKeys();
+
         // The remembered grant. WebKit will not raise the microphone prompt
         // outside a user gesture, so the first arrival must be tapped; after
         // that the permission is the site's and the page can simply begin.
         if (ls.get(GRANT) && this.d.available()) this.begin();
+      },
+
+      // ── The two modifier taps ─────────────────────────────────────────
+      // A desk is not this page's home, but it is where a long note actually
+      // gets dictated, and there the two hands are free and idle. Both keys
+      // say the same kind of thing, which is why they are a pair: the engine
+      // is about to guess a sentence boundary wrong, and only the reader knows
+      // it, because only the reader knows what they are about to say.
+      //
+      //   CONTROL   this is not a new sentence. The pause wrote a full stop
+      //             and the words still to come belong to what came before.
+      //   SHIFT     the next word is a capital: a name, a product, an
+      //             initialism the recognizer has no way to hear as one.
+      //
+      // A TAP, NOT A CHORD, and that is the whole difficulty. The reader's
+      // hands are not on the keys and there is no second key to press, so the
+      // gesture is press-and-release with nothing in between. `keydown` alone
+      // cannot serve: it fires as the first half of Ctrl+C, it repeats while
+      // held, and Shift is held through every capital typed in the edit half.
+      // So the press only ARMS, anything else that happens cancels it, and the
+      // release is what acts. That is the standard read of a bare modifier and
+      // it is the reason this is fifteen lines rather than two.
+      //
+      // Control acts at once and shows its work: the full stop disappears.
+      // Shift cannot, since the word it capitalizes has not been said, so it
+      // arms the kit and the header wears the indicator until a word spends it.
+      bindKeys() {
+        // The key that went down alone, or null. Any second key, any pointer,
+        // and any focus leaving the page clears it: all three mean the press
+        // was part of something else.
+        let tap = null;
+        const cancel = () => { tap = null; };
+        const mine = (e) => !this.edit
+          && !e.target?.closest?.('input, textarea, select, [contenteditable]');
+
+        addEventListener('keydown', (e) => {
+          if (e.repeat) return;                 // a held key is not a tap
+          tap = (e.key === 'Control' || e.key === 'Shift') && mine(e) ? e.key : null;
+        }, true);
+        addEventListener('keyup', (e) => {
+          const k = tap; tap = null;
+          if (k !== e.key || !mine(e)) return;
+          // A chord that ends with the modifier released last (Ctrl+C held
+          // through the C's own keyup) already cleared `tap` on the C's
+          // keydown, so nothing reaches here.
+          if (k === 'Control') this.unend();
+          else this.capitalize();
+        }, true);
+        addEventListener('pointerdown', cancel, true);
+        addEventListener('blur', cancel);
+      },
+
+      // Inert where there is nothing to take back, which is the point of it
+      // being its own act rather than the backspace: a mistaken press on a
+      // buffer ending in a word must not eat the word.
+      unend() {
+        if (!this.d || !this.d.unend()) return;
+        this.paint();
+      },
+
+      // With a word selected the reader is pointing at a capital that already
+      // exists and can simply be changed, so the same key means recase. With
+      // nothing selected there is no word yet, so it arms.
+      capitalize() {
+        if (!this.d) return;
+        if (this.d.hasSelection) { this.d.recase('title'); this.paint(); return; }
+        this.d.armCapital(!this.d.capitalArmed);
+        this.beat++;
       },
 
       // ── Starting ──────────────────────────────────────────────────────
@@ -1341,6 +1419,11 @@
       </button>
       <span class="font-mono text-sm opacity-40 tabular-nums" x-text="started ? clock : ''"></span>
       <span class="font-mono text-sm opacity-40 tabular-nums" x-text="words + 'w'"></span>
+      <!-- The armed capital has nothing on screen to show yet: the word it
+           applies to has not been said. So it wears the ring red the pins and
+           the target wear, which is this page's one word for "live". -->
+      <i x-show="capsArmed" x-cloak class="ph ph-text-aa text-lg text-error"
+         title="The next word you say will be capitalised (tap Shift again to cancel)"></i>
     </div>
 
     <!-- THE TARGET, on the centre line. Two gestures on one button, because
