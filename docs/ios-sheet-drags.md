@@ -137,5 +137,16 @@ but recorded two move events actually lost the gesture to the browser.
 with the skip selector above; it arms the cursor pad, the annotator card's drag
 handle, and the region cover. The launcher in
 [`lib/alpineComponents/fab.js`](../lib/alpineComponents/fab.js) carries the same
-through an Alpine binding. Path 2 is `overscroll-behavior: contain` on the
-composer's two scrolling boxes, its editor, and the fab drawer's panes.
+through an Alpine binding. [`pages/dictate.html`](../pages/dictate.html) carries
+its own copy for its cursor pad and its selection pins. Path 2 is
+`overscroll-behavior: contain` on the composer's two scrolling boxes, its
+editor, and the fab drawer's panes.
+
+**A handle that is REBUILT cannot be held from an ancestor,** which the dictate
+page hit and is worth knowing before reaching for one listener on a container. A
+touch keeps the element it started on as its target even after that element
+leaves the document, and a detached target has no path to an ancestor's
+listener, so a delegated hold goes quiet on the first repaint of a drag. That is
+the one moment it is for. The page therefore re-attaches per element on every
+paint, which is what "attach to the element, and be explicit" above costs when
+the element is not stable.

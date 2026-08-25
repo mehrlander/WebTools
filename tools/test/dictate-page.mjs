@@ -375,6 +375,70 @@ try {
   ok('tapping the target puts the armed pin down', (await armed()) === null, String(await armed()));
   ok('...without disturbing the selection', !!(await sel()));
 
+  // ── DRAGGING A PINHEAD DIRECTLY ──────────────────────────────────────
+  // Tap-then-pad is still there; this is the gesture every reader already
+  // expects of a handle. The finger sits on the BALL, which is off the line,
+  // so the objection that made this surface tap-first never applied to it.
+  await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.d.select(4, 20); c.armed = null; c.paint(); });
+  await page.waitForTimeout(150);
+  const endPin = await page.locator('[x-ref="layer"] [data-edge="end"]').boundingBox();
+  const wasSel = await sel();
+  await page.mouse.move(endPin.x + endPin.width / 2, endPin.y + endPin.height - 4);
+  await page.mouse.down();
+  await page.waitForTimeout(60);
+  ok('a pinhead arms itself on the way down', (await armed()) === 'end', String(await armed()));
+  for (let i = 0; i < 10; i++) {
+    await page.mouse.move(endPin.x + endPin.width / 2 + 12 * (i + 1), endPin.y + endPin.height - 4);
+    await page.waitForTimeout(25);
+  }
+  const during = await sel();
+  ok('dragging it moves that edge', !!during && during.end > wasSel.end,
+    `${JSON.stringify(wasSel)} -> ${JSON.stringify(during)}`);
+  ok('and leaves the other edge alone', !!during && during.start === wasSel.start);
+  await page.mouse.up();
+  await page.waitForTimeout(150);
+  ok('the release keeps the edge armed, so the pad can refine it',
+    (await armed()) === 'end', String(await armed()));
+  ok('and does not fall through to place a caret in the text', !!(await sel()));
+
+  // The pins have to vanish from hit testing while one is being dragged, or
+  // caret-from-point answers with the pin the aim point is tracking.
+  await page.evaluate(() => {
+    const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0];
+    c.pinDrag = 'end'; c.armed = 'end'; c.paint();
+  });
+  await page.waitForTimeout(150);
+  ok('a pin is transparent to hit testing while a pin drag is live',
+    await page.evaluate(() => {
+      const pin = document.querySelector('[x-ref="layer"] [data-edge]');
+      return pin ? getComputedStyle(pin).pointerEvents === 'none' : false;
+    }));
+  await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.pinDrag = null; c.paint(); });
+  await page.waitForTimeout(120);
+
+  // VARIANT D against the iOS sheet: touch-action alone was measured on device
+  // to let the sheet go, so both touch events must be cancellable and cancelled
+  // on the pad and on every pin, and the pins are rebuilt on every paint.
+  const holds = await page.evaluate(() => {
+    const probe = (el) => {
+      if (!el) return null;
+      const seen = {};
+      for (const type of ['touchstart', 'touchmove']) {
+        const ev = new Event(type, { bubbles: true, cancelable: true });
+        el.dispatchEvent(ev);
+        seen[type] = ev.defaultPrevented;
+      }
+      return seen;
+    };
+    return {
+      pad: probe(document.querySelector('button:has(i.ph-crosshair)')),
+      pin: probe(document.querySelector('[x-ref="layer"] [data-edge]')),
+    };
+  });
+  ok('the pad cancels touchstart, which touch-action cannot do', !!holds.pad?.touchstart);
+  ok('the pad cancels touchmove, the half that holds the sheet', !!holds.pad?.touchmove);
+  ok('a repainted pin carries the same hold', !!holds.pin?.touchstart && !!holds.pin?.touchmove);
+
   // And the target's own armed state has the same way out.
   await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.d.clearRange(); c.armed = null; c.paint(); });
   await target.click();

@@ -148,12 +148,13 @@
   -webkit-touch-callout: default; -webkit-user-select: text; user-select: text;
 }
 
-/* A PIN IS FURNITURE WHILE THE PAD IS DRIVING IT. A pin's hit box is 32px
-   wide, so caret-from-point keeps answering with the pin rather than with the
-   word under it, and the edge does not move until the aim point has cleared
-   it. The composer measured the cost at a 32px dead band per pin, stepping 13,
-   15, 17 across a 120px sweep. Taps still arm a pin; only for the length of a
-   drag is it transparent. */
+/* A PIN IS FURNITURE WHILE ANYTHING IS DRIVING IT, the pad or the pin's own
+   drag. A pin's hit box is 32px wide, so caret-from-point keeps answering with
+   the pin rather than with the word under it, and the edge does not move until
+   the aim point has cleared it. The composer measured the cost at a 32px dead
+   band per pin, stepping 13, 15, 17 across a 120px sweep. Taps still arm a
+   pin; only for the length of a drag is it transparent, and a pin dragging
+   ITSELF needs this most of all, since the aim point tracks the pin. */
 [data-dictate-pad] [data-edge] { pointer-events: none; }
 </style>
 
@@ -359,6 +360,7 @@
       //   double tap                open the keyboard, caret where it landed
       //   single tap                place the caret, or move an armed edge
       //   tap a pinhead             arm that edge, or put it down
+      //   drag a pinhead            move that edge, one to one
       //   mouse drag                select, for a pointer that has no problem
       //
       // No triple, and no arrow cluster. The triple's select-all cannot
@@ -366,19 +368,49 @@
       // surface for a textarea and the third lands somewhere this listener
       // cannot hear. The arrows are retired by the pad below, which drags an
       // armed pin with the same gesture it drags the caret.
+      // A CLIENT POINT AS AN OFFSET INTO THE BUFFER, which is the one question
+      // every gesture here asks. Three of them used to carry their own copy of
+      // this, differing only in which local named the host.
+      pointOffset(cx, cy) {
+        const host = this._host;
+        if (!host) return null;
+        const doc = host.ownerDocument;
+        const r = doc.caretRangeFromPoint ? doc.caretRangeFromPoint(cx, cy) : null;
+        const pt = !r && doc.caretPositionFromPoint ? doc.caretPositionFromPoint(cx, cy) : null;
+        const node = r ? r.startContainer : pt ? pt.offsetNode : null;
+        const off = r ? r.startOffset : pt ? pt.offset : 0;
+        return node ? window.Dictate.offsetAt(host, node, off) : null;
+      },
+
+      // ── Holding a drag against an iOS sheet ───────────────────────────
+      // `touch-action: none` IS NECESSARY AND NOT SUFFICIENT, which is the one
+      // thing to remember here. A page opened from an app on a phone is
+      // presented in a sheet the reader dismisses by dragging down, and the
+      // host decides that from the web view's SCROLL rather than from touches,
+      // so a handle carrying only touch-action still lets the sheet go. This
+      // is variant D of five measured on device (docs/ios-sheet-drags.md):
+      // touch-action, plus a cancelled touchstart and touchmove.
+      //
+      // `{ passive: false }` is not optional, since a passive listener cannot
+      // cancel anything and browsers default both events to passive. Nothing
+      // is lost: preventDefault on a TOUCH event suppresses the compatibility
+      // MOUSE events, not the pointer ones, so every drag below runs as before.
+      // It does suppress the compatibility CLICK, which costs nothing here
+      // because the pad and the pins are driven from pointerdown.
+      holdTouch(node) {
+        if (!node || node._heldTouch) return;
+        node._heldTouch = true;
+        const stop = (e) => e.preventDefault();
+        node.addEventListener('touchstart', stop, { passive: false });
+        node.addEventListener('touchmove', stop, { passive: false });
+      },
+
       bind(host) {
         this._host = host;
         const surface = host.parentElement || host;
         let timer = null, x = 0, y = 0, long = false, lastTap = 0, taps = 0, anchor = null, dragging = false;
         const clear = () => { if (timer) { clearTimeout(timer); timer = null; } };
-        const at = (cx, cy) => {
-          const doc = host.ownerDocument;
-          const r = doc.caretRangeFromPoint ? doc.caretRangeFromPoint(cx, cy) : null;
-          const pt = !r && doc.caretPositionFromPoint ? doc.caretPositionFromPoint(cx, cy) : null;
-          const node = r ? r.startContainer : pt ? pt.offsetNode : null;
-          const off = r ? r.startOffset : pt ? pt.offset : 0;
-          return node ? window.Dictate.offsetAt(host, node, off) : null;
-        };
+        const at = (cx, cy) => this.pointOffset(cx, cy);
         surface.addEventListener('pointerdown', (e) => {
           if (this.edit) return;
           // A mouse or a keyboard means the pins can go: drag and shift-click
@@ -418,7 +450,7 @@
           // a click and drop a caret where the selection just finished.
           if (dragging) { dragging = false; anchor = null; taps = 0; return; }
           anchor = null;
-          if (this.edit || long || this.padDrag) return;
+          if (this.edit || long || this.padDrag || this.pinDrag) return;
           const pin = e.target?.closest?.('[data-edge]');
           if (!pin && !surface.contains(e.target)) { taps = 0; return; }
           // ARMING ENDS A RUN. pointerdown already armed the pin, and counting
@@ -444,13 +476,107 @@
           this.paint();
         });
       },
-      layerTap(e) {
-        const edge = e.target?.closest?.('[data-edge]');
-        if (!edge) return;
+      // ── A pinhead is tapped OR dragged ────────────────────────────────
+      // Tapping arms the edge so the pad can walk it, which is the gesture
+      // this surface was built around: a finger dragging a selection edge
+      // covers the words it is aiming at. But the BALL sits off the line, one
+      // diameter above it or below it, so a finger on the ball is not over the
+      // text either. The objection never applied to the handle itself, and
+      // dragging one is what every reader already expects a handle to do. So
+      // both, and neither costs the other anything.
+      //
+      // The aim point is the BAR's centre carried by the finger's delta, not
+      // the finger. One to one, so what moves under the ball is what the ball
+      // was already marking, and the offset between thumb and line is whatever
+      // the reader chose by where they grabbed it.
+      pinDown(e) {
+        const box = e.target?.closest?.('[data-edge]');
+        if (!box) return;
         e.preventDefault(); e.stopPropagation();
-        const which = edge.getAttribute('data-edge');
-        this.armed = this.armed === which ? null : which;
+        let which = box.getAttribute('data-edge');
+        const was = this.armed === which;
+        // MEASURED BEFORE ANYTHING IS PAINTED. The bar is the pin's first
+        // child and it IS the text line, and paint() replaces this whole
+        // element, so reading it afterwards reads a detached node, whose
+        // getBoundingClientRect is all zeroes and reports no failure.
+        const bar = box.firstElementChild;
+        const br = bar?.getBoundingClientRect?.();
+        const from = br && br.height
+          ? { x: br.left + br.width / 2, y: br.top + br.height / 2, px: e.clientX, py: e.clientY }
+          : null;
+
+        // Armed on the way DOWN, so the ring is under the finger before it
+        // moves, and a drag never has to be told apart from a tap to paint it.
+        this.armed = which;
+        this.pinDrag = which;
         this.paint();
+        const EDGE = 6;
+        let moved = false;
+        const d = document;
+
+        const move = (ev) => {
+          if (!from || !this.d) return;
+          ev.preventDefault();
+          if (!moved && Math.abs(ev.clientX - from.px) < 6 && Math.abs(ev.clientY - from.py) < 6) return;
+          moved = true;
+          const b = this.$refs.view.getBoundingClientRect();
+          let ax = from.x + (ev.clientX - from.px);
+          let ay = from.y + (ev.clientY - from.py);
+          // Held against an edge, scroll, the same as the pad: an edge dragged
+          // to the bottom of a buffer longer than the screen would otherwise
+          // stop at whatever happens to be visible.
+          const v = this.$refs.view;
+          if (ay >= b.bottom - EDGE && v.scrollTop + v.clientHeight < v.scrollHeight) v.scrollTop += EDGE;
+          else if (ay <= b.top + EDGE && v.scrollTop > 0) v.scrollTop -= EDGE;
+          ax = Math.min(b.right - EDGE, Math.max(b.left + EDGE, ax));
+          ay = Math.min(b.bottom - EDGE, Math.max(b.top + EDGE, ay));
+          const i = this.pointOffset(ax, ay);
+          if (i == null) return;
+          const r = this.d.range;
+          if (!r) return;
+          const other = which === 'start' ? r.end : r.start;
+          // LANDING EXACTLY ON THE OTHER EDGE IS SKIPPED, not clamped. A
+          // zero-width range takes both pins off the screen mid-drag, and a
+          // clamp one character short means the edges can never cross at all.
+          // Skipping the frame keeps a live selection and lets the next move
+          // land past it.
+          if (i === other) return;
+          this.d.moveEdge(which, i);
+          // AND A CROSSING RENAMES THE PIN UNDER THE FINGER. setRange sorts,
+          // so dragging start past end makes the dragged edge the end; follow
+          // it, or the label the rest of the page is holding quietly lies.
+          if (which === 'start' && i > other) which = 'end';
+          else if (which === 'end' && i < other) which = 'start';
+          this.armed = which;
+          this.pinDrag = which;
+          this.paint();
+        };
+        const up = () => {
+          // CLEARED ON THE NEXT TICK, not here. These listeners are on the
+          // document in the CAPTURE phase, so they run before the same
+          // pointerup reaches the text box's own handler, and the pin is
+          // destroyed and rebuilt on every paint, so that handler hit-tests
+          // fresh and sees the WORDS rather than the pin it started on. The
+          // pad has no such trouble: its button survives the drag and holds
+          // pointer capture, so the release never reaches the text at all.
+          setTimeout(() => { this.pinDrag = null; }, 0);
+          // A TAP IS A DRAG THAT WENT NOWHERE, and it toggles, which is the
+          // behaviour the pinheads have always had: tap to arm, tap again to
+          // put down. A drag leaves the edge armed, since the pad refining it
+          // is the obvious next thing and it is already pointed at the text.
+          if (!moved && was) this.armed = null;
+          this.paint();
+          d.removeEventListener('pointermove', move, true);
+          d.removeEventListener('pointerup', up, true);
+          d.removeEventListener('pointercancel', up, true);
+          d.body.style.userSelect = ''; d.body.style.webkitUserSelect = ''; d.body.style.touchAction = '';
+        };
+        d.body.style.userSelect = 'none';
+        d.body.style.webkitUserSelect = 'none';
+        d.body.style.touchAction = 'none';
+        d.addEventListener('pointermove', move, true);
+        d.addEventListener('pointerup', up, true);
+        d.addEventListener('pointercancel', up, true);
       },
 
       // ── The cursor pad ────────────────────────────────────────────────
@@ -466,7 +592,7 @@
       // the three numbers: crawl and the caret creeps at well under 1:1, flick
       // and it runs ahead of the thumb, so a short button reaches a long
       // buffer and the overshoot is walked back without lifting.
-      padDrag: false, precise: false,
+      padDrag: false, pinDrag: null, precise: false,
 
       // ── One armed state, three ways in ────────────────────────────────
       // `armed` is the whole aiming state and it has four values: null, the
@@ -545,6 +671,7 @@
       },
 
       bindPad(btn) {
+        this.holdTouch(btn);
         const SLOW = 0.45, FAST = 2.4, V0 = 0.12, V1 = 1.5, EDGE = 6;
         let from = null;
         const noSelect = (e) => e.preventDefault();
@@ -579,12 +706,7 @@
           if (from.y >= b.bottom - EDGE && v.scrollTop + v.clientHeight < v.scrollHeight) v.scrollTop += EDGE;
           else if (from.y <= b.top + EDGE && v.scrollTop > 0) v.scrollTop -= EDGE;
           const cy = Math.min(b.bottom - EDGE, Math.max(b.top + EDGE, vy));
-          const doc = this._host.ownerDocument;
-          const r = doc.caretRangeFromPoint ? doc.caretRangeFromPoint(from.x, cy) : null;
-          const pt = !r && doc.caretPositionFromPoint ? doc.caretPositionFromPoint(from.x, cy) : null;
-          const node = r ? r.startContainer : pt ? pt.offsetNode : null;
-          if (!node) return;
-          const i = window.Dictate.offsetAt(this._host, node, r ? r.startOffset : pt.offset);
+          const i = this.pointOffset(from.x, cy);
           if (i == null) return;
           if (this.pinned) this.d.moveEdge(this.armed, i); else this.d.caretAt(i);
           this.paint();
@@ -660,6 +782,14 @@
           // start prompt, and it reads as a rendering fault.
           endCaret: !!this.text,
         });
+        // THE PINS ARE REPLACED EVERY PAINT, so the touch hold is re-attached
+        // every paint. It cannot live on the layer instead: a touch keeps the
+        // element it STARTED on as its target even after that element is
+        // removed from the document, and a detached target has no path to an
+        // ancestor's listener, so the hold would go quiet on the first repaint
+        // of a drag, which is the one moment it is for.
+        const layer = this.$refs.layer;
+        if (layer) for (const pin of layer.querySelectorAll('[data-edge]')) this.holdTouch(pin);
       },
 
       // ── The pad ───────────────────────────────────────────────────────
@@ -887,7 +1017,7 @@
       // the whole safety net a clear needs here.
       clear() {
         this.d.text = '';
-        this.draft = ''; this.interim = ''; this.armed = null;
+        this.draft = ''; this.interim = ''; this.armed = null; this.pinDrag = null;
         this.breaks = false; this.restored = 0;
         ls.del(DRAFT);
         this.elapsed = 0; this.since = Date.now();
@@ -904,7 +1034,7 @@
 <body data-no-fab class="bg-base-200 text-base-content overscroll-none">
 
 <div x-data="dictate" x-cloak data-dictate-ui
-     :data-dictate-pad="padDrag ? '' : null"
+     :data-dictate-pad="(padDrag || pinDrag) ? '' : null"
      class="h-dvh w-full flex flex-col mx-auto max-w-3xl bg-base-100 sm:border-x border-base-300">
 
   <!-- ── The status bar ──────────────────────────────────────────────────
@@ -1019,7 +1149,7 @@
        The LAYER is the handles' home: outside the scroll box and unclipped,
        so a pin may hang above the first line rather than being cut in half. -->
   <div class="grow min-h-0 relative touch-manipulation flex" x-ref="layer"
-       @pointerdown="layerTap($event)" data-no-swipe>
+       @pointerdown="pinDown($event)" data-no-swipe>
 
     <div class="relative grow min-w-0">
       <div x-show="!edit" x-ref="view" class="absolute inset-0 overflow-y-auto px-4 py-3" @scroll="paint()">
