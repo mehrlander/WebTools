@@ -639,6 +639,14 @@ that a pair wraps "with clean URLs on both sides" was true and its conclusion wa
 one measurement short: two clean URLs of 70-odd characters make one dirty span of
 150-odd.
 
+**Both write paths agree, confirmed rather than assumed.** Rounds 6 through 9
+ran on issue comments; round 10 put the two discriminating rows into PR #499's
+body and got the same answers: a 149-character URL under a 120-character label
+intact, a 150-character URL under a one-character label wrapped, a pair at span
+149 intact and at span 150 wrapped, and the comma control intact. The earlier
+150 bracket was measured on a PR body and this one on an issue comment, so each
+finding now stands on both paths.
+
 **One caveat on the wrapped form.** Where the span opens and closes is not
 consistent in the stored body. 9b came back with the backtick opening after
 `[main](` and closing before the final `)`, while 8a's closing backtick fell
