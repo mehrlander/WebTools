@@ -1850,10 +1850,11 @@ test('the three readings are one window, and what does not fit scrolls inside it
   A.disable();
 });
 
-test('copy lives in the tab, so the word needs no format after it', () => {
-  // "Copy markdown" and "Copy JSON" sat in the footer naming a format the tab
-  // a row above had already named, and the reader had to check which of the
-  // two they were about to press. Inside the tab the tab is the qualifier.
+test('copy rides the format row, so it needs no word at all', () => {
+  // "Copy markdown" and "Copy JSON" sat in the footer naming a format the strip
+  // a row above had already named, and the reader had to check which of the two
+  // they were about to press. Beside the chips, the chips are the qualifier,
+  // which left the word doing nothing the glyph was not already doing.
   A.enable({ doc, subject: { title: 'x', url: '' } });
   A.clear();
   A.add({ type: 'page' }, 'one');
@@ -1861,7 +1862,7 @@ test('copy lives in the tab, so the word needs no format after it', () => {
   A.expand(true);
   A.setReading('md');
 
-  assert.equal(S.serialCopy.textContent.trim(), 'Copy', 'one word, beside the chips that qualify it');
+  assert.equal(S.serialCopy.textContent.trim(), '', 'the glyph alone: the chips beside it are the qualifier');
   assert.match(S.serialCopy.title, /markdown/, 'the title still says which, for a pointer that hovers');
   assert.ok(S.readBar.contains(S.serialCopy), 'and it rides the format row, not a footer under it');
   assert.equal(S.serialCopy.style.display, 'flex');
