@@ -161,7 +161,6 @@ const state = () => page.evaluate(() => {
   // column, not a deck, so there is no track and no `sd-` anything to ask.
   const flow = root?.__pdfFlow || null;
   const msg = document.querySelector('[data-pdf="msg"]');
-  const open = document.querySelector('[data-pdf="open"]');
   const at = flow ? flow.active() : -1;
   // The ACTIVE slide's canvas, not "the canvas": there is one per page now,
   // and only the ones near the reader exist at all.
@@ -194,16 +193,18 @@ const state = () => page.evaluate(() => {
     scrollerWidth: flow ? Math.round(flow.scroller.clientWidth) : 0,
     shown: !!canvas,
     msg: msg && !msg.classList.contains('hidden') ? msg.textContent.trim() : '(gone)',
-    // The module contributes NO chrome row of its own. Its two controls sit
-    // in the viewer's header slot, beside the copy and mode buttons, and its
-    // position readout floats over the page.
+    // The module contributes NO chrome of its own: no row, and no button in
+    // the viewer's header slot either. Its position readout floats over the
+    // page, and its handoff is a row in the open-elsewhere dropdown.
     ownBar: !!document.querySelector('[data-pdf="bar"]'),
-    inHeader: [...document.querySelectorAll('[data-view-controls] [data-pdf]')]
-      .map(el => el.dataset.pdf).sort().join(','),
+    inHeader: [...document.querySelectorAll('[data-view-controls] *')].length,
     pagerFloats: !!document.querySelector('.viewer-pdf-pager [data-pdf="page"]'),
+    openRows: [...document.querySelectorAll('.dropdown-content a')]
+      .map(a => (a.textContent || '').trim()).filter(Boolean),
+    workbenchHref: [...document.querySelectorAll('.dropdown-content a')]
+      .find(a => /workbench/i.test(a.textContent || ''))?.getAttribute('href') || '',
     label: document.querySelector('[data-pdf="page"]')?.textContent || '',
 
-    openHref: open && !open.classList.contains('hidden') ? open.getAttribute('href') : '',
     ink,
   };
 });
@@ -241,23 +242,32 @@ try {
 
   console.log('the pager and the handoff:');
   ok('the module built no chrome row of its own', s.ownBar === false, JSON.stringify(s));
-  ok('its one control is in the viewer\'s header', s.inHeader === 'open', s.inHeader);
+  ok('and adds no button to the header either', s.inHeader === 0, String(s.inHeader));
   ok('and the position floats over the page', s.pagerFloats === true, JSON.stringify(s));
   ok('the pager reads page 1 of 2', s.label.replace(/\s/g, '') === '1/2', s.label);
-  ok('the inspect link carries this file\'s address',
-     s.openHref.includes(`#gh=${REPO}@main:${FIXTURE}`), s.openHref);
-  ok('and points at the workbench', s.openHref.includes('/pages/pdf-inspect.html'), s.openHref);
+  // The handoff is a ROW in the open-elsewhere dropdown, beside GitHub, Raw
+  // and CDN, rather than a button of its own. A row can carry a word, which is
+  // what lets it say the page it will open.
+  ok('the workbench is a row in the open-elsewhere list',
+     s.openRows.some(t => /^Workbench/.test(t)), JSON.stringify(s.openRows));
+  ok('beside the links true of any file',
+     ['GitHub', 'Raw', 'CDN'].every(l => s.openRows.includes(l)), JSON.stringify(s.openRows));
+  ok('it carries this file\'s address',
+     s.workbenchHref.includes(`#gh=${REPO}@main:${FIXTURE}`), s.workbenchHref);
+  ok('and points at the workbench', s.workbenchHref.includes('/pages/pdf-inspect.html'), s.workbenchHref);
   // The workbench's main mode is page-scoped, so the handoff carries the page
   // the reader is on. It landed on page 1 whatever you were reading until
   // pages/pdf-inspect.html learned to take `page=` (2026-08-25).
-  ok('and the page the reader is on', /&page=1$/.test(s.openHref), s.openHref);
+  ok('and the page the reader is on', /&page=1$/.test(s.workbenchHref), s.workbenchHref);
+  ok('which the row says in words', s.openRows.includes('Workbench p1'), JSON.stringify(s.openRows));
 
   const inkOne = s.ink;
   await page.click('[data-pdf="next"]');
   await page.waitForTimeout(1500);
   s = await state();
   ok('next moves the pager', s.label.replace(/\s/g, '') === '2/2', s.label);
-  ok('and the workbench link follows the reader', /&page=2$/.test(s.openHref), s.openHref);
+  ok('and the workbench row follows the reader', /&page=2$/.test(s.workbenchHref), s.workbenchHref);
+  ok('in its label too', s.openRows.includes('Workbench p2'), JSON.stringify(s.openRows));
   ok('and lands on the other page', s.active === 1 && s.ink > 200 && s.ink !== inkOne,
      `${inkOne} -> ${s.ink} at ${s.active}`);
 

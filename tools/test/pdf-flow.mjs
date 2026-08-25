@@ -145,12 +145,13 @@ const state = () => page.evaluate(() => {
     pages: flow ? flow.count : 0,
     label: here?.querySelector('[data-pdf="page"]')?.textContent?.trim() ?? '',
     pos: flow ? Math.round(flow.scroller.scrollTop) : -1,
-    // Scoped to the SLIDE, not to `[data-pdf="root"]`: the control moved up a
-    // level into the viewer's own header, so it is a sibling of the pdf pane
-    // rather than a descendant of it. Querying inside the pane returns nothing,
-    // which is the shape of this change stated as a selector.
-    inspect: document.querySelector(
-      `[data-reader-slide="${docAt}"] [data-view-controls] [data-pdf="open"]`)?.getAttribute('href') || '',
+    // Scoped to the SLIDE, not to `[data-pdf="root"]`: the handoff moved up a
+    // level into the viewer's own open-elsewhere dropdown, so it is a sibling
+    // of the pdf pane rather than a descendant of it. Querying inside the pane
+    // returns nothing, which is the shape of this change stated as a selector.
+    inspect: [...document.querySelectorAll(
+      `[data-reader-slide="${docAt}"] .dropdown-content a`)]
+      .find(a => /workbench/i.test(a.textContent || ''))?.getAttribute('href') || '',
   };
 });
 
