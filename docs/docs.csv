@@ -8,7 +8,7 @@ docs/PORTABLE.md,"the portable set: what travels, and how to adopt it",living,pr
 docs/README.md,the docs folder's front door: the generated index of this registry,living,project,1186,"generated from docs.csv by tools/build/docs-readme.mjs (commit hook plus artifacts-lockstep test); edit the registry, never this file"
 docs/SHARE.md,the copy-paste prompt that points another session at the portable docs,living,orphan,89,"authored; the copy-paste prompt's raw.githubusercontent URL is now covered by dead-links.py's bare-URL scan, which reads fenced shell for exactly this case"
 docs/SNAGS.md,"the friction log: one line per snag, symptom then corrected move",living,project,9604,"authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
-docs/SURFACING.md,the surfacing system: primitives plus the guide-PR course,living,injected,5208,"authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
+docs/SURFACING.md,the surfacing system: primitives plus the guide-PR course,living,injected,5270,"authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
 docs/TRACKER.md,"the opt-in cross-session project tracker: schema, ids, board",living,project,4717,"authored, edited in place; the schema the tasks skill implements, held to it by review alone"
 docs/app-routes.csv,"the app's own destinations: every address, what it is for, and which files draw it",living,app,725,authored; held to the shell's VIEWS table both ways by tools/test/app-routes.test.mjs
 docs/artifacts.md,Claude Code artifacts and the link-choice matrix,living,project,1160,authored; distilled from official docs plus a dated publish trial
@@ -25,7 +25,7 @@ docs/envelopes/schemas/surface-v2.schema.json,the surface v2 JSON Schema,living,
 docs/envelopes/shorter.md,the shorter envelope contract: a document and a shortening to adjudicate,living,app,704,"authored; prose contract for pages/shorter.html, which links it from its header"
 docs/envelopes/surface.md,the surface format contract,living,project,2326,"authored; named by the envelope primitive; declares the sibling schemas the validation source of truth and carries a Stale banner saying nothing validates against them, which is the honest state rather than the intended one"
 docs/environment/README.md,"the environment docs' front door, and their update discipline",living,orphan,279,authored; states the rules the four concern files follow
-docs/environment/capabilities.md,what the sandbox can run and reach,measured,project,6611,"authored; per-claim verification dates, edited in place and re-dated, probes preferred over assertions"
+docs/environment/capabilities.md,what the sandbox can run and reach,measured,project,7346,"authored; per-claim verification dates, edited in place and re-dated, probes preferred over assertions"
 docs/environment/container.md,what the box is and what persists across sessions,measured,project,1985,"authored; per-claim verification dates, edited in place"
 docs/environment/extending.md,the Claude Code component model and the hooks this repo runs,living,project,2562,"authored; mostly stable conceptual knowledge, only the repo-specific inventory is dated"
 docs/environment/testing.md,how to test HTML and JS in the sandbox,measured,project,2907,"authored; per-claim verification dates, edited in place"
