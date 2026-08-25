@@ -114,11 +114,12 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   Keep the reply and the guide body in sync. A bare reply implies nothing is viewable yet. The render line is part of the caption at **every size**, turn-size refinement closers included: the smaller a diff feels, the more the reader wants to look, so if there is no render link, say why (the renderer itself is what changed, the page's data is an untracked build artifact), never omit it silently.
 * **Session diff:** summarize substantial work with `Session diff: [main...branch](url)`.
-* **Closing state:** every reply that finishes work or proposes more ends with exactly one of six labeled states, so the cheapest useful answer is one word. The bold label carries the meaning; the color makes it scannable:
+* **Closing state:** every reply that finishes work or proposes more ends with exactly one of seven labeled states, so the cheapest useful answer is one word. The bold label carries the meaning; the color makes it scannable:
 
   - 🟢 **Ready to continue:** named work available on "go", listed as bullets. "Go" authorizes only what the list names, and "go 1, 3" takes a subset. Work the session conceives belongs here as a proposal (Keep focus), never done unprompted.
   - 🟡 **Decision needed:** continuation depends on the user's call, and the state names the decision.
   - ⚪ **Natural stopping point:** no further work proposed; the wrap-up offer lives here.
+  - 🔵 **Short answer:** for an answer-only or answer-mainly response, briefly restate what was asked and the answer.
   - 🟠 **Attention:** something concrete needs addressing before proceeding. Reserved for an actual problem or risk, not routine uncertainty. Amber is the alarm here, and red is not a louder version of it.
   - 🟣 **Merged:** this workstream's branch merged. One line on what shipped.
   - 🔴 **Closed:** this workstream's branch abandoned, its PR closed unmerged. Say why in one line.

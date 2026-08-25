@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html data-theme="emerald">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Haptics probe</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>📳</text></svg>">
+  <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4" defer></script>
+
+  <!--
+    CAN A WEB PAGE MAKE AN iPHONE TAP BACK?
+
+    One cell per technique, in the shape docs/ios-sheet-drags.md prescribes,
+    because this cannot be answered anywhere but on the device: no emulator
+    reproduces a Taptic Engine, and every claim about it found in writing is a
+    claim about some particular iOS version.
+
+      A  navigator.vibrate()   the standard. WebKit has never shipped it, and
+                               the estate calls it in three places anyway.
+      B  a `switch` checkbox toggled BY SCRIPT. THE QUESTION: Safari 17.4 gave
+         the switch control real haptics, and a page can only use them if a
+         synthetic toggle earns them too.
+      C  the same switch toggled BY HAND. The control.
+      D  a label wrapping a switch, tapped. A real tap, not on the input.
+
+    ANSWERED, 2026-08-25: C and D buzz, A and B do not. So the haptic belongs
+    to a real user activation of a switch, the activation may arrive through a
+    label rather than the input, and a page still cannot fire one on demand.
+    The reasoning and what it costs the long press: docs/ios-haptics.md.
+
+    Kept, not deleted, because WebKit can move and no emulator can tell us.
+
+    RUN 1 (same day) ANSWERED C AND NOTHING ELSE.
+    C buzzed, so the device is willing. A, B and D reported nothing because the
+    page was broken in a way it could not tell anyone about: Alpine and Tailwind
+    rode one combined jsDelivr URL, that request did not land, and the result
+    was a page that looked nearly right, had dead buttons, and printed empty
+    values where its own feature detection should have been. It reproduced
+    perfectly in headless, which is exactly the trap.
+
+    So this version DEPENDS ON NO EXTERNAL JAVASCRIPT. Plain listeners, plain
+    textContent, one inline script. The CSS may still fail to arrive and the
+    page will be ugly and completely usable. And the first line it prints is
+    whether its own script ran, because a probe that cannot report its own
+    failure will report someone else's instead.
+  -->
+</head>
+
+<body class="min-h-dvh bg-base-200 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
+  <div class="max-w-md mx-auto flex flex-col gap-3">
+
+    <h1 class="text-xl font-semibold">Does this phone tap back?</h1>
+    <p class="text-sm opacity-70">Tap each. Note which you can <em>feel</em>. C is the control: if C is dead, nothing else can work.</p>
+
+    <div class="rounded-box bg-base-100 p-3 text-xs font-mono space-y-1">
+      <div>this script ran: <b id="alive" class="text-error">NO</b></div>
+      <div>vibrate API present: <b id="d-vib">?</b></div>
+      <div>switch attribute known: <b id="d-sw">?</b></div>
+      <div>standalone (home screen): <b id="d-standalone">?</b></div>
+      <div class="opacity-60 break-all" id="d-ua"></div>
+    </div>
+
+    <button id="a" class="btn btn-lg btn-block">A · navigator.vibrate(30) <span class="badge badge-sm" id="c-a">0</span></button>
+    <button id="b" class="btn btn-lg btn-block">B · switch toggled by script <span class="badge badge-sm" id="c-b">0</span></button>
+
+    <div class="rounded-box bg-base-100 p-4 flex items-center justify-between gap-3">
+      <span>C · toggle it yourself</span>
+      <input type="checkbox" switch id="sw" class="toggle toggle-lg">
+      <span class="badge badge-sm" id="c-c">0</span>
+    </div>
+
+    <label class="btn btn-lg btn-block" for="dsw">
+      D · label wrapping a switch
+      <input type="checkbox" switch id="dsw" class="sr-only">
+      <span class="badge badge-sm" id="c-d">0</span>
+    </label>
+
+    <p class="text-xs opacity-60 pt-2">
+      A fires 30ms, long enough to feel where 8ms would not. A counter only
+      proves its handler ran, never that anything was felt: that half is yours.
+    </p>
+  </div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var alive = $('alive');
+  alive.textContent = 'YES';
+  alive.className = 'text-success';
+
+  $('d-vib').textContent = ('vibrate' in navigator);
+  $('d-sw').textContent = ('switch' in document.createElement('input'));
+  $('d-standalone').textContent = !!(navigator.standalone ||
+    (window.matchMedia && matchMedia('(display-mode: standalone)').matches));
+  $('d-ua').textContent = navigator.userAgent;
+
+  var n = { a: 0, b: 0, c: 0, d: 0 };
+  var bump = function (k) { n[k]++; $('c-' + k).textContent = n[k]; };
+
+  $('a').addEventListener('click', function () {
+    bump('a');
+    try { if (navigator.vibrate) navigator.vibrate(30); } catch (e) {}
+  });
+  // The one this page exists for. A scripted click is what a long press would
+  // do, and a control that answers only a real finger is no use to one.
+  //
+  // B drives C's own input, so C's change handler fires too and its counter
+  // would climb for a toggle no finger touched. C is the CONTROL: it has to
+  // count human taps and nothing else, or the two readings blur exactly where
+  // the answer lives.
+  var scripted = false;
+  $('b').addEventListener('click', function () { bump('b'); scripted = true; $('sw').click(); });
+  $('sw').addEventListener('change', function () {
+    if (scripted) { scripted = false; return; }
+    bump('c');
+  });
+  $('dsw').addEventListener('change', function () { bump('d'); });
+})();
+</script>
+</body>
+</html>

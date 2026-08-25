@@ -46,12 +46,27 @@ have meant 12 findings instead of 12 and a great deal of noise from
 
 The fix is always the same: `!!`.
 
-WHAT IT CANNOT SEE, said plainly rather than left to be discovered. An
-expression with an operator is not scanned at all, so `a.x || b.y` still carries
-the bug when `a.x` is falsy and `b.y` is missing. Handling that means reading
-which operand can reach the result, which is a parser rather than a scan; the
-whole class is worth one more look if a case ever shows up. Nothing in this tree
-does today.
+THE LAST OPERAND OF `||` AND `&&`, added 2026-08-23 because the case this
+paragraph used to say it was waiting for turned up. `pages/dictate.html` bound
+`:disabled="!token || saving"`, where `saving` holds the name of the repo being
+written to and '' the rest of the time. `||` returns an OPERAND, not a boolean,
+so with a token in hand the expression is '', and bind() writes it: both of the
+page's writing destinations were dead buttons with the token sitting right
+there, and nothing anywhere said why.
+
+Note what is NOT going on there. Alpine's undefined-to-'' coercion never fired
+(the expression has no dot in it) and no key was missing. A plain falsy string
+of the author's own making is enough, because bind() removes an attribute only
+for null, undefined and false. So this is a wider hole than the one above, not
+a corner of it, and it needs no parser to see: `||` and `&&` hand back their
+last-evaluated operand, so the expression is boolean only if that operand is.
+
+FLAGGED: the final operand of a top-level `||` or `&&` chain, when it is a bare
+identifier or an accessor chain. Not a comparison, a negation, a call with
+arguments, or a literal, all of which answer for their own type. Splitting is
+by top-level operator only, so a `||` inside brackets, quotes or a call's
+arguments does not divide the expression. Measured over lib, pages, app and
+popups when it was added: one finding, the one above.
 
 Advisory by default, in the idiom of dead-opacity.py and dead-links.py: run it,
 read the list, add the `!!`. --check makes it a gate, which is what
@@ -99,15 +114,64 @@ EXTENSIONS = {'.html', '.js', '.mjs'}
 DEFAULT_ROOTS = ['lib', 'pages', 'app', 'popups']
 
 
-def exposed(expr):
-    """Whether this expression can hand x-bind an undefined.
+# A bare identifier answers for nothing: `saving`, `busy`, `mode`. Together
+# with CHAIN this is "a fetch, and only a fetch".
+NAME = re.compile(r'^[A-Za-z_$][\w$]*$')
 
-    Two conditions, and both are Alpine's rather than ours: the coercion only
-    fires when the expression string contains a dot, and only a fetch can come
-    back undefined.
+
+def split_top(expr):
+    """The operands of a top-level `||`/`&&` chain, or [expr] when there is none.
+
+    Depth-counted over (), [] and {}, and quote-aware, so an operator inside a
+    call's arguments, an index, or a string does not divide the expression.
+    Ternaries are left alone: `a ? b : c` has two results and the branch that
+    reaches x-bind is not a scan's question.
+    """
+    parts, buf, depth, quote, i = [], [], 0, '', 0
+    while i < len(expr):
+        c = expr[i]
+        if quote:
+            buf.append(c)
+            if c == '\\' and i + 1 < len(expr): buf.append(expr[i + 1]); i += 2; continue
+            if c == quote: quote = ''
+            i += 1
+            continue
+        if c in '"\'`':
+            quote = c; buf.append(c); i += 1; continue
+        if c in '([{': depth += 1
+        elif c in ')]}': depth -= 1
+        if depth == 0 and expr[i:i + 2] in ('||', '&&'):
+            parts.append(''.join(buf)); buf = []; i += 2; continue
+        buf.append(c); i += 1
+    parts.append(''.join(buf))
+    return parts
+
+
+def fetches(expr):
+    """A bare fetch: an identifier or an accessor chain, nothing else."""
+    expr = expr.strip()
+    return bool(NAME.match(expr)) or bool(CHAIN.match(expr))
+
+
+def exposed(expr):
+    """Whether this expression can hand x-bind something that is not a boolean.
+
+    Two ways in, and the second is the wider one.
+
+    A BARE CHAIN can come back undefined, which Alpine turns into '' when the
+    expression contains a dot; bind() writes '' because it removes only null,
+    undefined and false.
+
+    THE LAST OPERAND of a top-level `||`/`&&` chain IS the value when the chain
+    gets that far, since those operators hand back an operand rather than a
+    boolean. A falsy string there is enough, so no dot is required and no key
+    has to be missing.
     """
     expr = expr.strip()
-    return '.' in expr and bool(CHAIN.match(expr))
+    if '.' in expr and CHAIN.match(expr):
+        return True
+    parts = split_top(expr)
+    return len(parts) > 1 and fetches(parts[-1])
 
 
 def scan_text(text, path):
@@ -152,7 +216,10 @@ def main(argv):
         found.extend(scan_text(text, path))
 
     for path, line, attr, expr in sorted(found):
-        print(f'{path}:{line}: :{attr}="{expr}" -> :{attr}="!!{expr}"')
+        # A chain takes the `!!` in front of itself; an operator chain has to be
+        # wrapped, since `!!a || b` negates the wrong half and reads as a fix.
+        fix = f'!!{expr}' if len(split_top(expr)) == 1 else f'!!({expr})'
+        print(f'{path}:{line}: :{attr}="{expr}" -> :{attr}="{fix}"')
 
     if not found:
         print('bound-boolean-attrs: none; every bound boolean attribute '

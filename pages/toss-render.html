@@ -390,6 +390,33 @@
   let frameBlobUrl = null;
   function mountFrame(html, sandbox, frag) {
     frame.setAttribute('sandbox', sandbox);
+    // THE MICROPHONE, granted in ADDRESS MODE and withheld in payload mode.
+    // For pages/dictate.html, which is a page whose whole job is hearing you
+    // and which is handed over for review as a toss.
+    //
+    // WHAT WAS MEASURED, since the obvious story is not quite the true one.
+    // Permissions Policy defaults `microphone` to `self`, and an address-mode
+    // frame is same-origin (allow-same-origin, over a blob: URL that inherits
+    // this origin), so Chromium already answered allowsFeature('microphone')
+    // with true before this line existed: tools/test/toss-microphone.mjs was
+    // written expecting a denial and reported the grant instead. Safari is not
+    // measured, and WebKit has been the stricter of the two about capture
+    // inside a frame for as long as it has had one.
+    //
+    // So this is an EXPLICIT grant standing in for an implicit one, which is
+    // worth its line for two reasons rather than as a fix. The implicit grant
+    // is load-bearing on a sandbox flag several hundred lines away: drop
+    // allow-same-origin from address mode and the frame goes opaque and the
+    // microphone goes with it, silently. And a grant nobody wrote down is a
+    // grant nobody can see is missing.
+    //
+    // The line between the modes is the one this file already draws
+    // everywhere. Address mode is a repo file the viewer's own token reached;
+    // payload mode is whatever anyone pasted into a link. Payload frames are
+    // opaque-origin, so the withholding is also the only honest option: a
+    // delegation to an opaque origin grants nothing either way.
+    frame.setAttribute('allow', sandbox.includes('allow-same-origin')
+      ? 'fullscreen; microphone' : 'fullscreen');
     frame.removeAttribute('srcdoc');
     // charset=utf-8 is load-bearing, not decoration. A blob: document takes its
     // encoding from the Blob's type, and with none declared the browser sniffs,

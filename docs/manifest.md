@@ -379,7 +379,7 @@ without a gesture. The nav entry appears only while something is pending, so an
 empty channel costs no attention.
 
 A proposal record (`proposals/pending/<id>.json`) carries `id`, `kind`, `repo`,
-`path`, `why`, and an optional `ref`. Three kinds:
+`path`, `why`, and an optional `ref`. Three of the four kinds write a file:
 
 - **`put-file`** replaces `path` with `content` in full. Use when the session
   knows the file end to end.
@@ -404,10 +404,39 @@ A proposal record (`proposals/pending/<id>.json`) carries `id`, `kind`, `repo`,
   applied* path below and is retired rather than written again. A missing target
   file counts the same way, so a removal never creates a file.
 
-**Three deliveries, and the tap decides.** A record may suggest one with
-`deliver`, but both routes are always on the card, because the person holding
-the token knows whether this repo wants a PR today and the proposing session
-does not:
+**The fourth kind performs an act instead**, and the split runs through
+everything below. **`delete-issue`** deletes `issue` (a number) from `repo`. It
+exists because GitHub REST cannot delete an issue at all: only the GraphQL
+`deleteIssue` mutation can, and a sandbox session cannot POST GraphQL, since the
+proxy serves pinned operations only. The app holds `GH.graphql` and the user's
+token, so the act belongs on the surface that already reviews proposals.
+
+**The kind is named, not general.** A `graphql-mutation` kind carrying an
+arbitrary query would let any record reach any mutation the token can reach,
+which is capability escalation wearing a data field. One kind per act is what
+lets the validator say what a record does, and lets the card show it.
+
+What follows from a mutation having no bytes:
+
+| | |
+| --- | --- |
+| **no `path`** | nothing on disk is addressed; `path`, `deliver`, and `expectSha` are refused rather than ignored |
+| **no delivery** | a commit or a branch is meaningless for an act that touches no file, so the card offers one button, not two |
+| **no diff** | the card shows the object it will destroy, read live, in place of a before/after |
+| **staleness in issue currency** | optional `expectComments` and `expectTitle` against a live read, since there is no blob sha to pin |
+
+The three preflight checks still run, read in the same order and meaning the
+same things: the issue is readable, the deletion is still needed (an issue
+already gone reports *Already done, retire it*), and the issue is unchanged
+since the record was written. The card says the deletion is permanent, because
+GitHub keeps no tombstone: a deleted issue's number is not reused and its URL
+404s, so every link and cross-reference to it dies with it. That is worth
+saying on the card rather than in a doc nobody has open.
+
+**Three deliveries, and the tap decides.** For the file kinds: a record may
+suggest one with `deliver`, but both routes are always on the card, because the
+person holding the token knows whether this repo wants a PR today and the
+proposing session does not:
 
 | `deliver` | What the apply does |
 | --- | --- |

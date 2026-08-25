@@ -23,8 +23,9 @@
 // What is pinned here is the CLASSIFIER and the repo's cleanliness, in that
 // order. The classifier is the whole design: the loose rule ("a dotted
 // expression can be undefined") flags `!a.b` and `a.b === 1` and every guard
-// in the tree, and is wrong about all of them, because an operator always
-// yields a real boolean. Only a bare fetch is exposed.
+// in the tree, and is wrong about all of them. Two shapes are exposed and
+// nothing else: a bare fetch, and the last operand of a `||`/`&&` chain, since
+// those operators hand back an operand rather than a boolean.
 //
 // python3/stdlib, so this drives it the way a person does and reads what it
 // prints.
@@ -73,10 +74,49 @@ test('every accessor shape that only fetches is flagged', () => {
   }
 });
 
-test('an operator yields a real boolean, so it is left alone', () => {
+test('an operator that ANSWERS FOR ITS TYPE is left alone', () => {
   // This is the half a looser scan gets wrong, and it is most of the tree.
-  for (const expr of ['!!L.sealed', '!a.b', 'a.b === 1', 'a.b || c.d', '!a.b && x.y',
+  // Negation, comparison and a ternary all produce their own value; `||` and
+  // `&&` do not, which is the next test.
+  for (const expr of ['!!L.sealed', '!a.b', 'a.b === 1',
                       'a.b ? 1 : 0', 'guard.on !== false']) {
+    assert.match(flag(expr), /bound-boolean-attrs: none/, expr);
+  }
+});
+
+// ── The last operand of || and && ────────────────────────────────────────
+// Added 2026-08-23. These two cases used to sit in the list above, on the
+// reading that any operator yields a boolean. They do not: `||` and `&&` hand
+// back an OPERAND. pages/dictate.html bound `:disabled="!token || saving"`,
+// where `saving` names the repo being written to and is '' the rest of the
+// time, so with a token in hand the expression was '' and bind() wrote it.
+// Both of that page's writing destinations were dead buttons with the token
+// sitting right there.
+//
+// Note what is NOT involved: no dot, so Alpine's undefined-to-'' coercion
+// never fired, and no key was missing. An ordinary falsy string is enough,
+// because bind() removes an attribute only for null, undefined and false.
+
+test('the last operand of a || or && chain IS the value, so a bare one is flagged', () => {
+  for (const expr of ['!token || saving', 'a.b || c.d', '!a.b && x.y', 'loading || err',
+                      'a || b || c']) {
+    assert.match(flag(expr), /an undefined here SETS the attribute/, expr);
+  }
+  assert.match(flag('!token || saving'), /:disabled="!!\(!token \|\| saving\)"/,
+    'the fix WRAPS, since !! in front would negate only the first operand');
+});
+
+test('a last operand that answers for itself ends the chain', () => {
+  for (const expr of ['!token || !!saving', "s || 'x'", 'a || b === 1', 'x && !y.z',
+                      'a || fn(b, c)', 'a || (b ? 1 : 0)']) {
+    assert.match(flag(expr), /bound-boolean-attrs: none/, expr);
+  }
+});
+
+test('splitting is by TOP-LEVEL operator only', () => {
+  // An operator inside a call, an index, or a string does not divide the
+  // expression, so none of these is read as a chain with a bare tail.
+  for (const expr of ['fn(a || b)', 'items[i || 0].ready === true', '!!(a || b)']) {
     assert.match(flag(expr), /bound-boolean-attrs: none/, expr);
   }
 });
