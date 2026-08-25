@@ -477,6 +477,29 @@ try {
   ok('nor leave the pins transparent afterwards',
     await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].pinDrag) === null);
 
+  // AND IT HOLDS THE iOS SHEET for the length of the extension. The pane has
+  // to keep scrolling, so this cannot be touch-action; it is a cancelled
+  // touchmove (variant E), gated so an ordinary swipe still scrolls. The
+  // listener lives on the node the touch started on, since paint() rebuilds
+  // every span and a touch keeps its original, now detached, target.
+  const holdProbe = async () => page.evaluate(() => {
+    const ev = new Event('touchmove', { bubbles: true, cancelable: true });
+    window.__pressed.dispatchEvent(ev);
+    return ev.defaultPrevented;
+  });
+  await page.evaluate(({ x, y }) => { window.__pressed = document.elementFromPoint(x, y); },
+    { x: line1.x + 60, y: line1.y + 12 });
+  await page.mouse.move(line1.x + 60, line1.y + 12);
+  await page.mouse.down();
+  await page.waitForTimeout(120);          // inside the press, before it fires
+  ok('an ordinary touch is left alone, so the pane still scrolls',
+    (await holdProbe()) === false);
+  await page.waitForTimeout(500);          // past 450ms: the press has taken
+  ok('but once the long press takes, the sheet is held', (await holdProbe()) === true);
+  await page.mouse.up();
+  await page.waitForTimeout(150);
+  ok('and the hold is released with the finger', (await holdProbe()) === false);
+
   // Dragging BACK inside the word restores it rather than cutting into it: the
   // word is the floor of this gesture, as it is on the platform.
   await page.mouse.move(line1.x + 60, line1.y + 12);

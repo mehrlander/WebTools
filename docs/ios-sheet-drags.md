@@ -142,11 +142,27 @@ its own copy for its cursor pad and its selection pins. Path 2 is
 `overscroll-behavior: contain` on the composer's two scrolling boxes, its
 editor, and the fab drawer's panes.
 
+**A surface that must SCROLL cannot use variant D at all,** which is the case
+`pages/dictate.html` hit with its long-press-and-drag selection. `touch-action`
+is latched at touchstart, so it cannot be turned off once a gesture is under
+way; cancelling touchstart would kill the pane's ordinary scrolling; and at
+touchstart nothing yet knows the touch will become a long press. What is left is
+**variant E**, a cancelled `touchmove` and nothing else, gated on a flag the
+long press sets. An ordinary swipe scrolls; only the extension is held.
+
+That also keeps the gesture alive rather than merely tidy. A browser that
+decides a touch is a scroll fires `pointercancel` and stops sending
+`pointermove`, so a custom drag on a scrollable surface does not just fight the
+sheet, it ends.
+
 **A handle that is REBUILT cannot be held from an ancestor,** which the dictate
 page hit and is worth knowing before reaching for one listener on a container. A
 touch keeps the element it started on as its target even after that element
 leaves the document, and a detached target has no path to an ancestor's
 listener, so a delegated hold goes quiet on the first repaint of a drag. That is
-the one moment it is for. The page therefore re-attaches per element on every
-paint, which is what "attach to the element, and be explicit" above costs when
-the element is not stable.
+the one moment it is for. Two answers, by whether the element is enumerable:
+the pins are two nodes, so the page re-attaches to each on every paint; the
+text spans are many and rebuilt every frame, so the listener goes on the ONE
+node the touch started on, captured at pointerdown, and rides it into
+detachment. Both are what "attach to the element, and be explicit" above costs
+when the element is not stable.

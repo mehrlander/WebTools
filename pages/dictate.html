@@ -414,6 +414,37 @@
         // down. Its presence is what turns the rest of the gesture into an
         // extension rather than a fresh selection. See the move handler.
         let word = null;
+
+        // ── Holding the iOS sheet for the length of a long-press drag ─────
+        // The pad and the pins can carry `touch-action: none` because neither
+        // scrolls. THE TEXT PANE MUST SCROLL, so it cannot, and the sheet has
+        // to be held by the only lever left: cancelling `touchmove`, which is
+        // variant E in docs/ios-sheet-drags.md and measured to hold. Gated on
+        // `word`, so an ordinary swipe scrolls and only an extension is held.
+        //
+        // Cancelling touchSTART is not available here for the same reason it
+        // was right on the pad: it would kill the scroll outright, and at
+        // touchstart nothing yet knows this touch will become a long press.
+        //
+        // THE LISTENER GOES ON THE NODE THE TOUCH STARTED ON, captured at
+        // pointerdown. paint() clears the host and rebuilds every span on
+        // every frame of the extension, and a touch keeps its original target
+        // after that target leaves the document, so a listener on the pane or
+        // on the document would never see the events: a detached target has no
+        // path to an ancestor. Same trap as the pins, one layer deeper, and
+        // here there is no repaint hook to re-attach from.
+        //
+        // It also keeps the gesture alive at all. A browser that decides a
+        // touch is a scroll fires pointercancel and stops sending pointermove,
+        // so without this the extension does not merely fight the sheet, it
+        // ends.
+        let held = null;
+        const holdMove = (ev) => { if (word) ev.preventDefault(); };
+        const unhold = () => {
+          if (!held) return;
+          held.removeEventListener('touchmove', holdMove, { passive: false });
+          held = null;
+        };
         const clear = () => { if (timer) { clearTimeout(timer); timer = null; } };
         const at = (cx, cy) => this.pointOffset(cx, cy);
         surface.addEventListener('pointerdown', (e) => {
@@ -423,6 +454,9 @@
           // platform already does. The selection stays painted.
           if (e.pointerType === 'mouse') { this.precise = true; }
           x = e.clientX; y = e.clientY; long = false; word = null;
+          unhold();
+          held = e.target;
+          if (held?.addEventListener) held.addEventListener('touchmove', holdMove, { passive: false });
           anchor = window.Dictate.hitsText(host, x, y) ? at(x, y) : null;
           clear();
           timer = setTimeout(() => {
@@ -490,11 +524,12 @@
           this.paint();
         });
         surface.addEventListener('pointercancel', () => {
-          clear(); anchor = null; dragging = false; word = null; this.pinDrag = null;
+          clear(); anchor = null; dragging = false; word = null; this.pinDrag = null; unhold();
         });
         (this.$refs.layer || surface).addEventListener('pointerup', (e) => {
           clear();
           word = null;
+          unhold();
           // A drag claims its own release: the tap logic below would read it as
           // a click and drop a caret where the selection just finished.
           //
