@@ -14,7 +14,7 @@
 //   1. a repo PDF renders, from bytes fetched at the addressed ref
 //   2. it OPENS in the pdf mode, over the host's blanket defaultMode, which is
 //      what `exclusive` buys and what raw would otherwise take
-//   3. the header states the page count and the real byte size, neither of
+//   3. the header states the real byte size, which is not
 //      which is derivable from the text the host holds
 //   4. the pager moves, and the handoff to pages/pdf-inspect.html carries the
 //      file's own address
@@ -157,11 +157,11 @@ const state = () => page.evaluate(() => {
   const host = document.getElementById('dv-viewer');
   const v = host && Alpine.$data(host);
   const root = document.querySelector('[data-pdf="root"]');
-  const deck = root?.__deck || null;
+  // `__pdfFlow` rather than `__deck`: the pdf module mounts a continuous
+  // column, not a deck, so there is no track and no `sd-` anything to ask.
+  const flow = root?.__pdfFlow || null;
   const msg = document.querySelector('[data-pdf="msg"]');
-  const bar = document.querySelector('[data-pdf="bar"]');
-  const open = document.querySelector('[data-pdf="open"]');
-  const at = deck ? deck.active() : -1;
+  const at = flow ? flow.active() : -1;
   // The ACTIVE slide's canvas, not "the canvas": there is one per page now,
   // and only the ones near the reader exist at all.
   const canvas = document.querySelector(`.viewer-pdf-page[data-page="${at + 1}"]`);
@@ -180,17 +180,31 @@ const state = () => page.evaluate(() => {
     modes: (v?.availableModes || []).map(m => m.id),
     stats: v?.stats || '',
     active: at,
-    slides: deck ? deck.count : 0,
-    built: deck ? deck.builtCount : 0,
-    // A snap track is only swipeable if it can actually scroll horizontally.
-    scrollable: deck ? deck.track.scrollWidth > deck.track.clientWidth + 10 : false,
-    snap: deck ? getComputedStyle(deck.track).scrollSnapType : '',
+    slides: flow ? flow.count : 0,
+    built: flow ? flow.built() : 0,
+    // Which way the mounted flow actually moves. The continuous flow must
+    // scroll DOWN and must not scroll sideways at all, since a sideways
+    // gesture over a page belongs to whatever deck encloses the viewer.
+    scrollsY: flow ? flow.scroller.scrollHeight > flow.scroller.clientHeight + 10 : false,
+    scrollsX: flow ? flow.scroller.scrollWidth > flow.scroller.clientWidth + 10 : false,
+    snap: flow ? getComputedStyle(flow.scroller).scrollSnapType : '',
+    // The scroller's own width, which is the pane the page is fitted to. It
+    // is the stage's width less whatever a scrollbar takes.
+    scrollerWidth: flow ? Math.round(flow.scroller.clientWidth) : 0,
     shown: !!canvas,
     msg: msg && !msg.classList.contains('hidden') ? msg.textContent.trim() : '(gone)',
-    barShown: bar ? !bar.classList.contains('hidden') : false,
+    // The module contributes NO chrome of its own: no row, and no button in
+    // the viewer's header slot either. Its position readout floats over the
+    // page, and its handoff is a row in the open-elsewhere dropdown.
+    ownBar: !!document.querySelector('[data-pdf="bar"]'),
+    inHeader: [...document.querySelectorAll('[data-view-controls] *')].length,
+    pagerFloats: !!document.querySelector('.viewer-pdf-pager [data-pdf="page"]'),
+    openRows: [...document.querySelectorAll('.dropdown-content a')]
+      .map(a => (a.textContent || '').trim()).filter(Boolean),
+    workbenchHref: [...document.querySelectorAll('.dropdown-content a')]
+      .find(a => /workbench/i.test(a.textContent || ''))?.getAttribute('href') || '',
     label: document.querySelector('[data-pdf="page"]')?.textContent || '',
-    size: document.querySelector('[data-pdf="size"]')?.textContent || '',
-    openHref: open && !open.classList.contains('hidden') ? open.getAttribute('href') : '',
+
     ink,
   };
 });
@@ -214,42 +228,72 @@ try {
   // be nothing at all: a PDF's text is not the file, so a derived line would
   // report newline bytes in the binary as "lines" and the mangled decode as a
   // size, which is what the binary flag on the module suppresses.
-  ok('the header line says nothing it cannot know', s.stats === '', s.stats);
-  ok('the real byte size rides with the pager', /^\d+\.\d KB$/.test(s.size), s.size);
-  ok('and no page count is stated twice', !/pages?/.test(s.size + s.stats), s.size + ' / ' + s.stats);
+  // The header line reports the size the MODULE measured, through ctx.report,
+  // rather than deriving one from text that is not the file. It went silent
+  // for a binary before any module could measure one, and it went silent again
+  // when the size followed the pager into a bar of this module's own. With
+  // that bar retired the line carries the size and only the size: no page
+  // count, because the count is not a fact about the object and the floating
+  // pager says where you are.
+  ok('the header line carries the real byte size', /^\d+\.\d KB$/.test(s.stats), s.stats);
+  ok('and states no page count', !/pages?/.test(s.stats), s.stats);
   ok('pdf-lib was never requested', askedForPdfLib === false,
      'the viewer pulled the editor library it never calls');
 
   console.log('the pager and the handoff:');
-  ok('the bar is showing', s.barShown === true, JSON.stringify(s));
+  ok('the module built no chrome row of its own', s.ownBar === false, JSON.stringify(s));
+  ok('and adds no button to the header either', s.inHeader === 0, String(s.inHeader));
+  ok('and the position floats over the page', s.pagerFloats === true, JSON.stringify(s));
   ok('the pager reads page 1 of 2', s.label.replace(/\s/g, '') === '1/2', s.label);
-  ok('the inspect link carries this file\'s address',
-     s.openHref.endsWith(`#gh=${REPO}@main:${FIXTURE}`), s.openHref);
-  ok('and points at the inspector', s.openHref.includes('/pages/pdf-inspect.html'), s.openHref);
+  // The handoff is a ROW in the open-elsewhere dropdown, beside GitHub, Raw
+  // and CDN, rather than a button of its own. A row can carry a word, which is
+  // what lets it say the page it will open.
+  ok('the workbench is a row in the open-elsewhere list',
+     s.openRows.some(t => /^Workbench/.test(t)), JSON.stringify(s.openRows));
+  ok('beside the links true of any file',
+     ['GitHub', 'Raw', 'CDN'].every(l => s.openRows.includes(l)), JSON.stringify(s.openRows));
+  ok('it carries this file\'s address',
+     s.workbenchHref.includes(`#gh=${REPO}@main:${FIXTURE}`), s.workbenchHref);
+  ok('and points at the workbench', s.workbenchHref.includes('/pages/pdf-inspect.html'), s.workbenchHref);
+  // The workbench's main mode is page-scoped, so the handoff carries the page
+  // the reader is on. It landed on page 1 whatever you were reading until
+  // pages/pdf-inspect.html learned to take `page=` (2026-08-25).
+  ok('and the page the reader is on', /&page=1$/.test(s.workbenchHref), s.workbenchHref);
+  ok('which the row says in words', s.openRows.includes('Workbench p1'), JSON.stringify(s.openRows));
 
   const inkOne = s.ink;
   await page.click('[data-pdf="next"]');
   await page.waitForTimeout(1500);
   s = await state();
   ok('next moves the pager', s.label.replace(/\s/g, '') === '2/2', s.label);
+  ok('and the workbench row follows the reader', /&page=2$/.test(s.workbenchHref), s.workbenchHref);
+  ok('in its label too', s.openRows.includes('Workbench p2'), JSON.stringify(s.openRows));
   ok('and lands on the other page', s.active === 1 && s.ink > 200 && s.ink !== inkOne,
      `${inkOne} -> ${s.ink} at ${s.active}`);
 
-  console.log('the pages are a swipe track, not just two buttons:');
+  console.log('the pages are one continuous column, not a sideways deck:');
   // The gesture itself cannot be synthesized faithfully here, so this asserts
-  // the three properties that make one work: a track wider than its box, snap
-  // points on it, and a pager that follows the SCROLL rather than only driving
-  // it. Drag the track directly and see whether the rest of the pane agrees.
-  ok('the track scrolls horizontally', s.scrollable === true, JSON.stringify(s));
-  ok('with mandatory snap points', /mandatory/.test(s.snap), s.snap);
+  // the properties that decide what a gesture MEANS: the column moves
+  // vertically, it does not move sideways at all, and the pager follows the
+  // SCROLL rather than only driving it.
+  //
+  // `scrollsX === false` is the whole change in one assertion. While the pages
+  // were a horizontal track, a sideways swipe over the page was captured by
+  // it, so inside the stage reader (a horizontal deck of documents) the same
+  // gesture meant "next page" over the page and "next document" a few pixels
+  // outside it, and there was no swipe at all that left a multi-page document.
+  // tools/test/pdf-flow.mjs drives that nested case for real.
+  ok('the column scrolls vertically', s.scrollsY === true, JSON.stringify(s));
+  ok('and does not scroll sideways', s.scrollsX === false, JSON.stringify(s));
+  ok('with no snap points to fight the scroll', !/mandatory/.test(s.snap), s.snap);
   await page.evaluate(() => {
-    const t = document.querySelector('[data-pdf="root"]').__deck.track;
-    t.scrollTo({ left: 0, behavior: 'auto' });
-    t.dispatchEvent(new Event('scroll'));
+    const box = document.querySelector('[data-pdf="root"]').__pdfFlow.scroller;
+    box.scrollTo({ top: 0, behavior: 'auto' });
+    box.dispatchEvent(new Event('scroll'));
   });
   await page.waitForTimeout(900);
   s = await state();
-  ok('a scroll of the track moves the pager back', s.label.replace(/\s/g, '') === '1/2', s.label);
+  ok('a scroll of the column moves the pager back', s.label.replace(/\s/g, '') === '1/2', s.label);
   ok('and the reader is on page 1 again', s.active === 0, String(s.active));
 
   console.log('a long document does not rasterize itself:');
@@ -324,6 +368,12 @@ try {
       // flex gaps, and the slide's own), and each was defensible alone.
       stageWidth: Math.round(document.querySelector('[data-pdf="stage"]')?.clientWidth ?? 0),
       pageWidth: Math.round(document.querySelector('.viewer-pdf-page')?.getBoundingClientRect().width ?? 0),
+      // The continuous flow is a scroller INSIDE the stage, so the pane a page
+      // is fitted to is the scroller's width, which is the stage's less
+      // whatever a scrollbar takes. Both are asserted below: the page fills
+      // its scroller, and the scroller is not quietly inset from the stage,
+      // which together say what the single measurement used to.
+      flowWidth: Math.round(document.querySelector('.viewer-pdf-flow')?.clientWidth ?? 0),
       // A heading here would be a third copy of the filename: the address
       // ends with it and the viewer prints it. Only a payload that names
       // itself gets one, and a bare addressed file does not.
@@ -347,8 +397,11 @@ try {
   ok('and the document starts near the top of the screen',
      layout.stageTop < 160, `chrome pushes it to ${layout.stageTop}px of 844`);
   ok('the page fills the pane it was given',
-     layout.pageWidth >= layout.stageWidth - 4,
-     `page ${layout.pageWidth} inside pane ${layout.stageWidth}`);
+     layout.pageWidth >= layout.flowWidth - 4,
+     `page ${layout.pageWidth} inside pane ${layout.flowWidth}`);
+  ok('and that pane is the stage, less only a scrollbar',
+     layout.flowWidth >= layout.stageWidth - 20,
+     `column ${layout.flowWidth} inside stage ${layout.stageWidth}`);
 
   await page.setViewportSize({ width: 1100, height: 800 });
   // ── paging a long document ───────────────────────────────────────────────
@@ -377,6 +430,55 @@ try {
   ok('with nothing thrown on the way',
      thrown.filter(t => /is not defined|Expression Error/.test(t)).length === 0,
      thrown.slice(0, 2).join(' | '));
+
+  // ── the floating pager ───────────────────────────────────────────────────
+  //
+  // It replaces a chrome row, so it has to do that row's job: say where you
+  // are while you are moving, get out of the way when you are not, and offer
+  // the jump the retired pager never did. The deck's contents sheet lists the
+  // DOCUMENTS in a stage and never the pages of one, so before this there was
+  // no way to reach page 6 of 8 except by scrolling to it.
+  console.log('the floating pager fades, returns, and jumps:');
+  const pagerState = () => page.evaluate(() => {
+    const w = document.querySelector('.viewer-pdf-pager');
+    const jump = document.querySelector('[data-pdf="jump"]');
+    return {
+      faded: !!w?.classList.contains('opacity-0'),
+      rows: document.querySelectorAll('[data-pdf="jumplist"] a[data-page]').length,
+      open: !!jump?.open,
+      label: document.querySelector('[data-pdf="page"]')?.textContent?.trim() || '',
+    };
+  });
+  await page.waitForTimeout(1800);
+  let pg = await pagerState();
+  ok('it fades once the reader stops', pg.faded === true, JSON.stringify(pg));
+  ok('and built no jump rows nobody asked for', pg.rows === 0, `${pg.rows} rows`);
+
+  await page.evaluate(() => {
+    const box = document.querySelector('[data-pdf="root"]').__pdfFlow.scroller;
+    box.scrollTop += 40;
+    box.dispatchEvent(new Event('scroll'));
+  });
+  await page.waitForTimeout(300);
+  pg = await pagerState();
+  ok('a scroll brings it back', pg.faded === false, JSON.stringify(pg));
+
+  await page.evaluate(() => { document.querySelector('[data-pdf="jump"]').open = true; });
+  await page.waitForTimeout(500);
+  pg = await pagerState();
+  ok('opening it builds one row per page', pg.rows === 8, `${pg.rows} rows`);
+  await page.waitForTimeout(1800);
+  pg = await pagerState();
+  ok('and it does not fade out from under the list', pg.faded === false, JSON.stringify(pg));
+
+  await page.evaluate(() => {
+    [...document.querySelectorAll('[data-pdf="jumplist"] a[data-page]')]
+      .find(a => a.dataset.page === '5').click();
+  });
+  await page.waitForTimeout(1500);
+  pg = await pagerState();
+  ok('picking a page goes there', pg.label.replace(/\s/g, '') === '6/8', pg.label);
+  ok('and the list closes behind it', pg.open === false, JSON.stringify(pg));
 
   console.log('a text file is untouched by any of this:');
   await page.goto(`${origin}/pages/data-view.html?src=${encodeURIComponent(`${REPO}@main:docs/tools.csv`)}`,

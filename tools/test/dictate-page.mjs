@@ -900,6 +900,30 @@ try {
   ok('and the pins come off, leaving the textarea to mark it once',
     await page.evaluate(() => !document.querySelector('[data-edge]')));
 
+  // AND THE PINS COME BACK WHERE THEY WERE. Every position the painter writes
+  // is measured, and a hidden element measures zero, so a paint that ran one
+  // tick before the read pane came back put both pins at the layer's origin
+  // and left them there. It looked like a layout bug rather than a timing one.
+  const pinAt = () => page.evaluate(() => [...document.querySelectorAll('[data-edge]')]
+    .map(e => { const r = e.getBoundingClientRect();
+                return `${e.getAttribute('data-edge')}@${Math.round(r.left)},${Math.round(r.top)}`; }));
+  await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].editClose());
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0];
+    c.precise = false; c.d.select(4, 9); c.armed = null; c.paint();
+  });
+  await page.waitForTimeout(250);
+  const pinsBefore = await pinAt();
+  await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].editOpen());
+  await page.waitForTimeout(300);
+  await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].editClose());
+  await page.waitForTimeout(400);
+  const pinsAfter = await pinAt();
+  ok('the pins come back where they were after a trip through the keyboard',
+    pinsBefore.length === 2 && JSON.stringify(pinsBefore) === JSON.stringify(pinsAfter),
+    `${JSON.stringify(pinsBefore)} -> ${JSON.stringify(pinsAfter)}`);
+
   // And a double tap still wins where it lands, since it said WHERE.
   await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].editClose());
   await page.waitForTimeout(300);

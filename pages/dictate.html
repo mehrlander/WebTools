@@ -1126,9 +1126,31 @@
         });
       },
 
-      paint() {
+      // `retry` is not a caller's parameter: it is how this defers itself once.
+      // EVERY POSITION HERE IS MEASURED, off `getClientRects` on the painted
+      // spans, and a hidden element measures zero, so a paint that runs while
+      // the read pane is `display:none` puts both pins at the layer's origin
+      // and leaves them there. Nothing about that looks like a measurement
+      // failure on screen: it looks like two pins stuck in the corner.
+      //
+      // `editClose` is how it happened. It sets the flag and paints in the
+      // same breath, and Alpine does not clear `display:none` until the
+      // reactive flush, so the paint measured the pane one tick before it came
+      // back. Measured 2026-08-25: pins at 34,88 and 82,88 before a trip
+      // through the keyboard and both at -16,71 after it, with the pane
+      // computing `none` at the paint and `block` at `$nextTick`.
+      //
+      // Guarded HERE rather than at that one call site, because the trap
+      // belongs to painting and not to the keyboard: any caller that repaints
+      // across a visibility change has it. One deferral only, so a host that
+      // is hidden for good costs a wasted tick rather than a loop.
+      paint(retry = true) {
         this.beat++;
         if (!this._host) return;
+        if (!this._host.getClientRects().length) {
+          if (retry) this.$nextTick(() => this.paint(false));
+          return;
+        }
         window.Dictate.paint(this._host, {
           text: this.text, interim: this.interim,
           range: this.d ? this.d.range : null, armed: this.pinned ? this.armed : null,

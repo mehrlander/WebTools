@@ -179,9 +179,14 @@ test('nodes are newest first and a stub is dated by its newest branch', () => {
   assert.equal(stub.children.map(b => b.name).join(), 'new,old');
 });
 
-test('the join label states what it could not place', () => {
+// The standing "N of M branches placed" label is retired: it explained the
+// machinery of the join to a reader who came to see what they had been working
+// on. The sentence survives in the Counts lens, where the histograms it
+// annotates are the join, so what is held here is the sentence's arithmetic.
+test('the join note states what it could not place', () => {
   set([branch('a', { sessions: [SESS('AAA')] }), branch('b')],
       [record('rec1', { agent: SESS('AAA') })]);
-  assert.equal(data.sessionJoinLabel, '1 of 2 branches placed');
-  assert.match(data.sessionJoinNote, /reach no session at all/);
+  assert.equal(data.sessionJoinLabel, undefined);
+  assert.match(data.sessionJoinNote, /1 branches reach a session record through the record's own session URL/);
+  assert.match(data.sessionJoinNote, /1 reach no session at all/);
 });

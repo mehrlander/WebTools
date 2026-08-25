@@ -47,6 +47,8 @@
     "test:viewer-pdf": "node tools/test/viewer-pdf.mjs",
     "test:viewer-many": "node tools/test/viewer-many.mjs",
     "test:card-pdf": "node tools/test/card-pdf.mjs",
+    "test:pdf-flow": "node tools/test/pdf-flow.mjs",
+    "test:pdf-inspect": "node tools/test/pdf-inspect-address.mjs",
     "test:viewer-xlsx": "node tools/test/viewer-xlsx.mjs",
     "test:alpine-teardown": "node tools/test/alpine-teardown.mjs",
     "test:reader-height": "node tools/test/stage-reader-height.mjs",
