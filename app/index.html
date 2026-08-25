@@ -1863,7 +1863,12 @@ function app(){ return {
   // repo's config through the same config cache, token-gated: no token, no app
   // views (like the Stage). Each is a sidebar entry in the estate switcher,
   // rendered live through toss-render #gh=.
-  appViews: [],     // resolved [{repo, path, label, icon, order, key}]
+  appViews: [],     // resolved [{repo, path, label, icon, order, slug, key}]
+  // Settles when the crawl above has been read once. A slug address awaits it;
+  // a token-less or failed load still settles, so the wait cannot hang, and the
+  // lookup then simply misses. Pre-set to a resolved promise so a caller that
+  // runs before init (a test, a popstate on a cold frame) awaits nothing.
+  appViewsReady: Promise.resolve(),
   appView: null,    // the selected app view when view==='app'
   // The rail: `rail: true` items from the links board a repo declares with
   // `links` in its own config (loadRail). Outbound destinations, not views, so
@@ -2030,7 +2035,11 @@ function app(){ return {
       this.loadConfig();
       await this.refreshConfigs();
     });
-    this.loadEstateSidebar().then(() => this.refreshConfigCache());
+    // Held rather than dropped, because ?app=<slug> resolves against what this
+    // fills in and nothing else can tell it where the page is. Everything else
+    // still routes without waiting; see appViewFromUrl.
+    this.appViewsReady = this.loadEstateSidebar();
+    this.appViewsReady.then(() => this.refreshConfigCache());
     this.processMailbox();
     this.loadProposalCount();
 
@@ -2281,6 +2290,12 @@ function app(){ return {
                 label: pg.viewLabel || pg.title || t.path.split('/').pop(),
                 icon: pg.icon || 'ph-app-window',
                 order: Number.isFinite(pg.order) ? pg.order : 0,
+                // The short address, when the promoting repo declares one. It
+                // is the page's name rather than its location, which is what
+                // makes ?app=<slug> short: a path is most of an address and
+                // none of the meaning. Optional, so a page that declares none
+                // is reached by its address and nothing changes for it.
+                slug: typeof pg.slug === 'string' ? pg.slug.trim() : '',
                 key: t.repo + (t.ref ? '@' + t.ref : '') + ':' + t.path,
               });
             }
@@ -4831,10 +4846,32 @@ function app(){ return {
       } },
     // App views are estate-level, so the link stands alone (like the Stage):
     // the promoted page's repo and path ride it, independent of the open repo.
-    { key: 'app', when: u => !!(u.appRepo && u.appPath),
-      open(u){ this.goAppView(this.appViewFromUrl(u)); },
+    // Three spellings, one destination. `?app=` is the short form and takes
+    // either a slug a repo declared or the estate's `owner/repo[@ref]:path`
+    // address; the five-key form is what this route was born with and still
+    // resolves, so no minted link ever stops working.
+    { key: 'app', when: u => !!(u.app || (u.appRepo && u.appPath)),
+      async open(u){
+        const v = await this.appViewFromUrl(u);
+        // A slug naming nothing lands on the estate, the page's front door,
+        // rather than on an app view with no page in it. Silent, because a
+        // stale bookmark is not an error worth a dialog, and the estate shows
+        // what the reader can reach instead.
+        if (v) this.goAppView(v); else this.goDashboard();
+      },
       ready(){ return !!this.appView; },
       stamp(p){
+        // The short form is what gets WRITTEN, whenever the open view has a
+        // slug to write. The alternative was to read it and stamp the long one
+        // back, which turns every short link into a long one the moment the
+        // reader touches anything, and an address nobody can keep is not worth
+        // having minted. Precedented: ?view=branches rewrites to ?view=sessions.
+        //
+        // The slug also makes appLabel/appIcon unnecessary. They exist so a
+        // cold deep link is self-describing before the config cache resolves,
+        // and a slug cannot resolve without that cache at all, so by the time
+        // this view is on screen its label and icon are already known.
+        if (this.appView.slug) { p.set('app', this.appView.slug); return; }
         p.set('appRepo', this.appView.repo);
         p.set('appPath', this.appView.path);
         if (this.appView.ref) p.set('appRef', this.appView.ref);
@@ -4852,9 +4889,13 @@ function app(){ return {
   // list so a stale one is cleared rather than carried into a screen that does
   // not mean it; nothing stamps them now. `ref` is deleted here and re-stamped
   // above, being repo-scoped rather than any view's.
+  // `on` is here to be DELETED and never written: it is the query fallback for
+  // the subject's own params (appViewUrl), and the fragment is where they
+  // belong, so an address arriving with ?on= leaves with '#'. That is the
+  // self-heal, and it is why the key is in this list rather than a stamp.
   VIEW_KEYS: ['file', 'view', 'path', 'ref', 'project', 'tab', 'detail', 'item', 'window',
               'sq', 'smode', 'srepo', 'sref', 'spath', 'sfile',
-              'appRepo', 'appPath', 'appRef', 'appLabel', 'appIcon'],
+              'app', 'on', 'appRepo', 'appPath', 'appRef', 'appLabel', 'appIcon'],
 
   routeFor(view){ return this.VIEWS.find(r => r.key === view || r.alias === view); },
 
@@ -4873,9 +4914,18 @@ function app(){ return {
 
   parseUrl(){
     const p = new URLSearchParams(location.search);
-    if (!p.has('repo') && !p.has('file') && !p.has('view')) return null;
+    // `app` joins the gate because it is a route key that names no repo and no
+    // view: `?app=budget-drs` is a complete address and would otherwise parse
+    // to null and land on the estate.
+    if (!p.has('repo') && !p.has('file') && !p.has('view') && !p.has('app')) return null;
     return { repo: p.get('repo') || this.DEFAULT_REPO, ref: p.get('ref') || '',
-             file: p.get('file'), view: p.get('view'), path: p.get('path') || '',
+             file: p.get('file'),
+             // `?app=` names its own route, so it implies view=app: the dispatch
+             // in routeFromUrl keys on url.view, and a short address that named
+             // no view would find no row to open and fall through to the estate.
+             view: p.get('view') || (p.has('app') ? 'app' : null),
+             path: p.get('path') || '',
+             app: p.get('app') || '', on: p.get('on') || '',
              project: p.get('project') || '', tab: p.get('tab') || '',
              appRepo: p.get('appRepo') || '', appPath: p.get('appPath') || '', appRef: p.get('appRef') || '',
              appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '',
@@ -5774,11 +5824,42 @@ function app(){ return {
   // Select an estate-level app view; the main area renders it live via
   // toss-render #gh= (appViewUrl).
   goAppView(v){ this.appView = v; this.view = 'app'; this.syncUrl(); },
-  // Reconstruct an app view from a deep link (?view=app&appRepo&appPath). Prefer
-  // the loaded entry (its viewLabel/icon), since the collection may not have
-  // resolved yet on a cold open; fall back to a minimal object that still
-  // renders (label from the filename, a default icon).
-  appViewFromUrl(url){
+  // Reconstruct an app view from a deep link. Three spellings arrive here and
+  // they resolve differently, which is the whole of this method:
+  //
+  //   ?app=<slug>              a name a repo declared on a promoted page. It
+  //                            carries no repo and no path, so it can ONLY be
+  //                            resolved against the collected list, and that
+  //                            list is a crawl. Hence the await below.
+  //   ?app=owner/repo[@ref]:p  the estate's one address grammar, self-contained.
+  //   ?view=app&appRepo=&…     the five-key form this route was born with.
+  //
+  // The slug and the address are told apart by RepoAddress.parse, which returns
+  // null for anything that is not an address. That is the discriminator rather
+  // than a slug regex of my own, so the grammar keeps one implementation and a
+  // slug is simply "not an address".
+  async appViewFromUrl(url){
+    if (url.app) {
+      const addr = window.RepoAddress && window.RepoAddress.parse(url.app);
+      if (!addr) {
+        // A slug is a lookup, and the table is loaded asynchronously, so this
+        // is the one address form that must wait. It waits HERE rather than at
+        // boot, so every other address still routes at first paint: the cost is
+        // paid only by the form that cannot be resolved without paying it.
+        // A slug that resolves to nothing falls through to null, and the caller
+        // (routeFromUrl) then lands on the estate rather than an empty frame.
+        await this.appViewsReady;
+        return this.appViews.find(v => v.slug === url.app) || null;
+      }
+      const key = addr.repo + (addr.ref ? '@' + addr.ref : '') + ':' + addr.path;
+      return this.appViews.find(v => v.key === key) || {
+        repo: addr.repo, ref: addr.ref, path: addr.path,
+        label: addr.path.split('/').pop(), icon: 'ph-app-window', key,
+      };
+    }
+    // Prefer the loaded entry (its viewLabel/icon/slug), since the collection
+    // may not have resolved yet on a cold open; fall back to a minimal object
+    // that still renders (label from the filename, a default icon).
     const key = url.appRepo + (url.appRef ? '@' + url.appRef : '') + ':' + url.appPath;
     return this.appViews.find(v => v.key === key) || {
       repo: url.appRepo, ref: url.appRef, path: url.appPath,
@@ -5786,17 +5867,60 @@ function app(){ return {
       icon: url.appIcon || 'ph-app-window', key,
     };
   },
-  // An app view's toss address. `query` is optional and rides the address the
-  // way the toss grammar allows (?query on the addressed path), which the
-  // renderer's params shim answers inside the frame; the Links pencil uses it
-  // to open the board straight into edit mode. It is deliberately NOT stamped
-  // into the shell's URL: opening an editor is an action, not a place, so a
-  // reload lands on the board's reading view.
+
+  // ── What the framed page is handed, and whose namespace is whose ──────────
+  //
+  // THE SHELL OWNS THE QUERY. THE FRAGMENT IS THE SUBJECT'S.
+  //
+  // That is the whole rule, and it needs no list of reserved names on either
+  // side, which is the point: the shell's key set grows (VIEW_KEYS carries two
+  // retired keys already) and a framed page's grows too, in another repo, with
+  // nothing comparing them. Under a shared namespace the next addition on
+  // either side is a silent collision that presents as "the deep link opened
+  // the wrong screen". `?view=`, `?tab=` and `?q=` collide today.
+  //
+  // It is also not a new rule. docs/routes.json states it for every parameter
+  // in the estate ("read fragment first, query as fallback"), lib/kits/url-params.js
+  // implements it, StageLink.read already applies it to stage/prompts/mode, and
+  // this shell's own syncUrl has always rebuilt the query while carrying
+  // location.hash through byte for byte. The fragment was a namespace the shell
+  // preserved and did not use; this is the half that was missing.
+  //
+  // Precedence, highest first:
+  //   1. v.query      set programmatically. An action, not an address: the
+  //                   Links pencil opens the board in edit mode this way.
+  //   2. the fragment the reader's address carries, minus the three keys the
+  //      shell claims there (stage, prompts, mode; see StageLink.read).
+  //   3. ?on=<encoded>  the query fallback, for a context that eats the '#'
+  //      (a link-preview crawler, a rewriter). Inbound only: `on` is in
+  //      VIEW_KEYS, so the next stamp drops it and the address self-heals into
+  //      the fragment form.
+  //
+  // The delivery is a ?query on the addressed path, which the toss grammar
+  // allows and the renderer's params shim answers inside the frame. So a framed
+  // page reads its params exactly as it always has and needs no change to be
+  // deep-linkable: budget-drs still reads ?view= and ?data= off its own search.
+  //
+  // One honest limit: this is the address going IN. Navigating inside the frame
+  // does not write back out, so the shell's fragment names where the reader
+  // arrived rather than where they are now. The toss address has always had the
+  // same property, so it is parity rather than a regression, and closing it
+  // would need the framed page to postMessage its address to the shell.
+  // The three keys the shell claims in the fragment, and the only exception to
+  // "the fragment is the subject's". They are the stage link's, and they travel
+  // as one unit; see StageLink.read.
+  SHELL_FRAGMENT_KEYS: ['stage', 'prompts', 'mode'],
+  get subjectParams(){
+    return window.UrlParams ? window.UrlParams.subject(this.SHELL_FRAGMENT_KEYS, location) : '';
+  },
+  // An app view's toss address, with whatever the subject's namespace holds
+  // riding it as a ?query on the addressed path.
   get appViewUrl(){
     const v = this.appView;
     if (!v || !v.repo || !v.path) return '';
     const ref = v.ref ? '@' + v.ref : '';
-    return '../pages/toss-render.html#gh=' + v.repo + ref + ':' + v.path + (v.query ? '?' + v.query : '');
+    const q = v.query || this.subjectParams;
+    return '../pages/toss-render.html#gh=' + v.repo + ref + ':' + v.path + (q ? '?' + q : '');
   },
   // The sidebar app-view list: the collected app views (from the config cache,
   // main-only), plus the app view currently open if it is not already among
