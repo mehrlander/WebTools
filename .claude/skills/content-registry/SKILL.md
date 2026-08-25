@@ -46,8 +46,8 @@ python3 "$CLAUDE_PLUGIN_ROOT/content-registry/registry.py" corpus <root> concept
    be isolated by heading; restructure instead.
 4. **Verification is advisory.** Run `verify` after edits and at renames;
    report findings, do not block on them.
-5. **Consumers.** web-tools `tools/concept-lab/termlab.py` and
-   `tools/semsearch.py` read the registry when present: `exclude` drops a
+5. **Consumers.** the private estate's `local-models/instruments/concept-lab/termlab.py` and
+   `semsearch.py` read the registry when present: `exclude` drops a
    file, `analysis_use` decides whether content counts as the repo's
    authored voice, undeclared content falls back to heuristics.
 
