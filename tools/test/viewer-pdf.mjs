@@ -157,11 +157,15 @@ const state = () => page.evaluate(() => {
   const host = document.getElementById('dv-viewer');
   const v = host && Alpine.$data(host);
   const root = document.querySelector('[data-pdf="root"]');
-  const deck = root?.__deck || null;
+  // `__pdfFlow` rather than `__deck`, because the pdf module now mounts one of
+  // TWO flows and the deck is only one of them. The handle is uniform across
+  // both, which is the point: every claim below is about the document being
+  // readable and paged, not about which axis it is read on.
+  const flow = root?.__pdfFlow || null;
   const msg = document.querySelector('[data-pdf="msg"]');
   const bar = document.querySelector('[data-pdf="bar"]');
   const open = document.querySelector('[data-pdf="open"]');
-  const at = deck ? deck.active() : -1;
+  const at = flow ? flow.active() : -1;
   // The ACTIVE slide's canvas, not "the canvas": there is one per page now,
   // and only the ones near the reader exist at all.
   const canvas = document.querySelector(`.viewer-pdf-page[data-page="${at + 1}"]`);
@@ -180,11 +184,18 @@ const state = () => page.evaluate(() => {
     modes: (v?.availableModes || []).map(m => m.id),
     stats: v?.stats || '',
     active: at,
-    slides: deck ? deck.count : 0,
-    built: deck ? deck.builtCount : 0,
-    // A snap track is only swipeable if it can actually scroll horizontally.
-    scrollable: deck ? deck.track.scrollWidth > deck.track.clientWidth + 10 : false,
-    snap: deck ? getComputedStyle(deck.track).scrollSnapType : '',
+    kind: flow ? flow.kind : '',
+    slides: flow ? flow.count : 0,
+    built: flow ? flow.built() : 0,
+    // Which way the mounted flow actually moves. The continuous flow must
+    // scroll DOWN and must not scroll sideways at all, since a sideways
+    // gesture over a page belongs to whatever deck encloses the viewer.
+    scrollsY: flow ? flow.scroller.scrollHeight > flow.scroller.clientHeight + 10 : false,
+    scrollsX: flow ? flow.scroller.scrollWidth > flow.scroller.clientWidth + 10 : false,
+    snap: flow ? getComputedStyle(flow.scroller).scrollSnapType : '',
+    // The scroller's own width, which is the pane the page is fitted to. It
+    // is the stage's width less whatever a scrollbar takes.
+    scrollerWidth: flow ? Math.round(flow.scroller.clientWidth) : 0,
     shown: !!canvas,
     msg: msg && !msg.classList.contains('hidden') ? msg.textContent.trim() : '(gone)',
     barShown: bar ? !bar.classList.contains('hidden') : false,
@@ -235,21 +246,30 @@ try {
   ok('and lands on the other page', s.active === 1 && s.ink > 200 && s.ink !== inkOne,
      `${inkOne} -> ${s.ink} at ${s.active}`);
 
-  console.log('the pages are a swipe track, not just two buttons:');
+  console.log('the pages are one continuous column, not a sideways deck:');
   // The gesture itself cannot be synthesized faithfully here, so this asserts
-  // the three properties that make one work: a track wider than its box, snap
-  // points on it, and a pager that follows the SCROLL rather than only driving
-  // it. Drag the track directly and see whether the rest of the pane agrees.
-  ok('the track scrolls horizontally', s.scrollable === true, JSON.stringify(s));
-  ok('with mandatory snap points', /mandatory/.test(s.snap), s.snap);
+  // the properties that decide what a gesture MEANS: the column moves
+  // vertically, it does not move sideways at all, and the pager follows the
+  // SCROLL rather than only driving it.
+  //
+  // `scrollsX === false` is the whole change in one assertion. While the pages
+  // were a horizontal track, a sideways swipe over the page was captured by
+  // it, so inside the stage reader (a horizontal deck of documents) the same
+  // gesture meant "next page" over the page and "next document" a few pixels
+  // outside it, and there was no swipe at all that left a multi-page document.
+  // tools/test/pdf-flow.mjs drives that nested case for real.
+  ok('the default flow is the continuous one', s.kind === 'scroll', s.kind);
+  ok('the column scrolls vertically', s.scrollsY === true, JSON.stringify(s));
+  ok('and does not scroll sideways', s.scrollsX === false, JSON.stringify(s));
+  ok('with no snap points to fight the scroll', !/mandatory/.test(s.snap), s.snap);
   await page.evaluate(() => {
-    const t = document.querySelector('[data-pdf="root"]').__deck.track;
-    t.scrollTo({ left: 0, behavior: 'auto' });
-    t.dispatchEvent(new Event('scroll'));
+    const box = document.querySelector('[data-pdf="root"]').__pdfFlow.scroller;
+    box.scrollTo({ top: 0, behavior: 'auto' });
+    box.dispatchEvent(new Event('scroll'));
   });
   await page.waitForTimeout(900);
   s = await state();
-  ok('a scroll of the track moves the pager back', s.label.replace(/\s/g, '') === '1/2', s.label);
+  ok('a scroll of the column moves the pager back', s.label.replace(/\s/g, '') === '1/2', s.label);
   ok('and the reader is on page 1 again', s.active === 0, String(s.active));
 
   console.log('a long document does not rasterize itself:');
@@ -324,6 +344,12 @@ try {
       // flex gaps, and the slide's own), and each was defensible alone.
       stageWidth: Math.round(document.querySelector('[data-pdf="stage"]')?.clientWidth ?? 0),
       pageWidth: Math.round(document.querySelector('.viewer-pdf-page')?.getBoundingClientRect().width ?? 0),
+      // The continuous flow is a scroller INSIDE the stage, so the pane a page
+      // is fitted to is the scroller's width, which is the stage's less
+      // whatever a scrollbar takes. Both are asserted below: the page fills
+      // its scroller, and the scroller is not quietly inset from the stage,
+      // which together say what the single measurement used to.
+      flowWidth: Math.round(document.querySelector('.viewer-pdf-flow')?.clientWidth ?? 0),
       // A heading here would be a third copy of the filename: the address
       // ends with it and the viewer prints it. Only a payload that names
       // itself gets one, and a bare addressed file does not.
@@ -347,8 +373,11 @@ try {
   ok('and the document starts near the top of the screen',
      layout.stageTop < 160, `chrome pushes it to ${layout.stageTop}px of 844`);
   ok('the page fills the pane it was given',
-     layout.pageWidth >= layout.stageWidth - 4,
-     `page ${layout.pageWidth} inside pane ${layout.stageWidth}`);
+     layout.pageWidth >= layout.flowWidth - 4,
+     `page ${layout.pageWidth} inside pane ${layout.flowWidth}`);
+  ok('and that pane is the stage, less only a scrollbar',
+     layout.flowWidth >= layout.stageWidth - 20,
+     `column ${layout.flowWidth} inside stage ${layout.stageWidth}`);
 
   await page.setViewportSize({ width: 1100, height: 800 });
   // ── paging a long document ───────────────────────────────────────────────

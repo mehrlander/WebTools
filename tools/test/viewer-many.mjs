@@ -147,9 +147,14 @@ try {
       return {
         i: Number(s.getAttribute('data-reader-slide')),
         settled: msg ? msg.classList.contains('hidden') : false,
-        tracks: r ? r.querySelectorAll('.sd-track').length : 0,
+        // ONE mounted flow per viewer, whichever flow it is. This counted
+        // `.sd-track` while the pdf module always built a horizontal deck;
+        // it now reads the flow's own scroller, so the claim (no viewer
+        // renders a second document's pages into this one's DOM) survives
+        // the default moving to a continuous column.
+        flows: r ? r.querySelectorAll('.sd-track, .viewer-pdf-flow').length : 0,
         label: r?.querySelector('[data-pdf="page"]')?.textContent?.trim() ?? '',
-        deckCount: r?.__deck?.count ?? 0,
+        deckCount: r?.__pdfFlow?.count ?? 0,
         ink,
       };
     });
@@ -160,7 +165,7 @@ try {
     const want = FIXTURES[s.i];
     if (!want) continue;
     ok(`slide ${s.i} finished loading`, s.settled, JSON.stringify(s));
-    ok(`slide ${s.i} holds exactly one page track`, s.tracks === 1, `${s.tracks} track(s)`);
+    ok(`slide ${s.i} holds exactly one page flow`, s.flows === 1, `${s.flows} flow(s)`);
     ok(`slide ${s.i} pages ITS OWN document (${want.pages} pages)`,
        s.deckCount === want.pages && s.label === `1 / ${want.pages}`,
        `deck ${s.deckCount}, label "${s.label}"`);
@@ -172,13 +177,20 @@ try {
   // label moved, and the page on screen did not.
   const step = await page.evaluate(async () => {
     const r = document.querySelector('[data-reader-slide="0"] [data-pdf="root"]');
-    const before = r.querySelector('.sd-track').scrollLeft;
+    // The flow's own scroller, and the axis it moves on, both read from the
+    // handle: this used to name `.sd-track` and `scrollLeft`, which is the one
+    // thing about the pdf module that changed.
+    const pos = () => {
+      const f = r.__pdfFlow;
+      return f.kind === 'page' ? f.scroller.scrollLeft : f.scroller.scrollTop;
+    };
+    const before = pos();
     r.querySelector('[data-pdf="next"]').click();
     await new Promise(res => setTimeout(res, 1200));
-    return { before, after: r.querySelector('.sd-track').scrollLeft,
+    return { before, after: pos(),
              label: r.querySelector('[data-pdf="page"]').textContent.trim() };
   });
-  ok('the next arrow moves the slide\'s own track', step.after > step.before, JSON.stringify(step));
+  ok('the next arrow moves the slide\'s own flow', step.after > step.before, JSON.stringify(step));
   ok('and its own counter follows', step.label === '2 / 6', step.label);
 } finally {
   await browser.close();
