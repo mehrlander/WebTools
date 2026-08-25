@@ -1326,20 +1326,20 @@
        undo and redo rather than staying in the bottom row: it undoes a word
        the way undo undoes an act, and the three read as one group. -->
   <div @pointerdown="headerTap($event)"
-       class="shrink-0 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 px-2 min-h-11
+       class="shrink-0 grid grid-cols-[1fr_auto_1fr] items-center gap-1 px-1 min-h-14
               border-b border-base-300 pt-[env(safe-area-inset-top)]">
 
-    <div class="flex items-center gap-1.5 justify-self-start">
+    <div class="flex items-center gap-1 justify-self-start">
       <!-- RECORD, and the state readout as well as the switch: red and pulsing
            while live, so the one question a capture surface has to answer
            without being asked is answered by the control that changes it. -->
       <button @click="mic()" :disabled="edit"
-              class="btn btn-sm btn-square shrink-0"
+              class="btn btn-md btn-square shrink-0"
               :class="listening ? 'btn-error' : 'btn-ghost'"
               :title="listening ? 'Recording. Tap to stop.' : 'Start listening'">
-        <i class="ph text-lg" :class="(listening ? 'ph-microphone animate-pulse' : 'ph-microphone-slash')"></i>
+        <i class="ph text-xl" :class="(listening ? 'ph-microphone animate-pulse' : 'ph-microphone-slash')"></i>
       </button>
-      <span class="font-mono text-xs opacity-40 tabular-nums" x-text="started ? clock : ''"></span>
+      <span class="font-mono text-sm opacity-40 tabular-nums" x-text="started ? clock : ''"></span>
     </div>
 
     <!-- THE TARGET, on the centre line. Two gestures on one button, because
@@ -1349,26 +1349,26 @@
          for "live and pointed at the text". touch-action:none inline is what
          makes the drag work rather than scrolling the page under it. -->
     <button x-init="bindPad($el)" :disabled="edit" style="touch-action:none"
-            class="btn btn-sm btn-square justify-self-center"
+            class="btn btn-md btn-square justify-self-center"
             :class="armed ? 'btn-error btn-outline' : (padDrag ? 'btn-info' : 'btn-ghost')"
             :title="armed === 'anchor' ? 'Now tap where the selection should end (tap here again to cancel)'
                     : armed ? 'The ' + armed + ' of the selection is armed. Tap here to put it down.'
                     : 'Drag to move the cursor. Tap to start a selection from it.'">
-      <i class="ph ph-crosshair text-lg"></i>
+      <i class="ph ph-crosshair text-xl"></i>
     </button>
 
-    <div class="flex items-center gap-1.5 justify-self-end">
+    <div class="flex items-center gap-0.5 justify-self-end">
       <span class="font-mono text-xs opacity-40 tabular-nums" x-text="words + 'w'"></span>
       <button @click="undo()" :disabled="!canUndo" class="btn btn-ghost btn-sm btn-square" title="Undo">
-        <i class="ph ph-arrow-counter-clockwise text-base"></i>
+        <i class="ph ph-arrow-counter-clockwise text-lg"></i>
       </button>
       <button @click="redo()" :disabled="!canRedo" class="btn btn-ghost btn-sm btn-square" title="Redo">
-        <i class="ph ph-arrow-clockwise text-base"></i>
+        <i class="ph ph-arrow-clockwise text-lg"></i>
       </button>
       <button @pointerdown.prevent="back()" :disabled="edit"
               class="btn btn-ghost btn-sm btn-square text-error"
               title="Delete the last word (dictation keeps running)">
-        <i class="ph ph-backspace text-base"></i>
+        <i class="ph ph-backspace text-lg"></i>
       </button>
       <!-- The menu is a DROPDOWN, not a band. As a band it inserted itself
            between the header and the text and pushed the words down the screen
@@ -1392,7 +1392,7 @@
           <button @click="openAuto()"
                   class="flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-base-200">
             <i class="ph ph-book-open text-lg opacity-60"></i>Autocorrect
-            <span class="ml-auto font-mono text-xs opacity-40" x-text="corrections.length"></span>
+            <span class="ml-auto font-mono text-sm opacity-40" x-text="corrections.length"></span>
           </button>
           <div x-show="d && d.relaunches" class="px-3 pt-1.5 pb-0.5 font-mono text-[11px] opacity-30"
                x-text="(d ? d.relaunches : 0) + ' relaunches'"></div>

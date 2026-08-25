@@ -753,6 +753,21 @@ test('reach extends the armed pin only, and only when asked for', () => {
   assert.doesNotMatch(out.end.getAttribute('style'), /transition/, 'the hit box does not');
 });
 
+// SEVERAL HYPOTHESES IN ONE EVENT need a separator putting back. normalize()
+// trims each segment on the way in, because the join belongs in one place and
+// that place is spliceIn: engines disagree about whether a continuation carries
+// a leading space. But the interim accumulator concatenated them raw, so the
+// trim it had just done was what glued them, and the reader watched a word
+// arrive stuck to the one before it and then separate when it finalized.
+test('interim segments arriving together are joined, not concatenated', () => {
+  const seen = [];
+  const d = engine({ onInterim: (t) => seen.push(t) });
+  d.start();
+  FakeSR.last.say([{ t: 'the point of' }, { t: ' this page' }]);
+  assert.equal(seen.at(-1), 'the point of this page');
+  d.stop();
+});
+
 // The pins are KEPT across paints, because a rebuilt element has no previous
 // value to transition from. Identity is the gate: a caller may have attached a
 // listener to the node, and the reach cannot ease out of a node that is new.
