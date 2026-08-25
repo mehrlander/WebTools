@@ -215,6 +215,19 @@
       // this component is a view of it, never a second copy.
       d: null,
       text: '', interim: '', armed: null, beat: 0,
+      // BOTH BALLS HANG BELOW THEIR LINE on this page, where the platform's
+      // default is above on the left and below on the right. The ball here is
+      // a grip, since a pin is dragged rather than only tapped, and a grip
+      // that changes sides between the two edges puts the thumb over the words
+      // on one of them and makes the same drag read differently depending on
+      // which end you grabbed. One side for both, so the hand always lands in
+      // the same place and the drag's buffer has one direction.
+      //
+      // Read in two places, which is why it is a constant rather than a
+      // literal twice: the painter is told where to draw, and the pin drag is
+      // told which way its deadband faces. Those two must not disagree.
+      pinsBelow: true,
+
       // A REAL PIN, as against 'anchor', which is armed with nothing drawn.
       // Everything that reaches into the overlay for a handle asks this
       // rather than `armed`, since 'anchor' would send it looking for an
@@ -668,23 +681,25 @@
         // place an edge does not travel straight, and without a deadband a few
         // pixels of wander step the edge into the line above.
         //
-        // AND IT IS ONE-SIDED, MIRRORED PER PIN, because the two balls hang on
-        // opposite sides of the line: the start's above it, the end's below.
-        // Your thumb is therefore already on that side when you grab, and the
-        // travel that carries it AWAY from the words is travel in that same
-        // direction. That is the travel the buffer is for.
+        // AND IT IS ONE-SIDED, on the side the ball hangs. Your thumb is
+        // already there when you grab, so the travel that carries it AWAY from
+        // the words is travel in that same direction, and that is the travel
+        // the buffer is for. The other way the thumb is coming from outside
+        // the text and crossing toward it in plain view, and a buffer there
+        // only makes the pin feel stuck. Symmetric was the first cut and it
+        // made one direction worse on each pin.
         //
-        // The other way, the thumb is coming from outside the text and crossing
-        // toward it, so you can see exactly where you are going and a buffer
-        // there only makes the pin feel stuck. Symmetric was the first cut and
-        // it made one of the two directions worse on each pin.
+        // With `pinsBelow` that side is DOWN for both, which is the whole
+        // reason the two balls were moved onto one side: a buffer that
+        // mirrored per pin worked, and meant the same drag behaved oppositely
+        // depending on which end you happened to grab.
         //
         // The side is FIXED AT THE GRAB, not read per frame. Which pin you
         // hold can change mid-drag when the edges cross, and where your thumb
         // physically is cannot, so recomputing it would jump the aim a line
         // and a half at the moment of a crossing.
         const DEAD = 1.5;
-        const dir = which === 'end' ? 1 : -1;
+        const dir = this.pinsBelow ? 1 : (which === 'end' ? 1 : -1);
         const lineH = parseFloat(getComputedStyle(this.$refs.view).lineHeight) || 26;
         let moved = false;
         const d = document;
@@ -1003,6 +1018,7 @@
           // if the pin ever needs to say "grabbable" louder than the red ring
           // already does.
           reach: 0,
+          pinsBelow: this.pinsBelow,
           // Only once there is something to be at the end OF. On an empty
           // buffer the end caret is a red bar alone in the corner, behind the
           // start prompt, and it reads as a rendering fault.
