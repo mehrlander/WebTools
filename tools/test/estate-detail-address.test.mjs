@@ -23,6 +23,8 @@ class FakeGH {
   async compare() { return { ahead_by: 0, behind_by: 0, commits: [], files: [] }; }
 }
 
+const SESS = 'https://claude.ai/code/session_01FEAT';
+
 const { window, problems } = makeWindow({
   html: '<!doctype html><html><body><div id="es" x-data="estate()"></div></body></html>',
 });
@@ -73,7 +75,7 @@ data.activity = {
     openPRs: ['a', 'b', 'c'].map((n, i) => ({
       number: 300 + i, head: 'claude/feat-' + n, draft: true, title: 'work on ' + n,
       updatedAt: '2026-08-06T00:00:00Z', aheadBy: 2, behindBy: 0,
-      firstDate: '2026-08-04T00:00:00Z',
+      firstDate: '2026-08-04T00:00:00Z', sessions: [SESS], sessionsExact: true,
     })),
     scan: { branches: ['a', 'b', 'c'].map(n => ({
       name: 'claude/feat-' + n, sha: n, group: 'active',
@@ -126,6 +128,72 @@ test('a branch the list no longer holds still opens, as a list of one', () => {
   data.openDetailFromUrl();
   assert.equal(data.detail.rows.length, 1, 'nowhere to swipe, but somewhere to land');
   assert.equal(data.detailRow.name, 'claude/long-merged');
+});
+
+// ── a link is not a claim about the current filter ──────────────────────────
+// The row lookup used to run over `openRows`, the list as the reader has it
+// filtered. The app's default scope is Recent inside a ONE-DAY window, so an
+// open PR from last month misses it and the takeover fell back to a bare
+// {repo, name}: no default branch, so the slide's compare asked for
+// `compare/...branch` and 404'd, and no sessions, so the Claude mark had
+// nothing to render though the cached PR row was holding one. Measured on
+// web-tools #293, whose session link was in the cache the whole time.
+
+// The keyed globals the mounted slides are holding. The deck hands a slide
+// its options through one of these rather than through the x-data
+// expression, so this is where a test reads what a slide was given.
+const slideKeys = () => [...window.document.querySelectorAll('[x-data]')]
+  .map(el => /^branchBrief\(window\.(\w+)\)$/.exec(el.getAttribute('x-data') || ''))
+  .filter(Boolean).map(m => m[1]);
+
+// The options of a slide mounted since `before`. Waiting on the MOUNT rather
+// than on a count of turns is the honest wait: mountDeck awaits a six-link
+// kit chain before it renders anything, and a fixed count that suffices on an
+// idle machine does not under a parallel suite run, which this file produced
+// once before the poll went in. Keying on a NEW slide also refuses a stale
+// element left by an earlier test, which a "newest mount" read would take.
+const freshSlide = async (before, limit = 400) => {
+  for (let i = 0; i < limit; i++) {
+    const k = slideKeys().find(x => !before.includes(x));
+    if (k && window[k]) return window[k];
+    await tick(1);
+  }
+  return null;
+};
+
+test('a link opens a branch the window hides, and it arrives carrying its row', async () => {
+  data.closeDetail();
+  data._detailFromUrl = false;
+  window.__shell.branchWindow = 1;                // the shell's own default
+  try {
+    assert.equal(data.openRows.length, 0, 'the fixture really is outside the window');
+    const before = slideKeys();
+    window.history.replaceState(null, '', '/?view=activity&detail=me/tools@claude/feat-b');
+    data.openDetailFromUrl();
+    assert.equal(data.detailRow.name, 'claude/feat-b');
+    assert.equal(data.detailRow.def, 'main', 'the cached row, not a name pulled out of the address');
+    assert.deepEqual(data.detailRow.sessions, [SESS], 'so the session comes with it');
+    const opts = await freshSlide(before);
+    assert.ok(opts, 'the slide mounted');
+    assert.equal(opts.base, 'main', 'and the slide has something to compare against');
+    assert.deepEqual(opts.facts.sessions, [SESS]);
+    assert.equal(opts.facts.sessionsExact, true,
+      'the crawl read them off its own compare, so the slide is told they are exact');
+  } finally { window.__shell.branchWindow = 0; }
+});
+
+test('a branch no row exists for still gets a base', async () => {
+  // The other half: nothing in the cache carries this branch, so the bare
+  // fallback is right. It still may not be handed an empty base.
+  data.closeDetail();
+  data._detailFromUrl = false;
+  const before = slideKeys();
+  window.history.replaceState(null, '', '/?view=activity&detail=me/tools@claude/never-crawled');
+  data.openDetailFromUrl();
+  assert.equal(data.detailRow.name, 'claude/never-crawled');
+  const opts = await freshSlide(before);
+  assert.ok(opts, 'the slide mounted');
+  assert.equal(opts.base, 'main', "the repo's default branch, off the same cache");
 });
 
 test('the address survives a slashed branch name and refuses a malformed one', () => {

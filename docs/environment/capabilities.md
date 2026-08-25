@@ -411,6 +411,14 @@ was a gain: the workaround is one character of the address, not a different link
 *(measured 2026-08-09, PR #388, two writes of eight probe links, each read back
 through the MCP)*
 
+> [!WARNING]
+> **Stale 2026-08-25 → "The trigger is length, not shape" below:** this
+> conclusion does not reproduce. A 132-character `#gh=` address carrying both a
+> slashed ref and a `:path` survives today, so the trigger is the URL's length
+> and not the scp-style ambiguity argued for here. Whether the behavior changed
+> or this probe's real URLs were longer than the abbreviated forms in the table
+> suggest cannot be told from what was recorded.
+
 | Address | Result |
 | --- | --- |
 | `toss-render.html#gh=o/r@claude/some-branch:pages/p.html` | **wrapped** |
@@ -498,6 +506,14 @@ entry is their evidence.
 
 *(measured 2026-08-10, PR #385, eight probes over two comments)*
 
+> [!WARNING]
+> **Stale 2026-08-25 → "The trigger is length, not shape" below:** depth was the
+> correlate and length was the cause. Every observation here is retrodicted
+> exactly by the 150-character rule: `:pages/annotate.html` on a SHA ref is 146
+> characters and passed, `:docs/envelopes/data-view.md` is 154 and wrapped,
+> `:pages/show-repo/show-repo.html` is 157 and wrapped. A deeper path is a
+> longer URL, which is why counting slashes worked as far as it did.
+
 On a `#gh=` address the `:path` may carry **at most one slash**.
 `:pages/annotate.html` passes and `:pages/show-repo/show-repo.html` is wrapped,
 on the same SHA ref; so is `:docs/envelopes/data-view.md`, which shares no name
@@ -512,6 +528,46 @@ one-slash path and leaves a two-slash one exactly as broken, so the fix appears
 not to have worked. A nested page therefore cannot be tossed from a body at
 all; link the branch page, which carries no `:path` and passed clean, or hand
 the reader a `#gz=`.
+
+### The trigger is length, not shape
+
+*(measured 2026-08-25, PR #497, five rounds: four written into the PR body, one
+into an issue comment, each read back through the MCP)*
+
+**A URL of 150 characters or more inside a markdown link is wrapped. 149 or
+fewer survives.** Nothing else about the URL matters, and the threshold is the
+same on both write paths, a PR body and an issue comment alike.
+
+| round | held fixed | varied | result |
+| --- | --- | --- | --- |
+| 1 | base URL | at-sign, slashed ref, percent-encoding, bare text | all six intact; only the original (168) wrapped |
+| 2 | at-sign present | 40-hex SHA, branch length, param count | 130, 131, 143 intact; 155 wrapped |
+| 3 | 40-hex SHA present | length, and the at-sign swapped for a hyphen at equal length | 138, 144, 148 intact; **both** 155 rows wrapped |
+| 4 | everything else | length, one character apart | 148, 149 intact; 150 to 156 wrapped |
+| 5 | length under 150 | `#gh=` with a slashed ref and a `:path`, ref only, path only, plain blob | all four intact, including 132 with both |
+
+Round 3's hyphen control is what carries the argument. The same 155-character
+URL wraps whether or not it contains the `owner/repo@ref` that the two
+subsections above name as the trigger, so the ref cannot be doing the work.
+Round 5 is the other side of it: the exact shape those subsections say is
+doomed passes when it is short enough.
+
+The prior findings are not wrong observations, they are correctly observed
+correlates. The 2026-08-10 depth measurement is retrodicted exactly by the
+threshold, all three of its cases falling on the right side of it, which is a
+stronger check than any of my own rows: a deeper `:path` is a longer URL, and
+counting slashes was counting characters by proxy. A toss carrying `?use=` adds
+a 40-character SHA. A `claude/…` branch is longer than the SHA that replaces it.
+Every substitution SURFACING.md prescribed works, and works because it shortens.
+
+Two things this does not settle. The caption's `](url)/[` pair wrapped in
+2026-08-08's probe **with clean short URLs on both sides**, which no length rule
+explains, so that row stands on its own and was not re-tested here. And the
+threshold is a count of the URL, not of the whole link: whether the label or the
+surrounding line contributes was not varied, since every round held the label at
+`row`.
+
+The practical form: **count the URL.** Under 150 and the link lives.
 
 ## MCP: two servers can share a tool name, and only one may work
 
