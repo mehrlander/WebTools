@@ -715,6 +715,38 @@ test('the painter renders text, caret and selection as marked parts', () => {
   assert.match(hs.getAttribute('style'), /position:absolute/, 'so the text never moves for them');
 });
 
+// `reach` puts the ARMED ball on a stalk so a thumb dragging it clears the
+// text. Two things have to hold, and jsdom can check both from the style
+// strings even with no layout: only the armed pin reaches, and the option is
+// off unless asked for, since the composer and the stage share this painter
+// and neither wants it.
+test('reach extends the armed pin only, and only when asked for', () => {
+  const h = host();
+  const stem = (el) => el.firstElementChild.getAttribute('style');
+  const ball = (el) => el.lastElementChild.getAttribute('style');
+  const pins = () => ({
+    start: h.querySelector('[data-edge="start"]'),
+    end: h.querySelector('[data-edge="end"]'),
+  });
+
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 }, armed: 'end' });
+  const plain = pins();
+  assert.match(stem(plain.end), /height:0px/, 'no reach by default, so the stem is the line');
+  const plainBall = ball(plain.end);
+
+  D.paint(h, { text: 'the quick fox', range: { start: 4, end: 9 }, armed: 'end', reach: 36 });
+  const out = pins();
+  assert.match(stem(out.end), /height:36px/, 'the armed stem carries the reach');
+  assert.notEqual(ball(out.end), plainBall, 'and the ball rides out to the end of it');
+  assert.match(stem(out.start), /height:0px/, 'the unarmed pin does not reach');
+  assert.equal(ball(out.start), ball(plain.start), 'nor does its ball move');
+
+  // The mark itself must not move: the stem still starts on the line, so what
+  // the pin POINTS at is the same and only where you hold it changed.
+  assert.match(stem(out.end), /top:17px/, 'the stem still begins on the line');
+  assert.match(out.end.getAttribute('style'), /height:70px/, 'the hit box grew with it');
+});
+
 test('the caret is a plain inline, so it cannot break the word it sits inside', () => {
   // A caret between two characters splits the word into two spans, and an
   // ATOMIC inline (inline-block, which this was) is a line-break opportunity

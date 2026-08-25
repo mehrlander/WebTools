@@ -777,6 +777,13 @@
           // shift-click do the extending. The selection stays painted; only
           // the thing you would have tapped goes.
           handles: !this.precise,
+          // THE ARMED PIN RIDES OUT ON A STALK, one line of text plus a little,
+          // so the thumb that drags it is not sitting on the words either side
+          // of the edge it is placing. The mark does not move: the stem still
+          // ends on the line, and only the grip travels. On the first line it
+          // reaches up into the header, which is why the header carries no
+          // background and no stacking context of its own.
+          reach: 36,
           // Only once there is something to be at the end OF. On an empty
           // buffer the end caret is a red bar alone in the corner, behind the
           // start prompt, and it reads as a rendering fault.
