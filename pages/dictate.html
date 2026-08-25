@@ -69,13 +69,15 @@
     the tray /drain reads. The two that file it durably clear the buffer; the
     two that only read it leave it alone.
 
-    CORRECTIONS ARE A LIST, NOT A HOPE. iOS Safari's recognizer is Apple's
-    own, the same one behind Siri dictation, so it mishears a technical
-    vocabulary exactly as reliably here as anywhere and no amount of speaking
-    clearly will teach it. A substitution list is the only lever a page has:
-    it lives in the registry, it is applied to each segment as it lands
-    (kits/dictate.js `opts.fix`), and the ✎ row in the menu adds to it from
-    whatever is selected, so the page gets better the more it is wrong.
+    AUTOCORRECT, and the plain word is the right one: it is find and replace
+    over a list, whole words, longest first, applied to each segment as it
+    lands (kits/dictate.js `opts.fix`). It earns its place only because iOS
+    Text Replacement reaches the keyboard and not a page's speech results,
+    and because the Web Speech API's own SpeechGrammarList does nothing in
+    WebKit. The list lives in the registry and the menu row adds to it from
+    whatever is selected, so it gets better the more it is wrong. What it
+    cannot do is context: homophones are out of its reach entirely, and only
+    a model reading the sentence around a word would go further.
 
   WHERE THE CONTROLS SIT, and why the split is where it is. The HEADER holds
   the four instruments: record, undo, redo, and the target. Each is tapped a
@@ -163,7 +165,7 @@
 
   const REGISTRY = 'mehrlander/web-tools-private';
   const JOTS = 'lists/jots.json';
-  const FIXES = 'lists/dictation-fixes.json';
+  const AUTOCORRECT = 'lists/autocorrect.json';
   const DRAFT = 'dictate:draft';
   const GRANT = 'dictate:granted';
 
@@ -194,10 +196,10 @@
       elapsed: 0, since: 0,
       edit: false, draft: '',
       breaks: false,
-      menu: false, sheet: false, fixing: false,
+      menu: false, sheet: false, autoOpen: false,
       dest: q.get('to') || 'copy',
-      fixFrom: '', fixTo: '',
-      fixes: [], fixRe: null,
+      autoFrom: '', autoTo: '',
+      corrections: [], autoRe: null,
       restored: 0,              // how many characters came back from a draft
       saving: '',
       canShare: typeof navigator !== 'undefined' && !!navigator.share,
@@ -251,7 +253,7 @@
       init() {
         this.d = window.Dictate.create({
           lang: q.get('lang') || undefined,
-          fix: (s) => this.applyFixes(s),
+          fix: (s) => this.autocorrect(s),
           onText: (t) => { this.text = t; this.heard(); this.save(); this.paint(); },
           onInterim: (t) => { this.interim = t; this.heard(); this.paint(); },
           onState: () => {
@@ -272,7 +274,7 @@
         const held = ls.get(DRAFT);
         if (held && held.trim()) { this.d.text = held; this.restored = held.length; this.started = true; }
 
-        this.loadFixes();
+        this.loadCorrections();
         // Paint AFTER binding, not only from onText. A restored draft is
         // assigned in init(), which runs before $refs.body exists, so its
         // paint had nowhere to land and the page came back blank with the
@@ -705,45 +707,45 @@
       // Read once at boot, held as one alternation so a segment costs one
       // pass rather than one per entry. Longest first, so "web tools app"
       // cannot be eaten by "web tools" before it is reached.
-      async loadFixes() {
+      async loadCorrections() {
         if (!this.token) return;
         try {
           const reg = new window.GH({ token: this.token, repo: REGISTRY, ref: 'main' });
-          const raw = JSON.parse((await reg.get(FIXES)).text);
-          this.fixes = Array.isArray(raw.items) ? raw.items : [];
+          const raw = JSON.parse((await reg.get(AUTOCORRECT)).text);
+          this.corrections = Array.isArray(raw.items) ? raw.items : [];
           this.compile();
         } catch {}
       },
       compile() {
-        const rows = this.fixes.filter(f => f && f.from).sort((a, b) => b.from.length - a.from.length);
-        if (!rows.length) { this.fixRe = null; return; }
+        const rows = this.corrections.filter(f => f && f.from).sort((a, b) => b.from.length - a.from.length);
+        if (!rows.length) { this.autoRe = null; return; }
         const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        this.fixRe = new RegExp('\\b(' + rows.map(f => esc(f.from)).join('|') + ')\\b', 'gi');
-        this._fixMap = new Map(rows.map(f => [f.from.toLowerCase(), f.to]));
+        this.autoRe = new RegExp('\\b(' + rows.map(f => esc(f.from)).join('|') + ')\\b', 'gi');
+        this._autoMap = new Map(rows.map(f => [f.from.toLowerCase(), f.to]));
       },
       // Case is carried across: a correction fired at the head of a sentence
       // keeps its capital, since the recognizer's own capitalization is the
       // only signal available about where a sentence started.
-      applyFixes(s) {
-        if (!this.fixRe) return s;
-        return s.replace(this.fixRe, (m) => {
-          const to = this._fixMap.get(m.toLowerCase());
+      autocorrect(s) {
+        if (!this.autoRe) return s;
+        return s.replace(this.autoRe, (m) => {
+          const to = this._autoMap.get(m.toLowerCase());
           if (to == null) return m;
           return /^[A-Z]/.test(m) && /^[a-z]/.test(to) ? to[0].toUpperCase() + to.slice(1) : to;
         });
       },
-      openFix() {
+      openAuto() {
         const r = this.d.range;
-        this.fixFrom = r ? this.d.text.slice(r.start, r.end).replace(/^[\s.,;:!?]+|[\s.,;:!?]+$/g, '') : '';
-        this.fixTo = '';
-        this.fixing = true;
+        this.autoFrom = r ? this.d.text.slice(r.start, r.end).replace(/^[\s.,;:!?]+|[\s.,;:!?]+$/g, '') : '';
+        this.autoTo = '';
+        this.autoOpen = true;
         this.menu = false;
-        this.$nextTick(() => this.$refs.fixTo && this.$refs.fixTo.focus());
+        this.$nextTick(() => this.$refs.autoTo && this.$refs.autoTo.focus());
       },
-      async saveFix() {
-        const from = this.fixFrom.trim(), to = this.fixTo.trim();
-        if (!from || !to || !this.token) { this.fixing = false; return; }
-        this.fixing = false;
+      async saveAuto() {
+        const from = this.autoFrom.trim(), to = this.autoTo.trim();
+        if (!from || !to || !this.token) { this.autoOpen = false; return; }
+        this.autoOpen = false;
         // The buffer is corrected too, since the reader is looking at the
         // word that was wrong and a list that only helps NEXT time reads as
         // a control that did nothing.
@@ -751,15 +753,15 @@
         try {
           const reg = new window.GH({ token: this.token, repo: REGISTRY, ref: 'main' });
           let items = [];
-          try { const raw = JSON.parse((await reg.get(FIXES)).text); items = Array.isArray(raw.items) ? raw.items : []; }
+          try { const raw = JSON.parse((await reg.get(AUTOCORRECT)).text); items = Array.isArray(raw.items) ? raw.items : []; }
           catch (e) { if (e?.status && e.status !== 404) throw e; }
           items = [...items.filter(f => (f.from || '').toLowerCase() !== from.toLowerCase()),
                    { from, to, added: new Date().toISOString() }];
-          await reg.save(FIXES, { items }, `Dictation fix: "${from}" → "${to}"`);
-          this.fixes = items; this.compile();
+          await reg.save(AUTOCORRECT, { items }, `Autocorrect "${from}" → "${to}"`);
+          this.corrections = items; this.compile();
           Alpine.store('toast')('check', `"${from}" will come out "${to}"`, 'alert-success', 2600);
         } catch (e) {
-          Alpine.store('toast')('warning', 'Fix not saved: ' + (e?.message || e), 'alert-error', 5000);
+          Alpine.store('toast')('warning', 'Not saved: ' + (e?.message || e), 'alert-error', 5000);
         }
       },
 
@@ -930,14 +932,12 @@
             :title="breakable ? 'Break into paragraphs where you paused longest' : 'Needs the pause record, which typing replaces'">
       <i class="ph ph-paragraph"></i>Breaks
     </button>
-    <button @click="openFix()" class="btn btn-sm btn-ghost gap-1.5"
-            title="Teach the recognizer a word it keeps getting wrong">
-      <i class="ph ph-pencil-line"></i>Fix a word
+    <button @click="openAuto()" class="btn btn-sm btn-ghost gap-1.5">
+      <i class="ph ph-pencil-line"></i>Autocorrect
     </button>
-    <a :href="'https://github.com/mehrlander/web-tools-private/blob/main/lists/dictation-fixes.json'"
-       target="_blank" rel="noopener" class="btn btn-sm btn-ghost gap-1.5"
-       :title="fixes.length + ' corrections in the list'">
-      <i class="ph ph-list-magnifying-glass"></i><span x-text="fixes.length"></span>
+    <a href="https://github.com/mehrlander/web-tools-private/blob/main/lists/autocorrect.json"
+       target="_blank" rel="noopener" class="btn btn-sm btn-ghost gap-1.5">
+      <i class="ph ph-list-magnifying-glass"></i><span x-text="corrections.length"></span>
     </a>
     <div class="grow"></div>
     <span x-show="d && d.relaunches" class="self-center font-mono text-[11px] opacity-30"
@@ -1089,23 +1089,22 @@
     </div>
   </div>
 
-  <!-- ── Teaching a correction ───────────────────────────────────────────
-       Two fields, because the recognizer will not learn and a list is the
-       only lever left. -->
-  <div x-show="fixing" x-cloak class="fixed inset-0 z-[90] flex items-end justify-center">
-    <div class="absolute inset-0 bg-black/40" @click="fixing = false"></div>
+  <!-- ── Autocorrect ─────────────────────────────────────────────────────
+       A title, two fields and two buttons. NOTHING EXPLAINS ITSELF here: the
+       word "autocorrect" is one everybody already knows, and a paragraph
+       under it describing whole-word matching was the page telling a reader
+       about its own implementation. Heard, meant, add. -->
+  <div x-show="autoOpen" x-cloak class="fixed inset-0 z-[90] flex items-end justify-center">
+    <div class="absolute inset-0 bg-black/40" @click="autoOpen = false"></div>
     <div class="relative w-full max-w-3xl bg-base-100 rounded-t-2xl border-t border-base-300 p-4 flex flex-col gap-3"
          style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
-      <div class="font-medium">Fix a word it keeps getting wrong</div>
-      <input x-model="fixFrom" placeholder="what it hears" class="input input-bordered w-full text-lg">
-      <input x-model="fixTo" x-ref="fixTo" placeholder="what you meant" class="input input-bordered w-full text-lg">
-      <p class="text-xs opacity-50 -mt-1">
-        Applied to every segment from now on, whole words only, and it corrects what is selected here too.
-      </p>
+      <div class="font-medium">Autocorrect</div>
+      <input x-model="autoFrom" placeholder="heard" class="input input-bordered w-full text-lg">
+      <input x-model="autoTo" x-ref="autoTo" placeholder="meant" class="input input-bordered w-full text-lg">
       <div class="flex gap-2">
-        <button @click="fixing = false" class="btn btn-ghost flex-1">Cancel</button>
-        <button @click="saveFix()" :disabled="!fixFrom.trim() || !fixTo.trim() || !token"
-                class="btn btn-primary flex-1">Teach it</button>
+        <button @click="autoOpen = false" class="btn btn-ghost flex-1">Cancel</button>
+        <button @click="saveAuto()" :disabled="!autoFrom.trim() || !autoTo.trim() || !token"
+                class="btn btn-primary flex-1">Add</button>
       </div>
     </div>
   </div>

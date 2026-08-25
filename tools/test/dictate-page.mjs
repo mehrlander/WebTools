@@ -67,11 +67,11 @@ await page.route('**/*', route => {
       return route.fulfill({ status: 201, contentType: 'application/json',
                              body: JSON.stringify({ content: { sha: 'written' } }) });
     }
-    if (url.includes('dictation-fixes.json')) {
-      const fixes = { items: [{ from: 'js deliver', to: 'jsDelivr' },
-                              { from: 'web tools', to: 'web-tools' }] };
+    if (url.includes('autocorrect.json')) {
+      const list = { items: [{ from: 'js deliver', to: 'jsDelivr' },
+                             { from: 'web tools', to: 'web-tools' }] };
       return route.fulfill({ status: 200, contentType: 'application/json',
-        body: JSON.stringify({ content: Buffer.from(JSON.stringify(fixes)).toString('base64'),
+        body: JSON.stringify({ content: Buffer.from(JSON.stringify(list)).toString('base64'),
                                encoding: 'base64', sha: 'fixes', size: 1 }) });
     }
     if (/web-tools-private|mehrlander\/home/.test(url)) {
@@ -240,7 +240,7 @@ try {
     await buffer());
 
   // ── 3. Corrections reach the buffer ──────────────────────────────────
-  console.log('corrections:');
+  console.log('autocorrect:');
   await say('we load it from js deliver every time');
   const withFix = await buffer();
   ok('a correction fires on a whole phrase', /jsDelivr/.test(withFix), withFix);
