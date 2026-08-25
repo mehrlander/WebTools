@@ -85,7 +85,7 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   `[new]` is the branch tip; `[main]` is the baseline. `[main]/[diff]` is the net change against main; `[new]/[diff]` is on-branch history. Add `#L120` or `#L120-L145` for line anchors. Keep rows uniform and do not repeat a file's links within a turn.
 
-  **The GitHub MCP's write path wraps a long URL in backticks**, so the link renders as literal text on GitHub and in every downstream reader. The rule is **length, and only length: 150 characters or more inside a markdown link is wrapped and dies; 149 or fewer survives.** The label does not contribute, however long it runs. It holds on both write paths, a PR body and an issue comment alike. Chat replies are untouched by any of this and keep the full forms.
+  **The GitHub MCP's write path wraps a long URL in backticks**, so the link renders as literal text on GitHub and in every downstream reader. The rule is **length, and only length: 150 characters or more inside a markdown link is wrapped and dies; 149 or fewer survives.** The label does not contribute, however long it runs. The count applies to a URL **anywhere in the text**, not only inside a link: a plain code span at 150 or more is stored double-backticked with quotes added around the address, which survives as readable text but is not left alone either. It holds on both write paths, a PR body and an issue comment alike. Chat replies are untouched by any of this and keep the full forms.
 
   So there is one substitution, and it is arithmetic: **count the URL, and get under 150.** The ways to do that, in the order worth trying:
 

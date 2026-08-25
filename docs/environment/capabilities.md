@@ -647,6 +647,18 @@ intact, a 150-character URL under a one-character label wrapped, a pair at span
 150 bracket was measured on a PR body and this one on an issue comment, so each
 finding now stands on both paths.
 
+**A code span is rewritten too, so it is not the safe harbour it looks like.**
+*(measured 2026-08-25, issue #498 round 11, after five repaired PR bodies showed
+it incidentally)* The threshold applies to a URL **anywhere in the markdown**,
+not only inside a link. A plain single-backtick code span holding a 148 or
+149-character URL comes back untouched; at 150 and 151 it is stored as
+`` ``'URL'`` ``, double-backticked with single quotes added around the address.
+Nothing dies, since a code span was never a link, but a reader copying it picks
+up the quotes. So "state the toss address as a code span" further up this file
+still beats a defanged link and is still not a way to write a long URL that the
+write path leaves alone. The only untouched forms are a URL under 150 and a
+chat reply.
+
 **One caveat on the wrapped form.** Where the span opens and closes is not
 consistent in the stored body. 9b came back with the backtick opening after
 `[main](` and closing before the final `)`, while 8a's closing backtick fell

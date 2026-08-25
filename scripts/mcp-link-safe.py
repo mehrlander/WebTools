@@ -44,6 +44,10 @@ THRESHOLD = 150
 # URL containing balanced parens is out of scope and would need a real parser.
 LINK = re.compile(r'\[(?P<label>[^\]]*)\]\((?P<url>[^)\s]*)\)')
 
+# A URL inside a plain code span. Not a link, so nothing dies, but at the same
+# threshold it is stored double-backticked with quotes added around the address.
+CODESPAN = re.compile(r'(?<!`)`(?P<url>https?://[^`\s]+)`(?!`)')
+
 # The joining run that fuses the next link into the current span. Matched at the
 # current URL's closing paren, so it consumes `)/[label](url)` in one step.
 JOIN = re.compile(r'\)/\[(?P<label>[^\]]*)\]\((?P<url>[^)\s]*)\)')
@@ -139,6 +143,22 @@ def findings(text, path='-', threshold=THRESHOLD, unescape=False):
             'joined_labels': labels,
             'fix': fix,
         })
+
+    for cm in CODESPAN.finditer(text):
+        u = cm.group('url')
+        if len(u) < threshold:
+            continue
+        out.append({
+            'path': path,
+            'line': lineno(cm.start('url')),
+            'kind': 'codespan',
+            'length': len(u),
+            'over': len(u) - threshold + 1,
+            'urls': [u],
+            'joined_labels': [],
+            'fix': ('stays readable, but the write path adds backticks and quotes '
+                    'around it; shorten it or move it to the chat reply'),
+        })
     return out
 
 
@@ -167,6 +187,7 @@ def main(argv=None):
     else:
         for f in all_found:
             noun = {'pair': 'slash-joined pair', 'link': 'link',
+                    'codespan': 'code-span URL (rewritten, not killed)',
                     'defanged': 'ALREADY DEFANGED link'}[f['kind']]
             if f['kind'] == 'defanged':
                 print(f"{f['path']}:{f['line']}: {noun}")

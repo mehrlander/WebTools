@@ -116,6 +116,18 @@ test('entity expansion in a readback is not mistaken for length', () => {
   assert.equal(JSON.parse(out).length, 0, 'unescaped, the same URL is 147 and fine');
 });
 
+test('a long URL in a plain code span is flagged, at the same threshold', () => {
+  // Round 11: the count applies to a URL anywhere in the markdown, not only
+  // inside a link. 148 and 149 come back untouched; 150 and 151 are stored as
+  // ``'URL'``, double-backticked with quotes added. Nothing dies, since a code
+  // span was never a link, but it is not left alone either, so "state the
+  // address as a code span" is a degraded fallback rather than a safe harbour.
+  assert.equal(wraps('see `' + url(LONG, 149) + '`'), false);
+  const [f] = scan('see `' + url(LONG, 150) + '`');
+  assert.equal(f.kind, 'codespan');
+  assert.equal(f.length, 150);
+});
+
 test('--check exits non-zero only when something would be defanged', () => {
   const run = md => {
     try {
