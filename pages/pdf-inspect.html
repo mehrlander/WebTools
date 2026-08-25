@@ -598,6 +598,22 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     return spec ? (window.RepoAddress?.parse(spec) || null) : null;
   },
 
+  // WHICH PAGE the address asks for, in the same two spellings as the address
+  // itself. This page's main mode is page-scoped, so a link into it from a
+  // reader that has a position ought to carry it: the viewer's pdf mode hands
+  // over the page under the reader's thumb, and without this the workbench
+  // opened on page 1 and the position was thrown away at the door. Silent
+  // loss, since a link cannot report what it dropped.
+  //
+  // Clamped after the document is parsed, not here: `numPages` is unknown
+  // until then, and a page past the end should land on the last page rather
+  // than fail the load.
+  pageInHash() {
+    const m = /[#&]page=(\d+)/.exec(location.hash || '');
+    const n = Number(m ? m[1] : new URLSearchParams(location.search).get('page'));
+    return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 0;
+  },
+
   async loadHash() {
     const a = this.addressInHash();
     if (!a) return false;
@@ -609,10 +625,18 @@ document.addEventListener('alpine:init', () => Alpine.data('pdfInspect', () => (
     // A fresh GH rather than the page's own: this address names another repo.
     // gh-auth patches the prototype's headers getter, so the stored token
     // reaches every instance and a private repo resolves without passing it.
+    const want = this.pageInHash();
     await this.open(async () => {
       const { bytes } = await new GH({ repo: a.repo, ref: a.ref }).bytes(a.path);
       return bytes;
     }, `fetching ${a.path.split('/').pop()}`);
+    // After `parse`, which sets pageNum to 1 unconditionally, and only when
+    // the document actually loaded: a failed fetch leaves numPages at 0 and
+    // there is no page to go to.
+    if (want && this.numPages) {
+      const n = Math.min(want, this.numPages);
+      if (n !== this.pageNum) { this.pageNum = n; await this.redraw(); }
+    }
     return true;
   },
 

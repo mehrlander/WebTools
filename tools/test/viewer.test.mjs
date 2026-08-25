@@ -222,32 +222,46 @@ test('the pdf mode is exclusive: it beats a host blanket default of raw', () => 
 });
 
 test('the pdf pane starts as a message and nothing else', () => {
-  // The bar is revealed only when it has a pager or an address to carry, and
-  // the page track is appended by `after` once the document opens, so a failed
-  // fetch leaves the message visible rather than an empty frame that reads as
-  // a blank page.
+  // Everything else is built by `after` once the document opens: the column,
+  // the floating pager, and the two controls that go to the VIEWER's header.
+  // So a failed fetch leaves the message visible rather than an empty frame
+  // that reads as a blank page.
   const mod = VR.modules.find(m => m.id === 'pdf');
   const doc = new window.DOMParser().parseFromString(mod.render(), 'text/html');
-  assert.match(doc.querySelector('[data-pdf="bar"]').className, /hidden/);
-  assert.match(doc.querySelector('[data-pdf="open"]').className, /hidden/,
-    'the inspect link stays hidden until there is an address behind it');
   assert.ok(doc.querySelector('[data-pdf="msg"]').textContent.trim().length,
-    'and the pane says what it is doing meanwhile');
+    'the pane says what it is doing meanwhile');
   assert.equal(doc.querySelectorAll('canvas').length, 0,
-    'no canvas is authored: one per page is built lazily by the deck');
+    'no canvas is authored: one per page is built lazily');
 });
 
-test('the pdf stage can host a flex track, which needs min-h-0', () => {
-  // A flex child defaults to min-height auto, so a track dropped into the
-  // stage would be floored at its content height and grow the pane instead of
-  // scrolling inside it. Same class of trap swipe-deck documents for min-w-0
-  // on the horizontal axis, and it fails the same quiet way: it looks like a
-  // styling slip rather than a broken pager.
+test('the pdf module authors no chrome of its own', () => {
+  // The rule the viewer's header comment states, held as a check rather than
+  // as a hope: a mode puts its controls in the host's header through
+  // ctx.controls, and a strip of its own is a second row of chrome for one
+  // file. This module had one, carrying a pager, a byte size, a flow switch
+  // and an Inspect link, and inside the stage reader it was the THIRD band
+  // above the page.
+  const mod = VR.modules.find(m => m.id === 'pdf');
+  const doc = new window.DOMParser().parseFromString(mod.render(), 'text/html');
+  for (const gone of ['bar', 'open', 'flow', 'size', 'prev', 'next', 'page']) {
+    assert.equal(doc.querySelector(`[data-pdf="${gone}"]`), null,
+      `${gone} is not authored into the pane`);
+  }
+  assert.equal(doc.querySelectorAll('button, a').length, 0,
+    'and the pane holds no control at all before the document opens');
+});
+
+test('the pdf stage is the positioning context its column and pager need', () => {
+  // Both are `absolute inset-0`/`absolute bottom-3`, so they resolve against
+  // the nearest positioned ancestor. Without `relative` here that is whatever
+  // the host happens to offer, which in the stage reader is the deck's own
+  // panel: the column would then cover the deck's header and footer rather
+  // than the page area. It fails as a layout that looks deliberate.
   const mod = VR.modules.find(m => m.id === 'pdf');
   const doc = new window.DOMParser().parseFromString(mod.render(), 'text/html');
   const stage = doc.querySelector('[data-pdf="stage"]');
-  assert.match(stage.className, /flex-1/);
-  assert.match(stage.className, /min-h-0/);
+  assert.match(stage.className, /relative/);
+  assert.match(stage.className, /h-full/);
 });
 
 // ── the header's path split ─────────────────────────────────────────────────
