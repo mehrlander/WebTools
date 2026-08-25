@@ -127,12 +127,21 @@ survivors are `sidebar-projects.mjs` and `sidebar-projects-overlay.mjs`, which
 still overlap on their default path; only the overlay posture distinguishes
 them.
 
-`tools/concept-lab/` is a fourth thing and says so in its own
-[README](../tools/concept-lab/README.md): experimental ground, read-only,
-prototypes that have not earned a place yet. That is a legitimate admission
-rule. It is worth stating rather than leaving to be inferred, because an
-exploratory folder with no stated exit condition is how a repo accumulates
-permanent prototypes.
+`tools/concept-lab/` was a fourth thing here until 2026-08-25, when it moved to
+the private `home` estate as `projects/local-models/instruments/concept-lab/`.
+Its stated admission rule (experimental ground, read-only, prototypes that have
+not earned a place yet) was legitimate and is not what moved it. What moved it
+was the constellation rule read as written: a repo boundary exists where a
+*visibility* boundary exists, and topic is handled by folders. Those instruments
+analyse the private estate's own prose, and keeping them public cost a redaction
+rule, with their experiment log carrying counts here and full passages there.
+
+`semsearch.py` went with it. It had graduated out of the folder in 2026-08-02
+and lived in `tools/`, but it imports `termlab`, and vendoring the forty-four
+lines it needs would have put a copy on the far side of a repo boundary. The
+warning that folder prompted still stands for any successor: an exploratory
+folder with no stated exit condition is how a repo accumulates permanent
+prototypes.
 
 ## What this document does not do
 

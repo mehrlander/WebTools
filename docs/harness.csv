@@ -6,7 +6,7 @@ scripts/code-shape.py,"per-file observable properties of lib/: what a file attac
 scripts/dead-links.py,"report markdown links that no longer resolve, in three classes (internal, cross-repo, github)",scripts,256,argv,no,yes,yes
 scripts/dead-opacity.py,"report a daisyUI theme colour carrying an opacity step that generates no CSS rule. The ramp daisyUI ships is 10..90 by tens, so every other step, both ends, and the bracket form fall back: a background to transparent and TEXT to full strength, which is the wrong direction and errors nowhere. Stock palette colours take any step and are never reported, which is the half a looser scan gets wrong. --check gates it",scripts,152,npm:opacity-scan,no,yes,yes
 scripts/declared-paths.py,check every page a .web-tools.json declares still exists; runs in consumer repos' verify suites,scripts,137,argv,no,yes,no
-scripts/duplicated-claims.py,"report file pairs sharing near-duplicated prose, the quiet failure where a claim is restated and the copies age apart (advisory; ported from home)",scripts,138,npm:claims-scan,no,yes,yes
+scripts/duplicated-claims.py,"report file pairs sharing near-duplicated prose, the quiet failure where a claim is restated and the copies age apart (advisory; ported from home)",scripts,138,npm:claims-scan,no,no,yes
 scripts/embedded-prose.py,"count the prose inside .js, .mjs, .html and .py, split into commentary, text tables, and inline reader-facing text; --check gates a comment-length budget",scripts,759,argv,no,yes,no
 scripts/mcp-link-safe.py,"report markdown links the GitHub MCP write path would defang: a URL of 150 characters or more inside a markdown link is stored wrapped in backticks and renders dead, 149 or fewer survives, and the label never counts. Measures a slash-joined pair as one fused span, since )/[ does not end the URL token. --check gates; --unescape-entities is for a body read back through the MCP",scripts,209,argv,no,yes,yes
 scripts/ocr-pdf.py,"OCR a scanned PDF into text, and say how much to trust the result",scripts,187,argv,no,yes,no
@@ -34,16 +34,6 @@ tools/build/snags-index.mjs,generates the index at the top of docs/SNAGS.md and 
 tools/build/tests-index.mjs,"restamp the derived half of docs/tests.csv, the test registry",tools/build,235,npm:tests-index,yes,no,yes
 tools/build/tools-index.mjs,restamp the derived half of this registry,tools/build,175,npm:tools-index,yes,yes,yes
 tools/build/verify-build.mjs,prove a page's dist build renders byte-identical to its live gh.load chain,tools/build,86,npm:verify-build,no,yes,no
-tools/concept-lab/build-entity-index.py,build the committed entity index end to end in one command,tools/concept-lab,200,argv,no,yes,no
-tools/concept-lab/entitylab.py,entity lab: where a repo's entity layer exists and where it is only implied,tools/concept-lab,572,argv,no,yes,no
-tools/concept-lab/entityprofile.py,"entity profile: what named things a repo discusses, and of what kinds",tools/concept-lab,481,argv,no,yes,no
-tools/concept-lab/exp_embed.py,experiment: do tiny static embeddings separate a term's senses better than lexical context clustering,tools/concept-lab,112,argv,no,yes,no
-tools/concept-lab/exp_gold.py,score a termlab index against the gold polysemy set,tools/concept-lab,57,argv,no,yes,no
-tools/concept-lab/exp_pos.py,experiment: spaCy noun chunks as the term-candidate source,tools/concept-lab,66,argv,no,yes,no
-tools/concept-lab/flag_reply.py,"flag risky vocabulary in a draft reply, using a termlab index",tools/concept-lab,232,argv,no,yes,no
-tools/concept-lab/gazetteer.py,build an entity gazetteer from the tables the estate already curates,tools/concept-lab,179,argv,no,yes,no
-tools/concept-lab/registerlab.py,,tools/concept-lab,598,argv,no,no,no
-tools/concept-lab/termlab.py,term lab: experimental multi-corpus term and ambiguity analysis,tools/concept-lab,875,argv,no,yes,yes
 tools/render/cdn.mjs,the CDN URL to local-file resolver both renderers share,tools/render,369,imported,no,yes,yes
 tools/render/estate-card-demo.mjs,screenshot driver: render the estate's Repos grid with seeded entries,tools/render,72,none found,no,no,no
 tools/render/preview.mjs,"the jsdom logic render: run the full gh.load chain, mount Alpine, report state; no pixels",tools/render,370,npm:preview,no,yes,yes
@@ -172,4 +162,3 @@ tools/render/scenarios/state-view.mjs,"Populate the State view for a screenshot:
 tools/render/scenarios/subject-action-probe.mjs,"probe: can the shell invoke a toss subject's action closure, or only reach it",tools/render/scenarios,124,driver,no,no,no
 tools/render/scenarios/toss-fragment.mjs,prove toss-render hands a trailing #frag to the rendered page in both trust postures,tools/render/scenarios,96,driver,no,no,no
 tools/render/screenshot.mjs,the Chromium pixel render behind npm run shot; --script drives a scenario first,tools/render,254,npm:shot,no,yes,yes
-tools/semsearch.py,"semantic search over the estate's prose, paragraph by paragraph",tools,117,argv,no,yes,no

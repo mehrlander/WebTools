@@ -124,8 +124,9 @@ succeed, `python3 -m spacy download en_core_web_sm` fetches and loads its
 model (install `click` first; the spacy CLI imports it and errors without
 it), and model2vec pulls `minishlab/potion-base-8M` from the Hugging Face
 Hub unauthenticated, so a tiny static-embedding model runs in-session with
-no torch. Measured in the concept-lab experiments
-([tools/concept-lab/findings.md](../../tools/concept-lab/findings.md)).
+no torch. Measured in the concept-lab experiments, whose findings log moved to
+the private estate (`local-models/instruments/concept-lab/findings.md`) on
+2026-08-25.
 Heavier stacks (torch, sentence-transformers) untested.
 
 ## Network access: a curated allowlist, not open egress

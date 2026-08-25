@@ -9,10 +9,10 @@ assessment; the mechanics live in
 
 ## Why it exists
 
-The estate holds ten text instruments: five in
-[`tools/concept-lab/`](../tools/concept-lab/),
+The estate holds ten text instruments: five in the private estate's
+`local-models/instruments/concept-lab/` (here until 2026-08-25),
 [`vocab.py`](../.claude/skills/concept-index/vocab.py),
-[`semsearch.py`](../tools/semsearch.py), and the
+`semsearch.py` (moved to the private estate with concept-lab), and the
 [entities](../pages/entities.html), [citations](../pages/citations.html) and
 [shorter](../pages/shorter.html) pages. Nine of the ten take a corpus or a
 paste. **None takes the document a reader currently has open.** This tab is the
