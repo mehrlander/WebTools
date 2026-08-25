@@ -12,7 +12,7 @@
 //
 // `--script tools/render/scenarios/dictate-page-selection.mjs` is the sibling
 // that goes on to select a word, which is where the pad becomes casing keys.
-export const speak = async (page, { select = false, sheet = false, anchor = false } = {}) => {
+export const speak = async (page, { select = false, sheet = false, anchor = false, pin = false } = {}) => {
   await page.evaluate(() => {
     class FakeSR {
       constructor() { window.__sr = this; }
@@ -59,6 +59,16 @@ export const speak = async (page, { select = false, sheet = false, anchor = fals
   if (anchor) {
     // The target's tap half: arm a selection from wherever the caret is.
     await page.locator('button:has(i.ph-crosshair)').click();
+    await page.waitForTimeout(250);
+  }
+  if (pin) {
+    // Arm an edge of the selection from its PINHEAD, which is the other way in
+    // to the same state: the target reddens for it without having been tapped.
+    // The pins are hidden once a mouse has been seen, and a render is all
+    // mouse, so ask for them back first.
+    await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.paint(); });
+    await page.waitForTimeout(150);
+    await page.locator('[x-ref="layer"] [data-edge="end"]').click();
     await page.waitForTimeout(250);
   }
   if (sheet) {

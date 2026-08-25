@@ -96,9 +96,14 @@
   the control that aims. DRAG it and the caret moves (the pad, below). TAP it
   and the caret becomes one end of a selection whose other end is your next
   tap in the text. Two taps for an arbitrary range, where the long press gives
-  only a word and the pins give one edge at a time. Armed, it wears the ring
-  an armed pin wears, which is this page's one word for "live and pointed at
-  the text" and is why the affordance needs no label.
+  only a word and the pins give one edge at a time.
+
+  AND THE TARGET IS RED WHENEVER A PIN IS. There is one armed state, not two:
+  arming a pinhead lights the target, tapping the target puts any pin down,
+  and the second tap of the two-tap selection disarms rather than leaving one
+  lit. So the red target means one thing, "the next tap in the text moves
+  something", and the reader gets a full-size button for the exit that the
+  12px pinhead was: a near miss there used to clear the selection outright.
 
   ADDRESSING
     ?to=copy|share|jot|drop   which destination the save sheet opens on
@@ -196,6 +201,11 @@
       // this component is a view of it, never a second copy.
       d: null,
       text: '', interim: '', armed: null, beat: 0,
+      // A REAL PIN, as against 'anchor', which is armed with nothing drawn.
+      // Everything that reaches into the overlay for a handle asks this
+      // rather than `armed`, since 'anchor' would send it looking for an
+      // element that does not exist.
+      get pinned() { return this.armed === 'start' || this.armed === 'end'; },
       listening: false, err: '',
       started: false,           // has the reader ever begun (the tap target)
       elapsed: 0, since: 0,
@@ -429,7 +439,7 @@
           // the last word means the end of the buffer there as everywhere.
           if (this.anchorTo(i == null ? this.d.text.length : i)) return;
           if (i == null) { this.d.caretAt(this.d.text.length); this.armed = null; this.paint(); return; }
-          if (this.armed) this.d.moveEdge(this.armed, i);
+          if (this.pinned) this.d.moveEdge(this.armed, i);
           else this.d.caretAt(i);
           this.paint();
         });
@@ -458,23 +468,28 @@
       // buffer and the overshoot is walked back without lifting.
       padDrag: false, precise: false,
 
-      // ── The target's other half: anchoring ────────────────────────────
-      // The pad DRAGS the caret; a plain TAP on it arms a selection that
-      // starts where the caret already is, and the next tap in the text is
-      // the other end. Two taps for an arbitrary range, where the long press
-      // gives a word and the pins give one edge at a time.
+      // ── One armed state, three ways in ────────────────────────────────
+      // `armed` is the whole aiming state and it has four values: null, the
+      // two pin names, and 'anchor'. That is a merge, not a widening. The
+      // page used to carry a separate `anchoring` flag beside it, and the two
+      // said the same thing in different words: SOMETHING IS LIVE AND POINTED
+      // AT THE TEXT, so the next tap in the buffer moves it rather than
+      // placing a caret. Two flags for one fact meant the target could be red
+      // while a pin was red, or neither, and the reader had to learn which
+      // red meant what.
       //
-      // It is the same button because it is the same job: this is the control
-      // that aims. Dragging says where the point goes, tapping says the point
-      // is one end of something. Armed, it wears the ring an armed pin wears,
-      // which is the page's one word for "this is live and pointed at the
-      // text" and is why the affordance needs no label.
+      // So: the target is red exactly when `armed` is set, whichever way it
+      // got set, and tapping the target when anything is armed puts it down.
+      // That gives the tiny pinhead a large, safe undo, which is the thing
+      // that was missing: a miss near a pinhead used to clear the selection.
       //
-      // The anchor is read at ARM TIME, not at the tap that completes it, so
-      // speaking or backspacing in between cannot silently move it: a stale
-      // anchor is dropped rather than honoured (see `anchorFrom`).
-      anchoring: false, anchorFrom: null,
-
+      //   tap the target, nothing armed   'anchor'  (the caret is one end)
+      //   tap a pinhead                   'start' | 'end'
+      //   tap the target, anything armed   null
+      //
+      // 'anchor' is the special case with no pin to show, since there is no
+      // range yet. It needs none: the target itself is the affordance, and
+      // painting a lone red pin at the caret would be a fourth thing to read.
       // The caret, with a selection counting as its far end. Extending from
       // the far end is what shift-click does everywhere, which makes the one
       // rule cover the collapsed case, the selected case and the empty case
@@ -483,28 +498,28 @@
         const r = this.d && this.d.range;
         return r ? r.end : (this.d ? this.d.text.length : 0);
       },
+      // The target's tap half. Down if anything is up, 'anchor' otherwise.
       toggleAnchor() {
-        if (this.anchoring) { this.anchoring = false; this.anchorFrom = null; this.paint(); return; }
-        this.anchoring = true;
-        this.anchorFrom = this.caretOffset();
+        this.armed = this.armed ? null : 'anchor';
         this.paint();
       },
       // The completing tap. Returns whether it consumed the tap, so the
       // gesture handler can fall through to its ordinary reading when the
       // anchor was never armed.
+      //
+      // The anchor is read HERE rather than at the tap that armed it, so the
+      // pad can be dragged to the exact start and only then tapped shut. An
+      // arm-time capture made that flow silently wrong, selecting from
+      // wherever the caret had been before the drag.
       anchorTo(i) {
-        if (!this.anchoring) return false;
-        const a = this.anchorFrom;
-        this.anchoring = false; this.anchorFrom = null;
-        // An anchor past the end of a buffer that shrank under it is not a
-        // position any more, so the tap becomes an ordinary caret placement
-        // rather than a selection to somewhere that is gone.
-        if (a == null || a > this.d.text.length) { this.d.caretAt(i); this.armed = null; this.paint(); return true; }
-        if (a === i) { this.d.caretAt(i); this.armed = null; this.paint(); return true; }
-        this.d.select(a, i);
-        // Arm the edge that just moved, so the pad can refine it without a
-        // second decision: select roughly with two taps, then walk the edge.
-        this.armed = i > a ? 'end' : 'start';
+        if (this.armed !== 'anchor') return false;
+        const a = this.caretOffset();
+        // AND IT DISARMS. The maneuver is finished when the selection exists,
+        // so leaving a pin lit would mean a third tap to close it, on a target
+        // 12px across, with the selection lost if that tap missed. Refining an
+        // edge afterwards is still one tap on its pinhead.
+        this.armed = null;
+        if (a === i) this.d.caretAt(i); else this.d.select(a, i);
         this.paint();
         return true;
       },
@@ -512,11 +527,12 @@
       // What the pad is aiming, in client coordinates: the armed pin if one is
       // armed, the caret otherwise. One gesture, two subjects, and which is a
       // state the reader set by tapping a pinhead. That is what let the arrows
-      // go: an armed edge is dragged exactly the way the caret is.
+      // go: an armed edge is dragged exactly the way the caret is. 'anchor' is
+      // not a pin, so it aims the caret like the unarmed case.
       padPoint() {
         const host = this._host;
         if (!host) return null;
-        if (this.armed && this.$refs.layer) {
+        if (this.pinned && this.$refs.layer) {
           const h = this.$refs.layer.querySelector('[data-edge="' + this.armed + '"]');
           const hr = h?.getBoundingClientRect?.();
           if (hr && (hr.width || hr.height)) return { x: hr.left + hr.width / 2, y: hr.top + hr.height / 2 };
@@ -570,7 +586,7 @@
           if (!node) return;
           const i = window.Dictate.offsetAt(this._host, node, r ? r.startOffset : pt.offset);
           if (i == null) return;
-          if (this.armed) this.d.moveEdge(this.armed, i); else this.d.caretAt(i);
+          if (this.pinned) this.d.moveEdge(this.armed, i); else this.d.caretAt(i);
           this.paint();
         };
         const up = (e) => {
@@ -627,7 +643,7 @@
         if (!this._host) return;
         window.Dictate.paint(this._host, {
           text: this.text, interim: this.interim,
-          range: this.d ? this.d.range : null, armed: this.armed,
+          range: this.d ? this.d.range : null, armed: this.pinned ? this.armed : null,
           overlay: this.$refs.layer,
           // NO ARROW CLUSTER. The pad drags an armed pin the same way it drags
           // the caret, so a pair of arrows chasing the pin around is furniture
@@ -872,7 +888,6 @@
       clear() {
         this.d.text = '';
         this.draft = ''; this.interim = ''; this.armed = null;
-        this.anchoring = false; this.anchorFrom = null;
         this.breaks = false; this.restored = 0;
         ls.del(DRAFT);
         this.elapsed = 0; this.since = Date.now();
@@ -929,9 +944,10 @@
          makes the drag work rather than scrolling the page under it. -->
     <button x-init="bindPad($el)" :disabled="edit" style="touch-action:none"
             class="btn btn-sm btn-square justify-self-center"
-            :class="anchoring ? 'btn-error btn-outline' : (padDrag ? 'btn-info' : 'btn-ghost')"
-            :title="anchoring ? 'Now tap where the selection should end (tap here again to cancel)'
-                              : 'Drag to move the cursor. Tap to start a selection from it.'">
+            :class="armed ? 'btn-error btn-outline' : (padDrag ? 'btn-info' : 'btn-ghost')"
+            :title="armed === 'anchor' ? 'Now tap where the selection should end (tap here again to cancel)'
+                    : armed ? 'The ' + armed + ' of the selection is armed. Tap here to put it down.'
+                    : 'Drag to move the cursor. Tap to start a selection from it.'">
       <i class="ph ph-crosshair text-lg"></i>
     </button>
 

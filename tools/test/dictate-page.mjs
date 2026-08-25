@@ -329,8 +329,9 @@ try {
   // selection; the next tap in the text is the other end. Two taps for an
   // arbitrary range, where the long press gives only a word.
   const target = page.locator('button:has(i.ph-crosshair)');
-  const anchored = () => page.evaluate(() =>
-    document.querySelector('[x-data="dictate"]')._x_dataStack[0].anchoring);
+  const armed = () => page.evaluate(() =>
+    document.querySelector('[x-data="dictate"]')._x_dataStack[0].armed);
+  const targetRed = () => target.evaluate(el => el.className.includes('btn-error'));
   const sel = () => page.evaluate(() => {
     const d = document.querySelector('[x-data="dictate"]')._x_dataStack[0].d;
     const r = d.range;
@@ -339,9 +340,9 @@ try {
   const anchorAt = await caretAt();
   await target.click();
   await page.waitForTimeout(150);
-  ok('a tap on the target arms an anchor rather than dragging', await anchored());
-  ok('and the button says so, in the ring an armed pin wears',
-    await target.evaluate(el => el.className.includes('btn-error')));
+  ok('a tap on the target arms an anchor rather than dragging',
+    await armed() === 'anchor', String(await armed()));
+  ok('and the button says so, in the ring an armed pin wears', await targetRed());
 
   const words = await page.locator('[x-ref="body"] [data-d="text"]').first().boundingBox();
   await page.mouse.click(words.x + 40, words.y + 12);
@@ -351,19 +352,37 @@ try {
   ok('it runs from the caret that was there to the word that was tapped',
     !!range && (range.start === anchorAt || range.end === anchorAt),
     `anchor=${anchorAt} range=${JSON.stringify(range)}`);
-  ok('the anchor disarms once it is spent', !(await anchored()));
-  ok('and the edge that moved is armed, so the pad can refine it',
-    !!(await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].armed)));
+  // THE MANEUVER SETS, IT DOES NOT LEAVE A PIN LIT. Leaving one armed meant a
+  // third tap to close a selection that was already made, on a 12px pinhead,
+  // with a near miss clearing it. Refining an edge afterwards is still one tap.
+  ok('and the maneuver finishes disarmed', (await armed()) === null, String(await armed()));
+  ok('so the target goes dark with it', !(await targetRed()));
 
-  // Tapping it again while armed is the way out, since an armed control with
-  // no cancel is a mode the reader cannot leave.
+  // ONE ARMED STATE, NOT TWO. A pinhead and the target are two ways into the
+  // same fact, so the target is red whenever a pin is, and tapping it is the
+  // full-size way to put that pin down.
+  // The pins are hidden once a mouse has been seen (drag and shift-click do
+  // the extending there), and this harness is all mouse, so ask for them back.
+  await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.paint(); });
+  await page.waitForTimeout(120);
+  await page.locator('[x-ref="layer"] [data-edge="end"]').click();
+  await page.waitForTimeout(150);
+  ok('arming a pinhead arms the page', (await armed()) === 'end', String(await armed()));
+  ok('and the target is red for it, having not been tapped', await targetRed());
+  ok('the selection survived the arming', !!(await sel()));
+  await target.click();
+  await page.waitForTimeout(150);
+  ok('tapping the target puts the armed pin down', (await armed()) === null, String(await armed()));
+  ok('...without disturbing the selection', !!(await sel()));
+
+  // And the target's own armed state has the same way out.
   await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.d.clearRange(); c.armed = null; c.paint(); });
   await target.click();
   await page.waitForTimeout(120);
-  ok('tapping the armed target again cancels it', await anchored());
+  ok('tapping the armed target again cancels it', (await armed()) === 'anchor');
   await target.click();
   await page.waitForTimeout(120);
-  ok('...and a second tap puts it away', !(await anchored()));
+  ok('...and a second tap puts it away', (await armed()) === null);
 
   // A double tap on the words opens the keyboard, with the caret where it
   // landed. The pencil is retired, so this is the only way in.
