@@ -137,6 +137,7 @@ tools/render/scenarios/project-pages.mjs,the project view's Pages pill: the work
 tools/render/scenarios/project-view.mjs,the project view with a workspace selected and its README rendered,tools/render/scenarios,74,driver,no,no,no
 tools/render/scenarios/proposals-deliver-demo.mjs,"the two delivery buttons beside the staleness guard, stubbed registry",tools/render/scenarios,51,driver,no,no,no
 tools/render/scenarios/proposals-demo.mjs,the Proposals view over a stubbed registry,tools/render/scenarios,54,driver,no,yes,no
+tools/render/scenarios/proposals-mutation-demo.mjs,"a delete-issue card beside an ordinary set-json-field, so the first mutation kind reads as one channel with the file kinds; the GraphQL stub answers the read and refuses the mutation, so the shot cannot delete anything",tools/render/scenarios,68,driver,no,no,no
 tools/render/scenarios/proposals-phone-demo.mjs,the Proposals list at phone width with the real four records,tools/render/scenarios,55,driver,no,no,no
 tools/render/scenarios/proposals-stale-demo.mjs,the staleness guard and signature line on a moved target,tools/render/scenarios,51,driver,no,no,no
 tools/render/scenarios/record-deck-wide.mjs,,tools/render/scenarios,68,driver,no,no,no
