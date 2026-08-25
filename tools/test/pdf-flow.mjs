@@ -24,6 +24,8 @@
 //   4. the workbench handoff carries the page the reader is on, per document
 //   5. the chrome steps aside while reading down and comes back on the way up,
 //      on a tap, and on the next document, without being dropped
+//   6. ONE header names the file, not two: the deck's title is the file being
+//      read, so the viewer inside the slide draws none
 //
 // A wheel rather than a thumb: Playwright's touchscreen only taps, and
 // `overscroll-behavior` governs scroll chaining for both, so a horizontal
@@ -199,6 +201,37 @@ try {
   console.log('the stage reader opens on the first document:');
   ok('on document 0', s.docAt === 0, JSON.stringify(s));
   ok('with its own page count', s.label === '1 / 6', s.label);
+
+  console.log('one header, and it is the deck\'s:');
+  const heads = await page.evaluate(() => {
+    const vis = (el) => el && el.offsetParent !== null;
+    const flex = document.querySelector('.sd-header .min-w-0.flex-1');
+    const named = [...document.querySelectorAll('.sd-overlay *')]
+      .filter(e => !e.children.length && /flow-a\.pdf/.test(e.textContent || ''))
+      .filter(e => vis(e)).length;
+    return {
+      namedTimes: named,
+      title: flex?.children[0]?.textContent || '',
+      subtitle: flex?.children[1]?.textContent || '',
+      viewerHeaderShown: vis(document.querySelector('[data-reader-slide="0"] [data-sd-chrome]')),
+      actions: [...document.querySelectorAll('.sd-header button')]
+        .map(b => (b.getAttribute('title') || '')).filter(Boolean),
+    };
+  });
+  // The file is named ONCE. It was named twice for as long as the viewer drew
+  // a header of its own: swipe-deck's title is set per slide to the file being
+  // read, so the two were the same fact one above the other.
+  ok('the file is named exactly once', heads.namedTimes === 1, JSON.stringify(heads));
+  ok('and the deck header is what names it', heads.title === 'flow-a.pdf', heads.title);
+  ok('the viewer draws no header of its own', heads.viewerHeaderShown === false, JSON.stringify(heads));
+  // What the viewer alone knows comes up into that header rather than into a
+  // second one: the byte size, which nothing else can measure, and its two
+  // menus.
+  ok('the size the viewer measured rides in the subtitle',
+     /^\d+\.\d KB · /.test(heads.subtitle), heads.subtitle);
+  ok('and its menus are actions on the deck header',
+     ['How to read this file', 'Where else this file opens']
+       .every(t => heads.actions.includes(t)), JSON.stringify(heads.actions));
 
   console.log('down over the page moves the PAGES, not the documents:');
   const deckBefore = s.deckLeft;
