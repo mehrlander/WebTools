@@ -21,10 +21,7 @@
 //      document and not only from its first page
 //   2. down over a page moves the pages and leaves the document deck alone
 //   3. each document still pages itself (the neighbour's pager is not driven)
-//   4. the header toggle brings the horizontal deck back, and with it the
-//      captured gesture: this is the comparison the toggle exists for, and
-//      asserting the old behaviour is how the two stay honestly comparable
-//   5. the choice survives a reload
+//   4. the workbench handoff carries the page the reader is on, per document
 //
 // A wheel rather than a thumb: Playwright's touchscreen only taps, and
 // `overscroll-behavior` governs scroll chaining for both, so a horizontal
@@ -144,11 +141,16 @@ const state = () => page.evaluate(() => {
   return {
     docAt,
     deckLeft: deck ? Math.round(deck.scrollLeft) : -1,
-    kind: flow ? flow.kind : '',
     pageAt: flow ? flow.active() : -1,
     pages: flow ? flow.count : 0,
     label: here?.querySelector('[data-pdf="page"]')?.textContent?.trim() ?? '',
-    pos: flow ? Math.round(flow.kind === 'page' ? flow.scroller.scrollLeft : flow.scroller.scrollTop) : -1,
+    pos: flow ? Math.round(flow.scroller.scrollTop) : -1,
+    // Scoped to the SLIDE, not to `[data-pdf="root"]`: the control moved up a
+    // level into the viewer's own header, so it is a sibling of the pdf pane
+    // rather than a descendant of it. Querying inside the pane returns nothing,
+    // which is the shape of this change stated as a selector.
+    inspect: document.querySelector(
+      `[data-reader-slide="${docAt}"] [data-view-controls] [data-pdf="open"]`)?.getAttribute('href') || '',
   };
 });
 
@@ -178,7 +180,6 @@ try {
   let s = await state();
   console.log('the stage reader opens on the first document:');
   ok('on document 0', s.docAt === 0, JSON.stringify(s));
-  ok('reading it continuously by default', s.kind === 'scroll', JSON.stringify(s));
   ok('with its own page count', s.label === '1 / 6', s.label);
 
   console.log('down over the page moves the PAGES, not the documents:');
@@ -197,40 +198,16 @@ try {
   s = await state();
   ok('the deck advanced to the next document', s.docAt === 1, JSON.stringify(s));
   ok('which pages ITS own document', s.label === '1 / 4', s.label);
-  ok('and reads continuously too', s.kind === 'scroll', s.kind);
+  ok('and its own workbench link', /flow-b\.pdf&page=1$/.test(s.inspect), s.inspect);
 
-  console.log('the toggle brings the horizontal deck back:');
-  await page.evaluate(() => {
-    document.querySelector('[data-reader-slide="1"] [data-pdf="flow"]').click();
-  });
-  await page.waitForTimeout(1200);
+  console.log('the workbench handoff is per document and per page:');
+  await overPage(0, 1400);
+  await overPage(0, 1400);
   s = await state();
-  ok('the flow switched to page-at-a-time', s.kind === 'page', JSON.stringify(s));
-  ok('on the same page of the same document', s.label === '1 / 4' && s.docAt === 1, JSON.stringify(s));
-
-  // The comparison, stated as a fact rather than as a preference: in this flow
-  // the page track captures the sideways gesture and the document deck cannot
-  // be reached by it. That is the behaviour the default used to have
-  // everywhere, and pinning it here is what keeps the two honestly comparable.
-  console.log('and with it, the captured gesture the default no longer has:');
-  const before = await state();
-  await overPage(1000, 0);
-  s = await state();
-  ok('sideways now turns a page', s.pos > before.pos && s.docAt === 1, JSON.stringify(s));
-  ok('and does not reach the document deck', s.docAt === before.docAt,
-     `${before.docAt} -> ${s.docAt}`);
-
-  console.log('the choice survives a reload:');
-  await openReader();
-  s = await state();
-  ok('it reopens page-at-a-time', s.kind === 'page', JSON.stringify(s));
-  // Back to the default, so this check leaves no state behind for the next one.
-  await page.evaluate(() => {
-    document.querySelector('[data-reader-slide="0"] [data-pdf="flow"]').click();
-  });
-  await page.waitForTimeout(900);
-  s = await state();
-  ok('and the toggle returns to continuous', s.kind === 'scroll', JSON.stringify(s));
+  ok('the reader moved down document B', s.pageAt >= 1, JSON.stringify(s));
+  ok('and the link names the page it is on',
+     new RegExp(`&page=${s.pageAt + 1}$`).test(s.inspect), s.inspect);
+  ok('of the document it is in', s.inspect.includes('flow-b.pdf'), s.inspect);
 } finally {
   await browser.close();
   server.close();

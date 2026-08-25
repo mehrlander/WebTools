@@ -177,13 +177,9 @@ try {
   // label moved, and the page on screen did not.
   const step = await page.evaluate(async () => {
     const r = document.querySelector('[data-reader-slide="0"] [data-pdf="root"]');
-    // The flow's own scroller, and the axis it moves on, both read from the
-    // handle: this used to name `.sd-track` and `scrollLeft`, which is the one
-    // thing about the pdf module that changed.
-    const pos = () => {
-      const f = r.__pdfFlow;
-      return f.kind === 'page' ? f.scroller.scrollLeft : f.scroller.scrollTop;
-    };
+    // The column's own scroller, read from the handle. This used to name
+    // `.sd-track` and `scrollLeft`: pages moved sideways then.
+    const pos = () => r.__pdfFlow.scroller.scrollTop;
     const before = pos();
     r.querySelector('[data-pdf="next"]').click();
     await new Promise(res => setTimeout(res, 1200));

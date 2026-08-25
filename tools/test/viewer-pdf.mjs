@@ -157,10 +157,8 @@ const state = () => page.evaluate(() => {
   const host = document.getElementById('dv-viewer');
   const v = host && Alpine.$data(host);
   const root = document.querySelector('[data-pdf="root"]');
-  // `__pdfFlow` rather than `__deck`, because the pdf module now mounts one of
-  // TWO flows and the deck is only one of them. The handle is uniform across
-  // both, which is the point: every claim below is about the document being
-  // readable and paged, not about which axis it is read on.
+  // `__pdfFlow` rather than `__deck`: the pdf module mounts a continuous
+  // column, not a deck, so there is no track and no `sd-` anything to ask.
   const flow = root?.__pdfFlow || null;
   const msg = document.querySelector('[data-pdf="msg"]');
   const open = document.querySelector('[data-pdf="open"]');
@@ -183,7 +181,6 @@ const state = () => page.evaluate(() => {
     modes: (v?.availableModes || []).map(m => m.id),
     stats: v?.stats || '',
     active: at,
-    kind: flow ? flow.kind : '',
     slides: flow ? flow.count : 0,
     built: flow ? flow.built() : 0,
     // Which way the mounted flow actually moves. The continuous flow must
@@ -244,18 +241,23 @@ try {
 
   console.log('the pager and the handoff:');
   ok('the module built no chrome row of its own', s.ownBar === false, JSON.stringify(s));
-  ok('its controls are in the viewer\'s header', s.inHeader === 'flow,open', s.inHeader);
+  ok('its one control is in the viewer\'s header', s.inHeader === 'open', s.inHeader);
   ok('and the position floats over the page', s.pagerFloats === true, JSON.stringify(s));
   ok('the pager reads page 1 of 2', s.label.replace(/\s/g, '') === '1/2', s.label);
   ok('the inspect link carries this file\'s address',
-     s.openHref.endsWith(`#gh=${REPO}@main:${FIXTURE}`), s.openHref);
-  ok('and points at the inspector', s.openHref.includes('/pages/pdf-inspect.html'), s.openHref);
+     s.openHref.includes(`#gh=${REPO}@main:${FIXTURE}`), s.openHref);
+  ok('and points at the workbench', s.openHref.includes('/pages/pdf-inspect.html'), s.openHref);
+  // The workbench's main mode is page-scoped, so the handoff carries the page
+  // the reader is on. It landed on page 1 whatever you were reading until
+  // pages/pdf-inspect.html learned to take `page=` (2026-08-25).
+  ok('and the page the reader is on', /&page=1$/.test(s.openHref), s.openHref);
 
   const inkOne = s.ink;
   await page.click('[data-pdf="next"]');
   await page.waitForTimeout(1500);
   s = await state();
   ok('next moves the pager', s.label.replace(/\s/g, '') === '2/2', s.label);
+  ok('and the workbench link follows the reader', /&page=2$/.test(s.openHref), s.openHref);
   ok('and lands on the other page', s.active === 1 && s.ink > 200 && s.ink !== inkOne,
      `${inkOne} -> ${s.ink} at ${s.active}`);
 
@@ -271,7 +273,6 @@ try {
   // gesture meant "next page" over the page and "next document" a few pixels
   // outside it, and there was no swipe at all that left a multi-page document.
   // tools/test/pdf-flow.mjs drives that nested case for real.
-  ok('the default flow is the continuous one', s.kind === 'scroll', s.kind);
   ok('the column scrolls vertically', s.scrollsY === true, JSON.stringify(s));
   ok('and does not scroll sideways', s.scrollsX === false, JSON.stringify(s));
   ok('with no snap points to fight the scroll', !/mandatory/.test(s.snap), s.snap);
