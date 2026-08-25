@@ -236,15 +236,14 @@ try {
       root: cs('[data-dictate-ui]'),
     };
   });
-  // The text pane is the one exception, and a deliberate one: it gives the
-  // browser the vertical axis so it can scroll, keeps pinch so small type
-  // stays readable, and takes the horizontal axis for drag-to-select.
-  const wants = { view: 'pan-y pinch-zoom' };
+  // NO EXCEPTIONS ANY MORE. The pane used to read `pan-y pinch-zoom`, holding
+  // the horizontal axis back from the browser so a sideways drag could select.
+  // That drag is the mouse's now, so the axis went back and every surface here
+  // reads the same.
   for (const [name, v] of Object.entries(locks)) {
     if (name === 'pad') continue;
     ok(`${name} refuses the browser its own selection`, v && v.sel === 'none', JSON.stringify(v));
-    ok(`${name} refuses double-tap zoom`, v && v.touch === (wants[name] || 'manipulation'),
-      JSON.stringify(v));
+    ok(`${name} refuses double-tap zoom`, v && v.touch === 'manipulation', JSON.stringify(v));
   }
   // touch-action does NOT inherit, which is how the host and the painted spans
   // computed `auto` under a layer that said manipulation.
@@ -524,10 +523,10 @@ try {
   ok('nor leave the pins transparent afterwards',
     await page.evaluate(() => document.querySelector('[x-data="dictate"]')._x_dataStack[0].pinDrag) === null);
 
-  // A PLAIN DRAG SELECTS, no long press. Sideways is the qualifier on a touch
-  // screen, since the pane must keep the vertical axis to scroll. The edge
-  // arms WHILE the drag runs, to show which end is moving, and the release
-  // puts it down: one rule across all three drags.
+  // A PLAIN DRAG SELECTS, no long press, and it is the MOUSE's: on a touch
+  // screen the pane must scroll and a drag is the only way to scroll it, so
+  // the long press is the way in there. The edge arms WHILE the drag runs, to
+  // show which end is moving, and the release puts it down.
   await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.d.clearRange(); c.armed = null; c.paint(); });
   await page.waitForTimeout(150);
   await page.mouse.move(line1.x + 40, line1.y + 12);
@@ -544,16 +543,19 @@ try {
   ok('and puts it down again on release', (await armed()) === null, String(await armed()));
   ok('leaving the selection it made', !!(await sel()));
 
-  // THE SAME VERTICAL HOLD, with the finger on the text rather than on a ball.
-  // A drag that goes sideways and a little down must not step a line: that
-  // downward travel is the thumb getting off the boundary it is placing.
-  const swipeAt = async (dy) => {
+  // NO VERTICAL HOLD ON THIS ONE, which is the half that changed with it. The
+  // hold exists to get a thumb off the words, and a cursor covers nothing, so
+  // the mouse aims with the raw pointer: a drag that dips a line lands on the
+  // line it dipped to, and a drag straight down selects at once rather than
+  // spending a line and a half first. The hold stays on the two drags a thumb
+  // actually drives, the long-press extend and the pin.
+  const swipeAt = async (dy, dx = 16) => {
     await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.d.clearRange(); c.armed = null; c.paint(); });
     await page.waitForTimeout(150);
     await page.mouse.move(line1.x + 40, line1.y + 12);
     await page.mouse.down();
     for (let i = 1; i <= 8; i++) {
-      await page.mouse.move(line1.x + 40 + 16 * i, line1.y + 12 + (dy * i) / 8);
+      await page.mouse.move(line1.x + 40 + dx * i, line1.y + 12 + (dy * i) / 8);
       await page.waitForTimeout(20);
     }
     const r = await sel();
@@ -563,15 +565,55 @@ try {
   };
   const flat = await swipeAt(0);
   const dipped = await swipeAt(lineH * 1.2);
-  ok('a sideways drag that dips a line still ends on the line it began',
-    flat && dipped && dipped.end === flat.end, `${flat?.end} -> ${dipped?.end}`);
-  const dropped = await swipeAt(lineH * 2.6);
-  ok('and past the hold it does step, so the next line is reachable',
-    dropped && flat && dropped.end > flat.end, `${flat?.end} -> ${dropped?.end}`);
+  ok('a mouse drag that dips a line follows it there, with no hold to spend',
+    flat && dipped && dipped.end > flat.end, `${flat?.end} -> ${dipped?.end}`);
+  const straightDown = await swipeAt(lineH, 0);
+  ok('and one straight down selects, which the hold used to swallow',
+    !!straightDown && straightDown.end !== straightDown.start, JSON.stringify(straightDown));
 
-  ok('the pane keeps the vertical axis and the pinch, giving up only sideways',
-    await page.evaluate(() =>
-      getComputedStyle(document.querySelector('[data-dictate-view]')).touchAction === 'pan-y pinch-zoom'));
+  // AND A FINGER DOES NONE OF IT, in any direction. Every touch drag is a
+  // scroll now, so it must neither make a selection nor, on release, fall
+  // through to the tap path and drop a caret where the finger came up.
+  //
+  // FROM NOTHING SELECTED, deliberately: with a range live the pins are on
+  // screen and a drag starting on one is a PIN drag, which still works and is
+  // meant to. Isolating the plain drag means giving it nothing to grab.
+  const touchDrag = async (dy, dx) => {
+    await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.d.clearRange(); c.armed = null; c.paint(); });
+    await page.waitForTimeout(150);
+    await page.evaluate(([sx, sy, ddx, ddy]) => {
+      const el = document.elementFromPoint(sx, sy);
+      const send = (type, cx, cy, buttons) => el.dispatchEvent(new PointerEvent(type, {
+        bubbles: true, composed: true, cancelable: true, pointerId: 1, pointerType: 'touch',
+        isPrimary: true, clientX: cx, clientY: cy, buttons }));
+      send('pointerdown', sx, sy, 1);
+      for (let i = 1; i <= 8; i++) send('pointermove', sx + (ddx * i) / 8, sy + (ddy * i) / 8, 1);
+      send('pointerup', sx + ddx, sy + ddy, 0);
+    }, [line1.x + 40, line1.y + 12, dx, dy]);
+    await page.waitForTimeout(150);
+    return sel();
+  };
+  ok('a finger dragging down makes no selection, and no caret either',
+    (await touchDrag(lineH * 3, 0)) === null, JSON.stringify(await sel()));
+  ok('nor one dragging sideways, which used to select',
+    (await touchDrag(0, 120)) === null, JSON.stringify(await sel()));
+  ok('nor one dragging up, the direction that never worked',
+    (await touchDrag(-lineH * 2, 0)) === null, JSON.stringify(await sel()));
+
+  // The long press is what remains, and it still reaches the same place: the
+  // word, then the extension past it. Proven above under "a long press
+  // selects the word"; this only checks the two have not become exclusive.
+  await page.evaluate(() => { const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0]; c.precise = false; c.d.clearRange(); c.armed = null; c.paint(); });
+  await page.waitForTimeout(150);
+  await page.touchscreen.tap(line1.x + 40, line1.y + 12);
+  await page.mouse.move(line1.x + 40, line1.y + 12);
+  await page.mouse.down();
+  await page.waitForTimeout(600);
+  const pressed = await sel();
+  await page.mouse.up();
+  await page.waitForTimeout(150);
+  ok('and a press still takes the word under it', !!pressed && pressed.end > pressed.start,
+    JSON.stringify(pressed));
 
   // TAPPING THE HEADER'S BACKGROUND PUTS ANY PIN DOWN, which is the way of
   // simply ending the arming rather than changing which edge is live. Its

@@ -162,6 +162,18 @@ decides a touch is a scroll fires `pointercancel` and stops sending
 `pointermove`, so a custom drag on a scrollable surface does not just fight the
 sheet, it ends.
 
+**And variant E needs a flag the gesture has already set, which a drag with no
+opening act cannot supply.** The same page tried, for two days, to hold a plain
+drag-to-select on the same pane: a drag that opened sideways was a selection,
+one that opened downward was a scroll, and the hold fired on the first move
+that had gone far enough sideways to say which. It worked. What it could not do
+is be discoverable, since nothing on screen can state a rule about direction,
+and a refused drag is indistinguishable from a dead surface. The general form
+is worth keeping: on a scrolling pane, a custom drag needs a **discrete opening
+act** the reader performs on purpose, a long press or a grabbed handle, both
+because that is what variant E can gate on and because that is what tells the
+reader the surface has two behaviours at all. Retired 2026-08-25.
+
 **A handle that is REBUILT cannot be held from an ancestor,** which the dictate
 page hit and is worth knowing before reaching for one listener on a container. A
 touch keeps the element it started on as its target even after that element

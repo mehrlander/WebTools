@@ -171,18 +171,17 @@
    ITSELF needs this most of all, since the aim point tracks the pin. */
 [data-dictate-pad] [data-edge] { pointer-events: none; }
 
-/* THE PANE KEEPS THE VERTICAL AXIS AND GIVES UP THE HORIZONTAL ONE. A drag
-   across the words selects (see the move handler), and the only thing that
-   can tell that apart from a scroll on a touch screen is direction, so the
-   split is declared here rather than decided per gesture. `manipulation`
-   above claims both axes for the browser, which left a sideways drag with
-   nothing to do and no way to become a selection.
+/* THE PANE HAD ONE MORE RULE HERE AND NO LONGER NEEDS IT. It read
+   `touch-action: pan-y pinch-zoom`, taking the horizontal axis off the
+   browser so that a sideways drag could select. That drag is now the mouse's
+   alone (see "A PLAIN DRAG IS THE MOUSE'S" in the move handler), so the axis
+   went back and `manipulation` above covers the pane like everything else.
 
-   `pinch-zoom` is kept explicitly. Bare `pan-y` would give up the horizontal
-   axis AND the pinch, and nothing about selecting sideways asks for the
-   reader to lose the one gesture that makes small type readable. Double-tap
-   zoom goes either way, which is what this pane wanted anyway. */
-[data-dictate-ui] [data-dictate-view] { touch-action: pan-y pinch-zoom; }
+   The measurement that settled it: with 300 words in the buffer the pane's
+   scrollWidth was 390 against a clientWidth of 390. There is no horizontal
+   overflow and there never was, so the axis the page had taken was one the
+   browser had nothing to do with. Giving it back costs nothing and removes
+   the one gesture on this page whose behaviour depended on its direction. */
 </style>
 
 <script type="module">
@@ -460,7 +459,17 @@
       //   single tap                place the caret, or move an armed edge
       //   tap a pinhead             arm that edge, or put it down
       //   drag a pinhead            move that edge, one to one
+      //   drag a finger anywhere    scroll, and only scroll
       //   mouse drag                select, for a pointer that has no problem
+      //
+      // THE LAST TWO ARE ONE DECISION. A finger has exactly one way to scroll
+      // this pane, so a finger drag cannot also mean select; a cursor has a
+      // wheel, so a cursor drag can. The page spent two days trying to split
+      // the difference by direction, sideways selecting and vertical
+      // scrolling, and the rule worked without ever being legible: nothing on
+      // screen could teach it, and the reader who dragged the wrong way found
+      // a surface that looked broken. On touch the long press is the way in,
+      // which is what the phone already means by it on a page you are reading.
       //
       // No triple, and no arrow cluster. The triple's select-all cannot
       // survive the double opening a keyboard: the second tap swaps the read
@@ -481,7 +490,7 @@
         return node ? window.Dictate.offsetAt(host, node, off) : null;
       },
 
-      // ── THE VERTICAL AIM OF ANY DRAG ──────────────────────────────────
+      // ── THE VERTICAL AIM OF A THUMB'S DRAG ────────────────────────────
       // Horizontal is always the finger, one to one. Vertical is HELD BACK
       // until the thumb has cleared the words, then resumes, quantized to
       // lines and measured from where the hold ended rather than from the
@@ -490,19 +499,22 @@
       //
       // `lead` is how far the grip sits from the line it marks: a pin's ball,
       // signed, positive below and negative above. ZERO when the finger is on
-      // the text itself, which is the plain drag and the long-press extend.
-      // A grip already below the line spends the base hold; one above spends
-      // that plus twice its own offset, which is exactly the travel that
-      // carries it down across the line to where the other one started.
+      // the text itself, which is the long-press extend. A grip already below
+      // the line spends the base hold; one above spends that plus twice its
+      // own offset, which is exactly the travel that carries it down across
+      // the line to where the other one started.
       //
       // Upward is immediate in every case. That direction is clearance for
       // none of them, and a hold there only makes the drag feel stuck.
       //
-      // One rule for all three drags, because they are one question: where is
-      // the reader aiming, given that their thumb is in the way of the answer.
-      // The plain drag went without it at first, on the reading that a finger
-      // on the text IS the aim point and holding back would read as lag. It
-      // reads as the thumb covering the boundary instead.
+      // ONE RULE FOR THE TWO DRAGS A THUMB DRIVES, the long-press extend and
+      // the pin, because they are one question: where is the reader aiming,
+      // given that their thumb is in the way of the answer. It was three until
+      // the plain drag became the mouse's alone; a cursor occludes nothing, so
+      // it aims with the raw pointer and this is not in its path. The extend
+      // went without it at first, on the reading that a finger on the text IS
+      // the aim point and holding back would read as lag. It reads as the
+      // thumb covering the boundary instead.
       DEAD_LINES: 1.5,
       dragY(y0, py, cy, lineH, lead = 0) {
         const buffer = this.DEAD_LINES * lineH + (Math.abs(lead) - lead);
@@ -567,23 +579,15 @@
         // so without this the extension does not merely fight the sheet, it
         // ends.
         let held = null;
-        const holdMove = (ev) => {
-          if (word || dragging) { ev.preventDefault(); return; }
-          // AND BEFORE `dragging` IS SET, because by then it can be too late.
-          // The pane allows a vertical pan, a real thumb crossing the words is
-          // never purely horizontal, and the browser rules on the gesture
-          // before the move handler does: it claims the pan, fires
-          // pointercancel, and the selection never starts. So the same
-          // sideways test the move handler applies is applied HERE too, at the
-          // first touch that has opened far enough to say which it is.
-          //
-          // A still finger has no dx and cancels nothing, so the long press is
-          // untouched; a downward swipe has dy over dx and scrolls as before.
-          const t = ev.touches && ev.touches[0];
-          if (!t || anchor == null) return;
-          const dx = Math.abs(t.clientX - x), dy = Math.abs(t.clientY - y);
-          if (dx > 10 && dy <= dx) ev.preventDefault();
-        };
+        //
+        // IT USED TO CANCEL PRE-EMPTIVELY TOO, on the first touch that had
+        // opened far enough sideways to be a selection rather than a scroll,
+        // because the browser rules on a gesture before the move handler does
+        // and a claimed pan fires pointercancel. That test went with the plain
+        // touch drag it protected: nothing now becomes a selection without a
+        // long press first, and by the time a press has taken its word there
+        // is a `word` to gate on.
+        const holdMove = (ev) => { if (word || dragging) ev.preventDefault(); };
         const unhold = () => {
           if (!held) return;
           held.removeEventListener('touchmove', holdMove, { passive: false });
@@ -653,31 +657,41 @@
             return;
           }
 
-          // ── A PLAIN DRAG SELECTS TOO, SIDEWAYS ──────────────────────────
-          // No long press needed: drag across the words and the selection
-          // follows, from where the finger went down to where it is. The long
-          // press is still there and still takes the word first; this is the
-          // cheaper way in when you already know both ends.
+          // ── A PLAIN DRAG IS THE MOUSE'S ─────────────────────────────────
+          // Press the button, drag across the words, and the selection follows
+          // from where it went down to where it is. On a desktop that is what
+          // every text surface does and there is nothing to weigh it against:
+          // a mouse does not scroll by dragging, so the gesture is free.
           //
-          // SIDEWAYS IS THE WHOLE QUALIFIER, and it is a constraint rather
-          // than a preference. The pane has to scroll, and on a touch screen
-          // the only thing distinguishing "scroll this buffer" from "select
-          // through it" is direction. So the pane keeps the vertical axis
-          // (`touch-action: pan-y`, in the stylesheet) and this takes the
-          // horizontal one. A drag that opens downward is a scroll and stays
-          // one; a drag that opens sideways is a selection and may then go
-          // anywhere, since by then the browser has let it through.
+          // ON A FINGER IT IS NOT FREE, and that is why this branch is gated
+          // rather than shared. The pane has to scroll, and a drag is the only
+          // way to scroll it, so a drag that also selects has to be told apart
+          // from one that scrolls. The page tried the one discriminator there
+          // is, direction: sideways selected, vertical scrolled. It worked and
+          // it was still wrong. Nothing on screen can teach a rule like that,
+          // a refused vertical drag fell through to the tap path and moved the
+          // caret to wherever the finger lifted, and the reader who tried the
+          // obvious thing found a surface that looked broken.
           //
-          // A mouse is exempt: it never scrolls by dragging, so the axis it
-          // opens on says nothing and requiring one would break drag-select
-          // on the desktop.
+          // So on touch the long press is the way in, which is the convention
+          // the phone already uses for a page you are reading rather than
+          // typing into. What that costs is one thing and it is worth naming:
+          // a press floors the anchor at a word, so a selection can no longer
+          // BEGIN mid-word on a finger. Everything after stays character-level,
+          // the far end as it extends and either edge afterwards by pin drag,
+          // and the target's two taps place both edges to the character. The
+          // precise route survives; it stopped being a drag. Decided
+          // 2026-08-25, retiring the touch half added two days earlier.
           //
           // Under the slop, a click that wobbled. Turning that into a
           // one-character selection is how a text box comes to feel twitchy.
+          if (e.pointerType !== 'mouse') return;
           if (anchor == null || !(far || dragging)) return;
-          if (!dragging && e.pointerType !== 'mouse'
-              && Math.abs(e.clientY - y) > Math.abs(e.clientX - x)) return;
-          const i = at(e.clientX, this.dragY(y, y, e.clientY, lineOf()));
+          // NO VERTICAL HOLD-BACK HERE, unlike the two drags below. `dragY`
+          // exists to get a thumb off the words before the aim starts moving,
+          // and a cursor covers nothing: quantizing it to lines and charging
+          // it a line and a half of travel would only make it feel broken.
+          const i = at(e.clientX, e.clientY);
           if (i == null) return;
           dragging = true;
           // And it arms the edge it is moving, the same as every other way of
@@ -714,6 +728,17 @@
           }
           anchor = null;
           if (this.edit || long || this.padDrag || this.pinDrag) return;
+          // A RELEASE FAR FROM ITS PRESS IS NOT A TAP. On touch every drag is
+          // now a scroll, and a scroll that lifts should leave the caret where
+          // it was. Usually the browser claims the gesture and fires
+          // pointercancel before this runs, but a drag under its own scroll
+          // threshold reaches here, and without this the caret jumped to
+          // wherever the finger came up. That was the quiet half of the old
+          // sideways rule: a refused vertical drag did not do nothing, it
+          // moved the caret to the far end of the gesture. Same 10px slop the
+          // move handler uses, and the count resets so a scroll cannot become
+          // the first half of a double.
+          if (Math.abs(e.clientX - x) > 10 || Math.abs(e.clientY - y) > 10) { taps = 0; return; }
           const pin = e.target?.closest?.('[data-edge]');
           if (!pin && !surface.contains(e.target)) { taps = 0; return; }
           // ARMING ENDS A RUN. pointerdown already armed the pin, and counting
