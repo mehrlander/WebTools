@@ -1040,3 +1040,101 @@ work produced came from consulting something already curated: the OFM tables,
 spend-wa's alias column, the bill XML's own markup, the content registry, the
 house style doc. The error was not in reaching for the curated thing. It was
 in reporting the curated thing as though the model had earned it.
+
+## 2026-08-23, registerlab: hip speak is three phenomena, not one
+
+New question, and a different one from everything above. `termlab` asks whether
+a term is ambiguous; this asks whether a phrase is **plain**, in the sense a
+reader means when they say a passage does not read like a textbook. The target
+is explicitly not jargon: `noun phrase` and `Dirichlet prior` are terms of art
+from real fields, a reader can look them up, and they are fine. What is at
+issue is the register between plain description and declared vocabulary, the
+thing that reads as informal shorthand.
+
+Method: 88 phrases hand-labeled `hip` or `plain` before any measure existed
+(`data/register-gold.csv`), scored over web-tools, home and shortcut-tools by
+rank AUC. 76 had enough corpus support to score, 42 hip against 34 plain.
+
+**The single-number answer is mediocre and the reason is the finding.** The
+best measure reaches 0.759, which sounds like a weak instrument. Split by the
+label's own `kind` column and it stops being one instrument:
+
+| signal | all | figurative | insider | idiom |
+| --- | --- | --- | --- | --- |
+| head concreteness | 0.717 | **0.783** | 0.574 | 0.604 |
+| displacement | 0.702 | 0.750 | 0.576 | 0.641 |
+| Books unattested | 0.738 | **0.831** | 0.738 | 0.590 |
+| deverbal share | 0.590 | 0.501 | **0.804** | 0.719 |
+| composite | 0.759 | 0.796 | 0.622 | 0.756 |
+
+A **figurative** phrase (`the spine`, `the shelf`, `the mailbox`) is caught by
+how concrete its head is. An **insider** phrase (`the toss`, `a sweep`, `the
+drain`) is caught by how often the same word is tagged a verb in this corpus,
+and concreteness is blind to it at 0.574. The two measures do not see each
+other's class. Averaging them produces one weak number out of two decent ones.
+
+The composite that survives is concreteness plus deverbal share. Nothing was
+fitted; the weights are 1 and 1 on rescaled features, chosen from the error
+listing rather than optimized, because 76 items is not enough to fit on.
+
+### Four negatives, each measured
+
+**Context concreteness does nothing here, and this kills the Turney test.**
+Turney et al. 2011 identify metaphor by a concrete word sitting in an abstract
+frame. Over 76 phrases the mean concreteness of the surrounding ten words runs
+2.67 to 3.54, **sd 0.15**, against sd 0.89 for the phrases themselves. Expository
+technical prose is uniformly abstract, so there is no frame to contrast
+against, and `displacement` collapses onto the word's own rating: 0.702 against
+0.717 for head concreteness alone, which is to say subtracting the context made
+it slightly worse. The method is not wrong; this corpus has no dynamic range
+for it.
+
+**Frequency contrast is inverted, at 0.344.** Corpus rate against
+general-English rate measures *topic*, not register. The phrases this estate
+says far more than English does are `pull request`, `log-odds` and `Dirichlet
+prior`, all plain. This closes the "just find the words we overuse" idea for
+this question, and it is the second time a frequency-based ranking has lost
+here: PR #336's context entropy and in-repo TF-IDF failed the sibling question
+the same way, both promoting rare vocabulary when the target is shared
+vocabulary.
+
+**Google Books separates alone (0.738) and poisons every composite.** Any
+combination including it lands at 0.716 or below against 0.759 without it. The
+cause is legible in the errors: `the Dirichlet prior`, `the commit hook` and
+`the body sync` all score a perfect zero against print, and all three are
+plain. "Absent from Books" is equally true of a minted compound and of any
+ordinary modern technical compound, because the corpus ends in 2019 and is
+books. The result is kept rather than dropped, since the failure is the useful
+part.
+
+**Grounding is at chance, 0.506.** `flag_reply`'s referential-versus-grounded
+measure finds coinage, and coinage is a different question: a coinage can be
+perfectly plain (`the boundary filter`) and a borrowed idiom can be thoroughly
+established (`the fast path`).
+
+### What bounds all of it
+
+Every number above scores a phrase **type**, not an occurrence. Nothing here
+separates a concrete word used literally from the same word used figuratively.
+Run over a real reply, the top of the list carries `the estate`, `the
+foothold`, `the fast path` and `term of art`, and also `windows laptop`, `last
+flag` and `fresh evidence`, which are simply concrete things named concretely.
+The same blindness produces the false positives on the gold set, and they are
+all one thing: **dead metaphor**. `branch`, `hook`, `clipboard`, `suite`,
+`list` are concrete words doing abstract work whose metaphor died into
+terminology years ago. The measure cannot tell them from `spine` and `shelf`,
+where the metaphor is still live.
+
+`flag` prints a second ranking that adds the concreteness gap against the
+phrase's **governing token**, the one word that predicates something of it,
+which is the only local frame left once the document-level frame proved flat.
+It is unvalidated and roughly a wash: it correctly promotes `different route`
+and `sandbox`, and correctly fails to demote `windows laptop`.
+
+**The named next step, with its prediction.** The dead-metaphor problem wants a
+reference corpus of *technical English*, not of print. `branch`, `hook` and
+`clipboard` are frequent in Stack Exchange prose; `spine`, `shelf`, `mailbox`
+and `toss` in their estate senses are not. The 9.28M-word Stack Exchange
+control that `model-voice` built is the right corpus and is exactly the
+contrast Books cannot supply. It is not on disk here and its builder pulls 100
+answers per API request, so it was not built in this session.

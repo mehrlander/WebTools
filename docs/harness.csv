@@ -41,6 +41,7 @@ tools/concept-lab/exp_gold.py,score a termlab index against the gold polysemy se
 tools/concept-lab/exp_pos.py,experiment: spaCy noun chunks as the term-candidate source,tools/concept-lab,66,argv,no,yes,no
 tools/concept-lab/flag_reply.py,"flag risky vocabulary in a draft reply, using a termlab index",tools/concept-lab,232,argv,no,yes,no
 tools/concept-lab/gazetteer.py,build an entity gazetteer from the tables the estate already curates,tools/concept-lab,179,argv,no,yes,no
+tools/concept-lab/registerlab.py,,tools/concept-lab,598,argv,no,no,no
 tools/concept-lab/termlab.py,term lab: experimental multi-corpus term and ambiguity analysis,tools/concept-lab,875,argv,no,yes,yes
 tools/render/cdn.mjs,the CDN URL to local-file resolver both renderers share,tools/render,369,imported,no,yes,yes
 tools/render/estate-card-demo.mjs,screenshot driver: render the estate's Repos grid with seeded entries,tools/render,72,none found,no,no,no
@@ -125,6 +126,7 @@ tools/render/scenarios/paste-anywhere.mjs,dispatches a real two-flavor Clipboard
 tools/render/scenarios/paste-button.mjs,"drives the header Paste button from a non-Stage view with window.io stubbed, and reports where it routed",tools/render/scenarios,46,driver,no,no,no
 tools/render/scenarios/paste-empty-toast.mjs,"What the header's Paste button says when the clipboard is empty: an info toast, never the error colour it used to raise.",tools/render/scenarios,31,driver,no,no,no
 tools/render/scenarios/paste-kinds-probe.mjs,puts four transform-shaped payloads through the paste intake and reports the name and preview mode each gets,tools/render/scenarios,54,driver,no,no,yes
+tools/render/scenarios/paste-script-probe.mjs,,tools/render/scenarios,83,driver,no,no,no
 tools/render/scenarios/pick-md.mjs,"end-to-end reproduction of pick-a-file-in-the-fab, reporting what the frame did",tools/render/scenarios,76,driver,no,no,no
 tools/render/scenarios/project-board-review.mjs,"the project Board pane's typed read, seeded token-free",tools/render/scenarios,198,driver,no,yes,no
 tools/render/scenarios/project-board.mjs,the project view's Board pill with task links resolved into the shell viewer,tools/render/scenarios,72,driver,no,no,no
@@ -145,6 +147,7 @@ tools/render/scenarios/routes-pane.mjs,"Renders Activity's Routes pane with real
 tools/render/scenarios/search-cold.mjs,the Files view's cold open: a bare arrival scopes to the browsed repo and walks it,tools/render/scenarios,50,driver,no,no,no
 tools/render/scenarios/search-controls.mjs,"the Files view's scope controls, with the ref picker open",tools/render/scenarios,72,driver,no,no,no
 tools/render/scenarios/search-files.mjs,"the Files view a level into a folder, with a file from it open in the shared viewer",tools/render/scenarios,64,driver,no,no,no
+tools/render/scenarios/session-contents.mjs,"enters the session deck from the outline the page opens on, then opens the deck's own contents list: the rows readable at 390px, the reader marked, and one pager gap per exchange",tools/render/scenarios,65,driver,no,no,no
 tools/render/scenarios/sidebar-compare.mjs,,tools/render/scenarios,169,driver,no,yes,no
 tools/render/scenarios/sidebar-projects-overlay.mjs,the same sidebar state in overlay posture; only the posture distinguishes the pair,tools/render/scenarios,51,driver,no,yes,no
 tools/render/scenarios/sidebar-projects.mjs,drive show-repo's sidebar into the nested-projects state,tools/render/scenarios,66,driver,no,yes,no
@@ -159,6 +162,7 @@ tools/render/scenarios/stage-keyboard-mode.mjs,"the stage's dictation card with 
 tools/render/scenarios/stage-paste-flavors.mjs,,tools/render/scenarios,44,driver,no,no,no
 tools/render/scenarios/stage-reader-subject.mjs,"the stage reader announcing which staged file is on screen, so the FAB drawer names the file being read rather than the app shell hosting it",tools/render/scenarios,102,driver,no,no,no
 tools/render/scenarios/stage-rename-local.mjs,,tools/render/scenarios,23,driver,no,no,no
+tools/render/scenarios/stage-sniffed-name.mjs,,tools/render/scenarios,25,driver,no,no,no
 tools/render/scenarios/stage-stitch.mjs,"the stage composer's stitch key: a caret in a sentence gap turns the full-stop cell into the cell that takes one back, the same swap the annotator's card makes off the same kit verb",tools/render/scenarios,52,driver,no,no,no
 tools/render/scenarios/stage-transform-chip.mjs,"stages three transform-shaped items, opens one in the workbench, and asserts the table actually drew",tools/render/scenarios,54,driver,no,no,yes
 tools/render/scenarios/state-view.mjs,"Populate the State view for a screenshot: stub the registry reads with a current cache, a stale one, an unchecked one, and the buttonless entity index",tools/render/scenarios,224,driver,no,no,no
