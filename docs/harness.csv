@@ -141,6 +141,7 @@ tools/render/scenarios/search-cold.mjs,the Files view's cold open: a bare arriva
 tools/render/scenarios/search-controls.mjs,"the Files view's scope controls, with the ref picker open",tools/render/scenarios,72,driver,no,no,no
 tools/render/scenarios/search-files.mjs,"the Files view a level into a folder, with a file from it open in the shared viewer",tools/render/scenarios,64,driver,no,no,no
 tools/render/scenarios/session-contents.mjs,"enters the session deck from the outline the page opens on, then opens the deck's own contents list: the rows readable at 390px, the reader marked, and one pager gap per exchange",tools/render/scenarios,65,driver,no,no,no
+tools/render/scenarios/session-exchange-card.mjs,,tools/render/scenarios,58,driver,no,no,no
 tools/render/scenarios/sidebar-compare.mjs,,tools/render/scenarios,169,driver,no,yes,no
 tools/render/scenarios/sidebar-projects-overlay.mjs,the same sidebar state in overlay posture; only the posture distinguishes the pair,tools/render/scenarios,51,driver,no,yes,no
 tools/render/scenarios/sidebar-projects.mjs,drive show-repo's sidebar into the nested-projects state,tools/render/scenarios,66,driver,no,yes,no

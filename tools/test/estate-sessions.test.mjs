@@ -189,6 +189,21 @@ test('repo chips come off the scoped list, busiest first, with no zero rows', ()
   assert.deepEqual(plain(data.sessionRepos), [{ repo: 'web-tools', count: 2 }, { repo: 'home', count: 1 }]);
 });
 
+test('the files tooltip breaks lines and names what the count leaves out', () => {
+  // Two failures this pins, and neither shows on the page: a title attribute
+  // renders whatever it is given, so a literal backslash-n separator reads as
+  // one run-on line with escapes in it, and an unqualified "files opened"
+  // reads as "files read" when the count deliberately excludes a shell read.
+  // The double escaping is right inside this component's template literal and
+  // wrong in a plain method, which is how it got here.
+  seed([rec()]);
+  const label = data.filesLabel(data.sessionRows[0]);
+  assert.doesNotMatch(label, /\\n/, 'a literal escape in a title renders as text');
+  assert.ok(label.split('\n').length > 1, 'the busiest files each want their own line');
+  assert.match(label, /Read, Edit, Write or NotebookEdit/);
+  assert.match(label, /shell command is not counted/);
+});
+
 // ── The record, opened ──────────────────────────────────────────────────────
 
 test('opening a row fetches its record by the store path and hands it to the deck', async () => {

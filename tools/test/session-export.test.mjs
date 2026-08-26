@@ -51,7 +51,7 @@ const REC = {
   agent_session: 'https://claude.ai/code/session_x',
   repos: [{ name: 'web-tools', branch: 'main' }],
   // Present so the record earns its closing summary card, which is what makes
-  // the last card a `meta` turn and the count 5 rather than 4.
+  // the last card a `meta` turn and the count 3 rather than 2.
   files: { 'lib/kits/session-render.js': { read: 2 } },
   files_total: 1,
   tools: { Bash: 2, Read: 1 },
@@ -84,20 +84,20 @@ test('the index is the cards flattened, and the two agree turn for turn', () => 
   });
 });
 
-test('a card per ask and per prose turn, with the calls attached above', () => {
+test('a card is one exchange, so an excerpt selects a whole question', () => {
   const m = model(REC);
   assert.deepEqual(m.cards.map(c => c.map(t => t.role).join('+')), [
-    'user', 'assistant+tool+tool', 'user', 'assistant+tool', 'meta',
+    'user+assistant+tool+tool', 'user+assistant+tool', 'meta',
   ]);
 });
 
 test('a selection of one card carries only that card', () => {
   const m = model(REC);
-  const sel = m.cards[1].map((_, k) => m.cardStart[1] + k);
+  const sel = m.cards[0].map((_, k) => m.cardStart[0] + k);
   const md = markdown(REC, sel, { model: m });
   assert.match(md, /I'll check what landed today/);
   assert.doesNotMatch(md, /And the export view\?/);
-  assert.match(md, /Excerpt: 3 of \d+ turns, from 1 of 5 cards \(2\)\./);
+  assert.match(md, /Excerpt: 4 of \d+ turns, from 1 of 3 cards \(1\)\./);
 });
 
 test('tool results are off by default and the command still rides', () => {
@@ -124,7 +124,7 @@ test('the header names the record, the bound, and the session', () => {
   const m = model(REC);
   const md = markdown(REC, null, { model: m });
   assert.match(md, /^# Did we create a new standard for registration\?/);
-  assert.match(md, /The whole record: \d+ turns across 5 cards\./);
+  assert.match(md, /The whole record: \d+ turns across 3 cards\./);
   assert.match(md, /not a full transcript/);
   assert.match(md, /https:\/\/claude\.ai\/code\/session_x/);
 });
