@@ -210,7 +210,7 @@
            deck draws around a tool result, so it arrives with the estate's Copy
            and its Table view rather than a second viewer written here. -->
       <div x-ref="raw" x-show="pane === 'raw'" x-cloak
-           class="min-h-0 grow overflow-y-auto"></div>
+           class="min-h-0 grow flex flex-col pb-3"></div>
     </div>
   </template>
 
@@ -264,13 +264,14 @@
         const s = this.src;
         return s?.path ? `https://github.com/${s.repo}/blob/${s.ref || 'main'}/${s.path}` : '';
       },
-      // The counts worth seeing before opening the deck, each one a fact about
-      // capture rather than about the work: how much of the session is here.
+      // What the CAPTURE holds, and only what the strip above does not already
+      // say. It carried asks and calls too, which the strip states four
+      // millimetres higher: a panel opened to learn more that repeats what is
+      // already on screen teaches a reader it is not worth opening.
       get facts(){
         const r = this.record || {};
         const f = [
-          ['asks', r.exchanges], ['replies', r.replies_total], ['calls', r.calls_total],
-          ['failures', r.failures], ['files', r.files_total],
+          ['replies', r.replies_total], ['failures', r.failures], ['files', r.files_total],
         ];
         if (r.tokens?.output) f.push(['output tokens', r.tokens.output.toLocaleString()]);
         f.push(['schema', r.schema || 1]);
@@ -385,7 +386,10 @@
         const box = this.$refs.raw;
         if (!box) return;
         try {
-          box.replaceChildren(window.chatRender.block({ lang: 'json', code: this.rawJson }));
+          // `fill` because this pane IS a viewport: the card's own line clamp
+          // would put a second scroll inside the first and leave the page half
+          // empty under a "Show all 983 lines" button, which is what it did.
+          box.replaceChildren(window.chatRender.block({ lang: 'json', code: this.rawJson }, { fill: true }));
           this.rawBuilt = true;
         } catch (e) { this.err = e?.message || String(e); }
       },
