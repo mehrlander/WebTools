@@ -62,3 +62,11 @@ Nothing was invented to reach a count.
 **Segmentation determinism was assumed for three runs and never checked.** It
 now is. Had it drifted, every stored annotation would have orphaned at once and
 the contract would have been worthless without saying so.
+
+**Regenerate last, not first.** The suite passed locally and CI failed on the
+same commit: `docs-reach` had been run, and then `LOG.md` was edited. Mentioning
+`docs/tests.csv` in this file makes a skill name that document, which flips its
+reach from `app` to `skill`. Third ordering mistake of the same family in one
+session (the earlier two reverted a fix by re-splicing from a stale source), so
+by this log's own recurrence rule it is now a step in the skill: **run every
+generator after the last edit, including edits to this file.**

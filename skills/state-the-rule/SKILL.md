@@ -107,7 +107,10 @@ pointer was lost in a way `check.py` passed, `npm run docs-reach` caught it.
 
 ### 7. Record
 
-Append one row to `runs.csv` and any surprise to `LOG.md`.
+Append one row to `runs.csv` and any surprise to `LOG.md`, then **run the repo's
+generators after that last edit, not before it**. A record that names a governed
+file changes that file's derived state, so recording the run is itself an edit
+the generators have to see.
 
 **A lesson that recurs a third time earns a change to this skill or its
 tooling.** That is the whole improvement mechanism, and it is the same
