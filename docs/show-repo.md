@@ -835,7 +835,14 @@ The split is fixed halves, each scrolling **inside itself**, so adding to one
 never pushes the other off screen. That needs a definite height, which the shell
 hands down: for this view only (`listsFill`), the estate pane and its column
 become `flex` + `overflow-hidden` instead of the ordinary scrolling column, and
-the component root joins the chain. Nothing in the pane adds a card, a border
+the component root joins the chain. That change of display had a cost nobody
+saw for three weeks: an auto inline margin sizes a flex **item** to its content
+rather than stretching it, so the `mx-auto` this wrapper already carried
+silently capped the pane at the width of its widest row. Lists came out 548px
+wide inside a 1280px window, `!max-w-none` and all, which is what made the Pin
+grid split a half-width pane into two columns and clip a 26-character title.
+`w-full` on that wrapper is the fix and is inert in every other view, where the
+parent is still a block. Nothing in the pane adds a card, a border
 box, or a second layer of padding: two sections, one hairline between them, and
 the scroll on the list rather than the page. Each half keeps its heading and add
 form pinned while its list scrolls, since the add form is the reason you came;
@@ -900,6 +907,15 @@ something that already has a home.
 All three live under `lists/` because they are
 authored content with the registry as their source of truth; `state/` stays
 derived caches only.
+
+**Each heading links its own file**, which is the jump-over convention arriving
+somewhere it had been missed: three panes were writing three files in a private
+registry with nothing on screen naming the repo, the path, or the fact that
+checking a box is a commit. The glyph names an exact file, so it carries a
+**peek** (`lib/kits/source-peek.js`): hover shows the JSON, a tap opens the
+blob. The card is seeded from the bytes the loader already read, and re-seeded
+by every saver, because a peek that kept its copy from mount would answer "what
+is in the file" with a file that one check-off had already replaced.
 
 **Branches** (`?view=activity`, called Open until the scope chips arrived) is
 **every** branch of the estate in one cross-repo list, freshest first, narrowed
