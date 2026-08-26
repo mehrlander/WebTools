@@ -143,9 +143,10 @@
            the calls. Same data, each value under its own word. -->
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm shrink-0">
         <template x-for="f in strip" :key="f.k">
-          <span class="whitespace-nowrap">
+          <span class="whitespace-nowrap cursor-help" :title="f.t">
             <span class="opacity-55" x-text="f.k"></span>
-            <span class="font-mono font-medium ml-1" x-text="f.v"></span>
+            <span class="font-mono font-medium ml-1"
+                  :class="f.k === 'failures' && f.v ? 'text-warning' : ''" x-text="f.v"></span>
           </span>
         </template>
       </div>
@@ -181,24 +182,6 @@
            title="The stored record on GitHub"
            class="btn btn-sm btn-square btn-ghost max-sm:h-11 max-sm:w-11">
           <i class="ph ph-github-logo text-lg max-sm:text-xl"></i></a>
-        <button @click="showFacts = !showFacts" class="btn btn-sm btn-square btn-ghost max-sm:h-11 max-sm:w-11"
-                :aria-label="showFacts ? 'Hide capture facts' : 'Show capture facts'"
-                title="What the capture holds">
-          <i class="ph text-lg max-sm:text-xl" :class="showFacts ? 'ph-info-fill' : 'ph-info'"></i>
-        </button>
-      </div>
-
-      <!-- The capture facts, behind the toggle. They are worth having and are
-           not worth the top of the page: each is a fact about how much of the
-           session survived, which matters once you doubt the outline. -->
-      <div x-show="showFacts" x-cloak
-           class="flex flex-wrap gap-x-5 gap-y-1.5 text-xs rounded-lg border border-base-300 bg-base-200/50 px-3 py-2 shrink-0">
-        <template x-for="f in facts" :key="f.k">
-          <span class="whitespace-nowrap">
-            <span class="opacity-55" x-text="f.k"></span>
-            <span class="font-mono font-medium ml-1" x-text="f.v"></span>
-          </span>
-        </template>
       </div>
 
       <div x-ref="outline" x-show="pane === 'outline'" class="min-h-0 grow flex flex-col"></div>
@@ -221,7 +204,7 @@
 
   document.addEventListener('alpine:init', () => {
     Alpine.data('sessionPage', () => ({
-      input: '', record: null, busy: false, err: '', showFacts: false,
+      input: '', record: null, busy: false, err: '',
       pane: 'outline', src: null, rawBuilt: false,
       framed: (() => { try { return window.self !== window.top; } catch { return true; } })(),
 
@@ -234,6 +217,20 @@
       // The strip: what the record IS, as labelled facts. `describe` builds the
       // same set as one dotted string for the deck header, which has one line
       // and no room for words; a page has room, so it says which is which.
+      //
+      // ONE strip, not a strip and a panel behind an info button. The split put
+      // the identity facts on the page and the capture facts one tap away, and
+      // the tap bought nothing: they are the same kind of thing, they fit, and
+      // a reader wondering whether a count is low has to see it before knowing
+      // to ask. `replies` is the one that went rather than moving, since prose
+      // turns are a fact about how the session was written and not about what
+      // it did; the deck's own card count says more.
+      //
+      // Each carries its definition as a title, because half of these are
+      // exact about something a plain word is not: `files` counts what four
+      // file tools opened, `asks` counts what the user said and not what the
+      // session answered, and `schema` decides which of the others exist at
+      // all. Source: sessions/README.md in the store.
       get strip(){
         const r = this.record || {};
         const mins = (() => {
@@ -243,9 +240,17 @@
           return m < 60 ? m + 'm' : Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
         })();
         return [
-          ['day', r.day], ['id', r.short], ['repos', (r.repos || []).map(x => x.name).join(', ')],
-          ['ran', mins], ['asks', r.exchanges], ['calls', r.calls_total],
-        ].filter(([, v]) => v || v === 0).map(([k, v]) => ({ k, v }));
+          ['day', r.day, 'The day the session started'],
+          ['id', r.short, "The record's filename stem, and how every other surface names this session"],
+          ['repos', (r.repos || []).map(x => x.name).join(', '), "The checkouts that were the session's working directory"],
+          ['ran', mins, 'Wall clock from the first prompt to the last write, idle time included'],
+          ['asks', r.exchanges, 'Back-and-forths: one per thing the user actually said'],
+          ['calls', r.calls_total, 'Tool calls the session made'],
+          ['failures', r.failures, 'Tool calls that came back an error'],
+          ['files', r.files_total, 'Distinct paths opened by Read, Edit, Write or NotebookEdit. Not "read": a file opened through a shell command, or injected at session start, is not counted'],
+          ['output tokens', r.tokens?.output?.toLocaleString(), "The assistant's own output, not the context it read"],
+          ['schema', r.schema || 1, 'Which version of the record format wrote this, which decides what the other fields can hold'],
+        ].filter(([, v]) => v || v === 0).map(([k, v, t]) => ({ k, v, t }));
       },
       // Bytes of the record as this page holds it, which is what the Raw pane
       // will show rather than the file's own size on disk: the two differ by
@@ -264,20 +269,6 @@
         const s = this.src;
         return s?.path ? `https://github.com/${s.repo}/blob/${s.ref || 'main'}/${s.path}` : '';
       },
-      // What the CAPTURE holds, and only what the strip above does not already
-      // say. It carried asks and calls too, which the strip states four
-      // millimetres higher: a panel opened to learn more that repeats what is
-      // already on screen teaches a reader it is not worth opening.
-      get facts(){
-        const r = this.record || {};
-        const f = [
-          ['replies', r.replies_total], ['failures', r.failures], ['files', r.files_total],
-        ];
-        if (r.tokens?.output) f.push(['output tokens', r.tokens.output.toLocaleString()]);
-        f.push(['schema', r.schema || 1]);
-        return f.filter(([, v]) => v || v === 0).map(([k, v]) => ({ k, v }));
-      },
-
       async init(){
         // Before anything reads window.sessionRender: Alpine booted inside the
         // pre-build's import, so this page's own chain has not run yet.
