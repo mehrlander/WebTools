@@ -1929,7 +1929,7 @@ test('the three readings are one window, and what does not fit scrolls inside it
   A.disable();
 });
 
-test('copy rides the format row, so it needs no word at all', () => {
+test('copy rides the header beside the readings, so it needs no word at all', () => {
   // "Copy markdown" and "Copy JSON" sat in the footer naming a format the strip
   // a row above had already named, and the reader had to check which of the two
   // they were about to press. Beside the chips, the chips are the qualifier,
@@ -1943,7 +1943,9 @@ test('copy rides the format row, so it needs no word at all', () => {
 
   assert.equal(S.serialCopy.textContent.trim(), '', 'the glyph alone: the chips beside it are the qualifier');
   assert.match(S.serialCopy.title, /markdown/, 'the title still says which, for a pointer that hovers');
-  assert.ok(S.readBar.contains(S.serialCopy), 'and it rides the format row, not a footer under it');
+  assert.ok(S.readBar.contains(S.serialCopy), 'it sits with the readings it acts on');
+  assert.equal(S.readBar.parentElement, S.aimBtn.parentElement,
+    'and the readings live in the HEADER: one row of controls, none under the composer');
   assert.equal(S.serialCopy.style.display, 'flex');
 
   A.setReading('json');
