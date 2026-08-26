@@ -101,6 +101,9 @@ window.GH = class {
 // The Registries tab reads three CSVs, so the kit that parses them has to be in
 // the window the same way the pre-build puts it there.
 new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8'))();
+// The ambient bundle, in the same position gh-boot's BOOT manifest gives it
+// (first): the doc deck's rendition escapes through window.esc.
+new window.Function(readFileSync(path.join(repoRoot, 'lib/vanilla-bundle.js'), 'utf8'))();
 new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/map.js'), 'utf8'))();
 Alpine.start();
 await tick(3);

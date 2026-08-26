@@ -205,6 +205,28 @@ tpl\`
       ],
     },
     {
+      title: 'Escaping',
+      intro: 'The other half of tpl and fill: those place raw markup, so the caller decides what is markup and what is text. esc is how a value says it is text.',
+      examples: [
+        {
+          title: 'esc(value): the estate\'s one escape helper',
+          prose: `All five characters, so the same call is safe in a text node and inside a quoted attribute. It escapes only: whether a source's <code class="${c()}">&amp;amp;</code> is an encoded ampersand or five literal characters cannot be read off the string, so decoding belongs once at the ingestion boundary, never here.`,
+          lang: 'js', kind: 'jsrender', inject, daisy: true,
+          code:
+`const hostile = '<img src=x onerror="alert(1)"> & "quoted"';
+
+document.body.innerHTML = '<div id="out" class="text-sm space-y-2"></div>';
+
+// esc'd: the markup is shown, not run, and the quote cannot close the title.
+ids.out.innerHTML = \`
+  <div class="p-2 rounded bg-base-200 font-mono text-xs break-all"
+       title="\${esc(hostile)}">\${esc(hostile)}</div>
+  <div class="text-xs opacity-70">hover the box: the same value rode into the title attribute</div>
+  <div class="text-xs opacity-70">esc(null) is \${JSON.stringify(esc(null))}, not the word "null"</div>\`;`
+        },
+      ],
+    },
+    {
       title: 'Events',
       intro: 'A thin addEventListener that chains, and a delegated dispatcher that fans out by selector.',
       examples: [
