@@ -82,6 +82,27 @@ key so the two promotions are two entries rather than one.
 The slugs differ on purpose. Slug uniqueness is not enforced across repos, and
 a collision resolves to whichever entry sorts first rather than erroring.
 
+## In the Map view
+
+The Map view's Docs tab reads `docs/docs.csv`, whose `words` field is a
+snapshot. It now reads the growth payload as a second carrier and renders that
+same measure as a trend: a sparkline and a net delta per row, a delta per
+folder in the rail, and the movement behind the registry's word total.
+
+The sparkline is normalized to each file's own range rather than the
+registry's, so it reports shape (grew, held, was cut) and never size. Size is
+already the number beside it, and one mark cannot carry both without lying
+about one of them.
+
+The chart itself is deliberately not in Map. It is already an app view, a peer
+of Repos and Stage, so putting it in a tab as well would be a second door to
+one thing. What Map adds is what the chart cannot do from its own view: the
+trend in place, on the table where the question is actually asked.
+
+The payload is optional here. It is refreshed on demand rather than by a hook,
+so a missing or stale one costs the sparklines and nothing else; the tab is the
+registry, and the trend is a column on it.
+
 ## Verifying it against the real CDN
 
 `npm run shot` mirrors CDN requests from `node_modules` through
